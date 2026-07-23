@@ -110,6 +110,10 @@ const AvatarItemTypeTranslationKeys: Partial<Record<AvatarItemType, TranslationK
     'Label.EyeMakeup',
     TranslationNamespace.AvatarAnalytics,
   ),
+  [AvatarItemType.AvatarBackground]: translationKey(
+    'Label.Backgrounds',
+    TranslationNamespace.Creations,
+  ),
 };
 
 export const FormatAvatarItemTypeRaw = (
