@@ -187,14 +187,18 @@ const ExperienceAnalyticsPageFilterChoiceDynamicRAQIV2 = ({
     { onlyFilterSupportedValues: true, filter: scopingFilters },
   );
 
-  const enumOptions = useMemo(
-    () =>
+  const enumOptions = useMemo(() => {
+    if (
       raqiDimension === RAQIV2Dimension.PlaceVersion ||
       raqiDimension === RAQIV2Dimension.FirstSeenPlaceVersion
-        ? sortPlaceVersionFilterOptionsDescending(rawEnumOptions)
-        : rawEnumOptions,
-    [raqiDimension, rawEnumOptions],
-  );
+    ) {
+      return sortPlaceVersionFilterOptionsDescending(rawEnumOptions);
+    }
+    if (raqiDimension === RAQIV2Dimension.JourneyVersion) {
+      return [...rawEnumOptions].sort((a, b) => Number(b) - Number(a));
+    }
+    return rawEnumOptions;
+  }, [raqiDimension, rawEnumOptions]);
 
   const effectiveIsLoading =
     arePrerequisitesSatisfied && (isDataLoading || isContextMetricsUnresolved);

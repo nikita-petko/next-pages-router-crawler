@@ -510,6 +510,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: creatorAnalyticsFlags.isJourneyEventsEnabled,
+      metadata: {
+        namespace: 'creator-analytics',
+        name: 'isJourneyEventsEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: creatorAnalyticsFlags.isComparisonRangePolicyEnabled,
       metadata: {
         namespace: 'creator-analytics',

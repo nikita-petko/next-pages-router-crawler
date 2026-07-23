@@ -3,7 +3,8 @@ export type CreatorConfigsPublicApiRepository =
   | 'RecommendationServicesConfig'
   | 'DataStoresConfig'
   | 'ExtendedServicesConfig'
-  | 'LeaderboardsConfig';
+  | 'LeaderboardsConfig'
+  | 'JourneysConfig';
 export type CreatorConfigsPublicApiDeploymentStrategy = 'GradualRollout' | 'Immediate';
 
 export type CreatorConfigsPublicApiConfigValueFull = {

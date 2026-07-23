@@ -239,6 +239,124 @@ const RAQIV2NumericMetricDisplayConfig: Partial<Record<TRAQIV2Metric, NumericMet
       defaultTotalSummaryTypes: totalSummationSummary,
     },
 
+    [RAQIV2Metric.JourneyTotalUsers]: {
+      defaultTotalSummaryTypes: totalSummationSummary,
+    },
+
+    [RAQIV2Metric.JourneyCompletionUsers]: {
+      defaultTotalSummaryTypes: totalSummationSummary,
+    },
+
+    [RAQIV2Metric.JourneyEntryTransitions]: {
+      defaultTotalSummaryTypes: totalSummationSummary,
+    },
+
+    [RAQIV2Metric.JourneyLastStageTransitions]: {
+      defaultTotalSummaryTypes: totalSummationSummary,
+    },
+
+    [RAQIV2Metric.JourneyStageUserCount]: {
+      defaultTotalSummaryTypes: totalSummationSummary,
+    },
+
+    [RAQIV2Metric.JourneyStageTransitionCount]: {
+      defaultTotalSummaryTypes: totalSummationSummary,
+    },
+
+    [RAQIV2Metric.JourneyNodeUserCount]: {
+      defaultTotalSummaryTypes: totalSummationSummary,
+      columnDisplayConfigOverrides: {
+        tooltipKey: translationKey(
+          'Description.JourneyNodeUserCount',
+          TranslationNamespace.Analytics,
+        ),
+      },
+    },
+
+    [RAQIV2Metric.JourneyNodeUserChurnCount]: {
+      defaultTotalSummaryTypes: totalSummationSummary,
+      columnDisplayConfigOverrides: {
+        tooltipKey: translationKey(
+          'Description.JourneyNodeUserChurnCount',
+          TranslationNamespace.Analytics,
+        ),
+      },
+    },
+
+    [RAQIV2Metric.JourneyNodeUserChurnRate]: {
+      columnDisplayConfigOverrides: {
+        tooltipKey: translationKey(
+          'Description.JourneyNodeUserChurnRate',
+          TranslationNamespace.Analytics,
+        ),
+      },
+    },
+
+    [RAQIV2Metric.JourneyNodeTransitionCount]: {
+      defaultTotalSummaryTypes: totalSummationSummary,
+      columnDisplayConfigOverrides: {
+        tooltipKey: translationKey(
+          'Description.JourneyNodeTransitionCount',
+          TranslationNamespace.Analytics,
+        ),
+      },
+    },
+
+    [RAQIV2Metric.JourneyNodeTransitionChurnCount]: {
+      defaultTotalSummaryTypes: totalSummationSummary,
+      columnDisplayConfigOverrides: {
+        tooltipKey: translationKey(
+          'Description.JourneyNodeTransitionChurnCount',
+          TranslationNamespace.Analytics,
+        ),
+      },
+    },
+
+    [RAQIV2Metric.JourneyNodeTransitionChurnRate]: {
+      columnDisplayConfigOverrides: {
+        tooltipKey: translationKey(
+          'Description.JourneyNodeTransitionChurnRate',
+          TranslationNamespace.Analytics,
+        ),
+      },
+    },
+
+    [RAQIV2Metric.JourneyUserPctOfSource]: {
+      columnDisplayConfigOverrides: {
+        tooltipKey: translationKey(
+          'Description.JourneyUserPctOfSource',
+          TranslationNamespace.Analytics,
+        ),
+      },
+    },
+
+    [RAQIV2Metric.JourneyUserPctOfStart]: {
+      columnDisplayConfigOverrides: {
+        tooltipKey: translationKey(
+          'Description.JourneyUserPctOfStart',
+          TranslationNamespace.Analytics,
+        ),
+      },
+    },
+
+    [RAQIV2Metric.JourneyTransitionPctOfSource]: {
+      columnDisplayConfigOverrides: {
+        tooltipKey: translationKey(
+          'Description.JourneyTransitionPctOfSource',
+          TranslationNamespace.Analytics,
+        ),
+      },
+    },
+
+    [RAQIV2Metric.JourneyTransitionPctOfStart]: {
+      columnDisplayConfigOverrides: {
+        tooltipKey: translationKey(
+          'Description.JourneyTransitionPctOfStart',
+          TranslationNamespace.Analytics,
+        ),
+      },
+    },
+
     [RAQIV2Metric.UniqueUsersWithPlaySessions]: {
       defaultTotalSummaryTypes: [
         { type: RAQIV2SummaryType.Average },

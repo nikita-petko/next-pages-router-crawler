@@ -10,6 +10,12 @@ import {
   getTableConfigNewUsersFunnelOverviewV2,
   tableConfigFunnelsProgressionBySessionRealtime,
   tableConfigFunnelsProgressionByUserRealtime,
+  tableConfigJourneyByNodeChurnSessions,
+  tableConfigJourneyByNodeChurnUsers,
+  tableConfigJourneyByPathBreakdownSessions,
+  tableConfigJourneyByPathBreakdownUsers,
+  tableConfigJourneyByStageChurnSessions,
+  tableConfigJourneyByStageChurnUsers,
   tableConfigNewUsersFunnelAcquisitionV2,
   tableConfigNewUsersFunnelAcquisitionV2Migration,
   tableConfigNewUsersFunnelEngagement,
@@ -24,6 +30,8 @@ export enum RAQIV2PredefinedTabbedTableKey {
   NewUsersFunnelV2 = 'NewUsersFunnelV2',
   NewUsersFunnelV2Migration = 'NewUsersFunnelV2Migration',
   FunnelProgressionBySessionAndUserRealtime = 'FunnelProgressionBySessionAndUserRealtime',
+  JourneySessions = 'JourneySessions',
+  JourneyUsers = 'JourneyUsers',
 }
 
 export const getTabbedTableConfigNewUsersFunnelV2 = (isHomeAcquisitionSignalsEnabled: boolean) =>
@@ -120,4 +128,52 @@ export const tabbedTableConfigFunnelProgressionBySessionAndUserRealtime = {
   tabMobileLabelKey: translationKey('Heading.Funnels', TranslationNamespace.Analytics),
   titleKey: translationKey('Heading.Funnels', TranslationNamespace.Analytics),
   tooltipKey: translationKey('Description.Table.Funnels', TranslationNamespace.Analytics),
+} as const satisfies AnalyticsTabbedTableConfig;
+
+export const tabbedTableConfigJourneySessions = {
+  type: AnalyticsComponentType.TabbedTable,
+  tableKey: RAQIV2PredefinedTabbedTableKey.JourneySessions,
+  tabs: [
+    {
+      key: tableConfigJourneyByPathBreakdownSessions.tableKey,
+      config: tableConfigJourneyByPathBreakdownSessions,
+      labelKey: translationKey('Heading.JourneyPathBreakdown', TranslationNamespace.Analytics),
+    },
+    {
+      key: tableConfigJourneyByStageChurnSessions.tableKey,
+      config: tableConfigJourneyByStageChurnSessions,
+      labelKey: translationKey('Label.JourneyByStage', TranslationNamespace.Analytics),
+    },
+    {
+      key: tableConfigJourneyByNodeChurnSessions.tableKey,
+      config: tableConfigJourneyByNodeChurnSessions,
+      labelKey: translationKey('Label.JourneyByNode', TranslationNamespace.Analytics),
+    },
+  ],
+  tabMobileLabelKey: translationKey('Heading.TableBreakdown', TranslationNamespace.Analytics),
+  titleKey: translationKey('Heading.TableBreakdown', TranslationNamespace.Analytics),
+} as const satisfies AnalyticsTabbedTableConfig;
+
+export const tabbedTableConfigJourneyUsers = {
+  type: AnalyticsComponentType.TabbedTable,
+  tableKey: RAQIV2PredefinedTabbedTableKey.JourneyUsers,
+  tabs: [
+    {
+      key: tableConfigJourneyByPathBreakdownUsers.tableKey,
+      config: tableConfigJourneyByPathBreakdownUsers,
+      labelKey: translationKey('Heading.JourneyPathBreakdown', TranslationNamespace.Analytics),
+    },
+    {
+      key: tableConfigJourneyByStageChurnUsers.tableKey,
+      config: tableConfigJourneyByStageChurnUsers,
+      labelKey: translationKey('Label.JourneyByStage', TranslationNamespace.Analytics),
+    },
+    {
+      key: tableConfigJourneyByNodeChurnUsers.tableKey,
+      config: tableConfigJourneyByNodeChurnUsers,
+      labelKey: translationKey('Label.JourneyByNode', TranslationNamespace.Analytics),
+    },
+  ],
+  tabMobileLabelKey: translationKey('Heading.TableBreakdown', TranslationNamespace.Analytics),
+  titleKey: translationKey('Heading.TableBreakdown', TranslationNamespace.Analytics),
 } as const satisfies AnalyticsTabbedTableConfig;

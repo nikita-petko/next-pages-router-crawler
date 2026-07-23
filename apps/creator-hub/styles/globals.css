@@ -3969,6 +3969,9 @@
 .\[border\:none\] {
   border: none;
 }
+.\[border\:var\(--stroke-thin\)_solid_var\(--color-stroke-default\)\] {
+  border: var(--stroke-thin) solid var(--color-stroke-default);
+}
 .\[bottom\:0\] {
   bottom: 0;
 }
@@ -4274,6 +4277,9 @@
 .\[min-height\:100vh\] {
   min-height: 100vh;
 }
+.\[min-height\:200px\] {
+  min-height: 200px;
+}
 .\[min-width\:0\] {
   min-width: 0;
 }
@@ -4459,6 +4465,9 @@
 }
 .\[vertical-align\:middle\] {
   vertical-align: middle;
+}
+.\[visibility\:hidden\] {
+  visibility: hidden;
 }
 .\[white-space\:nowrap\] {
   white-space: nowrap;

@@ -18,6 +18,8 @@ export const FilterBarDimensionToFilterPosition: Partial<
   [RAQIV2UIPseudoDimension.AggregationType]: RAQIV2FilterRenderPosition.ControlsRight,
   [RAQIV2Dimension.AbuseChannel]: RAQIV2FilterRenderPosition.Controls,
   [RAQIV2Dimension.LocationId]: RAQIV2FilterRenderPosition.Controls,
+  [RAQIV2Dimension.JourneyVersion]: RAQIV2FilterRenderPosition.Controls,
+  [RAQIV2Dimension.JourneyName]: RAQIV2FilterRenderPosition.PreControl,
 };
 
 // Dimensions in this set render as a searchable multi-select autocomplete

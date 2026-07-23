@@ -177,6 +177,11 @@ export const isFunnelCohortCompletionRateEnabled = defineFlag({
     name: 'isFunnelCohortCompletionRateEnabled',
     defaultValue: false,
   });
+export const isJourneyEventsEnabled = defineFlag({
+    namespace: 'creator-analytics',
+    name: 'isJourneyEventsEnabled',
+    defaultValue: false,
+  });
 export const isComparisonRangePolicyEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isComparisonRangePolicyEnabled',

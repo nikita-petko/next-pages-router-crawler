@@ -62,6 +62,21 @@ import {
   tableColumnConfigTransactionAmountMigration,
   tableColumnConfigTransactionCount,
   tableColumnConfigTransactionCountMigration,
+  tableColumnConfigJourneyStageChurnRate,
+  tableColumnConfigJourneyStageUserCount,
+  tableColumnConfigJourneyStageTransitionChurnRate,
+  tableColumnConfigJourneyStageTransitionCount,
+  tableColumnConfigJourneyTransitionCount,
+  tableColumnConfigJourneyTransitionCountUser,
+  tableColumnConfigJourneyUserPctOfSource,
+  tableColumnConfigJourneyUserPctOfStart,
+  tableColumnConfigJourneyTransitionPctOfSource,
+  tableColumnConfigJourneyTransitionPctOfStart,
+  tableColumnConfigJourneyNodeUserCount,
+  tableColumnConfigJourneyNodeUserChurnRate,
+  tableColumnConfigJourneyNodeTransitionCount,
+  tableColumnConfigJourneyNodeTransitionChurnRate,
+  edgePctBreakdown,
 } from './PredefinedTableColumnConfigLiterals';
 
 const exhaustiveAcquisitionSources = [
@@ -107,6 +122,12 @@ enum TableKeys {
   InGameEconomyTransactionsMigration = 'InGameEconomyTransactionsMigration',
   FunnelsProgressionBySessionRealtime = 'FunnelsProgressionBySessionRealtime',
   FunnelsProgressionByUserRealtime = 'FunnelsProgressionByUserRealtime',
+  JourneyByPathBreakdownUsers = 'JourneyByPathBreakdownUsers',
+  JourneyByPathBreakdownSessions = 'JourneyByPathBreakdownSessions',
+  JourneyByStageChurnUsers = 'JourneyByStageChurnUsers',
+  JourneyByStageChurnSessions = 'JourneyByStageChurnSessions',
+  JourneyByNodeChurnUsers = 'JourneyByNodeChurnUsers',
+  JourneyByNodeChurnSessions = 'JourneyByNodeChurnSessions',
 }
 
 export const tableConfigNewUsersFunnelOverview = {
@@ -436,6 +457,80 @@ export const tableConfigFunnelsProgressionByUserRealtime = {
     tableColumnConfigFunnelUserOverallCompletionRate,
   ],
   breakdowns: [RAQIV2Dimension.FunnelStep],
+  isTotalRowIncluded: false,
+  pagination: null,
+} as const satisfies TAnalyticsSerializableTableConfig;
+
+export const tableConfigJourneyByPathBreakdownUsers = {
+  type: AnalyticsComponentType.Table,
+  tableKey: TableKeys.JourneyByPathBreakdownUsers,
+  tableConfig: { tableBorder: false, defaultActiveSort: RAQIV2Dimension.FromNode },
+  dataColumns: [
+    tableColumnConfigJourneyTransitionCountUser,
+    tableColumnConfigJourneyUserPctOfSource,
+    tableColumnConfigJourneyUserPctOfStart,
+  ],
+  breakdowns: [...edgePctBreakdown],
+  isTotalRowIncluded: false,
+  pagination: null,
+} as const satisfies TAnalyticsSerializableTableConfig;
+
+export const tableConfigJourneyByPathBreakdownSessions = {
+  type: AnalyticsComponentType.Table,
+  tableKey: TableKeys.JourneyByPathBreakdownSessions,
+  tableConfig: { tableBorder: false, defaultActiveSort: RAQIV2Dimension.FromNode },
+  dataColumns: [
+    tableColumnConfigJourneyTransitionCount,
+    tableColumnConfigJourneyTransitionPctOfSource,
+    tableColumnConfigJourneyTransitionPctOfStart,
+  ],
+  breakdowns: [...edgePctBreakdown],
+  isTotalRowIncluded: false,
+  pagination: null,
+} as const satisfies TAnalyticsSerializableTableConfig;
+
+export const tableConfigJourneyByStageChurnUsers = {
+  type: AnalyticsComponentType.Table,
+  tableKey: TableKeys.JourneyByStageChurnUsers,
+  tableConfig: { tableBorder: false, defaultActiveSort: RAQIV2Dimension.FromStage },
+  dataColumns: [tableColumnConfigJourneyStageUserCount, tableColumnConfigJourneyStageChurnRate],
+  breakdowns: [RAQIV2Dimension.FromStage],
+  isTotalRowIncluded: false,
+  pagination: null,
+} as const satisfies TAnalyticsSerializableTableConfig;
+
+export const tableConfigJourneyByStageChurnSessions = {
+  type: AnalyticsComponentType.Table,
+  tableKey: TableKeys.JourneyByStageChurnSessions,
+  tableConfig: { tableBorder: false, defaultActiveSort: RAQIV2Dimension.FromStage },
+  dataColumns: [
+    tableColumnConfigJourneyStageTransitionCount,
+    tableColumnConfigJourneyStageTransitionChurnRate,
+  ],
+  breakdowns: [RAQIV2Dimension.FromStage],
+  isTotalRowIncluded: false,
+  pagination: null,
+} as const satisfies TAnalyticsSerializableTableConfig;
+
+export const tableConfigJourneyByNodeChurnUsers = {
+  type: AnalyticsComponentType.Table,
+  tableKey: TableKeys.JourneyByNodeChurnUsers,
+  tableConfig: { tableBorder: false, defaultActiveSort: RAQIV2Dimension.FromStage },
+  dataColumns: [tableColumnConfigJourneyNodeUserCount, tableColumnConfigJourneyNodeUserChurnRate],
+  breakdowns: [RAQIV2Dimension.FromNode, RAQIV2Dimension.FromStage],
+  isTotalRowIncluded: false,
+  pagination: null,
+} as const satisfies TAnalyticsSerializableTableConfig;
+
+export const tableConfigJourneyByNodeChurnSessions = {
+  type: AnalyticsComponentType.Table,
+  tableKey: TableKeys.JourneyByNodeChurnSessions,
+  tableConfig: { tableBorder: false, defaultActiveSort: RAQIV2Dimension.FromStage },
+  dataColumns: [
+    tableColumnConfigJourneyNodeTransitionCount,
+    tableColumnConfigJourneyNodeTransitionChurnRate,
+  ],
+  breakdowns: [RAQIV2Dimension.FromNode, RAQIV2Dimension.FromStage],
   isTotalRowIncluded: false,
   pagination: null,
 } as const satisfies TAnalyticsSerializableTableConfig;

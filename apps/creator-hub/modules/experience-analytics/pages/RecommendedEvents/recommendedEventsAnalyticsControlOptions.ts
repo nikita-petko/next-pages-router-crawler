@@ -10,6 +10,24 @@ type ConfigurableGranularityOptions = {
   constraints?: Partial<Record<TUIGranularity, GranularityConstraintRule[]>>;
 };
 
+export const journeysTimeRangeOptions = {
+  type: 'dateRange',
+  supportedRanges: [
+    RAQIV2DateRangeType.Last1Day,
+    RAQIV2DateRangeType.Last7Days,
+    RAQIV2DateRangeType.Last28Days,
+    RAQIV2DateRangeType.Last56Days,
+    RAQIV2DateRangeType.Last90Days,
+    RAQIV2DateRangeType.Last365Days,
+    RAQIV2DateRangeType.Custom,
+  ],
+  defaultRange: RAQIV2DateRangeType.Last28Days,
+  excludeEndDateInRange: false,
+  maxEndDateOffset: 0,
+  maxStartDateOffsetDays: 365 * 2,
+  maxRangeDays: 365 * 2 + 1,
+} satisfies AnalyticsPageConfigDateOptions;
+
 export const recommendedEventsTimeRangeOptions = {
   type: 'dateRange',
   supportedRanges: [

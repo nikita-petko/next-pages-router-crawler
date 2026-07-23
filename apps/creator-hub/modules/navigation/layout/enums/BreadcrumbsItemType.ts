@@ -102,6 +102,8 @@ enum BreadcrumbItemType {
   Environments = 'environments',
   Collaborators = 'collaborators',
   Look = 'look',
+  AnalyticsJourneys = 'analytics-journeys',
+  AnalyticsJourneyDetail = 'analytics-journey-detail',
   RecommendationService = 'recommendation-service',
   ServerManagement = 'server-management-service',
   ManagedPricing = 'managed-pricing',

@@ -6,7 +6,7 @@ import getCreationsPageLayout, {
 import getUniverseAnalyticsTabLayout from './getUniverseAnalyticsTabLayout';
 
 export type AnalyticsPageLayoutContext =
-  | { navigationItem: AnalyticsNavigationItem; omitPageTitle?: boolean }
+  | { navigationItem: AnalyticsNavigationItem; omitPageTitle?: boolean; titleOverride?: ReactNode }
   | { noNavigationItem: true; context?: TGetCreationsPageLayoutContext };
 
 export default function getUniverseAnalyticsPageLayout(
@@ -15,9 +15,9 @@ export default function getUniverseAnalyticsPageLayout(
 ) {
   let context: TGetCreationsPageLayoutContext | undefined;
   if ('navigationItem' in layoutContext) {
-    const { navigationItem, omitPageTitle } = layoutContext;
+    const { navigationItem, omitPageTitle, titleOverride } = layoutContext;
     context = {
-      title: (navigationItem.titleOverrideForIAM2 ?? navigationItem.title).key,
+      title: titleOverride ?? (navigationItem.titleOverrideForIAM2 ?? navigationItem.title).key,
       ...(omitPageTitle ? { omitPageTitle: true } : {}),
     };
   } else if ('noNavigationItem' in layoutContext) {

@@ -227,6 +227,30 @@ export const analyticsCustomEventsNavigationItem = {
   title: translationKey('Heading.CustomEvents', TranslationNamespace.Navigation),
 } as const satisfies AnalyticsNavigationItem;
 
+export const analyticsRecommendedEventsJourneyNavigationItem = {
+  path: '/analytics/journeys',
+  pathPattern: /\/analytics\/journeys/,
+  title: translationKey('Heading.Journeys', TranslationNamespace.Navigation),
+} as const satisfies AnalyticsNavigationItem;
+
+export const analyticsRecommendedEventsJourneyCreateNavigationItem = {
+  path: '/analytics/journeys/create',
+  pathPattern: /\/analytics\/journeys\/create/,
+  title: translationKey('Heading.JourneyEventsConfigCreate', TranslationNamespace.Navigation),
+} as const satisfies AnalyticsNavigationItem;
+
+export const analyticsRecommendedEventsJourneyEditNavigationItem = {
+  path: '/analytics/journeys/edit',
+  pathPattern: /\/analytics\/journeys\/edit/,
+  title: translationKey('Heading.JourneyEventsConfigCreate', TranslationNamespace.Navigation),
+} as const satisfies AnalyticsNavigationItem;
+
+export const analyticsRecommendedEventsJourneyViewNavigationItem = {
+  path: '/analytics/journeys/view',
+  pathPattern: /\/analytics\/journeys\/view/,
+  title: translationKey('Heading.Journeys', TranslationNamespace.Navigation),
+} as const satisfies AnalyticsNavigationItem;
+
 export const analyticsFeedbackNavigationItem = {
   path: '/feedback',
   pathPattern: /\/feedback/,
@@ -398,6 +422,10 @@ const allNavigationItems: AnalyticsNavigationItem[] = [
   analyticsAudienceNavigationItem,
   analyticsRecommendedEventsEconomyNavigationItem,
   analyticsRecommendedEventsFunnelsNavigationItem,
+  analyticsRecommendedEventsJourneyNavigationItem,
+  analyticsRecommendedEventsJourneyCreateNavigationItem,
+  analyticsRecommendedEventsJourneyEditNavigationItem,
+  analyticsRecommendedEventsJourneyViewNavigationItem,
   analyticsExploreNavigationItem,
   analyticsCustomDashboardsManageNavigationItem,
   analyticsCustomEventsNavigationItem,

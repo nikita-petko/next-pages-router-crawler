@@ -10,6 +10,7 @@ import {
   isAnalyticsAssistantChatEnabled as isAnalyticsAssistantChatEnabledFlag,
   isCustomDashboardsEnabled as isCustomDashboardsEnabledFlag,
   isExperienceAlertsEnabled,
+  isJourneyEventsEnabled as isJourneysEnabledFlag,
   showVideoServiceDashboard as showVideoServiceDashboardFlag,
 } from '@generated/flags/creatorAnalytics';
 import { isLeaderboardConfigsEnabled as isLeaderboardConfigsEnabledFlag } from '@generated/flags/leaderboards';
@@ -118,6 +119,7 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
   const { ready: isLeaderboardConfigsReady, value: isLeaderboardConfigsEnabledValue } = useFlag(
     isLeaderboardConfigsEnabledFlag,
   );
+  const { ready: isJourneysReady, value: isJourneysEnabledValue } = useFlag(isJourneysEnabledFlag);
   const { ready: showVideoServiceDashboardReady, value: showVideoServiceDashboardValue } = useFlag(
     showVideoServiceDashboardFlag,
   );
@@ -172,6 +174,7 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
             isCustomDashboardsEnabled: isCustomDashboardsReady && isCustomDashboardsEnabledValue,
             isLeaderboardConfigsEnabled:
               isLeaderboardConfigsReady && isLeaderboardConfigsEnabledValue,
+            isJourneysEnabled: isJourneysReady && isJourneysEnabledValue,
             showVideoServiceDashboard:
               showVideoServiceDashboardReady && showVideoServiceDashboardValue,
             isExperienceAlertsEnabled: isExperienceAlertsReady && isExperienceAlertsEnabledFlag,
@@ -267,6 +270,8 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
     isCustomDashboardsEnabledValue,
     isLeaderboardConfigsReady,
     isLeaderboardConfigsEnabledValue,
+    isJourneysReady,
+    isJourneysEnabledValue,
     showVideoServiceDashboardReady,
     showVideoServiceDashboardValue,
     isExperienceAlertsReady,

@@ -17,6 +17,26 @@ const RAQIV2DimensionTableConfig: Partial<Record<string, RAQIV2DimensionTableCol
     sort: { direction: TableSortOrder.asc },
     widthWeight: 18,
   },
+  [RAQIV2Dimension.FromNode]: {
+    columnType: ColumnType.Text,
+    sort: { direction: TableSortOrder.asc },
+    widthWeight: 18,
+  },
+  [RAQIV2Dimension.ToNode]: {
+    columnType: ColumnType.Text,
+    sort: { direction: TableSortOrder.asc },
+    widthWeight: 18,
+  },
+  [RAQIV2Dimension.FromStage]: {
+    columnType: ColumnType.Text,
+    sort: { direction: TableSortOrder.asc },
+    widthWeight: 12,
+  },
+  [RAQIV2Dimension.ToStage]: {
+    columnType: ColumnType.Text,
+    sort: { direction: TableSortOrder.asc },
+    widthWeight: 12,
+  },
   [RAQIV2Dimension.Universe]: {
     columnType: ColumnType.TextWithDisplayValue,
   },

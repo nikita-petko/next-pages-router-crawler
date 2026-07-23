@@ -86,6 +86,23 @@ enum RAQIV2PredefinedTableColumnKey {
   FunnelStepTotalCount = 'FunnelStepTotalCount',
   FunnelUserTotalCount = 'FunnelUserTotalCount',
 
+  JourneyTransitionCountUser = 'JourneyTransitionCountUser',
+  JourneyTransitionCount = 'JourneyTransitionCount',
+  JourneyStageUserCount = 'JourneyStageUserCount',
+  JourneyStageChurnRate = 'JourneyStageChurnRate',
+  JourneyStageTransitionCount = 'JourneyStageTransitionCount',
+  JourneyStageTransitionChurnRate = 'JourneyStageTransitionChurnRate',
+  JourneyUserPctOfSource = 'JourneyUserPctOfSource',
+  JourneyUserPctOfStart = 'JourneyUserPctOfStart',
+  JourneyTransitionPctOfSource = 'JourneyTransitionPctOfSource',
+  JourneyTransitionPctOfStart = 'JourneyTransitionPctOfStart',
+  JourneyNodeUserCount = 'JourneyNodeUserCount',
+  JourneyNodeUserChurnCount = 'JourneyNodeUserChurnCount',
+  JourneyNodeUserChurnRate = 'JourneyNodeUserChurnRate',
+  JourneyNodeTransitionCount = 'JourneyNodeTransitionCount',
+  JourneyNodeTransitionChurnCount = 'JourneyNodeTransitionChurnCount',
+  JourneyNodeTransitionChurnRate = 'JourneyNodeTransitionChurnRate',
+
   ThumbnailWinningSegments = 'ThumbnailWinningSegments',
   ThumbnailImpressions = 'ThumbnailImpressions',
   ThumbnailQualifiedPlays = 'ThumbnailQualifiedPlays',
@@ -1087,6 +1104,158 @@ export const tableColumnConfigFunnelStepTotalCount = {
     breakdown: {
       override: [RAQIV2Dimension.FunnelStep],
     },
+    granularity: { override: RAQIV2MetricGranularity.None },
+  },
+} as const satisfies TAnalyticsMetricTableColumnConfig;
+
+export const edgePctBreakdown = [
+  RAQIV2Dimension.FromNode,
+  RAQIV2Dimension.ToNode,
+  RAQIV2Dimension.FromStage,
+  RAQIV2Dimension.ToStage,
+] as const;
+const nodePctBreakdown = [RAQIV2Dimension.FromNode, RAQIV2Dimension.FromStage] as const;
+
+export const tableColumnConfigJourneyTransitionCountUser = {
+  key: RAQIV2PredefinedTableColumnKey.JourneyTransitionCountUser,
+  metric: RAQIV2Metric.JourneyTransitionCountUser,
+  overrides: {
+    breakdown: { override: edgePctBreakdown },
+    granularity: { override: RAQIV2MetricGranularity.None },
+  },
+} as const satisfies TAnalyticsMetricTableColumnConfig;
+
+export const tableColumnConfigJourneyTransitionCount = {
+  key: RAQIV2PredefinedTableColumnKey.JourneyTransitionCount,
+  metric: RAQIV2Metric.JourneyTransitionCount,
+  overrides: {
+    breakdown: { override: edgePctBreakdown },
+    granularity: { override: RAQIV2MetricGranularity.None },
+  },
+} as const satisfies TAnalyticsMetricTableColumnConfig;
+
+export const tableColumnConfigJourneyStageUserCount = {
+  key: RAQIV2PredefinedTableColumnKey.JourneyStageUserCount,
+  metric: RAQIV2Metric.JourneyStageUserCount,
+  overrides: {
+    breakdown: { override: [RAQIV2Dimension.FromStage] },
+    granularity: { override: RAQIV2MetricGranularity.None },
+  },
+} as const satisfies TAnalyticsMetricTableColumnConfig;
+
+export const tableColumnConfigJourneyStageChurnRate = {
+  key: RAQIV2PredefinedTableColumnKey.JourneyStageChurnRate,
+  metric: RAQIV2Metric.JourneyStageChurnRate,
+  overrides: {
+    breakdown: { override: [RAQIV2Dimension.FromStage] },
+    granularity: { override: RAQIV2MetricGranularity.None },
+  },
+} as const satisfies TAnalyticsMetricTableColumnConfig;
+
+export const tableColumnConfigJourneyStageTransitionCount = {
+  key: RAQIV2PredefinedTableColumnKey.JourneyStageTransitionCount,
+  metric: RAQIV2Metric.JourneyStageTransitionCount,
+  overrides: {
+    breakdown: { override: [RAQIV2Dimension.FromStage] },
+    granularity: { override: RAQIV2MetricGranularity.None },
+  },
+} as const satisfies TAnalyticsMetricTableColumnConfig;
+
+export const tableColumnConfigJourneyStageTransitionChurnRate = {
+  key: RAQIV2PredefinedTableColumnKey.JourneyStageTransitionChurnRate,
+  metric: RAQIV2Metric.JourneyStageTransitionChurnRate,
+  overrides: {
+    breakdown: { override: [RAQIV2Dimension.FromStage] },
+    granularity: { override: RAQIV2MetricGranularity.None },
+  },
+} as const satisfies TAnalyticsMetricTableColumnConfig;
+
+export const tableColumnConfigJourneyUserPctOfSource = {
+  key: RAQIV2PredefinedTableColumnKey.JourneyUserPctOfSource,
+  metric: RAQIV2Metric.JourneyUserPctOfSource,
+  overrides: {
+    breakdown: { override: edgePctBreakdown },
+    granularity: { override: RAQIV2MetricGranularity.None },
+  },
+} as const satisfies TAnalyticsMetricTableColumnConfig;
+
+export const tableColumnConfigJourneyUserPctOfStart = {
+  key: RAQIV2PredefinedTableColumnKey.JourneyUserPctOfStart,
+  metric: RAQIV2Metric.JourneyUserPctOfStart,
+  overrides: {
+    breakdown: { override: edgePctBreakdown },
+    granularity: { override: RAQIV2MetricGranularity.None },
+  },
+} as const satisfies TAnalyticsMetricTableColumnConfig;
+
+export const tableColumnConfigJourneyTransitionPctOfSource = {
+  key: RAQIV2PredefinedTableColumnKey.JourneyTransitionPctOfSource,
+  metric: RAQIV2Metric.JourneyTransitionPctOfSource,
+  overrides: {
+    breakdown: { override: edgePctBreakdown },
+    granularity: { override: RAQIV2MetricGranularity.None },
+  },
+} as const satisfies TAnalyticsMetricTableColumnConfig;
+
+export const tableColumnConfigJourneyTransitionPctOfStart = {
+  key: RAQIV2PredefinedTableColumnKey.JourneyTransitionPctOfStart,
+  metric: RAQIV2Metric.JourneyTransitionPctOfStart,
+  overrides: {
+    breakdown: { override: edgePctBreakdown },
+    granularity: { override: RAQIV2MetricGranularity.None },
+  },
+} as const satisfies TAnalyticsMetricTableColumnConfig;
+
+export const tableColumnConfigJourneyNodeUserCount = {
+  key: RAQIV2PredefinedTableColumnKey.JourneyNodeUserCount,
+  metric: RAQIV2Metric.JourneyNodeUserCount,
+  overrides: {
+    breakdown: { override: nodePctBreakdown },
+    granularity: { override: RAQIV2MetricGranularity.None },
+  },
+} as const satisfies TAnalyticsMetricTableColumnConfig;
+
+export const tableColumnConfigJourneyNodeUserChurnCount = {
+  key: RAQIV2PredefinedTableColumnKey.JourneyNodeUserChurnCount,
+  metric: RAQIV2Metric.JourneyNodeUserChurnCount,
+  overrides: {
+    breakdown: { override: nodePctBreakdown },
+    granularity: { override: RAQIV2MetricGranularity.None },
+  },
+} as const satisfies TAnalyticsMetricTableColumnConfig;
+
+export const tableColumnConfigJourneyNodeUserChurnRate = {
+  key: RAQIV2PredefinedTableColumnKey.JourneyNodeUserChurnRate,
+  metric: RAQIV2Metric.JourneyNodeUserChurnRate,
+  overrides: {
+    breakdown: { override: nodePctBreakdown },
+    granularity: { override: RAQIV2MetricGranularity.None },
+  },
+} as const satisfies TAnalyticsMetricTableColumnConfig;
+
+export const tableColumnConfigJourneyNodeTransitionCount = {
+  key: RAQIV2PredefinedTableColumnKey.JourneyNodeTransitionCount,
+  metric: RAQIV2Metric.JourneyNodeTransitionCount,
+  overrides: {
+    breakdown: { override: nodePctBreakdown },
+    granularity: { override: RAQIV2MetricGranularity.None },
+  },
+} as const satisfies TAnalyticsMetricTableColumnConfig;
+
+export const tableColumnConfigJourneyNodeTransitionChurnCount = {
+  key: RAQIV2PredefinedTableColumnKey.JourneyNodeTransitionChurnCount,
+  metric: RAQIV2Metric.JourneyNodeTransitionChurnCount,
+  overrides: {
+    breakdown: { override: nodePctBreakdown },
+    granularity: { override: RAQIV2MetricGranularity.None },
+  },
+} as const satisfies TAnalyticsMetricTableColumnConfig;
+
+export const tableColumnConfigJourneyNodeTransitionChurnRate = {
+  key: RAQIV2PredefinedTableColumnKey.JourneyNodeTransitionChurnRate,
+  metric: RAQIV2Metric.JourneyNodeTransitionChurnRate,
+  overrides: {
+    breakdown: { override: nodePctBreakdown },
     granularity: { override: RAQIV2MetricGranularity.None },
   },
 } as const satisfies TAnalyticsMetricTableColumnConfig;

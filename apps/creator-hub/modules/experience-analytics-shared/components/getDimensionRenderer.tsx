@@ -15,6 +15,7 @@ import type {
   TranslationKeyAndTagsToFormattedReactNode,
 } from '@modules/analytics-translations/types';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { formatShortDateTimeWithoutYear } from '@modules/charts-generic/charts/formatters/timeFormatters';
 import mapMemoizeSingleParamFunction from '@modules/clients/utils/mapMemoizeSingleParamFunction';
 import { Link } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -340,6 +341,26 @@ const workflowTypeTranslationKeys: Record<string, TranslationKey> = {
   ),
 };
 
+const journeyVersionRenderer: RAQIV2DimensionRenderer = {
+  ...buildDimensionRendererWithNoPresetValue(
+    translationKey('Label.Dimension.JourneyVersion', TranslationNamespace.Analytics),
+  ),
+  getBreakdownValueName: ({ value }, { locale }) => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      return value as FormattedText;
+    }
+    const ms = numeric > 1e12 ? numeric : numeric * 1000;
+    const date = new Date(ms);
+    if (Number.isNaN(date.getTime())) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      return value as FormattedText;
+    }
+    return formatShortDateTimeWithoutYear(date, locale);
+  },
+};
+
 const workflowTypeRenderer: RAQIV2DimensionRenderer = {
   ...buildDimensionRendererWithNoPresetValue(
     translationKey('Label.Dimension.WorkflowType', TranslationNamespace.Analytics),
@@ -353,6 +374,9 @@ const workflowTypeRenderer: RAQIV2DimensionRenderer = {
 };
 
 const build = (dimension: TRAQIV2Dimension): RAQIV2DimensionRenderer => {
+  if (dimension === RAQIV2Dimension.JourneyVersion) {
+    return journeyVersionRenderer;
+  }
   if (dimension === RAQIV2Dimension.WorkflowType) {
     return workflowTypeRenderer;
   }

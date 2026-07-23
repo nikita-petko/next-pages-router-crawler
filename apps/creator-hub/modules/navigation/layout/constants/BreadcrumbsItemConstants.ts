@@ -12,6 +12,7 @@ import {
   analyticsPerformanceNavigationItem,
   analyticsRecommendedEventsEconomyNavigationItem,
   analyticsRecommendedEventsFunnelsNavigationItem,
+  analyticsRecommendedEventsJourneyNavigationItem,
   analyticsRecommendationServiceNavigationItem,
   analyticsSpeechToTextNavigationItem,
   analyticsTextToSpeechNavigationItem,
@@ -496,6 +497,27 @@ export const RouterParseItemToBreadcrumbItemDetails: { [key: string]: Breadcrumb
       );
     },
     breadcrumbType: BreadcrumbItemType.AnalyticsFunnels,
+  },
+  journeys: {
+    displayName: ({ translate }) => {
+      return createNameWithTranslate(
+        { key: analyticsRecommendedEventsJourneyNavigationItem.title.key },
+        translate,
+      );
+    },
+    breadcrumbType: BreadcrumbItemType.AnalyticsJourneys,
+    getLinkPath: (getLinkPathParams) => {
+      return `/dashboard/creations/experiences/${getLinkPathParams.baseId}/analytics/journeys`;
+    },
+  },
+  view: {
+    displayName: () => '',
+    withId: true,
+    breadcrumbType: BreadcrumbItemType.AnalyticsJourneyDetail,
+  },
+  edit: {
+    displayName: ({ translate }) => createNameWithTranslate({ key: 'Action.Edit' }, translate),
+    breadcrumbType: BreadcrumbItemType.Create,
   },
   errors: {
     displayName: ({ translate }) => {

@@ -30,6 +30,7 @@ import {
   analyticsRecommendationServiceNavigationItem,
   analyticsRecommendedEventsEconomyNavigationItem,
   analyticsRecommendedEventsFunnelsNavigationItem,
+  analyticsRecommendedEventsJourneyNavigationItem,
   analyticsRetentionNavigationItem,
   analyticsSpeechToTextNavigationItem,
   analyticsSubscriptionsNavigationItem,
@@ -70,6 +71,7 @@ export type CreationsFeatureSettings = TSettings &
     isCustomDashboardsEnabled: boolean;
     isLeaderboardConfigsEnabled: boolean;
     showVideoServiceDashboard: boolean;
+    isJourneysEnabled: boolean;
   } & Pick<
     AnalyticsExperiencePermissions,
     'userCanViewAnalyticsForUniverse' | 'userCanManageAnalyticsAlertForUniverse'
@@ -393,6 +395,15 @@ const recommendedEventsFunnelsFeature: Feature<CreationsFeatureSettings> = {
   sectionTitleKey: 'Heading.Analytics',
   isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
     settings?.userCanViewAnalyticsForUniverse ?? false,
+};
+
+const journeysFeature: Feature<CreationsFeatureSettings> = {
+  key: 'journeys',
+  nameKey: analyticsRecommendedEventsJourneyNavigationItem.title.key,
+  path: '/analytics/journeys',
+  sectionTitleKey: 'Heading.Analytics',
+  isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
+    (settings?.isJourneysEnabled && settings?.userCanViewAnalyticsForUniverse) ?? false,
 };
 
 const exploreModeFeature: Feature<CreationsFeatureSettings> = {
@@ -771,6 +782,7 @@ const analyticsFeature: Feature<CreationsFeatureSettings> = {
     audienceFeature,
     recommendedEventsEconomyFeature,
     recommendedEventsFunnelsFeature,
+    journeysFeature,
     exploreModeFeature,
     selectEligibility,
   ],
