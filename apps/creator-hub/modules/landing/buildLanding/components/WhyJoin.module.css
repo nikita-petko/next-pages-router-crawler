@@ -1,0 +1,4 @@
+.card {
+  min-width: 280px;
+  width: calc((100% - 32px) / 3);
+}

@@ -1,0 +1,49 @@
+/*
+ * Hover-reveal for the trailing row controls (View button + 3-dot
+ * overflow menu) per page spec §3.5 / U5. Foundation Tailwind doesn't
+ * generate `group-hover:` or `opacity-N` utilities, so we keep the
+ * class-based opacity transition in a module here.
+ *
+ * Visibility rules:
+ *   - Hidden by default (`opacity: 0`).
+ *   - Visible while the cursor is over the row.
+ *   - Visible while focus is inside the row — keyboard users see the
+ *     button as soon as they tab into it, and the controls stay visible
+ *     while the overflow popover is open (Radix keeps focus on the
+ *     trigger while its content is visible).
+ *   - Always visible at viewport widths where pointer hover doesn't
+ *     exist (touch devices) — `(hover: none)` short-circuits the gate.
+ *
+ * The `<td>` keeps its reserved width even when the actions are hidden,
+ * so column widths don't reflow as the cursor moves across rows.
+ */
+
+.customDashboardManageTableRowActions {
+  opacity: 0;
+  transition: opacity 150ms var(--ease-standard-out, ease-out);
+}
+
+.customDashboardManageTableRow:hover .customDashboardManageTableRowActions,
+.customDashboardManageTableRow:focus-within .customDashboardManageTableRowActions,
+/*
+ * Radix Popover renders its content in a portal, so when the per-row
+ * overflow menu is open `:focus-within` on the row returns false (focus
+ * is in the portaled content, outside this DOM subtree). Radix sets
+ * `data-state="open"` on the trigger button, which *does* live inside
+ * the row, so `:has()` brings the actions back when the menu is open.
+ */
+.customDashboardManageTableRow:has([data-state='open']) .customDashboardManageTableRowActions {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .customDashboardManageTableRowActions {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .customDashboardManageTableRowActions {
+    transition: none;
+  }
+}

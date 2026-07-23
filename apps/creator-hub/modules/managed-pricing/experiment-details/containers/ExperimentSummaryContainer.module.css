@@ -1,0 +1,25 @@
+/*
+ * Completed summary: at least 180px per card, at most 3 columns.
+ * `min` track size = max(180px, third of row after gaps) so a 4th column never fits.
+ * Use Foundation `gap-large` for the gap between cards, but fallback on breaking changes.
+ */
+.fullSummaryGrid {
+  display: grid;
+  gap: var(--gap-large, 16px);
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(max(180px, calc((100% - 2 * var(--gap-large, 16px)) / 3)), 1fr)
+  );
+
+  /* Container set on page content to allow consistent flex behavior */
+  @container (min-width: 901px) {
+    display: flex;
+    flex-wrap: wrap;
+
+    & > * {
+      flex-grow: 0;
+      min-width: -moz-fit-content;
+      min-width: fit-content;
+    }
+  }
+}

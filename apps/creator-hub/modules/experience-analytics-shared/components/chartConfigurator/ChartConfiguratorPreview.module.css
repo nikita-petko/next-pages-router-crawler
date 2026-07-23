@@ -1,0 +1,40 @@
+.previewChartFrame {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  width: 100%;
+  min-height: 0;
+}
+
+/* Chart-card stretch rules must not reach GenericTableV2's root MuiGrid-item. */
+.previewChartFrame > *:not(.previewTableFrame) {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+}
+
+.previewChartFrame > *:not(.previewTableFrame) :global(.MuiGrid-item),
+.previewChartFrame > *:not(.previewTableFrame) :global(.MuiCard-root) {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.previewChartFrame > *:not(.previewTableFrame) :global(.MuiCardContent-root) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.previewTableFrame {
+  display: block;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 320px;
+  overflow: auto;
+}

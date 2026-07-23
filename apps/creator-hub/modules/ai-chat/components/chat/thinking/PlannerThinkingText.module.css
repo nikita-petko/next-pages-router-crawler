@@ -1,0 +1,26 @@
+.plannerText {
+  margin-bottom: 12px;
+  line-height: 1.5;
+  padding-left: 8px;
+}
+
+.plannerText :global(p),
+.plannerText :global(ul),
+.plannerText :global(ol),
+.plannerText :global(li) {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.plannerText :global(p:first-of-type) {
+  margin-top: 0;
+}
+
+.plannerText :global(p:last-of-type) {
+  margin-bottom: 0;
+}
+
+.plannerText :global(pre) {
+  max-height: 150px;
+  overflow-y: auto;
+}

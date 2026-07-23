@@ -1,0 +1,197 @@
+.root {
+  display: flex;
+  height: 0;
+  justify-content: flex-end;
+  position: -webkit-sticky;
+  position: sticky;
+  top: var(--padding-medium);
+  width: 100%;
+  z-index: 50;
+}
+
+/*
+ * On narrower layouts the fixed rails leave little room to the right of the
+ * ~536px tax form, so the sticky floating button would scroll over the form
+ * text. Below this width, keep it in normal flow so it scrolls with the page.
+ */
+@media (max-width: 780px) {
+  .root {
+    height: auto;
+    position: static;
+  }
+}
+
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(110%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-out-to-right {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(110%);
+  }
+}
+
+@keyframes slide-in-from-bottom {
+  from {
+    transform: translateY(110%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-out-to-bottom {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(110%);
+  }
+}
+
+.panel {
+  background-color: var(--color-surface-100);
+  border: var(--stroke-standard) solid var(--color-stroke-default, rgba(208, 217, 251, 0.12));
+  border-radius: var(--radius-large);
+  bottom: var(--padding-medium);
+  box-shadow:
+    var(--size-0) var(--size-50) var(--size-100) -0.5px var(--alpha-color-shadow-subtle),
+    var(--size-0) var(--size-250) var(--size-500) -0.75px var(--alpha-color-shadow-subtle),
+    var(--size-0) var(--size-400) var(--size-800) -1px var(--alpha-color-shadow-subtle),
+    var(--size-0) var(--size-1200) var(--size-1400) -1.5px var(--alpha-color-shadow-subtle);
+  box-sizing: border-box;
+  color: var(--color-content-default);
+  display: flex;
+  flex-direction: column;
+  max-width: 480px;
+  min-width: 416px;
+  overflow: hidden;
+  position: fixed;
+  right: var(--padding-medium);
+  top: var(--padding-medium);
+  width: clamp(416px, calc(100vw - 504px), 480px);
+  z-index: 1100;
+}
+
+:global(.dark-theme) .panel {
+  box-shadow:
+    var(--size-0) var(--size-0) var(--size-100) var(--size-0) var(--alpha-color-shadow-subtle),
+    var(--size-0) var(--size-0) var(--size-500) var(--size-0) var(--alpha-color-shadow-subtle),
+    var(--size-0) var(--size-0) var(--size-800) var(--size-0) var(--alpha-color-shadow-subtle),
+    var(--size-0) var(--size-0) var(--size-1400) var(--size-0) var(--alpha-color-shadow-subtle);
+}
+
+.panel[data-state='open'] {
+  animation: slide-in-from-right var(--time-300, 300ms) var(--ease-standard-out, ease-out) both;
+}
+
+.panel[data-state='closed'] {
+  animation: slide-out-to-right var(--time-100, 100ms) var(--ease-standard-in, ease-in) both;
+  pointer-events: none;
+}
+
+.panelHeader {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: var(--padding-small) var(--global-margin, 20px);
+}
+
+.panelBody {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 0 var(--global-margin, 20px) var(--padding-large);
+  scrollbar-color: var(--color-shift-400) transparent;
+  scrollbar-width: thin;
+}
+
+.panelBody::-webkit-scrollbar {
+  width: 10px;
+}
+
+.panelBody::-webkit-scrollbar-thumb {
+  background-color: var(--color-shift-400);
+  border: 3px solid transparent;
+  border-radius: var(--radius-circle);
+  background-clip: content-box;
+}
+
+.accordion {
+  border: var(--stroke-standard) solid var(--color-stroke-emphasis);
+  border-radius: var(--radius-medium);
+  overflow: hidden;
+}
+
+.accordion :global(button) {
+  min-height: 40px;
+  padding: 10px 12px;
+}
+
+.accordion :global([data-state='open'] + div) {
+  padding: 0;
+}
+
+.accordionContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-small);
+  padding: 4px 12px 20px;
+}
+
+.list {
+  color: var(--color-content-default);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-small);
+  margin: 0;
+  padding-left: 18px;
+}
+
+.list li {
+  font-size: 12px;
+  line-height: 18px;
+}
+
+@media (max-width: 600px) {
+  .panel {
+    border-bottom: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    bottom: 0;
+    left: var(--padding-large);
+    max-height: 90vh;
+    max-width: none;
+    min-width: 0;
+    right: var(--padding-large);
+    top: auto;
+    width: auto;
+  }
+
+  .panel[data-state='open'] {
+    animation-name: slide-in-from-bottom;
+  }
+
+  .panel[data-state='closed'] {
+    animation-name: slide-out-to-bottom;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation-duration: 1ms !important;
+  }
+}

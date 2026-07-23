@@ -1,0 +1,114 @@
+/* Force dark-mode text colors so copy stays readable over the video background (the roadmap page
+   itself is not forced dark). Mirrors the landing hero pattern. */
+.darkText {
+  color: var(--dark-mode-content-default);
+}
+
+.darkTextEmphasis {
+  color: var(--dark-mode-content-emphasis);
+}
+
+.heroContainer {
+  position: relative;
+  width: 100%;
+  height: 560px;
+  overflow: hidden;
+  border-radius: var(--radius-large);
+  background-color: var(--dark-mode-surface-0);
+}
+
+.heroMedia {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Figma: linear-gradient(90deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%) — darkens the left where the
+   heading and stats sit, fading to the clear video on the right. */
+.heroScrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0) 100%);
+  pointer-events: none;
+}
+
+.heroContentContainer {
+  position: relative;
+  height: 100%;
+  padding: 72px 66px;
+}
+
+.statRow {
+  gap: 50px;
+}
+
+.statDivider {
+  width: 1px;
+  height: 70px;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Pixel-perfect Figma type. Pair a Foundation token in the JSX className with these overrides:
+   `text-display-large` resolves to 80px, so 90px must come from here. */
+.heroHeading:global(.text-display-large) {
+  font-family: 'Builder Extended';
+  font-weight: 500;
+  font-size: 90px;
+  line-height: 110%;
+  letter-spacing: -0.04em;
+  max-width: 85%;
+}
+
+.statValue:global(.text-display-small) {
+  font-family: 'Builder Extended';
+  font-weight: 700;
+  font-size: 48px;
+  line-height: 140%;
+  text-align: center;
+}
+
+.statLabel:global(.text-body-small) {
+  font-family: 'Builder Sans';
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 140%;
+  text-align: center;
+}
+
+@media (max-width: 990px) {
+  .heroContainer {
+    height: 460px;
+  }
+
+  .heroContentContainer {
+    padding: 48px;
+  }
+
+  .heroHeading:global(.text-display-large) {
+    font-size: 64px;
+  }
+}
+
+@media (max-width: 600px) {
+  .heroContainer {
+    height: 400px;
+  }
+
+  .heroContentContainer {
+    padding: 32px 24px;
+  }
+
+  .heroHeading:global(.text-display-large) {
+    font-size: 40px;
+  }
+
+  .statRow {
+    gap: 28px;
+  }
+
+  .statValue:global(.text-display-small) {
+    font-size: 36px;
+  }
+}

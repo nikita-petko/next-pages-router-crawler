@@ -1,0 +1,7 @@
+.feedbackActions {
+  display: flex;
+  align-items: center;
+  align-self: flex-end;
+  gap: 4px;
+  margin-top: 4px;
+}

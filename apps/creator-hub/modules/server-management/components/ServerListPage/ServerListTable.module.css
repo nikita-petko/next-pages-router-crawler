@@ -1,0 +1,40 @@
+.tableScroller {
+  overflow-x: auto;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+.loadingOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  pointer-events: none;
+}
+
+.loadingOverlayVisible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.loadingShimmer {
+  inset: 0;
+  background-color: var(--color-surface-100);
+  opacity: 0.88;
+}
+
+/* stick in the viewport so tall pages (100 rows) don't bury the spinner mid-table */
+.loadingOverlayContent {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 40vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-small, 8px);
+  pointer-events: none;
+}
+

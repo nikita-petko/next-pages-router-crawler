@@ -1,0 +1,335 @@
+.chartTileMount {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 12px;
+  outline: none;
+}
+
+/* Chart-card fill rules — skip table chrome/frame (GenericTableV2 collapses under height:100%). */
+.chartTileMount > *:not(.chartTableFrame):not(.chartTableChrome) {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chartTileMount
+  > *:not(.chartTableFrame):not(.chartTableChrome)
+  :global([data-chart-container-item-id]),
+.chartTileMount > *:not(.chartTableFrame):not(.chartTableChrome) :global(.MuiGrid-item),
+.chartTileMount > *:not(.chartTableFrame):not(.chartTableChrome) :global(.MuiPaper-root),
+.chartTileMount > *:not(.chartTableFrame):not(.chartTableChrome) :global(.MuiCard-root) {
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+}
+
+.chartTileMount
+  > *:not(.chartTableFrame):not(.chartTableChrome)
+  :global([data-chart-container-item-id]) {
+  display: flex;
+  flex-direction: column;
+}
+
+.chartTileMount
+  > *:not(.chartTableFrame):not(.chartTableChrome)
+  :global([data-chart-container-item-id])
+  > :last-child {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+}
+
+.chartTileMount > *:not(.chartTableFrame):not(.chartTableChrome) :global(.MuiPaper-root),
+.chartTileMount > *:not(.chartTableFrame):not(.chartTableChrome) :global(.MuiCard-root) {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.chartTileMount > *:not(.chartTableFrame):not(.chartTableChrome) :global(.MuiCardContent-root) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Dedicated chrome row so edit/menu actions don't sit on table headers. */
+.chartTableChrome {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 12px 4px;
+  box-sizing: border-box;
+}
+
+/* Natural-height table body — pagination (not an inner scrollbar) navigates rows. */
+.chartTableFrame {
+  display: block;
+  flex: 0 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  overflow: visible;
+  padding: 0 12px 12px;
+  box-sizing: border-box;
+}
+
+/* The editor owns the tile frame; analytics-ui owns chart chrome and natural plot height. */
+.chartTileMount :global(.highcharts-container),
+.chartTileMount :global(.highcharts-root) {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.chartTileMount::after {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  bottom: -3px;
+  left: -3px;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  content: '';
+  pointer-events: none;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    background-color 120ms ease;
+}
+
+.chartTileMountSelected::after,
+.chartTileMount:focus-within::after {
+  border-color: rgba(59, 130, 246, 0.7);
+  box-shadow:
+    0 0 0 1px rgba(59, 130, 246, 0.35),
+    0 0 0 4px rgba(59, 130, 246, 0.16);
+}
+
+.summaryTileMount {
+  border-radius: 12px;
+  outline: none;
+}
+
+.summaryTileSelectionTarget {
+  display: block;
+  height: 100%;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: inherit;
+}
+
+.summaryTileMount :global(.MuiGrid-item),
+.summaryTileMount :global(.MuiCard-root) {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.summaryTileMount::after {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  bottom: -3px;
+  left: -3px;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  content: '';
+  pointer-events: none;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    background-color 120ms ease;
+}
+
+.summaryTileMountSelected::after,
+.summaryTileMount:focus-within::after {
+  border-color: rgba(59, 130, 246, 0.7);
+  box-shadow:
+    0 0 0 1px rgba(59, 130, 246, 0.35),
+    0 0 0 4px rgba(59, 130, 246, 0.16);
+}
+
+.chartSkeleton {
+  min-width: 0;
+  width: 100%;
+  height: 555px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  border: 2px dashed var(--Components-Divider, rgba(255, 255, 255, 0.12));
+  background: transparent;
+}
+
+.chartSkeletonActiveDrop {
+  border-color: rgba(59, 130, 246, 0.65) !important;
+  background: rgba(59, 130, 246, 0.14) !important;
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.45) !important;
+}
+
+.chartCanvasSection {
+  position: relative;
+}
+
+.chartDragPreviewOverlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  /* Figma node 2384-62450: 24px workspace gaps. */
+  gap: var(--size-600, 24px);
+  pointer-events: none;
+}
+
+.chartPreviewSpacer {
+  min-width: 0;
+  width: 100%;
+  height: 555px;
+  box-sizing: border-box;
+}
+
+.chartPreviewRowSingleColumn,
+.chartPreviewRowTwoColumn {
+  display: grid;
+  /* Figma node 2384-62450: 24px workspace gaps. */
+  gap: var(--size-600, 24px);
+}
+
+.chartPreviewRowSingleColumn {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.chartPreviewRowTwoColumn {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.chartPreviewTile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  width: 100%;
+  height: 555px;
+  box-sizing: border-box;
+  gap: 24px;
+  padding: 24px;
+  overflow: hidden;
+  border: 1px solid var(--Components-Divider, rgba(255, 255, 255, 0.12));
+  border-radius: 12px;
+  background: var(--Surface-100, #191b21);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  cursor: move;
+}
+
+.chartPreviewTile::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.045), transparent),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 42%);
+  content: '';
+  pointer-events: none;
+}
+
+.chartActiveDragPlaceholder {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+  overflow: hidden;
+  border: 1px solid var(--Components-Divider, rgba(255, 255, 255, 0.12));
+  border-radius: 12px;
+  background: var(--Surface-100, #191b21);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(59, 130, 246, 0.35);
+  pointer-events: none;
+}
+
+.chartActiveDragPlaceholder::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.045), transparent),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 42%);
+  content: '';
+  pointer-events: none;
+}
+
+.chartPreviewTitle {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  color: var(--Content-Emphasis, #f2f4f7);
+  font: inherit;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chartPreviewSkeletonStack {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.chartPreviewSkeletonHeader,
+.chartPreviewSkeletonBody,
+.chartPreviewSkeletonFooter {
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.chartPreviewSkeletonHeader {
+  width: min(220px, 62%);
+  height: 18px;
+}
+
+.chartPreviewSkeletonBody {
+  flex: 1 1 auto;
+  min-height: 280px;
+}
+
+.chartPreviewSkeletonFooter {
+  width: min(360px, 72%);
+  height: 14px;
+}
