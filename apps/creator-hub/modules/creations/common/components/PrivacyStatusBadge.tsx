@@ -4,10 +4,8 @@ import { TransactionVariantEnum } from '@rbx/client-core-content-transaction-api
 import { SearchCreatorType } from '@rbx/client-universes-api/v1';
 import type { TTailwindIconClass } from '@rbx/foundation-tailwind/classes';
 import type { TBadgeVariant } from '@rbx/foundation-ui';
-import { Badge, clsx, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
+import { Badge, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
-import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { useCoreContentTransactionStatus } from '@modules/audience-reach/hooks/useCoreContentTransactionStatus';
 import { IXPLayers } from '@modules/clients/ixpExperiments';
 import CreatorDashboardEventType from '@modules/eventStream/enum/CreatorDashboardEventType';
@@ -17,6 +15,14 @@ import useIXPParameters from '@modules/miscellaneous/hooks/useIXPParameters';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { Audience, isPrivateAudience } from '../audiences';
 import styles from './PrivacyStatusBadge.module.css';
+
+// This appeases the type checker for TranslateWithNamespace
+type VisibilityLabelKey =
+  | 'Label.Private'
+  | 'Label.Unrated2'
+  | 'Label.Community'
+  | 'Label.PublicFriendsUserTitle'
+  | 'Label.Public';
 
 // Select-eligible experiences under this age threshold show "Needs Attention"
 // because they risk losing Select status without a 16+ age recommendation.
@@ -53,9 +59,7 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
   isSequestered = false,
   isDiscoveryBlocked = false,
 }) => {
-  const useTranslationResult = useTranslation();
-  const { translate } = useTranslationResult;
-  const { tPendingTranslation } = useTranslationWrapper(useTranslationResult);
+  const { translateWithNamespace } = useTranslation();
   const {
     params: { enableAudiencesReplacement },
   } = useIXPParameters(IXPLayers.CreatorHubCreationsPermission);
@@ -75,7 +79,7 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
     useCoreContentTransactionStatus(universeId ?? 0, TransactionVariantEnum.Expedited);
   const expeditedIsPaid = expeditedTransactionStatus?.hasDeposit ?? false;
 
-  let visibilityLabelKey = 'Label.Private';
+  let visibilityLabelKey: VisibilityLabelKey = 'Label.Private';
   let badgeType = 'private';
   let statusSuffix = '';
   let activeIconColor = styles.iconNeutral;
@@ -90,7 +94,7 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
       badgeType = 'private';
       icon = 'icon-filled-lock-closed';
       activeIconColor = styles.iconNeutral;
-      consolidatedLabel = translate('Label.Private');
+      consolidatedLabel = translateWithNamespace(TranslationNamespace.Creations, 'Label.Private');
     } else {
       const unrated = contentMaturity === CONTENT_UNRATED;
 
@@ -98,12 +102,18 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
         badgeType = 'unplayable';
         icon = 'icon-filled-circle-x';
         badgeVariant = 'Alert';
-        consolidatedLabel = translate('Label.Unplayable');
+        consolidatedLabel = translateWithNamespace(
+          TranslationNamespace.Creations,
+          'Label.Unplayable',
+        );
       } else if (isDiscoveryBlocked) {
         badgeType = 'limitedDiscovery';
         icon = 'icon-filled-triangle-exclamation';
         activeIconColor = styles.iconWarning;
-        consolidatedLabel = translate('Label.NeedsAttention');
+        consolidatedLabel = translateWithNamespace(
+          TranslationNamespace.Creations,
+          'Label.NeedsAttention',
+        );
       } else if (
         (ageRecommendation == null || ageRecommendation < NEEDS_ATTENTION_AGE_THRESHOLD) &&
         isSelect &&
@@ -113,60 +123,49 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
         badgeType = 'needsAttention';
         icon = 'icon-filled-triangle-exclamation';
         badgeVariant = 'Warning';
-        consolidatedLabel = translate('Label.NeedsAttention');
+        consolidatedLabel = translateWithNamespace(
+          TranslationNamespace.Creations,
+          'Label.NeedsAttention',
+        );
       } else if (isFriendsOnly) {
         badgeType = 'limited';
         icon = 'icon-filled-two-people';
         activeIconColor = styles.iconOk;
-        consolidatedLabel = translate('Label.Limited');
+        consolidatedLabel = translateWithNamespace(TranslationNamespace.Creations, 'Label.Limited');
         const isGroup = creatorType === SearchCreatorType.Group;
         if (enableAudiencesReplacement && audiences) {
           const hasPlayTesters = audiences.includes(Audience.PlayTesters);
           const hasFriends = audiences.includes(Audience.Friends);
           if (hasPlayTesters && hasFriends) {
             tooltipDescription = isGroup
-              ? tPendingTranslation(
-                  'Experience available to playtesters and community members',
-                  'Tooltip on the Limited privacy pill when a group experience is open to internal playtesters and community members.',
-                  translationKey(
-                    'Tooltip.AudienceLimitedPlaytestersAndCommunity',
-                    TranslationNamespace.Creations,
-                  ),
+              ? translateWithNamespace(
+                  TranslationNamespace.Creations,
+                  'Tooltip.AudienceLimitedPlaytestersAndCommunity',
                 )
-              : tPendingTranslation(
-                  'Experience available to playtesters and friends',
-                  "Tooltip on the Limited privacy pill when a user-owned experience is open to internal playtesters and the creator's friends.",
-                  translationKey(
-                    'Tooltip.AudienceLimitedPlaytestersAndFriends',
-                    TranslationNamespace.Creations,
-                  ),
+              : translateWithNamespace(
+                  TranslationNamespace.Creations,
+                  'Tooltip.AudienceLimitedPlaytestersAndFriends',
                 );
           } else if (hasPlayTesters) {
-            tooltipDescription = tPendingTranslation(
-              'Experience available to playtesters',
-              'Tooltip on the Limited privacy pill when an experience is open to internal playtesters only.',
-              translationKey('Tooltip.AudienceLimitedPlaytesters', TranslationNamespace.Creations),
+            tooltipDescription = translateWithNamespace(
+              TranslationNamespace.Creations,
+              'Tooltip.AudienceLimitedPlaytesters',
             );
           } else if (hasFriends) {
             tooltipDescription = isGroup
-              ? tPendingTranslation(
-                  'Experience available to community members',
-                  'Tooltip on the Limited privacy pill when a group experience is open to community members only.',
-                  translationKey(
-                    'Tooltip.AudienceLimitedCommunity',
-                    TranslationNamespace.Creations,
-                  ),
+              ? translateWithNamespace(
+                  TranslationNamespace.Creations,
+                  'Tooltip.AudienceLimitedCommunity',
                 )
-              : tPendingTranslation(
-                  'Experience available to friends',
-                  "Tooltip on the Limited privacy pill when a user-owned experience is open to the creator's friends only.",
-                  translationKey('Tooltip.AudienceLimitedFriends', TranslationNamespace.Creations),
+              : translateWithNamespace(
+                  TranslationNamespace.Creations,
+                  'Tooltip.AudienceLimitedFriends',
                 );
           }
         } else {
           tooltipDescription = isGroup
-            ? translate('Tooltip.LimitedCommunity')
-            : translate('Tooltip.LimitedFriends');
+            ? translateWithNamespace(TranslationNamespace.Creations, 'Tooltip.LimitedCommunity')
+            : translateWithNamespace(TranslationNamespace.Creations, 'Tooltip.LimitedFriends');
         }
       } else {
         badgeType = 'public';
@@ -182,8 +181,10 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
           displayAge = '9';
         }
         consolidatedLabel = displayAge
-          ? translate('Label.PublicAgeGated', { minAge: displayAge })
-          : translate('Label.PublicAllAges');
+          ? translateWithNamespace(TranslationNamespace.Creations, 'Label.PublicAgeGated', {
+              minAge: displayAge,
+            })
+          : translateWithNamespace(TranslationNamespace.Creations, 'Label.PublicAllAges');
       }
     }
   } else {
@@ -219,7 +220,7 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
 
       if (isSelectEligible) {
         badgeType = 'select';
-        statusSuffix = ` (${translate('Label.Select')})`;
+        statusSuffix = ` (${translateWithNamespace(TranslationNamespace.Creations, 'Label.Select')})`;
         if (isSelectAtRisk) {
           badgeType = 'selectAtRisk';
           icon = 'icon-filled-triangle-exclamation';
@@ -227,22 +228,28 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
         }
       } else if (isBeta) {
         badgeType = 'beta';
-        statusSuffix = ` (${translate('Label.Beta')})`;
+        statusSuffix = ` (${translateWithNamespace(TranslationNamespace.Creations, 'Label.Beta')})`;
       }
     }
 
-    consolidatedLabel = `${translate(visibilityLabelKey)}${statusSuffix}`;
+    consolidatedLabel = `${translateWithNamespace(TranslationNamespace.Creations, visibilityLabelKey)}${statusSuffix}`;
 
     if (isUnrated) {
-      tooltipTitle = translate('Title.UnratedPublicExperience');
-      tooltipDescription = translate('Label.UnratedPublicExperience');
+      tooltipTitle = translateWithNamespace(
+        TranslationNamespace.Creations,
+        'Title.UnratedPublicExperience',
+      );
+      tooltipDescription = translateWithNamespace(
+        TranslationNamespace.Creations,
+        'Label.UnratedPublicExperience',
+      );
     } else if (isSelectEligible) {
       tooltipTitle = isSelectAtRisk
-        ? translate('Tooltip.SelectEligibleAtRisk')
-        : translate('Tooltip.SelectEligible');
+        ? translateWithNamespace(TranslationNamespace.Creations, 'Tooltip.SelectEligibleAtRisk')
+        : translateWithNamespace(TranslationNamespace.Creations, 'Tooltip.SelectEligible');
       tooltipDescription = isSelectAtRisk
-        ? translate('Description.SelectEligibleAtRisk')
-        : translate('Description.SelectEligible');
+        ? translateWithNamespace(TranslationNamespace.Creations, 'Description.SelectEligibleAtRisk')
+        : translateWithNamespace(TranslationNamespace.Creations, 'Description.SelectEligible');
     }
   }
 
@@ -272,17 +279,8 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
   }, [badgeType, universeId]);
 
   const badge: ReactElement = (
-    <div className={clsx(styles.badge, activeIconColor)}>
-      <Badge
-        label={
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Badge accepts ReactNode despite string type
-          (
-            <div className={styles.badgeLabelContainer}>{consolidatedLabel}</div>
-          ) as unknown as string
-        }
-        icon={icon}
-        variant={badgeVariant}
-      />
+    <div className={activeIconColor}>
+      <Badge label={consolidatedLabel} icon={icon} variant={badgeVariant} />
     </div>
   );
 

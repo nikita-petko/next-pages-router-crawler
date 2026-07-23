@@ -1,11 +1,3 @@
-.badge {
-  margin: 4px 0 0 0;
-}
-
-.badgeLabelContainer {
-  white-space: initial;
-}
-
 .iconOk :global(.icon) {
   color: var(--color-system-success);
 }
@@ -20,11 +12,6 @@
 
 .iconNeutral :global(.icon) {
   color: var(--color-muted);
-}
-
-.badgeLink {
-  text-decoration: none;
-  color: inherit;
 }
 
 .tooltipWrapper :global([data-radix-popper-content-wrapper]) {

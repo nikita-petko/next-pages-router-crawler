@@ -55,21 +55,23 @@ const ItemCardCoreContentStatus: FunctionComponent<
   // forward both legacy and new audience props; PrivacyStatusBadge does the
   // flag-based selection internally.
   return (
-    <PrivacyStatusBadge
-      universeId={universeId}
-      isActive={isActive}
-      isFriendsOnly={isFriendsOnly}
-      audiences={audiences}
-      creatorType={creatorType}
-      contentMaturity={contentMaturity}
-      isBeta={isBeta}
-      isSelect={isSelect}
-      isSelectAtRisk={isSelectAtRisk}
-      useNewBadgePattern={useNewBadgePattern}
-      ageRecommendation={ageRecommendation}
-      isSequestered={isSequestered}
-      isDiscoveryBlocked={isDiscoveryBlocked}
-    />
+    <span className='padding-top-xsmall'>
+      <PrivacyStatusBadge
+        universeId={universeId}
+        isActive={isActive}
+        isFriendsOnly={isFriendsOnly}
+        audiences={audiences}
+        creatorType={creatorType}
+        contentMaturity={contentMaturity}
+        isBeta={isBeta}
+        isSelect={isSelect}
+        isSelectAtRisk={isSelectAtRisk}
+        useNewBadgePattern={useNewBadgePattern}
+        ageRecommendation={ageRecommendation}
+        isSequestered={isSequestered}
+        isDiscoveryBlocked={isDiscoveryBlocked}
+      />
+    </span>
   );
 };
 
