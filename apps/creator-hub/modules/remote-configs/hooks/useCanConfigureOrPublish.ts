@@ -1,0 +1,48 @@
+import {
+  FormattedText,
+  translationKey,
+  useTranslationWrapper,
+} from '@modules/analytics-translations';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { useCurrentGame } from '@modules/providers/game/GameProvider';
+import { useUniversePermissions } from '@modules/react-query/organizations';
+import { useTranslation } from '@rbx/intl';
+import { useMemo } from 'react';
+
+export type CanConfigureResult = {
+  canConfigure: boolean;
+  canPublish: boolean;
+  configureErrorMessage: FormattedText | undefined;
+  publishErrorMessage: FormattedText | undefined;
+};
+
+const useCanConfigureOrPublish = (): CanConfigureResult => {
+  const { translate } = useTranslationWrapper(useTranslation());
+  const { canConfigure, gameDetails } = useCurrentGame();
+  const { data: permissions } = useUniversePermissions(gameDetails?.id);
+
+  return useMemo(() => {
+    return {
+      canConfigure: !!canConfigure,
+      configureErrorMessage: canConfigure
+        ? undefined
+        : translate(
+            translationKey(
+              'Label.NoPermissionToConfigureUniverse',
+              TranslationNamespace.UniverseConfigAndExperimentation,
+            ),
+          ),
+      canPublish: !!permissions?.publish,
+      publishErrorMessage: permissions?.publish
+        ? undefined
+        : translate(
+            translationKey(
+              'Label.NoPermissionToPublishUniverse',
+              TranslationNamespace.UniverseConfigAndExperimentation,
+            ),
+          ),
+    };
+  }, [canConfigure, permissions?.publish, translate]);
+};
+
+export default useCanConfigureOrPublish;

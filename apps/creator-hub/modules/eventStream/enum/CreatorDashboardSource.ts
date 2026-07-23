@@ -1,0 +1,24 @@
+enum CreatorDashboardSource {
+  LeftNavigation = 'LeftNavigation',
+  Landing = 'Landing',
+  LanguageTabSelectedRequest = 'LanguageTabSelectedRequest',
+  LocalizationAddSupportedLanguage = 'LocalizationAddSupportedLanguage',
+  LocalizationAutomaticQuotas = 'LocalizationAutomaticQuotas',
+  LocalizationAutoTranslationInfo = 'LocalizationAutoTranslationInfo',
+  LocalizationAutoTranslationStrings = 'LocalizationAutoTranslationStrings',
+  LocalizationContributionReport = 'LocalizationContributionReport',
+  LocalizationSettingsTab = 'LocalizationSettingsTab',
+  LocalizationTranslatorTab = 'LocalizationTranslatorTab',
+  DevStats = 'DevStats',
+  DevStatsExportTab = 'DevStats-Export',
+  DocumentationLanguageSetting = 'DocumentationLanguageSetting',
+  AnalyticsOverview = 'AnalyticsOverview',
+  TranslationInformationTab = 'TranslationInformationTab',
+  TranslationProductsTab = 'TranslationProductsTab',
+  TranslationStringsTab = 'TranslationStringsTab',
+  NotificationContentOverview = 'NotificationContentOverview',
+  NotificationContentForm = 'NotificationContentForm',
+  NotificationAnalyticsOverview = 'NotificationAnalyticsOverview',
+}
+
+export default CreatorDashboardSource;

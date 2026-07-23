@@ -1,0 +1,13 @@
+__turbopack_context__.v({
+  "chevronExpanded": "ThinkingSteps-module__3m32MG__chevronExpanded",
+  "chevronIcon": "ThinkingSteps-module__3m32MG__chevronIcon",
+  "root": "ThinkingSteps-module__3m32MG__root",
+  "shimmer": "ThinkingSteps-module__3m32MG__shimmer",
+  "shimmerText": "ThinkingSteps-module__3m32MG__shimmerText",
+  "stepsAnimationWrapper": "ThinkingSteps-module__3m32MG__stepsAnimationWrapper",
+  "stepsScrollable": "ThinkingSteps-module__3m32MG__stepsScrollable",
+  "stepsScrollableFade": "ThinkingSteps-module__3m32MG__stepsScrollableFade",
+  "toggleButton": "ThinkingSteps-module__3m32MG__toggleButton",
+  "toggleButtonLabel": "ThinkingSteps-module__3m32MG__toggleButtonLabel",
+  "toggleButtonText": "ThinkingSteps-module__3m32MG__toggleButtonText",
+});
