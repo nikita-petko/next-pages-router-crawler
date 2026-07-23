@@ -1,3 +1,0 @@
-.tableGrid {
-  grid-template-columns: minmax(200px, 1.5fr) repeat(3, minmax(120px, 1fr));
-}

@@ -1,4 +1,0 @@
-.tightOutline :global(.focus-within\:outline-focus:focus-within) {
-  outline-offset: 0px;
-  outline-width: 2px;
-}
