@@ -11,8 +11,8 @@ import (
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/url"
 )
 
-// FetchNextPageData fetches the Next.js page data for the given URL, including the NextData and all script URLs.
-func FetchNextPageData(url string) (nextData *types.NextData, scriptUrls []string, err error) {
+// fetchNextPageData fetches the Next.js page data for the given URL, including the NextData and all script URLs.
+func fetchNextPageData(url string) (nextData *types.NextData, scriptUrls []string, err error) {
 	glog.Infof("Fetching Next.js page data for URL: %s", url)
 
 	htmlData, err := html.FetchHTMLForPage(url)
@@ -52,8 +52,8 @@ func buildUrlForPage(page string) (string, error) {
 	return fmt.Sprintf("%s%s", baseUrl, page), nil
 }
 
-// FetchAllNextPages fetches all the Next.js page data for the given build manifest, including the NextData and all script URLs for each page.
-func FetchAllNextPages(buildManifest *types.BuildManifest) ([]*types.NextPageData, []error) {
+// fetchAllNextPages fetches all the Next.js page data for the given build manifest, including the NextData and all script URLs for each page.
+func fetchAllNextPages(buildManifest *types.BuildManifest) ([]*types.NextPageData, []error) {
 	filteredPages := slices.DeleteFunc(buildManifest.SortedPages, func(page string) bool {
 		return slices.Contains(ignorePages, page)
 	})
@@ -81,7 +81,7 @@ func FetchAllNextPages(buildManifest *types.BuildManifest) ([]*types.NextPageDat
 		go func() {
 			defer waitGroup.Done()
 
-			nextData, scriptUrls, err := FetchNextPageData(url)
+			nextData, scriptUrls, err := fetchNextPageData(url)
 			if err != nil {
 				errLock.Lock()
 				defer errLock.Unlock()

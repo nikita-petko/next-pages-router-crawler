@@ -20,6 +20,18 @@ var (
 	// Url is the url to use to download the initial HTML document to determine the Next.js build manifest location. (environment variable: URL)
 	Url = flag.String("url", "", "The url to use to download the initial HTML document to determine the Next.js build manifest location. (environment variable: URL)")
 
+	// CachePath is the path to the cache directory. Defaults to .cache. This is required. (environment variable: CACHE_PATH)
+	CachePath = flag.String("cache-path", ".cache", "The path to the cache directory. Defaults to .cache. This is required. (environment variable: CACHE_PATH)")
+
+	// OutputPath is the path to the output directory. Defaults to .output. This is required. (environment variable: OUTPUT_PATH)
+	OutputPath = flag.String("output-path", ".output", "The path to the output directory. Defaults to .output. This is required. (environment variable: OUTPUT_PATH)")
+
+	// ClearCache determines if the cache should be cleared before starting the daemon. (environment variable: CLEAR_CACHE)
+	ClearCache = flag.Bool("clear-cache", false, "Clear the cache before starting the daemon. (environment variable: CLEAR_CACHE)")
+
+	// ClearOutput determines if the output should be cleared before starting the daemon. (environment variable: CLEAR_OUTPUT)
+	ClearOutput = flag.Bool("clear-output", false, "Clear the output before starting the daemon. (environment variable: CLEAR_OUTPUT)")
+
 	//// Alerting
 
 	// SendGridApiKey is the SendGrid API key. This is optional. (environment variable: SENDGRID_API_KEY)

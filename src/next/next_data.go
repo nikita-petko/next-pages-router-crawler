@@ -11,7 +11,7 @@ import (
 func recursiveFindNextDataScript(n *gohtml.Node) *gohtml.Node {
 	if n.Type == gohtml.ElementNode && n.Data == "script" {
 		for _, attr := range n.Attr {
-			if attr.Key == "id" && attr.Val == NextDataScriptId {
+			if attr.Key == "id" && attr.Val == nextDataScriptId {
 				return n
 			}
 		}
@@ -31,7 +31,7 @@ func getNextData(htmlBody *gohtml.Node) (*types.NextData, error) {
 	// Find the first script element with the id
 	nextDataScript := recursiveFindNextDataScript(htmlBody)
 	if nextDataScript == nil {
-		return nil, fmt.Errorf("unable to find script tag with id of '%s' in page!", NextDataScriptId)
+		return nil, fmt.Errorf("unable to find script tag with id of '%s' in page!", nextDataScriptId)
 	}
 
 	nextData := &types.NextData{}

@@ -1,18 +1,16 @@
 package next
 
-const NextDataScriptId = "__NEXT_DATA__"
+const dynamicImportRegex = `static/chunks/[^"]+`
 
-const IndexPage = "/"
-const AppPage = "/_app"
+const nextDataScriptId = "__NEXT_DATA__"
 
-// ignorePages is a list of pages that should be ignored when crawling the Next.js application.
-//
-// Index is ignored because it is the root page and is already crawled by default.
-// AppPage is ignored because it is the Next.js app page and is not a real page that can be crawled. (every page will include the _app.jsx/tsx anyway in source maps)
-var ignorePages = []string{IndexPage, AppPage}
+const indexPage = "/"
+const appPage = "/_app"
 
-const BuildManifestScript = "_buildManifest.js"
-const SsgManifestScript = "_ssgManifest.js"
-const ClientMiddlewareManifestScript = "_clientMiddlewareManifest.js"
+var ignorePages = []string{indexPage, appPage}
 
-var ignoreScripts = []string{BuildManifestScript, SsgManifestScript, ClientMiddlewareManifestScript}
+const buildManifestScript = "_buildManifest.js"
+const ssgManifestScript = "_ssgManifest.js"
+const clientMiddlewareManifestScript = "_clientMiddlewareManifest.js"
+
+var ignoreScripts = []string{buildManifestScript, ssgManifestScript, clientMiddlewareManifestScript}

@@ -364,6 +364,5 @@ FodyWeavers.xsd
 
 .idea/
 
-.cache.*
-
-.ip.bin
+.cache
+.output

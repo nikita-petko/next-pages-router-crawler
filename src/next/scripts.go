@@ -3,13 +3,15 @@ package next
 import (
 	"errors"
 	"fmt"
-	"io"
+	"maps"
 	"net/http"
 	"regexp"
 	"slices"
 	"strings"
 	"sync"
 
+	"github.com/golang/glog"
+	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/cache"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/html"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/next/types"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/url"
@@ -97,8 +99,6 @@ func getAllUniquePageScripts(initialPageScriptUrls []string, pages []*types.Next
 }
 
 func isValidChunkDataType(contentType string) bool {
-	// text/javascript or application/javascript or text/css or application/json
-
 	return strings.HasPrefix(contentType, "text/javascript") ||
 		strings.HasPrefix(contentType, "application/javascript") ||
 		strings.HasPrefix(contentType, "text/css") ||
@@ -106,43 +106,30 @@ func isValidChunkDataType(contentType string) bool {
 }
 
 // fetchAllScripts fetches the content of all scripts from the provided script URLs and returns a map of script URL to script content (as a byte slice).
-func fetchAllScripts(scriptUrls []string) (map[string][]byte, []error) {
+func fetchAllScripts(scriptUrls []string) (map[string]*cache.CacheGuard, []error) {
 	waitGroup := &sync.WaitGroup{}
 	lock := &sync.Mutex{}
 	errorsLock := &sync.Mutex{}
 
 	waitGroup.Add(len(scriptUrls))
 
-	var scriptDataMap = make(map[string][]byte)
+	var scriptDataMap = make(map[string]*cache.CacheGuard)
 	var errors []error
 
 	for _, scriptUrl := range scriptUrls {
 		go func(scriptUrl string) {
 			defer waitGroup.Done()
 
-			resp, err := http.Get(scriptUrl)
-			if err != nil {
-				errorsLock.Lock()
-				defer errorsLock.Unlock()
+			glog.V(100).Infof("Fetching script: %s", scriptUrl)
 
-				errors = append(errors, err)
+			cached, err := cache.CacheGuardedHttpGet(scriptUrl, func(resp *http.Response) error {
+				if resp.StatusCode != http.StatusOK || !isValidChunkDataType(resp.Header.Get("Content-Type")) {
 
-				return
-			}
+					return fmt.Errorf("failed to fetch script %s: status code %d, content type %s", scriptUrl, resp.StatusCode, resp.Header.Get("Content-Type"))
+				}
 
-			// Skip if it's not javascript content or a 200 OK response
-			if resp.StatusCode != http.StatusOK || !isValidChunkDataType(resp.Header.Get("Content-Type")) {
-				errorsLock.Lock()
-				defer errorsLock.Unlock()
-
-				errors = append(errors, fmt.Errorf("failed to fetch script %s: status code %d, content type %s", scriptUrl, resp.StatusCode, resp.Header.Get("Content-Type")))
-
-				return
-			}
-
-			defer resp.Body.Close()
-
-			b, err := io.ReadAll(resp.Body)
+				return nil
+			})
 			if err != nil {
 				errorsLock.Lock()
 				defer errorsLock.Unlock()
@@ -155,7 +142,7 @@ func fetchAllScripts(scriptUrls []string) (map[string][]byte, []error) {
 			lock.Lock()
 			defer lock.Unlock()
 
-			scriptDataMap[scriptUrl] = b
+			scriptDataMap[scriptUrl] = cached
 		}(scriptUrl)
 	}
 
@@ -169,10 +156,13 @@ func fetchAllScripts(scriptUrls []string) (map[string][]byte, []error) {
 // and the existing script URLs,
 // and returns a slice of dynamic script URLs that are found in the script data but
 // not already in the existing script URLs.
-func resolveDynamicScriptsFromBundle(assetPrefix string, scriptData string, existingScriptUrls []string) ([]string, error) {
-	const DynamicImportRegex = `static/chunks/[^"]+`
+func resolveDynamicScriptsFromBundle(assetPrefix string, scriptDataCached *cache.CacheGuard, existingScriptUrls []string) ([]string, error) {
+	scriptData, err := scriptDataCached.Get()
+	if err != nil {
+		return nil, err
+	}
 
-	matches := regexp.MustCompile(DynamicImportRegex).FindAllString(scriptData, -1)
+	matches := regexp.MustCompile(dynamicImportRegex).FindAllString(string(scriptData), -1)
 	if matches == nil {
 		return []string{}, nil
 	}
@@ -204,8 +194,8 @@ func resolveDynamicScriptsFromBundle(assetPrefix string, scriptData string, exis
 // This function is recursive,
 // meaning it will continue to resolve dynamic scripts from the newly found dynamic scripts
 // until no new dynamic scripts are found.
-func recursiveResolveDynamicScripts(assetPrefix string, scriptData string, existingScriptUrls []string, resolvedDynamicScriptUrls map[string]bool) ([]string, []error) {
-	dynamicScriptUrls, err := resolveDynamicScriptsFromBundle(assetPrefix, scriptData, existingScriptUrls)
+func recursiveResolveDynamicScripts(assetPrefix string, scriptDataCached *cache.CacheGuard, existingScriptUrls []string, resolvedDynamicScriptUrls map[string]bool) ([]string, []error) {
+	dynamicScriptUrls, err := resolveDynamicScriptsFromBundle(assetPrefix, scriptDataCached, existingScriptUrls)
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -229,7 +219,7 @@ func recursiveResolveDynamicScripts(assetPrefix string, scriptData string, exist
 	}
 
 	for _, dynamicScriptUrl := range newDynamicScriptUrls {
-		scriptData := string(scriptDataMap[dynamicScriptUrl])
+		scriptData := scriptDataMap[dynamicScriptUrl]
 
 		// Recursively resolve dynamic scripts from the newly found dynamic script
 		recursivelyResolvedDynamicScriptUrls, errors := recursiveResolveDynamicScripts(assetPrefix, scriptData, existingScriptUrls, resolvedDynamicScriptUrls)
@@ -243,9 +233,9 @@ func recursiveResolveDynamicScripts(assetPrefix string, scriptData string, exist
 	return newDynamicScriptUrls, nil
 }
 
-// ResolveAllSiteScripts takes the assetPrefix, the initial script URLs from the initial Next.js page data,
+// resolveAllSiteScripts takes the assetPrefix, the initial script URLs from the initial Next.js page data,
 // and the list of all NextPageData, and returns a map of all script URLs to their content (as a string).
-func ResolveAllSiteScripts(assetPrefix string, initialPageScriptUrls []string, pages []*types.NextPageData) (map[string]string, []error) {
+func resolveAllSiteScripts(assetPrefix string, initialPageScriptUrls []string, pages []*types.NextPageData) (map[string]*cache.CacheGuard, []error) {
 	initialScriptUrls, err := getAllUniquePageScripts(initialPageScriptUrls, pages)
 	if err != nil {
 		return nil, []error{err}
@@ -258,17 +248,15 @@ func ResolveAllSiteScripts(assetPrefix string, initialPageScriptUrls []string, p
 		return nil, errors
 	}
 
-	var allScripts = make(map[string]string)
+	var allScripts = make(map[string]*cache.CacheGuard)
 
-	for scriptUrl, scriptData := range initialScripts {
-		allScripts[scriptUrl] = string(scriptData)
-	}
+	maps.Copy(allScripts, initialScripts)
 
 	// Resolve dynamic scripts from the initial scripts
 	var resolvedDynamicScriptUrls = make(map[string]bool)
 
 	for _, scriptData := range initialScripts {
-		dynamicScriptUrls, errors := recursiveResolveDynamicScripts(assetPrefix, string(scriptData), initialScriptUrls, resolvedDynamicScriptUrls)
+		dynamicScriptUrls, errors := recursiveResolveDynamicScripts(assetPrefix, scriptData, initialScriptUrls, resolvedDynamicScriptUrls)
 		if len(errors) > 0 {
 			return nil, errors
 		}
@@ -278,10 +266,28 @@ func ResolveAllSiteScripts(assetPrefix string, initialPageScriptUrls []string, p
 			return nil, errors
 		}
 
-		for dynamicScriptUrl, dynamicScriptData := range scriptDataMap {
-			allScripts[dynamicScriptUrl] = string(dynamicScriptData)
-		}
+		maps.Copy(allScripts, scriptDataMap)
 	}
 
 	return allScripts, nil
+}
+
+// FetchAndResolveAllSiteScripts takes the assetPrefix, the initial script URLs from the initial Next.js page data,
+// and the list of all NextPageData, and returns a map of all script URLs to their content (as a string).
+func FetchAndResolveAllSiteScripts(assetPrefix string, initialScriptUrls []string, buildManifest *types.BuildManifest) (map[string]*cache.CacheGuard, []error) {
+	pages, errs := fetchAllNextPages(buildManifest)
+	if len(errs) > 0 {
+		glog.Errorf("Error fetching all Next.js pages: %v", errs)
+
+		return nil, errs
+	}
+
+	scripts, errs := resolveAllSiteScripts(assetPrefix, initialScriptUrls, pages)
+	if len(errs) > 0 {
+		glog.Errorf("Error resolving all site scripts: %v", errs)
+
+		return nil, errs
+	}
+
+	return scripts, nil
 }

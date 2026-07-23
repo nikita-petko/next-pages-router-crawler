@@ -4,6 +4,10 @@ func applyEnvironmentVariableFlags() {
 	getEnvironmentVariableOrFlag("INTERVAL", Interval)
 
 	getEnvironmentVariableOrFlag("URL", Url)
+	getEnvironmentVariableOrFlag("CACHE_PATH", CachePath)
+	getEnvironmentVariableOrFlag("OUTPUT_PATH", OutputPath)
+	getEnvironmentVariableOrFlag("CLEAR_CACHE", ClearCache)
+	getEnvironmentVariableOrFlag("CLEAR_OUTPUT", ClearOutput)
 
 	getEnvironmentVariableOrFlag("SEND_GRID_API_KEY", SendGridApiKey)
 	getEnvironmentVariableOrFlag("SEND_GRID_FROM", SendGridFrom)

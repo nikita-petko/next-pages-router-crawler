@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 
 	"github.com/dop251/goja"
+	"github.com/golang/glog"
+	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/cache"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/next/types"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/url"
 )
@@ -24,7 +24,7 @@ func buildManifestUrl(nextData *types.NextData) (string, error) {
 		return "", err
 	}
 
-	return fmt.Sprintf("%s/_next/static/%s/%s", baseUrl, nextData.BuildId, BuildManifestScript), nil
+	return fmt.Sprintf("%s/_next/static/%s/%s", baseUrl, nextData.BuildId, buildManifestScript), nil
 }
 
 func toStringSlice(slice []any) []string {
@@ -45,14 +45,14 @@ func getBuildManifest(nextData *types.NextData) (*types.BuildManifest, error) {
 		return nil, err
 	}
 
-	resp, err := http.Get(manifestUrl)
+	glog.Infof("Fetching build manifest from URL: %s", manifestUrl)
+
+	cached, err := cache.CacheGuardedHttpGet(manifestUrl, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	defer resp.Body.Close()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
+	bodyBytes, err := cached.Get()
 	if err != nil {
 		return nil, err
 	}

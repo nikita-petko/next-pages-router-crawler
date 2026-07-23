@@ -15,8 +15,8 @@ import (
 
 var gAlertingEnabled bool = false
 
-// SetupAlerting sets up alerting.
-func SetupAlerting() {
+// Setup sets up alerting.
+func Setup() {
 	if *flags.SnsTopicArn != "" {
 		if !*flags.AwsCredentialsFromProfile {
 			if _, exists := os.LookupEnv("AWS_ACCESS_KEY"); !exists {

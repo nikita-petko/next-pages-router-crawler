@@ -1,8 +1,11 @@
 package daemon
 
 import (
+	"errors"
+
 	"github.com/golang/glog"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/next"
+	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/sourcemap"
 )
 
 // DoWork is the function that is intended to perform the main work of the daemon.
@@ -11,21 +14,29 @@ import (
 func DoWork() {
 	buildManifest, nextData, initialScriptUrls, err := next.FetchInitialNextPageData()
 	if err != nil {
+		if errors.Is(err, next.CachedBuildIdIsSameError) {
+			glog.Info("Cached build ID is the same as the current build ID, skipping fetch.")
+
+			return
+		}
+
 		glog.Errorf("Error fetching initial Next.js page data: %v", err)
 
 		return
 	}
 
-	pages, errs := next.FetchAllNextPages(buildManifest)
+	glog.Infof("Got new build ID: %s, proceeding to fetch all site scripts and source maps.", nextData.BuildId)
+
+	scripts, errs := next.FetchAndResolveAllSiteScripts(nextData.AssetPrefix, initialScriptUrls, buildManifest)
 	if len(errs) > 0 {
-		glog.Errorf("Error fetching all Next.js pages: %v", errs)
+		glog.Errorf("Error resolving all site scripts: %v", errs)
 
 		return
 	}
 
-	scripts, errs := next.ResolveAllSiteScripts(nextData.AssetPrefix, initialScriptUrls, pages)
+	errs = sourcemap.FetchAndWriteAllSourceMaps(nextData.AssetPrefix, scripts)
 	if len(errs) > 0 {
-		glog.Errorf("Error resolving all site scripts: %v", errs)
+		glog.Errorf("Error writing all source maps: %v", errs)
 
 		return
 	}

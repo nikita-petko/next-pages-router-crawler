@@ -1,10 +1,11 @@
 package html
 
 import (
+	"bytes"
 	"errors"
-	"net/http"
 	"net/url"
 
+	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/cache"
 	gohtml "golang.org/x/net/html"
 )
 
@@ -23,14 +24,17 @@ func FetchHTMLForPage(pageUrl string) (*gohtml.Node, error) {
 		return nil, err
 	}
 
-	resp, err := http.Get(pageUrl)
+	cached, err := cache.CacheGuardedHttpGet(pageUrl, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	defer resp.Body.Close()
+	data, err := cached.Get()
+	if err != nil {
+		return nil, err
+	}
 
-	html, err := gohtml.Parse(resp.Body)
+	html, err := gohtml.Parse(bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
