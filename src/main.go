@@ -31,6 +31,12 @@ func main() {
 
 	alerting.SetupAlerting()
 
+	if *flags.Pulse {
+		daemon.DoWork()
+
+		return
+	}
+
 	go daemon.Run()
 
 	// Wait for a signal to quit

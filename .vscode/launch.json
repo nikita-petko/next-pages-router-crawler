@@ -5,19 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch file",
+            "name": "Launch file (Pulse)",
             "type": "go",
             "request": "launch",
             "mode": "debug",
             "program": "./src/main.go",
             "args": [
-                "-discord-webhook-uri=https://discord.com/api/webhooks/1407006522738872400/r9rS36Px8Ct5tM32cAq2V8jI2QoJWXA5Y6E4uCa1cWO_0XUYwrj4MbvwwpTo8L_h9mIl",
-                "-discord-alert-role-id=997333429832126544",
-                "-private-domain-name=test.rbxlabs.dev",
-                "-ns1-updates-enabled",
-                "-ns1-api-key=QjFUlsDvsgcVdmFumioH",
-                "-ns1-zone=rbxlabs.dev",
-                "-public-domain-name=test2.rbxlabs.dev"
+                "--pulse",
+                "--url=https://create.roblox.com"
             ]
         }
 

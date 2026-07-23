@@ -3,7 +3,7 @@ package flags
 func applyEnvironmentVariableFlags() {
 	getEnvironmentVariableOrFlag("INTERVAL", Interval)
 
-	getEnvironmentVariableOrFlag("INITIAL_DOMAIN", InitialDomain)
+	getEnvironmentVariableOrFlag("URL", Url)
 
 	getEnvironmentVariableOrFlag("SEND_GRID_API_KEY", SendGridApiKey)
 	getEnvironmentVariableOrFlag("SEND_GRID_FROM", SendGridFrom)

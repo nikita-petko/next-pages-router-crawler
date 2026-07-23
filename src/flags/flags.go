@@ -12,10 +12,13 @@ var (
 	// Interval is the interval to wait between each request. (environment variable: INTERVAL)
 	Interval = flag.Duration("interval", 5*time.Minute, "Interval to wait between each request. (environment variable: INTERVAL)")
 
+	// Pulse determines if the daemon should run once and exit.
+	Pulse = flag.Bool("pulse", false, "Run once and exit.")
+
 	//// Unique Flags
 
-	// InitialDomain is the domain to use to download the initial HTML document to determine the Next.js build manifest location. (environment variable: INITIAL_DOMAIN)
-	InitialDomain = flag.String("initial-domain", "", "The domain to use to download the initial HTML document to determine the Next.js build manifest location. (environment variable: INITIAL_DOMAIN)")
+	// Url is the url to use to download the initial HTML document to determine the Next.js build manifest location. (environment variable: URL)
+	Url = flag.String("url", "", "The url to use to download the initial HTML document to determine the Next.js build manifest location. (environment variable: URL)")
 
 	//// Alerting
 
@@ -46,7 +49,8 @@ var (
 
 // FlagUsageString is the usage string printed a longside the help command.
 const FlagsUsageString string = `
-	[-h|--help] [--interval[=5m]]
+	[-h|--help] [--interval[=5m]] [--pulse]
+	[--url[=]]
 	[--sendgrid-api-key[=]] [--sendgrid-from[=]] [--sendgrid-from-email[=]] [--sendgrid-mailing-list[=]]
 	[--sns-topic-arn[=]] [--aws-credentials-from-profile[=false]]
 	[--discord-webhook-uri[=]] [--discord-alert-role-id[=0]]`
