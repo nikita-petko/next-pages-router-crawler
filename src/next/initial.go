@@ -10,15 +10,15 @@ import (
 
 var CachedBuildIdIsSameError = errors.New("cached build ID is the same as the current build ID, skipping fetch")
 
-// FetchInitialNextPageData fetches the initial Next.js page data, including the build manifest, NextData, and script URLs.
-func FetchInitialNextPageData() (buildManifest *types.BuildManifest, nextData *types.NextData, scriptUrls []string, err error) {
+// FetchInitialNextPageData fetches the initial Next.js page data, including the build manifest, NextData, and asset URLs.
+func FetchInitialNextPageData() (buildManifest *types.BuildManifest, nextData *types.NextData, assetUrls []string, err error) {
 	// Ensure trailing slash for cache path
 	url := *flags.Url
 	if url[len(url)-1] != '/' {
 		url += "/"
 	}
 
-	nextData, scriptUrls, err = fetchNextPageData(url)
+	nextData, assetUrls, err = fetchNextPageData(url)
 	if err != nil {
 		return
 	}

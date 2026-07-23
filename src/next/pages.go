@@ -11,9 +11,9 @@ import (
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/url"
 )
 
-// fetchNextPageData fetches the Next.js page data for the given URL, including the NextData and all script URLs.
-func fetchNextPageData(url string) (nextData *types.NextData, scriptUrls []string, err error) {
-	glog.Infof("Fetching Next.js page data for URL: %s", url)
+// fetchNextPageData fetches the Next.js page data for the given URL, including the NextData and all asset URLs.
+func fetchNextPageData(url string) (nextData *types.NextData, assetUrls []string, err error) {
+	glog.V(100).Infof("Fetching Next.js page data for URL: %s", url)
 
 	htmlData, err := html.FetchHTMLForPage(url)
 	if err != nil {
@@ -35,7 +35,7 @@ func fetchNextPageData(url string) (nextData *types.NextData, scriptUrls []strin
 		return
 	}
 
-	scriptUrls, err = getAllNextScriptUrls(nextData.AssetPrefix, head)
+	assetUrls, err = getAllNextAssetUrls(nextData.AssetPrefix, head)
 	if err != nil {
 		return
 	}
@@ -52,11 +52,13 @@ func buildUrlForPage(page string) (string, error) {
 	return fmt.Sprintf("%s%s", baseUrl, page), nil
 }
 
-// fetchAllNextPages fetches all the Next.js page data for the given build manifest, including the NextData and all script URLs for each page.
+// fetchAllNextPages fetches all the Next.js page data for the given build manifest, including the NextData and all asset URLs for each page.
 func fetchAllNextPages(buildManifest *types.BuildManifest) ([]*types.NextPageData, []error) {
 	filteredPages := slices.DeleteFunc(buildManifest.SortedPages, func(page string) bool {
 		return slices.Contains(ignorePages, page)
 	})
+
+	glog.Infof("Fetching Next.js page data for %d pages...", len(filteredPages))
 
 	waitGroup := sync.WaitGroup{}
 	lock := sync.Mutex{}
@@ -81,7 +83,7 @@ func fetchAllNextPages(buildManifest *types.BuildManifest) ([]*types.NextPageDat
 		go func() {
 			defer waitGroup.Done()
 
-			nextData, scriptUrls, err := fetchNextPageData(url)
+			nextData, assetUrls, err := fetchNextPageData(url)
 			if err != nil {
 				errLock.Lock()
 				defer errLock.Unlock()
@@ -94,7 +96,7 @@ func fetchAllNextPages(buildManifest *types.BuildManifest) ([]*types.NextPageDat
 			lock.Lock()
 			defer lock.Unlock()
 
-			nextPages = append(nextPages, &types.NextPageData{NextData: nextData, ScriptUrls: scriptUrls})
+			nextPages = append(nextPages, &types.NextPageData{NextData: nextData, AssetUrls: assetUrls})
 		}()
 	}
 

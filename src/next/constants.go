@@ -13,4 +13,4 @@ const buildManifestScript = "_buildManifest.js"
 const ssgManifestScript = "_ssgManifest.js"
 const clientMiddlewareManifestScript = "_clientMiddlewareManifest.js"
 
-var ignoreScripts = []string{buildManifestScript, ssgManifestScript, clientMiddlewareManifestScript}
+var ignoredAssets = []string{buildManifestScript, ssgManifestScript, clientMiddlewareManifestScript}

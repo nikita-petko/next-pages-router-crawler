@@ -25,11 +25,11 @@ func fetchAllSourceMaps(assetPrefix string, sources map[string]*cache.CacheGuard
 	var errors []error
 	sourceMaps := make(map[string]*cache.CacheGuard)
 
-	for scriptUrl, sourceMapUrls := range sourceMapUrlsMap {
+	for _, sourceMapUrls := range sourceMapUrlsMap {
 		for _, sourceMapUrl := range sourceMapUrls {
 			waitGroup.Add(1)
 
-			go func(scriptUrl, sourceMapUrl string) {
+			go func(sourceMapUrl string) {
 				defer waitGroup.Done()
 
 				glog.V(100).Infof("Fetching source map: %s", sourceMapUrl)
@@ -41,7 +41,13 @@ func fetchAllSourceMaps(assetPrefix string, sources map[string]*cache.CacheGuard
 
 					return nil
 				})
-				if err != nil && !goerrors.Is(err, sourceMapNotFoundError) { // Ignore not found errors, as they are expected for some scripts
+				if err != nil {
+					if goerrors.Is(err, sourceMapNotFoundError) { // Ignore not found errors, as they are expected for some assets
+						glog.V(100).Infof("Source map not found for %s, skipping.", sourceMapUrl)
+
+						return
+					}
+
 					errorsLock.Lock()
 					defer errorsLock.Unlock()
 					errors = append(errors, err)
@@ -53,7 +59,7 @@ func fetchAllSourceMaps(assetPrefix string, sources map[string]*cache.CacheGuard
 				defer lock.Unlock()
 
 				sourceMaps[sourceMapUrl] = sourceMapData
-			}(scriptUrl, sourceMapUrl)
+			}(sourceMapUrl)
 		}
 	}
 

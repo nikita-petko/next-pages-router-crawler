@@ -61,24 +61,24 @@ func writeAllSourceMaps(sourceMaps map[string]map[string]string) {
 
 		err := writeSourceMapSourcesToOutput(sourceMap)
 		if err != nil {
-			glog.Warningf("Failed to write source map for %s: %v", sourceMapUrl, err)
+			glog.V(100).Infof("Failed to write source map for %s: %v", sourceMapUrl, err)
 		}
 	}
 }
 
-// FetchAndWriteAllSourceMaps fetches all source maps for the given scripts and writes them to the output directory.
-func FetchAndWriteAllSourceMaps(assetPrefix string, scripts map[string]*cache.CacheGuard) []error {
-	sourceMaps, errs := fetchAllSourceMaps(assetPrefix, scripts)
+// FetchAndWriteAllSourceMaps fetches all source maps for the given assets and writes them to the output directory.
+func FetchAndWriteAllSourceMaps(assetPrefix string, assets map[string]*cache.CacheGuard) (map[string]*cache.CacheGuard, []error) {
+	sourceMaps, errs := fetchAllSourceMaps(assetPrefix, assets)
 	if len(errs) > 0 {
-		return errs
+		return nil, errs
 	}
 
 	parsedSourceMaps, errs := parseAllSourceMaps(sourceMaps)
 	if len(errs) > 0 {
-		return errs
+		return nil, errs
 	}
 
 	writeAllSourceMaps(parsedSourceMaps)
 
-	return nil
+	return sourceMaps, nil
 }

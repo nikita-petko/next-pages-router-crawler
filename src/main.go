@@ -11,6 +11,7 @@ import (
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/cache"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/daemon"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/flags"
+	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/http"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/sourcemap"
 )
 
@@ -31,6 +32,7 @@ func main() {
 		return
 	}
 
+	http.Setup()
 	cache.Setup()
 	sourcemap.SetupOutput()
 	alerting.Setup()

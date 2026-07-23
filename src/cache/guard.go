@@ -2,10 +2,12 @@ package cache
 
 import (
 	"io"
-	"net/http"
+	gohttp "net/http"
 	"os"
 
 	"github.com/golang/glog"
+	"github.com/hashicorp/go-retryablehttp"
+	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/http"
 )
 
 type CacheGuard struct {
@@ -20,7 +22,7 @@ func (cg *CacheGuard) Get() ([]byte, error) {
 	return os.ReadFile(cg.filePath)
 }
 
-type IsValidResponseFunc = func(resp *http.Response) error
+type IsValidResponseFunc = func(resp *gohttp.Response) error
 
 // CacheGuardedHttpGet makes an HTTP GET request to the specified URL,
 // it returns a path to the cached file if it exists and is not the same as the ETag of the response,
@@ -46,7 +48,7 @@ func CacheGuardedHttpGet(url string, isValidResponse IsValidResponseFunc) (*Cach
 	}
 
 	// If the file is not cached or the ETag does not match, cache the response body to a file
-	resp, err := http.Get(url)
+	resp, err := retryablehttp.Get(url)
 	if err != nil {
 		return nil, err
 	}

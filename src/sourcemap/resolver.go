@@ -12,13 +12,13 @@ import (
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/url"
 )
 
-func resolveSourceMapUrlsFromScript(baseUrl string, scriptDataCached *cache.CacheGuard) ([]string, error) {
-	scriptData, err := scriptDataCached.Get()
+func resolveSourceMapUrlsFromAsset(baseUrl string, assetDataCached *cache.CacheGuard) ([]string, error) {
+	assetData, err := assetDataCached.Get()
 	if err != nil {
 		return nil, err
 	}
 
-	matches := regexp.MustCompile(sourceMappingUrlRegex).FindAllStringSubmatch(string(scriptData), -1)
+	matches := regexp.MustCompile(sourceMappingUrlRegex).FindAllStringSubmatch(string(assetData), -1)
 	if matches == nil {
 		return nil, nil
 	}
@@ -28,6 +28,13 @@ func resolveSourceMapUrlsFromScript(baseUrl string, scriptDataCached *cache.Cach
 		if len(match) > 1 {
 			// Determine if relative or absolute
 			sourceMapUrl := match[1]
+			if len(sourceMapUrl) == 0 && len(match) > 2 {
+				sourceMapUrl = match[2]
+			}
+
+			if len(sourceMapUrl) == 0 {
+				continue
+			}
 
 			if !regexp.MustCompile(`^https?://`).MatchString(sourceMapUrl) {
 				// If relative, prepend baseUrl
@@ -48,8 +55,8 @@ func resolveSourceMapUrls(assetPrefix string, sources map[string]*cache.CacheGua
 	}
 
 	sourceMapUrlsMap := make(map[string][]string)
-	for scriptUrl, scriptData := range sources {
-		url, err := gourl.Parse(scriptUrl)
+	for assetUrl, assetData := range sources {
+		url, err := gourl.Parse(assetUrl)
 		if err != nil {
 			return nil, err
 		}
@@ -70,13 +77,13 @@ func resolveSourceMapUrls(assetPrefix string, sources map[string]*cache.CacheGua
 
 		baseUrl := fmt.Sprintf("%s%s", baseUrl, path)
 
-		sourceMapUrls, err := resolveSourceMapUrlsFromScript(baseUrl, scriptData)
+		sourceMapUrls, err := resolveSourceMapUrlsFromAsset(baseUrl, assetData)
 		if err != nil {
 			return nil, err
 		}
 
 		if len(sourceMapUrls) > 0 {
-			sourceMapUrlsMap[scriptUrl] = sourceMapUrls
+			sourceMapUrlsMap[assetUrl] = sourceMapUrls
 		}
 	}
 
