@@ -47,7 +47,7 @@ jobs:
           fi
 
           # Checkout repo
-          git clone --depth 1 "${GITHUB_REPOSITORY}" "$GITHUB_WORKSPACE/.tmp"
+          git clone --depth 1 "https://github.com/${{ github.repository }}.git" "$GITHUB_WORKSPACE/.tmp"
           cd "$GITHUB_WORKSPACE/.tmp"
           git checkout -B "${TARGET_BRANCH}" || git checkout --orphan "${TARGET_BRANCH}"
 
