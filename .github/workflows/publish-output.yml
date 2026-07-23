@@ -31,13 +31,6 @@ jobs:
       - name: Run the build-release make target
         run: make build-release
 
-      - name: Get Cached Data
-        uses: actions/cache@v6
-        with:
-          path: |
-            .cache
-          key: ${{ matrix.target }}-cache-${{ hashFiles('src/**/*.go') }}
-
       - name: Init and Checkout branch
         env:
           TARGET_BRANCH: ${{ matrix.target }}
