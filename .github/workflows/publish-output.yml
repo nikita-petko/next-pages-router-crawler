@@ -43,7 +43,7 @@ jobs:
       - name: Run crawler
         id: run-crawler
         continue-on-error: true
-        run: ./bin/release/linux/x64/next-pages-router-crawler --url "https://${{ matrix.target }}" --pulse --clear-output -v 100
+        run: ./bin/release/linux/x64/next-pages-router-crawler --url "https://${{ matrix.target }}" --pulse --clear-output -v 100 --discord-webhook-uri "${{ secrets.DISCORD_WEBHOOK_URI }}"
 
       - name: Prepare and push dist to target repo
         if: ${{ steps.run-crawler.outcome == 'success' }}
