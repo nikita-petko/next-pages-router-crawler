@@ -1,1 +1,0 @@
-export const MAX_MEMBER_PAYOUTS_DISPLAYED = 5;
