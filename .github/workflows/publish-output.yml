@@ -62,7 +62,7 @@ jobs:
           git reset --hard "origin/${TARGET_BRANCH}" || true
 
           # Copy dist contents into the root of the target repo
-          cp -a "$GITHUB_WORKSPACE/.output/${TARGET_BRANCH}/." . || true
+          cp -a "$GITHUB_WORKSPACE/.output/${TARGET_BRANCH}/[project]/." . || true
 
           # Only commit & push if something changed
           if [ -n "$(git status --porcelain)" ]; then
