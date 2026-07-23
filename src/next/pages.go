@@ -100,5 +100,5 @@ func FetchAllNextPages(buildManifest *types.BuildManifest) ([]*types.NextPageDat
 
 	waitGroup.Wait()
 
-	return nextPages, nil
+	return nextPages, errors
 }

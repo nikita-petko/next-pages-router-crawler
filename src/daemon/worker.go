@@ -23,12 +23,12 @@ func DoWork() {
 		return
 	}
 
-	scriptUrls, err := next.GetAllUniqueSiteScripts(nextData.AssetPrefix, initialScriptUrls, buildManifest, pages)
-	if err != nil {
-		glog.Errorf("Error getting all unique site scripts: %v", err)
+	scripts, errs := next.ResolveAllSiteScripts(nextData.AssetPrefix, initialScriptUrls, pages)
+	if len(errs) > 0 {
+		glog.Errorf("Error resolving all site scripts: %v", errs)
 
 		return
 	}
 
-	glog.Infof("Successfully fetched script URLs: %+v", scriptUrls)
+	glog.Infof("Successfully resolved all site scripts. Total scripts resolved: %d", len(scripts))
 }
