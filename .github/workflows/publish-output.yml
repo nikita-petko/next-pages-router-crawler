@@ -74,13 +74,13 @@ jobs:
           # Checkout repo
           cd "$GITHUB_WORKSPACE/.tmp"
 
+          git rm -rf . || true
+
           # Copy cached buildId file to .tmp so we can commit it to the target branch
           if [ -f "$GITHUB_WORKSPACE/.cache/${TARGET_BRANCH}/.build" ]
           then
             cp "$GITHUB_WORKSPACE/.cache/${TARGET_BRANCH}/.build" "$GITHUB_WORKSPACE/.tmp/buildId" || true
           fi
-
-          git rm -rf . || true
 
           # Copy dist contents into the root of the target repo
           cp -a "$GITHUB_WORKSPACE/.output/${TARGET_BRANCH}/[project]/." . || true
