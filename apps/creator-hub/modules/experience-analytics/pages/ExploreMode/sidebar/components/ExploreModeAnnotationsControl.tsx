@@ -34,7 +34,13 @@ type ExploreModeAnnotationsControlProps = {
   resourceType: ChartResourceType;
   className?: string;
   selectedAnnotationOptions?: readonly AnnotationOptions[];
-  onAnnotationOptionsChange?: (annotationOptions: readonly AnnotationOptions[]) => void;
+  // `options.skipHistory` lets the self-correcting sync effect below write
+  // via `router.replace` instead of `router.push` — see its call site for
+  // why that matters for the browser Back button.
+  onAnnotationOptionsChange?: (
+    annotationOptions: readonly AnnotationOptions[],
+    options?: { skipHistory: boolean },
+  ) => void;
 };
 
 const ExploreModeAnnotationsControl: FC<ExploreModeAnnotationsControlProps> = ({
@@ -53,8 +59,19 @@ const ExploreModeAnnotationsControl: FC<ExploreModeAnnotationsControlProps> = ({
   } = useCurrentAnnotationsBundleProvider(resourceType);
   const selectedAnnotationOptions =
     controlledSelectedAnnotationOptions ?? providerSelectedAnnotationOptions;
-  const onAnnotationOptionsChange =
-    controlledOnAnnotationOptionsChange ?? providerOnAnnotationOptionsChange;
+  // `controlledOnAnnotationOptionsChange` (always provided in production,
+  // per ExploreModeSidebarPage) accepts an extra `options` param the
+  // uncontrolled provider fallback doesn't, so dispatch explicitly.
+  const onAnnotationOptionsChange = useCallback(
+    (next: readonly AnnotationOptions[], changeOptions?: { skipHistory: boolean }) => {
+      if (controlledOnAnnotationOptionsChange) {
+        controlledOnAnnotationOptionsChange(next, changeOptions);
+        return;
+      }
+      providerOnAnnotationOptionsChange([...next]);
+    },
+    [controlledOnAnnotationOptionsChange, providerOnAnnotationOptionsChange],
+  );
 
   const {
     selectedAlertIds,
@@ -111,7 +128,10 @@ const ExploreModeAnnotationsControl: FC<ExploreModeAnnotationsControlProps> = ({
     }
     const withoutAlerts = stripAlertsOption(selectedAnnotationOptions);
     const next = hasSelectedAlerts ? [...withoutAlerts, ALERTS_OPTION_VALUE] : withoutAlerts;
-    onAnnotationOptionsChange(next);
+    // Self-correction, not a user action — write via `router.replace`
+    // (`skipHistory`) so it doesn't create a history entry the browser
+    // Back button can land on and re-trigger.
+    onAnnotationOptionsChange(next, { skipHistory: true });
   }, [
     hasSelectedAlerts,
     isConfiguredAlertIncidentInSelection,
@@ -309,7 +329,7 @@ const ExploreModeAlertsCascadingMenuRow: FC<ExploreModeAlertsCascadingMenuRowPro
 
   const itemClassName = clsx(
     interactable,
-    'flex items-center content-default text-truncate-split focus-visible:hover:outline-none cursor-pointer stroke-none bg-none text-align-x-left width-full outline-offset-0',
+    'flex items-center content-default text-truncate-split focus-visible:hover:outline-none cursor-pointer stroke-none bg-none text-align-x-left width-full',
     TEXT_CLASS_BY_SIZE.Medium,
     MENU_PADDING_X_CLASS_BY_SIZE.Medium,
     MENU_ITEM_PADDING_Y_CLASS_BY_SIZE.Medium,

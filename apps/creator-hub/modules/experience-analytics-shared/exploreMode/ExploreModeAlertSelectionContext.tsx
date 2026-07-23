@@ -92,7 +92,10 @@ export type ExploreModeAlertSelectionContextValue = {
   selectedAlertIds: ReadonlySet<string> | null;
   availableAlertsForMetric: readonly AlertForMetric[];
   isLoadingAvailableAlerts: boolean;
-  setSelectedAlertIds: (next: readonly string[] | null) => void;
+  // `options.skipHistory` lets automatic corrections (not user actions)
+  // write via `router.replace` instead of `router.push`, so they don't
+  // create history entries the Back button can get stuck re-triggering.
+  setSelectedAlertIds: (next: readonly string[] | null, options?: { skipHistory: boolean }) => void;
 };
 
 const EMPTY_AVAILABLE_ALERTS: readonly AlertForMetric[] = [];
@@ -171,10 +174,13 @@ export const ExploreModeAlertSelectionProvider: FC<ExploreModeAlertSelectionProv
     [params],
   );
   const setSelectedAlertIds = useCallback(
-    (next: readonly string[] | null) => {
-      setParams({
-        [AnalyticsQueryParams.AlertIds]: serializeAlertIdsForUrl(next),
-      });
+    (next: readonly string[] | null, options?: { skipHistory: boolean }) => {
+      setParams(
+        {
+          [AnalyticsQueryParams.AlertIds]: serializeAlertIdsForUrl(next),
+        },
+        options,
+      );
     },
     [setParams],
   );
@@ -193,7 +199,10 @@ export const ExploreModeAlertSelectionProvider: FC<ExploreModeAlertSelectionProv
     const previous = previousMetricRef.current;
     previousMetricRef.current = displayMetric;
     if (shouldClearAlertIdsOnMetricChange(previous, displayMetric)) {
-      setSelectedAlertIds(null);
+      // Self-correction, not a user action — write via `router.replace`
+      // (`skipHistory`) so it doesn't create a history entry the browser
+      // Back button can land on and re-trigger.
+      setSelectedAlertIds(null, { skipHistory: true });
     }
   }, [displayMetric, setSelectedAlertIds]);
 

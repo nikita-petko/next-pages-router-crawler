@@ -527,8 +527,16 @@ export default function useExploreControlledChartConfiguratorCoreUrlSync({
   );
 
   const setAnnotationOptions = useCallback(
-    (annotations: readonly AnnotationOptions[]) => {
-      setQueryParams(serializeExploreAnnotationParams(annotations));
+    // `options.skipHistory` lets automatic corrections (not user actions)
+    // write via `router.replace` instead of `router.push`, so they don't
+    // create history entries the Back button can get stuck re-triggering.
+    (annotations: readonly AnnotationOptions[], options?: SetQueryParamsOptions) => {
+      const params = serializeExploreAnnotationParams(annotations);
+      if (options) {
+        setQueryParams(params, options);
+        return;
+      }
+      setQueryParams(params);
     },
     [setQueryParams],
   );
