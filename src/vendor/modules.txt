@@ -118,7 +118,7 @@ github.com/dop251/goja/unistring
 ## explicit
 github.com/go-sourcemap/sourcemap
 github.com/go-sourcemap/sourcemap/internal/base64vlq
-# github.com/golang/glog v1.1.1
+# github.com/golang/glog v1.2.4
 ## explicit; go 1.19
 github.com/golang/glog
 github.com/golang/glog/internal/logsink

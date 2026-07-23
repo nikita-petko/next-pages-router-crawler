@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.31.0
 	github.com/aws/aws-sdk-go-v2/service/sns v1.37.0
 	github.com/dop251/goja v0.0.0-20260722130236-0768e0998ac0
-	github.com/golang/glog v1.1.1
+	github.com/golang/glog v1.2.4
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/sendgrid/sendgrid-go v3.12.0+incompatible
 	golang.org/x/net v0.55.0
