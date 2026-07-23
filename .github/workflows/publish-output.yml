@@ -11,8 +11,11 @@ permissions:
 
 jobs:
   publish:
-    # If the URL and BRANCH vars isn't empty only
-    if: ${{ vars.URL != '' && vars.BRANCH != '' }}
+
+    # Run for 2 branches:
+    strategy:
+      matrix:
+        target: ["advertise.roblox.com", "create.roblox.com", "test.rbxlabs.net"]
 
     runs-on: ubuntu-latest
     steps:
@@ -31,11 +34,11 @@ jobs:
         run: make build-release
 
       - name: Run crawler
-        run: ./bin/release/linux/x64/next-pages-router-crawler --url "${{ vars.URL }}" --pulse --clear-cache --clear-output
+        run: ./bin/release/linux/x64/next-pages-router-crawler --url "https://${{ matrix.target }}" --pulse --clear-cache --clear-output
 
       - name: Prepare and push dist to target repo
         env:
-          TARGET_BRANCH: ${{ vars.BRANCH }}
+          TARGET_BRANCH: ${{ matrix.target }}
         run: |
           set -euo pipefail
 
