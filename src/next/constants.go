@@ -1,5 +1,7 @@
 package next
 
+const NextDataScriptId = "__NEXT_DATA__"
+
 const IndexPage = "/"
 const AppPage = "/_app"
 

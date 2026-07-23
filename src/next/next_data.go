@@ -1,4 +1,4 @@
-package html
+package next
 
 import (
 	"encoding/json"
@@ -26,8 +26,8 @@ func recursiveFindNextDataScript(n *gohtml.Node) *gohtml.Node {
 	return nil
 }
 
-// GetNextData extracts the NextData from the HTML document by searching for the script tag with the id "__NEXT_DATA__".
-func GetNextData(htmlBody *gohtml.Node) (*types.NextData, error) {
+// getNextData extracts the NextData from the HTML document by searching for the script tag with the id "__NEXT_DATA__".
+func getNextData(htmlBody *gohtml.Node) (*types.NextData, error) {
 	// Find the first script element with the id
 	nextDataScript := recursiveFindNextDataScript(htmlBody)
 	if nextDataScript == nil {

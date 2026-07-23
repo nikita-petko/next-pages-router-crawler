@@ -3,7 +3,9 @@ package next
 import (
 	"fmt"
 	"slices"
+	"sync"
 
+	"github.com/golang/glog"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/html"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/next/types"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/url"
@@ -11,6 +13,8 @@ import (
 
 // FetchNextPageData fetches the Next.js page data for the given URL, including the NextData and all script URLs.
 func FetchNextPageData(url string) (nextData *types.NextData, scriptUrls []string, err error) {
+	glog.Infof("Fetching Next.js page data for URL: %s", url)
+
 	htmlData, err := html.FetchHTMLForPage(url)
 	if err != nil {
 		return
@@ -26,7 +30,7 @@ func FetchNextPageData(url string) (nextData *types.NextData, scriptUrls []strin
 		return
 	}
 
-	nextData, err = html.GetNextData(body)
+	nextData, err = getNextData(body)
 	if err != nil {
 		return
 	}
@@ -49,26 +53,52 @@ func buildUrlForPage(page string) (string, error) {
 }
 
 // FetchAllNextPages fetches all the Next.js page data for the given build manifest, including the NextData and all script URLs for each page.
-func FetchAllNextPages(buildManifest *types.BuildManifest) ([]*types.NextPageData, error) {
+func FetchAllNextPages(buildManifest *types.BuildManifest) ([]*types.NextPageData, []error) {
 	filteredPages := slices.DeleteFunc(buildManifest.SortedPages, func(page string) bool {
 		return slices.Contains(ignorePages, page)
 	})
 
+	waitGroup := sync.WaitGroup{}
+	lock := sync.Mutex{}
+	errLock := sync.Mutex{}
+
+	waitGroup.Add(len(filteredPages))
+
 	var nextPages []*types.NextPageData
+	var errors []error
 
 	for _, page := range filteredPages {
 		url, err := buildUrlForPage(page)
 		if err != nil {
-			return nil, err
+			errLock.Lock()
+			defer errLock.Unlock()
+
+			errors = append(errors, err)
+
+			continue
 		}
 
-		nextData, scriptUrls, err := FetchNextPageData(url)
-		if err != nil {
-			return nil, err
-		}
+		go func() {
+			defer waitGroup.Done()
 
-		nextPages = append(nextPages, &types.NextPageData{NextData: nextData, ScriptUrls: scriptUrls})
+			nextData, scriptUrls, err := FetchNextPageData(url)
+			if err != nil {
+				errLock.Lock()
+				defer errLock.Unlock()
+
+				errors = append(errors, err)
+
+				return
+			}
+
+			lock.Lock()
+			defer lock.Unlock()
+
+			nextPages = append(nextPages, &types.NextPageData{NextData: nextData, ScriptUrls: scriptUrls})
+		}()
 	}
+
+	waitGroup.Wait()
 
 	return nextPages, nil
 }

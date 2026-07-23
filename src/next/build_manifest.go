@@ -1,4 +1,4 @@
-package html
+package next
 
 import (
 	"encoding/json"
@@ -24,10 +24,22 @@ func buildManifestUrl(nextData *types.NextData) (string, error) {
 		return "", err
 	}
 
-	return fmt.Sprintf("%s/_next/static/%s/%s", baseUrl, nextData.BuildId, BuildManifestJavaScriptFileName), nil
+	return fmt.Sprintf("%s/_next/static/%s/%s", baseUrl, nextData.BuildId, BuildManifestScript), nil
 }
 
-func GetBuildManifest(nextData *types.NextData) (*types.BuildManifest, error) {
+func toStringSlice(slice []any) []string {
+	result := make([]string, len(slice))
+
+	for i, v := range slice {
+		result[i] = fmt.Sprintf("%v", v)
+	}
+
+	return result
+}
+
+// getBuildManifest fetches the build manifest for the given NextData,
+// which contains information about all the pages and their corresponding chunk files.
+func getBuildManifest(nextData *types.NextData) (*types.BuildManifest, error) {
 	manifestUrl, err := buildManifestUrl(nextData)
 	if err != nil {
 		return nil, err
@@ -59,9 +71,25 @@ func GetBuildManifest(nextData *types.NextData) (*types.BuildManifest, error) {
 	}
 
 	buildManifest := &types.BuildManifest{}
-	err = json.Unmarshal([]byte(result), buildManifest)
+
+	var manifestData map[string]any
+	err = json.Unmarshal([]byte(result), &manifestData)
 	if err != nil {
 		return nil, err
+	}
+
+	buildManifest.SortedPages = toStringSlice(manifestData["sortedPages"].([]any))
+
+	// Filter the map out for keys present in sortedPages
+	buildManifest.PageChunks = make(map[string][]string)
+
+	for _, page := range buildManifest.SortedPages {
+		pageChunksData, ok := manifestData[page]
+		if !ok {
+			continue // Skip over non existing pages
+		}
+
+		buildManifest.PageChunks[page] = toStringSlice(pageChunksData.([]any))
 	}
 
 	return buildManifest, nil

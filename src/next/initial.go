@@ -2,7 +2,6 @@ package next
 
 import (
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/flags"
-	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/html"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/next/types"
 )
 
@@ -13,7 +12,7 @@ func FetchInitialNextPageData() (buildManifest *types.BuildManifest, nextData *t
 		return
 	}
 
-	buildManifest, err = html.GetBuildManifest(nextData)
+	buildManifest, err = getBuildManifest(nextData)
 	if err != nil {
 		return
 	}
