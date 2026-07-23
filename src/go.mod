@@ -1,6 +1,6 @@
 module github.vmminfra.dev/mfdlabs/next-pages-router-crawler
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/aws/aws-sdk-go-v2/config v1.31.0
@@ -9,7 +9,7 @@ require (
 	github.com/golang/glog v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/sendgrid/sendgrid-go v3.12.0+incompatible
-	golang.org/x/net v0.40.0
+	golang.org/x/net v0.55.0
 )
 
 require (
@@ -31,5 +31,5 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect
 	github.com/stretchr/testify v1.8.0 // indirect
-	golang.org/x/text v0.25.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 )
