@@ -4160,6 +4160,9 @@
 .\[left\:16px\] {
   left: 16px;
 }
+.\[left\:8px\] {
+  left: 8px;
+}
 .\[left\:calc\(var\(--license-hero-side-space\)_\+_\(var\(--license-hero-card-width\)_\+_var\(--license-hero-gap\)\)\)\] {
   left: calc(var(--license-hero-side-space) + (var(--license-hero-card-width) + var(--license-hero-gap)));
 }
@@ -4381,9 +4384,6 @@
 }
 .\[right\:4px\] {
   right: 4px;
-}
-.\[right\:8px\] {
-  right: 8px;
 }
 .\[row-gap\:12px\] {
   row-gap: 12px;

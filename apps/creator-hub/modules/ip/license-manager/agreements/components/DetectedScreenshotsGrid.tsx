@@ -1,4 +1,5 @@
 import type { FunctionComponent } from 'react';
+import Link from 'next/link';
 import { Skeleton } from '@rbx/ui';
 
 export const MAX_SCREENSHOTS = 6;
@@ -9,9 +10,14 @@ const screenshotFillClassName = 'absolute inset-0 width-full height-full';
 const screenshotCellClassName = 'width-full relative clip radius-small [aspect-ratio:4/3]';
 const screenshotImageClassName = `[object-fit:cover] ${screenshotFillClassName}`;
 
+export interface DetectedScreenshotItem {
+  imageUrl: string;
+  href: string;
+}
+
 interface DetectedScreenshotsGridProps {
-  /** Already-resolved screenshot image URLs (pending-moderation/unshared assets excluded upstream). */
-  imageUrls: string[];
+  /** Resolved screenshots with their deep-link hrefs (pending-moderation/unshared assets excluded upstream). */
+  items: DetectedScreenshotItem[];
   isLoading?: boolean;
 }
 
@@ -21,7 +27,7 @@ interface DetectedScreenshotsGridProps {
  * are no resolved screenshots.
  */
 const DetectedScreenshotsGrid: FunctionComponent<DetectedScreenshotsGridProps> = ({
-  imageUrls,
+  items,
   isLoading = false,
 }) => {
   if (isLoading) {
@@ -36,18 +42,21 @@ const DetectedScreenshotsGrid: FunctionComponent<DetectedScreenshotsGridProps> =
     );
   }
 
-  const visibleImageUrls = imageUrls.slice(0, MAX_SCREENSHOTS);
+  const visibleItems = items.slice(0, MAX_SCREENSHOTS);
 
-  if (visibleImageUrls.length === 0) {
+  if (visibleItems.length === 0) {
     return null;
   }
 
   return (
     <div className={screenshotsGridClassName}>
-      {visibleImageUrls.map((imageUrl) => (
-        <div key={imageUrl} className={screenshotCellClassName}>
-          <img className={screenshotImageClassName} src={imageUrl} alt='' />
-        </div>
+      {visibleItems.map((item) => (
+        <Link
+          key={item.imageUrl}
+          href={item.href}
+          className={`${screenshotCellClassName} cursor-pointer`}>
+          <img className={screenshotImageClassName} src={item.imageUrl} alt='' />
+        </Link>
       ))}
     </div>
   );

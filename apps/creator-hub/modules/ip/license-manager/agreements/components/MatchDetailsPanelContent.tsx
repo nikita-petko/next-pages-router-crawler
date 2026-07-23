@@ -108,6 +108,12 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
   const resolvedScreenshotUrls = placefileAssetIds
     .map((assetId) => placefileImageUrlsQuery.data?.get(assetId))
     .filter((imageUrl): imageUrl is string => Boolean(imageUrl));
+  const screenshotItems = placefileAssetIds
+    .map((assetId) => {
+      const imageUrl = placefileImageUrlsQuery.data?.get(assetId);
+      return imageUrl ? { assetId, imageUrl } : null;
+    })
+    .filter((entry): entry is { assetId: number; imageUrl: string } => entry !== null);
   const isScreenshotsLoading =
     placefileImagesQuery.isLoading ||
     (placefileAssetIds.length > 0 && placefileImageUrlsQuery.isLoading);
@@ -399,7 +405,12 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
                 )}
               </Typography>
               <DetectedScreenshotsGrid
-                imageUrls={resolvedScreenshotUrls}
+                items={screenshotItems.map((item) => ({
+                  imageUrl: item.imageUrl,
+                  href: matchScreenshotsGalleryHref
+                    ? `${matchScreenshotsGalleryHref}&inspect=${item.assetId}`
+                    : '#',
+                }))}
                 isLoading={isScreenshotsLoading}
               />
             </Flex>

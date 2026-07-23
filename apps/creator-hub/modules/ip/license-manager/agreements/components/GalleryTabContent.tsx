@@ -23,7 +23,7 @@ const galleryCellFillClassName = 'absolute inset-0 width-full height-full';
 const galleryCellClassName = 'width-full relative clip radius-medium [aspect-ratio:4/3]';
 const galleryImageClassName = `[object-fit:cover] ${galleryCellFillClassName}`;
 
-const CHECKBOX_OVERLAY_CLASS = 'absolute [top:8px] [right:8px]';
+const CHECKBOX_OVERLAY_CLASS = 'absolute [top:8px] [left:8px]';
 const EMPTY_STATE_CLASS =
   'grow flex flex-col justify-center items-center gap-large min-height-[480px] padding-x-medium';
 const EMPTY_STATE_TITLE_CLASS = 'text-heading-medium content-emphasis margin-none max-width-[28ch]';
