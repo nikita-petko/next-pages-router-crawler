@@ -61,6 +61,8 @@ jobs:
           git fetch --all || true
           git reset --hard "origin/${TARGET_BRANCH}" || true
 
+          git rm -rf . || true
+
           # Copy dist contents into the root of the target repo
           cp -a "$GITHUB_WORKSPACE/.output/${TARGET_BRANCH}/[project]/." . || true
 
