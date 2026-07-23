@@ -33,8 +33,15 @@ jobs:
       - name: Run the build-release make target
         run: make build-release
 
+      - name: Get Cached Data
+        uses: actions/cache@v6
+        with:
+          path: |
+            .cache
+          key: ${{ matrix.target }}-cache-${{ hashFiles('**/go.sum') }}
+
       - name: Run crawler
-        run: ./bin/release/linux/x64/next-pages-router-crawler --url "https://${{ matrix.target }}" --pulse --clear-cache --clear-output
+        run: ./bin/release/linux/x64/next-pages-router-crawler --url "https://${{ matrix.target }}" --pulse --clear-output
 
       - name: Prepare and push dist to target repo
         env:
