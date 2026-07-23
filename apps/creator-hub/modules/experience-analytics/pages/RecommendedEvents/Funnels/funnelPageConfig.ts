@@ -207,7 +207,15 @@ const getFunnelPageConfig = (
         maxRangeDays: 365 * 2 + 1,
       } as const satisfies AnalyticsPageConfigDateOptions,
       surfaceAnnotationOptions: {
-        supportedAnnotationTypes: [AnnotationType.Announcement],
+        supportedAnnotationTypes: [
+          AnnotationType.PlaceIcon,
+          AnnotationType.PlaceThumbnail,
+          AnnotationType.PlaceVideo,
+          AnnotationType.PlaceVersion,
+          AnnotationType.LiveEvent,
+          AnnotationType.ConfigVersion,
+          AnnotationType.Announcement,
+        ],
         defaultAnnotationTypes: [],
         showAnnotationsControl: true,
       } as const satisfies AnalyticsPageConfigAnnotationOptions,
@@ -246,7 +254,15 @@ const getFunnelPageConfig = (
       maxRangeDays: 365 * 2 + 1,
     } as const satisfies AnalyticsPageConfigDateOptions,
     surfaceAnnotationOptions: {
-      supportedAnnotationTypes: [AnnotationType.Announcement],
+      supportedAnnotationTypes: [
+        AnnotationType.PlaceIcon,
+        AnnotationType.PlaceThumbnail,
+        AnnotationType.PlaceVideo,
+        AnnotationType.PlaceVersion,
+        AnnotationType.LiveEvent,
+        AnnotationType.ConfigVersion,
+        AnnotationType.Announcement,
+      ],
       defaultAnnotationTypes: [],
       showAnnotationsControl: false,
     } as const satisfies AnalyticsPageConfigAnnotationOptions,

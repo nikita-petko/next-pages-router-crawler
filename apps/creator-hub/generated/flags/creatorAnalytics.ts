@@ -175,7 +175,7 @@ export const isCustomDashboardsApiBackendEnabled = defineFlag({
 export const isFunnelCohortCompletionRateEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isFunnelCohortCompletionRateEnabled',
-    defaultValue: false,
+    defaultValue: true,
   });
 export const isJourneyEventsEnabled = defineFlag({
     namespace: 'creator-analytics',

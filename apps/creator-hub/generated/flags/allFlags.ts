@@ -504,7 +504,7 @@ export const generatedFlags = [
       metadata: {
         namespace: 'creator-analytics',
         name: 'isFunnelCohortCompletionRateEnabled',
-        defaultValue: false,
+        defaultValue: true,
         valueType: 'boolean',
         contextType: 'static',
       },
