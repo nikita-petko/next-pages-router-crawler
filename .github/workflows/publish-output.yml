@@ -47,9 +47,9 @@ jobs:
           git reset --hard "origin/$TARGET_BRANCH" || true
 
           # Try copy The .build file (buildId cache file if exists) to .cache so we don't rerun on the same buildId
-          if [ -f "$GITHUB_WORKSPACE/.tmp/.build" ]; then
+          if [ -f "$GITHUB_WORKSPACE/.tmp/buildId" ]; then
             mkdir -p "$GITHUB_WORKSPACE/.cache/${TARGET_BRANCH}"
-            cp "$GITHUB_WORKSPACE/.tmp/.build" "$GITHUB_WORKSPACE/.cache/${TARGET_BRANCH}/.build" || true
+            cp "$GITHUB_WORKSPACE/.tmp/buildId" "$GITHUB_WORKSPACE/.cache/${TARGET_BRANCH}/.build" || true
           fi
 
       - name: Run crawler
@@ -75,9 +75,9 @@ jobs:
           cd "$GITHUB_WORKSPACE/.tmp"
 
           # Copy cached buildId file to .tmp so we can commit it to the target branch
-          if [ -f "$GITHUB_WORKSPACE/.cache/${TARGET_BRANCH}/.build"
+          if [ -f "$GITHUB_WORKSPACE/.cache/${TARGET_BRANCH}/.build" ]
           then
-            cp "$GITHUB_WORKSPACE/.cache/${TARGET_BRANCH}/.build" "$GITHUB_WORKSPACE/.tmp/.build" || true
+            cp "$GITHUB_WORKSPACE/.cache/${TARGET_BRANCH}/.build" "$GITHUB_WORKSPACE/.tmp/buildId" || true
           fi
 
           git rm -rf . || true
