@@ -3,6 +3,7 @@ package next
 import (
 	"errors"
 
+	"github.com/golang/glog"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/cache"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/flags"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/next/types"
@@ -26,6 +27,10 @@ func FetchInitialNextPageData() (buildManifest *types.BuildManifest, nextData *t
 	cachedBuildId, err := cache.ReadBuildId(url)
 	if err != nil {
 		return
+	}
+
+	if cachedBuildId != "" {
+		glog.Infof("Cached build ID for %s: %s", url, cachedBuildId)
 	}
 
 	if nextData.BuildId == cachedBuildId {
