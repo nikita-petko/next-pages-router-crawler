@@ -31,12 +31,7 @@ jobs:
         run: make build-release
 
       - name: Run crawler
-        run: |
-          ./bin/release/linux/x64/next-pages-router-crawler 
-            --url ${{ vars.URL }}
-            --pulse
-            --clear-cache
-            --clear-output
+        run: ./bin/release/linux/x64/next-pages-router-crawler --url "${{ vars.URL }}" --pulse --clear-cache --clear-output
 
       - name: Prepare and push dist to target repo
         env:
