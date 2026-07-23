@@ -47,6 +47,16 @@ function fallbackIso(): string {
   return new Date(0).toISOString();
 }
 
+function actorUserIdToNumber(value: unknown): number | undefined {
+  const parsed =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim().length > 0
+        ? Number(value)
+        : Number.NaN;
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
 export function getDashboardId(metadata: ApiDashboardMetadata): string {
   return metadata.dashboardId ?? '';
 }
@@ -87,6 +97,9 @@ export function fromApiDashboardMetadata(
   const publishedAt = timestampToIso(metadata.publishedTime);
   const isPinned = metadata.isPinned === true;
   const createdBy = metadata.createdBy;
+  const updatedBy = metadata.updatedBy;
+  const createdByUserId = actorUserIdToNumber(createdBy?.userId);
+  const updatedByUserId = actorUserIdToNumber(updatedBy?.userId);
 
   return {
     id: dashboardId,
@@ -100,10 +113,15 @@ export function fromApiDashboardMetadata(
     createdAt,
     updatedAt,
     publishedAt,
-    createdByUserId: createdBy?.userId ?? 0,
-    // The API currently returns only the creator id. Rendering surfaces apply
-    // their translated unknown-creator fallback when this value is empty.
+    createdByUserId: createdByUserId ?? 0,
+    // The API returns attribution ids without names. Rendering surfaces resolve
+    // display names separately and apply their translated fallback when absent.
     createdByUsername: '',
+    ...(updatedByUserId !== undefined
+      ? {
+          updatedByUserId,
+        }
+      : {}),
     config,
   };
 }

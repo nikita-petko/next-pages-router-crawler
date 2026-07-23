@@ -6,6 +6,10 @@ import { CUSTOM_DASHBOARDS_LEARN_MORE_HREF } from '../../constants/docsLinks';
 import { customDashboardQueryKeys } from '../../hooks/customDashboardsQueryConfig';
 import { useDashboardsListQuery } from '../../hooks/useDashboardsListQuery';
 import {
+  type UserDisplayNamesById,
+  useUserDisplayNamesQuery,
+} from '../../hooks/useUserDisplayNamesQuery';
+import {
   useCanMutateCustomDashboards,
   useCustomDashboardsBackendState,
 } from '../../service/CustomDashboardServiceProvider';
@@ -26,6 +30,7 @@ import { useDashboardActions } from './hooks/useDashboardActions';
 import { useFilteredAndPagedDashboards } from './hooks/useFilteredAndPagedDashboards';
 import { useManagePageState } from './hooks/useManagePageState';
 
+const EMPTY_USER_DISPLAY_NAMES: UserDisplayNamesById = new Map();
 /**
  * Manage page render-state machine. Mounts inside `CustomDashboardsShell`,
  * derives the list query / filter / pagination, and dispatches row mutations
@@ -79,6 +84,20 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
     () => [...localPagedItems, ...serverPagedItems],
     [localPagedItems, serverPagedItems],
   );
+  const attributionUserIds = useMemo(
+    () =>
+      displayedItems.flatMap((dashboard) => [
+        dashboard.createdByUserId,
+        dashboard.updatedByUserId ?? dashboard.createdByUserId,
+      ]),
+    [displayedItems],
+  );
+  const userDisplayNamesQuery = useUserDisplayNamesQuery(attributionUserIds);
+  // Attribution names enhance the persisted metadata. While they load, or if
+  // the lookup fails, rows continue to render their stored username fallback.
+  const userDisplayNamesById = userDisplayNamesQuery.isSuccess
+    ? userDisplayNamesQuery.data
+    : EMPTY_USER_DISPLAY_NAMES;
 
   const hasNextPage = Boolean(nextPageToken);
   let totalPages = Math.max(1, Math.ceil(serverFilteredCount / pageState.pageSize));
@@ -200,6 +219,7 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
           items: displayedItems,
           handlers,
           canMutateDashboards,
+          userDisplayNamesById,
         }}
       />
     );

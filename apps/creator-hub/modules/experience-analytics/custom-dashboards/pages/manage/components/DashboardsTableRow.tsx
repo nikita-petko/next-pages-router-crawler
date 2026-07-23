@@ -1,6 +1,7 @@
 import { type CSSProperties, type FC, type ReactNode, useCallback } from 'react';
 import { Button, Toggle, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
 import LocalCopyBadge from '../../../components/LocalCopyBadge';
+import type { UserDisplayNamesById } from '../../../hooks/useUserDisplayNamesQuery';
 import type { CustomDashboardListItem } from '../../../types';
 import type { DashboardActionHandlers } from '../hooks/useDashboardActions';
 import { useManagePageTranslations } from '../useManagePageTranslations';
@@ -21,11 +22,13 @@ const DIVIDER_STYLE: CSSProperties = {
 type DashboardsTableRowProps = {
   readonly dashboard: CustomDashboardListItem;
   readonly canMutateDashboards: boolean;
+  readonly userDisplayNamesById: UserDisplayNamesById;
 } & DashboardActionHandlers;
 
 const DashboardsTableRow: FC<DashboardsTableRowProps> = ({
   dashboard,
   canMutateDashboards,
+  userDisplayNamesById,
   onOpen,
   onEdit,
   onRename,
@@ -51,8 +54,12 @@ const DashboardsTableRow: FC<DashboardsTableRowProps> = ({
   );
 
   const lastModified = formatLastModifiedDate(dashboard.updatedAt);
-  const createdByDisplay = dashboard.createdByUsername || t.unknownCreatorLabel;
-  const modifiedByDisplay = dashboard.createdByUsername || t.unknownCreatorLabel;
+  const createdByFallback = dashboard.createdByUsername || t.unknownCreatorLabel;
+  const createdByDisplay = userDisplayNamesById.get(dashboard.createdByUserId) ?? createdByFallback;
+  const modifiedByUserId = dashboard.updatedByUserId ?? dashboard.createdByUserId;
+  const modifiedByFallback =
+    (dashboard.updatedByUsername ?? dashboard.createdByUsername) || t.unknownCreatorLabel;
+  const modifiedByDisplay = userDisplayNamesById.get(modifiedByUserId) ?? modifiedByFallback;
   const isHybridServerRow = dashboard.hybridOrigin === 'server';
   const isHybridLocalCopy = dashboard.hybridOrigin === 'localCopy';
   // Sidebar nav only consumes server list items; hybrid local pins never appear there.

@@ -1,4 +1,5 @@
 import type { FC, ReactNode } from 'react';
+import type { UserDisplayNamesById } from '../../../hooks/useUserDisplayNamesQuery';
 import type { CustomDashboardListItem } from '../../../types';
 import type { DashboardActionHandlers } from '../hooks/useDashboardActions';
 import DashboardsTableHeader from './DashboardsTableHeader';
@@ -14,6 +15,7 @@ type DashboardsTableMode =
       readonly items: ReadonlyArray<CustomDashboardListItem>;
       readonly handlers: DashboardActionHandlers;
       readonly canMutateDashboards: boolean;
+      readonly userDisplayNamesById: UserDisplayNamesById;
     }
   | { readonly kind: 'custom'; readonly content: ReactNode };
 
@@ -37,6 +39,7 @@ const DashboardsTable: FC<DashboardsTableProps> = ({ mode }) => {
                 key={item.id}
                 dashboard={item}
                 canMutateDashboards={mode.canMutateDashboards}
+                userDisplayNamesById={mode.userDisplayNamesById}
                 onOpen={mode.handlers.onOpen}
                 onEdit={mode.handlers.onEdit}
                 onRename={mode.handlers.onRename}
