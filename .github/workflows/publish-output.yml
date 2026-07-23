@@ -1,8 +1,6 @@
 name: Publish output to branch
 
 on:
-  schedule:
-    - cron: "*/10 * * * *"
   workflow_dispatch:
 
 # Allow pushing to the target branch without requiring a personal access token
