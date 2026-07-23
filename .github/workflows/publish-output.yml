@@ -1,0 +1,78 @@
+name: Publish output to branch
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+# Allow pushing to the target branch without requiring a personal access token
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    # If the URL and BRANCH vars isn't empty only
+    if: ${{ vars.URL != '' && vars.BRANCH != '' }}
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout branch into temp dir
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ vars.BRANCH }}
+          path: '.tmp'
+
+      - name: Setup the Golang environment with version 1.20.x
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.20.x
+
+      - name: Run the build-release make target
+        run: make build-release
+
+      - name: Run crawler
+        run: |
+          /bin/debug/linux/x64/next-pages-router-crawler 
+            --url ${{ vars.URL }}
+            --pulse
+            --clear-cache
+            --clear-output
+
+      - name: Prepare and push dist to target repo
+        env:
+          TARGET_BRANCH: ${{ vars.BRANCH }}
+        run: |
+          set -euo pipefail
+
+          # Ensure output exists
+          if [ ! -d "$GITHUB_WORKSPACE/.output" ]; then
+            echo "Error: .output/ not found. Make sure generating step produced a .output folder." >&2
+            ls -la
+            exit 1
+          fi
+
+          cd "$GITHUB_WORKSPACE/.tmp"
+
+          # Remove tracked files (leave .git directory intact)
+          git rm -rf . || true
+
+          # Copy dist contents into the root of the target repo
+          cp -a "$GITHUB_WORKSPACE/.output/." . || true
+
+          # Only commit & push if something changed
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "chore(output): update from $GITHUB_SHA"
+            git push origin HEAD:${TARGET_BRANCH} --force
+            echo "Pushed updated output to ${TARGET_REPO}:${BRANCH}"
+          else
+            echo "No changes in output; nothing to commit"
+          fi

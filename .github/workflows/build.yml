@@ -7,14 +7,12 @@ on:
     paths:
       - "src/**"
       - ".github/workflows/**"
-  pull_request:
-    paths:
-      - "src/**"
-      - ".github/workflows/**"
 
 env:
-  PROJECT_NAME: 's3-forcer'
+  PROJECT_NAME: 'next-pages-router-crawler'
 
+permissions:
+  contents: write
 
 jobs:
   lint:
@@ -41,13 +39,6 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     
-    strategy:
-        fail-fast: true
-        matrix:
-            os: ["linux", "darwin", "windows"]
-            arch: ["x64", "arm64"]
-            config: ["debug", "release"]
-    
     steps:
       - name: Checkout repository.
         uses: actions/checkout@v3
@@ -57,20 +48,19 @@ jobs:
         with:
           go-version: 1.20.x
 
-      - name: Run the build-<config>-<arch> make target
-        run: make build-${{ matrix.config }}-${{ matrix.arch }} GOOS=${{ matrix.os }} WITH_STDERR=1
-
+      - name: Run the build-release make target
+        run: make build-release
 
       - name: Create zip file
-        run: mkdir -p ${GITHUB_WORKSPACE}/build/${{ matrix.os }}/ && cd bin/${{ matrix.config }}/${{ matrix.os }}/${{ matrix.arch }} && zip -r ${GITHUB_WORKSPACE}/build/${{ matrix.os }}/${{ env.PROJECT_NAME }}-${{ matrix.config }}-${{ matrix.arch }}-${{ matrix.os }}.zip *
+        run: mkdir -p ${GITHUB_WORKSPACE}/build/ && cd bin/release/linux/x64 && zip -r ${GITHUB_WORKSPACE}/build/${{ env.PROJECT_NAME }}.zip *
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ env.PROJECT_NAME }}-${{ matrix.config }}-${{ matrix.arch }}-${{ matrix.os }}
+          name: ${{ env.PROJECT_NAME }}
           retention-days: 1
           path: |
-            build/${{ matrix.os }}/${{ env.PROJECT_NAME }}-${{ matrix.config }}-${{ matrix.arch }}-${{ matrix.os }}.zip
+            build/${{ env.PROJECT_NAME }}.zip
   
         
   release:
@@ -99,4 +89,4 @@ jobs:
         draft: false
         prerelease: ${{ github.ref_name != 'master' }}
         files: |
-          build/*/*.zip
+          build/*.zip
