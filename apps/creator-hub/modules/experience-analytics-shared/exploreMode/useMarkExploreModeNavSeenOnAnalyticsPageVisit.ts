@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useAuthentication } from '@modules/authentication/providers';
 import {
   useExploreModeStorageScope,
   useHasUserSeenExploreModeNavChip,
@@ -10,15 +11,16 @@ import {
  * they no longer need the left-rail "New" chip or the one-shot NUX tooltip for that universe.
  */
 export const useMarkExploreModeNavSeenOnAnalyticsPageVisit = (): void => {
+  const { user } = useAuthentication();
   const { scopeReady } = useExploreModeStorageScope();
   const { setHasUserSeen } = useHasUserSeenExploreModeNavChip();
   const markNuxSeen = useMarkExploreNavTooltipNuxSeen();
 
   useEffect(() => {
-    if (!scopeReady) {
+    if (!scopeReady || !user?.id) {
       return;
     }
     setHasUserSeen(true);
     markNuxSeen();
-  }, [scopeReady, setHasUserSeen, markNuxSeen]);
+  }, [scopeReady, setHasUserSeen, markNuxSeen, user?.id]);
 };

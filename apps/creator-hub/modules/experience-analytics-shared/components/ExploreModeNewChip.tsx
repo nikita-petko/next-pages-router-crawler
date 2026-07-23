@@ -1,6 +1,5 @@
 import type { FC } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/router';
 import { Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { useLocalStorage } from '@rbx/react-utilities';
@@ -12,6 +11,10 @@ import { useAuthentication } from '@modules/authentication/providers';
 import { analyticsExploreNavigationItem } from '@modules/charts-generic/constants/analyticsNavigationItems';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { getCachedHasCustomEvents } from '../exploreMode/exploreModeHasCustomEventsStorage';
+import {
+  useAnalyticsNavigationStorageScope,
+  useHasUserSeenAnalyticsNavigationItem,
+} from './AnalyticsNavigationNewBadge';
 
 /**
  * The NUX tooltip is rendered after the navigation has settled and is visible
@@ -28,44 +31,14 @@ const NUX_AUTO_DISMISS_MS = 8000;
  * `/analytics/explore.${universeId}.${userId}.hasUserSeen` and
  * `exploreMode.nav.${universeId}.${userId}.tooltipNuxSeen`.
  */
-export const useExploreModeStorageScope = () => {
-  const router = useRouter();
-  const raw = router.query?.id;
-  const universeIdFromQuery = raw == null || Array.isArray(raw) ? null : raw;
-  const scopeReady = router.isReady && universeIdFromQuery != null;
-  return {
-    universeId: universeIdFromQuery ?? -1,
-    scopeReady,
-    universeIdFromQuery,
-  };
-};
-
-const exploreNavChipSeenStorageKey = (universeId: number | string, userId: number) =>
-  `${analyticsExploreNavigationItem.path}.${universeId}.${userId}.hasUserSeen`;
-
-const noopSetChipSeen = () => {};
+export const useExploreModeStorageScope = useAnalyticsNavigationStorageScope;
 
 /**
  * Explore-mode left-rail "New" chip dismissal, scoped per user + universe (unlike
  * `useHasUserSeenAnalyticsPage`, which is only per user).
  */
 export const useHasUserSeenExploreModeNavChip = () => {
-  const { user } = useAuthentication();
-  const { universeId, scopeReady } = useExploreModeStorageScope();
-  const stableNoop = useCallback(noopSetChipSeen, []);
-  const hiddenUntilScopeReady = !scopeReady;
-  const [hasUserSeen, setHasUserSeen] = useLocalStorage<boolean>(
-    exploreNavChipSeenStorageKey(universeId, user?.id ?? -1),
-    false,
-  );
-
-  return useMemo(
-    () => ({
-      hasUserSeen: !user?.id ? false : hiddenUntilScopeReady ? true : hasUserSeen,
-      setHasUserSeen: hiddenUntilScopeReady ? stableNoop : setHasUserSeen,
-    }),
-    [hasUserSeen, setHasUserSeen, user?.id, hiddenUntilScopeReady, stableNoop],
-  );
+  return useHasUserSeenAnalyticsNavigationItem(analyticsExploreNavigationItem.path);
 };
 
 const nuxSeenKey = (universeId: number | string, userId: number) =>
@@ -76,7 +49,6 @@ const noopSetNux = () => {};
 const useHasSeenExploreNavTooltipNux = () => {
   const { user } = useAuthentication();
   const { universeId, scopeReady } = useExploreModeStorageScope();
-  const stableNoop = useCallback(noopSetNux, []);
   const hiddenUntilScopeReady = !scopeReady;
   const [hasSeenNux, setHasSeenNux] = useLocalStorage<boolean>(
     nuxSeenKey(universeId, user?.id ?? -1),
@@ -86,9 +58,9 @@ const useHasSeenExploreNavTooltipNux = () => {
   return useMemo(
     () => ({
       hasSeenNux: !user?.id ? true : hiddenUntilScopeReady ? true : hasSeenNux,
-      setHasSeenNux: hiddenUntilScopeReady ? stableNoop : setHasSeenNux,
+      setHasSeenNux: hiddenUntilScopeReady ? noopSetNux : setHasSeenNux,
     }),
-    [hasSeenNux, setHasSeenNux, user?.id, hiddenUntilScopeReady, stableNoop],
+    [hasSeenNux, setHasSeenNux, user?.id, hiddenUntilScopeReady],
   );
 };
 

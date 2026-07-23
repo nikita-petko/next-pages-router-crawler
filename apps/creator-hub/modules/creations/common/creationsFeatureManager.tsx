@@ -39,6 +39,7 @@ import {
   analyticsUserAcquisitionNavigationItem,
   analyticsAlertsNavigationItem,
 } from '@modules/charts-generic/constants/analyticsNavigationItems';
+import AnalyticsNavigationNewBadge from '@modules/experience-analytics-shared/components/AnalyticsNavigationNewBadge';
 import ExploreModeNewChip from '@modules/experience-analytics-shared/components/ExploreModeNewChip';
 import type { AnalyticsExperiencePermissions } from '@modules/experience-analytics-shared/hooks/useAnalyticsPermissions';
 import SubscriptionsNewChip from '@modules/experience-navigation/components/SubscriptionsNewChip';
@@ -801,6 +802,9 @@ export const customDashboardsManageFeature: Feature<CreationsFeatureSettings> = 
   path: analyticsCustomDashboardsManageNavigationItem.path,
   isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
     (settings?.userCanViewAnalyticsForUniverse && settings?.isCustomDashboardsEnabled) ?? false,
+  adornment: (
+    <AnalyticsNavigationNewBadge pagePath={analyticsCustomDashboardsManageNavigationItem.path} />
+  ),
 };
 
 const customDashboardsCategoryFeature: Feature<CreationsFeatureSettings> = {

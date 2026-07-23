@@ -130,18 +130,27 @@ const DashboardViewPage: FC<DashboardViewPageProps> = ({
               </h1>
               {document.hybridOrigin === 'localCopy' ? <LocalCopyBadge /> : null}
             </div>
-            {canMutateDashboards ? (
-              <Button variant='Standard' size='Medium' onClick={handleEditDashboard}>
-                {document.hybridOrigin === 'server' && service.forkApiDashboardToLocal
-                  ? t.editAsLocalCopyLabel
-                  : t.editDashboardLabel}
-              </Button>
-            ) : null}
-            {editError ? (
-              <p role='alert' className='text-body-small content-system-alert margin-none'>
-                {t.localCopyError}
-              </p>
-            ) : null}
+            <div className='flex flex-col items-stretch gap-small min-width-0'>
+              <div className='flex wrap items-center justify-end gap-small'>
+                <Button variant='Standard' size='Medium' onClick={onBackToManage}>
+                  {t.backToDashboardsLabel}
+                </Button>
+                {canMutateDashboards ? (
+                  <Button variant='Standard' size='Medium' onClick={handleEditDashboard}>
+                    {document.hybridOrigin === 'server' && service.forkApiDashboardToLocal
+                      ? t.editAsLocalCopyLabel
+                      : t.editDashboardLabel}
+                  </Button>
+                ) : null}
+              </div>
+              {editError ? (
+                <p
+                  role='alert'
+                  className='text-body-small content-system-alert margin-none text-align-x-right'>
+                  {t.localCopyError}
+                </p>
+              ) : null}
+            </div>
           </div>
         </header>
       }

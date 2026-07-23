@@ -1,5 +1,7 @@
 import { type FC, useCallback } from 'react';
 import { useRouter } from 'next/router';
+import { analyticsCustomDashboardsManageNavigationItem } from '@modules/charts-generic/constants/analyticsNavigationItems';
+import { useMarkAnalyticsNavigationItemSeenOnPageVisit } from '@modules/experience-analytics-shared/components/AnalyticsNavigationNewBadge';
 import { useUniverseResource } from '@modules/experience-analytics-shared/hooks/useChartResourceProvider';
 import CustomDashboardsShell from '../../shell/CustomDashboardsShell';
 import type { CustomDashboardListItem } from '../../types';
@@ -15,6 +17,7 @@ import ManagePageContent from './ManagePageContent';
  * owns navigation routing for row-tap, edit, and post-create flows.
  */
 const ManageAllDashboardsPage: FC = () => {
+  useMarkAnalyticsNavigationItemSeenOnPageVisit(analyticsCustomDashboardsManageNavigationItem.path);
   const router = useRouter();
   const { id: universeId } = useUniverseResource();
 
