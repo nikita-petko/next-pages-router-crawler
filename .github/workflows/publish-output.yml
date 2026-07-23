@@ -2,6 +2,11 @@ name: Publish output to branch
 
 on:
   workflow_dispatch:
+    inputs:
+      clear-cache:
+        description: 'Clear the cache before running the crawler'
+        required: false
+        default: 'false'
 
 # Allow pushing to the target branch without requiring a personal access token
 permissions:
@@ -14,6 +19,9 @@ jobs:
     strategy:
       matrix:
         target: ["advertise.roblox.com", "create.roblox.com", "test.rbxlabs.net", "create.robloxdev.cn"]
+
+    env:
+      CLEAR_CACHE: ${{ github.event.inputs.clear-cache == 'true' }}
 
     runs-on: ubuntu-latest
     steps:
@@ -55,7 +63,7 @@ jobs:
       - name: Run crawler
         id: run-crawler
         continue-on-error: true
-        run: ./bin/release/linux/x64/next-pages-router-crawler --url "https://${{ matrix.target }}" --pulse --clear-output -v 100 --discord-webhook-uri "${{ secrets.DISCORD_WEBHOOK_URI }}"
+        run: ./bin/release/linux/x64/next-pages-router-crawler --url "https://${{ matrix.target }}" --pulse --clear-cache=$CLEAR_CACHE --clear-output -v 100 --discord-webhook-uri "${{ secrets.DISCORD_WEBHOOK_URI }}"
 
       - name: Prepare and push dist to target repo
         if: ${{ steps.run-crawler.outcome == 'success' }}

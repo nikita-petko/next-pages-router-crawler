@@ -30,39 +30,40 @@ func SetupOutput() {
 	}
 }
 
-func writeSourceMapSourcesToOutput(sourceMap map[string]string) error {
+func writeSourceMapSourcesToOutput(sourceMap map[string]string) {
 	for sourceMappingFilePath, sourceContent := range sourceMap {
 		resolvedOutputPath, err := resolveSourceMappingFilePathToOutputFilePath(sourceMappingFilePath)
 		if err != nil {
-			return err
+			glog.V(100).Infof("Failed to resolve source mapping file path %s: %v", sourceMappingFilePath, err)
+
+			continue
 		}
 
 		// Make sure dir exists
 		basePath := path.Dir(resolvedOutputPath)
 		err = os.MkdirAll(basePath, os.ModePerm)
 		if err != nil {
-			return err
+			glog.V(100).Infof("Failed to create directory %s: %v", basePath, err)
+
+			continue
 		}
 
 		err = os.WriteFile(resolvedOutputPath, []byte(sourceContent), 0644)
 		if err != nil {
-			return err
+			glog.V(100).Infof("Failed to write source content to %s: %v", resolvedOutputPath, err)
+
+			continue
 		}
 
 		glog.V(1000).Infof("Wrote source content to %s", resolvedOutputPath)
 	}
-
-	return nil
 }
 
 func writeAllSourceMaps(sourceMaps map[string]map[string]string) {
 	for sourceMapUrl, sourceMap := range sourceMaps {
 		glog.V(1000).Infof("Writing source map for %s", sourceMapUrl)
 
-		err := writeSourceMapSourcesToOutput(sourceMap)
-		if err != nil {
-			glog.V(100).Infof("Failed to write source map for %s: %v", sourceMapUrl, err)
-		}
+		writeSourceMapSourcesToOutput(sourceMap)
 	}
 }
 
