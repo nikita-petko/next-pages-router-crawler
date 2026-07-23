@@ -9,10 +9,10 @@ export interface GeneratedImageBatch {
 }
 
 /**
- * A snapshot of the AI-create generation session, persisted so the **campaign**
- * builder drawer can restore previously generated creatives after the user
- * closes and reopens it. The standalone library flow intentionally never reads
- * or writes this store — its drawer always starts fresh.
+ * A snapshot of the AI-create generation session. The **campaign** builder
+ * drawer persists this in the Zustand store (in-memory, lost on refresh). The
+ * **library** flow persists the same shape to localStorage with a 24h TTL
+ * (see `@utils/aiCreateSessionStorage`).
  */
 export interface AiCreateSessionSnapshot {
   /**

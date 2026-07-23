@@ -60,6 +60,11 @@ import { useThumbnailStore } from '@stores/thumbnailStoreProvider';
 import { type AppStoreStateType } from '@type/appStore';
 import { getHttpStatusFromError } from '@type/errorResponse';
 import {
+  clearPersistedLibrarySession,
+  getPersistedLibrarySession,
+  setPersistedLibrarySession,
+} from '@utils/aiCreateSessionStorage';
+import {
   hasAcceptedGenAiCreativesAgreement,
   setGenAiCreativesAgreementAccepted,
 } from '@utils/aiCreativesAgreementStorage';
@@ -172,6 +177,7 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
   const { translate, translateHTML } = useNamespacedTranslation(
     TranslationNamespace.CreativeLibrary,
   );
+  const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
   const user = useAuthenticatedUser();
   const isGenAiCreativesEnabled = useAppStore(
     (state: AppStoreStateType) => state.appMetadataState?.data?.isGenAiCreativesEnabled ?? false,
@@ -290,6 +296,23 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
       setSelectedUniverseId(fixedUniverseId);
     }
   }, [fixedUniverseId]);
+
+  useEffect(() => {
+    if (isCampaignContext || !selectedUniverseId) {
+      return;
+    }
+    const stored = getPersistedLibrarySession(adAccountId, selectedUniverseId);
+    if (!stored) {
+      return;
+    }
+    setUserPrompt(stored.userPrompt);
+    setPreviousGeneratedBatches(stored.batches);
+    setSelectedImageUrls(new Set(stored.selectedImageUrls));
+    setHiddenImageUrls(new Set(stored.hiddenImageUrls));
+    setReportContextByImageUrl(stored.reportContextByImageUrl);
+    setReferenceAssetIds(stored.referenceAssetIds ?? []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restore fires on universe or account change only
+  }, [adAccountId, selectedUniverseId]);
 
   const handleAcceptAgreement = () => {
     if (user?.id != null) {
@@ -511,10 +534,9 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
   const hasGenerationResults = visibleGeneratedImageUrls.length > 0;
 
   // Mirror the latest committed session into the ref so the unmount writer below
-  // persists exactly what was on screen at close. Campaign context only — the
-  // library flow leaves this null so it never writes the store.
+  // persists exactly what was on screen at close.
   useEffect(() => {
-    if (!isCampaignContext) {
+    if (!effectiveUniverseId) {
       sessionSnapshotRef.current = null;
       return;
     }
@@ -538,7 +560,6 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
     currentBatchImageUrls,
     effectiveUniverseId,
     hiddenImageUrls,
-    isCampaignContext,
     previousGeneratedBatches,
     referenceAssetIds,
     reportContextByImageUrl,
@@ -546,33 +567,33 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
     userPrompt,
   ]);
 
-  // Persist the campaign session on unmount (drawer close) so reopening restores
-  // the previously generated creatives. A successful save clears the store
-  // first, so a snapshot with no generated images is never written back.
+  // Persist the session on unmount (drawer close) so reopening restores the
+  // previously generated creatives. Campaign flow writes the Zustand store;
+  // library flow writes localStorage with a 24h TTL.
   const persistSessionRef = useRef(setAiCreateSession);
   persistSessionRef.current = setAiCreateSession;
   const clearSessionRef = useRef(clearAiCreateSession);
   clearSessionRef.current = clearAiCreateSession;
+  const isCampaignContextRef = useRef(isCampaignContext);
+  isCampaignContextRef.current = isCampaignContext;
   useEffect(
     () => () => {
       const snapshot = sessionSnapshotRef.current;
       if (snapshot == null) {
         return;
       }
-      // Only persist when at least one *visible* (non-hidden) generated image
-      // remains. After "Add to campaign" hides the just-added tiles, a session
-      // whose images are now all hidden shouldn't resurrect an empty grid on
-      // reopen.
       const hidden = new Set(snapshot.hiddenImageUrls);
       const hasVisibleImage = snapshot.batches.some((batch) =>
         batch.imageUrls.some((imageUrl) => !hidden.has(imageUrl)),
       );
-      if (hasVisibleImage) {
+      if (isCampaignContextRef.current && hasVisibleImage) {
         persistSessionRef.current(snapshot);
-      } else {
-        // If everything is hidden, clear any older persisted snapshot so the next
-        // reopen starts fresh instead of resurrecting stale images.
+      } else if (isCampaignContextRef.current) {
         clearSessionRef.current();
+      } else if (hasVisibleImage) {
+        setPersistedLibrarySession(snapshot);
+      } else {
+        clearPersistedLibrarySession(snapshot.adAccountId, snapshot.universeId);
       }
     },
     [],
@@ -1097,6 +1118,18 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
       hasGenerationResults &&
       (selectedUniverseId == null || nextUniverseId !== selectedUniverseId);
     if (shouldClearGenerationResults) {
+      const outgoing = sessionSnapshotRef.current;
+      if (outgoing != null) {
+        const hidden = new Set(outgoing.hiddenImageUrls);
+        const hasVisibleImage = outgoing.batches.some((batch) =>
+          batch.imageUrls.some((url) => !hidden.has(url)),
+        );
+        if (hasVisibleImage) {
+          setPersistedLibrarySession(outgoing);
+        } else {
+          clearPersistedLibrarySession(outgoing.adAccountId, outgoing.universeId);
+        }
+      }
       resetGenerationSession();
     }
     setSelectedUniverseId(nextUniverseId);
@@ -1244,7 +1277,16 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
           </p>
         </div>
 
-        {showGameSelector && advertisableUniverses.length > 0 ? (
+        {showGameSelector && isUniversesLoading ? (
+          <GameUniverseDropdown
+            advertisableUniverses={[]}
+            isDisabled
+            label={translate('Label.Game')}
+            onValueChange={handleUniverseChange}
+            placeholder={translateMisc('Label.Loading')}
+          />
+        ) : null}
+        {showGameSelector && !isUniversesLoading && advertisableUniverses.length > 0 ? (
           <GameUniverseDropdown
             advertisableUniverses={advertisableUniverses}
             isDisabled={isBusy}

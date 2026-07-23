@@ -1,5 +1,5 @@
-import { AutocompleteOption, Autocomplete as FoundationAutocomplete } from '@rbx/foundation-ui';
-import { Autocomplete, FormControl, FormHelperText, TextField, Tooltip } from '@rbx/ui';
+import { Autocomplete, AutocompleteOption } from '@rbx/foundation-ui';
+import { Tooltip } from '@rbx/ui';
 import { useEffect, useMemo, useState } from 'react';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
@@ -7,7 +7,6 @@ import UniverseFilterAvatar from '@components/common/UniverseFilterAvatar';
 import useExperienceFilterPickerStyles from '@components/reporting/ExperienceFilterPicker.styles';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
-import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
 import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider';
 import { ThumbnailStoreType, useThumbnailStore } from '@stores/thumbnailStoreProvider';
 import { ThumbnailType } from '@type/thumbnail';
@@ -51,9 +50,6 @@ const ExperienceFilterPicker = () => {
   );
   const handleUniversePickerChange = useNewFlowStore(
     (state: NewFlowStoreType) => state.handleUniversePickerChange,
-  );
-  const isCustomDateRangeEnabled = useAppStore(
-    (state: AppStoreType) => state.appMetadataState?.data?.isCustomDateRangeEnabled ?? false,
   );
 
   const thumbnailsByUniverseId = useThumbnailStore(
@@ -99,7 +95,7 @@ const ExperienceFilterPicker = () => {
     return filtered;
   }, [universes, inputValue, universeFilter]);
 
-  const handleFoundationValueChange = (nextValue: string | undefined) => {
+  const handleValueChange = (nextValue: string | undefined) => {
     if (nextValue === undefined) {
       return;
     }
@@ -118,88 +114,45 @@ const ExperienceFilterPicker = () => {
   // Foundation Autocomplete does not auto-revert the input on blur, so a user
   // who clears/edits the text without picking an option would be left with a
   // stale input while the store's `universeFilter` is unchanged. Restore the
-  // selected universe's name (matches MUI Autocomplete's default behavior and
+  // selected universe's name (matches previous MUI Autocomplete behavior and
   // the intent of the old `disableClearable` guard).
-  const handleFoundationBlur = () => {
+  const handleBlur = () => {
     const expected = universeFilter?.universe_name ?? '';
     if (inputValue !== expected) {
       setInputValue(expected);
     }
   };
 
-  const foundationPicker = (
-    <div className={experiencePicker}>
-      <FoundationAutocomplete
-        data-testid='universePickerAutocomplete'
-        emptyState={translateReport('Description.NoResults')}
-        error={showErrorHelperText ? translateCampaign('Description.FailedToFetch') : undefined}
-        hasError={showErrorHelperText}
-        inputValue={inputValue}
-        isDisabled={isDisabled}
-        label={translateCreativeLibrary('Label.Experience')}
-        leadingIconNode={getUniverseAvatar(universeFilter, thumbnailsByUniverseId)}
-        onBlur={handleFoundationBlur}
-        onInputValueChange={setInputValue}
-        onValueChange={handleFoundationValueChange}
-        placeholder={translateCreativeLibrary('Label.Experience')}
-        size='Medium'
-        value={universeFilter?.universe_id.toString()}>
-        {filteredUniverses.map((u) => (
-          <AutocompleteOption
-            key={u.universe_id}
-            leading={getUniverseAvatar(u, thumbnailsByUniverseId)}
-            title={u.universe_name}
-            value={u.universe_id.toString()}
-          />
-        ))}
-      </FoundationAutocomplete>
-    </div>
-  );
-
-  const muiPicker = (
-    <Autocomplete
-      disableClearable={universes.length === 1}
-      disabled={isDisabled}
-      getOptionLabel={({ universe_name }) => universe_name}
-      id='universe-filter-picker'
-      onChange={(_event, universeObj) => {
-        if (!universeObj) {
-          return;
-        }
-        handleUniversePickerChange(universeObj);
-        logNativeClickEvent(EventName.ExperienceFilterOptionClicked, {
-          universeId: universeObj.universe_id.toString(),
-          universeName: universeObj.universe_name,
-        });
-      }}
-      options={universes}
-      renderInput={(params) => (
-        <FormControl className={experiencePicker} error={showErrorHelperText} variant='outlined'>
-          <TextField
-            {...params}
-            InputProps={{
-              ...params.InputProps,
-              startAdornment: getUniverseAvatar(universeFilter, thumbnailsByUniverseId) ?? null,
-              style: { height: '44px', paddingTop: '4px' },
-            }}
-            label={translateCreativeLibrary('Label.Experience')}
-          />
-          {showErrorHelperText && (
-            <FormHelperText data-testid='universePickerErrorHelperText'>
-              {translateCampaign('Description.FailedToFetch')}
-            </FormHelperText>
-          )}
-        </FormControl>
-      )}
-      value={universeFilter}
-    />
-  );
-
   return (
     <Tooltip
       placement='top'
       title={advertisedUniversesIsError ? translateCampaign('Description.TryReloading') : ''}>
-      {isCustomDateRangeEnabled ? foundationPicker : muiPicker}
+      <div className={experiencePicker}>
+        <Autocomplete
+          data-testid='universePickerAutocomplete'
+          emptyState={translateReport('Description.NoResults')}
+          error={showErrorHelperText ? translateCampaign('Description.FailedToFetch') : undefined}
+          hasError={showErrorHelperText}
+          inputValue={inputValue}
+          isDisabled={isDisabled}
+          label={translateCreativeLibrary('Label.Experience')}
+          leadingIconNode={getUniverseAvatar(universeFilter, thumbnailsByUniverseId)}
+          onBlur={handleBlur}
+          onInputValueChange={setInputValue}
+          onValueChange={handleValueChange}
+          placeholder={translateCreativeLibrary('Label.Experience')}
+          size='Medium'
+          value={universeFilter?.universe_id.toString()}>
+          {filteredUniverses.map((u) => (
+            <AutocompleteOption
+              key={u.universe_id}
+              leading={getUniverseAvatar(u, thumbnailsByUniverseId)}
+              title={u.universe_name}
+              value={u.universe_id.toString()}
+            />
+          ))}
+        </Autocomplete>
+      </div>
     </Tooltip>
   );
 };
