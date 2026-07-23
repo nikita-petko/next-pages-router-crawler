@@ -38,6 +38,27 @@ jobs:
             .cache
           key: ${{ matrix.target }}-cache-${{ hashFiles('src/**/*.go') }}
 
+      - name: Init and Checkout branch
+        env:
+          TARGET_BRANCH: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p "$GITHUB_WORKSPACE/.tmp"
+          cd "$GITHUB_WORKSPACE/.tmp"
+
+          git init
+          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" || true
+          git fetch --all || true
+          git checkout -b "$TARGET_BRANCH" || true
+          git reset --hard "origin/$TARGET_BRANCH" || true
+
+          # Try copy The .build file (buildId cache file if exists) to .cache so we don't rerun on the same buildId
+          if [ -f "$GITHUB_WORKSPACE/.tmp/.build" ]; then
+            mkdir -p "$GITHUB_WORKSPACE/.cache/${TARGET_BRANCH}"
+            cp "$GITHUB_WORKSPACE/.tmp/.build" "$GITHUB_WORKSPACE/.cache/${TARGET_BRANCH}/.build" || true
+          fi
+
       - name: Run crawler
         id: run-crawler
         continue-on-error: true
@@ -58,16 +79,13 @@ jobs:
           fi
 
           # Checkout repo
-          mkdir -p "$GITHUB_WORKSPACE/.tmp"
           cd "$GITHUB_WORKSPACE/.tmp"
 
-          git init
-          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" || true
-          
-          git checkout -b "${TARGET_BRANCH}"
-          git stash --include-untracked || true
-          git fetch --all || true
-          git reset --hard "origin/${TARGET_BRANCH}" || true
+          # Copy cached buildId file to .tmp so we can commit it to the target branch
+          if [ -f "$GITHUB_WORKSPACE/.cache/${TARGET_BRANCH}/.build"
+          then
+            cp "$GITHUB_WORKSPACE/.cache/${TARGET_BRANCH}/.build" "$GITHUB_WORKSPACE/.tmp/.build" || true
+          fi
 
           git rm -rf . || true
 
