@@ -1,5 +1,4 @@
 import { Toggle } from '@rbx/foundation-ui';
-import { Typography } from '@rbx/ui';
 import { UseFormSetValue, UseFormTrigger } from 'react-hook-form';
 
 import {
@@ -88,9 +87,9 @@ const SpendObjectivePlatformToggle = ({
         placement='Start'
         size='Small'
       />
-      <Typography variant='body2'>
+      <span className='text-body-medium'>
         {isExtendToOffPlatformEnabled ? 'Off Platform' : 'On Platform'}
-      </Typography>
+      </span>
     </div>
   );
 };

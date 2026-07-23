@@ -1,5 +1,5 @@
 import { Button } from '@rbx/foundation-ui';
-import { Alert, TextField, Tooltip, Typography } from '@rbx/ui';
+import { Alert, TextField, Tooltip } from '@rbx/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useFormContext, UseFormReturn, useWatch } from 'react-hook-form';
@@ -526,7 +526,7 @@ const ExperienceSection = ({ advancedTargetingFormMethods }: ExperienceSectionPr
         name={FormField.CAMPAIGN_NAME}
         render={({ field, fieldState: { error } }) => (
           <Tooltip placement='top-start' title={getCampaignNameTooltipText()}>
-            <Typography className={inlineRow} component='div'>
+            <div className={`text-body-large ${inlineRow}`}>
               <TextField
                 data-testid='campaign-name-input'
                 {...field}
@@ -540,22 +540,22 @@ const ExperienceSection = ({ advancedTargetingFormMethods }: ExperienceSectionPr
                 label={translate('Label.CampaignName')}
                 size='medium'
               />
-            </Typography>
+            </div>
           </Tooltip>
         )}
       />
       <AdvancedJoinOptionsDrawer />
       {!universes.length && (
-        <Typography className={spacedWarning} color='warning' variant='smallLabel1'>
+        <span className={`text-body-medium content-system-warning ${spacedWarning}`}>
           {translate('Description.CreateEligibleExperience')}
-        </Typography>
+        </span>
       )}
       {universes.length > 0 &&
         universeFilter.universe_id === warningUniverseId &&
         universeFilter.universe_name === translate(experienceNotFoundOption.universe_name) && (
-          <Typography className={spacedWarning} color='warning' variant='smallLabel1'>
+          <span className={`text-body-medium content-system-warning ${spacedWarning}`}>
             {translate('Description.ExperienceNoLongerEligible')}
-          </Typography>
+          </span>
         )}
     </FormAccordion>
   );

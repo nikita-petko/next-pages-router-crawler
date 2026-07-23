@@ -1,5 +1,4 @@
 import { Button } from '@rbx/foundation-ui';
-import { Typography } from '@rbx/ui';
 import { useRouter } from 'next/router';
 import { useFormContext, useFormState } from 'react-hook-form';
 
@@ -92,7 +91,7 @@ const EditCampaignFooter = () => {
   };
 
   return (
-    <Typography className={footer} component='div'>
+    <div className={`text-body-large ${footer}`}>
       <Button
         isDisabled={
           !!IsEditCampaignDisabled(flowType, campaignStatus) || !isValid || !isDirty || isSubmitting
@@ -106,7 +105,7 @@ const EditCampaignFooter = () => {
       <Button onClick={redirectOnClick} size='Medium' variant='Standard'>
         {translateMisc('Action.Cancel')}
       </Button>
-    </Typography>
+    </div>
   );
 };
 

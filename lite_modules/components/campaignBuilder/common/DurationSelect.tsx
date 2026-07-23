@@ -1,5 +1,5 @@
 import { Badge } from '@rbx/foundation-ui';
-import { InputAdornment, MenuItem, Select, TextField, Tooltip, Typography } from '@rbx/ui';
+import { InputAdornment, MenuItem, Select, TextField, Tooltip } from '@rbx/ui';
 import { useMemo } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { NumericFormat } from 'react-number-format';
@@ -144,7 +144,7 @@ const DurationSelect = () => {
       name={FormField.DURATION}
       render={({ field: { onBlur, onChange, value }, fieldState: { error } }) => (
         <Tooltip placement='top-start' title={GetTooltipText()}>
-          <Typography className={cx(formRow, halfWidth)} component='div'>
+          <div className={`text-body-large ${cx(formRow, halfWidth)}`}>
             {showSelect && (
               <Select
                 className={cx({ [halfWidth]: isCustom })}
@@ -224,7 +224,7 @@ const DurationSelect = () => {
                 value={value}
               />
             )}
-          </Typography>
+          </div>
         </Tooltip>
       )}
     />

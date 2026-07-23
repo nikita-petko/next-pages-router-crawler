@@ -1,4 +1,4 @@
-import { Alert, AlertTitle, Typography } from '@rbx/ui';
+import { Alert, AlertTitle } from '@rbx/ui';
 
 import useCampaignBuilderCommonStyles from '@components/campaignBuilder/common/CampaignBuilderCommon.styles';
 import { TranslationNamespace } from '@constants/localization';
@@ -20,11 +20,11 @@ const EditCampaignBanner = () => {
     return null;
   }
   return (
-    <Typography className={banner} component='div'>
+    <div className={`text-body-large ${banner}`}>
       <Alert className={mb4} severity='warning' variant='standard'>
         <AlertTitle>{translate(bannerTextKey)}</AlertTitle>
       </Alert>
-    </Typography>
+    </div>
   );
 };
 

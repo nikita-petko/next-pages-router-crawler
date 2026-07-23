@@ -1,5 +1,4 @@
 import { Button } from '@rbx/foundation-ui';
-import { Typography } from '@rbx/ui';
 import { ReactElement } from 'react';
 
 import useAccountFormStyles from '@components/account/AccountForm.styles';
@@ -26,7 +25,7 @@ const AccountSummary = ({ accounts, onSetUpAccount }: AccountSummaryProps): Reac
       <div className={sectionWrapper}>
         {accounts.map(({ adAccountId, isLoading, needsSetup, ownerName, timeZone }) => (
           <div className={section} key={`${ownerName ?? 'account'}-${adAccountId ?? 'loading'}`}>
-            {ownerName ? <Typography variant='h5'>{ownerName}</Typography> : null}
+            {ownerName ? <span className='text-heading-small'>{ownerName}</span> : null}
             {needsSetup ? (
               <div>
                 <Button onClick={onSetUpAccount} size='Medium' variant='Standard'>

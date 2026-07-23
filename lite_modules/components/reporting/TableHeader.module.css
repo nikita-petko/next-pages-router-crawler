@@ -4,12 +4,15 @@
 .adStatusHeadCell,
 .adToggleHeadCell,
 .campaignActionMenuHeadCell,
+.campaignCreatorHeadCell,
+.campaignDateModifiedHeadCell,
 .campaignNameHeadCell,
 .campaignStatusHeadCell,
 .campaignToggleHeadCell,
 .campaignTypeHeadCell,
 .sharedGenericStatHeadCell,
 .sharedPlaytimeHeadCell,
+.sharedRoasHeadCell,
 .sharedRobuxRevenueHeadCell,
 .sharedWithPaymentUnitsHeadCell {
   padding: 16px;

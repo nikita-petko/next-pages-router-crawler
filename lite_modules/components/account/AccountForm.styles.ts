@@ -1,6 +1,6 @@
 import { makeStyles } from '@rbx/ui';
 
-const useAccountFormStyles = makeStyles()(() => ({
+const useAccountFormStyles = makeStyles()((theme) => ({
   accountSummaryWrapper: {
     display: 'flex',
     flexDirection: 'column',
@@ -42,6 +42,10 @@ const useAccountFormStyles = makeStyles()(() => ({
   },
   setupFormWrapper: {
     maxWidth: 720,
+  },
+  stepLockedMessage: {
+    color: theme.palette.text.secondary,
+    marginTop: theme.spacing(1),
   },
   wrapper: {
     display: 'flex',

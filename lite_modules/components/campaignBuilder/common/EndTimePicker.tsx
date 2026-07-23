@@ -1,13 +1,5 @@
 import { useLocalization } from '@rbx/intl';
-import {
-  DatePicker,
-  MenuItem,
-  PickersUtilsProvider,
-  Select,
-  TextField,
-  Tooltip,
-  Typography,
-} from '@rbx/ui';
+import { DatePicker, MenuItem, PickersUtilsProvider, Select, TextField, Tooltip } from '@rbx/ui';
 import moment from 'moment-timezone';
 import { ChangeEvent, ReactNode, useMemo, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
@@ -157,8 +149,8 @@ const EndTimePicker = () => {
 
   return (
     <PickersUtilsProvider adapterLocale={dateFnsLocale}>
-      <Typography className={cx(formRow, fullWidth)} component='div'>
-        <Typography className={halfWidth}>
+      <div className={`text-body-large ${cx(formRow, fullWidth)}`}>
+        <span className={`text-body-large ${halfWidth}`}>
           <Controller
             control={control}
             name={FormField.END_DATE}
@@ -208,7 +200,7 @@ const EndTimePicker = () => {
               />
             )}
           />
-        </Typography>
+        </span>
 
         <Controller
           control={control}
@@ -265,14 +257,12 @@ const EndTimePicker = () => {
                 </Select>
               </Tooltip>
               {error && endTimeConversionText && (
-                <Typography color='secondary' variant='captionBody'>
-                  {endTimeConversionText}
-                </Typography>
+                <span className='text-body-medium content-default'>{endTimeConversionText}</span>
               )}
             </div>
           )}
         />
-      </Typography>
+      </div>
     </PickersUtilsProvider>
   );
 };

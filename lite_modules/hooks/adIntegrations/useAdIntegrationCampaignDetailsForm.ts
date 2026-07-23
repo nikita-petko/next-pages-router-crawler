@@ -51,12 +51,9 @@ const useAdIntegrationCampaignDetailsSchema = (
     () =>
       z
         .object({
-          [AdIntegrationFormField.AdsCategory]: z.string().min(
-            1,
-            translate('Validation.FieldRequired', {
-              fieldName: translateCampaign('Label.AdsCategory'),
-            }),
-          ),
+          // Ads category is no longer collected in the form; the API always
+          // receives UNSPECIFIED. Kept on the schema so defaultValues still parse.
+          [AdIntegrationFormField.AdsCategory]: z.string(),
           [AdIntegrationFormField.AdvertiserName]: z
             .string()
             .min(

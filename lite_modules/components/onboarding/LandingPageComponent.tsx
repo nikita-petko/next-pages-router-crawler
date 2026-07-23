@@ -1,6 +1,5 @@
 /* eslint-disable require-explicit-generics/require-explicit-generics */
 import { Button } from '@rbx/foundation-ui';
-import { Typography } from '@rbx/ui';
 import { memo } from 'react';
 
 import LandingHeaderComponent from '@components/onboarding/LandingHeaderComponent';
@@ -65,14 +64,14 @@ const LandingPageComponent = memo(
         />
         <div className={resourceContainer}>
           <div className={resourceTitleContainer}>
-            <Typography variant='h2'>{translateNavigation('Label.Resources')}</Typography>
+            <span className='text-heading-medium'>{translateNavigation('Label.Resources')}</span>
           </div>
           <div className={resourceCardContainer}>
             {resourceData.map((resource) => (
               <div className={resourceCard} key={resource.href}>
-                <Typography className={resourceText} variant='body1'>
+                <span className={`text-body-large ${resourceText}`}>
                   {translateLanding(resource.textKey)}
-                </Typography>
+                </span>
                 <Button
                   as='a'
                   className={resourceButton}

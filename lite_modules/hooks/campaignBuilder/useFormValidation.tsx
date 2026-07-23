@@ -18,6 +18,7 @@ import {
   FlowTypes,
   FormField,
   NO_PAYMENT_METHOD_COPY,
+  ReachAdFormat,
   TimeFormat,
 } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
@@ -28,6 +29,7 @@ import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
 import { usePaymentStore } from '@stores/paymentStoreProvider';
+import { VideoUploadState } from '@type/fileUpload';
 import { GetAdCreditBalanceResponseType } from '@type/payment';
 import {
   calculateLifetimeBudgetDecreaseMinimum,
@@ -202,6 +204,22 @@ export const useFormValidation = (): Resolver<FormType> => {
             message: translate('Validation.EndTimeRequired'),
             path: [FormField.END_TIME],
           });
+        }
+
+        // 1x2 vertical reach is a video ad: require a finished video upload.
+        // The poster image is already enforced by the shared "select at least
+        // one thumbnail" check below.
+        if (data[FormField.CREATIVE_FORMAT] === ReachAdFormat.VERTICAL_1X2) {
+          const hasFinishedVideo = data[FormField.VIDEOS].some(
+            (video) => video.state === VideoUploadState.FINISHED && !!video.assetId,
+          );
+          if (!hasFinishedVideo) {
+            addIssue({
+              code: 'custom',
+              message: translate('Validation.VideoRequired'),
+              path: [FormField.VIDEOS],
+            });
+          }
         }
       }
     })

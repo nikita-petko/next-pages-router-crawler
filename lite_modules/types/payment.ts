@@ -96,3 +96,68 @@ export interface AutoReloadData {
   num_auto_reload_campaigns: number;
   total_daily_reload_amount: number;
 }
+
+/**
+ * Which field the user last edited in the watermarked Robux -> Ad Credit
+ * conversion dual input, so the server knows which value is the source of truth.
+ * `ad_credit_amount` was previously named `ad_credit_usd`; see the backend
+ * rename plan (the value is a whole ad credit unit, not a raw USD money amount).
+ */
+type AdCreditQuoteSourceField = 'ad_credit_amount' | 'robux_amount';
+
+type AdCreditQuoteTierType = 'O18' | 'STANDARD';
+
+export interface AdCreditPurchaseQuoteRequest {
+  /** Whole ad credit units; sent when source_field is `ad_credit_amount`. */
+  ad_credit_amount?: number;
+  /** Group scope for the conversion; omitted for personal purchases. */
+  groupId?: number;
+  /** Robux the user typed; sent when source_field is `robux_amount`. */
+  robux_amount?: number;
+  source_field: AdCreditQuoteSourceField;
+}
+
+interface AdCreditPurchaseQuoteTier {
+  /** Ad credit granted for this tier, in micro-USD. */
+  ad_credit_micros: number;
+  /** Effective Ad-Credit-per-Robux (USD) conversion rate applied at this tier. */
+  ad_credit_per_robux: number;
+  /** Robux allocated to this tier. */
+  robux_amount: number;
+  tier: AdCreditQuoteTierType;
+}
+
+export interface AdCreditPurchaseQuoteResponse {
+  /** Cent-ceiled total ad credit granted, in micro-USD. */
+  ad_credit_quantity_micros: number;
+  /** Effective 18+ (O18) Robux balance the server allocated from first. */
+  effective_o18_robux: number;
+  /** Effective standard Robux balance used after the O18 balance is exhausted. */
+  effective_standard_robux: number;
+  /**
+   * Shared AMA error code (see `@constants/errorCodes`) explaining why the quote
+   * is invalid. Omitted/empty for valid quotes.
+   */
+  error_code?: string;
+  /**
+   * Whether the requested amount is purchasable given balances and min/max
+   * bounds. When false the UI blocks the purchase and surfaces an error.
+   */
+  is_valid: boolean;
+  /** Minimized total Robux the purchase will actually debit. */
+  robux_charge: number;
+  source_field: AdCreditQuoteSourceField;
+  tier_breakdown: AdCreditPurchaseQuoteTier[];
+}
+
+export interface ConvertRobuxToAdCreditRequest {
+  /** Cent-ceiled ad credit total from the confirmed quote, in micro-USD. */
+  ad_credit_quantity_micros: number;
+  groupId?: number;
+  /** Minimized Robux charge from the confirmed quote. */
+  robux_amount: number;
+}
+
+export interface ConvertRobuxToAdCreditResponse {
+  purchase_status: PURCHASE_RESPONSE_CODE_ENUM;
+}

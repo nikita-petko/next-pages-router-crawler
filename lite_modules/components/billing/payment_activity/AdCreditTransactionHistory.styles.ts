@@ -4,7 +4,15 @@ const useAdCreditTransactionHistoryStyles = makeStyles()(() => ({
   activityEllipsis: {
     display: 'inline-block',
     maxWidth: 280,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
     width: '100%',
+  },
+  noWrap: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   purchasedByAvatar: {
     height: 32,

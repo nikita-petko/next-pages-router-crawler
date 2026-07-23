@@ -1,5 +1,4 @@
 import { TableCell, TableRow } from '@rbx/foundation-ui';
-import { Typography } from '@rbx/ui';
 import { cloneElement, ReactNode, useMemo } from 'react';
 
 import {
@@ -172,9 +171,9 @@ const AdTableRow = ({ headCells, row, unsortableData }: GenericTableRowProps) =>
       return (
         <TableCell align={getColumnAlign(AdTableColumnId.CREATIVE)} className={creativeRow}>
           <div className={gaasNoCreativePlaceholder}>
-            <Typography variant='caption'>
+            <span className='text-body-medium'>
               {translate('Label.PlatformCreative', { platformName })}
-            </Typography>
+            </span>
           </div>
         </TableCell>
       );
@@ -244,7 +243,7 @@ const AdTableRow = ({ headCells, row, unsortableData }: GenericTableRowProps) =>
         <TableCell
           align={getColumnAlign(AdTableColumnId.PLATFORM)}
           className={centerAlignedStatusRow}>
-          <Typography variant='body2'>{platformName}</Typography>
+          <span className='text-body-medium'>{platformName}</span>
         </TableCell>
       ),
       id: AdTableColumnId.PLATFORM,

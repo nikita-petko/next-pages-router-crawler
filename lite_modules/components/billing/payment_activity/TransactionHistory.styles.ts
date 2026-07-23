@@ -64,6 +64,12 @@ const useTransactionHistoryStyles = makeStyles()((theme) => ({
     paddingTop: paddingUnit * 4,
   },
 
+  noWrap: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+
   paymentActivityTabNavigation: {
     display: 'flex',
     flexDirection: 'column',

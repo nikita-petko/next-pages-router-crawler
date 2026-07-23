@@ -1,5 +1,5 @@
 import { Checkbox, Icon, IconButton, Radio, RadioGroup } from '@rbx/foundation-ui';
-import { Alert, InputAdornment, MenuItem, Select, TextField, Tooltip, Typography } from '@rbx/ui';
+import { Alert, InputAdornment, MenuItem, Select, TextField, Tooltip } from '@rbx/ui';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { NumericFormat } from 'react-number-format';
@@ -369,7 +369,7 @@ const BudgetSection = () => {
     }
     return (
       <Tooltip placement='top-start' title={getCustomInputTooltipTitle()}>
-        <Typography className={halfWidth} component='div'>
+        <div className={`text-body-large ${halfWidth}`}>
           <Controller
             control={control}
             key={ServerBudgetType.BUDGET_TYPE_LIFETIME}
@@ -410,7 +410,7 @@ const BudgetSection = () => {
               />
             )}
           />
-        </Typography>
+        </div>
       </Tooltip>
     );
   };
@@ -439,11 +439,11 @@ const BudgetSection = () => {
         editMode ? undefined : (
           <div className={rightContentContainer}>
             <div className={rightContentSubContainer}>
-              <Typography variant='h5'>{translate('Heading.HowItWorks')}</Typography>
-              <Typography variant='body1'>{translate('Description.BudgetOptimization')}</Typography>
+              <span className='text-heading-small'>{translate('Heading.HowItWorks')}</span>
+              <span className='text-body-large'>{translate('Description.BudgetOptimization')}</span>
             </div>
             <div className={rightContentSubContainer}>
-              <Typography variant='body2'>{translate('Description.RecommendedBudget')}</Typography>
+              <span className='text-body-medium'>{translate('Description.RecommendedBudget')}</span>
             </div>
           </div>
         )
@@ -565,12 +565,12 @@ const BudgetSection = () => {
           </RadioGroup>
         )}
       />
-      <Typography className={cx(mt3, formRow)} component='div'>
+      <div className={`text-body-large ${cx(mt3, formRow)}`}>
         {budgetType === ServerBudgetType.BUDGET_TYPE_DAILY && !isExtendToOffPlatformEnabled ? (
           <BudgetSelect selectedLabel={translate(BudgetNameKey[budgetType])} unit={unit} />
         ) : (
           <Tooltip placement='top-start' title={getCustomInputTooltipTitle()}>
-            <Typography className={fullWidth} component='div'>
+            <div className={`text-body-large ${fullWidth}`}>
               <Controller
                 control={control}
                 key={ServerBudgetType.BUDGET_TYPE_LIFETIME}
@@ -610,13 +610,13 @@ const BudgetSection = () => {
                   />
                 )}
               />
-            </Typography>
+            </div>
           </Tooltip>
         )}
         <PaymentSelect />
-      </Typography>
+      </div>
       {objective === ServerCampaignObjectiveType.REACH && (
-        <Typography className={cx(mt3, formRow)} component='div'>
+        <div className={`text-body-large ${cx(mt3, formRow)}`}>
           <Controller
             control={control}
             name={FormField.BID_TYPE}
@@ -725,15 +725,15 @@ const BudgetSection = () => {
               );
             }}
           />
-        </Typography>
+        </div>
       )}
-      <Typography className={cx(mt3, formRow)} component='div'>
+      <div className={`text-body-large ${cx(mt3, formRow)}`}>
         <StartTimePicker />
         {objective === ServerCampaignObjectiveType.REACH && <EndTimePicker />}
         {maybeRenderDurationSection()}
-      </Typography>
+      </div>
       {isAdCreditPaymentType(paymentType) && (
-        <Typography className={formRow} component='div'>
+        <div className={`text-body-large ${formRow}`}>
           <Controller
             control={control}
             name={FormField.IS_AUTO_RELOAD_ENABLED}
@@ -772,7 +772,7 @@ const BudgetSection = () => {
               </Tooltip>
             )}
           />
-        </Typography>
+        </div>
       )}
       <PaymentMethodDrawer />
     </FormAccordion>

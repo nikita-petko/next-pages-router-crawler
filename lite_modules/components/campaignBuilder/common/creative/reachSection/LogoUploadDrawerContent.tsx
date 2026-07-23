@@ -1,5 +1,5 @@
 import { Icon, SheetBody, SheetTitle } from '@rbx/foundation-ui';
-import { Tooltip, Typography } from '@rbx/ui';
+import { Tooltip } from '@rbx/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
@@ -227,9 +227,9 @@ const LogoUploadDrawerContent = ({
         className={cx({
           [creativeUploadDrawerThumbnailsMarginTop]: publishedLogos.length > 0,
         })}>
-        <Typography className={creativeUploadDrawerBold} variant='largeLabel1'>
+        <span className={`text-body-large ${creativeUploadDrawerBold}`}>
           {translate('Heading.AvailableLogos')}
-        </Typography>
+        </span>
         <div className={creativeSectionPreviewContainer}>{availableLogos}</div>
       </div>
     );
@@ -247,9 +247,9 @@ const LogoUploadDrawerContent = ({
     }
     return (
       <div>
-        <Typography className={creativeUploadDrawerBold} variant='largeLabel1'>
+        <span className={`text-body-large ${creativeUploadDrawerBold}`}>
           {translate('Heading.PublishedLogo')}
-        </Typography>
+        </span>
         <Tooltip placement='top' title={translate('Description.PublishedLogoSaved')}>
           <Icon
             className={`${creativeUploadDrawerInfoIcon} content-muted`}
@@ -267,9 +267,9 @@ const LogoUploadDrawerContent = ({
       return null;
     }
     return (
-      <Typography className={creativeUploadDrawerNumSelected} variant='body1'>
+      <span className={`text-body-large ${creativeUploadDrawerNumSelected}`}>
         {translate('Description.SelectedCount', { max: '1', selected: String(selected) })}
-      </Typography>
+      </span>
     );
   };
 
@@ -309,9 +309,9 @@ const LogoUploadDrawerContent = ({
     <>
       <SheetTitle>{translate('Heading.UploadLogo')}</SheetTitle>
       <SheetBody>
-        <Typography className={creativeUploadDrawerBody} variant='largeLabel1'>
+        <span className={`text-body-large ${creativeUploadDrawerBody}`}>
           {translate('Description.LogoUploadDescription')}
-        </Typography>
+        </span>
         {maybeRenderCountSelected()}
         {maybeRenderPublishedLogosSection()}
         {maybeRenderAvailableLogosSection()}

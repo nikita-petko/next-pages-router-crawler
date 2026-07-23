@@ -1,5 +1,5 @@
 import { Badge, Button, Link, OptionSelector } from '@rbx/foundation-ui';
-import { Alert, Tooltip, Typography } from '@rbx/ui';
+import { Alert, Tooltip } from '@rbx/ui';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Controller,
@@ -284,9 +284,7 @@ const AudienceSection = ({ advancedTargetingFormMethods }: AudienceSectionProps)
         data-testid='advanced-targeting-warning-banner'
         severity='warning'
         variant='outlined'>
-        <Typography component='span' variant='body2'>
-          {translate('Description.ManualTargetingWarning')}
-        </Typography>
+        <span className='text-body-medium'>{translate('Description.ManualTargetingWarning')}</span>
         <Button
           className={resetFilterButton}
           data-testid='reset-filter-button'
@@ -446,16 +444,18 @@ const AudienceSection = ({ advancedTargetingFormMethods }: AudienceSectionProps)
             editMode ? undefined : (
               <div className={rightContentContainer}>
                 <div className={rightContentSubContainer}>
-                  <Typography variant='h5'>{translate(GetAudienceLabelKey(value))}</Typography>
+                  <span className='text-heading-small'>
+                    {translate(GetAudienceLabelKey(value))}
+                  </span>
                   <FormProvider {...advancedTargetingFormMethods}>
                     <AdvancedTargetingAudienceEstimate isEstimateAvailable={!isEngagedPlays} />
                   </FormProvider>
-                  <Typography variant='body1'>
+                  <span className='text-body-large'>
                     {translate(getAudienceDescriptionKey(value))}
-                  </Typography>
+                  </span>
                 </div>
                 <div className={rightContentSubContainer}>
-                  <Typography variant='body2'>{getAudienceSubDescription(value)}</Typography>
+                  <span className='text-body-medium'>{getAudienceSubDescription(value)}</span>
                 </div>
               </div>
             )
@@ -515,9 +515,9 @@ const AudienceSection = ({ advancedTargetingFormMethods }: AudienceSectionProps)
             })}
           </div>
           <div className={advancedTargetingContainer}>
-            <Typography color='secondary' variant='body1'>
+            <span className='text-body-large content-default'>
               {translate('Label.AdvancedTargetingOptional')}
-            </Typography>
+            </span>
             <Button
               isDisabled={isExtendToOffPlatformEnabled || isEngagedPlays}
               onClick={() => setAdvancedTargetingDrawerOpen(true)}

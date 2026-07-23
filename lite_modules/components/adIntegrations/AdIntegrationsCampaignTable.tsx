@@ -8,7 +8,7 @@ import {
   TableRow,
   Toggle,
 } from '@rbx/foundation-ui';
-import { Label, Tooltip, Typography } from '@rbx/ui';
+import { Label, Tooltip } from '@rbx/ui';
 import Link from 'next/link';
 
 import AdIntegrationsCampaignActionMenu from '@components/adIntegrations/AdIntegrationsCampaignActionMenu';
@@ -188,9 +188,9 @@ const AdIntegrationsCampaignTable = ({
                 <TableCell>
                   <div className={experienceCell}>
                     <UniverseFilterAvatar src={universeThumbnailUrl} />
-                    <Typography className={experienceName} variant='body2'>
+                    <span className={`text-body-medium ${experienceName}`}>
                       {campaign.universeName}
-                    </Typography>
+                    </span>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -203,11 +203,11 @@ const AdIntegrationsCampaignTable = ({
                     }}
                     title={
                       <div className={campaignIdTooltipContent}>
-                        <Typography variant='subtitle2'>
+                        <span className='text-title-large'>
                           {translate('Label.CampaignId', {
                             id: campaign.campaignId,
                           })}
-                        </Typography>
+                        </span>
                         <IconButton
                           ariaLabel={translate('Description.CopyToClipboard')}
                           icon='icon-regular-two-stacked-squares'
@@ -224,9 +224,9 @@ const AdIntegrationsCampaignTable = ({
                         pathname: Routes.AD_INTEGRATIONS_CAMPAIGN,
                         query: { campaignId: campaign.campaignId },
                       }}>
-                      <Typography className={campaignName} variant='body2'>
+                      <span className={`text-body-medium ${campaignName}`}>
                         {campaign.campaignName}
-                      </Typography>
+                      </span>
                     </Link>
                   </Tooltip>
                 </TableCell>
@@ -261,12 +261,12 @@ const AdIntegrationsCampaignTable = ({
                     title={
                       moderationTooltipBodyKey && moderationStatusLabelKey ? (
                         <div className={tooltipContent}>
-                          <Typography variant='subtitle2'>
+                          <span className='text-title-large'>
                             {getModerationStatusText(moderationStatus)}
-                          </Typography>
-                          <Typography variant='body2'>
+                          </span>
+                          <span className='text-body-medium'>
                             {translateAccount(moderationTooltipBodyKey)}
-                          </Typography>
+                          </span>
                           {shouldShowCampaignViewDetails(moderationStatus) && (
                             <Link
                               className={tooltipLink}
@@ -302,14 +302,14 @@ const AdIntegrationsCampaignTable = ({
                   </Tooltip>
                 </TableCell>
                 <TableCell>
-                  <Typography variant='body2'>
+                  <span className='text-body-medium'>
                     {getDateDisplayValue(campaign.startTimestampMs)}
-                  </Typography>
+                  </span>
                 </TableCell>
                 <TableCell>
-                  <Typography variant='body2'>
+                  <span className='text-body-medium'>
                     {getDateDisplayValue(campaign.endTimestampMs)}
-                  </Typography>
+                  </span>
                 </TableCell>
                 <TableCell>
                   <AdIntegrationsCampaignActionMenu

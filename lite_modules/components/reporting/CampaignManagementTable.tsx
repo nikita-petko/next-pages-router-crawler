@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import DismissibleTooltip from '@components/common/DismissibleTooltip';
 import GenericNoDataPage from '@components/common/GenericNoDataPage';
@@ -15,12 +15,16 @@ import ReportingViewType from '@constants/reportingViewType';
 import { Tooltips } from '@constants/tooltips';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
+import {
+  CampaignCreatorStoreType,
+  useCampaignCreatorStore,
+} from '@stores/campaignCreatorStoreProvider';
 import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider';
 import { Campaign } from '@type/campaign';
 import { GenericSortableRowData, UnsortableRowData } from '@type/genericManagementTable';
 import { GetCancelTooltipTitle, GetEditTooltipTitle } from '@utils/campaignDetails';
 import { MicroUsdToUsdStringRoundedDown } from '@utils/currency';
-import { GetDurationInDays } from '@utils/date';
+import { FormatDateToMMMDYYYY, GetDurationInDays } from '@utils/date';
 import {
   GetBackendCampaignStatusText,
   GetCampaignStatusText,
@@ -32,7 +36,11 @@ import { GetTimezoneObjFromEnum, GetValidatedTimezoneDbName } from '@utils/timez
 const getCampaignPaymentType = (campaign: Campaign) =>
   campaign.performance?.payment_type || campaign.payment_type;
 
-const CampaignManagementTable = () => {
+interface CampaignManagementTableProps {
+  showCreatorColumn?: boolean;
+}
+
+const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManagementTableProps) => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Report);
   const campaignsState = useNewFlowStore((state: NewFlowStoreType) => state.campaignsState);
   const { campaignStatuses, updatedCampaignStatuses } = useNewFlowStore(
@@ -66,12 +74,24 @@ const CampaignManagementTable = () => {
     (state: NewFlowStoreType) =>
       state.reportingViewState?.currentSelection ?? ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT,
   );
+  const creatorProfilesByUserId = useCampaignCreatorStore(
+    (state: CampaignCreatorStoreType) => state.creatorProfilesByUserId,
+  );
+  const getCampaignCreatorsBatch = useCampaignCreatorStore(
+    (state: CampaignCreatorStoreType) => state.getCampaignCreatorsBatch,
+  );
+  const isCampaignRoasEnabled = useAppStore(
+    (state: AppStoreType) => state.appMetadataState?.data?.isCampaignRoasEnabled ?? false,
+  );
 
   const {
     classes: { campaignTable, nameMeasureAnchor, nameMeasureText },
   } = useCampaignManagementTableStyles();
 
-  const headCells = getCampaignTableHeadCells();
+  const headCells = getCampaignTableHeadCells({
+    includeRoas: isCampaignRoasEnabled,
+    showCreatorColumn,
+  });
   const isLoading = campaignsState.isLoading || filteredIdsState.isLoading;
 
   const { filteredCampaignIds } = filteredIdsState;
@@ -82,6 +102,24 @@ const CampaignManagementTable = () => {
     }
     return data.filter((row) => filteredCampaignIds.has(row.id));
   }, [campaignsState.data, filteredCampaignIds]);
+
+  const creatorUserIds = useMemo(() => {
+    if (!showCreatorColumn) {
+      return [];
+    }
+
+    return filteredCampaigns
+      .map((campaign) => campaign.creator_user_id)
+      .filter((userId): userId is number => userId !== undefined);
+  }, [filteredCampaigns, showCreatorColumn]);
+
+  useEffect(() => {
+    if (creatorUserIds.length === 0) {
+      return;
+    }
+
+    getCampaignCreatorsBatch(creatorUserIds).catch(() => undefined);
+  }, [creatorUserIds, getCampaignCreatorsBatch]);
 
   const shouldMeasureNameColumn =
     !campaignsState.isError && !campaignNameSearchIsError && filteredCampaigns.length > 0;
@@ -144,27 +182,46 @@ const CampaignManagementTable = () => {
     );
   }
 
-  const rows: GenericSortableRowData[] = filteredCampaigns.map((campaign: Campaign) => ({
-    click_count: campaign.performance?.click_count || 0,
-    click_through_rate: campaign.performance?.click_through_rate || 0,
-    cost_per_play_usd: campaign.performance?.cost_per_play_usd || 0,
-    created_timestamp_ms: campaign.created_timestamp_ms,
-    detailed_targeting_match_type: campaign.detailed_targeting_match_type,
-    // Reporting stats || 0 to allow accurate number sorting
-    display_spending_usd: campaign.performance?.display_spending_usd || 0,
-    id: campaign.id,
-    impression: campaign.performance?.impression || 0,
-    is_auto_reload_ad_credit_enabled: campaign.is_auto_reload_ad_credit_enabled || false,
-    is_off_platform_request: campaign.is_off_platform_request || false,
-    is_reporting_enabled: campaign.is_reporting_enabled || false,
-    name: campaign.name,
-    objective: campaign.objective,
-    play_count: campaign.performance?.play_count || 0,
-    status_text: GetBackendCampaignStatusText(campaignStatuses, campaign.id),
-    total_play_time_hours_7d: campaign.performance?.total_play_time_hours_7d || 0,
-    total_robux_revenue_30d: campaign.performance?.total_robux_revenue_30d || 0,
-    updated_timestamp_ms: campaign.updated_timestamp_ms || 0,
-  }));
+  const rows: GenericSortableRowData[] = filteredCampaigns.map((campaign: Campaign) => {
+    const creatorProfile =
+      campaign.creator_user_id === undefined
+        ? undefined
+        : creatorProfilesByUserId[campaign.creator_user_id]?.data;
+
+    return {
+      click_count: campaign.performance?.click_count || 0,
+      click_through_rate: campaign.performance?.click_through_rate || 0,
+      cost_per_play_usd: campaign.performance?.cost_per_play_usd || 0,
+      created_timestamp_ms: campaign.created_timestamp_ms,
+      creator_avatar_url: creatorProfile?.avatarUrl,
+      creator_username: creatorProfile?.username ?? '',
+      date_modified: showCreatorColumn
+        ? FormatDateToMMMDYYYY({
+            timestamp: campaign.updated_timestamp_ms,
+            timezone: timezoneDbName,
+          })
+        : undefined,
+      detailed_targeting_match_type: campaign.detailed_targeting_match_type,
+      // Reporting stats || 0 to allow accurate number sorting
+      display_spending_usd: campaign.performance?.display_spending_usd || 0,
+      id: campaign.id,
+      impression: campaign.performance?.impression || 0,
+      is_auto_reload_ad_credit_enabled: campaign.is_auto_reload_ad_credit_enabled || false,
+      is_off_platform_request: campaign.is_off_platform_request || false,
+      is_reporting_enabled: campaign.is_reporting_enabled || false,
+      name: campaign.name,
+      objective: campaign.objective,
+      play_count: campaign.performance?.play_count || 0,
+      // Preserve undefined so missing ROAS (zero-spend / failed metrics) stays
+      // distinct from a real 0.0 (spend with no revenue). AMSv2 leaves Roas unset
+      // in the former case and sets 0 in the latter.
+      roas: campaign.performance?.roas,
+      status_text: GetBackendCampaignStatusText(campaignStatuses, campaign.id),
+      total_play_time_hours_7d: campaign.performance?.total_play_time_hours_7d || 0,
+      total_robux_revenue_30d: campaign.performance?.total_robux_revenue_30d || 0,
+      updated_timestamp_ms: campaign.updated_timestamp_ms || 0,
+    };
+  });
 
   const campaignIdToUnsortableData = new Map<string, UnsortableRowData>(
     filteredCampaigns.map((campaign: Campaign) => {

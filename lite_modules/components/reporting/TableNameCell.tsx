@@ -1,5 +1,5 @@
 import { Icon, TableCell, type TTableCellAlign } from '@rbx/foundation-ui';
-import { Grid, Tooltip, Typography } from '@rbx/ui';
+import { Grid, Tooltip } from '@rbx/ui';
 import { forwardRef } from 'react';
 
 import EntityIdTooltip from '@components/reporting/EntityIdTooltip';
@@ -87,13 +87,19 @@ const TableNameCell = forwardRef<HTMLTableCellElement, TableNameCellProps>(
         )}
         <Grid className={nameTextGridItem} item>
           <EntityIdTooltip copyToClipboardContent={copyToClipboardContent}>
-            <Typography
-              classes={{ root: typographyClass }}
-              noWrap
+            <span
+              className={`text-body-medium ${typographyClass}`}
               onClick={() => onNameClicked()}
-              variant='body2'>
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onNameClicked();
+                }
+              }}
+              role='button'
+              tabIndex={0}>
               {name}
-            </Typography>
+            </span>
           </EntityIdTooltip>
         </Grid>
       </Grid>

@@ -46,6 +46,21 @@ const useGenericTableRowStyles = makeStyles<void, 'actionMenuButton'>()((theme, 
     width: '64px',
   },
 
+  creatorAvatar: {
+    height: 32,
+    width: 32,
+  },
+
+  creatorCellContent: {
+    alignItems: 'center',
+    display: 'flex',
+    gap: 12,
+  },
+
+  creatorRow: rowPadding,
+
+  dateModifiedRow: rowPadding,
+
   fullRow: {
     '&:hover': {
       [`& .${classes.actionMenuButton}`]: {

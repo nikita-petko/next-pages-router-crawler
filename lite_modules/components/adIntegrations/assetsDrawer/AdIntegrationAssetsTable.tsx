@@ -16,7 +16,7 @@ import {
   TableRow,
 } from '@rbx/foundation-ui';
 import { AssetThumbnailSize, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
-import { Label, Tooltip, Typography } from '@rbx/ui';
+import { Label, Tooltip } from '@rbx/ui';
 import { useState } from 'react';
 
 import useAdIntegrationStatusLabelStyles from '@components/adIntegrations/adIntegrationStatusLabel.styles';
@@ -220,12 +220,12 @@ const AdIntegrationAssetsTable = ({
         <div className={emptyStateIconContainer}>
           <Icon className={emptyStateIcon} name='icon-regular-studio' size='XLarge' />
         </div>
-        <Typography className={emptyStateTitle} variant='h2'>
+        <span className={`text-heading-medium ${emptyStateTitle}`}>
           {translateAccount('Label.NoAssets')}
-        </Typography>
-        <Typography className={emptyStateDescription} color='secondary' variant='body1'>
+        </span>
+        <span className={`text-body-large content-default ${emptyStateDescription}`}>
           {translateAccount('Description.NoAssetsDrawerHelpText')}
-        </Typography>
+        </span>
         <Button
           as='a'
           className={emptyStateLink}
@@ -273,13 +273,11 @@ const AdIntegrationAssetsTable = ({
                   targetId={pending.assetId}
                   type={ThumbnailTypes.assetThumbnail}
                 />
-                <Typography className={assetNameText} variant='body2'>
-                  {pending.name}
-                </Typography>
+                <span className={`text-body-medium ${assetNameText}`}>{pending.name}</span>
               </div>
             </TableCell>
             <TableCell>
-              <Typography variant='body2'>{pending.assetId.toString()}</Typography>
+              <span className='text-body-medium'>{pending.assetId.toString()}</span>
             </TableCell>
             <TableCell>
               <Label
@@ -341,13 +339,13 @@ const AdIntegrationAssetsTable = ({
                       type={ThumbnailTypes.assetThumbnail}
                     />
                   )}
-                  <Typography className={assetNameText} variant='body2'>
+                  <span className={`text-body-medium ${assetNameText}`}>
                     {placement.assetName ?? ''}
-                  </Typography>
+                  </span>
                 </div>
               </TableCell>
               <TableCell>
-                <Typography variant='body2'>{placement.assetId?.toString() ?? ''}</Typography>
+                <span className='text-body-medium'>{placement.assetId?.toString() ?? ''}</span>
               </TableCell>
               <TableCell>
                 <Tooltip
@@ -355,10 +353,10 @@ const AdIntegrationAssetsTable = ({
                   title={
                     assetTooltipBodyKey ? (
                       <div className={tooltipContent}>
-                        <Typography variant='subtitle2'>{getStatusText(status)}</Typography>
-                        <Typography variant='body2'>
+                        <span className='text-title-large'>{getStatusText(status)}</span>
+                        <span className='text-body-medium'>
                           {translateAccount(assetTooltipBodyKey)}
-                        </Typography>
+                        </span>
                         {handleOpenAppealModal && (
                           <button
                             className={tooltipLink}

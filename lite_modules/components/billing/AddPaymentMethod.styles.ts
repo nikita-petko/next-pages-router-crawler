@@ -186,6 +186,10 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     height: 16,
     width: 16,
   },
+  stepLockedMessage: {
+    color: theme.palette.text.secondary,
+    marginTop: theme.spacing(1),
+  },
   subtitleContainer: {
     alignItems: 'center',
     display: 'flex',
@@ -213,6 +217,118 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     color: theme.palette.primary.main,
     opacity: 1,
     textTransform: 'uppercase',
+  },
+  watermarkedBalanceBand: {
+    alignItems: 'center',
+    backgroundColor: theme.palette.action.hover,
+    borderRadius: 8,
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px 24px',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    padding: '16px 20px',
+  },
+  watermarkedBalanceScopeSelector: {
+    width: '100%',
+  },
+  watermarkedBalanceScopeSelectorContainer: {
+    display: 'flex',
+    justifyContent: 'flex-start',
+    marginBottom: '24px',
+    width: '100%',
+  },
+  watermarkedBalanceSegment: {
+    alignItems: 'center',
+    display: 'flex',
+    gap: '6px',
+  },
+  watermarkedDualInputRow: {
+    display: 'grid',
+    gap: '16px',
+    gridTemplateColumns: '1fr 1fr',
+    marginBottom: 8,
+    [theme.breakpoints.down('Small')]: {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  watermarkedErrorCard: {
+    border: '1px solid',
+    borderColor: theme.palette.error.main,
+    borderRadius: 8,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    marginTop: 16,
+    padding: '16px 20px',
+  },
+  watermarkedInfoAlert: {
+    alignItems: 'flex-start',
+    backgroundColor: theme.palette.action.hover,
+    borderRadius: 8,
+    display: 'flex',
+    gap: '8px',
+    marginTop: 16,
+    padding: '12px 16px',
+  },
+  watermarkedInfoAlertClose: {
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  watermarkedInfoAlertContent: {
+    flex: 1,
+  },
+  watermarkedInputRobuxAdornment: {
+    marginRight: 8,
+  },
+  watermarkedStrikethroughRobux: {
+    textDecoration: 'line-through',
+  },
+  watermarkedTierCard: {
+    border: '1px solid',
+    borderColor: theme.palette.components.divider,
+    borderRadius: 8,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+    marginTop: 16,
+    padding: '16px 20px',
+  },
+  watermarkedTierLabel: {
+    fontWeight: 500,
+  },
+  watermarkedTierLabelGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  watermarkedTierRow: {
+    alignItems: 'flex-start',
+    display: 'flex',
+    justifyContent: 'space-between',
+  },
+  watermarkedTierRowValues: {
+    alignItems: 'flex-end',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  watermarkedTierSubtext: {
+    fontSize: 12,
+  },
+  watermarkedTooltipIcon: {
+    alignItems: 'center',
+    cursor: 'help',
+    display: 'inline-flex',
+    marginLeft: 4,
+  },
+  watermarkedTotalLabel: {
+    fontWeight: 500,
+    textTransform: 'capitalize',
+  },
+  watermarkedTotalRow: {
+    alignItems: 'center',
+    display: 'flex',
+    justifyContent: 'space-between',
   },
 }));
 export default useAddPaymentMethodStyles;

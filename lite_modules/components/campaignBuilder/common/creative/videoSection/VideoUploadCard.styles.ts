@@ -16,6 +16,14 @@ const useVideoUploadCardStyles = makeStyles()((theme) => ({
     flex: 1,
     minWidth: 0,
   },
+  fileName: {
+    display: 'block',
+    fontWeight: 500,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    width: '100%',
+  },
   placeholder: {
     alignItems: 'center',
     backgroundColor: theme.palette.components.alert.informContent,

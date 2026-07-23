@@ -1,5 +1,5 @@
 import { IconButton } from '@rbx/foundation-ui';
-import { Alert, Typography } from '@rbx/ui';
+import { Alert } from '@rbx/ui';
 import { memo, useState } from 'react';
 
 import { EventName, unifiedLogger } from '@clients/unifiedLogger';
@@ -44,12 +44,12 @@ const TransitionBanner = memo(() => {
     <Alert className={bannerContainer} severity='info' variant='outlined'>
       <div className={bannerContent}>
         <div className={bannerTextContainer}>
-          <Typography className={bannerTitle} variant='body1'>
+          <span className={`text-body-large ${bannerTitle}`}>
             {translateReport('Heading.TransitionBannerTitle')}
-          </Typography>
-          <Typography variant='body2'>
+          </span>
+          <span className='text-body-medium'>
             {translateReport('Description.TransitionBannerBody')}
-          </Typography>
+          </span>
         </div>
         <a
           className={learnMoreLink}

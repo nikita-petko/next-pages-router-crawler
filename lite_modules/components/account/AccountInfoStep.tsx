@@ -1,5 +1,5 @@
 import { Button, Checkbox, Link } from '@rbx/foundation-ui';
-import { Alert, Autocomplete, FormLabel, TextField, Typography } from '@rbx/ui';
+import { Alert, Autocomplete, FormLabel, TextField } from '@rbx/ui';
 import { useId } from 'react';
 import { Controller, FormProvider, UseFormReturn } from 'react-hook-form';
 
@@ -41,7 +41,7 @@ const AccountInfoStep = ({
   } = form;
 
   const {
-    classes: { setupFormColumn },
+    classes: { setupFormColumn, stepLockedMessage },
   } = useAccountFormStyles();
 
   if (isCompleted) {
@@ -54,9 +54,9 @@ const AccountInfoStep = ({
 
   if (!isUnlocked) {
     return (
-      <Typography sx={{ color: 'text.secondary', mt: 1 }} variant='body2'>
+      <span className={`text-body-medium ${stepLockedMessage}`}>
         {translate('Description.CompleteStepAbove')}
-      </Typography>
+      </span>
     );
   }
 
@@ -106,12 +106,10 @@ const AccountInfoStep = ({
                   placement='Start'
                   size='Small'
                 />
-                <Typography
-                  className='cursor-pointer'
-                  component='label'
+                <label
+                  className={`${isCompactTermsLabel ? 'text-body-medium' : 'text-body-large'} cursor-pointer`}
                   htmlFor={termsCheckboxId}
-                  id={termsLabelId}
-                  variant={isCompactTermsLabel ? 'body2' : 'body1'}>
+                  id={termsLabelId}>
                   {translateHTML('Description.TermsAgreementV2', [
                     {
                       closing: 'linkEnd',
@@ -128,7 +126,7 @@ const AccountInfoStep = ({
                       opening: 'linkStart',
                     },
                   ])}
-                </Typography>
+                </label>
               </div>
               {errors[FormFields.TERMS_CHECKBOX] && (
                 <FormLabel error>{errors[FormFields.TERMS_CHECKBOX]?.message}</FormLabel>

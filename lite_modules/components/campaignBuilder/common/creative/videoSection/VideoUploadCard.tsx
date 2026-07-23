@@ -1,5 +1,5 @@
 import { Icon, IconButton, ProgressCircle } from '@rbx/foundation-ui';
-import { Grid, Typography } from '@rbx/ui';
+import { Grid } from '@rbx/ui';
 import { RobloxVideoPlayer } from '@rbx/video-player';
 import React, { useCallback, useMemo } from 'react';
 
@@ -11,6 +11,12 @@ import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { UploadedVideoType, VideoUploadState } from '@type/fileUpload';
 import { GetAspectRatio, VideoURLManager } from '@utils/fileUpload';
 import { GetVideoPlayerEnvEnum } from '@utils/url';
+
+const STATUS_COLOR_CLASS: Record<'error' | 'primary' | 'secondary', string> = {
+  error: 'content-system-alert',
+  primary: 'content-emphasis',
+  secondary: 'content-default',
+};
 
 interface VideoUploadCardProps {
   allUploadedVideos?: UploadedVideoType[];
@@ -38,6 +44,7 @@ const VideoUploadCard: React.FC<VideoUploadCardProps> = ({
       actionButton,
       cardContainer,
       contentContainer,
+      fileName: fileNameClass,
       placeholder,
       statusIconContainer,
       statusIconGrid,
@@ -258,9 +265,7 @@ const VideoUploadCard: React.FC<VideoUploadCardProps> = ({
     // Fallback for videos without file or asset ID
     return (
       <div className={placeholder}>
-        <Typography color='secondary' variant='caption'>
-          {translate('Label.Video')}
-        </Typography>
+        <span className='text-body-medium content-default'>{translate('Label.Video')}</span>
       </div>
     );
   }, [
@@ -340,22 +345,10 @@ const VideoUploadCard: React.FC<VideoUploadCardProps> = ({
   return (
     <Grid alignItems='center' className={cardContainer} container spacing={2}>
       <Grid item>{renderThumbnail()}</Grid>
-
       <Grid className={contentContainer} item>
         <Grid container direction='column' spacing={0.5}>
           <Grid item>
-            <Typography
-              fontWeight='medium'
-              sx={{
-                display: 'block',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                width: '100%',
-              }}
-              variant='body2'>
-              {fileName}
-            </Typography>
+            <span className={`text-body-medium ${fileNameClass}`}>{fileName}</span>
           </Grid>
           {statusDetails && (
             <Grid item>
@@ -366,20 +359,16 @@ const VideoUploadCard: React.FC<VideoUploadCardProps> = ({
                   </Grid>
                 )}
                 <Grid className={statusTextContainer} item>
-                  <Typography
-                    className={statusText}
-                    color={statusDetails.color}
-                    component='span'
-                    variant='caption'>
+                  <span
+                    className={`text-body-medium ${STATUS_COLOR_CLASS[statusDetails.color]} ${statusText}`}>
                     {statusDetails.text}
-                  </Typography>
+                  </span>
                 </Grid>
               </Grid>
             </Grid>
           )}
         </Grid>
       </Grid>
-
       <Grid item>{renderRightSideContent()}</Grid>
     </Grid>
   );

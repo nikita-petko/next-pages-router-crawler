@@ -1,5 +1,5 @@
 import { Icon, SheetBody, SheetTitle } from '@rbx/foundation-ui';
-import { Tooltip, Typography } from '@rbx/ui';
+import { Tooltip } from '@rbx/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
@@ -38,11 +38,14 @@ import { appendRegisteredThumbnailsToForm } from '@utils/appendRegisteredThumbna
 import { countSelectedCreatives } from '@utils/campaignBuilder';
 
 interface ThumbnailUploadDrawerContentProps {
+  /** When set, overrides the metadata-driven max creatives cap (e.g. 1 for 1x2 posters). */
+  maxAllowedCreativesOverride?: number;
   onPersistedUploadEntriesChange?: (entries: CreativeUploadPersistedEntry[]) => void;
   persistedUploadEntries?: CreativeUploadPersistedEntry[];
 }
 
 const ThumbnailUploadDrawerContent = ({
+  maxAllowedCreativesOverride,
   onPersistedUploadEntriesChange,
   persistedUploadEntries = [],
 }: ThumbnailUploadDrawerContentProps = {}) => {
@@ -84,11 +87,12 @@ const ThumbnailUploadDrawerContent = ({
     },
     cx,
   } = useCreativesStyles();
-  const maxAllowedCreatives = useAppStore(
+  const maxAllowedCreativesFromMetadata = useAppStore(
     (state) =>
       state.appMetadataState.data?.maximumAdsPerTrafficDrivingCampaignCount ??
       MAX_ALLOWED_CREATIVES,
   );
+  const maxAllowedCreatives = maxAllowedCreativesOverride ?? maxAllowedCreativesFromMetadata;
   const isEditMode = useCampaignBuilderStore(
     (state: CampaignBuilderStoreType) => state.flowType === FlowTypes.EDIT,
   );
@@ -283,11 +287,11 @@ const ThumbnailUploadDrawerContent = ({
         className={cx({
           [creativeUploadDrawerThumbnailsMarginTop]: publishedThumbnails.length > 0,
         })}>
-        <Typography className={creativeUploadDrawerBold} variant='largeLabel1'>
+        <span className={`text-body-large ${creativeUploadDrawerBold}`}>
           {isReachObjective
             ? translate('Heading.AvailableImageAssets')
             : translate('Heading.AvailableThumbnails')}
-        </Typography>
+        </span>
         <Tooltip
           placement='top'
           title={
@@ -318,11 +322,11 @@ const ThumbnailUploadDrawerContent = ({
     }
     return (
       <div>
-        <Typography className={creativeUploadDrawerBold} variant='largeLabel1'>
+        <span className={`text-body-large ${creativeUploadDrawerBold}`}>
           {isReachObjective
             ? translate('Heading.PublishedImageAssets')
             : translate('Heading.PublishedThumbnails')}
-        </Typography>
+        </span>
         <Tooltip
           placement='top'
           title={
@@ -346,12 +350,12 @@ const ThumbnailUploadDrawerContent = ({
       return null;
     }
     return (
-      <Typography className={creativeUploadDrawerNumSelected} variant='body1'>
+      <span className={`text-body-large ${creativeUploadDrawerNumSelected}`}>
         {translate('Description.SelectedCount', {
           max: String(maxAllowedCreatives),
           selected: String(selected),
         })}
-      </Typography>
+      </span>
     );
   };
 
@@ -391,9 +395,9 @@ const ThumbnailUploadDrawerContent = ({
           : translate('Heading.UploadThumbnails')}
       </SheetTitle>
       <SheetBody>
-        <Typography className={creativeUploadDrawerBody} variant='largeLabel1'>
+        <span className={`text-body-large ${creativeUploadDrawerBody}`}>
           {translate(CreativeMarketingBlurb)}
-        </Typography>
+        </span>
         {maybeRenderCountSelected()}
         {maybeRenderPublishedThumbnailsSection()}
         {maybeRenderAvailableThumbnailsSection()}
@@ -413,9 +417,7 @@ const ThumbnailUploadDrawerContent = ({
           uploadingText={translate('Description.UploadingImage')}
         />
         {registrationError && (
-          <Typography color='error' variant='body1'>
-            {registrationError}
-          </Typography>
+          <span className='text-body-large content-system-alert'>{registrationError}</span>
         )}
       </SheetBody>
     </>

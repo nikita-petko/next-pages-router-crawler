@@ -1,5 +1,5 @@
 import { Button } from '@rbx/foundation-ui';
-import { Autocomplete, TextField, Typography } from '@rbx/ui';
+import { Autocomplete, TextField } from '@rbx/ui';
 import { useRouter } from 'next/router';
 import { Controller, FormProvider, useWatch } from 'react-hook-form';
 
@@ -127,9 +127,11 @@ const AccountUpdateForm = ({
       <FormProvider {...form}>
         {accountType === OrganizationType.ORGANIZATION_TYPE_INDIVIDUAL ? (
           <>
-            <Typography variant='h2'>{translateAccount('Heading.PersonalAccount')}</Typography>
+            <span className='text-heading-medium'>
+              {translateAccount('Heading.PersonalAccount')}
+            </span>
             {!isAdAccountAutoCreateEnabled && (
-              <Typography display='flex' flexDirection='row' gap={2}>
+              <span className='flex flex-row gap-large'>
                 <Controller
                   control={control}
                   name={FormFields.FIRST_NAME}
@@ -166,12 +168,14 @@ const AccountUpdateForm = ({
                     />
                   )}
                 />
-              </Typography>
+              </span>
             )}
           </>
         ) : (
           <>
-            <Typography variant='h2'>{translateAccount('Heading.BusinessAccount')}</Typography>
+            <span className='text-heading-medium'>
+              {translateAccount('Heading.BusinessAccount')}
+            </span>
             <Controller
               control={control}
               name={FormFields.BUSINESS_NAME}
@@ -236,7 +240,7 @@ const AccountUpdateForm = ({
           )}
         />
 
-        <Typography variant='h2'>{translateAccount('Heading.AccountInfo')}</Typography>
+        <span className='text-heading-medium'>{translateAccount('Heading.AccountInfo')}</span>
 
         {!isAdAccountAutoCreateEnabled && (
           <Controller
@@ -270,7 +274,7 @@ const AccountUpdateForm = ({
           value={getTimezoneByEnum(organizationInfo.time_zone)?.title}
         />
 
-        <Typography display='flex' gap={2} variant='body1'>
+        <span className='flex gap-large'>
           <Button
             isDisabled={!isValid || isSubmitting}
             isLoading={isSubmitting}
@@ -289,7 +293,7 @@ const AccountUpdateForm = ({
             variant='Standard'>
             {translateMisc('Action.Cancel')}
           </Button>
-        </Typography>
+        </span>
       </FormProvider>
     </div>
   );

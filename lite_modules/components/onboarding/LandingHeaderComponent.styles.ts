@@ -73,6 +73,9 @@ export const useLandingHeaderStyles = makeStyles()((theme) => ({
       fontSize: 32,
       marginTop: '12vh',
     },
+    // Native <h1> keeps the UA default bottom margin (Tailwind preflight is off);
+    // MUI Typography used to reset it, so zero it out to preserve hero spacing.
+    marginBottom: 0,
     marginTop: '5vh',
   },
 }));

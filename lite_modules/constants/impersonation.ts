@@ -12,6 +12,11 @@ export const IMPERSONATION_FLAGS: readonly ImpersonationFlag[] = [
     id: 'campaign-roas',
     label: 'Campaign ROAS',
   },
+  {
+    configKey: 'enable_custom_date_range',
+    id: 'custom-date-range',
+    label: 'Custom Date Range',
+  },
 ];
 
 export type FlagValues = Record<string, string>;

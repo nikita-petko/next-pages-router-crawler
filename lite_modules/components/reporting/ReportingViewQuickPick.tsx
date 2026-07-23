@@ -1,3 +1,4 @@
+import { Dropdown, MenuItem as FoundationMenuItem, Menu } from '@rbx/foundation-ui';
 import { FormControl, FormHelperText, MenuItem, Select } from '@rbx/ui';
 import { ChangeEvent } from 'react';
 
@@ -8,6 +9,7 @@ import { TranslationNamespace } from '@constants/localization';
 import ReportingViewType from '@constants/reportingViewType';
 import { Tooltips } from '@constants/tooltips';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
 import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider';
 import { CaptureException } from '@utils/error';
 
@@ -45,9 +47,11 @@ const ReportingViewQuickPick = () => {
   const handleReportingViewChange = useNewFlowStore(
     (state: NewFlowStoreType) => state.handleReportingViewChange,
   );
+  const isCustomDateRangeEnabled = useAppStore(
+    (state: AppStoreType) => state.appMetadataState?.data?.isCustomDateRangeEnabled ?? false,
+  );
 
-  const handleChange = (evt: ChangeEvent<HTMLInputElement>) => {
-    const newReportingViewSelection = parseInt(evt?.target?.value, 10);
+  const applyReportingViewChange = (newReportingViewSelection: number) => {
     if (
       !Number.isNaN(newReportingViewSelection) &&
       IsValidReportingViewType(newReportingViewSelection)
@@ -61,7 +65,41 @@ const ReportingViewQuickPick = () => {
     }
   };
 
-  const formControl = (
+  const handleChange = (evt: ChangeEvent<HTMLInputElement>) => {
+    applyReportingViewChange(parseInt(evt?.target?.value, 10));
+  };
+
+  const handleValueChange = (nextValue: string) => {
+    applyReportingViewChange(parseInt(nextValue, 10));
+  };
+
+  const foundationDropdown = (
+    <div className={reportingViewQuickPickContainer} data-testid='reportingViewSelect'>
+      <Dropdown
+        hasError={reportingViewState.isError}
+        hint={
+          reportingViewState.isError ? translateCampaign('Description.FailedToFetch') : undefined
+        }
+        isDisabled={campaignsIsLoading || summaryStatsIsLoading}
+        label={translateReport('Label.ReportingView')}
+        onValueChange={handleValueChange}
+        placeholder=''
+        size='Medium'
+        value={reportingViewState.currentSelection.toString()}>
+        <Menu>
+          {reportingViewMenuItems.map(({ label, value }) => (
+            <FoundationMenuItem
+              key={value}
+              title={translateReport(label)}
+              value={value.toString()}
+            />
+          ))}
+        </Menu>
+      </Dropdown>
+    </div>
+  );
+
+  const muiFormControl = (
     <FormControl
       className={reportingViewQuickPickContainer}
       error={reportingViewState.isError}
@@ -102,7 +140,12 @@ const ReportingViewQuickPick = () => {
     </FormControl>
   );
 
-  return <DismissibleTooltip anchorElement={formControl} tooltip={Tooltips.REPORTING_VIEW} />;
+  return (
+    <DismissibleTooltip
+      anchorElement={isCustomDateRangeEnabled ? foundationDropdown : muiFormControl}
+      tooltip={Tooltips.REPORTING_VIEW}
+    />
+  );
 };
 
 export default ReportingViewQuickPick;

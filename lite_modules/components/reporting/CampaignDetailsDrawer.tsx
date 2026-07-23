@@ -7,6 +7,7 @@ import Collapse from '@components/common/Collapse';
 import useDrawerStyles from '@components/common/Drawer.styles';
 import AdsManagementTable from '@components/reporting/AdsManagementTable';
 import CampaignDetails from '@components/reporting/CampaignDetails';
+import styles from '@components/reporting/CampaignDetailsDrawer.module.css';
 import CampaignReportingCharts from '@components/reporting/CampaignReportingCharts';
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
@@ -41,7 +42,9 @@ const CampaignDetailsDrawer = () => {
         closeLabel={translate('Description.CloseCampaignDetails')}
         largeScreenClassName='!max-width-[50vw] width-full'
         largeScreenVariant='side'>
-        <SheetTitle>{campaign?.name}</SheetTitle>
+        <SheetTitle className={styles.title}>
+          <span title={campaign?.name}>{campaign?.name}</span>
+        </SheetTitle>
         <SheetBody>
           {hasPendingDecrease && (
             <Collapse in={!isBannerDismissed} unmountOnExit>

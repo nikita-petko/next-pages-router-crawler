@@ -1,5 +1,6 @@
-import { Skeleton, Typography } from '@rbx/ui';
 import { ReactNode } from 'react';
+
+import Skeleton from '@components/common/Skeleton';
 
 interface AccountSummaryLineItemProps {
   isLoading?: boolean;
@@ -12,16 +13,17 @@ const AccountSummaryLineItem = ({
   label,
   value,
 }: AccountSummaryLineItemProps) => (
-  <Typography display='flex' flexDirection='column' gap={1}>
-    <Typography color='secondary' variant='body2'>
-      {label}
-    </Typography>
+  <span className='flex flex-col gap-small'>
+    <span className='text-body-medium content-default'>{label}</span>
     {isLoading ? (
-      <Skeleton animate data-testid='account-summary-field-skeleton' variant='text' width={160} />
+      <Skeleton
+        className='height-[1.2em] width-[160px]'
+        data-testid='account-summary-field-skeleton'
+      />
     ) : (
-      <Typography variant='buttonMedium'>{value}</Typography>
+      <span className='text-label-large'>{value}</span>
     )}
-  </Typography>
+  </span>
 );
 
 export default AccountSummaryLineItem;

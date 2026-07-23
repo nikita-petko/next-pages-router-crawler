@@ -11,7 +11,6 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@rbx/foundation-ui';
-import { Typography } from '@rbx/ui';
 import moment from 'moment-timezone';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -46,7 +45,7 @@ interface PurchasedByCellProps {
 
 const PurchasedByCell = ({ actorUserId }: PurchasedByCellProps) => {
   const {
-    classes: { purchasedByAvatar, purchasedByCellContent },
+    classes: { noWrap, purchasedByAvatar, purchasedByCellContent },
   } = useAdCreditTransactionHistoryStyles();
   const userId = parseActorUserId(actorUserId);
   const profile = useUserProfileStore((state: UserProfileStoreType) =>
@@ -54,20 +53,12 @@ const PurchasedByCell = ({ actorUserId }: PurchasedByCellProps) => {
   );
 
   if (userId === undefined) {
-    return (
-      <Typography noWrap variant='body2'>
-        {UNAVAILABLE_VALUE_DISPLAY}
-      </Typography>
-    );
+    return <span className={`text-body-medium ${noWrap}`}>{UNAVAILABLE_VALUE_DISPLAY}</span>;
   }
 
   const username = profile?.data?.username;
   if (!username) {
-    return (
-      <Typography noWrap variant='body2'>
-        {UNAVAILABLE_VALUE_DISPLAY}
-      </Typography>
-    );
+    return <span className={`text-body-medium ${noWrap}`}>{UNAVAILABLE_VALUE_DISPLAY}</span>;
   }
 
   return (
@@ -78,9 +69,7 @@ const PurchasedByCell = ({ actorUserId }: PurchasedByCellProps) => {
         size='Small'
         src={profile.data?.avatarUrl}
       />
-      <Typography noWrap variant='body2'>
-        {username}
-      </Typography>
+      <span className={`text-body-medium ${noWrap}`}>{username}</span>
     </div>
   );
 };
@@ -96,7 +85,7 @@ const AdCreditTransactionHistoryRow = ({
 }: AdCreditTransactionHistoryRowProps) => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Billing);
   const {
-    classes: { activityEllipsis },
+    classes: { activityEllipsis, noWrap },
   } = useAdCreditTransactionHistoryStyles();
   const { organizationInfo } = useAppStore((state: AppStoreType) => state.appData);
 
@@ -159,11 +148,7 @@ const AdCreditTransactionHistoryRow = ({
   }
 
   const activityCellContent = (
-    <Typography
-      classes={{ root: activityEllipsis }}
-      data-testid='paymentMethodCellContent'
-      noWrap
-      variant='body2'>
+    <span className={`text-body-medium ${activityEllipsis}`} data-testid='paymentMethodCellContent'>
       {activityToDisplay}
       {campaignName ? (
         <>
@@ -171,15 +156,15 @@ const AdCreditTransactionHistoryRow = ({
           {campaignName}
         </>
       ) : null}
-    </Typography>
+    </span>
   );
 
   return (
     <TableRow data-testid={`transactionHistoryRow-${paymentActivity.created_timestamp_ms}`}>
       <TableCell align='start' data-testid='transactionDateCell'>
-        <Typography data-testid='transactionDateCellContent' noWrap variant='body2'>
+        <span className={`text-body-medium ${noWrap}`} data-testid='transactionDateCellContent'>
           {dateString}
-        </Typography>
+        </span>
       </TableCell>
       <TableCell align='start' data-testid='paymentMethodCell'>
         {campaignName ? (
@@ -198,9 +183,9 @@ const AdCreditTransactionHistoryRow = ({
         </TableCell>
       ) : null}
       <TableCell align='end' data-testid='amountChargedCell'>
-        <Typography data-testid='amountChargedCellContent' noWrap variant='body2'>
+        <span className={`text-body-medium ${noWrap}`} data-testid='amountChargedCellContent'>
           {isDebit ? `-${adCreditAmount}` : adCreditAmount}
-        </Typography>
+        </span>
       </TableCell>
     </TableRow>
   );
@@ -349,9 +334,9 @@ const TransactionHistoryGrid = ({
             name='icon-regular-triangle-exclamation'
             size='Medium'
           />
-          <Typography data-testid='failedtoLoadMoreTransactionsText' variant='body1'>
+          <span className='text-body-large' data-testid='failedtoLoadMoreTransactionsText'>
             {translate('Description.FailedToLoadMoreTransactions')}
-          </Typography>
+          </span>
         </div>
       ) : null}
       {shouldShowLoadMore && !isLoading ? (
@@ -368,9 +353,9 @@ const TransactionHistoryGrid = ({
       ) : null}
       {!shouldShowLoadMore ? (
         <div className={footerContainer}>
-          <Typography color='inherit' data-testid='noMoreText' variant='footer'>
+          <span className='text-body-medium content-inherit' data-testid='noMoreText'>
             {translate('Description.EndOfTransactionHistory')}
-          </Typography>
+          </span>
         </div>
       ) : null}
     </div>
@@ -409,9 +394,9 @@ const AdCreditTransactionHistory = ({
         name='icon-regular-triangle-exclamation'
         size='Medium'
       />
-      <Typography data-testid='failedToGetTransactionHistoryText' variant='body1'>
+      <span className='text-body-large' data-testid='failedToGetTransactionHistoryText'>
         {translate('Description.FailedToLoadTransactionHistory')}
-      </Typography>
+      </span>
     </div>
   );
   if (!initialLoadSucceeded || paymentActivities == null) {
@@ -424,9 +409,9 @@ const AdCreditTransactionHistory = ({
 
   const noTransactionHistoryTextContainer = (
     <div className={noTransactionHistoryContainer}>
-      <Typography data-testid='noTransactionHistoryText' variant='body1'>
+      <span className='text-body-large' data-testid='noTransactionHistoryText'>
         {translate('Description.NoTransactionHistoryV2')}
-      </Typography>
+      </span>
     </div>
   );
   const transactionHistory = (

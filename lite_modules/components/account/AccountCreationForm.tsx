@@ -1,6 +1,6 @@
 import { RobloxLocaleApiUserLocalizationLocusLocalesResponse } from '@rbx/client-locale/v1';
 import { Button, Checkbox, Link, Radio, RadioGroup } from '@rbx/foundation-ui';
-import { Autocomplete, FormLabel, TextField, Typography } from '@rbx/ui';
+import { Autocomplete, FormLabel, TextField } from '@rbx/ui';
 import router from 'next/router';
 import { useId } from 'react';
 import { Controller, FormProvider, useWatch } from 'react-hook-form';
@@ -60,7 +60,7 @@ const AdAccountCreationForm = ({ handleSubmit, supportedLocales }: AdAccountCrea
   });
 
   const {
-    classes: { nameWrapper, wrapper },
+    classes: { nameGrid, nameWrapper, wrapper },
   } = useAccountFormStyles();
 
   const {
@@ -128,7 +128,7 @@ const AdAccountCreationForm = ({ handleSubmit, supportedLocales }: AdAccountCrea
   return (
     <div className={wrapper}>
       <FormProvider {...form}>
-        <Typography variant='h5'>{translateAccount('Heading.AccountType')}</Typography>
+        <span className='text-heading-small'>{translateAccount('Heading.AccountType')}</span>
         <Controller
           control={control}
           name={FormFields.TYPE}
@@ -159,10 +159,7 @@ const AdAccountCreationForm = ({ handleSubmit, supportedLocales }: AdAccountCrea
         />
 
         {accountType === OrganizationType.ORGANIZATION_TYPE_INDIVIDUAL ? (
-          <Typography
-            display='grid'
-            gap={2}
-            gridTemplateColumns='repeat(auto-fit, minmax(300px, 1fr))'>
+          <span className={nameGrid}>
             <Controller
               control={control}
               name={FormFields.FIRST_NAME}
@@ -199,7 +196,7 @@ const AdAccountCreationForm = ({ handleSubmit, supportedLocales }: AdAccountCrea
                 />
               )}
             />
-          </Typography>
+          </span>
         ) : (
           <>
             <Controller
@@ -266,7 +263,7 @@ const AdAccountCreationForm = ({ handleSubmit, supportedLocales }: AdAccountCrea
           )}
         />
 
-        <Typography variant='h5'>{translateAccount('Heading.AccountInfo')}</Typography>
+        <span className='text-heading-small'>{translateAccount('Heading.AccountInfo')}</span>
 
         <Controller
           control={control}
@@ -329,12 +326,10 @@ const AdAccountCreationForm = ({ handleSubmit, supportedLocales }: AdAccountCrea
                   placement='Start'
                   size='Small'
                 />
-                <Typography
-                  className='cursor-pointer'
-                  component='label'
+                <label
+                  className='text-body-large cursor-pointer'
                   htmlFor={termsCheckboxId}
-                  id={termsLabelId}
-                  variant='body1'>
+                  id={termsLabelId}>
                   {translateAccountHTML('Description.TermsAgreement', [
                     {
                       closing: 'linkEnd',
@@ -351,7 +346,7 @@ const AdAccountCreationForm = ({ handleSubmit, supportedLocales }: AdAccountCrea
                       opening: 'linkStart',
                     },
                   ])}
-                </Typography>
+                </label>
               </div>
               {errors[FormFields.TERMS_CHECKBOX] && (
                 <FormLabel error>{errors[FormFields.TERMS_CHECKBOX]?.message}</FormLabel>
@@ -360,7 +355,7 @@ const AdAccountCreationForm = ({ handleSubmit, supportedLocales }: AdAccountCrea
           )}
         />
 
-        <Typography display='flex' gap={2} variant='body1'>
+        <span className='flex gap-large'>
           <Button
             isDisabled={!isValid || isSubmitting}
             isLoading={isSubmitting}
@@ -372,7 +367,7 @@ const AdAccountCreationForm = ({ handleSubmit, supportedLocales }: AdAccountCrea
           <Button onClick={() => router.push(Routes.LANDING)} size='Medium' variant='Standard'>
             {translateMisc('Action.Cancel')}
           </Button>
-        </Typography>
+        </span>
       </FormProvider>
     </div>
   );

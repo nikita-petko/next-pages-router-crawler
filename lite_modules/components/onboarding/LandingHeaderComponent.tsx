@@ -1,5 +1,5 @@
 import { Button } from '@rbx/foundation-ui';
-import { Typography, useTheme } from '@rbx/ui';
+import { useTheme } from '@rbx/ui';
 import { memo } from 'react';
 
 import { useLandingHeaderStyles } from '@components/onboarding/LandingHeaderComponent.styles';
@@ -69,12 +69,12 @@ const LandingHeaderComponent = memo(
     return showCompactView ? (
       <>
         <div className={compactViewContainer}>
-          <Typography align='center' className={title} variant='h1'>
+          <span className={`text-heading-large text-align-x-center ${title}`}>
             {translate('Heading.HeroTitle')}
-          </Typography>
-          <Typography align='center' className={subtitle} variant='body1'>
+          </span>
+          <span className={`text-body-large text-align-x-center ${subtitle}`}>
             {translate('Description.HeroSubtitle')}
-          </Typography>
+          </span>
           <div className={buttonContainer}>{ctaButtons}</div>
         </div>
         <div className={smallImage} />
@@ -82,12 +82,12 @@ const LandingHeaderComponent = memo(
     ) : (
       <div className={cx(headerOverlay, creatorHubLayoutOverlay)}>
         <div className={expandedViewContainer}>
-          <Typography className={title} color='inherit' component='h1' variant='h1'>
+          <h1 className={`text-heading-large content-inherit ${title}`}>
             {translate('Heading.HeroTitle')}
-          </Typography>
-          <Typography className={subtitle} color='inherit' paragraph variant='body1'>
+          </h1>
+          <p className={`text-body-large content-inherit ${subtitle}`}>
             {translate('Description.HeroSubtitle')}
-          </Typography>
+          </p>
           {ctaButtons}
         </div>
       </div>

@@ -1,4 +1,3 @@
-import { Typography } from '@rbx/ui';
 import { memo } from 'react';
 
 import useNoDataPageStyles from '@components/common/NoDataPage.styles';
@@ -12,7 +11,7 @@ const NoDataPage = memo(() => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Report);
   return (
     <div className={centered}>
-      <Typography variant='h4'>{translate('Description.GenericFetchError')}</Typography>
+      <span className='text-heading-medium'>{translate('Description.GenericFetchError')}</span>
     </div>
   );
 });

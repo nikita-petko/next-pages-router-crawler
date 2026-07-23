@@ -1,5 +1,5 @@
 import { Badge } from '@rbx/foundation-ui';
-import { InputAdornment, MenuItem, Select, TextField, Tooltip, Typography } from '@rbx/ui';
+import { InputAdornment, MenuItem, Select, TextField, Tooltip } from '@rbx/ui';
 import { useMemo } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { NumericFormat } from 'react-number-format';
@@ -129,7 +129,7 @@ const BudgetSelect = ({ selectedLabel, unit }: BudgetSelectProps) => {
       name={FormField.BUDGET}
       render={({ field: { onBlur, onChange, value }, fieldState: { error } }) => (
         <Tooltip placement='top-start' title={getTooltipTitle()}>
-          <Typography className={cx(formRow, fullWidth)} component='div'>
+          <div className={`text-body-large ${cx(formRow, fullWidth)}`}>
             {editMode ? null : (
               <Select
                 className={cx({ [halfWidth]: isCustom })}
@@ -201,7 +201,7 @@ const BudgetSelect = ({ selectedLabel, unit }: BudgetSelectProps) => {
                 value={value}
               />
             )}
-          </Typography>
+          </div>
         </Tooltip>
       )}
     />

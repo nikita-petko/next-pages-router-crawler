@@ -1,5 +1,5 @@
 import { Checkbox, Icon } from '@rbx/foundation-ui';
-import { Tooltip, Typography } from '@rbx/ui';
+import { Tooltip } from '@rbx/ui';
 import React, { useId, useState } from 'react';
 
 import useAdvancedTargetingLocationAutocompleteStyles from '@components/campaignBuilder/targeting/AdvancedTargetingLocationAutocomplete.styles';
@@ -85,9 +85,9 @@ const ExpandingSelectionRow = ({
             />
           </Tooltip>
           <div>
-            <Typography color='primary' id={rowLabelId} variant='body1'>
+            <span className='text-body-large content-emphasis' id={rowLabelId}>
               {locationInfo.title}
-            </Typography>
+            </span>
             {locationInfo.parentRegion &&
               Boolean(GetRegionToCountryMap()[locationInfo.regionCode]?.length) && (
                 <div

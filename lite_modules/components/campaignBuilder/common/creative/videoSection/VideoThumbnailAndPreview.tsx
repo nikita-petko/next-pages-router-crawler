@@ -1,4 +1,3 @@
-import { Typography } from '@rbx/ui';
 import { RobloxVideoPlayer, VideoPlayer } from '@rbx/video-player';
 import { useCallback, useState } from 'react';
 
@@ -57,9 +56,9 @@ const VideoThumbnailAndPreview = ({
         role='alert'>
         <div className={videoErrorContainer}>
           {translate('Heading.UploadFailed')}
-          <Typography color='error' variant='body2'>
+          <span className='text-body-medium content-system-alert'>
             {video.error || translate('Description.UnknownError')}
-          </Typography>
+          </span>
         </div>
       </div>
     );
@@ -80,9 +79,9 @@ const VideoThumbnailAndPreview = ({
           role='alert'>
           <div className={videoErrorContainer}>
             {translate('Heading.VideoError')}
-            <Typography color='error' variant='body2'>
+            <span className='text-body-medium content-system-alert'>
               {translate('Description.FailedToLoadPreview')}
-            </Typography>
+            </span>
           </div>
         </div>
       );

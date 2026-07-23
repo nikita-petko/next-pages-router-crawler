@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Divider, Dropdown, Icon, Menu, MenuItem } from '@rbx/foundation-ui';
-import { Card, TextField, Typography } from '@rbx/ui';
+import { Card, TextField } from '@rbx/ui';
 import { ReactElement, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Controller, useForm } from 'react-hook-form';
@@ -292,7 +292,9 @@ export const BuyAdCredit = ({
 
   const subtitle = (
     <div className={subtitleContainer}>
-      <Typography variant='h5'>{translateBilling('Heading.ConvertRobuxToAdCredit')}</Typography>
+      <span className='text-heading-small'>
+        {translateBilling('Heading.ConvertRobuxToAdCredit')}
+      </span>
     </div>
   );
 
@@ -324,35 +326,33 @@ export const BuyAdCredit = ({
   ) : null;
 
   const purchaseRate = (
-    <Typography
-      className={purchaseRateRow}
-      color='secondary'
-      data-testid='purchaseRateRow'
-      variant='body1'>
+    <span
+      className={`text-body-large content-default ${purchaseRateRow}`}
+      data-testid='purchaseRateRow'>
       {translateBillingHTML('Label.PurchaseRate', null, {
         rate: String(adCreditFromRobuxPurchaseRate),
         robuxIcon: <Icon className={smallRobuxIcon} name='icon-filled-robux' size='Small' />,
       })}
-    </Typography>
+    </span>
   );
 
   const balanceContainer = (
     <Card className={balanceCard}>
       <div>
-        <Typography variant='h6'>{translateBilling('Heading.CurrentBalance')}</Typography>
+        <span className='text-title-large'>{translateBilling('Heading.CurrentBalance')}</span>
       </div>
       <div className={balanceInfoRow}>
-        <Typography className={balanceTypography} color='secondary' variant='body1'>
+        <span className={`text-body-large content-default ${balanceTypography}`}>
           {translateBilling('Label.AdCredit')}
-        </Typography>
-        <Typography variant='body1'>
+        </span>
+        <span className='text-body-large'>
           {MicroUsdToUsdStringRoundedDown(selectedAdCreditBalance)}
-        </Typography>
+        </span>
       </div>
       <div className={balanceInfoRow}>
-        <Typography className={balanceTypography} color='secondary' variant='body1'>
+        <span className={`text-body-large content-default ${balanceTypography}`}>
           {translateBilling('Label.Robux')}
-        </Typography>
+        </span>
         <div className={robuxBalanceContainer}>
           <Icon
             className={cx(
@@ -362,22 +362,20 @@ export const BuyAdCredit = ({
             name='icon-filled-robux'
             size='Small'
           />
-          <Typography
-            color={calculateRemainingRobuxBalance() < 0 ? 'error' : 'primary'}
-            variant='body1'>
+          <span
+            className={`text-body-large ${calculateRemainingRobuxBalance() < 0 ? 'content-system-alert' : 'content-emphasis'}`}>
             {selectedRobuxBalance.toLocaleString()}
-          </Typography>
+          </span>
         </div>
       </div>
       {calculateRemainingRobuxBalance() < 0 && (
-        <Typography
-          className={needMoreRobuxDescription}
-          color='error'
+        <span
+          className={`text-body-large content-system-alert ${needMoreRobuxDescription}`}
           data-testid='needMoreRobuxDescription'>
           {translateBilling('Message.NeedMoreRobux', {
             robuxNeeded: (0 - calculateRemainingRobuxBalance()).toLocaleString(),
           })}
-        </Typography>
+        </span>
       )}
     </Card>
   );
@@ -389,14 +387,14 @@ export const BuyAdCredit = ({
       {maybeRenderDivider()}
       <div className={disclaimerRow}>
         <div className={disclaimerHeaderContainer}>
-          <Typography className={disclaimerHeader} variant='body1'>
+          <span className={`text-body-large ${disclaimerHeader}`}>
             {translateBilling('Description.PurchaseAdCreditDisclaimerHeader')}
-          </Typography>
+          </span>
         </div>
         <div>
-          <Typography color='secondary' variant='body1'>
+          <span className='text-body-large content-default'>
             {translateBilling('Description.PurchaseAdCreditDisclaimerContent')}
-          </Typography>
+          </span>
         </div>
       </div>
     </>
@@ -440,9 +438,9 @@ export const BuyAdCredit = ({
       </div>
       <div className={costInRobuxRow} data-testid='costInRobuxRow'>
         <div className={costInRobuxContainer}>
-          <Typography className={costInRobuxDescription} color='secondary' variant='body1'>
+          <span className={`text-body-large content-default ${costInRobuxDescription}`}>
             {translateBilling('Label.CostInRobux')}
-          </Typography>
+          </span>
         </div>
         <div className={robuxBalanceContainer}>
           <Icon
@@ -453,14 +451,12 @@ export const BuyAdCredit = ({
             name='icon-filled-robux'
             size='Small'
           />
-          <Typography
-            className={costInRobuxAmount}
-            color={calculateRemainingRobuxBalance() < 0 ? 'error' : 'inherit'}
-            variant='body1'>
+          <span
+            className={`text-body-large ${calculateRemainingRobuxBalance() < 0 ? 'content-system-alert' : 'content-inherit'} ${costInRobuxAmount}`}>
             {errors[AD_CREDIT_AMOUNT_FORM_FIELD]
               ? UNAVAILABLE_VALUE_DISPLAY
               : costInRobux().toLocaleString()}
-          </Typography>
+          </span>
         </div>
       </div>
       <div className={adCreditPurchaseBorderBulbTop} />

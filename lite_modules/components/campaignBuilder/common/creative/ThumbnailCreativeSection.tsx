@@ -1,5 +1,4 @@
 import { IconButton, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
-import { Skeleton, Typography } from '@rbx/ui';
 import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 
@@ -10,7 +9,8 @@ import ThumbnailAiCreateDrawer from '@components/campaignBuilder/common/creative
 import ThumbnailCreativeAddButton from '@components/campaignBuilder/common/creative/thumbnailSection/ThumbnailCreativeAddButton';
 import ThumbnailUploadDrawer from '@components/campaignBuilder/common/creative/thumbnailSection/ThumbnailUploadDrawer';
 import { FOUNDATION_TOOLTIP_BODY_SMALL_CLASS } from '@components/common/creative/tooltipStyles';
-import { AssetSource, FlowTypes, FormField, ThumbnailSize } from '@constants/campaignBuilder';
+import Skeleton from '@components/common/Skeleton';
+import { AssetSource, FlowTypes, FormField } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -114,12 +114,9 @@ const ThumbnailSection = ({
     ) {
       return (
         <Skeleton
-          animate
-          color='inherit'
+          className='height-[90px] width-[160px]'
           data-testid='thumbnail-upload-skeleton'
-          height={ThumbnailSize.height}
           variant='rectangular'
-          width={ThumbnailSize.width}
         />
       );
     }
@@ -132,14 +129,11 @@ const ThumbnailSection = ({
     }
     if (shouldShowThumbnailErrorMessage) {
       return (
-        <Typography
-          className='[font-size:14px] [margin-top:8px]'
-          color='error'
-          component='div'
-          data-testid='thumbnail-error-message'
-          variant='body1'>
+        <div
+          className='text-body-large content-system-alert [font-size:14px] [margin-top:8px]'
+          data-testid='thumbnail-error-message'>
           {thumbnailError?.message}
-        </Typography>
+        </div>
       );
     }
     return null;

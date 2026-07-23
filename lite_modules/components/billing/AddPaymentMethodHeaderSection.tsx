@@ -1,4 +1,3 @@
-import { Typography } from '@rbx/ui';
 import { useRouter } from 'next/router';
 
 import { PaymentMethodActionEnum } from '@constants/billing';
@@ -10,11 +9,11 @@ const AddPaymentMethodHeaderSection = () => {
   const router = useRouter();
 
   return (
-    <Typography data-testid='addPaymentMethodHeader' variant='h1'>
+    <span className='text-heading-large' data-testid='addPaymentMethodHeader'>
       {router.query.action === PaymentMethodActionEnum.ADD || router.query.action === undefined
         ? translate('Heading.PaymentMethods')
         : translate('Heading.PaymentMethod')}
-    </Typography>
+    </span>
   );
 };
 

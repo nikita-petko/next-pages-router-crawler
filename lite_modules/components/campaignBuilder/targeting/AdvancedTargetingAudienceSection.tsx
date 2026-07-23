@@ -1,5 +1,3 @@
-import { Typography } from '@rbx/ui';
-
 import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
 import AdvancedTargetingAudienceEstimate from '@components/campaignBuilder/targeting/AdvancedTargetingAudienceEstimate';
 import useAdvancedTargetingAudienceSectionStyles from '@components/campaignBuilder/targeting/AdvancedTargetingAudienceSection.styles';
@@ -61,7 +59,7 @@ const AdvancedTargetingAudienceSection = () => {
       <div className={audienceEstimateHalfWidthWrapper}>
         <AdvancedTargetingAudienceEstimate isEstimateAvailable />
       </div>
-      <Typography variant='h5'>{translate('Heading.Audience')}</Typography>
+      <span className='text-heading-small'>{translate('Heading.Audience')}</span>
       <AdvancedTargetingLocationAutocomplete />
       {renderAgeAndGenderRow()}
       {renderGenreRow()}

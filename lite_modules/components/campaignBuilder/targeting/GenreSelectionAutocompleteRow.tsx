@@ -1,4 +1,3 @@
-import { Typography } from '@rbx/ui';
 import { HTMLAttributes } from 'react';
 
 import useAdvancedTargetingGenreAutocompleteStyles from '@components/campaignBuilder/targeting/AdvancedTargetingGenreAutocomplete.styles';
@@ -33,9 +32,9 @@ const GenreSelectionAutocompleteRow = ({
           <div>{translate(genreOption.title)}</div>
         </div>
         <div className={expandedGenresRow} key={genreOption.value}>
-          <Typography className={sectionDescription} variant='body1'>
+          <span className={`text-body-large ${sectionDescription}`}>
             {genreOption.description ? translate(genreOption.description) : ''}
-          </Typography>
+          </span>
         </div>
       </div>
     </li>

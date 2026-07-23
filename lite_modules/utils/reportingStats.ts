@@ -27,7 +27,13 @@ const getEndUserPaymentUnit = (paymentType: ServerPaymentType) => {
 
 const getStatString = (reportingStatType: ReportingStatType, value: number | undefined) => {
   let valueString = UNAVAILABLE_VALUE_DISPLAY;
-  if (!value) {
+  // Most stats treat 0 as unavailable. ROAS keeps 0 so spend-with-no-revenue
+  // can render as "0.00" (missing ROAS is undefined upstream).
+  if (
+    value == null ||
+    Number.isNaN(value) ||
+    (value === 0 && reportingStatType !== ReportingStatType.REPORTING_STAT_ROAS)
+  ) {
     return valueString;
   }
   switch (reportingStatType) {
@@ -46,6 +52,8 @@ const getStatString = (reportingStatType: ReportingStatType, value: number | und
       });
       break;
     case ReportingStatType.REPORTING_STAT_SPEND:
+    case ReportingStatType.REPORTING_STAT_ROAS:
+      // ROAS is a unitless ratio (robux revenue / spend USD). No multiplier suffix.
       valueString = value.toLocaleString('en-US', {
         maximumFractionDigits: 2,
         minimumFractionDigits: 2,
@@ -84,7 +92,15 @@ export const GetTableDisplayValue = ({
   if (isReportingDisabled) {
     return UNAVAILABLE_VALUE_DISPLAY;
   }
-  if (!value) {
+  // Missing data → em-dash. For most stats, 0 is also treated as missing (no
+  // activity). ROAS is an exception: AMSv2 sets 0.0 when there is spend but no
+  // revenue, and leaves the field unset when ROAS is unknown — so only
+  // nullish/NaN means unavailable for that metric.
+  if (
+    value == null ||
+    Number.isNaN(value) ||
+    (value === 0 && reportingStatsType !== ReportingStatType.REPORTING_STAT_ROAS)
+  ) {
     return UNAVAILABLE_VALUE_DISPLAY;
   }
   const valueString = getStatString(reportingStatsType, value);

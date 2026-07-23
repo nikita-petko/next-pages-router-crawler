@@ -15,6 +15,7 @@ interface GameUniverseDropdownStaticOption {
 interface GameUniverseDropdownProps {
   advertisableUniverses: ReadonlyArray<AdvertisedUniverse>;
   className?: string;
+  hasError?: boolean;
   hint?: string;
   isDisabled?: boolean;
   label?: string;
@@ -33,6 +34,7 @@ interface GameUniverseDropdownProps {
 const GameUniverseDropdown: FC<GameUniverseDropdownProps> = ({
   advertisableUniverses,
   className,
+  hasError,
   hint,
   isDisabled,
   label,
@@ -44,6 +46,7 @@ const GameUniverseDropdown: FC<GameUniverseDropdownProps> = ({
 }) => (
   <Dropdown
     className={className}
+    hasError={hasError}
     hint={hint}
     isDisabled={isDisabled}
     label={label}

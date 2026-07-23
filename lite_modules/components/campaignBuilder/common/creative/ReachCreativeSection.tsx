@@ -1,5 +1,5 @@
 import { Icon, Radio, RadioGroup } from '@rbx/foundation-ui';
-import { TextField, Typography } from '@rbx/ui';
+import { TextField } from '@rbx/ui';
 import { useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
@@ -9,6 +9,7 @@ import LogoUploadDrawer from '@components/campaignBuilder/common/creative/reachS
 import ThumbnailAiCreateDrawer from '@components/campaignBuilder/common/creative/thumbnailSection/ThumbnailAiCreateDrawer';
 import ThumbnailCreativeAddButton from '@components/campaignBuilder/common/creative/thumbnailSection/ThumbnailCreativeAddButton';
 import ThumbnailUploadDrawer from '@components/campaignBuilder/common/creative/thumbnailSection/ThumbnailUploadDrawer';
+import VideoUploadDrawer from '@components/campaignBuilder/common/creative/videoSection/VideoUploadDrawer';
 import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
 import Creative from '@components/common/Creative';
 import {
@@ -25,9 +26,11 @@ import {
 import { TranslationNamespace } from '@constants/localization';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import { adsInternalVideoTransport } from '@services/video/adsInternalVideoUpload';
 import { useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
 import { ThumbnailType } from '@type/campaignBuilder';
+import { UploadedVideoType, VideoUploadState } from '@type/fileUpload';
 
 interface ReachCreativeSectionProps {
   formThumbnails: FormType[typeof FormField.THUMBNAILS];
@@ -68,7 +71,7 @@ const ReachCreativeSection = ({
     (state) => state.appMetadataState?.data?.isOneByTwoTileCreationEnabled ?? false,
   );
   const [aiCreateDrawerOpen, setAiCreateDrawerOpen] = useState<boolean>(false);
-  const maxAllowedThumbnails =
+  const maxAllowedThumbnailsFromMetadata =
     useAppStore(
       (state) => state.appMetadataState?.data?.maximumAdsPerTrafficDrivingCampaignCount,
     ) ?? 0;
@@ -91,7 +94,8 @@ const ReachCreativeSection = ({
     },
   } = useCreativesStyles();
 
-  const { setLogoDrawerOpen, setThumbnailDrawerOpen } = useCampaignBuilderStore();
+  const { setLogoDrawerOpen, setThumbnailDrawerOpen, setVideoDrawerOpen } =
+    useCampaignBuilderStore();
 
   const logoAssets = useWatch<FormType, typeof FormField.LOGO_ASSETS>({
     name: FormField.LOGO_ASSETS,
@@ -99,20 +103,29 @@ const ReachCreativeSection = ({
   const creativeFormat = useWatch<FormType, typeof FormField.CREATIVE_FORMAT>({
     name: FormField.CREATIVE_FORMAT,
   });
+  const videos = useWatch<FormType, typeof FormField.VIDEOS>({ name: FormField.VIDEOS });
   const isVerticalFormat = creativeFormat === ReachAdFormat.VERTICAL_1X2;
+  // 1x2 uses a single poster image for the video ad; 2x1 can select more.
+  const maxAllowedThumbnails = isVerticalFormat ? 1 : maxAllowedThumbnailsFromMetadata;
 
   // Get selected logos (should only be one)
   const selectedLogos = logoAssets.filter(({ isSelected }) => isSelected);
+  // 1x2 vertical reach carries a single uploaded video asset.
+  const finishedVideos = videos.filter(
+    (video: UploadedVideoType) => video.state === VideoUploadState.FINISHED && !!video.assetId,
+  );
 
   const { error: thumbnailError, isTouched: thumbnailIsTouched } = getFieldState(
     FormField.THUMBNAILS,
   );
   const { error: logoError, isTouched: logoIsTouched } = getFieldState(FormField.LOGO_ASSETS);
+  const { error: videoError, isTouched: videoIsTouched } = getFieldState(FormField.VIDEOS);
 
   const hasThumbnailError = !!thumbnailError;
   const shouldShowThumbnailErrorMessage = hasThumbnailError && !!thumbnailIsTouched;
   const hasLogoError = !!logoError;
   const shouldShowLogoErrorMessage = hasLogoError && !!logoIsTouched;
+  const shouldShowVideoErrorMessage = !!videoError && !!videoIsTouched;
 
   const showCreativeAddMenu = isCreativeLibraryEnabled && isGenAiCreativesEnabled;
   const showAiGenerateMenuItem =
@@ -161,18 +174,22 @@ const ReachCreativeSection = ({
     );
   };
 
-  // TODO @pjohnson add video upload functionality
+  // 1x2 vertical reach allows a single video asset, uploaded via the internal
+  // ads-management-api proxy (EnhancedVideoExperience bypass). Hide the add
+  // button once a video is uploaded or while editing.
   const maybeRenderVideoUploadButton = () => {
-    if (editMode) {
+    if (editMode || finishedVideos.length > 0) {
       return null;
     }
 
     return (
       <div className={creativeUploadButtonWrapper}>
         <button
-          className={creativeUploadButton}
+          className={cx(creativeUploadButton, { [errorBorder]: shouldShowVideoErrorMessage })}
           data-testid='video-asset-upload-button'
-          disabled
+          onClick={() => {
+            setVideoDrawerOpen(true, getValues(FormField.EXPERIENCE).universe_id);
+          }}
           type='button'>
           <Icon name='icon-regular-circle-plus' size='Medium' />
         </button>
@@ -183,11 +200,13 @@ const ReachCreativeSection = ({
   return (
     <>
       <ThumbnailUploadDrawer
+        maxAllowedCreativesOverride={isVerticalFormat ? 1 : undefined}
         onClose={() => {
           // set touched and dirty to true
           setValue(FormField.THUMBNAILS, formThumbnails || [], {
             shouldDirty: true,
             shouldTouch: true,
+            shouldValidate: true,
           });
         }}
       />
@@ -203,7 +222,24 @@ const ReachCreativeSection = ({
           });
         }}
       />
-      <Typography className={formColumn} component='div'>
+      {isVerticalFormat && (
+        <VideoUploadDrawer
+          assetType='Video'
+          maxVideosOverride={1}
+          onClose={() => {
+            // set touched and dirty to true; shouldValidate clears VideoRequired
+            // so Publish re-enables after a successful upload (same pattern as
+            // ThumbnailUploadDrawerContent).
+            setValue(FormField.VIDEOS, getValues(FormField.VIDEOS), {
+              shouldDirty: true,
+              shouldTouch: true,
+              shouldValidate: true,
+            });
+          }}
+          uploadTransport={adsInternalVideoTransport}
+        />
+      )}
+      <div className={`text-body-large ${formColumn}`}>
         {/* Ad format selector (2x1 horizontal image vs 1x2 vertical video) */}
         {isOneByTwoTileCreationEnabled && (
           <Controller
@@ -244,7 +280,7 @@ const ReachCreativeSection = ({
         {/* Image + video asset sections share a row (video only shows for 1x2) */}
         <div className='flex flex-row gap-large'>
           {/* Image asset section */}
-          <Typography className={reachCreativeFieldContainer} component='div'>
+          <div className={`text-body-large ${reachCreativeFieldContainer}`}>
             {isCreativeLibraryEnabled ? (
               <p
                 className='margin-[0px] text-body-medium content-default'
@@ -265,9 +301,7 @@ const ReachCreativeSection = ({
                 )}
               </p>
             ) : (
-              <Typography component='label' variant='h5'>
-                {translateCampaign('Label.ImageAsset')}
-              </Typography>
+              <label className='text-heading-small'>{translateCampaign('Label.ImageAsset')}</label>
             )}
             <div className={creativeSectionPreviewContainer}>
               {selectedThumbnails.map(({ assetId }: ThumbnailType) => (
@@ -276,15 +310,13 @@ const ReachCreativeSection = ({
               {maybeRenderImageUploadButton()}
             </div>
             {shouldShowThumbnailErrorMessage && (
-              <Typography color='error' component='div' variant='body2'>
-                {thumbnailError?.message}
-              </Typography>
+              <div className='text-body-medium content-system-alert'>{thumbnailError?.message}</div>
             )}
-          </Typography>
+          </div>
 
           {/* Video asset section (1x2 vertical format only) */}
           {isVerticalFormat && (
-            <Typography className={reachCreativeFieldContainer} component='div'>
+            <div className={`text-body-large ${reachCreativeFieldContainer}`}>
               {isCreativeLibraryEnabled ? (
                 <p
                   className='margin-[0px] text-body-medium content-default'
@@ -292,19 +324,29 @@ const ReachCreativeSection = ({
                   {translateCampaign('Label.VideoAsset')}
                 </p>
               ) : (
-                <Typography component='label' variant='h5'>
+                <label className='text-heading-small'>
                   {translateCampaign('Label.VideoAsset')}
-                </Typography>
+                </label>
               )}
               <div className={creativeSectionPreviewContainer}>
+                {finishedVideos.map((video: UploadedVideoType) => (
+                  <Creative
+                    assetId={Number(video.assetId)}
+                    className={thumbnailStyle}
+                    key={video.id}
+                  />
+                ))}
                 {maybeRenderVideoUploadButton()}
               </div>
-            </Typography>
+              {shouldShowVideoErrorMessage && (
+                <div className='text-body-medium content-system-alert'>{videoError?.message}</div>
+              )}
+            </div>
           )}
         </div>
 
         {/* Logo asset section */}
-        <Typography className={reachCreativeFieldContainer} component='div'>
+        <div className={`text-body-large ${reachCreativeFieldContainer}`}>
           {isCreativeLibraryEnabled ? (
             <p
               className='margin-[0px] text-body-medium content-default'
@@ -325,9 +367,9 @@ const ReachCreativeSection = ({
               )}
             </p>
           ) : (
-            <Typography component='label' variant='h5'>
+            <label className='text-heading-small'>
               {translateCampaign('Label.LogoAssetOptional')}
-            </Typography>
+            </label>
           )}
           <div className={creativeSectionPreviewContainer}>
             {selectedLogos.map(({ assetId }) => (
@@ -336,11 +378,9 @@ const ReachCreativeSection = ({
             {maybeRenderLogoUploadButton()}
           </div>
           {shouldShowLogoErrorMessage && (
-            <Typography color='error' component='div' variant='body2'>
-              {logoError?.message}
-            </Typography>
+            <div className='text-body-medium content-system-alert'>{logoError?.message}</div>
           )}
-        </Typography>
+        </div>
 
         {/* Headline */}
         <Controller
@@ -349,7 +389,7 @@ const ReachCreativeSection = ({
           render={({ field, fieldState: { error, isTouched } }) => {
             const shouldShowError = !!error && !!isTouched;
             return (
-              <Typography className={reachCreativeFieldContainer} component='div'>
+              <div className={`text-body-large ${reachCreativeFieldContainer}`}>
                 <TextField
                   {...field}
                   disabled={editMode}
@@ -369,7 +409,7 @@ const ReachCreativeSection = ({
                   label={translateCampaign('Label.Headline')}
                   size='medium'
                 />
-              </Typography>
+              </div>
             );
           }}
         />
@@ -381,7 +421,7 @@ const ReachCreativeSection = ({
           render={({ field, fieldState: { error, isTouched } }) => {
             const shouldShowError = !!error && !!isTouched;
             return (
-              <Typography className={reachCreativeFieldContainer} component='div'>
+              <div className={`text-body-large ${reachCreativeFieldContainer}`}>
                 <TextField
                   {...field}
                   disabled={editMode}
@@ -401,7 +441,7 @@ const ReachCreativeSection = ({
                   label={translateCampaign('Label.SubtitleOptional')}
                   size='medium'
                 />
-              </Typography>
+              </div>
             );
           }}
         />
@@ -414,7 +454,7 @@ const ReachCreativeSection = ({
             render={({ field, fieldState: { error, isTouched } }) => {
               const shouldShowError = !!error && !!isTouched;
               return (
-                <Typography className={reachCreativeFieldContainer} component='div'>
+                <div className={`text-body-large ${reachCreativeFieldContainer}`}>
                   <TextField
                     {...field}
                     disabled={editMode}
@@ -429,12 +469,12 @@ const ReachCreativeSection = ({
                     size='medium'
                     value={field.value ?? ''}
                   />
-                </Typography>
+                </div>
               );
             }}
           />
         )}
-      </Typography>
+      </div>
     </>
   );
 };

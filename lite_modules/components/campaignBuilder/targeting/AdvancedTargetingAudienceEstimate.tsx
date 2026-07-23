@@ -1,5 +1,5 @@
 import { Icon, ProgressCircle } from '@rbx/foundation-ui';
-import { Tooltip, Typography } from '@rbx/ui';
+import { Tooltip } from '@rbx/ui';
 import { useFormContext } from 'react-hook-form';
 
 import useAdvancedTargetingDrawerStyles from '@components/campaignBuilder/targeting/AdvancedTargetingDrawer.styles';
@@ -54,9 +54,9 @@ const AdvancedTargetingAudienceEstimate = ({
           name='icon-regular-triangle-exclamation'
           size='Small'
         />
-        <Typography className={audienceEstimateText} variant='body2'>
+        <span className={`text-body-medium ${audienceEstimateText}`}>
           {translateCampaign('Description.ManualTargetingLimitedAudience')}
-        </Typography>
+        </span>
       </div>
     );
   };
@@ -73,9 +73,9 @@ const AdvancedTargetingAudienceEstimate = ({
     if (!isEstimateAvailable) {
       return (
         <div className={audienceEstimateOrLoadingContainer}>
-          <Typography className={audienceEstimateText} variant='h1'>
+          <span className={`text-heading-large ${audienceEstimateText}`}>
             {UNAVAILABLE_VALUE_DISPLAY}
-          </Typography>
+          </span>
         </div>
       );
     }
@@ -88,22 +88,22 @@ const AdvancedTargetingAudienceEstimate = ({
     let child = null;
     if (audienceEstimate.isError) {
       child = (
-        <Typography className={audienceEstimateText} color='error' variant='body2'>
+        <span className={`text-body-medium content-system-alert ${audienceEstimateText}`}>
           {translateCampaign('Message.FailedToLoadAudienceEstimate')}
-        </Typography>
+        </span>
       );
     } else if (audienceEstimate.isLoading) {
       child = loadingSpinner;
     } else {
       child = (
-        <Typography className={audienceEstimateText} variant='h1'>
+        <span className={`text-heading-large ${audienceEstimateText}`}>
           {EstimateString({
             est: audienceEstimate.data?.estimate_audience_num || 0,
             lessThan1KLabel: translateCampaign('Label.LessThan1K'),
             lowerBound: audienceEstimate.data?.estimate_audience_lower_bound || 0,
             upperBound: audienceEstimate.data?.estimate_audience_upper_bound || 0,
           })}
-        </Typography>
+        </span>
       );
     }
     return <div className={audienceEstimateOrLoadingContainer}>{child}</div>;
@@ -111,9 +111,9 @@ const AdvancedTargetingAudienceEstimate = ({
 
   return (
     <div>
-      <Typography color='secondary' variant='body2'>
+      <span className='text-body-medium content-default'>
         {translateCampaign('Heading.AudienceSizeEstimate')}
-      </Typography>
+      </span>
       <Tooltip title={translateCampaign('Description.AudienceSizeEstimateTooltip')}>
         <Icon className={audienceEstimateInfoIcon} name='icon-regular-circle-i' size='Small' />
       </Tooltip>

@@ -9,7 +9,6 @@ enum Routes {
   AD_INTEGRATIONS = '/ad-integrations',
   AD_INTEGRATIONS_CAMPAIGN = '/ad-integrations/[campaignId]',
   AD_INTEGRATIONS_CREATE = '/ad-integrations/create',
-  AD_INTEGRATIONS_LANDING = '/ad-integrations/landing',
   CREATE_AD = '/add/ad',
   CREATE_ADSET = '/add/adset',
   ADD_PAYMENT = '/billing/addpaymentmethod',

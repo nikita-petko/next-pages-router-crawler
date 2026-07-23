@@ -30,10 +30,10 @@ const useCampaignManagementTableStyles = makeStyles()((theme) => ({
   },
 
   /**
-   * Must match {@link TableNameCell} name `Typography` (`variant="body2"`), which resolves to the
-   * same `theme.typography.body2` tokens. Width measurement then tracks theme font/line-height
-   * changes without a duplicate hard-coded size. If the name cell ever uses a different variant,
-   * update this spread to the same typography preset.
+   * Must match {@link TableNameCell} name text (Foundation `text-body-medium`), which is
+   * metrically equivalent to `theme.typography.body2` (14px/400/140%). Width measurement then
+   * tracks theme font/line-height changes without a duplicate hard-coded size. If the name cell
+   * ever uses a different text style, update this spread to the matching typography preset.
    */
   nameMeasureText: {
     ...theme.typography.body2,

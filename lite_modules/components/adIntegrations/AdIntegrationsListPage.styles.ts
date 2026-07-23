@@ -1,6 +1,10 @@
 import { makeStyles } from '@rbx/ui';
 
 const useAdIntegrationsListPageStyles = makeStyles()((theme) => ({
+  // Nudge up from flex-end so the checkbox centers with the dropdown input.
+  archivedCampaignsFilter: {
+    marginBottom: theme.spacing(1),
+  },
   filterControl: {
     minWidth: '280px',
     width: '300px',

@@ -2,7 +2,7 @@ import { LineChart, SeriesDataTypes, XAxisGranularity } from '@rbx/analytics-ui'
 import type { LineChartZones } from '@rbx/analytics-ui';
 import { ProgressCircle, Tabs, TabsList, TabsTrigger } from '@rbx/foundation-ui';
 import { useLocalization } from '@rbx/intl';
-import { FormControl, MenuItem, Select, Typography } from '@rbx/ui';
+import { FormControl, MenuItem, Select } from '@rbx/ui';
 import { ChangeEvent, useCallback, useMemo, useState } from 'react';
 
 import useCampaignReportingChartsStyles from '@components/reporting/CampaignReportingCharts.styles';
@@ -21,8 +21,9 @@ import { CampaignTimeSeriesDataPoints } from '@type/timeSeries';
 import {
   formatTimestampLabel,
   getRoasMetric,
-  makePercentValueFormatter,
+  getTotalRoasFromTimeSeries,
   makePlaysValueFormatter,
+  makeRoasValueFormatter,
   MetricValueFormatter,
   sumPlaysFromTimeSeries,
 } from '@utils/reportingChartFormatters';
@@ -110,7 +111,7 @@ const CampaignReportingCharts = () => {
     [locale, timezoneDbName],
   );
   const formatPlaysValue = useMemo(() => makePlaysValueFormatter(locale), [locale]);
-  const formatPercentValue = useMemo(() => makePercentValueFormatter(locale), [locale]);
+  const formatRoasValue = useMemo(() => makeRoasValueFormatter(locale), [locale]);
 
   const { timeSeriesPeriod, timeSeriesState } = useNewFlowStore(
     (state: NewFlowStoreType) => state.campaignDetailsState,
@@ -156,6 +157,11 @@ const CampaignReportingCharts = () => {
     [timeSeriesState.data],
   );
 
+  const totalRoas = useMemo(
+    () => getTotalRoasFromTimeSeries(timeSeriesState.data?.spend, timeSeriesState.data?.revenue),
+    [timeSeriesState.data],
+  );
+
   const playsScorecardDisplayValue = useMemo(() => {
     if (timeSeriesState.isLoading || timeSeriesState.isError || totalPlays === undefined) {
       return UNAVAILABLE_VALUE_DISPLAY;
@@ -164,11 +170,17 @@ const CampaignReportingCharts = () => {
     return formatPlaysValue(totalPlays);
   }, [formatPlaysValue, timeSeriesState.isError, timeSeriesState.isLoading, totalPlays]);
 
-  const playsTabLabel = (
-    <span className={classes.metricDisplay} data-testid='plays-metric'>
-      <Typography component='span' variant='body2'>
-        {translateForecast('Label.TotalPlays')}
-      </Typography>
+  const roasScorecardDisplayValue = useMemo(() => {
+    if (timeSeriesState.isLoading || timeSeriesState.isError || totalRoas === undefined) {
+      return UNAVAILABLE_VALUE_DISPLAY;
+    }
+
+    return formatRoasValue(totalRoas);
+  }, [formatRoasValue, timeSeriesState.isError, timeSeriesState.isLoading, totalRoas]);
+
+  const renderMetricTabLabel = (label: string, displayValue: string, testId: string) => (
+    <span className={classes.metricDisplay} data-testid={testId}>
+      <span className='text-body-medium'>{label}</span>
       {timeSeriesState.isLoading ? (
         <ProgressCircle
           ariaLabel={translateMisc('Label.Loading')}
@@ -177,11 +189,21 @@ const CampaignReportingCharts = () => {
           variant='Indeterminate'
         />
       ) : (
-        <Typography className={classes.metricValue} component='span' variant='h6'>
-          {playsScorecardDisplayValue}
-        </Typography>
+        <span className={`text-title-large ${classes.metricValue}`}>{displayValue}</span>
       )}
     </span>
+  );
+
+  const playsTabLabel = renderMetricTabLabel(
+    translateForecast('Label.TotalPlays'),
+    playsScorecardDisplayValue,
+    'plays-metric',
+  );
+
+  const roasTabLabel = renderMetricTabLabel(
+    translateReport('Label.ROAS'),
+    roasScorecardDisplayValue,
+    'roas-metric',
   );
 
   const renderChartContent = () => {
@@ -197,17 +219,17 @@ const CampaignReportingCharts = () => {
 
     if (timeSeriesState.isError || !timeSeriesState.data) {
       return (
-        <Typography className={classes.errorText} variant='body2'>
+        <span className={`text-body-medium ${classes.errorText}`}>
           {translateReport('Description.GenericFetchError')}
-        </Typography>
+        </span>
       );
     }
 
     if (activeMetricTab === 'roas' && !roasDataPoints) {
       return (
-        <Typography className={classes.errorText} variant='body2'>
+        <span className={`text-body-medium ${classes.errorText}`}>
           {translateReport('Description.NoRoasData')}
-        </Typography>
+        </span>
       );
     }
 
@@ -217,7 +239,7 @@ const CampaignReportingCharts = () => {
         attributionWindowDays={attributionWindowDays}
         dataPoints={isRoas ? roasDataPoints! : timeSeriesState.data.plays}
         formatTimestamp={formatTimestamp}
-        formatValue={isRoas ? formatPercentValue : formatPlaysValue}
+        formatValue={isRoas ? formatRoasValue : formatPlaysValue}
         seriesName={isRoas ? translateReport('Label.ROAS') : translateCampaign('Label.Plays')}
         zoneLegendItemFormatter={zoneLegendItemFormatter}
       />
@@ -227,14 +249,14 @@ const CampaignReportingCharts = () => {
   return (
     <div className={classes.container} data-testid='campaign-reporting-charts'>
       <div className={classes.titleRow}>
-        <Typography variant='h6'>
+        <span className='text-title-large'>
           {translateCreatorDashboardNavigation('Heading.Performance')}
-        </Typography>
+        </span>
       </div>
       <div className={classes.controlsRow}>
         <div className={classes.controlsLeft}>
           <Tabs onValueChange={handleMetricTabChange} size='Small' value={activeMetricTab}>
-            <TabsList>
+            <TabsList className='gap-medium'>
               <TabsTrigger
                 aria-label={translateCampaign('Label.Plays')}
                 className={classes.metricTab}
@@ -242,8 +264,11 @@ const CampaignReportingCharts = () => {
                 {playsTabLabel}
               </TabsTrigger>
               {isCampaignRoasEnabled && (
-                <TabsTrigger className={classes.metricTab} value='roas'>
-                  {translateReport('Label.ROAS')}
+                <TabsTrigger
+                  aria-label={translateReport('Label.ROAS')}
+                  className={classes.metricTab}
+                  value='roas'>
+                  {roasTabLabel}
                 </TabsTrigger>
               )}
             </TabsList>

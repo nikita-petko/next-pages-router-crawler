@@ -1,4 +1,4 @@
-import { Tab, Tabs, Typography } from '@rbx/ui';
+import { Tab, Tabs } from '@rbx/ui';
 import { ChangeEvent } from 'react';
 
 import useAddPaymentMethodStyles from '@components/billing/AddPaymentMethod.styles';
@@ -50,14 +50,21 @@ const PaymentStep = ({
   const { translate: translateAccount } = useNamespacedTranslation(TranslationNamespace.Account);
   const { translate: translateBilling } = useNamespacedTranslation(TranslationNamespace.Billing);
   const {
-    classes: { buyAdCreditFormContainer, creditCardFormContainer, tab, tabs, tabSelected },
+    classes: {
+      buyAdCreditFormContainer,
+      creditCardFormContainer,
+      stepLockedMessage,
+      tab,
+      tabs,
+      tabSelected,
+    },
   } = useAddPaymentMethodStyles();
 
   if (!isUnlocked) {
     return (
-      <Typography sx={{ color: 'text.secondary', mt: 1 }} variant='body2'>
+      <span className={`text-body-medium ${stepLockedMessage}`}>
         {translateAccount('Description.CompleteStepAbove')}
-      </Typography>
+      </span>
     );
   }
 

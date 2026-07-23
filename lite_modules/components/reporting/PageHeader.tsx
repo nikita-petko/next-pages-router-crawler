@@ -1,5 +1,5 @@
 import { Button, Divider, Link } from '@rbx/foundation-ui';
-import { Alert, Grid, Tooltip, Typography } from '@rbx/ui';
+import { Alert, Grid, Tooltip } from '@rbx/ui';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect } from 'react';
 
@@ -62,7 +62,7 @@ const PageHeader = () => {
           <ExperienceFilterPicker />
           <ReportingViewQuickPick />
           <Alert className={filteredMessage} severity='info' variant='outlined'>
-            <Typography component='div' variant='body2'>
+            <div className='text-body-medium'>
               {translateHTML('Description.ReportingDataFiltered', [
                 {
                   closing: 'linkEnd',
@@ -78,7 +78,7 @@ const PageHeader = () => {
                   opening: 'linkStart',
                 },
               ])}
-            </Typography>
+            </div>
           </Alert>
         </Grid>
         <SummaryCardRow />

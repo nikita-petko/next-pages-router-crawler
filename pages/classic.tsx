@@ -82,7 +82,7 @@ const getHomePageLayout = (page: ReactNode) => {
   });
 };
 
-export const LARGEST_FAST_PAGE_SIZE = 100;
+export const LARGEST_FAST_PAGE_SIZE = 20;
 
 export const HOME_PAGE_TABLE_VIEWS = {
   ads: 'ads',
@@ -1139,6 +1139,12 @@ const Home = () => {
 
   const handleChange = async (evt: any) => {
     NON_REACT_CLOSURE_STORE_has_date_picker_loading_error = false;
+    // Clear per-table error flags the moment the user makes a selection — otherwise the tables
+    // keep rendering <NoDataPage /> even when the new fetch succeeds. The per-fetch .catch
+    // handlers below will re-set them if this attempt also fails.
+    setCampaignsLoadingError(false);
+    setAdSetsLoadingError(false);
+    setAdsLoadingError(false);
     const newDateRangeSelection = parseInt(evt?.target?.value, 10);
     if (
       !Number.isNaN(newDateRangeSelection) &&

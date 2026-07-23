@@ -1,3 +1,5 @@
+import { GetSitetestBaseUrl } from '@utils/url';
+
 export const AdIntegrationsDocsUrl =
   'https://create.roblox.com/docs/production/promotion/ad-integrations';
 
@@ -6,6 +8,6 @@ export const AdIntegrationsDocsUrl =
 export const AdIntegrationRevenueShareDocsUrl =
   'https://create.roblox.com/docs/production/promotion/ad-integrations#revenue-share';
 
-// TODO(jkohn) add direct heading link when available
-export const AdCategoryInfoDocsUrl =
-  'https://en.help.roblox.com/hc/en-us/articles/13722260778260-Advertising-Standards#U13-ads';
+/** Creator Dashboard immersive-ads eligibility tab for a specific experience. */
+export const getAdIntegrationEligibilityUrl = (universeId: number): string =>
+  `https://create.${GetSitetestBaseUrl()}/dashboard/creations/experiences/${String(universeId)}/monetization/immersive-ads?tab=Eligibility`;

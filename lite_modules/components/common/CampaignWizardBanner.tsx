@@ -1,4 +1,4 @@
-import { Alert, Typography } from '@rbx/ui';
+import { Alert } from '@rbx/ui';
 import { useRouter } from 'next/router';
 import { memo, ReactNode } from 'react';
 
@@ -22,16 +22,23 @@ const CampaignWizardBanner = memo(
 
     return (
       <Alert className={classicCreationFlowBanner} severity='info'>
-        <Typography variant='body1'>{textBeforeLink}</Typography>
-        <Typography
-          className={hereText}
+        <span className='text-body-large'>{textBeforeLink}</span>
+        <span
+          className={`text-body-large ${hereText}`}
           onClick={() => {
             router.push(Routes.NEW_CREATE_CAMPAIGN);
           }}
-          variant='body1'>
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              router.push(Routes.NEW_CREATE_CAMPAIGN);
+            }
+          }}
+          role='button'
+          tabIndex={0}>
           {translate('Label.AdsManager')}
-        </Typography>
-        <Typography variant='body1'>{textAfterLink}</Typography>
+        </span>
+        <span className='text-body-large'>{textAfterLink}</span>
       </Alert>
     );
   },

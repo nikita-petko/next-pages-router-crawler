@@ -13,8 +13,8 @@ import ReportingViewType from '@constants/reportingViewType';
 import {
   buildAnalyticsQueryRequest,
   getPlaysMetricForReportingView,
-  METRIC_REVENUE,
-  METRIC_SPEND,
+  getRevenueMetricForReportingView,
+  getSpendMetricForReportingView,
 } from '@services/ads/analyticsQueryBuilder';
 import { aggregateQueryResultToDailyDataPoints } from '@services/ads/campaignTimeSeriesDataPoints';
 import { CampaignTimeSeries, CampaignTimeSeriesDataPoints } from '@type/timeSeries';
@@ -107,13 +107,17 @@ export const getCampaignTimeSeries = async ({
   // so the chart shows its generic error state instead of an empty plot.
   const playsPromise = fetchMetric(getPlaysMetricForReportingView(reportingView));
 
-  // Spend + revenue are only used together (to compute ROAS). Treat them as a
-  // single unit: if either fails, drop both and display an error message.
+  // Spend + revenue are only used together (to compute ROAS). Query the
+  // reporting-view-specific CAaaS metrics (same pairing as AMSv2 aggregate ROAS)
+  // and treat them as a single unit: if either fails, drop both.
   const roasPromise: Promise<{
     revenue?: CampaignTimeSeriesDataPoints;
     spend?: CampaignTimeSeriesDataPoints;
   }> = isRoasEnabled
-    ? Promise.all([fetchMetric(METRIC_SPEND), fetchMetric(METRIC_REVENUE)])
+    ? Promise.all([
+        fetchMetric(getSpendMetricForReportingView(reportingView)),
+        fetchMetric(getRevenueMetricForReportingView(reportingView)),
+      ])
         .then(([spend, revenue]) => ({ revenue, spend }))
         .catch((error) => {
           CaptureException(error as Error, {

@@ -1,13 +1,5 @@
 import { useLocalization } from '@rbx/intl';
-import {
-  DatePicker,
-  MenuItem,
-  PickersUtilsProvider,
-  Select,
-  TextField,
-  Tooltip,
-  Typography,
-} from '@rbx/ui';
+import { DatePicker, MenuItem, PickersUtilsProvider, Select, TextField, Tooltip } from '@rbx/ui';
 import moment from 'moment-timezone';
 import { ChangeEvent, ReactNode, useMemo, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
@@ -175,8 +167,8 @@ const StartTimePicker = () => {
 
   return (
     <PickersUtilsProvider adapterLocale={dateFnsLocale}>
-      <Typography className={cx(formRow, fullWidth)} component='div'>
-        <Typography className={halfWidth}>
+      <div className={`text-body-large ${cx(formRow, fullWidth)}`}>
+        <span className={`text-body-large ${halfWidth}`}>
           <Controller
             control={control}
             name={FormField.START_DATE}
@@ -226,7 +218,7 @@ const StartTimePicker = () => {
               />
             )}
           />
-        </Typography>
+        </span>
 
         <Controller
           control={control}
@@ -283,14 +275,12 @@ const StartTimePicker = () => {
                 </Select>
               </Tooltip>
               {error && startTimeConversionText && (
-                <Typography color='secondary' variant='captionBody'>
-                  {startTimeConversionText}
-                </Typography>
+                <span className='text-body-medium content-default'>{startTimeConversionText}</span>
               )}
             </div>
           )}
         />
-      </Typography>
+      </div>
     </PickersUtilsProvider>
   );
 };

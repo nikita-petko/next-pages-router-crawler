@@ -43,9 +43,16 @@ const useCampaignReportingChartsStyles = makeStyles()((theme) => ({
   },
 
   metricTab: {
+    '&&': {
+      height: theme.spacing(8),
+      minHeight: theme.spacing(8),
+      padding: theme.spacing(0.5, 0),
+    },
+    '&& > div:last-child': {
+      alignSelf: 'flex-start',
+      height: 'auto',
+    },
     margin: 0,
-    minHeight: 'unset',
-    padding: theme.spacing(0.5, 0),
   },
 
   metricValue: {

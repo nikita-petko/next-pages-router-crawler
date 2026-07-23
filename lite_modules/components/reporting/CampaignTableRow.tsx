@@ -1,4 +1,4 @@
-import { TableCell, TableRow } from '@rbx/foundation-ui';
+import { Avatar, TableCell, TableRow } from '@rbx/foundation-ui';
 import { Tooltip } from '@rbx/ui';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -21,13 +21,14 @@ import {
   statusTextToTooltipKey,
 } from '@constants/campaignStatus';
 import { EntityType } from '@constants/entity';
+import { HeadCellName } from '@constants/headCells';
 import { TranslationNamespace } from '@constants/localization';
 import ReportingViewType from '@constants/reportingViewType';
 import Routes from '@constants/routes';
 import { Tooltips } from '@constants/tooltips';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider';
-import { GenericTableRowProps, RowCell } from '@type/genericManagementTable';
+import { GenericTableRowProps, RowCell, SortableHeadCell } from '@type/genericManagementTable';
 import { GetAudienceLabelKey, GetEndUserObjectiveString } from '@utils/campaignDetails';
 import { IsCompletedStatus } from '@utils/displayStatus';
 import { GetLocalStorage } from '@utils/localStorage';
@@ -48,6 +49,10 @@ const CampaignTableRow = ({
       actionMenuButton,
       actionRow,
       campaignTypeRow,
+      creatorAvatar,
+      creatorCellContent,
+      creatorRow,
+      dateModifiedRow,
       fullRow,
       nameRow,
       statusRow,
@@ -123,6 +128,12 @@ const CampaignTableRow = ({
       ? GetEndUserObjectiveString(row.objective, isOffPlatformCampaign)
       : '';
   const audienceLabelKey = GetAudienceLabelKey(row.detailed_targeting_match_type);
+  const showCreatorColumn = headCells.some(
+    (headCell) => (headCell as SortableHeadCell).sortKey === 'creator_username',
+  );
+  const showDateModifiedColumn = headCells.some(
+    (headCell) => headCell.classNameKey === HeadCellName.CampaignDateModified,
+  );
 
   const rowCells: RowCell[] = [
     {
@@ -204,6 +215,29 @@ const CampaignTableRow = ({
     },
   ];
 
+  const creatorCell = showCreatorColumn ? (
+    <TableCell align='start' className={creatorRow}>
+      {row.creator_username ? (
+        <div className={creatorCellContent}>
+          <Avatar
+            alt={row.creator_username}
+            className={creatorAvatar}
+            size='Small'
+            src={row.creator_avatar_url}
+          />
+          <span>{row.creator_username}</span>
+        </div>
+      ) : (
+        ''
+      )}
+    </TableCell>
+  ) : null;
+  const dateModifiedCell = showDateModifiedColumn ? (
+    <TableCell align='start' className={dateModifiedRow}>
+      {row.date_modified ?? ''}
+    </TableCell>
+  ) : null;
+
   // The parent nominates at most one retention row per page as the dismissible-tooltip anchor.
   // Until that coachmark has been dismissed, the anchor row shows the dismissible instead of the
   // hover hint. Once dismissed, the anchor row falls back to the hover hint so its behavior
@@ -228,6 +262,8 @@ const CampaignTableRow = ({
       )}
       {rowCells.slice(1).map((rowCell) => renderBodyCell(rowCell))}
       <SharedTableCells headCells={headCells} row={row} unsortableData={unsortableData} />
+      {creatorCell}
+      {dateModifiedCell}
     </TableRow>
   );
 

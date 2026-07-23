@@ -1,6 +1,5 @@
 import type { TTailwindIconClass } from '@rbx/foundation-tailwind/classes';
 import { Icon, Link } from '@rbx/foundation-ui';
-import { Typography } from '@rbx/ui';
 import { memo } from 'react';
 
 import useGenericNoDataPageStyles from '@components/common/GenericNoDataPage.styles';
@@ -61,8 +60,8 @@ const GenericNoDataPage = memo(
             </div>
           )}
           <div className={textContainer}>
-            <Typography variant='h4'>{title}</Typography>
-            <Typography color='secondary' variant='body2'>
+            <span className='text-heading-medium'>{title}</span>
+            <span className='text-body-medium content-default'>
               {subtitle}
               {linkInSubtitle && (
                 <>
@@ -70,11 +69,9 @@ const GenericNoDataPage = memo(
                   <Link href={linkInSubtitle.subtitleLink}>{linkInSubtitle.subtitleLinkText}</Link>
                 </>
               )}
-            </Typography>
+            </span>
             {additionalText && (
-              <Typography color='secondary' variant='body2'>
-                {additionalText}
-              </Typography>
+              <span className='text-body-medium content-default'>{additionalText}</span>
             )}
           </div>
           <div className={buttonsContainer}>

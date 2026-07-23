@@ -1,8 +1,9 @@
 import { Button, Icon, Toggle } from '@rbx/foundation-ui';
-import { Skeleton, Tooltip } from '@rbx/ui';
+import { Tooltip } from '@rbx/ui';
 import { useRouter } from 'next/router';
 
 import { openDisableAutoReloadConfirmDialog } from '@components/billing/dialogs/DisableAutoReloadConfirmDialog';
+import Skeleton from '@components/common/Skeleton';
 import { AdCreditBalanceScope, PaymentMethodActionEnum } from '@constants/billing';
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
@@ -101,7 +102,10 @@ const AdCreditBalance = ({
   const autoReloadDescriptionContent = (() => {
     if (isAutoReloadLoading) {
       return (
-        <Skeleton animate data-testid='autoReloadDescriptionSkeleton' variant='text' width={240} />
+        <Skeleton
+          className='height-[1.2em] width-[240px]'
+          data-testid='autoReloadDescriptionSkeleton'
+        />
       );
     }
 
@@ -137,10 +141,8 @@ const AdCreditBalance = ({
               <span className='text-heading-large content-emphasis' data-testid='balanceAmount'>
                 {isLoading ? (
                   <Skeleton
-                    animate
+                    className='height-[1.2em] width-[160px]'
                     data-testid='balanceAmountSkeleton'
-                    variant='text'
-                    width={160}
                   />
                 ) : (
                   MicroUsdToUsdStringRoundedDown(adCreditBalance)

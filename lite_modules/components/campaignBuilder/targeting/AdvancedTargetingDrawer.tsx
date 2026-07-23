@@ -6,7 +6,7 @@ import {
   SheetRoot,
   SheetTitle,
 } from '@rbx/foundation-ui';
-import { Alert, Typography } from '@rbx/ui';
+import { Alert } from '@rbx/ui';
 import { useRef } from 'react';
 import { useFormContext } from 'react-hook-form';
 
@@ -71,9 +71,9 @@ const AdvancedTargetingDrawer = () => {
     }
     return (
       <Alert data-testid='educationWarning' severity='warning'>
-        <Typography className={educationText} data-testid='educationWarningHeader' variant='body1'>
+        <span className={`text-body-large ${educationText}`} data-testid='educationWarningHeader'>
           {translate('Description.TargetingWarning')}
-        </Typography>
+        </span>
       </Alert>
     );
   };

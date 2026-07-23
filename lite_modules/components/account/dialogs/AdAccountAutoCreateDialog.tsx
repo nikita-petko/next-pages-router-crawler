@@ -1,5 +1,5 @@
 import { Button, Checkbox, Link, ProgressCircle } from '@rbx/foundation-ui';
-import { Autocomplete, FormLabel, TextField, Typography } from '@rbx/ui';
+import { Autocomplete, FormLabel, TextField } from '@rbx/ui';
 import { AxiosError } from 'axios';
 import { type ReactElement, useEffect, useId, useState } from 'react';
 import { Controller, FormProvider } from 'react-hook-form';
@@ -260,12 +260,10 @@ const AdAccountAutoCreateDialog = ({
                       placement='Start'
                       size='Small'
                     />
-                    <Typography
-                      className='cursor-pointer'
-                      component='label'
+                    <label
+                      className='text-body-large cursor-pointer'
                       htmlFor={termsCheckboxId}
-                      id={termsLabelId}
-                      variant='body1'>
+                      id={termsLabelId}>
                       {translateAccountHTML('Description.TermsAgreementV2', [
                         {
                           closing: 'linkEnd',
@@ -282,7 +280,7 @@ const AdAccountAutoCreateDialog = ({
                           opening: 'linkStart',
                         },
                       ])}
-                    </Typography>
+                    </label>
                   </div>
                   {errors[FormFields.TERMS_CHECKBOX] && (
                     <FormLabel error>{errors[FormFields.TERMS_CHECKBOX]?.message}</FormLabel>

@@ -1,5 +1,4 @@
 import { Button, Divider } from '@rbx/foundation-ui';
-import { Typography } from '@rbx/ui';
 import { AddressElement, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { PaymentMethod, StripeAddressElement, StripePaymentElement } from '@stripe/stripe-js';
 import { useRouter } from 'next/router';
@@ -284,11 +283,11 @@ const StripeForm = ({
   };
 
   const subtitle = (
-    <Typography className={stripeFormHeader} data-testid='stripeFormHeader' variant='h5'>
+    <span className={`text-heading-small ${stripeFormHeader}`} data-testid='stripeFormHeader'>
       {hasVerifiedPaymentProfiles
         ? translateBilling('Heading.ReplaceCreditOrDebitCard')
         : translateBilling('Heading.AddCreditOrDebitCard')}
-    </Typography>
+    </span>
   );
 
   // TODO: [3/20/23] Center loading icon on add payment method page - may not be worth the trouble
@@ -302,9 +301,9 @@ const StripeForm = ({
     <div className={backdrop} role='presentation'>
       <div className={submitLoadingStateContainer}>
         <CustomCircularProgress className={circularProgress} />
-        <Typography className={inProgressText} variant='body1'>
+        <span className={`text-body-large ${inProgressText}`}>
           {translateBilling('Description.AuthenticatingCard')}
-        </Typography>
+        </span>
       </div>
     </div>
   );
@@ -393,12 +392,11 @@ const StripeForm = ({
     <form data-testid='stripeForm' name='stripeForm'>
       {subtitle}
       <PaymentElement />
-      <Typography
-        className={billingAddressFormHeader}
-        data-testid='billingAddressFormHeader'
-        variant='h4'>
+      <span
+        className={`text-heading-medium ${billingAddressFormHeader}`}
+        data-testid='billingAddressFormHeader'>
         {translateBilling('Heading.BillingAddress')}
-      </Typography>
+      </span>
       <AddressElement
         options={{
           defaultValues: {
@@ -414,14 +412,14 @@ const StripeForm = ({
       <div className={centerButtons ? buttonContainer : undefined} data-testid='buttonContainer'>
         <div className={cardHoldReminder}>
           <div>
-            <Typography data-testid='cardHoldReminderTitle' variant='captionHeader'>
+            <span className='text-title-medium' data-testid='cardHoldReminderTitle'>
               {translateBilling('Title.CardHoldReminder')}
-            </Typography>
+            </span>
           </div>
           <div>
-            <Typography data-testid='cardHoldReminder' variant='captionBody'>
+            <span className='text-body-medium' data-testid='cardHoldReminder'>
               {translateBilling('Description.CardHoldReminder')}
-            </Typography>
+            </span>
           </div>
         </div>
         {actionsContainer ? null : internalActions}

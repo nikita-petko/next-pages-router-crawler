@@ -1,12 +1,9 @@
 import { Divider } from '@rbx/foundation-ui';
-import { Card, CardContent, Grid, Skeleton, Typography } from '@rbx/ui';
+import { Card, CardContent, Grid } from '@rbx/ui';
 import type { JSX } from 'react';
 
+import Skeleton from '@components/common/Skeleton';
 import useSummaryCardStyles from '@components/reporting/SummaryCard.styles';
-import {
-  SUMMARY_CARD_VALUE_SKELETON_HEIGHT,
-  SUMMARY_CARD_VALUE_SKELETON_WIDTH,
-} from '@constants/genericManagementTableStyles';
 
 interface SummaryCardValue {
   units?: string;
@@ -47,13 +44,11 @@ const SummaryCard = ({
   const firstSection = (
     <Grid item>
       <Grid className={statContainer} container>
-        <Typography className={noWrapText} variant='h1'>
-          {firstValue.value}
-        </Typography>
+        <span className={`text-heading-large ${noWrapText}`}>{firstValue.value}</span>
         {firstValue.units && (
-          <Typography className={noWrapText} color='secondary' variant='body2'>
+          <span className={`text-body-medium content-default ${noWrapText}`}>
             {firstValue.units}
-          </Typography>
+          </span>
         )}
       </Grid>
     </Grid>
@@ -66,13 +61,11 @@ const SummaryCard = ({
       </Grid>
       <Grid item>
         <Grid className={statContainer} container>
-          <Typography className={noWrapText} variant='h1'>
-            {secondValue.value}
-          </Typography>
+          <span className={`text-heading-large ${noWrapText}`}>{secondValue.value}</span>
           {secondValue.units && (
-            <Typography className={noWrapText} color='secondary' variant='body2'>
+            <span className={`text-body-medium content-default ${noWrapText}`}>
               {secondValue.units}
-            </Typography>
+            </span>
           )}
         </Grid>
       </Grid>
@@ -80,23 +73,13 @@ const SummaryCard = ({
   ) : null;
 
   // Always show the title - it's a static label that doesn't need skeleton loading
-  const titleContent = (
-    <Typography className={noWrapText} variant='body1'>
-      {title}
-    </Typography>
-  );
+  const titleContent = <span className={`text-body-large ${noWrapText}`}>{title}</span>;
 
   const valueContent =
     isLoading && useSkeletonLoading ? (
       <>
         <Grid className={skeletonValueContainer} item>
-          <Skeleton
-            animate
-            data-testid='summary-card-skeleton'
-            height={SUMMARY_CARD_VALUE_SKELETON_HEIGHT}
-            variant='text'
-            width={SUMMARY_CARD_VALUE_SKELETON_WIDTH}
-          />
+          <Skeleton className='height-[40px] width-[70%]' data-testid='summary-card-skeleton' />
         </Grid>
         {secondValue && (
           <>
@@ -104,13 +87,7 @@ const SummaryCard = ({
               <Divider className={metricDivider} orientation='vertical' />
             </Grid>
             <Grid className={skeletonValueContainer} item>
-              <Skeleton
-                animate
-                data-testid='summary-card-skeleton'
-                height={SUMMARY_CARD_VALUE_SKELETON_HEIGHT}
-                variant='text'
-                width={SUMMARY_CARD_VALUE_SKELETON_WIDTH}
-              />
+              <Skeleton className='height-[40px] width-[70%]' data-testid='summary-card-skeleton' />
             </Grid>
           </>
         )}

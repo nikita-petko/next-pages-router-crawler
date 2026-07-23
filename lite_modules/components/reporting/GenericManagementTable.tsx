@@ -20,16 +20,10 @@ import {
   UnsortableHeadCell,
   UnsortableRowData,
 } from '@type/genericManagementTable';
-import { DescendingComparator } from '@utils/descendingComparator';
+import { getSortComparator } from '@utils/descendingComparator';
 import { ConvertEntityTypeEnumToString } from '@utils/enumToString';
 import { CaptureException } from '@utils/error';
 import { GetLocalStorage, SetLocalStorage } from '@utils/localStorage';
-
-function getComparator<T, K extends keyof T>(order: Order, orderBy: K): (a: T, b: T) => number {
-  return order === 'desc'
-    ? (a, b) => DescendingComparator(a, b, orderBy)
-    : (a, b) => -DescendingComparator(a, b, orderBy);
-}
 
 function stableSort<T>(array: T[], comparator: (a: T, b: T) => number) {
   const stabilizedThis = array.map((el, index) => [el, index] as [T, number]);
@@ -179,7 +173,7 @@ const GenericManagementTable = ({
   // inputs change (avoids `exhaustive-deps` churn from a freshly allocated array each render).
   const visibleRows = useMemo(
     () =>
-      stableSort<GenericSortableRowData>(sortableData, getComparator(order, orderBy)).slice(
+      stableSort<GenericSortableRowData>(sortableData, getSortComparator(order, orderBy)).slice(
         paginationStartIndex,
         paginationEndIndex,
       ),

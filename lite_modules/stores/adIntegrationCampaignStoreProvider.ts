@@ -8,9 +8,12 @@ import {
   AD_INTEGRATION_CAMPAIGN_STATUS,
   getAdIntegrationCampaignDetails,
   listAdIntegrationCampaignListItemsByUniverse,
-  listPublisherEligibleUniverses,
   updateAdIntegrationCampaignStatus,
 } from '@services/ads/adIntegrationCampaignService';
+import {
+  listUniverseOptionsForAdIntegrations,
+  SearchOwnedUniversesParams,
+} from '@services/ads/getUniversesService';
 import { useThumbnailStore } from '@stores/thumbnailStoreProvider';
 import {
   AdIntegrationCampaignDetailsFormValues,
@@ -19,6 +22,11 @@ import {
 } from '@type/adIntegrations';
 import { UniverseShapeType } from '@type/universe';
 import { isAdIntegrationCampaignStatusEnabled } from '@utils/adIntegrationCampaign';
+import {
+  buildPickerUniversesWithAllOption,
+  mapAdvertisedUniverseToUniverseShape,
+  resolveInitialUniverseFilter,
+} from '@utils/manageUniverseFilter';
 import {
   EmptyRequestStateType,
   GetEmptyRequestState,
@@ -32,6 +40,11 @@ const QUERY_KEYS = {
   AD_INTEGRATION_EXPERIENCE_OPTIONS: 'adIntegrationExperienceOptions',
 } as const;
 
+export interface AdIntegrationUniverseLoadOptions {
+  initialUniverseId?: number;
+  workspace?: SearchOwnedUniversesParams;
+}
+
 interface AdIntegrationCampaignStoreStateType {
   adIntegrationCampaignQueryClient: QueryClient;
   campaignCreatedTimestampMs?: number;
@@ -44,6 +57,7 @@ interface AdIntegrationCampaignStoreStateType {
   campaignStartTimestampMs?: number;
   campaignStatus?: string;
   campaignStatusToggleLoadingMap: Record<string, boolean>;
+  publisherEligibleUniverseIds: number[];
   selectedUniverseId: number;
   universesCanAdvertise: RequestStateType<UniverseShapeType[]>;
 }
@@ -57,7 +71,10 @@ interface AdIntegrationCampaignStoreActionType {
     forceRefresh?: boolean,
   ) => Promise<void>;
   getCampaignListBySelectedUniverse: (forceRefresh?: boolean) => Promise<void>;
-  getUniversesCanAdvertise: (forceRefresh?: boolean) => Promise<void>;
+  getUniversesCanAdvertise: (
+    forceRefresh?: boolean,
+    options?: AdIntegrationUniverseLoadOptions,
+  ) => Promise<void>;
   invalidateCampaignDetailsCache: (campaignId: string) => Promise<void>;
   setSelectedUniverseId: (universeId: number) => void;
   toggleCampaignStatus: (campaignId: string, currentStatus?: string) => Promise<void>;
@@ -228,55 +245,75 @@ export const useAdIntegrationCampaignStore = create<AdIntegrationCampaignStoreTy
         });
       }
     },
-    getUniversesCanAdvertise: async (forceRefresh = false) => {
+    getUniversesCanAdvertise: async (forceRefresh = false, options = {}) => {
       try {
         set((draft) => {
           draft.universesCanAdvertise.data = [];
           draft.universesCanAdvertise.isError = false;
           draft.universesCanAdvertise.isLoading = true;
+          draft.publisherEligibleUniverseIds = [];
         });
+
+        const { initialUniverseId, workspace } = options;
+        const universeQueryKey = workspace
+          ? [
+              QUERY_KEYS.AD_INTEGRATION_EXPERIENCE_OPTIONS,
+              'owned',
+              workspace.creatorType,
+              workspace.creatorTargetId,
+            ]
+          : [QUERY_KEYS.AD_INTEGRATION_EXPERIENCE_OPTIONS, 'publisher-eligible'];
 
         if (forceRefresh) {
           await get().adIntegrationCampaignQueryClient.invalidateQueries({
-            queryKey: [QUERY_KEYS.AD_INTEGRATION_EXPERIENCE_OPTIONS],
+            queryKey: universeQueryKey,
           });
         }
 
-        const universesCanAdvertise = await get().adIntegrationCampaignQueryClient.fetchQuery({
+        const universeOptions = (await get().adIntegrationCampaignQueryClient.fetchQuery({
           gcTime: 30 * 60 * 1000,
-          queryFn: () => listPublisherEligibleUniverses(),
-          queryKey: [QUERY_KEYS.AD_INTEGRATION_EXPERIENCE_OPTIONS],
+          queryFn: async () => listUniverseOptionsForAdIntegrations(workspace),
+          queryKey: universeQueryKey,
           staleTime: 5 * 60 * 1000,
-        });
+        })) || { publisherEligibleUniverseIds: [], universes: [] };
 
-        if (universesCanAdvertise.universes) {
+        const universes = universeOptions.universes.map(mapAdvertisedUniverseToUniverseShape);
+        const { publisherEligibleUniverseIds } = universeOptions;
+        const shouldClearCampaignList = universes.length === 0;
+
+        if (universes.length > 0) {
           useThumbnailStore
             .getState()
-            .getThumbnailsBatch(
-              universesCanAdvertise.universes.map((universe) => universe.universe_id),
-            );
+            .getThumbnailsBatch(universes.map((universe) => universe.universe_id));
         }
 
         set((draft) => {
+          draft.publisherEligibleUniverseIds = publisherEligibleUniverseIds;
           draft.universesCanAdvertise = {
-            data: universesCanAdvertise.universes || [],
+            data: universes,
             isError: false,
             isLoading: false,
           };
 
-          if (
-            draft.selectedUniverseId !== defaultAdvertisedUniverse.universe_id &&
-            !draft.universesCanAdvertise.data.some(
-              (universe) => universe.universe_id === draft.selectedUniverseId,
-            )
-          ) {
-            draft.selectedUniverseId = defaultAdvertisedUniverse.universe_id;
+          const pickerUniverses = buildPickerUniversesWithAllOption(
+            draft.universesCanAdvertise.data,
+          );
+          const selectedUniverse = resolveInitialUniverseFilter(pickerUniverses, initialUniverseId);
+          draft.selectedUniverseId = selectedUniverse.universe_id;
+
+          if (shouldClearCampaignList) {
+            draft.campaignList = {
+              data: [],
+              isError: false,
+              isLoading: false,
+            };
           }
         });
       } catch (_error) {
         set((draft) => {
           draft.universesCanAdvertise.isError = true;
           draft.universesCanAdvertise.isLoading = false;
+          draft.publisherEligibleUniverseIds = [];
         });
       }
     },
@@ -285,6 +322,7 @@ export const useAdIntegrationCampaignStore = create<AdIntegrationCampaignStoreTy
         queryKey: [QUERY_KEYS.AD_INTEGRATION_CAMPAIGN_DETAILS, campaignId],
       });
     },
+    publisherEligibleUniverseIds: [],
     selectedUniverseId: defaultAdvertisedUniverse.universe_id,
     setSelectedUniverseId: (universeId: number) => {
       set((draft) => {

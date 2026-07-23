@@ -1,5 +1,5 @@
 import { Button, Link } from '@rbx/foundation-ui';
-import { Grid, Tooltip, Typography } from '@rbx/ui';
+import { Grid, Tooltip } from '@rbx/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 
@@ -191,9 +191,7 @@ const CampaignDetails = () => {
       value: (
         <div className={scheduleContainer}>
           {scheduleDisplay}
-          <Typography color='secondary' variant='captionBody'>
-            {timezoneTitle}
-          </Typography>
+          <span className='text-body-medium content-default'>{timezoneTitle}</span>
         </div>
       ),
     },
@@ -206,13 +204,9 @@ const CampaignDetails = () => {
           <Grid item key={label.id}>
             <div className={itemContainer}>
               <div className={labelContainer}>
-                <Typography className={labelFont} variant='body2'>
-                  {label.label}
-                </Typography>
+                <span className={`text-body-medium ${labelFont}`}>{label.label}</span>
               </div>
-              <Typography className={valueFont} variant='body2'>
-                {label.value}
-              </Typography>
+              <span className={`text-body-medium ${valueFont}`}>{label.value}</span>
             </div>
           </Grid>
         ))}
@@ -222,13 +216,9 @@ const CampaignDetails = () => {
           <Grid item key={label.id}>
             <div className={itemContainer}>
               <div className={labelContainer}>
-                <Typography className={labelFont} variant='body2'>
-                  {label.label}
-                </Typography>
+                <span className={`text-body-medium ${labelFont}`}>{label.label}</span>
               </div>
-              <Typography className={valueFont} variant='body2'>
-                {label.value}
-              </Typography>
+              <span className={`text-body-medium ${valueFont}`}>{label.value}</span>
             </div>
           </Grid>
         ))}

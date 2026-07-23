@@ -1,4 +1,4 @@
-import { Banner, Typography } from '@rbx/ui';
+import { Banner } from '@rbx/ui';
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 
@@ -41,9 +41,9 @@ const PromotionBanner = () => {
       classes={{ root: bannerRoot }}
       description={
         <div className={textContainer}>
-          <Typography color='secondary' variant='body1'>
+          <span className='text-body-large content-default'>
             {translate('Description.UseAdsManager')}
-          </Typography>
+          </span>
         </div>
       }
       illustration={{

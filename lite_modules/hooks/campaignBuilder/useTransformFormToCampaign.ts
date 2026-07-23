@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { useCallback } from 'react';
 import { FormState, UseFormReturn } from 'react-hook-form';
 
+import { ServerAdAssetType } from '@constants/ad';
 import { defaultTimeZone } from '@constants/app';
 import { isAdCreditPaymentType, ServerCampaignObjectiveType } from '@constants/campaign';
 import {
@@ -21,7 +22,7 @@ import { useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
 import { ServerAdSetBidType } from '@type/adSet';
 import { CreationCampaignType, ThumbnailType } from '@type/campaignBuilder';
-import { UploadedVideoType } from '@type/fileUpload';
+import { UploadedVideoType, VideoUploadState } from '@type/fileUpload';
 import { FormatTargetingCriteriaRequestJson } from '@utils/advancedTargeting';
 import { MicroUsdToUsd, UsdToMicroUsd } from '@utils/currency';
 import { ConvertEntityTypeEnumToString } from '@utils/enumToString';
@@ -148,23 +149,36 @@ export const useTransformFormToCampaign = ({
 
     // The clickout URL is only valid for 1x2 (video) ads — the backend rejects
     // it as a forbidden field on 2x1 (image) ads.
+    const isVerticalFormat = data[FormField.CREATIVE_FORMAT] === ReachAdFormat.VERTICAL_1X2;
     const clickDestination = data[FormField.CLICK_DESTINATION]?.trim();
-    const clickoutUrl =
-      data[FormField.CREATIVE_FORMAT] === ReachAdFormat.VERTICAL_1X2 && clickDestination
-        ? clickDestination
-        : undefined;
+    const clickoutUrl = isVerticalFormat && clickDestination ? clickDestination : undefined;
+
+    // 1x2 vertical reach is a video ad: the primary asset is the uploaded video
+    // (asset_type VIDEO) and the selected image is its poster/fallback
+    // (thumbnail_asset_id). Cap to a single poster so we do not emit N ads
+    // that all share the same video asset_id. 2x1 horizontal stays an image
+    // ad (asset_id = image) and may still carry multiple selections.
+    const finishedVideo = data[FormField.VIDEOS].find(
+      (video: UploadedVideoType) => video.state === VideoUploadState.FINISHED && !!video.assetId,
+    );
+    const videoAssetId = finishedVideo?.assetId ? parseInt(finishedVideo.assetId, 10) : undefined;
+    const useVideoAsset = isVerticalFormat && videoAssetId !== undefined;
+    const selectedThumbnails = data[FormField.THUMBNAILS].filter(({ isSelected }) => isSelected);
+    const thumbnailsForAds = useVideoAsset ? selectedThumbnails.slice(0, 1) : selectedThumbnails;
 
     return data[FormField.GOAL] === ServerCampaignObjectiveType.REACH
-      ? data[FormField.THUMBNAILS]
-          .filter(({ isSelected }) => isSelected)
-          .map(({ assetId }) => ({
-            asset_id: assetId,
-            headline: data[FormField.HEADLINE] || '',
-            ...(clickoutUrl !== undefined && { clickout_url: clickoutUrl }),
-            ...(selectedLogo !== undefined && { logo_asset_id: selectedLogo }),
-            ...(logoAspectWidth !== undefined && { logo_asset_aspect_width: logoAspectWidth }),
-            ...(data[FormField.SUBTITLE] !== undefined && { subtitle: data[FormField.SUBTITLE] }),
-          }))
+      ? thumbnailsForAds.map(({ assetId }) => ({
+          asset_id: useVideoAsset ? videoAssetId : assetId,
+          ...(useVideoAsset && {
+            asset_type: ServerAdAssetType.VIDEO,
+            thumbnail_asset_id: assetId,
+          }),
+          headline: data[FormField.HEADLINE] || '',
+          ...(clickoutUrl !== undefined && { clickout_url: clickoutUrl }),
+          ...(selectedLogo !== undefined && { logo_asset_id: selectedLogo }),
+          ...(logoAspectWidth !== undefined && { logo_asset_aspect_width: logoAspectWidth }),
+          ...(data[FormField.SUBTITLE] !== undefined && { subtitle: data[FormField.SUBTITLE] }),
+        }))
       : undefined;
   }, []);
 

@@ -1,18 +1,9 @@
-import { adPolicyLabelEnumToText } from '@rbx/ads-moderation-ui';
 import { AdIntegrationPlacement } from '@rbx/client-ads-management-api/v1';
 import { Button, Checkbox, Link } from '@rbx/foundation-ui';
 import { useLocalization } from '@rbx/intl';
-import {
-  DatePicker,
-  FormLabel,
-  MenuItem,
-  PickersUtilsProvider,
-  Select,
-  TextField,
-  Typography,
-} from '@rbx/ui';
+import { DatePicker, FormLabel, MenuItem, PickersUtilsProvider, Select, TextField } from '@rbx/ui';
 import moment from 'moment-timezone';
-import { ChangeEvent, ReactNode, useCallback, useId, useMemo, useState } from 'react';
+import { type ChangeEvent, type ReactNode, useCallback, useId, useMemo, useState } from 'react';
 import { Controller, useWatch } from 'react-hook-form';
 
 import AdIntegrationAssetsDrawer from '@components/adIntegrations/assetsDrawer/AdIntegrationAssetsDrawer';
@@ -23,12 +14,10 @@ import { openAdIntegrationRevenueShareIncreaseDialog } from '@components/adInteg
 import { openErrorDialog } from '@components/common/dialog/errorDialog';
 import {
   AdIntegrationFormField,
-  AdsCategoryOption,
-  AdsCategoryOptions,
   MaxAdvertiserNameLength,
   MaxCampaignNameLength,
 } from '@constants/adIntegrations';
-import { AdCategoryInfoDocsUrl, AdIntegrationsDocsUrl } from '@constants/adIntegrationsUrls';
+import { AdIntegrationsDocsUrl } from '@constants/adIntegrationsUrls';
 import { defaultTimeZone } from '@constants/app';
 import {
   DateFormat,
@@ -99,7 +88,7 @@ const AdIntegrationCampaignDetailsForm = ({
   universes,
   userId,
 }: AdIntegrationCampaignDetailsFormProps) => {
-  const { translate, translateHTML } = useNamespacedTranslation(TranslationNamespace.Campaign);
+  const { translate } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
   const { translate: translateAccount, translateHTML: translateAccountHTML } =
     useNamespacedTranslation(TranslationNamespace.Account);
@@ -162,12 +151,10 @@ const AdIntegrationCampaignDetailsForm = ({
       container,
       datePickerError,
       dateTimeRow,
-      fieldSection,
       formColumn,
       halfWidth,
       inlineTile,
       layout,
-      mutedText,
       rowError,
       sectionHeader,
       sidebar,
@@ -360,12 +347,6 @@ const AdIntegrationCampaignDetailsForm = ({
   });
 
   const rewardedPlacementsLabelKey = 'Label.AdIntegrationNoRewardedPlacements';
-  const getAdsCategoryOptionLabel = useCallback((option: AdsCategoryOption): ReactNode => {
-    if ('enumValue' in option) {
-      return adPolicyLabelEnumToText.get(option.enumValue) ?? option.value;
-    }
-    return option.label;
-  }, []);
 
   const handlePendingAdditionsChange = useCallback((assetIds: number[]) => {
     setPendingAssetIds(assetIds);
@@ -374,7 +355,6 @@ const AdIntegrationCampaignDetailsForm = ({
   const submitForm = useCallback(
     async (values: AdIntegrationCampaignDetailsFormValues) => {
       const changedFields: AdIntegrationCampaignDetailsChangedFields = {
-        adsCategory: Boolean(dirtyFields.adsCategory),
         advertiserName: Boolean(dirtyFields.advertiserName),
         campaignName: Boolean(dirtyFields.campaignName),
         endDate: Boolean(dirtyFields.endDate),
@@ -441,15 +421,17 @@ const AdIntegrationCampaignDetailsForm = ({
 
   return (
     <>
-      <Typography variant='h1'>{translateMisc('Heading.Registration')}</Typography>
+      <span className='text-heading-large'>{translateMisc('Heading.Registration')}</span>
       <div className={layout}>
         <div className={container}>
           <div>
             <div className={sectionHeader}>
-              <Typography variant='h5'>{translateAccount('Heading.IntegrationDetails')}</Typography>
-              <Typography color='secondary' variant='body1'>
+              <span className='text-heading-small'>
+                {translateAccount('Heading.IntegrationDetails')}
+              </span>
+              <span className='text-body-large content-default'>
                 {translateAccount('Description.IntegrationDetailsBody')}
-              </Typography>
+              </span>
             </div>
 
             <form className={formColumn} onSubmit={handleSubmit(handleFormSubmit)}>
@@ -475,55 +457,6 @@ const AdIntegrationCampaignDetailsForm = ({
                     id={AdIntegrationFormField.AdvertiserName}
                     label={translateAccount('Label.AdvertiserName')}
                   />
-                )}
-              />
-
-              <Controller
-                control={control}
-                name={AdIntegrationFormField.AdsCategory}
-                render={({ field, fieldState: { error } }) => (
-                  <div className={fieldSection}>
-                    <Select
-                      disabled={mode === 'edit'}
-                      error={!!error}
-                      FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                      fullWidth
-                      helperText={error?.message}
-                      InputLabelProps={INPUT_LABEL_PROPS}
-                      label={translate('Label.AdsCategory')}
-                      onBlur={field.onBlur}
-                      onChange={field.onChange}
-                      ref={field.ref}
-                      renderValue={(selected) => {
-                        const option = AdsCategoryOptions.find((opt) => opt.value === selected);
-                        return option ? getAdsCategoryOptionLabel(option) : (selected as ReactNode);
-                      }}
-                      value={field.value}>
-                      {AdsCategoryOptions.map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                          {getAdsCategoryOptionLabel(option)}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    <Typography className={mutedText} variant='body2'>
-                      {translateHTML('Description.AdsCategoryInfo', [
-                        {
-                          closing: 'linkEnd',
-                          content: (chunks) => (
-                            <Link
-                              href={AdCategoryInfoDocsUrl}
-                              isExternal={false}
-                              rel='noopener noreferrer'
-                              target='_blank'
-                              underline='always'>
-                              {chunks}
-                            </Link>
-                          ),
-                          opening: 'linkStart',
-                        },
-                      ])}
-                    </Typography>
-                  </div>
                 )}
               />
 
@@ -759,14 +692,10 @@ const AdIntegrationCampaignDetailsForm = ({
                           placement='Start'
                           size='Small'
                         />
-                        <Typography
-                          className={
-                            campaignInProgress || disableEditing ? undefined : 'cursor-pointer'
-                          }
-                          component='label'
+                        <label
+                          className={`text-body-medium ${campaignInProgress || disableEditing ? '' : 'cursor-pointer'}`}
                           htmlFor={rewardedPlacementsCheckboxId}
-                          id={rewardedPlacementsLabelId}
-                          variant='body2'>
+                          id={rewardedPlacementsLabelId}>
                           {translateAccountHTML(rewardedPlacementsLabelKey, [
                             {
                               closing: 'linkEnd',
@@ -783,7 +712,7 @@ const AdIntegrationCampaignDetailsForm = ({
                               opening: 'linkStart',
                             },
                           ])}
-                        </Typography>
+                        </label>
                       </div>
                     )}
                   />
@@ -791,8 +720,8 @@ const AdIntegrationCampaignDetailsForm = ({
               )}
 
               <div className={subSection}>
-                <Typography variant='h5'>{translateAccount('Heading.Assets')}</Typography>
-                <Typography color='secondary' variant='body1'>
+                <span className='text-heading-small'>{translateAccount('Heading.Assets')}</span>
+                <span className='text-body-large content-default'>
                   {translateAccountHTML('Description.AdIntegrationAssetsBody', [
                     {
                       closing: 'linkEnd',
@@ -809,7 +738,7 @@ const AdIntegrationCampaignDetailsForm = ({
                       opening: 'linkStart',
                     },
                   ])}
-                </Typography>
+                </span>
                 <div className={assetsActionRow}>
                   <Button
                     onClick={() => setAssetsDrawerOpen(true)}
@@ -854,12 +783,10 @@ const AdIntegrationCampaignDetailsForm = ({
                             placement='Start'
                             size='Small'
                           />
-                          <Typography
-                            className={mode === 'edit' ? undefined : 'cursor-pointer'}
-                            component='label'
+                          <label
+                            className={`text-body-medium ${mode === 'edit' ? '' : 'cursor-pointer'}`}
                             htmlFor={termsAcknowledgementCheckboxId}
-                            id={termsAcknowledgementLabelId}
-                            variant='body2'>
+                            id={termsAcknowledgementLabelId}>
                             {translateAccountHTML(
                               'Label.AdIntegrationTermsAndAdsStandardsAcknowledgement',
                               [
@@ -893,7 +820,7 @@ const AdIntegrationCampaignDetailsForm = ({
                                 },
                               ],
                             )}
-                          </Typography>
+                          </label>
                         </div>
                         {errors.termsAndAdsStandardsAcknowledgement && (
                           <FormLabel className={checkboxError} error>
@@ -906,7 +833,7 @@ const AdIntegrationCampaignDetailsForm = ({
                 </div>
               </div>
 
-              <Typography className={buttonRow} component='div'>
+              <div className={`text-body-large ${buttonRow}`}>
                 <Button
                   isDisabled={disableEditing || !isValid || isSubmitting}
                   isLoading={isSubmitting}
@@ -920,7 +847,7 @@ const AdIntegrationCampaignDetailsForm = ({
                 <Button onClick={onCancel} size='Medium' variant='Standard'>
                   {translateMisc('Action.Cancel')}
                 </Button>
-              </Typography>
+              </div>
             </form>
           </div>
         </div>

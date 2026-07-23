@@ -1,5 +1,5 @@
 import { Button, Divider, IconButton, Link } from '@rbx/foundation-ui';
-import { DialogContent, Grid, TextField, Typography, UIThemeProvider } from '@rbx/ui';
+import { DialogContent, Grid, TextField, UIThemeProvider } from '@rbx/ui';
 import { useRouter } from 'next/router';
 import { type ReactElement, useEffect, useRef, useState } from 'react';
 
@@ -184,14 +184,13 @@ const CardVerificationDialog = ({
   // TODO: Replace with the translationHtml function
   const verifyPinDescription = (
     <div className={verifyCardModalTextLinesContainer}>
-      <Typography
-        className={verifyCardModalTextLine1}
-        data-testid='verifyCardModalTextLine1'
-        variant='body1'>
+      <span
+        className={`text-body-large ${verifyCardModalTextLine1}`}
+        data-testid='verifyCardModalTextLine1'>
         {translateBilling('Message.TemporaryHold')}
-      </Typography>
-      <Typography
-        className={verifyCardModalTextLine2}
+      </span>
+      <span
+        className={`text-body-large ${verifyCardModalTextLine2}`}
         dangerouslySetInnerHTML={{
           __html: translateBilling('Description.VerifyCardInstructions', {
             '{boldEnd}': '</strong>',
@@ -199,15 +198,14 @@ const CardVerificationDialog = ({
           }),
         }}
         data-testid='verifyCardModalTextLine2'
-        variant='body1'
       />
     </div>
   );
 
   // TODO: Replace with the translationHtml function
   const verifyPinFailedDescription = (
-    <Typography
-      className={verifyCardModalTextLine1}
+    <span
+      className={`text-body-large ${verifyCardModalTextLine1}`}
       dangerouslySetInnerHTML={{
         __html: translateBilling('Description.VerificationFail', {
           '{boldEnd}': '</strong>',
@@ -215,15 +213,14 @@ const CardVerificationDialog = ({
         }),
       }}
       data-testid='verifyCardModalTextLine2'
-      variant='body1'
     />
   );
 
   // Show incorrect pin message underneath input boxes
   const incorrectPinState = (
-    <Typography className={incorrectPin} data-testid='incorrectPinText' variant='captionBody'>
+    <span className={`text-body-medium ${incorrectPin}`} data-testid='incorrectPinText'>
       {translateBilling('Warning.IncorrectPin')}
-    </Typography>
+    </span>
   );
 
   // Show loading messages and spinner
@@ -237,19 +234,18 @@ const CardVerificationDialog = ({
         onClick={routeResult}
         variant='Utility'
       />
-      <Typography
-        className={verifyCardModalHeader}
-        data-testid='verifyCardModalHeader'
-        variant='h3'>
+      <span
+        className={`text-heading-medium ${verifyCardModalHeader}`}
+        data-testid='verifyCardModalHeader'>
         {translateBilling('Action.VerifyCard')}
-      </Typography>
+      </span>
       <Divider data-testid='firstDivider' />
       <div className={progressBarContainer} data-testid='stripeFormLoading'>
         <CustomCircularProgress />
       </div>
-      <Typography className={loadingTextContainer} data-testid='loadingText' variant='body1'>
+      <span className={`text-body-large ${loadingTextContainer}`} data-testid='loadingText'>
         {translateBilling('Description.VerifyingCard')}
-      </Typography>
+      </span>
     </DialogContent>
   );
 
@@ -264,19 +260,18 @@ const CardVerificationDialog = ({
         onClick={routeResult}
         variant='Utility'
       />
-      <Typography
-        className={verifyCardModalHeader}
-        data-testid='verifyCardModalHeader'
-        variant='h3'>
+      <span
+        className={`text-heading-medium ${verifyCardModalHeader}`}
+        data-testid='verifyCardModalHeader'>
         {translateBilling('Action.VerifyCard')}
-      </Typography>
+      </span>
       <Divider data-testid='firstDivider' />
       <div className={progressBarContainer} data-testid='stripeFormLoading'>
         <CustomCircularProgress />
       </div>
-      <Typography className={loadingTextContainer} data-testid='loadingText' variant='body1'>
+      <span className={`text-body-large ${loadingTextContainer}`} data-testid='loadingText'>
         {translateBilling('Description.RequestingNewCode')}
-      </Typography>
+      </span>
     </DialogContent>
   );
 
@@ -291,18 +286,16 @@ const CardVerificationDialog = ({
         onClick={routeResult}
         variant='Utility'
       />
-      <Typography
-        className={verifyCardModalHeader}
-        data-testid='verifyCardModalHeader'
-        variant='h3'>
+      <span
+        className={`text-heading-medium ${verifyCardModalHeader}`}
+        data-testid='verifyCardModalHeader'>
         {translateBilling('Action.VerifyCard')}
-      </Typography>
+      </span>
       <Divider data-testid='firstDivider' />
       {verifyPinFailedDescription}
-      <Typography
-        className={verifyCardModalHelpText}
-        data-testid='verifyCardModalHelpText'
-        variant='captionBody'>
+      <span
+        className={`text-body-medium ${verifyCardModalHelpText}`}
+        data-testid='verifyCardModalHelpText'>
         {translateBillingHTML('Description.VerifyCardHelpLink', [
           {
             closing: 'linkEnd',
@@ -314,7 +307,7 @@ const CardVerificationDialog = ({
             opening: 'linkStart',
           },
         ])}
-      </Typography>
+      </span>
       <Divider data-testid='secondDivider' />
       <div className={buttonContainer} data-testid='buttonContainer'>
         <Button
@@ -353,12 +346,11 @@ const CardVerificationDialog = ({
         onClick={routeResult}
         variant='Utility'
       />
-      <Typography
-        className={verifyCardModalHeader}
-        data-testid='verifyCardModalHeader'
-        variant='h3'>
+      <span
+        className={`text-heading-medium ${verifyCardModalHeader}`}
+        data-testid='verifyCardModalHeader'>
         {translateBilling('Action.VerifyCard')}
-      </Typography>
+      </span>
       <Divider data-testid='firstDivider' />
       {verifyPinDescription}
       <Grid className={pinInputContainer} container data-testid='pinInputContainer'>
@@ -490,10 +482,9 @@ const CardVerificationDialog = ({
         </Grid>
       </Grid>
       {failedAttempt ? incorrectPinState : null}
-      <Typography
-        className={verifyCardModalText}
-        data-testid='verifyCardModalHelpText'
-        variant='captionBody'>
+      <span
+        className={`text-body-medium ${verifyCardModalText}`}
+        data-testid='verifyCardModalHelpText'>
         {translateBillingHTML('Description.VerifyCardHelpLink', [
           {
             closing: 'linkEnd',
@@ -505,7 +496,7 @@ const CardVerificationDialog = ({
             opening: 'linkStart',
           },
         ])}
-      </Typography>
+      </span>
       <Divider data-testid='secondDivider' />
       <div className={buttonContainer} data-testid='buttonContainer'>
         <Button

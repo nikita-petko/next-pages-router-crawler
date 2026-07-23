@@ -6,12 +6,15 @@ export const enum HeadCellName {
   AdStatus = 'adStatusHeadCell',
   AdToggle = 'adToggleHeadCell',
   CampaignActionMenu = 'campaignActionMenuHeadCell',
+  CampaignCreator = 'campaignCreatorHeadCell',
+  CampaignDateModified = 'campaignDateModifiedHeadCell',
   CampaignName = 'campaignNameHeadCell',
   CampaignStatus = 'campaignStatusHeadCell',
   CampaignToggle = 'campaignToggleHeadCell',
   CampaignType = 'campaignTypeHeadCell',
   SharedGenericStat = 'sharedGenericStatHeadCell',
   SharedPlaytime = 'sharedPlaytimeHeadCell',
+  SharedRoas = 'sharedRoasHeadCell',
   SharedRobuxRevenue = 'sharedRobuxRevenueHeadCell',
   SharedWithPaymentUnits = 'sharedWithPaymentUnitsHeadCell',
 }
@@ -28,7 +31,7 @@ const getSharedHeadCells = (): (SortableHeadCell | UnsortableHeadCell)[] => [
   {
     align: 'end',
     classNameKey: HeadCellName.SharedWithPaymentUnits,
-    disabled: true,
+    disabled: false,
     label: 'Label.Spent',
     renderTooltip: true,
     sortKey: 'display_spending_usd',
@@ -37,7 +40,7 @@ const getSharedHeadCells = (): (SortableHeadCell | UnsortableHeadCell)[] => [
   {
     align: 'end',
     classNameKey: HeadCellName.SharedGenericStat,
-    disabled: true,
+    disabled: false,
     label: 'Label.Impressions',
     renderTooltip: true,
     sortKey: 'impression',
@@ -46,7 +49,7 @@ const getSharedHeadCells = (): (SortableHeadCell | UnsortableHeadCell)[] => [
   {
     align: 'end',
     classNameKey: HeadCellName.SharedGenericStat,
-    disabled: true,
+    disabled: false,
     label: 'Label.CTR',
     renderTooltip: true,
     sortKey: 'click_through_rate',
@@ -55,7 +58,7 @@ const getSharedHeadCells = (): (SortableHeadCell | UnsortableHeadCell)[] => [
   {
     align: 'end',
     classNameKey: HeadCellName.SharedGenericStat,
-    disabled: true,
+    disabled: false,
     label: 'Label.Clicks',
     renderTooltip: true,
     sortKey: 'click_count',
@@ -64,7 +67,7 @@ const getSharedHeadCells = (): (SortableHeadCell | UnsortableHeadCell)[] => [
   {
     align: 'end',
     classNameKey: HeadCellName.SharedGenericStat,
-    disabled: true,
+    disabled: false,
     label: 'Label.Plays',
     labelNamespace: TranslationNamespace.Campaign,
     renderTooltip: true,
@@ -74,7 +77,7 @@ const getSharedHeadCells = (): (SortableHeadCell | UnsortableHeadCell)[] => [
   {
     align: 'end',
     classNameKey: HeadCellName.SharedWithPaymentUnits,
-    disabled: true,
+    disabled: false,
     label: 'Label.CPP',
     renderTooltip: true,
     sortKey: 'cost_per_play_usd',
@@ -83,7 +86,7 @@ const getSharedHeadCells = (): (SortableHeadCell | UnsortableHeadCell)[] => [
   {
     align: 'end',
     classNameKey: HeadCellName.SharedPlaytime,
-    disabled: true,
+    disabled: false,
     label: 'Label.Playtime',
     renderTooltip: true,
     sortKey: 'total_play_time_hours_7d',
@@ -92,7 +95,7 @@ const getSharedHeadCells = (): (SortableHeadCell | UnsortableHeadCell)[] => [
   {
     align: 'end',
     classNameKey: HeadCellName.SharedRobuxRevenue,
-    disabled: true,
+    disabled: false,
     label: 'Label.RobuxEarnings',
     renderTooltip: true,
     sortKey: 'total_robux_revenue_30d',
@@ -100,46 +103,89 @@ const getSharedHeadCells = (): (SortableHeadCell | UnsortableHeadCell)[] => [
   },
 ];
 
-export const getCampaignTableHeadCells = (): (SortableHeadCell | UnsortableHeadCell)[] => [
-  {
-    align: 'start',
-    classNameKey: HeadCellName.CampaignName,
-    disabled: false,
-    label: 'Label.Campaign',
-    sortKey: 'name',
-  },
-  {
-    align: 'start',
-    classNameKey: HeadCellName.CampaignActionMenu,
-    disabled: false,
-    id: 'action_menu',
-    label: '',
-  },
-  {
-    align: 'start',
-    classNameKey: HeadCellName.CampaignToggle,
-    disabled: false,
-    id: 'active',
-    label: 'Label.OffOn',
-    renderTooltip: true,
-    tooltipText: 'Tooltip.OffOnToggle',
-  },
-  {
-    align: 'start',
-    classNameKey: HeadCellName.CampaignStatus,
-    disabled: false,
-    label: 'Label.Status',
-    sortKey: 'status_text',
-  },
-  {
-    align: 'start',
-    classNameKey: HeadCellName.CampaignType,
-    disabled: false,
-    label: 'Label.CampaignType',
-    sortKey: 'objective',
-  },
-  ...getSharedHeadCells(),
-];
+const roasHeadCell: SortableHeadCell = {
+  align: 'end',
+  classNameKey: HeadCellName.SharedRoas,
+  disabled: false,
+  label: 'Label.ROAS',
+  renderTooltip: true,
+  sortKey: 'roas',
+  tooltipText: 'Tooltip.ROASDescription',
+};
+
+interface CampaignTableHeadCellOptions {
+  // When true, append the ROAS column. Gated by AMA's enable_campaign_roas
+  // dynamic config flag surfaced through /metadata as isCampaignRoasEnabled.
+  includeRoas?: boolean;
+  showCreatorColumn?: boolean;
+}
+
+export const getCampaignTableHeadCells = (
+  options: CampaignTableHeadCellOptions = {},
+): (SortableHeadCell | UnsortableHeadCell)[] => {
+  const cells: (SortableHeadCell | UnsortableHeadCell)[] = [
+    {
+      align: 'start',
+      classNameKey: HeadCellName.CampaignName,
+      disabled: false,
+      label: 'Label.Campaign',
+      sortKey: 'name',
+    },
+    {
+      align: 'start',
+      classNameKey: HeadCellName.CampaignActionMenu,
+      disabled: false,
+      id: 'action_menu',
+      label: '',
+    },
+    {
+      align: 'start',
+      classNameKey: HeadCellName.CampaignToggle,
+      disabled: false,
+      id: 'active',
+      label: 'Label.OffOn',
+      renderTooltip: true,
+      tooltipText: 'Tooltip.OffOnToggle',
+    },
+    {
+      align: 'start',
+      classNameKey: HeadCellName.CampaignStatus,
+      disabled: false,
+      label: 'Label.Status',
+      sortKey: 'status_text',
+    },
+    {
+      align: 'start',
+      classNameKey: HeadCellName.CampaignType,
+      disabled: false,
+      label: 'Label.CampaignType',
+      sortKey: 'objective',
+    },
+    ...getSharedHeadCells(),
+  ];
+  if (options.includeRoas) {
+    cells.push(roasHeadCell);
+  }
+  if (options.showCreatorColumn) {
+    cells.push(
+      {
+        align: 'start',
+        classNameKey: HeadCellName.CampaignCreator,
+        disabled: false,
+        label: 'Label.CreatedBy',
+        sortKey: 'creator_username',
+      },
+      {
+        align: 'start',
+        classNameKey: HeadCellName.CampaignDateModified,
+        disabled: false,
+        label: 'Label.DateModified',
+        sortKey: 'updated_timestamp_ms',
+      },
+    );
+  }
+  return cells;
+};
 
 // Deprecated: Use getCampaignTableHeadCells instead
 export const campaignTableHeadCells: (SortableHeadCell | UnsortableHeadCell)[] =

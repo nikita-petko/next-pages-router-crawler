@@ -424,14 +424,11 @@ function AdsCreationAndManagementApp({
             Routes.LANDING,
             Routes.MANAGE,
             Routes.CREATIVE_LIBRARY,
-            Routes.AD_INTEGRATIONS_LANDING,
+            Routes.AD_INTEGRATIONS,
           ].includes(currentPath as Routes);
 
           if (isImpersonatePage) {
             setShowContent(true);
-          } else if (currentPath === Routes.AD_INTEGRATIONS) {
-            router.push(Routes.AD_INTEGRATIONS_LANDING);
-            setShowContent(false);
           } else if (isCreateAdAccountPage || isBillingOrAccountPage) {
             router.push(Routes.MANAGE);
             setShowContent(false);

@@ -1,5 +1,5 @@
 import { Checkbox } from '@rbx/foundation-ui';
-import { FormHelperText, MenuItem, Select, Typography } from '@rbx/ui';
+import { FormHelperText, MenuItem, Select } from '@rbx/ui';
 import { useMemo, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
@@ -126,19 +126,17 @@ const OptimizationSection = () => {
       rightContent={
         editMode ? undefined : (
           <div className={rightContentSubContainer}>
-            <Typography variant='h5'>{translate('Label.HowItWorksFrequency')}</Typography>
-            <Typography variant='body1'>
+            <span className='text-heading-small'>{translate('Label.HowItWorksFrequency')}</span>
+            <span className='text-body-large'>
               {translate('Description.FrequencyCapExplanation')}
-            </Typography>
+            </span>
           </div>
         )
       }
       title={translate('Heading.OptimizationAndDelivery')}>
       <div className={formColumn}>
-        <Typography className={formRow} variant='h6'>
-          {translate('Label.FrequencyCapping')}
-        </Typography>
-        <Typography className={formRow} component='div'>
+        <span className={`text-title-large ${formRow}`}>{translate('Label.FrequencyCapping')}</span>
+        <div className={`text-body-large ${formRow}`}>
           <Controller
             control={control}
             name={FormField.FREQUENCY_CAPPING_ON}
@@ -160,10 +158,10 @@ const OptimizationSection = () => {
               />
             )}
           />
-        </Typography>
+        </div>
 
         <div>
-          <Typography className={cx(formRow, frequencyCappingRow)} component='div'>
+          <div className={`text-body-large ${cx(formRow, frequencyCappingRow)}`}>
             <Controller
               control={control}
               name={FormField.FREQUENCY_CAPPING_VALUE}
@@ -195,12 +193,10 @@ const OptimizationSection = () => {
                 </Select>
               )}
             />
-            <Typography
-              className={frequencyCappingConnectingText}
-              color={frequencyCappingOn ? 'inherit' : 'disabled'}
-              component='span'>
+            <span
+              className={`text-body-large ${frequencyCappingOn ? 'content-inherit' : 'content-muted'} ${frequencyCappingConnectingText}`}>
               {translate(isVideoViewBidType ? 'Label.VideoViewsEvery' : 'Label.ImpressionsEvery')}
-            </Typography>
+            </span>
             <Controller
               control={control}
               name={FormField.FREQUENCY_CAPPING_DURATION_DAYS}
@@ -230,10 +226,11 @@ const OptimizationSection = () => {
                 </Select>
               )}
             />
-            <Typography color={frequencyCappingOn ? 'inherit' : 'disabled'} component='span'>
+            <span
+              className={`text-body-large ${frequencyCappingOn ? 'content-inherit' : 'content-muted'}`}>
               {translate('Label.Days')}
-            </Typography>
-          </Typography>
+            </span>
+          </div>
 
           {frequencyCapSummary && (
             <FormHelperText className={formRow} component='div'>

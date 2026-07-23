@@ -1,5 +1,5 @@
 import { Button, DialogBody, DialogFooter, DialogTitle, IconButton } from '@rbx/foundation-ui';
-import { Typography, UIThemeProvider } from '@rbx/ui';
+import { UIThemeProvider } from '@rbx/ui';
 import { RobloxVideoPlayer, VideoPlayer, type VideoPlayerRef } from '@rbx/video-player';
 import { type ReactElement, useCallback, useEffect, useRef, useState } from 'react';
 
@@ -161,9 +161,9 @@ const VideoPlayerDialog = ({
             <div className={videoWrapper}>
               {isVideoLoading ? (
                 <div className={videoLoading}>
-                  <Typography color='secondary' variant='body2'>
+                  <span className='text-body-medium content-default'>
                     {translateReport('Description.LoadingVideo')}
-                  </Typography>
+                  </span>
                 </div>
               ) : null}
               {currentAsset.assetId ? (

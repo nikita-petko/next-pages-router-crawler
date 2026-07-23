@@ -1,12 +1,12 @@
 import { Icon } from '@rbx/foundation-ui';
-import { Skeleton, Typography } from '@rbx/ui';
 import { useFormContext } from 'react-hook-form';
 
 import useCreativesStyles from '@components/campaignBuilder/common/creative/Creatives.styles';
 import VideoSectionComponent from '@components/campaignBuilder/common/creative/videoSection/VideoSection';
 import VideoUploadDrawer from '@components/campaignBuilder/common/creative/videoSection/VideoUploadDrawer';
 import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
-import { FlowTypes, FormField, ThumbnailSize } from '@constants/campaignBuilder';
+import Skeleton from '@components/common/Skeleton';
+import { FlowTypes, FormField } from '@constants/campaignBuilder';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import { useVideoResourceManager } from '@hooks/video/useVideoResourceManager';
 import { useAppStore } from '@stores/appStoreProvider';
@@ -54,12 +54,9 @@ const VideoSection = ({ videos }: VideoCreativeSectionProps) => {
     ) {
       return (
         <Skeleton
-          animate
-          color='inherit'
+          className='height-[90px] width-[160px]'
           data-testid='video-upload-skeleton'
-          height={ThumbnailSize.height}
           variant='rectangular'
-          width={ThumbnailSize.width}
         />
       );
     }
@@ -72,13 +69,9 @@ const VideoSection = ({ videos }: VideoCreativeSectionProps) => {
     }
     if (shouldShowVideoErrorMessage) {
       return (
-        <Typography
-          className='[font-size:14px] [margin-top:8px]'
-          color='error'
-          component='div'
-          variant='body1'>
+        <div className='text-body-large content-system-alert [font-size:14px] [margin-top:8px]'>
           {videoError?.message}
-        </Typography>
+        </div>
       );
     }
     return null;

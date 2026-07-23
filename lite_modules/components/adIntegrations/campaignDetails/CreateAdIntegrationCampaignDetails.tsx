@@ -1,50 +1,103 @@
+import { useWorkspaces } from '@rbx/creator-hub-navigation';
 import { useRouter } from 'next/router';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import AdIntegrationCampaignDetailsForm from '@components/adIntegrations/campaignDetails/AdIntegrationCampaignDetailsForm';
 import CenteredCircularProgress from '@components/common/CenteredCircularProgress';
+import GenericNoDataPage from '@components/common/GenericNoDataPage';
 import NoDataPage from '@components/common/NoDataPage';
+import { AdsCategoryOtherValue } from '@constants/adIntegrations';
+import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
 import useAdIntegrationCampaignApi from '@hooks/adIntegrations/useAdIntegrationCampaignApi';
 import { useAuthenticatedUser } from '@hooks/useAuthenticatedUser';
+import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import useShouldUseWorkspaceUniverseFiltering from '@hooks/useShouldUseWorkspaceUniverseFiltering';
 import { addPlacementToAdIntegration } from '@services/ads/adIntegrationCampaignService';
 import { AdIntegrationCampaignDetailsFormValues } from '@type/adIntegrations';
 
 const CreateAdIntegrationCampaignDetails = () => {
   const router = useRouter();
   const authenticatedUser = useAuthenticatedUser();
+  const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const createdCampaignIdRef = useRef<string | null>(null);
   const addedPlacementIdsRef = useRef<Set<number>>(new Set());
   const {
     createCampaignDetails,
+    getUniversesCanAdvertise,
     isSubmitting,
     isUniversesError,
     isUniversesLoading,
+    publisherEligibleUniverseIds,
     universesCanAdvertise,
-  } = useAdIntegrationCampaignApi();
+  } = useAdIntegrationCampaignApi({ loadUniversesOnMount: false });
+  const shouldUseWorkspaceUniverseFiltering = useShouldUseWorkspaceUniverseFiltering();
+  const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspaces();
+  const workspace = useMemo(
+    () =>
+      currentWorkspace.creatorId
+        ? {
+            creatorTargetId: currentWorkspace.creatorId,
+            creatorType: currentWorkspace.creatorType,
+          }
+        : undefined,
+    [currentWorkspace.creatorId, currentWorkspace.creatorType],
+  );
+
+  const eligibleUniverses = useMemo(() => {
+    const eligibleIdSet = new Set(publisherEligibleUniverseIds);
+    return universesCanAdvertise.filter((universe) => eligibleIdSet.has(universe.universe_id));
+  }, [publisherEligibleUniverseIds, universesCanAdvertise]);
 
   const defaultValues = useMemo<AdIntegrationCampaignDetailsFormValues>(
     () => ({
-      adsCategory: '',
+      adsCategory: AdsCategoryOtherValue,
       advertiserName: '',
       campaignName: '',
       endDate: '',
       endTime: '',
-      experience: universesCanAdvertise[0]?.universe_id ?? 0,
+      experience: eligibleUniverses[0]?.universe_id ?? 0,
       hasRewardedPlacements: false,
       startDate: '',
       startTime: '',
       termsAndAdsStandardsAcknowledgement: false,
     }),
-    [universesCanAdvertise],
+    [eligibleUniverses],
   );
 
-  if (isUniversesLoading) {
+  useEffect(() => {
+    if (shouldUseWorkspaceUniverseFiltering && isWorkspaceLoading) {
+      return;
+    }
+    if (shouldUseWorkspaceUniverseFiltering && !workspace) {
+      return;
+    }
+
+    getUniversesCanAdvertise(true, {
+      workspace: shouldUseWorkspaceUniverseFiltering ? workspace : undefined,
+    });
+  }, [
+    getUniversesCanAdvertise,
+    isWorkspaceLoading,
+    shouldUseWorkspaceUniverseFiltering,
+    workspace,
+  ]);
+
+  if (isUniversesLoading || (shouldUseWorkspaceUniverseFiltering && isWorkspaceLoading)) {
     return <CenteredCircularProgress />;
   }
 
   if (isUniversesError) {
     return <NoDataPage />;
+  }
+
+  if (eligibleUniverses.length === 0) {
+    return (
+      <GenericNoDataPage
+        subtitle={translateCampaign('Description.NoEligibleExperiencesForSelectedCreator')}
+        title={translateCampaign('Heading.NoEligibleExperiencesFound')}
+      />
+    );
   }
 
   return (
@@ -86,7 +139,7 @@ const CreateAdIntegrationCampaignDetails = () => {
         await router.push(Routes.AD_INTEGRATIONS);
       }}
       placements={[]}
-      universes={universesCanAdvertise}
+      universes={eligibleUniverses}
       userId={authenticatedUser?.id}
     />
   );

@@ -1,6 +1,6 @@
 import { useWorkspaces } from '@rbx/creator-hub-navigation';
 import { Icon } from '@rbx/foundation-ui';
-import { Divider, ListSubheader, MenuItem, Select, Skeleton, Tooltip, Typography } from '@rbx/ui';
+import { Divider, ListSubheader, MenuItem, Select, Tooltip } from '@rbx/ui';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
@@ -12,6 +12,7 @@ import { openGroupAdAccountSetupDialog } from '@components/billing/dialogs/Group
 import useCampaignBuilderCommonStyles from '@components/campaignBuilder/common/CampaignBuilderCommon.styles';
 import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
 import PaymentMethodIcon from '@components/common/PaymentMethodIcon';
+import Skeleton from '@components/common/Skeleton';
 import { AdAccountType } from '@constants/app';
 import { AdCreditBalanceScope, ADD_PAYMENT_TABS } from '@constants/billing';
 import { isAdCreditPaymentType, ServerBudgetType, ServerPaymentType } from '@constants/campaign';
@@ -260,16 +261,16 @@ const PaymentSelect = () => {
     },
     {
       label: (
-        <Typography className={formLabel}>
+        <span className={`text-body-large ${formLabel}`}>
           <PaymentMethodIcon largeIcon={false} paymentMethodType={cardNetwork} smallIcon />
-          <Typography>
+          <span className='text-body-large'>
             {translateCampaign('Label.CardEnding', {
               expMonth: String(expMonth),
               expYear: String(expYear),
               lastFour: lastFourDigits,
             })}
-          </Typography>
-        </Typography>
+          </span>
+        </span>
       ),
       shouldShow: shouldShowCreditCard && !shouldShowInvoice,
       value: ServerPaymentType.PAYMENT_TYPE_CARD,
@@ -344,15 +345,22 @@ const PaymentSelect = () => {
     const paymentDrawerLink = (
       <>
         {' '}
-        <Typography
-          className={linkInHelperText}
+        <span
+          className={`text-body-medium ${linkInHelperText}`}
           data-testid='payment-method-drawer-link'
           onClick={() => {
             openAdCreditDrawer(linkText);
           }}
-          variant='smallLabel1'>
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openAdCreditDrawer(linkText);
+            }
+          }}
+          role='button'
+          tabIndex={0}>
           {linkText}
-        </Typography>
+        </span>
       </>
     );
 
@@ -377,16 +385,17 @@ const PaymentSelect = () => {
 
     return (
       <div className={inputHelperText}>
-        <Typography color={helperSeverity} variant='body2'>
+        <span
+          className={`text-body-medium ${helperSeverity === 'warning' ? 'content-system-warning' : 'content-system-alert'}`}>
           {helperText}
           {suffixForAdCreditTopUp}
-        </Typography>
+        </span>
       </div>
     );
   };
 
   if (adCreditIsLoading || groupAdCreditIsLoading || paymentProfilesIsLoading) {
-    return <Skeleton animate className={halfWidthSkeleton} color='inherit' variant='rectangular' />;
+    return <Skeleton className={halfWidthSkeleton} variant='rectangular' />;
   }
 
   return (
@@ -500,10 +509,12 @@ const PaymentSelect = () => {
               ))}
               {shouldShowAddCreditCardAction && (
                 <MenuItem data-testid='add-credit-card-option' value={ADD_CREDIT_CARD_OPTION_VALUE}>
-                  <Typography className={formLabel}>
+                  <span className={`text-body-large ${formLabel}`}>
                     <Icon name='icon-regular-plus-large' size='Small' />
-                    <Typography>{translateCampaign('Action.AddCreditCard')}</Typography>
-                  </Typography>
+                    <span className='text-body-large'>
+                      {translateCampaign('Action.AddCreditCard')}
+                    </span>
+                  </span>
                 </MenuItem>
               )}
             </Select>

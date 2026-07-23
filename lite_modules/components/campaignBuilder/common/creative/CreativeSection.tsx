@@ -1,4 +1,4 @@
-import { Grid, Typography } from '@rbx/ui';
+import { Grid } from '@rbx/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
@@ -229,19 +229,19 @@ const CreativeSection = () => {
       if (isExtendToOffPlatformEnabled && goal === ServerCampaignObjectiveType.SPEND) {
         return (
           <div className={rightContentSubContainer}>
-            <Typography variant='h5'>{translate('Label.VideoAssets')}</Typography>
-            <Typography variant='body1'>
+            <span className='text-heading-small'>{translate('Label.VideoAssets')}</span>
+            <span className='text-body-large'>
               {translate('Description.VideoAssetsDescription')}
-            </Typography>
+            </span>
           </div>
         );
       }
       return (
         <div className={rightContentSubContainer}>
-          <Typography variant='h5'>{translate('Label.CustomThumbnails')}</Typography>
-          <Typography variant='body1'>
+          <span className='text-heading-small'>{translate('Label.CustomThumbnails')}</span>
+          <span className='text-body-large'>
             {translate('Description.CustomThumbnailsDescription')}
-          </Typography>
+          </span>
         </div>
       );
     }

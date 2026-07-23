@@ -1,5 +1,5 @@
 import { Button } from '@rbx/foundation-ui';
-import { Grid, makeStyles, Typography } from '@rbx/ui';
+import { Grid, makeStyles } from '@rbx/ui';
 import { ReactNode } from 'react';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
@@ -65,11 +65,11 @@ const ErrorModalContentWithDetails = ({ error }: { error: AMAErrorType }) => {
   } = useErrorModalStyles();
   return (
     <Grid container direction='column' gap={2}>
-      <Typography>{error.message}</Typography>
+      <span className='text-body-large'>{error.message}</span>
       {error.code ? (
-        <Typography className={errorCodeText}>
+        <span className={`text-body-large ${errorCodeText}`}>
           {translate('Label.ErrorCode', { errorCode: String(error.code) })}
-        </Typography>
+        </span>
       ) : null}
     </Grid>
   );

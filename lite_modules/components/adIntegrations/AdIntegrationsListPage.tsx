@@ -1,6 +1,7 @@
-import { Button, Checkbox } from '@rbx/foundation-ui';
+import { useWorkspaces } from '@rbx/creator-hub-navigation';
+import { Button, Checkbox, Icon, Link } from '@rbx/foundation-ui';
 import { useLocalization } from '@rbx/intl';
-import { Autocomplete, FormControl, Grid, TextField } from '@rbx/ui';
+import { Grid } from '@rbx/ui';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -10,9 +11,13 @@ import AdIntegrationAssetsDrawer, {
   AdIntegrationAssetsDrawerCampaignInfoHeader,
 } from '@components/adIntegrations/assetsDrawer/AdIntegrationAssetsDrawer';
 import CenteredCircularProgress from '@components/common/CenteredCircularProgress';
+import GameUniverseDropdown from '@components/common/creative/GameUniverseDropdown';
 import { openEntitySubmitErrorDialog } from '@components/common/dialog/entitySubmitErrorDialog';
 import GenericNoDataPage from '@components/common/GenericNoDataPage';
-import UniverseFilterAvatar from '@components/common/UniverseFilterAvatar';
+import {
+  AdIntegrationsDocsUrl,
+  getAdIntegrationEligibilityUrl,
+} from '@constants/adIntegrationsUrls';
 import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
@@ -22,6 +27,7 @@ import useAdIntegrationCampaignApi from '@hooks/adIntegrations/useAdIntegrationC
 import useRevenueShareEstimatePreview from '@hooks/adIntegrations/useRevenueShareEstimatePreview';
 import { useAuthenticatedUser } from '@hooks/useAuthenticatedUser';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import useShouldUseWorkspaceUniverseFiltering from '@hooks/useShouldUseWorkspaceUniverseFiltering';
 import {
   addPlacementToAdIntegration,
   parseAdIntegrationCampaignModerationStatus,
@@ -32,7 +38,6 @@ import { useAppStore } from '@stores/appStoreProvider';
 import { ThumbnailStoreType, useThumbnailStore } from '@stores/thumbnailStoreProvider';
 import { AdIntegrationCampaignListItem } from '@type/adIntegrations';
 import { AMAErrorResponseType } from '@type/errorResponse';
-import { AdvertisedUniverse } from '@type/universe';
 import {
   isAdIntegrationCampaignEndedByTimestamp,
   isAdIntegrationCampaignStatusArchived,
@@ -40,7 +45,7 @@ import {
 import { getCampaignModerationStatusLabelKey } from '@utils/adIntegrationModerationTooltip';
 import { formatMicroUsdToUsdDisplay } from '@utils/revenueShareEstimate';
 
-type PageLoadState = 'loading' | 'loaded' | 'redirecting';
+type PageLoadState = 'loading' | 'loaded';
 type ManagedCampaignStatusPresentation = {
   label: string;
   tone: AdIntegrationAssetsDrawerCampaignInfoHeader['statusTone'];
@@ -106,6 +111,10 @@ const getManagedCampaignStatusPresentation = (
   }
 };
 
+const AdIntegrationsIcon = ({ className }: { className: string }) => (
+  <Icon className={className} name='icon-regular-megaphone' size='XLarge' />
+);
+
 const AdIntegrationsListPage = () => {
   const router = useRouter();
   const routerRef = useRef(router);
@@ -115,12 +124,13 @@ const AdIntegrationsListPage = () => {
   const { translate: translateReport } = useNamespacedTranslation(TranslationNamespace.Report);
   const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
   const { translate: translateAccount } = useNamespacedTranslation(TranslationNamespace.Account);
+  const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const { translate: translateCreativeLibrary } = useNamespacedTranslation(
     TranslationNamespace.CreativeLibrary,
   );
   const authenticatedUser = useAuthenticatedUser();
   const {
-    classes: { filterControl, headerRow, pageContainer },
+    classes: { archivedCampaignsFilter, filterControl, headerRow, pageContainer },
   } = useAdIntegrationsListPageStyles();
   const {
     archiveCampaign,
@@ -139,21 +149,76 @@ const AdIntegrationsListPage = () => {
     isCampaignListError,
     isCampaignListLoading,
     isUniversesError,
+    isUniversesLoading,
+    publisherEligibleUniverseIds,
     selectedUniverseId,
     setSelectedUniverseId,
     toggleCampaignStatus,
     universesCanAdvertise,
-  } = useAdIntegrationCampaignApi();
+  } = useAdIntegrationCampaignApi({ loadUniversesOnMount: false });
   const [showArchivedCampaigns, setShowArchivedCampaigns] = useState<boolean>(false);
+  const shouldUseWorkspaceUniverseFiltering = useShouldUseWorkspaceUniverseFiltering();
+  const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspaces();
+
+  const workspace = useMemo(
+    () =>
+      currentWorkspace?.creatorId
+        ? {
+            creatorTargetId: currentWorkspace.creatorId,
+            creatorType: currentWorkspace.creatorType,
+          }
+        : undefined,
+    [currentWorkspace?.creatorId, currentWorkspace?.creatorType],
+  );
+
+  const initialUniverseId = useMemo(() => {
+    const universeIdQuery = router.query.universe_id;
+    if (typeof universeIdQuery !== 'string') {
+      return undefined;
+    }
+    const parsedUniverseId = Number.parseInt(universeIdQuery, 10);
+    return Number.isNaN(parsedUniverseId) ? undefined : parsedUniverseId;
+  }, [router.query.universe_id]);
+
+  const eligibleUniverseIdSet = useMemo(
+    () => new Set(publisherEligibleUniverseIds),
+    [publisherEligibleUniverseIds],
+  );
+  const hasAnyEligibleOwned = useMemo(
+    () => universesCanAdvertise.some((universe) => eligibleUniverseIdSet.has(universe.universe_id)),
+    [eligibleUniverseIdSet, universesCanAdvertise],
+  );
+  const isSelectionCreatable =
+    selectedUniverseId === defaultAdvertisedUniverse.universe_id
+      ? hasAnyEligibleOwned
+      : eligibleUniverseIdSet.has(selectedUniverseId);
+  const showIneligibleNotice = universesCanAdvertise.length > 0 && !isSelectionCreatable;
+  const shouldShowArchivedCampaigns = showArchivedCampaigns || showIneligibleNotice;
+  const ineligibleEligibilityUrl = useMemo(() => {
+    if (selectedUniverseId !== defaultAdvertisedUniverse.universe_id) {
+      return getAdIntegrationEligibilityUrl(selectedUniverseId);
+    }
+    const firstOwnedUniverseId = universesCanAdvertise[0]?.universe_id;
+    return firstOwnedUniverseId != null
+      ? getAdIntegrationEligibilityUrl(firstOwnedUniverseId)
+      : AdIntegrationsDocsUrl;
+  }, [selectedUniverseId, universesCanAdvertise]);
 
   const visibleCampaignList = useMemo(
     () =>
-      showArchivedCampaigns
+      shouldShowArchivedCampaigns
         ? campaignList
         : campaignList.filter(
             (campaign) => !isAdIntegrationCampaignStatusArchived(campaign.status),
           ),
-    [campaignList, showArchivedCampaigns],
+    [campaignList, shouldShowArchivedCampaigns],
+  );
+
+  const archivedCampaignCount = useMemo(
+    () =>
+      campaignList.filter((campaign) => isAdIntegrationCampaignStatusArchived(campaign.status))
+        .length,
+    [campaignList],
   );
 
   const handleArchiveCampaign = useCallback(
@@ -172,22 +237,25 @@ const AdIntegrationsListPage = () => {
     (state: ThumbnailStoreType) => state.thumbnailsByUniverseId,
   );
 
-  const universeOptions = useMemo<AdvertisedUniverse[]>(
-    () => [
-      defaultAdvertisedUniverse,
-      ...universesCanAdvertise.map(({ universe_id, universe_name }) => ({
-        universe_id,
-        universe_name,
-      })),
-    ],
-    [universesCanAdvertise],
-  );
+  const handleUniverseFilterChange = useCallback(
+    (value: string) => {
+      const universeId = Number.parseInt(value, 10);
+      if (Number.isNaN(universeId)) {
+        return;
+      }
 
-  const selectedUniverse = useMemo<AdvertisedUniverse>(
-    () =>
-      universeOptions.find((option) => option.universe_id === selectedUniverseId) ??
-      defaultAdvertisedUniverse,
-    [selectedUniverseId, universeOptions],
+      setSelectedUniverseId(universeId);
+      const query = { ...router.query };
+      if (universeId === defaultAdvertisedUniverse.universe_id) {
+        delete query.universe_id;
+      } else {
+        query.universe_id = String(universeId);
+      }
+      router.replace({ pathname: Routes.AD_INTEGRATIONS, query }, undefined, {
+        shallow: true,
+      });
+    },
+    [router, setSelectedUniverseId],
   );
 
   const campaignIdFromQuery = router.query.campaignId;
@@ -357,20 +425,74 @@ const AdIntegrationsListPage = () => {
   const [pageLoadState, setPageLoadState] = useState<PageLoadState>('loading');
   const hasCampaigns = visibleCampaignList.length > 0;
   const hasAnyCampaigns = campaignList.length > 0;
-  const hasUniverseCampaignOptions = universesCanAdvertise.length > 0;
+  const hasUniverseOptions = universesCanAdvertise.length > 0;
+  const sortedPickerUniverses = useMemo(() => {
+    const eligibleUniverses = universesCanAdvertise.filter((universe) =>
+      eligibleUniverseIdSet.has(universe.universe_id),
+    );
+    const ineligibleUniverses = universesCanAdvertise.filter(
+      (universe) => !eligibleUniverseIdSet.has(universe.universe_id),
+    );
+    return [...eligibleUniverses, ...ineligibleUniverses];
+  }, [eligibleUniverseIdSet, universesCanAdvertise]);
+  const allUniverseStaticOptions = useMemo(
+    () =>
+      sortedPickerUniverses.length > 1
+        ? [
+            {
+              label: defaultAdvertisedUniverse.universe_name,
+              value: String(defaultAdvertisedUniverse.universe_id),
+            },
+          ]
+        : [],
+    [sortedPickerUniverses.length],
+  );
+  const showNoUniversesState =
+    pageLoadState === 'loaded' && !isUniversesLoading && !hasUniverseOptions;
   const showCampaignListLoadingState =
-    hasUniverseCampaignOptions && isCampaignListLoading && !hasAnyCampaigns;
+    hasUniverseOptions && isCampaignListLoading && !hasAnyCampaigns;
+  const showLandingEmptyState =
+    !showNoUniversesState &&
+    !showCampaignListLoadingState &&
+    !isCampaignListError &&
+    !hasAnyCampaigns &&
+    isSelectionCreatable;
+  const showNoCampaignsEmptyState =
+    !showNoUniversesState &&
+    !showCampaignListLoadingState &&
+    !isCampaignListError &&
+    !hasCampaigns &&
+    !showLandingEmptyState;
   const prevSelectedUniverseIdRef = useRef<number>(selectedUniverseId);
+  const lastFetchedWorkspaceKeyRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (!router.isReady) {
       return undefined;
     }
+    if (shouldUseWorkspaceUniverseFiltering && isWorkspaceLoading) {
+      return undefined;
+    }
+    if (shouldUseWorkspaceUniverseFiltering && !workspace) {
+      return undefined;
+    }
+
+    const workspaceKey = workspace
+      ? `${workspace.creatorType}:${workspace.creatorTargetId}`
+      : 'workspace-universe-filtering-off';
+    if (lastFetchedWorkspaceKeyRef.current === workspaceKey) {
+      return undefined;
+    }
+    lastFetchedWorkspaceKeyRef.current = workspaceKey;
 
     let isMounted = true;
+    setPageLoadState('loading');
 
     const loadPage = async () => {
-      await getUniversesCanAdvertise(true);
+      await getUniversesCanAdvertise(true, {
+        initialUniverseId,
+        workspace: shouldUseWorkspaceUniverseFiltering ? workspace : undefined,
+      });
       if (!isMounted) {
         return;
       }
@@ -387,17 +509,9 @@ const AdIntegrationsListPage = () => {
         return;
       }
 
-      const { campaignList: campaignState } = useAdIntegrationCampaignStore.getState();
-
-      if (
-        !managedCampaignIdRef.current &&
-        campaignState.data.length === 0 &&
-        !campaignState.isError
-      ) {
-        setPageLoadState('redirecting');
-        routerRef.current.replace(Routes.AD_INTEGRATIONS_LANDING);
-        return;
-      }
+      const { selectedUniverseId: loadedSelectedUniverseId } =
+        useAdIntegrationCampaignStore.getState();
+      prevSelectedUniverseIdRef.current = loadedSelectedUniverseId;
 
       setPageLoadState('loaded');
     };
@@ -407,7 +521,15 @@ const AdIntegrationsListPage = () => {
     return () => {
       isMounted = false;
     };
-  }, [getCampaignListBySelectedUniverse, getUniversesCanAdvertise, router.isReady]);
+  }, [
+    getCampaignListBySelectedUniverse,
+    getUniversesCanAdvertise,
+    initialUniverseId,
+    isWorkspaceLoading,
+    router.isReady,
+    shouldUseWorkspaceUniverseFiltering,
+    workspace,
+  ]);
 
   useEffect(() => {
     if (pageLoadState !== 'loaded') {
@@ -431,7 +553,7 @@ const AdIntegrationsListPage = () => {
     getCampaignDetailsById(managedCampaignId, true);
   }, [getCampaignDetailsById, managedCampaignId, pageLoadState]);
 
-  if (pageLoadState === 'loading' || pageLoadState === 'redirecting') {
+  if (pageLoadState === 'loading') {
     return <CenteredCircularProgress />;
   }
 
@@ -448,63 +570,73 @@ const AdIntegrationsListPage = () => {
     <div className={pageContainer}>
       <Grid className={headerRow} container>
         <Grid item>
-          <Grid alignItems='center' container gap={2}>
-            <Grid item>
-              <Autocomplete
-                disableClearable
-                getOptionLabel={({ universe_name }) => universe_name}
-                id='ad-integrations-universe-picker'
-                onChange={(_event, universeObj) => {
-                  if (!universeObj) {
-                    return;
-                  }
-
-                  setSelectedUniverseId(universeObj.universe_id);
-                }}
-                options={universeOptions}
-                renderInput={(params) => (
-                  <FormControl className={filterControl} variant='outlined'>
-                    <TextField
-                      {...params}
-                      InputProps={{
-                        ...params.InputProps,
-                        startAdornment:
-                          selectedUniverse.universe_id !== defaultAdvertisedUniverse.universe_id ? (
-                            <UniverseFilterAvatar
-                              src={
-                                thumbnailsByUniverseId[selectedUniverse.universe_id]?.data?.imageUrl
-                              }
-                            />
-                          ) : null,
-                      }}
+          <div>
+            <Grid alignItems='flex-end' container gap={2}>
+              {hasUniverseOptions && (
+                <Grid item>
+                  <div className={filterControl} data-testid='ad-integrations-universe-picker'>
+                    <GameUniverseDropdown
+                      advertisableUniverses={sortedPickerUniverses}
+                      hasError={showIneligibleNotice}
                       label={translateReport('Label.Experience')}
+                      onValueChange={handleUniverseFilterChange}
+                      placeholder={translateReport('Label.Experience')}
+                      staticOptions={allUniverseStaticOptions}
+                      value={String(selectedUniverseId)}
                     />
-                  </FormControl>
-                )}
-                value={selectedUniverse}
-              />
+                  </div>
+                </Grid>
+              )}
+              {!isCampaignListError && hasAnyCampaigns && (
+                <Grid item>
+                  <div className={archivedCampaignsFilter}>
+                    <Checkbox
+                      isChecked={shouldShowArchivedCampaigns}
+                      isDisabled={showIneligibleNotice}
+                      label={`${translateMisc('Action.ShowArchivedCampaigns')} (${String(archivedCampaignCount)})`}
+                      onCheckedChange={(checked) => setShowArchivedCampaigns(checked === true)}
+                      placement='Start'
+                      size='Small'
+                    />
+                  </div>
+                </Grid>
+              )}
             </Grid>
-            {!isCampaignListError && hasAnyCampaigns && (
-              <Grid item>
-                <Checkbox
-                  isChecked={showArchivedCampaigns}
-                  label={translateMisc('Action.ShowArchivedCampaigns')}
-                  onCheckedChange={(checked) => setShowArchivedCampaigns(checked === true)}
-                  placement='Start'
-                  size='Small'
-                />
-              </Grid>
+            {showIneligibleNotice && (
+              <p
+                className={`text-body-small content-system-alert margin-[0px] ${filterControl}`}
+                data-testid='ineligible-universe-error'>
+                {translateCampaign('Description.ExperienceNoLongerEligible')}{' '}
+                <Link
+                  href={ineligibleEligibilityUrl}
+                  rel='noopener noreferrer'
+                  target='_blank'
+                  underline='always'>
+                  {translateReport('Action.LearnMoreManage')}
+                </Link>
+              </p>
             )}
-          </Grid>
+          </div>
         </Grid>
         <Grid item>
-          <Button onClick={handleCreateClick} size='Medium' variant='Emphasis'>
+          <Button
+            isDisabled={!isSelectionCreatable}
+            onClick={handleCreateClick}
+            size='Medium'
+            variant='Emphasis'>
             {translateAccount('Action.RegisterAdIntegration')}
           </Button>
         </Grid>
       </Grid>
 
       {showCampaignListLoadingState && <CenteredCircularProgress />}
+
+      {showNoUniversesState && (
+        <GenericNoDataPage
+          subtitle={translateCampaign('Description.NoEligibleExperiencesForSelectedCreator')}
+          title={translateCampaign('Heading.NoEligibleExperiencesFound')}
+        />
+      )}
 
       {!showCampaignListLoadingState && isCampaignListError && (
         <GenericNoDataPage
@@ -513,21 +645,50 @@ const AdIntegrationsListPage = () => {
         />
       )}
 
-      {!showCampaignListLoadingState && !isCampaignListError && !hasCampaigns && (
+      {showLandingEmptyState && (
+        <GenericNoDataPage
+          CustomIconComponent={AdIntegrationsIcon}
+          outlined
+          primaryButton={
+            <Button onClick={handleCreateClick} size='Medium' variant='Emphasis'>
+              {translateAccount('Action.RegisterAdIntegration')}
+            </Button>
+          }
+          secondaryButton={
+            <Button
+              as='a'
+              href={AdIntegrationsDocsUrl}
+              rel='noopener noreferrer'
+              size='Medium'
+              target='_blank'
+              variant='Standard'>
+              {translateReport('Action.LearnMoreManage')}
+            </Button>
+          }
+          subtitle={translateAccount('Description.AdIntegrationsLanding')}
+          title={translateAccount('Heading.AdIntegrations')}
+        />
+      )}
+
+      {showNoCampaignsEmptyState && (
         <GenericNoDataPage
           subtitle={translateReport('Description.NoResultsFound')}
           title={translateReport('Heading.NoCampaigns')}
         />
       )}
 
-      {!isCampaignListError && hasCampaigns && (
-        <AdIntegrationsCampaignTable
-          campaigns={visibleCampaignList}
-          onArchiveCampaign={handleArchiveCampaign}
-          onToggleCampaignStatus={toggleCampaignStatus}
-          toggleLoadingMap={campaignStatusToggleLoadingMap}
-        />
-      )}
+      {!showNoUniversesState &&
+        !isCampaignListError &&
+        !showLandingEmptyState &&
+        !showNoCampaignsEmptyState &&
+        hasCampaigns && (
+          <AdIntegrationsCampaignTable
+            campaigns={visibleCampaignList}
+            onArchiveCampaign={handleArchiveCampaign}
+            onToggleCampaignStatus={toggleCampaignStatus}
+            toggleLoadingMap={campaignStatusToggleLoadingMap}
+          />
+        )}
 
       <AdIntegrationAssetsDrawer
         campaignId={managedCampaignId || undefined}

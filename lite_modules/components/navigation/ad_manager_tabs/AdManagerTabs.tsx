@@ -54,7 +54,7 @@ const AdManagerTabs = memo(() => {
                     }}
                     size='Small'
                     text={`${selectedAds.length} selected`}
-                    trailing='icon-regular-x'
+                    trailingIconName='icon-regular-x'
                     variant='Standard'
                   />
                 );
@@ -79,7 +79,7 @@ const AdManagerTabs = memo(() => {
                     }}
                     size='Small'
                     text={`${selectedAdSets.length} selected`}
-                    trailing='icon-regular-x'
+                    trailingIconName='icon-regular-x'
                     variant='Standard'
                   />
                 );
@@ -104,7 +104,7 @@ const AdManagerTabs = memo(() => {
                   }}
                   size='Small'
                   text={`${selectedCampaigns.length} selected`}
-                  trailing='icon-regular-x'
+                  trailingIconName='icon-regular-x'
                   variant='Standard'
                 />
               );

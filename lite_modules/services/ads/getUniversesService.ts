@@ -8,6 +8,7 @@ import {
 import adsClient from '@clients/ads';
 import gamesClient from '@clients/games';
 import { universesSearchClient } from '@clients/universes';
+import { listPublisherEligibleUniverses } from '@services/ads/adIntegrationCampaignService';
 import {
   AdvertisedUniverse,
   GetUniversesResponse,
@@ -51,6 +52,22 @@ export const searchOwnedUniverses = async ({
   );
 };
 
+const intersectOwnedUniverses = async (
+  universes: AdvertisedUniverse[],
+  params?: ListUniverseOptionsForAdCreationParams,
+): Promise<AdvertisedUniverse[]> => {
+  if (params === undefined) {
+    return universes;
+  }
+
+  const ownedUniverses = await searchOwnedUniverses({
+    creatorTargetId: params.creatorTargetId,
+    creatorType: params.creatorType,
+  });
+  const eligibleUniverseIds = new Set(universes.map((universe) => universe.universe_id));
+  return ownedUniverses.filter((universe) => eligibleUniverseIds.has(universe.universe_id));
+};
+
 export const listAdvertisedUniverses = async () => {
   const response = await adsClient.get<ListAdvertisedUniversesResponse>({
     url: '/v2/native/advertisedUniverses',
@@ -71,21 +88,39 @@ export const listUniverseOptionsForAdCreation = async (
   const universesCanAdvertiseResponse = await listUniversesCanAdvertise();
   const universesCanAdvertise = universesCanAdvertiseResponse.universes ?? [];
 
+  return intersectOwnedUniverses(universesCanAdvertise, params);
+};
+
+export interface AdIntegrationUniverseOptions {
+  publisherEligibleUniverseIds: number[];
+  universes: AdvertisedUniverse[];
+}
+
+export const listUniverseOptionsForAdIntegrations = async (
+  params?: ListUniverseOptionsForAdCreationParams,
+): Promise<AdIntegrationUniverseOptions> => {
+  const publisherEligibleUniversesResponse = await listPublisherEligibleUniverses();
+  const publisherEligibleUniverses = publisherEligibleUniversesResponse.universes ?? [];
+  const publisherEligibleUniverseIds = publisherEligibleUniverses.map(
+    (universe) => universe.universe_id,
+  );
+
   if (params === undefined) {
-    return universesCanAdvertise;
+    return {
+      publisherEligibleUniverseIds,
+      universes: publisherEligibleUniverses,
+    };
   }
 
-  const groupOwnedUniverses = await searchOwnedUniverses({
+  const ownedUniverses = await searchOwnedUniverses({
     creatorTargetId: params.creatorTargetId,
     creatorType: params.creatorType,
   });
 
-  const advertisableUniverseIds = new Set(
-    universesCanAdvertise.map((universe) => universe.universe_id),
-  );
-  return groupOwnedUniverses.filter((universe) =>
-    advertisableUniverseIds.has(universe.universe_id),
-  );
+  return {
+    publisherEligibleUniverseIds,
+    universes: ownedUniverses,
+  };
 };
 
 export const getUniverses = async (universeIds: number[]): Promise<GetUniversesResponse> => {

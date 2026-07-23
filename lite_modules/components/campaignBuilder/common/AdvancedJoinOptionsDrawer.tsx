@@ -8,7 +8,7 @@ import {
   SheetRoot,
   SheetTitle,
 } from '@rbx/foundation-ui';
-import { Alert, Autocomplete, TextField, Tooltip, Typography } from '@rbx/ui';
+import { Alert, Autocomplete, TextField, Tooltip } from '@rbx/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
@@ -174,7 +174,7 @@ const AdvancedJoinOptionsDrawer = () => {
         largeScreenVariant='side'>
         <SheetTitle>{translate('Heading.AdvancedJoinOptions')}</SheetTitle>
         <SheetBody className='flex flex-col gap-xxlarge'>
-          <Typography color='secondary' variant='body1'>
+          <span className='text-body-large content-default'>
             {translateHTML('Description.AdvancedJoinOptions', [
               {
                 closing: 'linkEnd',
@@ -189,7 +189,7 @@ const AdvancedJoinOptionsDrawer = () => {
                 opening: 'linkStart',
               },
             ])}
-          </Typography>
+          </span>
           {!warningDismissed && (
             <Alert onClose={() => setWarningDismissed(true)} severity='warning' variant='standard'>
               {translate('Message.CodeSetupRequired')}

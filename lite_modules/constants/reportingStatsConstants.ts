@@ -7,6 +7,7 @@ const enum ReportingStatType {
   REPORTING_STAT_COST_PER_PLAY = 5,
   REPORTING_STAT_TOTAL_PLAY_TIME_7D = 6,
   REPORTING_STAT_TOTAL_ROBUX_REVENUE_30D = 7,
+  REPORTING_STAT_ROAS = 8,
 }
 
 export default ReportingStatType;

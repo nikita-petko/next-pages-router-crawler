@@ -194,13 +194,7 @@ const getHasRewardedPlacements = (declaredLabels?: string[]): boolean | undefine
   declaredLabels?.includes(REWARDED_INTEGRATION_DECLARED_LABEL);
 
 const buildDeclaredLabels = (payload: AdIntegrationCampaignDetailsFormValues): string[] => [
-  ...(payload.adsCategory
-    ? [
-        payload.adsCategory === AdsCategoryOtherValue
-          ? UNSPECIFIED_DECLARED_LABEL
-          : payload.adsCategory,
-      ]
-    : []),
+  UNSPECIFIED_DECLARED_LABEL,
   ...(payload.hasRewardedPlacements ? [REWARDED_INTEGRATION_DECLARED_LABEL] : []),
 ];
 

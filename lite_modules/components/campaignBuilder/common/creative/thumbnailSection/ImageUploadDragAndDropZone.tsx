@@ -1,5 +1,5 @@
 import { Button } from '@rbx/foundation-ui';
-import { FormHelperText, Typography } from '@rbx/ui';
+import { FormHelperText } from '@rbx/ui';
 import { ChangeEvent, DragEvent, useEffect, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -309,9 +309,7 @@ const ImageUploadDragAndDropZone = ({
                   </div>
                   {helperTextLines.map((text) => (
                     <div className={cx(uploadHelperText)} key={text}>
-                      <Typography color='secondary' variant='smallLabel1'>
-                        {text}
-                      </Typography>
+                      <span className='text-body-medium content-default'>{text}</span>
                     </div>
                   ))}
                 </>
@@ -319,13 +317,13 @@ const ImageUploadDragAndDropZone = ({
             </div>
           </label>
         </div>
-        <Typography className={uploadErrorText} color='error' variant='body1'>
+        <span className={`text-body-large content-system-alert ${uploadErrorText}`}>
           {errorMessage}
-        </Typography>
+        </span>
         <FormHelperText classes={{ root: customHelperText }}>
-          <Typography variant='smallLabel1'>
+          <span className='text-body-medium'>
             {translateCampaign('Description.SupportedImageFormats')}
-          </Typography>
+          </span>
         </FormHelperText>
       </div>
     </div>

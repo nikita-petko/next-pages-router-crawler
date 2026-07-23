@@ -10,7 +10,7 @@ import {
   SheetTitle,
 } from '@rbx/foundation-ui';
 import { AssetThumbnailSize, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
-import { Label, TextField, Typography } from '@rbx/ui';
+import { Label, TextField } from '@rbx/ui';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -372,9 +372,9 @@ const AdIntegrationAssetsDrawer = ({
         <SheetBody className='flex flex-col gap-xlarge'>
           {campaignInfoHeader && (
             <div className={campaignIdRow}>
-              <Typography color='secondary' variant='body2'>
+              <span className='text-body-medium content-default'>
                 {translateReport('Label.CampaignId', { id: campaignInfoHeader.campaignId })}
-              </Typography>
+              </span>
               <IconButton
                 ariaLabel={translateReport('Description.CopyToClipboard')}
                 icon='icon-regular-two-stacked-squares'
@@ -390,28 +390,28 @@ const AdIntegrationAssetsDrawer = ({
             <div className={campaignInfoGrid}>
               <div className={campaignInfoColumn}>
                 <div className={campaignInfoItem}>
-                  <Typography className={campaignInfoLabel} color='secondary' variant='captionBody'>
+                  <span className={`text-body-medium content-default ${campaignInfoLabel}`}>
                     {translate('Label.AdvertiserName')}
-                  </Typography>
-                  <Typography className={campaignInfoValue} variant='body2'>
+                  </span>
+                  <span className={`text-body-medium ${campaignInfoValue}`}>
                     {campaignInfoHeader.advertiserName}
-                  </Typography>
+                  </span>
                 </div>
                 <div className={campaignInfoItem}>
-                  <Typography className={campaignInfoLabel} color='secondary' variant='captionBody'>
+                  <span className={`text-body-medium content-default ${campaignInfoLabel}`}>
                     {translateReport('Label.Experience')}
-                  </Typography>
+                  </span>
                   <div className={campaignInfoExperienceValue}>
                     <UniverseFilterAvatar src={campaignInfoHeader.experienceThumbnailUrl} />
-                    <Typography className={campaignInfoExperienceName} variant='body2'>
+                    <span className={`text-body-medium ${campaignInfoExperienceName}`}>
                       {campaignInfoHeader.experienceName}
-                    </Typography>
+                    </span>
                   </div>
                 </div>
                 <div className={campaignInfoItem}>
-                  <Typography className={campaignInfoLabel} color='secondary' variant='captionBody'>
+                  <span className={`text-body-medium content-default ${campaignInfoLabel}`}>
                     {translateReport('Label.Status')}
-                  </Typography>
+                  </span>
                   <div className={campaignInfoStatusValue}>
                     <Label
                       classes={{ root: labelRoot }}
@@ -425,61 +425,55 @@ const AdIntegrationAssetsDrawer = ({
               </div>
               <div className={campaignInfoColumn}>
                 <div className={campaignInfoItem}>
-                  <Typography className={campaignInfoLabel} color='secondary' variant='captionBody'>
+                  <span className={`text-body-medium content-default ${campaignInfoLabel}`}>
                     {translate('Label.RegistrationDate')}
-                  </Typography>
-                  <Typography className={campaignInfoValue} variant='body2'>
+                  </span>
+                  <span className={`text-body-medium ${campaignInfoValue}`}>
                     {campaignInfoHeader.registrationDate}
-                  </Typography>
+                  </span>
                 </div>
                 <div className={campaignInfoItem}>
-                  <Typography className={campaignInfoLabel} color='secondary' variant='captionBody'>
+                  <span className={`text-body-medium content-default ${campaignInfoLabel}`}>
                     {translateCampaign('Label.CampaignStartDate')}
-                  </Typography>
-                  <Typography className={campaignInfoValue} variant='body2'>
+                  </span>
+                  <span className={`text-body-medium ${campaignInfoValue}`}>
                     {campaignInfoHeader.startDate}
-                  </Typography>
+                  </span>
                 </div>
                 <div className={campaignInfoItem}>
-                  <Typography className={campaignInfoLabel} color='secondary' variant='captionBody'>
+                  <span className={`text-body-medium content-default ${campaignInfoLabel}`}>
                     {translateCampaign('Label.EndDate')}
-                  </Typography>
-                  <Typography className={campaignInfoValue} variant='body2'>
+                  </span>
+                  <span className={`text-body-medium ${campaignInfoValue}`}>
                     {campaignInfoHeader.endDate}
-                  </Typography>
+                  </span>
                 </div>
                 {campaignInfoHeader.cptvDisplay !== undefined && (
                   <div className={campaignInfoItem}>
-                    <Typography
-                      className={campaignInfoLabel}
-                      color='secondary'
-                      variant='captionBody'>
+                    <span className={`text-body-medium content-default ${campaignInfoLabel}`}>
                       {translateMisc('Label.Cptv')}
-                    </Typography>
-                    <Typography className={campaignInfoValue} variant='body2'>
+                    </span>
+                    <span className={`text-body-medium ${campaignInfoValue}`}>
                       {campaignInfoHeader.cptvDisplay}
-                    </Typography>
+                    </span>
                   </div>
                 )}
                 {campaignInfoHeader.maxCostDisplay !== undefined && (
                   <div className={campaignInfoItem}>
-                    <Typography
-                      className={campaignInfoLabel}
-                      color='secondary'
-                      variant='captionBody'>
+                    <span className={`text-body-medium content-default ${campaignInfoLabel}`}>
                       {translateMisc('Label.RevenueShare')}
-                    </Typography>
-                    <Typography className={campaignInfoValue} variant='body2'>
+                    </span>
+                    <span className={`text-body-medium ${campaignInfoValue}`}>
                       {campaignInfoHeader.maxCostDisplay}
-                    </Typography>
+                    </span>
                   </div>
                 )}
               </div>
             </div>
           ) : (
-            <Typography color='secondary' variant='body1'>
+            <span className='text-body-large content-default'>
               {translate('Description.ManageAssetsHelpText')}
-            </Typography>
+            </span>
           )}
           {!disableSave && (mode === 'create' || Boolean(campaignId)) && (
             <div className={addAssetSection}>
@@ -523,12 +517,12 @@ const AdIntegrationAssetsDrawer = ({
                     type={ThumbnailTypes.assetThumbnail}
                   />
                   <div className={previewCardDetails}>
-                    <Typography className={previewCardText} variant='body2'>
+                    <span className={`text-body-medium ${previewCardText}`}>
                       {assetPreview.name}
-                    </Typography>
-                    <Typography className={previewCardText} color='secondary' variant='caption'>
+                    </span>
+                    <span className={`text-body-medium content-default ${previewCardText}`}>
                       {assetPreview.assetId.toString()}
-                    </Typography>
+                    </span>
                   </div>
                 </div>
               )}

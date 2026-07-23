@@ -1,3 +1,4 @@
+import { useWorkspaces } from '@rbx/creator-hub-navigation';
 import { useRouter } from 'next/router';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 
@@ -10,6 +11,7 @@ import PageHeader from '@components/reporting/PageHeader';
 import StackedToasts from '@components/reporting/StackedToasts';
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
+import useShouldUseWorkspaceUniverseFiltering from '@hooks/useShouldUseWorkspaceUniverseFiltering';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
 import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider';
 import { usePromotionStore } from '@stores/promotionStoreProvider';
@@ -32,7 +34,11 @@ const NewFlow = () => {
   const fetchInitialData = useNewFlowStore((state: NewFlowStoreType) => state.fetchInitialData);
   const resetFilterState = useNewFlowStore((state: NewFlowStoreType) => state.resetFilterState);
   const router = useRouter();
+  const shouldUseWorkspaceUniverseFiltering = useShouldUseWorkspaceUniverseFiltering();
+  const { currentWorkspace } = useWorkspaces();
   const { getPromotions } = usePromotionStore();
+  const showCreatorColumn =
+    shouldUseWorkspaceUniverseFiltering && currentWorkspace?.creatorType === 'Group';
   useEffect(() => {
     fetchEssentialAppInfo({ urlPath: Routes.MANAGE }).then(() =>
       setFetchingEssentialAppInfo(false),
@@ -105,7 +111,7 @@ const NewFlow = () => {
     <AdsManagerPageBaseLayout headerSection={<PageHeader />} isLoading={fetchingEssentialAppInfo}>
       <div>
         <StackedToasts />
-        <CampaignManagementTable />
+        <CampaignManagementTable showCreatorColumn={showCreatorColumn} />
         <CampaignDetailsDrawer />
       </div>
     </AdsManagerPageBaseLayout>

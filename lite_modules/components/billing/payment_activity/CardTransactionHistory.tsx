@@ -10,7 +10,6 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@rbx/foundation-ui';
-import { Typography } from '@rbx/ui';
 import moment from 'moment-timezone';
 import { useCallback, useState } from 'react';
 
@@ -40,6 +39,7 @@ const CardTransactionHistoryRow = ({ paymentActivity }: CardTransactionHistoryRo
   const { translate } = useNamespacedTranslation(TranslationNamespace.Billing);
   const {
     classes: {
+      noWrap,
       paymentStatusCellContents,
       statusCircle,
       statusCircleError,
@@ -77,9 +77,9 @@ const CardTransactionHistoryRow = ({ paymentActivity }: CardTransactionHistoryRo
   const refundMinusSign = isRefund && paymentActivity.charge_amount !== 0 ? '- ' : '';
   const amountChargedText = `${refundMinusSign}${formattedChargeAmount} ${paymentActivity.currency_code}`;
   let amountChargedCellContent = (
-    <Typography data-testid='amountChargedCellContent' noWrap variant='body2'>
+    <span className={`text-body-medium ${noWrap}`} data-testid='amountChargedCellContent'>
       {amountChargedText}
-    </Typography>
+    </span>
   );
 
   if (isFailedCharge && paymentActivity?.request_amount) {
@@ -102,21 +102,21 @@ const CardTransactionHistoryRow = ({ paymentActivity }: CardTransactionHistoryRo
   return (
     <TableRow data-testid={`transactionHistoryRow-${paymentActivity.charge_time_ms}`}>
       <TableCell align='start' data-testid='transactionDateCell'>
-        <Typography data-testid='transactionDateCellContent' noWrap variant='body2'>
+        <span className={`text-body-medium ${noWrap}`} data-testid='transactionDateCellContent'>
           {dateString}
-        </Typography>
+        </span>
       </TableCell>
       <TableCell align='start' data-testid='paymentMethodCell'>
-        <Typography data-testid='paymentMethodCellContent' noWrap variant='body2'>
+        <span className={`text-body-medium ${noWrap}`} data-testid='paymentMethodCellContent'>
           {translate('Title.Card')} ****{paymentActivity.last_four_digits}
-        </Typography>
+        </span>
       </TableCell>
       <TableCell align='start' data-testid='paymentStatusCell'>
         <div className={paymentStatusCellContents}>
           <div className={cx(statusCircle, statusCircleClassName)} />
-          <Typography data-testid='paymentStatusCellContent' noWrap variant='body2'>
+          <span className={`text-body-medium ${noWrap}`} data-testid='paymentStatusCellContent'>
             {statusText}
-          </Typography>
+          </span>
         </div>
       </TableCell>
       <TableCell align='end' data-testid='amountChargedCell'>
@@ -247,9 +247,9 @@ const TransactionHistoryGrid = ({
             name='icon-regular-triangle-exclamation'
             size='Medium'
           />
-          <Typography data-testid='failedtoLoadMoreTransactionsText' variant='body1'>
+          <span className='text-body-large' data-testid='failedtoLoadMoreTransactionsText'>
             {translate('Description.FailedToLoadMoreTransactions')}
-          </Typography>
+          </span>
         </div>
       ) : null}
       {shouldShowLoadMore && !isLoading ? (
@@ -266,9 +266,9 @@ const TransactionHistoryGrid = ({
       ) : null}
       {!shouldShowLoadMore ? (
         <div className={footerContainer}>
-          <Typography color='inherit' data-testid='noMoreText' variant='footer'>
+          <span className='text-body-medium content-inherit' data-testid='noMoreText'>
             {translate('Description.EndOfTransactionHistory')}
-          </Typography>
+          </span>
         </div>
       ) : null}
     </div>
@@ -305,9 +305,9 @@ const CardTransactionHistory = ({
         name='icon-regular-triangle-exclamation'
         size='Medium'
       />
-      <Typography data-testid='failedToGetTransactionHistoryText' variant='body1'>
+      <span className='text-body-large' data-testid='failedToGetTransactionHistoryText'>
         {translate('Description.FailedToLoadTransactionHistory')}
-      </Typography>
+      </span>
     </div>
   );
   if (!initialLoadSucceeded || paymentActivities == null) {
@@ -320,9 +320,9 @@ const CardTransactionHistory = ({
 
   const noTransactionHistoryTextContainer = (
     <div className={noTransactionHistoryContainer}>
-      <Typography data-testid='noTransactionHistoryText' variant='body1'>
+      <span className='text-body-large' data-testid='noTransactionHistoryText'>
         {translate('Description.NoTransactionHistoryV2')}
-      </Typography>
+      </span>
     </div>
   );
   const transactionHistory = (

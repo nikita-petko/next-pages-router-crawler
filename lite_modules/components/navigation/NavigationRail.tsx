@@ -5,7 +5,7 @@ import {
   useWorkspaces,
 } from '@rbx/creator-hub-navigation';
 import { Badge, Divider } from '@rbx/foundation-ui';
-import { Label, makeStyles, Typography } from '@rbx/ui';
+import { Label, makeStyles } from '@rbx/ui';
 import { useRouter } from 'next/router';
 import { useCallback, useMemo } from 'react';
 
@@ -239,7 +239,7 @@ const NavigationRail = () => {
   return (
     <div className={container}>
       <div className={header}>
-        <Typography variant='largeLabel2'>{translateNavigation('Label.AdsManager')}</Typography>
+        <span className='text-label-large'>{translateNavigation('Label.AdsManager')}</span>
         <Label labelText={translateCampaign('Label.Beta')} />
       </div>
       <Divider />

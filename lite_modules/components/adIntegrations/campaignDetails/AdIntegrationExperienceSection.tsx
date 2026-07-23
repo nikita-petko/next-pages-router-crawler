@@ -1,4 +1,4 @@
-import { Autocomplete, TextField, Typography } from '@rbx/ui';
+import { Autocomplete, TextField } from '@rbx/ui';
 import { Control, Controller, useWatch } from 'react-hook-form';
 
 import useCampaignBuilderCommonStyles from '@components/campaignBuilder/common/CampaignBuilderCommon.styles';
@@ -106,14 +106,14 @@ const AdIntegrationExperienceSection = ({
         )}
       />
       {!hasEligibleExperiences && (
-        <Typography className={spacedWarning} color='warning' variant='smallLabel1'>
+        <span className={`text-body-medium content-system-warning ${spacedWarning}`}>
           {translateCampaign('Description.CreateEligibleExperience')}
-        </Typography>
+        </span>
       )}
       {isExperienceNoLongerEligible && (
-        <Typography className={spacedWarning} color='warning' variant='smallLabel1'>
+        <span className={`text-body-medium content-system-warning ${spacedWarning}`}>
           {translateCampaign('Description.ExperienceNoLongerEligible')}
-        </Typography>
+        </span>
       )}
     </>
   );

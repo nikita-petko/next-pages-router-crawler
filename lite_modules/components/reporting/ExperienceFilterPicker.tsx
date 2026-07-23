@@ -1,28 +1,30 @@
+import { AutocompleteOption, Autocomplete as FoundationAutocomplete } from '@rbx/foundation-ui';
 import { Autocomplete, FormControl, FormHelperText, TextField, Tooltip } from '@rbx/ui';
+import { useEffect, useMemo, useState } from 'react';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
 import UniverseFilterAvatar from '@components/common/UniverseFilterAvatar';
 import useExperienceFilterPickerStyles from '@components/reporting/ExperienceFilterPicker.styles';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
 import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider';
 import { ThumbnailStoreType, useThumbnailStore } from '@stores/thumbnailStoreProvider';
 import { ThumbnailType } from '@type/thumbnail';
 import { AdvertisedUniverse } from '@type/universe';
 import { EmptyRequestStateType } from '@utils/zustandUtils';
 
-const maybeGetUniverseFilterThumbnail = (
-  universeFilter: AdvertisedUniverse,
+const getUniverseAvatar = (
+  universe: AdvertisedUniverse | undefined,
   thumbnailsByUniverseId: Record<number, EmptyRequestStateType<ThumbnailType>>,
 ) =>
-  universeFilter && universeFilter.universe_id !== 0 ? (
-    <UniverseFilterAvatar
-      src={thumbnailsByUniverseId[universeFilter.universe_id]?.data?.imageUrl}
-    />
-  ) : null;
+  universe && universe.universe_id !== 0 ? (
+    <UniverseFilterAvatar src={thumbnailsByUniverseId[universe.universe_id]?.data?.imageUrl} />
+  ) : undefined;
 
 const ExperienceFilterPicker = () => {
   const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
+  const { translate: translateReport } = useNamespacedTranslation(TranslationNamespace.Report);
   const { translate: translateCreativeLibrary } = useNamespacedTranslation(
     TranslationNamespace.CreativeLibrary,
   );
@@ -50,62 +52,154 @@ const ExperienceFilterPicker = () => {
   const handleUniversePickerChange = useNewFlowStore(
     (state: NewFlowStoreType) => state.handleUniversePickerChange,
   );
+  const isCustomDateRangeEnabled = useAppStore(
+    (state: AppStoreType) => state.appMetadataState?.data?.isCustomDateRangeEnabled ?? false,
+  );
 
   const thumbnailsByUniverseId = useThumbnailStore(
     (state: ThumbnailStoreType) => state.thumbnailsByUniverseId,
   );
 
+  const isDisabled =
+    advertisedUniversesIsError ||
+    isLoading ||
+    campaignsIsLoading ||
+    filterIsLoading ||
+    summaryStatsIsLoading;
   const showErrorHelperText = universePickerIsError || advertisedUniversesIsError;
+
+  const universesById = useMemo(() => {
+    const map = new Map<string, AdvertisedUniverse>();
+    universes.forEach((u) => map.set(u.universe_id.toString(), u));
+    return map;
+  }, [universes]);
+
+  const [inputValue, setInputValue] = useState<string>(universeFilter?.universe_name ?? '');
+
+  // Keep the input in sync when the store's universeFilter changes externally
+  // (e.g. filter reset, route change) so we don't display a stale name.
+  useEffect(() => {
+    setInputValue(universeFilter?.universe_name ?? '');
+  }, [universeFilter?.universe_id, universeFilter?.universe_name]);
+
+  const filteredUniverses = useMemo(() => {
+    const query = inputValue.trim().toLowerCase();
+    const filtered =
+      !query || query === universeFilter?.universe_name.toLowerCase()
+        ? universes
+        : universes.filter((u) => u.universe_name.toLowerCase().includes(query));
+
+    // Ensure the currently selected universe is always present as an option so
+    // Foundation Autocomplete's `value` prop resolves to a real child. This
+    // includes the sentinel "All" filter (universe_id === 0), which the
+    // backend does not send back in the `universes` payload.
+    if (universeFilter && !filtered.some((u) => u.universe_id === universeFilter.universe_id)) {
+      return [universeFilter, ...filtered];
+    }
+    return filtered;
+  }, [universes, inputValue, universeFilter]);
+
+  const handleFoundationValueChange = (nextValue: string | undefined) => {
+    if (nextValue === undefined) {
+      return;
+    }
+    const universeObj = universesById.get(nextValue);
+    if (!universeObj) {
+      return;
+    }
+    handleUniversePickerChange(universeObj);
+    setInputValue(universeObj.universe_name);
+    logNativeClickEvent(EventName.ExperienceFilterOptionClicked, {
+      universeId: universeObj.universe_id.toString(),
+      universeName: universeObj.universe_name,
+    });
+  };
+
+  // Foundation Autocomplete does not auto-revert the input on blur, so a user
+  // who clears/edits the text without picking an option would be left with a
+  // stale input while the store's `universeFilter` is unchanged. Restore the
+  // selected universe's name (matches MUI Autocomplete's default behavior and
+  // the intent of the old `disableClearable` guard).
+  const handleFoundationBlur = () => {
+    const expected = universeFilter?.universe_name ?? '';
+    if (inputValue !== expected) {
+      setInputValue(expected);
+    }
+  };
+
+  const foundationPicker = (
+    <div className={experiencePicker}>
+      <FoundationAutocomplete
+        data-testid='universePickerAutocomplete'
+        emptyState={translateReport('Description.NoResults')}
+        error={showErrorHelperText ? translateCampaign('Description.FailedToFetch') : undefined}
+        hasError={showErrorHelperText}
+        inputValue={inputValue}
+        isDisabled={isDisabled}
+        label={translateCreativeLibrary('Label.Experience')}
+        leadingIconNode={getUniverseAvatar(universeFilter, thumbnailsByUniverseId)}
+        onBlur={handleFoundationBlur}
+        onInputValueChange={setInputValue}
+        onValueChange={handleFoundationValueChange}
+        placeholder={translateCreativeLibrary('Label.Experience')}
+        size='Medium'
+        value={universeFilter?.universe_id.toString()}>
+        {filteredUniverses.map((u) => (
+          <AutocompleteOption
+            key={u.universe_id}
+            leading={getUniverseAvatar(u, thumbnailsByUniverseId)}
+            title={u.universe_name}
+            value={u.universe_id.toString()}
+          />
+        ))}
+      </FoundationAutocomplete>
+    </div>
+  );
+
+  const muiPicker = (
+    <Autocomplete
+      disableClearable={universes.length === 1}
+      disabled={isDisabled}
+      getOptionLabel={({ universe_name }) => universe_name}
+      id='universe-filter-picker'
+      onChange={(_event, universeObj) => {
+        if (!universeObj) {
+          return;
+        }
+        handleUniversePickerChange(universeObj);
+        logNativeClickEvent(EventName.ExperienceFilterOptionClicked, {
+          universeId: universeObj.universe_id.toString(),
+          universeName: universeObj.universe_name,
+        });
+      }}
+      options={universes}
+      renderInput={(params) => (
+        <FormControl className={experiencePicker} error={showErrorHelperText} variant='outlined'>
+          <TextField
+            {...params}
+            InputProps={{
+              ...params.InputProps,
+              startAdornment: getUniverseAvatar(universeFilter, thumbnailsByUniverseId) ?? null,
+              style: { height: '44px', paddingTop: '4px' },
+            }}
+            label={translateCreativeLibrary('Label.Experience')}
+          />
+          {showErrorHelperText && (
+            <FormHelperText data-testid='universePickerErrorHelperText'>
+              {translateCampaign('Description.FailedToFetch')}
+            </FormHelperText>
+          )}
+        </FormControl>
+      )}
+      value={universeFilter}
+    />
+  );
 
   return (
     <Tooltip
       placement='top'
       title={advertisedUniversesIsError ? translateCampaign('Description.TryReloading') : ''}>
-      <Autocomplete
-        disableClearable={universes.length === 1}
-        disabled={
-          advertisedUniversesIsError ||
-          isLoading ||
-          campaignsIsLoading ||
-          filterIsLoading ||
-          summaryStatsIsLoading
-        }
-        getOptionLabel={({ universe_name }) => universe_name}
-        id='universe-filter-picker'
-        onChange={(_event, universeObj) => {
-          if (!universeObj) {
-            return;
-          }
-          handleUniversePickerChange(universeObj);
-          logNativeClickEvent(EventName.ExperienceFilterOptionClicked, {
-            universeId: universeObj.universe_id.toString(),
-            universeName: universeObj.universe_name,
-          });
-        }}
-        options={universes}
-        renderInput={(params) => (
-          <FormControl className={experiencePicker} error={showErrorHelperText} variant='outlined'>
-            <TextField
-              {...params}
-              InputProps={{
-                ...params.InputProps,
-                startAdornment: maybeGetUniverseFilterThumbnail(
-                  universeFilter,
-                  thumbnailsByUniverseId,
-                ),
-                style: { height: '44px', paddingTop: '4px' },
-              }}
-              label={translateCreativeLibrary('Label.Experience')}
-            />
-            {showErrorHelperText && (
-              <FormHelperText data-testid='universePickerErrorHelperText'>
-                {translateCampaign('Description.FailedToFetch')}
-              </FormHelperText>
-            )}
-          </FormControl>
-        )}
-        value={universeFilter}
-      />
+      {isCustomDateRangeEnabled ? foundationPicker : muiPicker}
     </Tooltip>
   );
 };

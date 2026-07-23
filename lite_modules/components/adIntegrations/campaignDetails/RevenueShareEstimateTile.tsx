@@ -1,5 +1,5 @@
 import { Link } from '@rbx/foundation-ui';
-import { Alert, Typography } from '@rbx/ui';
+import { Alert } from '@rbx/ui';
 import { ReactElement } from 'react';
 
 import useRevenueShareEstimateTileStyles from '@components/adIntegrations/campaignDetails/RevenueShareEstimateTile.styles';
@@ -69,11 +69,11 @@ const RevenueShareEstimateTile = ({
   return (
     <div className={container}>
       <div className={header}>
-        <Typography className={heading} variant='h5'>
+        <span className={`text-heading-small ${heading}`}>
           {translate('Heading.RevenueShareForecast')}
-        </Typography>
+        </span>
         <Alert severity='warning'>{translate('Message.RevenueShareForecastEffectiveDate')}</Alert>
-        <Typography className={description} variant='body2'>
+        <span className={`text-body-medium ${description}`}>
           {translateHTML('Description.RevenueShareForecast', [
             {
               closing: 'linkEnd',
@@ -89,63 +89,52 @@ const RevenueShareEstimateTile = ({
               opening: 'linkStart',
             },
           ])}
-        </Typography>
+        </span>
         {isError && (
-          <Typography className={errorText} variant='body2'>
+          <span className={`text-body-medium ${errorText}`}>
             {translate('Message.RevenueShareEstimateError')}
-          </Typography>
+          </span>
         )}
       </div>
-
       <div className={card}>
         <div className={cardLabelRow}>
-          <Typography className={cardLabel} variant='body1'>
+          <span className={`text-body-large ${cardLabel}`}>
             {translate('Label.RevenueShareCost')}
-          </Typography>
+          </span>
           <InfoTooltip placement='top' text={translate('Description.RevenueShareCostTooltip')} />
         </div>
-        <Typography className={cardValue} variant='h4'>
-          {costValue}
-        </Typography>
-        <Typography className={cardDescription} variant='body2'>
+        <span className={`text-heading-medium ${cardValue}`}>{costValue}</span>
+        <span className={`text-body-medium ${cardDescription}`}>
           {translate('Description.RevenueShareCost')}
-        </Typography>
+        </span>
       </div>
-
       <div className={card}>
-        <Typography className={cardLabel} variant='body1'>
+        <span className={`text-body-large ${cardLabel}`}>
           {translate('Label.RevenueShareCampaignDuration')}
-        </Typography>
-        <Typography className={cardValue} variant='h4'>
-          {durationValue}
-        </Typography>
-        <Typography className={cardDescription} variant='body2'>
+        </span>
+        <span className={`text-heading-medium ${cardValue}`}>{durationValue}</span>
+        <span className={`text-body-medium ${cardDescription}`}>
           {translate('Description.RevenueShareCampaignDuration')}
-        </Typography>
+        </span>
       </div>
-
       <div className={metricsRow}>
         <div className={metric}>
-          <Typography className={cardLabel} variant='body1'>
+          <span className={`text-body-large ${cardLabel}`}>
             {translate('Label.RevenueShareAvgDailyVisits')}
-          </Typography>
-          <Typography className={cardValue} variant='h5'>
-            {avgDailyVisitsValue}
-          </Typography>
-          <Typography className={cardDescription} variant='body2'>
+          </span>
+          <span className={`text-heading-small ${cardValue}`}>{avgDailyVisitsValue}</span>
+          <span className={`text-body-medium ${cardDescription}`}>
             {translate('Description.RevenueShareAvgDailyVisits')}
-          </Typography>
+          </span>
         </div>
         <div className={metric}>
-          <Typography className={cardLabel} variant='body1'>
+          <span className={`text-body-large ${cardLabel}`}>
             {translate('Label.RevenueShareWeightedCptv')}
-          </Typography>
-          <Typography className={cardValue} variant='h5'>
-            {weightedCptvValue}
-          </Typography>
-          <Typography className={cardDescription} variant='body2'>
+          </span>
+          <span className={`text-heading-small ${cardValue}`}>{weightedCptvValue}</span>
+          <span className={`text-body-medium ${cardDescription}`}>
             {translate('Description.RevenueShareWeightedCptv')}
-          </Typography>
+          </span>
         </div>
       </div>
     </div>

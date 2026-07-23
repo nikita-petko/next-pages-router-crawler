@@ -1,6 +1,7 @@
 import moment from 'moment-timezone';
 
 const defaultTimezone = 'America/Los_Angeles';
+const MMMDYYYY_MOMENT_FORMAT = 'MMM D, YYYY';
 const MMMMDYYYYHMMAT_MOMENT_FORMAT = 'MMMM D, YYYY [at] h:mm A';
 
 export const IsValidDate = (d: Date | null) => d instanceof Date && !Number.isNaN(d.getTime());
@@ -38,6 +39,26 @@ export const FormatDateToMMMMDYYYYHMMAT = ({
   }
 
   return moment(timestamp).tz(defaultTimezone).format(MMMMDYYYYHMMAT_MOMENT_FORMAT);
+};
+
+export const FormatDateToMMMDYYYY = ({
+  timestamp,
+  timezone,
+}: {
+  timestamp?: number;
+  timezone: string;
+}): string => {
+  if (!timestamp) {
+    return '';
+  }
+
+  const timeToFormat = moment.tz(timestamp, timezone);
+
+  if (timeToFormat.isValid() && isValidTimezone(timezone)) {
+    return `${timeToFormat.format(MMMDYYYY_MOMENT_FORMAT)}`;
+  }
+
+  return moment(timestamp).tz(defaultTimezone).format(MMMDYYYY_MOMENT_FORMAT);
 };
 
 export const GetTimezoneOffsetMs = (timeZone: string) => {

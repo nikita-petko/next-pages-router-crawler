@@ -2,6 +2,7 @@ import moment from 'moment-timezone';
 import { useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
+import { ServerAdAssetType } from '@constants/ad';
 import { defaultTimeZone } from '@constants/app';
 import {
   DefaultServerCampaignObjectiveType,
@@ -20,16 +21,20 @@ import {
   FlowTypes,
   FormField,
   noExperiencesOption,
+  ReachAdFormat,
   TimeFormat,
 } from '@constants/campaignBuilder';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import { useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
 import { usePaymentStore } from '@stores/paymentStoreProvider';
-import { SimplifiedCampaignType } from '@type/campaignBuilder';
+import { SimplifiedCampaignType, SponsoredAdType } from '@type/campaignBuilder';
 import { MicroUsdToUsd } from '@utils/currency';
 import { GetTimezoneObjFromEnum, GetValidatedTimezoneDbName } from '@utils/timezone';
 import { CreateExistingAssetVideo } from '@utils/videoStateHelpers';
+
+const isReachVideoSponsoredAd = (ad: SponsoredAdType): boolean =>
+  ad.asset_type === ServerAdAssetType.VIDEO || ad.thumbnail_asset_id !== undefined;
 
 /**
  * Hook to get default form values for campaign form
@@ -116,14 +121,16 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
     [],
   );
 
-  // if sponsored_ads exists, use it to transform thumbnails, otherwise use asset_ids
+  // if sponsored_ads exists, use it to transform thumbnails, otherwise use asset_ids.
+  // For 1x2 video ads the poster lives on thumbnail_asset_id (asset_id is the video).
   const transformThumbnails = useCallback(
     ({ asset_ids, sponsored_ads }: SimplifiedCampaignType) => {
       if (sponsored_ads) {
         return sponsored_ads
-          .filter(({ asset_id }) => asset_id !== undefined)
-          .map(({ asset_id }) => ({
-            assetId: asset_id!,
+          .map((ad) => (isReachVideoSponsoredAd(ad) ? ad.thumbnail_asset_id : ad.asset_id))
+          .filter((assetId): assetId is number => assetId !== undefined)
+          .map((assetId) => ({
+            assetId,
             existing: true,
             isSelected: true,
           }));
@@ -201,12 +208,44 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
     [],
   );
 
-  // Transform Videos to form field values
+  // Transform Videos to form field values. Off-platform still uses
+  // raw_video_asset_ids / off_platform_ad_ready_asset_ids; 1x2 reach stores
+  // the video on sponsored_ads (asset_type VIDEO).
   const transformVideos = useCallback(
-    ({ off_platform_ad_ready_asset_ids, raw_video_asset_ids }: SimplifiedCampaignType) =>
-      (raw_video_asset_ids || off_platform_ad_ready_asset_ids)?.map((assetId) =>
-        CreateExistingAssetVideo(String(assetId), `dev-creative-${assetId}`),
-      ) ?? [],
+    ({
+      off_platform_ad_ready_asset_ids,
+      raw_video_asset_ids,
+      sponsored_ads,
+    }: SimplifiedCampaignType) => {
+      const fromRaw =
+        (raw_video_asset_ids || off_platform_ad_ready_asset_ids)?.map((assetId) =>
+          CreateExistingAssetVideo(String(assetId), `dev-creative-${assetId}`),
+        ) ?? [];
+      if (fromRaw.length > 0) {
+        return fromRaw;
+      }
+
+      const videoAssetIds = Array.from(
+        new Set(
+          (sponsored_ads ?? [])
+            .filter(isReachVideoSponsoredAd)
+            .map((ad) => ad.asset_id)
+            .filter((assetId): assetId is number => assetId !== undefined),
+        ),
+      );
+      return videoAssetIds.map((assetId) =>
+        CreateExistingAssetVideo(String(assetId), `reach-video-${assetId}`),
+      );
+    },
+    [],
+  );
+
+  // Prefer 1x2 when the campaign already has video sponsored ads.
+  const transformCreativeFormat = useCallback(
+    ({ sponsored_ads }: SimplifiedCampaignType) =>
+      sponsored_ads?.some(isReachVideoSponsoredAd)
+        ? ReachAdFormat.VERTICAL_1X2
+        : DEFAULT_REACH_AD_FORMAT,
     [],
   );
 
@@ -233,7 +272,7 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
         [FormField.BUDGET_TYPE]: campaignData.budget_type,
         [FormField.CAMPAIGN_NAME]: campaignData.name,
         [FormField.CLICK_DESTINATION]: transformClickDestination(campaignData),
-        [FormField.CREATIVE_FORMAT]: DEFAULT_REACH_AD_FORMAT,
+        [FormField.CREATIVE_FORMAT]: transformCreativeFormat(campaignData),
         [FormField.CUSTOM_BUDGET]: true,
         [FormField.CUSTOM_DURATION]: campaignData.duration_in_days !== 0,
         [FormField.DETAILED_TARGETING_MATCH_TYPE]:
@@ -272,6 +311,7 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
       transformBidValue,
       transformThumbnails,
       transformVideos,
+      transformCreativeFormat,
       transformFrequencyCappingRules,
       transformHeadline,
       transformSubtitle,

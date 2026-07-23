@@ -6,7 +6,6 @@ import {
   FormHelperText,
   PickersUtilsProvider,
   TextField,
-  Typography,
   UIThemeProvider,
 } from '@rbx/ui';
 import { type ReactElement, useState } from 'react';
@@ -366,23 +365,24 @@ const ReportDownloadDialog = ({
   };
 
   const dialogBody = downloadLoading ? (
-    // UIThemeProvider is required for @rbx/ui's <Typography> styling. It
-    // wraps only the inner @rbx/ui content so it doesn't nest a MUI Modal
-    // focus trap inside Foundation-UI's <Dialog> (which would cause an
-    // infinite focus-event loop).
+    // UIThemeProvider is required for the inner @rbx/ui (MUI) components
+    // (CenteredCircularProgress, the keyboard date pickers). It wraps only
+    // the inner @rbx/ui content so it doesn't nest a MUI Modal focus trap
+    // inside Foundation-UI's <Dialog> (which would cause an infinite
+    // focus-event loop).
     <UIThemeProvider>
       <div className={loadingStyle}>
         <CenteredCircularProgress />
-        <Typography variant='h5'>{translate('Description.ReportBeingPrepared')}</Typography>
+        <span className='text-heading-small'>{translate('Description.ReportBeingPrepared')}</span>
       </div>
     </UIThemeProvider>
   ) : (
     <UIThemeProvider>
       <div>
         <div className={infoRow}>
-          <Typography color='secondary' variant='caption'>
+          <span className='text-body-medium content-default'>
             {translate('Description.DownloadExportsAllData')}
-          </Typography>
+          </span>
         </div>
         <div className={cx(dialogRow, datePickerRow)}>
           <KeyboardDatePickerReportDownload
@@ -409,7 +409,7 @@ const ReportDownloadDialog = ({
             translateFn={translate}
           />
         </div>
-        <Typography variant='h6'>{translate('Label.ReportType')}</Typography>
+        <span className='text-title-large'>{translate('Label.ReportType')}</span>
         <div className={cx(dialogRow, reportTypeRow)}>
           <RadioGroup
             onValueChange={(v) =>
@@ -431,7 +431,7 @@ const ReportDownloadDialog = ({
           </RadioGroup>
         </div>
         <div>
-          <Typography variant='h6'>{translate('Label.FileType')}</Typography>
+          <span className='text-title-large'>{translate('Label.FileType')}</span>
           <div className={`${dialogRow} ${fileTypeRow}`}>
             <RadioGroup
               onValueChange={(v) =>

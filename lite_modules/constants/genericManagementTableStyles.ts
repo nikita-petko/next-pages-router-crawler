@@ -2,14 +2,7 @@ import { paddingUnit } from '@constants/styleConstants';
 
 export const defaultAlign = 'center';
 
-// TableSkeletonRow skeleton dimensions
 export const SKELETON_ROWS_COUNT = 5;
-export const SKELETON_HEIGHT = 20;
-export const SKELETON_WIDTH = '80%';
-
-// SummaryCard skeleton dimensions
-export const SUMMARY_CARD_VALUE_SKELETON_HEIGHT = 40;
-export const SUMMARY_CARD_VALUE_SKELETON_WIDTH = '70%';
 
 /** Block / inline padding for management table body cells (`nameRow`, etc.). */
 const ROW_PADDING_BLOCK_PX = 8;

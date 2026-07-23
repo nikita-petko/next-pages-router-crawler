@@ -1,5 +1,5 @@
 import { Badge, Icon, Link, OptionSelector } from '@rbx/foundation-ui';
-import { Alert, AlertTitle, Tooltip, Typography } from '@rbx/ui';
+import { Alert, AlertTitle, Tooltip } from '@rbx/ui';
 import { Fragment, useCallback, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
@@ -195,7 +195,7 @@ const ObjectiveSection = () => {
           <AlertTitle className={inlineAlertTitle}>
             {translate('Heading.EngagedPlaysBanner')}
           </AlertTitle>
-          <Typography component='div' variant='body2'>
+          <div className='text-body-medium'>
             {translateHTML('Description.EngagedPlaysBanner', [
               {
                 closing: 'linkEnd',
@@ -211,7 +211,7 @@ const ObjectiveSection = () => {
                 opening: 'linkStart',
               },
             ])}
-          </Typography>
+          </div>
         </Alert>
       );
     }
@@ -345,8 +345,8 @@ const ObjectiveSection = () => {
             editMode ? undefined : (
               <div className={rightContentSubContainer}>
                 <div className={iconContainer}>{getGoalIcon(objective, largeIconProperties)}</div>
-                <Typography variant='h5'>{getGoalName(objective)}</Typography>
-                <Typography variant='body1'>{getGoalDescription(objective)}</Typography>
+                <span className='text-heading-small'>{getGoalName(objective)}</span>
+                <span className='text-body-large'>{getGoalDescription(objective)}</span>
               </div>
             )
           }

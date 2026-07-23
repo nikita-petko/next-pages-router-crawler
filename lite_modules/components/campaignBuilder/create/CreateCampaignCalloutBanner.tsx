@@ -1,5 +1,5 @@
 import { IconButton } from '@rbx/foundation-ui';
-import { Alert, AlertTitle, Typography } from '@rbx/ui';
+import { Alert, AlertTitle } from '@rbx/ui';
 import { useState } from 'react';
 
 import useCampaignBuilderCommonStyles from '@components/campaignBuilder/common/CampaignBuilderCommon.styles';
@@ -27,7 +27,7 @@ const CreateCampaignCalloutBanner = ({
   const [open, setOpen] = useState<boolean>(true);
   return (
     <Collapse in={open} unmountOnExit>
-      <Typography component='div'>
+      <div className='text-body-large'>
         <Alert
           action={
             <div>
@@ -53,7 +53,7 @@ const CreateCampaignCalloutBanner = ({
           </AlertTitle>
           {description}
         </Alert>
-      </Typography>
+      </div>
     </Collapse>
   );
 };

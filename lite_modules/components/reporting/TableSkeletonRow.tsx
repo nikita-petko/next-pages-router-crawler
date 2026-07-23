@@ -1,12 +1,8 @@
 import { TableCell, TableRow, type TTableCellAlign } from '@rbx/foundation-ui';
-import { Skeleton } from '@rbx/ui';
 
+import Skeleton from '@components/common/Skeleton';
 import useTableSkeletonRowStyles from '@components/reporting/TableSkeletonRow.styles';
-import {
-  defaultAlign,
-  SKELETON_HEIGHT,
-  SKELETON_WIDTH,
-} from '@constants/genericManagementTableStyles';
+import { defaultAlign } from '@constants/genericManagementTableStyles';
 import { SortableHeadCell, UnsortableHeadCell } from '@type/genericManagementTable';
 
 interface TableSkeletonRowProps {
@@ -34,7 +30,7 @@ const TableSkeletonRow = ({ headCells }: TableSkeletonRowProps) => {
           <TableCell key={headCellStableKey(headCell)}>
             {shouldRenderSkeleton && (
               <div className={alignmentClass}>
-                <Skeleton animate height={SKELETON_HEIGHT} variant='text' width={SKELETON_WIDTH} />
+                <Skeleton className='height-[20px] width-[80%]' />
               </div>
             )}
           </TableCell>

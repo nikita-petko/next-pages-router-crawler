@@ -1,5 +1,5 @@
 import { Button, Divider } from '@rbx/foundation-ui';
-import { Card, Grid, Typography, useTheme } from '@rbx/ui';
+import { Card, Grid, useTheme } from '@rbx/ui';
 import React, { DragEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
@@ -15,7 +15,7 @@ import { useAuthenticatedUser } from '@hooks/useAuthenticatedUser';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
-import { UploadedVideoType, VideoUploadState } from '@type/fileUpload';
+import { UploadedVideoType, VideoUploadState, VideoUploadTransport } from '@type/fileUpload';
 import { UploadVideo, VideoURLManager } from '@utils/fileUpload';
 import { GetLocalStorage, StorageKeys } from '@utils/localStorage';
 import {
@@ -27,7 +27,20 @@ import {
   UpdateVideoInMap,
 } from '@utils/videoStateHelpers';
 
-const VideoUploadDragAndDropZone = () => {
+interface VideoUploadDragAndDropZoneProps {
+  // Asset type sent on the multipart start request (defaults to 'AdsVideo').
+  assetType?: string;
+  // Caps the number of videos (defaults to the off-platform raw-video limit).
+  maxVideosOverride?: number;
+  // Control-plane transport (defaults to the public assets-upload-api).
+  uploadTransport?: VideoUploadTransport;
+}
+
+const VideoUploadDragAndDropZone = ({
+  assetType,
+  maxVideosOverride,
+  uploadTransport,
+}: VideoUploadDragAndDropZoneProps) => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const theme = useTheme();
   const {
@@ -45,9 +58,10 @@ const VideoUploadDragAndDropZone = () => {
   const inputFile = useRef<HTMLInputElement | null>(null);
   const formVideos = useWatch<FormType, typeof FormField.VIDEOS>({ name: FormField.VIDEOS });
   const { getValues, setValue } = useFormContext<FormType>();
-  const { offPlatformRequestMaximumRawVideos: maxAllowedVideos } = useAppStore(
+  const { offPlatformRequestMaximumRawVideos } = useAppStore(
     (state) => state.appMetadataState.data,
   );
+  const maxAllowedVideos = maxVideosOverride ?? offPlatformRequestMaximumRawVideos;
 
   const { setIsVideoUploadInProgress } = useCampaignBuilderStore();
 
@@ -56,7 +70,11 @@ const VideoUploadDragAndDropZone = () => {
       const currentFormVideos = getValues(FormField.VIDEOS);
       // Only add video if we haven't reached the limit
       if (currentFormVideos.length < maxAllowedVideos) {
-        setValue(FormField.VIDEOS, [...currentFormVideos, video]);
+        setValue(FormField.VIDEOS, [...currentFormVideos, video], {
+          shouldDirty: true,
+          shouldTouch: true,
+          shouldValidate: true,
+        });
       }
     },
     [getValues, setValue, maxAllowedVideos],
@@ -209,6 +227,7 @@ const VideoUploadDragAndDropZone = () => {
           new Promise<void>((resolve, reject) => {
             UploadVideo({
               adAccountId,
+              assetType,
               authenticatedUser,
               setCancelVideoUpload: ({ cancelCb }) => {
                 setVideos((prev) => {
@@ -309,6 +328,7 @@ const VideoUploadDragAndDropZone = () => {
                   return UpdateVideoInMap(prev, stagedVideo.id, updatedVideo);
                 });
               },
+              transport: uploadTransport,
               video: stagedVideo.file as File,
             });
           }),
@@ -327,6 +347,8 @@ const VideoUploadDragAndDropZone = () => {
   }, [
     stagedVideos,
     adAccountId,
+    assetType,
+    uploadTransport,
     authenticatedUser,
     isImpersonating,
     updateFormWithVideo,
@@ -543,16 +565,16 @@ const VideoUploadDragAndDropZone = () => {
               </Button>
             </Grid>
             <Grid item>
-              <Typography color='secondary' textAlign='center' variant='caption'>
+              <span className='text-body-medium content-default text-align-x-center'>
                 {isAtCapacity
                   ? translate('Description.VideoLimitReached', { max: String(maxAllowedVideos) })
                   : translate('Description.DragAndDropVideo')}
-              </Typography>
+              </span>
             </Grid>
             <Grid item>
-              <Typography color='secondary' textAlign='center' variant='caption'>
+              <span className='text-body-medium content-default text-align-x-center'>
                 {translate('Description.VideoSupportedFormats')}
-              </Typography>
+              </span>
             </Grid>
           </Grid>
         </Card>
@@ -639,9 +661,7 @@ const VideoUploadDragAndDropZone = () => {
     () => (
       <>
         <Grid className={sectionMarginTop} item>
-          <Typography fontWeight='bold' variant='h6'>
-            {assetsSectionTitle}
-          </Typography>
+          <span className='text-title-large'>{assetsSectionTitle}</span>
         </Grid>
         <Grid item>
           <Divider />
@@ -653,9 +673,9 @@ const VideoUploadDragAndDropZone = () => {
           ))
         ) : (
           <Grid item>
-            <Typography color='secondary' variant='body2'>
+            <span className='text-body-medium content-default'>
               {translate('Description.NoVideosStagedForUpload')}
-            </Typography>
+            </span>
           </Grid>
         )}
 
@@ -686,9 +706,7 @@ const VideoUploadDragAndDropZone = () => {
     () => (
       <>
         <Grid className={sectionMarginTop} item>
-          <Typography fontWeight='bold' variant='h6'>
-            {uploadedAssetsSectionTitle}
-          </Typography>
+          <span className='text-title-large'>{uploadedAssetsSectionTitle}</span>
         </Grid>
         <Grid item>
           <Divider />
@@ -700,9 +718,9 @@ const VideoUploadDragAndDropZone = () => {
           ))
         ) : (
           <Grid item>
-            <Typography color='secondary' variant='body2'>
+            <span className='text-body-medium content-default'>
               {translate('Description.NoVideosUploadedYet')}
-            </Typography>
+            </span>
           </Grid>
         )}
       </>

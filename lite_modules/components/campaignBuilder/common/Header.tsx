@@ -1,5 +1,3 @@
-import { Typography } from '@rbx/ui';
-
 import { FlowTypes } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -19,7 +17,7 @@ const Header = () => {
 
   return (
     <div data-testid='titleContainer'>
-      <Typography variant='h1'>{title}</Typography>
+      <span className='text-heading-large'>{title}</span>
     </div>
   );
 };

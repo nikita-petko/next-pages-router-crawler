@@ -4,6 +4,7 @@ import { cloneElement, ReactNode } from 'react';
 
 import useGenericTableRowStyles from '@components/reporting/GenericTableRow.styles';
 import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
+import { HeadCellName } from '@constants/headCells';
 import { TranslationNamespace } from '@constants/localization';
 import ReportingStatType from '@constants/reportingStatsConstants';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -14,7 +15,7 @@ const RECENT_CAMPAIGN_THRESHOLD_MS = 48 * 60 * 60 * 1000;
 
 type SharedTableCellsProps = GenericTableRowProps;
 
-const SharedTableCells = ({ row, unsortableData }: SharedTableCellsProps) => {
+const SharedTableCells = ({ headCells, row, unsortableData }: SharedTableCellsProps) => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Report);
   const {
     classes: { centerAlignedContentRow, robuxContainer },
@@ -80,6 +81,16 @@ const SharedTableCells = ({ row, unsortableData }: SharedTableCellsProps) => {
     isReportingDisabled,
     reportingStatType: ReportingStatType.REPORTING_STAT_TOTAL_ROBUX_REVENUE_30D,
     value: row.total_robux_revenue_30d,
+  });
+  // ROAS column is only rendered when the campaign table opted in via headCells (which
+  // itself is gated on the enable_campaign_roas dynamic config flag). The ads table does
+  // not include a ROAS head cell, so this stays absent for ads even though SharedTableCells
+  // is shared. Missing ROAS (undefined) renders as em-dash; a real 0.0 renders as 0.00.
+  const showRoasCell = headCells.some((cell) => cell.classNameKey === HeadCellName.SharedRoas);
+  const roasDisplayValue = GetTableDisplayValue({
+    isReportingDisabled,
+    reportingStatType: ReportingStatType.REPORTING_STAT_ROAS,
+    value: row.roas,
   });
 
   const impressions = GetTableDisplayValue({
@@ -172,6 +183,16 @@ const SharedTableCells = ({ row, unsortableData }: SharedTableCellsProps) => {
       id: 'total_robux_revenue_30d',
     },
   ];
+  if (showRoasCell) {
+    rowCells.push({
+      cell: (
+        <TableCell align='end' className={centerAlignedContentRow}>
+          {renderMetric(roasDisplayValue)}
+        </TableCell>
+      ),
+      id: 'roas',
+    });
+  }
   return <>{rowCells.map((rowCell) => cloneElement(rowCell.cell, { key: rowCell.id }))}</>;
 };
 

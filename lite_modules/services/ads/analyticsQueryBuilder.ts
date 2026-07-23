@@ -26,8 +26,38 @@ const PLAYS_METRIC_BY_REPORTING_VIEW: Partial<Record<ReportingViewType, string>>
 export const getPlaysMetricForReportingView = (
   reportingView: ReportingViewType = ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT,
 ): string => PLAYS_METRIC_BY_REPORTING_VIEW[reportingView] ?? METRIC_PLAYS;
+
 export const METRIC_SPEND = 'AdsUATotalSpendMicroUsdDefaultView';
 export const METRIC_REVENUE = 'AdsUARobuxRevenueDefaultView';
+
+// Spend uses the "user" suffix family; revenue uses the "view" suffix family —
+// same pairing AMSv2 uses for aggregate ROAS (ads_reporting_data_layer.go).
+const SPEND_METRIC_BY_REPORTING_VIEW: Partial<Record<ReportingViewType, string>> = {
+  [ReportingViewType.REPORTING_VIEW_TYPE_30D_RESURRECTED]:
+    'AdsUATotalSpendMicroUsdResurrected30dUsers',
+  [ReportingViewType.REPORTING_VIEW_TYPE_7D_RESURRECTED]:
+    'AdsUATotalSpendMicroUsdResurrected7dUsers',
+  [ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT]: METRIC_SPEND,
+  [ReportingViewType.REPORTING_VIEW_TYPE_NEW_USERS]: 'AdsUATotalSpendMicroUsdNewUsers',
+  [ReportingViewType.REPORTING_VIEW_TYPE_RECENT_USERS]: 'AdsUATotalSpendMicroUsdReturningUsers',
+};
+
+const REVENUE_METRIC_BY_REPORTING_VIEW: Partial<Record<ReportingViewType, string>> = {
+  [ReportingViewType.REPORTING_VIEW_TYPE_30D_RESURRECTED]:
+    'AdsUARobuxRevenueResurrected30dUserView',
+  [ReportingViewType.REPORTING_VIEW_TYPE_7D_RESURRECTED]: 'AdsUARobuxRevenueResurrected7dUserView',
+  [ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT]: METRIC_REVENUE,
+  [ReportingViewType.REPORTING_VIEW_TYPE_NEW_USERS]: 'AdsUARobuxRevenueNewUserView',
+  [ReportingViewType.REPORTING_VIEW_TYPE_RECENT_USERS]: 'AdsUARobuxRevenueReturningUserView',
+};
+
+export const getSpendMetricForReportingView = (
+  reportingView: ReportingViewType = ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT,
+): string => SPEND_METRIC_BY_REPORTING_VIEW[reportingView] ?? METRIC_SPEND;
+
+export const getRevenueMetricForReportingView = (
+  reportingView: ReportingViewType = ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT,
+): string => REVENUE_METRIC_BY_REPORTING_VIEW[reportingView] ?? METRIC_REVENUE;
 
 interface BuildAnalyticsQueryRequestParams {
   adAccountId: string;

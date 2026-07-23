@@ -11,10 +11,15 @@ import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
 
 interface ThumbnailUploadDrawerProps {
+  /** When set, overrides the metadata-driven max creatives cap (e.g. 1 for 1x2 posters). */
+  maxAllowedCreativesOverride?: number;
   onClose: () => void;
 }
 
-const ThumbnailUploadDrawer = ({ onClose }: ThumbnailUploadDrawerProps) => {
+const ThumbnailUploadDrawer = ({
+  maxAllowedCreativesOverride,
+  onClose,
+}: ThumbnailUploadDrawerProps) => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Campaign);
 
   const { getValues } = useFormContext<FormType>();
@@ -67,6 +72,7 @@ const ThumbnailUploadDrawer = ({ onClose }: ThumbnailUploadDrawerProps) => {
         onInteractOutside={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}>
         <ThumbnailUploadDrawerContent
+          maxAllowedCreativesOverride={maxAllowedCreativesOverride}
           onPersistedUploadEntriesChange={persistUploadEntries}
           persistedUploadEntries={persistedUploadEntries}
         />

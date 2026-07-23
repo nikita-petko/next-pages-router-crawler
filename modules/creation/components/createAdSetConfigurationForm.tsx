@@ -830,12 +830,8 @@ export const AdSetAdPlacementGroup = ({
 
 const getBrandSuitabilityCardTitle = (type: AdSetBrandSuitabilityType) => {
   switch (type) {
-    case AdSetBrandSuitabilityType.UNIVERSE_SUITABILITY_FILTER_FULL:
-      return 'Full Inventory';
     case AdSetBrandSuitabilityType.UNIVERSE_SUITABILITY_FILTER_STANDARD:
       return 'Standard Inventory';
-    case AdSetBrandSuitabilityType.UNIVERSE_SUITABILITY_FILTER_LIMITED:
-      return 'Limited Inventory';
     case AdSetBrandSuitabilityType.UNIVERSE_SUITABILITY_FILTER_SELECT:
       return 'Advertiser Select Inventory';
     default:
@@ -845,34 +841,11 @@ const getBrandSuitabilityCardTitle = (type: AdSetBrandSuitabilityType) => {
 
 const getBrandSuitabilityCardSubtitle = (type: AdSetBrandSuitabilityType) => {
   switch (type) {
-    case AdSetBrandSuitabilityType.UNIVERSE_SUITABILITY_FILTER_FULL:
-      return (
-        <div>
-          {'Maximize your reach across all types of experiences that follow '}
-          <Link
-            color='inherit'
-            href='https://en.help.roblox.com/hc/en-us/articles/203313410-Roblox-Community-Standards'
-            rel='noopener noreferrer'
-            target='_blank'
-            underline='always'>
-            Roblox Community Standards
-          </Link>
-          , including restricted content
-        </div>
-      );
     case AdSetBrandSuitabilityType.UNIVERSE_SUITABILITY_FILTER_STANDARD:
       return (
         <div>
           Your ads may appear in experiences with mild, minimal, or moderate themes, but not
-          restricted content. Experiences with free form UGC and AI interactions are excluded.
-          <br />
-          <br />
-        </div>
-      );
-    case AdSetBrandSuitabilityType.UNIVERSE_SUITABILITY_FILTER_LIMITED:
-      return (
-        <div>
-          Your ads will only appear in experiences with content generally suitable for all audiences
+          restricted content. Experiences with free form UGC are excluded.
           <br />
           <br />
         </div>
@@ -881,7 +854,7 @@ const getBrandSuitabilityCardSubtitle = (type: AdSetBrandSuitabilityType) => {
       return (
         <div>
           Your ads will only appear in mild or minimal rated top experiences with 1M monthly
-          actives. Experiences with free form UGC and AI interactions are excluded.
+          actives. Experiences with free form UGC are excluded.
           <br />
           <br />
           <br />

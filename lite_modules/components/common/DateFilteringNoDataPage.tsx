@@ -1,4 +1,3 @@
-import { Typography } from '@rbx/ui';
 import { memo } from 'react';
 
 import useDateFilteringNoDataPageStyles from '@components/common/DateFilteringNoDataPage.styles';
@@ -13,7 +12,7 @@ const DateFilteringNoDataPage = memo(() => {
 
   return (
     <div className={centered}>
-      <Typography variant='h3'>{translate('Description.NoDataInDateRange')}</Typography>
+      <span className='text-heading-medium'>{translate('Description.NoDataInDateRange')}</span>
     </div>
   );
 });

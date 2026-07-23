@@ -70,3 +70,21 @@ export interface GetVideoAssetIdResponse {
     assetId?: number;
   };
 }
+
+/**
+ * Pluggable multipart-video-upload control plane. The default transport talks
+ * directly to the public assets-upload-api; the internal transport proxies the
+ * same control plane through ads-management-api (which injects the
+ * EnhancedVideoExperience label so INTERNAL ad accounts bypass moderation and
+ * the upload fee). The actual chunk bytes are always PUT straight to the
+ * presigned S3 URLs returned by the start call, so only these JSON calls differ.
+ */
+export interface VideoUploadTransport {
+  abortMultipartUpload: (operationPath: string) => Promise<unknown>;
+  getMultipartVideoUploadOperationData: (
+    data: Partial<GetMultipartVideoUploadOperationDataRequest>,
+  ) => Promise<GetMultipartVideoUploadOperationDataResponse>;
+  getVideoAssetId: (operationPath: string) => Promise<GetVideoAssetIdResponse>;
+  markChunkComplete: (operationPath: string, chunkNum: number, eTag: string) => Promise<unknown>;
+  markUploadComplete: (operationPath: string) => Promise<unknown>;
+}

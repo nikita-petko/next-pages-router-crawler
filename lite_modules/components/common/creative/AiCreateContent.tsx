@@ -8,7 +8,6 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@rbx/foundation-ui';
-import { Skeleton } from '@rbx/ui';
 import { useMutation } from '@tanstack/react-query';
 import {
   type ChangeEvent,
@@ -38,6 +37,7 @@ import GameUniverseDropdown from '@components/common/creative/GameUniverseDropdo
 import { openReportSentDialog } from '@components/common/creative/ReportSentDialog';
 import { FOUNDATION_TOOLTIP_BODY_SMALL_CLASS } from '@components/common/creative/tooltipStyles';
 import GenericSnackBar from '@components/common/GenericSnackBar';
+import Skeleton from '@components/common/Skeleton';
 import { DEFAULT_GEN_AI_CREATIVES_USER_PROMPT_MAX_LENGTH } from '@constants/aiCreatives';
 import { TranslationNamespace } from '@constants/localization';
 import { useAuthenticatedUser } from '@hooks/useAuthenticatedUser';
@@ -1469,7 +1469,7 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
                     <div
                       className={contentStyles.generatingSkeleton}
                       key={`generating-skeleton-${index}`}>
-                      <Skeleton animate height='100%' variant='rectangular' width='100%' />
+                      <Skeleton className='height-full width-full' variant='rectangular' />
                     </div>
                   ))
                 : null}

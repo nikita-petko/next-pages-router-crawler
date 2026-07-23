@@ -8,6 +8,7 @@ import {
 } from '@services/ads/adIntegrationCampaignService';
 import {
   AdIntegrationCampaignStoreType,
+  AdIntegrationUniverseLoadOptions,
   useAdIntegrationCampaignStore,
 } from '@stores/adIntegrationCampaignStoreProvider';
 import { useAppStore } from '@stores/appStoreProvider';
@@ -17,7 +18,13 @@ import {
 } from '@type/adIntegrations';
 import { GetTimezoneObjFromEnum, GetValidatedTimezoneDbName } from '@utils/timezone';
 
-const useAdIntegrationCampaignApi = () => {
+interface UseAdIntegrationCampaignApiOptions {
+  loadUniversesOnMount?: boolean;
+}
+
+const useAdIntegrationCampaignApi = ({
+  loadUniversesOnMount = true,
+}: UseAdIntegrationCampaignApiOptions = {}) => {
   const { timezoneDbName: rawTimezoneDbName } = useAppStore((state) =>
     GetTimezoneObjFromEnum(
       state.advertiserState?.data?.organization?.time_zone || defaultTimeZone.value,
@@ -68,6 +75,9 @@ const useAdIntegrationCampaignApi = () => {
   } = useAdIntegrationCampaignStore(
     (state: AdIntegrationCampaignStoreType) => state.universesCanAdvertise,
   );
+  const publisherEligibleUniverseIds = useAdIntegrationCampaignStore(
+    (state: AdIntegrationCampaignStoreType) => state.publisherEligibleUniverseIds,
+  );
   const invalidateCampaignDetailsCache = useAdIntegrationCampaignStore(
     (state: AdIntegrationCampaignStoreType) => state.invalidateCampaignDetailsCache,
   );
@@ -98,8 +108,17 @@ const useAdIntegrationCampaignApi = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
-    getUniversesCanAdvertise();
-  }, [getUniversesCanAdvertise]);
+    if (loadUniversesOnMount) {
+      getUniversesCanAdvertise();
+    }
+  }, [getUniversesCanAdvertise, loadUniversesOnMount]);
+
+  const getUniversesForAdIntegrations = useCallback(
+    async (forceRefresh?: boolean, options?: AdIntegrationUniverseLoadOptions) => {
+      await getUniversesCanAdvertise(forceRefresh, options);
+    },
+    [getUniversesCanAdvertise],
+  );
 
   const getCampaignDetailsById = useCallback(
     async (campaignId: string, forceRefresh?: boolean) => {
@@ -160,7 +179,7 @@ const useAdIntegrationCampaignApi = () => {
     createCampaignDetails,
     getCampaignDetailsById,
     getCampaignListBySelectedUniverse,
-    getUniversesCanAdvertise,
+    getUniversesCanAdvertise: getUniversesForAdIntegrations,
     isCampaignDetailsError,
     isCampaignDetailsLoading,
     isCampaignListError,
@@ -168,6 +187,7 @@ const useAdIntegrationCampaignApi = () => {
     isSubmitting,
     isUniversesError,
     isUniversesLoading,
+    publisherEligibleUniverseIds,
     selectedUniverseId,
     setSelectedUniverseId,
     toggleCampaignStatus,

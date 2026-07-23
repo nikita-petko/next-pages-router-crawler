@@ -1009,7 +1009,6 @@ export const useAppStore = create<AppStoreType>()(
       }
     },
     robuxBalanceState: GetEmptyRequestState<GetRobuxBalanceResponse>(),
-
     setAccountHasValidName: (newAccountHasValidName: boolean) => {
       set((draft) => {
         draft.appData.accountHasValidName = newAccountHasValidName;
@@ -1106,6 +1105,7 @@ export const useAppStore = create<AppStoreType>()(
         draft.appData.filteredAdSets = newFilteredAdSets;
       });
     },
+
     setGenAiCreativesQuota: (quota: GenAiCreativesQuotaType) => {
       set((draft) => {
         if (draft.appMetadataState.data == null) {
@@ -1119,30 +1119,29 @@ export const useAppStore = create<AppStoreType>()(
         draft.appData.hasVerifiedEmail = emailIsVerified;
       });
     },
-
     setIsAdAccountBlocked: (isAdAccountBlocked: boolean) => {
       set((draft) => {
         draft.appData.isAdAccountBlocked = isAdAccountBlocked;
       });
     },
+
     setOrganizationId: (organizationId?: string | null) => {
       set((draft) => {
         draft.appData.organizationId = organizationId;
       });
     },
-
     setOrganizationInfo: (organizationInfo: Partial<OrganizationResponseShape>) => {
       set((draft) => {
         draft.appData.organizationInfo = organizationInfo;
       });
     },
+
     // TODO: Transition this to appData.adAccountStatus.hasFailedPayment when ripping out old context
     setPaymentFailure: (newPaymentFailure: boolean) => {
       set((draft) => {
         draft.appData.paymentFailure = newPaymentFailure;
       });
     },
-
     setPaymentProfiles: (newPaymentProfiles: PaymentProfileType[]) => {
       set((draft) => {
         draft.appData.paymentProfiles = newPaymentProfiles;
@@ -1184,10 +1183,21 @@ export const useAppStore = create<AppStoreType>()(
         draft.appData.selectedCampaigns = newSelectedCampaigns;
       });
     },
+
     setSelectedCampaignsLoading: (newSelectedCampaignsLoading: boolean) => {
       set((draft) => {
         draft.appData.selectedCampaignsLoading = newSelectedCampaignsLoading;
       });
+    },
+    shouldUseWorkspaceUniverseFiltering: () => {
+      const isAdAccountAutoCreateEnabled =
+        get().appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false;
+
+      return (
+        isAdAccountAutoCreateEnabled &&
+        !get().adAccountIsInternalManaged() &&
+        !get().adAccountIsExternalManaged()
+      );
     },
     userBirthdayState: GetEmptyRequestState<Awaited<ReturnType<typeof getUserBirthdate>>>(),
     userHasValidDisplayNameState:

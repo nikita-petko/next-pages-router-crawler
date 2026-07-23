@@ -121,6 +121,34 @@ interface FilteredCampaignIdsRequest {
   newUniverseId?: number;
 }
 
+/** Mirrors AMS wildcard text search on campaign.name.keyword: case-insensitive substring match. */
+const matchesCampaignNameSearch = (campaignName: string, searchTerm: string): boolean =>
+  campaignName.toLocaleLowerCase().includes(searchTerm.toLocaleLowerCase());
+
+const filterCampaignIdsLocally = (
+  campaigns: Campaign[],
+  campaignNameSearch?: string,
+  universeId?: number,
+): Set<string> | undefined => {
+  if (!campaignNameSearch && !universeId) {
+    return undefined;
+  }
+
+  const matchingIds = campaigns
+    .filter((campaign) => {
+      if (universeId !== undefined && campaign.universe_id !== universeId) {
+        return false;
+      }
+      if (campaignNameSearch && !matchesCampaignNameSearch(campaign.name, campaignNameSearch)) {
+        return false;
+      }
+      return true;
+    })
+    .map((campaign) => campaign.id);
+
+  return new Set(matchingIds);
+};
+
 interface SponsoredAdsPageActionType {
   cancelCampaign: (campaignId: string) => Promise<void>;
   // Resets
@@ -771,41 +799,33 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       }
     },
     handleCampaignNameSearchChange: (newCampaignNameSearch: string) => {
-      // Set disabled while loading
+      const currentUniverseId = get().universePickerFilterState.universeFilter.universe_id;
+      const universeIdToFilter = currentUniverseId || undefined;
+      const campaignNameToFilter = newCampaignNameSearch || undefined;
+      const campaigns = get().campaignsState.data ?? [];
+
+      const filteredCampaignIds = filterCampaignIdsLocally(
+        campaigns,
+        campaignNameToFilter,
+        universeIdToFilter,
+      );
+
       set((draft) => {
-        draft.filteredIdsState.isLoading = true;
+        draft.filteredIdsState = {
+          filteredCampaignIds,
+          isLoading: false,
+        };
+        draft.campaignNameFilterState = {
+          campaignNameSearch: newCampaignNameSearch,
+          isError: false,
+        };
+        draft.universePickerFilterState.isError = false;
       });
 
-      get()
-        .getFilteredCampaignIds({ newCampaignNameSearch, newUniverseId: undefined })
-        .then((response) => {
-          set((draft) => {
-            draft.filteredIdsState = {
-              filteredCampaignIds: response,
-              isLoading: false,
-            };
-            draft.campaignNameFilterState.isError = false;
-          });
-        })
-        .catch(() => {
-          set((draft) => {
-            draft.campaignNameFilterState.isError = true;
-          });
-        })
-        .finally(() => {
-          set((draft) => {
-            // Clear errors from related states as more recent requests have been sent
-            draft.universePickerFilterState.isError = false;
-
-            // Store the submitted search regardless of success/error
-            draft.campaignNameFilterState.campaignNameSearch = newCampaignNameSearch;
-            draft.filteredIdsState.isLoading = false;
-          });
-          get().commitPendingStatusChanges(EntityType.ENTITY_TYPE_CAMPAIGN);
-          logNativeClickEvent(EventName.FilterApplyClicked, {
-            campaignSearchTerm: newCampaignNameSearch,
-          });
-        });
+      get().commitPendingStatusChanges(EntityType.ENTITY_TYPE_CAMPAIGN);
+      logNativeClickEvent(EventName.FilterApplyClicked, {
+        campaignSearchTerm: newCampaignNameSearch,
+      });
     },
     handleDateSelectionChange: (newDateSelection: DateFilteringTimePeriod) => {
       const currentReportingView = get().reportingViewState.currentSelection;
@@ -984,6 +1004,23 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
           draft.campaignsState.isError = false;
           draft.summaryStatsState.data = result.summaryStats;
           draft.summaryStatsState.isError = false;
+
+          // Client-side name search IDs are scoped to the campaigns currently in memory.
+          // Recompute against the newly fetched set so date/view changes don't hide matches.
+          const { campaignNameSearch } = draft.campaignNameFilterState;
+          if (campaignNameSearch) {
+            const universeId =
+              draft.universePickerFilterState.universeFilter.universe_id || undefined;
+            draft.filteredIdsState = {
+              filteredCampaignIds: filterCampaignIdsLocally(
+                result.fetchedCampaigns,
+                campaignNameSearch,
+                universeId,
+              ),
+              isLoading: false,
+            };
+          }
+
           params.onSuccess(result.fetchedCampaigns, result.summaryStats, draft);
         });
         return true;

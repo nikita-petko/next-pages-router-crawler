@@ -1,5 +1,4 @@
 import { Link } from '@rbx/foundation-ui';
-import { Typography } from '@rbx/ui';
 import Cookies from 'js-cookie';
 import { jwtDecode } from 'jwt-decode';
 import { useRouter } from 'next/router';
@@ -14,6 +13,8 @@ import { setImpCookie } from '@services/ads/adAccountService';
 interface DecodedTokenType {
   'config-overrides'?: string;
   'impersonated-ad-account-id': string;
+  'impersonated-group-id'?: string;
+  'impersonated-owner-type'?: 'USER' | 'GROUP';
   'impersonated-user-id': string;
   'impersonator-email': string;
   'impersonator-user-id': string;
@@ -44,17 +45,27 @@ const ImpersonationBanner = memo(() => {
 
   const token = Cookies.get('ad-account-imp-info');
 
-  const { impersonatedJwtId, impersonatedUserId, initialFlagValues } = useMemo(() => {
+  const {
+    impersonatedGroupId,
+    impersonatedJwtId,
+    impersonatedOwnerType,
+    impersonatedUserId,
+    initialFlagValues,
+  } = useMemo(() => {
     if (!token) {
       return {
+        impersonatedGroupId: undefined,
         impersonatedJwtId: '',
+        impersonatedOwnerType: undefined,
         impersonatedUserId: '',
         initialFlagValues: buildFlagValuesFromToken(undefined),
       };
     }
     const decoded = jwtDecode<DecodedTokenType>(token);
     return {
+      impersonatedGroupId: decoded['impersonated-group-id'],
       impersonatedJwtId: decoded['impersonated-ad-account-id'],
+      impersonatedOwnerType: decoded['impersonated-owner-type'],
       impersonatedUserId: decoded['impersonated-user-id'],
       initialFlagValues: buildFlagValuesFromToken(decoded['config-overrides']),
     };
@@ -65,7 +76,22 @@ const ImpersonationBanner = memo(() => {
       return 'You are able to impersonate an Ad Account. ';
     }
 
-    if (!impersonatedUserId) {
+    if (impersonatedOwnerType === 'GROUP' && impersonatedGroupId) {
+      return (
+        <>
+          You are impersonating Ad Account {impersonatedJwtId} (
+          <Link
+            href={`https://www.roblox.com/communities/${impersonatedGroupId}`}
+            isExternal={false}
+            target='_blank'>
+            Link to Roblox Group
+          </Link>
+          ).
+        </>
+      );
+    }
+
+    if (!impersonatedUserId || impersonatedOwnerType === 'GROUP') {
       return `You are impersonating Ad Account ${impersonatedJwtId}.`;
     }
 
@@ -81,7 +107,7 @@ const ImpersonationBanner = memo(() => {
         ).
       </>
     );
-  }, [impersonatedJwtId, impersonatedUserId]);
+  }, [impersonatedGroupId, impersonatedJwtId, impersonatedOwnerType, impersonatedUserId]);
 
   const handleEditClick = useCallback(() => {
     openImpersonationSwitchDialog(impersonatedJwtId, initialFlagValues);
@@ -94,7 +120,7 @@ const ImpersonationBanner = memo(() => {
 
   return (
     <div className={bannerContainer}>
-      <Typography className={banner}>{getBannerText()}</Typography>
+      <span className={`text-body-large ${banner}`}>{getBannerText()}</span>
       <button className={impersonationButton} onClick={handleEditClick} type='button'>
         Edit
       </button>

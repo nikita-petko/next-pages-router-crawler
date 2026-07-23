@@ -1,5 +1,4 @@
 import { Button } from '@rbx/foundation-ui';
-import { Typography } from '@rbx/ui';
 import { useRouter } from 'next/router';
 import { useRef } from 'react';
 import { useFormContext, UseFormReturn, useFormState, useWatch } from 'react-hook-form';
@@ -192,7 +191,7 @@ const CreateCampaignFooter = ({ advancedTargetingFormMethods }: Props) => {
     isCreativeLibraryRegistrationInProgress;
 
   return (
-    <Typography className={footer} component='div'>
+    <div className={`text-body-large ${footer}`}>
       <Button
         isDisabled={isPublishDisabled || isSubmitting}
         isLoading={isSubmitting}
@@ -204,7 +203,7 @@ const CreateCampaignFooter = ({ advancedTargetingFormMethods }: Props) => {
       <Button onClick={onClickCancel} size='Medium' variant='Standard'>
         {translateMisc('Action.Cancel')}
       </Button>
-    </Typography>
+    </div>
   );
 };
 

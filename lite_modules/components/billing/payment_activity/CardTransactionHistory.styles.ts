@@ -1,6 +1,11 @@
 import { makeStyles } from '@rbx/ui';
 
 const useCardTransactionHistoryStyles = makeStyles()((theme) => ({
+  noWrap: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
   paymentStatusCellContents: {
     alignItems: 'center',
     display: 'flex',
