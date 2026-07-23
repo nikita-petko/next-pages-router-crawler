@@ -1,0 +1,2 @@
+const defaultRequestPollingIntervalSeconds = 1;
+export default defaultRequestPollingIntervalSeconds;

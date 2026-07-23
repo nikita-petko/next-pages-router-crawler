@@ -1,0 +1,17 @@
+__turbopack_context__.v({
+  "contentCard": "NovelGames-module__f7hc9G__contentCard",
+  "contentInner": "NovelGames-module__f7hc9G__contentInner",
+  "header": "NovelGames-module__f7hc9G__header",
+  "imageContainer": "NovelGames-module__f7hc9G__imageContainer",
+  "imageSlide": "NovelGames-module__f7hc9G__imageSlide",
+  "imageSlideActive": "NovelGames-module__f7hc9G__imageSlideActive",
+  "section": "NovelGames-module__f7hc9G__section",
+  "tabDescription": "NovelGames-module__f7hc9G__tabDescription",
+  "tabDescriptionInner": "NovelGames-module__f7hc9G__tabDescriptionInner",
+  "tabDescriptionVisible": "NovelGames-module__f7hc9G__tabDescriptionVisible",
+  "tabGroup": "NovelGames-module__f7hc9G__tabGroup",
+  "tabImage": "NovelGames-module__f7hc9G__tabImage",
+  "tabItem": "NovelGames-module__f7hc9G__tabItem",
+  "tabItemActive": "NovelGames-module__f7hc9G__tabItemActive",
+  "tabItemInactive": "NovelGames-module__f7hc9G__tabItemInactive",
+});

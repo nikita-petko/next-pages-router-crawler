@@ -1,0 +1,10 @@
+__turbopack_context__.v({
+  "badge": "PrivacyStatusBadge-module__s6MuXq__badge",
+  "badgeLabelContainer": "PrivacyStatusBadge-module__s6MuXq__badgeLabelContainer",
+  "badgeLink": "PrivacyStatusBadge-module__s6MuXq__badgeLink",
+  "iconError": "PrivacyStatusBadge-module__s6MuXq__iconError",
+  "iconNeutral": "PrivacyStatusBadge-module__s6MuXq__iconNeutral",
+  "iconOk": "PrivacyStatusBadge-module__s6MuXq__iconOk",
+  "iconWarning": "PrivacyStatusBadge-module__s6MuXq__iconWarning",
+  "tooltipWrapper": "PrivacyStatusBadge-module__s6MuXq__tooltipWrapper",
+});
