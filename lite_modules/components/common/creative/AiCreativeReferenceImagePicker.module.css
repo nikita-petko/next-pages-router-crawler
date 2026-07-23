@@ -1,0 +1,194 @@
+/* Parent-child hover: reveal the remove button when the thumbnail is hovered
+   or focused. Not expressible with inline Tailwind. */
+.referenceThumbnail {
+  position: relative;
+}
+
+.referenceThumbnailRemove {
+  opacity: 0;
+  transition: opacity 150ms ease-in-out;
+  z-index: 1;
+}
+
+.referenceThumbnail:hover .referenceThumbnailRemove,
+.referenceThumbnail:focus-within .referenceThumbnailRemove {
+  opacity: 1;
+}
+
+/* Auto-fill responsive grid — no Foundation Tailwind utility for
+   grid-template-columns / breakpoint column counts. */
+.libraryTileGrid {
+  display: grid;
+  /* Each tile reserves 4px inner padding on every side, so two adjacent tiles
+     already contribute 8px of visible spacing on their own. A 4px grid gap on
+     top lands the total visible spacing between image content at ~12px. */
+  gap: var(--gap-xsmall, 4px);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .libraryTileGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Native <button> chrome reset — no Foundation Tailwind utilities for
+   appearance / font / text-align inheritance. */
+.libraryTileButton {
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  background: transparent;
+  /* Per Figma Library Tile: 2px frame (transparent until selected) + 4px inner
+     padding + 12px radius. Reserving the transparent border means selecting a
+     tile only swaps the border color, so the grid never shifts. The tile edge
+     (not an offset outline) carries the ring, so the 8px grid gap between tiles
+     is preserved. */
+  border: 2px solid transparent;
+  border-radius: 12px;
+  color: inherit;
+  font: inherit;
+  min-width: 0;
+  overflow: hidden;
+  padding: var(--padding-xsmall, 4px);
+  text-align: inherit;
+}
+
+.libraryTileButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Must live in the module (after .libraryTileButton) so it beats the `border`
+   shorthand — an inline utility loses to the shorthand in the cascade. */
+.libraryTileSelectedRing {
+  border-color: var(--content-emphasis, #f7f7f8);
+}
+
+.libraryTileHoverOverlay {
+  background: var(--color-state-hover, rgba(208, 217, 251, 0.08));
+  border-radius: 8px;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  transition: opacity 120ms ease-in-out;
+}
+
+.libraryTileButton:hover .libraryTileHoverOverlay,
+.libraryTileButton:focus-visible .libraryTileHoverOverlay {
+  opacity: 1;
+}
+
+/* Single-line truncation — text-overflow / white-space are not expressible
+   with Foundation Tailwind. */
+.libraryTileLabel,
+.stagedRowLabel {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+/* Float the preview result below the input as an overlay so it covers the
+   staged list / footer instead of expanding the dialog vertically. */
+.assetIdPreviewInline {
+  left: 0;
+  margin-top: var(--gap-xsmall, 4px);
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 20;
+}
+
+/* max-height + scroll for the staged list. */
+.stagedList {
+  display: flex;
+  flex-direction: column;
+  max-height: 220px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.stagedRow {
+  align-items: center;
+  display: flex;
+  gap: var(--gap-small, 8px);
+  padding-block: var(--padding-small, 8px);
+  width: 100%;
+}
+
+.stagedRow:first-child {
+  padding-top: 0;
+}
+
+/* Divider between each staged item. */
+.stagedRow:not(:last-child) {
+  border-bottom: 1px solid var(--stroke-muted, rgba(208, 217, 251, 0.12));
+}
+
+.stagedRowRemove {
+  align-items: center;
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  flex-shrink: 0;
+  padding: var(--padding-xsmall, 4px);
+}
+
+/* Dialog chrome: dividers, min-heights, and clamped max-heights that
+   Foundation Tailwind tokens can't express. */
+.libraryDialogContent {
+  max-height: min(640px, 85vh);
+  overflow: hidden;
+}
+
+/* Foundation's DialogBody applies a size-based horizontal padding
+   (padding-x-xlarge = 24px for size="Large") with no opt-out prop. Zero it here
+   so the inner controls/scroll-area own the single 16px inset, aligning the
+   search bar and grid with the 16px header title. Scoped under the content
+   class for a two-class specificity so it reliably beats the single-class
+   Foundation utility regardless of stylesheet source order. */
+.libraryDialogContent .libraryDialogBody {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.libraryDialogHeader {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--gap-small, 8px);
+  justify-content: space-between;
+  min-height: 56px;
+  padding: var(--padding-small, 8px) var(--padding-large, 16px);
+}
+
+.libraryDialogFooter {
+  border-top: 1px solid var(--stroke-muted, rgba(208, 217, 251, 0.12));
+  flex-shrink: 0;
+  padding: var(--padding-large, 16px);
+}
+
+.assetIdDialogHeader {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--gap-small, 8px);
+  justify-content: space-between;
+  min-height: 56px;
+  padding: var(--padding-small, 8px) var(--padding-large, 16px);
+}
+
+.assetIdDialogFooter {
+  border-top: 1px solid var(--stroke-muted, rgba(208, 217, 251, 0.12));
+  flex-shrink: 0;
+  padding: var(--padding-medium, 12px) var(--padding-large, 16px) var(--padding-large, 16px);
+}

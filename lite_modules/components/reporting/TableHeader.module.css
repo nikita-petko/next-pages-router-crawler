@@ -1,0 +1,25 @@
+/* Per-column header spacing. Keyed by `HeadCellName` so `TableHeader` can look up
+   the class via `styles[row.classNameKey]` (mirrors the former makeStyles map). */
+.adCreativeHeadCell,
+.adStatusHeadCell,
+.adToggleHeadCell,
+.campaignActionMenuHeadCell,
+.campaignNameHeadCell,
+.campaignStatusHeadCell,
+.campaignToggleHeadCell,
+.campaignTypeHeadCell,
+.sharedGenericStatHeadCell,
+.sharedPlaytimeHeadCell,
+.sharedRobuxRevenueHeadCell,
+.sharedWithPaymentUnitsHeadCell {
+  padding: 16px;
+}
+
+/* Companion to the inline `sticky top-0 bg-surface-0` utilities on the sticky header
+   cell. Only holds the two properties Foundation Tailwind can't express: `nowrap` keeps
+   long headers single-line (replaces the former `.MuiTableCell-head` rule) and the
+   z-index paints the pinned header above body rows. */
+.stickyHeaderCell {
+  white-space: nowrap;
+  z-index: 2;
+}

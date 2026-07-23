@@ -1,0 +1,24 @@
+/*
+ * Tilted square outline that sits behind the library icon in the empty
+ * state, matching the Library page's empty-state illustration (a square
+ * outline rotated -15deg behind the books icon). Foundation Tailwind has
+ * no rotation/transform utility, so the rotation is expressed here.
+ */
+.emptyStateTiltFrame {
+  transform: rotate(-15deg);
+}
+
+/*
+ * Per-row file preview <img>. Crops the local blob preview to a 16:9-ish
+ * tile (72x40) without depending on Foundation's <Media> aspect-ratio
+ * container, which collapses to 0px tall inside the staged-file flex row.
+ * Foundation Tailwind disables the `objectFit` core plugin, so the crop
+ * properties live here. All sizing/radius/shrink utilities are inlined
+ * via Foundation Tailwind classes on the element.
+ */
+.rowThumbnail {
+  -o-object-fit: cover;
+     object-fit: cover;
+  -o-object-position: center;
+     object-position: center;
+}
