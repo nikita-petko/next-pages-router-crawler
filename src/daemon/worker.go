@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 
 	"github.com/golang/glog"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/alerting"
+	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/flags"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/next"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/sourcemap"
 )
@@ -38,8 +40,17 @@ func DoWork() error {
 		return err
 	}
 
+	uri, err := url.Parse(*flags.Url)
+	if err != nil {
+		return err
+	}
+
 	glog.Infof("Got new build ID: %s, proceeding to fetch all site assets and source maps.", nextData.BuildId)
-	alerting.Alert(context.Background(), "Build ID Update", fmt.Sprintf("New build ID detected: %s. Proceeding to fetch all site assets and source maps.", nextData.BuildId))
+	alerting.Alert(
+		context.Background(),
+		fmt.Sprintf("Build ID Update (%s)", uri.Host),
+		fmt.Sprintf("New build ID detected for site %s: %s. Proceeding to fetch all site assets and source maps.", uri.Host, nextData.BuildId),
+	)
 
 	assets, errs := next.FetchAndResolveAllSiteAssets(nextData.AssetPrefix, initialAssetUrls, buildManifest)
 	if len(errs) > 0 {
