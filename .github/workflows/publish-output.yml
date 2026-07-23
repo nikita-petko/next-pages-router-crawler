@@ -52,7 +52,7 @@ jobs:
           
           # Checkout if exists or create a new empty branch with no history
           git fetch origin "${TARGET_BRANCH}" || true
-          if git rev-parse --verify "${TARGET_BRANCH}" >/dev/null 2>&1
+          if git rev-parse --verify "origin/${TARGET_BRANCH}" >/dev/null 2>&1
           then
             git checkout "${TARGET_BRANCH}"
           else
