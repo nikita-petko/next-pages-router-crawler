@@ -14,7 +14,10 @@ func Run() {
 	glog.Infof("Start work with %s interval.", *flags.Interval)
 
 	for {
-		DoWork()
+		err := DoWork()
+		if err != nil {
+			glog.Errorf("Error during work: %v", err)
+		}
 
 		time.Sleep(*flags.Interval)
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"os"
 	"os/signal"
@@ -12,6 +13,7 @@ import (
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/daemon"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/flags"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/http"
+	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/next"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/sourcemap"
 )
 
@@ -38,8 +40,16 @@ func main() {
 	alerting.Setup()
 
 	if *flags.Pulse {
-		daemon.DoWork()
 		defer cache.Close()
+
+		err := daemon.DoWork()
+		if err != nil {
+			if errors.Is(err, next.CachedBuildIdIsSameError) {
+				os.Exit(2) // Exit with code 2 to indicate that the build ID is the same and no work was done.
+			} else {
+				glog.Fatalf("Error during work: %v", err)
+			}
+		}
 
 		return
 	}
