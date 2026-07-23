@@ -1,0 +1,72 @@
+import { useCallback, useMemo } from 'react';
+
+/**
+ * Batch update visibility of all series in a chart.
+ * Disables animations during the update to prevent animation timer conflicts.
+ */
+const batchUpdateVisibility = (
+  chart: Highcharts.Chart,
+  shouldBeVisible: (series: Highcharts.Series) => boolean,
+) => {
+  // Store original animation state and disable animations to prevent animation timer conflicts
+  const originalAnimation = chart.options.chart?.animation;
+  const redraw = false;
+  chart.update({ chart: { animation: false } }, redraw);
+
+  // Batch visibility changes without redrawing
+  chart.series.forEach((series) => {
+    series.setVisible(shouldBeVisible(series), redraw);
+  });
+
+  // Restore animation state and redraw once
+  chart.update({ chart: { animation: originalAnimation } }, true);
+};
+
+const useNewTimeSeriesLegendItemClickHandler = () => {
+  const handler: Highcharts.SeriesLegendItemClickCallbackFunction = useCallback(
+    (e: Highcharts.SeriesLegendItemClickEventObject) => {
+      const clickedSeries = e.target;
+      const { chart } = clickedSeries;
+      const allSeries = chart.series;
+
+      // NOTE: Highcharts has ALREADY toggled the clicked series visibility before this handler runs.
+      // We detect the resulting state and adjust if needed to implement cycling behavior.
+
+      const allSeriesAreVisible = allSeries.every((s) => s.visible);
+      const allSeriesAreHidden = allSeries.every((s) => !s.visible);
+
+      // Case 1: All series are now visible
+      // Highcharts just showed a previously hidden series, but we want to INVERT (show only clicked)
+      if (allSeriesAreVisible) {
+        batchUpdateVisibility(chart, (series) => series === clickedSeries);
+        return;
+      }
+
+      // Case 2: All series are now hidden
+      // Highcharts just hid the last visible series, but we want to show ALL
+      if (allSeriesAreHidden) {
+        batchUpdateVisibility(chart, () => true);
+      }
+
+      // Case 3: Mixed state - the default toggle was appropriate, no change needed
+    },
+    [],
+  );
+
+  const updateSeriesLegendItemClickHandlers = useCallback(
+    (optionsCopy: Highcharts.Options) => {
+      // eslint-disable-next-line no-param-reassign -- this is passed a copy of the options to modify
+      optionsCopy.series = optionsCopy.series?.map((series) => ({
+        ...series,
+        events: { ...(series.events || {}), legendItemClick: handler },
+      }));
+    },
+    [handler],
+  );
+
+  return useMemo(
+    () => ({ updateSeriesLegendItemClickHandlers }),
+    [updateSeriesLegendItemClickHandlers],
+  );
+};
+export default useNewTimeSeriesLegendItemClickHandler;
