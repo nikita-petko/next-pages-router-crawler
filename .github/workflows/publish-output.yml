@@ -32,7 +32,7 @@ jobs:
 
       - name: Run crawler
         run: |
-          ./bin/debug/linux/x64/next-pages-router-crawler 
+          ./bin/release/linux/x64/next-pages-router-crawler 
             --url ${{ vars.URL }}
             --pulse
             --clear-cache
