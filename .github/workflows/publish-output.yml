@@ -2,7 +2,7 @@ name: Publish output to branch
 
 on:
   schedule:
-    - cron: "10 * * * *"
+    - cron: "*/10 * * * *"
   workflow_dispatch:
 
 # Allow pushing to the target branch without requiring a personal access token
@@ -55,7 +55,7 @@ jobs:
           git rm -rf . || true
 
           # Copy dist contents into the root of the target repo
-          cp -a "$GITHUB_WORKSPACE/.output/." . || true
+          cp -a "$GITHUB_WORKSPACE/.output/${{ vars.BRANCH }}/." . || true
 
           # Only commit & push if something changed
           if [ -n "$(git status --porcelain)" ]; then
