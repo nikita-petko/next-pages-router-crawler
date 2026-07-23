@@ -14,7 +14,6 @@ func extractBaseUrl() (string, error) {
 		return "", err
 	}
 
-	u.Path = path.Clean(u.Path)
 	u.RawQuery = ""
 	u.Fragment = ""
 
