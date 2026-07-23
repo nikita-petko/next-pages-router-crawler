@@ -1,0 +1,60 @@
+/* Responsive 4/3/2 column tile grid; explicit columns keep card widths
+   stable inside the right-side sheet. */
+.tileGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 1440px) {
+  .tileGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1080px) {
+  .tileGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/*
+ * Selected state per Figma `DrawerTile`: a 2px contrast border sitting just
+ * outside the media with a 4px gap (the design nests the media inside a
+ * 4px-padded, rounded-12px frame). Outline (not border) so toggling selected
+ * never nudges the grid layout; the positive offset reproduces the gap. Kept in
+ * sync with the AI-gen drawer tile ring (`SelectableMediaTile.buttonSelectedOutline`).
+ */
+.selectedRing {
+  border-radius: 8px;
+  outline: 2px solid var(--content-emphasis, #f7f7f8);
+  outline-offset: 4px;
+}
+
+/* Strip default <button> chrome; Foundation Tailwind has no appearance reset. */
+.tileButton {
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  text-align: inherit;
+}
+
+/* Hover overlay using the Foundation `color/state/hover` token, matching the
+   Figma `DrawerTile` hover state (a subtle light wash over the media). */
+.hoverOverlay {
+  background: var(--color-state-hover, rgba(208, 217, 251, 0.08));
+  border-radius: 8px;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  transition: opacity 120ms ease-in-out;
+}
+
+.tileButton:hover .hoverOverlay,
+.tileButton:focus-visible .hoverOverlay {
+  opacity: 1;
+}

@@ -1,0 +1,109 @@
+.root {
+  display: block;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.button {
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  display: block;
+  font: inherit;
+  min-width: 0;
+  padding: 0;
+  text-align: inherit;
+  width: 100%;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/*
+ * Selected state matching the campaign creative drawer `DrawerTile`: a 2px
+ * contrast ring sitting just outside the media with a 4px gap. Outline (not
+ * border) so toggling selected never nudges the grid layout; the positive
+ * offset reproduces the gap. Kept in sync with the campaign library picker ring
+ * (`CreativeImportTab.selectedRing`).
+ */
+.buttonSelectedOutline {
+  border-radius: 8px;
+  outline: 2px solid var(--content-emphasis, #f7f7f8);
+  outline-offset: 4px;
+}
+
+.mediaSurface {
+  position: relative;
+  width: 100%;
+}
+
+.mediaWrapper {
+  aspect-ratio: 16 / 9;
+  background-color: var(--bg-surface-200, #202227);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.mediaWrapperSelectedBorder {
+  border-color: var(--content-emphasis, #f7f7f8);
+}
+
+.coverImage {
+  display: block;
+  height: 100%;
+  inset: 0;
+  -o-object-fit: cover;
+     object-fit: cover;
+  -o-object-position: center;
+     object-position: center;
+  position: absolute;
+  width: 100%;
+}
+
+.overflowAnchor {
+  pointer-events: auto;
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  z-index: 1;
+}
+
+.overflowAnchorRevealOnHover {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms linear;
+}
+
+:global(.group):hover .overflowAnchorRevealOnHover,
+:global(.group):focus-within .overflowAnchorRevealOnHover,
+:global(.group):focus .overflowAnchorRevealOnHover {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.hoverOverlay {
+  background: rgb(0 0 0 / 22%);
+  border-radius: 8px;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  transition: opacity 120ms ease-in-out;
+}
+
+.button:hover .hoverOverlay,
+.button:focus-visible .hoverOverlay {
+  opacity: 1;
+}

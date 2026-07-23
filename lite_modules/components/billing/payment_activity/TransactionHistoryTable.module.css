@@ -1,0 +1,5 @@
+/* Companion to inline `sticky top-0 bg-surface-100` on header cells. */
+.stickyHeaderCell {
+  white-space: nowrap;
+  z-index: 2;
+}

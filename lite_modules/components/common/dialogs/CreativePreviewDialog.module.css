@@ -1,0 +1,15 @@
+/*
+ * Foundation's `.foundation-web-dialog-hero-media` only rounds the TOP corners
+ * (and bleeds the media to the top/side edges) because hero media normally sits
+ * above a dialog body/footer. This lightbox is media-only — no body or footer —
+ * so the bottom corners stayed sharp against the dialog's rounded bottom edge,
+ * producing the "rounded top, sharp bottom" mismatch. Mirror the top treatment
+ * on the bottom so all four corners round and the media bleeds flush to the
+ * bottom edge. `overflow: clip` is already applied by the Foundation class, so
+ * the inner image is clipped to the rounded corners.
+ */
+.heroMedia {
+  border-bottom-left-radius: var(--radius-large);
+  border-bottom-right-radius: var(--radius-large);
+  margin-bottom: calc(var(--stroke-standard) * -1);
+}

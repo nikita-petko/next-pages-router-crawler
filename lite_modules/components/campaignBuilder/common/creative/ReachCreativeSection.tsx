@@ -1,0 +1,442 @@
+import { Icon, Radio, RadioGroup } from '@rbx/foundation-ui';
+import { TextField, Typography } from '@rbx/ui';
+import { useState } from 'react';
+import { Controller, useFormContext, useWatch } from 'react-hook-form';
+
+import useCreativesStyles from '@components/campaignBuilder/common/creative/Creatives.styles';
+import useReachCreativePreviewStyles from '@components/campaignBuilder/common/creative/ReachCreativePreview.styles';
+import LogoUploadDrawer from '@components/campaignBuilder/common/creative/reachSection/LogoUploadDrawer';
+import ThumbnailAiCreateDrawer from '@components/campaignBuilder/common/creative/thumbnailSection/ThumbnailAiCreateDrawer';
+import ThumbnailCreativeAddButton from '@components/campaignBuilder/common/creative/thumbnailSection/ThumbnailCreativeAddButton';
+import ThumbnailUploadDrawer from '@components/campaignBuilder/common/creative/thumbnailSection/ThumbnailUploadDrawer';
+import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
+import Creative from '@components/common/Creative';
+import {
+  DEFAULT_HEADLINE_MAX_LENGTH,
+  DEFAULT_REACH_BID_TYPE,
+  DEFAULT_SUBTITLE_MAX_LENGTH,
+  FlowTypes,
+  FORM_HELPER_TEXT_PROPS,
+  FormField,
+  INPUT_LABEL_PROPS,
+  MAX_LOGO_SELECTIONS,
+  ReachAdFormat,
+} from '@constants/campaignBuilder';
+import { TranslationNamespace } from '@constants/localization';
+import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
+import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import { useAppStore } from '@stores/appStoreProvider';
+import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
+import { ThumbnailType } from '@type/campaignBuilder';
+
+interface ReachCreativeSectionProps {
+  formThumbnails: FormType[typeof FormField.THUMBNAILS];
+  selectedThumbnails: ThumbnailType[];
+}
+
+const ReachCreativeSection = ({
+  formThumbnails,
+  selectedThumbnails,
+}: ReachCreativeSectionProps) => {
+  const { translateHTML: translateCreativeLibraryHTML } = useNamespacedTranslation(
+    TranslationNamespace.CreativeLibrary,
+  );
+  const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
+  const { control, getFieldState, getValues, setValue } = useFormContext<FormType>();
+  const flowType = useCampaignBuilderStore((state) => state.flowType);
+  const editMode = flowType === FlowTypes.EDIT;
+  const maxHeadlineLength =
+    useAppStore((state) => state.appMetadataState?.data?.maxHeadlineLengthInChars) ||
+    DEFAULT_HEADLINE_MAX_LENGTH;
+  const maxSubtitleLength =
+    useAppStore((state) => state.appMetadataState?.data?.maxSubtitleLengthInChars) ||
+    DEFAULT_SUBTITLE_MAX_LENGTH;
+  // The creative-library flow surfaces a "(selected/max)" count next to
+  // the image-asset header so users can see at a glance how many slots
+  // they still have when picking from a shared library. Pre-library reach
+  // campaigns only ever uploaded one asset in-place, so the count would
+  // have been noise — keep the legacy h5 label there.
+  const isCreativeLibraryEnabled = useAppStore(
+    (state) => state.appMetadataState?.data?.isCreativeLibraryEnabled ?? false,
+  );
+  const isGenAiCreativesEnabled = useAppStore(
+    (state) => state.appMetadataState?.data?.isGenAiCreativesEnabled ?? false,
+  );
+  // Gates the 2x1 vs 1x2 ad format toggle. When off, only the legacy 2x1
+  // image flow is shown (see Roblox/ads#12555).
+  const isOneByTwoTileCreationEnabled = useAppStore(
+    (state) => state.appMetadataState?.data?.isOneByTwoTileCreationEnabled ?? false,
+  );
+  const [aiCreateDrawerOpen, setAiCreateDrawerOpen] = useState<boolean>(false);
+  const maxAllowedThumbnails =
+    useAppStore(
+      (state) => state.appMetadataState?.data?.maximumAdsPerTrafficDrivingCampaignCount,
+    ) ?? 0;
+
+  const {
+    classes: { formColumn },
+  } = useFormLayoutStyles();
+  const {
+    classes: { reachCreativeFieldContainer },
+    cx,
+  } = useReachCreativePreviewStyles();
+  const {
+    classes: {
+      creativeSectionPreviewContainer,
+      creativeUploadButton,
+      creativeUploadButtonWrapper,
+      errorBorder,
+      logoStyle,
+      thumbnailStyle,
+    },
+  } = useCreativesStyles();
+
+  const { setLogoDrawerOpen, setThumbnailDrawerOpen } = useCampaignBuilderStore();
+
+  const logoAssets = useWatch<FormType, typeof FormField.LOGO_ASSETS>({
+    name: FormField.LOGO_ASSETS,
+  });
+  const creativeFormat = useWatch<FormType, typeof FormField.CREATIVE_FORMAT>({
+    name: FormField.CREATIVE_FORMAT,
+  });
+  const isVerticalFormat = creativeFormat === ReachAdFormat.VERTICAL_1X2;
+
+  // Get selected logos (should only be one)
+  const selectedLogos = logoAssets.filter(({ isSelected }) => isSelected);
+
+  const { error: thumbnailError, isTouched: thumbnailIsTouched } = getFieldState(
+    FormField.THUMBNAILS,
+  );
+  const { error: logoError, isTouched: logoIsTouched } = getFieldState(FormField.LOGO_ASSETS);
+
+  const hasThumbnailError = !!thumbnailError;
+  const shouldShowThumbnailErrorMessage = hasThumbnailError && !!thumbnailIsTouched;
+  const hasLogoError = !!logoError;
+  const shouldShowLogoErrorMessage = hasLogoError && !!logoIsTouched;
+
+  const showCreativeAddMenu = isCreativeLibraryEnabled && isGenAiCreativesEnabled;
+  const showAiGenerateMenuItem =
+    isGenAiCreativesEnabled &&
+    isCreativeLibraryEnabled &&
+    selectedThumbnails.length < maxAllowedThumbnails;
+
+  const maybeRenderImageUploadButton = () => {
+    if (editMode) {
+      return null;
+    }
+
+    return (
+      <div className={creativeUploadButtonWrapper}>
+        <ThumbnailCreativeAddButton
+          hasError={shouldShowThumbnailErrorMessage}
+          onAddCreative={() => {
+            setThumbnailDrawerOpen(true, getValues(FormField.EXPERIENCE).universe_id);
+          }}
+          onAiGenerate={() => setAiCreateDrawerOpen(true)}
+          showAiGenerateMenuItem={showAiGenerateMenuItem}
+          showCreativeAddMenu={showCreativeAddMenu}
+          testId='image-asset-upload-button'
+        />
+      </div>
+    );
+  };
+
+  const maybeRenderLogoUploadButton = () => {
+    if (editMode) {
+      return null;
+    }
+
+    return (
+      <div className={creativeUploadButtonWrapper}>
+        <button
+          className={cx(creativeUploadButton, { [errorBorder]: shouldShowLogoErrorMessage })}
+          data-testid='logo-asset-upload-button'
+          onClick={() => {
+            setLogoDrawerOpen(true, getValues(FormField.EXPERIENCE).universe_id);
+          }}
+          type='button'>
+          <Icon name='icon-regular-circle-plus' size='Medium' />
+        </button>
+      </div>
+    );
+  };
+
+  // TODO @pjohnson add video upload functionality
+  const maybeRenderVideoUploadButton = () => {
+    if (editMode) {
+      return null;
+    }
+
+    return (
+      <div className={creativeUploadButtonWrapper}>
+        <button
+          className={creativeUploadButton}
+          data-testid='video-asset-upload-button'
+          disabled
+          type='button'>
+          <Icon name='icon-regular-circle-plus' size='Medium' />
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <ThumbnailUploadDrawer
+        onClose={() => {
+          // set touched and dirty to true
+          setValue(FormField.THUMBNAILS, formThumbnails || [], {
+            shouldDirty: true,
+            shouldTouch: true,
+          });
+        }}
+      />
+      {showCreativeAddMenu ? (
+        <ThumbnailAiCreateDrawer onOpenChange={setAiCreateDrawerOpen} open={aiCreateDrawerOpen} />
+      ) : null}
+      <LogoUploadDrawer
+        onClose={() => {
+          // set touched and dirty to true
+          setValue(FormField.LOGO_ASSETS, logoAssets || [], {
+            shouldDirty: true,
+            shouldTouch: true,
+          });
+        }}
+      />
+      <Typography className={formColumn} component='div'>
+        {/* Ad format selector (2x1 horizontal image vs 1x2 vertical video) */}
+        {isOneByTwoTileCreationEnabled && (
+          <Controller
+            control={control}
+            name={FormField.CREATIVE_FORMAT}
+            render={({ field: { onBlur, onChange, ref, value } }) => (
+              <RadioGroup
+                onBlur={onBlur}
+                onValueChange={(nextFormat) => {
+                  onChange(nextFormat);
+                  // 2x1 (image) only supports CPM and rejects a clickout URL, so
+                  // drop any CPV2 selection and clear the click destination.
+                  if (nextFormat === ReachAdFormat.HORIZONTAL_2X1) {
+                    setValue(FormField.BID_TYPE, DEFAULT_REACH_BID_TYPE);
+                    setValue(FormField.CLICK_DESTINATION, undefined);
+                  }
+                }}
+                ref={ref}
+                size='Small'
+                value={value ?? ReachAdFormat.HORIZONTAL_2X1}>
+                <div className='flex flex-row gap-large'>
+                  <Radio
+                    isDisabled={editMode}
+                    label={translateCampaign('Label.Reach2x1Horizontal')}
+                    value={ReachAdFormat.HORIZONTAL_2X1}
+                  />
+                  <Radio
+                    isDisabled={editMode}
+                    label={translateCampaign('Label.Reach1x2Vertical')}
+                    value={ReachAdFormat.VERTICAL_1X2}
+                  />
+                </div>
+              </RadioGroup>
+            )}
+          />
+        )}
+
+        {/* Image + video asset sections share a row (video only shows for 1x2) */}
+        <div className='flex flex-row gap-large'>
+          {/* Image asset section */}
+          <Typography className={reachCreativeFieldContainer} component='div'>
+            {isCreativeLibraryEnabled ? (
+              <p
+                className='margin-[0px] text-body-medium content-default'
+                data-testid='reach-image-asset-count'>
+                {translateCreativeLibraryHTML(
+                  'Label.ImageAssetsCount',
+                  [
+                    {
+                      closing: 'boldEnd',
+                      content: (chunks) => <span className='text-label-medium'>{chunks}</span>,
+                      opening: 'boldStart',
+                    },
+                  ],
+                  {
+                    max: String(maxAllowedThumbnails),
+                    selected: String(selectedThumbnails.length),
+                  },
+                )}
+              </p>
+            ) : (
+              <Typography component='label' variant='h5'>
+                {translateCampaign('Label.ImageAsset')}
+              </Typography>
+            )}
+            <div className={creativeSectionPreviewContainer}>
+              {selectedThumbnails.map(({ assetId }: ThumbnailType) => (
+                <Creative assetId={assetId} className={thumbnailStyle} key={assetId} />
+              ))}
+              {maybeRenderImageUploadButton()}
+            </div>
+            {shouldShowThumbnailErrorMessage && (
+              <Typography color='error' component='div' variant='body2'>
+                {thumbnailError?.message}
+              </Typography>
+            )}
+          </Typography>
+
+          {/* Video asset section (1x2 vertical format only) */}
+          {isVerticalFormat && (
+            <Typography className={reachCreativeFieldContainer} component='div'>
+              {isCreativeLibraryEnabled ? (
+                <p
+                  className='margin-[0px] text-body-medium content-default'
+                  data-testid='reach-video-asset-label'>
+                  {translateCampaign('Label.VideoAsset')}
+                </p>
+              ) : (
+                <Typography component='label' variant='h5'>
+                  {translateCampaign('Label.VideoAsset')}
+                </Typography>
+              )}
+              <div className={creativeSectionPreviewContainer}>
+                {maybeRenderVideoUploadButton()}
+              </div>
+            </Typography>
+          )}
+        </div>
+
+        {/* Logo asset section */}
+        <Typography className={reachCreativeFieldContainer} component='div'>
+          {isCreativeLibraryEnabled ? (
+            <p
+              className='margin-[0px] text-body-medium content-default'
+              data-testid='reach-logo-asset-count'>
+              {translateCreativeLibraryHTML(
+                'Label.LogoAssetsCount',
+                [
+                  {
+                    closing: 'boldEnd',
+                    content: (chunks) => <span className='text-label-medium'>{chunks}</span>,
+                    opening: 'boldStart',
+                  },
+                ],
+                {
+                  max: String(MAX_LOGO_SELECTIONS),
+                  selected: String(selectedLogos.length),
+                },
+              )}
+            </p>
+          ) : (
+            <Typography component='label' variant='h5'>
+              {translateCampaign('Label.LogoAssetOptional')}
+            </Typography>
+          )}
+          <div className={creativeSectionPreviewContainer}>
+            {selectedLogos.map(({ assetId }) => (
+              <Creative assetId={assetId} className={logoStyle} key={assetId} />
+            ))}
+            {maybeRenderLogoUploadButton()}
+          </div>
+          {shouldShowLogoErrorMessage && (
+            <Typography color='error' component='div' variant='body2'>
+              {logoError?.message}
+            </Typography>
+          )}
+        </Typography>
+
+        {/* Headline */}
+        <Controller
+          control={control}
+          name={FormField.HEADLINE}
+          render={({ field, fieldState: { error, isTouched } }) => {
+            const shouldShowError = !!error && !!isTouched;
+            return (
+              <Typography className={reachCreativeFieldContainer} component='div'>
+                <TextField
+                  {...field}
+                  disabled={editMode}
+                  error={shouldShowError}
+                  FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
+                  fullWidth
+                  helperText={
+                    shouldShowError
+                      ? error?.message
+                      : translateCampaign('Label.CharCount', {
+                          current: String(field.value?.length || 0),
+                          max: String(maxHeadlineLength),
+                        })
+                  }
+                  id='headline'
+                  InputLabelProps={INPUT_LABEL_PROPS}
+                  label={translateCampaign('Label.Headline')}
+                  size='medium'
+                />
+              </Typography>
+            );
+          }}
+        />
+
+        {/* Subtitle */}
+        <Controller
+          control={control}
+          name={FormField.SUBTITLE}
+          render={({ field, fieldState: { error, isTouched } }) => {
+            const shouldShowError = !!error && !!isTouched;
+            return (
+              <Typography className={reachCreativeFieldContainer} component='div'>
+                <TextField
+                  {...field}
+                  disabled={editMode}
+                  error={shouldShowError}
+                  FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
+                  fullWidth
+                  helperText={
+                    shouldShowError
+                      ? error?.message
+                      : translateCampaign('Label.CharCount', {
+                          current: String(field.value?.length || 0),
+                          max: String(maxSubtitleLength),
+                        })
+                  }
+                  id='subtitle'
+                  InputLabelProps={INPUT_LABEL_PROPS}
+                  label={translateCampaign('Label.SubtitleOptional')}
+                  size='medium'
+                />
+              </Typography>
+            );
+          }}
+        />
+
+        {/* Click destination (clickout URL) — 1x2 vertical (video) format only */}
+        {isVerticalFormat && (
+          <Controller
+            control={control}
+            name={FormField.CLICK_DESTINATION}
+            render={({ field, fieldState: { error, isTouched } }) => {
+              const shouldShowError = !!error && !!isTouched;
+              return (
+                <Typography className={reachCreativeFieldContainer} component='div'>
+                  <TextField
+                    {...field}
+                    disabled={editMode}
+                    error={shouldShowError}
+                    FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
+                    fullWidth
+                    helperText={shouldShowError ? error?.message : undefined}
+                    id='clickDestination'
+                    InputLabelProps={INPUT_LABEL_PROPS}
+                    label={translateCampaign('Label.ClickDestination')}
+                    placeholder='http://'
+                    size='medium'
+                    value={field.value ?? ''}
+                  />
+                </Typography>
+              );
+            }}
+          />
+        )}
+      </Typography>
+    </>
+  );
+};
+
+export default ReachCreativeSection;

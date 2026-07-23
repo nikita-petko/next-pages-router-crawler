@@ -1,0 +1,9 @@
+.inlineRobuxIcon {
+  display: inline-flex;
+  line-height: 0;
+  position: relative;
+  bottom: 2px;
+  transform: scale(0.9);
+  transform-origin: center bottom;
+  vertical-align: text-bottom;
+}
