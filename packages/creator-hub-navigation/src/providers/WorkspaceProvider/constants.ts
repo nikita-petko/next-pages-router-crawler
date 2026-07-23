@@ -1,0 +1,88 @@
+import type { useRobloxAuthentication } from '@rbx/auth';
+
+export type TUser = Exclude<ReturnType<typeof useRobloxAuthentication>['user'], null>;
+
+export const CreatorType = {
+  User: 'User',
+  Group: 'Group',
+} as const;
+
+export type TCreatorType = (typeof CreatorType)[keyof typeof CreatorType];
+
+export type TWorkspace = {
+  creatorId: number;
+  creatorName: string | undefined;
+  creatorType: TCreatorType;
+  priority: number;
+  createdAt: number | Date;
+  lastSelected: number;
+};
+
+export type TGroupData = Record<
+  string,
+  {
+    lastSelected: number;
+    priority: number;
+  }
+>;
+
+export const WorkspaceSorts = {
+  Priority: 'Priority',
+  Recent: 'Recent',
+  CreatedAt: 'CreatedAt',
+  Alphabetically: 'Alphabetically',
+} as const;
+
+export type TSorts = (typeof WorkspaceSorts)[keyof typeof WorkspaceSorts];
+
+const CREATIONS_PATH = '/dashboard/creations';
+const CREDENTIALS_PATH = '/credentials';
+const CREATIONS_UPLOAD_PATH = '/dashboard/creations/upload';
+const HOME_PATH = '/';
+const ANALYTICS_HOME_PATH = '/dashboard/analytics';
+const TRANSACTIONS_PATH = '/dashboard/transactions';
+
+// The Transactions page supports group context only on its Virtual tab (`?tab=virtual`); the
+// other tabs are user-only and must still redirect on a context switch. Kept as a literal
+// (mirrors the app's TransactionTab.Virtual) to avoid an app→package dependency.
+const VIRTUAL_TRANSACTIONS_TAB = 'virtual';
+
+// Group-specific paths
+const GROUP_PROFILE_PATH = '/dashboard/group/profile';
+const GROUP_MEMBERS_PATH = '/dashboard/group/members';
+const GROUP_ACTIVITY_HISTORY_PATH = '/dashboard/group/activity-history';
+const GROUP_PAYOUTS_PATH = '/dashboard/group/payouts';
+const GROUP_ROLES_PATH = '/dashboard/group/roles';
+
+// Helper function to check if a path is a group-related path
+const isGroupPath = (pathname: string | undefined): boolean => {
+  return !!pathname && pathname.startsWith('/dashboard/group/');
+};
+
+const workspaceSelectAcceptedPaths = new Set([
+  CREATIONS_PATH,
+  CREDENTIALS_PATH,
+  CREATIONS_UPLOAD_PATH,
+  HOME_PATH,
+  ANALYTICS_HOME_PATH,
+  // Add group paths to allow group switching on group pages
+  GROUP_PROFILE_PATH,
+  GROUP_MEMBERS_PATH,
+  GROUP_ACTIVITY_HISTORY_PATH,
+  GROUP_PAYOUTS_PATH,
+  GROUP_ROLES_PATH,
+]);
+
+// The only function consumers should use - checks if it's safe to stay on this path when switching groups
+export const isAcceptedWorkspacePath = (
+  pathname: string | undefined,
+  tab?: string | string[],
+): boolean => {
+  if (!pathname) {
+    return false;
+  }
+  if (workspaceSelectAcceptedPaths.has(pathname) || isGroupPath(pathname)) {
+    return true;
+  }
+  return pathname === TRANSACTIONS_PATH && tab === VIRTUAL_TRANSACTIONS_TAB;
+};

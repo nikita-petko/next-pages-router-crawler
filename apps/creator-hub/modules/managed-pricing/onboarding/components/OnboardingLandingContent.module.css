@@ -1,0 +1,11 @@
+.title {
+  font-family: 'Builder Extended';
+  font-size: 32px;
+  font-style: normal;
+  font-weight: 785;
+  line-height: 120%; /* 38.4px */
+  letter-spacing: -0.32px;
+
+  text-wrap: balance;
+  text-align: center;
+}

@@ -1,0 +1,43 @@
+.dashboardControlBar {
+  display: flex;
+  width: 100%;
+  flex-flow: row wrap;
+  justify-content: space-between;
+  /* Figma node 2384-62450: 12px between dropdowns. */
+  gap: var(--size-300, 12px);
+}
+
+/* RAQI controls render Mui Grid items outside a Grid container on this surface. */
+.dashboardControlBar :global(.MuiGrid-item) {
+  margin: 0;
+  padding: 0;
+  max-width: none;
+  width: auto;
+}
+
+/*
+ * Dashboard owns horizontal rhythm via gap above. Zero legacy
+ * foundationControlBarSelector / foundationControlBarFilter margins
+ * (0 8px 16px 0) so they do not stack on gap-medium.
+ */
+.dashboardControlBar :global(.MuiGrid-item) > * {
+  margin: 0;
+}
+
+.dashboardControlBar :global(.MuiFormControl-root) {
+  width: 220px;
+  margin: 0;
+}
+
+/* Labeled fields use Foundation Medium height (height-1000). */
+.dashboardControlBar :global(.MuiInputBase-root) {
+  min-height: var(--size-1000, 40px);
+  height: var(--size-1000, 40px);
+  box-sizing: border-box;
+}
+
+.dashboardControlBar :global(.MuiSelect-select) {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}

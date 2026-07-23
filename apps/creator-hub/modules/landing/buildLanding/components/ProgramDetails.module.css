@@ -1,0 +1,85 @@
+.dialogContent {
+  height: min(615px, 100vh);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .dialogContent {
+    height: min(700px, calc(100vh - 64px));
+    width: calc(100vw - 32px);
+  }
+}
+
+.dialogBody {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.dialogTabs {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.dialogTabContent {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.tabTrigger {
+  border-top: none;
+  border-bottom: none;
+  border-right: none;
+  background: none;
+  border-left: var(--stroke-standard) solid var(--color-stroke-default);
+}
+
+.tabTrigger:hover {
+  border-left: var(--stroke-thick) solid var(--color-system-contrast);
+}
+
+.tabTriggerActive.tabTrigger {
+  border-left: var(--stroke-thick) solid var(--color-system-contrast);
+}
+
+.markdownContent > * {
+  margin: 0;
+  padding: 0;
+}
+
+.markdownContent > * + * {
+  margin-top: var(--padding-large);
+}
+
+.markdownContent > h4 + p,
+.markdownContent > h4 + ul,
+.markdownContent > h4 + ol {
+  margin-top: var(--padding-xsmall);
+}
+
+.markdownContent > p + ul,
+.markdownContent > p + ol {
+  margin-top: var(--padding-xsmall);
+}
+
+.markdownContent h4 {
+  font-size: inherit;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--color-content-emphasis);
+}
+
+.markdownContent strong {
+  color: var(--color-content-emphasis);
+}
+
+.markdownContent ul,
+.markdownContent ol {
+  padding-left: 21px;
+  list-style-type: disc;
+}

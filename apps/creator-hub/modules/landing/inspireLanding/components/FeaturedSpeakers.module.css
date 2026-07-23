@@ -1,0 +1,138 @@
+.tileGridWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.tileGridWrapperCollapsed {
+  /* Fade sits over the bottom row before the See more control. */
+  margin-bottom: calc(-1 * var(--size-600));
+}
+
+.tileGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 24px;
+}
+
+.tileGridFade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Covers the lower half of the third row so three rows read as semi-visible. */
+  height: 300px;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(180deg, transparent 0%, var(--color-surface-0) 88%);
+}
+
+.expandRow {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.speakerCard {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.speakerHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--size-200);
+  padding: var(--size-600) var(--size-500);
+  background: var(--color-surface-200);
+  text-align: center;
+}
+
+.speakerAvatar {
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+  border-radius: var(--radius-circle);
+  object-fit: cover;
+  background: var(--color-surface-300);
+}
+
+.speakerIdentity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--size-50);
+  width: 100%;
+  min-height: 3.75rem;
+}
+
+.speakerBio {
+  flex: 1;
+}
+
+.speakerBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--size-500);
+  padding: var(--size-500);
+  background: var(--color-surface-100);
+}
+
+/* Push the talks list to the bottom so it aligns across cards regardless of bio length. */
+.speakerTalks {
+  margin-top: auto;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+/* Bleed to both screen edges so cards overflow visibly on each side; the inner scroll padding
+   keeps the first/last cards aligned with the content. */
+.carouselWrapper {
+  display: none;
+  margin-left: -48px;
+  margin-right: -48px;
+}
+
+.carouselWrapper :global(.foundation-web-collection-carousel-scroll) {
+  padding-left: 48px;
+  padding-right: 48px;
+  align-items: stretch;
+}
+
+.carouselItem {
+  display: flex;
+  align-self: stretch;
+}
+
+.carouselCard {
+  width: 280px;
+  max-width: 82vw;
+  flex: 1;
+  min-height: 480px;
+}
+
+@media (max-width: 900px) {
+  .tileGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* On phones the grid becomes a horizontal slider so cards keep a comfortable width. */
+@media (max-width: 600px) {
+  .tileGridWrapper {
+    display: none;
+  }
+
+  .expandRow {
+    display: none;
+  }
+
+  .carouselWrapper {
+    display: block;
+  }
+}

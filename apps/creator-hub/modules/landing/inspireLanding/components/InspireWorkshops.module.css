@@ -1,0 +1,90 @@
+.tabsRoot {
+  width: 100%;
+}
+
+.tabsList {
+  width: 100%;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  border-bottom-color: var(--color-stroke-muted);
+}
+
+.tileGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 24px;
+}
+
+.workshopCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 185px;
+  height: 100%;
+  padding: var(--size-500);
+  border: 1px solid var(--color-stroke-muted);
+}
+
+.registerRow {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: var(--size-400);
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.avatarRow {
+  margin-top: auto;
+  padding-top: var(--size-200);
+  display: flex;
+  align-items: center;
+}
+
+.avatarTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.avatarTriggerOverlap {
+  margin-left: -8px;
+}
+
+.speakerAvatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius-circle);
+  object-fit: cover;
+  border: 2px solid var(--color-surface-100);
+  background: var(--color-surface-300);
+}
+
+.scheduleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .tileGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .tileGrid {
+    grid-template-columns: 1fr;
+    row-gap: 12px;
+  }
+}

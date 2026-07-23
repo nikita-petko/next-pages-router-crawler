@@ -1,0 +1,13 @@
+__turbopack_context__.v({
+  "accordion": "TaxbitHelpCenter-module__yMmTsG__accordion",
+  "accordionContent": "TaxbitHelpCenter-module__yMmTsG__accordionContent",
+  "list": "TaxbitHelpCenter-module__yMmTsG__list",
+  "panel": "TaxbitHelpCenter-module__yMmTsG__panel",
+  "panelBody": "TaxbitHelpCenter-module__yMmTsG__panelBody",
+  "panelHeader": "TaxbitHelpCenter-module__yMmTsG__panelHeader",
+  "root": "TaxbitHelpCenter-module__yMmTsG__root",
+  "slide-in-from-bottom": "TaxbitHelpCenter-module__yMmTsG__slide-in-from-bottom",
+  "slide-in-from-right": "TaxbitHelpCenter-module__yMmTsG__slide-in-from-right",
+  "slide-out-to-bottom": "TaxbitHelpCenter-module__yMmTsG__slide-out-to-bottom",
+  "slide-out-to-right": "TaxbitHelpCenter-module__yMmTsG__slide-out-to-right",
+});

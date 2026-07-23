@@ -1,0 +1,51 @@
+.emptyStateContainer {
+  min-height: 592px;
+}
+
+.configsGrid {
+  grid-template-columns: minmax(240px, 1.2fr) minmax(320px, 1.6fr) 220px 80px;
+}
+
+.gridHeaderShadow {
+  box-shadow: inset 0 -1px 0 var(--color-stroke-emphasis);
+}
+
+.resetButton {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  -moz-appearance: none;
+       appearance: none;
+  -webkit-appearance: none;
+  color: inherit;
+  font: inherit;
+}
+
+.actionsMenuPanel {
+  padding: 8px;
+  gap: 2px;
+  min-width: 200px;
+  box-shadow:
+    var(--size-0) var(--size-50) var(--size-100) -0.5px var(--alpha-color-shadow-subtle),
+    var(--size-0) var(--size-250) var(--size-500) -0.75px var(--alpha-color-shadow-subtle),
+    var(--size-0) var(--size-400) var(--size-800) -1px var(--alpha-color-shadow-subtle),
+    var(--size-0) var(--size-1200) var(--size-1400) -1.5px var(--alpha-color-shadow-subtle);
+}
+
+.menuItemButton {
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
+.previewJsonPre {
+  max-height: 520px;
+  padding: 12px;
+  white-space: pre-wrap;
+}
+
+.copyToastAlert {
+  width: -moz-fit-content;
+  width: fit-content;
+  max-width: calc(100vw - 32px);
+  display: inline-flex;
+}

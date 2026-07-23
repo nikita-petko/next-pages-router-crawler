@@ -1,0 +1,28 @@
+.cardsGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 24px;
+}
+
+.cardRoot {
+  height: 100%;
+}
+
+/* Fixed card width so the next card peeks in the horizontal carousel. */
+.carouselCard {
+  width: 280px;
+  flex-shrink: 0;
+}
+
+/* Bleed to both screen edges so cards overflow visibly on each side; the inner scroll padding
+   keeps the first/last cards aligned with the content. */
+.carouselWrapper {
+  margin-left: -48px;
+  margin-right: -48px;
+}
+
+.carouselWrapper :global(.foundation-web-collection-carousel-scroll) {
+  padding-left: 48px;
+  padding-right: 48px;
+}
+

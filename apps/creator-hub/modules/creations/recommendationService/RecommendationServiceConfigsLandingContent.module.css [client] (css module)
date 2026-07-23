@@ -1,0 +1,10 @@
+__turbopack_context__.v({
+  "actionsMenuPanel": "RecommendationServiceConfigsLandingContent-module__rqj88a__actionsMenuPanel",
+  "configsGrid": "RecommendationServiceConfigsLandingContent-module__rqj88a__configsGrid",
+  "copyToastAlert": "RecommendationServiceConfigsLandingContent-module__rqj88a__copyToastAlert",
+  "emptyStateContainer": "RecommendationServiceConfigsLandingContent-module__rqj88a__emptyStateContainer",
+  "gridHeaderShadow": "RecommendationServiceConfigsLandingContent-module__rqj88a__gridHeaderShadow",
+  "menuItemButton": "RecommendationServiceConfigsLandingContent-module__rqj88a__menuItemButton",
+  "previewJsonPre": "RecommendationServiceConfigsLandingContent-module__rqj88a__previewJsonPre",
+  "resetButton": "RecommendationServiceConfigsLandingContent-module__rqj88a__resetButton",
+});
