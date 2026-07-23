@@ -3,19 +3,19 @@ import { useTranslation } from '@rbx/intl';
 import { TableBody, TableCell, TableHead, TableRow } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
-import ThumbnailWithNames, {
-  type ThumbnailWithNamesProps,
-} from '@modules/miscellaneous/components/ThumbnailWithNames';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import TableBase from '@modules/monetization-shared/table-v1/TableBase';
 import { formatBasisPoints } from '../../utils/revShareUtils';
+import RevShareThumbnailWithNames, {
+  type RevShareThumbnailWithNamesProps,
+} from '../RevShareThumbnailWithNames';
 
 // Renders the current revenue share allocation as a table.
 const TABLE_COLUMN_COUNT = 2;
 
 type RevShareSplitIdentity = {
-  target: ThumbnailWithNamesProps['target'];
-  targetType: ThumbnailWithNamesProps['targetType'];
+  target: RevShareThumbnailWithNamesProps['target'];
+  targetType: RevShareThumbnailWithNamesProps['targetType'];
 };
 
 export type RevShareSplitRowData = {
@@ -72,9 +72,9 @@ const RevShareSplitTable: FunctionComponent<RevShareSplitTableProps> = ({
             align='right'
             className='text-label-small content-muted text-align-x-right padding-bottom-small'>
             {tPendingTranslation(
-              'Split',
-              'Column heading for a party percentage in a revenue share.',
-              translationKey('Label.Split', TranslationNamespace.RevenueShareAgreements),
+              'Active split',
+              'Column heading for a party percentage in the active revenue share.',
+              translationKey('Label.ActiveSplit', TranslationNamespace.RevenueShareAgreements),
             )}
           </TableCell>
         </TableRow>
@@ -99,7 +99,7 @@ const RevShareSplitTable: FunctionComponent<RevShareSplitTableProps> = ({
                     aria-hidden
                   />
                   {row.identity ? (
-                    <ThumbnailWithNames
+                    <RevShareThumbnailWithNames
                       target={row.identity.target}
                       targetType={row.identity.targetType}
                       label={row.subtitle}

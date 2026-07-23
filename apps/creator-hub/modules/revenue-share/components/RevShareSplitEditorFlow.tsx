@@ -14,7 +14,6 @@ import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import CreatorType from '@modules/miscellaneous/common/enums/Creator';
-import type { ThumbnailWithNamesProps } from '@modules/miscellaneous/components/ThumbnailWithNames';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import {
   RevShareRecipientType,
@@ -34,11 +33,12 @@ import RevShareWizardStep from './nav/RevShareWizardStep';
 import RevShareProposalTermsView from './RevShareProposalTermsView';
 import RevShareReviewView from './RevShareReviewView';
 import RevShareSplitEditorView from './RevShareSplitEditorView';
+import type { RevShareThumbnailWithNamesProps } from './RevShareThumbnailWithNames';
 import { buildRevShareDiffRowsFromSplitEditor } from './tables/RevShareDiffTable';
 import {
   decorateSplitEditorFieldErrors,
   orderSplitEditorDisplayRows,
-  rebalanceSplitEditorOwnerBasisPoints,
+  rebalanceSplitEditorManagingGroupBasisPoints,
   splitEditorRowsToRecipientAllocations,
   type SplitEditorRow,
   validateSplitEditorAllocations,
@@ -98,7 +98,7 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
       validateSplitEditorAllocations(
         activeRows.map((row) => ({
           splitBasisPoints: row.basisPoints,
-          isOwner: row.isOwner,
+          isManagingGroup: row.isManagingGroup,
         })),
       ),
     [activeRows],
@@ -248,7 +248,7 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
       setHasNoChangesError(false);
       setValue(
         'rows',
-        rebalanceSplitEditorOwnerBasisPoints(
+        rebalanceSplitEditorManagingGroupBasisPoints(
           rows.map((row) => (row.key === key ? { ...row, basisPoints } : row)),
         ),
         { shouldDirty: true },
@@ -269,7 +269,7 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
       });
       setValue(
         'rows',
-        rebalanceSplitEditorOwnerBasisPoints(
+        rebalanceSplitEditorManagingGroupBasisPoints(
           rows.flatMap((row) => {
             if (row.key !== key) {
               return [row];
@@ -304,7 +304,7 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
         setHasNoChangesError(false);
         setValue(
           'rows',
-          rebalanceSplitEditorOwnerBasisPoints(
+          rebalanceSplitEditorManagingGroupBasisPoints(
             rows.map((row) =>
               row.key === key
                 ? {
@@ -322,7 +322,7 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
         return;
       }
       const identity: {
-        target: ThumbnailWithNamesProps['target'];
+        target: RevShareThumbnailWithNamesProps['target'];
         targetType: CreatorType;
       } =
         recipient.type === RevShareRecipientType.User
@@ -341,7 +341,7 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
       setHasNoChangesError(false);
       setValue(
         'rows',
-        rebalanceSplitEditorOwnerBasisPoints([
+        rebalanceSplitEditorManagingGroupBasisPoints([
           ...rows,
           {
             key,

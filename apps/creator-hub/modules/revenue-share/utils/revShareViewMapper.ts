@@ -35,7 +35,7 @@ import { asNumberTypedId, buildManagerProposalDiff } from './revShareUtils';
 const DEFAULT_MANAGER_SPLIT: RevShareSplit = {
   recipients: [],
   unallocatedBasisPoints: 0,
-  ownerBasisPoints: REV_SHARE_TOTAL_BASIS_POINTS,
+  managingGroupBasisPoints: REV_SHARE_TOTAL_BASIS_POINTS,
 };
 
 const DEFAULT_RECIPIENT_SPLIT: RevShareRecipientSplit = {
@@ -96,7 +96,7 @@ const mapSplit = (split: ApiRevShareSplit): RevShareSplit => ({
     splitBasisPoints: entry.splitBps ?? 0,
   })),
   unallocatedBasisPoints: split.unallocatedBps ?? 0,
-  ownerBasisPoints: split.managingGroupBps ?? 0,
+  managingGroupBasisPoints: split.managingGroupBps ?? 0,
 });
 
 const mapRecipientSplit = (split: ApiRecipientSplit): RevShareRecipientSplit => ({

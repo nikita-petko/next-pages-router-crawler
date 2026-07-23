@@ -8,7 +8,7 @@ import RevShareCancelTermsView from './RevShareCancelTermsView';
 import RevSharePendingProposalReviewView from './RevSharePendingProposalReviewView';
 import { buildRevShareDiffRowsFromManagerProposal } from './tables/RevShareDiffTable';
 
-const OWNER_ROW_KEY = 'managing-group';
+const MANAGING_GROUP_ROW_KEY = 'managing-group';
 
 export type RevSharePendingProposalFlowProps = {
   managingGroupId: string;
@@ -48,17 +48,17 @@ const RevSharePendingProposalFlow: FunctionComponent<RevSharePendingProposalFlow
         ? []
         : buildRevShareDiffRowsFromManagerProposal({
             proposal,
-            owner: {
-              key: OWNER_ROW_KEY,
+            managingGroup: {
+              key: MANAGING_GROUP_ROW_KEY,
               id: managingGroupId,
               name: managingGroupName,
               subtitle: managingGroupSubtitle,
-              previousBasisPoints: agreement.active.ownerBasisPoints,
+              previousBasisPoints: agreement.active.managingGroupBasisPoints,
             },
             resolveRecipientParty,
           }),
     [
-      agreement.active.ownerBasisPoints,
+      agreement.active.managingGroupBasisPoints,
       managingGroupId,
       managingGroupName,
       managingGroupSubtitle,

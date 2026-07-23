@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useState, type FC } from 'react';
+import { useCallback, useState, type FC } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { StatusCodes } from '@rbx/core';
 import { Button, Dialog, DialogBody, DialogContent, DialogTitle, Icon } from '@rbx/foundation-ui';
@@ -22,7 +22,7 @@ interface TransactionDepositDialogProps {
   variant: TransactionVariantEnum;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  openSuccessSnackbar?: () => void;
+  openSuccessSnackbar?: (message: string) => void;
   modalHeading: string;
   modalBody: ReactNode;
   fee: number | null;
@@ -40,11 +40,13 @@ const TransactionDepositDialog: FC<TransactionDepositDialogProps> = ({
 }) => {
   const { translate } = useTranslationWrapper(useTranslation());
   const { locale } = useLocalization();
+  const numberFormatter = new Intl.NumberFormat(locale ?? 'en-us');
   const queryClient = useQueryClient();
   const { user } = useAuthentication();
   const { data: userBalance } = useGetUserBalanceQuery(user?.id ?? 0);
   const [isDepositLoading, setIsDepositLoading] = useState(false);
   const [error, setError] = useState(PublishingFeeDialogErrorState.None);
+  const insufficientFunds = Boolean(userBalance && fee && userBalance < fee);
 
   const payDeposit = useCallback(async () => {
     setIsDepositLoading(true);
@@ -55,7 +57,11 @@ const TransactionDepositDialog: FC<TransactionDepositDialogProps> = ({
           variant,
         },
       });
-      openSuccessSnackbar?.();
+      openSuccessSnackbar?.(
+        translate(
+          translationKey('Description.PublishingFeePaid', TranslationNamespace.AudienceReach),
+        ),
+      );
       onOpenChange(false);
       await queryClient.invalidateQueries({
         queryKey: transactionStatusQueryKey(universeId, variant),
@@ -70,23 +76,22 @@ const TransactionDepositDialog: FC<TransactionDepositDialogProps> = ({
     } finally {
       setIsDepositLoading(false);
     }
-  }, [universeId, variant, queryClient, onOpenChange, openSuccessSnackbar]);
+  }, [universeId, variant, queryClient, onOpenChange, openSuccessSnackbar, translate]);
 
-  useEffect(() => {
-    if (open) {
-      // Recheck errors when the modal is opened
-      if (fee !== null && userBalance !== null && userBalance !== undefined && userBalance < fee) {
-        setError(PublishingFeeDialogErrorState.InsufficientFunds);
-      } else {
+  const handleOpenChange = useCallback(
+    (newOpen: boolean) => {
+      if (newOpen) {
         setError(PublishingFeeDialogErrorState.None);
       }
-    }
-  }, [open, userBalance, fee]);
+      onOpenChange(newOpen);
+    },
+    [onOpenChange],
+  );
 
   return (
     <Dialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleOpenChange}
       size='Medium'
       isModal
       hasCloseAffordance
@@ -94,14 +99,16 @@ const TransactionDepositDialog: FC<TransactionDepositDialogProps> = ({
       <DialogContent>
         <DialogBody className='flex flex-col gap-medium padding-large'>
           <DialogTitle className='text-heading-small margin-none'>{modalHeading}</DialogTitle>
-          <PublishingFeeDialogErrorBanner error={error} />
+          <PublishingFeeDialogErrorBanner
+            error={insufficientFunds ? PublishingFeeDialogErrorState.InsufficientFunds : error}
+          />
           {modalBody}
           <div className='flex flex-row gap-small'>
             <Button
               variant='Emphasis'
               size='Medium'
               className='width-full'
-              isDisabled={error === PublishingFeeDialogErrorState.InsufficientFunds}
+              isDisabled={insufficientFunds}
               isLoading={isDepositLoading}
               onClick={payDeposit}>
               {fee === null ? (
@@ -112,7 +119,7 @@ const TransactionDepositDialog: FC<TransactionDepositDialogProps> = ({
                     {translate(translationKey('Action.Pay', TranslationNamespace.AudienceReach))}
                   </span>
                   <Icon name='icon-regular-robux' size='Small' aria-label='Robux' />
-                  <span>{Intl.NumberFormat(locale ?? 'en-us').format(fee)}</span>
+                  <span>{numberFormatter.format(fee)}</span>
                 </span>
               )}
             </Button>
@@ -133,9 +140,7 @@ const TransactionDepositDialog: FC<TransactionDepositDialogProps> = ({
                 :
               </span>
               <Icon name='icon-regular-robux' size='Small' aria-label='Robux' />
-              <span className='text-body-medium'>
-                {Intl.NumberFormat(locale ?? 'en-us').format(userBalance ?? 0)}
-              </span>
+              <span className='text-body-medium'>{numberFormatter.format(userBalance ?? 0)}</span>
             </div>
           )}
         </DialogBody>

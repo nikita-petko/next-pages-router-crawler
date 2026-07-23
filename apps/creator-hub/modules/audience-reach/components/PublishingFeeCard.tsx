@@ -49,7 +49,7 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
   const { gameDetails } = useCurrentGame();
   const universeId = gameDetails?.id ?? 0;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [showSuccessSnackbar, setShowSuccessSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
   const { isPublished, isLoading: isUniversePublishStatusLoading } =
     useUniversePublishStatus(universeId);
   const {
@@ -202,7 +202,7 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
           isRated={isRated}
           isAccountAllAgesTier={isAccountAllAgesTier}
           expeditedTransactionStatus={expeditedTransactionStatus ?? null}
-          openSuccessSnackbar={() => setShowSuccessSnackbar(true)}
+          openSuccessSnackbar={setSnackbarMessage}
         />
       )}
       {shouldShowPublishingFeeUpsell && (
@@ -241,7 +241,7 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
         variant={TransactionVariantEnum.PublishFee}
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
-        openSuccessSnackbar={() => setShowSuccessSnackbar(true)}
+        openSuccessSnackbar={setSnackbarMessage}
         modalHeading={translateWithNamespace(
           TranslationNamespace.AudienceReach,
           'Label.RefundablePublishingFee',
@@ -249,14 +249,12 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
         modalBody={paymentModalBody}
         fee={PublishingFee}
       />
-      {showSuccessSnackbar ? (
+      {snackbarMessage !== null ? (
         <Snackbar
-          title={translate(
-            translationKey('Description.PublishingFeePaid', TranslationNamespace.AudienceReach),
-          )}
+          title={snackbarMessage}
           autoDismissDurationMs={3000}
           shouldAutoDismiss
-          onClose={() => setShowSuccessSnackbar(false)}
+          onClose={() => setSnackbarMessage(null)}
         />
       ) : null}
     </div>

@@ -43,9 +43,11 @@ const assertSucceeded = (result: string | undefined): void => {
 
 /* public reads */
 
-export const getRevShareForManager = async (ownerGroupId: string): Promise<ManagerAgreement[]> => {
+export const getRevShareForManager = async (
+  managingGroupId: string,
+): Promise<ManagerAgreement[]> => {
   const data = await client.v1beta1ManagerGroupsManagingGroupIdRevSharesGet({
-    managingGroupId: asNumberTypedId(ownerGroupId),
+    managingGroupId: asNumberTypedId(managingGroupId),
   });
   assertSucceeded(data.result);
   return (data.views ?? []).map(mapManagerView);

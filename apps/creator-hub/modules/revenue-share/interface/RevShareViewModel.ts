@@ -1,5 +1,5 @@
 // Defines normalized front-end revenue share agreement targets, recipients, splits, proposals, confirmations, and operation results.
-import type { ThumbnailWithNamesProps } from '@modules/miscellaneous/components/ThumbnailWithNames';
+import type { RevShareThumbnailWithNamesProps } from '../components/RevShareThumbnailWithNames';
 
 export enum RevShareTargetType {
   Experience = 'experience',
@@ -22,8 +22,8 @@ export type RevShareRecipient = {
 };
 
 export type ResolvedRevShareParty = {
-  target: ThumbnailWithNamesProps['target'];
-  targetType: ThumbnailWithNamesProps['targetType'];
+  target: RevShareThumbnailWithNamesProps['target'];
+  targetType: RevShareThumbnailWithNamesProps['targetType'];
   name: string;
 };
 
@@ -63,7 +63,7 @@ export type RevShareRecipientAllocation = {
 export type RevShareSplit = {
   recipients: RevShareRecipientAllocation[];
   unallocatedBasisPoints: number;
-  ownerBasisPoints: number; // Total minus recipients and unallocated basis points.
+  managingGroupBasisPoints: number; // Total minus recipients and unallocated basis points.
 };
 
 /** Recipient projection exposing only the recipient share and aggregate remaining allocation. */
@@ -91,7 +91,7 @@ export type RevShareRecipientAllocationChange = RevShareAllocationChange & {
 
 export type ManagerProposalChanges = {
   recipientChangesInStableDisplayOrder: RevShareRecipientAllocationChange[];
-  owner: RevShareAllocationChange;
+  managingGroup: RevShareAllocationChange;
   unallocated: RevShareAllocationChange;
 };
 
@@ -121,7 +121,7 @@ export type RecipientProposal = {
   changes: RecipientProposalChanges;
 };
 
-/** A target as the owner/manager sees it: full split plus every recipient's confirmation status. */
+/** A target as the managing group sees it: full split plus every recipient's confirmation status. */
 export type ManagerAgreement = {
   target: RevShareTarget;
   targetName: string;

@@ -5,9 +5,6 @@ import { TableBody, TableCell, TableHead, TableRow } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import CreatorType from '@modules/miscellaneous/common/enums/Creator';
-import ThumbnailWithNames, {
-  type ThumbnailWithNamesProps,
-} from '@modules/miscellaneous/components/ThumbnailWithNames';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import TableBase from '@modules/monetization-shared/table-v1/TableBase';
 import {
@@ -26,6 +23,9 @@ import {
   getRevShareRecipientKey,
 } from '../../utils/revShareUtils';
 import RevShareStatusBadge from '../RevShareStatusBadge';
+import RevShareThumbnailWithNames, {
+  type RevShareThumbnailWithNamesProps,
+} from '../RevShareThumbnailWithNames';
 import type { SplitEditorRow } from './RevShareSplitEditorTable';
 
 export const REV_SHARE_DIFF_TABLE_COLUMN_COUNT = 8;
@@ -51,17 +51,17 @@ export type RevShareDiffRowData = RevShareRecipient & {
   subtitle?: string;
   hideSecondaryLabel?: boolean;
   identity?: {
-    target: ThumbnailWithNamesProps['target'];
+    target: RevShareThumbnailWithNamesProps['target'];
     targetType: CreatorType;
   };
   previousBasisPoints: number | null;
   newBasisPoints: number;
-  isOwner?: boolean;
+  isManagingGroup?: boolean;
   status?: RevShareConfirmationStatus;
   showChangeMarker?: boolean;
 };
 
-type ManagerProposalReviewOwner = {
+type ManagerProposalReviewManagingGroup = {
   key: string;
   id: string;
   name: string;
@@ -79,14 +79,14 @@ type ManagerProposalReviewEditorRow = {
 
 type BuildRevShareDiffRowsFromManagerProposalInput = {
   proposal: Pick<ManagerProposal, 'changes' | 'confirmations'>;
-  owner: ManagerProposalReviewOwner;
+  managingGroup: ManagerProposalReviewManagingGroup;
   resolveRecipientParty: (recipient: RevShareRecipient) => ResolvedRevShareParty;
   editorRowByKey?: ReadonlyMap<string, ManagerProposalReviewEditorRow>;
 };
 
 export const buildRevShareDiffRowsFromManagerProposal = ({
   proposal,
-  owner,
+  managingGroup,
   resolveRecipientParty,
   editorRowByKey,
 }: BuildRevShareDiffRowsFromManagerProposalInput): RevShareDiffRowData[] => {
@@ -96,19 +96,19 @@ export const buildRevShareDiffRowsFromManagerProposal = ({
       confirmation.status,
     ]),
   );
-  const ownerNewBasisPoints = proposal.changes.owner.toBasisPoints;
-  const ownerRow: RevShareDiffRowData = {
-    key: owner.key,
-    id: owner.id,
-    name: owner.name,
-    subtitle: owner.subtitle,
+  const managingGroupNewBasisPoints = proposal.changes.managingGroup.toBasisPoints;
+  const managingGroupRow: RevShareDiffRowData = {
+    key: managingGroup.key,
+    id: managingGroup.id,
+    name: managingGroup.name,
+    subtitle: managingGroup.subtitle,
     type: RevShareRecipientType.Group,
-    identity: owner.identity,
-    previousBasisPoints: owner.previousBasisPoints,
-    newBasisPoints: ownerNewBasisPoints,
+    identity: managingGroup.identity,
+    previousBasisPoints: managingGroup.previousBasisPoints,
+    newBasisPoints: managingGroupNewBasisPoints,
     status: RevShareConfirmationStatus.AutoAccepted,
-    showChangeMarker: owner.previousBasisPoints !== ownerNewBasisPoints,
-    isOwner: true,
+    showChangeMarker: managingGroup.previousBasisPoints !== managingGroupNewBasisPoints,
+    isManagingGroup: true,
   };
 
   const recipientRows = proposal.changes.recipientChangesInStableDisplayOrder.map((change) => {
@@ -141,7 +141,7 @@ export const buildRevShareDiffRowsFromManagerProposal = ({
     };
   });
 
-  return [ownerRow, ...recipientRows];
+  return [managingGroupRow, ...recipientRows];
 };
 
 export const buildRevShareDiffRowsFromSplitEditor = (
@@ -156,10 +156,10 @@ export const buildRevShareDiffRowsFromSplitEditor = (
     );
   }
 
-  const ownerRow = rows.find((row) => row.isOwner);
+  const managingGroupRow = rows.find((row) => row.isManagingGroup);
   const rowByRecipientKey = new Map<string, SplitEditorRow>();
   for (const row of rows) {
-    if (!row.isOwner) {
+    if (!row.isManagingGroup) {
       rowByRecipientKey.set(row.key, row);
     }
   }
@@ -193,7 +193,7 @@ export const buildRevShareDiffRowsFromSplitEditor = (
     },
   );
 
-  const unmatchedRows = rows.filter((row) => !row.isOwner && !matchedKeys.has(row.key));
+  const unmatchedRows = rows.filter((row) => !row.isManagingGroup && !matchedKeys.has(row.key));
   for (const row of unmatchedRows) {
     recipientReviewRows.push({
       key: row.key,
@@ -211,25 +211,25 @@ export const buildRevShareDiffRowsFromSplitEditor = (
     });
   }
 
-  if (ownerRow === undefined) {
+  if (managingGroupRow === undefined) {
     return recipientReviewRows;
   }
 
   return [
     {
-      key: ownerRow.key,
-      id: ownerRow.id,
-      name: ownerRow.name,
-      subtitle: ownerRow.subtitle,
-      type: ownerRow.type,
-      identity: ownerRow.identity,
-      previousBasisPoints: ownerRow.previousBasisPoints,
-      newBasisPoints: ownerRow.basisPoints,
-      isOwner: true,
+      key: managingGroupRow.key,
+      id: managingGroupRow.id,
+      name: managingGroupRow.name,
+      subtitle: managingGroupRow.subtitle,
+      type: managingGroupRow.type,
+      identity: managingGroupRow.identity,
+      previousBasisPoints: managingGroupRow.previousBasisPoints,
+      newBasisPoints: managingGroupRow.basisPoints,
+      isManagingGroup: true,
       status: RevShareConfirmationStatus.AutoAccepted,
       showChangeMarker:
-        ownerRow.previousBasisPoints !== null &&
-        ownerRow.previousBasisPoints !== ownerRow.basisPoints,
+        managingGroupRow.previousBasisPoints !== null &&
+        managingGroupRow.previousBasisPoints !== managingGroupRow.basisPoints,
     },
     ...recipientReviewRows,
   ];
@@ -312,7 +312,7 @@ const RevShareDiffTableRow: FunctionComponent<RevShareDiffTableRowProps> = ({
     isRemoval: row.newBasisPoints === 0 && row.previousBasisPoints !== null,
   });
   const newColorClass = CHANGE_TEXT_COLOR[changeKind];
-  const partyLabel = row.isOwner ? undefined : row.subtitle;
+  const partyLabel = row.isManagingGroup ? undefined : row.subtitle;
 
   return (
     <TableRow>
@@ -324,7 +324,7 @@ const RevShareDiffTableRow: FunctionComponent<RevShareDiffTableRowProps> = ({
               color={SYNTHETIC_THUMBNAIL_COLOR_BY_KEY[row.key] ?? 'var(--color-surface-300)'}
             />
           ) : row.identity ? (
-            <ThumbnailWithNames
+            <RevShareThumbnailWithNames
               target={row.identity.target}
               targetType={row.identity.targetType}
               label={partyLabel}
@@ -332,7 +332,7 @@ const RevShareDiffTableRow: FunctionComponent<RevShareDiffTableRowProps> = ({
               disableLink
             />
           ) : (
-            <ThumbnailWithNames
+            <RevShareThumbnailWithNames
               target={{ id: asNumberTypedId(row.id) }}
               targetType={
                 row.type === RevShareRecipientType.User ? CreatorType.User : CreatorType.Group
@@ -349,7 +349,7 @@ const RevShareDiffTableRow: FunctionComponent<RevShareDiffTableRowProps> = ({
         align='center'
         className={`padding-y-small padding-x-xsmall ${MANAGING_GROUP_COLUMN_CLASS}`}>
         <div className='flex items-center justify-center width-full'>
-          {row.isOwner ? (
+          {row.isManagingGroup ? (
             <Icon
               name='icon-regular-three-people'
               size='Small'

@@ -32,7 +32,7 @@ const searchGroups = async (keyword: string): Promise<{ id: string; name: string
   }
 };
 
-/** Excludes the managing group because an agreement owner cannot also be its recipient. */
+/** Excludes the managing group because an managing group cannot also be its recipient. */
 const searchRecipients = async (
   type: RevShareRecipientType,
   keyword: string,

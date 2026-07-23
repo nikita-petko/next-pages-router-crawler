@@ -3,20 +3,20 @@ import type { FunctionComponent, ReactNode } from 'react';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
-import ThumbnailWithNames, {
-  type ThumbnailWithNamesProps,
-} from '@modules/miscellaneous/components/ThumbnailWithNames';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import type { RevShareRecipient, RevShareSplit } from '../interface/RevShareViewModel';
 import type { ResolvedRevShareParty } from '../queries/revShareQueries';
 import RevShareBackNav from './nav/RevShareBackNav';
 import RevShareBanner from './RevShareBanner';
 import RevShareSplitPanel from './RevShareSplitPanel';
+import RevShareThumbnailWithNames, {
+  type RevShareThumbnailWithNamesProps,
+} from './RevShareThumbnailWithNames';
 import type { RevShareSplitRowData } from './tables/RevShareSplitTable';
 
 type RevShareDetailViewProps = {
-  target: ThumbnailWithNamesProps['target'];
-  targetType: ThumbnailWithNamesProps['targetType'];
+  target: RevShareThumbnailWithNamesProps['target'];
+  targetType: RevShareThumbnailWithNamesProps['targetType'];
   targetName: string;
   targetSubtitle?: string;
   split?: RevShareSplit;
@@ -78,7 +78,7 @@ const RevShareDetailView: FunctionComponent<RevShareDetailViewProps> = ({
       )}
 
       <div className='flex items-start justify-between'>
-        <ThumbnailWithNames
+        <RevShareThumbnailWithNames
           target={target}
           targetType={targetType}
           displayNameOverride={targetName}

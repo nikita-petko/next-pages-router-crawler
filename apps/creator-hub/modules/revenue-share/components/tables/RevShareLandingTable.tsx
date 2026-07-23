@@ -12,7 +12,6 @@ import { useTranslation } from '@rbx/intl';
 import { TableBody, TableCell, TableHead, TableRow } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
-import ThumbnailWithNames from '@modules/miscellaneous/components/ThumbnailWithNames';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import TableBase from '@modules/monetization-shared/table-v1/TableBase';
 import {
@@ -25,6 +24,7 @@ import {
 import { formatBasisPoints } from '../../utils/revShareUtils';
 import { asNumberTypedId } from '../../utils/revShareUtils';
 import RevShareStatusBadge from '../RevShareStatusBadge';
+import RevShareThumbnailWithNames from '../RevShareThumbnailWithNames';
 
 type RevShareLandingTableCommonProps = {
   showHeader?: boolean;
@@ -134,7 +134,7 @@ const RevShareLandingTableRow: FunctionComponent<RevShareLandingTableRowProps> =
       onClick={onActivate}
       onKeyDown={onActivate ? onRowKeyDown : undefined}>
       <TableCell className='padding-x-large padding-y-medium min-width-2400'>
-        <ThumbnailWithNames
+        <RevShareThumbnailWithNames
           target={target}
           targetType={
             props.agreement.target.type === RevShareTargetType.Experience ? 'Experience' : 'Ugc'
@@ -164,7 +164,7 @@ const RevShareLandingTableRow: FunctionComponent<RevShareLandingTableRowProps> =
           <span className='text-body-medium content-emphasis [font-weight:600]'>
             {`${formatBasisPoints(
               props.mode === 'manager'
-                ? props.agreement.active.ownerBasisPoints
+                ? props.agreement.active.managingGroupBasisPoints
                 : props.agreement.active.recipientBasisPoints,
             )}%`}
           </span>

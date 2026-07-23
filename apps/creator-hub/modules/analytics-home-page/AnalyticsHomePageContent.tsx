@@ -25,6 +25,7 @@ import useRAQIV2TranslationDependencies from '@modules/experience-analytics-shar
 import { useAnalyticsBannerConfiguration } from '@modules/experience-analytics-shared/hooks/useStatusConfiguration';
 import AnalyticsHomePageLayout from '@modules/experience-analytics-shared/layout/AnalyticsHomePageLayout';
 import { logTabLoad } from '@modules/experience-analytics-shared/logging/experienceAnalyticsUnifiedLogger';
+import useCurrentAccount from '@modules/ip/rights/hooks/useCurrentAccount';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGroup } from '@modules/providers/groups/GroupsProvider';
@@ -53,6 +54,7 @@ const AnalyticsHomePageContent: FunctionComponent = () => {
   const isMonetizationBreakglassBannerOn = useIsMonetizationBreakglassBannerOn();
   const { data: activeBanners } = useAnalyticsBannerConfiguration(analyticsHomeBannerTargets);
   const { isFetched: isSettingsFetched } = useSettings();
+  const { features: accountFeatures } = useCurrentAccount();
   const currentGroup = useCurrentGroup();
 
   const fetchTabOrder = useCallback(async () => {
@@ -147,7 +149,8 @@ const AnalyticsHomePageContent: FunctionComponent = () => {
   const { ready: isIpLicensingFlagReady, value: isIpLicensingEnabled } = useFlag(
     isIpLicensingEarningsEnabled,
   );
-  const showIpLicensingTab = isIpLicensingFlagReady && isIpLicensingEnabled;
+  const showIpLicensingTab =
+    isIpLicensingFlagReady && isIpLicensingEnabled && accountFeatures.enableAgreements;
 
   const orderedTabs = useMemo(() => {
     if (!tabOrder?.homeTabOrders || isResponseFailed) {

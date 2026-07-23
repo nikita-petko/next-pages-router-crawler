@@ -6,9 +6,6 @@ import { TableBody, TableCell, TableHead, TableRow } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import CreatorType from '@modules/miscellaneous/common/enums/Creator';
-import ThumbnailWithNames, {
-  type ThumbnailWithNamesProps,
-} from '@modules/miscellaneous/components/ThumbnailWithNames';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import TableBase from '@modules/monetization-shared/table-v1/TableBase';
 import {
@@ -18,19 +15,22 @@ import {
 } from '../../interface/RevShareViewModel';
 import { asNumberTypedId, formatBasisPoints } from '../../utils/revShareUtils';
 import RevSharePercentInput from '../RevSharePercentInput';
+import RevShareThumbnailWithNames, {
+  type RevShareThumbnailWithNamesProps,
+} from '../RevShareThumbnailWithNames';
 
 type SplitEditorAllocation = Pick<RevShareRecipientAllocation, 'splitBasisPoints'> & {
-  isOwner?: boolean;
+  isManagingGroup?: boolean;
 };
 
 export const isSplitEditorAllocationInvalid = ({
   splitBasisPoints,
-  isOwner,
+  isManagingGroup,
 }: SplitEditorAllocation): boolean =>
   !Number.isSafeInteger(splitBasisPoints) ||
   splitBasisPoints < 0 ||
   splitBasisPoints > REV_SHARE_TOTAL_BASIS_POINTS ||
-  (!isOwner && splitBasisPoints === 0);
+  (!isManagingGroup && splitBasisPoints === 0);
 
 const MAX_REV_SHARE_RECIPIENTS = 100;
 
@@ -60,12 +60,14 @@ export const validateSplitEditorAllocations = (allocations: readonly SplitEditor
   ) {
     reason = 'invalid-basis-points';
   } else if (
-    allocations.some(({ splitBasisPoints, isOwner }) => !isOwner && splitBasisPoints === 0)
+    allocations.some(
+      ({ splitBasisPoints, isManagingGroup }) => !isManagingGroup && splitBasisPoints === 0,
+    )
   ) {
     reason = 'recipient-zero';
   } else {
     const recipientCount = allocations.filter(
-      ({ splitBasisPoints, isOwner }) => !isOwner && splitBasisPoints > 0,
+      ({ splitBasisPoints, isManagingGroup }) => !isManagingGroup && splitBasisPoints > 0,
     ).length;
     if (recipientCount > MAX_REV_SHARE_RECIPIENTS) {
       reason = 'recipient-limit';
@@ -88,41 +90,43 @@ export type SplitEditorRow = {
   subtitle?: string;
   type: RevShareRecipientType;
   identity?: {
-    target: ThumbnailWithNamesProps['target'];
+    target: RevShareThumbnailWithNamesProps['target'];
     targetType: CreatorType;
   };
   previousBasisPoints: number | null;
   basisPoints: number;
   disabled?: boolean;
-  isOwner?: boolean;
+  isManagingGroup?: boolean;
   isNew?: boolean;
   isRemoved?: boolean;
   fieldInvalid?: boolean;
   fieldErrorMessage?: string;
 };
 
-export const rebalanceSplitEditorOwnerBasisPoints = (
+export const rebalanceSplitEditorManagingGroupBasisPoints = (
   rows: readonly SplitEditorRow[],
 ): SplitEditorRow[] => {
   const recipientTotal = rows
-    .filter((row) => !row.isOwner && !row.isRemoved)
+    .filter((row) => !row.isManagingGroup && !row.isRemoved)
     .reduce((total, row) => total + row.basisPoints, 0);
-  const ownerBasisPoints = REV_SHARE_TOTAL_BASIS_POINTS - recipientTotal;
-  return rows.map((row) => (row.isOwner ? { ...row, basisPoints: ownerBasisPoints } : row));
+  const managingGroupBasisPoints = REV_SHARE_TOTAL_BASIS_POINTS - recipientTotal;
+  return rows.map((row) =>
+    row.isManagingGroup ? { ...row, basisPoints: managingGroupBasisPoints } : row,
+  );
 };
 
 export const splitEditorRowsToRecipientAllocations = (
   rows: readonly SplitEditorRow[],
 ): RevShareRecipientAllocation[] =>
   rows
-    .filter((row) => !row.isOwner && !row.isRemoved)
+    .filter((row) => !row.isManagingGroup && !row.isRemoved)
     .map((row) => ({
       recipient: { type: row.type, id: row.id },
       splitBasisPoints: row.basisPoints,
     }));
 
 export const orderSplitEditorDisplayRows = (rows: readonly SplitEditorRow[]): SplitEditorRow[] => {
-  const ownerRows: SplitEditorRow[] = [];
+  const managingGroupRows: SplitEditorRow[] = [];
   const newRows: SplitEditorRow[] = [];
   const existingRows: SplitEditorRow[] = [];
 
@@ -130,8 +134,8 @@ export const orderSplitEditorDisplayRows = (rows: readonly SplitEditorRow[]): Sp
     if (row.isRemoved) {
       continue;
     }
-    if (row.isOwner) {
-      ownerRows.push(row);
+    if (row.isManagingGroup) {
+      managingGroupRows.push(row);
     } else if (row.isNew) {
       newRows.push(row);
     } else {
@@ -144,7 +148,7 @@ export const orderSplitEditorDisplayRows = (rows: readonly SplitEditorRow[]): Sp
     return nameCompare !== 0 ? nameCompare : a.key.localeCompare(b.key);
   });
 
-  return [...ownerRows, ...newRows, ...existingRows];
+  return [...managingGroupRows, ...newRows, ...existingRows];
 };
 
 export const decorateSplitEditorFieldErrors = (
@@ -154,7 +158,7 @@ export const decorateSplitEditorFieldErrors = (
   orderedRows.map((row) => {
     const fieldInvalid = isSplitEditorAllocationInvalid({
       splitBasisPoints: row.basisPoints,
-      isOwner: row.isOwner,
+      isManagingGroup: row.isManagingGroup,
     });
     return {
       ...row,
@@ -259,7 +263,7 @@ const SplitEditorTableRow: FunctionComponent<SplitEditorTableRowProps> = ({
       <TableCell className='padding-y-small'>
         <div className='flex items-center gap-large'>
           {row.identity ? (
-            <ThumbnailWithNames
+            <RevShareThumbnailWithNames
               target={row.identity.target}
               targetType={row.identity.targetType}
               label={row.subtitle}
@@ -267,7 +271,7 @@ const SplitEditorTableRow: FunctionComponent<SplitEditorTableRowProps> = ({
               disableLink
             />
           ) : (
-            <ThumbnailWithNames
+            <RevShareThumbnailWithNames
               target={{ id: asNumberTypedId(row.id) }}
               targetType={
                 row.type === RevShareRecipientType.User ? CreatorType.User : CreatorType.Group

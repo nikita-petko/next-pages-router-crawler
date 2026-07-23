@@ -28,7 +28,7 @@ import { useRevShareRecipientSearch } from '../queries/useRevShareRecipientSearc
 import { useRevShareUgcTargets } from '../queries/useRevShareUgcTargets';
 import { getRevShareRecipientKey } from '../utils/revShareUtils';
 
-const OWNER_ROW_KEY = 'managing-group';
+const MANAGING_GROUP_ROW_KEY = 'managing-group';
 const TOTAL_BASIS_POINTS = 10_000;
 const TARGET_PAGE_SIZE = 100;
 
@@ -46,7 +46,7 @@ export type RevShareProposeFlowContainerProps = {
 const emptySplit = {
   recipients: [],
   unallocatedBasisPoints: 0,
-  ownerBasisPoints: TOTAL_BASIS_POINTS,
+  managingGroupBasisPoints: TOTAL_BASIS_POINTS,
 };
 
 const toTargetKey = (target: RevShareTarget) => `${target.type}:${target.id}`;
@@ -82,9 +82,9 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
   onExit,
   onProposeSuccess,
 }) => {
-  const owner = useOwner();
+  const managingGroup = useOwner();
   const { data: targetData, isDataLoading } = usePaginatedSearchUniverses({
-    owner,
+    owner: managingGroup,
     pageSizeOptions: [TARGET_PAGE_SIZE],
     defaultPageSize: TARGET_PAGE_SIZE,
     surface: Surface.CreatorHubGroupPayout,
@@ -163,19 +163,19 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
       (total, allocation) => total + allocation.splitBasisPoints,
       0,
     );
-    const ownerParty = resolveGroupParty(managingGroupId, managingGroupName);
+    const managingGroupParty = resolveGroupParty(managingGroupId, managingGroupName);
     return [
       {
-        key: OWNER_ROW_KEY,
+        key: MANAGING_GROUP_ROW_KEY,
         id: managingGroupId,
-        name: ownerParty.name,
+        name: managingGroupParty.name,
         subtitle: managingGroupSubtitle,
         type: RevShareRecipientType.Group,
-        identity: { target: ownerParty.target, targetType: CreatorType.Group },
-        previousBasisPoints: active.ownerBasisPoints,
+        identity: { target: managingGroupParty.target, targetType: CreatorType.Group },
+        previousBasisPoints: active.managingGroupBasisPoints,
         basisPoints: TOTAL_BASIS_POINTS - recipientTotal,
         disabled: true,
-        isOwner: true,
+        isManagingGroup: true,
       },
       ...active.recipients.map((allocation) => {
         const party = resolveRecipientParty(allocation.recipient);

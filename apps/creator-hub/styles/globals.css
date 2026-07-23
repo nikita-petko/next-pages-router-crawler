@@ -2466,6 +2466,9 @@
 .width-2200 {
   width: var(--size-2200);
 }
+.width-2400 {
+  width: var(--size-2400);
+}
 .width-250 {
   width: var(--size-250);
 }
@@ -4034,6 +4037,9 @@
 .\[display\:-webkit-box\] {
   display: -webkit-box;
 }
+.\[filter\:grayscale\(100\%\)\] {
+  filter: grayscale(100%);
+}
 .\[flex-wrap\:wrap\] {
   flex-wrap: wrap;
 }
@@ -4183,6 +4189,9 @@
 }
 .\[letter-spacing\:-0\.01em\] {
   letter-spacing: -0.01em;
+}
+.\[line-height\:135\%\] {
+  line-height: 135%;
 }
 .\[line-height\:20px\] {
   line-height: 20px;

@@ -4,13 +4,13 @@ import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import CreatorType from '@modules/miscellaneous/common/enums/Creator';
-import ThumbnailWithNames from '@modules/miscellaneous/components/ThumbnailWithNames';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import {
   RevShareRecipientType,
   type RevShareRecipientSearchResult,
 } from '../interface/RevShareViewModel';
 import { asNumberTypedId } from '../utils/revShareUtils';
+import RevShareThumbnailWithNames from './RevShareThumbnailWithNames';
 
 type RevShareRecipientResultsProps = {
   users: readonly RevShareRecipientSearchResult[];
@@ -49,7 +49,7 @@ const ResultRow: FunctionComponent<{
       type='button'
       onClick={handleSelect}
       className='flex items-center width-full padding-x-small padding-y-xsmall radius-small cursor-pointer hover:bg-surface-300 stroke-none [background:transparent] [text-align:left]'>
-      <ThumbnailWithNames
+      <RevShareThumbnailWithNames
         target={target}
         targetType={item.type === RevShareRecipientType.User ? CreatorType.User : CreatorType.Group}
         variant='compact'

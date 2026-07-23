@@ -24,6 +24,26 @@ const BASIS_POINT_FRACTION_DIGITS = 2;
 // Kept for compatibility with the percent input on the master baseline.
 export const PERCENT_FRACTION_DIGITS = BASIS_POINT_FRACTION_DIGITS;
 
+/** Coerce wire/display values to a safe integer basis-point amount. */
+export const asSafeBasisPoints = (value: unknown): number => {
+  if (typeof value === 'number' && Number.isSafeInteger(value)) {
+    return value;
+  }
+  if (typeof value === 'string' && /^-?\d+$/.test(value)) {
+    const parsed = Number(value);
+    if (Number.isSafeInteger(parsed)) {
+      return parsed;
+    }
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const rounded = Math.round(value);
+    if (Number.isSafeInteger(rounded)) {
+      return rounded;
+    }
+  }
+  return 0;
+};
+
 export const formatBasisPoints = (basisPoints: number): string => {
   if (!Number.isSafeInteger(basisPoints)) {
     throw new RangeError('Basis points must be a safe integer.');
@@ -38,7 +58,7 @@ export const formatBasisPoints = (basisPoints: number): string => {
 };
 
 export const formatPreviousSplitDisplay = (basisPoints: number | null): string =>
-  `${formatBasisPoints(basisPoints ?? 0)}%`;
+  `${formatBasisPoints(asSafeBasisPoints(basisPoints))}%`;
 
 export type MaterializeProposedSplitInput = {
   readonly allocations: readonly RevShareRecipientAllocation[];
@@ -74,18 +94,19 @@ export const materializeProposedSplit = ({
     0,
   );
   const proposedUnallocated = Math.min(0, activeUnallocatedBasisPoints);
-  const ownerBasisPoints = REV_SHARE_TOTAL_BASIS_POINTS - recipientTotal - proposedUnallocated;
+  const managingGroupBasisPoints =
+    REV_SHARE_TOTAL_BASIS_POINTS - recipientTotal - proposedUnallocated;
 
   return {
     recipients,
     unallocatedBasisPoints: proposedUnallocated,
-    ownerBasisPoints,
+    managingGroupBasisPoints,
   };
 };
 
 export const areRevShareSplitsEqual = (left: RevShareSplit, right: RevShareSplit): boolean => {
   if (
-    left.ownerBasisPoints !== right.ownerBasisPoints ||
+    left.managingGroupBasisPoints !== right.managingGroupBasisPoints ||
     left.unallocatedBasisPoints !== right.unallocatedBasisPoints
   ) {
     return false;
@@ -177,9 +198,9 @@ export const buildManagerProposalDiff = (
       activeSplit,
       proposedSplit,
     ),
-    owner: {
-      fromBasisPoints: activeSplit.ownerBasisPoints,
-      toBasisPoints: proposedSplit.ownerBasisPoints,
+    managingGroup: {
+      fromBasisPoints: activeSplit.managingGroupBasisPoints,
+      toBasisPoints: proposedSplit.managingGroupBasisPoints,
     },
     unallocated: {
       fromBasisPoints: activeSplit.unallocatedBasisPoints,

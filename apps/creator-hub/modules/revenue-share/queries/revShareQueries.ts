@@ -34,8 +34,8 @@ const EMPTY_GROUP_IDS: string[] = [];
 
 const getStableIds = (ids: string[]): string[] => [...new Set(ids)].sort();
 
-const managerKey = (ownerGroupId: string) =>
-  ['revenueShareAgreements', 'manager', ownerGroupId] as const;
+const managerKey = (managingGroupId: string) =>
+  ['revenueShareAgreements', 'manager', managingGroupId] as const;
 
 const recipientKey = (
   recipientType: RevShareRecipient['type'] | undefined,
@@ -48,16 +48,16 @@ const getRevShareUserNamesQueryKey = (userIds: string[]) =>
 const getRevShareGroupNamesQueryKey = (groupIds: string[]) =>
   ['revenueShareAgreements', 'partyNames', 'groups', groupIds] as const;
 
-export function useRevShareForManager(ownerGroupId?: string) {
+export function useRevShareForManager(managingGroupId?: string) {
   return useQuery({
-    queryKey: managerKey(ownerGroupId ?? ''),
+    queryKey: managerKey(managingGroupId ?? ''),
     queryFn: () => {
-      if (!ownerGroupId) {
-        throw new Error('ownerGroupId required');
+      if (!managingGroupId) {
+        throw new Error('managingGroupId required');
       }
-      return getRevShareForManager(ownerGroupId);
+      return getRevShareForManager(managingGroupId);
     },
-    enabled: Boolean(ownerGroupId),
+    enabled: Boolean(managingGroupId),
   });
 }
 
@@ -207,13 +207,16 @@ export type ProposeRevShareArgs = {
   allocateUnallocated?: boolean;
 };
 
-export function useRevShareProposalMutations(ownerGroupId?: string, onCancelSuccess?: () => void) {
+export function useRevShareProposalMutations(
+  managingGroupId?: string,
+  onCancelSuccess?: () => void,
+) {
   const queryClient = useQueryClient();
   const invalidate = useCallback(async () => {
-    if (ownerGroupId !== undefined) {
-      await queryClient.invalidateQueries({ queryKey: managerKey(ownerGroupId) });
+    if (managingGroupId !== undefined) {
+      await queryClient.invalidateQueries({ queryKey: managerKey(managingGroupId) });
     }
-  }, [ownerGroupId, queryClient]);
+  }, [managingGroupId, queryClient]);
 
   const propose = useMutation<RevShareProposeResult, Error, ProposeRevShareArgs>({
     mutationFn: ({ target: proposedTarget, activeRevShareId, allocations, allocateUnallocated }) =>
