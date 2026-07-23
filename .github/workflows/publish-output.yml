@@ -64,7 +64,7 @@ jobs:
             git add -A
             git commit -m "chore(output): update from $GITHUB_SHA"
             git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" "HEAD:${TARGET_BRANCH}" --force
-            echo "Pushed updated output to ${TARGET_REPO}:${BRANCH}"
+            echo "Pushed updated output to ${{ github.repository }}:${BRANCH}"
           else
             echo "No changes in output; nothing to commit"
           fi
