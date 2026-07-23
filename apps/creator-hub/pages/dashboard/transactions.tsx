@@ -15,8 +15,8 @@ import { TransactionTab } from '@modules/transactions/types';
 
 const Transactions: NextLayoutPage = () => {
   const { ready, value: isVirtualTabEnabled } = useFlag(enableVirtualTransactionsTab);
-  // Honor a `?groupId=<id>` deep link (e.g. redirected from roblox.com) by switching the active
-  // creator context before the transactions load.
+  // Honor a `?groupId=<id>` or `?userId=<id>` deep link (e.g. redirected from roblox.com) by
+  // switching the active creator context before the transactions load.
   const { isResolving: isResolvingCreatorContext } = useSyncCreatorContextFromQuery();
 
   const transactionTabs = useMemo<TransactionTabType[]>(() => {
@@ -51,7 +51,8 @@ const Transactions: NextLayoutPage = () => {
       <MarketplacePublishingRequirementsContextProvider>
         <ToolboxServiceApiProvider>
           {/* Wait for the flag so the tab list (and thus the default tab) is settled before mount,
-              and for any `?groupId` deep link to resolve so we never query the wrong creator. */}
+              and for any `?groupId`/`?userId` deep link to resolve so we never query the wrong
+              creator. */}
           {ready && !isResolvingCreatorContext ? (
             <TransactionsContainer tabs={transactionTabs} />
           ) : (
