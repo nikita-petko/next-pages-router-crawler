@@ -54,7 +54,7 @@ jobs:
           git fetch origin "${TARGET_BRANCH}" || true
           if git rev-parse --verify "origin/${TARGET_BRANCH}" >/dev/null 2>&1
           then
-            git checkout "${TARGET_BRANCH}"
+            git checkout "origin/${TARGET_BRANCH}"
           else
             git checkout --orphan "${TARGET_BRANCH}"
           fi
