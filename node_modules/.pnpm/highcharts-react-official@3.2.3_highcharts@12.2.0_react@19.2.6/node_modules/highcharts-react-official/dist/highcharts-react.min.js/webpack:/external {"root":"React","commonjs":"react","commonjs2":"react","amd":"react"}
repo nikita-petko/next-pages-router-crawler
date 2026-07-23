@@ -1,0 +1,8 @@
+module.exports = __WEBPACK_EXTERNAL_MODULE_1__;
+
+
+//////////////////
+// WEBPACK FOOTER
+// external {"root":"React","commonjs":"react","commonjs2":"react","amd":"react"}
+// module id = 1
+// module chunks = 0 1
