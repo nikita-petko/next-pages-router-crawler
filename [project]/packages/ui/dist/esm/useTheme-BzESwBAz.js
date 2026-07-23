@@ -1,0 +1,1 @@
+import*as o from"react";import{d as r}from"./defaultTheme-Ox_Kj1MK.js";import{T as m}from"./identifier-DHHyDJeV.js";import{u as t}from"./useTheme-Cve_Yw_a.js";function s(){const e=t(r);return process.env.NODE_ENV!=="production"&&o.useDebugValue(e),e[m]||e}export{s as u};

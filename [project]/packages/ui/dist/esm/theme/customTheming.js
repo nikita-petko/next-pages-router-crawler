@@ -1,0 +1,1 @@
+import{c as r}from"../createTheme-DcSDGmoA.js";import"../extends-BAwxZeKA.js";import"../objectWithoutPropertiesLoose-Dsqj8S3w.js";import"../index-suu82PSu.js";import"../clamp-uD0T36LV.js";import"react";import"../index-B07d39WI.js";const t={};function e(m,...o){t[m]=r(...o)}export{t as customThemes,e as default};

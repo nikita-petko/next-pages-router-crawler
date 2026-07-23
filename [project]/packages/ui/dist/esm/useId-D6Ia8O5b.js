@@ -1,0 +1,1 @@
+import*as e from"react";let n=0;function l(t){const[u,o]=e.useState(t),a=t||u;return e.useEffect(()=>{u==null&&(n+=1,o(`mui-${n}`))},[u]),a}const s=e.useId;function c(t){if(s!==void 0){const u=s();return t??u}return l(t)}export{c as u};
