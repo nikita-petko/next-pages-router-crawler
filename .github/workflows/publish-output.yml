@@ -21,13 +21,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Checkout branch into temp dir
-        uses: actions/checkout@v7
-        with:
-          repository: ${{ github.repository }}
-          ref: ${{ vars.BRANCH }}
-          path: '.tmp'
-
       - name: Setup the Golang environment with version 1.25.x
         uses: actions/setup-go@v7
         with:
@@ -57,7 +50,10 @@ jobs:
             exit 1
           fi
 
+          # Checkout repo
+          git clone --depth 1 "${GITHUB_REPOSITORY}" "$GITHUB_WORKSPACE/.tmp"
           cd "$GITHUB_WORKSPACE/.tmp"
+          git checkout -B "${TARGET_BRANCH}" || git checkout --orphan "${TARGET_BRANCH}"
 
           # Remove tracked files (leave .git directory intact)
           git rm -rf . || true
