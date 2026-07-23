@@ -1,7 +1,7 @@
 package next
 
 import (
-	"errors"
+	goerrors "errors"
 	"fmt"
 	"maps"
 	"net/http"
@@ -32,7 +32,7 @@ func getAllNextScriptUrls(assetPrefix string, htmlHead *gohtml.Node) ([]string, 
 	scriptTags := html.GetAllElementsOfType("script", htmlHead)
 
 	if len(scriptTags) == 0 {
-		return nil, errors.New("html head contained no script tags!")
+		return nil, goerrors.New("html head contained no script tags!")
 	}
 
 	baseUrl, err := url.GetBaseUrl(assetPrefix)
@@ -105,6 +105,8 @@ func isValidChunkDataType(contentType string) bool {
 		strings.HasPrefix(contentType, "application/json")
 }
 
+var notFoundError = goerrors.New("404 Not Found")
+
 // fetchAllScripts fetches the content of all scripts from the provided script URLs and returns a map of script URL to script content (as a byte slice).
 func fetchAllScripts(scriptUrls []string) (map[string]*cache.CacheGuard, []error) {
 	waitGroup := &sync.WaitGroup{}
@@ -123,14 +125,21 @@ func fetchAllScripts(scriptUrls []string) (map[string]*cache.CacheGuard, []error
 			glog.V(100).Infof("Fetching script: %s", scriptUrl)
 
 			cached, err := cache.CacheGuardedHttpGet(scriptUrl, func(resp *http.Response) error {
-				if resp.StatusCode != http.StatusOK || !isValidChunkDataType(resp.Header.Get("Content-Type")) {
+				if resp.StatusCode == http.StatusNotFound {
+					return notFoundError
+				}
 
+				if !isValidChunkDataType(resp.Header.Get("Content-Type")) {
 					return fmt.Errorf("failed to fetch script %s: status code %d, content type %s", scriptUrl, resp.StatusCode, resp.Header.Get("Content-Type"))
 				}
 
 				return nil
 			})
 			if err != nil {
+				if goerrors.Is(err, notFoundError) {
+					return // Skip adding to errors if the script was not found (404)
+				}
+
 				errorsLock.Lock()
 				defer errorsLock.Unlock()
 
@@ -220,6 +229,9 @@ func recursiveResolveDynamicScripts(assetPrefix string, scriptDataCached *cache.
 
 	for _, dynamicScriptUrl := range newDynamicScriptUrls {
 		scriptData := scriptDataMap[dynamicScriptUrl]
+		if scriptData == nil {
+			continue // Skip nil
+		}
 
 		// Recursively resolve dynamic scripts from the newly found dynamic script
 		recursivelyResolvedDynamicScriptUrls, errors := recursiveResolveDynamicScripts(assetPrefix, scriptData, existingScriptUrls, resolvedDynamicScriptUrls)

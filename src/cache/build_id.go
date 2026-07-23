@@ -17,7 +17,7 @@ func ReadBuildId(url string) (string, error) {
 		return "", err
 	}
 
-	bytes, err := os.ReadFile(path.Join(*flags.CachePath, uri.Host, ".build"))
+	bytes, err := os.ReadFile(path.Join(*flags.CachePath, uri.Host, uri.Path, ".build"))
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return "", err
 	}
@@ -32,5 +32,5 @@ func WriteBuildId(url, buildId string) error {
 		return err
 	}
 
-	return os.WriteFile(path.Join(*flags.CachePath, uri.Host, ".build"), []byte(buildId), 0666)
+	return os.WriteFile(path.Join(*flags.CachePath, uri.Host, uri.Path, ".build"), []byte(buildId), 0666)
 }

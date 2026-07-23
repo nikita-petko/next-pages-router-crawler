@@ -47,6 +47,10 @@ func parseAllSourceMaps(sourceMaps map[string]*cache.CacheGuard) (map[string]map
 	var errors []error
 
 	for sourceMapUrl, sourceMapDataCached := range sourceMaps {
+		if sourceMapDataCached == nil {
+			continue
+		}
+
 		sourceMapParsed, err := parseSourceMap(sourceMapDataCached)
 		if err != nil {
 			errors = append(errors, err)
