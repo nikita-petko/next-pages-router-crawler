@@ -130,8 +130,6 @@ const GenericRAQIV2AreaChartV2: FC<GenericRAQIV2ChartProps> = ({
     isDataLoading,
     isResponseFailed,
     isUserForbidden,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- Remove in DSA-4491
-    isNoDataAvailable,
     error,
   } = useRAQIV2Request(spec, RAQIV2RequestOptions, ignoreCache);
   const requestStatus = useMemo(
@@ -139,10 +137,9 @@ const GenericRAQIV2AreaChartV2: FC<GenericRAQIV2ChartProps> = ({
       isDataLoading,
       isResponseFailed,
       isUserForbidden,
-      isNoDataAvailable,
       error,
     }),
-    [isDataLoading, isResponseFailed, isUserForbidden, isNoDataAvailable, error],
+    [isDataLoading, isResponseFailed, isUserForbidden, error],
   );
   sentryBundle.handleRAQIV2RequestResult(requestStatus);
 

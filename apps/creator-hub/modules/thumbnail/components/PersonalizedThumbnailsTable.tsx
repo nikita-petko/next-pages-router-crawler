@@ -388,6 +388,7 @@ const PersonalizedThumbnailsTable: FC<PersonalizedThumbnailsTableProps> = ({
         isDataLoading={isDataLoading}
         isResponseFailed={isResponseFailed}
         isUserForbidden={isUserForbidden}
+        showNoDataMessage={rowsWithRAQIOnlyData.length === 0}
         columnConfigs={columnConfigs}
         tableConfig={PersonalizedThumbnailsTableConfig}
         rowData={tableRowData}

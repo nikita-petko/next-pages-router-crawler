@@ -3,7 +3,7 @@ import { captureException } from '@sentry/nextjs';
 import { FetchError } from '@rbx/clients-core';
 import type { GenericChartState } from '@modules/charts-generic/charts/types/ChartTypes';
 import logAnalyticsError from '@modules/charts-generic/utils/logAnalyticsError';
-import { NoDataAvailableError, isRAQIQueryError } from '@modules/clients/analytics';
+import { isRAQIQueryError } from '@modules/clients/analytics';
 import { getResponseFromError } from '@modules/clients/utils';
 import { HttpStatusCodes } from '@modules/miscellaneous/common';
 import { isAceDagExecutionError } from '../utils/AceDagExecutionError';
@@ -28,6 +28,8 @@ enum RequestAbortedReason {
   ComponentUnmounted = 'ComponentUnmounted',
 }
 
+const forbiddenStatusCode: number = HttpStatusCodes.FORBIDDEN;
+
 // NOTE(shumingxu, 09/29/2023): This pattern is repeated a lot in the current code
 // but will try to slowly migrate towards this wrapper.
 // Wrapper for making async requests with standard states and update hooks
@@ -38,7 +40,6 @@ const useApiRequest = <ResponseType>(
   const [isDataLoading, setDataLoading] = useState<boolean>(true);
   const [isResponseFailed, setResponseFailure] = useState<boolean>(false);
   const [isUserForbidden, setUserForbidden] = useState<boolean>(false);
-  const [isNoDataAvailable, setIsNoDataAvailable] = useState<boolean>(false);
   const [data, setData] = useState<ResponseType | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const abortControllerRef = useRef<AbortController>(new AbortController());
@@ -63,7 +64,6 @@ const useApiRequest = <ResponseType>(
       setData(response);
       setResponseFailure(false);
       setUserForbidden(false);
-      setIsNoDataAvailable(false);
       setDataLoading(false);
       setError(null);
     } catch (e) {
@@ -86,19 +86,15 @@ const useApiRequest = <ResponseType>(
       const resErr = getResponseFromError(e);
       if (resErr) {
         const errorCode = resErr?.status ?? 500;
-        setUserForbidden(errorCode === HttpStatusCodes.FORBIDDEN.valueOf());
-      } else if (e instanceof NoDataAvailableError) {
-        // TODO(shumingxu, 05/19/2025): DSA-4491: Remove in favor of passing down error
-        setIsNoDataAvailable(true);
+        setUserForbidden(errorCode === forbiddenStatusCode);
       } else if (e instanceof RAQIV2ValidationError) {
         // NOTE(gperkins@20251202): This happens when a request is invalid
         // (e.g. unsupported filter/breakdown dimension or granularity)
         // This is somewhat commonplace in e.g. custom dashboards,
         // where metrics with different supported dimensions are used on a single page.
-        // Currently we just show "No data for selected filter".
+        // UI-facing message is picked by genericChartStateToChartAbnormalState.
         //
         // TODO(gperkins@20251202): DSA-5144: Handle the various errors more specifically in the UI
-        setIsNoDataAvailable(true);
       } else if (isRAQIQueryError(e)) {
         // UI-facing message is picked by genericChartStateToChartAbnormalState;
         // we only log to Sentry here. Tags stay bounded-cardinality (safe to
@@ -186,7 +182,6 @@ const useApiRequest = <ResponseType>(
     isDataLoading,
     isResponseFailed,
     isUserForbidden,
-    isNoDataAvailable,
     data,
     refresh,
     error,

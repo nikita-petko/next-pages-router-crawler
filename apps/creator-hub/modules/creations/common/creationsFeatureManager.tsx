@@ -67,6 +67,7 @@ export type CreationsFeatureSettings = TSettings &
     shouldHideSocialLinksSection: boolean;
     canGetSelectEligibilityData: boolean;
     isExperienceAlertsEnabled: boolean;
+    isClientSessionsEnabled: boolean;
     enablePlayerSupport: boolean;
     isAnalyticsAssistantChatEnabled: boolean;
     isCustomDashboardsEnabled: boolean;
@@ -216,6 +217,16 @@ const serverManagementFeature: Feature<CreationsFeatureSettings> = {
   sectionTitleKey: 'Heading.Access',
   isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
     process.env.buildTarget !== 'luobu' && (settings?.canConfigure ?? false),
+};
+
+const clientSessionsFeature: Feature<CreationsFeatureSettings> = {
+  key: 'clientSessions',
+  nameKey: 'Heading.ClientSessions',
+  path: '/client-sessions',
+  subPath: '/client-sessions/[sessionId]',
+  sectionTitleKey: 'Heading.Access',
+  isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
+    process.env.buildTarget !== 'luobu' && (settings?.isClientSessionsEnabled ?? false),
 };
 
 // Secrets
@@ -753,6 +764,7 @@ const configureCategoryFeature: Feature<CreationsFeatureSettings> = {
     environmentsFeature,
     matchmakingFeature,
     serverManagementFeature,
+    clientSessionsFeature,
     assetPermissionsFeature,
     remoteConfigsFeature,
     experimentsFeature,

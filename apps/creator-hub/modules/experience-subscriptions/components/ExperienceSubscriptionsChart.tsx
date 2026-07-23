@@ -136,6 +136,8 @@ function ExperienceSubscriptionsChart({
   );
 
   const setChartData = useCallback(async () => {
+    setApiData(null);
+    setIsLoading(true);
     const resData = await getExperienceSubscriptionsAnalyticsForDateRange(startDate, endDate);
     if (resData) {
       setApiData(resData);
@@ -149,6 +151,7 @@ function ExperienceSubscriptionsChart({
   );
 
   const setChartComparisonData = useCallback(async () => {
+    setComparisonData(null);
     const resData = await getExperienceSubscriptionsAnalyticsForDateRange(
       comparisonStartDate,
       comparisonEndDate,
@@ -158,21 +161,11 @@ function ExperienceSubscriptionsChart({
     }
   }, [comparisonStartDate, comparisonEndDate, getExperienceSubscriptionsAnalyticsForDateRange]);
 
-  // TODO: Figure out if this is needed
   useEffect(() => {
-    setApiData(null);
-    setComparisonData(null);
-    setIsLoading(true);
+    // oxlint-disable-next-line react/react-compiler -- chart data is refetched when date/universe inputs change
     void setChartData();
     void setChartComparisonData();
-  }, [
-    startDate,
-    endDate,
-    universeId,
-    getExperienceSubscriptionsAnalyticsForDateRange,
-    setChartData,
-    setChartComparisonData,
-  ]);
+  }, [setChartData, setChartComparisonData]);
 
   const { chart, summary } = useMemo(() => {
     return experienceSubscriptionsChartAdapters(apiData, translate, locale, spec);
@@ -276,8 +269,8 @@ function ExperienceSubscriptionsChart({
           isDataLoading: isLoading,
           isUserForbidden,
           isResponseFailed,
-          isNoDataAvailable: exporter.hasEmptyData,
         },
+        hasNoData: !isLoading && exporter.hasEmptyData,
         translate,
         tPendingTranslation,
       }),

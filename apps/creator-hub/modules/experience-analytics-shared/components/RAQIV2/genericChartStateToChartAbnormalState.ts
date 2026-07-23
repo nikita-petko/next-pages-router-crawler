@@ -121,8 +121,7 @@ const genericChartStateToChartAbnormalState = ({
   translate: TranslationKeyToFormattedText;
   tPendingTranslation: TPendingTranslationFunction;
 }) => {
-  // eslint-disable-next-line deprecation/deprecation, @typescript-eslint/no-deprecated -- TODO(shumingxu, 05/19/2025): Remove in DSA-4491
-  const { isDataLoading, isUserForbidden, isResponseFailed, isNoDataAvailable, error } = state;
+  const { isDataLoading, isUserForbidden, isResponseFailed, error } = state;
   if (isDataLoading) {
     return {
       status: ChartAbnormalStatus.Loading,
@@ -238,9 +237,6 @@ const genericChartStateToChartAbnormalState = ({
       }
     }
     return requestFailed(tPendingTranslation);
-  }
-  if (isNoDataAvailable) {
-    return noDataForSelectedFilter(tPendingTranslation);
   }
   // NOTE(gperkins@ 20220907): meaning there are no *time series*, not merely no data points in one series
   if (hasNoData) {

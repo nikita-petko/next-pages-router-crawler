@@ -240,14 +240,12 @@ const GenericRAQIV2SplineChartV2: FC<GenericRAQIV2SplineChartV2Props> = ({
     isDataLoading,
     isResponseFailed,
     isUserForbidden,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- TODO(shumingxu, 05/19/2025): Remove in DSA-4491
-    isNoDataAvailable,
     error,
   } = useRAQIV2Request(queryRequest, RAQIV2RequestOptions, ignoreCache);
 
   const requestStatus = useMemo(() => {
-    return { isDataLoading, isResponseFailed, isUserForbidden, isNoDataAvailable, error };
-  }, [isDataLoading, isResponseFailed, isUserForbidden, isNoDataAvailable, error]);
+    return { isDataLoading, isResponseFailed, isUserForbidden, error };
+  }, [isDataLoading, isResponseFailed, isUserForbidden, error]);
   sentryBundle.handleRAQIV2RequestResult(requestStatus);
 
   useLoadThumbnailAssetIdsForData(raqiData);

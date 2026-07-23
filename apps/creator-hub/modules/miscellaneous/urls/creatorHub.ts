@@ -252,6 +252,8 @@ export const dashboard = {
   getPaymentsUrl: () => `/dashboard/payments`,
   getServerManagementUrl: (universeId: number) =>
     `/dashboard/creations/experiences/${universeId}/server-management`,
+  getClientSessionsUrl: (universeId: number) =>
+    `/dashboard/creations/experiences/${universeId}/client-sessions`,
   getPlayerSupportUrl: (universeId: number) =>
     `/dashboard/creations/experiences/${universeId}/player-support`,
 };

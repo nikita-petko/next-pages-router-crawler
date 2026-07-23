@@ -262,16 +262,9 @@ const GenericRAQIV2MapAndBarChartV2: FC<
 
   const mapChartTooltipFormatter = useCallback(
     ({ hcKey, seriesName }: { hcKey: string; seriesName: string }) => {
-      let dataPoint: BarSeriesNamedDatapoint | undefined;
-      genericSeries.forEach((series) => {
-        if (dataPoint) {
-          return;
-        }
-        const correspondingPoint = series.data.find((point) => point['hc-key'] === hcKey);
-        if (correspondingPoint) {
-          dataPoint = correspondingPoint;
-        }
-      });
+      const dataPoint = genericSeries
+        .map((series) => series.data.find((point) => point['hc-key'] === hcKey))
+        .find((point): point is BarSeriesNamedDatapoint => point != null);
 
       const formattedValue = dataPoint
         ? formatAnalyticsNumber(
@@ -376,6 +369,7 @@ const GenericRAQIV2MapAndBarChartV2: FC<
           isDataLoading,
           isUserForbidden,
           isResponseFailed,
+          error,
         },
         hasNoData: exporter.hasEmptyData,
         translate,
@@ -383,6 +377,7 @@ const GenericRAQIV2MapAndBarChartV2: FC<
       }),
     [
       exporter.hasEmptyData,
+      error,
       isDataLoading,
       isResponseFailed,
       isUserForbidden,

@@ -887,6 +887,21 @@ export const RouterParseItemToBreadcrumbItemDetails: { [key: string]: Breadcrumb
       return dashboard.getServerManagementUrl(Number(getLinkPathParams.baseId));
     },
   },
+  'client-sessions': {
+    displayName: ({ translate }) => {
+      return createNameWithTranslate({ key: 'Heading.ClientSessions' }, translate);
+    },
+    breadcrumbType: BreadcrumbItemType.ClientSessions,
+    getLinkPath: (getLinkPathParams) => {
+      return dashboard.getClientSessionsUrl(Number(getLinkPathParams.baseId));
+    },
+  },
+  '[sessionId]': {
+    // The detail page registers the translated session name through useBreadcrumbRegistration.
+    displayName: () => '',
+    breadcrumbType: BreadcrumbItemType.ClientSession,
+    withId: true,
+  },
   'create-configuration': {
     displayName: ({ translate }) => {
       return createNameWithTranslate({ key: 'Heading.CreateConfiguration' }, translate);

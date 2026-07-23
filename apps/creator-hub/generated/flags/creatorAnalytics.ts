@@ -187,3 +187,8 @@ export const isComparisonRangePolicyEnabled = defineFlag({
     name: 'isComparisonRangePolicyEnabled',
     defaultValue: true,
   });
+export const isClientSessionsEnabled = defineFlag({
+    namespace: 'creator-analytics',
+    name: 'isClientSessionsEnabled',
+    defaultValue: false,
+  });

@@ -106,6 +106,8 @@ enum BreadcrumbItemType {
   AnalyticsJourneyDetail = 'analytics-journey-detail',
   RecommendationService = 'recommendation-service',
   ServerManagement = 'server-management-service',
+  ClientSessions = 'client-sessions',
+  ClientSession = 'client-session',
   ManagedPricing = 'managed-pricing',
   HardCodedPrices = 'hard-coded-prices',
   Leaderboard = 'leaderboard',

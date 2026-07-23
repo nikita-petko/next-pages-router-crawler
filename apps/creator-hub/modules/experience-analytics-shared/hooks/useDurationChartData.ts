@@ -108,8 +108,6 @@ const useDurationChartData = (
     isDataLoading,
     isResponseFailed,
     isUserForbidden,
-    // eslint-disable-next-line deprecation/deprecation, @typescript-eslint/no-deprecated -- TODO(shumingxu): Remove in DSA-4491
-    isNoDataAvailable,
     error,
   } = useRAQIV2Request(spec, RAQIV2RequestOptions, ignoreCache);
   const requestStatus = useMemo(
@@ -117,10 +115,9 @@ const useDurationChartData = (
       isDataLoading,
       isResponseFailed,
       isUserForbidden,
-      isNoDataAvailable,
       error,
     }),
-    [isDataLoading, isResponseFailed, isUserForbidden, isNoDataAvailable, error],
+    [isDataLoading, isResponseFailed, isUserForbidden, error],
   );
   sentryBundle.handleRAQIV2RequestResult(requestStatus);
 

@@ -13,7 +13,7 @@ type RAQIV2RequestStatus = {
   isDataLoading: boolean;
   isUserForbidden: boolean;
   isResponseFailed: boolean;
-  isNoDataAvailable?: boolean;
+  error?: Error | null;
 };
 
 export type SentryChartSpanBundle = {
@@ -23,14 +23,13 @@ export type SentryChartSpanBundle = {
     isDataLoading,
     isUserForbidden,
     isResponseFailed,
-    isNoDataAvailable,
+    error,
   }: RAQIV2RequestStatus) => void;
   completeDataLoading: () => void;
   completeChartWithSuccessfulHighchartsRender: () => void;
   completeChartWithUnmountWhilePending: () => void;
   completeChartWithForbidden: () => void;
   completeChartWithResponseFailed: () => void;
-  completeChartWithNoData: () => void;
 };
 
 const getOptionalPresetKey = (
@@ -145,18 +144,9 @@ const useSentryChartTracers = ({
     componentSpan.current?.setAttribute('completion', 'responseFailed');
     maybeEndComponentSpan();
   }, [maybeEndComponentSpan]);
-  const completeChartWithNoData = useCallback(() => {
-    componentSpan.current?.setAttribute('completion', 'noData');
-    maybeEndComponentSpan();
-  }, [maybeEndComponentSpan]);
 
   const handleRAQIV2RequestResult = useCallback(
-    ({
-      isDataLoading,
-      isUserForbidden,
-      isResponseFailed,
-      isNoDataAvailable,
-    }: RAQIV2RequestStatus) => {
+    ({ isDataLoading, isUserForbidden, isResponseFailed }: RAQIV2RequestStatus) => {
       if (!componentSpan.current?.isRecording()) {
         return;
       }
@@ -174,15 +164,12 @@ const useSentryChartTracers = ({
 
       if (isUserForbidden) {
         completeChartWithForbidden();
-      } else if (isNoDataAvailable) {
-        completeChartWithNoData();
       } else if (isResponseFailed) {
         completeChartWithResponseFailed();
       }
     },
     [
       completeChartWithForbidden,
-      completeChartWithNoData,
       completeChartWithResponseFailed,
       completeDataLoading,
       startDataLoading,
@@ -225,7 +212,6 @@ const useSentryChartTracers = ({
     completeChartWithUnmountWhilePending,
     completeChartWithForbidden,
     completeChartWithResponseFailed,
-    completeChartWithNoData,
     handleRAQIV2RequestResult,
   };
 };

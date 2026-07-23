@@ -38,7 +38,6 @@ type GenericChartWrapperProps = GenericChartState & {
   footer?: ReactElement<typeof ChartFooter> | null;
   chartControl?: React.JSX.Element | null;
   chartHeight?: number;
-  // NOTE(shumingxu, 04/26/2024): Gradually move towards using isNoDataAvailable over showNoDataMessage
   showNoDataMessage?: boolean;
   chartStyleMode: ChartStyleMode;
 };
@@ -52,8 +51,6 @@ const GenericChartWrapper: FC<React.PropsWithChildren<GenericChartWrapperProps>>
   isDataLoading,
   isUserForbidden,
   isResponseFailed,
-  // TODO(shumingxu): Remove in DSA-4491.
-  isNoDataAvailable,
   showNoDataMessage,
   chartStyleMode,
 }) => {
@@ -104,17 +101,6 @@ const GenericChartWrapper: FC<React.PropsWithChildren<GenericChartWrapperProps>>
       <ErrorStateContainer chartHeight={errorStateChartHeight} chartStyleMode={chartStyleMode}>
         <Typography align='center'>
           {translate(translationKey('Message.UserHasNoPermission', TranslationNamespace.Analytics))}
-        </Typography>
-      </ErrorStateContainer>,
-    );
-  }
-  if (isNoDataAvailable) {
-    return wrapped(
-      <ErrorStateContainer chartHeight={errorStateChartHeight} chartStyleMode={chartStyleMode}>
-        <Typography align='center'>
-          {translate(
-            translationKey('Message.NoDataForSelectedFilter', TranslationNamespace.Analytics),
-          )}
         </Typography>
       </ErrorStateContainer>,
     );

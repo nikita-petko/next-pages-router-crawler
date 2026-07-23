@@ -8,6 +8,7 @@ import { useLocalStorage } from '@rbx/react-utilities';
 import { Divider, Grid } from '@rbx/ui';
 import {
   isAnalyticsAssistantChatEnabled as isAnalyticsAssistantChatEnabledFlag,
+  isClientSessionsEnabled as isClientSessionsEnabledFlag,
   isCustomDashboardsEnabled as isCustomDashboardsEnabledFlag,
   isExperienceAlertsEnabled,
   isJourneyEventsEnabled as isJourneysEnabledFlag,
@@ -111,6 +112,12 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
       universeId: gameDetails?.id ?? 0,
     },
   );
+  const { ready: isClientSessionsReady, value: isClientSessionsEnabledValue } = useFlag(
+    isClientSessionsEnabledFlag,
+    {
+      universeId: gameDetails?.id ?? 0,
+    },
+  );
   const { ready: isAnalyticsAssistantChatReady, value: isAnalyticsAssistantChatEnabledValue } =
     useFlag(isAnalyticsAssistantChatEnabledFlag);
   const { ready: isCustomDashboardsReady, value: isCustomDashboardsEnabledValue } = useFlag(
@@ -178,6 +185,7 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
             showVideoServiceDashboard:
               showVideoServiceDashboardReady && showVideoServiceDashboardValue,
             isExperienceAlertsEnabled: isExperienceAlertsReady && isExperienceAlertsEnabledFlag,
+            isClientSessionsEnabled: isClientSessionsReady && isClientSessionsEnabledValue,
             enablePlayerSupport: enablePlayerSupport ?? false,
             isStudioCompatible: isCompatible,
             canConfigure: canConfigure ?? false,
@@ -276,6 +284,8 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
     showVideoServiceDashboardValue,
     isExperienceAlertsReady,
     isExperienceAlertsEnabledFlag,
+    isClientSessionsReady,
+    isClientSessionsEnabledValue,
     enablePlayerSupport,
     isCompatible,
     permissions,

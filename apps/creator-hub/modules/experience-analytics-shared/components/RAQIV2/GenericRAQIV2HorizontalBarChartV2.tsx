@@ -83,8 +83,6 @@ const GenericRAQIV2HorizontalBarChartV2: FC<
     isDataLoading,
     isResponseFailed,
     isUserForbidden,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- Remove in DSA-4491
-    isNoDataAvailable,
     error,
   } = useRAQIV2Request(spec, requestOptions, ignoreCache);
   // Memoize so the `onChartDataUpdated` effect below (which lifts the
@@ -92,8 +90,8 @@ const GenericRAQIV2HorizontalBarChartV2: FC<
   // not on every render. `useApiRequest` returns a fresh object each
   // render, so spreading it directly would churn the dependency array.
   const requestStatus = useMemo(
-    () => ({ isDataLoading, isResponseFailed, isUserForbidden, isNoDataAvailable, error }),
-    [isDataLoading, isResponseFailed, isUserForbidden, isNoDataAvailable, error],
+    () => ({ isDataLoading, isResponseFailed, isUserForbidden, error }),
+    [isDataLoading, isResponseFailed, isUserForbidden, error],
   );
   sentryBundle.handleRAQIV2RequestResult(requestStatus);
   const { seriesWithBreakdowns, summary } = useMemo(() => {

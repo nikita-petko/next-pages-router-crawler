@@ -130,7 +130,6 @@ const GenericRAQIV2TabbedChartsV2 = <TTabKey extends string | number>({
         isDataLoading: true,
         isUserForbidden: false,
         isResponseFailed: false,
-        isNoDataAvailable: false,
       };
 
       return {

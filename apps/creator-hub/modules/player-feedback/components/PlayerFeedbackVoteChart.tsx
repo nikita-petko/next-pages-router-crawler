@@ -36,7 +36,7 @@ import {
 } from '@modules/experience-analytics-shared/utils/makeRAQIV2Request';
 import { getMetricLabelFromMetricLike } from '@modules/experience-analytics-shared/utils/metricLikeSemantics';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import PlayerFeedbackVoteChartAdapter from './playerFeedbackVoteChartAdapter';
+import playerFeedbackVoteChartAdapter from './playerFeedbackVoteChartAdapter';
 
 type PlayerFeedbackVoteChartProps = {
   universeId: number;
@@ -91,12 +91,11 @@ const PlayerFeedbackVoteChart: FC<PlayerFeedbackVoteChartProps> = ({
     isDataLoading,
     isUserForbidden,
     isResponseFailed,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- TODO(shumingxu): Remove in DSA-4491
-    isNoDataAvailable,
+    error,
   } = useRAQIV2Request(spec, RAQIV2RequestOptions);
 
   const { chart, summary } = useMemo(() => {
-    return PlayerFeedbackVoteChartAdapter({
+    return playerFeedbackVoteChartAdapter({
       responses: raqiData ?? { response: null },
       spec,
       translationDependencies,
@@ -165,16 +164,16 @@ const PlayerFeedbackVoteChart: FC<PlayerFeedbackVoteChartProps> = ({
           isDataLoading,
           isUserForbidden,
           isResponseFailed,
-          isNoDataAvailable,
+          error,
         },
         translate: translationDependencies.translate,
         tPendingTranslation: translationDependencies.tPendingTranslation,
       }),
     [
+      error,
       isDataLoading,
       isUserForbidden,
       isResponseFailed,
-      isNoDataAvailable,
       translationDependencies.translate,
       translationDependencies.tPendingTranslation,
     ],

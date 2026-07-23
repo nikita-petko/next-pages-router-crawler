@@ -32,14 +32,22 @@ export type GenericRAQIV2TabbedTimeComparatorChartSpec<TTabKey> = {
   label: FormattedText | { arbitrary: ReactNode };
 } & GenericRAQIV2TimeComparatorChartProps;
 
+type DateRangeSelectorProps =
+  | {
+      dateRangeOptions: LabeledDateRange[];
+      onDateRangeConfirm: (labeledTimeSpecs: TLabeledExplicitTimeRangeSpec[]) => void;
+    }
+  | {
+      dateRangeOptions?: undefined;
+      onDateRangeConfirm?: never;
+    };
+
 export type GenericRAQIV2TabbedChartsProps<TTabKey extends string | number> = {
   tabs: NonEmptyArray<GenericRAQIV2TabbedTimeComparatorChartSpec<TTabKey>>;
   title: FormattedText;
-  dateRangeOptions?: LabeledDateRange[];
-  onDateRangeConfirm?: (labeledTimeSpecs: TLabeledExplicitTimeRangeSpec[]) => void;
   definitionTooltip?: FormattedText;
   ignoreCache?: boolean;
-};
+} & DateRangeSelectorProps;
 
 const labeledTimeRangeToTimeSpec = (timeRange: LabeledDateRange) => {
   return {
@@ -52,8 +60,6 @@ const labeledTimeRangeToTimeSpec = (timeRange: LabeledDateRange) => {
   };
 };
 
-const NOOP_ON_DATE_RANGE_CONFIRM = () => {};
-
 /**
  * A wrapped version of the GenericRAQIV2TimeComparatorColumnChart that adds tabs and an
  * optional date selector UI to the chart card.  If dateRangeOptions is undefined, only the tabs
@@ -64,7 +70,7 @@ const GenericRAQIV2TabbedTimeComparatorCharts = <TTabKey extends string | number
   title,
   definitionTooltip,
   dateRangeOptions,
-  onDateRangeConfirm = NOOP_ON_DATE_RANGE_CONFIRM,
+  onDateRangeConfirm,
   ignoreCache,
 }: GenericRAQIV2TabbedChartsProps<TTabKey>) => {
   const translationDependencies = useRAQIV2TranslationDependencies();
@@ -86,7 +92,6 @@ const GenericRAQIV2TabbedTimeComparatorCharts = <TTabKey extends string | number
         isDataLoading: true,
         isUserForbidden: false,
         isResponseFailed: false,
-        isNoDataAvailable: false,
       };
 
       return {
@@ -187,22 +192,24 @@ const GenericRAQIV2TabbedTimeComparatorCharts = <TTabKey extends string | number
 
   const onDatePickerChange = useCallback(
     (newRanges: LabeledDateRange[]) => {
-      onDateRangeConfirm(newRanges.map((timeRange) => labeledTimeRangeToTimeSpec(timeRange)));
+      onDateRangeConfirm?.(newRanges.map((timeRange) => labeledTimeRangeToTimeSpec(timeRange)));
     },
     [onDateRangeConfirm],
   );
 
-  const datePickerComponent = useMemo(
-    () =>
-      dateRangeOptions ? (
-        <LabeledDateRangeSelectorsContainer
-          translate={translationDependencies.translate}
-          labeledDateRangeOptions={dateRangeOptions}
-          onChange={onDatePickerChange}
-        />
-      ) : undefined,
-    [dateRangeOptions, onDatePickerChange, translationDependencies.translate],
-  );
+  const datePickerComponent = useMemo(() => {
+    if (!dateRangeOptions) {
+      return null;
+    }
+
+    return (
+      <LabeledDateRangeSelectorsContainer
+        translate={translationDependencies.translate}
+        labeledDateRangeOptions={dateRangeOptions}
+        onChange={onDatePickerChange}
+      />
+    );
+  }, [dateRangeOptions, onDatePickerChange, translationDependencies.translate]);
 
   return (
     <Grid item container direction='column'>

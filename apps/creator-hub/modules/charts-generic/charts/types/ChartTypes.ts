@@ -77,10 +77,6 @@ export type GenericChartState = {
   isDataLoading: boolean;
   isResponseFailed: boolean;
   isUserForbidden: boolean;
-  /**
-   * @deprecated Use `error` instead. To be removed in DSA-4491
-   */
-  isNoDataAvailable?: boolean;
   error?: Error | null;
 };
 export type ChartEventLoggers = {

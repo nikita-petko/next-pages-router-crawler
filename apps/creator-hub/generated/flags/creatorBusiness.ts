@@ -25,5 +25,5 @@ export const isRevenueShareAgreementsEnabled = defineFlag({
 export const enableVirtualTransactionsTab = defineFlag({
     namespace: 'creator-business',
     name: 'enableVirtualTransactionsTab',
-    defaultValue: false,
+    defaultValue: true,
   });

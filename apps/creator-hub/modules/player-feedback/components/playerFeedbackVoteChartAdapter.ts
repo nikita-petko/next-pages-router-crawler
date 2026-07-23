@@ -73,7 +73,7 @@ const getVotesCountChartSummaryItem = (
   };
 };
 
-const PlayerFeedbackVoteChartAdapter = ({
+const playerFeedbackVoteChartAdapter = ({
   responses,
   spec,
   translationDependencies,
@@ -163,4 +163,4 @@ const PlayerFeedbackVoteChartAdapter = ({
   };
 };
 
-export default PlayerFeedbackVoteChartAdapter;
+export default playerFeedbackVoteChartAdapter;

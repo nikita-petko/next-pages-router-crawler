@@ -144,18 +144,16 @@ const GenericRAQIV2MetricComparisonChart: FC<GenericRAQIV2MultiMetricChartProps>
     isDataLoading,
     isUserForbidden,
     isResponseFailed,
-    // eslint-disable-next-line deprecation/deprecation, @typescript-eslint/no-deprecated -- TODO(shumingxu): Remove in DSA-4491
-    isNoDataAvailable,
   } = useMappedApiRequest(metrics, makeMappedRequest);
 
   const abnormalState = useMemo(
     () =>
       genericChartStateToChartAbnormalState({
-        state: { isDataLoading, isUserForbidden, isResponseFailed, isNoDataAvailable },
+        state: { isDataLoading, isUserForbidden, isResponseFailed },
         translate: translationDependencies.translate,
         tPendingTranslation: translationDependencies.tPendingTranslation,
       }),
-    [isDataLoading, isNoDataAvailable, isResponseFailed, isUserForbidden, translationDependencies],
+    [isDataLoading, isResponseFailed, isUserForbidden, translationDependencies],
   );
   const charts = useMemo(() => {
     return metricSpec.map((m) => {

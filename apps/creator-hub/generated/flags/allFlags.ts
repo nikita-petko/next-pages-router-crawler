@@ -530,6 +530,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: creatorAnalyticsFlags.isClientSessionsEnabled,
+      metadata: {
+        namespace: 'creator-analytics',
+        name: 'isClientSessionsEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'universe',
+      },
+    },
+    {
       flag: creatorBusinessFlags.showDevExO18LandingPage,
       metadata: {
         namespace: 'creator-business',
@@ -574,7 +584,7 @@ export const generatedFlags = [
       metadata: {
         namespace: 'creator-business',
         name: 'enableVirtualTransactionsTab',
-        defaultValue: false,
+        defaultValue: true,
         valueType: 'boolean',
         contextType: 'static',
       },
