@@ -1,0 +1,8 @@
+__turbopack_context__.v({
+  "loadingOverlay": "ServerListTable-module__B59S9q__loadingOverlay",
+  "loadingOverlayContent": "ServerListTable-module__B59S9q__loadingOverlayContent",
+  "loadingOverlayVisible": "ServerListTable-module__B59S9q__loadingOverlayVisible",
+  "loadingShimmer": "ServerListTable-module__B59S9q__loadingShimmer",
+  "table": "ServerListTable-module__B59S9q__table",
+  "tableScroller": "ServerListTable-module__B59S9q__tableScroller",
+});

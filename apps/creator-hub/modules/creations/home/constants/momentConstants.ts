@@ -1,0 +1,1 @@
+export const MAX_MOMENT_DESCRIPTION_LENGTH = 50;
