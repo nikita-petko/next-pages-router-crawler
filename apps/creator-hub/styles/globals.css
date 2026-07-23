@@ -1676,6 +1676,9 @@
 .\!gap-x-large {
   column-gap: var(--gap-large) !important;
 }
+.\!gap-x-none {
+  column-gap: var(--gap-none) !important;
+}
 .\!gap-y-xsmall {
   row-gap: var(--gap-xsmall) !important;
 }
@@ -2110,6 +2113,9 @@
 .max-width-0 {
   max-width: var(--size-0);
 }
+.max-width-1400 {
+  max-width: var(--size-1400);
+}
 .max-width-1800 {
   max-width: var(--size-1800);
 }
@@ -2339,6 +2345,9 @@
 .min-width-1200 {
   min-width: var(--size-1200);
 }
+.min-width-1400 {
+  min-width: var(--size-1400);
+}
 .min-width-150 {
   min-width: var(--size-150);
 }
@@ -2368,9 +2377,6 @@
 }
 .min-width-2800 {
   min-width: var(--size-2800);
-}
-.min-width-3000 {
-  min-width: var(--size-3000);
 }
 .min-width-400 {
   min-width: var(--size-400);
@@ -2457,6 +2463,9 @@
 .width-150 {
   width: var(--size-150);
 }
+.width-1900 {
+  width: var(--size-1900);
+}
 .width-200 {
   width: var(--size-200);
 }
@@ -2480,9 +2489,6 @@
 }
 .width-300 {
   width: var(--size-300);
-}
-.width-3000 {
-  width: var(--size-3000);
 }
 .width-400 {
   width: var(--size-400);
@@ -2954,6 +2960,9 @@
 }
 .padding-left-medium {
   padding-left: var(--padding-medium);
+}
+.padding-left-none {
+  padding-left: var(--padding-none);
 }
 .padding-left-small {
   padding-left: var(--padding-small);
@@ -3894,9 +3903,6 @@
 .\[background\:\#121215\] {
   background: #121215;
 }
-.\[background\:none\] {
-  background: none;
-}
 .\[background\:transparent\] {
   background: transparent;
 }
@@ -3932,6 +3938,9 @@
 }
 .\[border-color\:var\(--color-content-emphasis\)\] {
   border-color: var(--color-content-emphasis);
+}
+.\[border-color\:var\(--color-none\)\] {
+  border-color: var(--color-none);
 }
 .\[border-color\:var\(--color-selection-start\)\] {
   border-color: var(--color-selection-start);
@@ -4084,9 +4093,6 @@
 }
 .\[font-size\:clamp\(30px\2c 4vw\2c 40px\)\] {
   font-size: clamp(30px, 4vw, 40px);
-}
-.\[font-size\:inherit\] {
-  font-size: inherit;
 }
 .\[font-variant-numeric\:tabular-nums\] {
   font-variant-numeric: tabular-nums;
@@ -4331,9 +4337,6 @@
 .\[opacity\:1\] {
   opacity: 1;
 }
-.\[outline\:none\] {
-  outline: none;
-}
 .\[overflow-wrap\:anywhere\] {
   overflow-wrap: anywhere;
 }
@@ -4414,9 +4417,6 @@
 }
 .\[text-align\:left\] {
   text-align: left;
-}
-.\[text-align\:right\] {
-  text-align: right;
 }
 .\[text-decoration\:none\] {
   text-decoration: none;
@@ -4531,9 +4531,6 @@
 }
 .\[width\:580px\] {
   width: 580px;
-}
-.\[width\:5ch\] {
-  width: 5ch;
 }
 .\[width\:80px\] {
   width: 80px;
@@ -5516,6 +5513,35 @@ html.studio-webview.dark-theme,
 
 .\[\&_img\]\:\[object-fit\:contain\] img {
   object-fit: contain;
+}
+
+.\[\&_input\]\:text-body-medium input {
+  font: var(--typography-body-medium-font);
+  letter-spacing: var(--typography-body-medium-letter-spacing);
+}
+
+.\[\&_input\]\:content-emphasis input {
+  color: var(--color-content-emphasis);
+}
+
+.\[\&_input\]\:\[cursor\:default\] input {
+  cursor: default;
+}
+
+.\[\&_input\]\:\[cursor\:text\] input {
+  cursor: text;
+}
+
+.\[\&_input\]\:\[font-weight\:600\] input {
+  font-weight: 600;
+}
+
+.\[\&_input\]\:\[text-align\:right\] input {
+  text-align: right;
+}
+
+.\[\&_input\]\:\[width\:6ch\] input {
+  width: 6ch;
 }
 
 .\[\&_label\]\:text-body-large label {

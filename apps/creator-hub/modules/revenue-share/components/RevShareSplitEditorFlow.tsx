@@ -29,6 +29,7 @@ import {
   materializeManagerProposal,
   materializeProposedSplit,
 } from '../utils/revShareUtils';
+import { validateRevShareSplitEditorAllocations } from '../utils/revShareValidation';
 import RevShareWizardStep from './nav/RevShareWizardStep';
 import RevShareProposalTermsView from './RevShareProposalTermsView';
 import RevShareReviewView from './RevShareReviewView';
@@ -41,7 +42,6 @@ import {
   rebalanceSplitEditorManagingGroupBasisPoints,
   splitEditorRowsToRecipientAllocations,
   type SplitEditorRow,
-  validateSplitEditorAllocations,
 } from './tables/RevShareSplitEditorTable';
 
 type EditorFormValues = {
@@ -95,7 +95,7 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
   const activeRows = useMemo(() => rows.filter((row) => !row.isRemoved), [rows]);
   const validation = useMemo(
     () =>
-      validateSplitEditorAllocations(
+      validateRevShareSplitEditorAllocations(
         activeRows.map((row) => ({
           splitBasisPoints: row.basisPoints,
           isManagingGroup: row.isManagingGroup,

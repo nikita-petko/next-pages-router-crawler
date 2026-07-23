@@ -1,6 +1,6 @@
 // Displays editable revenue share recipient rows and owns pure editor-row derivation helpers.
-import { useCallback, useId, type FunctionComponent } from 'react';
-import { IconButton } from '@rbx/foundation-ui';
+import { useCallback, type FunctionComponent } from 'react';
+import { IconButton, VisuallyHidden } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { TableBody, TableCell, TableHead, TableRow } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
@@ -13,75 +13,18 @@ import {
   RevShareRecipientType,
   type RevShareRecipientAllocation,
 } from '../../interface/RevShareViewModel';
-import { asNumberTypedId, formatBasisPoints } from '../../utils/revShareUtils';
+import { UNALLOCATED_COLOR } from '../../utils/revShareSplitColors';
+import {
+  asNumberTypedId,
+  asSafeBasisPoints,
+  formatPreviousSplitDisplay,
+} from '../../utils/revShareUtils';
+import { isRevShareSplitEditorAllocationInvalid } from '../../utils/revShareValidation';
 import RevSharePercentInput from '../RevSharePercentInput';
 import RevShareThumbnailWithNames, {
   type RevShareThumbnailWithNamesProps,
 } from '../RevShareThumbnailWithNames';
-
-type SplitEditorAllocation = Pick<RevShareRecipientAllocation, 'splitBasisPoints'> & {
-  isManagingGroup?: boolean;
-};
-
-export const isSplitEditorAllocationInvalid = ({
-  splitBasisPoints,
-  isManagingGroup,
-}: SplitEditorAllocation): boolean =>
-  !Number.isSafeInteger(splitBasisPoints) ||
-  splitBasisPoints < 0 ||
-  splitBasisPoints > REV_SHARE_TOTAL_BASIS_POINTS ||
-  (!isManagingGroup && splitBasisPoints === 0);
-
-const MAX_REV_SHARE_RECIPIENTS = 100;
-
-type SplitEditorValidationReason =
-  | 'empty'
-  | 'invalid-basis-points'
-  | 'recipient-zero'
-  | 'recipient-limit'
-  | 'total';
-
-export const validateSplitEditorAllocations = (allocations: readonly SplitEditorAllocation[]) => {
-  const totalBasisPoints = allocations.reduce(
-    (total, allocation) => total + allocation.splitBasisPoints,
-    0,
-  );
-
-  let reason: SplitEditorValidationReason | null = null;
-  if (allocations.length === 0) {
-    reason = 'empty';
-  } else if (
-    allocations.some(
-      ({ splitBasisPoints }) =>
-        !Number.isSafeInteger(splitBasisPoints) ||
-        splitBasisPoints < 0 ||
-        splitBasisPoints > REV_SHARE_TOTAL_BASIS_POINTS,
-    )
-  ) {
-    reason = 'invalid-basis-points';
-  } else if (
-    allocations.some(
-      ({ splitBasisPoints, isManagingGroup }) => !isManagingGroup && splitBasisPoints === 0,
-    )
-  ) {
-    reason = 'recipient-zero';
-  } else {
-    const recipientCount = allocations.filter(
-      ({ splitBasisPoints, isManagingGroup }) => !isManagingGroup && splitBasisPoints > 0,
-    ).length;
-    if (recipientCount > MAX_REV_SHARE_RECIPIENTS) {
-      reason = 'recipient-limit';
-    } else if (totalBasisPoints !== REV_SHARE_TOTAL_BASIS_POINTS) {
-      reason = 'total';
-    }
-  }
-
-  return {
-    isValid: reason === null,
-    totalBasisPoints,
-    reason,
-  };
-};
+import { RevShareManagingGroupIcon } from './RevShareManagingGroupIcon';
 
 export type SplitEditorRow = {
   key: string;
@@ -93,6 +36,7 @@ export type SplitEditorRow = {
     target: RevShareThumbnailWithNamesProps['target'];
     targetType: CreatorType;
   };
+  thumbnailColorOverride?: string;
   previousBasisPoints: number | null;
   basisPoints: number;
   disabled?: boolean;
@@ -108,10 +52,12 @@ export const rebalanceSplitEditorManagingGroupBasisPoints = (
 ): SplitEditorRow[] => {
   const recipientTotal = rows
     .filter((row) => !row.isManagingGroup && !row.isRemoved)
-    .reduce((total, row) => total + row.basisPoints, 0);
+    .reduce((total, row) => total + asSafeBasisPoints(row.basisPoints), 0);
   const managingGroupBasisPoints = REV_SHARE_TOTAL_BASIS_POINTS - recipientTotal;
   return rows.map((row) =>
-    row.isManagingGroup ? { ...row, basisPoints: managingGroupBasisPoints } : row,
+    row.isManagingGroup
+      ? { ...row, basisPoints: managingGroupBasisPoints }
+      : { ...row, basisPoints: asSafeBasisPoints(row.basisPoints) },
   );
 };
 
@@ -156,7 +102,7 @@ export const decorateSplitEditorFieldErrors = (
   invalidRecipientShareMessage: string,
 ): SplitEditorRow[] =>
   orderedRows.map((row) => {
-    const fieldInvalid = isSplitEditorAllocationInvalid({
+    const fieldInvalid = isRevShareSplitEditorAllocationInvalid({
       splitBasisPoints: row.basisPoints,
       isManagingGroup: row.isManagingGroup,
     });
@@ -197,6 +143,10 @@ const SplitPercentCell: FunctionComponent<SplitPercentCellProps> = ({
     },
     [onSplitValidityChange, row.key],
   );
+
+  if (row.isManagingGroup) {
+    return <RevSharePercentInput basisPoints={row.basisPoints} isCalculatedDisplay />;
+  }
 
   return (
     <RevSharePercentInput
@@ -240,33 +190,45 @@ const RemoveRecipientButton: FunctionComponent<RemoveRecipientButtonProps> = ({
 
 type SplitEditorTableRowProps = {
   row: SplitEditorRow;
+  managingGroupAriaLabel: string;
   removeAriaLabel: string;
   onSplitChange?: (key: string, newBasisPoints: number) => void;
   onSplitValidityChange?: (key: string, isValid: boolean) => void;
   onRemove?: (key: string) => void;
 };
 
-const SPLIT_VALUE_COLUMN_CLASS = 'width-3000 min-width-3000';
-const TABLE_COLUMN_COUNT = 4;
+const REV_SHARE_SPLIT_EDITOR_TABLE_COLUMN_COUNT = 8;
+const PARTY_COLUMN_CLASS =
+  '[width:calc(var(--size-3000)*2)] [min-width:calc(var(--size-3000)*2)] [max-width:calc(var(--size-3000)*2)]';
+// RevShareThumbnailWithNames truncation hack for the fixed party column.
+const PARTY_IDENTITY_CLASS =
+  'min-width-0 max-width-full clip [&_*]:min-width-0 [&_*]:max-width-full';
+const MANAGING_GROUP_COLUMN_CLASS = 'width-600 min-width-600 max-width-600';
+const FLEX_SPACER_COLUMN_CLASS = 'min-width-400';
+const SPLIT_VALUE_COLUMN_CLASS = 'width-2200 min-width-2200 max-width-2200';
+const SPLIT_GAP_COLUMN_CLASS = 'width-200 min-width-200 max-width-200';
+const ACTION_COLUMN_CLASS = 'width-1400 min-width-1400 max-width-1400';
+const DECORATIVE_CELL_CLASS = 'padding-none';
 
 const SplitEditorTableRow: FunctionComponent<SplitEditorTableRowProps> = ({
   row,
+  managingGroupAriaLabel,
   removeAriaLabel,
   onSplitChange,
   onSplitValidityChange,
   onRemove,
 }) => {
-  const previousSplitId = useId();
+  const partyLabel = row.isManagingGroup ? undefined : row.subtitle;
 
   return (
     <TableRow>
-      <TableCell className='padding-y-small'>
-        <div className='flex items-center gap-large'>
+      <TableCell className={`padding-y-small ${PARTY_COLUMN_CLASS}`}>
+        <div className={PARTY_IDENTITY_CLASS}>
           {row.identity ? (
             <RevShareThumbnailWithNames
               target={row.identity.target}
               targetType={row.identity.targetType}
-              label={row.subtitle}
+              label={partyLabel}
               variant='compact'
               disableLink
             />
@@ -277,39 +239,50 @@ const SplitEditorTableRow: FunctionComponent<SplitEditorTableRowProps> = ({
                 row.type === RevShareRecipientType.User ? CreatorType.User : CreatorType.Group
               }
               displayNameOverride={row.name}
-              label={row.subtitle}
+              thumbnailColorOverride={row.thumbnailColorOverride ?? UNALLOCATED_COLOR}
+              label={partyLabel}
               variant='compact'
               disableLink
+              hideSecondaryLabel
             />
           )}
         </div>
       </TableCell>
       <TableCell
         align='center'
-        aria-labelledby={previousSplitId}
-        className={`padding-y-small ${SPLIT_VALUE_COLUMN_CLASS}`}>
+        className={`padding-y-small padding-x-xsmall ${MANAGING_GROUP_COLUMN_CLASS}`}>
         <div className='flex items-center justify-center width-full'>
-          <div className='flex items-center justify-center [width:80px]'>
-            <span id={previousSplitId} className='text-body-medium content-muted'>
-              {row.previousBasisPoints !== null
-                ? `${formatBasisPoints(row.previousBasisPoints)}%`
-                : '—'}
-            </span>
-          </div>
+          {row.isManagingGroup ? (
+            <RevShareManagingGroupIcon ariaLabel={managingGroupAriaLabel} />
+          ) : null}
         </div>
       </TableCell>
-      <TableCell align='center' className={`padding-y-small ${SPLIT_VALUE_COLUMN_CLASS}`}>
-        <div className='flex items-center justify-center width-full'>
-          <div className='flex items-center justify-center [width:80px]'>
-            <SplitPercentCell
-              row={row}
-              onSplitChange={onSplitChange}
-              onSplitValidityChange={onSplitValidityChange}
-            />
-          </div>
+      <TableCell aria-hidden className={DECORATIVE_CELL_CLASS} />
+      <TableCell
+        align='right'
+        className={`padding-y-small padding-x-xsmall text-align-x-right ${SPLIT_VALUE_COLUMN_CLASS}`}>
+        <div className='flex items-center justify-end width-full'>
+          <span className='text-body-medium content-muted'>
+            {formatPreviousSplitDisplay(row.previousBasisPoints)}
+          </span>
         </div>
       </TableCell>
-      <TableCell align='center' className='padding-y-small padding-right-none'>
+      <TableCell aria-hidden className={DECORATIVE_CELL_CLASS} />
+      <TableCell
+        align='right'
+        className={`padding-y-small padding-x-xsmall text-align-x-right ${SPLIT_VALUE_COLUMN_CLASS}`}>
+        <div className='flex items-center justify-end width-full'>
+          <SplitPercentCell
+            row={row}
+            onSplitChange={onSplitChange}
+            onSplitValidityChange={onSplitValidityChange}
+          />
+        </div>
+      </TableCell>
+      <TableCell aria-hidden className={DECORATIVE_CELL_CLASS} />
+      <TableCell
+        align='center'
+        className={`padding-y-small padding-left-xsmall padding-right-medium ${ACTION_COLUMN_CLASS}`}>
         {!row.disabled && (
           <RemoveRecipientButton row={row} ariaLabel={removeAriaLabel} onRemove={onRemove} />
         )}
@@ -335,6 +308,11 @@ const RevShareSplitEditorTable: FunctionComponent<RevShareSplitEditorTableProps>
     'Column heading for a party receiving a revenue share.',
     translationKey('Label.Party', TranslationNamespace.RevenueShareAgreements),
   );
+  const managingGroupHeading = tPendingTranslation(
+    'Managing group',
+    'Column heading for the managing group badge in revenue share recipient tables.',
+    translationKey('Label.ManagingGroup', TranslationNamespace.RevenueShareAgreements),
+  );
   const previousHeading = tPendingTranslation(
     'Previous',
     'Column heading for the previous revenue share percentage.',
@@ -353,32 +331,56 @@ const RevShareSplitEditorTable: FunctionComponent<RevShareSplitEditorTableProps>
 
   return (
     <TableBase borderless>
-      <caption className='[position:absolute] [width:1px] [height:1px] [padding:0] [margin:-1px] [overflow:hidden] [clip:rect(0,0,0,0)] text-no-wrap [border:0]'>
-        {tableLabel}
-      </caption>
+      <VisuallyHidden asChild>
+        <caption>{tableLabel}</caption>
+      </VisuallyHidden>
+      <colgroup>
+        <col className={PARTY_COLUMN_CLASS} />
+        <col className={MANAGING_GROUP_COLUMN_CLASS} />
+        <col className={FLEX_SPACER_COLUMN_CLASS} />
+        <col className={SPLIT_VALUE_COLUMN_CLASS} />
+        <col className={SPLIT_GAP_COLUMN_CLASS} />
+        <col className={SPLIT_VALUE_COLUMN_CLASS} />
+        <col className={FLEX_SPACER_COLUMN_CLASS} />
+        <col className={ACTION_COLUMN_CLASS} />
+      </colgroup>
       <TableHead>
         <TableRow>
-          <TableCell className='text-label-small content-muted text-align-x-left padding-bottom-small'>
+          <TableCell
+            className={`text-label-small content-muted text-align-x-left padding-bottom-small ${PARTY_COLUMN_CLASS}`}>
             {partyHeading}
           </TableCell>
           <TableCell
             align='center'
-            className={`text-label-small content-muted text-align-x-center padding-bottom-small ${SPLIT_VALUE_COLUMN_CLASS}`}>
-            <div className='flex items-center justify-center width-full'>{previousHeading}</div>
+            className={`padding-bottom-small padding-x-xsmall ${MANAGING_GROUP_COLUMN_CLASS}`}>
+            <VisuallyHidden>{managingGroupHeading}</VisuallyHidden>
           </TableCell>
+          <TableCell aria-hidden className={DECORATIVE_CELL_CLASS} />
           <TableCell
-            align='center'
-            className={`text-label-small content-muted text-align-x-center padding-bottom-small ${SPLIT_VALUE_COLUMN_CLASS}`}>
-            <div className='flex items-center justify-center width-full'>{splitHeading}</div>
+            align='right'
+            className={`text-label-small content-muted text-align-x-right padding-bottom-small padding-x-xsmall ${SPLIT_VALUE_COLUMN_CLASS}`}>
+            <div className='flex items-center justify-end width-full'>{previousHeading}</div>
           </TableCell>
-          <TableCell aria-hidden className='padding-bottom-small padding-right-none' />
+          <TableCell aria-hidden className={DECORATIVE_CELL_CLASS} />
+          <TableCell
+            align='right'
+            className={`text-label-small content-muted text-align-x-right padding-bottom-small padding-x-xsmall ${SPLIT_VALUE_COLUMN_CLASS}`}>
+            <div className='flex items-center justify-end width-full text-no-wrap padding-right-small'>
+              {splitHeading}
+            </div>
+          </TableCell>
+          <TableCell aria-hidden className={DECORATIVE_CELL_CLASS} />
+          <TableCell
+            aria-hidden
+            className={`padding-bottom-small padding-left-xsmall padding-right-medium ${ACTION_COLUMN_CLASS}`}
+          />
         </TableRow>
       </TableHead>
       <TableBody>
         {rows.length === 0 ? (
           <TableRow>
             <TableCell
-              colSpan={TABLE_COLUMN_COUNT}
+              colSpan={REV_SHARE_SPLIT_EDITOR_TABLE_COLUMN_COUNT}
               className='text-body-medium content-muted padding-y-medium'>
               {emptyMessage}
             </TableCell>
@@ -388,6 +390,7 @@ const RevShareSplitEditorTable: FunctionComponent<RevShareSplitEditorTableProps>
             <SplitEditorTableRow
               key={row.key}
               row={row}
+              managingGroupAriaLabel={managingGroupHeading}
               removeAriaLabel={tPendingTranslation(
                 'Remove {name}',
                 'Accessible label for removing a recipient; {name} is the recipient name.',

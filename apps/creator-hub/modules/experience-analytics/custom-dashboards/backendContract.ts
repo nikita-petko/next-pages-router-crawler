@@ -1326,7 +1326,13 @@ export function backendDocumentToCustomDashboardConfig(document: unknown): Custo
   if (!isObjectRecord(document.config.page)) {
     fail('config.page must be an object.');
   }
-  return validateCustomDashboardConfig({
-    page: fromProtoPage(document.config.page, 'config.page'),
-  });
+  // Read path: skip tile caps so previously saved over-cap dashboards remain
+  // loadable. Writes go through `customDashboardConfigToBackendDocument`, which
+  // keeps the default write-time enforcement.
+  return validateCustomDashboardConfig(
+    {
+      page: fromProtoPage(document.config.page, 'config.page'),
+    },
+    { enforceTileCaps: false },
+  );
 }

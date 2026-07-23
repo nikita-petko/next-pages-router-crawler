@@ -1,5 +1,5 @@
-import { useId, type FunctionComponent } from 'react';
-import { Icon, VisuallyHidden } from '@rbx/foundation-ui';
+import type { FunctionComponent } from 'react';
+import { VisuallyHidden } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { TableBody, TableCell, TableHead, TableRow } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
@@ -16,7 +16,6 @@ import {
   type RevShareRecipient,
   type RevShareRecipientAllocationChange,
 } from '../../interface/RevShareViewModel';
-import { AGGREGATE_REMAINING_COLOR, UNALLOCATED_COLOR } from '../../utils/revShareSplitColors';
 import {
   asNumberTypedId,
   formatPreviousSplitDisplay,
@@ -26,12 +25,13 @@ import RevShareStatusBadge from '../RevShareStatusBadge';
 import RevShareThumbnailWithNames, {
   type RevShareThumbnailWithNamesProps,
 } from '../RevShareThumbnailWithNames';
+import { RevShareManagingGroupIcon } from './RevShareManagingGroupIcon';
 import type { SplitEditorRow } from './RevShareSplitEditorTable';
 
-export const REV_SHARE_DIFF_TABLE_COLUMN_COUNT = 8;
-export const REV_SHARE_DIFF_TABLE_MIN_WIDTH_PX = 592;
+const REV_SHARE_DIFF_TABLE_COLUMN_COUNT = 8;
 const PARTY_COLUMN_CLASS =
   '[width:calc(var(--size-3000)*2)] [min-width:calc(var(--size-3000)*2)] [max-width:calc(var(--size-3000)*2)]';
+// RevShareThumbnailWithNames truncation hack for the fixed party column.
 const PARTY_IDENTITY_CLASS =
   'min-width-0 max-width-full clip [&_*]:min-width-0 [&_*]:max-width-full';
 const MANAGING_GROUP_COLUMN_CLASS = 'width-600 min-width-600 max-width-600';
@@ -40,16 +40,12 @@ const SPLIT_VALUE_COLUMN_CLASS = 'width-2200 min-width-2200 max-width-2200';
 const SPLIT_GAP_COLUMN_CLASS = 'width-200 min-width-200 max-width-200';
 const STATUS_COLUMN_CLASS = 'width-2800 min-width-2800 max-width-2800';
 const DECORATIVE_CELL_CLASS = 'padding-none';
-const SYNTHETIC_THUMBNAIL_COLOR_BY_KEY: Readonly<Record<string, string>> = {
-  remaining: AGGREGATE_REMAINING_COLOR,
-  unallocated: UNALLOCATED_COLOR,
-};
 
 export type RevShareDiffRowData = RevShareRecipient & {
   key: string;
   name: string;
   subtitle?: string;
-  hideSecondaryLabel?: boolean;
+  thumbnailColorOverride?: string;
   identity?: {
     target: RevShareThumbnailWithNamesProps['target'];
     targetType: CreatorType;
@@ -58,7 +54,6 @@ export type RevShareDiffRowData = RevShareRecipient & {
   newBasisPoints: number;
   isManagingGroup?: boolean;
   status?: RevShareConfirmationStatus;
-  showChangeMarker?: boolean;
 };
 
 type ManagerProposalReviewManagingGroup = {
@@ -107,7 +102,6 @@ export const buildRevShareDiffRowsFromManagerProposal = ({
     previousBasisPoints: managingGroup.previousBasisPoints,
     newBasisPoints: managingGroupNewBasisPoints,
     status: RevShareConfirmationStatus.AutoAccepted,
-    showChangeMarker: managingGroup.previousBasisPoints !== managingGroupNewBasisPoints,
     isManagingGroup: true,
   };
 
@@ -136,8 +130,6 @@ export const buildRevShareDiffRowsFromManagerProposal = ({
       previousBasisPoints,
       newBasisPoints: change.toBasisPoints,
       status: confirmationStatusByRecipientKey.get(key),
-      showChangeMarker:
-        change.isRemoval || change.isAddition || change.fromBasisPoints !== change.toBasisPoints,
     };
   });
 
@@ -187,8 +179,6 @@ export const buildRevShareDiffRowsFromSplitEditor = (
         previousBasisPoints,
         newBasisPoints,
         status: confirmationStatusByRecipientKey.get(key),
-        showChangeMarker:
-          change.isRemoval || change.isAddition || change.fromBasisPoints !== change.toBasisPoints,
       };
     },
   );
@@ -205,9 +195,6 @@ export const buildRevShareDiffRowsFromSplitEditor = (
       previousBasisPoints: row.previousBasisPoints,
       newBasisPoints: row.isRemoved ? 0 : row.basisPoints,
       status: confirmationStatusByRecipientKey.get(row.key),
-      showChangeMarker:
-        (row.isRemoved ?? false) ||
-        row.previousBasisPoints !== (row.isRemoved ? 0 : row.basisPoints),
     });
   }
 
@@ -227,9 +214,6 @@ export const buildRevShareDiffRowsFromSplitEditor = (
       newBasisPoints: managingGroupRow.basisPoints,
       isManagingGroup: true,
       status: RevShareConfirmationStatus.AutoAccepted,
-      showChangeMarker:
-        managingGroupRow.previousBasisPoints !== null &&
-        managingGroupRow.previousBasisPoints !== managingGroupRow.basisPoints,
     },
     ...recipientReviewRows,
   ];
@@ -286,25 +270,10 @@ type RevShareDiffTableRowProps = {
   managingGroupAriaLabel: string;
 };
 
-const SyntheticPartyIdentity: FunctionComponent<{
-  name: string;
-  color: string;
-}> = ({ name, color }) => (
-  <div className='flex items-center gap-small min-width-0'>
-    <div
-      data-testid='thumbnail-color-override'
-      className='size-200 shrink-0 radius-circle'
-      style={{ backgroundColor: color }}
-    />
-    <span className='text-body-medium content-emphasis text-no-wrap clip'>{name}</span>
-  </div>
-);
-
 const RevShareDiffTableRow: FunctionComponent<RevShareDiffTableRowProps> = ({
   row,
   managingGroupAriaLabel,
 }) => {
-  const previousSplitId = useId();
   const changeKind = getRevShareAllocationChangeKind({
     fromBasisPoints: row.previousBasisPoints ?? 0,
     toBasisPoints: row.newBasisPoints,
@@ -318,12 +287,7 @@ const RevShareDiffTableRow: FunctionComponent<RevShareDiffTableRowProps> = ({
     <TableRow>
       <TableCell className={`padding-y-small ${PARTY_COLUMN_CLASS}`}>
         <div className={PARTY_IDENTITY_CLASS}>
-          {row.hideSecondaryLabel === true ? (
-            <SyntheticPartyIdentity
-              name={row.name}
-              color={SYNTHETIC_THUMBNAIL_COLOR_BY_KEY[row.key] ?? 'var(--color-surface-300)'}
-            />
-          ) : row.identity ? (
+          {row.identity ? (
             <RevShareThumbnailWithNames
               target={row.identity.target}
               targetType={row.identity.targetType}
@@ -338,9 +302,11 @@ const RevShareDiffTableRow: FunctionComponent<RevShareDiffTableRowProps> = ({
                 row.type === RevShareRecipientType.User ? CreatorType.User : CreatorType.Group
               }
               displayNameOverride={row.name}
+              thumbnailColorOverride={row.thumbnailColorOverride}
               label={partyLabel}
               variant='compact'
               disableLink
+              hideSecondaryLabel={row.thumbnailColorOverride !== undefined}
             />
           )}
         </div>
@@ -350,22 +316,16 @@ const RevShareDiffTableRow: FunctionComponent<RevShareDiffTableRowProps> = ({
         className={`padding-y-small padding-x-xsmall ${MANAGING_GROUP_COLUMN_CLASS}`}>
         <div className='flex items-center justify-center width-full'>
           {row.isManagingGroup ? (
-            <Icon
-              name='icon-regular-three-people'
-              size='Small'
-              className='content-muted'
-              aria-label={managingGroupAriaLabel}
-            />
+            <RevShareManagingGroupIcon ariaLabel={managingGroupAriaLabel} />
           ) : null}
         </div>
       </TableCell>
       <TableCell aria-hidden className={DECORATIVE_CELL_CLASS} />
       <TableCell
         align='right'
-        aria-labelledby={previousSplitId}
         className={`padding-y-small padding-x-xsmall text-align-x-right ${SPLIT_VALUE_COLUMN_CLASS}`}>
         <div className='flex items-center justify-end width-full'>
-          <span id={previousSplitId} className='text-body-medium content-muted'>
+          <span className='text-body-medium content-muted'>
             {formatPreviousSplitDisplay(row.previousBasisPoints)}
           </span>
         </div>
@@ -430,9 +390,9 @@ const RevShareDiffTable: FunctionComponent<RevShareDiffTableProps> = ({
 
   return (
     <TableBase borderless>
-      <caption className='[position:absolute] [width:1px] [height:1px] [padding:0] [margin:-1px] [overflow:hidden] [clip:rect(0,0,0,0)] text-no-wrap [border:0]'>
-        {tableLabel}
-      </caption>
+      <VisuallyHidden asChild>
+        <caption>{tableLabel}</caption>
+      </VisuallyHidden>
       <colgroup>
         <col className={PARTY_COLUMN_CLASS} />
         <col className={MANAGING_GROUP_COLUMN_CLASS} />

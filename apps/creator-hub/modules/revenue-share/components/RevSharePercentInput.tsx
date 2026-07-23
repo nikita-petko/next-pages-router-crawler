@@ -3,43 +3,47 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
+  useRef,
+  useState,
   type ChangeEvent,
   type FocusEvent,
   type FunctionComponent,
+  type InputEvent as ReactInputEvent,
   type KeyboardEvent,
+  type SyntheticEvent,
 } from 'react';
 import { useController, useForm } from 'react-hook-form';
-import { VisuallyHidden } from '@rbx/foundation-ui';
+import { TextInput, VisuallyHidden } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import {
-  BASIS_POINTS_PER_PERCENT,
-  REV_SHARE_TOTAL_BASIS_POINTS,
-} from '../interface/RevShareViewModel';
-import { formatBasisPoints, PERCENT_FRACTION_DIGITS } from '../utils/revShareUtils';
+  asSafeBasisPoints,
+  formatBasisPoints,
+  formatPreviousSplitDisplay,
+} from '../utils/revShareUtils';
+import {
+  acceptRevSharePercentEdit,
+  commitRevSharePercentDraft,
+  isTransientRevSharePercent,
+  stripRevSharePercentNoise,
+} from '../utils/revShareValidation';
 
-const parsePercentToBasisPoints = (percent: string): number | null => {
-  const trimmedPercent = percent.trim();
-  const match = /^(\d{1,3})(?:\.(\d{1,2}))?$/.exec(trimmedPercent);
-  if (!match) {
-    return null;
-  }
+const PERCENT_INPUT_SHELL_CLASS = 'items-end gap-xxsmall width-1900';
+const PERCENT_INPUT_CONTAINER_BASE_CLASS =
+  'radius-small [white-space:nowrap] padding-y-xxsmall padding-left-none padding-right-small !gap-x-none justify-end opacity-100 [&_input]:text-body-medium [&_input]:content-emphasis [&_input]:[font-weight:600] [&_input]:[width:6ch] [&_input]:[text-align:right]';
+const PERCENT_INPUT_CONTAINER_EDITABLE_CLASS = `${PERCENT_INPUT_CONTAINER_BASE_CLASS} [cursor:text] [&_input]:[cursor:text]`;
 
-  const wholePercent = Number.parseInt(match[1], 10);
-  const fractionalPercent = Number.parseInt(
-    (match[2] ?? '').padEnd(PERCENT_FRACTION_DIGITS, '0') || '0',
-    10,
-  );
-  const basisPoints = wholePercent * BASIS_POINTS_PER_PERCENT + fractionalPercent;
-
-  if (basisPoints > REV_SHARE_TOTAL_BASIS_POINTS) {
-    return null;
-  }
-
-  return basisPoints;
-};
+const RevSharePercentSuffix: FunctionComponent = () => (
+  <span
+    aria-hidden
+    data-rev-share-percent-suffix
+    className='text-body-medium content-emphasis [font-weight:600]'>
+    %
+  </span>
+);
 
 type PercentInputForm = {
   percent: string;
@@ -53,9 +57,35 @@ type RevSharePercentInputProps = {
   recipientName?: string;
   fieldInvalid?: boolean;
   fieldErrorMessage?: string;
+  isCalculatedDisplay?: boolean;
 };
 
-const RevSharePercentInput: FunctionComponent<RevSharePercentInputProps> = ({
+type RevShareCalculatedPercentDisplayProps = {
+  basisPoints: number;
+};
+
+const RevShareCalculatedPercentDisplay: FunctionComponent<
+  RevShareCalculatedPercentDisplayProps
+> = ({ basisPoints }) => {
+  const safeBasisPoints = asSafeBasisPoints(basisPoints);
+  const displayValue = formatBasisPoints(safeBasisPoints);
+  const accessibleValue = formatPreviousSplitDisplay(safeBasisPoints);
+
+  return (
+    <span
+      aria-label={accessibleValue}
+      className='flex items-center justify-end !gap-x-none width-1900 padding-right-small text-align-x-right content-emphasis stroke-standard [border-color:var(--color-none)]'>
+      <span aria-hidden className='text-body-medium content-emphasis [font-weight:600]'>
+        {displayValue}
+      </span>
+      <RevSharePercentSuffix />
+    </span>
+  );
+};
+
+type RevShareEditablePercentInputProps = Omit<RevSharePercentInputProps, 'isCalculatedDisplay'>;
+
+const RevShareEditablePercentInput: FunctionComponent<RevShareEditablePercentInputProps> = ({
   basisPoints,
   onChange,
   onValidityChange,
@@ -65,7 +95,8 @@ const RevSharePercentInput: FunctionComponent<RevSharePercentInputProps> = ({
   fieldErrorMessage,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
-  const formatted = formatBasisPoints(basisPoints);
+  const safeBasisPoints = asSafeBasisPoints(basisPoints);
+  const formatted = formatBasisPoints(safeBasisPoints);
   const inputId = useId();
   const errorId = `${inputId}-error`;
   const accessibleLabel = recipientName
@@ -83,66 +114,176 @@ const RevSharePercentInput: FunctionComponent<RevSharePercentInputProps> = ({
         'Accessible label for a revenue share percentage input.',
         translationKey('Label.PercentShare', TranslationNamespace.RevenueShareAgreements),
       );
-  const invalidPercentMessage = tPendingTranslation(
-    'Enter a percentage from 0 to 100 with at most two decimal places.',
-    'Validation error for an invalid revenue share percentage.',
-    translationKey('Error.InvalidPercentShare', TranslationNamespace.RevenueShareAgreements),
-  );
-  const { control, reset, setValue, setError, clearErrors } = useForm<PercentInputForm>({
+  const isFocusedRef = useRef(false);
+  const latestSafeBasisPointsRef = useRef(safeBasisPoints);
+  // eslint-disable-next-line react-compiler/react-compiler -- event callbacks need the latest rendered value without a synchronization effect
+  latestSafeBasisPointsRef.current = safeBasisPoints;
+  const focusBasisPointsRef = useRef(safeBasisPoints);
+  const inputElementRef = useRef<HTMLInputElement | null>(null);
+  const pendingCaretRef = useRef<{ start: number; end: number } | null>(null);
+  const selectionBeforeEditRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
+  const [caretEpoch, setCaretEpoch] = useState(0);
+  const { control, reset, setValue, clearErrors } = useForm<PercentInputForm>({
     defaultValues: { percent: formatted },
     mode: 'onBlur',
   });
   const {
-    field: { value, onChange: onFieldChange, onBlur: onFieldBlur, ref },
-    fieldState: { error },
+    field: { value, onChange: onFieldChange, onBlur: onFieldBlur, ref: fieldRef },
   } = useController({
     name: 'percent',
     control,
-    rules: {
-      validate: (percent) => parsePercentToBasisPoints(percent) !== null || invalidPercentMessage,
-    },
   });
 
+  const setInputRef = useCallback(
+    (element: HTMLInputElement | null) => {
+      inputElementRef.current = element;
+      fieldRef(element);
+    },
+    [fieldRef],
+  );
+
   useEffect(() => {
+    if (isFocusedRef.current) {
+      return;
+    }
     reset({ percent: formatted });
     onValidityChange?.(true);
   }, [formatted, onValidityChange, reset]);
 
-  const handleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      onFieldChange(event);
-      const isValid = parsePercentToBasisPoints(event.currentTarget.value) !== null;
-      onValidityChange?.(isValid);
-      if (isValid) {
-        clearErrors('percent');
+  const queueCaretRestore = useCallback((start: number, end: number = start) => {
+    pendingCaretRef.current = { start, end };
+    setCaretEpoch((epoch) => epoch + 1);
+  }, []);
+
+  // Restore selection after rejected edits / strip rewrites, including when value is unchanged.
+  useLayoutEffect(() => {
+    const caret = pendingCaretRef.current;
+    const inputElement = inputElementRef.current;
+    if (caret == null || inputElement == null) {
+      return;
+    }
+    inputElement.setSelectionRange(caret.start, caret.end);
+    pendingCaretRef.current = null;
+  }, [caretEpoch, value]);
+
+  const restoreRejectedEdit = useCallback(
+    (inputElement: HTMLInputElement) => {
+      const { start, end } = selectionBeforeEditRef.current;
+      const domDiverged = inputElement.value !== value;
+      // Sync DOM immediately so React does not need a value-prop round-trip that moves the caret.
+      inputElement.value = value;
+      inputElement.setSelectionRange(start, end);
+      queueCaretRestore(start, end);
+      if (domDiverged) {
+        onFieldChange(value);
       }
     },
-    [clearErrors, onFieldChange, onValidityChange],
+    [onFieldChange, queueCaretRestore, value],
   );
-  const handleBlur = useCallback(
-    (event: FocusEvent<HTMLInputElement>) => {
-      onFieldBlur();
-      const parsedBasisPoints = parsePercentToBasisPoints(event.currentTarget.value);
-      if (parsedBasisPoints === null) {
-        setError('percent', { type: 'validate', message: invalidPercentMessage });
-        onValidityChange?.(false);
+
+  const handleBeforeInput = useCallback(
+    (event: ReactInputEvent<HTMLInputElement>) => {
+      const nativeEvent = event.nativeEvent;
+      const inputType = nativeEvent.inputType ?? '';
+      if (
+        inputType === 'insertCompositionText' ||
+        inputType === 'insertFromComposition' ||
+        inputType === 'deleteCompositionText'
+      ) {
         return;
       }
+
+      const selectionStart = event.currentTarget.selectionStart ?? value.length;
+      const selectionEnd = event.currentTarget.selectionEnd ?? value.length;
+      selectionBeforeEditRef.current = { start: selectionStart, end: selectionEnd };
+      const data = event.data ?? nativeEvent.data ?? null;
+      const result = acceptRevSharePercentEdit({
+        value,
+        selectionStart,
+        selectionEnd,
+        data,
+        inputType,
+      });
+
+      // Reject only: leave the DOM alone so the caret does not move.
+      if (!result.accepted) {
+        event.preventDefault();
+        nativeEvent.preventDefault();
+        queueCaretRestore(selectionStart, selectionEnd);
+        return;
+      }
+
+      // Valid edit with no junk: let the browser mutate; onChange syncs React state.
+      if (result.nextDraft === result.rawNext) {
+        return;
+      }
+
+      // Valid after stripping junk: apply the cleaned draft ourselves.
+      event.preventDefault();
+      nativeEvent.preventDefault();
+      const nextCaret = Math.max(
+        0,
+        Math.min(
+          result.nextDraft.length,
+          selectionStart +
+            (result.nextDraft.length - value.length) +
+            (selectionEnd - selectionStart),
+        ),
+      );
+      queueCaretRestore(nextCaret);
+      onFieldChange(result.nextDraft);
       clearErrors('percent');
       onValidityChange?.(true);
-      setValue('percent', formatBasisPoints(parsedBasisPoints));
-      onChange?.(parsedBasisPoints);
     },
-    [
-      clearErrors,
-      invalidPercentMessage,
-      onChange,
-      onFieldBlur,
-      onValidityChange,
-      setError,
-      setValue,
-    ],
+    [clearErrors, onFieldChange, onValidityChange, queueCaretRestore, value],
   );
+
+  const handleChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const nextDraft = stripRevSharePercentNoise(event.target.value);
+      if (!isTransientRevSharePercent(nextDraft)) {
+        // beforeinput should have blocked this; restore value + pre-edit caret in place.
+        restoreRejectedEdit(event.target);
+        return;
+      }
+      // Avoid controlled re-renders that reset the caret when the draft did not change.
+      if (nextDraft === value) {
+        return;
+      }
+      onFieldChange(nextDraft);
+      clearErrors('percent');
+      onValidityChange?.(true);
+    },
+    [clearErrors, onFieldChange, onValidityChange, restoreRejectedEdit, value],
+  );
+
+  const handleFocus = useCallback(() => {
+    isFocusedRef.current = true;
+    focusBasisPointsRef.current = latestSafeBasisPointsRef.current;
+  }, []);
+
+  const handleSelect = useCallback((event: SyntheticEvent<HTMLInputElement>) => {
+    selectionBeforeEditRef.current = {
+      start: event.currentTarget.selectionStart ?? 0,
+      end: event.currentTarget.selectionEnd ?? 0,
+    };
+  }, []);
+
+  const handleBlur = useCallback(
+    (event: FocusEvent<HTMLInputElement>) => {
+      isFocusedRef.current = false;
+      onFieldBlur();
+      const committedBasisPoints = asSafeBasisPoints(
+        commitRevSharePercentDraft(event.currentTarget.value),
+      );
+      setValue('percent', formatBasisPoints(committedBasisPoints));
+      onChange?.(committedBasisPoints);
+      onValidityChange?.(true);
+      clearErrors('percent');
+    },
+    [clearErrors, onChange, onFieldBlur, onValidityChange, setValue],
+  );
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (event.key === 'Enter') {
@@ -152,42 +293,47 @@ const RevSharePercentInput: FunctionComponent<RevSharePercentInputProps> = ({
       }
       if (event.key === 'Escape') {
         event.preventDefault();
+        const revertBasisPoints = asSafeBasisPoints(focusBasisPointsRef.current);
         clearErrors('percent');
         onValidityChange?.(true);
-        setValue('percent', formatted);
+        setValue('percent', formatBasisPoints(revertBasisPoints));
+        onChange?.(revertBasisPoints);
       }
     },
-    [clearErrors, formatted, onValidityChange, setValue],
+    [clearErrors, onChange, onValidityChange, setValue],
   );
-  const isInvalid = error != null || fieldInvalid === true;
-  const descriptionText = error?.message ?? fieldErrorMessage;
+
+  const isInvalid = fieldInvalid === true;
+  const descriptionText = fieldErrorMessage;
+  const inputContainerClassName = disabled
+    ? `${PERCENT_INPUT_CONTAINER_BASE_CLASS} [&_input]:[cursor:default]`
+    : PERCENT_INPUT_CONTAINER_EDITABLE_CLASS;
 
   return (
     <>
-      <label
-        htmlFor={inputId}
-        className={`flex items-center justify-end radius-small padding-y-xxsmall padding-x-small [white-space:nowrap] [width:80px] ${disabled ? '' : 'bg-surface-300 [cursor:text]'} ${isInvalid ? 'stroke-system-alert stroke-standard' : ''}`}>
-        <input
-          ref={ref}
-          id={inputId}
-          type='text'
-          inputMode='decimal'
-          disabled={disabled}
-          value={value}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          className={`text-body-medium content-emphasis [font-weight:600] [background:none] stroke-none [outline:none] [width:5ch] [text-align:right] padding-none margin-none [font-family:inherit] [font-size:inherit] [appearance:none] ${disabled ? '[cursor:default]' : ''}`}
-          aria-label={accessibleLabel}
-          aria-invalid={isInvalid}
-          aria-describedby={descriptionText ? errorId : undefined}
-        />
-        <span
-          aria-hidden
-          className={`text-body-medium content-emphasis [font-weight:600] ${disabled ? '' : '[cursor:text]'}`}>
-          %
-        </span>
-      </label>
+      <TextInput
+        ref={setInputRef}
+        id={inputId}
+        type='text'
+        inputMode='decimal'
+        size='XSmall'
+        variant='Standard'
+        isDisabled={disabled}
+        value={value}
+        onChange={handleChange}
+        onBeforeInput={handleBeforeInput}
+        onFocus={handleFocus}
+        onSelect={handleSelect}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        aria-label={accessibleLabel}
+        aria-invalid={isInvalid}
+        aria-describedby={descriptionText ? errorId : undefined}
+        hasError={isInvalid}
+        className={PERCENT_INPUT_SHELL_CLASS}
+        inputContainerClassName={inputContainerClassName}
+        trailingIconNode={<RevSharePercentSuffix />}
+      />
       {descriptionText && (
         <VisuallyHidden id={errorId} role='alert'>
           {descriptionText}
@@ -195,6 +341,18 @@ const RevSharePercentInput: FunctionComponent<RevSharePercentInputProps> = ({
       )}
     </>
   );
+};
+
+const RevSharePercentInput: FunctionComponent<RevSharePercentInputProps> = ({
+  isCalculatedDisplay = false,
+  basisPoints,
+  ...editableProps
+}) => {
+  if (isCalculatedDisplay) {
+    return <RevShareCalculatedPercentDisplay basisPoints={basisPoints} />;
+  }
+
+  return <RevShareEditablePercentInput basisPoints={basisPoints} {...editableProps} />;
 };
 
 export default RevSharePercentInput;

@@ -1047,12 +1047,25 @@ function collectTileIds(
   node.children.forEach((child, idx) => collectTileIds(child, visit, `${field}.children[${idx}]`));
 }
 
+export type ValidateCustomDashboardConfigOptions = {
+  /**
+   * When true (default), reject configs that exceed summary/chart tile caps.
+   * Read paths should pass `false` so previously saved over-cap dashboards
+   * remain loadable; write/save paths keep the default so new caps still bind.
+   */
+  readonly enforceTileCaps?: boolean;
+};
+
 /**
  * Validate a `CustomDashboardConfig` payload. Throws
  * `CustomDashboardValidationError` on any structural violation. The returned
  * object is a fresh, fully-narrowed clone — callers can persist it directly.
  */
-export function validateCustomDashboardConfig(raw: unknown): CustomDashboardConfig {
+export function validateCustomDashboardConfig(
+  raw: unknown,
+  options: ValidateCustomDashboardConfigOptions = {},
+): CustomDashboardConfig {
+  const { enforceTileCaps = true } = options;
   const record = asRecord(raw, 'config');
   const page = asRecord(record.page, 'config.page');
   if (page.mode !== DashboardPageMode.Untabbed) {
@@ -1087,17 +1100,19 @@ export function validateCustomDashboardConfig(raw: unknown): CustomDashboardConf
   bodyNodes.forEach((node, idx) =>
     collectTileIds(node, checkId, `config.page.surface.bodyNodes[${idx}]`),
   );
-  if (summaryCount > MAX_SUMMARY_CARDS_PER_DASHBOARD) {
-    throw new CustomDashboardValidationError(
-      'config.page.surface.bodyNodes',
-      `A dashboard may have at most ${MAX_SUMMARY_CARDS_PER_DASHBOARD} summary cards.`,
-    );
-  }
-  if (chartCount > MAX_CHART_TILES_PER_DASHBOARD) {
-    throw new CustomDashboardValidationError(
-      'config.page.surface.bodyNodes',
-      `A dashboard may have at most ${MAX_CHART_TILES_PER_DASHBOARD} chart tiles.`,
-    );
+  if (enforceTileCaps) {
+    if (summaryCount > MAX_SUMMARY_CARDS_PER_DASHBOARD) {
+      throw new CustomDashboardValidationError(
+        'config.page.surface.bodyNodes',
+        `A dashboard may have at most ${MAX_SUMMARY_CARDS_PER_DASHBOARD} summary cards.`,
+      );
+    }
+    if (chartCount > MAX_CHART_TILES_PER_DASHBOARD) {
+      throw new CustomDashboardValidationError(
+        'config.page.surface.bodyNodes',
+        `A dashboard may have at most ${MAX_CHART_TILES_PER_DASHBOARD} chart tiles.`,
+      );
+    }
   }
 
   return {
@@ -1172,6 +1187,9 @@ export function validateCustomDashboardDocument(raw: unknown): CustomDashboardDo
     createdByUsername: asNonEmptyString(record.createdByUsername, 'createdByUsername'),
     updatedByUserId: optional(asNumber)(record.updatedByUserId, 'updatedByUserId'),
     updatedByUsername: optional(asNonEmptyString)(record.updatedByUsername, 'updatedByUsername'),
-    config: validateCustomDashboardConfig(record.config),
+    // Read path: accept previously saved over-cap layouts so lowering caps
+    // does not quarantine existing dashboards. Write paths call
+    // `validateCustomDashboardConfig` directly and keep enforcing caps.
+    config: validateCustomDashboardConfig(record.config, { enforceTileCaps: false }),
   };
 }

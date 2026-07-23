@@ -30,8 +30,8 @@ export type CustomDashboardStatus = 'draft' | 'published';
 export type TileId = string;
 
 /** Hard caps; service enforces on write, rendering coerces down defensively. */
-export const MAX_SUMMARY_CARDS_PER_DASHBOARD = 10;
-export const MAX_CHART_TILES_PER_DASHBOARD = 24;
+export const MAX_SUMMARY_CARDS_PER_DASHBOARD = 6;
+export const MAX_CHART_TILES_PER_DASHBOARD = 12;
 export const MAX_DASHBOARD_NAME_LENGTH = 80;
 export const MAX_DASHBOARD_DESCRIPTION_LENGTH = 280;
 export const MAX_TILE_TITLE_LENGTH = 80;
