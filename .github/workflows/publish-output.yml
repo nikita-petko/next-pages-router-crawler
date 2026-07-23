@@ -15,7 +15,7 @@ jobs:
     # Run for 2 branches:
     strategy:
       matrix:
-        target: ["advertise.roblox.com", "create.roblox.com", "test.rbxlabs.net"]
+        target: ["advertise.roblox.com", "create.roblox.com", "test.rbxlabs.net", "create.robloxdev.cn"]
 
     runs-on: ubuntu-latest
     steps:
