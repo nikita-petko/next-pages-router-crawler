@@ -47,20 +47,16 @@ jobs:
           fi
 
           # Checkout repo
-          git clone --depth 1 "https://github.com/${{ github.repository }}.git" "$GITHUB_WORKSPACE/.tmp"
+          mkdir -p "$GITHUB_WORKSPACE/.tmp"
           cd "$GITHUB_WORKSPACE/.tmp"
-          
-          # Checkout if exists or create a new empty branch with no history
-          git fetch origin "${TARGET_BRANCH}" || true
-          if git rev-parse --verify "origin/${TARGET_BRANCH}" >/dev/null 2>&1
-          then
-            git checkout "origin/${TARGET_BRANCH}"
-          else
-            git checkout --orphan "${TARGET_BRANCH}"
-          fi
 
-          # Remove tracked files (leave .git directory intact)
-          git rm -rf . || true
+          git init
+          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" || true
+          
+          git checkout -b "${TARGET_BRANCH}"
+          git stash --include-untracked || true
+          git fetch --all || true
+          git reset --hard "origin/${TARGET_BRANCH}" || true
 
           # Copy dist contents into the root of the target repo
           cp -a "$GITHUB_WORKSPACE/.output/${TARGET_BRANCH}/." . || true
