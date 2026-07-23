@@ -1,10 +1,43 @@
+import { useState } from "react";
 import { useRouter } from "next/router";
 
 import TestAppMetaLayout from "@modules/components/layouts/TestAppMetaLayout";
-import { Divider, Grid, Typography, Button } from "@rbx/ui";
+import { Divider, Grid, Typography, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@rbx/ui";
+
+interface TTestDialogProps {
+  title: string;
+  content: string;
+
+  open: boolean;
+  handleClose: () => void;
+}
+
+const TestDialog: React.FC<TTestDialogProps> = ({ title, content, open, handleClose }) => 
+(<Dialog maxWidth='sm' open={open} onClose={handleClose}>
+  <DialogTitle id=''>{title}</DialogTitle>
+  <DialogContent dividers>
+    <DialogContentText>{content}</DialogContentText>
+  </DialogContent>
+  <DialogActions>
+    <Button variant='outlined' color='secondary' onClick={handleClose}>
+      Cancel
+    </Button>
+    <Button variant='contained' onClick={handleClose}>
+      Confirm
+    </Button>
+  </DialogActions>
+</Dialog>);
 
 const TestPage = () => {
-  const { query: { testQuery = 'test' }} = useRouter();
+  const [open, setOpen] = useState(false);
+  const handleClickOpen = () => {
+    setOpen(true);
+  };
+  const handleClose = () => {
+    setOpen(false);
+  };
+
+  const { query: { testQuery = 'test' } } = useRouter();
 
   return (
     <Grid container direction='column' alignItems='center' justifyContent='center' minHeight='100vh'>
@@ -18,7 +51,8 @@ const TestPage = () => {
         </Typography>
 
         {/* I might change this to a dialog popup or a snackbar */}
-        <Button variant='contained' onClick={() => alert(testQuery)} sx={{ mt: 2 }}>Test Button</Button>
+        <Button variant='contained' onClick={handleClickOpen} sx={{ mt: 2 }}>Test Button</Button>
+        <TestDialog title="Test Dialog" content={testQuery as string} open={open} handleClose={handleClose}  />
       </Grid>
     </Grid>
   )

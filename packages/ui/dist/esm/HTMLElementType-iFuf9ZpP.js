@@ -1,0 +1,1 @@
+function p(r,n,l,t,u){if(process.env.NODE_ENV==="production")return null;const e=r[n],o=u||n;return e==null?null:e&&e.nodeType!==1?new Error(`Invalid ${t} \`${o}\` supplied to \`${l}\`. Expected an HTMLElement.`):null}export{p as H};

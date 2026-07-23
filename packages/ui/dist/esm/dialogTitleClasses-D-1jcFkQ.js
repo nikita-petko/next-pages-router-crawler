@@ -1,0 +1,1 @@
+import{g as i}from"./generateUtilityClasses-n6k0wyPA.js";import{g as e}from"./createTheme-DcSDGmoA.js";function l(t){return e("MuiDialogTitle",t)}const s=i("MuiDialogTitle",["root"]);export{s as d,l as g};
