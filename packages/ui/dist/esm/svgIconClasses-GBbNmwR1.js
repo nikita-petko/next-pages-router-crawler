@@ -1,0 +1,1 @@
+import{g as r}from"./createTheme-DcSDGmoA.js";import{g as t}from"./generateUtilityClasses-n6k0wyPA.js";function e(o){return r("MuiSvgIcon",o)}const i=t("MuiSvgIcon",["root","colorPrimary","colorSecondary","colorAction","colorError","colorDisabled","fontSizeInherit","fontSizeSmall","fontSizeMedium","fontSizeLarge"]);export{e as g,i as s};

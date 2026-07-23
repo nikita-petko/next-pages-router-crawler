@@ -1,0 +1,1 @@
+import{_ as i}from"./extends-BAwxZeKA.js";import*as e from"react";import{jsx as a}from"react/jsx-runtime";import{S as t}from"./SvgIcon-B2ccoV-N.js";function f(n,r){function o(m,c){return a(t,i({"data-testid":`${r}Icon`,ref:c},m,{children:n}))}return process.env.NODE_ENV!=="production"&&(o.displayName=`${r}Icon`),o.muiName=t.muiName,e.memo(e.forwardRef(o))}export{f as c};

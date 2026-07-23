@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useRouter } from "next/router";
 
 import TestAppMetaLayout from "@modules/components/layouts/TestAppMetaLayout";
-import { Divider, Grid, Typography, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@rbx/ui";
+import { Divider, Grid, Typography, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField } from "@rbx/ui";
 
 interface TTestDialogProps {
   title: string;
@@ -30,6 +30,7 @@ const TestDialog: React.FC<TTestDialogProps> = ({ title, content, open, handleCl
 
 const TestPage = () => {
   const [open, setOpen] = useState(false);
+  const [text, setText] = useState('');
   const handleClickOpen = () => {
     setOpen(true);
   };
@@ -42,17 +43,20 @@ const TestPage = () => {
   return (
     <Grid container direction='column' alignItems='center' justifyContent='center' minHeight='100vh'>
       <Grid container item direction='column' alignItems='center' justifyContent="center" width='fit-content'>
-        <Typography variant="h1" align='center'>
+        <Typography variant="h1" align='center' mb={1}>
           Web Blox Test App
         </Typography>
-        <Divider sx={{ alignSelf: 'stretch' }} size='medium' />
-        <Typography variant="body1" align='center'>
+        <Divider sx={{ alignSelf: 'stretch' }} />
+        <Typography variant="body1" align='center' mt={2} mb={2}>
           Test Query: {testQuery}
         </Typography>
+        <Divider sx={{ alignSelf: 'stretch' }} />
+
+        <TextField id="test-id" label="Test Dialog Content" sx={{ mt: 3 }} onChange={(e) => setText(e.target.value)}/>
 
         {/* I might change this to a dialog popup or a snackbar */}
         <Button variant='contained' onClick={handleClickOpen} sx={{ mt: 2 }}>Test Button</Button>
-        <TestDialog title="Test Dialog" content={testQuery as string} open={open} handleClose={handleClose}  />
+        <TestDialog title="Test Dialog" content={text} open={open} handleClose={handleClose}  />
       </Grid>
     </Grid>
   )

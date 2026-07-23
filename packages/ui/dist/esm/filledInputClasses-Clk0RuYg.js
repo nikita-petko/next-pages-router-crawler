@@ -1,0 +1,1 @@
+import{_ as s}from"./extends-BAwxZeKA.js";import{i as e}from"./inputBaseClasses-BbBIOxEI.js";import{g as i}from"./generateUtilityClasses-n6k0wyPA.js";import{g as l}from"./createTheme-DcSDGmoA.js";function n(t){return l("MuiFilledInput",t)}const r=s({},e,i("MuiFilledInput",["root","underline","input"]));export{r as f,n as g};
