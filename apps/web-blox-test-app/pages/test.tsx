@@ -16,9 +16,9 @@ const TestPage = () => {
         <Typography variant="body1" align='center'>
           Test Query: {testQuery}
         </Typography>
-        
 
-        <Button variant='contained' onClick={() => alert('Hi')} sx={{ mt: 2 }}>Test Button</Button>
+        {/* I might change this to a dialog popup or a snackbar */}
+        <Button variant='contained' onClick={() => alert(testQuery)} sx={{ mt: 2 }}>Test Button</Button>
       </Grid>
     </Grid>
   )
