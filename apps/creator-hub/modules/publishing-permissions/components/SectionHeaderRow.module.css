@@ -1,0 +1,17 @@
+.currentColumnCell {
+  border-top: 0 none;
+  border-bottom: 0 none;
+}
+
+.borderContainer {
+  grid-column: span 4;
+  position: relative;
+}
+
+.borders {
+  border-bottom-width: 0;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}

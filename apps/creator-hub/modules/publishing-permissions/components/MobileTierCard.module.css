@@ -1,0 +1,19 @@
+
+.currentBadge {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  width: auto;
+  margin: 0 auto calc(var(--gap-large) * -1) auto;
+}
+.tierCardHeader {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.lastRequirementRow {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.alignTop {
+  vertical-align: top;
+}

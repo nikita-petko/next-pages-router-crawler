@@ -1,0 +1,36 @@
+.step {
+  width: 100%;
+}
+
+.stepContent {
+  min-width: 0;
+  word-break: break-word;
+  padding-bottom: 0px;
+  padding-top: 8px;
+}
+
+.stepBody {
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.stepBody :global(p),
+.stepBody :global(ul),
+.stepBody :global(ol),
+.stepBody :global(li) {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.stepBody :global(p:first-of-type) {
+  margin-top: 0;
+}
+
+.stepBody :global(p:last-of-type) {
+  margin-bottom: 0;
+}
+
+.childSteps {
+  padding-top: 0px;
+  padding-left: 16px;
+}

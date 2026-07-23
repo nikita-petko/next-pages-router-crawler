@@ -1,0 +1,10 @@
+.currentColumnCell {
+  border-top: 0 none;
+  border-bottom: 0 none;
+}
+
+.currentColumnCellLast {
+  border-top: 0 none;
+  border-top-right-radius: 0;
+  border-top-left-radius: 0;
+}

@@ -1,0 +1,7 @@
+__turbopack_context__.v({
+  "moreButton": "RestartActivityCardV2-module__tY6fCW__moreButton",
+  "statusIndicatorCompleted": "RestartActivityCardV2-module__tY6fCW__statusIndicatorCompleted",
+  "statusIndicatorInProgress": "RestartActivityCardV2-module__tY6fCW__statusIndicatorInProgress",
+  "statusIndicatorUnknown": "RestartActivityCardV2-module__tY6fCW__statusIndicatorUnknown",
+  "tableElement": "RestartActivityCardV2-module__tY6fCW__tableElement",
+});
