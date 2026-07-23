@@ -40,8 +40,8 @@ jobs:
 
     # If DOCKER_REGISTRY is not set, default to docker.io
     env:
-      DOCKER_REGISTRY: ${{ github.event.inputs.registry || secrets.DOCKER_REGISTRY || 'docker.io' }}
-      IMAGE_NAME: ${{ github.event.inputs.image || secrets.IMAGE_NAME || 'mfdlabs/next-pages-router-crawler' }}
+      DOCKER_REGISTRY: ${{ github.event.inputs.registry || vars.DOCKER_REGISTRY || 'docker.io' }}
+      IMAGE_NAME: ${{ github.event.inputs.image || vars.IMAGE_NAME || 'mfdlabs/next-pages-router-crawler' }}
       DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       COMPANY_NAME: ${{ github.events.inputs.company || 'mfdlabs' }}
