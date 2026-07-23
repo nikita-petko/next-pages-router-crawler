@@ -25,13 +25,14 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version: 1.25.x
+          cache-dependency-path: "src/go.mod"
 
       - name: Run the build-release make target
         run: make build-release
 
       - name: Run crawler
         run: |
-          /bin/debug/linux/x64/next-pages-router-crawler 
+          ./bin/debug/linux/x64/next-pages-router-crawler 
             --url ${{ vars.URL }}
             --pulse
             --clear-cache
