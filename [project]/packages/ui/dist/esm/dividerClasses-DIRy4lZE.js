@@ -1,1 +1,0 @@
-import{g as t}from"./createTheme-DcSDGmoA.js";import{g as e}from"./generateUtilityClasses-n6k0wyPA.js";function r(i){return t("MuiDivider",i)}const l=e("MuiDivider",["root","absolute","fullWidth","inset","middle","flexItem","light","vertical","withChildren","withChildrenVertical","textAlignRight","textAlignLeft","wrapper","wrapperVertical"]);export{l as d,r as g};

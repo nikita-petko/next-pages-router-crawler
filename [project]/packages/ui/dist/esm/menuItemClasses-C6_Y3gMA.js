@@ -1,1 +1,0 @@
-import{g as t}from"./generateUtilityClasses-n6k0wyPA.js";import{g as s}from"./createTheme-DcSDGmoA.js";function i(e){return s("MuiMenuItem",e)}const r=t("MuiMenuItem",["root","focusVisible","dense","disabled","divider","gutters","selected"]);export{i as g,r as m};

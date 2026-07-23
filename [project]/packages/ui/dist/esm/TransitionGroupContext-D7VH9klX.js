@@ -1,1 +1,0 @@
-import{_ as e}from"./setPrototypeOf-BldKXHF3.js";import r from"react";function p(t,o){t.prototype=Object.create(o.prototype),t.prototype.constructor=t,e(t,o)}var a=r.createContext(null);export{a as T,p as _};

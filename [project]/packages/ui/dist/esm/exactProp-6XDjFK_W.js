@@ -1,1 +1,0 @@
-import{_ as n}from"./extends-BAwxZeKA.js";const s="exact-prop: \u200B";function p(e){return process.env.NODE_ENV==="production"?e:n({},e,{[s]:o=>{const t=Object.keys(o).filter(r=>!e.hasOwnProperty(r));return t.length>0?new Error(`The following props are not supported: ${t.map(r=>`\`${r}\``).join(", ")}. Please remove them.`):null}})}export{p as e};
