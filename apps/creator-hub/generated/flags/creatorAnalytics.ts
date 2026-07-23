@@ -182,11 +182,6 @@ export const isJourneyEventsEnabled = defineFlag({
     name: 'isJourneyEventsEnabled',
     defaultValue: false,
   });
-export const isComparisonRangePolicyEnabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'isComparisonRangePolicyEnabled',
-    defaultValue: true,
-  });
 export const isClientSessionsEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isClientSessionsEnabled',

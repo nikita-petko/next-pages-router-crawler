@@ -699,8 +699,7 @@ function TimeRangeDropdownSubcontext({
           case RAQIV2DateRangeType.Last7Days:
           case RAQIV2DateRangeType.Last28Days:
           case RAQIV2DateRangeType.Last56Days:
-          case RAQIV2DateRangeType.Last90Days:
-          case RAQIV2DateRangeType.Last365Days: {
+          case RAQIV2DateRangeType.Last90Days: {
             // DateRangeTypes that don't get aligned to UTC-midnight have an offset of 0
             const endDate = new Date();
             const relativeDateOffset = dateRangeOffsetDays[newDateRange];

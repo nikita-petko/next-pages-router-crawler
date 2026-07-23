@@ -520,16 +520,6 @@ export const generatedFlags = [
       },
     },
     {
-      flag: creatorAnalyticsFlags.isComparisonRangePolicyEnabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'isComparisonRangePolicyEnabled',
-        defaultValue: true,
-        valueType: 'boolean',
-        contextType: 'static',
-      },
-    },
-    {
       flag: creatorAnalyticsFlags.isClientSessionsEnabled,
       metadata: {
         namespace: 'creator-analytics',

@@ -11,7 +11,6 @@ const dateRangeOffsetDays: Record<RAQIV2DateRangeType, number> = {
   [RAQIV2DateRangeType.Last28Days]: 28,
   [RAQIV2DateRangeType.Last56Days]: 56,
   [RAQIV2DateRangeType.Last90Days]: 90,
-  [RAQIV2DateRangeType.Last365Days]: 365,
   [RAQIV2DateRangeType.Custom]: 0,
 };
 

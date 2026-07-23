@@ -32,10 +32,6 @@ const dateRangeStrings: Record<RAQIV2DateRangeType, TranslationKey> = {
     'Label.LastNinetyDays',
     TranslationNamespace.Analytics,
   ),
-  [RAQIV2DateRangeType.Last365Days]: translationKey(
-    'Label.Last365Days',
-    TranslationNamespace.Analytics,
-  ),
   [RAQIV2DateRangeType.Custom]: translationKey('Label.DateCustom', TranslationNamespace.Analytics),
 };
 

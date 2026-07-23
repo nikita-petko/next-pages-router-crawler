@@ -12,7 +12,6 @@ import AnalyticsMetricsOverview from '@modules/experience-analytics-shared/compo
 import type { TWatchlistTileStyleConfig } from '@modules/experience-analytics-shared/constants/tileConstants';
 import { useRAQIV2Client } from '@modules/experience-analytics-shared/context/RAQIV2ClientProvider';
 import useMappedApiRequest from '@modules/experience-analytics-shared/hooks/useMappedApiRequest';
-import useRAQIV2RequestFlags from '@modules/experience-analytics-shared/hooks/useRAQIV2RequestFlags';
 import useRAQIV2TranslationDependencies from '@modules/experience-analytics-shared/hooks/useRAQIV2TranslationDependencies';
 import type RAQIV2ChartSpec from '@modules/experience-analytics-shared/types/RAQIV2ChartSpec';
 import { generateAnalyticsNumberFormattingSpec } from '@modules/experience-analytics-shared/utils/analyticsNumberFormattingSpec';
@@ -40,7 +39,6 @@ const WatchlistExperienceTileMetricsContentV2: FC<WatchlistExperienceTileMetrics
 }) => {
   const translationDependencies = useRAQIV2TranslationDependencies();
   const { client } = useRAQIV2Client(false);
-  const { ready: requestFlagsReady, enableComparisonRangePolicy } = useRAQIV2RequestFlags();
   const { startDate, endDate } = useAnalyticsCurrentDateRangeBundle();
 
   const specByKey = useMemo(() => {
@@ -78,7 +76,6 @@ const WatchlistExperienceTileMetricsContentV2: FC<WatchlistExperienceTileMetrics
         }
 
         return makeRAQIV2Request(spec, client, {
-          enableComparisonRangePolicy,
           fetchTotalSeries: true,
           fetchComparison: {
             mode: FetchComparisonSeriesMode.Combined,
@@ -91,12 +88,11 @@ const WatchlistExperienceTileMetricsContentV2: FC<WatchlistExperienceTileMetrics
         return new Map(responses.map((response, index) => [ids[index], response]));
       });
     },
-    [client, enableComparisonRangePolicy, specByKey],
+    [client, specByKey],
   );
   const { data, isUserForbidden } = useMappedApiRequest(
     WatchlistExperienceTileMetricsOrder,
     makeRequests,
-    requestFlagsReady,
   );
 
   const metricValues = useMemo(() => {

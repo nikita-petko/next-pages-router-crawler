@@ -29,7 +29,6 @@ export const PRESET_DATE_RANGE_DURATIONS_MS = [
   [RAQIV2DateRangeType.Last28Days, 27 * DAY_MS],
   [RAQIV2DateRangeType.Last56Days, 55 * DAY_MS],
   [RAQIV2DateRangeType.Last90Days, 89 * DAY_MS],
-  [RAQIV2DateRangeType.Last365Days, 364 * DAY_MS],
 ] as const satisfies readonly (readonly [RAQIV2DateRangeType, number])[];
 
 /** Lookup form of {@link PRESET_DATE_RANGE_DURATIONS_MS}; `Custom` omitted. */
@@ -89,10 +88,6 @@ export function calculateDatesFromRangeType({
     }
     case RAQIV2DateRangeType.Last90Days: {
       const start = subDays(endDate, 89);
-      return { startDate: start, endDate };
-    }
-    case RAQIV2DateRangeType.Last365Days: {
-      const start = subDays(endDate, 364);
       return { startDate: start, endDate };
     }
     case RAQIV2DateRangeType.Custom: {

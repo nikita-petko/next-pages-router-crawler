@@ -4,10 +4,8 @@ import { subDays } from '@rbx/core';
 import { RAQIV2DateRangeType } from '@rbx/creator-hub-analytics-config';
 import { DatePresetPopoverControl } from '@rbx/date-range-picker';
 import type { TDatePresetOption } from '@rbx/date-range-picker';
-import { useFlag } from '@rbx/flags';
 import { DateTimePicker } from '@rbx/foundation-ui';
 import type { TDateRangePresetOption, TDateTimePickerLabelsDualActions } from '@rbx/foundation-ui';
-import { isComparisonRangePolicyEnabled as isComparisonRangePolicyEnabledFlag } from '@generated/flags/creatorAnalytics';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { formatDateRange } from '@modules/charts-generic/charts/formatters/timeFormatters';
 import dateRangeOffsetDays from '@modules/charts-generic/constants/dateRangeOffsetDays';
@@ -50,7 +48,6 @@ const ChartConfiguratorDateRangeControl: FC<ChartConfiguratorDateRangeControlPro
 }) => {
   const locale = useLocale();
   const { translate } = useRAQIV2TranslationDependencies();
-  const { value: isComparisonRangePolicyEnabled } = useFlag(isComparisonRangePolicyEnabledFlag);
   const {
     rangeType,
     onChangeRangeType,
@@ -62,13 +59,8 @@ const ChartConfiguratorDateRangeControl: FC<ChartConfiguratorDateRangeControlPro
   } = useAnalyticsCurrentDateRangeBundle();
 
   const presetOptions = useMemo(
-    () =>
-      dateRangeOptions.filter(
-        (type) =>
-          type !== RAQIV2DateRangeType.Custom &&
-          (isComparisonRangePolicyEnabled !== true || type !== RAQIV2DateRangeType.Last365Days),
-      ),
-    [dateRangeOptions, isComparisonRangePolicyEnabled],
+    () => dateRangeOptions.filter((type) => type !== RAQIV2DateRangeType.Custom),
+    [dateRangeOptions],
   );
 
   const presets = useMemo<TDatePresetOption[]>(

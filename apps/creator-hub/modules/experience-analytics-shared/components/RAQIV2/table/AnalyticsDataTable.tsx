@@ -24,7 +24,6 @@ import type {
 import { TIMESTAMP_PSEUDO_DIMENSION } from '../../../adapters/genericRAQIV2TableAdapter';
 import { useRAQIV2Client } from '../../../context/RAQIV2ClientProvider';
 import type { PaginationResponse } from '../../../hooks/usePaginatedRequest';
-import useRAQIV2RequestFlags from '../../../hooks/useRAQIV2RequestFlags';
 import useRAQIV2TranslationDependencies from '../../../hooks/useRAQIV2TranslationDependencies';
 import computeRAQIV2MetricColumnConfigOverride from '../../../utils/computeRAQIV2MetricColumnConfigOverride';
 import { getMetricLabelFromMetricLike } from '../../../utils/metricLikeSemantics';
@@ -206,7 +205,6 @@ const AnalyticsDataTable = <TColumnKey extends string>({
   translationDependenciesRef.current = translationDependencies;
 
   const { client } = useRAQIV2Client(ignoreCache ?? false);
-  const { ready: requestFlagsReady, enableComparisonRangePolicy } = useRAQIV2RequestFlags();
   const loadUniverseForRowResponses = useLoadUniverseIds();
 
   // Helper to extract resource/timeSpec/metric from the first metric spec.
@@ -395,7 +393,6 @@ const AnalyticsDataTable = <TColumnKey extends string>({
           isTotalRowIncluded,
           requiredBreakdownRows,
           mergeMetricBreakdownRows ? dataColumnSpecs.filter(isRAQIV2TableColumnSpec) : undefined,
-          enableComparisonRangePolicy,
         );
         loadUniverseForRowResponses(response.values);
         return response;
@@ -411,7 +408,6 @@ const AnalyticsDataTable = <TColumnKey extends string>({
       client,
       allColumnSpecs,
       dataColumnSpecs,
-      enableComparisonRangePolicy,
       isTotalRowIncluded,
       mergeMetricBreakdownRows,
       requiredBreakdownRows,
@@ -522,7 +518,6 @@ const AnalyticsDataTable = <TColumnKey extends string>({
       emptyStateTableHeight={emptyStateTableHeight}
       isInTabSwitchedContext={isInTabSwitchedContext}
       rowExpansion={rowExpansion}
-      isRequestEnabled={requestFlagsReady}
     />
   );
 };

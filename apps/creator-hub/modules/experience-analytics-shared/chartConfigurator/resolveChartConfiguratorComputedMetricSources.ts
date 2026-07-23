@@ -41,7 +41,6 @@ const recommendedEventsExploreModeDateRanges = [
   RAQIV2DateRangeType.Last28Days,
   RAQIV2DateRangeType.Last56Days,
   RAQIV2DateRangeType.Last90Days,
-  RAQIV2DateRangeType.Last365Days,
   RAQIV2DateRangeType.Custom,
 ] as const;
 
@@ -69,7 +68,6 @@ const getSupportedDateRangesForMetric = (
   if (exploreModeConfig?.disabled) {
     return [
       ...DefaultExploreModeDateRanges.filter((range) => range !== RAQIV2DateRangeType.Custom),
-      RAQIV2DateRangeType.Last365Days,
       RAQIV2DateRangeType.Custom,
     ];
   }

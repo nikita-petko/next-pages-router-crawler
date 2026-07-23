@@ -74,7 +74,6 @@ const baseRecommendationServicePageConfig: Omit<
       RAQIV2DateRangeType.Last28Days,
       RAQIV2DateRangeType.Last56Days,
       RAQIV2DateRangeType.Last90Days,
-      RAQIV2DateRangeType.Last365Days,
       RAQIV2DateRangeType.Custom,
     ],
     defaultRange: RAQIV2DateRangeType.Last28Days,

@@ -22,7 +22,6 @@ import makeRAQIV2Request from '../utils/makeRAQIV2Request';
 import { maybeThrowRAQIV2InternalException } from '../utils/RAQIV2InternalException';
 import { applyStaticQuotaToChart, type StaticQuotaConfig } from './applyStaticQuotaToChart';
 import useApiRequest from './useApiRequest';
-import useRAQIV2RequestFlags from './useRAQIV2RequestFlags';
 import useRAQIV2TranslationDependencies from './useRAQIV2TranslationDependencies';
 
 export type AnalyticsQuotaProps = {
@@ -81,7 +80,6 @@ export const useAnalyticsQuota = ({
 } => {
   const translationDependencies = useRAQIV2TranslationDependencies();
   const { client, clearCache } = useRAQIV2Client(ignoreCache ?? false);
-  const { ready: requestFlagsReady, enableComparisonRangePolicy } = useRAQIV2RequestFlags();
 
   const quotaMetric = quotaConfig?.type === 'Metric' ? quotaConfig.metric : undefined;
   const staticQuotaConfig: StaticQuotaConfig | undefined =
@@ -115,10 +113,9 @@ export const useAnalyticsQuota = ({
 
   const quotaRequestOptions = useMemo(
     () => ({
-      enableComparisonRangePolicy,
       fetchComparison,
     }),
-    [enableComparisonRangePolicy, fetchComparison],
+    [fetchComparison],
   );
 
   const makeQuotaRequest = useCallback(async () => {
@@ -130,7 +127,6 @@ export const useAnalyticsQuota = ({
   }, [client, quotaRequestOptions, quotaSpec]);
 
   const { data } = useApiRequest(makeQuotaRequest, {
-    enabled: requestFlagsReady,
     invalidateCache: ignoreCache ? clearCache : undefined,
   });
 

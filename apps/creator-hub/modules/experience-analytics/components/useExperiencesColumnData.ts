@@ -6,7 +6,6 @@ import { useAnalyticsCurrentDateRangeBundle } from '@modules/charts-generic/cont
 import ChartResourceType from '@modules/charts-generic/enums/ChartResourceType';
 import type { TRAQIV2NumericUIMetric } from '@modules/experience-analytics-shared/constants/AnalyticsMetricDisplayConfig';
 import { useRAQIV2Client } from '@modules/experience-analytics-shared/context/RAQIV2ClientProvider';
-import useRAQIV2RequestFlags from '@modules/experience-analytics-shared/hooks/useRAQIV2RequestFlags';
 import type RAQIV2TableContext from '@modules/experience-analytics-shared/types/RAQIV2TableContext';
 import type { RAQIV2QueryResponses } from '@modules/experience-analytics-shared/utils/combineRAQIV2QueryResponses';
 import computeRAQIV2SpecOverride from '@modules/experience-analytics-shared/utils/computeRAQIV2SpecOverride';
@@ -35,7 +34,6 @@ const useExperiencesColumnData = ({
   keys: ExperiencesTableMetricKeys[];
 }) => {
   const { client } = useRAQIV2Client(false);
-  const { ready: requestFlagsReady, enableComparisonRangePolicy } = useRAQIV2RequestFlags();
   const { startDate, endDate } = useAnalyticsCurrentDateRangeBundle();
 
   const universeIdWithSpec = useMemo(() => {
@@ -108,7 +106,6 @@ const useExperiencesColumnData = ({
           resource.id,
           startTime.getTime(),
           endTime.getTime(),
-          enableComparisonRangePolicy,
         ],
         queryFn: async () => {
           const queryRequest = {
@@ -120,7 +117,6 @@ const useExperiencesColumnData = ({
             filter,
           };
           return makeRAQIV2Request(queryRequest, client, {
-            enableComparisonRangePolicy,
             fetchTotalSeries: true,
             fetchComparison: {
               mode: FetchComparisonSeriesMode.Combined,
@@ -128,7 +124,7 @@ const useExperiencesColumnData = ({
             },
           });
         },
-        enabled: requestFlagsReady && resource.id !== uninitializedUniverseId,
+        enabled: resource.id !== uninitializedUniverseId,
       };
     }),
     combine,

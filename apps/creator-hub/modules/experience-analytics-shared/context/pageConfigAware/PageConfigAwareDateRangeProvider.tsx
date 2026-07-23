@@ -8,8 +8,6 @@
 import type { FC } from 'react';
 import React, { useMemo, useCallback } from 'react';
 import { RAQIV2DateRangeType } from '@rbx/creator-hub-analytics-config';
-import { useFlag } from '@rbx/flags';
-import { isComparisonRangePolicyEnabled as isComparisonRangePolicyEnabledFlag } from '@generated/flags/creatorAnalytics';
 import type { AnalyticsDateRangeBundle } from '@modules/charts-generic/context/AnalyticsQueryDateRangeBundleContext';
 import AnalyticsQueryDateRangeBundleContext from '@modules/charts-generic/context/AnalyticsQueryDateRangeBundleContext';
 import { getMinDate } from '@modules/charts-generic/utils/datePickerUtilities';
@@ -84,21 +82,9 @@ export const PageConfigAwareDateRangeProvider: FC<PageConfigAwareDateRangeProvid
 }) => {
   const rawParams = useRawAnalyticsQueryParams();
   const defaultDateRangeSelection = config.defaultDateRangeSelection;
-  const { value: isComparisonRangePolicyEnabled } = useFlag(isComparisonRangePolicyEnabledFlag);
 
   // Build date range config from surface config
-  const dateRangeConfig = useMemo(() => {
-    const authoredDateRangeConfig = buildDateRangeConfig(config);
-    if (!authoredDateRangeConfig || isComparisonRangePolicyEnabled !== true) {
-      return authoredDateRangeConfig;
-    }
-    return {
-      ...authoredDateRangeConfig,
-      supportedRanges: authoredDateRangeConfig.supportedRanges.filter(
-        (range) => range !== RAQIV2DateRangeType.Last365Days,
-      ),
-    };
-  }, [config, isComparisonRangePolicyEnabled]);
+  const dateRangeConfig = useMemo(() => buildDateRangeConfig(config), [config]);
 
   // Query for latest available time when configured to do so
   const shouldQueryLatestAvailable =

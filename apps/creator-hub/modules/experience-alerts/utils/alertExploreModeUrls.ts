@@ -54,8 +54,9 @@ const GRANULARITY_PREFERRED_DATE_RANGE: Partial<
 
 /**
  * Pick the tightest available preset range whose start date covers lastFiredAt.
- * Falls back to the largest available preset when nothing fits (e.g. the alert
- * fired more than 365 days ago). Returns undefined if no preset is available.
+ * Falls back to the largest available preset when nothing fits (for example,
+ * when the alert fired before every supported preset window). Returns
+ * undefined if no preset is available.
  */
 const pickRangeTypeForLastFiredAt = (
   lastFiredAt: Date,

@@ -825,12 +825,6 @@ export type MakeRAQIV2RequestOptions = {
    * `useRAQIV2RequestFlags` from the `isAceMetricVariantFanoutEnabled` flag.
    */
   enableAceVariantFanout?: boolean;
-  /**
-   * When true, comparison requests honor their configured range policy.
-   * Resolved centrally by `useRAQIV2RequestFlags` from the
-   * `isComparisonRangePolicyEnabled` flag.
-   */
-  enableComparisonRangePolicy?: boolean;
 };
 
 export const SupportedGranularitiesForFillMissingDatapoints = [
@@ -1828,9 +1822,7 @@ const makeRAQIV2Request = async (
   const comparisonRangePolicy =
     requestedFetchComparison?.rangePolicy ?? DEFAULT_COMPARISON_CONFIG.rangePolicy;
   const fetchComparison =
-    requestedFetchComparison &&
-    (options.enableComparisonRangePolicy !== true ||
-      isComparisonRangeAllowed(givenTimeSpec, comparisonRangePolicy))
+    requestedFetchComparison && isComparisonRangeAllowed(givenTimeSpec, comparisonRangePolicy)
       ? requestedFetchComparison
       : undefined;
   const resolvedOptions =

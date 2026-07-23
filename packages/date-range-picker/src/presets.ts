@@ -83,8 +83,6 @@ export const computeRangeForPreset = (
       return { startDate: startOfLastNDays(now, 56), endDate: now };
     case DateRangePreset.Last90Days:
       return { startDate: startOfLastNDays(now, 90), endDate: now };
-    case DateRangePreset.Last365Days:
-      return { startDate: startOfLastNDays(now, 365), endDate: now };
     case DateRangePreset.Today:
       return { startDate: startOfDay(now), endDate: endOfDay(now) };
     case DateRangePreset.Yesterday: {

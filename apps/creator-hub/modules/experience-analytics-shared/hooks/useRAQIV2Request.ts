@@ -20,17 +20,12 @@ const useRAQIV2Request = (
   ignoreCache?: boolean,
 ): TUseApiRequestResponse<RAQIV2QueryResponses> => {
   const { client, clearCache } = useRAQIV2Client(ignoreCache ?? false);
-  const {
-    ready: requestFlagsReady,
-    enableAceVariantFanout,
-    enableComparisonRangePolicy,
-  } = useRAQIV2RequestFlags();
+  const { ready: requestFlagsReady, enableAceVariantFanout } = useRAQIV2RequestFlags();
 
   const resolvedOptions = useMemo((): MakeRAQIV2RequestOptions | undefined => {
     const effectiveOptions = {
       ...stripFetchComparisonForBreakdown(request, makeRAQIV2RequestOptions),
       enableAceVariantFanout,
-      enableComparisonRangePolicy,
     };
 
     if (!effectiveOptions?.fetchComparison) {
@@ -51,7 +46,7 @@ const useRAQIV2Request = (
       ...effectiveOptions,
       fetchComparison: undefined,
     };
-  }, [enableAceVariantFanout, enableComparisonRangePolicy, makeRAQIV2RequestOptions, request]);
+  }, [enableAceVariantFanout, makeRAQIV2RequestOptions, request]);
 
   const makeRaqiRequest = useCallback(() => {
     const validationError = validateRAQIV2Request(request);

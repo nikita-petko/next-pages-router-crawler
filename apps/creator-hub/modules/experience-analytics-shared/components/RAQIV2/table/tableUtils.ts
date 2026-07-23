@@ -289,7 +289,6 @@ export const makeRAQITableRequest = async <TColumnKey extends string>(
   isTotalRowIncluded?: boolean,
   requiredBreakdownRows?: RAQIV2BreakdownValue[][],
   mergeBreakdownRowsFromMetricSpecs?: readonly MetricTableColumnSpec<string>[],
-  enableComparisonRangePolicy?: boolean,
 ) => {
   const { columnKey: _columnKey, ...specWithoutColumnKey } = dataSpec;
   const { rows } = request;
@@ -312,7 +311,6 @@ export const makeRAQITableRequest = async <TColumnKey extends string>(
   };
 
   const raqiResponse = await makeRAQIV2Request(raqiRequestSpec, client, {
-    enableComparisonRangePolicy,
     fetchTotalSeries: isTotalRowIncluded,
     fetchComparison: dataSpec.isComparisonDataShown
       ? {

@@ -6,9 +6,7 @@ import {
   DateRangePreset,
   isDateRangePreset,
 } from '@rbx/date-range-picker';
-import { useFlag } from '@rbx/flags';
 import type { Select } from '@rbx/ui';
-import { isComparisonRangePolicyEnabled as isComparisonRangePolicyEnabledFlag } from '@generated/flags/creatorAnalytics';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import dateRangeStrings from '@modules/charts-generic/constants/dateRangeStrings';
 import useLocale from '@modules/charts-generic/context/useLocale';
@@ -66,7 +64,6 @@ const DateRangeControl: FC<DateRangeControlProps> = ({
 }) => {
   const { translate } = useRAQIV2TranslationDependencies();
   const locale = useLocale();
-  const { value: isComparisonRangePolicyEnabled } = useFlag(isComparisonRangePolicyEnabledFlag);
 
   const presetLabels = useMemo(() => {
     const labels: Partial<Record<DateRangePreset, ReactNode>> & {
@@ -86,13 +83,9 @@ const DateRangeControl: FC<DateRangeControlProps> = ({
   const sharedDateRangeOptions = useMemo(
     () =>
       dateRangeOptions
-        ?.filter(
-          (range) =>
-            isComparisonRangePolicyEnabled !== true || range !== RAQIV2DateRangeType.Last365Days,
-        )
         ?.map(toSharedPreset)
         .filter((preset): preset is DateRangePreset => preset !== null),
-    [dateRangeOptions, isComparisonRangePolicyEnabled],
+    [dateRangeOptions],
   );
 
   const mappedDateRangeType = toSharedPreset(dateRangeType);
