@@ -1,0 +1,45 @@
+import type { MutableRefObject, RefObject } from 'react';
+import { useEffect } from 'react';
+
+/**
+ * Triggers a function when clicking outside a DOM element.
+ *
+ * @param {RefObject} ref - Reference object that we want to monitor for clicking outside
+ * @param {(event: TouchEvent | MouseEvent) => void} handler - Handler function
+ * to be run when a click is detected outside of the reference object (i.e ref)
+ * @returns void
+ */
+const useOnClickOutside = <T extends HTMLElement>(
+  refs: (MutableRefObject<T> | RefObject<T | null>)[],
+  handler: (event: TouchEvent | MouseEvent) => void,
+): void => {
+  useEffect(() => {
+    const listener = (event: TouchEvent | MouseEvent) => {
+      if (refs.every((ref) => !ref?.current)) {
+        return;
+      }
+      if (
+        refs.findIndex((ref) => {
+          if (event.target instanceof Node) {
+            return ref?.current?.contains(event.target);
+          }
+          return false;
+        }) > -1
+      ) {
+        return;
+      }
+
+      handler(event);
+    };
+
+    document.addEventListener('mousedown', listener);
+    document.addEventListener('touchstart', listener);
+
+    return () => {
+      document.removeEventListener('mousedown', listener);
+      document.removeEventListener('touchstart', listener);
+    };
+  }, [refs, handler]);
+};
+
+export default useOnClickOutside;

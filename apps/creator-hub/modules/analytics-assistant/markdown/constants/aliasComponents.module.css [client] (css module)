@@ -1,0 +1,12 @@
+__turbopack_context__.v({
+  "blockquote": "aliasComponents-module__bMndmq__blockquote",
+  "header": "aliasComponents-module__bMndmq__header",
+  "horizontalRule": "aliasComponents-module__bMndmq__horizontalRule",
+  "list": "aliasComponents-module__bMndmq__list",
+  "listItem": "aliasComponents-module__bMndmq__listItem",
+  "paragraph": "aliasComponents-module__bMndmq__paragraph",
+  "table": "aliasComponents-module__bMndmq__table",
+  "tableCell": "aliasComponents-module__bMndmq__tableCell",
+  "tableHeader": "aliasComponents-module__bMndmq__tableHeader",
+  "tableWrapper": "aliasComponents-module__bMndmq__tableWrapper",
+});

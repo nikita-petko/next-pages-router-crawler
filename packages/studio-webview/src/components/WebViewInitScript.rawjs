@@ -1,0 +1,4 @@
+
+        export const hash = "'sha256-7VcVvtx4Kv2ktVyZRQktoJPd/UsTJhFSqDvNtK6Eimk='";
+        export default "try{if(window.rbx&&window.rbx.studio&&!window.rbx.studio.preInitStylesApplied){const classList=document.documentElement.classList,colorScheme=(window.rbx.studio.theme||sessionStorage.web_view_theme_override).includes(\"light\")?\"light\":\"dark\";classList.remove(\"dark-theme\",\"light-theme\"),classList.add(`${colorScheme}-theme`),classList.add(\"studio-webview\"),window.rbx.studio.preInitStylesApplied=!0}}catch(e){console.error(\"WebViewPreload Script Error\",e)}";
+      
