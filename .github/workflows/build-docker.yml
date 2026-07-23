@@ -7,7 +7,7 @@ on:
     paths:
       - "Dockerfile"
       - "src/**"
-      - ".github/workflows/**"
+      - ".github/workflows/build-docker.yml"
 
   # Allows you to run this workflow manually from the Actions tab. We can override the branch, image name, and docker registry.
   workflow_dispatch:

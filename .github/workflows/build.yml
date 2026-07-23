@@ -6,7 +6,7 @@ on:
       - "master"
     paths:
       - "src/**"
-      - ".github/workflows/**"
+      - ".github/workflows/build.yml"
 
 env:
   PROJECT_NAME: 'next-pages-router-crawler'
