@@ -32,7 +32,7 @@ func fetchAllSourceMaps(assetPrefix string, sources map[string]*cache.CacheGuard
 			go func(sourceMapUrl string) {
 				defer waitGroup.Done()
 
-				glog.V(100).Infof("Fetching source map: %s", sourceMapUrl)
+				glog.V(1000).Infof("Fetching source map: %s", sourceMapUrl)
 
 				sourceMapData, err := cache.CacheGuardedHttpGet(sourceMapUrl, func(resp *http.Response) error {
 					if resp.StatusCode == http.StatusNotFound {

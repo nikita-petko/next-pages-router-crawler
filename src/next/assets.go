@@ -148,7 +148,7 @@ func fetchAllAssets(assetUrls []string) (map[string]*cache.CacheGuard, []error) 
 		go func(assetUrl string) {
 			defer waitGroup.Done()
 
-			glog.V(100).Infof("Fetching asset: %s", assetUrl)
+			glog.V(1000).Infof("Fetching asset: %s", assetUrl)
 
 			cached, err := cache.CacheGuardedHttpGet(assetUrl, func(resp *http.Response) error {
 				if resp.StatusCode == http.StatusNotFound {

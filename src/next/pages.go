@@ -13,7 +13,7 @@ import (
 
 // fetchNextPageData fetches the Next.js page data for the given URL, including the NextData and all asset URLs.
 func fetchNextPageData(url string) (nextData *types.NextData, assetUrls []string, err error) {
-	glog.V(100).Infof("Fetching Next.js page data for URL: %s", url)
+	glog.V(1000).Infof("Fetching Next.js page data for URL: %s", url)
 
 	htmlData, err := html.FetchHTMLForPage(url)
 	if err != nil {

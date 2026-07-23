@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/golang/glog"
-	"github.com/hashicorp/go-retryablehttp"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/http"
 )
 
@@ -48,7 +47,7 @@ func CacheGuardedHttpGet(url string, isValidResponse IsValidResponseFunc) (*Cach
 	}
 
 	// If the file is not cached or the ETag does not match, cache the response body to a file
-	resp, err := retryablehttp.Get(url)
+	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
 	}
