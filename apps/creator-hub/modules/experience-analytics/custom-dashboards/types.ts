@@ -41,11 +41,11 @@ export const MAX_TILE_TITLE_LENGTH = 80;
  * server-backed service exists; the frontend enforces the same number so the
  * UX rejects creates locally without a roundtrip. When the cap moves, both
  * sides must change together — keep this constant the single source of truth
- * on the client and mirror it server-side. Sized for a long tail well past
- * any realistic creator workflow without making the manage-page list view
- * (eager-loaded, no pagination at M1) sluggish.
+ * on the client and mirror it server-side. Sized to keep the manage-page
+ * list view (eager-loaded, no pagination at M1) snappy while covering
+ * realistic creator workflows.
  */
-export const MAX_DASHBOARDS_PER_UNIVERSE = 100;
+export const MAX_DASHBOARDS_PER_UNIVERSE = 16;
 
 /** Length-1 row = full-width; length-2 row = two half-width tiles. */
 export const MAX_TILES_PER_ROW = 2 as const;
