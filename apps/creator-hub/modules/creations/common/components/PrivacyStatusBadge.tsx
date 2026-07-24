@@ -1,12 +1,12 @@
 import type { FunctionComponent } from 'react';
-import { useCallback, useEffect, useRef, type ReactElement } from 'react';
-import { TransactionVariantEnum } from '@rbx/client-core-content-transaction-api/v1';
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { SearchCreatorType } from '@rbx/client-universes-api/v1';
 import type { TTailwindIconClass } from '@rbx/foundation-tailwind/classes';
 import type { TBadgeVariant } from '@rbx/foundation-ui';
 import { Badge, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { useCoreContentTransactionStatus } from '@modules/audience-reach/hooks/useCoreContentTransactionStatus';
+import { TransactionVariantEnum } from '@modules/clients/coreContentTransactions';
 import { IXPLayers } from '@modules/clients/ixpExperiments';
 import CreatorDashboardEventType from '@modules/eventStream/enum/CreatorDashboardEventType';
 import unifiedLoggerClient from '@modules/eventStream/unifiedLoggerClient';
@@ -14,7 +14,6 @@ import { CONTENT_UNRATED } from '@modules/experience-guidelines/hooks/useCreator
 import useIXPParameters from '@modules/miscellaneous/hooks/useIXPParameters';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { Audience, isPrivateAudience } from '../audiences';
-import styles from './PrivacyStatusBadge.module.css';
 
 // This appeases the type checker for TranslateWithNamespace
 type VisibilityLabelKey =
@@ -27,6 +26,9 @@ type VisibilityLabelKey =
 // Select-eligible experiences under this age threshold show "Needs Attention"
 // because they risk losing Select status without a 16+ age recommendation.
 const NEEDS_ATTENTION_AGE_THRESHOLD = 16;
+
+// Hide tooltips when most of the badge is clipped (e.g. under sticky nav / carousel overflow).
+const TOOLTIP_VISIBILITY_THRESHOLD = 0.5;
 
 export interface PrivacyStatusBadgeProps {
   universeId?: number;
@@ -54,7 +56,7 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
   isBeta = false,
   isSelect = false,
   isSelectAtRisk = false,
-  useNewBadgePattern = false,
+  useNewBadgePattern: enableNewBadgePattern = false,
   ageRecommendation,
   isSequestered = false,
   isDiscoveryBlocked = false,
@@ -82,34 +84,36 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
   let visibilityLabelKey: VisibilityLabelKey = 'Label.Private';
   let badgeType = 'private';
   let statusSuffix = '';
-  let activeIconColor = styles.iconNeutral;
   let icon: TTailwindIconClass = 'icon-filled-lock-closed';
   let consolidatedLabel = '';
-  let badgeVariant: TBadgeVariant | undefined;
+  let badgeVariant: TBadgeVariant = 'Standard';
   let tooltipTitle: string | undefined;
   let tooltipDescription: string | undefined;
 
-  if (useNewBadgePattern) {
+  if (enableNewBadgePattern) {
     if (!isActive) {
       badgeType = 'private';
       icon = 'icon-filled-lock-closed';
-      activeIconColor = styles.iconNeutral;
       consolidatedLabel = translateWithNamespace(TranslationNamespace.Creations, 'Label.Private');
     } else {
       const unrated = contentMaturity === CONTENT_UNRATED;
 
       if (unrated || isSequestered) {
         badgeType = 'unplayable';
-        icon = 'icon-filled-circle-x';
+        icon = 'icon-filled-globe-detailed';
         badgeVariant = 'Alert';
         consolidatedLabel = translateWithNamespace(
           TranslationNamespace.Creations,
           'Label.Unplayable',
         );
+        tooltipDescription = translateWithNamespace(
+          TranslationNamespace.Creations,
+          'Tooltip.PubliclyUnavailable',
+        );
       } else if (isDiscoveryBlocked) {
         badgeType = 'limitedDiscovery';
         icon = 'icon-filled-triangle-exclamation';
-        activeIconColor = styles.iconWarning;
+        badgeVariant = 'Warning';
         consolidatedLabel = translateWithNamespace(
           TranslationNamespace.Creations,
           'Label.NeedsAttention',
@@ -130,7 +134,6 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
       } else if (isFriendsOnly) {
         badgeType = 'limited';
         icon = 'icon-filled-two-people';
-        activeIconColor = styles.iconOk;
         consolidatedLabel = translateWithNamespace(TranslationNamespace.Creations, 'Label.Limited');
         const isGroup = creatorType === SearchCreatorType.Group;
         if (enableAudiencesReplacement && audiences) {
@@ -170,7 +173,6 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
       } else {
         badgeType = 'public';
         icon = 'icon-filled-globe-detailed';
-        activeIconColor = styles.iconOk;
         const effectiveAge = isSelect
           ? (ageRecommendation ?? 0)
           : Math.max(NEEDS_ATTENTION_AGE_THRESHOLD, ageRecommendation ?? 0);
@@ -201,7 +203,7 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
       visibilityLabelKey = 'Label.Unrated2';
       badgeType = 'unrated';
       icon = 'icon-filled-circle-x';
-      activeIconColor = styles.iconError;
+      badgeVariant = 'Alert';
     } else {
       if (isFriendsOnly) {
         if (creatorType === SearchCreatorType.Group) {
@@ -216,7 +218,6 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
         badgeType = 'public';
       }
       icon = 'icon-filled-globe-detailed';
-      activeIconColor = styles.iconOk;
 
       if (isSelectEligible) {
         badgeType = 'select';
@@ -224,7 +225,7 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
         if (isSelectAtRisk) {
           badgeType = 'selectAtRisk';
           icon = 'icon-filled-triangle-exclamation';
-          activeIconColor = styles.iconWarning;
+          badgeVariant = 'Warning';
         }
       } else if (isBeta) {
         badgeType = 'beta';
@@ -254,6 +255,10 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
   }
 
   const impressionLogged = useRef(false);
+  const triggerRef = useRef<HTMLSpanElement>(null);
+  const [isTooltipOpen, setIsTooltipOpen] = useState(false);
+  const [isTriggerMostlyVisible, setIsTriggerMostlyVisible] = useState(true);
+
   useEffect(() => {
     if (impressionLogged.current || isTransactionsLoading) {
       return;
@@ -268,20 +273,52 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
     });
   }, [badgeType, universeId, isTransactionsLoading]);
 
-  const handleTooltipOpen = useCallback(() => {
-    unifiedLoggerClient.logClickEvent({
-      eventName: CreatorDashboardEventType.StatusBadgeTooltipOpen,
-      parameters: {
-        badgeType,
-        ...(universeId && { universeId: universeId.toString() }),
+  useEffect(() => {
+    if (isTransactionsLoading || !tooltipDescription) {
+      return undefined;
+    }
+    const trigger = triggerRef.current;
+    if (!trigger || typeof IntersectionObserver === 'undefined') {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const mostlyVisible = entry.intersectionRatio >= TOOLTIP_VISIBILITY_THRESHOLD;
+        setIsTriggerMostlyVisible(mostlyVisible);
+        if (!mostlyVisible) {
+          setIsTooltipOpen(false);
+        }
       },
-    });
-  }, [badgeType, universeId]);
+      { threshold: [0, TOOLTIP_VISIBILITY_THRESHOLD, 1] },
+    );
+    observer.observe(trigger);
+    return () => {
+      observer.disconnect();
+    };
+  }, [isTransactionsLoading, tooltipDescription]);
+
+  const handleTooltipOpenChange = useCallback(
+    (open: boolean) => {
+      if (open && !isTriggerMostlyVisible) {
+        return;
+      }
+      setIsTooltipOpen(open);
+      if (open) {
+        unifiedLoggerClient.logClickEvent({
+          eventName: CreatorDashboardEventType.StatusBadgeTooltipOpen,
+          parameters: {
+            badgeType,
+            ...(universeId && { universeId: universeId.toString() }),
+          },
+        });
+      }
+    },
+    [badgeType, isTriggerMostlyVisible, universeId],
+  );
 
   const badge: ReactElement = (
-    <div className={activeIconColor}>
-      <Badge label={consolidatedLabel} icon={icon} variant={badgeVariant} />
-    </div>
+    <Badge label={consolidatedLabel} icon={icon} variant={badgeVariant} />
   );
 
   if (isTransactionsLoading) {
@@ -290,14 +327,16 @@ const PrivacyStatusBadge: FunctionComponent<PrivacyStatusBadgeProps> = ({
 
   if (tooltipDescription) {
     return (
-      <div className={styles.tooltipWrapper}>
+      <div className='[&_[data-radix-popper-content-wrapper]]:![z-index:1500]'>
         <Tooltip
-          position='bottom-center'
+          position='top-center'
           title={tooltipTitle ?? ''}
           description={tooltipDescription}
-          delayDurationMs={0}>
+          delayDurationMs={0}
+          open={isTooltipOpen}
+          onOpenChange={handleTooltipOpenChange}>
           <TooltipTrigger asChild>
-            <span onPointerEnter={handleTooltipOpen}>{badge}</span>
+            <span ref={triggerRef}>{badge}</span>
           </TooltipTrigger>
         </Tooltip>
       </div>

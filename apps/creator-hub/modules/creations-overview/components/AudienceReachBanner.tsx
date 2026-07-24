@@ -8,7 +8,7 @@ import {
   SelectStatusEnum,
 } from '@rbx/client-core-content-api/v1';
 import { TransactionVariantEnum } from '@rbx/client-core-content-transaction-api/v1';
-import type { TButtonProps, TFeedbackBannerProps } from '@rbx/foundation-ui';
+import type { TButtonProps } from '@rbx/foundation-ui';
 import { Button, FeedbackBanner } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { useMediaQuery } from '@rbx/ui';
@@ -220,14 +220,17 @@ const AudienceReachBanner: FC = () => {
   // Banner cases
   //
 
-  const sharedBannerProps: Partial<TFeedbackBannerProps> = useMemo(() => {
-    return {
-      variant: 'Emphasis',
+  // Infer props instead of Partial<TFeedbackBannerProps> — spreading that
+  // breaks FeedbackBanner's severity discriminated union (Info vs rest).
+  const sharedBannerProps = useMemo(
+    () => ({
+      variant: 'Emphasis' as const,
       onDismiss: () => setShouldShow(false),
       className: 'width-full',
-      layout: isMobile ? 'Stacked' : 'Inline',
-    };
-  }, [isMobile]);
+      layout: isMobile ? ('Stacked' as const) : ('Inline' as const),
+    }),
+    [isMobile],
+  );
 
   // Private experiences are expected to have no audience
   if (!shouldShow || isAudienceReachLoading || isUniverseConfigLoading || isEditorsOnly) {
