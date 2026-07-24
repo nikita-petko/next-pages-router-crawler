@@ -89,6 +89,7 @@ export const AvatarMenuMap: Partial<Record<Asset, AvatarItemDropdown[]>> = {
     { assetType: Asset.EyelashAccessory, nameKey: 'Label.EyelashAccessories' },
     { lookType: Look.Makeup, nameKey: 'Label.Looks' },
   ],
+  [Asset.AvatarBackground]: [{ assetType: Asset.AvatarBackground, nameKey: 'Label.Backgrounds' }],
 };
 
 export const UnfolderedDropdownOption: AvatarItemDropdown = {

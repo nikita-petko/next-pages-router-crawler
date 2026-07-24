@@ -55,6 +55,7 @@ export const allowedAssetTypesForArchiving: Set<Asset> = new Set<Asset>([
   Asset.FaceMakeup,
   Asset.LipMakeup,
   Asset.EyeMakeup,
+  Asset.AvatarBackground,
 ]);
 
 export const allowedAssetTypesForSorting: Set<Asset> = new Set<Asset>([
