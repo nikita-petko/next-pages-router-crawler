@@ -1,3 +1,4 @@
+// Presents the revenue-share landing page with tabs, filters, agreement rows, and target action routing.
 import { useCallback, useMemo, useState, type FunctionComponent } from 'react';
 import { Button, Chip, Tabs, TabsList, TabsTrigger } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
@@ -10,9 +11,14 @@ import {
   type RecipientAgreement,
   type RevShareTarget,
 } from '../interface/RevShareViewModel';
+import {
+  filterLandingManagerAgreements,
+  filterLandingRecipientAgreements,
+} from '../utils/revShareModel';
+import type { RevSharePerspective } from '../utils/revShareRouteState';
 import RevShareLandingTable from './tables/RevShareLandingTable';
 
-export type RevShareLandingViewProps = {
+type RevShareLandingViewBaseProps = {
   managerRows: ManagerAgreement[];
   recipientRows: RecipientAgreement[];
   onManagerRowClick?: (row: ManagerAgreement) => void;
@@ -23,7 +29,16 @@ export type RevShareLandingViewProps = {
   focusTarget?: RevShareTarget | null;
 };
 
-type TopTab = 'managed' | 'recipient';
+export type RevShareLandingViewProps = RevShareLandingViewBaseProps &
+  (
+    | { perspective?: undefined; onPerspectiveChange?: undefined }
+    | {
+        perspective: RevSharePerspective;
+        onPerspectiveChange: (perspective: RevSharePerspective) => void;
+      }
+  );
+
+type TopTab = RevSharePerspective;
 type SubTab = 'experiences' | 'ugc';
 
 const TOP_TABS: TopTab[] = ['managed', 'recipient'];
@@ -39,12 +54,24 @@ const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
   emptyMessage,
   isUserView = false,
   focusTarget,
+  perspective,
+  onPerspectiveChange,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
-  const [topTab, setTopTab] = useState<TopTab>(isUserView ? 'recipient' : 'managed');
+  const [internalTopTab, setInternalTopTab] = useState<TopTab>(
+    isUserView ? 'recipient' : 'managed',
+  );
+  const topTab = isUserView ? 'recipient' : (perspective ?? internalTopTab);
+  const focusTargetKey = focusTarget ? `${focusTarget.type}:${focusTarget.id}` : null;
+  const [previousFocusTargetKey, setPreviousFocusTargetKey] = useState(focusTargetKey);
   const [subTab, setSubTab] = useState<SubTab>(
     focusTarget?.type === RevShareTargetType.Ugc ? 'ugc' : 'experiences',
   );
+
+  if (focusTarget && focusTargetKey !== previousFocusTargetKey) {
+    setPreviousFocusTargetKey(focusTargetKey);
+    setSubTab(focusTarget.type === RevShareTargetType.Ugc ? 'ugc' : 'experiences');
+  }
 
   const isSelectedTargetType = useCallback(
     (agreement: ManagerAgreement | RecipientAgreement) => {
@@ -56,11 +83,11 @@ const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
     [subTab],
   );
   const filteredManagerRows = useMemo(
-    () => managerRows.filter(isSelectedTargetType),
+    () => filterLandingManagerAgreements(managerRows).filter(isSelectedTargetType),
     [managerRows, isSelectedTargetType],
   );
   const filteredRecipientRows = useMemo(
-    () => recipientRows.filter(isSelectedTargetType),
+    () => filterLandingRecipientAgreements(recipientRows).filter(isSelectedTargetType),
     [recipientRows, isSelectedTargetType],
   );
 
@@ -96,11 +123,19 @@ const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
     }
   }, []);
 
-  const handleTopTabChange = useCallback((value: string) => {
-    if (isTopTab(value)) {
-      setTopTab(value);
-    }
-  }, []);
+  const handleTopTabChange = useCallback(
+    (value: string) => {
+      if (!isTopTab(value)) {
+        return;
+      }
+      if (onPerspectiveChange) {
+        onPerspectiveChange(value);
+        return;
+      }
+      setInternalTopTab(value);
+    },
+    [onPerspectiveChange],
+  );
 
   const getTopTabLabel = (tab: TopTab): string => {
     if (tab === 'managed') {
@@ -117,9 +152,19 @@ const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
     );
   };
 
+  const newAgreementLabel = tPendingTranslation(
+    'New agreement',
+    'Button label to start creating a new revenue share agreement.',
+    translationKey('Label.NewAgreement', TranslationNamespace.RevenueShareAgreements),
+  );
+  const newAgreementAction = onNewAgreement ? (
+    <Button variant='Emphasis' size='Medium' onClick={onNewAgreement}>
+      {newAgreementLabel}
+    </Button>
+  ) : null;
+
   return (
     <div className='flex flex-col gap-large width-full'>
-      {/* Title row: heading + "New agreement" button */}
       <div className='flex items-start justify-between'>
         <div className='flex flex-col gap-xsmall'>
           <h2 className='text-heading-medium content-emphasis margin-none'>
@@ -134,18 +179,9 @@ const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
           </h2>
           <span className='text-body-medium content-muted'>{subtitle}</span>
         </div>
-        {!isUserView && topTab === 'managed' && onNewAgreement && (
-          <Button variant='Emphasis' size='Medium' onClick={onNewAgreement}>
-            {tPendingTranslation(
-              'New agreement',
-              'Button label to start creating a new revenue share agreement.',
-              translationKey('Label.NewAgreement', TranslationNamespace.RevenueShareAgreements),
-            )}
-          </Button>
-        )}
+        {!isUserView && topTab === 'managed' && newAgreementAction}
       </div>
 
-      {/* Top-level tabs: Managed / Recipient (hidden in user view) */}
       {!isUserView && (
         <div className='width-full [box-shadow:inset_0_calc(-1*var(--stroke-thick))_0_var(--color-stroke-muted)]'>
           <Tabs
@@ -166,7 +202,6 @@ const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
         </div>
       )}
 
-      {/* Sub-pills: Experiences / UGC Items */}
       <div className='flex gap-xsmall'>
         <Chip
           text={tPendingTranslation(
@@ -190,7 +225,6 @@ const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
         />
       </div>
 
-      {/* Table */}
       {topTab === 'managed' ? (
         <RevShareLandingTable
           rows={filteredManagerRows}
@@ -205,6 +239,7 @@ const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
           mode='recipient'
           onRowClick={onRecipientRowClick}
           emptyMessage={emptyMessage}
+          focusTarget={focusTarget}
         />
       )}
     </div>

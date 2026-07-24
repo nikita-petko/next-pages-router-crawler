@@ -60,6 +60,13 @@ type RevShareLandingTableRowProps =
       restoreFocus?: boolean;
     };
 
+const CHEVRON_COLUMN_CLASS = 'width-800 min-width-800';
+const MANAGER_CONTENT_COLUMN_WIDTH = '[width:calc((100%_-_var(--size-800))/4)]';
+const RECIPIENT_CONTENT_COLUMN_WIDTH = '[width:calc((100%_-_var(--size-800))/3)]';
+const RESOURCE_COLUMN_MIN_CLASS = 'min-width-2400';
+const ALIGNED_COLUMN_MIN_CLASS = 'min-width-2500';
+const STATUS_COLUMN_MIN_CLASS = '[min-width:190px]';
+
 const alignContentClass = (align?: 'center' | 'right') => {
   if (align === 'center') {
     return 'justify-center';
@@ -133,7 +140,7 @@ const RevShareLandingTableRow: FunctionComponent<RevShareLandingTableRowProps> =
       className={onActivate ? 'cursor-pointer' : ''}
       onClick={onActivate}
       onKeyDown={onActivate ? onRowKeyDown : undefined}>
-      <TableCell className='padding-x-large padding-y-medium min-width-2400'>
+      <TableCell className={`padding-x-large padding-y-medium ${RESOURCE_COLUMN_MIN_CLASS}`}>
         <RevShareThumbnailWithNames
           target={target}
           targetType={
@@ -147,7 +154,7 @@ const RevShareLandingTableRow: FunctionComponent<RevShareLandingTableRowProps> =
       {props.mode === 'manager' && (
         <TableCell
           align='center'
-          className='padding-x-large padding-y-medium width-2500 min-width-2500'>
+          className={`padding-x-large padding-y-medium ${ALIGNED_COLUMN_MIN_CLASS}`}>
           <div className={`flex items-center width-full ${alignContentClass('center')}`}>
             <span className='text-body-medium content-default'>
               {props.agreement.active.recipients.length > 0
@@ -159,7 +166,7 @@ const RevShareLandingTableRow: FunctionComponent<RevShareLandingTableRowProps> =
       )}
       <TableCell
         align='center'
-        className='padding-x-large padding-y-medium width-2500 min-width-2500'>
+        className={`padding-x-large padding-y-medium ${ALIGNED_COLUMN_MIN_CLASS}`}>
         <div className={`flex items-center width-full ${alignContentClass('center')}`}>
           <span className='text-body-medium content-emphasis [font-weight:600]'>
             {`${formatBasisPoints(
@@ -171,9 +178,9 @@ const RevShareLandingTableRow: FunctionComponent<RevShareLandingTableRowProps> =
         </div>
       </TableCell>
       <TableCell
-        align='right'
-        className='padding-x-large padding-y-medium [width:190px] [min-width:190px]'>
-        <div className={`flex items-center width-full ${alignContentClass('right')}`}>
+        align='center'
+        className={`padding-x-large padding-y-medium ${STATUS_COLUMN_MIN_CLASS}`}>
+        <div className={`flex items-center width-full ${alignContentClass('center')}`}>
           <RevShareStatusBadge
             status={
               props.mode === 'manager'
@@ -187,10 +194,12 @@ const RevShareLandingTableRow: FunctionComponent<RevShareLandingTableRowProps> =
       </TableCell>
       <TableCell
         align='center'
-        className='padding-x-large padding-y-medium width-800 min-width-800'>
-        <div className={`flex items-center width-full ${alignContentClass('center')}`}>
-          <Icon name='icon-regular-chevron-small-right' size='Medium' aria-hidden />
-        </div>
+        className={`padding-x-large padding-y-medium ${CHEVRON_COLUMN_CLASS}`}>
+        {onActivate && (
+          <div className={`flex items-center width-full ${alignContentClass('center')}`}>
+            <Icon name='icon-regular-chevron-small-right' size='Medium' aria-hidden />
+          </div>
+        )}
       </TableCell>
     </TableRow>
   );
@@ -223,6 +232,10 @@ const renderRows = (props: RevShareLandingTableProps) => {
       mode='recipient'
       agreement={agreement}
       onRowClick={props.onRowClick}
+      restoreFocus={
+        props.focusTarget?.type === agreement.target.type &&
+        props.focusTarget.id === agreement.target.id
+      }
     />
   ));
 };
@@ -240,12 +253,31 @@ const RevShareLandingTable: FunctionComponent<RevShareLandingTableProps> = (prop
   const isManagerMode = props.mode === 'manager';
   const columnCount = isManagerMode ? 5 : 4;
 
+  const managerContentColumnClass = MANAGER_CONTENT_COLUMN_WIDTH;
+  const recipientContentColumnClass = RECIPIENT_CONTENT_COLUMN_WIDTH;
+
   return (
-    <TableBase borderless className='bg-surface-200 radius-medium'>
+    <TableBase borderless className='radius-medium width-full'>
+      <colgroup>
+        <col
+          className={`${isManagerMode ? managerContentColumnClass : recipientContentColumnClass} ${RESOURCE_COLUMN_MIN_CLASS}`}
+        />
+        {isManagerMode && (
+          <col className={`${managerContentColumnClass} ${ALIGNED_COLUMN_MIN_CLASS}`} />
+        )}
+        <col
+          className={`${isManagerMode ? managerContentColumnClass : recipientContentColumnClass} ${ALIGNED_COLUMN_MIN_CLASS}`}
+        />
+        <col
+          className={`${isManagerMode ? managerContentColumnClass : recipientContentColumnClass} ${STATUS_COLUMN_MIN_CLASS}`}
+        />
+        <col className={CHEVRON_COLUMN_CLASS} />
+      </colgroup>
       {showHeader && (
         <TableHead>
           <TableRow>
-            <TableCell className='text-label-small content-muted padding-x-large padding-y-medium min-width-2400'>
+            <TableCell
+              className={`text-label-small content-muted padding-x-large padding-y-medium ${RESOURCE_COLUMN_MIN_CLASS}`}>
               {tPendingTranslation(
                 'Resource',
                 'Column header for the resource/target name column in the revenue share landing table.',
@@ -255,7 +287,7 @@ const RevShareLandingTable: FunctionComponent<RevShareLandingTableProps> = (prop
             {isManagerMode && (
               <TableCell
                 align='center'
-                className='text-label-small content-muted padding-x-large padding-y-medium width-2500 min-width-2500'>
+                className={`text-label-small content-muted padding-x-large padding-y-medium ${ALIGNED_COLUMN_MIN_CLASS}`}>
                 <div className='flex items-center width-full justify-center'>
                   {tPendingTranslation(
                     'Parties',
@@ -267,7 +299,7 @@ const RevShareLandingTable: FunctionComponent<RevShareLandingTableProps> = (prop
             )}
             <TableCell
               align='center'
-              className='text-label-small content-muted padding-x-large padding-y-medium width-2500 min-width-2500'>
+              className={`text-label-small content-muted padding-x-large padding-y-medium ${ALIGNED_COLUMN_MIN_CLASS}`}>
               <div className='flex items-center width-full justify-center'>
                 {tPendingTranslation(
                   'Your cut',
@@ -277,9 +309,9 @@ const RevShareLandingTable: FunctionComponent<RevShareLandingTableProps> = (prop
               </div>
             </TableCell>
             <TableCell
-              align='right'
-              className='text-label-small content-muted padding-x-large padding-y-medium [width:190px] [min-width:190px]'>
-              <div className='flex items-center width-full justify-end'>
+              align='center'
+              className={`text-label-small content-muted padding-x-large padding-y-medium ${STATUS_COLUMN_MIN_CLASS}`}>
+              <div className='flex items-center width-full justify-center'>
                 {tPendingTranslation(
                   'Status',
                   'Column header for the agreement status column in the revenue share landing table.',
@@ -287,7 +319,7 @@ const RevShareLandingTable: FunctionComponent<RevShareLandingTableProps> = (prop
                 )}
               </div>
             </TableCell>
-            <TableCell className='padding-x-large padding-y-medium width-800 min-width-800' />
+            <TableCell className={`padding-x-large padding-y-medium ${CHEVRON_COLUMN_CLASS}`} />
           </TableRow>
         </TableHead>
       )}

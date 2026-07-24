@@ -73,7 +73,12 @@ const RevShareDetailView: FunctionComponent<RevShareDetailViewProps> = ({
     <div className='flex flex-col gap-xlarge width-full'>
       {onBack && (
         <div className='flex'>
-          <RevShareBackNav label={backLabel} onBack={onBack} focusOnMount />
+          <RevShareBackNav
+            label={backLabel}
+            currentPageLabel={targetName}
+            onBack={onBack}
+            focusOnMount
+          />
         </div>
       )}
 

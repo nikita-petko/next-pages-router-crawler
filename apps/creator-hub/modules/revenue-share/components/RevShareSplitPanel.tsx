@@ -59,6 +59,7 @@ const RevShareSplitPanel: FunctionComponent<RevShareSplitPanelProps> = ({
         identity: managingGroupParty,
         basisPoints: split.managingGroupBasisPoints,
         color: MANAGING_GROUP_COLOR,
+        isManagingGroup: true,
       },
       ...split.recipients.map(({ recipient, splitBasisPoints }, index) => {
         const resolvedParty = resolveRecipientParty(recipient);
