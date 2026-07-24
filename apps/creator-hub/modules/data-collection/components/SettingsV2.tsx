@@ -1,3 +1,4 @@
+/* oxlint-disable react/react-compiler -- pre-existing EffectSetState pattern in this file. */
 /* oxlint-disable unicorn/prefer-string-slice -- pre-existing pattern in this file. */
 /* oxlint-disable typescript-eslint/no-non-null-assertion -- pre-existing pattern in this file; non-`null` ids are guaranteed by the table data pipeline. */
 /* oxlint-disable typescript-eslint/no-floating-promises -- pre-existing pattern in this file; existing async work is fire-and-forget by design. */
@@ -108,6 +109,14 @@ type TFetchedCache = {
   [key: number]: { data: EntityTableRow[]; nextPageCursor?: string };
 };
 
+export const getSelectedGroupId = (selectedGroup: string | null): number | undefined => {
+  if (!selectedGroup?.startsWith('group-')) {
+    return undefined;
+  }
+  const id = parseInt(selectedGroup.split('-')[1] ?? '', 10);
+  return id > 0 ? id : undefined;
+};
+
 const SettingsV2: FunctionComponent<SettingsV2Props> = ({
   columnHeaders,
   currentTab,
@@ -178,13 +187,7 @@ const SettingsV2: FunctionComponent<SettingsV2Props> = ({
     fetchOwnedGroups();
   }, [fetchOwnedGroups]);
 
-  const selectedGroupId = useMemo(() => {
-    if (selectedGroup?.startsWith('user')) {
-      return;
-    }
-    const id = Number(selectedGroup?.substring(selectedGroup?.indexOf('-')));
-    return Number.isNaN(id) ? undefined : id;
-  }, [selectedGroup]);
+  const selectedGroupId = useMemo(() => getSelectedGroupId(selectedGroup), [selectedGroup]);
 
   const fetchAvatarItems = useCallback(
     async (nextPageCursorParam?: string): Promise<TQueryResult> => {
