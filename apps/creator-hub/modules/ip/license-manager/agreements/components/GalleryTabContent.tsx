@@ -4,11 +4,8 @@ import type { AgreementCandidateResponse } from '@rbx/client-content-licensing-a
 import { Checkbox, Icon } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { Button, CircularProgress, Skeleton, Typography } from '@rbx/ui';
-import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
-import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import type { UniverseResponse } from '@modules/clients/develop';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
-import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import useIpSnackbar from '../../../hooks/useIpSnackbar';
 import { EXTERNAL_EXPERIENCE_HREF } from '../../urls';
 import MatchDetailsTabs from '../enums/MatchDetailsTabs';
@@ -52,8 +49,7 @@ interface GalleryTabContentProps {
  * downstream inspector can honor that order. When no screenshots resolve, an empty state is shown.
  */
 const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidate, universe }) => {
-  const translation = useTranslation();
-  const { tPendingTranslation } = useTranslationWrapper(translation);
+  const { translate } = useTranslation();
   const { enqueueWithDefaults } = useIpSnackbar();
 
   const inspectorTitle = universe.name?.trim() ? universe.name : '';
@@ -189,23 +185,13 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
     [enqueueWithDefaults],
   );
 
-  // TODO: Add pending translations. Ticket: EXP-40. Owner: vkakar
-  const screenshotUnavailableLabel = tPendingTranslation(
-    'Screenshot no longer available',
-    'Bottom popup shown when a shared screenshot deep link points to an image that no longer resolves for Experience Preview.',
-    translationKey('Label.ScreenshotNoLongerAvailable', TranslationNamespace.AgreementsManager),
-  );
+  const screenshotUnavailableLabel = translate('Label.ScreenshotNoLongerAvailable');
   const notifyScreenshotUnavailable = useCallback(
     () => showNeutralToast(screenshotUnavailableLabel),
     [showNeutralToast, screenshotUnavailableLabel],
   );
 
-  // TODO: Add pending translations. Ticket: EXP-40. Owner: vkakar
-  const linkCopiedLabel = tPendingTranslation(
-    'Link copied',
-    'Bottom popup shown after copying a deep link to a screenshot from the inspector in Experience Preview.',
-    translationKey('Label.LinkCopied', TranslationNamespace.AgreementsManager),
-  );
+  const linkCopiedLabel = translate('Label.LinkCopied');
   const notifyLinkCopied = useCallback(
     () => showNeutralToast(linkCopiedLabel),
     [showNeutralToast, linkCopiedLabel],
@@ -231,56 +217,24 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
     setInspectQueryParams({ inspect: null }, { skipHistory: true });
   }, [cells, inspectAssetIdParam, isLoading, notifyScreenshotUnavailable, setInspectQueryParams]);
 
-  // TODO: Add pending translations. Ticket: EXP-39. Owner: vkakar
   let imageCountLabel: string;
   if (hasSelection) {
-    imageCountLabel = tPendingTranslation(
-      '{selected}/{total} images',
-      'Screenshot count in the experience preview gallery when some are selected; {selected} images of {total} images are selected.',
-      translationKey('Label.GallerySelectedImageCount', TranslationNamespace.AgreementsManager),
-      { selected: String(selectedCount), total: String(totalCount) },
-    );
+    imageCountLabel = translate('Label.GallerySelectedImageCount', {
+      selected: String(selectedCount),
+      total: String(totalCount),
+    });
   } else if (totalCount === 1) {
-    imageCountLabel = tPendingTranslation(
-      '1 image',
-      'Screenshot count shown in the top-left of the experience preview gallery when there is one image.',
-      translationKey('Label.GalleryImageCountSingular', TranslationNamespace.AgreementsManager),
-    );
+    imageCountLabel = translate('Label.GalleryImageCountSingular');
   } else {
-    imageCountLabel = tPendingTranslation(
-      '{count} images',
-      'Screenshot count shown in the top-left of the experience preview gallery; {count} is the number of images.',
-      translationKey('Label.GalleryImageCount', TranslationNamespace.AgreementsManager),
-      { count: String(totalCount) },
-    );
+    imageCountLabel = translate('Label.GalleryImageCount', { count: String(totalCount) });
   }
 
-  // TODO: Add pending translations. Ticket: EXP-39. Owner: vkakar
   const inspectLabel = hasSelection
-    ? tPendingTranslation(
-        'Inspect screenshots',
-        'Button that opens the inspector for the currently selected screenshots in Experience Preview Gallery tab.',
-        translationKey('Action.InspectScreenshots', TranslationNamespace.AgreementsManager),
-      )
-    : tPendingTranslation(
-        'Inspect all screenshots',
-        'Button that opens the inspector for all screenshots when none are selected in Experience Preview Gallery tab.',
-        translationKey('Action.InspectAllScreenshots', TranslationNamespace.AgreementsManager),
-      );
+    ? translate('Action.InspectScreenshots')
+    : translate('Action.InspectAllScreenshots');
 
-  // TODO: Add pending translations. Ticket: EXP-39. Owner: vkakar
-  const clearSelectionLabel = tPendingTranslation(
-    'Clear selection',
-    'Button that clears all currently selected screenshots in the experience preview gallery.',
-    translationKey('Action.ClearSelection', TranslationNamespace.AgreementsManager),
-  );
-
-  // TODO: Add pending translations. Ticket: EXP-39. Owner: vkakar
-  const toggleSelectionLabel = tPendingTranslation(
-    'Select screenshot',
-    'Accessible label for the checkbox that toggles selection of a screenshot in the Experience Preview gallery.',
-    translationKey('Action.SelectScreenshot', TranslationNamespace.AgreementsManager),
-  );
+  const clearSelectionLabel = translate('Action.ClearSelection');
+  const toggleSelectionLabel = translate('Action.SelectScreenshot');
 
   if (isLoading) {
     return (
@@ -291,21 +245,8 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
   }
 
   if (totalCount === 0) {
-    // TODO: Add pending translations. Ticket: EXP-39. Owner: vkakar
-    const emptyStateTitle = tPendingTranslation(
-      'Images are not available for this experience',
-      'Heading of the empty state shown on the gallery tab when no screenshots were detected.',
-      translationKey('Label.GalleryImagesUnavailableTitle', TranslationNamespace.AgreementsManager),
-    );
-    // TODO: Add pending translations. Ticket: EXP-39. Owner: vkakar
-    const emptyStateDescription = tPendingTranslation(
-      'Please check back later.',
-      'Body text of the empty state shown on the gallery tab when no screenshots were detected.',
-      translationKey(
-        'Label.GalleryImagesUnavailableDescription',
-        TranslationNamespace.AgreementsManager,
-      ),
-    );
+    const emptyStateTitle = translate('Label.GalleryImagesUnavailableTitle');
+    const emptyStateDescription = translate('Label.GalleryImagesUnavailableDescription');
 
     return (
       <div className={EMPTY_STATE_CLASS} data-testid='gallery-empty-state'>

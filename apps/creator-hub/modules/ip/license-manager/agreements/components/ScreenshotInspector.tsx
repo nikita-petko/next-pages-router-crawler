@@ -3,9 +3,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import { Icon } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
-import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
-import { TranslationNamespace } from '@modules/miscellaneous/localization';
 
 export interface InspectorImage {
   key: string;
@@ -91,9 +88,7 @@ const ScreenshotInspector: FunctionComponent<ScreenshotInspectorProps> = ({
   onLinkCopied,
   onClose,
 }) => {
-  const translation = useTranslation();
-  const { translate } = translation;
-  const { tPendingTranslation } = useTranslationWrapper(translation);
+  const { translate } = useTranslation();
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [pageCount, setPageCount] = useState(1);
@@ -222,43 +217,16 @@ const ScreenshotInspector: FunctionComponent<ScreenshotInspectorProps> = ({
   );
 
   const closeLabel = translate('Action.Close');
-  const previousLabel = tPendingTranslation(
-    'Previous screenshot',
-    'Accessible label for the button that shows the previous screenshot in the inspector in Experience Preview.',
-    translationKey('Action.PreviousScreenshot', TranslationNamespace.AgreementsManager),
-  );
-  // TODO: Add pending translations. Ticket: EXP-40. Owner: vkakar
-  const nextLabel = tPendingTranslation(
-    'Next screenshot',
-    'Accessible label for the button that shows the next screenshot in the inspector in Experience Preview.',
-    translationKey('Action.NextScreenshot', TranslationNamespace.AgreementsManager),
-  );
+  const previousLabel = translate('Action.PreviousScreenshot');
+  const nextLabel = translate('Action.NextScreenshot');
   const openExperienceLabel = translate('Action.ViewExperience');
-  // TODO: Add pending translations. Ticket: EXP-40. Owner: vkakar
-  const copyLinkLabel = tPendingTranslation(
-    'Copy link to this screenshot',
-    'Accessible label for the button that copies a shareable link to the current screenshot in Experience Preview.',
-    translationKey('Action.CopyScreenshotLink', TranslationNamespace.AgreementsManager),
-  );
-  // TODO: Add pending translations. Ticket: EXP-40. Owner: vkakar
-  const linkCopiedLabel = tPendingTranslation(
-    'Link copied',
-    'Bottom popup shown after copying a deep link to a screenshot from the inspector in Experience Preview.',
-    translationKey('Label.LinkCopied', TranslationNamespace.AgreementsManager),
-  );
-  // TODO: Add pending translations. Ticket: EXP-40. Owner: vkakar
-  const viewScreenshotLabel = tPendingTranslation(
-    'View screenshot',
-    'Accessible label for a thumbnail button that shows that screenshot in the inspector main view in Experience Preview.',
-    translationKey('Action.ViewScreenshot', TranslationNamespace.AgreementsManager),
-  );
-  // TODO: Add pending translations. Ticket: EXP-40. Owner: vkakar
-  const counterLabel = tPendingTranslation(
-    '{current}/{total}',
-    'Position counter in the screenshot inspector; {current} is the 1-based index of the active screenshot and {total} is the total number of screenshots.',
-    translationKey('Label.ScreenshotInspectorCounter', TranslationNamespace.AgreementsManager),
-    { current: String(activeIndex + 1), total: String(images.length) },
-  );
+  const copyLinkLabel = translate('Action.CopyScreenshotLink');
+  const linkCopiedLabel = translate('Label.LinkCopied');
+  const viewScreenshotLabel = translate('Action.ViewScreenshot');
+  const counterLabel = translate('Label.ScreenshotInspectorCounter', {
+    current: String(activeIndex + 1),
+    total: String(images.length),
+  });
 
   const titleContent = useMemo(() => {
     if (!title) {

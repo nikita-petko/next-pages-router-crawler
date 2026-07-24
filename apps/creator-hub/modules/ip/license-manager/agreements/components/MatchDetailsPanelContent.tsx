@@ -7,13 +7,10 @@ import {
 } from '@rbx/client-content-licensing-api/v1';
 import { useFlag } from '@rbx/flags';
 import { Icon, IconButton, Link as FoundationLink } from '@rbx/foundation-ui';
-import { useTranslation } from '@rbx/intl';
+import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import { Typography, Button, Alert, CircularProgress } from '@rbx/ui';
 import { isExperiencePreviewEnabled as isExperiencePreviewEnabledFlag } from '@generated/flags/contentLicensing';
-import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
-import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import Flex from '@modules/miscellaneous/components/Flex';
-import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import { useIpFamilyQuery } from '../../../ipFamilies/hooks/ipFamily';
 import { ContentTile, ContentType } from '../../components/ContentTile';
@@ -35,6 +32,7 @@ import { NO_GAME_FOUND_FOR_ID, useDebouncedGameDetails } from '../hooks/games';
 import type { AgreementStatusBatchItemError } from '../hooks/useAgreementStatusesByIdsQuery';
 import { useGetPlacefileImagesQuery } from '../hooks/useGetPlacefileImagesQuery';
 import { usePlacefileImageUrlsQuery } from '../hooks/usePlacefileImageUrlsQuery';
+import formatDate from '../utils/formatDate';
 import DetectedScreenshotsGrid from './DetectedScreenshotsGrid';
 import {
   AgreementStatusFromBatchMaps,
@@ -84,9 +82,9 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
   agreementStatusFromList,
   navigation,
 }) => {
-  const translation = useTranslation();
-  const { translate } = translation;
-  const { tPendingTranslation } = useTranslationWrapper(translation);
+  const { translate } = useTranslation();
+  const { locale } = useLocalization();
+  const resolvedLocale = locale ?? Locale.English;
   const { isFetched } = useSettings();
 
   const experienceId = Number(candidate.candidateId);
@@ -211,52 +209,26 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
       ? IPH_MATCH_DETAILS_TAB_HREF(agreementCandidateId, MatchDetailsTabs.Gallery)
       : undefined;
 
-  // TODO: Add pending translations. Ticket: EXP-32. Owner: vkakar
-  const viewDetailsButtonLabel = tPendingTranslation(
-    'View details',
-    'Secondary action on the match panel that opens the full match details page.',
-    translationKey('Action.ViewDetails', TranslationNamespace.AgreementsManager),
-  );
+  const viewDetailsButtonLabel = translate('Action.ViewDetails');
+  const viewGalleryLinkLabel = translate('Action.ViewGallery');
 
-  // TODO: Add pending translations. Ticket: EXP-32. Owner: vkakar
-  const viewGalleryLinkLabel = tPendingTranslation(
-    'View gallery',
-    'Link beside detected screenshots that opens the full screenshots gallery.',
-    translationKey('Action.ViewGallery', TranslationNamespace.AgreementsManager),
-  );
+  // The screenshots are captured when the match candidate is created, so surface that same date.
+  const imagesAsOfDate = candidate.discoveredAt
+    ? formatDate(candidate.discoveredAt, resolvedLocale)
+    : translate('Label.Unknown');
 
   const resolvedScreenshotCount = resolvedScreenshotUrls.length;
   const showScreenshotsSection =
     showPlacefileScreenshots && (isScreenshotsLoading || resolvedScreenshotCount > 0);
   let screenshotsTitle: string;
   if (isScreenshotsLoading) {
-    // TODO: Add pending translations. Ticket: EXP-32. Owner: vkakar
-    screenshotsTitle = tPendingTranslation(
-      'Detected screenshots',
-      'Section heading for placefile screenshots while the image count is loading.',
-      translationKey('Label.DetectedScreenshots', TranslationNamespace.AgreementsManager),
-    );
+    screenshotsTitle = translate('Label.DetectedScreenshots');
   } else if (resolvedScreenshotCount === 1) {
-    // TODO: Add pending translations. Ticket: EXP-32. Owner: vkakar
-    screenshotsTitle = tPendingTranslation(
-      'Detected screenshots (1 image)',
-      'Section heading for placefile screenshots when exactly one resolvable screenshot was detected.',
-      translationKey(
-        'Label.DetectedScreenshotsWithImageCountSingular',
-        TranslationNamespace.AgreementsManager,
-      ),
-    );
+    screenshotsTitle = translate('Label.DetectedScreenshotsWithImageCountSingular');
   } else {
-    // TODO: Add pending translations. Ticket: EXP-32. Owner: vkakar
-    screenshotsTitle = tPendingTranslation(
-      'Detected screenshots ({count} images)',
-      'Section heading for placefile screenshots detected for a match; {count} is the number of resolvable screenshots.',
-      translationKey(
-        'Label.DetectedScreenshotsWithImageCount',
-        TranslationNamespace.AgreementsManager,
-      ),
-      { count: String(resolvedScreenshotCount) },
-    );
+    screenshotsTitle = translate('Label.DetectedScreenshotsWithImageCount', {
+      count: String(resolvedScreenshotCount),
+    });
   }
 
   let primaryCta: ReactNode;
@@ -393,16 +365,11 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
                   </FoundationLink>
                 )}
               </Flex>
-              <Typography variant='body1' className='margin-none'>
-                {/* TODO: Add pending translations. Ticket: EXP-32. Owner: vkakar */}
-                {tPendingTranslation(
-                  'Disclaimer: [10 or so words to fill here. Placeholder text for now]',
-                  'Disclaimer shown below the detected screenshots heading; placeholder copy pending final wording.',
-                  translationKey(
-                    'Label.DetectedScreenshotsDisclaimer',
-                    TranslationNamespace.AgreementsManager,
-                  ),
-                )}
+              <Typography
+                variant='body1'
+                className='margin-none'
+                data-testid='detected-screenshots-disclaimer'>
+                {translate('Label.DetectedScreenshotsDisclaimer', { date: imagesAsOfDate })}
               </Typography>
               <DetectedScreenshotsGrid
                 items={screenshotItems.map((item) => ({

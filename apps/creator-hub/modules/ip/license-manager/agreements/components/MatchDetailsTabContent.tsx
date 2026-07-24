@@ -4,10 +4,7 @@ import type { AgreementCandidateResponse } from '@rbx/client-content-licensing-a
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import { Thumbnail2d, ThumbnailTypes, UniverseThumbnailSize } from '@rbx/thumbnails';
 import { Skeleton, Typography } from '@rbx/ui';
-import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
-import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import type { UniverseResponse } from '@modules/clients/develop';
-import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useIpFamilyQuery } from '../../../ipFamilies/hooks/ipFamily';
 import AmDivider from '../../components/AmDivider';
 import { KeyValuePair, KeyValuePairContainer } from '../../components/KeyValuePair';
@@ -46,9 +43,7 @@ const MatchDetailsTabContent: FunctionComponent<MatchDetailsTabContentProps> = (
   candidate,
   universe,
 }) => {
-  const translation = useTranslation();
-  const { translate } = translation;
-  const { tPendingTranslation } = useTranslationWrapper(translation);
+  const { translate } = useTranslation();
   const { locale } = useLocalization();
   const resolvedLocale = locale ?? Locale.English;
 
@@ -94,39 +89,11 @@ const MatchDetailsTabContent: FunctionComponent<MatchDetailsTabContentProps> = (
     ? formatDate(candidate.discoveredAt, resolvedLocale)
     : translate('Label.Unknown');
 
-  // TODO: Add pending translations. Ticket: EXP-38. Owner: vkakar
-  const disclaimerLabel = tPendingTranslation(
-    'Disclaimer:',
-    'Bold prefix for the preview disclaimer shown at the top of the experience preview details tab.',
-    translationKey(
-      'Label.ExperiencePreviewDisclaimerLabel',
-      TranslationNamespace.AgreementsManager,
-    ),
-  );
-  // TODO: Add pending translations. Ticket: EXP-38. Owner: vkakar
-  const disclaimerBody = tPendingTranslation(
-    'The information shown is a preview and may differ from the actual in-game experience. The Intellectual Property Holder has a good-faith belief that the content displayed in this match infringes on the referenced IP.',
-    'Preview disclaimer body shown at the top of the experience preview details tab.',
-    translationKey('Label.ExperiencePreviewDisclaimerBody', TranslationNamespace.AgreementsManager),
-  );
-  // TODO: Add pending translations. Ticket: EXP-38. Owner: vkakar
-  const thumbnailLabel = tPendingTranslation(
-    'Thumbnail',
-    'Section heading above the experience thumbnail on the experience preview details tab.',
-    translationKey('Label.Thumbnail', TranslationNamespace.AgreementsManager),
-  );
-  // TODO: Add pending translations. Ticket: EXP-38. Owner: vkakar
-  const createdDateLabel = tPendingTranslation(
-    'Date created',
-    'Label for the experience creation date on the experience preview details tab.',
-    translationKey('Label.DateCreated', TranslationNamespace.AgreementsManager),
-  );
-  // TODO: Add pending translations. Ticket: EXP-38. Owner: vkakar
-  const updatedDateLabel = tPendingTranslation(
-    'Date updated',
-    'Label for the experience last-updated date on the experience preview details tab.',
-    translationKey('Label.DateUpdated', TranslationNamespace.AgreementsManager),
-  );
+  const disclaimerLabel = translate('Label.ExperiencePreviewDisclaimerLabel');
+  const disclaimerBody = translate('Label.ExperiencePreviewDisclaimerBody');
+  const thumbnailLabel = translate('Label.Thumbnail');
+  const createdDateLabel = translate('Label.DateCreated');
+  const updatedDateLabel = translate('Label.DateUpdated');
 
   return (
     <div className={DETAILS_COLUMN_CLASS}>

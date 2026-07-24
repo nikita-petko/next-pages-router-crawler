@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { useAuthentication } from '@modules/authentication/providers';
 import { useGroups } from '@modules/providers/groups/GroupsProvider';
 
 const parsePositiveInt = (raw: string | string[] | undefined): number | null => {
@@ -30,13 +29,11 @@ type ContextTarget = { kind: 'group'; id: number } | { kind: 'user' } | null;
  * Returns `isResolving`: true while the router has not yet hydrated the query, or while a valid,
  * in-scope target from the URL has not yet been applied to the context. Callers gate rendering on
  * it so the page never briefly queries the previously selected creator's financial data. Once the
- * router is ready it is never true for links with no directive, malformed ids, groups the user
- * does not belong to, or a `?userId` that isn't the authenticated user — those are no-ops and the
- * page renders with the existing context.
+ * router is ready it is never true for links with no directive, malformed ids, or groups the user
+ * does not belong to — those are no-ops and the page renders with the existing context.
  */
 export default function useSyncCreatorContextFromQuery(): { isResolving: boolean } {
   const router = useRouter();
-  const { user } = useAuthentication();
   const { groups, isFetched, currentGroup, setCurrentGroup } = useGroups();
   const appliedRef = useRef(false);
   const strippedRef = useRef(false);
@@ -52,12 +49,13 @@ export default function useSyncCreatorContextFromQuery(): { isResolving: boolean
       return null;
     }
     if (userId !== null) {
-      // A `?userId` only ever means "my own personal context", so it must match the signed-in
-      // user; a foreign id is a no-op rather than silently showing this user's own finances.
-      return userId === Number(user?.id) ? { kind: 'user' } : null;
+      // A `?userId` deep link just means "switch me to my personal context". Personal context
+      // always shows the signed-in user's own transactions (the session decides whose data loads,
+      // never this id), so any well-formed `?userId` routes to personal without matching the id.
+      return { kind: 'user' };
     }
     return groupId !== null ? { kind: 'group', id: groupId } : null;
-  }, [router.isReady, router.query.groupId, router.query.userId, user?.id]);
+  }, [router.isReady, router.query.groupId, router.query.userId]);
 
   const isMember = target?.kind === 'group' && (groups ?? []).some(({ id }) => id === target.id);
 
@@ -87,8 +85,11 @@ export default function useSyncCreatorContextFromQuery(): { isResolving: boolean
       // switch is still pending. Non-members settle to the existing context.
       isResolving = !isFetched || (isMember && currentGroup?.id !== target.id);
     } else {
-      // `?userId`: settled once the context is personal (no current group).
-      isResolving = currentGroup !== null;
+      // `?userId`: keep resolving until groups have loaded. Before that, `currentGroup` is
+      // spuriously null even in a group context (the stored id can't be found in an empty list),
+      // which would read as "already personal" and let the strip effect delete `?userId` before
+      // the switch to personal ever applies. Once fetched, settle when the context is personal.
+      isResolving = !isFetched || currentGroup !== null;
     }
   }
 

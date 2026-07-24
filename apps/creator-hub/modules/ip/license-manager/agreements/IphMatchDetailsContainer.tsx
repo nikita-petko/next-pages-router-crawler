@@ -14,8 +14,6 @@ import {
   Typography,
 } from '@rbx/ui';
 import { isExperiencePreviewEnabled as isExperiencePreviewEnabledFlag } from '@generated/flags/contentLicensing';
-import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
-import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { PageNotFound } from '@modules/miscellaneous/error';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
@@ -61,9 +59,7 @@ interface IphMatchDetailsContainerProps {
 const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps> = ({
   agreementCandidateId,
 }) => {
-  const translation = useTranslation();
-  const { translate } = translation;
-  const { tPendingTranslation } = useTranslationWrapper(translation);
+  const { translate } = useTranslation();
   const { isFetched } = useSettings();
   const { setPageTitle } = useIpLayoutContext();
 
@@ -200,12 +196,7 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
     );
   }
 
-  // TODO: Add pending translations. Ticket: EXP-32. Owner: vkakar
-  const galleryTabLabel = tPendingTranslation(
-    'Gallery',
-    'Tab heading for the Gallery tab containing a grid of Placefile Screenshots in the Experience Preview page.',
-    translationKey('Label.Gallery', TranslationNamespace.AgreementsManager),
-  );
+  const galleryTabLabel = translate('Label.Gallery');
 
   return (
     <>
