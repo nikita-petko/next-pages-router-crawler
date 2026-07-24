@@ -35,7 +35,10 @@ export function adaptCanvasDataParts(
       case AnalyticsChatDataPartType.Visualization:
         elements.push(...adaptVisualizationDataPart(part, partIndex, { conversationId }));
         return;
+      // Thinking steps and the Q&A card/answer render inline in the message, not on the canvas.
       case AnalyticsChatDataPartType.ThinkingStep:
+      case AnalyticsChatDataPartType.AskQuestion:
+      case AnalyticsChatDataPartType.AskQuestionAnswer:
         return;
       default:
         assertUnhandledAnalyticsChatDataPart(part);

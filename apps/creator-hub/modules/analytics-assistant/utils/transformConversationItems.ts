@@ -51,6 +51,10 @@ function transformContentPartToUIPart(
           id,
           data: part.data.data,
         };
+      case AnalyticsChatDataPartType.AskQuestion:
+        return { type: AnalyticsChatDataPartType.AskQuestion, id, data: part.data.data };
+      case AnalyticsChatDataPartType.AskQuestionAnswer:
+        return { type: AnalyticsChatDataPartType.AskQuestionAnswer, id, data: part.data.data };
       default: {
         logAnalyticsError(`Unsupported data part type: ${part.data.type}`);
         return null;
