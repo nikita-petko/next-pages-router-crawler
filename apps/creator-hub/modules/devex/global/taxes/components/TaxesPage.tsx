@@ -110,7 +110,7 @@ const TaxesPageContent: FunctionComponent<{
   const isFailed = statusVariant === 'failed';
   const isSubmitted =
     isApproved || isUnderReview || isAdditionalInfoNeeded || isCuringRequired || isFailed;
-  const needsTaxFormAction = isAdditionalInfoNeeded || isCuringRequired || isFailed;
+  const needsTaxFormAction = isCuringRequired || isFailed;
   const {
     data: withholdingRateData,
     isError: isWithholdingRateError,
@@ -143,14 +143,6 @@ const TaxesPageContent: FunctionComponent<{
       TranslationNamespace.TaxDocumentation,
     ),
   );
-  const additionalInfoNeededBannerTitle = tPendingTranslation(
-    'You have not submitted the required information to claim a reduced tax rate.',
-    'Warning banner title shown when treaty information must be resubmitted to claim a reduced tax rate.',
-    translationKey(
-      'Taxes.Banner.TaxDocumentation.AdditionalInfoRequiredTitle',
-      TranslationNamespace.TaxDocumentation,
-    ),
-  );
   const curingRequiredBannerTitle = tPendingTranslation(
     'Action Required: Submit additional documents to complete your tax information.',
     'Warning banner title shown when additional documents are needed.',
@@ -175,13 +167,10 @@ const TaxesPageContent: FunctionComponent<{
       TranslationNamespace.TaxDocumentation,
     ),
   );
-  const additionalInfoNeededBannerDescription = tPendingTranslation(
+  const additionalInfoNeededBannerMessage = tPendingTranslation(
     'Your tax form suggests you live in a country that has a tax treaty with the U.S. Tax treaties reduce U.S. tax withholding rates on payments.',
-    'Warning banner message explaining why treaty information must be resubmitted to claim a reduced tax rate.',
-    translationKey(
-      'Taxes.Banner.TaxDocumentation.AdditionalInfoRequiredDesc',
-      TranslationNamespace.TaxDocumentation,
-    ),
+    'Information banner message explaining that submitting a new tax form may allow a reduced treaty withholding rate.',
+    translationKey('Taxes.Banner.TreatyInfo', TranslationNamespace.TaxDocumentation),
   );
   const curingRequiredBannerDescription = tPendingTranslation(
     'Submit the required information to ensure Roblox applies the correct U.S. withholding tax rate on DevEx payments.',
@@ -247,11 +236,6 @@ const TaxesPageContent: FunctionComponent<{
     'Continue',
     'Primary action button label for continuing tax documentation.',
     translationKey('Taxes.Action.Continue', TranslationNamespace.TaxDocumentation),
-  );
-  const resubmitLabel = tPendingTranslation(
-    'Resubmit',
-    'Primary action button label for resubmitting tax treaty information.',
-    translationKey('Taxes.Action.Resubmit', TranslationNamespace.TaxDocumentation),
   );
   const newTaxFormLabel = tPendingTranslation(
     'New tax form',
@@ -412,8 +396,8 @@ const TaxesPageContent: FunctionComponent<{
       : withholdingRateData?.rate
         ? (determinedWithholdingRate ?? unavailableWithholdingRate)
         : withholdingRate;
-  const openReplaceFormDialog = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
+  const openReplaceFormDialog = useCallback((event?: MouseEvent<HTMLAnchorElement>) => {
+    event?.preventDefault();
     setIsReplaceFormDialogOpen(true);
   }, []);
   const closeReplaceFormDialog = useCallback(() => {
@@ -427,7 +411,7 @@ const TaxesPageContent: FunctionComponent<{
     let action: TaxEntryAction = 'start';
     if (isFailed) {
       action = 'new_form';
-    } else if (isAdditionalInfoNeeded || isCuringRequired) {
+    } else if (isCuringRequired) {
       action = 'continue';
     }
 
@@ -436,7 +420,7 @@ const TaxesPageContent: FunctionComponent<{
       action,
       taxStatus,
     });
-  }, [isAdditionalInfoNeeded, isCuringRequired, isFailed, taxStatus, unifiedLogger]);
+  }, [isCuringRequired, isFailed, taxStatus, unifiedLogger]);
   const handleReplaceFormClick = useCallback(() => {
     logTaxHubEntryClick(unifiedLogger, {
       entryPoint: 'replace_form_dialog',
@@ -451,7 +435,13 @@ const TaxesPageContent: FunctionComponent<{
         <h2 className='text-heading-small content-default margin-none'>{taxInformationHeading}</h2>
         <FeedbackBanner
           severity={
-            isApproved ? 'Success' : isUnderReview ? 'Info' : isFailed ? 'Error' : 'Warning'
+            isApproved
+              ? 'Success'
+              : isUnderReview || isAdditionalInfoNeeded
+                ? 'Info'
+                : isFailed
+                  ? 'Error'
+                  : 'Warning'
           }
           variant='Emphasis'
           layout='Stacked'
@@ -461,7 +451,7 @@ const TaxesPageContent: FunctionComponent<{
               : isUnderReview
                 ? underReviewBannerTitle
                 : isAdditionalInfoNeeded
-                  ? additionalInfoNeededBannerTitle
+                  ? additionalInfoNeededBannerMessage
                   : isCuringRequired
                     ? curingRequiredBannerTitle
                     : isFailed
@@ -469,18 +459,18 @@ const TaxesPageContent: FunctionComponent<{
                       : bannerTitle
           }
           description={
-            isApproved || isUnderReview ? undefined : (
+            isApproved || isUnderReview || isAdditionalInfoNeeded ? undefined : (
               <span className='block' style={{ maxWidth: 440 }}>
-                {isAdditionalInfoNeeded
-                  ? additionalInfoNeededBannerDescription
-                  : isCuringRequired
-                    ? curingRequiredBannerDescription
-                    : isFailed
-                      ? failedBannerDescription
-                      : bannerDescription}
+                {isCuringRequired
+                  ? curingRequiredBannerDescription
+                  : isFailed
+                    ? failedBannerDescription
+                    : bannerDescription}
               </span>
             )
           }
+          primaryActionLabel={isAdditionalInfoNeeded ? newTaxFormLabel : undefined}
+          onPrimaryAction={isAdditionalInfoNeeded ? openReplaceFormDialog : undefined}
         />
         <div
           className='flex flex-col gap-large bg-shift-100 radius-medium'
@@ -532,11 +522,7 @@ const TaxesPageContent: FunctionComponent<{
                     size='Medium'
                     style={fitContentButtonStyle}
                     onClick={handleTaxStatusCardClick}>
-                    {isFailed
-                      ? newTaxFormLabel
-                      : isAdditionalInfoNeeded
-                        ? resubmitLabel
-                        : continueLabel}
+                    {isFailed ? newTaxFormLabel : continueLabel}
                   </Button>
                 </div>
               )}
@@ -590,7 +576,7 @@ const TaxesPageContent: FunctionComponent<{
             </div>
           </div>
         </div>
-        {isSubmitted && !isFailed && (
+        {isSubmitted && !isFailed && !isAdditionalInfoNeeded && (
           <p className='text-body-medium content-default margin-none'>
             {informationChangedLabel}{' '}
             <Link href={NEW_TAX_FORM_ROUTE} size='Medium' onClick={openReplaceFormDialog}>
