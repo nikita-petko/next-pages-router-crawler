@@ -101,7 +101,7 @@ function PageTitle({
                   opening: 'linkStart',
                   closing: 'linkEnd',
                   content: (chunks: React.ReactNode) => (
-                    <Link href={subtitleLink} target='_blank'>
+                    <Link href={subtitleLink} target='_blank' underline='always' color='Standard'>
                       {chunks}
                     </Link>
                   ),
