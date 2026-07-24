@@ -38,6 +38,11 @@ const errorContent: content = {
   variant: 'error',
   text: 'Label.ErrorFetchingStatus',
 };
+const conditionalOfferContent: content = {
+  icon: <AccessTimeIcon fontSize='inherit' />,
+  variant: 'warning',
+  text: 'Label.ConditionalOffer',
+};
 
 export const statusToContent: { [key in AgreementStatus]: content } = {
   Disputed: {
@@ -66,8 +71,7 @@ export const statusToContent: { [key in AgreementStatus]: content } = {
   Invalid: unknownContent,
   None: unknownContent,
   Pending: unknownContent,
-  // TODO - aquach/anagajaran - PROV-5 - Handle conditional offer visual treatment
-  ConditionalOffer: unknownContent,
+  ConditionalOffer: conditionalOfferContent,
 };
 
 export interface MatchStatusLabelProps {

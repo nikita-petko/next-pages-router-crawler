@@ -353,7 +353,11 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose }: Props) => {
         ),
       });
     } catch (error) {
-      enqueueErrorSnackbar();
+      const err = error instanceof Error ? error : null;
+      // 409 is shown inline via actionError / MatchOfferPanelError — avoid a duplicate generic toast.
+      if (!isExistingAgreementError(err)) {
+        enqueueErrorSnackbar();
+      }
       console.error('Failed to promote agreement candidate:', error);
     }
   };

@@ -41,6 +41,7 @@ const AGREEMENT_STATUSES_UI_NO_OFFER_SENT: readonly AgreementStatus[] = [
 
 /** Agreement statuses that render as an active IPH agreement row (not “No offer sent” / not “Unknown”). */
 const AGREEMENT_STATUSES_UI_HAS_AGREEMENT: readonly AgreementStatus[] = [
+  AgreementStatus.ConditionalOffer,
   AgreementStatus.Disputed,
   AgreementStatus.Inquired,
   AgreementStatus.Accepted,

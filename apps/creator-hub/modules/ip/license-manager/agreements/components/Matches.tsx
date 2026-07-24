@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type {
   AgreementCandidateResponse,
   AgreementCandidateIndexSortBy,
+  AgreementResponse,
 } from '@rbx/client-content-licensing-api/v1';
 import type { UniverseContentMaturity } from '@rbx/client-content-licensing-api/v1';
 import { AgreementCandidateIndexSortDirection } from '@rbx/client-content-licensing-api/v1';
@@ -506,13 +507,23 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
     filterButtonRef.current?.focus();
   }, []);
 
-  const handleOfferLicense = () => {
+  const handleOfferLicense = useCallback(() => {
     setCurrentMatchPanelView(MatchPanelView.Offer);
-  };
+  }, [setCurrentMatchPanelView]);
 
-  const handleAgreementSuccess = () => {
-    setCurrentMatchPanelView(MatchPanelView.None);
-  };
+  const handleAgreementSuccess = useCallback(
+    (agreement: AgreementResponse) => {
+      setCurrentMatchPanelView(MatchPanelView.None);
+      const agreementId = agreement.id?.trim();
+      if (selectedCandidate && agreementId) {
+        setSelectedCandidate({
+          ...selectedCandidate,
+          agreementId,
+        });
+      }
+    },
+    [setCurrentMatchPanelView, selectedCandidate, setSelectedCandidate],
+  );
 
   const matchPanelAriaLabel =
     currentMatchPanelView === MatchPanelView.Offer

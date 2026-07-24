@@ -41,6 +41,7 @@ import {
 import MatchPanelLayout from './MatchPanelLayout';
 
 const AGREEMENT_STATUSES_FOR_VIEW_AGREEMENT = new Set<AgreementStatus>([
+  AgreementStatus.ConditionalOffer,
   AgreementStatus.Disputed,
   AgreementStatus.Inquired,
   AgreementStatus.Accepted,

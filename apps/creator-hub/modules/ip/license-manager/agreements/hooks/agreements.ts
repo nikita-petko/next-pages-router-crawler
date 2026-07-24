@@ -15,6 +15,7 @@ import {
   AGREEMENTS_QUERY_KEY,
   GET_LICENSE_BY_IP_FAMILY_ID_QUERY_KEY,
 } from '../../queryKeys';
+import { patchPromotedCandidateInMatchesQueries } from '../utils/patchPromotedCandidateInMatchesQueries';
 
 const DEFAULT_PAGE_SIZE = 100;
 
@@ -121,9 +122,23 @@ export const usePromoteAgreementCandidateMutation = () => {
         enableMonetization,
       );
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: AGREEMENTS_QUERY_KEY });
+    onSuccess: async (agreement, { candidateId }) => {
+      const agreementId = agreement.id?.trim();
+      const applyOptimisticMatchUpdate = () => {
+        if (!agreementId) {
+          return;
+        }
+        patchPromotedCandidateInMatchesQueries(queryClient, candidateId, agreementId);
+      };
+
+      // Indexed matches can lag after promote; patch before and after refetch so the row keeps the
+      // new agreement id until the index catches up (avoids re-offer → unknown error).
+      applyOptimisticMatchUpdate();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: AGREEMENTS_QUERY_KEY }),
+      ]);
+      applyOptimisticMatchUpdate();
     },
     onError: (error) => {
       captureException(error, {

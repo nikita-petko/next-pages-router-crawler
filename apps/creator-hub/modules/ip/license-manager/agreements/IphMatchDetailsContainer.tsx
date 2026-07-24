@@ -38,6 +38,7 @@ import { useGetAgreementCandidateByIdQuery } from './hooks/useGetAgreementCandid
 import { useUniverseDetailsQuery } from './hooks/useUniverseDetailsQuery';
 
 const AGREEMENT_STATUSES_FOR_VIEW_AGREEMENT = new Set<AgreementStatus>([
+  AgreementStatus.ConditionalOffer,
   AgreementStatus.Disputed,
   AgreementStatus.Inquired,
   AgreementStatus.Accepted,
