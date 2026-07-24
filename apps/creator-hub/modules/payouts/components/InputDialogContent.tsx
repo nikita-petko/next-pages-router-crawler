@@ -32,6 +32,7 @@ import {
   calculatePayoutsTotal,
 } from '../utils/payoutsUtils';
 import GroupMemberSelector, { type UserWithMetadata } from './GroupMemberSelector';
+import GroupPayoutIssueBanner from './GroupPayoutIssueBanner';
 import PayoutAllocationBreakdown from './PayoutAllocationBreakdown';
 
 export interface InputDialogContentProps {
@@ -91,6 +92,9 @@ const InputDialogContent: FunctionComponent<InputDialogContentProps> = ({
       <DialogTitle>{translate('Title.SendAOneTimePayout')}</DialogTitle>
       <DialogContent>
         <Grid container direction='column' gap={3}>
+          <Grid item>
+            <GroupPayoutIssueBanner />
+          </Grid>
           <Grid item>
             <Grid container direction='column' gap={1}>
               <Grid item>
@@ -201,7 +205,7 @@ const InputDialogContent: FunctionComponent<InputDialogContentProps> = ({
                               <Grid item>
                                 <Typography
                                   variant='caption'
-                                  className='font-semibold padding-left-xxlarge margin-left-small'>
+                                  className='padding-left-xxlarge margin-left-small'>
                                   {String(
                                     numberFormatter(
                                       perRecipientAllocations[index].totalUsd,
@@ -290,7 +294,7 @@ const InputDialogContent: FunctionComponent<InputDialogContentProps> = ({
                               <Grid item>
                                 <Typography
                                   variant='caption'
-                                  className='font-semibold padding-left-xxlarge margin-left-small'>
+                                  className='padding-left-xxlarge margin-left-small'>
                                   {String(numberFormatter(totalAllocation.totalUsd, 'currency'))}
                                 </Typography>
                               </Grid>

@@ -1,6 +1,6 @@
 import type { FC } from 'react';
 import { useCallback, useRef, useState } from 'react';
-import { Dialog, DialogBody, DialogContent, DialogTitle } from '@rbx/foundation-ui';
+import { Dialog, DialogBody, DialogContent, DialogTitle, FeedbackBanner } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import type { TExperience } from '@modules/home/providers/ExperienceProvider';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -39,12 +39,14 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
   const { translate } = useTranslation();
   const [selectedExperience, setSelectedExperience] = useState<TExperience | undefined>();
   const [selectedVideoFiles, setSelectedVideoFiles] = useState<File[]>([]);
+  const [validationErrorMessages, setValidationErrorMessages] = useState<string[]>([]);
   const uploadSessionRef = useRef(0);
   const { uploadVideos, isUploading } = useMomentsVideoUpload();
 
   const resetForm = useCallback(() => {
     setSelectedExperience(undefined);
     setSelectedVideoFiles([]);
+    setValidationErrorMessages([]);
   }, []);
 
   const closeDialog = useCallback(() => {
@@ -59,6 +61,7 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
   const handleChangeExperience = useCallback(() => {
     uploadSessionRef.current += 1;
     setSelectedVideoFiles([]);
+    setValidationErrorMessages([]);
     setSelectedExperience(undefined);
   }, []);
 
@@ -75,6 +78,14 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
     },
     [isUploading, onOpenChange, resetForm],
   );
+
+  const handleValidationErrorsChange = useCallback((messages: string[]) => {
+    setValidationErrorMessages(messages);
+  }, []);
+
+  const handleDismissValidationErrors = useCallback(() => {
+    setValidationErrorMessages([]);
+  }, []);
 
   const handleFilesChange = useCallback(
     async (files: File[]) => {
@@ -145,6 +156,9 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
   );
 
   const createMomentTitle = translate('CreateMomentModal.Title');
+  const primaryValidationError = validationErrorMessages[0];
+  const additionalValidationErrors =
+    validationErrorMessages.length > 1 ? validationErrorMessages.slice(1).join(' ') : undefined;
 
   return (
     <Dialog
@@ -159,6 +173,22 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
           <DialogTitle className='text-heading-small content-emphasis margin-none'>
             {createMomentTitle}
           </DialogTitle>
+
+          {primaryValidationError != null ? (
+            <div className='width-full margin-top-small padding-bottom-small'>
+              <FeedbackBanner
+                className='width-full'
+                layout='Stacked'
+                variant='Standard'
+                severity='Error'
+                title={primaryValidationError}
+                description={additionalValidationErrors}
+                onDismiss={handleDismissValidationErrors}
+                dismissIconAriaLabel={translate('Action.Close')}
+                data-testid='moments-video-validation-error-banner'
+              />
+            </div>
+          ) : null}
 
           {selectedExperience ? (
             <MomentsExperiencePreview
@@ -177,6 +207,7 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
             selectedFiles={selectedVideoFiles}
             isUploading={isUploading}
             onFilesChange={handleFilesChange}
+            onValidationErrorsChange={handleValidationErrorsChange}
           />
         </DialogBody>
       </DialogContent>

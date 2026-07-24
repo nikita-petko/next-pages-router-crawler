@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Button, ProgressCircle } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import FileUploadBase from '@modules/miscellaneous/components/FileUploadBase';
@@ -12,6 +12,7 @@ import {
   logMomentsCreationsError,
   MomentsCreationsErrorOperation,
 } from '../logging/momentsCreationsErrorLogging';
+import { getMomentsVideoValidationErrorMessages } from '../utils/momentsVideoRejectReasonMessages';
 import {
   filterValidMomentsVideoFiles,
   type MomentsVideoValidationError,
@@ -22,6 +23,7 @@ type MomentsVideoUploadZoneProps = {
   selectedFiles: File[];
   isUploading?: boolean;
   onFilesChange: (files: File[]) => void;
+  onValidationErrorsChange?: (messages: string[]) => void;
 };
 
 const logRejectedMomentsVideoFiles = (errors: MomentsVideoValidationError[]): void => {
@@ -39,6 +41,7 @@ const MomentsVideoUploadZone: FC<MomentsVideoUploadZoneProps> = ({
   selectedFiles,
   isUploading = false,
   onFilesChange,
+  onValidationErrorsChange,
 }) => {
   const { translate } = useTranslation();
   const [isValidating, setIsValidating] = useState(false);
@@ -56,10 +59,13 @@ const MomentsVideoUploadZone: FC<MomentsVideoUploadZoneProps> = ({
   const helperLabel = hasSelectedExperience ? dragAndDropLabel : addExperienceToUploadLabel;
 
   const onFilesChangeRef = useRef(onFilesChange);
-
-  useEffect(() => {
-    onFilesChangeRef.current = onFilesChange;
-  }, [onFilesChange]);
+  const onValidationErrorsChangeRef = useRef(onValidationErrorsChange);
+  const translateRef = useRef(translate);
+  /* oxlint-disable react/react-compiler -- intentional render-time ref sync so handleFiles can read latest callbacks without listing them as dependencies */
+  onFilesChangeRef.current = onFilesChange;
+  onValidationErrorsChangeRef.current = onValidationErrorsChange;
+  translateRef.current = translate;
+  /* oxlint-enable react/react-compiler */
 
   const handleFiles = useCallback(
     async (files: FileList | null) => {
@@ -74,6 +80,7 @@ const MomentsVideoUploadZone: FC<MomentsVideoUploadZoneProps> = ({
         return;
       }
 
+      onValidationErrorsChangeRef.current?.([]);
       setIsValidating(true);
 
       try {
@@ -81,6 +88,12 @@ const MomentsVideoUploadZone: FC<MomentsVideoUploadZoneProps> = ({
 
         if (errors.length > 0) {
           logRejectedMomentsVideoFiles(errors);
+          onValidationErrorsChangeRef.current?.(
+            getMomentsVideoValidationErrorMessages(
+              translateRef.current,
+              errors.map(({ reason }) => reason),
+            ),
+          );
         }
 
         if (validFiles.length > 0) {
