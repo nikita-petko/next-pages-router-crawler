@@ -3921,6 +3921,12 @@
 .\[background\:var\(--color-content-muted\)\] {
   background: var(--color-content-muted);
 }
+.\!\[border-bottom-left-radius\:0\] {
+  border-bottom-left-radius: 0 !important;
+}
+.\!\[border-bottom-right-radius\:0\] {
+  border-bottom-right-radius: 0 !important;
+}
 .\[border-bottom\:0\] {
   border-bottom: 0;
 }

@@ -47,6 +47,11 @@ import {
   type TimeInterval,
 } from '../types';
 import { isSummaryCardLayoutNode } from './dashboardLayoutNodes';
+import {
+  CUSTOM_DASHBOARD_SAVED_DATE_RANGE_LIMIT_DAYS,
+  isCustomDashboardSavedDateRangeDurationValid,
+  isSupportedCustomDashboardSavedDateRangeType,
+} from './savedDateRange';
 import { resolveSupportedSummaryCardAggregation } from './summaryCardAggregation';
 import {
   asBoolean,
@@ -523,6 +528,12 @@ function validateDefaultDateRange(
         `${field}.rangeType must be a preset date range.`,
       );
     }
+    if (!isSupportedCustomDashboardSavedDateRangeType(record.rangeType)) {
+      throw new CustomDashboardValidationError(
+        `${field}.rangeType`,
+        `${field}.rangeType must span less than ${CUSTOM_DASHBOARD_SAVED_DATE_RANGE_LIMIT_DAYS} days.`,
+      );
+    }
     return { type: 'Relative', rangeType: record.rangeType };
   }
   if (record.type === 'Custom') {
@@ -532,6 +543,12 @@ function validateDefaultDateRange(
       throw new CustomDashboardValidationError(
         field,
         `${field} custom startTimeMs must be before endTimeMs.`,
+      );
+    }
+    if (!isCustomDashboardSavedDateRangeDurationValid(startTimeMs, endTimeMs)) {
+      throw new CustomDashboardValidationError(
+        field,
+        `${field} custom date range must span less than ${CUSTOM_DASHBOARD_SAVED_DATE_RANGE_LIMIT_DAYS} days.`,
       );
     }
     return { type: 'Custom', startTimeMs, endTimeMs };

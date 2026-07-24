@@ -101,6 +101,7 @@ import {
   type TileId,
 } from '../../../types';
 import { createTileId } from '../../../utils/createTileId';
+import { filterSupportedCustomDashboardSavedDateRangeTypes } from '../../../utils/savedDateRange';
 import { chartContextFingerprint } from '../chartContextFingerprint';
 import {
   duplicateChartTileInRows,
@@ -1901,6 +1902,20 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
     [chartRowLayouts, chartRows, dashboardRenderModel.chartPlacements],
   );
   const { pageConfig, summaries, chartRows: synthesizedChartRows } = useDashboardSynthesis(config);
+  const editorControlBarPageConfig = useMemo<CreatorAnalyticsUntabbedPageConfig>(() => {
+    if (pageConfig.timeRangeOptions.type !== 'dateRange') {
+      return pageConfig;
+    }
+    return {
+      ...pageConfig,
+      timeRangeOptions: {
+        ...pageConfig.timeRangeOptions,
+        supportedRanges: filterSupportedCustomDashboardSavedDateRangeTypes(
+          pageConfig.timeRangeOptions.supportedRanges,
+        ),
+      },
+    };
+  }, [pageConfig]);
 
   return (
     <RAQIV2ConfigurablePageSurfaceContextProvider config={pageConfig}>
@@ -1909,7 +1924,7 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
         pageConfig={pageConfig}
         onConfigChange={onConfigChange}>
         <div className='flex flex-col items-start width-full gap-xxlarge'>
-          <DashboardCanvasControlBar pageConfig={pageConfig} />
+          <DashboardCanvasControlBar pageConfig={editorControlBarPageConfig} />
           <DashboardFilterChips pageConfig={pageConfig} />
           <section
             ref={canvasRef}

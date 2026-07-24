@@ -17,6 +17,11 @@ import type {
   DashboardSurfaceControls,
   TileFilter,
 } from '../../../types';
+import {
+  CUSTOM_DASHBOARD_SAVED_DATE_RANGE_LIMIT_DAYS,
+  constrainCustomDashboardEditorDateRange,
+  isSupportedCustomDashboardSavedDateRangeType,
+} from '../../../utils/savedDateRange';
 
 type DashboardControlDefaultsCaptureProviderProps = {
   readonly config: CustomDashboardConfig;
@@ -129,7 +134,11 @@ const DashboardControlDefaultsCaptureProvider: FC<DashboardControlDefaultsCaptur
   const dateRangeContextValue = useMemo(
     () => ({
       ...bundle,
+      maxRangeDays: CUSTOM_DASHBOARD_SAVED_DATE_RANGE_LIMIT_DAYS,
       onChangeRangeType: (rangeType: RAQIV2DateRangeType) => {
+        if (!isSupportedCustomDashboardSavedDateRangeType(rangeType)) {
+          return;
+        }
         bundle.onChangeRangeType(rangeType);
         if (rangeType !== RAQIV2DateRangeType.Custom) {
           captureDefaultDateRange({ type: 'Relative', rangeType });
@@ -140,15 +149,24 @@ const DashboardControlDefaultsCaptureProvider: FC<DashboardControlDefaultsCaptur
         maxDate: Date | null,
         rangeType: RAQIV2DateRangeType,
       ) => {
-        bundle.onChangeDateRangeParams(minDate, maxDate, rangeType);
         if (rangeType === RAQIV2DateRangeType.Custom && minDate && maxDate) {
+          const constrainedRange = constrainCustomDashboardEditorDateRange(minDate, maxDate);
+          bundle.onChangeDateRangeParams(
+            constrainedRange.startDate,
+            constrainedRange.endDate,
+            rangeType,
+          );
           captureDefaultDateRange({
             type: 'Custom',
-            startTimeMs: minDate.getTime(),
-            endTimeMs: maxDate.getTime(),
+            startTimeMs: constrainedRange.startDate.getTime(),
+            endTimeMs: constrainedRange.endDate.getTime(),
           });
           return;
         }
+        if (!isSupportedCustomDashboardSavedDateRangeType(rangeType)) {
+          return;
+        }
+        bundle.onChangeDateRangeParams(minDate, maxDate, rangeType);
         if (rangeType !== RAQIV2DateRangeType.Custom) {
           captureDefaultDateRange({ type: 'Relative', rangeType });
         }
