@@ -437,7 +437,7 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
       onExit={onExit}
       onSubmitProposal={handleSubmitProposal}
       isSubmitting={propose.isPending}
-      presentation='page'
+      presentation={mode === 'propose' ? 'dialog' : 'page'}
       onStepChange={onStepChange}
     />
   );
