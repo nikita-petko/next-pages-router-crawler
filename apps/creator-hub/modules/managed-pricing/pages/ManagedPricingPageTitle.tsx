@@ -2,6 +2,7 @@
 import { memo } from 'react';
 import { clsx } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
+import { docs } from '@modules/miscellaneous/urls/creatorHub';
 import { useUniverseId } from '@modules/monetization-shared/route/useUniverseId';
 import { useTabs } from '@modules/monetization-shared/tabs/useTabs';
 import PageTitle from '@modules/monetization-shared/title';
@@ -33,7 +34,8 @@ function ManagedPricingPageTitle() {
   return (
     <PageTitle
       titleKey='Heading.ManagedPricing'
-      subtitleKey='Description.ManagedPricingSubtitle'
+      subtitleKey='Description.ManagedPricingSubtitleWithLearnMore'
+      subtitleLink={docs.getManagedPricingMonetizationUrl()}
       actionProps={{
         // TODO(jeminpark): coming back to this after conferring with design
         className: clsx(

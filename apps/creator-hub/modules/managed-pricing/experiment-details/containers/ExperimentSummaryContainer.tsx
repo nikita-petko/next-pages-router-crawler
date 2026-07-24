@@ -100,10 +100,11 @@ function ExperimentSummaryContainer({
 
   const formatCount = (count: number) => formatItemCount(count, translate);
 
-  const testPopulation =
-    summary?.experimentPopulationInMicroUnits != null
-      ? formatMicrosToPercent(summary.experimentPopulationInMicroUnits, locale)
-      : EMPTY_VALUE_PLACEHOLDER;
+  const experimentPopulationInMicroUnits = summary?.experimentPopulationInMicroUnits;
+  const testPopulationPercent =
+    experimentPopulationInMicroUnits != null
+      ? formatMicrosToPercent(experimentPopulationInMicroUnits, locale)
+      : null;
 
   if (status === 'Upcoming') {
     return (
@@ -142,19 +143,26 @@ function ExperimentSummaryContainer({
   }
 
   if (status === 'Active') {
-    const statCards = [
+    const statCards: React.ComponentProps<typeof ManagedPricingCard>[] = [
       {
         label: translate('Label.ProductsInTest' /* TranslationNamespace.ManagedPricing */),
         content: formatCount(productCount),
       },
-      {
+    ];
+
+    // Hide the test population card if it's not available (i.e., not during holdout or later).
+    if (testPopulationPercent != null) {
+      statCards.push({
         label: translate('Label.TestPopulation' /* TranslationNamespace.ManagedPricing */),
-        content: testPopulation,
-      },
-    ] as const satisfies React.ComponentProps<typeof ManagedPricingCard>[];
+        content: testPopulationPercent,
+      });
+    }
 
     return (
-      <div className='flex flex-col gap-large medium:flex-row medium:max-width-[400px]'>
+      <div
+        className={`flex flex-col gap-large medium:flex-row ${
+          testPopulationPercent != null ? 'medium:max-width-[400px]' : 'medium:max-width-[200px]'
+        }`}>
         {statCards.map((card) => (
           <ManagedPricingCard
             key={card.label}
@@ -170,7 +178,7 @@ function ExperimentSummaryContainer({
 
   // Completed
   const revenueLiftMicros = summary?.revenueLiftInMicroUnits ?? 0;
-  const statCards = [
+  const statCards: React.ComponentProps<typeof ManagedPricingCard>[] = [
     {
       label: translate('Label.PriceIncrease' /* TranslationNamespace.ManagedPricing */),
       content: formatCount(breakdown?.increased ?? 0),
@@ -191,11 +199,14 @@ function ExperimentSummaryContainer({
       label: translate('Label.ProductsTested' /* TranslationNamespace.ManagedPricing */),
       content: formatCount(productCount),
     },
-    {
+  ];
+
+  if (testPopulationPercent != null) {
+    statCards.push({
       label: translate('Label.TestPopulation' /* TranslationNamespace.ManagedPricing */),
-      content: testPopulation,
-    },
-  ] as const satisfies React.ComponentProps<typeof ManagedPricingCard>[];
+      content: testPopulationPercent,
+    });
+  }
 
   return (
     <div className={styles.fullSummaryGrid}>
