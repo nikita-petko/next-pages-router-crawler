@@ -617,7 +617,6 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
             open
             title={managedLifecycleTitle}
             closeLabel={lifecycleCloseLabel}
-            compactTopContent={pendingLifecycleAction === null && managedFlowStep === 'editor'}
             onClose={handleManagedLifecycleClose}>
             {managedLifecycleFlow}
           </RevShareLifecycleDialog>
@@ -695,7 +694,6 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
           open
           title={managedLifecycleTitle}
           closeLabel={lifecycleCloseLabel}
-          compactTopContent={pendingLifecycleAction === null && managedFlowStep === 'editor'}
           onClose={handleManagedLifecycleClose}>
           {managedLifecycleFlow}
         </RevShareLifecycleDialog>

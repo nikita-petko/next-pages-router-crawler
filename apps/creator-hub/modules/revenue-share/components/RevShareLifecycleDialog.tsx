@@ -8,7 +8,6 @@ export type RevShareLifecycleDialogProps = {
   closeLabel: string;
   onClose: () => void;
   children: ReactNode;
-  compactTopContent?: boolean;
 };
 
 const RevShareLifecycleDialog: FunctionComponent<RevShareLifecycleDialogProps> = ({
@@ -17,7 +16,6 @@ const RevShareLifecycleDialog: FunctionComponent<RevShareLifecycleDialogProps> =
   closeLabel,
   onClose,
   children,
-  compactTopContent = false,
 }) => {
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
@@ -35,24 +33,10 @@ const RevShareLifecycleDialog: FunctionComponent<RevShareLifecycleDialogProps> =
       size='Large'
       isModal
       hasCloseAffordance
-      closeLabel={closeLabel}
-      hasMarginTop={false}
-      hasMarginBottom={false}>
+      closeLabel={closeLabel}>
       <DialogContent className='flex flex-col min-width-0 width-full [max-height:90vh]'>
-        {!compactTopContent && (
-          <div className='flex items-center height-1800 padding-left-large [padding-right:var(--size-1800)] shrink-0'>
-            <DialogTitle className='text-heading-small margin-none'>{title}</DialogTitle>
-          </div>
-        )}
-        <DialogBody
-          className={
-            compactTopContent
-              ? 'flex flex-col gap-large scroll-y min-height-0 min-width-0 padding-large'
-              : 'flex flex-col gap-large scroll-y min-height-0 min-width-0 padding-x-large padding-top-none padding-bottom-large'
-          }>
-          {compactTopContent && (
-            <DialogTitle className='text-heading-small margin-none'>{title}</DialogTitle>
-          )}
+        <DialogBody className='flex flex-col gap-large scroll-y min-height-0 min-width-0'>
+          <DialogTitle className='text-heading-medium margin-none'>{title}</DialogTitle>
           {children}
         </DialogBody>
       </DialogContent>
