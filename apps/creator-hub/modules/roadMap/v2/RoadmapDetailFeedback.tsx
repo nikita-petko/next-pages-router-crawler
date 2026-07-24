@@ -142,7 +142,7 @@ function RoadmapDetailFeedback({
   }, [itemId, login, message, openCard, resetForm, selectedReason, unifiedLogger, user]);
 
   const upCard = {
-    title: translate('Heading.WhyUseful'),
+    title: translate('Heading.WhyUpVote'),
     reasons: [
       { id: 'solvesBlocker', label: translate('Label.SolvesBlocker') },
       { id: 'niceToHave', label: translate('Label.NiceToHave') },
@@ -201,17 +201,19 @@ function RoadmapDetailFeedback({
         size='Small'
         hasCloseAffordance
         closeLabel={translate('Action.Close')}>
-        <DialogContent>
+        {/* Widen past the Small preset (80) so the card scales up as a larger square instead of the
+            wider Medium (120) rectangle; the taller textarea below grows the height to match. */}
+        <DialogContent style={{ maxWidth: 'calc(var(--size-100) * 100)' }}>
           <DialogBody>
             <div className='flex flex-col gap-medium'>
-              <DialogTitle className='text-heading-small margin-y-none'>{card.title}</DialogTitle>
+              <DialogTitle className='text-heading-medium margin-y-none'>{card.title}</DialogTitle>
               <div className='flex flex-row wrap items-center gap-small'>
                 {card.reasons.map((reason) => (
                   <Chip
                     key={reason.id}
                     text={reason.label}
                     variant='Standard'
-                    size='Small'
+                    size='Medium'
                     isChecked={selectedReason === reason.id}
                     onCheckedChange={() => handleSelectReason(reason.id)}
                   />
@@ -223,8 +225,8 @@ function RoadmapDetailFeedback({
                 helperText={translate('Description.FeedbackImprovesCreatorRoadmap')}
                 value={message}
                 onChange={handleMessageChange}
-                size='Medium'
-                rows={3}
+                size='Large'
+                rows={5}
                 maxLength={CREATOR_ROADMAP_DESCRIPTION_MAX_LENGTH}
                 // Native <textarea> defaults to resize:both; the design is a fixed box.
                 textareaClassName='[resize:none]'

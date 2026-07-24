@@ -25,6 +25,9 @@ type RoadmapDetailModalProps = {
 
 function RoadmapDetailModal({ item, onClose }: RoadmapDetailModalProps) {
   const { translate } = useTranslation();
+  // "View details" opens the item's first recent-update link. With no links there's nowhere to send
+  // the creator, so the button renders disabled (grayed out) instead of a dead blue button.
+  const firstUpdateLink = item?.links[0];
 
   return (
     <SheetRoot
@@ -67,7 +70,14 @@ function RoadmapDetailModal({ item, onClose }: RoadmapDetailModalProps) {
                 ))}
               </div>
               <div className='flex flex-row items-center justify-between gap-medium margin-bottom-small'>
-                <Button variant='Emphasis' size='Small'>
+                <Button
+                  as='a'
+                  variant='Emphasis'
+                  size='Small'
+                  href={firstUpdateLink?.url}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  isDisabled={firstUpdateLink == null}>
                   {translate('Action.ViewDetails')}
                 </Button>
                 <RoadmapDetailFeedback key={item.id} itemId={item.id} />

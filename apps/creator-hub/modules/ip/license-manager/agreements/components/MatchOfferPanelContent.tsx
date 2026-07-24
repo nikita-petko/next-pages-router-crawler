@@ -72,6 +72,9 @@ const useStyles = makeStyles()((theme) => ({
   radioOption: {
     marginTop: theme.spacing(-0.375),
   },
+  feedbackSection: {
+    marginTop: theme.spacing(2),
+  },
 }));
 
 /**
@@ -551,6 +554,44 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose }: Props) => {
               </FormControl>
             )}
           />
+
+          {showFeedbackTextbox && (
+            <div ref={feedbackSectionRef} className={classes.feedbackSection}>
+              <Typography variant='h6' component='h2' gutterBottom>
+                {translate('Label.GiveConditionalOfferFeedback')}
+              </Typography>
+              <Typography color='primary' component='p' className={classes.largeBottomMargin}>
+                {translate('Description.GiveConditionalOfferFeedback')}
+              </Typography>
+              <Controller
+                name='feedbackText'
+                control={control}
+                rules={feedbackTextRules}
+                render={({ field, fieldState: { error } }) => (
+                  <TextFieldWithEnhancedHelperTextV2
+                    {...field}
+                    id='offer-feedback-text'
+                    label=''
+                    placeholder={translate('Message.TypeYourMessageHere')}
+                    fullWidth
+                    multiline
+                    minRows={4}
+                    maxRows={15}
+                    error={!!error || !!moderationError}
+                    helperText={error?.message ?? moderationError}
+                    maxLength={MAX_IPH_CHANGE_REQUEST_LENGTH}
+                    showCharacterCount
+                    onChange={(e) => {
+                      field.onChange(e);
+                      if (moderationError) {
+                        setModerationError(undefined);
+                      }
+                    }}
+                  />
+                )}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -599,44 +640,6 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose }: Props) => {
                 </RadioGroup>
                 {error && <FormHelperText error>{error.message}</FormHelperText>}
               </FormControl>
-            )}
-          />
-        </div>
-      )}
-
-      {showFeedbackTextbox && (
-        <div ref={feedbackSectionRef}>
-          <Typography variant='h6' component='h2' gutterBottom>
-            {translate('Label.GiveConditionalOfferFeedback')}
-          </Typography>
-          <Typography color='primary' component='p' className={classes.largeBottomMargin}>
-            {translate('Description.GiveConditionalOfferFeedback')}
-          </Typography>
-          <Controller
-            name='feedbackText'
-            control={control}
-            rules={feedbackTextRules}
-            render={({ field, fieldState: { error } }) => (
-              <TextFieldWithEnhancedHelperTextV2
-                {...field}
-                id='offer-feedback-text'
-                label=''
-                placeholder={translate('Message.TypeYourMessageHere')}
-                fullWidth
-                multiline
-                minRows={4}
-                maxRows={15}
-                error={!!error || !!moderationError}
-                helperText={error?.message ?? moderationError}
-                maxLength={MAX_IPH_CHANGE_REQUEST_LENGTH}
-                showCharacterCount
-                onChange={(e) => {
-                  field.onChange(e);
-                  if (moderationError) {
-                    setModerationError(undefined);
-                  }
-                }}
-              />
             )}
           />
         </div>
