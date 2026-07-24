@@ -1978,6 +1978,9 @@
 .height-1500 {
   height: var(--size-1500);
 }
+.height-1800 {
+  height: var(--size-1800);
+}
 .height-200 {
   height: var(--size-200);
 }
@@ -3903,6 +3906,9 @@
 .\[background\:\#121215\] {
   background: #121215;
 }
+.\[background\:none\] {
+  background: none;
+}
 .\[background\:transparent\] {
   background: transparent;
 }
@@ -4268,6 +4274,9 @@
 .\[max-height\:320px\] {
   max-height: 320px;
 }
+.\[max-height\:90vh\] {
+  max-height: 90vh;
+}
 .\[max-width\:100\%\] {
   max-width: 100%;
 }
@@ -4369,6 +4378,9 @@
 }
 .\[padding-left\:var\(--size-100\)\] {
   padding-left: var(--size-100);
+}
+.\[padding-right\:var\(--size-1800\)\] {
+  padding-right: var(--size-1800);
 }
 .\[padding-top\:24px\] {
   padding-top: 24px;

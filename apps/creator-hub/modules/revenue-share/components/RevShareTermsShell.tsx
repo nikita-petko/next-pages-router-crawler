@@ -1,37 +1,26 @@
-// Provides shared terms consent layout with optional wizard chrome, payout copy, and controlled back and submit actions.
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  type FunctionComponent,
-  type ReactNode,
-} from 'react';
+// Provides shared payout terms body, consent checkbox, and controlled back and submit actions for revenue-share consent steps.
+import { useCallback, useId, type FunctionComponent, type ReactNode } from 'react';
 import { Button, Checkbox, type TCheckboxCheckState } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import type { RevShareTermsActionProps } from './revShareTermsActionProps';
 
-type RevShareTermsShellProps = {
+type RevShareTermsShellProps = RevShareTermsActionProps & {
   chrome?: ReactNode;
-  heading: string;
   description: string;
+  termsHeading?: string;
   consentLabel: string;
   backLabel: string;
   submitLabel: string;
   submitVariant?: 'Emphasis' | 'Alert';
-  isAccepted: boolean;
-  onAcceptedChange: (isAccepted: boolean) => void;
-  onBack: () => void;
-  onSubmit: () => void;
-  isSubmitting?: boolean;
 };
 
 const RevShareTermsShell: FunctionComponent<RevShareTermsShellProps> = ({
   chrome,
-  heading,
   description,
+  termsHeading,
   consentLabel,
   backLabel,
   submitLabel,
@@ -40,6 +29,7 @@ const RevShareTermsShell: FunctionComponent<RevShareTermsShellProps> = ({
   onAcceptedChange,
   onBack,
   onSubmit,
+  isDisabled = false,
   isSubmitting = false,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
@@ -66,7 +56,7 @@ const RevShareTermsShell: FunctionComponent<RevShareTermsShellProps> = ({
     ),
   ];
   const payoutTermsHeadingId = useId();
-  const headingRef = useRef<HTMLHeadingElement>(null);
+  const controlsDisabled = isDisabled || isSubmitting;
   const handleAcceptedChange = useCallback(
     (checked: TCheckboxCheckState) => {
       if (checked !== 'indeterminate') {
@@ -76,36 +66,27 @@ const RevShareTermsShell: FunctionComponent<RevShareTermsShellProps> = ({
     [onAcceptedChange],
   );
   const handleSubmit = useCallback(() => {
-    if (isAccepted && !isSubmitting) {
+    if (isAccepted && !controlsDisabled) {
       onSubmit();
     }
-  }, [isAccepted, isSubmitting, onSubmit]);
-
-  useEffect(() => {
-    headingRef.current?.focus();
-  }, []);
+  }, [controlsDisabled, isAccepted, onSubmit]);
 
   return (
-    <div className='flex flex-col gap-large width-full max-width-[700px] margin-x-auto'>
+    <div className='flex flex-col gap-large width-full margin-x-auto'>
       {chrome}
       <div className='flex flex-col gap-xsmall'>
-        <h2
-          ref={headingRef}
-          tabIndex={-1}
-          className='text-heading-medium content-emphasis margin-none'>
-          {heading}
-        </h2>
         <p className='text-body-medium content-muted margin-none'>{description}</p>
       </div>
       <section
         className='flex flex-col gap-small bg-surface-200 radius-medium padding-large'
         aria-labelledby={payoutTermsHeadingId}>
         <h3 id={payoutTermsHeadingId} className='text-body-large content-emphasis margin-none'>
-          {tPendingTranslation(
-            'How payouts work',
-            'Heading for the revenue-share payout terms list.',
-            translationKey('Heading.HowPayoutsWork', TranslationNamespace.RevenueShareAgreements),
-          )}
+          {termsHeading ??
+            tPendingTranslation(
+              'How payouts work',
+              'Heading for the revenue-share payout terms list.',
+              translationKey('Heading.HowPayoutsWork', TranslationNamespace.RevenueShareAgreements),
+            )}
         </h3>
         <ul className='flex flex-col gap-small padding-left-large margin-none'>
           {payoutTerms.map((term) => (
@@ -120,7 +101,7 @@ const RevShareTermsShell: FunctionComponent<RevShareTermsShellProps> = ({
         placement='Start'
         label={consentLabel}
         isChecked={isAccepted}
-        isDisabled={isSubmitting}
+        isDisabled={controlsDisabled}
         onCheckedChange={handleAcceptedChange}
       />
       <div className='flex justify-end gap-medium'>
@@ -128,7 +109,7 @@ const RevShareTermsShell: FunctionComponent<RevShareTermsShellProps> = ({
           type='button'
           variant='Standard'
           size='Medium'
-          isDisabled={isSubmitting}
+          isDisabled={controlsDisabled}
           onClick={onBack}>
           {backLabel}
         </Button>
@@ -136,7 +117,7 @@ const RevShareTermsShell: FunctionComponent<RevShareTermsShellProps> = ({
           type='button'
           variant={submitVariant}
           size='Medium'
-          isDisabled={!isAccepted || isSubmitting}
+          isDisabled={!isAccepted || controlsDisabled}
           isLoading={isSubmitting}
           onClick={handleSubmit}>
           {submitLabel}

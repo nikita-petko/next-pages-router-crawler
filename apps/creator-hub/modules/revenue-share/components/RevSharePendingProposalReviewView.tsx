@@ -21,11 +21,6 @@ const RevSharePendingProposalReviewView: FunctionComponent<
 
   return (
     <RevShareReviewShell
-      heading={tPendingTranslation(
-        'Pending proposal',
-        'Heading for reviewing a pending revenue share proposal.',
-        translationKey('Heading.PendingProposal', TranslationNamespace.RevenueShareAgreements),
-      )}
       description={tPendingTranslation(
         'This proposal is awaiting recipient responses. You can cancel it to withdraw the changes.',
         'Description for reviewing a pending revenue share proposal.',

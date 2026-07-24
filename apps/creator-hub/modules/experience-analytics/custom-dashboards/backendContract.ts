@@ -1285,7 +1285,8 @@ function fromProtoPage(raw: unknown, field: string): CustomDashboardConfig['page
   if (!isObjectRecord(surface)) {
     fail(`${field}.untabbed.surface must be an object.`);
   }
-  const bodyNodes = surface.bodyNodes ?? surface.body_nodes;
+  // ProtoJSON omits repeated fields when they have their default empty value.
+  const bodyNodes = surface.bodyNodes ?? surface.body_nodes ?? [];
   if (!Array.isArray(bodyNodes)) {
     fail(`${field}.untabbed.surface.bodyNodes must be an array.`);
   }

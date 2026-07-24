@@ -1,11 +1,20 @@
 // Loads eligible revenue share targets and recipients, hydrates selected agreements, and submits validated split proposals.
-import { useCallback, useMemo, useState, type FunctionComponent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FunctionComponent } from 'react';
+import { useRouter } from 'next/router';
 import { Surface } from '@rbx/client-universes-api/v1';
+import { Button } from '@rbx/foundation-ui';
+import { useTranslation } from '@rbx/intl';
 import { CircularProgress, Grid } from '@rbx/ui';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import useOwner from '@modules/experience-analytics-shared/context/useOwner';
 import usePaginatedSearchUniverses from '@modules/experience-analytics-shared/hooks/usePaginatedSearchUniverses';
 import CreatorType from '@modules/miscellaneous/common/enums/Creator';
-import RevShareSplitEditorFlow from '../components/RevShareSplitEditorFlow';
+import LoadError from '@modules/miscellaneous/error/LoadError';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import RevShareSplitEditorFlow, {
+  type RevShareSplitEditorFlowStep,
+} from '../components/RevShareSplitEditorFlow';
 import RevShareTargetPickerView, {
   type RevShareTargetTab,
 } from '../components/RevShareTargetPickerView';
@@ -32,6 +41,25 @@ const MANAGING_GROUP_ROW_KEY = 'managing-group';
 const TOTAL_BASIS_POINTS = 10_000;
 const TARGET_PAGE_SIZE = 100;
 
+type RevShareProposeLoadErrorProps = {
+  backLabel: string;
+  onBack: () => void;
+  onReload: () => void;
+};
+
+const RevShareProposeLoadError: FunctionComponent<RevShareProposeLoadErrorProps> = ({
+  backLabel,
+  onBack,
+  onReload,
+}) => (
+  <Grid container direction='column' alignItems='center'>
+    <LoadError onReload={onReload} />
+    <Button type='button' variant='Standard' size='Medium' onClick={onBack}>
+      {backLabel}
+    </Button>
+  </Grid>
+);
+
 export type RevShareProposeFlowContainerProps = {
   managingGroupId: string;
   managingGroupName: string;
@@ -41,6 +69,7 @@ export type RevShareProposeFlowContainerProps = {
   onTargetSelected: (target: RevShareTarget) => void;
   onExit: () => void;
   onProposeSuccess: () => void;
+  onStepChange?: (step: RevShareSplitEditorFlowStep) => void;
 };
 
 const emptySplit = {
@@ -50,6 +79,15 @@ const emptySplit = {
 };
 
 const toTargetKey = (target: RevShareTarget) => `${target.type}:${target.id}`;
+
+const needsTargetHydration = (
+  mode: RevShareProposeFlowContainerProps['mode'],
+  agreement: ManagerAgreement | undefined,
+): boolean =>
+  mode === 'propose' &&
+  agreement != null &&
+  agreement.activeId === null &&
+  agreement.proposed === null;
 
 type PickerCandidate = {
   target: RevShareTarget;
@@ -81,18 +119,36 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
   onTargetSelected,
   onExit,
   onProposeSuccess,
+  onStepChange,
 }) => {
+  const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+  const router = useRouter();
   const managingGroup = useOwner();
-  const { data: targetData, isDataLoading } = usePaginatedSearchUniverses({
+  const {
+    data: targetData,
+    isDataLoading,
+    isResponseFailed,
+    isUserForbidden,
+  } = usePaginatedSearchUniverses({
     owner: managingGroup,
     pageSizeOptions: [TARGET_PAGE_SIZE],
     defaultPageSize: TARGET_PAGE_SIZE,
     surface: Surface.CreatorHubGroupPayout,
   });
-  const [target, setTarget] = useState<ManagerAgreement | null>(existingAgreement ?? null);
-  const [isTargetHydrating, setIsTargetHydrating] = useState(false);
+  const shouldHydrateTarget = needsTargetHydration(mode, existingAgreement);
+  const [target, setTarget] = useState<ManagerAgreement | null>(() => {
+    if (mode === 'create' || shouldHydrateTarget) {
+      return null;
+    }
+    return existingAgreement ?? null;
+  });
+  const [isTargetHydrating, setIsTargetHydrating] = useState(shouldHydrateTarget);
+  const [hasTargetHydrationError, setHasTargetHydrationError] = useState(false);
+  const [targetHydrationAttempt, setTargetHydrationAttempt] = useState(0);
   const [targetTab, setTargetTab] = useState<RevShareTargetTab>('experiences');
+  const targetSelectionRequestRef = useRef(0);
   const managerQuery = useRevShareForManager(managingGroupId);
+  const { refetch: refetchManagerAgreements } = managerQuery;
   const [recipientQuery, setRecipientQuery] = useState('');
   const ugcTargetsQuery = useRevShareUgcTargets({
     managingGroupId,
@@ -104,6 +160,11 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
   });
   const { propose } = useRevShareProposalMutations(managingGroupId);
   const { showSuccess, showError } = useRevShareFeedback();
+  const backLabel = tPendingTranslation(
+    'Back',
+    'Label on a button that returns to the previous step in a multi-step wizard.',
+    translationKey('Action.Back', TranslationNamespace.Controls),
+  );
   const agreementMap = useMemo(() => {
     const map = new Map<string, ManagerAgreement>();
     for (const agreement of managerQuery.data ?? []) {
@@ -228,28 +289,102 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
     },
     [onProposeSuccess, propose, showError, showSuccess, target],
   );
+  useEffect(() => {
+    if (!shouldHydrateTarget || existingAgreement == null || target !== null) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    void getRevShareByTarget(existingAgreement.target)
+      .then((hydratedAgreement) => {
+        if (cancelled) {
+          return;
+        }
+        setTarget({
+          ...hydratedAgreement,
+          target: existingAgreement.target,
+          targetName: existingAgreement.targetName || hydratedAgreement.targetName,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHasTargetHydrationError(true);
+          showError('propose');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsTargetHydrating(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [existingAgreement, shouldHydrateTarget, showError, target, targetHydrationAttempt]);
+
+  useEffect(
+    () => () => {
+      targetSelectionRequestRef.current += 1;
+    },
+    [],
+  );
+
+  const handleRetryTargetHydration = useCallback(() => {
+    setHasTargetHydrationError(false);
+    setIsTargetHydrating(true);
+    setTargetHydrationAttempt((attempt) => attempt + 1);
+  }, []);
+
+  const handleReloadManagerAgreements = useCallback(() => {
+    void refetchManagerAgreements();
+  }, [refetchManagerAgreements]);
+
   const handleTargetSelect = useCallback(
     async (row: ManagerAgreement) => {
+      const requestId = targetSelectionRequestRef.current + 1;
+      targetSelectionRequestRef.current = requestId;
       setIsTargetHydrating(true);
       try {
         const hydratedAgreement = await getRevShareByTarget(row.target);
+        if (targetSelectionRequestRef.current !== requestId) {
+          return;
+        }
         setTarget({ ...hydratedAgreement, target: row.target, targetName: row.targetName });
         onTargetSelected(row.target);
       } catch {
-        showError('propose');
+        if (targetSelectionRequestRef.current === requestId) {
+          showError('propose');
+        }
       } finally {
-        setIsTargetHydrating(false);
+        if (targetSelectionRequestRef.current === requestId) {
+          setIsTargetHydrating(false);
+        }
       }
     },
     [onTargetSelected, showError],
   );
 
   if (mode === 'create' && target === null) {
-    if (isDataLoading || isTargetHydrating) {
+    if (isDataLoading || managerQuery.isLoading || isTargetHydrating) {
       return (
         <Grid container justifyContent='center'>
           <CircularProgress />
         </Grid>
+      );
+    }
+    if (managerQuery.error) {
+      return (
+        <RevShareProposeLoadError
+          backLabel={backLabel}
+          onBack={onExit}
+          onReload={handleReloadManagerAgreements}
+        />
+      );
+    }
+    if (targetTab === 'experiences' && (isResponseFailed || isUserForbidden)) {
+      return (
+        <RevShareProposeLoadError backLabel={backLabel} onBack={onExit} onReload={router.reload} />
       );
     }
     return (
@@ -273,6 +408,16 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
     );
   }
 
+  if (target === null && hasTargetHydrationError && !isTargetHydrating) {
+    return (
+      <RevShareProposeLoadError
+        backLabel={backLabel}
+        onBack={onExit}
+        onReload={handleRetryTargetHydration}
+      />
+    );
+  }
+
   if (target === null || arePartyIdentitiesLoading) {
     return (
       <Grid container justifyContent='center'>
@@ -287,10 +432,13 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
       initialRows={initialRows}
       searchResults={recipientSearch.data}
       isSearchLoading={recipientSearch.isLoading}
+      searchError={!!recipientSearch.error}
       onSearchQueryChange={setRecipientQuery}
       onExit={onExit}
-      onReviewContinue={handleSubmitProposal}
+      onSubmitProposal={handleSubmitProposal}
       isSubmitting={propose.isPending}
+      presentation='page'
+      onStepChange={onStepChange}
     />
   );
 };

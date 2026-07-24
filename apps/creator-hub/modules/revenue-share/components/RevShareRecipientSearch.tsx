@@ -36,7 +36,7 @@ type RevShareRecipientSearchProps = {
   onQueryChange: (query: string) => void;
   onSelect: (value: RevShareRecipientSearchResult) => void;
   isLoading?: boolean;
-  error?: string;
+  hasError?: boolean;
   placeholder?: string;
 };
 
@@ -47,7 +47,7 @@ const RevShareRecipientSearch: FunctionComponent<RevShareRecipientSearchProps> =
   onQueryChange,
   onSelect,
   isLoading = false,
-  error,
+  hasError = false,
   placeholder,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
@@ -89,7 +89,7 @@ const RevShareRecipientSearch: FunctionComponent<RevShareRecipientSearchProps> =
         placeholder={translatedPlaceholder}
         value={query}
         onChange={handleChange}
-        aria-invalid={error !== undefined}
+        aria-invalid={hasError}
       />
       {query.trim() !== '' && (
         <RevShareRecipientResults
@@ -97,7 +97,7 @@ const RevShareRecipientSearch: FunctionComponent<RevShareRecipientSearchProps> =
           users={users}
           groups={groups}
           isLoading={isLoading}
-          error={error}
+          hasError={hasError}
           onSelect={onSelect}
         />
       )}

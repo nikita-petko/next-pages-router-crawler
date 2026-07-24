@@ -1,6 +1,5 @@
-// Renders the revenue share split editor with recipient search, allocation controls, validation feedback, and wizard navigation.
 import type { FunctionComponent, Ref } from 'react';
-import { Button, type TStepperStep } from '@rbx/foundation-ui';
+import { Button, VisuallyHidden, type TStepperStep } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
@@ -26,12 +25,14 @@ type RevShareSplitEditorViewProps = {
   onRecipientQueryChange: (query: string) => void;
   onAddRecipient: (recipient: RevShareRecipientSearchResult) => void;
   isRecipientSearchLoading?: boolean;
-  recipientSearchError?: string;
+  recipientSearchHasError?: boolean;
   onBack?: () => void;
   onContinue?: () => void;
   validationMessage?: string;
+  validationBannerTone?: 'alert' | 'emphasis';
   validationMessageId?: string;
   validationBannerRef?: Ref<HTMLDivElement>;
+  stepFocusRef?: Ref<HTMLElement>;
 };
 
 const RevShareSplitEditorView: FunctionComponent<RevShareSplitEditorViewProps> = ({
@@ -48,14 +49,22 @@ const RevShareSplitEditorView: FunctionComponent<RevShareSplitEditorViewProps> =
   onRecipientQueryChange,
   onAddRecipient,
   isRecipientSearchLoading = false,
-  recipientSearchError,
+  recipientSearchHasError = false,
   onBack,
   onContinue,
   validationMessage,
+  validationBannerTone = 'alert',
   validationMessageId,
   validationBannerRef,
+  stepFocusRef,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+  const editRecipientsHeading = tPendingTranslation(
+    'Edit recipients',
+    'Heading and accessible table label for editing revenue share recipients.',
+    translationKey('Heading.EditRecipients', TranslationNamespace.RevenueShareAgreements),
+  );
+  const hasValidationMessage = Boolean(validationMessage);
 
   return (
     <div className='flex flex-col gap-large width-full max-width-[700px] margin-x-auto'>
@@ -66,13 +75,13 @@ const RevShareSplitEditorView: FunctionComponent<RevShareSplitEditorViewProps> =
       />
 
       <div className='flex flex-col gap-xsmall'>
-        <h2 className='text-heading-medium content-emphasis margin-none'>
-          {tPendingTranslation(
-            'Edit recipients',
-            'Heading and accessible table label for editing revenue share recipients.',
-            translationKey('Heading.EditRecipients', TranslationNamespace.RevenueShareAgreements),
-          )}
-        </h2>
+        {stepFocusRef != null && (
+          <VisuallyHidden>
+            <span ref={stepFocusRef} tabIndex={-1}>
+              {editRecipientsHeading}
+            </span>
+          </VisuallyHidden>
+        )}
         <span className='text-body-medium content-muted'>
           {tPendingTranslation(
             'Add or remove recipients, and adjust their revenue splits.',
@@ -90,43 +99,49 @@ const RevShareSplitEditorView: FunctionComponent<RevShareSplitEditorViewProps> =
         results={searchResults}
         excludedRecipientKeys={excludedRecipientKeys}
         isLoading={isRecipientSearchLoading}
-        error={recipientSearchError}
+        hasError={recipientSearchHasError}
         onQueryChange={onRecipientQueryChange}
         onSelect={onAddRecipient}
       />
 
-      <RevShareSplitEditorTable
-        rows={rows}
-        onSplitChange={onSplitChange}
-        onSplitValidityChange={onSplitValidityChange}
-        onRemove={onRemove}
-      />
-
-      {validationMessage && (
-        <RevShareBanner
-          ref={validationBannerRef}
-          id={validationMessageId}
-          tabIndex={-1}
-          tone='alert'
-          message={validationMessage}
+      <div className='flex flex-col gap-medium'>
+        <RevShareSplitEditorTable
+          rows={rows}
+          onSplitChange={onSplitChange}
+          onSplitValidityChange={onSplitValidityChange}
+          onRemove={onRemove}
         />
-      )}
 
-      <div className='flex justify-end gap-medium'>
-        <Button type='button' variant='Standard' size='Medium' onClick={onBack}>
-          {tPendingTranslation(
-            'Back',
-            'Label on a button that returns to the previous step in a multi-step wizard.',
-            translationKey('Action.Back', TranslationNamespace.Controls),
-          )}
-        </Button>
-        <Button type='button' variant='Emphasis' size='Medium' onClick={onContinue}>
-          {tPendingTranslation(
-            'Continue',
-            'Button to continue to the next revenue share wizard step.',
-            translationKey('Action.Continue', TranslationNamespace.Controls),
-          )}
-        </Button>
+        <div
+          aria-hidden={hasValidationMessage ? undefined : true}
+          className={
+            hasValidationMessage ? 'width-full' : 'invisible pointer-events-none width-full'
+          }>
+          <RevShareBanner
+            ref={hasValidationMessage ? validationBannerRef : undefined}
+            id={hasValidationMessage ? validationMessageId : undefined}
+            tabIndex={hasValidationMessage ? -1 : undefined}
+            tone={validationBannerTone}
+            message={validationMessage ?? ''}
+          />
+        </div>
+
+        <div className='flex justify-end gap-medium'>
+          <Button type='button' variant='Standard' size='Medium' onClick={onBack}>
+            {tPendingTranslation(
+              'Back',
+              'Label on a button that returns to the previous step in a multi-step wizard.',
+              translationKey('Action.Back', TranslationNamespace.Controls),
+            )}
+          </Button>
+          <Button type='button' variant='Emphasis' size='Medium' onClick={onContinue}>
+            {tPendingTranslation(
+              'Continue',
+              'Button to continue to the next revenue share wizard step.',
+              translationKey('Action.Continue', TranslationNamespace.Controls),
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );

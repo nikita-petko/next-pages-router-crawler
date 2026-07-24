@@ -3,13 +3,14 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type FunctionComponent,
 } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
-import type { TStepperStep } from '@rbx/foundation-ui';
+import { VisuallyHidden, type TStepperStep } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
@@ -24,6 +25,7 @@ import {
 import {
   areRevShareSplitsEqual,
   asNumberTypedId,
+  asSafeBasisPoints,
   formatBasisPoints,
   getRevShareRecipientKey,
   materializeManagerProposal,
@@ -49,18 +51,21 @@ type EditorFormValues = {
   recipientQuery: string;
 };
 
-type FlowStep = 'editor' | 'review' | 'terms';
+export type RevShareSplitEditorFlowStep = 'editor' | 'review' | 'terms';
+export type RevShareSplitEditorFlowPresentation = 'page' | 'dialog';
 
 type RevShareSplitEditorFlowProps = {
   activeSplit: RevShareSplit;
   initialRows: readonly SplitEditorRow[];
   searchResults: readonly RevShareRecipientSearchResult[];
   isSearchLoading?: boolean;
-  searchError?: string;
+  searchError?: boolean;
   onSearchQueryChange?: (query: string) => void;
   onExit?: () => void;
-  onReviewContinue?: (allocations: readonly RevShareRecipientAllocation[]) => void | Promise<void>;
+  onSubmitProposal?: (allocations: readonly RevShareRecipientAllocation[]) => void | Promise<void>;
   isSubmitting?: boolean;
+  presentation?: RevShareSplitEditorFlowPresentation;
+  onStepChange?: (step: RevShareSplitEditorFlowStep) => void;
 };
 
 const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> = ({
@@ -68,22 +73,29 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
   initialRows,
   searchResults,
   isSearchLoading = false,
-  searchError,
+  searchError = false,
   onSearchQueryChange,
   onExit,
-  onReviewContinue,
+  onSubmitProposal,
   isSubmitting = false,
+  presentation = 'page',
+  onStepChange,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
-  const [step, setStep] = useState<FlowStep>('editor');
+  const [step, setStep] = useState<RevShareSplitEditorFlowStep>('editor');
   const [hasAttemptedContinue, setHasAttemptedContinue] = useState(false);
   const [hasNoChangesError, setHasNoChangesError] = useState(false);
   const [invalidDraftKeys, setInvalidDraftKeys] = useState<ReadonlySet<string>>(() => new Set());
   const [isTermsAccepted, setIsTermsAccepted] = useState(false);
   const [isSubmitPending, setIsSubmitPending] = useState(false);
+  const [validationFocusGeneration, setValidationFocusGeneration] = useState(0);
   const isSubmitPendingRef = useRef(false);
   const validationMessageId = useId();
   const validationBannerRef = useRef<HTMLDivElement>(null);
+  const stepFocusRef = useRef<HTMLElement>(null);
+  const setStepFocusElement = useCallback((element: HTMLElement | null) => {
+    stepFocusRef.current = element;
+  }, []);
   const { control, getValues, setValue } = useForm<EditorFormValues>({
     defaultValues: {
       rows: [...initialRows],
@@ -155,9 +167,18 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
     translationKey('Label.RevenueShareWizard', TranslationNamespace.RevenueShareAgreements),
   );
   const currentStepIndex = step === 'editor' ? 0 : step === 'review' ? 1 : 2;
+  const invalidRecipientShareMessage = tPendingTranslation(
+    'Each recipient must have a valid share greater than 0%.',
+    'Validation error when a revenue share recipient has an invalid or zero share.',
+    translationKey('Error.InvalidRecipientShare', TranslationNamespace.RevenueShareAgreements),
+  );
+  const effectiveInvalidDraftKeys = useMemo(() => {
+    const activeKeys = new Set(activeRows.map((row) => row.key));
+    return new Set([...invalidDraftKeys].filter((key) => activeKeys.has(key)));
+  }, [activeRows, invalidDraftKeys]);
   const validationMessage = useMemo(() => {
-    if (!hasAttemptedContinue) {
-      return undefined;
+    if (effectiveInvalidDraftKeys.size > 0) {
+      return invalidRecipientShareMessage;
     }
     if (validation.reason !== null) {
       if (validation.reason === 'empty') {
@@ -168,14 +189,7 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
         );
       }
       if (validation.reason === 'recipient-zero' || validation.reason === 'invalid-basis-points') {
-        return tPendingTranslation(
-          'Each recipient must have a valid share greater than 0%.',
-          'Validation error when a revenue share recipient has an invalid or zero share.',
-          translationKey(
-            'Error.InvalidRecipientShare',
-            TranslationNamespace.RevenueShareAgreements,
-          ),
-        );
+        return invalidRecipientShareMessage;
       }
       if (validation.reason === 'recipient-limit') {
         return tPendingTranslation(
@@ -188,10 +202,10 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
         'Revenue shares must total 100.00%. The current total is {total}%.',
         'Validation error when revenue shares do not total 100%; {total} is the current percentage.',
         translationKey('Error.SplitTotal', TranslationNamespace.RevenueShareAgreements),
-        { total: formatBasisPoints(validation.totalBasisPoints) },
+        { total: formatBasisPoints(asSafeBasisPoints(validation.totalBasisPoints)) },
       );
     }
-    if (hasNoChangesError) {
+    if (hasAttemptedContinue && hasNoChangesError) {
       return tPendingTranslation(
         'Make at least one change before continuing.',
         'Validation error when the proposed revenue share split is identical to the active split.',
@@ -199,33 +213,48 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
       );
     }
     return undefined;
-  }, [hasAttemptedContinue, hasNoChangesError, tPendingTranslation, validation]);
+  }, [
+    effectiveInvalidDraftKeys,
+    hasAttemptedContinue,
+    hasNoChangesError,
+    invalidRecipientShareMessage,
+    tPendingTranslation,
+    validation,
+  ]);
 
-  const invalidRecipientShareMessage = tPendingTranslation(
-    'Each recipient must have a valid share greater than 0%.',
-    'Validation error when a revenue share recipient has an invalid or zero share.',
-    translationKey('Error.InvalidRecipientShare', TranslationNamespace.RevenueShareAgreements),
-  );
+  const validationBannerTone = hasNoChangesError ? 'emphasis' : 'alert';
   const editorRows = useMemo(
     () =>
-      decorateSplitEditorFieldErrors(
-        orderSplitEditorDisplayRows(rows),
-        invalidRecipientShareMessage,
-      ),
-    [invalidRecipientShareMessage, rows],
+      hasAttemptedContinue
+        ? decorateSplitEditorFieldErrors(
+            orderSplitEditorDisplayRows(rows),
+            invalidRecipientShareMessage,
+          )
+        : orderSplitEditorDisplayRows(rows),
+    [hasAttemptedContinue, invalidRecipientShareMessage, rows],
   );
 
-  const effectiveInvalidDraftKeys = useMemo(() => {
-    const activeKeys = new Set(activeRows.map((row) => row.key));
-    return new Set([...invalidDraftKeys].filter((key) => activeKeys.has(key)));
-  }, [activeRows, invalidDraftKeys]);
-
   useEffect(() => {
-    if (hasAttemptedContinue && validationMessage) {
-      validationBannerRef.current?.focus();
+    if (validationFocusGeneration === 0) {
+      return;
     }
-  }, [hasAttemptedContinue, validationMessage]);
+    validationBannerRef.current?.focus();
+  }, [validationFocusGeneration]);
+  useLayoutEffect(() => {
+    stepFocusRef.current?.focus();
+  }, [step]);
 
+  const requestValidationBannerFocus = useCallback(() => {
+    setValidationFocusGeneration((generation) => generation + 1);
+  }, []);
+
+  const transitionToStep = useCallback(
+    (nextStep: RevShareSplitEditorFlowStep) => {
+      setStep(nextStep);
+      onStepChange?.(nextStep);
+    },
+    [onStepChange],
+  );
   const handleSplitValidityChange = useCallback((key: string, isValid: boolean) => {
     setInvalidDraftKeys((current) => {
       if (isValid && !current.has(key)) {
@@ -245,11 +274,12 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
   }, []);
   const handleSplitChange = useCallback(
     (key: string, basisPoints: number) => {
+      const nextBasisPoints = asSafeBasisPoints(basisPoints);
       setHasNoChangesError(false);
       setValue(
         'rows',
         rebalanceSplitEditorManagingGroupBasisPoints(
-          rows.map((row) => (row.key === key ? { ...row, basisPoints } : row)),
+          rows.map((row) => (row.key === key ? { ...row, basisPoints: nextBasisPoints } : row)),
         ),
         { shouldDirty: true },
       );
@@ -365,49 +395,79 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
     setHasAttemptedContinue(true);
     setHasNoChangesError(false);
     if (!validation.isValid || effectiveInvalidDraftKeys.size > 0) {
+      requestValidationBannerFocus();
       return;
     }
     if (areRevShareSplitsEqual(proposedSplit, activeSplit)) {
       setHasNoChangesError(true);
+      requestValidationBannerFocus();
       return;
     }
-    setStep('review');
-  }, [activeSplit, effectiveInvalidDraftKeys, proposedSplit, validation.isValid]);
+    transitionToStep('review');
+  }, [
+    activeSplit,
+    effectiveInvalidDraftKeys,
+    proposedSplit,
+    requestValidationBannerFocus,
+    transitionToStep,
+    validation.isValid,
+  ]);
   const handleReviewBack = useCallback(() => {
-    setStep('editor');
-  }, []);
+    transitionToStep('editor');
+  }, [transitionToStep]);
   const handleReviewContinue = useCallback(() => {
-    setStep('terms');
-  }, []);
+    transitionToStep('terms');
+  }, [transitionToStep]);
   const handleTermsBack = useCallback(() => {
-    setStep('review');
-  }, []);
+    transitionToStep('review');
+  }, [transitionToStep]);
   const handleTermsSubmit = useCallback(() => {
     void (async () => {
-      if (!isTermsAccepted || !onReviewContinue || isSubmitting || isSubmitPendingRef.current) {
+      if (!isTermsAccepted || !onSubmitProposal || isSubmitting || isSubmitPendingRef.current) {
         return;
       }
       isSubmitPendingRef.current = true;
       setIsSubmitPending(true);
       try {
-        await onReviewContinue(splitEditorRowsToRecipientAllocations(getValues('rows')));
+        await onSubmitProposal(splitEditorRowsToRecipientAllocations(getValues('rows')));
       } finally {
         isSubmitPendingRef.current = false;
         setIsSubmitPending(false);
       }
     })();
-  }, [isSubmitting, isTermsAccepted, onReviewContinue]); // eslint-disable-line react-hooks/exhaustive-deps -- getValues from useForm is stable; React Compiler marks it extra
+  }, [isSubmitting, isTermsAccepted, onSubmitProposal]); // eslint-disable-line react-hooks/exhaustive-deps -- getValues from useForm is stable; React Compiler marks it extra
   const termsSubmitting = isSubmitting || isSubmitPending;
+  const termsHeading = tPendingTranslation(
+    'Terms & implications',
+    'Heading for the revenue-share proposal consent step.',
+    translationKey('Heading.TermsAndImplications', TranslationNamespace.RevenueShareAgreements),
+  );
 
   if (step === 'terms') {
     return (
       <RevShareProposalTermsView
         stepIndicator={
-          <RevShareWizardStep
-            steps={wizardSteps}
-            currentStepIndex={currentStepIndex}
-            aria-label={wizardAriaLabel}
-          />
+          <>
+            <RevShareWizardStep
+              steps={wizardSteps}
+              currentStepIndex={currentStepIndex}
+              aria-label={wizardAriaLabel}
+            />
+            {presentation === 'page' ? (
+              <h2
+                ref={setStepFocusElement}
+                tabIndex={-1}
+                className='text-heading-medium content-emphasis margin-none'>
+                {termsHeading}
+              </h2>
+            ) : (
+              <VisuallyHidden>
+                <span ref={setStepFocusElement} tabIndex={-1}>
+                  {termsHeading}
+                </span>
+              </VisuallyHidden>
+            )}
+          </>
         }
         isAccepted={isTermsAccepted}
         onAcceptedChange={setIsTermsAccepted}
@@ -426,7 +486,8 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
         currentStepIndex={currentStepIndex}
         wizardAriaLabel={wizardAriaLabel}
         onBack={handleReviewBack}
-        onContinue={onReviewContinue ? handleReviewContinue : undefined}
+        onContinue={onSubmitProposal ? handleReviewContinue : undefined}
+        stepFocusRef={setStepFocusElement}
       />
     );
   }
@@ -441,7 +502,7 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
       searchResults={searchResults}
       excludedRecipientKeys={existingRecipientKeys}
       isRecipientSearchLoading={isSearchLoading}
-      recipientSearchError={searchError}
+      recipientSearchHasError={searchError}
       onRecipientQueryChange={handleQueryChange}
       onAddRecipient={handleAddRecipient}
       onSplitChange={handleSplitChange}
@@ -450,8 +511,10 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
       onBack={onExit}
       onContinue={handleEditorContinue}
       validationMessage={validationMessage}
+      validationBannerTone={validationBannerTone}
       validationMessageId={validationMessageId}
       validationBannerRef={validationBannerRef}
+      stepFocusRef={setStepFocusElement}
     />
   );
 };

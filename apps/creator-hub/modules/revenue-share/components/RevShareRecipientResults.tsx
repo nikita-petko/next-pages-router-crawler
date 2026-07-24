@@ -17,7 +17,7 @@ type RevShareRecipientResultsProps = {
   groups: readonly RevShareRecipientSearchResult[];
   onSelect: (recipient: RevShareRecipientSearchResult) => void;
   isLoading?: boolean;
-  error?: string;
+  hasError?: boolean;
   id?: string;
 };
 
@@ -74,10 +74,15 @@ const RevShareRecipientResults: FunctionComponent<RevShareRecipientResultsProps>
   groups,
   onSelect,
   isLoading = false,
-  error,
+  hasError = false,
   id,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+  const searchFailedMessage = tPendingTranslation(
+    "Couldn't load results. Try again.",
+    'Generic error message shown when the recipient search request fails.',
+    translationKey('Message.RecipientSearchFailed', TranslationNamespace.RevenueShareAgreements),
+  );
   const peopleHeading = tPendingTranslation(
     'People ({count})',
     'Heading for user results in recipient search; {count} is the number of results.',
@@ -102,11 +107,7 @@ const RevShareRecipientResults: FunctionComponent<RevShareRecipientResultsProps>
   );
 
   return (
-    <div
-      id={id}
-      aria-live='polite'
-      aria-busy={isLoading}
-      className='bg-surface-200 radius-medium clip'>
+    <div id={id} aria-live='polite' aria-busy={isLoading} className='radius-medium clip'>
       <div className='[max-height:320px] [overflow-y:auto] padding-x-xsmall padding-bottom-xsmall padding-top-small'>
         {isLoading ? (
           <span className='text-body-medium content-muted padding-small'>
@@ -116,9 +117,9 @@ const RevShareRecipientResults: FunctionComponent<RevShareRecipientResultsProps>
               translationKey('Label.Searching', TranslationNamespace.RevenueShareAgreements),
             )}
           </span>
-        ) : error ? (
+        ) : hasError ? (
           <span role='alert' className='text-body-medium content-system-alert padding-small'>
-            {error}
+            {searchFailedMessage}
           </span>
         ) : (
           <div className='flex gap-small'>

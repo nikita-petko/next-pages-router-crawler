@@ -17,6 +17,7 @@ type RevShareReviewViewProps = {
   onBack?: () => void;
   onContinue?: () => void;
   isSubmitting?: boolean;
+  stepFocusRef?: (element: HTMLElement | null) => void;
 };
 
 const RevShareReviewView: FunctionComponent<RevShareReviewViewProps> = ({
@@ -27,8 +28,14 @@ const RevShareReviewView: FunctionComponent<RevShareReviewViewProps> = ({
   onBack,
   onContinue,
   isSubmitting = false,
+  stepFocusRef,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+  const reviewChangesHeading = tPendingTranslation(
+    'Review changes',
+    'Heading for reviewing a proposed revenue share split.',
+    translationKey('Heading.ReviewChanges', TranslationNamespace.RevenueShareAgreements),
+  );
 
   return (
     <RevShareReviewShell
@@ -39,11 +46,8 @@ const RevShareReviewView: FunctionComponent<RevShareReviewViewProps> = ({
           aria-label={wizardAriaLabel}
         />
       }
-      heading={tPendingTranslation(
-        'Review changes',
-        'Heading for reviewing a proposed revenue share split.',
-        translationKey('Heading.ReviewChanges', TranslationNamespace.RevenueShareAgreements),
-      )}
+      stepFocusRef={stepFocusRef}
+      stepFocusFallbackLabel={reviewChangesHeading}
       description={tPendingTranslation(
         'Confirm the proposed splits before submitting for approval.',
         'Description for reviewing a proposed revenue share split.',

@@ -1,9 +1,12 @@
 // Orchestrates pending proposal review and cancellation terms using URL-backed action state.
-import { useCallback, useMemo, type FunctionComponent } from 'react';
+import { useCallback, useMemo, useRef, type FunctionComponent } from 'react';
 import useRevShareFeedback from '../hooks/useRevShareFeedback';
-import type { ManagerAgreement, RevShareRecipient } from '../interface/RevShareViewModel';
+import type {
+  ManagerAgreement,
+  ResolvedRevShareParty,
+  RevShareRecipient,
+} from '../interface/RevShareViewModel';
 import { useRevShareProposalMutations } from '../queries/revShareQueries';
-import type { ResolvedRevShareParty } from '../queries/revShareQueries';
 import RevShareCancelTermsView from './RevShareCancelTermsView';
 import RevSharePendingProposalReviewView from './RevSharePendingProposalReviewView';
 import { buildRevShareDiffRowsFromManagerProposal } from './tables/RevShareDiffTable';
@@ -40,8 +43,9 @@ const RevSharePendingProposalFlow: FunctionComponent<RevSharePendingProposalFlow
   onDone,
 }) => {
   const proposal = agreement.proposed;
-  const { cancel } = useRevShareProposalMutations(managingGroupId);
+  const { cancel } = useRevShareProposalMutations(managingGroupId, onDone);
   const { showSuccess, showError } = useRevShareFeedback();
+  const isCancelPendingRef = useRef(false);
   const rows = useMemo(
     () =>
       proposal === null
@@ -67,17 +71,19 @@ const RevSharePendingProposalFlow: FunctionComponent<RevSharePendingProposalFlow
     ],
   );
   const handleCancelSubmit = useCallback(async () => {
-    if (proposal === null || cancel.isPending) {
+    if (proposal === null || cancel.isPending || isCancelPendingRef.current) {
       return;
     }
+    isCancelPendingRef.current = true;
     try {
       await cancel.mutateAsync(proposal.id);
       showSuccess('cancel');
-      onDone();
     } catch {
       showError('cancel');
+    } finally {
+      isCancelPendingRef.current = false;
     }
-  }, [cancel, onDone, proposal, showError, showSuccess]);
+  }, [cancel, proposal, showError, showSuccess]);
 
   if (proposal === null) {
     return null;

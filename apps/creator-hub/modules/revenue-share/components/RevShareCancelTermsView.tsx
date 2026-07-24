@@ -4,15 +4,10 @@ import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import type { RevShareTermsActionProps } from './revShareTermsActionProps';
 import RevShareTermsShell from './RevShareTermsShell';
 
-type RevShareCancelTermsViewProps = {
-  isAccepted: boolean;
-  onAcceptedChange: (isAccepted: boolean) => void;
-  onBack: () => void;
-  onSubmit: () => void;
-  isSubmitting?: boolean;
-};
+type RevShareCancelTermsViewProps = RevShareTermsActionProps;
 
 const RevShareCancelTermsView: FunctionComponent<RevShareCancelTermsViewProps> = ({
   isAccepted,
@@ -25,16 +20,19 @@ const RevShareCancelTermsView: FunctionComponent<RevShareCancelTermsViewProps> =
 
   return (
     <RevShareTermsShell
-      heading={tPendingTranslation(
-        'Cancel proposal',
-        'Heading for the revenue-share proposal cancellation consent step.',
-        translationKey('Heading.CancelProposalTerms', TranslationNamespace.RevenueShareAgreements),
-      )}
       description={tPendingTranslation(
         'Cancelling withdraws this proposal. Recipients who already responded will no longer be asked to accept these changes.',
         'Instructions shown above the revenue-share cancellation terms and consent control.',
         translationKey(
           'Label.CancelProposalTermsInstructions',
+          TranslationNamespace.RevenueShareAgreements,
+        ),
+      )}
+      termsHeading={tPendingTranslation(
+        'Terms and conditions',
+        'Heading for the terms and conditions shown when cancelling a revenue-share proposal.',
+        translationKey(
+          'Heading.CancelProposalTermsAndConditions',
           TranslationNamespace.RevenueShareAgreements,
         ),
       )}

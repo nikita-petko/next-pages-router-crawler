@@ -4,15 +4,11 @@ import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import type { RevShareTermsActionProps } from './revShareTermsActionProps';
 import RevShareTermsShell from './RevShareTermsShell';
 
-type RevShareProposalTermsViewProps = {
+type RevShareProposalTermsViewProps = RevShareTermsActionProps & {
   stepIndicator?: ReactNode;
-  isAccepted: boolean;
-  onAcceptedChange: (isAccepted: boolean) => void;
-  onBack: () => void;
-  onSubmit: () => void;
-  isSubmitting?: boolean;
 };
 
 const RevShareProposalTermsView: FunctionComponent<RevShareProposalTermsViewProps> = ({
@@ -28,11 +24,6 @@ const RevShareProposalTermsView: FunctionComponent<RevShareProposalTermsViewProp
   return (
     <RevShareTermsShell
       chrome={stepIndicator}
-      heading={tPendingTranslation(
-        'Terms & implications',
-        'Heading for the revenue-share proposal consent step.',
-        translationKey('Heading.TermsAndImplications', TranslationNamespace.RevenueShareAgreements),
-      )}
       description={tPendingTranslation(
         'Please read and accept before submitting. These terms apply to everyone in the agreement.',
         'Instructions shown above the revenue-share proposal terms and consent control.',
