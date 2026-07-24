@@ -1,3 +1,4 @@
+import type { CreatorUpdatesChangelogPost } from '@modules/clients/creatorUpdatesApi';
 import { creatorHub } from '@modules/miscellaneous/urls';
 
 const { developerForum } = creatorHub;
@@ -9,7 +10,7 @@ export type TDevForumUser = {
 };
 
 export type TDevForumAnnouncement = {
-  id: number;
+  id: number | string;
   slug: string;
   title: string;
   createdAt: string;
@@ -54,6 +55,42 @@ export const isPostNewSinceLastViewed = (postDate: string, lastViewedDate: strin
   }
   const isNew = postDateObj > lastViewedDateObj;
   return isNew;
+};
+
+const isPostRecentWithinDays = (dateISO: string, days: number, now = Date.now()): boolean => {
+  const t = Date.parse(dateISO);
+  if (Number.isNaN(t)) {
+    return false;
+  }
+  return now - t <= days * 24 * 60 * 60 * 1000;
+};
+
+export const mapChangelogPostToHomeAnnouncement = (
+  post: CreatorUpdatesChangelogPost,
+  lastViewedDate: string,
+): TDevForumAnnouncement => {
+  const isNew =
+    isPostNewSinceLastViewed(post.createdAt, lastViewedDate) ||
+    isPostRecentWithinDays(post.createdAt, 2);
+
+  return {
+    id: post.id,
+    slug: post.id,
+    title: post.title,
+    createdAt: post.createdAt,
+    bumpedAt: post.updatedAt,
+    url: post.primaryLinkUrl ?? '',
+    postsCount: post.postCount ?? 0,
+    likeCount: post.likeCount ?? 0,
+    users: [],
+    tags: post.tags,
+    author: post.author ?? '',
+    imageUrl: post.imageUrl ?? null,
+    views: post.views ?? 0,
+    isNew,
+    subTitle: extractSubtitleFromExcerpt(post.keyTakeaways ?? null),
+    excerpt: post.keyTakeaways ?? null,
+  };
 };
 
 type AnnRes = { topics: TDevForumAnnouncement[]; hasNewAnnouncements: boolean };

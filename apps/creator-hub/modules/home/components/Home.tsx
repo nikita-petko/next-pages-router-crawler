@@ -7,6 +7,7 @@ import { GenericCreatorSettingType } from '@rbx/client-creator-settings/v1';
 import KnowledgeFeed from '@rbx/knowledge-feed';
 import { useMediaQuery } from '@rbx/ui';
 import AudienceReachGrowthOpportunitiesBanner from '@modules/audience-reach/components/AudienceReachGrowthOpportunitiesBanner';
+import { getChangelogPosts } from '@modules/clients/creatorUpdatesApi';
 import unifiedLoggerClient from '@modules/eventStream/unifiedLoggerClient';
 import useStarterPlace from '@modules/landing/sections/hooks/useStarterPlace';
 import {
@@ -17,7 +18,7 @@ import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider
 import useShowOpportunities from '../hooks/useShowOpportunities';
 import { useCreator } from '../providers/CreatorProvider';
 import { ExperienceProvider } from '../providers/ExperienceProvider';
-import { getDevForumAnnouncements } from '../utils/apiUtils';
+import { mapChangelogPostToHomeAnnouncement } from '../utils/apiUtils';
 import type { TDevForumAnnouncement } from '../utils/apiUtils';
 import {
   captureHomepageImpression,
@@ -180,8 +181,10 @@ const Home: FunctionComponent = () => {
       }
       try {
         const lastViewedDate = currentLastViewedDate ?? '';
-        const { topics } = await getDevForumAnnouncements(lastViewedDate);
-        setAnnouncements(topics);
+        const posts = await getChangelogPosts();
+        setAnnouncements(
+          posts.map((post) => mapChangelogPostToHomeAnnouncement(post, lastViewedDate)),
+        );
       } catch (error) {
         captureException(`Creator Hub Home: Error fetching announcements: ${String(error)}`);
         setAnnouncements([]);
