@@ -1,21 +1,19 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useFlag } from '@rbx/flags';
-import { Badge, Icon, ProgressCircle, Tabs, TabsList, TabsTrigger } from '@rbx/foundation-ui';
-import type { Locale } from '@rbx/intl';
+import { Icon, ProgressCircle, Tabs, TabsList, TabsTrigger } from '@rbx/foundation-ui';
 import { withTranslation, useTranslation } from '@rbx/intl';
 import { useDebounce } from '@rbx/react-utilities';
 import { useMediaQuery, type TTheme } from '@rbx/ui';
 import { enablePlayerSupportSearchAndFilters } from '@generated/flags/creatorGameops';
 import useLocale from '@modules/charts-generic/context/useLocale';
 import GenericTablePagination from '@modules/charts-generic/tables/GenericTablePagination';
-import { TicketStatus, type CreatorTicketSummary } from '@modules/clients/creatorCommunication';
+import { TicketStatus } from '@modules/clients/creatorCommunication';
 import { getResponseFromError } from '@modules/clients/utils';
 import unifiedLoggerClient from '@modules/eventStream/unifiedLoggerClient';
 import LoadError from '@modules/miscellaneous/error/LoadError';
 import useQueryParams from '@modules/miscellaneous/hooks/useQueryParams';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { formatDate } from '@modules/miscellaneous/utils/dateUtils';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import {
   isPlayerSupportCategoryFilter,
@@ -25,13 +23,9 @@ import {
   PlayerSupportCategoryFilter,
   PlayerSupportViewFilter,
 } from '../constants/ticketFilters';
-import {
-  hasTicketCategoryTranslationKey,
-  TICKET_CATEGORY_TRANSLATION_KEY,
-} from '../constants/ticketLabels';
 import usePlayerSupportTicketsQuery from '../hooks/usePlayerSupportTicketsQuery';
 import PlayerSupportSearchFilters from './PlayerSupportSearchFilters';
-import TicketActionsMenu from './TicketActionsMenu';
+import PlayerSupportTable from './PlayerSupportTable';
 
 const QUERY_PARAM_KEYS = ['pageToken', 'pageSize', 'status', 'query', 'view', 'category'] as const;
 const DEFAULT_PAGE_SIZE = 20;
@@ -69,178 +63,6 @@ const writePrevTokens = (universeId: number, status: TicketStatus, tokens: strin
   }
 };
 
-const TicketRow: React.FunctionComponent<{
-  ticket: CreatorTicketSummary;
-  universeId: number;
-  locale: Locale;
-  onClick?: (ticketId: string, category?: string) => void;
-}> = ({ ticket, universeId, locale, onClick }) => {
-  const { translate } = useTranslation();
-  const categoryKey =
-    ticket.category && hasTicketCategoryTranslationKey(ticket.category)
-      ? TICKET_CATEGORY_TRANSLATION_KEY[ticket.category]
-      : undefined;
-  const categoryLabel = categoryKey ? translate(categoryKey) : (ticket.category ?? '');
-  const isReportedToRoblox = ticket?.reportedToRoblox === true;
-  const displayTitle = isReportedToRoblox
-    ? translate('Label.PlayerSupport.ContentHidden')
-    : (ticket.title ?? '');
-
-  const handleClick = () => {
-    if (ticket.creatorTicketId) {
-      onClick?.(ticket.creatorTicketId, ticket.category);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTableRowElement>) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleClick();
-    }
-  };
-
-  return (
-    <tr
-      className='group cursor-pointer height-1500 [border-bottom:var(--stroke-thin)_solid_var(--color-stroke-default)] last:[border-bottom:none] hover:bg-[var(--color-state-hover)]'
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      aria-label={displayTitle}
-      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a `<tr>` cannot be replaced with `<a>`; the row is intentionally clickable.
-      role='link'
-      tabIndex={0}>
-      {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- the row is labeled via aria-label above; the visible title text is nested in an inner flex div, deeper than the rule's lookup depth. */}
-      <td className='content-default text-body-medium max-width-0 padding-x-medium'>
-        <div className='items-center min-width-0 gap-small flex'>
-          <span className='items-center justify-center size-200 shrink-0 flex'>
-            {!ticket.viewedByCreator && ticket.status !== TicketStatus.Archived && (
-              <span className='bg-action-emphasis size-200 radius-circle' />
-            )}
-          </span>
-          <div className='items-center min-width-0 gap-medium flex'>
-            {isReportedToRoblox && (
-              /* TODO: update this to 20% opacity when Foundation Web is updated. */
-              <Badge
-                label={translate('Label.PlayerSupport.ReportedByYou')}
-                variant='Alert'
-                icon='icon-filled-flag'
-              />
-            )}
-            <span className='text-no-wrap text-truncate-end min-width-0'>{displayTitle}</span>
-          </div>
-        </div>
-      </td>
-      <td className='text-no-wrap padding-x-medium'>
-        <Badge label={categoryLabel} variant='Neutral' className='height-600' />
-      </td>
-      <td className='content-muted text-body-medium text-no-wrap padding-x-medium'>
-        {ticket.createTime ? formatDate(ticket.createTime, locale) : ''}
-      </td>
-      <td className='width-[1%] padding-x-medium'>
-        {ticket.creatorTicketId && ticket.status !== TicketStatus.Archived && (
-          <TicketActionsMenu
-            universeId={universeId}
-            ticketId={ticket.creatorTicketId}
-            surface='list'
-          />
-        )}
-      </td>
-    </tr>
-  );
-};
-
-const MobileTicketCard: React.FunctionComponent<{
-  ticket: CreatorTicketSummary;
-  universeId: number;
-  locale: Locale;
-  onClick?: (ticketId: string, category?: string) => void;
-}> = ({ ticket, universeId, locale, onClick }) => {
-  const { translate } = useTranslation();
-  const categoryKey =
-    ticket.category && hasTicketCategoryTranslationKey(ticket.category)
-      ? TICKET_CATEGORY_TRANSLATION_KEY[ticket.category]
-      : undefined;
-  const categoryLabel = categoryKey ? translate(categoryKey) : (ticket.category ?? '');
-  const isReportedToRoblox = ticket?.reportedToRoblox === true;
-  const displayTitle = isReportedToRoblox
-    ? translate('Label.PlayerSupport.ContentHidden')
-    : (ticket.title ?? '');
-
-  const handleClick = () => {
-    if (ticket.creatorTicketId) {
-      onClick?.(ticket.creatorTicketId, ticket.category);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleClick();
-    }
-  };
-
-  return (
-    <div
-      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- this card is intentionally a clickable row, not an `<a>`.
-      role='link'
-      aria-label={displayTitle}
-      tabIndex={0}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      className='cursor-pointer gap-medium flex flex-col'>
-      <div className='bg-shift-300 padding-x-large padding-y-small radius-medium'>
-        <div className='items-center justify-between gap-small flex'>
-          <div className='items-center min-width-0 gap-large flex'>
-            <span className='items-center justify-center size-200 shrink-0 flex'>
-              {!ticket.viewedByCreator && ticket.status !== TicketStatus.Archived && (
-                <span className='bg-action-emphasis size-200 radius-circle' />
-              )}
-            </span>
-            <div className='items-start min-width-0 gap-xsmall flex flex-col'>
-              {isReportedToRoblox && (
-                /* TODO: update this to 20% opacity when Foundation Web is updated. */
-                <Badge
-                  label={translate('Label.PlayerSupport.ReportedByYou')}
-                  variant='Alert'
-                  icon='icon-filled-flag'
-                />
-              )}
-              <span className='content-emphasis text-body-medium min-width-0 clip [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]'>
-                {displayTitle}
-              </span>
-            </div>
-          </div>
-          {ticket.creatorTicketId && ticket.status !== TicketStatus.Archived ? (
-            <TicketActionsMenu
-              universeId={universeId}
-              ticketId={ticket.creatorTicketId}
-              alwaysVisible
-              surface='list'
-            />
-          ) : (
-            // Reserve the kebab's 32px footprint so archived cards keep the same
-            // spacing (and title wrap width) as support-request cards.
-            <span className='size-800 shrink-0' aria-hidden />
-          )}
-        </div>
-      </div>
-      <div className='padding-x-xxlarge gap-medium flex flex-col'>
-        <div className='items-center justify-between flex'>
-          <span className='content-emphasis text-body-medium'>{translate('Title.Table.Type')}</span>
-          <Badge label={categoryLabel} variant='Neutral' />
-        </div>
-        <div className='items-center justify-between flex'>
-          <span className='content-emphasis text-body-medium'>
-            {translate('Title.Table.Created')}
-          </span>
-          <span className='content-default text-body-medium'>
-            {ticket.createTime ? formatDate(ticket.createTime, locale) : ''}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const PlayerSupportPage: React.FunctionComponent = () => {
   const { translate } = useTranslation();
   const { gameDetails } = useCurrentGame();
@@ -272,6 +94,7 @@ const PlayerSupportPage: React.FunctionComponent = () => {
     externalValue: query,
     inputValue: query,
   }));
+  const [hasSelection, setHasSelection] = useState(false);
   if (query !== searchState.externalValue) {
     setSearchState({ externalValue: query, inputValue: query });
   }
@@ -550,6 +373,7 @@ const PlayerSupportPage: React.FunctionComponent = () => {
               search={search}
               view={selectedView}
               category={selectedCategory}
+              hideFilters={hasSelection}
               onSearchChange={handleSearchChange}
               onViewChange={handleViewChange}
               onCategoryChange={handleCategoryChange}
@@ -573,63 +397,33 @@ const PlayerSupportPage: React.FunctionComponent = () => {
           )}
           {!isPlaceholderData && !error && tickets.length > 0 ? (
             <>
-              {isMobile ? (
-                <div className='margin-top-medium gap-[var(--size-1000)] flex flex-col'>
-                  {tickets.map((ticket: CreatorTicketSummary, index: number) => (
-                    <MobileTicketCard
-                      key={ticket.creatorTicketId ?? `ticket-${index}`}
-                      ticket={ticket}
-                      universeId={universeId}
-                      locale={locale}
-                      onClick={handleTicketClick}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className='stroke-default margin-top-medium stroke-thin radius-large clip'>
-                  <table className='width-full ![border-collapse:collapse]'>
-                    <thead>
-                      <tr className='height-1200 [border-bottom:var(--stroke-thin)_solid_var(--color-stroke-default)]'>
-                        <th className='content-emphasis text-label-medium text-align-x-left width-[50%] padding-x-medium'>
-                          <span className='items-center gap-small flex'>
-                            <span className='size-200 shrink-0' />
-                            {translate('Title.Table.Details')}
-                          </span>
-                        </th>
-                        <th className='content-emphasis text-label-medium text-no-wrap text-align-x-left width-[176px] padding-x-medium'>
-                          {translate('Title.Table.Type')}
-                        </th>
-                        <th className='content-emphasis text-label-medium text-no-wrap text-align-x-left width-[176px] padding-x-medium'>
-                          {translate('Title.Table.Created')}
-                        </th>
-                        {/* Actions column header is intentionally empty; each cell holds an icon-button menu with its own aria-label. */}
-                        <th className='width-[1%] padding-x-medium' aria-hidden='true' />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tickets.map((ticket: CreatorTicketSummary, index: number) => (
-                        <TicketRow
-                          key={ticket.creatorTicketId ?? `ticket-${index}`}
-                          ticket={ticket}
-                          universeId={universeId}
-                          locale={locale}
-                          onClick={handleTicketClick}
-                        />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              <GenericTablePagination
-                page={prevTokens.length}
-                pageSize={pageSize}
-                pageSizeOptions={PAGE_SIZE_OPTIONS}
-                setPageSize={handlePageSizeChange}
-                onNextPage={handleNextPage}
-                onPreviousPage={handlePrevPage}
-                hasNext={hasNextPage}
-                hasPrevious={prevTokens.length > 0}
+              <PlayerSupportTable
+                key={`${isMobile ? 'mobile' : 'desktop'}:${isSearchAndFiltersEnabled ? 'bulk' : 'basic'}:${selectedStatus}:${pageToken ?? ''}:${pageSize}:${debouncedQuery}:${selectedView}:${selectedCategory}`}
+                tickets={tickets}
+                universeId={universeId}
+                locale={locale}
+                selectedStatus={selectedStatus}
+                isMobile={isMobile}
+                isBulkManagementEnabled={Boolean(isSearchAndFiltersEnabled)}
+                onTicketClick={handleTicketClick}
+                onSelectionChange={setHasSelection}
               />
+              <table className='width-full'>
+                <tfoot>
+                  <tr>
+                    <GenericTablePagination
+                      page={prevTokens.length}
+                      pageSize={pageSize}
+                      pageSizeOptions={PAGE_SIZE_OPTIONS}
+                      setPageSize={handlePageSizeChange}
+                      onNextPage={handleNextPage}
+                      onPreviousPage={handlePrevPage}
+                      hasNext={hasNextPage}
+                      hasPrevious={prevTokens.length > 0}
+                    />
+                  </tr>
+                </tfoot>
+              </table>
             </>
           ) : null}
           {!isPlaceholderData && !error && tickets.length === 0 && (

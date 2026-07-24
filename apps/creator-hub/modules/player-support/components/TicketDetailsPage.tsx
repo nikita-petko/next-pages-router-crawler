@@ -18,7 +18,6 @@ import { ReturnPolicy, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
 import { Alert, Avatar, useMediaQuery, useSnackbar, type TTheme } from '@rbx/ui';
 import useLocale from '@modules/charts-generic/context/useLocale';
 import {
-  TicketCategory,
   TicketResponse,
   TicketStatus,
   UserResponse,
@@ -33,6 +32,7 @@ import LoadError from '@modules/miscellaneous/error/LoadError';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { formatDate } from '@modules/miscellaneous/utils/dateUtils';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
+import { getCannedRepliesForCategory } from '../constants/cannedReplies';
 import {
   hasTicketCategoryTranslationKey,
   TICKET_CATEGORY_TRANSLATION_KEY,
@@ -60,81 +60,6 @@ const TICKET_METADATA_ENTRIES: ReadonlyArray<{
   },
   { key: 'device_type', translationKey: 'Label.TicketMetadata.DeviceType' },
 ];
-
-const CANNED_REPLIES = [
-  {
-    value: TicketResponse.ReportReceived,
-    labelKey: 'Message.CannedResponse.ReportReceived',
-  },
-  {
-    value: TicketResponse.IssueFixed,
-    labelKey: 'Message.CannedResponse.IssueFixed',
-  },
-  {
-    value: TicketResponse.AwareNoActionTaken,
-    labelKey: 'Message.CannedResponse.AwareNoActionTaken',
-  },
-  {
-    value: TicketResponse.RequestMoreDetails,
-    labelKey: 'Message.CannedResponse.RequestMoreDetails',
-  },
-  {
-    value: TicketResponse.ReportToCustomerService,
-    labelKey: 'Message.CannedResponse.ReportToCustomerService',
-  },
-  {
-    value: TicketResponse.RequestUserInformation,
-    labelKey: 'Message.CannedResponse.RequestUserInformation',
-  },
-  {
-    value: TicketResponse.MissingItemsAdded,
-    labelKey: 'Message.CannedResponse.MissingItemsAdded',
-  },
-  {
-    value: TicketResponse.DataRestored,
-    labelKey: 'Message.CannedResponse.DataRestored',
-  },
-  {
-    value: TicketResponse.UnableToRestoreData,
-    labelKey: 'Message.CannedResponse.UnableToRestoreData',
-  },
-  {
-    value: TicketResponse.UnableToTakeActionOnPurchase,
-    labelKey: 'Message.CannedResponse.UnableToTakeActionOnPurchase',
-  },
-] as const;
-
-const REPLIES_BY_CATEGORY: Record<TicketCategory, readonly TicketResponse[]> = {
-  [TicketCategory.BugReport]: [
-    TicketResponse.IssueFixed,
-    TicketResponse.RequestUserInformation,
-    TicketResponse.AwareNoActionTaken,
-    TicketResponse.RequestMoreDetails,
-    TicketResponse.ReportToCustomerService,
-  ],
-  [TicketCategory.DataRestoreRequest]: [
-    TicketResponse.UnableToRestoreData,
-    TicketResponse.RequestMoreDetails,
-    TicketResponse.DataRestored,
-    TicketResponse.ReportToCustomerService,
-  ],
-  [TicketCategory.PurchasingIssue]: [
-    TicketResponse.MissingItemsAdded,
-    TicketResponse.UnableToTakeActionOnPurchase,
-    TicketResponse.RequestMoreDetails,
-    TicketResponse.ReportToCustomerService,
-  ],
-  [TicketCategory.Other]: [
-    TicketResponse.RequestMoreDetails,
-    TicketResponse.ReportToCustomerService,
-  ],
-  [TicketCategory.Invalid]: [],
-};
-
-const CANNED_REPLIES_BY_VALUE: ReadonlyMap<TicketResponse, (typeof CANNED_REPLIES)[number]> =
-  new Map(CANNED_REPLIES.map((r) => [r.value, r]));
-
-const FALLBACK_CATEGORY: TicketCategory = TicketCategory.Other;
 
 function parseAuthorId(author?: string): number | null {
   if (!author) {
@@ -373,22 +298,11 @@ const ReplySelector: React.FunctionComponent<{
 
   const reporterIdentified = isReporterIdentified(ticket);
 
-  // Filter the canned replies to those allowed for this ticket's category,
-  // preserving the per-category order from REPLIES_BY_CATEGORY. Unknown or
-  // missing categories fall back to FALLBACK_CATEGORY's set. The
-  // "request user information" reply is hidden once the reporter is identified.
+  // The "request user information" reply is hidden once the reporter is identified.
   const visibleReplies = useMemo(() => {
-    const rawCategory = ticket.summary?.category;
-    const category =
-      rawCategory && rawCategory in REPLIES_BY_CATEGORY ? rawCategory : FALLBACK_CATEGORY;
-    const allowed = REPLIES_BY_CATEGORY[category];
-    return allowed.flatMap((value) => {
-      if (value === TicketResponse.RequestUserInformation && reporterIdentified) {
-        return [];
-      }
-      const reply = CANNED_REPLIES_BY_VALUE.get(value);
-      return reply ? [reply] : [];
-    });
+    return getCannedRepliesForCategory(ticket.summary?.category).filter(
+      (reply) => reply.value !== TicketResponse.RequestUserInformation || !reporterIdentified,
+    );
   }, [ticket.summary?.category, reporterIdentified]);
 
   const showErrorToast = useCallback(

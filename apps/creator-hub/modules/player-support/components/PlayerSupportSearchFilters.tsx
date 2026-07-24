@@ -13,20 +13,20 @@ interface PlayerSupportSearchFiltersProps {
   search: string;
   view: PlayerSupportViewFilter;
   category: PlayerSupportCategoryFilter;
+  hideFilters: boolean;
   onSearchChange: (value: string) => void;
   onViewChange: (value: PlayerSupportViewFilter) => void;
   onCategoryChange: (value: PlayerSupportCategoryFilter) => void;
 }
 
-const SEARCH_INPUT_CONTAINER_CLASS_NAME =
-  '!outline-none !stroke-none ![box-shadow:none] [&>input]:!text-label-medium';
+const SEARCH_INPUT_CONTAINER_CLASS_NAME = '!outline-none !stroke-none ![box-shadow:none]';
 const FILTER_DROPDOWN_CLASS_NAME =
-  'width-[263px] medium:width-[208px] [&>.foundation-web-input]:!outline-none [&>.foundation-web-input]:!stroke-default [&>.foundation-web-input]:![box-shadow:none] [&>span]:!text-label-medium';
-
+  'width-[263px] medium:width-[208px] [&>.foundation-web-input]:!outline-none [&>.foundation-web-input]:!stroke-default [&>.foundation-web-input]:![box-shadow:none]';
 const PlayerSupportSearchFilters: FunctionComponent<PlayerSupportSearchFiltersProps> = ({
   search,
   view,
   category,
+  hideFilters,
   onSearchChange,
   onViewChange,
   onCategoryChange,
@@ -103,42 +103,44 @@ const PlayerSupportSearchFilters: FunctionComponent<PlayerSupportSearchFiltersPr
         variant='Contrast'
         value={search}
       />
-      <div className='gap-medium flex flex-col medium:flex-row'>
-        <Dropdown
-          className={FILTER_DROPDOWN_CLASS_NAME}
-          label={viewLabel}
-          onValueChange={handleViewChange}
-          placeholder={allLabel}
-          size='Large'
-          value={view}>
-          <Menu>
-            {PLAYER_SUPPORT_VIEW_FILTER_OPTIONS.map((option) => (
-              <MenuItem key={option} title={viewLabels[option]} value={option} />
-            ))}
-          </Menu>
-        </Dropdown>
-        <Dropdown
-          className={FILTER_DROPDOWN_CLASS_NAME}
-          label={categoryLabel}
-          onValueChange={handleCategoryChange}
-          placeholder={allLabel}
-          size='Large'
-          value={category}>
-          <Menu>
-            {PLAYER_SUPPORT_CATEGORY_FILTER_OPTIONS.map((option) => (
-              <MenuItem
-                key={option}
-                title={
-                  option === PlayerSupportCategoryFilter.All
-                    ? allLabel
-                    : translate(TICKET_CATEGORY_TRANSLATION_KEY[option])
-                }
-                value={option}
-              />
-            ))}
-          </Menu>
-        </Dropdown>
-      </div>
+      {!hideFilters && (
+        <div className='padding-top-small gap-medium flex flex-col medium:flex-row'>
+          <Dropdown
+            className={FILTER_DROPDOWN_CLASS_NAME}
+            label={viewLabel}
+            onValueChange={handleViewChange}
+            placeholder={allLabel}
+            size='Medium'
+            value={view}>
+            <Menu>
+              {PLAYER_SUPPORT_VIEW_FILTER_OPTIONS.map((option) => (
+                <MenuItem key={option} title={viewLabels[option]} value={option} />
+              ))}
+            </Menu>
+          </Dropdown>
+          <Dropdown
+            className={FILTER_DROPDOWN_CLASS_NAME}
+            label={categoryLabel}
+            onValueChange={handleCategoryChange}
+            placeholder={allLabel}
+            size='Medium'
+            value={category}>
+            <Menu>
+              {PLAYER_SUPPORT_CATEGORY_FILTER_OPTIONS.map((option) => (
+                <MenuItem
+                  key={option}
+                  title={
+                    option === PlayerSupportCategoryFilter.All
+                      ? allLabel
+                      : translate(TICKET_CATEGORY_TRANSLATION_KEY[option])
+                  }
+                  value={option}
+                />
+              ))}
+            </Menu>
+          </Dropdown>
+        </div>
+      )}
     </div>
   );
 };

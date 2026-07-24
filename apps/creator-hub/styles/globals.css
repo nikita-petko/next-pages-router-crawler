@@ -1496,6 +1496,9 @@
 .margin-right-medium {
   margin-right: var(--margin-medium);
 }
+.margin-right-small {
+  margin-right: var(--margin-small);
+}
 .margin-top-\[-14px\] {
   margin-top: -14px;
 }
@@ -2919,6 +2922,9 @@
 .padding-bottom-\[5px\] {
   padding-bottom: 5px;
 }
+.padding-bottom-\[72px\] {
+  padding-bottom: 72px;
+}
 .padding-bottom-large {
   padding-bottom: var(--padding-large);
 }
@@ -4163,6 +4169,9 @@
 .\[inset\:0\] {
   inset: 0;
 }
+.\[left\:0\] {
+  left: 0;
+}
 .\[left\:0px\] {
   left: 0px;
 }
@@ -4385,11 +4394,17 @@
 .\[pointer-events\:none\] {
   pointer-events: none;
 }
+.\[position\:fixed\] {
+  position: fixed;
+}
 .\[property\:value\] {
   property: value;
 }
 .\[resize\:none\] {
   resize: none;
+}
+.\[right\:0\] {
+  right: 0;
 }
 .\[right\:16px\] {
   right: 16px;
@@ -5419,11 +5434,6 @@ html.studio-webview.dark-theme,
   background: transparent !important;
 }
 
-.\[\&\>input\]\:\!text-label-medium>input {
-  font: var(--typography-label-medium-font) !important;
-  letter-spacing: var(--typography-label-medium-letter-spacing) !important;
-}
-
 .\[\&\>label\>span\]\:margin-y-auto>label>span {
   margin-top: auto;
   margin-bottom: auto;
@@ -5436,11 +5446,6 @@ html.studio-webview.dark-theme,
 .\[\&\>label\>span\]\:text-body-small>label>span {
   font: var(--typography-body-small-font);
   letter-spacing: var(--typography-body-small-letter-spacing);
-}
-
-.\[\&\>span\]\:\!text-label-medium>span {
-  font: var(--typography-label-medium-font) !important;
-  letter-spacing: var(--typography-label-medium-letter-spacing) !important;
 }
 
 .\[\&_\*\]\:max-width-full * {

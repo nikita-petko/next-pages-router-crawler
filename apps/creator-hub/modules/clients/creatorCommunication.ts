@@ -6,6 +6,8 @@ const configuration = createClientConfiguration('creator-communication', 'bedev2
 const creatorCommunicationApi = new CreatorCommunicationServiceAPIApi(configuration);
 
 export {
+  BulkManageCreatorTicketResultStatus,
+  BulkManageCreatorTicketsAction,
   TicketStatus,
   TicketCategory,
   TicketResponse,
@@ -14,6 +16,9 @@ export {
   CreatorTicketUpdateTimeSortOrder,
 } from '@rbx/client-creator-communication-service/v1';
 export type {
+  BulkManageCreatorTicketResult,
+  BulkManageCreatorTicketsRequest,
+  BulkManageCreatorTicketsResponse,
   CreatorTicket,
   CreatorTicketSummary,
   GetTicketAsCreatorResponse,
