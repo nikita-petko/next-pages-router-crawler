@@ -42,9 +42,11 @@ const GenericVerificationAlert: FunctionComponent<
         className={alertStyle}
         action={
           <>
-            <Button color='inherit' size='small' href={externalLink}>
-              {linkLabel}
-            </Button>
+            {linkLabel && (
+              <Button color='inherit' size='small' href={externalLink}>
+                {linkLabel}
+              </Button>
+            )}
             {allowCloseDialog && (
               <IconButton aria-label='Close' color='inherit' size='small' onClick={handleClose}>
                 <CloseIcon fontSize='small' />

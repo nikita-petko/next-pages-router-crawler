@@ -19,6 +19,7 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import ToolboxServiceApiRoot from '@modules/toolboxService/ToolboxServiceApiProvider';
+import UgcUploadPublishBlockBanner from '../../avatarItem/components/UgcUploadPublishBlockBanner';
 import Unification2D3DBanner from '../../avatarItem/components/Unification2D3DBanner';
 import { isOnItemTab } from '../../avatarItem/utils/avatarMenuMapUtils';
 import useCreationsFilters from '../../common/hooks/useCreationsFilters';
@@ -316,6 +317,7 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
           )}
           {shouldRenderGrowthBannerOnTab && <AudienceReachGrowthOpportunitiesBanner />}
           {isMarketplaceAssetType && <Unification2D3DBanner />}
+          {isMarketplaceAssetType && <UgcUploadPublishBlockBanner />}
           {assetsGridContainer}
         </Grid>
       </section>
