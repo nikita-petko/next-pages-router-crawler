@@ -4,17 +4,24 @@ import { IconButton, Tooltip, TooltipTrigger, VisuallyHidden } from '@rbx/founda
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { useAuthentication } from '@modules/authentication/providers';
 import { CurrencyHolderType } from '@modules/clients/transactionRecords';
 import getResponseFromError from '@modules/clients/utils/getResponseFromError';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { getLocalDateString } from '@modules/miscellaneous/utils/dateUtils';
 import { useSnackbar } from '@modules/monetization-shared/snackbar/actions';
 import { usePublishSalesReportDownload } from '@modules/react-query/transactionRecords/transactionRecordsQueries';
+import { useGetUserConfiguration } from '@modules/react-query/twoStepVerification';
 
 // Mirrors transaction-records' SalesReportDownloadV2MaxDateRange: the export endpoint rejects
 // ranges longer than this many days, so block the request client-side and explain why.
 const MAX_EXPORT_RANGE_DAYS = 365;
 const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
+
+// The API serializes TwoStepVerificationMediaType as its string label (e.g. "Authenticator"), even
+// though the generated client types mediaType as a numeric enum. Compare against the label (coerced
+// below to satisfy the type). Matches v1, which gates on an enabled authenticator app.
+const AUTHENTICATOR_MEDIA_TYPE = 'Authenticator';
 
 // Whole calendar days between two timestamps. Comparing the UTC midnights of each timestamp's local
 // Y/M/D — rather than dividing raw elapsed milliseconds — keeps the count exact across DST
@@ -41,9 +48,24 @@ export type VirtualTransactionsExportButtonProps = {
 const VirtualTransactionsExportButton: FunctionComponent<
   React.PropsWithChildren<VirtualTransactionsExportButtonProps>
 > = ({ userId, groupId, startTimeMillis, endTimeMillis }) => {
-  const { translate } = useTranslationWrapper(useTranslation());
+  const { translate, tPendingTranslation } = useTranslationWrapper(useTranslation());
   const { enqueue } = useSnackbar();
   const { mutate, isPending } = usePublishSalesReportDownload();
+
+  // 2FA parity with the v1 web-frontend flow: the report may only be exported by a downloader who
+  // has an authenticator app enabled. The check is against the authenticated user (the person doing
+  // the export), NOT the userId/groupId prop, which identifies the target virtual.
+  // NOTE: this is a client-side gate only. Once this page migrates to the new transaction-records
+  // API, enforce two-step verification server-side in SalesReportDownloadController so every caller
+  // (both UIs and direct API requests) is covered rather than just this button.
+  const { user } = useAuthentication();
+  const { data: twoStepConfig, isLoading: isTwoStepConfigLoading } = useGetUserConfiguration(
+    user?.id,
+  );
+  const hasAuthenticatorEnabled =
+    twoStepConfig?.methods?.some(
+      (method) => method.enabled && String(method.mediaType) === AUTHENTICATOR_MEDIA_TYPE,
+    ) ?? false;
 
   const targetId = groupId ?? userId;
   const targetType = groupId ? CurrencyHolderType.Group : CurrencyHolderType.User;
@@ -62,6 +84,17 @@ const VirtualTransactionsExportButton: FunctionComponent<
 
   const onExport = useCallback(() => {
     if (targetId == null || exceedsMaxRange) {
+      return;
+    }
+    if (!hasAuthenticatorEnabled) {
+      // Mirror v1: block the export and direct the user to enable an authenticator first.
+      notify(
+        tPendingTranslation(
+          'Enable an authenticator app in your account security settings to download this report.',
+          'Shown when a creator without an enabled authenticator app tries to export a sales report; directs them to enable two-step verification.',
+          translationKey('Message.TwoStepVerificationRequired', TranslationNamespace.Transactions),
+        ),
+      );
       return;
     }
     mutate(
@@ -112,6 +145,8 @@ const VirtualTransactionsExportButton: FunctionComponent<
     mutate,
     notify,
     translate,
+    tPendingTranslation,
+    hasAuthenticatorEnabled,
     targetId,
     targetType,
     startTimeMillis,
@@ -139,7 +174,9 @@ const VirtualTransactionsExportButton: FunctionComponent<
               // Utility = transparent (ghost) fill, matching the design.
               variant='Utility'
               size='Medium'
-              isDisabled={isPending || targetId == null || exceedsMaxRange}
+              isDisabled={
+                isPending || isTwoStepConfigLoading || targetId == null || exceedsMaxRange
+              }
               onClick={onExport}
             />
           </span>

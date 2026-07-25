@@ -18,7 +18,6 @@ import { resolveTaxDocumentationStatusVariant } from '../../taxes/utils/taxDocum
 import { isDevExSuspended } from '../utils/devexEligibility';
 import CashOutBox from './CashOutBox';
 import useDevexStyles from './Devex.styles';
-import DevExSubmissionIssueBanner from './DevExSubmissionIssueBanner';
 import DevExTaxDocumentationBanner from './DevExTaxDocumentationBanner';
 import RequestStatusMessage from './RequestStatusMessage';
 
@@ -64,9 +63,6 @@ const Devex: FunctionComponent<React.PropsWithChildren<DevexProps>> = ({
 
   return (
     <Grid className={root} container spacing={2}>
-      <Grid item XSmall={12}>
-        <DevExSubmissionIssueBanner />
-      </Grid>
       {shouldShowTaxDocumentationBanner && (
         <Grid item>
           <DevExTaxDocumentationBanner statusVariant={taxDocumentationBannerVariant} />
