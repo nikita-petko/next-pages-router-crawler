@@ -35,7 +35,7 @@ const CustomDashboardViewRoute: NextLayoutPage = () => {
   );
 
   return (
-    <CustomDashboardsShell>
+    <CustomDashboardsShell universeId={universeId}>
       <DashboardViewPage
         universeId={universeId}
         dashboardId={dashboardId}

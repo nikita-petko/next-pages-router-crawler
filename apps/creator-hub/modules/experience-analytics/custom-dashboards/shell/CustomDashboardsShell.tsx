@@ -22,17 +22,20 @@ const DEFAULT_DISABLED_FALLBACK = <PageNotFound />;
  */
 type CustomDashboardsShellProps = {
   readonly children: ReactNode;
+  readonly universeId: number;
   readonly fallback?: ReactNode;
   readonly loading?: ReactNode;
 };
 
 const CustomDashboardsShell: FC<CustomDashboardsShellProps> = ({
   children,
+  universeId,
   fallback = DEFAULT_DISABLED_FALLBACK,
   loading = null,
 }) => {
   const { ready: isFetched, value: isCustomDashboardsEnabledValue } = useFlag(
     isCustomDashboardsEnabledFlag,
+    { universeId },
   );
   const isCustomDashboardsEnabled = isFetched && isCustomDashboardsEnabledValue;
 

@@ -249,13 +249,14 @@ export const UniverseFlaggedCustomDashboardProvider: React.FC<React.PropsWithChi
 
   const { ready: isCustomDashboardsReady, value: isCustomDashboardsEnabled } = useFlag(
     isCustomDashboardsEnabledFlag,
+    { universeId },
   );
   const {
     ready: isCustomDashboardsLocalStorageReady,
     value: isCustomDashboardsLocalStorageEnabled,
   } = useFlag(isCustomDashboardsLocalStorageEnabledFlag);
   const { ready: isCustomDashboardsApiBackendReady, value: isCustomDashboardsApiBackendEnabled } =
-    useFlag(isCustomDashboardsApiBackendEnabledFlag);
+    useFlag(isCustomDashboardsApiBackendEnabledFlag, { universeId });
 
   const flagsReady =
     isCustomDashboardsReady &&

@@ -63,7 +63,7 @@ const ManageAllDashboardsPage: FC = () => {
   );
 
   return (
-    <CustomDashboardsShell>
+    <CustomDashboardsShell universeId={universeId}>
       <ManagePageContent
         universeId={universeId}
         onOpenDashboard={handleOpen}

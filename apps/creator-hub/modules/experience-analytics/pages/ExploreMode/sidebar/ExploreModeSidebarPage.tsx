@@ -402,6 +402,7 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
   );
   const { ready: isCustomDashboardsFetched, value: isCustomDashboardsEnabledValue } = useFlag(
     isCustomDashboardsEnabledFlag,
+    { universeId: resource.id },
   );
   const areFeatureFlagsFetched = isChartOverflowMenuFetched && isCustomDashboardsFetched;
   const isChartOverflowMenuEnabled = isChartOverflowMenuFetched && isChartOverflowMenuEnabledValue;

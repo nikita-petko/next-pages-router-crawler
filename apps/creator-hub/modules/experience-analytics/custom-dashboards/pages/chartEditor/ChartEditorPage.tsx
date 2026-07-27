@@ -78,7 +78,7 @@ const ChartEditorPage: FC = () => {
   }
 
   return (
-    <CustomDashboardsShell>
+    <CustomDashboardsShell universeId={universeId}>
       <ChartEditorPageContainer>
         <ChartEditorPageContent
           universeId={universeId}

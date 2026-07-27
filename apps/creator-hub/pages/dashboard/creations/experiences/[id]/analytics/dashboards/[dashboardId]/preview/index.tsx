@@ -2,12 +2,14 @@ import { useCallback } from 'react';
 import type { NextLayoutPage } from 'next';
 import { useRouter } from 'next/router';
 import { analyticsCustomDashboardsManageNavigationItem } from '@modules/charts-generic/constants/analyticsNavigationItems';
+import { useUniverseResource } from '@modules/experience-analytics-shared/hooks/useChartResourceProvider';
 import getAnalyticsPageLayout from '@modules/experience-analytics-shared/pages/getUniverseAnalyticsPageLayout';
 import DashboardPreviewPage from '@modules/experience-analytics/custom-dashboards/pages/preview/DashboardPreviewPage';
 import CustomDashboardsShell from '@modules/experience-analytics/custom-dashboards/shell/CustomDashboardsShell';
 
 const CustomDashboardPreviewRoute: NextLayoutPage = () => {
   const router = useRouter();
+  const { id: universeId } = useUniverseResource();
   const dashboardIdParam = router.query.dashboardId;
   const draftIdParam = router.query.draftId;
   const dashboardId = typeof dashboardIdParam === 'string' ? dashboardIdParam : undefined;
@@ -25,7 +27,7 @@ const CustomDashboardPreviewRoute: NextLayoutPage = () => {
   }, [dashboardId, draftId, router]);
 
   return (
-    <CustomDashboardsShell>
+    <CustomDashboardsShell universeId={universeId}>
       <DashboardPreviewPage draftId={draftId} onBackToEditor={handleBackToEditor} />
     </CustomDashboardsShell>
   );

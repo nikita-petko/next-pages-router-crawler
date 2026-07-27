@@ -8,10 +8,13 @@ import {
   isCpuCoreUtilizationEnabled as isCpuCoreUtilizationFlag,
   isExperienceAlertsEnabled,
 } from '@generated/flags/creatorAnalytics';
+import AnalyticsAlertClientProvider from '@modules/experience-alerts/components/AnalyticsAlertClientProvider';
+import { analyticsAlertControlPlaneClient } from '@modules/experience-alerts/constants/types';
 import CreatorAnalyticsLayout from '@modules/experience-analytics-shared/components/RAQIV2/layout/CreatorAnalyticsLayout';
 import { useUniverseResource } from '@modules/experience-analytics-shared/hooks/useChartResourceProvider';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import CCUSummary from '../../components/CCUSummary';
+import SetupAlertBanner from '../../components/SetupAlertBanner';
 import useGetExtendedServicesComputeInsightConfigs from './insights/useGetExtendedServicesComputeInsightConfigs';
 import getPerformancePageConfig from './performancePageConfig';
 
@@ -61,6 +64,9 @@ const PerformancePageContent: FC = () => {
       config={performancePageConfig}
       preControlComponentHack={
         <Grid container>
+          <AnalyticsAlertClientProvider client={analyticsAlertControlPlaneClient}>
+            <SetupAlertBanner isExperienceAlertsEnabled={isExperienceAlertsEnabledFlag} />
+          </AnalyticsAlertClientProvider>
           <CCUSummary />
         </Grid>
       }

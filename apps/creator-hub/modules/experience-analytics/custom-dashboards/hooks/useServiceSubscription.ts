@@ -15,11 +15,12 @@ import { customDashboardQueryKeys } from './customDashboardsQueryConfig';
  * call — RQ's prefix matching invalidates list, detail, and suggested-name
  * subtrees so we don't pay for three separate invalidate calls.
  */
-export function useCustomDashboardServiceSubscription(): void {
+export function useCustomDashboardServiceSubscription(universeId: number): void {
   const service = useCustomDashboardService();
   const queryClient = useQueryClient();
   const { ready: isCustomDashboardsReady, value: isCustomDashboardsEnabled } = useFlag(
     isCustomDashboardsEnabledFlag,
+    { universeId },
   );
 
   useEffect(() => {

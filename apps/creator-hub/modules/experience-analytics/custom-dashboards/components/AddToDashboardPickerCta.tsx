@@ -475,7 +475,7 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
 };
 
 const AddToDashboardPickerCta: FC<AddToDashboardPickerCtaProps> = (props) => (
-  <CustomDashboardsShell>
+  <CustomDashboardsShell universeId={props.universeId}>
     <AddToDashboardPickerCtaInner {...props} />
   </CustomDashboardsShell>
 );

@@ -486,7 +486,7 @@ export const generatedFlags = [
         name: 'isCustomDashboardsEnabled',
         defaultValue: false,
         valueType: 'boolean',
-        contextType: 'static',
+        contextType: 'universe',
       },
     },
     {
@@ -506,7 +506,7 @@ export const generatedFlags = [
         name: 'isCustomDashboardsApiBackendEnabled',
         defaultValue: false,
         valueType: 'boolean',
-        contextType: 'static',
+        contextType: 'universe',
       },
     },
     {

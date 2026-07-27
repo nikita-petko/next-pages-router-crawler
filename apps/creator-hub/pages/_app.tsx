@@ -91,10 +91,14 @@ const translationResourceProvider = new TranslationResourceProvider(
   fallbackLocale,
 );
 
-const CustomDashboardServiceSubscriptionProvider: FunctionComponent<React.PropsWithChildren> = ({
-  children,
-}) => {
-  useCustomDashboardServiceSubscription();
+type CustomDashboardServiceSubscriptionProviderProps = React.PropsWithChildren<{
+  readonly universeId: number;
+}>;
+
+const CustomDashboardServiceSubscriptionProvider: FunctionComponent<
+  CustomDashboardServiceSubscriptionProviderProps
+> = ({ children, universeId }) => {
+  useCustomDashboardServiceSubscription(universeId);
   return <>{children}</>;
 };
 
@@ -151,6 +155,7 @@ const authStore = initializeAuthStore();
 
 export const CustomApp: CustomAppFC = ({ Component, pageProps, cache }) => {
   const { query } = useRouter();
+  const universeId = typeof query.id === 'string' ? Number(query.id) : 0;
   const emotionCache = cache ?? clientSideEmotionCache;
   const getPageLayout = Component.getPageLayout ?? getDefaultPageLayout;
   const openGraphMetadata = useMemo(
@@ -177,7 +182,7 @@ not change */
             <QueryClientProvider client={queryClient} />, // NOTE: QueryClientProvider must be ordered above anything using react-query
             <CustomDashboardServiceProvider />,
             <UniverseFlaggedCustomDashboardProvider />,
-            <CustomDashboardServiceSubscriptionProvider />,
+            <CustomDashboardServiceSubscriptionProvider universeId={universeId} />,
             <UnifiedLoggerProvider pageLoggerConfig={Component.loggerConfig} />,
             <EventTrackerProvider trackerClient={trackerClient} />,
             <AuthenticationProvider

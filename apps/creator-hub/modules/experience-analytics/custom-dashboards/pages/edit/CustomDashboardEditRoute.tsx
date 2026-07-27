@@ -81,7 +81,7 @@ const CustomDashboardEditRoute: NextLayoutPage = () => {
   );
 
   return (
-    <CustomDashboardsShell>
+    <CustomDashboardsShell universeId={universeId}>
       <EditPageContent
         universeId={universeId}
         dashboardId={dashboardId}

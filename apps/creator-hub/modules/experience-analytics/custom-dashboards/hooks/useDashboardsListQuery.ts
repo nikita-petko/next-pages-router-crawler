@@ -25,6 +25,7 @@ export function useDashboardsListQuery(
   const { isReady: isBackendReady } = useCustomDashboardsBackendState();
   const { ready: isCustomDashboardsReady, value: isCustomDashboardsEnabled } = useFlag(
     isCustomDashboardsEnabledFlag,
+    { universeId },
   );
   const listOptions: CustomDashboardListOptions | undefined =
     options?.pageSize !== undefined || options?.pageToken !== undefined

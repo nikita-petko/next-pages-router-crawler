@@ -122,6 +122,9 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
     useFlag(isAnalyticsAssistantChatEnabledFlag);
   const { ready: isCustomDashboardsReady, value: isCustomDashboardsEnabledValue } = useFlag(
     isCustomDashboardsEnabledFlag,
+    {
+      universeId: gameDetails?.id ?? 0,
+    },
   );
   const { ready: isLeaderboardConfigsReady, value: isLeaderboardConfigsEnabledValue } = useFlag(
     isLeaderboardConfigsEnabledFlag,
@@ -365,6 +368,7 @@ const GameLeftNavigationPinnedDashboards: FunctionComponent<
   const { userCanViewAnalyticsForUniverse } = useAnalyticsExperiencePermissions(universeId);
   const { ready: isCustomDashboardsReady, value: isCustomDashboardsEnabled } = useFlag(
     isCustomDashboardsEnabledFlag,
+    { universeId },
   );
   const canLoadPinnedDashboards =
     isCustomDashboardsReady &&
