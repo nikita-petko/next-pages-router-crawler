@@ -19,6 +19,8 @@ interface ScreenshotInspectorProps {
   /** Called after a screenshot link is successfully copied to the clipboard. */
   onLinkCopied?: () => void;
   onClose: () => void;
+  /** Zero-based index of the image to display initially. Defaults to 0. */
+  initialIndex?: number;
 }
 
 // Forced-dark, full-viewport lightbox. Spacing/radius use Foundation tokens; the arbitrary
@@ -52,6 +54,10 @@ const THUMBNAIL_WRAPPER_CLASS = 'relative [flex:0_0_auto]';
 const THUMBNAIL_IMAGE_CLASS = 'block width-full height-full [object-fit:cover]';
 const THUMBNAIL_LINK_BUTTON_CLASS =
   'absolute [top:4px] [right:4px] inline-flex items-center justify-center padding-xsmall [border:none] [border-radius:6px] [background-color:rgba(0,0,0,0.65)] [color:#fff] [cursor:pointer]';
+const STAGE_IMAGE_WRAPPER_CLASS = 'relative width-full height-full';
+const STAGE_COPY_BUTTON_INSET_PX = 12;
+const STAGE_COPY_BUTTON_CLASS =
+  'absolute [top:12px] [right:12px] inline-flex items-center justify-center padding-medium [border:none] radius-medium [background-color:rgba(0,0,0,0.65)] [color:#fff] [cursor:pointer]';
 const DOTS_CLASS = 'flex items-center justify-center [gap:6px]';
 
 const navArrowClass = (side: 'left' | 'right', disabled: boolean): string =>
@@ -87,17 +93,40 @@ const ScreenshotInspector: FunctionComponent<ScreenshotInspectorProps> = ({
   getShareUrl,
   onLinkCopied,
   onClose,
+  initialIndex,
 }) => {
   const { translate } = useTranslation();
 
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(
+    Math.max(0, Math.min(initialIndex ?? 0, images.length - 1)),
+  );
   const [pageCount, setPageCount] = useState(1);
   const [activePage, setActivePage] = useState(0);
   const [hoveredThumbnailKey, setHoveredThumbnailKey] = useState<string | null>(null);
   const [copiedThumbnailKey, setCopiedThumbnailKey] = useState<string | null>(null);
+  const [isStageImageHovered, setIsStageImageHovered] = useState(false);
 
   const stripRef = useRef<HTMLDivElement>(null);
   const thumbnailRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const [imageInset, setImageInset] = useState<{ top: number; right: number } | null>(null);
+
+  const recomputeImageInset = useCallback(() => {
+    const img = imageRef.current;
+    if (!img || !img.naturalWidth || !img.naturalHeight) {
+      setImageInset(null);
+      return;
+    }
+    const elementAspect = img.clientWidth / img.clientHeight;
+    const imageAspect = img.naturalWidth / img.naturalHeight;
+    if (imageAspect > elementAspect) {
+      const renderedHeight = img.clientWidth / imageAspect;
+      setImageInset({ top: (img.clientHeight - renderedHeight) / 2, right: 0 });
+    } else {
+      const renderedWidth = img.clientHeight * imageAspect;
+      setImageInset({ top: 0, right: (img.clientWidth - renderedWidth) / 2 });
+    }
+  }, []);
 
   const activeImage = images[activeIndex];
   const hasMultiple = images.length > 1;
@@ -134,6 +163,7 @@ const ScreenshotInspector: FunctionComponent<ScreenshotInspectorProps> = ({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        event.stopPropagation();
         onClose();
       } else if (event.key === 'ArrowLeft') {
         goPrev();
@@ -141,14 +171,20 @@ const ScreenshotInspector: FunctionComponent<ScreenshotInspectorProps> = ({
         goNext();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, true);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown, true);
       document.body.style.overflow = previousOverflow;
     };
   }, [goNext, goPrev, onClose]);
+
+  useEffect(() => {
+    recomputeImageInset();
+    window.addEventListener('resize', recomputeImageInset);
+    return () => window.removeEventListener('resize', recomputeImageInset);
+  }, [activeIndex, recomputeImageInset]);
 
   // Keep the active thumbnail visible as navigation moves through the strip.
   useEffect(() => {
@@ -277,7 +313,49 @@ const ScreenshotInspector: FunctionComponent<ScreenshotInspectorProps> = ({
         </div>
       </div>
 
-      <div className={STAGE_CLASS}>
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+      <div
+        className={STAGE_CLASS}
+        data-testid='inspector-stage'
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            onClose();
+            return;
+          }
+          const img = imageRef.current;
+          if (e.target === img && img && img.naturalWidth && img.naturalHeight) {
+            const rect = img.getBoundingClientRect();
+            const elementAspect = rect.width / rect.height;
+            const imgAspect = img.naturalWidth / img.naturalHeight;
+            let contentLeft: number,
+              contentRight: number,
+              contentTop: number,
+              contentBottom: number;
+            if (imgAspect > elementAspect) {
+              const renderedHeight = rect.width / imgAspect;
+              const offsetY = (rect.height - renderedHeight) / 2;
+              contentLeft = rect.left;
+              contentRight = rect.right;
+              contentTop = rect.top + offsetY;
+              contentBottom = rect.bottom - offsetY;
+            } else {
+              const renderedWidth = rect.height * imgAspect;
+              const offsetX = (rect.width - renderedWidth) / 2;
+              contentLeft = rect.left + offsetX;
+              contentRight = rect.right - offsetX;
+              contentTop = rect.top;
+              contentBottom = rect.bottom;
+            }
+            if (
+              e.clientX < contentLeft ||
+              e.clientX > contentRight ||
+              e.clientY < contentTop ||
+              e.clientY > contentBottom
+            ) {
+              onClose();
+            }
+          }
+        }}>
         {hasMultiple && (
           <button
             type='button'
@@ -290,12 +368,78 @@ const ScreenshotInspector: FunctionComponent<ScreenshotInspectorProps> = ({
           </button>
         )}
         {activeImage && (
-          <img
-            className={IMAGE_CLASS}
-            src={activeImage.src}
-            alt=''
-            data-testid='inspector-active-image'
-          />
+          <div
+            className={STAGE_IMAGE_WRAPPER_CLASS}
+            onMouseMove={(e) => {
+              const img = imageRef.current;
+              if (!img || !img.naturalWidth || !img.naturalHeight) {
+                setIsStageImageHovered(false);
+                return;
+              }
+              const rect = img.getBoundingClientRect();
+              const elementAspect = rect.width / rect.height;
+              const imgAspect = img.naturalWidth / img.naturalHeight;
+              let contentLeft: number,
+                contentRight: number,
+                contentTop: number,
+                contentBottom: number;
+              if (imgAspect > elementAspect) {
+                const renderedHeight = rect.width / imgAspect;
+                const offsetY = (rect.height - renderedHeight) / 2;
+                contentLeft = rect.left;
+                contentRight = rect.right;
+                contentTop = rect.top + offsetY;
+                contentBottom = rect.bottom - offsetY;
+              } else {
+                const renderedWidth = rect.height * imgAspect;
+                const offsetX = (rect.width - renderedWidth) / 2;
+                contentLeft = rect.left + offsetX;
+                contentRight = rect.right - offsetX;
+                contentTop = rect.top;
+                contentBottom = rect.bottom;
+              }
+              const isOverContent =
+                e.clientX >= contentLeft &&
+                e.clientX <= contentRight &&
+                e.clientY >= contentTop &&
+                e.clientY <= contentBottom;
+              setIsStageImageHovered(isOverContent);
+            }}
+            onMouseLeave={() => setIsStageImageHovered(false)}>
+            <img
+              ref={imageRef}
+              className={IMAGE_CLASS}
+              src={activeImage.src}
+              alt=''
+              onLoad={recomputeImageInset}
+              data-testid='inspector-active-image'
+            />
+            {getShareUrl &&
+              imageInset &&
+              (isStageImageHovered || copiedThumbnailKey === activeImage.key) && (
+                <button
+                  type='button'
+                  className={STAGE_COPY_BUTTON_CLASS}
+                  style={{
+                    top: imageInset.top + STAGE_COPY_BUTTON_INSET_PX,
+                    right: imageInset.right + STAGE_COPY_BUTTON_INSET_PX,
+                  }}
+                  aria-label={
+                    copiedThumbnailKey === activeImage.key ? linkCopiedLabel : copyLinkLabel
+                  }
+                  onClick={() => handleCopyLink(activeImage)}
+                  data-testid='inspector-stage-copy-link'>
+                  <Icon
+                    name={
+                      copiedThumbnailKey === activeImage.key
+                        ? 'icon-regular-check'
+                        : 'icon-regular-chain-link'
+                    }
+                    className='width-[20px] height-[20px]'
+                  />
+                </button>
+              )}
+          </div>
         )}
         {hasMultiple && (
           <button

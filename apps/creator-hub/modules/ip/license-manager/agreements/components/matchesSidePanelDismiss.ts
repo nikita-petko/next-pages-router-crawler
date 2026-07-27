@@ -9,6 +9,7 @@ const PORTAL_MENU_INTERACTION_SELECTORS = [
   '.MuiMenu-list',
   '.MuiList-root',
   '.MuiMenu-paper',
+  'dialog[open]',
 ] as const;
 
 function eventComposedPathMatchesAnySelector(event: Event, selectors: readonly string[]): boolean {

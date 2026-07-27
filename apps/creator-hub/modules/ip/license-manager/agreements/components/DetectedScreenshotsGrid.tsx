@@ -1,5 +1,5 @@
 import type { FunctionComponent } from 'react';
-import Link from 'next/link';
+import { useTranslation } from '@rbx/intl';
 import { Skeleton } from '@rbx/ui';
 
 export const MAX_SCREENSHOTS = 6;
@@ -8,17 +8,18 @@ const screenshotsGridClassName =
   'grid gap-small items-start [grid-template-columns:repeat(3,minmax(0,1fr))]';
 const screenshotFillClassName = 'absolute inset-0 width-full height-full';
 const screenshotCellClassName = 'width-full relative clip radius-small [aspect-ratio:4/3]';
-const screenshotImageClassName = `[object-fit:cover] ${screenshotFillClassName}`;
 
 export interface DetectedScreenshotItem {
   imageUrl: string;
-  href: string;
+  assetId: number;
 }
 
 interface DetectedScreenshotsGridProps {
-  /** Resolved screenshots with their deep-link hrefs (pending-moderation/unshared assets excluded upstream). */
+  /** Resolved screenshots (pending-moderation/unshared assets excluded upstream). */
   items: DetectedScreenshotItem[];
   isLoading?: boolean;
+  /** Called when a screenshot cell is clicked, passing the index within `items`. */
+  onItemClick?: (index: number) => void;
 }
 
 /**
@@ -29,7 +30,10 @@ interface DetectedScreenshotsGridProps {
 const DetectedScreenshotsGrid: FunctionComponent<DetectedScreenshotsGridProps> = ({
   items,
   isLoading = false,
+  onItemClick,
 }) => {
+  const { translate } = useTranslation();
+
   if (isLoading) {
     return (
       <div className={screenshotsGridClassName}>
@@ -50,13 +54,17 @@ const DetectedScreenshotsGrid: FunctionComponent<DetectedScreenshotsGridProps> =
 
   return (
     <div className={screenshotsGridClassName}>
-      {visibleItems.map((item) => (
-        <Link
-          key={item.imageUrl}
-          href={item.href}
-          className={`${screenshotCellClassName} cursor-pointer`}>
-          <img className={screenshotImageClassName} src={item.imageUrl} alt='' />
-        </Link>
+      {visibleItems.map((item, index) => (
+        <div key={item.imageUrl} className={screenshotCellClassName}>
+          <button
+            type='button'
+            aria-label={translate('Action.ViewScreenshot')}
+            className='block width-full height-full cursor-pointer [border:none] [background:transparent] [padding:0]'
+            onClick={() => onItemClick?.(index)}
+            data-testid='detected-screenshot-cell'>
+            <img className='width-full height-full [object-fit:cover]' src={item.imageUrl} alt='' />
+          </button>
+        </div>
       ))}
     </div>
   );

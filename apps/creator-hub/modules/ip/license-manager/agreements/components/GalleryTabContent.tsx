@@ -18,7 +18,6 @@ const galleryGridClassName =
   'grid gap-medium items-start [grid-template-columns:repeat(auto-fill,184px)]';
 const galleryCellFillClassName = 'absolute inset-0 width-full height-full';
 const galleryCellClassName = 'width-full relative clip radius-medium [aspect-ratio:4/3]';
-const galleryImageClassName = `[object-fit:cover] ${galleryCellFillClassName}`;
 
 const CHECKBOX_OVERLAY_CLASS = 'absolute [top:8px] [left:8px]';
 const EMPTY_STATE_CLASS =
@@ -126,6 +125,7 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
 
   // Button-initiated inspector: holds the ordered snapshot (all/selected) taken when it was opened.
   const [inspectorImages, setInspectorImages] = useState<InspectorImage[] | null>(null);
+  const [initialInspectorIndex, setInitialInspectorIndex] = useState(0);
   // A valid `?inspect=<assetId>` shows just that screenshot. Derived in render (not stored via an
   // effect) so opening from a deep link doesn't require a setState-in-effect.
   const deepLinkImages = useMemo<InspectorImage[] | null>(() => {
@@ -156,9 +156,17 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
       .filter((cell): cell is GalleryCell => cell != null);
   }, [cells, selectedKeys]);
 
-  const openInspector = useCallback(
-    () => setInspectorImages(orderedInspectorImages),
-    [orderedInspectorImages],
+  const openInspector = useCallback(() => {
+    setInitialInspectorIndex(0);
+    setInspectorImages(orderedInspectorImages);
+  }, [orderedInspectorImages]);
+
+  const openInspectorAtIndex = useCallback(
+    (index: number) => {
+      setInitialInspectorIndex(index);
+      setInspectorImages(cells);
+    },
+    [cells],
   );
 
   const getShareUrl = useCallback((image: InspectorImage) => {
@@ -261,7 +269,7 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
     );
   }
 
-  const renderCell = (cell: GalleryCell) => {
+  const renderCell = (cell: GalleryCell, cellIndex: number) => {
     const isSelected = selectedKeys.includes(cell.key);
     const showCheckbox = isSelected || hoveredKey === cell.key;
     const isImageLoaded = loadedKeys.has(cell.key);
@@ -271,18 +279,25 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
         className={galleryCellClassName}
         onMouseEnter={() => setHoveredKey(cell.key)}
         onMouseLeave={() => setHoveredKey((current) => (current === cell.key ? null : current))}>
-        <img
-          className={galleryImageClassName}
-          src={cell.src}
-          alt=''
-          onLoad={() => markImageLoaded(cell.key)}
-          onError={() => markImageLoaded(cell.key)}
-        />
+        <button
+          type='button'
+          aria-label={inspectLabel}
+          className={`${galleryCellFillClassName} cursor-pointer [border:none] [background:transparent] [padding:0]`}
+          onClick={() => openInspectorAtIndex(cellIndex)}>
+          <img
+            className='width-full height-full [object-fit:cover]'
+            src={cell.src}
+            alt=''
+            onLoad={() => markImageLoaded(cell.key)}
+            onError={() => markImageLoaded(cell.key)}
+          />
+        </button>
         {!isImageLoaded && (
           <Skeleton animate variant='rectangular' className={galleryCellFillClassName} />
         )}
         {showCheckbox && (
-          <div className={CHECKBOX_OVERLAY_CLASS}>
+          // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+          <div className={CHECKBOX_OVERLAY_CLASS} onClick={(e) => e.stopPropagation()}>
             <Checkbox
               size='Medium'
               placement='End'
@@ -334,6 +349,7 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
           getShareUrl={getShareUrl}
           onLinkCopied={notifyLinkCopied}
           onClose={closeInspector}
+          initialIndex={initialInspectorIndex}
         />
       )}
     </div>

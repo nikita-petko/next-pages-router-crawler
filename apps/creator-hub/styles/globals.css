@@ -4448,6 +4448,9 @@
 .\[right\:0\] {
   right: 0;
 }
+.\[right\:12px\] {
+  right: 12px;
+}
 .\[right\:16px\] {
   right: 16px;
 }
@@ -4480,6 +4483,9 @@
 }
 .\[top\:0\] {
   top: 0;
+}
+.\[top\:12px\] {
+  top: 12px;
 }
 .\[top\:28px\] {
   top: 28px;
