@@ -64,6 +64,7 @@ type RevShareSplitEditorFlowProps = {
   onExit?: () => void;
   onSubmitProposal?: (allocations: readonly RevShareRecipientAllocation[]) => void | Promise<void>;
   isSubmitting?: boolean;
+  replacesOpenProposal?: boolean;
   presentation?: RevShareSplitEditorFlowPresentation;
   onStepChange?: (step: RevShareSplitEditorFlowStep) => void;
 };
@@ -78,6 +79,7 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
   onExit,
   onSubmitProposal,
   isSubmitting = false,
+  replacesOpenProposal = false,
   presentation = 'page',
   onStepChange,
 }) => {
@@ -487,6 +489,7 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
         wizardAriaLabel={wizardAriaLabel}
         onBack={handleReviewBack}
         onContinue={onSubmitProposal ? handleReviewContinue : undefined}
+        replacesOpenProposal={replacesOpenProposal}
         stepFocusRef={setStepFocusElement}
       />
     );

@@ -27,7 +27,7 @@ import {
   type RevShareRecipientAllocation,
   type RevShareTarget,
 } from '../interface/RevShareViewModel';
-import { getRevShareByTarget } from '../queries/revShareApi';
+import { cancelRevShareProposal, getRevShareByTarget } from '../queries/revShareApi';
 import {
   useRevShareForManager,
   useRevShareProposalMutations,
@@ -160,6 +160,17 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
   });
   const { propose } = useRevShareProposalMutations(managingGroupId);
   const { showSuccess, showError } = useRevShareFeedback();
+  const [isSubmittingProposal, setIsSubmittingProposal] = useState(false);
+  const proposeRef = useRef(propose);
+  const showErrorRef = useRef(showError);
+  const showSuccessRef = useRef(showSuccess);
+  const onProposeSuccessRef = useRef(onProposeSuccess);
+  useEffect(() => {
+    proposeRef.current = propose;
+    showErrorRef.current = showError;
+    showSuccessRef.current = showSuccess;
+    onProposeSuccessRef.current = onProposeSuccess;
+  }, [onProposeSuccess, propose, showError, showSuccess]);
   const backLabel = tPendingTranslation(
     'Back',
     'Label on a button that returns to the previous step in a multi-step wizard.',
@@ -270,24 +281,41 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
       if (target === null) {
         return;
       }
+      setIsSubmittingProposal(true);
       try {
-        const result = await propose.mutateAsync({
-          target: target.target,
-          activeRevShareId: target.activeId,
-          allocations: [...allocations],
-          allocateUnallocated: target.active.unallocatedBasisPoints > 0,
-        });
-        if (!result.updateSucceeded) {
-          showError('propose');
-          return;
+        const pendingProposalId = target.proposed?.id;
+        if (pendingProposalId != null) {
+          try {
+            await cancelRevShareProposal(pendingProposalId);
+          } catch (error) {
+            // Ignore cancel outcome; always attempt to create the new proposal.
+            console.error(
+              '[RevShareProposeFlowContainer] Failed to cancel open proposal before propose',
+              { pendingProposalId, error },
+            );
+          }
         }
-        showSuccess('propose');
-        onProposeSuccess();
-      } catch {
-        showError('propose');
+        try {
+          const result = await proposeRef.current.mutateAsync({
+            target: target.target,
+            activeRevShareId: target.activeId,
+            allocations: [...allocations],
+            allocateUnallocated: target.active.unallocatedBasisPoints > 0,
+          });
+          if (!result.updateSucceeded) {
+            showErrorRef.current('propose');
+            return;
+          }
+          showSuccessRef.current('propose');
+          onProposeSuccessRef.current();
+        } catch {
+          showErrorRef.current('propose');
+        }
+      } finally {
+        setIsSubmittingProposal(false);
       }
     },
-    [onProposeSuccess, propose, showError, showSuccess, target],
+    [target],
   );
   useEffect(() => {
     if (!shouldHydrateTarget || existingAgreement == null || target !== null) {
@@ -436,7 +464,8 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
       onSearchQueryChange={setRecipientQuery}
       onExit={onExit}
       onSubmitProposal={handleSubmitProposal}
-      isSubmitting={propose.isPending}
+      isSubmitting={propose.isPending || isSubmittingProposal}
+      replacesOpenProposal={target.proposed != null}
       presentation={mode === 'propose' ? 'dialog' : 'page'}
       onStepChange={onStepChange}
     />

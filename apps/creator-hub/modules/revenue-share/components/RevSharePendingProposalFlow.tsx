@@ -19,7 +19,7 @@ export type RevSharePendingProposalFlowProps = {
   managingGroupSubtitle: string;
   agreement: ManagerAgreement;
   resolveRecipientParty: (recipient: RevShareRecipient) => ResolvedRevShareParty;
-  action: 'propose' | 'cancel';
+  action: 'review' | 'cancel';
   isTermsAccepted: boolean;
   onTermsAcceptedChange: (isAccepted: boolean) => void;
   onBack: () => void;

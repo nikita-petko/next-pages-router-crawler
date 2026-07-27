@@ -17,7 +17,6 @@ import {
 } from '@rbx/ui';
 import { FiatProductModerationStatus } from '@modules/clients/develop';
 import FiatPaidAccessChecks from '@modules/fiat-paid-access/components/PaidAccessChecks/PaidAccessChecks';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import { FIAT_PAID_ACCESS_LEARN_MORE_URL } from '../constants/AccessConstants';
 import type {
   ExperienceAccessFormType,
@@ -66,8 +65,6 @@ function ExperienceAccessPaymentType({
   } = useExperienceAccessFormStyles();
   const [isEligibleForFiatPaidAccess, setIsEligibleForFiatPaidAccess] = useState<boolean>(false);
   const { control, formState } = useFormContext<ExperienceAccessFormType>();
-  const { settings, isFetched: isSettingsFetched } = useSettings();
-  const showDemoModeToggle = isSettingsFetched && settings.enableDemoMode;
 
   const [renderTime] = useState(() => Date.now());
   const changeableAfter = universeAccessConfiguration.demoModeChangeableAfter;
@@ -222,7 +219,6 @@ function ExperienceAccessPaymentType({
                     <ExperienceAccessPaymentSettings
                       disabled={isPaymentSettingsSelectionDisabled}
                       control={control}
-                      showDemoModeToggle={showDemoModeToggle}
                       isDemoModeCooldownActive={isDemoModeCooldownActive}
                       isGroupOwner={isGroupOwner}
                     />

@@ -1,6 +1,10 @@
 // Announces revenue share information and validation errors with accessible status semantics.
 import { forwardRef, type ReactNode } from 'react';
-import { FeedbackBanner, type TFeedbackBannerSeverity } from '@rbx/foundation-ui';
+import {
+  FeedbackBanner,
+  type TFeedbackBannerLayout,
+  type TFeedbackBannerSeverity,
+} from '@rbx/foundation-ui';
 
 type RevShareBannerTone = 'alert' | 'emphasis' | 'warning' | 'success';
 
@@ -23,8 +27,9 @@ type RevShareBannerActionProps =
 
 type RevShareBannerProps = RevShareBannerActionProps & {
   message: string;
-  description?: string;
+  description?: string | ReactNode;
   tone?: RevShareBannerTone;
+  layout?: TFeedbackBannerLayout;
   id?: string;
   tabIndex?: number;
   action?: ReactNode;
@@ -32,7 +37,17 @@ type RevShareBannerProps = RevShareBannerActionProps & {
 
 const RevShareBanner = forwardRef<HTMLDivElement, RevShareBannerProps>(
   (
-    { message, description, tone = 'emphasis', id, tabIndex, actionLabel, onAction, action },
+    {
+      message,
+      description,
+      tone = 'emphasis',
+      layout = 'Inline',
+      id,
+      tabIndex,
+      actionLabel,
+      onAction,
+      action,
+    },
     ref,
   ) => {
     const actions =
@@ -43,7 +58,7 @@ const RevShareBanner = forwardRef<HTMLDivElement, RevShareBannerProps>(
         ref={ref}
         id={id}
         tabIndex={tabIndex}
-        layout='Inline'
+        layout={layout}
         title={message}
         description={description}
         severity={TONE_TO_SEVERITY[tone]}

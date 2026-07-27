@@ -1,6 +1,6 @@
 // Group revenue-share shell: URL-synced managed/recipient perspective, manager landing/detail/lifecycles, and delegation of recipient detail/respond to RevShareRecipientContainer.
 import { useCallback, useEffect, useMemo, useState, type FunctionComponent } from 'react';
-import { Button, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
+import { Button } from '@rbx/foundation-ui';
 import { useLocalization, useTranslation } from '@rbx/intl';
 import { CircularProgress, Grid } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
@@ -161,11 +161,6 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
     'Accessible label for closing a revenue share lifecycle dialog.',
     translationKey('Action.Close', TranslationNamespace.RevenueShareAgreements),
   );
-  const pendingProposalBlocksNewLabel = tPendingTranslation(
-    'Cancel the current proposal before proposing a new one.',
-    'Tooltip shown when a new proposal cannot be started because another proposal is pending.',
-    translationKey('Message.PendingProposalBlocksNew', TranslationNamespace.RevenueShareAgreements),
-  );
   const proposeChangesLabel = tPendingTranslation(
     'Propose changes',
     'Button label to propose a new revenue share split.',
@@ -253,7 +248,7 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
     }
     if (
       perspective === 'recipient' &&
-      (selectedAction === 'create' || selectedAction === 'cancel')
+      (selectedAction === 'create' || selectedAction === 'propose' || selectedAction === 'cancel')
     ) {
       normalize({ action: undefined });
       return;
@@ -264,13 +259,18 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
     }
     if (
       perspective === 'managed' &&
-      (selectedAction === 'propose' || selectedAction === 'cancel') &&
+      (selectedAction === 'propose' ||
+        selectedAction === 'review' ||
+        selectedAction === 'cancel') &&
       !selectedManagerAgreement
     ) {
       normalize({ action: undefined, targetType: undefined, targetId: undefined });
       return;
     }
-    if (selectedAction === 'cancel' && selectedManagerAgreement?.proposed === null) {
+    if (
+      (selectedAction === 'cancel' || selectedAction === 'review') &&
+      selectedManagerAgreement?.proposed === null
+    ) {
       normalize({
         targetType: selectedTarget?.type,
         targetId: selectedTarget?.id,
@@ -285,10 +285,10 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
         selectedTarget,
       );
 
-      if (selectedAction === 'propose') {
-        const hasValidRecipientProposeFlow =
+      if (selectedAction === 'review') {
+        const hasValidRecipientReviewFlow =
           selectedRecipientAgreement != null && selectedRecipientAgreement.proposed !== null;
-        if (!hasValidRecipientProposeFlow && action != null) {
+        if (!hasValidRecipientReviewFlow && action != null) {
           normalize({ action: undefined });
           return;
         }
@@ -394,8 +394,16 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
     });
   }, [selectedManagerAgreement, setQuery]);
   const handleViewPendingDetails = useCallback(() => {
-    handleProposeChanges();
-  }, [handleProposeChanges]);
+    if (!selectedManagerAgreement) {
+      return;
+    }
+    setQuery({
+      targetType: selectedManagerAgreement.target.type,
+      targetId: selectedManagerAgreement.target.id,
+      action: 'review',
+      perspective: 'managed',
+    });
+  }, [selectedManagerAgreement, setQuery]);
   const handleTargetSelected = useCallback(
     (target: ManagerAgreement['target']) => {
       setQuery({
@@ -453,7 +461,7 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
     setQuery({
       targetType: selectedManagerAgreement.target.type,
       targetId: selectedManagerAgreement.target.id,
-      action: 'propose',
+      action: 'review',
       perspective: 'managed',
     });
   }, [selectedManagerAgreement, setQuery]);
@@ -537,7 +545,7 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
   const pendingLifecycleAction =
     selectedManagerAgreement !== null &&
     selectedManagerAgreement.proposed !== null &&
-    (selectedAction === 'cancel' || selectedAction === 'propose')
+    (selectedAction === 'cancel' || selectedAction === 'review')
       ? selectedAction
       : null;
   const managedLifecycleFlow =
@@ -576,7 +584,7 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
             TranslationNamespace.RevenueShareAgreements,
           ),
         )
-      : selectedManagerAgreement?.proposed !== null
+      : selectedAction === 'review'
         ? tPendingTranslation(
             'Pending proposal',
             'Heading for the pending revenue share proposal review step.',
@@ -634,11 +642,7 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
       { id: selectedManagerAgreement.target.id },
     );
   const proposeChangesButton = (
-    <Button
-      variant='Emphasis'
-      size='Medium'
-      isDisabled={selectedManagerAgreement.proposed !== null}
-      onClick={handleProposeChanges}>
+    <Button variant='Emphasis' size='Medium' onClick={handleProposeChanges}>
       {proposeChangesLabel}
     </Button>
   );
@@ -667,17 +671,7 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
           MANAGING_GROUP_PARTY_COUNT + selectedManagerAgreement.active.recipients.length,
         )}
         centerSubLabel={totalSplitsLabel}
-        headerAction={
-          selectedManagerAgreement.proposed !== null ? (
-            <Tooltip position='top-center' title={pendingProposalBlocksNewLabel}>
-              <TooltipTrigger asChild>
-                <span>{proposeChangesButton}</span>
-              </TooltipTrigger>
-            </Tooltip>
-          ) : (
-            proposeChangesButton
-          )
-        }
+        headerAction={proposeChangesButton}
         banner={
           selectedManagerAgreement.proposed ? (
             <RevShareBanner

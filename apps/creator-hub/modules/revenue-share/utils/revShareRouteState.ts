@@ -1,7 +1,7 @@
 // Parses and normalizes current revenue-share action and perspective query parameters.
 export const REV_SHARE_QUERY_KEYS = ['targetType', 'targetId', 'action', 'perspective'] as const;
 
-type RevShareAction = 'create' | 'propose' | 'cancel';
+type RevShareAction = 'create' | 'propose' | 'review' | 'cancel';
 export type RevSharePerspective = 'managed' | 'recipient';
 type RevShareSurface = 'user' | 'group';
 type RevShareQueryValue = string | string[] | null | undefined;
@@ -17,6 +17,7 @@ const parseRevShareAction = (value: RevShareQueryValue): RevShareAction | null =
   switch (value) {
     case 'create':
     case 'propose':
+    case 'review':
     case 'cancel':
       return value;
     default:

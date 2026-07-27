@@ -159,7 +159,7 @@ const RevShareRecipientContainer: FunctionComponent<RevShareRecipientContainerPr
       setRecipientQuery(next, { skipHistory: true });
     };
 
-    const hasValidRecipientProposeFlow =
+    const hasValidRecipientReviewFlow =
       selectedAgreement != null && selectedAgreement.proposed !== null;
 
     if (hasActionQuery && selectedAction == null) {
@@ -167,8 +167,8 @@ const RevShareRecipientContainer: FunctionComponent<RevShareRecipientContainerPr
       return;
     }
 
-    if (selectedAction === 'propose') {
-      if (hasValidRecipientProposeFlow) {
+    if (selectedAction === 'review') {
+      if (hasValidRecipientReviewFlow) {
         return;
       }
 
@@ -234,7 +234,7 @@ const RevShareRecipientContainer: FunctionComponent<RevShareRecipientContainerPr
     });
   }, [selectedAgreement, setRecipientQuery]);
   const handleReview = useCallback(() => {
-    setRecipientQuery({ action: 'propose' });
+    setRecipientQuery({ action: 'review' });
   }, [setRecipientQuery]);
   const handleDoneResponding = useCallback(() => {
     setRecipientQuery({ action: undefined });
@@ -251,7 +251,7 @@ const RevShareRecipientContainer: FunctionComponent<RevShareRecipientContainerPr
   const respondLifecycleDialog =
     recipient !== undefined &&
     selectedAgreement?.proposed != null &&
-    selectedAction === 'propose' &&
+    selectedAction === 'review' &&
     recipientParty != null &&
     respondFlowIdentityKey != null ? (
       <RecipientRespondLifecycleDialog

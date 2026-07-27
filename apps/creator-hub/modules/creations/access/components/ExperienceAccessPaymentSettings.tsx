@@ -25,7 +25,6 @@ import { ExperienceAccessRegisterOptions } from './ExperienceAccessPayment';
 type Props = {
   control: Control<ExperienceAccessFormType>;
   disabled: boolean;
-  showDemoModeToggle?: boolean;
   isDemoModeCooldownActive?: boolean;
   isGroupOwner?: boolean;
 };
@@ -33,7 +32,6 @@ type Props = {
 function ExperienceAccessPaymentSettings({
   control,
   disabled,
-  showDemoModeToggle = false,
   isDemoModeCooldownActive = false,
   isGroupOwner,
 }: Props) {
@@ -123,53 +121,51 @@ function ExperienceAccessPaymentSettings({
             )}
           />
         </Grid>
-        {showDemoModeToggle && (
-          <Grid item XSmall={12}>
-            <Controller
-              name='demoModeEnabled'
-              control={control}
-              shouldUnregister={false}
-              render={({ field: demoField }) => (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      id='demo-mode-toggle-fiat'
-                      aria-label={translate('Label.EnableDemoMode')}
-                      onChange={(e) => demoField.onChange(e.target.checked)}
-                      checked={demoField.value ?? false}
-                      disabled={isGroupOwner === false || isDemoModeCooldownActive}
-                    />
-                  }
-                  label={
-                    <Grid container direction='column'>
-                      <Typography variant='body1'>{translate('Label.EnableDemoMode')}</Typography>
-                      <FormHelperText>
-                        {isDemoModeCooldownActive
-                          ? translate('Message.DemoModeCooldown')
-                          : translateHTML('Description.EnableDemoMode', [
-                              {
-                                opening: 'linkStart',
-                                closing: 'linkEnd',
-                                content(chunks) {
-                                  return (
-                                    <Link
-                                      href={`${FIAT_PAID_ACCESS_LEARN_MORE_URL}#demo-mode`}
-                                      target='_blank'
-                                      underline='always'>
-                                      {chunks}
-                                    </Link>
-                                  );
-                                },
+        <Grid item XSmall={12}>
+          <Controller
+            name='demoModeEnabled'
+            control={control}
+            shouldUnregister={false}
+            render={({ field: demoField }) => (
+              <FormControlLabel
+                control={
+                  <Switch
+                    id='demo-mode-toggle-fiat'
+                    aria-label={translate('Label.EnableDemoMode')}
+                    onChange={(e) => demoField.onChange(e.target.checked)}
+                    checked={demoField.value ?? false}
+                    disabled={isGroupOwner === false || isDemoModeCooldownActive}
+                  />
+                }
+                label={
+                  <Grid container direction='column'>
+                    <Typography variant='body1'>{translate('Label.EnableDemoMode')}</Typography>
+                    <FormHelperText>
+                      {isDemoModeCooldownActive
+                        ? translate('Message.DemoModeCooldown')
+                        : translateHTML('Description.EnableDemoMode', [
+                            {
+                              opening: 'linkStart',
+                              closing: 'linkEnd',
+                              content(chunks) {
+                                return (
+                                  <Link
+                                    href={`${FIAT_PAID_ACCESS_LEARN_MORE_URL}#demo-mode`}
+                                    target='_blank'
+                                    underline='always'>
+                                    {chunks}
+                                  </Link>
+                                );
                               },
-                            ])}
-                      </FormHelperText>
-                    </Grid>
-                  }
-                />
-              )}
-            />
-          </Grid>
-        )}
+                            },
+                          ])}
+                    </FormHelperText>
+                  </Grid>
+                }
+              />
+            )}
+          />
+        </Grid>
       </Grid>
     )
   );

@@ -96,7 +96,6 @@ export enum FeatureFlagName {
   enable2D3DUnificationBanner = 'enable2D3DUnificationBanner',
   unification2D3DBannerLearnMoreUrl = 'unification2D3DBannerLearnMoreUrl',
   enableUgcUploadPublishBlockBanner = 'enableUgcUploadPublishBlockBanner',
-  enableDemoMode = 'enableDemoMode',
   enableDataStoreRequestSourceAnalytics = 'enableDataStoreRequestSourceAnalytics',
   enableIpPlatformMatchesTableEsIndexImprovements = 'enableIpPlatformMatchesTableEsIndexImprovements',
 }
@@ -210,7 +209,6 @@ export const featureFlagDefaults = defineFeatureFlagDefaults({
   [FeatureFlagName.enable2D3DUnificationBanner]: false,
   [FeatureFlagName.unification2D3DBannerLearnMoreUrl]: '',
   [FeatureFlagName.enableUgcUploadPublishBlockBanner]: false,
-  [FeatureFlagName.enableDemoMode]: false,
   [FeatureFlagName.enableDataStoreRequestSourceAnalytics]: false,
   [FeatureFlagName.enableIpPlatformMatchesTableEsIndexImprovements]: false,
 } as const);

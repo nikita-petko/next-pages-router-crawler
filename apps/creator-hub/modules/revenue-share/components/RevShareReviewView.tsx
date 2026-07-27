@@ -17,6 +17,7 @@ type RevShareReviewViewProps = {
   onBack?: () => void;
   onContinue?: () => void;
   isSubmitting?: boolean;
+  replacesOpenProposal?: boolean;
   stepFocusRef?: (element: HTMLElement | null) => void;
 };
 
@@ -28,6 +29,7 @@ const RevShareReviewView: FunctionComponent<RevShareReviewViewProps> = ({
   onBack,
   onContinue,
   isSubmitting = false,
+  replacesOpenProposal = false,
   stepFocusRef,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
@@ -57,6 +59,7 @@ const RevShareReviewView: FunctionComponent<RevShareReviewViewProps> = ({
         ),
       )}
       rows={rows}
+      replacesOpenProposal={replacesOpenProposal}
       footer={
         <div className='flex justify-end gap-medium'>
           <Button type='button' variant='Standard' size='Medium' onClick={onBack}>
