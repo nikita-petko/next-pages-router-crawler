@@ -4,6 +4,7 @@ import AnalyticsComponentType from '@modules/analytics-configurations/AnalyticsC
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
 import { getMetricsFromPredefinedChart } from '../constants/RAQIV2PredefinedChartConfig';
 import { getMetricsFromPredefinedTabbedChart } from '../constants/RAQIV2PredefinedTabbedChartConfig';
+import { isAnalyticsTableWithControlConfig } from '../constants/RAQIV2PredefinedTabbedTableConfigs';
 import { isMetricTableColumnConfig } from '../constants/RAQIV2PredefinedTableColumnConfig';
 import { getAtomicMetricsFromMetricLike } from '../types/ComputedMetric';
 import type { RAQIV2UIComponent } from '../types/RAQIV2PageConfig';
@@ -75,7 +76,11 @@ export const getPredefinedComponentUIMetrics = (
     case AnalyticsComponentType.TabbedTable: {
       const { config: tabbedTableConfig } = typedComponent;
       const tableConfigs = tabbedTableConfig.tabs;
-      const dataColumns = tableConfigs.flatMap(({ config }) => config.dataColumns);
+      const dataColumns = tableConfigs.flatMap(({ config }) =>
+        isAnalyticsTableWithControlConfig(config)
+          ? config.options.flatMap((option) => option.config.dataColumns)
+          : config.dataColumns,
+      );
       return dataColumns
         .filter(isMetricTableColumnConfig)
         .flatMap(({ metric }) => getAtomicMetricsFromMetricLike(metric));

@@ -140,14 +140,23 @@ export const tabbedTableConfigJourneySessions = {
       labelKey: translationKey('Heading.JourneyPathBreakdown', TranslationNamespace.Analytics),
     },
     {
-      key: tableConfigJourneyByStageChurnSessions.tableKey,
-      config: tableConfigJourneyByStageChurnSessions,
-      labelKey: translationKey('Label.JourneyByStage', TranslationNamespace.Analytics),
-    },
-    {
-      key: tableConfigJourneyByNodeChurnSessions.tableKey,
-      config: tableConfigJourneyByNodeChurnSessions,
-      labelKey: translationKey('Label.JourneyByNode', TranslationNamespace.Analytics),
+      key: tableConfigJourneyByStageChurnSessions.tableKey, // tab identity key; just needs to be unique among tabs
+      labelKey: translationKey('Heading.JourneyChurn', TranslationNamespace.Analytics),
+      config: {
+        key: 'journeyChurnBreakdown', // unique to this tab only -> control is hidden on the Path Breakdown tab
+        options: [
+          {
+            key: tableConfigJourneyByStageChurnSessions.tableKey,
+            labelKey: translationKey('Label.JourneyByStage', TranslationNamespace.Analytics),
+            config: tableConfigJourneyByStageChurnSessions,
+          },
+          {
+            key: tableConfigJourneyByNodeChurnSessions.tableKey,
+            labelKey: translationKey('Label.JourneyByNode', TranslationNamespace.Analytics),
+            config: tableConfigJourneyByNodeChurnSessions,
+          },
+        ],
+      },
     },
   ],
   tabMobileLabelKey: translationKey('Heading.TableBreakdown', TranslationNamespace.Analytics),
@@ -164,14 +173,23 @@ export const tabbedTableConfigJourneyUsers = {
       labelKey: translationKey('Heading.JourneyPathBreakdown', TranslationNamespace.Analytics),
     },
     {
-      key: tableConfigJourneyByStageChurnUsers.tableKey,
-      config: tableConfigJourneyByStageChurnUsers,
-      labelKey: translationKey('Label.JourneyByStage', TranslationNamespace.Analytics),
-    },
-    {
-      key: tableConfigJourneyByNodeChurnUsers.tableKey,
-      config: tableConfigJourneyByNodeChurnUsers,
-      labelKey: translationKey('Label.JourneyByNode', TranslationNamespace.Analytics),
+      key: tableConfigJourneyByStageChurnUsers.tableKey, // tab identity key; just needs to be unique among tabs
+      labelKey: translationKey('Heading.JourneyChurn', TranslationNamespace.Analytics),
+      config: {
+        key: 'journeyChurnBreakdown', // unique to this tab only -> control is hidden on the Path Breakdown tab
+        options: [
+          {
+            key: tableConfigJourneyByStageChurnUsers.tableKey,
+            labelKey: translationKey('Label.JourneyByStage', TranslationNamespace.Analytics),
+            config: tableConfigJourneyByStageChurnUsers,
+          },
+          {
+            key: tableConfigJourneyByNodeChurnUsers.tableKey,
+            labelKey: translationKey('Label.JourneyByNode', TranslationNamespace.Analytics),
+            config: tableConfigJourneyByNodeChurnUsers,
+          },
+        ],
+      },
     },
   ],
   tabMobileLabelKey: translationKey('Heading.TableBreakdown', TranslationNamespace.Analytics),

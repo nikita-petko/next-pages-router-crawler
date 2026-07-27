@@ -15,6 +15,7 @@ import type { AnalyticsSummaryCardConfig } from '@modules/experience-analytics-s
 import type { TabbedChartConfigOrPredefinedKey } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedTabbedChartConfig';
 import { getTabbedConfigFromKeyOrConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedTabbedChartConfig';
 import type { AnalyticsTabbedTableConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedTabbedTableConfigs';
+import { isAnalyticsTableWithControlConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedTabbedTableConfigs';
 import { isMetricTableColumnConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedTableColumnConfig';
 import type { AnalyticsTableConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedTableConfig';
 import { getAtomicMetricsFromMetricLike } from '@modules/experience-analytics-shared/types/ComputedMetric';
@@ -239,9 +240,14 @@ function buildQueriesFromTabbedTable(
   startUtcTime: string,
   endUtcTime: string,
 ): RaqiQuery[] {
-  return config.tabs.flatMap((tab) =>
-    buildQueriesFromTable(tab.config, resourceType, resourceId, startUtcTime, endUtcTime),
-  );
+  return config.tabs.flatMap((tab) => {
+    if (isAnalyticsTableWithControlConfig(tab.config)) {
+      return tab.config.options.flatMap((option) =>
+        buildQueriesFromTable(option.config, resourceType, resourceId, startUtcTime, endUtcTime),
+      );
+    }
+    return buildQueriesFromTable(tab.config, resourceType, resourceId, startUtcTime, endUtcTime);
+  });
 }
 
 /**
