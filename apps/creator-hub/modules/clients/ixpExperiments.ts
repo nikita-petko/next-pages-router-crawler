@@ -115,6 +115,14 @@ export type CreatorHubNavigationUserParameterResults = {
   [CreatorHubNavigationUserParameters.EnableCreationsNavLayout]: boolean | null;
 };
 
+export enum CreatorHubPublishingParameters {
+  EnablePublishingConsolidation = 'enablePublishingConsolidation',
+}
+
+export type CreatorHubPublishingParameterResults = {
+  [CreatorHubPublishingParameters.EnablePublishingConsolidation]: boolean | null;
+};
+
 export enum CreatorHubCreationsPermissionParameters {
   EnableAudienceReachOnOverview = 'enableAudienceReachOnOverviewPage',
   EnableAudienceReachGrowthOpportunitiesBanner = 'enableAudienceReachGrowthOpportunitiesBanner',
@@ -190,6 +198,7 @@ export enum IXPLayers {
   CreatorHubLandingPageUserId = 'CreatorHub.LandingPage.UserId',
   CreatorHubNavigation = 'CreatorHub.Navigation',
   CreatorHubNavigationUser = 'CreatorHub.Navigation.User',
+  CreatorHubPublishing = 'CreatorHub.Publishing.UserId',
   LicenseManager = 'CreatorDashboard.LicenseManager',
   RightsManager = 'CreatorDashboard.RightsManager',
   StarterPlaceCreation = 'CRK.StarterPlace.StarterPlaceCreation',
@@ -247,6 +256,7 @@ export const IXPParameters: Record<IXPLayers, IXPParamEnum> = {
   [IXPLayers.CreatorHubLandingPageUserId]: CreatorHubLandingPageUserIdParameters,
   [IXPLayers.CreatorHubNavigation]: CreatorHubNavigationParameters,
   [IXPLayers.CreatorHubNavigationUser]: CreatorHubNavigationUserParameters,
+  [IXPLayers.CreatorHubPublishing]: CreatorHubPublishingParameters,
   [IXPLayers.LicenseManager]: LicenseManagerParameters,
   [IXPLayers.RightsManager]: RightsManagerParameters,
   [IXPLayers.StarterPlaceCreation]: StarterPlaceParameters,
@@ -269,6 +279,7 @@ export type TIXPParameterResults = {
   [IXPUniverseLayers.CreatorDashboardUniverses]: CreatorDashboardUniversesParameterResults;
   [IXPLayers.CreatorHubNavigation]: CreatorHubNavigationParameterResults;
   [IXPLayers.CreatorHubNavigationUser]: CreatorHubNavigationUserParameterResults;
+  [IXPLayers.CreatorHubPublishing]: CreatorHubPublishingParameterResults;
   [IXPLayers.LicenseManager]: LicenseManagerParameterResults;
   [IXPLayers.RightsManager]: RightsManagerParameterResults;
   [IXPLayers.StarterPlaceCreation]: StarterPlaceParameterResults;
