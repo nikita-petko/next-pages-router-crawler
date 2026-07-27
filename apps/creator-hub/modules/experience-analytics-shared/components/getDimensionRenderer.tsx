@@ -27,6 +27,7 @@ import type {
   RAQIV2TranslationDependencies,
 } from '../types/RAQIV2DimensionRenderer';
 import type RAQIV2DimensionRenderer from '../types/RAQIV2DimensionRenderer';
+import { TOP_N_OTHER_BREAKDOWN_VALUE } from '../utils/topNResponseUtils';
 
 const buildDimensionRenderer = <TDimensionValues extends string>(
   name: TranslationKey,
@@ -264,7 +265,7 @@ const formatPlaceVersionBreakdownValue = (
   { value: versionNumber }: RAQIV2NonNullableBreakdownValue,
   { translate }: RAQIV2TranslationDependencies,
 ): FormattedText => {
-  if (versionNumber === 'Other') {
+  if (versionNumber === TOP_N_OTHER_BREAKDOWN_VALUE) {
     return translate(
       translationKey('Label.Dimension.PlaceVersion.Previous', TranslationNamespace.Analytics),
     );

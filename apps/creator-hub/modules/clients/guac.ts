@@ -11,6 +11,7 @@ class GUACClient extends BaseAPI {
   async loadBehavior<T>(behavior: string): Promise<T> {
     return this.request({
       path: `/v1/bundles/${behavior}`,
+      schemaPath: '/v1/bundles/{behavior}',
       method: 'GET',
       headers: {},
       // oxlint-disable-next-line no-unsafe-type-assertion -- response.json() returns Promise<any>; caller provides T

@@ -45,15 +45,19 @@ const assertSucceeded = (result: string | undefined): void => {
 
 export const getRevShareForManager = async (
   managingGroupId: string,
+  currentUserId: string | number,
 ): Promise<ManagerAgreement[]> => {
   const data = await client.v1beta1ManagerGroupsManagingGroupIdRevSharesGet({
     managingGroupId: asNumberTypedId(managingGroupId),
   });
   assertSucceeded(data.result);
-  return (data.views ?? []).map(mapManagerView);
+  return (data.views ?? []).map((view) => mapManagerView(view, currentUserId));
 };
 
-export const getRevShareByTarget = async (target: RevShareTarget): Promise<ManagerAgreement> => {
+export const getRevShareByTarget = async (
+  target: RevShareTarget,
+  currentUserId: string | number,
+): Promise<ManagerAgreement> => {
   try {
     const data =
       target.type === RevShareTargetType.Experience
@@ -68,7 +72,7 @@ export const getRevShareByTarget = async (target: RevShareTarget): Promise<Manag
       return emptyManagerAgreement(target);
     }
     assertSucceeded(data.result);
-    return data.view ? mapManagerView(data.view) : emptyManagerAgreement(target);
+    return data.view ? mapManagerView(data.view, currentUserId) : emptyManagerAgreement(target);
   } catch (err) {
     if (getResponseFromError(err)?.status === 404) {
       return emptyManagerAgreement(target);
@@ -100,6 +104,7 @@ const proposeRevShareChangeHelper = async (
   activeRevShareId: string | null,
   allocations: RevShareRecipientAllocation[],
   allocateUnallocated: boolean,
+  currentUserId: string | number,
 ): Promise<RevShareProposeResult> => {
   const proposeChangeRequest = {
     target: mapTargetWrite(target),
@@ -131,25 +136,33 @@ const proposeRevShareChangeHelper = async (
           });
 
   const result = mapResult(data.result);
-  return result === RevShareResult.Succeeded
-    ? { updateSucceeded: true }
-    : { updateSucceeded: false, result };
+  if (result !== RevShareResult.Succeeded) {
+    return { updateSucceeded: false, result };
+  }
+  const agreement = data.view ? mapManagerView(data.view, currentUserId) : null;
+  return {
+    updateSucceeded: true,
+    proposedAgreementId: agreement?.proposed?.id ?? null,
+    confirmations: agreement?.proposed?.confirmations ?? [],
+  };
 };
 
 export const proposeRevShareChange = async (
   target: RevShareTarget,
   activeRevShareId: string | null,
   allocations: RevShareRecipientAllocation[],
+  currentUserId: string | number,
 ): Promise<RevShareProposeResult> => {
-  return proposeRevShareChangeHelper(target, activeRevShareId, allocations, false);
+  return proposeRevShareChangeHelper(target, activeRevShareId, allocations, false, currentUserId);
 };
 
 export const proposeRevShareAllocateUnallocated = async (
   target: RevShareTarget,
   activeRevShareId: string | null,
   allocations: RevShareRecipientAllocation[],
+  currentUserId: string | number,
 ): Promise<RevShareProposeResult> => {
-  return proposeRevShareChangeHelper(target, activeRevShareId, allocations, true);
+  return proposeRevShareChangeHelper(target, activeRevShareId, allocations, true, currentUserId);
 };
 
 export const cancelRevShareProposal = async (proposedRevShareId: string): Promise<void> => {

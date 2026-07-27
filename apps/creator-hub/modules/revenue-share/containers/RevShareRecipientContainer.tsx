@@ -288,6 +288,7 @@ const RevShareRecipientContainer: FunctionComponent<RevShareRecipientContainerPr
       <>
         <RevShareRecipientDetail
           agreement={selectedAgreement}
+          recipient={recipient}
           recipientParty={recipientParty}
           canRespond={canRespond}
           onBack={handleBackToList}

@@ -7,6 +7,7 @@ import {
   MANAGING_GROUP_COLOR,
   UNALLOCATED_COLOR,
 } from '../utils/revShareSplitColors';
+import { isRevShareCurrentUserRecipient } from '../utils/revShareUtils';
 import RevSharePieChart from './RevSharePieChart';
 import RevShareSplitTable, { type RevShareSplitRowData } from './tables/RevShareSplitTable';
 const MANAGING_GROUP_ROW_KEY_PREFIX = 'managing-group';
@@ -18,6 +19,7 @@ export type RevShareSplitPanelProps = {
   managingGroupSubtitle?: string;
   unallocatedName?: string;
   resolveRecipientParty?: (recipient: RevShareRecipient) => ResolvedRevShareParty;
+  currentUserId?: string | number | null;
   centerLabel?: string;
   centerSubLabel?: string;
   chartAccessibleLabel?: string;
@@ -32,6 +34,7 @@ const RevShareSplitPanel: FunctionComponent<RevShareSplitPanelProps> = ({
   managingGroupSubtitle,
   unallocatedName,
   resolveRecipientParty,
+  currentUserId,
   centerLabel,
   centerSubLabel,
   chartAccessibleLabel,
@@ -69,6 +72,7 @@ const RevShareSplitPanel: FunctionComponent<RevShareSplitPanelProps> = ({
           identity: resolvedParty,
           basisPoints: splitBasisPoints,
           color: getRecipientColorByIndex(index),
+          isCurrentUser: isRevShareCurrentUserRecipient(recipient, currentUserId),
         };
       }),
     ];
@@ -84,6 +88,7 @@ const RevShareSplitPanel: FunctionComponent<RevShareSplitPanelProps> = ({
 
     return splitRows;
   }, [
+    currentUserId,
     managingGroupParty,
     managingGroupSubtitle,
     resolveRecipientParty,

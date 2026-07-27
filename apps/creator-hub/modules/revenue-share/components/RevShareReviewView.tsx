@@ -59,6 +59,7 @@ const RevShareReviewView: FunctionComponent<RevShareReviewViewProps> = ({
         ),
       )}
       rows={rows}
+      foreshadowCurrentUserAutoAccept
       replacesOpenProposal={replacesOpenProposal}
       footer={
         <div className='flex justify-end gap-medium'>

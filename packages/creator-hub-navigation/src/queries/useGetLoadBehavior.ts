@@ -26,6 +26,7 @@ class GUACClient extends BaseAPI {
   async loadBehavior<T>(behavior: string): Promise<T> {
     const response = await this.request({
       path: `/v1/bundles/${behavior}`,
+      schemaPath: '/v1/bundles/{behavior}',
       method: 'GET',
       headers: {},
     });

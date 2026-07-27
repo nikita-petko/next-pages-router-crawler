@@ -20,12 +20,14 @@ import {
   asNumberTypedId,
   formatPreviousSplitDisplay,
   getRevShareRecipientKey,
+  isRevShareCurrentUserRecipient,
 } from '../../utils/revShareUtils';
 import RevShareStatusBadge from '../RevShareStatusBadge';
 import RevShareThumbnailWithNames, {
   type RevShareThumbnailWithNamesProps,
 } from '../RevShareThumbnailWithNames';
 import { RevShareManagingGroupIcon } from './RevShareManagingGroupIcon';
+import { RevShareMeIcon } from './RevShareMeIcon';
 import type { SplitEditorRow } from './RevShareSplitEditorTable';
 
 const REV_SHARE_DIFF_TABLE_COLUMN_COUNT = 8;
@@ -53,6 +55,7 @@ export type RevShareDiffRowData = RevShareRecipient & {
   previousBasisPoints: number | null;
   newBasisPoints: number;
   isManagingGroup?: boolean;
+  isCurrentUser?: boolean;
   status?: RevShareConfirmationStatus;
 };
 
@@ -77,6 +80,7 @@ type BuildRevShareDiffRowsFromManagerProposalInput = {
   managingGroup: ManagerProposalReviewManagingGroup;
   resolveRecipientParty: (recipient: RevShareRecipient) => ResolvedRevShareParty;
   editorRowByKey?: ReadonlyMap<string, ManagerProposalReviewEditorRow>;
+  currentUserId?: string | number | null;
 };
 
 export const buildRevShareDiffRowsFromManagerProposal = ({
@@ -84,6 +88,7 @@ export const buildRevShareDiffRowsFromManagerProposal = ({
   managingGroup,
   resolveRecipientParty,
   editorRowByKey,
+  currentUserId,
 }: BuildRevShareDiffRowsFromManagerProposalInput): RevShareDiffRowData[] => {
   const confirmationStatusByRecipientKey = new Map(
     proposal.confirmations.map((confirmation) => [
@@ -130,6 +135,7 @@ export const buildRevShareDiffRowsFromManagerProposal = ({
       previousBasisPoints,
       newBasisPoints: change.toBasisPoints,
       status: confirmationStatusByRecipientKey.get(key),
+      isCurrentUser: isRevShareCurrentUserRecipient(change.recipient, currentUserId),
     };
   });
 
@@ -179,6 +185,7 @@ export const buildRevShareDiffRowsFromSplitEditor = (
         previousBasisPoints,
         newBasisPoints,
         status: confirmationStatusByRecipientKey.get(key),
+        isCurrentUser: row?.isCurrentUser,
       };
     },
   );
@@ -195,6 +202,7 @@ export const buildRevShareDiffRowsFromSplitEditor = (
       previousBasisPoints: row.previousBasisPoints,
       newBasisPoints: row.isRemoved ? 0 : row.basisPoints,
       status: confirmationStatusByRecipientKey.get(row.key),
+      isCurrentUser: row.isCurrentUser,
     });
   }
 
@@ -268,11 +276,13 @@ const CHANGE_TEXT_COLOR: Record<RevShareAllocationChangeKind, string> = {
 type RevShareDiffTableRowProps = {
   row: RevShareDiffRowData;
   managingGroupAriaLabel: string;
+  currentUserAriaLabel: string;
 };
 
 const RevShareDiffTableRow: FunctionComponent<RevShareDiffTableRowProps> = ({
   row,
   managingGroupAriaLabel,
+  currentUserAriaLabel,
 }) => {
   const changeKind = getRevShareAllocationChangeKind({
     fromBasisPoints: row.previousBasisPoints ?? 0,
@@ -317,6 +327,8 @@ const RevShareDiffTableRow: FunctionComponent<RevShareDiffTableRowProps> = ({
         <div className='flex items-center justify-center width-full'>
           {row.isManagingGroup ? (
             <RevShareManagingGroupIcon ariaLabel={managingGroupAriaLabel} />
+          ) : row.isCurrentUser ? (
+            <RevShareMeIcon ariaLabel={currentUserAriaLabel} />
           ) : null}
         </div>
       </TableCell>
@@ -376,6 +388,11 @@ const RevShareDiffTable: FunctionComponent<RevShareDiffTableProps> = ({
     'Managing group',
     'Column heading for the managing group badge in revenue share recipient tables.',
     translationKey('Label.ManagingGroup', TranslationNamespace.RevenueShareAgreements),
+  );
+  const currentUserHeading = tPendingTranslation(
+    'You',
+    'Label for the current recipient in a revenue-share split.',
+    translationKey('Label.You', TranslationNamespace.RevenueShareAgreements),
   );
   const previousHeading = tPendingTranslation(
     'Previous',
@@ -464,6 +481,7 @@ const RevShareDiffTable: FunctionComponent<RevShareDiffTableProps> = ({
               key={row.key}
               row={row}
               managingGroupAriaLabel={managingGroupHeading}
+              currentUserAriaLabel={currentUserHeading}
             />
           ))
         )}

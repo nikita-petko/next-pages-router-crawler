@@ -12,6 +12,7 @@ import RevShareThumbnailWithNames, {
   type RevShareThumbnailWithNamesProps,
 } from '../RevShareThumbnailWithNames';
 import { RevShareManagingGroupIcon } from './RevShareManagingGroupIcon';
+import { RevShareMeIcon } from './RevShareMeIcon';
 
 // Renders the current revenue share allocation as a table.
 const REV_SHARE_SPLIT_TABLE_COLUMN_COUNT = 4;
@@ -38,6 +39,7 @@ export type RevShareSplitRowData = {
   basisPoints: number;
   color: string;
   isManagingGroup?: boolean;
+  isCurrentUser?: boolean;
 };
 
 type RevShareSplitTableProps = {
@@ -75,6 +77,11 @@ const RevShareSplitTable: FunctionComponent<RevShareSplitTableProps> = ({
     'Managing group',
     'Column heading for the managing group badge in revenue share recipient tables.',
     translationKey('Label.ManagingGroup', TranslationNamespace.RevenueShareAgreements),
+  );
+  const currentUserHeading = tPendingTranslation(
+    'You',
+    'Label for the current recipient in a revenue-share split.',
+    translationKey('Label.You', TranslationNamespace.RevenueShareAgreements),
   );
   const splitHeading = tPendingTranslation(
     'Active split',
@@ -162,6 +169,8 @@ const RevShareSplitTable: FunctionComponent<RevShareSplitTableProps> = ({
                 <div className='flex items-center justify-center width-full'>
                   {row.isManagingGroup ? (
                     <RevShareManagingGroupIcon ariaLabel={managingGroupHeading} />
+                  ) : row.isCurrentUser ? (
+                    <RevShareMeIcon ariaLabel={currentUserHeading} />
                   ) : null}
                 </div>
               </TableCell>

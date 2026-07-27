@@ -3,10 +3,12 @@ import { useMemo, type FunctionComponent } from 'react';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { useAuthentication } from '@modules/authentication/providers';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import type {
   RecipientAgreement,
   ResolvedRevShareParty,
+  RevShareRecipient,
   RevShareRecipientSplit,
 } from '../interface/RevShareViewModel';
 import { RevShareConfirmationStatus, RevShareTargetType } from '../interface/RevShareViewModel';
@@ -16,7 +18,11 @@ import {
   MANAGING_GROUP_COLOR,
   UNALLOCATED_COLOR,
 } from '../utils/revShareSplitColors';
-import { asNumberTypedId, formatBasisPoints } from '../utils/revShareUtils';
+import {
+  asNumberTypedId,
+  formatBasisPoints,
+  isRevShareCurrentUserRecipient,
+} from '../utils/revShareUtils';
 import RevShareBanner from './RevShareBanner';
 import RevShareDetailView from './RevShareDetailView';
 import type { RevShareSplitRowData } from './tables/RevShareSplitTable';
@@ -29,8 +35,10 @@ type RevShareRecipientRowLabels = {
 
 const buildRecipientSplitRows = (
   split: RevShareRecipientSplit,
+  recipient: RevShareRecipient,
   recipientParty: ResolvedRevShareParty,
   labels: RevShareRecipientRowLabels,
+  currentUserId: string | number | null | undefined,
 ): RevShareSplitRowData[] => {
   const rows: RevShareSplitRowData[] = [
     {
@@ -39,6 +47,7 @@ const buildRecipientSplitRows = (
       identity: recipientParty,
       basisPoints: split.recipientBasisPoints,
       color: MANAGING_GROUP_COLOR,
+      isCurrentUser: isRevShareCurrentUserRecipient(recipient, currentUserId),
     },
     {
       id: 'remaining',
@@ -62,6 +71,7 @@ const buildRecipientSplitRows = (
 
 export type RevShareRecipientDetailProps = {
   agreement: RecipientAgreement;
+  recipient: RevShareRecipient;
   recipientParty: ResolvedRevShareParty;
   canRespond?: boolean;
   onBack: () => void;
@@ -70,12 +80,15 @@ export type RevShareRecipientDetailProps = {
 
 const RevShareRecipientDetail: FunctionComponent<RevShareRecipientDetailProps> = ({
   agreement,
+  recipient,
   recipientParty,
   canRespond = true,
   onBack,
   onReview,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+  const { user } = useAuthentication();
+  const currentUserId = user?.id;
   const labels = useMemo<RevShareRecipientRowLabels>(
     () => ({
       recipientName: tPendingTranslation(
@@ -97,8 +110,9 @@ const RevShareRecipientDetail: FunctionComponent<RevShareRecipientDetailProps> =
     [tPendingTranslation],
   );
   const splitRows = useMemo(
-    () => buildRecipientSplitRows(agreement.active, recipientParty, labels),
-    [agreement.active, recipientParty, labels],
+    () =>
+      buildRecipientSplitRows(agreement.active, recipient, recipientParty, labels, currentUserId),
+    [agreement.active, currentUserId, labels, recipient, recipientParty],
   );
   const proposalStatus = agreement.proposed?.confirmation;
   const isPending = proposalStatus === RevShareConfirmationStatus.Pending;

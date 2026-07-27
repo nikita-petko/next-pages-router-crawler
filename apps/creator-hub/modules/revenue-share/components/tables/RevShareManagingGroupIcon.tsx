@@ -1,21 +1,19 @@
 import type { FunctionComponent } from 'react';
-import { Icon, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
+import { Icon } from '@rbx/foundation-ui';
 
 type RevShareManagingGroupIconProps = {
   ariaLabel: string;
 };
 
+/** `aria-label` for AT; native `title` for hover (avoids Tooltip aria-describedby doubling the name). */
 export const RevShareManagingGroupIcon: FunctionComponent<RevShareManagingGroupIconProps> = ({
   ariaLabel,
 }) => (
-  <Tooltip position='top-center' title={ariaLabel}>
-    <TooltipTrigger asChild>
-      <Icon
-        name='icon-regular-three-people'
-        size='Small'
-        className='content-muted'
-        aria-label={ariaLabel}
-      />
-    </TooltipTrigger>
-  </Tooltip>
+  <Icon
+    name='icon-regular-three-people'
+    size='Small'
+    className='content-muted'
+    aria-label={ariaLabel}
+    title={ariaLabel}
+  />
 );

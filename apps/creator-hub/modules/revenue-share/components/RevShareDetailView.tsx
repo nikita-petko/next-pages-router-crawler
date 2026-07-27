@@ -25,6 +25,7 @@ type RevShareDetailViewProps = {
   managingGroupSubtitle?: string;
   unallocatedName?: string;
   resolveRecipientParty?: (recipient: RevShareRecipient) => ResolvedRevShareParty;
+  currentUserId?: string | number | null;
   centerLabel?: string;
   centerSubLabel?: string;
   backLabel?: string;
@@ -47,6 +48,7 @@ const RevShareDetailView: FunctionComponent<RevShareDetailViewProps> = ({
   managingGroupSubtitle,
   unallocatedName,
   resolveRecipientParty,
+  currentUserId,
   centerLabel,
   centerSubLabel,
   backLabel,
@@ -103,6 +105,7 @@ const RevShareDetailView: FunctionComponent<RevShareDetailViewProps> = ({
         managingGroupSubtitle={managingGroupSubtitle}
         unallocatedName={unallocatedName}
         resolveRecipientParty={resolveRecipientParty}
+        currentUserId={currentUserId}
         centerLabel={centerLabel}
         centerSubLabel={centerSubLabel}
         chartAccessibleLabel={chartAccessibleLabel}

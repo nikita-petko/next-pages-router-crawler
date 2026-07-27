@@ -37,9 +37,19 @@ export type ACERequestClients = {
   platformGatewayRAQIClient: Pick<AnalyticsQueryGatewayClientWrapper, 'executeDag'>;
 };
 
-type DagResultAdapter<TResult> = (
+export type DagResultAdapter<TResult> = (
   response: AnalyticsQueryGatewayExecuteDagResult,
 ) => TResult | null;
+
+export type MakeACERequestOptions = {
+  /**
+   * Labels DAG execution failures for the calling surface. Defaults to the
+   * computed-metric error so existing callers are unchanged.
+   */
+  createExecutionError?: AceDagExecutionErrorFactory;
+  /** Projects a successful DAG response into the RAQI-shaped response. */
+  adaptResult?: DagResultAdapter<RAQIV2QueryResponses>;
+};
 
 const toPollingOperation = (
   response: AnalyticsQueryGatewayExecuteDagResult,
@@ -86,7 +96,10 @@ export const executeDagRequest = async <TResult>(
 const makeACERequest = async (
   clients: ACERequestClients,
   dagRequest: AnalyticsQueryGatewayExecuteDagRequest,
-  createExecutionError: AceDagExecutionErrorFactory = defaultExecutionErrorFactory,
+  {
+    createExecutionError = defaultExecutionErrorFactory,
+    adaptResult = adaptExecuteDagResponseToRAQIV2Result,
+  }: MakeACERequestOptions = {},
 ): Promise<RAQIV2QueryResponses> => {
   try {
     return await executeDagRequest(clients, dagRequest, (response) => {
@@ -104,7 +117,7 @@ const makeACERequest = async (
       if (executionError) {
         throw createExecutionError(executionError);
       }
-      return adaptExecuteDagResponseToRAQIV2Result(response);
+      return adaptResult(response);
     });
   } catch (err) {
     // Defensive backstop: `pollAnalyticsOperation` raises any `operation.error`

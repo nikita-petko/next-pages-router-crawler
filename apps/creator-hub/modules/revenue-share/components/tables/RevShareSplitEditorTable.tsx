@@ -18,6 +18,7 @@ import {
   asNumberTypedId,
   asSafeBasisPoints,
   formatPreviousSplitDisplay,
+  sortRevShareRecipientsForStableDisplay,
 } from '../../utils/revShareUtils';
 import { isRevShareSplitEditorAllocationInvalid } from '../../utils/revShareValidation';
 import RevSharePercentInput from '../RevSharePercentInput';
@@ -25,6 +26,7 @@ import RevShareThumbnailWithNames, {
   type RevShareThumbnailWithNamesProps,
 } from '../RevShareThumbnailWithNames';
 import { RevShareManagingGroupIcon } from './RevShareManagingGroupIcon';
+import { RevShareMeIcon } from './RevShareMeIcon';
 
 export type SplitEditorRow = {
   key: string;
@@ -41,6 +43,7 @@ export type SplitEditorRow = {
   basisPoints: number;
   disabled?: boolean;
   isManagingGroup?: boolean;
+  isCurrentUser?: boolean;
   isNew?: boolean;
   isRemoved?: boolean;
   fieldInvalid?: boolean;
@@ -71,10 +74,12 @@ export const splitEditorRowsToRecipientAllocations = (
       splitBasisPoints: row.basisPoints,
     }));
 
-export const orderSplitEditorDisplayRows = (rows: readonly SplitEditorRow[]): SplitEditorRow[] => {
+export const orderSplitEditorDisplayRows = (
+  rows: readonly SplitEditorRow[],
+  currentUserId: string | number,
+): SplitEditorRow[] => {
   const managingGroupRows: SplitEditorRow[] = [];
-  const newRows: SplitEditorRow[] = [];
-  const existingRows: SplitEditorRow[] = [];
+  const recipientRows: SplitEditorRow[] = [];
 
   for (const row of rows) {
     if (row.isRemoved) {
@@ -82,19 +87,22 @@ export const orderSplitEditorDisplayRows = (rows: readonly SplitEditorRow[]): Sp
     }
     if (row.isManagingGroup) {
       managingGroupRows.push(row);
-    } else if (row.isNew) {
-      newRows.push(row);
     } else {
-      existingRows.push(row);
+      recipientRows.push(row);
     }
   }
 
-  newRows.sort((a, b) => {
-    const nameCompare = a.name.localeCompare(b.name);
-    return nameCompare !== 0 ? nameCompare : a.key.localeCompare(b.key);
-  });
+  const orderedRecipients = sortRevShareRecipientsForStableDisplay(
+    recipientRows.map((row, inputIndex) => ({
+      recipient: { type: row.type, id: row.id },
+      isAddition: row.isNew === true,
+      inputIndex,
+      row,
+    })),
+    currentUserId,
+  ).map(({ row }) => row);
 
-  return [...managingGroupRows, ...newRows, ...existingRows];
+  return [...managingGroupRows, ...orderedRecipients];
 };
 
 export const decorateSplitEditorFieldErrors = (
@@ -191,6 +199,7 @@ const RemoveRecipientButton: FunctionComponent<RemoveRecipientButtonProps> = ({
 type SplitEditorTableRowProps = {
   row: SplitEditorRow;
   managingGroupAriaLabel: string;
+  currentUserAriaLabel: string;
   removeAriaLabel: string;
   onSplitChange?: (key: string, newBasisPoints: number) => void;
   onSplitValidityChange?: (key: string, isValid: boolean) => void;
@@ -213,6 +222,7 @@ const DECORATIVE_CELL_CLASS = 'padding-none';
 const SplitEditorTableRow: FunctionComponent<SplitEditorTableRowProps> = ({
   row,
   managingGroupAriaLabel,
+  currentUserAriaLabel,
   removeAriaLabel,
   onSplitChange,
   onSplitValidityChange,
@@ -254,6 +264,8 @@ const SplitEditorTableRow: FunctionComponent<SplitEditorTableRowProps> = ({
         <div className='flex items-center justify-center width-full'>
           {row.isManagingGroup ? (
             <RevShareManagingGroupIcon ariaLabel={managingGroupAriaLabel} />
+          ) : row.isCurrentUser ? (
+            <RevShareMeIcon ariaLabel={currentUserAriaLabel} />
           ) : null}
         </div>
       </TableCell>
@@ -312,6 +324,11 @@ const RevShareSplitEditorTable: FunctionComponent<RevShareSplitEditorTableProps>
     'Managing group',
     'Column heading for the managing group badge in revenue share recipient tables.',
     translationKey('Label.ManagingGroup', TranslationNamespace.RevenueShareAgreements),
+  );
+  const currentUserHeading = tPendingTranslation(
+    'You',
+    'Label for the current recipient in a revenue-share split.',
+    translationKey('Label.You', TranslationNamespace.RevenueShareAgreements),
   );
   const previousHeading = tPendingTranslation(
     'Previous',
@@ -391,6 +408,7 @@ const RevShareSplitEditorTable: FunctionComponent<RevShareSplitEditorTableProps>
               key={row.key}
               row={row}
               managingGroupAriaLabel={managingGroupHeading}
+              currentUserAriaLabel={currentUserHeading}
               removeAriaLabel={tPendingTranslation(
                 'Remove {name}',
                 'Accessible label for removing a recipient; {name} is the recipient name.',

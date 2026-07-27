@@ -1,10 +1,11 @@
 // Presents the revenue-share landing page with tabs, filters, agreement rows, and target action routing.
-import { useCallback, useMemo, useState, type FunctionComponent } from 'react';
-import { Button, Chip, Tabs, TabsList, TabsTrigger } from '@rbx/foundation-ui';
+import { useCallback, useMemo, useState, type ChangeEvent, type FunctionComponent } from 'react';
+import { Button, Chip, Tabs, TabsList, TabsTrigger, TextInput } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { useRevShareClientTablePagination } from '../hooks/useRevShareClientTablePagination';
 import {
   RevShareTargetType,
   type ManagerAgreement,
@@ -45,6 +46,11 @@ const TOP_TABS: TopTab[] = ['managed', 'recipient'];
 
 const isTopTab = (value: string): value is TopTab => TOP_TABS.some((tab) => tab === value);
 
+const matchesTargetNameQuery = (targetName: string, query: string) => {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  return normalizedQuery === '' || targetName.toLocaleLowerCase().includes(normalizedQuery);
+};
+
 const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
   managerRows,
   recipientRows,
@@ -67,6 +73,7 @@ const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
   const [subTab, setSubTab] = useState<SubTab>(
     focusTarget?.type === RevShareTargetType.Ugc ? 'ugc' : 'experiences',
   );
+  const [query, setQuery] = useState('');
 
   if (focusTarget && focusTargetKey !== previousFocusTargetKey) {
     setPreviousFocusTargetKey(focusTargetKey);
@@ -83,12 +90,38 @@ const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
     [subTab],
   );
   const filteredManagerRows = useMemo(
-    () => filterLandingManagerAgreements(managerRows).filter(isSelectedTargetType),
-    [managerRows, isSelectedTargetType],
+    () =>
+      filterLandingManagerAgreements(managerRows)
+        .filter(isSelectedTargetType)
+        .filter((row) => matchesTargetNameQuery(row.targetName, query)),
+    [managerRows, isSelectedTargetType, query],
   );
   const filteredRecipientRows = useMemo(
-    () => filterLandingRecipientAgreements(recipientRows).filter(isSelectedTargetType),
-    [recipientRows, isSelectedTargetType],
+    () =>
+      filterLandingRecipientAgreements(recipientRows)
+        .filter(isSelectedTargetType)
+        .filter((row) => matchesTargetNameQuery(row.targetName, query)),
+    [recipientRows, isSelectedTargetType, query],
+  );
+
+  const activeFilteredCount =
+    topTab === 'managed' ? filteredManagerRows.length : filteredRecipientRows.length;
+  const paginationResetKey = `${topTab}:${subTab}:${query.trim().toLocaleLowerCase()}`;
+  const { page, rowsPerPage, onPageChange, onRowsPerPageChange } = useRevShareClientTablePagination(
+    {
+      count: activeFilteredCount,
+      resetKey: paginationResetKey,
+    },
+  );
+  const pagination = useMemo(
+    () => ({
+      page,
+      rowsPerPage,
+      totalRows: activeFilteredCount,
+      onPageChange,
+      onRowsPerPageChange,
+    }),
+    [page, rowsPerPage, activeFilteredCount, onPageChange, onRowsPerPageChange],
   );
 
   const recipientSubtitle = isUserView
@@ -137,6 +170,10 @@ const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
     [onPerspectiveChange],
   );
 
+  const handleQueryChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setQuery(event.currentTarget.value);
+  }, []);
+
   const getTopTabLabel = (tab: TopTab): string => {
     if (tab === 'managed') {
       return tPendingTranslation(
@@ -156,6 +193,11 @@ const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
     'New agreement',
     'Button label to start creating a new revenue share agreement.',
     translationKey('Label.NewAgreement', TranslationNamespace.RevenueShareAgreements),
+  );
+  const searchLabel = tPendingTranslation(
+    'Search experiences or UGC items',
+    'Accessible label and placeholder for the revenue share target picker search.',
+    translationKey('Label.SearchTargets', TranslationNamespace.RevenueShareAgreements),
   );
   const newAgreementAction = onNewAgreement ? (
     <Button variant='Emphasis' size='Medium' onClick={onNewAgreement}>
@@ -202,6 +244,15 @@ const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
         </div>
       )}
 
+      <TextInput
+        type='search'
+        size='Medium'
+        aria-label={searchLabel}
+        placeholder={searchLabel}
+        value={query}
+        onChange={handleQueryChange}
+      />
+
       <div className='flex gap-xsmall'>
         <Chip
           text={tPendingTranslation(
@@ -232,6 +283,7 @@ const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
           onRowClick={onManagerRowClick}
           emptyMessage={emptyMessage}
           focusTarget={focusTarget}
+          pagination={pagination}
         />
       ) : (
         <RevShareLandingTable
@@ -240,6 +292,7 @@ const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
           onRowClick={onRecipientRowClick}
           emptyMessage={emptyMessage}
           focusTarget={focusTarget}
+          pagination={pagination}
         />
       )}
     </div>

@@ -73,12 +73,14 @@ import {
 } from './computedMetrics/buildComputedMetricDag';
 import { PRESET_DATE_RANGE_DURATION_MS } from './dateRangeUtils';
 import { getAPIMetricFromUIMetric } from './getAPIMetricFromUIMetric';
-import getComparisonRange from './getComparisonRange';
+import getComparisonRange, { type ComparisonRangeSpec } from './getComparisonRange';
 import { getUIMetric } from './getUIMetric';
 import isComparisonRangeAllowed from './isComparisonRangeAllowed';
 import makeACERequest from './makeACERequest';
+import makeTopNRankAceRequest from './makeTopNRankAceRequest';
 import sliceRAQIV2QueryResultByTimeRange from './sliceRAQIV2QueryResultByTimeRange';
 import { snapToLatestEndTime, snapToLatestStartTime } from './snapToLatestTimestep';
+import { processUngroupedOtherResponse } from './topNResponseUtils';
 import VariantFanoutDagExecutionError from './VariantFanoutDagExecutionError';
 
 export const enum FetchComparisonSeriesMode {
@@ -86,16 +88,13 @@ export const enum FetchComparisonSeriesMode {
   Combined = 'Combined', // Save extra api calls by fetching the entire time series at once
 }
 
-export type FetchComparisonOptions = {
+export type FetchComparisonOptions = ComparisonRangeSpec & {
   mode: FetchComparisonSeriesMode;
-  granularity: RAQIV2MetricGranularity;
   /**
    * Applies to all consumers of the comparison response, including summary
    * chips and in-chart series. Defaults to `shortRangeOnly`.
    */
   rangePolicy?: ComparisonRangePolicy;
-  relativeOffset?: TComparisonOffset;
-  customStartDate?: Date;
 };
 
 type RAQIV2QueryResultWithComparison = {
@@ -819,6 +818,13 @@ export type MakeRAQIV2RequestOptions = {
   allowComparisonWithBreakdown?: boolean;
   fillMissingDatapoints?: boolean;
   /**
+   * DSA-5783: when true (and the request qualifies), standard TopN breakdowns
+   * are delegated to ACE/AFC via rank `BreakdownSpec`s instead of the legacy
+   * frontend TopN pre-query/stitching flow. Resolved centrally by
+   * `useRAQIV2Request` from the `isAceRankBreakdownSpecEnabled` flag.
+   */
+  emitAceRankBreakdownSpec?: boolean;
+  /**
    * DSA-5784: when true (and the request qualifies), metric variant fanout is
    * delegated to ACE/AFC via a single DAG request instead of the legacy
    * client-side N-query fanout. Resolved centrally by
@@ -1131,35 +1137,6 @@ const makeMainAndTotalRequestsForMetricFanout = async (
   return { mainResponse, totalResponse };
 };
 
-const processUngroupedOtherResponse = (
-  otherResponse: RAQIV2QueryResult | undefined | null,
-  otherTopNApiFilters: RAQIV2APIQueryFilter[],
-): RAQIV2QueryResult | null => {
-  if (!otherResponse) {
-    return null;
-  }
-  // Append an 'Other' breakdown entry for every dimension being filtered with
-  // NotContains to each series in the response. When the request had no
-  // additional breakdowns the response contains a single un-broken-down series
-  // and we end up with one row representing 'Other'. When there ARE additional
-  // breakdowns (e.g. Platform, OS) the response contains one series per
-  // unique combination of those breakdowns and each one gets its own 'Other'
-  // entry appended for the topN/otherSeries dimensions.
-  const otherBreakdownEntries = otherTopNApiFilters.map(({ dimension }) => ({
-    dimension,
-    value: 'Other',
-  }));
-  const values = otherResponse.values ?? [];
-  if (values.length === 0) {
-    return null;
-  }
-  const otherSeries = values.map((value) => ({
-    ...value,
-    breakdownValue: [...(value.breakdownValue ?? []), ...otherBreakdownEntries],
-  }));
-  return { values: otherSeries };
-};
-
 const processUngroupedOtherResultWithComparison = (
   otherResponse: RAQIV2QueryResultWithComparison | null,
   otherTopNApiFilters: RAQIV2APIQueryFilter[],
@@ -1167,10 +1144,11 @@ const processUngroupedOtherResultWithComparison = (
   if (!otherResponse) {
     return { result: null };
   }
-  const otherResult = processUngroupedOtherResponse(otherResponse.result, otherTopNApiFilters);
+  const otherDimensions = otherTopNApiFilters.map(({ dimension }) => dimension);
+  const otherResult = processUngroupedOtherResponse(otherResponse.result, otherDimensions);
   const otherComparisonResult = processUngroupedOtherResponse(
     otherResponse.comparisonResult,
-    otherTopNApiFilters,
+    otherDimensions,
   );
   return {
     result: otherResult,
@@ -1603,6 +1581,7 @@ const makeComputedMetricRequest = async ({
   metric,
   clients,
   fetchTotalSeries,
+  emitAceRankBreakdownSpec,
   comparison,
 }: {
   queryRequest: RAQIV2UIQueryRequest;
@@ -1610,6 +1589,7 @@ const makeComputedMetricRequest = async ({
   metric: ComputedMetric;
   clients: CombinedAPIClientWrapper;
   fetchTotalSeries: boolean | undefined;
+  emitAceRankBreakdownSpec: boolean | undefined;
   comparison?: FetchComparisonOptions;
 }): Promise<RAQIV2QueryResponses> => {
   const executeForTimeSpec = async (
@@ -1632,6 +1612,7 @@ const makeComputedMetricRequest = async ({
         // `RAQIV2QueryResponses.totalSeriesResponse`.
         {
           includeTotalBranch: Boolean(fetchTotalSeries),
+          emitRankBreakdownSpec: Boolean(emitAceRankBreakdownSpec),
         },
       );
     } catch (error) {
@@ -1742,10 +1723,12 @@ const makeStandardMetricVariantFanoutRequest = async ({
         apiFilters,
         metricFanoutPseudoBreakdown,
       ),
-      // Tag failures as variant fanout (not computed metric) for accurate
-      // operator/Sentry routing; still handled gracefully via the shared
-      // `isAceDagExecutionError` path.
-      (details) => new VariantFanoutDagExecutionError(details),
+      {
+        // Tag failures as variant fanout (not computed metric) for accurate
+        // operator/Sentry routing; still handled gracefully via the shared
+        // `isAceDagExecutionError` path.
+        createExecutionError: (details) => new VariantFanoutDagExecutionError(details),
+      },
     );
 
   const variantDisplayMap = buildVariantDisplayMap(metricFanoutPseudoBreakdown);
@@ -1844,6 +1827,7 @@ const makeRAQIV2Request = async (
       metric: metricSelection.metric,
       clients,
       fetchTotalSeries: resolvedOptions.fetchTotalSeries,
+      emitAceRankBreakdownSpec: resolvedOptions.emitAceRankBreakdownSpec,
       comparison: fetchComparison,
     });
   }
@@ -1898,6 +1882,28 @@ const makeRAQIV2Request = async (
     filter: apiFilters.length ? apiFilters : undefined,
     timeSpec: snappedTimeSpec,
   };
+
+  const aceRankResponse = await makeTopNRankAceRequest({
+    clients,
+    request: snappedRequestBase,
+    metric: metricForTotalSeries,
+    apiBreakdown: apiBreakdownBase,
+    topNBreakdownConfigs: topNPseudoBreakdown.map(({ config }) => config),
+    emitAceRankBreakdownSpec: resolvedOptions.emitAceRankBreakdownSpec,
+    fetchTotalSeries: resolvedOptions.fetchTotalSeries,
+    comparison: fetchComparison,
+    legacyOnlyFeatures: {
+      fillsMissingDatapoints: shouldFillMissingDatapoints,
+      hasMetricFanoutBreakdown: metricFanoutPseudoBreakdown.length > 0,
+      hasMetricFanoutFilters: metricFanoutPseudoFilters.length > 0,
+      hasOtherSeriesFilters: otherSeriesFilters.length > 0,
+      hasOtherSeriesNotContainsFilters: otherSeriesNotContainsFilters.length > 0,
+    },
+  });
+  if (aceRankResponse !== null) {
+    return aceRankResponse;
+  }
+
   const {
     breakdown: topNApiBreakdowns,
     mainFilters: topNApiFilters,

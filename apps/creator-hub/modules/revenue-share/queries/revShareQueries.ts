@@ -1,6 +1,7 @@
 // Provides revenue share React Query hooks for manager agreements, party identity resolution, proposals, and cancellations.
 import { useCallback, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuthentication } from '@modules/authentication/providers';
 import groupsClient from '@modules/clients/groups';
 import usersClient from '@modules/clients/users';
 import CreatorType from '@modules/miscellaneous/common/enums/Creator';
@@ -34,8 +35,8 @@ const EMPTY_GROUP_IDS: string[] = [];
 
 const getStableIds = (ids: string[]): string[] => [...new Set(ids)].sort();
 
-const managerKey = (managingGroupId: string) =>
-  ['revenueShareAgreements', 'manager', managingGroupId] as const;
+const managerKey = (managingGroupId: string, currentUserId: string | number = '') =>
+  ['revenueShareAgreements', 'manager', managingGroupId, String(currentUserId)] as const;
 
 const recipientKey = (
   recipientType: RevShareRecipient['type'] | undefined,
@@ -49,13 +50,15 @@ const getRevShareGroupNamesQueryKey = (groupIds: string[]) =>
   ['revenueShareAgreements', 'partyNames', 'groups', groupIds] as const;
 
 export function useRevShareForManager(managingGroupId?: string) {
+  const { user } = useAuthentication();
+  const currentUserId = user?.id ?? '';
   return useQuery({
-    queryKey: managerKey(managingGroupId ?? ''),
+    queryKey: managerKey(managingGroupId ?? '', currentUserId),
     queryFn: () => {
       if (!managingGroupId) {
         throw new Error('managingGroupId required');
       }
-      return getRevShareForManager(managingGroupId);
+      return getRevShareForManager(managingGroupId, currentUserId);
     },
     enabled: Boolean(managingGroupId),
   });
@@ -212,17 +215,26 @@ export function useRevShareProposalMutations(
   onCancelSuccess?: () => void,
 ) {
   const queryClient = useQueryClient();
+  const { user } = useAuthentication();
+  const currentUserId = user?.id ?? '';
   const invalidate = useCallback(async () => {
     if (managingGroupId !== undefined) {
-      await queryClient.invalidateQueries({ queryKey: managerKey(managingGroupId) });
+      await queryClient.invalidateQueries({
+        queryKey: managerKey(managingGroupId, currentUserId),
+      });
     }
-  }, [managingGroupId, queryClient]);
+  }, [currentUserId, managingGroupId, queryClient]);
 
   const propose = useMutation<RevShareProposeResult, Error, ProposeRevShareArgs>({
     mutationFn: ({ target: proposedTarget, activeRevShareId, allocations, allocateUnallocated }) =>
       allocateUnallocated
-        ? proposeRevShareAllocateUnallocated(proposedTarget, activeRevShareId, allocations)
-        : proposeRevShareChange(proposedTarget, activeRevShareId, allocations),
+        ? proposeRevShareAllocateUnallocated(
+            proposedTarget,
+            activeRevShareId,
+            allocations,
+            currentUserId,
+          )
+        : proposeRevShareChange(proposedTarget, activeRevShareId, allocations, currentUserId),
     onSuccess: invalidate,
   });
   const cancel = useMutation<void, Error, string>({

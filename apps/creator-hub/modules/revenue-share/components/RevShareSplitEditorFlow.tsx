@@ -14,6 +14,7 @@ import { VisuallyHidden, type TStepperStep } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { useAuthentication } from '@modules/authentication/providers';
 import CreatorType from '@modules/miscellaneous/common/enums/Creator';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import {
@@ -28,6 +29,7 @@ import {
   asSafeBasisPoints,
   formatBasisPoints,
   getRevShareRecipientKey,
+  isRevShareCurrentUserRecipient,
   materializeManagerProposal,
   materializeProposedSplit,
 } from '../utils/revShareUtils';
@@ -84,6 +86,8 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
   onStepChange,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+  const { user } = useAuthentication();
+  const currentUserId = user?.id ?? '';
   const [step, setStep] = useState<RevShareSplitEditorFlowStep>('editor');
   const [hasAttemptedContinue, setHasAttemptedContinue] = useState(false);
   const [hasNoChangesError, setHasNoChangesError] = useState(false);
@@ -130,8 +134,8 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
     [activeSplit.unallocatedBasisPoints, rows],
   );
   const proposal = useMemo(
-    () => materializeManagerProposal(activeSplit, proposedSplit),
-    [activeSplit, proposedSplit],
+    () => materializeManagerProposal(activeSplit, proposedSplit, currentUserId),
+    [activeSplit, currentUserId, proposedSplit],
   );
   const reviewRows = useMemo(
     () => buildRevShareDiffRowsFromSplitEditor(rows, proposal),
@@ -229,11 +233,11 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
     () =>
       hasAttemptedContinue
         ? decorateSplitEditorFieldErrors(
-            orderSplitEditorDisplayRows(rows),
+            orderSplitEditorDisplayRows(rows, currentUserId),
             invalidRecipientShareMessage,
           )
-        : orderSplitEditorDisplayRows(rows),
-    [hasAttemptedContinue, invalidRecipientShareMessage, rows],
+        : orderSplitEditorDisplayRows(rows, currentUserId),
+    [currentUserId, hasAttemptedContinue, invalidRecipientShareMessage, rows],
   );
 
   useEffect(() => {
@@ -384,6 +388,7 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
             previousBasisPoints: null,
             basisPoints: 0,
             isNew: true,
+            isCurrentUser: isRevShareCurrentUserRecipient(recipient, currentUserId),
           },
         ]),
         { shouldDirty: true },
@@ -391,7 +396,7 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
       setValue('recipientQuery', '', { shouldDirty: true });
       onSearchQueryChange?.('');
     },
-    [onSearchQueryChange, rows, setValue],
+    [currentUserId, onSearchQueryChange, rows, setValue],
   );
   const handleEditorContinue = useCallback(() => {
     setHasAttemptedContinue(true);

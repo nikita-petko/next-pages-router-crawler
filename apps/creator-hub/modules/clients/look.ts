@@ -37,6 +37,7 @@ export class LookClient extends BaseAPI {
     // The generator fails to substitute the path parameter, so we manually construct the path using BaseAPI.
     return this.request({
       path: `/v2/looks/${lookId}`,
+      schemaPath: '/v2/looks/{LookId}',
       method: 'GET',
       headers: {},
       // oxlint-disable-next-line no-unsafe-type-assertion -- response.json() returns Promise<any>

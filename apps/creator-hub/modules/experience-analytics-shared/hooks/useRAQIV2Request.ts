@@ -20,15 +20,25 @@ const useRAQIV2Request = (
   ignoreCache?: boolean,
 ): TUseApiRequestResponse<RAQIV2QueryResponses> => {
   const { client, clearCache } = useRAQIV2Client(ignoreCache ?? false);
-  const { ready: requestFlagsReady, enableAceVariantFanout } = useRAQIV2RequestFlags();
+  const requestFlags = useRAQIV2RequestFlags();
 
-  const resolvedOptions = useMemo((): MakeRAQIV2RequestOptions | undefined => {
-    const effectiveOptions = {
-      ...stripFetchComparisonForBreakdown(request, makeRAQIV2RequestOptions),
-      enableAceVariantFanout,
-    };
+  const resolvedOptions = useMemo((): MakeRAQIV2RequestOptions => {
+    const callerOptions = stripFetchComparisonForBreakdown(request, makeRAQIV2RequestOptions) ?? {};
+    // An explicit caller value wins for both rollout flags (Storybook and tests
+    // pin a path); otherwise the resolved flag decides. Values are unreadable
+    // until every flag resolves, and the request stays disabled until then.
+    const effectiveOptions: MakeRAQIV2RequestOptions = requestFlags.ready
+      ? {
+          ...callerOptions,
+          enableAceVariantFanout:
+            makeRAQIV2RequestOptions?.enableAceVariantFanout ?? requestFlags.enableAceVariantFanout,
+          emitAceRankBreakdownSpec:
+            makeRAQIV2RequestOptions?.emitAceRankBreakdownSpec ??
+            requestFlags.emitAceRankBreakdownSpec,
+        }
+      : callerOptions;
 
-    if (!effectiveOptions?.fetchComparison) {
+    if (!effectiveOptions.fetchComparison) {
       return effectiveOptions;
     }
 
@@ -46,7 +56,7 @@ const useRAQIV2Request = (
       ...effectiveOptions,
       fetchComparison: undefined,
     };
-  }, [enableAceVariantFanout, makeRAQIV2RequestOptions, request]);
+  }, [makeRAQIV2RequestOptions, request, requestFlags]);
 
   const makeRaqiRequest = useCallback(() => {
     const validationError = validateRAQIV2Request(request);
@@ -58,7 +68,7 @@ const useRAQIV2Request = (
   }, [client, resolvedOptions, request]);
 
   const response = useApiRequest(makeRaqiRequest, {
-    enabled: requestFlagsReady,
+    enabled: requestFlags.ready,
     refetchShouldSetLoading: true,
     invalidateCache: ignoreCache ? clearCache : undefined,
   });

@@ -19,6 +19,7 @@ export type RevSharePendingProposalFlowProps = {
   managingGroupSubtitle: string;
   agreement: ManagerAgreement;
   resolveRecipientParty: (recipient: RevShareRecipient) => ResolvedRevShareParty;
+  currentUserId?: string | number | null;
   action: 'review' | 'cancel';
   isTermsAccepted: boolean;
   onTermsAcceptedChange: (isAccepted: boolean) => void;
@@ -34,6 +35,7 @@ const RevSharePendingProposalFlow: FunctionComponent<RevSharePendingProposalFlow
   managingGroupSubtitle,
   agreement,
   resolveRecipientParty,
+  currentUserId,
   action,
   isTermsAccepted,
   onTermsAcceptedChange,
@@ -60,9 +62,11 @@ const RevSharePendingProposalFlow: FunctionComponent<RevSharePendingProposalFlow
               previousBasisPoints: agreement.active.managingGroupBasisPoints,
             },
             resolveRecipientParty,
+            currentUserId,
           }),
     [
       agreement.active.managingGroupBasisPoints,
+      currentUserId,
       managingGroupId,
       managingGroupName,
       managingGroupSubtitle,

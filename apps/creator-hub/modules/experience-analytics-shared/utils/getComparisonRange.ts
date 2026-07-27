@@ -4,6 +4,20 @@ import { COMPARISON_RELATIVE_OFFSET_TO_MS } from '../constants/comparisonOffset'
 import type { ComparisonOverlay } from '../types/RAQIV2ChartSpec';
 
 /**
+ * Everything {@link getComparisonRange} needs to derive a comparison window.
+ *
+ * Lives here rather than being picked out of `FetchComparisonOptions` so that
+ * every surface computing a comparison range — the retention check, the fetch
+ * path, and the ACE rank path — shares one definition without importing the
+ * request module (which would be a cycle for callers the request module owns).
+ */
+export type ComparisonRangeSpec = {
+  granularity: RAQIV2MetricGranularity;
+  relativeOffset?: ComparisonOverlay['relativeOffset'];
+  customStartDate?: ComparisonOverlay['customStartDate'];
+};
+
+/**
  * Returns the [start, end] window for the comparison series.
  *
  * - When `relativeOffset` is set (`'7d' | '14d' | '28d'`), shifts the main

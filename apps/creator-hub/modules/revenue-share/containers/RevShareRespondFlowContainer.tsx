@@ -3,6 +3,7 @@ import { useCallback, useMemo, useRef, useState, type FunctionComponent } from '
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { useAuthentication } from '@modules/authentication/providers';
 import CreatorType from '@modules/miscellaneous/common/enums/Creator';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import RevShareRecipientReviewView from '../components/RevShareRecipientReviewView';
@@ -19,7 +20,7 @@ import {
 } from '../interface/RevShareViewModel';
 import { useRevShareRespondMutation } from '../queries/revShareQueries';
 import { AGGREGATE_REMAINING_COLOR, UNALLOCATED_COLOR } from '../utils/revShareSplitColors';
-import { getRevShareRecipientKey } from '../utils/revShareUtils';
+import { getRevShareRecipientKey, isRevShareCurrentUserRecipient } from '../utils/revShareUtils';
 
 export type RevShareRespondFlowStep = 'review' | 'terms';
 
@@ -35,6 +36,7 @@ const buildRecipientDiffRows = (
   recipientParty: ResolvedRevShareParty,
   confirmation: RevShareConfirmationStatus,
   labels: RevShareRecipientRowLabels,
+  currentUserId: string | number | null | undefined,
 ): RevShareDiffRowData[] => {
   const rows: RevShareDiffRowData[] = [
     {
@@ -49,6 +51,7 @@ const buildRecipientDiffRows = (
       previousBasisPoints: changes.recipient.fromBasisPoints,
       newBasisPoints: changes.recipient.toBasisPoints,
       status: confirmation,
+      isCurrentUser: isRevShareCurrentUserRecipient(recipient, currentUserId),
     },
     {
       key: 'remaining',
@@ -94,6 +97,8 @@ const RevShareRespondFlowContainer: FunctionComponent<RevShareRespondFlowContain
   onStepChange,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+  const { user } = useAuthentication();
+  const currentUserId = user?.id;
   const [step, setStep] = useState<RevShareRespondFlowStep>('review');
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -129,9 +134,10 @@ const RevShareRespondFlowContainer: FunctionComponent<RevShareRespondFlowContain
             recipientParty,
             proposal.confirmation,
             labels,
+            currentUserId,
           )
         : [],
-    [labels, proposal, recipient, recipientParty],
+    [currentUserId, labels, proposal, recipient, recipientParty],
   );
   const transitionToStep = useCallback(
     (nextStep: RevShareRespondFlowStep) => {

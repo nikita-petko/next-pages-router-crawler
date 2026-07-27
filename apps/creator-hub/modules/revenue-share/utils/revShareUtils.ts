@@ -4,6 +4,7 @@ import {
   REV_SHARE_TOTAL_BASIS_POINTS,
   RevShareConfirmationStatus,
   RevShareProposalType,
+  RevShareRecipientType,
 } from '../interface/RevShareViewModel';
 import type {
   ManagerProposal,
@@ -72,6 +73,63 @@ export const getRevShareRecipientKey = (
   return `${resolved.type}:${resolved.id}`;
 };
 
+export const isRevShareCurrentUserRecipient = (
+  recipient: Pick<RevShareRecipient, 'type' | 'id'>,
+  currentUserId: string | number | null | undefined,
+): boolean =>
+  currentUserId != null &&
+  currentUserId !== '' &&
+  recipient.type === RevShareRecipientType.User &&
+  recipient.id === String(currentUserId);
+
+export const shouldAutoAcceptProposedAsCurrentUser = (
+  confirmations: readonly RevShareRecipientConfirmation[],
+  currentUserId: string | number | null | undefined,
+): boolean =>
+  confirmations.some(
+    (confirmation) =>
+      confirmation.status === RevShareConfirmationStatus.Pending &&
+      isRevShareCurrentUserRecipient(confirmation.recipient, currentUserId),
+  );
+
+/** Display-order sort input for recipients (managing group is outside this list). */
+export type RevShareStableDisplaySortItem = {
+  recipient: Pick<RevShareRecipient, 'type' | 'id'>;
+  isAddition: boolean;
+  inputIndex: number;
+};
+
+/**
+ * Stable recipient display order: current user, then remaining additions (by recipient key),
+ * then remaining existing (by inputIndex). Key order is shared by editor and review diff.
+ */
+export const sortRevShareRecipientsForStableDisplay = <T extends RevShareStableDisplaySortItem>(
+  items: readonly T[],
+  currentUserId: string | number,
+): T[] => {
+  const currentUserItems: T[] = [];
+  const additions: T[] = [];
+  const existing: T[] = [];
+
+  for (const item of items) {
+    if (isRevShareCurrentUserRecipient(item.recipient, currentUserId)) {
+      currentUserItems.push(item);
+    } else if (item.isAddition) {
+      additions.push(item);
+    } else {
+      existing.push(item);
+    }
+  }
+
+  additions.sort((a, b) =>
+    getRevShareRecipientKey(a.recipient).localeCompare(getRevShareRecipientKey(b.recipient)),
+  );
+
+  existing.sort((a, b) => a.inputIndex - b.inputIndex);
+
+  return [...currentUserItems, ...additions, ...existing];
+};
+
 const canonicalizeRecipientBasisPoints = (
   recipients: readonly RevShareRecipientAllocation[],
 ): Map<string, number> => {
@@ -130,6 +188,7 @@ export const areRevShareSplitsEqual = (left: RevShareSplit, right: RevShareSplit
 const computeRecipientAllocationChanges = (
   activeSplit: RevShareSplit,
   proposedSplit: RevShareSplit,
+  currentUserId: string | number,
 ): RevShareRecipientAllocationChange[] => {
   const activeByKey = new Map<string, { recipient: RevShareRecipient; splitBasisPoints: number }>();
   for (const allocation of activeSplit.recipients) {
@@ -146,7 +205,7 @@ const computeRecipientAllocationChanges = (
 
   const changes: RevShareRecipientAllocationChange[] = [];
 
-  // Changes are ordered with additions first and remain stable across removals and proposal edits.
+  // Classify first (additions, then active edits/removals); display order is applied below.
   for (const { recipient, splitBasisPoints } of proposedSplit.recipients) {
     const key = getRevShareRecipientKey({ recipient, splitBasisPoints: 0 });
     if (!activeByKey.has(key)) {
@@ -182,12 +241,21 @@ const computeRecipientAllocationChanges = (
     }
   }
 
-  return changes;
+  return sortRevShareRecipientsForStableDisplay(
+    changes.map((change, inputIndex) => ({
+      recipient: change.recipient,
+      isAddition: change.isAddition,
+      inputIndex,
+      change,
+    })),
+    currentUserId,
+  ).map(({ change }) => change);
 };
 
 export const buildManagerProposalDiff = (
   activeSplit: RevShareSplit,
   proposedSplit: RevShareSplit,
+  currentUserId: string | number,
 ): Pick<ManagerProposal, 'type' | 'changes'> => {
   const type =
     activeSplit.unallocatedBasisPoints > 0 && proposedSplit.unallocatedBasisPoints === 0
@@ -197,6 +265,7 @@ export const buildManagerProposalDiff = (
     recipientChangesInStableDisplayOrder: computeRecipientAllocationChanges(
       activeSplit,
       proposedSplit,
+      currentUserId,
     ),
     managingGroup: {
       fromBasisPoints: activeSplit.managingGroupBasisPoints,
@@ -227,14 +296,17 @@ const requiresRecipientConfirmation = (
 export const materializeManagerProposal = (
   activeSplit: RevShareSplit,
   proposedSplit: RevShareSplit,
+  currentUserId: string | number,
 ): ManagerProposal => {
-  const { type, changes } = buildManagerProposalDiff(activeSplit, proposedSplit);
+  const { type, changes } = buildManagerProposalDiff(activeSplit, proposedSplit, currentUserId);
   const confirmations: RevShareRecipientConfirmation[] =
     changes.recipientChangesInStableDisplayOrder
       .filter((change) => requiresRecipientConfirmation(type, change))
       .map((change) => ({
         recipient: change.recipient,
-        status: RevShareConfirmationStatus.Pending,
+        status: isRevShareCurrentUserRecipient(change.recipient, currentUserId)
+          ? RevShareConfirmationStatus.Accepted
+          : RevShareConfirmationStatus.Pending,
       }));
 
   return {

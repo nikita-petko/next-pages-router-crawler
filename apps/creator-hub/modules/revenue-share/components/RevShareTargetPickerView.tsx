@@ -6,6 +6,7 @@ import { CircularProgress } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { useRevShareClientTablePagination } from '../hooks/useRevShareClientTablePagination';
 import { RevShareTargetType, type ManagerAgreement } from '../interface/RevShareViewModel';
 import RevShareBackNav from './nav/RevShareBackNav';
 import RevShareLandingTable from './tables/RevShareLandingTable';
@@ -21,9 +22,6 @@ export type RevShareTargetPickerViewProps = {
   isUgcLoading: boolean;
   ugcError: Error | null;
   onRetryUgc: () => void;
-  hasNextUgcPage: boolean;
-  isFetchingNextUgcPage: boolean;
-  onLoadNextUgcPage: () => void;
 };
 
 const RevShareTargetPickerView: FunctionComponent<RevShareTargetPickerViewProps> = ({
@@ -35,9 +33,6 @@ const RevShareTargetPickerView: FunctionComponent<RevShareTargetPickerViewProps>
   isUgcLoading,
   ugcError,
   onRetryUgc,
-  hasNextUgcPage,
-  isFetchingNextUgcPage,
-  onLoadNextUgcPage,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const [query, setQuery] = useState('');
@@ -54,6 +49,25 @@ const RevShareTargetPickerView: FunctionComponent<RevShareTargetPickerViewProps>
       );
     });
   }, [activeTab, query, rows]);
+
+  const paginationResetKey = `${activeTab}:${query.trim().toLocaleLowerCase()}`;
+  const { page, rowsPerPage, onPageChange, onRowsPerPageChange } = useRevShareClientTablePagination(
+    {
+      count: filteredRows.length,
+      resetKey: paginationResetKey,
+    },
+  );
+  const pagination = useMemo(
+    () => ({
+      page,
+      rowsPerPage,
+      totalRows: filteredRows.length,
+      onPageChange,
+      onRowsPerPageChange,
+    }),
+    [page, rowsPerPage, filteredRows.length, onPageChange, onRowsPerPageChange],
+  );
+
   const handleQueryChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     setQuery(event.currentTarget.value);
   }, []);
@@ -87,16 +101,6 @@ const RevShareTargetPickerView: FunctionComponent<RevShareTargetPickerViewProps>
     'Retry',
     'Button label to retry loading UGC items in the revenue share target picker.',
     translationKey('Action.RetryUgcTargets', TranslationNamespace.RevenueShareAgreements),
-  );
-  const loadMoreLabel = tPendingTranslation(
-    'Load more',
-    'Button label to load the next page of UGC items in the revenue share target picker.',
-    translationKey('Action.LoadMoreUgcTargets', TranslationNamespace.RevenueShareAgreements),
-  );
-  const loadingLabel = tPendingTranslation(
-    'Loading',
-    'Button label while loading the next page of UGC items in the revenue share target picker.',
-    translationKey('Label.LoadingUgcTargets', TranslationNamespace.RevenueShareAgreements),
   );
 
   return (
@@ -165,21 +169,12 @@ const RevShareTargetPickerView: FunctionComponent<RevShareTargetPickerViewProps>
           </Button>
         </div>
       ) : (
-        <>
-          <RevShareLandingTable rows={filteredRows} mode='manager' onRowClick={onRowClick} />
-          {activeTab === 'ugc' && hasNextUgcPage ? (
-            <div className='flex justify-center width-full'>
-              <Button
-                type='button'
-                variant='Standard'
-                size='Medium'
-                isDisabled={isFetchingNextUgcPage}
-                onClick={onLoadNextUgcPage}>
-                {isFetchingNextUgcPage ? loadingLabel : loadMoreLabel}
-              </Button>
-            </div>
-          ) : null}
-        </>
+        <RevShareLandingTable
+          rows={filteredRows}
+          mode='manager'
+          onRowClick={onRowClick}
+          pagination={pagination}
+        />
       )}
     </div>
   );

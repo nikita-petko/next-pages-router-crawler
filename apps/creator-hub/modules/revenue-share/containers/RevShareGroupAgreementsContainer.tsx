@@ -5,6 +5,7 @@ import { useLocalization, useTranslation } from '@rbx/intl';
 import { CircularProgress, Grid } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { useAuthentication } from '@modules/authentication/providers';
 import useCurrentOrganization from '@modules/group/hooks/useCurrentOrganization';
 import LoadError from '@modules/miscellaneous/error/LoadError';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
@@ -55,6 +56,8 @@ const MANAGING_GROUP_PARTY_COUNT = 1;
 const RevShareGroupAgreementsContainer: FunctionComponent = () => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const { locale } = useLocalization();
+  const { user } = useAuthentication();
+  const currentUserId = user?.id;
   const { organization, isOrganizationLoading, refreshOrganization } = useCurrentOrganization();
   const managingGroupId = organization?.groupId;
   const managerQuery = useRevShareForManager(managingGroupId);
@@ -556,6 +559,7 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
         managingGroupSubtitle={managingGroupLabel}
         agreement={selectedManagerAgreement}
         resolveRecipientParty={resolveRecipientParty}
+        currentUserId={currentUserId}
         action={pendingLifecycleAction}
         isTermsAccepted={isCancelTermsAccepted}
         onTermsAcceptedChange={setIsCancelTermsAccepted}
@@ -667,6 +671,7 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
         managingGroupSubtitle={managingGroupLabel}
         unallocatedName={unallocatedLabel}
         resolveRecipientParty={resolveRecipientParty}
+        currentUserId={currentUserId}
         centerLabel={new Intl.NumberFormat(locale ?? undefined).format(
           MANAGING_GROUP_PARTY_COUNT + selectedManagerAgreement.active.recipients.length,
         )}

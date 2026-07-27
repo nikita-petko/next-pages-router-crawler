@@ -157,5 +157,9 @@ export enum RevShareResult {
 }
 
 export type RevShareProposeResult =
-  | { updateSucceeded: true }
+  | {
+      updateSucceeded: true;
+      proposedAgreementId: string | null;
+      confirmations: RevShareRecipientConfirmation[];
+    }
   | { updateSucceeded: false; result: RevShareResult };

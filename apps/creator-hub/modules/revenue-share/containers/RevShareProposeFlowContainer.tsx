@@ -1,14 +1,12 @@
 // Loads eligible revenue share targets and recipients, hydrates selected agreements, and submits validated split proposals.
 import { useCallback, useEffect, useMemo, useRef, useState, type FunctionComponent } from 'react';
 import { useRouter } from 'next/router';
-import { Surface } from '@rbx/client-universes-api/v1';
 import { Button } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { CircularProgress, Grid } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
-import useOwner from '@modules/experience-analytics-shared/context/useOwner';
-import usePaginatedSearchUniverses from '@modules/experience-analytics-shared/hooks/usePaginatedSearchUniverses';
+import { useAuthentication } from '@modules/authentication/providers';
 import CreatorType from '@modules/miscellaneous/common/enums/Creator';
 import LoadError from '@modules/miscellaneous/error/LoadError';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -21,9 +19,10 @@ import RevShareTargetPickerView, {
 import type { SplitEditorRow } from '../components/tables/RevShareSplitEditorTable';
 import useRevShareFeedback from '../hooks/useRevShareFeedback';
 import {
+  RevShareAcceptOrDecline,
   RevShareRecipientType,
-  RevShareTargetType,
   type ManagerAgreement,
+  type RevShareRecipient,
   type RevShareRecipientAllocation,
   type RevShareTarget,
 } from '../interface/RevShareViewModel';
@@ -32,14 +31,19 @@ import {
   useRevShareForManager,
   useRevShareProposalMutations,
   useRevShareRecipientNames,
+  useRevShareRespondMutation,
 } from '../queries/revShareQueries';
+import { useRevShareExperienceTargets } from '../queries/useRevShareExperienceTargets';
 import { useRevShareRecipientSearch } from '../queries/useRevShareRecipientSearch';
 import { useRevShareUgcTargets } from '../queries/useRevShareUgcTargets';
-import { getRevShareRecipientKey } from '../utils/revShareUtils';
+import {
+  getRevShareRecipientKey,
+  isRevShareCurrentUserRecipient,
+  shouldAutoAcceptProposedAsCurrentUser,
+} from '../utils/revShareUtils';
 
 const MANAGING_GROUP_ROW_KEY = 'managing-group';
 const TOTAL_BASIS_POINTS = 10_000;
-const TARGET_PAGE_SIZE = 100;
 
 type RevShareProposeLoadErrorProps = {
   backLabel: string;
@@ -123,18 +127,15 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const router = useRouter();
-  const managingGroup = useOwner();
-  const {
-    data: targetData,
-    isDataLoading,
-    isResponseFailed,
-    isUserForbidden,
-  } = usePaginatedSearchUniverses({
-    owner: managingGroup,
-    pageSizeOptions: [TARGET_PAGE_SIZE],
-    defaultPageSize: TARGET_PAGE_SIZE,
-    surface: Surface.CreatorHubGroupPayout,
-  });
+  const { user } = useAuthentication();
+  const currentUserId = user?.id;
+  const currentUserRecipient = useMemo<RevShareRecipient | undefined>(
+    () =>
+      currentUserId != null
+        ? { type: RevShareRecipientType.User, id: String(currentUserId) }
+        : undefined,
+    [currentUserId],
+  );
   const shouldHydrateTarget = needsTargetHydration(mode, existingAgreement);
   const [target, setTarget] = useState<ManagerAgreement | null>(() => {
     if (mode === 'create' || shouldHydrateTarget) {
@@ -150,27 +151,46 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
   const managerQuery = useRevShareForManager(managingGroupId);
   const { refetch: refetchManagerAgreements } = managerQuery;
   const [recipientQuery, setRecipientQuery] = useState('');
+  const experienceTargetsQuery = useRevShareExperienceTargets({
+    managingGroupId,
+    enabled: mode === 'create' && target === null,
+  });
   const ugcTargetsQuery = useRevShareUgcTargets({
     managingGroupId,
-    enabled: mode === 'create' && target === null && targetTab === 'ugc',
+    enabled: mode === 'create' && target === null,
   });
   const recipientSearch = useRevShareRecipientSearch({
     managingGroupId,
     keyword: recipientQuery,
   });
   const { propose } = useRevShareProposalMutations(managingGroupId);
+  const respond = useRevShareRespondMutation(currentUserRecipient);
   const { showSuccess, showError } = useRevShareFeedback();
   const [isSubmittingProposal, setIsSubmittingProposal] = useState(false);
   const proposeRef = useRef(propose);
+  const respondRef = useRef(respond);
+  const refetchManagerAgreementsRef = useRef(refetchManagerAgreements);
+  const currentUserIdRef = useRef(currentUserId);
   const showErrorRef = useRef(showError);
   const showSuccessRef = useRef(showSuccess);
   const onProposeSuccessRef = useRef(onProposeSuccess);
   useEffect(() => {
     proposeRef.current = propose;
+    respondRef.current = respond;
+    refetchManagerAgreementsRef.current = refetchManagerAgreements;
+    currentUserIdRef.current = currentUserId;
     showErrorRef.current = showError;
     showSuccessRef.current = showSuccess;
     onProposeSuccessRef.current = onProposeSuccess;
-  }, [onProposeSuccess, propose, showError, showSuccess]);
+  }, [
+    currentUserId,
+    onProposeSuccess,
+    propose,
+    refetchManagerAgreements,
+    respond,
+    showError,
+    showSuccess,
+  ]);
   const backLabel = tPendingTranslation(
     'Back',
     'Label on a button that returns to the previous step in a multi-step wizard.',
@@ -185,41 +205,28 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
   }, [managerQuery.data]);
   const experienceRows = useMemo<ManagerAgreement[]>(
     () =>
-      (targetData?.data ?? []).flatMap((universe) =>
-        universe.id == null
-          ? []
-          : [
-              toPickerRow(
-                {
-                  target: {
-                    type: RevShareTargetType.Experience,
-                    id: String(universe.id),
-                  },
-                  targetName: universe.name ?? String(universe.id),
-                },
-                agreementMap.get(`${RevShareTargetType.Experience}:${String(universe.id)}`),
-              ),
-            ],
+      experienceTargetsQuery.items.map((item) =>
+        toPickerRow(
+          { target: item.target, targetName: item.targetName },
+          agreementMap.get(toTargetKey(item.target)),
+        ),
       ),
-    [agreementMap, targetData?.data],
+    [agreementMap, experienceTargetsQuery.items],
   );
   const ugcRows = useMemo<ManagerAgreement[]>(
     () =>
-      (ugcTargetsQuery.data?.pages ?? []).flatMap((page) =>
-        page.items.map((item) =>
-          toPickerRow(
-            { target: item.target, targetName: item.targetName },
-            agreementMap.get(toTargetKey(item.target)),
-          ),
+      ugcTargetsQuery.items.map((item) =>
+        toPickerRow(
+          { target: item.target, targetName: item.targetName },
+          agreementMap.get(toTargetKey(item.target)),
         ),
       ),
-    [agreementMap, ugcTargetsQuery.data?.pages],
+    [agreementMap, ugcTargetsQuery.items],
   );
   const targetRows = useMemo<ManagerAgreement[]>(
     () => [...experienceRows, ...ugcRows],
     [experienceRows, ugcRows],
   );
-  const hasLoadedUgcPages = (ugcTargetsQuery.data?.pages.length ?? 0) > 0;
   const activeRecipientRefs = useMemo(
     () => target?.active.recipients.map((allocation) => allocation.recipient) ?? [],
     [target?.active.recipients],
@@ -265,10 +272,12 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
           },
           previousBasisPoints: allocation.splitBasisPoints,
           basisPoints: allocation.splitBasisPoints,
+          isCurrentUser: isRevShareCurrentUserRecipient(allocation.recipient, currentUserId),
         };
       }),
     ];
   }, [
+    currentUserId,
     managingGroupId,
     managingGroupName,
     managingGroupSubtitle,
@@ -306,6 +315,25 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
             showErrorRef.current('propose');
             return;
           }
+          if (
+            result.proposedAgreementId != null &&
+            shouldAutoAcceptProposedAsCurrentUser(result.confirmations, currentUserIdRef.current)
+          ) {
+            try {
+              await respondRef.current.mutateAsync({
+                proposedRevShareId: result.proposedAgreementId,
+                response: RevShareAcceptOrDecline.Accept,
+              });
+              // Accept only invalidates recipient queries; refresh manager so detail shows Accepted.
+              await refetchManagerAgreementsRef.current();
+            } catch (error) {
+              // Proposal already created; detail still shows Pending for self — accept manually.
+              console.error(
+                '[RevShareProposeFlowContainer] Failed to auto-accept proposed revenue share',
+                { proposedAgreementId: result.proposedAgreementId, error },
+              );
+            }
+          }
           showSuccessRef.current('propose');
           onProposeSuccessRef.current();
         } catch {
@@ -323,7 +351,7 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
     }
 
     let cancelled = false;
-    void getRevShareByTarget(existingAgreement.target)
+    void getRevShareByTarget(existingAgreement.target, currentUserId ?? '')
       .then((hydratedAgreement) => {
         if (cancelled) {
           return;
@@ -349,7 +377,14 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
     return () => {
       cancelled = true;
     };
-  }, [existingAgreement, shouldHydrateTarget, showError, target, targetHydrationAttempt]);
+  }, [
+    currentUserId,
+    existingAgreement,
+    shouldHydrateTarget,
+    showError,
+    target,
+    targetHydrationAttempt,
+  ]);
 
   useEffect(
     () => () => {
@@ -374,7 +409,7 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
       targetSelectionRequestRef.current = requestId;
       setIsTargetHydrating(true);
       try {
-        const hydratedAgreement = await getRevShareByTarget(row.target);
+        const hydratedAgreement = await getRevShareByTarget(row.target, currentUserId ?? '');
         if (targetSelectionRequestRef.current !== requestId) {
           return;
         }
@@ -390,11 +425,11 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
         }
       }
     },
-    [onTargetSelected, showError],
+    [currentUserId, onTargetSelected, showError],
   );
 
   if (mode === 'create' && target === null) {
-    if (isDataLoading || managerQuery.isLoading || isTargetHydrating) {
+    if (experienceTargetsQuery.isLoading || managerQuery.isLoading || isTargetHydrating) {
       return (
         <Grid container justifyContent='center'>
           <CircularProgress />
@@ -410,7 +445,7 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
         />
       );
     }
-    if (targetTab === 'experiences' && (isResponseFailed || isUserForbidden)) {
+    if (targetTab === 'experiences' && experienceTargetsQuery.isError) {
       return (
         <RevShareProposeLoadError backLabel={backLabel} onBack={onExit} onReload={router.reload} />
       );
@@ -422,15 +457,10 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
         onBack={onExit}
         activeTab={targetTab}
         onTabChange={setTargetTab}
-        isUgcLoading={ugcTargetsQuery.isLoading && !hasLoadedUgcPages}
-        ugcError={ugcTargetsQuery.error instanceof Error ? ugcTargetsQuery.error : null}
+        isUgcLoading={ugcTargetsQuery.isLoading}
+        ugcError={ugcTargetsQuery.error}
         onRetryUgc={() => {
-          void ugcTargetsQuery.refetch();
-        }}
-        hasNextUgcPage={ugcTargetsQuery.hasNextPage ?? false}
-        isFetchingNextUgcPage={ugcTargetsQuery.isFetchingNextPage}
-        onLoadNextUgcPage={() => {
-          void ugcTargetsQuery.fetchNextPage();
+          ugcTargetsQuery.refetch();
         }}
       />
     );
@@ -464,7 +494,7 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
       onSearchQueryChange={setRecipientQuery}
       onExit={onExit}
       onSubmitProposal={handleSubmitProposal}
-      isSubmitting={propose.isPending || isSubmittingProposal}
+      isSubmitting={propose.isPending || respond.isPending || isSubmittingProposal}
       replacesOpenProposal={target.proposed != null}
       presentation={mode === 'propose' ? 'dialog' : 'page'}
       onStepChange={onStepChange}

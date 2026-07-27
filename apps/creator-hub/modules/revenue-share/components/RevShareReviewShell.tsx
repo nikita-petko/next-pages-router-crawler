@@ -15,6 +15,8 @@ type RevShareReviewShellProps = {
   description?: string;
   rows: readonly RevShareDiffRowData[];
   banner?: ReactNode;
+  /** Propose-review only: allow foreshadowed Accepted ME to prepend auto-accept copy. */
+  foreshadowCurrentUserAutoAccept?: boolean;
   replacesOpenProposal?: boolean;
   footer: ReactNode;
   stepFocusRef?: (element: HTMLElement | null) => void;
@@ -27,6 +29,7 @@ const RevShareReviewShell: FunctionComponent<RevShareReviewShellProps> = ({
   description,
   rows,
   banner,
+  foreshadowCurrentUserAutoAccept = false,
   replacesOpenProposal = false,
   footer,
   stepFocusRef,
@@ -36,23 +39,65 @@ const RevShareReviewShell: FunctionComponent<RevShareReviewShellProps> = ({
   const pendingCount = rows.filter(
     (row) => row.status === RevShareConfirmationStatus.Pending,
   ).length;
-  const defaultBannerMessage =
-    pendingCount === 1
-      ? tPendingTranslation(
-          '{count} recipient will need to accept before this agreement takes effect.',
-          'Review banner; {count} is the one recipient who must accept a proposed revenue split.',
-          translationKey(
-            'Label.OneRecipientMustAccept',
-            TranslationNamespace.RevenueShareAgreements,
-          ),
-          { count: String(pendingCount) },
-        )
-      : tPendingTranslation(
-          'All {count} recipients will need to accept before this agreement takes effect.',
-          'Review banner; {count} is the number of recipients who must accept a proposed revenue split.',
-          translationKey('Label.RecipientsMustAccept', TranslationNamespace.RevenueShareAgreements),
-          { count: String(pendingCount) },
-        );
+  const willCurrentUserAutoAccept =
+    foreshadowCurrentUserAutoAccept &&
+    rows.some(
+      (row) =>
+        !row.isManagingGroup &&
+        row.isCurrentUser === true &&
+        row.status === RevShareConfirmationStatus.Accepted,
+    );
+  const acceptanceBody = (() => {
+    if (willCurrentUserAutoAccept && pendingCount === 1) {
+      return tPendingTranslation(
+        'You will auto-accept this change. {count} recipient will need to accept before this agreement takes effect.',
+        'Review banner when the authenticated user will auto-accept on submit and one other recipient must still accept; {count} is that one recipient (always "1").',
+        translationKey(
+          'Message.YouWillAutoAcceptAndOneRecipientMustAccept',
+          TranslationNamespace.RevenueShareAgreements,
+        ),
+        { count: String(pendingCount) },
+      );
+    }
+    if (willCurrentUserAutoAccept && pendingCount > 1) {
+      return tPendingTranslation(
+        'You will auto-accept this change. All {count} recipients will need to accept before this agreement takes effect.',
+        'Review banner when the authenticated user will auto-accept on submit and multiple other recipients must still accept; {count} is the number of those pending recipients.',
+        translationKey(
+          'Message.YouWillAutoAcceptAndRecipientsMustAccept',
+          TranslationNamespace.RevenueShareAgreements,
+        ),
+        { count: String(pendingCount) },
+      );
+    }
+    if (willCurrentUserAutoAccept) {
+      return tPendingTranslation(
+        'You will auto-accept this change.',
+        'Review banner sentence when the authenticated user will auto-accept a proposed revenue share change on submit.',
+        translationKey(
+          'Message.YouWillAutoAcceptChange',
+          TranslationNamespace.RevenueShareAgreements,
+        ),
+      );
+    }
+    if (pendingCount === 1) {
+      return tPendingTranslation(
+        '{count} recipient will need to accept before this agreement takes effect.',
+        'Review banner; {count} is the one recipient who must accept a proposed revenue split.',
+        translationKey('Label.OneRecipientMustAccept', TranslationNamespace.RevenueShareAgreements),
+        { count: String(pendingCount) },
+      );
+    }
+    if (pendingCount > 1) {
+      return tPendingTranslation(
+        'All {count} recipients will need to accept before this agreement takes effect.',
+        'Review banner; {count} is the number of recipients who must accept a proposed revenue split.',
+        translationKey('Label.RecipientsMustAccept', TranslationNamespace.RevenueShareAgreements),
+        { count: String(pendingCount) },
+      );
+    }
+    return null;
+  })();
   const replaceBannerTitle = tPendingTranslation(
     'Submitting cancels the open proposal.',
     'Review-step banner title shown when submitting a new revenue share proposal will cancel an existing open proposal.',
@@ -61,35 +106,16 @@ const RevShareReviewShell: FunctionComponent<RevShareReviewShellProps> = ({
       TranslationNamespace.RevenueShareAgreements,
     ),
   );
-  const replaceBannerFact =
-    pendingCount === 0
-      ? tPendingTranslation(
-          'Agreement will automatically take effect.',
-          'Review banner bullet when a proposed revenue share needs no recipient acceptance.',
-          translationKey(
-            'Message.AgreementTakesEffectAutomatically',
-            TranslationNamespace.RevenueShareAgreements,
-          ),
-        )
-      : pendingCount === 1
-        ? tPendingTranslation(
-            '{count} recipient will need to accept before this agreement takes effect.',
-            'Review banner; {count} is the one recipient who must accept a proposed revenue split.',
-            translationKey(
-              'Label.OneRecipientMustAccept',
-              TranslationNamespace.RevenueShareAgreements,
-            ),
-            { count: String(pendingCount) },
-          )
-        : tPendingTranslation(
-            'All {count} recipients will need to accept before this agreement takes effect.',
-            'Review banner; {count} is the number of recipients who must accept a proposed revenue split.',
-            translationKey(
-              'Label.RecipientsMustAccept',
-              TranslationNamespace.RevenueShareAgreements,
-            ),
-            { count: String(pendingCount) },
-          );
+  const replaceBannerDescription =
+    acceptanceBody ??
+    tPendingTranslation(
+      'Agreement will automatically take effect.',
+      'Review banner bullet when a proposed revenue share needs no recipient acceptance.',
+      translationKey(
+        'Message.AgreementTakesEffectAutomatically',
+        TranslationNamespace.RevenueShareAgreements,
+      ),
+    );
   const resolvedBanner =
     banner ??
     (replacesOpenProposal ? (
@@ -97,10 +123,10 @@ const RevShareReviewShell: FunctionComponent<RevShareReviewShellProps> = ({
         tone='warning'
         layout='Stacked'
         message={replaceBannerTitle}
-        description={replaceBannerFact}
+        description={replaceBannerDescription}
       />
-    ) : pendingCount > 0 ? (
-      <RevShareBanner message={defaultBannerMessage} />
+    ) : acceptanceBody != null ? (
+      <RevShareBanner message={acceptanceBody} />
     ) : null);
   return (
     <div className='flex flex-col gap-large width-full max-width-full min-width-0'>

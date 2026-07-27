@@ -7,13 +7,24 @@ import {
   type FunctionComponent,
   type KeyboardEvent,
 } from 'react';
-import { Icon } from '@rbx/foundation-ui';
-import { useTranslation } from '@rbx/intl';
-import { TableBody, TableCell, TableHead, TableRow } from '@rbx/ui';
+import {
+  Icon,
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TablePagination,
+  TableRow,
+} from '@rbx/foundation-ui';
+import { useTranslation, withTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import TableBase from '@modules/monetization-shared/table-v1/TableBase';
+import {
+  REV_SHARE_ROWS_PER_PAGE_OPTIONS,
+  sliceRevShareTablePage,
+} from '../../hooks/useRevShareClientTablePagination';
 import {
   RevShareConfirmationStatus,
   RevShareTargetType,
@@ -21,15 +32,28 @@ import {
   type RecipientAgreement,
   type RevShareTarget,
 } from '../../interface/RevShareViewModel';
-import { formatBasisPoints } from '../../utils/revShareUtils';
-import { asNumberTypedId } from '../../utils/revShareUtils';
+import { asNumberTypedId, formatBasisPoints } from '../../utils/revShareUtils';
 import RevShareStatusBadge from '../RevShareStatusBadge';
 import RevShareThumbnailWithNames from '../RevShareThumbnailWithNames';
+import styles from './RevShareLandingTable.module.css';
+
+/** Mutable copy for Foundation `TablePagination` (`number[]`); keep module-stable. */
+const REV_SHARE_ROWS_PER_PAGE_OPTIONS_LIST: number[] = [...REV_SHARE_ROWS_PER_PAGE_OPTIONS];
+
+export type RevShareLandingTablePagination = {
+  page: number;
+  rowsPerPage: number;
+  totalRows: number;
+  onPageChange: (page: number) => void;
+  onRowsPerPageChange?: (rowsPerPage: number) => void;
+};
 
 type RevShareLandingTableCommonProps = {
   showHeader?: boolean;
   emptyMessage?: string;
   focusTarget?: RevShareTarget | null;
+  /** When set, rows are ordered then sliced; footer uses Foundation TablePagination. */
+  pagination?: RevShareLandingTablePagination;
 };
 
 export type RevShareLandingTableProps = RevShareLandingTableCommonProps &
@@ -131,15 +155,18 @@ const RevShareLandingTableRow: FunctionComponent<RevShareLandingTableRowProps> =
     }
   }, [props.restoreFocus]);
 
+  const isInteractive = onActivate != null;
+
   return (
     <TableRow
       ref={rowRef}
-      hover={onActivate != null}
-      role={onActivate ? 'button' : undefined}
-      tabIndex={onActivate ? 0 : undefined}
-      className={onActivate ? 'cursor-pointer' : ''}
+      isInteractive={isInteractive}
+      isHoverable={isInteractive}
+      role={isInteractive ? 'button' : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
+      className={isInteractive ? 'cursor-pointer' : ''}
       onClick={onActivate}
-      onKeyDown={onActivate ? onRowKeyDown : undefined}>
+      onKeyDown={isInteractive ? onRowKeyDown : undefined}>
       <TableCell className={`padding-x-large padding-y-medium ${RESOURCE_COLUMN_MIN_CLASS}`}>
         <RevShareThumbnailWithNames
           target={target}
@@ -195,54 +222,29 @@ const RevShareLandingTableRow: FunctionComponent<RevShareLandingTableRowProps> =
       <TableCell
         align='center'
         className={`padding-x-large padding-y-medium ${CHEVRON_COLUMN_CLASS}`}>
-        {onActivate && (
+        {onActivate ? (
           <div className={`flex items-center width-full ${alignContentClass('center')}`}>
             <Icon name='icon-regular-chevron-small-right' size='Medium' aria-hidden />
           </div>
-        )}
+        ) : null}
       </TableCell>
     </TableRow>
   );
 };
 
-const renderRows = (props: RevShareLandingTableProps) => {
-  if (props.mode === 'manager') {
-    return partitionPendingFirst(props.rows, (agreement) => agreement.proposed !== null).map(
-      (agreement) => (
-        <RevShareLandingTableRow
-          key={`${agreement.target.type}:${agreement.target.id}`}
-          mode='manager'
-          agreement={agreement}
-          onRowClick={props.onRowClick}
-          restoreFocus={
-            props.focusTarget?.type === agreement.target.type &&
-            props.focusTarget.id === agreement.target.id
-          }
-        />
-      ),
-    );
+const getPagedRows = <T,>(
+  rows: readonly T[],
+  pagination: RevShareLandingTablePagination | undefined,
+): T[] => {
+  if (!pagination) {
+    return [...rows];
   }
-
-  return partitionPendingFirst(
-    props.rows,
-    (agreement) => agreement.proposed?.confirmation === RevShareConfirmationStatus.Pending,
-  ).map((agreement) => (
-    <RevShareLandingTableRow
-      key={`${agreement.target.type}:${agreement.target.id}`}
-      mode='recipient'
-      agreement={agreement}
-      onRowClick={props.onRowClick}
-      restoreFocus={
-        props.focusTarget?.type === agreement.target.type &&
-        props.focusTarget.id === agreement.target.id
-      }
-    />
-  ));
+  return sliceRevShareTablePage(rows, pagination.page, pagination.rowsPerPage);
 };
 
 const RevShareLandingTable: FunctionComponent<RevShareLandingTableProps> = (props) => {
-  const { showHeader = true } = props;
-  const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+  const { showHeader = true, pagination } = props;
+  const { translate, tPendingTranslation } = useTranslationWrapper(useTranslation());
   const emptyMessage =
     props.emptyMessage ??
     tPendingTranslation(
@@ -256,88 +258,173 @@ const RevShareLandingTable: FunctionComponent<RevShareLandingTableProps> = (prop
   const managerContentColumnClass = MANAGER_CONTENT_COLUMN_WIDTH;
   const recipientContentColumnClass = RECIPIENT_CONTENT_COLUMN_WIDTH;
 
-  return (
-    <TableBase borderless className='radius-medium width-full'>
-      <colgroup>
-        <col
-          className={`${isManagerMode ? managerContentColumnClass : recipientContentColumnClass} ${RESOURCE_COLUMN_MIN_CLASS}`}
-        />
-        {isManagerMode && (
-          <col className={`${managerContentColumnClass} ${ALIGNED_COLUMN_MIN_CLASS}`} />
-        )}
-        <col
-          className={`${isManagerMode ? managerContentColumnClass : recipientContentColumnClass} ${ALIGNED_COLUMN_MIN_CLASS}`}
-        />
-        <col
-          className={`${isManagerMode ? managerContentColumnClass : recipientContentColumnClass} ${STATUS_COLUMN_MIN_CLASS}`}
-        />
-        <col className={CHEVRON_COLUMN_CLASS} />
-      </colgroup>
-      {showHeader && (
-        <TableHead>
-          <TableRow>
-            <TableCell
-              className={`text-label-small content-muted padding-x-large padding-y-medium ${RESOURCE_COLUMN_MIN_CLASS}`}>
-              {tPendingTranslation(
-                'Resource',
-                'Column header for the resource/target name column in the revenue share landing table.',
-                translationKey('Label.Resource', TranslationNamespace.RevenueShareAgreements),
-              )}
-            </TableCell>
-            {isManagerMode && (
-              <TableCell
-                align='center'
-                className={`text-label-small content-muted padding-x-large padding-y-medium ${ALIGNED_COLUMN_MIN_CLASS}`}>
-                <div className='flex items-center width-full justify-center'>
-                  {tPendingTranslation(
-                    'Parties',
-                    'Column header for the party count column in the revenue share landing table (manager mode).',
-                    translationKey('Label.Parties', TranslationNamespace.RevenueShareAgreements),
-                  )}
-                </div>
-              </TableCell>
-            )}
-            <TableCell
-              align='center'
-              className={`text-label-small content-muted padding-x-large padding-y-medium ${ALIGNED_COLUMN_MIN_CLASS}`}>
-              <div className='flex items-center width-full justify-center'>
-                {tPendingTranslation(
-                  'Your cut',
-                  'Column header for the revenue share percentage column in the revenue share landing table.',
-                  translationKey('Label.YourCut', TranslationNamespace.RevenueShareAgreements),
-                )}
-              </div>
-            </TableCell>
-            <TableCell
-              align='center'
-              className={`text-label-small content-muted padding-x-large padding-y-medium ${STATUS_COLUMN_MIN_CLASS}`}>
-              <div className='flex items-center width-full justify-center'>
-                {tPendingTranslation(
-                  'Status',
-                  'Column header for the agreement status column in the revenue share landing table.',
-                  translationKey('Label.Status', TranslationNamespace.RevenueShareAgreements),
-                )}
-              </div>
-            </TableCell>
-            <TableCell className={`padding-x-large padding-y-medium ${CHEVRON_COLUMN_CLASS}`} />
-          </TableRow>
-        </TableHead>
-      )}
+  const managerPageRows = useMemo(() => {
+    if (props.mode !== 'manager') {
+      return null;
+    }
+    return getPagedRows(
+      partitionPendingFirst(props.rows, (agreement) => agreement.proposed !== null),
+      pagination,
+    );
+  }, [pagination, props.mode, props.rows]);
 
-      <TableBody>
-        {props.rows.length === 0 && (
-          <TableRow>
-            <TableCell
-              colSpan={columnCount}
-              className='padding-x-large padding-y-xlarge text-align-x-center'>
-              <span className='text-body-medium content-muted'>{emptyMessage}</span>
-            </TableCell>
-          </TableRow>
-        )}
-        {renderRows(props)}
-      </TableBody>
-    </TableBase>
+  const recipientPageRows = useMemo(() => {
+    if (props.mode !== 'recipient') {
+      return null;
+    }
+    return getPagedRows(
+      partitionPendingFirst(
+        props.rows,
+        (agreement) => agreement.proposed?.confirmation === RevShareConfirmationStatus.Pending,
+      ),
+      pagination,
+    );
+  }, [pagination, props.mode, props.rows]);
+
+  const pageRows = managerPageRows ?? recipientPageRows ?? [];
+
+  const rowsPerPageLabel = translate(
+    translationKey('Label.RowsPerPage', TranslationNamespace.Table),
+  );
+  const rangeLabel = useCallback(
+    (start: number, end: number, total: number) =>
+      translate(translationKey('Label.PageRange', TranslationNamespace.Table), {
+        pageRange: `${start}-${end}`,
+        totalPageCount: String(total),
+      }),
+    [translate],
+  );
+
+  const bodyRows = (() => {
+    if (props.mode === 'manager') {
+      return (managerPageRows ?? []).map((agreement) => (
+        <RevShareLandingTableRow
+          key={`${agreement.target.type}:${agreement.target.id}`}
+          mode='manager'
+          agreement={agreement}
+          onRowClick={props.onRowClick}
+          restoreFocus={
+            props.focusTarget?.type === agreement.target.type &&
+            props.focusTarget.id === agreement.target.id
+          }
+        />
+      ));
+    }
+    return (recipientPageRows ?? []).map((agreement) => (
+      <RevShareLandingTableRow
+        key={`${agreement.target.type}:${agreement.target.id}`}
+        mode='recipient'
+        agreement={agreement}
+        onRowClick={props.onRowClick}
+        restoreFocus={
+          props.focusTarget?.type === agreement.target.type &&
+          props.focusTarget.id === agreement.target.id
+        }
+      />
+    ));
+  })();
+
+  return (
+    <div className='flex flex-col gap-small width-full'>
+      {/* Foundation always paints bg-surface-100 on an inner wrapper; clear it like Virtual Transactions. */}
+      <div className={`${styles.tableSurface} width-full`}>
+        <Table size='Medium' variant='Divided' className='width-full'>
+          <colgroup>
+            <col
+              className={`${isManagerMode ? managerContentColumnClass : recipientContentColumnClass} ${RESOURCE_COLUMN_MIN_CLASS}`}
+            />
+            {isManagerMode && (
+              <col className={`${managerContentColumnClass} ${ALIGNED_COLUMN_MIN_CLASS}`} />
+            )}
+            <col
+              className={`${isManagerMode ? managerContentColumnClass : recipientContentColumnClass} ${ALIGNED_COLUMN_MIN_CLASS}`}
+            />
+            <col
+              className={`${isManagerMode ? managerContentColumnClass : recipientContentColumnClass} ${STATUS_COLUMN_MIN_CLASS}`}
+            />
+            <col className={CHEVRON_COLUMN_CLASS} />
+          </colgroup>
+          {showHeader && (
+            <TableHeader>
+              <TableRow>
+                <TableHeaderCell
+                  className={`text-label-small content-muted padding-x-large padding-y-medium ${RESOURCE_COLUMN_MIN_CLASS}`}>
+                  {tPendingTranslation(
+                    'Resource',
+                    'Column header for the resource/target name column in the revenue share landing table.',
+                    translationKey('Label.Resource', TranslationNamespace.RevenueShareAgreements),
+                  )}
+                </TableHeaderCell>
+                {isManagerMode && (
+                  <TableHeaderCell
+                    align='center'
+                    className={`text-label-small content-muted padding-x-large padding-y-medium ${ALIGNED_COLUMN_MIN_CLASS}`}>
+                    {tPendingTranslation(
+                      'Parties',
+                      'Column header for the party count column in the revenue share landing table (manager mode).',
+                      translationKey('Label.Parties', TranslationNamespace.RevenueShareAgreements),
+                    )}
+                  </TableHeaderCell>
+                )}
+                <TableHeaderCell
+                  align='center'
+                  className={`text-label-small content-muted padding-x-large padding-y-medium ${ALIGNED_COLUMN_MIN_CLASS}`}>
+                  {tPendingTranslation(
+                    'Your cut',
+                    'Column header for the revenue share percentage column in the revenue share landing table.',
+                    translationKey('Label.YourCut', TranslationNamespace.RevenueShareAgreements),
+                  )}
+                </TableHeaderCell>
+                <TableHeaderCell
+                  align='center'
+                  className={`text-label-small content-muted padding-x-large padding-y-medium ${STATUS_COLUMN_MIN_CLASS}`}>
+                  {tPendingTranslation(
+                    'Status',
+                    'Column header for the agreement status column in the revenue share landing table.',
+                    translationKey('Label.Status', TranslationNamespace.RevenueShareAgreements),
+                  )}
+                </TableHeaderCell>
+                <TableHeaderCell
+                  className={`padding-x-large padding-y-medium ${CHEVRON_COLUMN_CLASS}`}>
+                  {null}
+                </TableHeaderCell>
+              </TableRow>
+            </TableHeader>
+          )}
+
+          <TableBody>
+            {pageRows.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={columnCount}
+                  align='center'
+                  className='padding-x-large padding-y-xlarge'>
+                  <span className='text-body-medium content-muted'>{emptyMessage}</span>
+                </TableCell>
+              </TableRow>
+            )}
+            {bodyRows}
+          </TableBody>
+        </Table>
+      </div>
+      {pagination && pagination.totalRows > 0 ? (
+        <TablePagination
+          size='Medium'
+          page={pagination.page}
+          rowsPerPage={pagination.rowsPerPage}
+          totalRows={pagination.totalRows}
+          rowsPerPageOptions={REV_SHARE_ROWS_PER_PAGE_OPTIONS_LIST}
+          onPageChange={pagination.onPageChange}
+          onRowsPerPageChange={pagination.onRowsPerPageChange}
+          rowsPerPageLabel={rowsPerPageLabel}
+          rangeLabel={rangeLabel}
+        />
+      ) : null}
+    </div>
   );
 };
 
-export default RevShareLandingTable;
+export default withTranslation(RevShareLandingTable, [
+  TranslationNamespace.Table,
+  TranslationNamespace.RevenueShareAgreements,
+]);

@@ -1,0 +1,5 @@
+/* Foundation's Table always wraps <table> in a bg-surface-100 div that its className prop can't
+   reach (className lands on <table>). Zero that inner fill so the table stays transparent. */
+.tableSurface > div {
+  background-color: transparent;
+}

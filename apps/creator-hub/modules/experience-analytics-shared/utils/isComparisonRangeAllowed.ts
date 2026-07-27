@@ -1,7 +1,7 @@
 import type { TExplicitTimeRangeSpec } from '@modules/charts-generic/charts/types/ChartTypes';
+import { DAY_MS } from '../constants/timeConstants';
 import type { ComparisonRangePolicy } from '../types/ComparisonConfig';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 export const LONG_RANGE_COMPARISON_MINIMUM_DAYS = 180;
 
 const getUTCDayTimestamp = (date: Date): number =>

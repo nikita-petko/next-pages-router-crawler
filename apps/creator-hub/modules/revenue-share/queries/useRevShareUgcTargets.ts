@@ -1,11 +1,14 @@
-// Loads paginated group-owned UGC revenue share targets across supported avatar asset types and normalizes their identities and names.
-import { useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
+// Loads group-owned UGC revenue share targets across avatar asset types via background page drain and normalizes identities and names.
+import { useCallback, useMemo } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import itemConfigurationClient from '@modules/clients/itemconfiguration';
 import avatarItemTypeConstants from '@modules/creations/avatarItem/constants/avatarItemTypeConstants';
 import {
   translateAssetType,
   translateAssetTypeToAsset,
 } from '@modules/creations/unifiedFeeSystem/helper/UnifiedFeeSystemHelper';
+import { useInfiniteFlatMap } from '@modules/monetization-shared/react-query';
+import { useBackgroundPageLoader } from '@modules/monetization-shared/useBackgroundPageLoader';
 import { RevShareTargetType, type RevShareTarget } from '../interface/RevShareViewModel';
 import { asNumberTypedId } from '../utils/revShareUtils';
 
@@ -33,23 +36,50 @@ export type RevShareUgcTargetPage = {
 export const revShareUgcTargetKey = (managingGroupId: string) =>
   ['revenueShareAgreements', 'targetInventory', 'ugc', managingGroupId] as const;
 
+const EMPTY_ITEMS: RevShareUgcTargetItem[] = [];
+
+const selectPageItems = (page: RevShareUgcTargetPage): RevShareUgcTargetItem[] => [...page.items];
+
+export type UseRevShareUgcTargetsReturn = {
+  items: RevShareUgcTargetItem[];
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+  hasNextPage: boolean;
+  refetch: () => void;
+};
+
 export function useRevShareUgcTargets({
   managingGroupId,
   enabled,
 }: {
   managingGroupId: string;
   enabled: boolean;
-}) {
-  return useInfiniteQuery<
+}): UseRevShareUgcTargetsReturn {
+  const flattenItems = useInfiniteFlatMap<RevShareUgcTargetPage, RevShareUgcTargetItem>(
+    selectPageItems,
+  );
+  const isQueryEnabled = enabled && managingGroupId !== '';
+
+  const {
+    data: items = EMPTY_ITEMS,
+    hasNextPage,
+    fetchNextPage,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useInfiniteQuery<
     RevShareUgcTargetPage,
     Error,
-    InfiniteData<RevShareUgcTargetPage>,
+    RevShareUgcTargetItem[],
     ReturnType<typeof revShareUgcTargetKey>,
     RevShareUgcTargetPageParam
   >({
     queryKey: revShareUgcTargetKey(managingGroupId),
     initialPageParam: { typeIndex: 0, cursor: undefined },
-    enabled: enabled && managingGroupId !== '',
+    enabled: isQueryEnabled,
+    select: flattenItems,
     queryFn: async ({ pageParam }): Promise<RevShareUgcTargetPage> => {
       const asset = UGC_TARGET_ASSET_TYPES[pageParam.typeIndex];
       if (asset === undefined) {
@@ -64,7 +94,7 @@ export function useRevShareUgcTargets({
         translateAssetType(asset),
       );
 
-      const items = (response.items ?? []).flatMap((item): RevShareUgcTargetItem[] => {
+      const itemsForPage = (response.items ?? []).flatMap((item): RevShareUgcTargetItem[] => {
         const assetDetails = item.marketplaceItemDetails?.assetDetails;
         if (assetDetails?.assetType === undefined || !isDecimalString(item.id)) {
           return [];
@@ -100,10 +130,35 @@ export function useRevShareUgcTargets({
       }
 
       return {
-        items,
+        items: itemsForPage,
         nextPageParam,
       };
     },
     getNextPageParam: (page) => page.nextPageParam,
   });
+
+  const fetchNextUgcPage = useCallback(() => {
+    void fetchNextPage({ cancelRefetch: false, throwOnError: false });
+  }, [fetchNextPage]);
+
+  useBackgroundPageLoader({
+    hasNextPage: isQueryEnabled && (hasNextPage ?? false),
+    fetchNextPage: fetchNextUgcPage,
+  });
+
+  const refetchUgc = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+
+  return useMemo(
+    () => ({
+      items,
+      isLoading,
+      isError,
+      error: error instanceof Error ? error : null,
+      hasNextPage: hasNextPage ?? false,
+      refetch: refetchUgc,
+    }),
+    [items, isLoading, isError, error, hasNextPage, refetchUgc],
+  );
 }

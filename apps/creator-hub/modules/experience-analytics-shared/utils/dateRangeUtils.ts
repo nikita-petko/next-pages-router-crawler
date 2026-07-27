@@ -7,9 +7,7 @@
 
 import { subDays } from '@rbx/core';
 import { RAQIV2DateRangeType } from '@rbx/creator-hub-analytics-config';
-
-const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
+import { DAY_MS, HOUR_MS } from '../constants/timeConstants';
 
 /**
  * Preset date ranges paired with the approximate lookback window (ms) each

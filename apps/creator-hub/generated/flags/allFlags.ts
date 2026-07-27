@@ -250,6 +250,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: creatorAnalyticsFlags.isAceRankBreakdownSpecEnabled,
+      metadata: {
+        namespace: 'creator-analytics',
+        name: 'isAceRankBreakdownSpecEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: creatorAnalyticsFlags.isAceMetricVariantFanoutEnabled,
       metadata: {
         namespace: 'creator-analytics',

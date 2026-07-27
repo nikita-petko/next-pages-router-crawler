@@ -1,22 +1,9 @@
 import { RAQIV2MetricDisplayConfig, type TRAQIV2UIMetric } from '@rbx/creator-hub-analytics-config';
 import type { TExplicitTimeRangeSpec } from '@modules/charts-generic/charts/types/ChartTypes';
 import { isNumericUIMetric } from '../constants/AnalyticsMetricDisplayConfig';
+import { DAY_MS } from '../constants/timeConstants';
 import { getAtomicMetricsFromMetricLike, type MetricLike } from '../types/ComputedMetric';
-import getComparisonRange from './getComparisonRange';
-import type { FetchComparisonOptions } from './makeRAQIV2Request';
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-/**
- * Subset of `FetchComparisonOptions` needed to compute the comparison window.
- * Accepting the same shape the request path uses makes it structurally
- * impossible for the retention check and the fetch to evaluate different
- * ranges — callers thread the exact object they pass to the fetch.
- */
-export type ComparisonRangeSpec = Pick<
-  FetchComparisonOptions,
-  'granularity' | 'relativeOffset' | 'customStartDate'
->;
+import getComparisonRange, { type ComparisonRangeSpec } from './getComparisonRange';
 
 /**
  * Checks whether the comparison time range for a given date range falls within
@@ -55,7 +42,7 @@ const isComparisonWithinRetention = (
     ...numericMetrics.map((m) => RAQIV2MetricDisplayConfig[m].retentionDurationDays),
   );
 
-  const retentionCutoff = new Date(Date.now() - minRetentionDays * MS_PER_DAY);
+  const retentionCutoff = new Date(Date.now() - minRetentionDays * DAY_MS);
   return comparisonStartDate >= retentionCutoff;
 };
 

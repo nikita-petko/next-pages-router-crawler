@@ -115,7 +115,10 @@ const mapTarget = (target: ApiTargetRef | undefined): RevShareTarget => {
   return { type: RevShareTargetType.Experience, id: '' };
 };
 
-export const mapManagerView = (view: ApiManagerRevShareView): ManagerAgreement => {
+export const mapManagerView = (
+  view: ApiManagerRevShareView,
+  currentUserId: string | number,
+): ManagerAgreement => {
   const splits = view.splits ?? {};
   const activeId = mapAgreementId(view.activeAgreementId);
   const activeSplit =
@@ -135,7 +138,7 @@ export const mapManagerView = (view: ApiManagerRevShareView): ManagerAgreement =
             id: proposedId,
             split: proposedSplit,
             confirmations: (view.confirmations ?? []).map(mapRecipientConfirmation),
-            ...buildManagerProposalDiff(activeSplit, proposedSplit),
+            ...buildManagerProposalDiff(activeSplit, proposedSplit, currentUserId),
           }
         : null,
   };

@@ -1,34 +1,42 @@
 import { useMemo } from 'react';
 import { useFlag } from '@rbx/flags';
-import { isAceMetricVariantFanoutEnabled } from '@generated/flags/creatorAnalytics';
+import {
+  isAceMetricVariantFanoutEnabled,
+  isAceRankBreakdownSpecEnabled,
+} from '@generated/flags/creatorAnalytics';
 import type { MakeRAQIV2RequestOptions } from '../utils/makeRAQIV2Request';
 
-export type RAQIV2RequestFlags = Required<
-  Pick<MakeRAQIV2RequestOptions, 'enableAceVariantFanout'>
-> & {
-  ready: boolean;
-};
+export type RAQIV2RequestFlagValues = Required<
+  Pick<MakeRAQIV2RequestOptions, 'enableAceVariantFanout' | 'emitAceRankBreakdownSpec'>
+>;
+
+/**
+ * Flag values are readable only once every flag has resolved. Modeling this as a
+ * union rather than `{ ready: boolean } & values` means a consumer cannot read a
+ * provisional `false` without first checking `ready` — the compiler enforces the
+ * gate that previously existed only by convention.
+ */
+export type RAQIV2RequestFlags = ({ ready: true } & RAQIV2RequestFlagValues) | { ready: false };
 
 /**
  * Resolves request-level rollout flags through the React flag runtime so
- * request execution never evaluates flags directly. Effective values remain
- * false until their flag is ready, while `ready` lets request hooks defer
- * execution instead of sending requests with those provisional values.
+ * request execution never evaluates flags directly. `ready` lets request hooks
+ * defer execution instead of sending requests with provisional values.
  *
  * The ACE flag must not lead the backend `PseudoMetricResolutionEnabled`
  * rollout or AQG can return `ERROR_CODE_METRIC_NOT_RESOLVABLE`.
  */
 const useRAQIV2RequestFlags = (): RAQIV2RequestFlags => {
   const aceVariantFanout = useFlag(isAceMetricVariantFanoutEnabled);
-  const ready = aceVariantFanout.ready;
+  const aceRankBreakdownSpec = useFlag(isAceRankBreakdownSpecEnabled);
+  const ready = aceVariantFanout.ready && aceRankBreakdownSpec.ready;
   const enableAceVariantFanout = aceVariantFanout.ready && aceVariantFanout.value;
+  const emitAceRankBreakdownSpec = aceRankBreakdownSpec.ready && aceRankBreakdownSpec.value;
 
   return useMemo(
-    () => ({
-      ready,
-      enableAceVariantFanout,
-    }),
-    [ready, enableAceVariantFanout],
+    (): RAQIV2RequestFlags =>
+      ready ? { ready, enableAceVariantFanout, emitAceRankBreakdownSpec } : { ready },
+    [ready, enableAceVariantFanout, emitAceRankBreakdownSpec],
   );
 };
 
