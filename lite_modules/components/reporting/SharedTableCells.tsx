@@ -2,6 +2,7 @@ import { Icon, TableCell } from '@rbx/foundation-ui';
 import { Grid, Tooltip } from '@rbx/ui';
 import { cloneElement, ReactNode } from 'react';
 
+import Skeleton from '@components/common/Skeleton';
 import useGenericTableRowStyles from '@components/reporting/GenericTableRow.styles';
 import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
 import { HeadCellName } from '@constants/headCells';
@@ -25,6 +26,7 @@ const SharedTableCells = ({ headCells, row, unsortableData }: SharedTableCellsPr
 
   // Check if reporting is disabled for this off-platform campaign
   const isReportingDisabled = row.is_off_platform_request && !row.is_reporting_enabled;
+  const shouldShowStatsSkeleton = Boolean(row.is_stats_loading) && !isReportingDisabled;
 
   // For recently launched campaigns, metrics may not be available yet. Render a
   // clock icon instead of the generic "—" placeholder so it's clear the data is
@@ -34,6 +36,14 @@ const SharedTableCells = ({ headCells, row, unsortableData }: SharedTableCellsPr
     row.created_timestamp_ms !== undefined &&
     Date.now() - row.created_timestamp_ms < RECENT_CAMPAIGN_THRESHOLD_MS;
   const renderMetric = (value: string): ReactNode => {
+    if (shouldShowStatsSkeleton) {
+      return (
+        <Skeleton
+          className='height-[20px] margin-left-auto width-[60px]'
+          data-testid='table-stat-skeleton'
+        />
+      );
+    }
     if (value !== UNAVAILABLE_VALUE_DISPLAY || !isRecentlyCreated) {
       return value;
     }
@@ -162,7 +172,8 @@ const SharedTableCells = ({ headCells, row, unsortableData }: SharedTableCellsPr
       cell: (
         <TableCell align='end' className={centerAlignedContentRow}>
           {renderMetric(playtime7dDisplayValue)}
-          {!isReportingDisabled &&
+          {!shouldShowStatsSkeleton &&
+            !isReportingDisabled &&
             playtime7dDisplayValue !== UNAVAILABLE_VALUE_DISPLAY &&
             ` ${translate('Label.Hours')}`}
         </TableCell>
@@ -173,9 +184,11 @@ const SharedTableCells = ({ headCells, row, unsortableData }: SharedTableCellsPr
       cell: (
         <TableCell align='end' className={centerAlignedContentRow}>
           <Grid className={robuxContainer} container>
-            {!isReportingDisabled && robuxRevenue30dDisplayValue !== UNAVAILABLE_VALUE_DISPLAY && (
-              <Icon name='icon-filled-robux' size='Small' />
-            )}
+            {!shouldShowStatsSkeleton &&
+              !isReportingDisabled &&
+              robuxRevenue30dDisplayValue !== UNAVAILABLE_VALUE_DISPLAY && (
+                <Icon name='icon-filled-robux' size='Small' />
+              )}
             {renderMetric(robuxRevenue30dDisplayValue)}
           </Grid>
         </TableCell>

@@ -1,5 +1,5 @@
-import { Button, Divider, Link } from '@rbx/foundation-ui';
-import { Alert, Grid, Tooltip } from '@rbx/ui';
+import { Button, Divider, Icon, Link } from '@rbx/foundation-ui';
+import { Tooltip } from '@rbx/ui';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect } from 'react';
 
@@ -7,7 +7,6 @@ import { EventName, logNativeClickEvent, logNativeImpressionEvent } from '@clien
 import DateQuickPick from '@components/reporting/DateQuickPick';
 import { openReportDownloadDialog } from '@components/reporting/dialogs/ReportDownloadDialog';
 import ExperienceFilterPicker from '@components/reporting/ExperienceFilterPicker';
-import usePageHeaderStyles from '@components/reporting/PageHeader.styles';
 import PageHeaderBanners from '@components/reporting/PageHeaderBanners';
 import PromotionBanner from '@components/reporting/PromotionBanner';
 import ReportingViewQuickPick from '@components/reporting/ReportingViewQuickPick';
@@ -18,21 +17,17 @@ import Routes from '@constants/routes';
 import useAdAccountAutoCreateCreateAction from '@hooks/account/useAdAccountAutoCreateCreateAction';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { useAppStore } from '@stores/appStoreProvider';
+import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider';
 
 const PageHeader = () => {
   const { translate, translateHTML } = useNamespacedTranslation(TranslationNamespace.Report);
+  const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const router = useRouter();
-  const {
-    classes: {
-      bodyContainer,
-      filteredMessage,
-      pickerContainer,
-      searchCreateRow,
-      searchDownloadContainer,
-    },
-  } = usePageHeaderStyles();
   const { advertisingShouldBeEnabled, disabledTooltip } = useAppStore((state) =>
     state.advertisingShouldBeEnabled(),
+  );
+  const summaryStatsIsError = useNewFlowStore(
+    (state: NewFlowStoreType) => state.summaryStatsState.isError,
   );
   const navigateToCreateCampaign = useCallback(() => {
     logNativeClickEvent(EventName.CreateCampaignButtonClicked);
@@ -54,67 +49,84 @@ const PageHeader = () => {
 
   return (
     <>
-      <PageHeaderBanners />
-      <PromotionBanner />
-      <Grid className={bodyContainer} container>
-        <Grid className={pickerContainer} container>
-          <DateQuickPick />
-          <ExperienceFilterPicker />
-          <ReportingViewQuickPick />
-          <Alert className={filteredMessage} severity='info' variant='outlined'>
-            <div className='text-body-medium'>
-              {translateHTML('Description.ReportingDataFiltered', [
-                {
-                  closing: 'linkEnd',
-                  content: (chunks) => (
-                    <Link
-                      href='https://create.roblox.com/docs/production/promotion/ads-manager'
-                      isExternal={false}
-                      rel='noopener noreferrer'
-                      target='_blank'>
-                      {chunks}
-                    </Link>
-                  ),
-                  opening: 'linkStart',
-                },
-              ])}
-            </div>
-          </Alert>
-        </Grid>
-        <SummaryCardRow />
-        <Grid className={searchCreateRow} container>
-          <Grid item>
-            <Tooltip
-              arrow
-              placement='left'
-              title={disabledTooltip ? translate(disabledTooltip) : ''}>
-              <div>
-                <Button
-                  data-testid='newflow-create-button'
-                  icon='icon-regular-plus-large'
-                  isDisabled={!advertisingShouldBeEnabled}
-                  onClick={handleCreateClick}
-                  size='Medium'
-                  variant='Emphasis'>
-                  {translate('Action.Create')}
-                </Button>
-              </div>
-            </Tooltip>
-          </Grid>
-          <Grid item>
-            <Grid className={searchDownloadContainer} container>
-              <SearchBox />
+      <div className='margin-bottom-medium flex width-full flex-col gap-xxlarge'>
+        {/* Figma Body order: pageHeaderStack → banners → filters/metrics/search */}
+        <div className='flex width-full flex-wrap items-center justify-between gap-xlarge padding-y-xsmall'>
+          <h1 className='margin-[0px] text-heading-large content-emphasis min-width-[300px] grow'>
+            {translateCampaign('Heading.ManageAds')}
+          </h1>
+          <Tooltip arrow placement='left' title={disabledTooltip ? translate(disabledTooltip) : ''}>
+            <div>
               <Button
-                icon='icon-regular-arrow-down-to-line'
-                onClick={() => openReportDownloadDialog({ isNewFlowType: true })}
+                data-testid='newflow-create-button'
+                isDisabled={!advertisingShouldBeEnabled}
+                onClick={handleCreateClick}
                 size='Medium'
-                variant='Standard'>
-                {translate('Action.Download')}
+                variant='Emphasis'>
+                {translate('Action.Create')}
               </Button>
-            </Grid>
-          </Grid>
-        </Grid>
-      </Grid>
+            </div>
+          </Tooltip>
+        </div>
+
+        <PageHeaderBanners />
+        <PromotionBanner />
+
+        <div className='flex width-full flex-col gap-small'>
+          <div className='flex width-full flex-wrap items-end justify-between gap-medium'>
+            <div className='flex flex-wrap items-end gap-medium'>
+              <DateQuickPick />
+              <ExperienceFilterPicker />
+              <ReportingViewQuickPick />
+            </div>
+            <div className='flex items-center gap-small'>
+              <Icon
+                className='content-emphasis shrink-0'
+                name='icon-regular-circle-i'
+                size='Medium'
+              />
+              <div className='text-body-medium content-emphasis'>
+                {translateHTML('Description.ReportingDataFiltered', [
+                  {
+                    closing: 'linkEnd',
+                    content: (chunks) => (
+                      <Link
+                        href='https://create.roblox.com/docs/production/promotion/ads-manager'
+                        rel='noopener noreferrer'
+                        target='_blank'
+                        underline='always'>
+                        {chunks}
+                      </Link>
+                    ),
+                    opening: 'linkStart',
+                  },
+                ])}
+              </div>
+            </div>
+          </div>
+          {summaryStatsIsError ? (
+            <p className='margin-[0px] text-body-small content-system-alert'>
+              {translate('Description.SummaryDataFailedToFetch')}
+            </p>
+          ) : (
+            <p className='margin-[0px] text-body-small content-default'>
+              {translate('Description.StatsDelayedUnifiedAttribution')}
+            </p>
+          )}
+        </div>
+
+        <SummaryCardRow />
+
+        <div className='flex width-full items-center justify-between gap-medium'>
+          <SearchBox />
+          <Button
+            onClick={() => openReportDownloadDialog({ isNewFlowType: true })}
+            size='Medium'
+            variant='Standard'>
+            {translate('Action.Download')}
+          </Button>
+        </div>
+      </div>
       <Divider data-testid='header-table-divider' />
     </>
   );

@@ -5,10 +5,12 @@ import useAddPaymentMethodStyles from '@components/billing/AddPaymentMethod.styl
 import { BuyAdCredit, type PaymentSetupCompletion } from '@components/billing/BuyAdCredit';
 import CustomTabPanel from '@components/billing/common/CustomTabPanel';
 import StripeElementsProvider from '@components/billing/common/StripeElementsProvider';
+import { WatermarkedBuyAdCredit } from '@components/billing/WatermarkedBuyAdCredit';
 import CenteredCircularProgress from '@components/common/CenteredCircularProgress';
 import { AdCreditBalanceScope, ADD_PAYMENT_TABS } from '@constants/billing';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
 
 interface PaymentStepProps {
   actionsContainer?: HTMLDivElement | null;
@@ -49,6 +51,10 @@ const PaymentStep = ({
 }: PaymentStepProps) => {
   const { translate: translateAccount } = useNamespacedTranslation(TranslationNamespace.Account);
   const { translate: translateBilling } = useNamespacedTranslation(TranslationNamespace.Billing);
+  const isWatermarkedRobuxConversionEnabled = useAppStore(
+    (state: AppStoreType) =>
+      state.appMetadataState?.data?.isWatermarkedRobuxConversionEnabled ?? false,
+  );
   const {
     classes: {
       buyAdCreditFormContainer,
@@ -100,21 +106,39 @@ const PaymentStep = ({
       )}
       <CustomTabPanel index={0} value={Object.values(ADD_PAYMENT_TABS).indexOf(paymentTab)}>
         <div className={buyAdCreditFormContainer}>
-          <BuyAdCredit
-            actionsContainer={
-              paymentTab === ADD_PAYMENT_TABS.ADS_CREDIT ? actionsContainer : undefined
-            }
-            adCreditBalance={adCreditBalance}
-            groupAdCreditBalance={groupAdCreditBalance}
-            groupId={groupId}
-            groupName={groupName}
-            groupRobuxBalance={groupRobuxBalance}
-            initialBalanceScope={initialBalanceScope}
-            onCancel={onCancel}
-            onComplete={onComplete}
-            robuxBalance={robuxBalance}
-            showGroupBalanceOption={showGroupBalanceOption}
-          />
+          {isWatermarkedRobuxConversionEnabled ? (
+            <WatermarkedBuyAdCredit
+              actionsContainer={
+                paymentTab === ADD_PAYMENT_TABS.ADS_CREDIT ? actionsContainer : undefined
+              }
+              adCreditBalance={adCreditBalance}
+              groupAdCreditBalance={groupAdCreditBalance}
+              groupId={groupId}
+              groupName={groupName}
+              groupRobuxBalance={groupRobuxBalance}
+              initialBalanceScope={initialBalanceScope}
+              onCancel={onCancel}
+              onComplete={onComplete}
+              robuxBalance={robuxBalance}
+              showGroupBalanceOption={showGroupBalanceOption}
+            />
+          ) : (
+            <BuyAdCredit
+              actionsContainer={
+                paymentTab === ADD_PAYMENT_TABS.ADS_CREDIT ? actionsContainer : undefined
+              }
+              adCreditBalance={adCreditBalance}
+              groupAdCreditBalance={groupAdCreditBalance}
+              groupId={groupId}
+              groupName={groupName}
+              groupRobuxBalance={groupRobuxBalance}
+              initialBalanceScope={initialBalanceScope}
+              onCancel={onCancel}
+              onComplete={onComplete}
+              robuxBalance={robuxBalance}
+              showGroupBalanceOption={showGroupBalanceOption}
+            />
+          )}
         </div>
       </CustomTabPanel>
       <CustomTabPanel index={1} value={Object.values(ADD_PAYMENT_TABS).indexOf(paymentTab)}>

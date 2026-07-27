@@ -9,6 +9,7 @@ interface UnifiedPaymentStatusToastProps {
   failedCardAuthorization: boolean;
   hasActiveChallenge?: boolean;
   hasFailedPayment: boolean;
+  hasGroupAdCreditAvailable?: boolean;
   hasNoPaymentMethod: boolean;
   hasUnknownError: boolean;
   hasUnverifiedCard: boolean;
@@ -23,6 +24,7 @@ const UnifiedPaymentStatusToast = ({
   failedCardAuthorization,
   hasActiveChallenge = false,
   hasFailedPayment,
+  hasGroupAdCreditAvailable = false,
   hasNoPaymentMethod,
   hasUnknownError,
   hasUnverifiedCard,
@@ -45,7 +47,7 @@ const UnifiedPaymentStatusToast = ({
 
   // For expected states
   if (hasNoPaymentMethod) {
-    return <NoPaymentMethodToast />;
+    return hasGroupAdCreditAvailable ? null : <NoPaymentMethodToast />;
   }
 
   if (hasUnverifiedCard && paymentProfileId) {

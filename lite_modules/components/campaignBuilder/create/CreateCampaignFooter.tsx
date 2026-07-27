@@ -64,6 +64,9 @@ const CreateCampaignFooter = ({ advancedTargetingFormMethods }: Props) => {
 
   // useCampaignBuilderStore
   const { flowType, isVideoUploadInProgress } = useCampaignBuilderStore();
+  const hasEligibleUniverses = useCampaignBuilderStore(
+    (state) => state.universesCanAdvertise.data.length > 0,
+  );
   const setPaymentMethodDrawerOpen = useCampaignBuilderStore(
     (state) => state.setPaymentMethodDrawerOpen,
   );
@@ -192,14 +195,16 @@ const CreateCampaignFooter = ({ advancedTargetingFormMethods }: Props) => {
 
   return (
     <div className={`text-body-large ${footer}`}>
-      <Button
-        isDisabled={isPublishDisabled || isSubmitting}
-        isLoading={isSubmitting}
-        onClick={onClickPublish}
-        size='Medium'
-        variant='Emphasis'>
-        {translateCampaign('Action.PublishCampaign')}
-      </Button>
+      {hasEligibleUniverses && (
+        <Button
+          isDisabled={isPublishDisabled || isSubmitting}
+          isLoading={isSubmitting}
+          onClick={onClickPublish}
+          size='Medium'
+          variant='Emphasis'>
+          {translateCampaign('Action.PublishCampaign')}
+        </Button>
+      )}
       <Button onClick={onClickCancel} size='Medium' variant='Standard'>
         {translateMisc('Action.Cancel')}
       </Button>

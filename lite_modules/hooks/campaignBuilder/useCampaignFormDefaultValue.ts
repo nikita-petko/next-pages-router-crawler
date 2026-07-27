@@ -1,3 +1,4 @@
+import { useWorkspaces } from '@rbx/creator-hub-navigation';
 import moment from 'moment-timezone';
 import { useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
@@ -30,6 +31,7 @@ import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
 import { usePaymentStore } from '@stores/paymentStoreProvider';
 import { SimplifiedCampaignType, SponsoredAdType } from '@type/campaignBuilder';
 import { MicroUsdToUsd } from '@utils/currency';
+import { getSelectedGroupId } from '@utils/groupScopedAccount';
 import { GetTimezoneObjFromEnum, GetValidatedTimezoneDbName } from '@utils/timezone';
 import { CreateExistingAssetVideo } from '@utils/videoStateHelpers';
 
@@ -73,10 +75,24 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
 
   const timezoneDbName = GetValidatedTimezoneDbName(rawTimezoneDbName);
   const hasValidCreditCard = hasCreditCard && !paymentFailure;
+  const isAdAccountAutoCreateEnabled = useAppStore(
+    (state) => state.appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false,
+  );
+  const { currentWorkspace } = useWorkspaces();
+  const selectedGroupId = getSelectedGroupId(currentWorkspace, isAdAccountAutoCreateEnabled);
+  const groupAdAccountId = useAppStore((state) =>
+    selectedGroupId
+      ? state.groupScopedAccountStateByGroupId[selectedGroupId]?.advertiserState?.data?.ad_account
+          ?.id
+      : undefined,
+  );
 
   const getDefaultPaymentType = useCallback(() => {
     if (isManagedAccount) {
       return ServerPaymentType.PAYMENT_TYPE_INVOICE;
+    }
+    if (selectedGroupId && groupAdAccountId) {
+      return ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT;
     }
     if (adCreditActivated) {
       return ServerPaymentType.PAYMENT_TYPE_ADS_CREDIT;
@@ -85,7 +101,7 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
       return ServerPaymentType.PAYMENT_TYPE_CARD;
     }
     return ServerPaymentType.PAYMENT_TYPE_ADS_CREDIT;
-  }, [isManagedAccount, adCreditActivated, hasValidCreditCard]);
+  }, [isManagedAccount, selectedGroupId, groupAdAccountId, adCreditActivated, hasValidCreditCard]);
 
   const getDefaultStartDateTime = useCallback(() => {
     const now = moment().add(1, 'hour').tz(timezoneDbName);

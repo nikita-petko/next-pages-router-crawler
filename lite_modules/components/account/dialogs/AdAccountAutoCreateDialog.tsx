@@ -270,7 +270,6 @@ const AdAccountAutoCreateDialog = ({
                           content: (chunks) => (
                             <Link
                               href='https://en.help.roblox.com/hc/articles/15494846263060'
-                              isExternal={false}
                               rel='noopener noreferrer'
                               target='_blank'
                               underline='always'>

@@ -1,5 +1,6 @@
 import {
   FilterOperation,
+  QueryFilter,
   ResourceType,
   V1MetricsResourceResourceTypeIdResourceIdPostRequest,
 } from '@rbx/client-analytics-query-gateway/v1';
@@ -9,7 +10,9 @@ import ReportingViewType from '@constants/reportingViewType';
 import { getAdvertiserTimeSeriesRange } from '@services/ads/campaignTimeSeriesDateRange';
 
 const METRIC_GRANULARITY_ONE_DAY = 'METRIC_GRANULARITY_ONE_DAY';
+const METRIC_GRANULARITY_NONE = 'METRIC_GRANULARITY_NONE';
 const DIMENSION_CAMPAIGN_ID = 'CampaignId';
+const DIMENSION_AD_ID = 'AdId';
 const DIMENSION_ATTRIBUTION_DATE_HOUR = 'AttributionDateHour';
 
 export const METRIC_PLAYS = 'AdsUANumPlaysDefaultView';
@@ -62,12 +65,135 @@ export const getRevenueMetricForReportingView = (
 interface BuildAnalyticsQueryRequestParams {
   adAccountId: string;
   campaignId: string;
+  /** YYYY-MM-DD, required (with customStartDate) when timePeriod === CUSTOM. */
+  customEndDate?: string;
+  customStartDate?: string;
   metric: string;
   requestTimestamp: string;
   timePeriod: DateFilteringTimePeriod;
   timezoneDbName: string;
   unifiedAttributionCutoverDate?: string;
 }
+
+export type UniverseReportingMetric =
+  | 'clicks'
+  | 'impressions'
+  | 'plays'
+  | 'playtime'
+  | 'revenue'
+  | 'spend';
+
+interface BuildUniverseAnalyticsQueryRequestParams {
+  endTime: Date;
+  entityIds?: string[];
+  entityType?: 'ad' | 'campaign';
+  metric: UniverseReportingMetric;
+  reportingView: ReportingViewType;
+  startTime: Date;
+  universeId: number;
+}
+
+const REPORTING_VIEW_SUFFIXES: Partial<Record<ReportingViewType, { user: string; view: string }>> =
+  {
+    [ReportingViewType.REPORTING_VIEW_TYPE_30D_RESURRECTED]: {
+      user: 'Resurrected30dUsers',
+      view: 'Resurrected30dUserView',
+    },
+    [ReportingViewType.REPORTING_VIEW_TYPE_7D_RESURRECTED]: {
+      user: 'Resurrected7dUsers',
+      view: 'Resurrected7dUserView',
+    },
+    [ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT]: {
+      user: 'DefaultView',
+      view: 'DefaultView',
+    },
+    [ReportingViewType.REPORTING_VIEW_TYPE_NEW_USERS]: {
+      user: 'NewUsers',
+      view: 'NewUserView',
+    },
+    [ReportingViewType.REPORTING_VIEW_TYPE_RECENT_USERS]: {
+      user: 'ReturningUsers',
+      view: 'ReturningUserView',
+    },
+  };
+
+const getUniverseMetricName = (
+  metric: UniverseReportingMetric,
+  reportingView: ReportingViewType,
+): string => {
+  const suffix =
+    REPORTING_VIEW_SUFFIXES[reportingView] ??
+    REPORTING_VIEW_SUFFIXES[ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT]!;
+  const metricPrefix: Record<UniverseReportingMetric, string> = {
+    clicks: `AdsUANumClicks${suffix.user}`,
+    impressions: `AdsUANumImpressions${suffix.user}`,
+    plays: `AdsUANumPlays${suffix.view}`,
+    playtime: `AdsUAPlaytime${suffix.view}`,
+    revenue: `AdsUARobuxRevenue${suffix.view}`,
+    spend: `AdsUATotalSpendMicroUsd${suffix.user}`,
+  };
+  return `${metricPrefix[metric]}ByUniverse`;
+};
+
+/**
+ * Builds the universe-authorized CAaaS request used by page-scoped reporting.
+ * AttributionDateHour uses a strict exclusive end so the advertiser-local
+ * midnight row cannot overlap the EaaS current-day bucket.
+ */
+export const buildUniverseAnalyticsQueryRequest = ({
+  endTime,
+  entityIds,
+  entityType,
+  metric,
+  reportingView,
+  startTime,
+  universeId,
+}: BuildUniverseAnalyticsQueryRequestParams): V1MetricsResourceResourceTypeIdResourceIdPostRequest => {
+  const resourceFields = {
+    resourceId: String(universeId),
+    resourceType: ResourceType.Universe,
+  };
+  let entityDimension: string | undefined;
+  if (entityType === 'campaign') {
+    entityDimension = DIMENSION_CAMPAIGN_ID;
+  } else if (entityType === 'ad') {
+    entityDimension = DIMENSION_AD_ID;
+  }
+  const filter: QueryFilter[] = [
+    {
+      dimension: DIMENSION_ATTRIBUTION_DATE_HOUR,
+      operation: FilterOperation.Lt,
+      values: [String(endTime.getTime())],
+    },
+    {
+      dimension: DIMENSION_ATTRIBUTION_DATE_HOUR,
+      operation: FilterOperation.Gte,
+      values: [String(startTime.getTime())],
+    },
+  ];
+  if (entityDimension && entityIds?.length) {
+    filter.push({
+      dimension: entityDimension,
+      operation: FilterOperation.Contains,
+      values: entityIds,
+    });
+  }
+
+  return {
+    ...resourceFields,
+    queryRequest: {
+      ...resourceFields,
+      query: {
+        breakdown: entityDimension ? [{ dimensions: [entityDimension] }] : [],
+        endTime: endTime.toISOString(),
+        filter,
+        granularity: METRIC_GRANULARITY_NONE,
+        metric: getUniverseMetricName(metric, reportingView),
+        startTime: startTime.toISOString(),
+      },
+    },
+  };
+};
 
 /**
  * Build a single-metric query request in the typed shape that
@@ -80,6 +206,8 @@ interface BuildAnalyticsQueryRequestParams {
 export const buildAnalyticsQueryRequest = ({
   adAccountId,
   campaignId,
+  customEndDate,
+  customStartDate,
   metric,
   requestTimestamp,
   timePeriod,
@@ -90,7 +218,7 @@ export const buildAnalyticsQueryRequest = ({
     requestTimestamp,
     timePeriod,
     timezoneDbName,
-    unifiedAttributionCutoverDate,
+    { customEndDate, customStartDate, unifiedAttributionCutoverDate },
   );
 
   const resourceFields = {

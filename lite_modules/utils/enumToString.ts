@@ -19,6 +19,8 @@ export const ConvertDateFilteringEnumToString = (dateFilteringEnum: DateFilterin
       return 'Year to Date';
     case DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_PREVIOUS_YEAR:
       return 'Previous Year';
+    case DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM:
+      return 'Custom';
     default:
       return 'Unspecified';
   }

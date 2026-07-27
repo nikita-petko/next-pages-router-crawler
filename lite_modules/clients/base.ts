@@ -27,6 +27,8 @@ export interface GetOptions {
 }
 
 export interface PostOptions {
+  /** Optional AbortSignal for request cancellation */
+  abortSignal?: AbortSignal;
   body: BodyType;
   headers?: HeaderType;
   // Be careful with the retries when api calls are not idempotent
@@ -122,11 +124,12 @@ class BaseClient {
   }
 
   async post<T>(options: PostOptions): Promise<AxiosResponse<T>> {
-    const { body, headers = {}, retries = 0, url } = options;
+    const { abortSignal, body, headers = {}, retries = 0, url } = options;
     const send = () =>
       axios.post<T>(url, body, {
         baseURL: this.baseURL,
         headers: this.buildHeaders(headers),
+        signal: abortSignal,
         withCredentials: this.getSendCredentials(),
       });
 

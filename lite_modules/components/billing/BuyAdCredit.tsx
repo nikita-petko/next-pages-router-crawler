@@ -514,7 +514,7 @@ export const BuyAdCredit = ({
     </div>
   );
 
-  const externalFooter = actionsContainer
+  const footer = actionsContainer
     ? createPortal(
         <>
           <Button
@@ -543,16 +543,14 @@ export const BuyAdCredit = ({
         </>,
         actionsContainer,
       )
-    : null;
-  const defaultFooter = actionsContainer ? null : <>{buttons}</>;
+    : buttons;
   return (
     <div>
       <div>
         {balanceContainerSectionComponent}
         <div>{disclaimer}</div>
       </div>
-      {externalFooter}
-      {!actionsContainer && defaultFooter}
+      {footer}
     </div>
   );
 };

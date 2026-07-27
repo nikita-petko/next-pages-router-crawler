@@ -1,7 +1,7 @@
 import { ProgressCircle } from '@rbx/foundation-ui';
 import { Autocomplete, FormControl, TextField, Tooltip } from '@rbx/ui';
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useFormContext, UseFormReturn } from 'react-hook-form';
 
 import { EventName, logNativeClickEvent, logNativeImpressionEvent } from '@clients/unifiedLogger';
@@ -224,6 +224,17 @@ const ExperienceSelect = ({ advancedTargetingFormMethods }: ExperienceSelectProp
 
   const isResolutionErrorState =
     isUniverseOwnershipBypassEnabled && (isResolutionError || isUniverseNotFound);
+  const hasEligibleUniverses = universes.length > 0;
+  const noEligibleUniverseOption: UniverseShapeType = useMemo(
+    () => ({
+      ...noExperiencesOption,
+      privacy_type: '',
+      root_place_id: 0,
+      universe_name: translate(noExperiencesOption.universe_name),
+    }),
+    [translate],
+  );
+  const universeOptions = hasEligibleUniverses ? universes : [noEligibleUniverseOption];
 
   const GetTooltipText = () => {
     if (fetchUniversesCanAdvertiseIsError) {
@@ -258,6 +269,7 @@ const ExperienceSelect = ({ advancedTargetingFormMethods }: ExperienceSelectProp
             disabled={
               fetchUniversesCanAdvertiseIsError ||
               fetchUniversesCanAdvertiseIsLoading ||
+              !hasEligibleUniverses ||
               editMode ||
               cloneMode
             }
@@ -293,6 +305,9 @@ const ExperienceSelect = ({ advancedTargetingFormMethods }: ExperienceSelectProp
               return option.universe_name;
             }}
             id='universe-filter-picker'
+            isOptionEqualToValue={(option, selectedValue) =>
+              typeof selectedValue !== 'string' && option.universe_id === selectedValue.universe_id
+            }
             onChange={(_event, universeObj) => {
               if (!universeObj || typeof universeObj === 'string') {
                 return;
@@ -349,7 +364,7 @@ const ExperienceSelect = ({ advancedTargetingFormMethods }: ExperienceSelectProp
                 universe: universeObj as UniverseShapeType,
               });
             }}
-            options={universes}
+            options={universeOptions}
             renderInput={(params) => {
               const resolutionHelperText = getResolutionHelperText();
               const hasError = fetchUniversesCanAdvertiseIsError || isResolutionErrorState;
@@ -393,7 +408,7 @@ const ExperienceSelect = ({ advancedTargetingFormMethods }: ExperienceSelectProp
                 </FormControl>
               );
             }}
-            value={value}
+            value={hasEligibleUniverses ? value : noEligibleUniverseOption}
           />
         </Tooltip>
       )}

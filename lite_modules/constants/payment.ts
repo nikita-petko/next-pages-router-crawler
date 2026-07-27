@@ -8,6 +8,16 @@ export const PaymentUnit = {
   [ServerPaymentType.PAYMENT_TYPE_INVOICE]: 'USD',
 };
 
+export const AdCreditQuoteSourceField = {
+  AD_CREDIT_AMOUNT: 'ad_credit_amount',
+  ROBUX_AMOUNT: 'robux_amount',
+} as const;
+
+export const AdCreditQuoteTier = {
+  O18: 'O18',
+  STANDARD: 'STANDARD',
+} as const;
+
 // https://github.rbx.com/Roblox/ads/blob/aa9ad5480df9c0ff461a945a796d04c8f8c8db36/protos/roblox/ads/shared/enums/v3/ad_entity_enums.proto#L419
 export enum AdCreditTransactionType {
   AD_CREDIT_TRANSACTION_TYPE_UNSPECIFIED = 0,

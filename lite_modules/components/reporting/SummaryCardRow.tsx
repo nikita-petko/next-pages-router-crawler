@@ -1,5 +1,3 @@
-import { FormHelperText, Grid } from '@rbx/ui';
-
 import SummaryCard from '@components/reporting/SummaryCard';
 import useSummaryCardStyles from '@components/reporting/SummaryCard.styles';
 import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
@@ -14,14 +12,12 @@ const SummaryCardRow = () => {
   const { translate: translateReport } = useNamespacedTranslation(TranslationNamespace.Report);
   const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const {
-    classes: { cardRow, formHelperText },
+    classes: { cardRow },
   } = useSummaryCardStyles();
 
-  const {
-    data: summaryStats,
-    isError,
-    isLoading,
-  } = useNewFlowStore((state: NewFlowStoreType) => state.summaryStatsState);
+  const { data: summaryStats, isLoading } = useNewFlowStore(
+    (state: NewFlowStoreType) => state.summaryStatsState,
+  );
 
   const usdSpendDisplayValue = GetSummaryCardDisplayValue(
     ReportingStatType.REPORTING_STAT_SPEND,
@@ -64,63 +60,51 @@ const SummaryCardRow = () => {
   );
 
   return (
-    <Grid container maxWidth='1680px' rowGap='3px'>
-      <Grid className={cardRow} container>
-        {amountSpentCard}
-        <SummaryCard
-          firstValue={{
-            value: (
-              <span>
-                {GetSummaryCardDisplayValue(
-                  ReportingStatType.REPORTING_STAT_IMPRESSIONS,
-                  summaryStats?.impression_count,
-                )}
-              </span>
-            ),
-          }}
-          isLoading={isLoading}
-          title={translateReport('Label.Impressions')}
-          useSkeletonLoading
-        />
-        <SummaryCard
-          firstValue={{
-            value: (
-              <span>
-                {GetSummaryCardDisplayValue(
-                  ReportingStatType.REPORTING_STAT_PLAYS,
-                  summaryStats?.play_count,
-                )}
-              </span>
-            ),
-          }}
-          isLoading={isLoading}
-          title={translateCampaign('Label.Plays')}
-          useSkeletonLoading
-        />
-        <SummaryCard
-          firstValue={{
-            units:
-              playtime7dDisplayValue !== UNAVAILABLE_VALUE_DISPLAY
-                ? translateReport('Label.Hours')
-                : undefined,
-            value: <span>{playtime7dDisplayValue}</span>,
-          }}
-          isLoading={isLoading}
-          title={translateReport('Label.Playtime')}
-          useSkeletonLoading
-        />
-      </Grid>
-      {isError && (
-        <FormHelperText className={formHelperText} error>
-          {translateReport('Description.SummaryDataFailedToFetch')}
-        </FormHelperText>
-      )}
-      {!isError && (
-        <FormHelperText className={formHelperText}>
-          {translateReport('Description.StatsDelayedUnifiedAttribution')}
-        </FormHelperText>
-      )}
-    </Grid>
+    <div className={cardRow}>
+      {amountSpentCard}
+      <SummaryCard
+        firstValue={{
+          value: (
+            <span>
+              {GetSummaryCardDisplayValue(
+                ReportingStatType.REPORTING_STAT_IMPRESSIONS,
+                summaryStats?.impression_count,
+              )}
+            </span>
+          ),
+        }}
+        isLoading={isLoading}
+        title={translateReport('Label.Impressions')}
+        useSkeletonLoading
+      />
+      <SummaryCard
+        firstValue={{
+          value: (
+            <span>
+              {GetSummaryCardDisplayValue(
+                ReportingStatType.REPORTING_STAT_PLAYS,
+                summaryStats?.play_count,
+              )}
+            </span>
+          ),
+        }}
+        isLoading={isLoading}
+        title={translateCampaign('Label.Plays')}
+        useSkeletonLoading
+      />
+      <SummaryCard
+        firstValue={{
+          units:
+            playtime7dDisplayValue !== UNAVAILABLE_VALUE_DISPLAY
+              ? translateReport('Label.Hours')
+              : undefined,
+          value: <span>{playtime7dDisplayValue}</span>,
+        }}
+        isLoading={isLoading}
+        title={translateReport('Label.Playtime')}
+        useSkeletonLoading
+      />
+    </div>
   );
 };
 

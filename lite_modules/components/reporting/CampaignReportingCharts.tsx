@@ -12,6 +12,7 @@ import {
 } from '@constants/dateFilteringTimePeriod';
 import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
 import { TranslationNamespace } from '@constants/localization';
+import { REPORTING_TIMEZONE_DB_NAME } from '@constants/reportingStatsConstants';
 import { getAttributionWindow } from '@constants/reportingViewType';
 import { MS_PER_DAY } from '@constants/time';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -27,7 +28,6 @@ import {
   MetricValueFormatter,
   sumPlaysFromTimeSeries,
 } from '@utils/reportingChartFormatters';
-import { getAdvertiserTimezoneDbName } from '@utils/timezone';
 
 type MetricTab = 'plays' | 'roas';
 
@@ -100,15 +100,11 @@ const CampaignReportingCharts = () => {
     (state: AppStoreType) => state.appMetadataState?.data?.isCampaignRoasEnabled ?? false,
   );
 
-  const timezoneDbName = useAppStore((state: AppStoreType) =>
-    getAdvertiserTimezoneDbName(state.advertiserState?.data?.organization?.time_zone),
-  );
-
   const [activeMetricTab, setActiveMetricTab] = useState<MetricTab>('plays');
 
   const formatTimestamp = useCallback(
-    (ts: number | string) => formatTimestampLabel(ts, locale, timezoneDbName),
-    [locale, timezoneDbName],
+    (ts: number | string) => formatTimestampLabel(ts, locale, REPORTING_TIMEZONE_DB_NAME),
+    [locale],
   );
   const formatPlaysValue = useMemo(() => makePlaysValueFormatter(locale), [locale]);
   const formatRoasValue = useMemo(() => makeRoasValueFormatter(locale), [locale]);

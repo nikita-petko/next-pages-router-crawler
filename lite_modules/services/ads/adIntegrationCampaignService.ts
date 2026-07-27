@@ -312,7 +312,7 @@ const listAdIntegrationCampaignsByUniverse = async (
   campaigns: AdIntegrationCampaign[];
   nextCursor?: string;
 }> => {
-  const response = await adIntegrationsClient.listAdIntegrationCampaignsByUniverse({
+  const response = await adIntegrationsClient.listAdIntegrationCampaigns({
     cursor,
     pageSize: AD_INTEGRATIONS_LIST_PAGE_SIZE,
     universeId: universeId.toString(),

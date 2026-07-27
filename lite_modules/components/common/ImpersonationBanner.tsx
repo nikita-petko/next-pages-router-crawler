@@ -80,10 +80,7 @@ const ImpersonationBanner = memo(() => {
       return (
         <>
           You are impersonating Ad Account {impersonatedJwtId} (
-          <Link
-            href={`https://www.roblox.com/communities/${impersonatedGroupId}`}
-            isExternal={false}
-            target='_blank'>
+          <Link href={`https://www.roblox.com/communities/${impersonatedGroupId}`} target='_blank'>
             Link to Roblox Group
           </Link>
           ).
@@ -98,10 +95,7 @@ const ImpersonationBanner = memo(() => {
     return (
       <>
         You are impersonating Ad Account {impersonatedJwtId} (
-        <Link
-          href={`https://www.roblox.com/users/${impersonatedUserId}/profile`}
-          isExternal={false}
-          target='_blank'>
+        <Link href={`https://www.roblox.com/users/${impersonatedUserId}/profile`} target='_blank'>
           Link to Roblox Profile
         </Link>
         ).

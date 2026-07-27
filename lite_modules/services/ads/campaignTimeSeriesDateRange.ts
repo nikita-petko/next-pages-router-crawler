@@ -1,9 +1,17 @@
 import moment from 'moment-timezone';
 
 import DateFilteringTimePeriod from '@constants/dateFilteringTimePeriod';
+import { REPORTING_TIMEZONE_DB_NAME } from '@constants/reportingStatsConstants';
 import { GetValidatedTimezoneDbName } from '@utils/timezone';
 
-const CUTOVER_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+export const FRONTEND_REPORTING_CAAS_START_DATE = '2025-01-01';
+
+/**
+ * Fallback period when CUSTOM is requested but the start/end dates are missing
+ * or unparseable. Matches the picker's default preset in `newFlowStoreProvider`
+ * so the chart window degrades to the same range the user would see on load.
+ */
+const CUSTOM_RANGE_FALLBACK_PERIOD = DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_THIRTY_DAYS;
 
 interface AdvertiserTimeSeriesRange {
   endTime: Date;
@@ -11,30 +19,18 @@ interface AdvertiserTimeSeriesRange {
 }
 
 /**
- * Start of the unified-attribution cutover calendar day at midnight in the
- * advertiser timezone (YYYY-MM-DD). Matches AMS advertiser-report-processor
- * parseCutoverDate — the date string is not interpreted as UTC.
+ * Parse a YYYY-MM-DD date as a moment anchored to `zone`. Returns undefined
+ * for missing or malformed input. Matches AMSv2
+ * `ConvertDateFilteringOptionsToStartTimestamp` /
+ * `GetEndTimestampForFilteringPredicate` and AMS advertiser-report-processor
+ * `parseCutoverDate` — the string is not interpreted as UTC.
  */
-const getCutoverStartMoment = (
-  unifiedAttributionCutoverDate: string | undefined,
-  timezoneDbName: string,
-): moment.Moment | undefined => {
-  if (!unifiedAttributionCutoverDate) {
+const parseAdvertiserDay = (value: string | undefined, zone: string): moment.Moment | undefined => {
+  if (!value) {
     return undefined;
   }
-
-  const match = CUTOVER_DATE_PATTERN.exec(unifiedAttributionCutoverDate.trim());
-  if (!match) {
-    return undefined;
-  }
-
-  const year = Number(match[1]);
-  const month = Number(match[2]) - 1; // Moment.js expects months to be 0-11
-  const day = Number(match[3]);
-  const zone = GetValidatedTimezoneDbName(timezoneDbName);
-  const cutoverMoment = moment.tz(zone).year(year).month(month).date(day).startOf('day');
-
-  return cutoverMoment.isValid() ? cutoverMoment : undefined;
+  const dayMoment = moment.tz(value, 'YYYY-MM-DD', true, zone);
+  return dayMoment.isValid() ? dayMoment : undefined;
 };
 
 /**
@@ -91,11 +87,18 @@ const getPeriodBoundsInAdvertiserTz = (
         endMoment: yearStart.clone(),
         startMoment: yearStart.clone().subtract(1, 'year'),
       };
-    case DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_UNSPECIFIED:
+    // UNSPECIFIED, CUSTOM (short-circuited by caller), and any future enum
+    // value fall through to a today-bound window rather than crashing.
     default:
       return { endMoment: requestMoment.clone(), startMoment: todayStart };
   }
 };
+
+interface AdvertiserTimeSeriesRangeOptions {
+  customEndDate?: string;
+  customStartDate?: string;
+  unifiedAttributionCutoverDate?: string;
+}
 
 /**
  * Computes the chart query window in the advertiser calendar. Matches AMSv2
@@ -107,13 +110,28 @@ export const getAdvertiserTimeSeriesRange = (
   requestTimestamp: string,
   timePeriod: DateFilteringTimePeriod,
   timezoneDbName: string,
-  unifiedAttributionCutoverDate?: string,
+  {
+    customEndDate,
+    customStartDate,
+    unifiedAttributionCutoverDate,
+  }: AdvertiserTimeSeriesRangeOptions = {},
 ): AdvertiserTimeSeriesRange => {
   const zone = GetValidatedTimezoneDbName(timezoneDbName);
   const requestMoment = moment(requestTimestamp).tz(zone);
-  let { endMoment, startMoment } = getPeriodBoundsInAdvertiserTz(requestMoment, timePeriod);
+  const customStartMoment = parseAdvertiserDay(customStartDate, zone);
+  const customEndMoment = parseAdvertiserDay(customEndDate, zone)?.endOf('day');
+  const isCustom = timePeriod === DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM;
+  // If CUSTOM was requested but either date is missing or unparseable, fall
+  // back to the picker default rather than a today-only or half-open window.
+  let { endMoment, startMoment } =
+    isCustom && customStartMoment && customEndMoment
+      ? { endMoment: customEndMoment, startMoment: customStartMoment }
+      : getPeriodBoundsInAdvertiserTz(
+          requestMoment,
+          isCustom ? CUSTOM_RANGE_FALLBACK_PERIOD : timePeriod,
+        );
 
-  const cutoverStartMoment = getCutoverStartMoment(unifiedAttributionCutoverDate, timezoneDbName);
+  const cutoverStartMoment = parseAdvertiserDay(unifiedAttributionCutoverDate, zone);
   if (cutoverStartMoment?.isAfter(startMoment)) {
     startMoment = cutoverStartMoment;
   }
@@ -128,3 +146,16 @@ export const getAdvertiserTimeSeriesRange = (
     startTime: startMoment.toDate(),
   };
 };
+
+/**
+ * Computes the query window for frontend reporting's ByUniverse CaaS metrics.
+ * These metrics are complete from 2025-01-01 and do not use the temporary
+ * unified-attribution cutover applied to the legacy ad-account query path.
+ */
+export const getFrontendReportingTimeSeriesRange = (
+  requestTimestamp: string,
+  timePeriod: DateFilteringTimePeriod,
+): AdvertiserTimeSeriesRange =>
+  getAdvertiserTimeSeriesRange(requestTimestamp, timePeriod, REPORTING_TIMEZONE_DB_NAME, {
+    unifiedAttributionCutoverDate: FRONTEND_REPORTING_CAAS_START_DATE,
+  });

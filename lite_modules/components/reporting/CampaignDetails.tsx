@@ -147,7 +147,6 @@ const CampaignDetails = () => {
           color='Standard'
           data-testid='campaign-details-experience-link'
           href={`https://${GetSitetestBaseUrl()}/games/${universeRootPlaceId}`}
-          isExternal={false}
           rel='noopener noreferrer'
           target='_blank'>
           {universeName}

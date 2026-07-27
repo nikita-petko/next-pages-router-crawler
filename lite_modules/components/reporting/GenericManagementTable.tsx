@@ -65,10 +65,13 @@ interface GenericManagementTableProps {
   getTooltipAnchorRowId?: (visibleRows: GenericSortableRowData[]) => string | undefined;
   headCells: (SortableHeadCell | UnsortableHeadCell)[];
   isLoading?: boolean;
+  onVisibleEntityIdsChange?: (entityIds: string[]) => void;
   RowElement: (props: GenericTableRowProps) => JSX.Element;
   showFooter: boolean;
   sortableData: GenericSortableRowData[];
+  sortWithinPage?: boolean;
   tableId?: string;
+  visibleEntityIdsRefreshKey?: string;
 }
 
 const GenericManagementTable = ({
@@ -81,10 +84,13 @@ const GenericManagementTable = ({
   getTooltipAnchorRowId,
   headCells,
   isLoading = false,
+  onVisibleEntityIdsChange,
   RowElement,
   showFooter,
   sortableData,
+  sortWithinPage = false,
   tableId,
+  visibleEntityIdsRefreshKey,
 }: GenericManagementTableProps) => {
   const measureRef = useRef<HTMLSpanElement | null>(null);
   const [firstColumnMinWidthMeasured, setFirstColumnMinWidthMeasured] = useState<
@@ -171,14 +177,31 @@ const GenericManagementTable = ({
 
   // Page slice (sorted + paginated). Memoized so layout measurement only reruns when the slice
   // inputs change (avoids `exhaustive-deps` churn from a freshly allocated array each render).
-  const visibleRows = useMemo(
-    () =>
-      stableSort<GenericSortableRowData>(sortableData, getSortComparator(order, orderBy)).slice(
-        paginationStartIndex,
-        paginationEndIndex,
-      ),
-    [order, orderBy, paginationEndIndex, paginationStartIndex, sortableData],
+  const visibleRows = useMemo(() => {
+    if (sortWithinPage) {
+      return stableSort<GenericSortableRowData>(
+        sortableData.slice(paginationStartIndex, paginationEndIndex),
+        getSortComparator(order, orderBy),
+      );
+    }
+    return stableSort<GenericSortableRowData>(
+      sortableData,
+      getSortComparator(order, orderBy),
+    ).slice(paginationStartIndex, paginationEndIndex);
+  }, [order, orderBy, paginationEndIndex, paginationStartIndex, sortableData, sortWithinPage]);
+  const visibleEntityIdsKey = visibleRows.map(({ id }) => id).join(',');
+  const visibleEntityIdsRequest = useMemo(
+    () => ({ idsKey: visibleEntityIdsKey, refreshKey: visibleEntityIdsRefreshKey }),
+    [visibleEntityIdsKey, visibleEntityIdsRefreshKey],
   );
+
+  useEffect(() => {
+    if (!isLoading && onVisibleEntityIdsChange) {
+      onVisibleEntityIdsChange(
+        visibleEntityIdsRequest.idsKey ? visibleEntityIdsRequest.idsKey.split(',') : [],
+      );
+    }
+  }, [isLoading, onVisibleEntityIdsChange, visibleEntityIdsRequest]);
 
   useLayoutEffect(() => {
     if (!firstColumnMeasurement?.enabled || visibleRows.length === 0) {

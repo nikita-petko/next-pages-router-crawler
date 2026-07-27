@@ -10,6 +10,7 @@ import { getCreatorHubPageLayout } from '@components/common/CreatorHubPageLayout
 import { FlowTypes } from '@constants/campaignBuilder';
 import Routes from '@constants/routes';
 import useRedirectOnWorkspaceChange from '@hooks/useRedirectOnWorkspaceChange';
+import useUniverseOptionsForAdCreation from '@hooks/useUniverseOptionsForAdCreation';
 import { useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
 import { usePaymentStore } from '@stores/paymentStoreProvider';
@@ -18,9 +19,9 @@ const CreateCampaignPage = () => {
   const {
     clearSimplifiedCampaign,
     getSimplifiedCampaign,
-    getUniversesCanAdvertise,
     setFlowType,
     setPrefilledCampaignFields,
+    setUniversesCanAdvertise,
     simplifiedCampaign,
     universesCanAdvertise,
   } = useCampaignBuilderStore();
@@ -37,6 +38,12 @@ const CreateCampaignPage = () => {
   const [finishedFirstLoad, setFinishedFirstLoad] = useState<boolean>(false);
   const hasLoggedCreatePageEvent = useRef<boolean>(false);
   const shouldRedirectToManage = isAdAccountAutoCreateEnabled && !hasAdAccount;
+  const {
+    isError: universeOptionsIsError,
+    isLoading: universeOptionsIsLoading,
+    shouldWaitForWorkspace,
+    universeOptions,
+  } = useUniverseOptionsForAdCreation({ enabled: !shouldRedirectToManage });
 
   useRedirectOnWorkspaceChange(isAdAccountAutoCreateEnabled && !shouldRedirectToManage);
 
@@ -46,6 +53,20 @@ const CreateCampaignPage = () => {
       logNativeImpressionEvent(EventName.NewUserFlowCreatePageLoaded);
     }
   }, [shouldRedirectToManage]);
+
+  useEffect(() => {
+    setUniversesCanAdvertise({
+      data: universeOptions,
+      isError: universeOptionsIsError,
+      isLoading: universeOptionsIsLoading || shouldWaitForWorkspace,
+    });
+  }, [
+    setUniversesCanAdvertise,
+    shouldWaitForWorkspace,
+    universeOptions,
+    universeOptionsIsError,
+    universeOptionsIsLoading,
+  ]);
 
   useEffect(() => {
     if (shouldRedirectToManage) {
@@ -59,7 +80,6 @@ const CreateCampaignPage = () => {
     }
 
     setFlowType(FlowTypes.CREATE);
-    getUniversesCanAdvertise();
     getAdvertiser();
     getAdCredit();
     getPaymentProfiles(true);
@@ -107,7 +127,9 @@ const CreateCampaignPage = () => {
         !finishedFirstLoad ||
         (!isAdAccountAutoCreateEnabled && advertiserState.isLoading) ||
         Boolean(campaignId && simplifiedCampaign.isLoading) ||
-        universesCanAdvertise.isLoading
+        universesCanAdvertise.isLoading ||
+        universeOptionsIsLoading ||
+        shouldWaitForWorkspace
       }>
       <CreationFormStackedToasts />
       <CreateCampaignContainer />

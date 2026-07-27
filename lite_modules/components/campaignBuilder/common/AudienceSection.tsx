@@ -91,11 +91,7 @@ const AudienceSection = ({ advancedTargetingFormMethods }: AudienceSectionProps)
           {
             closing: 'linkEnd',
             content: (chunks) => (
-              <Link
-                href={AUDIENCE_TARGETING_POLICY_URL}
-                isExternal={false}
-                rel='noopener noreferrer'
-                target='_blank'>
+              <Link href={AUDIENCE_TARGETING_POLICY_URL} rel='noopener noreferrer' target='_blank'>
                 {chunks}
               </Link>
             ),

@@ -1,5 +1,6 @@
+import { useWorkspaces } from '@rbx/creator-hub-navigation';
 import { useRouter } from 'next/router';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 
 import ModeratedCampaignToast from '@components/billing/ModeratedCampaignToast';
 import PlaceJoinRestrictedCampaignToast from '@components/billing/PlaceJoinRestrictedCampaignToast';
@@ -10,10 +11,13 @@ import { CardVerificationResultEnum } from '@constants/billing';
 import { CampaignDisplayStatusType } from '@constants/campaignStatus';
 import { useAppStore } from '@stores/appStoreProvider';
 import { useNewFlowStore } from '@stores/newFlowStoreProvider';
+import { CaptureException } from '@utils/error';
+import { getSelectedGroupId } from '@utils/groupScopedAccount';
 import { GetLocalStorage, StorageKeys } from 'app/lite_modules/utils/localStorage';
 
 const PageHeaderBanners = () => {
   const router = useRouter();
+  const { currentWorkspace } = useWorkspaces();
 
   const { advertisingShouldBeEnabled: advertisingEnabled } = useAppStore(
     (state) => state.advertisingShouldBeEnabled(true), // for payment status banner
@@ -28,6 +32,17 @@ const PageHeaderBanners = () => {
   const hasNoPaymentMethod = (!paymentProfile || hasUnverifiedCard) && !adCreditActivated;
   const loadingPaymentProfile = useAppStore((state) => state.getPaymentProfilesState.isLoading);
   const loadingPaymentStatus = useAppStore((state) => state.adAccountStatusState.isLoading);
+  const isAdAccountAutoCreateEnabled = useAppStore(
+    (state) => state.appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false,
+  );
+  const groupId = getSelectedGroupId(currentWorkspace, isAdAccountAutoCreateEnabled);
+  const getAdCredit = useAppStore((state) => state.getAdCredit);
+  const groupAdCreditState = useAppStore((state) =>
+    groupId ? state.groupScopedAccountStateByGroupId[groupId]?.adCreditState : undefined,
+  );
+  const isGroupAdCreditPending =
+    groupId !== undefined && !groupAdCreditState?.data && !groupAdCreditState?.isError;
+  const hasGroupAdCreditAvailable = groupAdCreditState?.data?.is_account_activated ?? false;
   const hasFailedPayment = useAppStore(
     (state) =>
       state.appData.adAccountStatus ? state.appData.adAccountStatus.hasFailedPayment : false, // default false
@@ -37,6 +52,15 @@ const PageHeaderBanners = () => {
   const refreshPaymentStatusToastStates = useAppStore(
     (state) => state.refreshPaymentStatusToastStates,
   );
+
+  useEffect(() => {
+    if (!groupId) {
+      return;
+    }
+    getAdCredit(groupId).catch((error) => {
+      CaptureException(error, { context: 'fetchManageGroupAdCredit' });
+    });
+  }, [getAdCredit, groupId]);
 
   const campaignsState = useNewFlowStore((state) => state.campaignsState);
   const filteredIdsState = useNewFlowStore((state) => state.filteredIdsState);
@@ -125,6 +149,7 @@ const PageHeaderBanners = () => {
     isInternal ||
     loadingPaymentProfile ||
     loadingPaymentStatus ||
+    isGroupAdCreditPending ||
     (canAdvertiseWithAdCredit && !hasStoppedAdCreditCampaign)
   ) {
     unifiedPaymentStatusToast = null;
@@ -136,6 +161,7 @@ const PageHeaderBanners = () => {
         failedCardAuthorization={showFailedCardAuthBanner}
         hasActiveChallenge={paymentProfile?.has_active_challenge}
         hasFailedPayment={hasFailedPayment}
+        hasGroupAdCreditAvailable={hasGroupAdCreditAvailable}
         hasNoPaymentMethod={hasNoPaymentMethod}
         hasUnknownError={showUnknownErrorBanner}
         hasUnverifiedCard={hasUnverifiedCard}

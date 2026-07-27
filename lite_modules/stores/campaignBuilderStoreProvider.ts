@@ -32,12 +32,13 @@ import {
 } from '@type/campaignBuilder';
 import { GetEligibilityResponse } from '@type/eligibility';
 import { ListPlacesResponse } from '@type/place';
-import { UniverseShapeType } from '@type/universe';
+import { AdvertisedUniverse, UniverseShapeType } from '@type/universe';
 import {
   GetObjectiveTargetingCriteriaByObjectiveRequestJson,
   GetObjectiveTargetingCriteriaRequestJson,
 } from '@utils/campaignBuilder';
 import { UsdToMicroUsd } from '@utils/currency';
+import { mapAdvertisedUniverseToUniverseShape } from '@utils/manageUniverseFilter';
 import {
   EmptyRequestStateType,
   GetEmptyRequestState,
@@ -125,6 +126,7 @@ interface CampaignBuilderStoreActionType {
   setPrefilledCampaignFields: (routerQuery: ParsedUrlQuery) => void;
   setRecommendation: (recommendation: GetRecommendationResponse) => void;
   setThumbnailDrawerOpen: (open: boolean, universeId: number) => void;
+  setUniversesCanAdvertise: (state: RequestStateType<AdvertisedUniverse[]>) => void;
   setVideoDrawerOpen: (open: boolean, universeId: number) => void;
 }
 
@@ -555,6 +557,21 @@ export const useCampaignBuilderStore = create<CampaignBuilderStoreType>()(
           open: open.toString(),
           universeId: universeId.toString(),
         });
+      });
+    },
+    setUniversesCanAdvertise: (state: RequestStateType<AdvertisedUniverse[]>) => {
+      const universes = state.data.map(mapAdvertisedUniverseToUniverseShape);
+      if (universes.length > 0) {
+        useThumbnailStore
+          .getState()
+          .getThumbnailsBatch(universes.map((universe) => universe.universe_id));
+      }
+      set((draft) => {
+        draft.universesCanAdvertise = {
+          data: universes,
+          isError: state.isError,
+          isLoading: state.isLoading,
+        };
       });
     },
     setVideoDrawerOpen: (open: boolean, universeId: number) => {

@@ -17,6 +17,7 @@ import { Campaign, GetAdStatusResponseType } from '@type/campaign';
 import { GenericSortableRowData, UnsortableRowData } from '@type/genericManagementTable';
 import { SimplifiedUploadedCreative } from '@type/uploadedCreative';
 import { GetAdStatusTextForAd } from '@utils/displayStatus';
+import { shouldUseFrontendReportingStats } from '@utils/frontendReportingStats';
 import { GetCreativesForAd, IsOffPlatformAd } from '@utils/offPlatformAdUtils';
 import { buildReachTablePreviewDataFromAd } from '@utils/reachSponsoredAdUtils';
 
@@ -114,6 +115,13 @@ const AdsManagementTable = () => {
     (state: NewFlowStoreType) => state.tableRowsState,
   );
   const adTogglingShouldBeEnabled = useAppStore((state) => state.adTogglingShouldBeEnabled);
+  const useFrontendReportingStats = useAppStore(shouldUseFrontendReportingStats);
+  const visibleAdStatsState = useNewFlowStore(
+    (state: NewFlowStoreType) => state.campaignDetailsState.visibleStatsState,
+  );
+  const fetchVisibleAdStats = useNewFlowStore(
+    (state: NewFlowStoreType) => state.fetchVisibleAdStats,
+  );
 
   const {
     classes: { campaignTable },
@@ -169,9 +177,22 @@ const AdsManagementTable = () => {
   );
 
   // === Main Flow: Regular Roblox Ads ===
-  const regularAdRows = createRegularAdRows(adsState.data || [], adStatuses);
+  const effectiveAds = (adsState.data || []).map((ad) => ({
+    ...ad,
+    performance: useFrontendReportingStats
+      ? visibleAdStatsState.data?.[ad.id]?.performance
+      : ad.performance,
+  }));
+  const regularAdRows = createRegularAdRows(effectiveAds, adStatuses).map((row) => ({
+    ...row,
+    is_stats_loading:
+      useFrontendReportingStats &&
+      !visibleAdStatsState.isError &&
+      (visibleAdStatsState.isLoading ||
+        visibleAdStatsState.data?.[row.id]?.performance === undefined),
+  }));
   const regularAdUnsortableData = createRegularAdUnsortableData(
-    adsState.data || [],
+    effectiveAds,
     updatedAdStatuses,
     campaign,
     campaignToggleLoadingMap,
@@ -193,6 +214,7 @@ const AdsManagementTable = () => {
       entityType={EntityType.ENTITY_TYPE_AD}
       headCells={headCells}
       isLoading={adsState.isLoading}
+      onVisibleEntityIdsChange={fetchVisibleAdStats}
       RowElement={AdTableRow}
       showFooter={false}
       sortableData={rows}

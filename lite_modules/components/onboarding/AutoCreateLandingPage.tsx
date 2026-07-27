@@ -56,7 +56,6 @@ const AutoCreateLandingPage = memo(
             <Link
               className={styles.verifyEmailLink}
               href={`https://www.${GetSitetestBaseUrl()}/my/account`}
-              isExternal={false}
               rel='noopener noreferrer'
               target='_blank'>
               {translateAccount('Heading.VerifyEmail')}

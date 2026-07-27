@@ -1,4 +1,8 @@
-import { AdCreditTransactionType } from '@constants/payment';
+import {
+  AdCreditQuoteSourceField,
+  AdCreditQuoteTier,
+  AdCreditTransactionType,
+} from '@constants/payment';
 
 export interface PaymentProfileType {
   card_network: string;
@@ -103,9 +107,10 @@ export interface AutoReloadData {
  * `ad_credit_amount` was previously named `ad_credit_usd`; see the backend
  * rename plan (the value is a whole ad credit unit, not a raw USD money amount).
  */
-type AdCreditQuoteSourceField = 'ad_credit_amount' | 'robux_amount';
+export type AdCreditQuoteSourceField =
+  (typeof AdCreditQuoteSourceField)[keyof typeof AdCreditQuoteSourceField];
 
-type AdCreditQuoteTierType = 'O18' | 'STANDARD';
+export type AdCreditQuoteTierType = (typeof AdCreditQuoteTier)[keyof typeof AdCreditQuoteTier];
 
 export interface AdCreditPurchaseQuoteRequest {
   /** Whole ad credit units; sent when source_field is `ad_credit_amount`. */
@@ -117,7 +122,7 @@ export interface AdCreditPurchaseQuoteRequest {
   source_field: AdCreditQuoteSourceField;
 }
 
-interface AdCreditPurchaseQuoteTier {
+export interface AdCreditPurchaseQuoteTier {
   /** Ad credit granted for this tier, in micro-USD. */
   ad_credit_micros: number;
   /** Effective Ad-Credit-per-Robux (USD) conversion rate applied at this tier. */

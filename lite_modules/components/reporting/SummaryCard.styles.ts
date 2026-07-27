@@ -29,6 +29,8 @@ const useSummaryCardStyles = makeStyles()((theme) => ({
     display: 'grid',
     gap: '12px',
     gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+    maxWidth: '1680px',
+    width: '100%',
     [theme.breakpoints.up('Small')]: {
       gap: '16px',
     },
@@ -38,10 +40,6 @@ const useSummaryCardStyles = makeStyles()((theme) => ({
     [theme.breakpoints.up('Large')]: {
       gap: '24px',
     },
-  },
-
-  formHelperText: {
-    paddingTop: '12px',
   },
 
   metricCard: {
@@ -61,6 +59,8 @@ const useSummaryCardStyles = makeStyles()((theme) => ({
   multipleStatsContainer: {
     alignItems: 'center',
     columnGap: '24px',
+    display: 'flex',
+    flexDirection: 'row',
     flexWrap: 'nowrap',
   },
 
@@ -71,6 +71,7 @@ const useSummaryCardStyles = makeStyles()((theme) => ({
   statContainer: {
     alignItems: 'baseline',
     columnGap: '8px',
+    display: 'flex',
     flexWrap: 'nowrap',
   },
 

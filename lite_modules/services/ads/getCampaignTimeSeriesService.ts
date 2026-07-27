@@ -39,11 +39,15 @@ const queryMetric = async (
   timePeriod: DateFilteringTimePeriod,
   timezoneDbName: string,
   unifiedAttributionCutoverDate: string | undefined,
+  customStartDate: string | undefined,
+  customEndDate: string | undefined,
   pollingOptions: RAQIClientOptions,
 ): Promise<QueryResult> => {
   const request = buildAnalyticsQueryRequest({
     adAccountId,
     campaignId,
+    customEndDate,
+    customStartDate,
     metric,
     requestTimestamp,
     timePeriod,
@@ -69,6 +73,9 @@ const queryMetric = async (
 interface GetCampaignTimeSeriesRequest {
   adAccountId: string;
   campaignId: string;
+  /** YYYY-MM-DD, required (with customStartDate) when timePeriod === CUSTOM. */
+  customEndDate?: string;
+  customStartDate?: string;
   // When true, also queries spend and revenue (required for the ROAS chart).
   // When false, only plays is queried.
   isRoasEnabled: boolean;
@@ -83,6 +90,8 @@ interface GetCampaignTimeSeriesRequest {
 export const getCampaignTimeSeries = async ({
   adAccountId,
   campaignId,
+  customEndDate,
+  customStartDate,
   isRoasEnabled,
   pollingOptions = ANALYTICS_POLLING_DEFAULTS,
   reportingView = ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT,
@@ -100,6 +109,8 @@ export const getCampaignTimeSeries = async ({
       timePeriod,
       timezoneDbName,
       unifiedAttributionCutoverDate,
+      customStartDate,
+      customEndDate,
       pollingOptions,
     ).then((queryResult) => aggregateQueryResultToDailyDataPoints(queryResult));
 

@@ -3,8 +3,8 @@ import { useWorkspaces } from '@rbx/creator-hub-navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
+import useShouldUseWorkspaceUniverseFiltering from '@hooks/useShouldUseWorkspaceUniverseFiltering';
 import { listUniverseOptionsForAdCreation } from '@services/ads/getUniversesService';
-import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
 import { type AdvertisedUniverse } from '@type/universe';
 
 interface UniverseOptionsForAdCreationResult {
@@ -19,16 +19,12 @@ interface UseUniverseOptionsForAdCreationOptions {
   enabled?: boolean;
 }
 
+const EMPTY_UNIVERSE_OPTIONS: AdvertisedUniverse[] = [];
+
 const useUniverseOptionsForAdCreation = ({
   enabled = true,
 }: UseUniverseOptionsForAdCreationOptions = {}): UniverseOptionsForAdCreationResult => {
-  const isInternalAdAccount = useAppStore((state: AppStoreType) =>
-    state.adAccountIsInternalManaged(),
-  );
-  const isAdAccountAutoCreateEnabled = useAppStore(
-    (state: AppStoreType) => state.appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false,
-  );
-  const isWorkspaceScopingEnabled = isAdAccountAutoCreateEnabled && !isInternalAdAccount;
+  const isWorkspaceScopingEnabled = useShouldUseWorkspaceUniverseFiltering();
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspaces();
   const shouldWaitForWorkspace = isWorkspaceScopingEnabled && isWorkspaceLoading;
 
@@ -79,7 +75,7 @@ const useUniverseOptionsForAdCreation = ({
     isError,
     isLoading,
     shouldWaitForWorkspace,
-    universeOptions: universeOptions ?? [],
+    universeOptions: universeOptions ?? EMPTY_UNIVERSE_OPTIONS,
   };
 };
 

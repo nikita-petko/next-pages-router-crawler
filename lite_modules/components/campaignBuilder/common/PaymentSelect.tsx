@@ -159,15 +159,31 @@ const PaymentSelect = () => {
   }, [shouldShowCreditCard, creditCardAdded, shouldShowInvoice, setValue]);
 
   useEffect(() => {
+    if (
+      shouldShowGroupAdCredit &&
+      groupAdAccountId &&
+      !shouldShowInvoice &&
+      !editMode &&
+      getValues(FormField.PAYMENT_TYPE) === ServerPaymentType.PAYMENT_TYPE_UNSPECIFIED
+    ) {
+      setValue(FormField.PAYMENT_TYPE, ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT, {
+        shouldValidate: true,
+      });
+    }
+  }, [shouldShowGroupAdCredit, groupAdAccountId, shouldShowInvoice, editMode, setValue, getValues]);
+
+  useEffect(() => {
     // Only auto-select the card when it is actually selectable (i.e. not a
     // declined card). Gating on `shouldShowCreditCard` instead of bare
     // `hasPaymentProfile` prevents this effect from claiming the UNSPECIFIED
     // value with a hidden, declined card — which would both leave the dropdown
     // empty and block the ad-credit fallback effect below from running.
+    // Group workspace ad credit takes priority over personal card when available.
     if (
       isAdAccountAutoCreateEnabled &&
       !shouldShowInvoice &&
       shouldShowCreditCard &&
+      !groupAdAccountId &&
       !editMode &&
       getValues(FormField.PAYMENT_TYPE) === ServerPaymentType.PAYMENT_TYPE_UNSPECIFIED
     ) {
@@ -177,6 +193,7 @@ const PaymentSelect = () => {
     isAdAccountAutoCreateEnabled,
     shouldShowCreditCard,
     shouldShowInvoice,
+    groupAdAccountId,
     setValue,
     editMode,
     getValues,
@@ -187,6 +204,7 @@ const PaymentSelect = () => {
     if (
       !shouldShowInvoice &&
       !shouldShowCreditCard &&
+      !groupAdAccountId &&
       !editMode &&
       getValues(FormField.PAYMENT_TYPE) === ServerPaymentType.PAYMENT_TYPE_UNSPECIFIED
     ) {
@@ -194,7 +212,7 @@ const PaymentSelect = () => {
         shouldValidate: true,
       });
     }
-  }, [editMode, shouldShowCreditCard, shouldShowInvoice, setValue, getValues]);
+  }, [editMode, groupAdAccountId, shouldShowCreditCard, shouldShowInvoice, setValue, getValues]);
 
   const {
     classes: { inputHelperText, linkInHelperText },

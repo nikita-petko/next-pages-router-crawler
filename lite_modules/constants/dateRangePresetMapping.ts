@@ -9,6 +9,7 @@ import DateFilteringTimePeriod from '@constants/dateFilteringTimePeriod';
  * so future preset additions land in both places.
  */
 const backendToPreset: Record<DateFilteringTimePeriod, DateRangePreset | null> = {
+  [DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM]: DateRangePreset.Custom,
   [DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_LAST_MONTH]: DateRangePreset.LastMonth,
   [DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_PREVIOUS_YEAR]: DateRangePreset.PreviousYear,
   [DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_SEVEN_DAYS]: DateRangePreset.Last7Days,
@@ -21,6 +22,7 @@ const backendToPreset: Record<DateFilteringTimePeriod, DateRangePreset | null> =
 };
 
 const presetToBackend: Partial<Record<DateRangePreset, DateFilteringTimePeriod>> = {
+  [DateRangePreset.Custom]: DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM,
   [DateRangePreset.Last30Days]: DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_THIRTY_DAYS,
   [DateRangePreset.Last7Days]: DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_SEVEN_DAYS,
   [DateRangePreset.LastMonth]: DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_LAST_MONTH,
@@ -38,13 +40,6 @@ export const dateFilteringTimePeriodToPreset = (
 export const dateRangePresetToBackend = (preset: DateRangePreset): DateFilteringTimePeriod | null =>
   presetToBackend[preset] ?? null;
 
-/**
- * Preset order shown in the WACAM date range picker. Mirrors
- * `DATE_FILTERING_TIME_PERIOD_OPTIONS`.
- *
- * TODO: add `DateRangePreset.Custom` once the flow store, backend enum, and
- * summary/timeseries APIs support caller-supplied start/end date ranges.
- */
 export const WACAM_DATE_RANGE_PRESETS: DateRangePreset[] = [
   DateRangePreset.Today,
   DateRangePreset.Yesterday,

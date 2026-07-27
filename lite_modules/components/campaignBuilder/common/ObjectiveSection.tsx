@@ -202,7 +202,6 @@ const ObjectiveSection = () => {
                 content: (chunks) => (
                   <Link
                     href={ENGAGED_PLAYS_LEARN_MORE_URL}
-                    isExternal={false}
                     rel='noopener noreferrer'
                     target='_blank'>
                     {chunks}
@@ -223,11 +222,7 @@ const ObjectiveSection = () => {
       {
         closing: 'linkEnd',
         content: (chunks) => (
-          <Link
-            href={ENGAGED_PLAYS_LEARN_MORE_URL}
-            isExternal={false}
-            rel='noopener noreferrer'
-            target='_blank'>
+          <Link href={ENGAGED_PLAYS_LEARN_MORE_URL} rel='noopener noreferrer' target='_blank'>
             {chunks}
           </Link>
         ),

@@ -702,7 +702,6 @@ const AdIntegrationCampaignDetailsForm = ({
                               content: (chunks) => (
                                 <Link
                                   href='https://en.help.roblox.com/hc/en-us/articles/13722260778260-Advertising-Standards'
-                                  isExternal={false}
                                   rel='noopener noreferrer'
                                   target='_blank'
                                   underline='always'>
@@ -728,7 +727,6 @@ const AdIntegrationCampaignDetailsForm = ({
                       content: (chunks) => (
                         <Link
                           href={AdIntegrationsDocsUrl}
-                          isExternal={false}
                           rel='noopener noreferrer'
                           target='_blank'
                           underline='always'>
@@ -795,7 +793,6 @@ const AdIntegrationCampaignDetailsForm = ({
                                   content: (chunks) => (
                                     <Link
                                       href='https://en.help.roblox.com/hc/en-us/articles/115004647846-Roblox-Terms-of-Use'
-                                      isExternal={false}
                                       rel='noopener noreferrer'
                                       target='_blank'
                                       underline='always'>
@@ -809,7 +806,6 @@ const AdIntegrationCampaignDetailsForm = ({
                                   content: (chunks) => (
                                     <Link
                                       href='https://en.help.roblox.com/hc/en-us/articles/13722260778260-Advertising-Standards'
-                                      isExternal={false}
                                       rel='noopener noreferrer'
                                       target='_blank'
                                       underline='always'>

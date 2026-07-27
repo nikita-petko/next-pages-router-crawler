@@ -10,7 +10,6 @@ import CampaignDetails from '@components/reporting/CampaignDetails';
 import styles from '@components/reporting/CampaignDetailsDrawer.module.css';
 import CampaignReportingCharts from '@components/reporting/CampaignReportingCharts';
 import { TranslationNamespace } from '@constants/localization';
-import Routes from '@constants/routes';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider';
 
@@ -27,7 +26,9 @@ const CampaignDetailsDrawer = () => {
 
   const handleClose = () => {
     closeDrawer();
-    router.push(Routes.MANAGE, undefined, { scroll: false });
+    const query = { ...router.query };
+    delete query.campaignId;
+    router.push({ pathname: router.pathname, query }, undefined, { scroll: false });
   };
 
   return (

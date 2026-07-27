@@ -18,6 +18,8 @@ enum DateFilteringTimePeriod {
   DATE_FILTERING_TIME_PERIOD_YEAR_TO_DATE = 7,
 
   DATE_FILTERING_TIME_PERIOD_PREVIOUS_YEAR = 8,
+
+  DATE_FILTERING_TIME_PERIOD_CUSTOM = 9,
 }
 
 interface DateFilteringTimePeriodOption {

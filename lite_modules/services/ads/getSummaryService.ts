@@ -2,10 +2,13 @@ import adsClient from '@clients/ads';
 import { UNIFIED_ATTRIBUTION_TRACING_HEADERS } from '@constants/debugging';
 import { EntityType } from '@constants/entity';
 import ReportingViewType from '@constants/reportingViewType';
+import { getCustomDateSection } from '@services/ads/customDateSection';
 import { AdAccountSummary, AdAccountSummaryRequest } from '@type/reportingStats';
 
 export const getAdAccountSummary = async ({
   abortSignal,
+  customEndDate,
+  customStartDate,
   reportingView,
   requestTimestamp,
   timePeriod,
@@ -15,6 +18,7 @@ export const getAdAccountSummary = async ({
   if (universeId) {
     universeIdSection = `&universe_id=${universeId}`;
   }
+  const customDateSection = getCustomDateSection(customStartDate, customEndDate);
   const headers =
     reportingView !== undefined &&
     reportingView !== ReportingViewType.REPORTING_VIEW_TYPE_UNSPECIFIED
@@ -24,7 +28,7 @@ export const getAdAccountSummary = async ({
   const response = await adsClient.get<AdAccountSummary>({
     abortSignal,
     headers,
-    url: `/v2/native/adAccountSummary/dateFilter?entity_type=${EntityType.ENTITY_TYPE_CAMPAIGN}&request_timestamp=${requestTimestamp}&time_period=${timePeriod}&reporting_view=${reportingView}${universeIdSection}`,
+    url: `/v2/native/adAccountSummary/dateFilter?entity_type=${EntityType.ENTITY_TYPE_CAMPAIGN}&request_timestamp=${requestTimestamp}&time_period=${timePeriod}&reporting_view=${reportingView}${universeIdSection}${customDateSection}`,
   });
   return response.data;
 };

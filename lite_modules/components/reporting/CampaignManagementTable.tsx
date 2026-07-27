@@ -30,6 +30,7 @@ import {
   GetCampaignStatusText,
   GetToggleDisabled,
 } from '@utils/displayStatus';
+import { shouldUseFrontendReportingStats } from '@utils/frontendReportingStats';
 import { GetTimezoneObjFromEnum, GetValidatedTimezoneDbName } from '@utils/timezone';
 
 // Generally performance always has payment type (even if campaign doesn't have stats), but in case it doesn't, we fallback to the payment type stored on the campaign
@@ -83,6 +84,20 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
   const isCampaignRoasEnabled = useAppStore(
     (state: AppStoreType) => state.appMetadataState?.data?.isCampaignRoasEnabled ?? false,
   );
+  const useFrontendReportingStats = useAppStore(shouldUseFrontendReportingStats);
+  const visibleCampaignStatsState = useNewFlowStore(
+    (state: NewFlowStoreType) => state.visibleCampaignStatsState,
+  );
+  const fetchVisibleCampaignStats = useNewFlowStore(
+    (state: NewFlowStoreType) => state.fetchVisibleCampaignStats,
+  );
+  const currentDateSelection = useNewFlowStore(
+    (state: NewFlowStoreType) => state.dateSelectionState.currentSelection,
+  );
+  const reportingRequestTimestamp = useNewFlowStore(
+    (state: NewFlowStoreType) => state.reportingRequestTimestamp,
+  );
+  const visibleStatsRefreshKey = `${currentDateSelection}:${currentReportingView}:${reportingRequestTimestamp}`;
 
   const {
     classes: { campaignTable, nameMeasureAnchor, nameMeasureText },
@@ -166,32 +181,22 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
   }
 
   if (isLoading) {
-    return (
-      <GenericManagementTable
-        className={campaignTable}
-        entityIdToUnsortableData={new Map()}
-        entityType={EntityType.ENTITY_TYPE_CAMPAIGN}
-        firstColumnMeasurement={firstColumnMeasurement}
-        getTooltipAnchorRowId={getRetentionTooltipAnchorRowId}
-        headCells={headCells}
-        isLoading
-        RowElement={CampaignTableRow}
-        showFooter
-        sortableData={[]}
-      />
-    );
+    return null;
   }
 
   const rows: GenericSortableRowData[] = filteredCampaigns.map((campaign: Campaign) => {
+    const performance = useFrontendReportingStats
+      ? visibleCampaignStatsState.data?.[campaign.id]?.performance
+      : campaign.performance;
     const creatorProfile =
       campaign.creator_user_id === undefined
         ? undefined
         : creatorProfilesByUserId[campaign.creator_user_id]?.data;
 
     return {
-      click_count: campaign.performance?.click_count || 0,
-      click_through_rate: campaign.performance?.click_through_rate || 0,
-      cost_per_play_usd: campaign.performance?.cost_per_play_usd || 0,
+      click_count: performance?.click_count || 0,
+      click_through_rate: performance?.click_through_rate || 0,
+      cost_per_play_usd: performance?.cost_per_play_usd || 0,
       created_timestamp_ms: campaign.created_timestamp_ms,
       creator_avatar_url: creatorProfile?.avatarUrl,
       creator_username: creatorProfile?.username ?? '',
@@ -203,22 +208,26 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
         : undefined,
       detailed_targeting_match_type: campaign.detailed_targeting_match_type,
       // Reporting stats || 0 to allow accurate number sorting
-      display_spending_usd: campaign.performance?.display_spending_usd || 0,
+      display_spending_usd: performance?.display_spending_usd || 0,
       id: campaign.id,
-      impression: campaign.performance?.impression || 0,
+      impression: performance?.impression || 0,
       is_auto_reload_ad_credit_enabled: campaign.is_auto_reload_ad_credit_enabled || false,
       is_off_platform_request: campaign.is_off_platform_request || false,
       is_reporting_enabled: campaign.is_reporting_enabled || false,
+      is_stats_loading:
+        useFrontendReportingStats &&
+        !visibleCampaignStatsState.isError &&
+        (visibleCampaignStatsState.isLoading || performance === undefined),
       name: campaign.name,
       objective: campaign.objective,
-      play_count: campaign.performance?.play_count || 0,
+      play_count: performance?.play_count || 0,
       // Preserve undefined so missing ROAS (zero-spend / failed metrics) stays
       // distinct from a real 0.0 (spend with no revenue). AMSv2 leaves Roas unset
       // in the former case and sets 0 in the latter.
-      roas: campaign.performance?.roas,
+      roas: performance?.roas,
       status_text: GetBackendCampaignStatusText(campaignStatuses, campaign.id),
-      total_play_time_hours_7d: campaign.performance?.total_play_time_hours_7d || 0,
-      total_robux_revenue_30d: campaign.performance?.total_robux_revenue_30d || 0,
+      total_play_time_hours_7d: performance?.total_play_time_hours_7d || 0,
+      total_robux_revenue_30d: performance?.total_robux_revenue_30d || 0,
       updated_timestamp_ms: campaign.updated_timestamp_ms || 0,
     };
   });
@@ -310,10 +319,12 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
       firstColumnMeasurement={firstColumnMeasurement}
       getTooltipAnchorRowId={getRetentionTooltipAnchorRowId}
       headCells={headCells}
-      isLoading={isLoading}
+      onVisibleEntityIdsChange={fetchVisibleCampaignStats}
       RowElement={CampaignTableRow}
       showFooter
       sortableData={rows}
+      sortWithinPage={useFrontendReportingStats}
+      visibleEntityIdsRefreshKey={visibleStatsRefreshKey}
     />
   );
 

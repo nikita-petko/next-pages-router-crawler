@@ -1,5 +1,6 @@
 import { Autocomplete, AutocompleteOption } from '@rbx/foundation-ui';
 import { Tooltip } from '@rbx/ui';
+import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
@@ -27,6 +28,7 @@ const ExperienceFilterPicker = () => {
   const { translate: translateCreativeLibrary } = useNamespacedTranslation(
     TranslationNamespace.CreativeLibrary,
   );
+  const router = useRouter();
   const {
     classes: { experiencePicker },
   } = useExperienceFilterPickerStyles();
@@ -56,8 +58,11 @@ const ExperienceFilterPicker = () => {
     (state: ThumbnailStoreType) => state.thumbnailsByUniverseId,
   );
 
+  const showNoEligibleUniversesHelperText =
+    !isLoading && !advertisedUniversesIsError && universes.length === 0;
   const isDisabled =
     advertisedUniversesIsError ||
+    showNoEligibleUniversesHelperText ||
     isLoading ||
     campaignsIsLoading ||
     filterIsLoading ||
@@ -67,8 +72,11 @@ const ExperienceFilterPicker = () => {
   const universesById = useMemo(() => {
     const map = new Map<string, AdvertisedUniverse>();
     universes.forEach((u) => map.set(u.universe_id.toString(), u));
+    if (universeFilter) {
+      map.set(universeFilter.universe_id.toString(), universeFilter);
+    }
     return map;
-  }, [universes]);
+  }, [universes, universeFilter]);
 
   const [inputValue, setInputValue] = useState<string>(universeFilter?.universe_name ?? '');
 
@@ -77,6 +85,21 @@ const ExperienceFilterPicker = () => {
   useEffect(() => {
     setInputValue(universeFilter?.universe_name ?? '');
   }, [universeFilter?.universe_id, universeFilter?.universe_name]);
+
+  const handleUniverseChange = (universeObj: AdvertisedUniverse) => {
+    handleUniversePickerChange(universeObj);
+    const query = { ...router.query };
+    if (universeObj.universe_id === 0) {
+      delete query.universeId;
+    } else {
+      query.universeId = String(universeObj.universe_id);
+    }
+    router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
+    logNativeClickEvent(EventName.ExperienceFilterOptionClicked, {
+      universeId: universeObj.universe_id.toString(),
+      universeName: universeObj.universe_name,
+    });
+  };
 
   const filteredUniverses = useMemo(() => {
     const query = inputValue.trim().toLowerCase();
@@ -103,12 +126,8 @@ const ExperienceFilterPicker = () => {
     if (!universeObj) {
       return;
     }
-    handleUniversePickerChange(universeObj);
+    handleUniverseChange(universeObj);
     setInputValue(universeObj.universe_name);
-    logNativeClickEvent(EventName.ExperienceFilterOptionClicked, {
-      universeId: universeObj.universe_id.toString(),
-      universeName: universeObj.universe_name,
-    });
   };
 
   // Foundation Autocomplete does not auto-revert the input on blur, so a user
@@ -152,6 +171,13 @@ const ExperienceFilterPicker = () => {
             />
           ))}
         </Autocomplete>
+        {showNoEligibleUniversesHelperText && (
+          <p
+            className='text-body-small content-muted'
+            data-testid='universePickerNoEligibleHelperText'>
+            {translateCampaign('Heading.NoEligibleExperiencesFound')}
+          </p>
+        )}
       </div>
     </Tooltip>
   );

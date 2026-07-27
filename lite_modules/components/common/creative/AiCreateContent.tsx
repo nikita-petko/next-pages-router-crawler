@@ -1149,7 +1149,6 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
                 content: (chunks) => (
                   <Link
                     href='https://en.help.roblox.com/hc/articles/203313410'
-                    isExternal={false}
                     rel='noopener noreferrer'
                     target='_blank'>
                     {chunks}
@@ -1162,7 +1161,6 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
                 content: (chunks) => (
                   <Link
                     href='https://www.roblox.com/info/privacy'
-                    isExternal={false}
                     rel='noopener noreferrer'
                     target='_blank'>
                     {chunks}
@@ -1175,7 +1173,6 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
                 content: (chunks) => (
                   <Link
                     href='https://www.roblox.com/info/terms'
-                    isExternal={false}
                     rel='noopener noreferrer'
                     target='_blank'>
                     {chunks}

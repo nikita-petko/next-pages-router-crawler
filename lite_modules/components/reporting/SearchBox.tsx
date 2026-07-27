@@ -1,8 +1,6 @@
-import { IconButton } from '@rbx/foundation-ui';
-import { TextField } from '@rbx/ui';
+import { IconButton, SearchInput } from '@rbx/foundation-ui';
 import { useState } from 'react';
 
-import useSearchBoxStyles from '@components/reporting/SearchBox.styles';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider';
@@ -24,41 +22,38 @@ const SearchBox = () => {
     (state: NewFlowStoreType) => state.handleCampaignNameSearchChange,
   );
 
-  const {
-    classes: { closeButton, searchBox },
-  } = useSearchBoxStyles();
+  const showClear = Boolean(campaignNameSearch) && tentativeSearchTerm === campaignNameSearch;
 
   return (
     <form
+      className='width-[240px]'
       onSubmit={(event) => {
         event.preventDefault();
         handleCampaignNameSearchChange(tentativeSearchTerm);
       }}>
-      <TextField
-        className={searchBox}
-        disabled={campaignsIsLoading || filterRequestIsLoading}
+      <SearchInput
+        aria-label={translate('Label.SearchCampaign')}
         id='campaign-name-search'
-        InputProps={{
-          endAdornment: campaignNameSearch && tentativeSearchTerm === campaignNameSearch && (
+        isDisabled={campaignsIsLoading || filterRequestIsLoading}
+        onChange={(e) => setTentativeSearchTerm(e.target.value)}
+        placeholder={translate('Label.SearchCampaign')}
+        size='Medium'
+        trailingIconNode={
+          showClear ? (
             <IconButton
               ariaLabel={translate('Description.ClearSearchInput')}
-              className={closeButton}
               data-testid='clearSearchIcon'
               icon='icon-regular-x'
               onClick={() => {
                 setTentativeSearchTerm('');
                 handleCampaignNameSearchChange('');
               }}
-              size='Small'
+              size='XSmall'
               variant='Utility'
             />
-          ),
-        }}
-        label={translate('Label.SearchCampaign')}
-        onChange={(e) => setTentativeSearchTerm(e.target.value)}
-        size='small'
+          ) : undefined
+        }
         value={tentativeSearchTerm}
-        variant='outlined'
       />
     </form>
   );

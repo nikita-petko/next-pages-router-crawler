@@ -1,6 +1,7 @@
 import { DefaultApi } from '@rbx/client-ads-management-api/v1';
 
 import adsClient from '@clients/ads';
+import { AdCreditQuoteSourceField as AdCreditQuoteSourceFieldValues } from '@constants/payment';
 import {
   AdCreditPurchaseQuoteRequest,
   AdCreditPurchaseQuoteResponse,
@@ -39,10 +40,10 @@ export const getAdCreditQuotePreview = async (
 ): Promise<AdCreditPurchaseQuoteResponse> => {
   const params = new URLSearchParams({ source_field: request.source_field });
   if (request.robux_amount !== undefined) {
-    params.set('robux_amount', String(request.robux_amount));
+    params.set(AdCreditQuoteSourceFieldValues.ROBUX_AMOUNT, String(request.robux_amount));
   }
   if (request.ad_credit_amount !== undefined) {
-    params.set('ad_credit_amount', String(request.ad_credit_amount));
+    params.set(AdCreditQuoteSourceFieldValues.AD_CREDIT_AMOUNT, String(request.ad_credit_amount));
   }
   if (request.groupId !== undefined) {
     params.set('groupId', String(request.groupId));

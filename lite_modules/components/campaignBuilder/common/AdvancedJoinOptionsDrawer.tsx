@@ -181,7 +181,6 @@ const AdvancedJoinOptionsDrawer = () => {
                 content: (chunks) => (
                   <Link
                     href={`https://create.${GetSitetestBaseUrl()}/docs/production/promotion/ads-manager#advanced-join-options`}
-                    isExternal={false}
                     target='_blank'>
                     {chunks}
                   </Link>
@@ -223,7 +222,6 @@ const AdvancedJoinOptionsDrawer = () => {
                           content: (chunks) => (
                             <Link
                               href={`https://create.${GetSitetestBaseUrl()}/dashboard/creations/experiences/${experience?.universe_id}/places`}
-                              isExternal={false}
                               target='_blank'>
                               {chunks}
                             </Link>
@@ -259,7 +257,6 @@ const AdvancedJoinOptionsDrawer = () => {
                             content: (chunks) => (
                               <Link
                                 href={`https://create.${GetSitetestBaseUrl()}/docs/production/promotion/ads-manager#advanced-join-options`}
-                                isExternal={false}
                                 target='_blank'>
                                 {chunks}
                               </Link>

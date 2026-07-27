@@ -103,11 +103,7 @@ const DismissibleTooltip = ({
           {
             closing: 'aEnd',
             content: (chunks) => (
-              <Link
-                href={descriptionLinkUrl}
-                isExternal={false}
-                rel='noopener noreferrer'
-                target='_blank'>
+              <Link href={descriptionLinkUrl} rel='noopener noreferrer' target='_blank'>
                 {chunks}
               </Link>
             ),

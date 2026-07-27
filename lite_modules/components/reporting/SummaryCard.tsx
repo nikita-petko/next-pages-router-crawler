@@ -1,5 +1,5 @@
 import { Divider } from '@rbx/foundation-ui';
-import { Card, CardContent, Grid } from '@rbx/ui';
+import { Card, CardContent } from '@rbx/ui';
 import type { JSX } from 'react';
 
 import Skeleton from '@components/common/Skeleton';
@@ -42,53 +42,47 @@ const SummaryCard = ({
   } = useSummaryCardStyles();
 
   const firstSection = (
-    <Grid item>
-      <Grid className={statContainer} container>
-        <span className={`text-heading-large ${noWrapText}`}>{firstValue.value}</span>
-        {firstValue.units && (
-          <span className={`text-body-medium content-default ${noWrapText}`}>
-            {firstValue.units}
-          </span>
-        )}
-      </Grid>
-    </Grid>
+    <div className={statContainer}>
+      <span className={`text-heading-large ${noWrapText}`}>{firstValue.value}</span>
+      {firstValue.units && (
+        <span className={`text-body-medium content-muted ${noWrapText}`}>{firstValue.units}</span>
+      )}
+    </div>
   );
 
   const secondSection = secondValue ? (
     <>
-      <Grid className={metricDividerContainer} item>
+      <div className={metricDividerContainer}>
         <Divider className={metricDivider} orientation='vertical' />
-      </Grid>
-      <Grid item>
-        <Grid className={statContainer} container>
-          <span className={`text-heading-large ${noWrapText}`}>{secondValue.value}</span>
-          {secondValue.units && (
-            <span className={`text-body-medium content-default ${noWrapText}`}>
-              {secondValue.units}
-            </span>
-          )}
-        </Grid>
-      </Grid>
+      </div>
+      <div className={statContainer}>
+        <span className={`text-heading-large ${noWrapText}`}>{secondValue.value}</span>
+        {secondValue.units && (
+          <span className={`text-body-medium content-muted ${noWrapText}`}>
+            {secondValue.units}
+          </span>
+        )}
+      </div>
     </>
   ) : null;
 
   // Always show the title - it's a static label that doesn't need skeleton loading
-  const titleContent = <span className={`text-body-large ${noWrapText}`}>{title}</span>;
+  const titleContent = <span className={`text-label-large ${noWrapText}`}>{title}</span>;
 
   const valueContent =
     isLoading && useSkeletonLoading ? (
       <>
-        <Grid className={skeletonValueContainer} item>
+        <div className={skeletonValueContainer}>
           <Skeleton className='height-[40px] width-[70%]' data-testid='summary-card-skeleton' />
-        </Grid>
+        </div>
         {secondValue && (
           <>
-            <Grid className={metricDividerContainer} item>
+            <div className={metricDividerContainer}>
               <Divider className={metricDivider} orientation='vertical' />
-            </Grid>
-            <Grid className={skeletonValueContainer} item>
+            </div>
+            <div className={skeletonValueContainer}>
               <Skeleton className='height-[40px] width-[70%]' data-testid='summary-card-skeleton' />
-            </Grid>
+            </div>
           </>
         )}
       </>
@@ -100,25 +94,20 @@ const SummaryCard = ({
     );
 
   return (
-    <Grid
+    <div
       className={cx({
         [cardContainer]: !secondValue,
         [cardContainerWithMultiple]: !!secondValue,
-      })}
-      item>
+      })}>
       <Card className={metricCard} variant='filled'>
         <CardContent className={cardContentContainer}>
-          <Grid container direction='column' rowGap='4px'>
-            <Grid item>{titleContent}</Grid>
-            <Grid item>
-              <Grid className={multipleStatsContainer} container direction='row'>
-                {valueContent}
-              </Grid>
-            </Grid>
-          </Grid>
+          <div className='flex flex-col gap-small'>
+            {titleContent}
+            <div className={multipleStatsContainer}>{valueContent}</div>
+          </div>
         </CardContent>
       </Card>
-    </Grid>
+    </div>
   );
 };
 

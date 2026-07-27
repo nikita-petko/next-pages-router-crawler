@@ -29,6 +29,10 @@ export enum PaymentActivityTabType {
 const ASSET_BASE_PATH = `${process.env.assetPathPrefix}/common`;
 export const adCreditSpritePath = `${ASSET_BASE_PATH}/roblox_icon_white.svg`;
 
+// Docs page explaining the tiered (18+ first) Robux -> Ad Credit conversion rate.
+export const AdCreditConversionLearnMoreUrl =
+  'https://create.roblox.com/docs/production/monetization/18-plus-devex-rate';
+
 export const MICRO_USD_IN_USD = 1000000;
 export const DEFAULT_PAYMENT_THRESHOLD_MICRO_USD = 100000000;
 

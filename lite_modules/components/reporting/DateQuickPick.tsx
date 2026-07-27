@@ -4,11 +4,12 @@ import {
   PopoverDateRangeControlProps,
 } from '@rbx/date-range-picker';
 import { FormControl, FormHelperText } from '@rbx/ui';
-import { useMemo, useState } from 'react';
+import moment from 'moment-timezone';
+import { useMemo } from 'react';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
-import GenericSnackBar from '@components/common/GenericSnackBar';
 import useDateQuickPickStyles from '@components/reporting/DateQuickPick.styles';
+import DateFilteringTimePeriod from '@constants/dateFilteringTimePeriod';
 import {
   dateFilteringTimePeriodToPreset,
   dateRangePresetToBackend,
@@ -21,10 +22,6 @@ import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider'
 import { ConvertDateFilteringEnumToString } from '@utils/enumToString';
 import { CaptureException } from '@utils/error';
 
-// Custom preset is gated on `isCustomDateRangeEnabled` metadata. The store,
-// backend, and summary/timeseries APIs still need caller-supplied start/end
-// date support before Custom can actually be wired through - the flag lets us
-// dark-launch the UI without exposing a broken flow.
 const PRESET_LABEL_KEYS: Partial<Record<DateRangePreset, string>> = {
   [DateRangePreset.Last30Days]: 'Label.Last30Days',
   [DateRangePreset.Last7Days]: 'Label.Last7Days',
@@ -36,10 +33,38 @@ const PRESET_LABEL_KEYS: Partial<Record<DateRangePreset, string>> = {
   [DateRangePreset.Yesterday]: 'Label.Yesterday',
 };
 
-// Bounds are effectively unconstrained today because Custom is disabled.
-// Once Custom lands, replace with the ad account's real min/max window.
-const MIN_START_DATE = new Date(2020, 0, 1);
-const MAX_END_DATE_OFFSET_MS = 24 * 60 * 60 * 1000;
+// AMA caps custom ranges at 731 days (~2 years, sized to span a leap year); derive the
+// picker's minimum start date from the max end date so the UI can't produce a range the
+// API will reject.
+const DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_END_DATE_OFFSET_MS = DAY_MS;
+const MAX_RANGE_MS = 731 * DAY_MS;
+
+// The picker treats `startDate` / `endDate` via the browser's local Date
+// components (mirroring `toUtcCalendarDate`, which populates `now` /
+// `maxEndDate` such that local YMD equals the intended calendar day). Both
+// parse and format must therefore use local components so the roundtrip
+// picker → store → picker preserves the user's chosen day.
+const CUSTOM_DATE_FORMAT = 'YYYY-MM-DD';
+const formatCustomDate = (date: Date): string => moment(date).format(CUSTOM_DATE_FORMAT);
+const parseCustomDate = (value: string | undefined): Date | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  const parsed = moment(value, CUSTOM_DATE_FORMAT, true);
+  return parsed.isValid() ? parsed.toDate() : undefined;
+};
+
+export const toUtcCalendarDate = (date: Date): Date =>
+  new Date(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate(),
+    date.getUTCHours(),
+    date.getUTCMinutes(),
+    date.getUTCSeconds(),
+    date.getUTCMilliseconds(),
+  );
 
 const DateQuickPick = () => {
   const { translate: translateReport } = useNamespacedTranslation(TranslationNamespace.Report);
@@ -48,8 +73,6 @@ const DateQuickPick = () => {
   const {
     classes: { dateQuickPickContainer },
   } = useDateQuickPickStyles();
-
-  const [customComingSoonOpen, setCustomComingSoonOpen] = useState<boolean>(false);
 
   const dateSelectionState = useNewFlowStore((state: NewFlowStoreType) => state.dateSelectionState);
   const campaignsIsLoading = useNewFlowStore(
@@ -69,7 +92,7 @@ const DateQuickPick = () => {
 
   const currentPreset =
     dateFilteringTimePeriodToPreset(dateSelectionState.currentSelection) ??
-    DateRangePreset.Last30Days;
+    DateRangePreset.Last7Days;
 
   const presetLabels = useMemo<PopoverDateRangeControlProps['presetLabels']>(() => {
     const entries = WACAM_DATE_RANGE_PRESETS.map(
@@ -105,35 +128,51 @@ const DateQuickPick = () => {
       CaptureException(`invalid DateRangePreset selection: ${next}`);
       return;
     }
+    // The Custom preset never flows through here - the picker fires
+    // onCustomDateRangeChangeConfirmed instead, which carries the dates.
+    if (backendValue === DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM) {
+      return;
+    }
     handleDateSelectionChange(backendValue);
     logNativeClickEvent(EventName.DateFilteringOptionClicked, {
       dateFilteringOption: ConvertDateFilteringEnumToString(backendValue),
     });
   };
 
-  const handleCustomConfirmed = () => {
+  const handleCustomConfirmed = (startDate: Date, endDate: Date) => {
     if (isDisabled) {
       return;
     }
-    // TODO(ADS-11144 follow-up): wire Custom start/end through the new-flow
-    // store and summary/timeseries APIs. Toast + log for now so we can surface
-    // dark-launch traffic while the flag is on.
+    const customStartDate = formatCustomDate(startDate);
+    const customEndDate = formatCustomDate(endDate);
+    handleDateSelectionChange(
+      DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM,
+      customStartDate,
+      customEndDate,
+    );
     logNativeClickEvent(EventName.DateFilteringOptionClicked, {
-      dateFilteringOption: 'CustomComingSoon',
+      dateFilteringOption: ConvertDateFilteringEnumToString(
+        DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM,
+      ),
     });
-    setCustomComingSoonOpen(true);
   };
 
   // TODO(ADS-11144 follow-up): `PopoverDateRangeControl` does not expose an
   // `isDisabled` prop yet. Once it does, drop the wrapper below and pass it
   // through directly.
-  const { maxEndDate, now } = useMemo(() => {
+  const { maxEndDate, minStartDate, now } = useMemo(() => {
     const currentTime = new Date();
+    const maxEndTime = currentTime.getTime() + MAX_END_DATE_OFFSET_MS;
     return {
-      maxEndDate: new Date(currentTime.getTime() + MAX_END_DATE_OFFSET_MS),
-      now: currentTime,
+      maxEndDate: toUtcCalendarDate(new Date(maxEndTime)),
+      minStartDate: toUtcCalendarDate(new Date(maxEndTime - MAX_RANGE_MS)),
+      now: toUtcCalendarDate(currentTime),
     };
   }, []);
+
+  const { customEndDate, customStartDate } = dateSelectionState;
+  const displayStartDate = parseCustomDate(customStartDate) ?? now;
+  const displayEndDate = parseCustomDate(customEndDate) ?? now;
 
   return (
     <FormControl
@@ -146,29 +185,22 @@ const DateQuickPick = () => {
         <PopoverDateRangeControl
           customLabel={customLabel}
           dateRangeType={currentPreset}
-          endDate={now}
+          endDate={displayEndDate}
           label={translateReport('Label.DateRange')}
           maxEndDate={maxEndDate}
-          minStartDate={MIN_START_DATE}
+          minStartDate={minStartDate}
           onChangeRangeType={handleChange}
           onCustomDateRangeChangeConfirmed={handleCustomConfirmed}
           pickerLabels={pickerLabels}
           presetLabels={presetLabels}
           presetOptions={WACAM_DATE_RANGE_PRESETS}
-          startDate={now}
+          startDate={displayStartDate}
         />
       </div>
       {dateSelectionState.isError && (
         <FormHelperText data-testid='datePickerErrorHelperText'>
           {translateCampaign('Description.FailedToFetch')}
         </FormHelperText>
-      )}
-      {customComingSoonOpen && (
-        <GenericSnackBar
-          message={translateReport('Description.CustomDateRangeComingSoon')}
-          onClose={() => setCustomComingSoonOpen(false)}
-          severity='warning'
-        />
       )}
     </FormControl>
   );

@@ -10,4 +10,6 @@ const enum ReportingStatType {
   REPORTING_STAT_ROAS = 8,
 }
 
+export const REPORTING_TIMEZONE_DB_NAME = 'Etc/UTC';
+
 export default ReportingStatType;

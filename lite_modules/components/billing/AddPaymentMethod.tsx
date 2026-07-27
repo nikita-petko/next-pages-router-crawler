@@ -9,6 +9,7 @@ import { BuyAdCredit, BuyAdCreditProps } from '@components/billing/BuyAdCredit';
 import AddCreditCardIcon from '@components/billing/common/AddCreditCardIcon';
 import CustomTabPanel from '@components/billing/common/CustomTabPanel';
 import StripeElementsProvider from '@components/billing/common/StripeElementsProvider';
+import { WatermarkedBuyAdCredit } from '@components/billing/WatermarkedBuyAdCredit';
 import CenteredCircularProgress from '@components/common/CenteredCircularProgress';
 import { openErrorDialog } from '@components/common/dialog/errorDialog';
 import { openImpersonationErrorDialog } from '@components/common/dialog/impersonationErrorDialog';
@@ -42,6 +43,10 @@ const AddPaymentMethodTabsNavigation = ({
 
   const router = useRouter();
   const userOver18 = useAppStore((state: AppStoreType) => state.appData.userOver18);
+  const isWatermarkedRobuxConversionEnabled = useAppStore(
+    (state: AppStoreType) =>
+      state.appMetadataState?.data?.isWatermarkedRobuxConversionEnabled ?? false,
+  );
 
   const [value, setValue] = useState<ADD_PAYMENT_TABS>(
     router.query.action === PaymentMethodActionEnum.RELOAD_AD_CREDIT || !userOver18
@@ -83,16 +88,29 @@ const AddPaymentMethodTabsNavigation = ({
       )}
       <CustomTabPanel index={0} value={Object.values(ADD_PAYMENT_TABS).indexOf(value)}>
         <div className={buyAdCreditFormContainer}>
-          <BuyAdCredit
-            adCreditBalance={adCreditBalance}
-            groupAdCreditBalance={groupAdCreditBalance}
-            groupId={groupId}
-            groupName={groupName}
-            groupRobuxBalance={groupRobuxBalance}
-            initialBalanceScope={initialBalanceScope}
-            robuxBalance={robuxBalance}
-            showGroupBalanceOption={showGroupBalanceOption}
-          />
+          {isWatermarkedRobuxConversionEnabled ? (
+            <WatermarkedBuyAdCredit
+              adCreditBalance={adCreditBalance}
+              groupAdCreditBalance={groupAdCreditBalance}
+              groupId={groupId}
+              groupName={groupName}
+              groupRobuxBalance={groupRobuxBalance}
+              initialBalanceScope={initialBalanceScope}
+              robuxBalance={robuxBalance}
+              showGroupBalanceOption={showGroupBalanceOption}
+            />
+          ) : (
+            <BuyAdCredit
+              adCreditBalance={adCreditBalance}
+              groupAdCreditBalance={groupAdCreditBalance}
+              groupId={groupId}
+              groupName={groupName}
+              groupRobuxBalance={groupRobuxBalance}
+              initialBalanceScope={initialBalanceScope}
+              robuxBalance={robuxBalance}
+              showGroupBalanceOption={showGroupBalanceOption}
+            />
+          )}
         </div>
       </CustomTabPanel>
       <CustomTabPanel index={1} value={Object.values(ADD_PAYMENT_TABS).indexOf(value)}>
