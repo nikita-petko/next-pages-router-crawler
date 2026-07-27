@@ -2450,6 +2450,9 @@
 .min-width-\[350px\] {
   min-width: 350px;
 }
+.min-width-\[393px\] {
+  min-width: 393px;
+}
 .min-width-\[80px\] {
   min-width: 80px;
 }
@@ -3246,6 +3249,12 @@
 }
 .bg-\[transparent\] {
   background-color: transparent;
+}
+.bg-\[var\(--color-common-shimmer\)\] {
+  background-color: var(--color-common-shimmer);
+}
+.bg-\[var\(--color-extended-orange-600\)\] {
+  background-color: var(--color-extended-orange-600);
 }
 .bg-\[var\(--color-stroke-default\)\] {
   background-color: var(--color-stroke-default);
@@ -5402,6 +5411,32 @@ html.studio-webview.dark-theme,
 
 .\[\&\:\:-webkit-search-results-decoration\]\:hidden::-webkit-search-results-decoration {
   display: none;
+}
+
+.\[\&\:\:after\]\:absolute::after {
+  position: absolute;
+}
+
+.\[\&\:\:after\]\:inset-\[0\]::after {
+  inset: 0;
+}
+
+.\[\&\:\:after\]\:\[animation\:foundation-web-skeleton-shimmer_1\.5s_linear_infinite\]::after {
+  animation: foundation-web-skeleton-shimmer 1.5s linear infinite;
+}
+
+.\[\&\:\:after\]\:\[background\:linear-gradient\(90deg\2c var\(--color-extended-white-0\)_0\%\2c var\(--color-extended-white-20\)_50\%\2c var\(--color-extended-white-0\)_100\%\)\]::after {
+  background: linear-gradient(90deg,var(--color-extended-white-0) 0%,var(--color-extended-white-20) 50%,var(--color-extended-white-0) 100%);
+}
+
+.\[\&\:\:after\]\:\[content\:\'\'\]::after {
+  content: '';
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-reduce\:\[\&\:\:after\]\:\[content\:none\]::after {
+    content: none;
+  }
 }
 
 .\[\&\:focus-within\]\:\!\[border-color\:inherit\]:focus-within {

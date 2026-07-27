@@ -1,5 +1,5 @@
 import { useEffect, useState, type FunctionComponent } from 'react';
-import { Badge, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
+import { Badge, Skeleton, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import {
   ReturnPolicy,
@@ -96,7 +96,9 @@ const RevShareCompletedThumbnail: FunctionComponent<{
   return resolvedThumbnail?.targetId === targetId &&
     resolvedThumbnail.thumbnailType === thumbnailType ? (
     <img className={imgClassName} src={resolvedThumbnail.url} alt={alt} />
-  ) : null;
+  ) : (
+    <Skeleton variant='Circle' className='width-full height-full' />
+  );
 };
 
 const getThumbnailHref = ({
