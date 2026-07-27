@@ -36,7 +36,7 @@ import {
 import useIpSnackbar from '../../../hooks/useIpSnackbar';
 import { useIpFamilyQuery } from '../../../ipFamilies/hooks/ipFamily';
 import { ContentTile, ContentType } from '../../components/ContentTile';
-import { MAX_IPH_CHANGE_REQUEST_LENGTH } from '../../constants';
+import { MAX_IPH_CONDITIONAL_OFFER_FEEDBACK_LENGTH } from '../../constants';
 import { IPH_AGREEMENT_DETAILS_HREF, EXTERNAL_EXPERIENCE_HREF, IP_LISTINGS_HREF } from '../../urls';
 import {
   LicenseManagerClickEvent,
@@ -411,7 +411,10 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose }: Props) => {
     showFeedbackTextbox
       ? {
           required: translate('Error.FieldIsMandatory'),
-          validate: getMaxLengthValidationRule(MAX_IPH_CHANGE_REQUEST_LENGTH, translate),
+          validate: getMaxLengthValidationRule(
+            MAX_IPH_CONDITIONAL_OFFER_FEEDBACK_LENGTH,
+            translate,
+          ),
         }
       : undefined;
 
@@ -583,7 +586,7 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose }: Props) => {
                     maxRows={15}
                     error={!!error || !!moderationError}
                     helperText={error?.message ?? moderationError}
-                    maxLength={MAX_IPH_CHANGE_REQUEST_LENGTH}
+                    maxLength={MAX_IPH_CONDITIONAL_OFFER_FEEDBACK_LENGTH}
                     showCharacterCount
                     onChange={(e) => {
                       field.onChange(e);
