@@ -1,8 +1,21 @@
 import { useState } from "react";
+
+import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
 
 import TestAppMetaLayout from "@modules/components/layouts/TestAppMetaLayout";
-import { Divider, Grid, Typography, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField } from "@rbx/ui";
+import { 
+  Divider,
+  Grid,
+  Typography,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  TextField 
+} from "@rbx/ui";
 
 interface TTestDialogProps {
   title: string;
@@ -12,7 +25,12 @@ interface TTestDialogProps {
   handleClose: () => void;
 }
 
-const TestDialog: React.FC<TTestDialogProps> = ({ title, content, open, handleClose }) => 
+const TestDynamicComponent = dynamic(() => import('@modules/components/TestDynamicComponent'), {
+  ssr: false,
+  loading: () => <Typography variant='body1'>Loading Dynamic Component...</Typography>
+});
+
+const TestDialog: React.FC<TTestDialogProps> = ({ title, content, open, handleClose }) =>
 (<Dialog maxWidth='sm' open={open} onClose={handleClose}>
   <DialogTitle id=''>{title}</DialogTitle>
   <DialogContent dividers>
@@ -38,11 +56,22 @@ const TestPage = () => {
     setOpen(false);
   };
 
-  const { query: { testQuery = 'test' } } = useRouter();
+  const { query: { testQuery = 'test', testDynamicImport: testDynamicImportV, testDynamicComponent: testDynamicComponentV } } = useRouter();
+
+  const testDynamicImport = testDynamicImportV === 'true';
+  const testDynamicComponent = testDynamicComponentV === 'true';
+
+  if (testDynamicImport) {
+    import('@modules/TestDynamicImport').then((module) => {
+      module.default();
+    });
+  }
 
   return (
     <Grid container direction='column' alignItems='center' justifyContent='center' minHeight='100vh'>
       <Grid container item direction='column' alignItems='center' justifyContent="center" width='fit-content'>
+        {testDynamicComponent && <TestDynamicComponent />}
+        
         <Typography variant="h1" align='center' mb={1}>
           Web Blox Test App
         </Typography>
@@ -52,11 +81,11 @@ const TestPage = () => {
         </Typography>
         <Divider sx={{ alignSelf: 'stretch' }} />
 
-        <TextField id="test-id" label="Test Dialog Content" sx={{ mt: 3 }} onChange={(e) => setText(e.target.value)}/>
+        <TextField id="test-id" label="Test Dialog Content" sx={{ mt: 3 }} onChange={(e) => setText(e.target.value)} />
 
         {/* I might change this to a dialog popup or a snackbar */}
         <Button variant='contained' onClick={handleClickOpen} sx={{ mt: 2 }}>Test Button</Button>
-        <TestDialog title="Test Dialog" content={text} open={open} handleClose={handleClose}  />
+        <TestDialog title="Test Dialog" content={text} open={open} handleClose={handleClose} />
       </Grid>
     </Grid>
   )
