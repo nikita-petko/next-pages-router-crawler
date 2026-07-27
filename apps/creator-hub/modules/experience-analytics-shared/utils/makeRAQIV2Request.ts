@@ -962,9 +962,15 @@ const determineFillEndTime = (
     return new Date(Math.min(requestedEndTime.getTime(), latestAvailableOnAnySeries.getTime()));
   }
 
-  // Fallback: use the latest timestamp from actual response data if metadata unavailable/failed
+  // Streaming metric sources (e.g. VictoriaMetrics) have no landing-time concept and return
+  // metadata successfully without latestAvailableTime entries. Only then trust the
+  // requested end time. If metadata fetch failed (null), type is unknown — cap at the
+  // last observed point so we do not fabricate zeros past landed batch data.
   const latestResponseTimestamp = findLatestTimestampInResponse(mainResponse, totalResponse);
   if (latestResponseTimestamp) {
+    if (metricMetadata !== null) {
+      return requestedEndTime;
+    }
     return new Date(Math.min(requestedEndTime.getTime(), latestResponseTimestamp.getTime()));
   }
 
