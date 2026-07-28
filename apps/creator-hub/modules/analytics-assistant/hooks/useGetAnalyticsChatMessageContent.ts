@@ -1,9 +1,11 @@
 import type React from 'react';
 import { useMemo } from 'react';
+import { adaptAskQuestionParts } from '../adapters/streamingProtocol/adaptAskQuestionPart';
 import { adaptCanvasDataParts } from '../adapters/streamingProtocol/adaptCanvasDataParts';
 import { adaptTextParts } from '../adapters/streamingProtocol/adaptTextParts';
 import { adaptThinkingStepParts } from '../adapters/streamingProtocol/adaptThinkingStepParts';
 import type { AnalyticsChatMessage, ThinkingStep } from '../types/AnalyticsChatTypes';
+import type { AskQuestion } from '../types/AskQuestion';
 
 export interface AnalyticsChatMessageContent {
   /** The concatenated text content from all text parts */
@@ -12,6 +14,8 @@ export interface AnalyticsChatMessageContent {
   chartElements: React.ReactNode[];
   /** Thinking steps extracted from the message */
   thinkingSteps: ThinkingStep[];
+  /** The clarifying-question card emitted on this (assistant) turn, or null. */
+  askQuestion: AskQuestion | null;
 }
 
 /**
@@ -52,13 +56,19 @@ export function useGetAnalyticsChatMessageContent(
     [message.parts, message.role, options?.finalizeInProgress],
   );
 
+  const askQuestion = useMemo(
+    () => (message.role === 'assistant' ? adaptAskQuestionParts(message.parts) : null),
+    [message.parts, message.role],
+  );
+
   return useMemo(
     () => ({
       textContent,
       chartElements,
       thinkingSteps,
+      askQuestion,
     }),
-    [textContent, chartElements, thinkingSteps],
+    [textContent, chartElements, thinkingSteps, askQuestion],
   );
 }
 

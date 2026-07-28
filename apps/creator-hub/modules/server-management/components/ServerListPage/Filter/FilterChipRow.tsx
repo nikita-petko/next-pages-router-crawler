@@ -8,9 +8,9 @@ import type {
   NumberRange,
 } from '../../../types/GameServerControls';
 import {
-  ACTIVE_ONLY_SERVER_STATUS_FILTER,
   areAllServerStatusesSelected,
   areNoServerStatusesSelected,
+  DEFAULT_SERVER_STATUS_FILTER,
   SERVER_STATUS_FILTER_KEYS,
   SERVER_STATUS_KEYS,
 } from '../../../utils/serverStatus';
@@ -91,20 +91,14 @@ const toggleFilterBit = <T extends object>(current: T, key: keyof T, reset: T): 
 
 interface FilterGroupProps extends PropsWithChildren {
   label: string;
-  chipCount: number;
 }
 
-const FilterGroup: FunctionComponent<FilterGroupProps> = ({ label, chipCount, children }) => {
-  // always reserve the label row so adding a 2nd chip doesn't jump the group down
+const FilterGroup: FunctionComponent<FilterGroupProps> = ({ label, children }) => {
   return (
     <fieldset
       aria-label={label}
       className='flex flex-col gap-xxsmall padding-none margin-none stroke-none min-width-0'>
-      <span
-        className={`text-label-medium content-muted padding-left-[5px] padding-bottom-[5px] ${
-          chipCount <= 1 ? 'invisible' : 'visible'
-        }`}
-        aria-hidden={chipCount <= 1}>
+      <span className='text-label-medium content-muted padding-left-[5px] padding-bottom-[5px]'>
         {label}
       </span>
       <div className='flex items-center wrap gap-xsmall'>{children}</div>
@@ -161,7 +155,7 @@ const FilterChipRow: FunctionComponent<FilterChipRowProps> = ({
         }
         return {
           ...prev,
-          serverStatus: toggleFilterBit(currentStatuses, type, ACTIVE_ONLY_SERVER_STATUS_FILTER),
+          serverStatus: toggleFilterBit(currentStatuses, type, DEFAULT_SERVER_STATUS_FILTER),
         };
       });
     },
@@ -217,11 +211,9 @@ const FilterChipRow: FunctionComponent<FilterChipRowProps> = ({
   }
 
   return (
-    <div className='flex wrap gap-medium'>
+    <div className='flex wrap items-end gap-medium'>
       {filter.placeVersion.length > 0 && (
-        <FilterGroup
-          label={translate('ServerListTable.Filter.PlaceVersion')}
-          chipCount={filter.placeVersion.length}>
+        <FilterGroup label={translate('ServerListTable.Filter.PlaceVersion')}>
           {filter.placeVersion.map((version) => (
             <FilterChip
               key={version}
@@ -243,9 +235,7 @@ const FilterChipRow: FunctionComponent<FilterChipRowProps> = ({
         </FilterGroup>
       )}
       {filter.engineVersion.length > 0 && (
-        <FilterGroup
-          label={translate('ServerListTable.Filter.EngineVersion')}
-          chipCount={filter.engineVersion.length}>
+        <FilterGroup label={translate('ServerListTable.Filter.EngineVersion')}>
           {filter.engineVersion.map((version) => (
             <FilterChip
               key={version}
@@ -267,16 +257,12 @@ const FilterChipRow: FunctionComponent<FilterChipRowProps> = ({
         </FilterGroup>
       )}
       {typeChips.length > 0 && (
-        <FilterGroup
-          label={translate('ServerListTable.Filter.ServerType')}
-          chipCount={typeChips.length}>
+        <FilterGroup label={translate('ServerListTable.Filter.ServerType')}>
           {typeChips}
         </FilterGroup>
       )}
       {statusChips.length > 0 && (
-        <FilterGroup
-          label={translate('ServerListTable.Filter.ServerStatus')}
-          chipCount={statusChips.length}>
+        <FilterGroup label={translate('ServerListTable.Filter.ServerStatus')}>
           {statusChips}
         </FilterGroup>
       )}

@@ -50,14 +50,20 @@ export const createConversation = async (
   });
 };
 
+/**
+ * Send a new user turn as structured content parts. The API requires exactly
+ * one of `content` or `input`, and `input` is deprecated (the server normalizes
+ * it to a single text part), so every turn is sent as `content`: a text turn is
+ * `[{ type: 'text', text }]`, a clarifying-question answer is `[{ type: 'data', data }]`.
+ */
 export const sendMessage = async (
   conversationId: string,
   universeId: number,
-  input: string,
+  content: ContentPart[],
 ): Promise<object> => {
   const request: ConversationsSendMessageRequest = {
     universeId,
-    input,
+    content,
   };
 
   return conversationsApi.conversationsSendMessage({

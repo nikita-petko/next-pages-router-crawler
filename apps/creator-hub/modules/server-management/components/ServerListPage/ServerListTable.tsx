@@ -2,7 +2,15 @@ import type { FunctionComponent } from 'react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useQueryClient } from '@tanstack/react-query';
-import { Badge, Icon, IconButton, ProgressCircle, Snackbar } from '@rbx/foundation-ui';
+import {
+  Badge,
+  Icon,
+  IconButton,
+  ProgressCircle,
+  Snackbar,
+  Tooltip,
+  TooltipTrigger,
+} from '@rbx/foundation-ui';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import {
   Skeleton,
@@ -15,7 +23,6 @@ import {
   Typography,
   Menu,
   MenuItem,
-  Card,
   TablePagination,
 } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
@@ -46,7 +53,7 @@ export type SortOrder = (typeof SORT_DIRECTION)[keyof typeof SORT_DIRECTION];
 // width 1% + nowrap = shrink to header/cell content instead of soaking leftover table space
 const COMPACT_COLUMN_CLASS = 'width-[1%] text-no-wrap';
 const ENGINE_COLUMN_CLASS = 'min-width-[160px]';
-const TIME_COLUMN_CLASS = 'min-width-[120px] width-[120px] text-no-wrap';
+const TIME_COLUMN_CLASS = 'min-width-[140px] text-no-wrap';
 const STATUS_COLUMN_CLASS = 'min-width-[160px] padding-right-medium no-clip text-no-wrap';
 const ACTIONS_COLUMN_CLASS = 'width-[1%] text-no-wrap padding-x-small';
 const HEADER_DEFAULT_CLASS = 'text-label-medium padding-y-large padding-x-medium';
@@ -82,13 +89,27 @@ type ServerColumn = {
   sortable?: boolean;
 };
 
+type ServerDetailsTab = 'Logs' | 'Players';
+
+const formatUtcTimestamp = (value: number | Date): string => {
+  const date = value instanceof Date ? value : new Date(value);
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone: 'UTC',
+  });
+};
+
 const SERVER_COLUMNS: readonly ServerColumn[] = [
   {
     id: 'status',
     translationKey: 'ServerListTable.Column.Status',
     className: `${HEADER_DEFAULT_CLASS} ${STATUS_COLUMN_CLASS}`,
     shutdownOnly: true,
-    sortable: false,
   },
   {
     id: 'place_version',
@@ -162,6 +183,8 @@ const ServerListTable: FunctionComponent<ServerListTableProps> = ({
   const router = useRouter();
   const queryClient = useQueryClient();
   const tableRegionRef = useRef<HTMLDivElement>(null);
+  const tableScrollerRef = useRef<HTMLDivElement>(null);
+  const headerScrollerRef = useRef<HTMLDivElement>(null);
   const skipNextRootFetchRef = useRef(false);
   const routerRef = useRef(router);
   useEffect(() => {
@@ -273,6 +296,86 @@ const ServerListTable: FunctionComponent<ServerListTableProps> = ({
     return () => window.cancelAnimationFrame(frame);
   }, [overlayMounted, isTableUpdating]);
 
+  const syncHeaderScroll = useCallback(() => {
+    const tableScroller = tableScrollerRef.current;
+    const headerScroller = headerScrollerRef.current;
+    if (!tableScroller || !headerScroller) {
+      return;
+    }
+    headerScroller.scrollLeft = tableScroller.scrollLeft;
+  }, []);
+
+  const syncColumnWidths = useCallback(() => {
+    const tableScroller = tableScrollerRef.current;
+    const headerScroller = headerScrollerRef.current;
+    const measureHeader = tableScroller?.querySelector('[data-measure-header="true"]');
+    const bodyTable = tableScroller?.querySelector('table');
+    const stickyTable = headerScroller?.querySelector('table');
+    const measureCells = measureHeader?.querySelectorAll('th');
+    const stickyCells = stickyTable?.querySelectorAll('thead th');
+    if (
+      !(measureHeader instanceof HTMLTableSectionElement) ||
+      !(bodyTable instanceof HTMLElement) ||
+      !(stickyTable instanceof HTMLElement) ||
+      !measureCells ||
+      !stickyCells ||
+      measureCells.length !== stickyCells.length
+    ) {
+      return;
+    }
+
+    // keep sticky table the same width as the body so leftover space distributes identically
+    const tableWidth = `${bodyTable.offsetWidth}px`;
+    stickyTable.style.width = tableWidth;
+    stickyTable.style.minWidth = tableWidth;
+    stickyTable.style.tableLayout = 'fixed';
+
+    measureCells.forEach((measureCell, index) => {
+      if (!(measureCell instanceof HTMLElement)) {
+        return;
+      }
+      const stickyCell = stickyCells[index];
+      if (!(stickyCell instanceof HTMLElement)) {
+        return;
+      }
+      const width = `${measureCell.getBoundingClientRect().width}px`;
+      stickyCell.style.width = width;
+      stickyCell.style.minWidth = width;
+      stickyCell.style.maxWidth = width;
+    });
+    bodyTable.style.marginTop = `-${measureHeader.offsetHeight}px`;
+  }, []);
+
+  useEffect(() => {
+    syncColumnWidths();
+    const tableScroller = tableScrollerRef.current;
+    const measureHeader = tableScroller?.querySelector('[data-measure-header="true"]');
+    if (!tableScroller) {
+      return undefined;
+    }
+    const resizeObserver = new ResizeObserver(() => {
+      syncColumnWidths();
+    });
+    resizeObserver.observe(tableScroller);
+    if (measureHeader instanceof HTMLElement) {
+      resizeObserver.observe(measureHeader);
+      for (const th of measureHeader.querySelectorAll('th')) {
+        resizeObserver.observe(th);
+      }
+    }
+    const firstBodyRow = tableScroller.querySelector('tbody tr');
+    if (firstBodyRow) {
+      for (const td of firstBodyRow.querySelectorAll('td')) {
+        resizeObserver.observe(td);
+      }
+    }
+    window.addEventListener('resize', syncColumnWidths);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', syncColumnWidths);
+    };
+  }, [syncColumnWidths, showEmptyLoading, headings, servers, showShutdownServers, isTableUpdating]);
+
   const fetchServers = useCallback(
     async (pageSize: number, silent = false): Promise<GameServer[] | null> => {
       if (!placeId || !urlReady || !tableUrlReady) {
@@ -374,9 +477,23 @@ const ServerListTable: FunctionComponent<ServerListTableProps> = ({
             count: numberFormatter.format(Math.trunc(server.memoryUsedMB)),
           });
         case 'create_time':
-          return formatStartTime(server.createTime, translate);
+          return (
+            <Tooltip title={formatUtcTimestamp(server.createTime)} position='top-center'>
+              <TooltipTrigger asChild>
+                <span>{formatStartTime(server.createTime, translate)}</span>
+              </TooltipTrigger>
+            </Tooltip>
+          );
         case 'termination_time':
-          return server.terminateTime ? formatStartTime(server.terminateTime, translate) : '--';
+          return server.terminateTime ? (
+            <Tooltip title={formatUtcTimestamp(server.terminateTime)} position='top-center'>
+              <TooltipTrigger asChild>
+                <span>{formatStartTime(server.terminateTime, translate)}</span>
+              </TooltipTrigger>
+            </Tooltip>
+          ) : (
+            '--'
+          );
         case 'server_uptime':
           return formatUptime(server.uptime, numberLocale);
         case 'server_type':
@@ -410,7 +527,7 @@ const ServerListTable: FunctionComponent<ServerListTableProps> = ({
   }, []);
 
   const handleViewDetails = useCallback(
-    (server: GameServer) => {
+    (server: GameServer, tab: ServerDetailsTab) => {
       if (!router.query.id || !placeId) {
         return;
       }
@@ -428,7 +545,11 @@ const ServerListTable: FunctionComponent<ServerListTableProps> = ({
           isShutdown: server.isShutdown,
         },
       );
-      void router.push(server.isShutdown ? `${detailsPath}?shutdown=1` : detailsPath);
+      const params = new URLSearchParams({ tab });
+      if (server.isShutdown) {
+        params.set('shutdown', '1');
+      }
+      void router.push(`${detailsPath}?${params.toString()}`);
     },
     [placeId, queryClient, router],
   );
@@ -565,6 +686,22 @@ const ServerListTable: FunctionComponent<ServerListTableProps> = ({
   }, [servers]);
 
   const loadingLabel = translate('ServerListTable.Loading');
+
+  // measure header must mirror sticky sort labels so dual-table width sync isn't short by the icon
+  const renderHeaderLabel = (heading: (typeof headings)[number], interactive: boolean) => {
+    if (heading.sortable === false) {
+      return translate(heading.translationKey);
+    }
+    return (
+      <TableSortLabel
+        active={sortBy === heading.id}
+        direction={sortBy === heading.id ? sortOrder : SORT_DIRECTION.ASC}
+        onClick={interactive ? () => handleRequestSort(heading.id) : undefined}>
+        {translate(heading.translationKey)}
+      </TableSortLabel>
+    );
+  };
+
   const shimmerRows = (
     <>
       {Array.from({ length: LOADING_SHIMMER_ROWS }, (_, index) => (
@@ -582,14 +719,33 @@ const ServerListTable: FunctionComponent<ServerListTableProps> = ({
 
   if (showEmptyLoading) {
     return (
-      <Card variant='outlined'>
-        <div className={styles.tableScroller}>
-          <Table className={`min-width-900 width-full ${styles.table}`} aria-busy='true'>
-            <TableHead>
+      <div className='radius-large bg-none'>
+        <div className='sticky [top:0] [z-index:2] bg-surface-0'>
+          <div ref={headerScrollerRef} className={`bg-surface-100 ${styles.headerScroller}`}>
+            <Table className={`min-width-900 width-full ${styles.table}`} aria-busy='true'>
+              <TableHead>
+                <TableRow>
+                  {headings.map((heading) => (
+                    <TableCell className={heading.className} key={heading.id}>
+                      {renderHeaderLabel(heading, false)}
+                    </TableCell>
+                  ))}
+                  <TableCell className={ACTIONS_COLUMN_CLASS} />
+                </TableRow>
+              </TableHead>
+            </Table>
+          </div>
+        </div>
+        <div ref={tableScrollerRef} className={styles.tableScroller} onScroll={syncHeaderScroll}>
+          <Table
+            className={`min-width-900 width-full ${styles.table}`}
+            aria-busy='true'
+            aria-hidden='true'>
+            <TableHead className={styles.measureHeader} data-measure-header='true'>
               <TableRow>
                 {headings.map((heading) => (
                   <TableCell className={heading.className} key={heading.id}>
-                    {translate(heading.translationKey)}
+                    {renderHeaderLabel(heading, false)}
                   </TableCell>
                 ))}
                 <TableCell className={ACTIONS_COLUMN_CLASS} />
@@ -598,7 +754,7 @@ const ServerListTable: FunctionComponent<ServerListTableProps> = ({
             <TableBody>{shimmerRows}</TableBody>
           </Table>
         </div>
-      </Card>
+      </div>
     );
   }
 
@@ -629,23 +785,36 @@ const ServerListTable: FunctionComponent<ServerListTableProps> = ({
           </output>
         )}
         <div aria-busy={isTableUpdating} inert={isTableUpdating ? true : undefined}>
-          <Card variant='outlined'>
-            <div className={styles.tableScroller}>
+          <div className='radius-large bg-none'>
+            <div className='sticky [top:0] [z-index:2] bg-surface-0'>
+              <div ref={headerScrollerRef} className={`bg-surface-100 ${styles.headerScroller}`}>
+                <Table className={`min-width-900 width-full ${styles.table}`}>
+                  <TableHead>
+                    <TableRow>
+                      {headings.map((heading) => (
+                        <TableCell className={heading.className} key={heading.id}>
+                          {renderHeaderLabel(heading, true)}
+                        </TableCell>
+                      ))}
+                      <TableCell className={ACTIONS_COLUMN_CLASS} />
+                    </TableRow>
+                  </TableHead>
+                </Table>
+              </div>
+            </div>
+            <div
+              ref={tableScrollerRef}
+              className={styles.tableScroller}
+              onScroll={syncHeaderScroll}>
               <Table className={`min-width-900 width-full ${styles.table}`}>
-                <TableHead>
+                <TableHead
+                  className={styles.measureHeader}
+                  data-measure-header='true'
+                  aria-hidden='true'>
                   <TableRow>
                     {headings.map((heading) => (
                       <TableCell className={heading.className} key={heading.id}>
-                        {heading.sortable === false ? (
-                          translate(heading.translationKey)
-                        ) : (
-                          <TableSortLabel
-                            active={sortBy === heading.id}
-                            direction={sortBy === heading.id ? sortOrder : SORT_DIRECTION.ASC}
-                            onClick={() => handleRequestSort(heading.id)}>
-                            {translate(heading.translationKey)}
-                          </TableSortLabel>
-                        )}
+                        {renderHeaderLabel(heading, false)}
                       </TableCell>
                     ))}
                     <TableCell className={ACTIONS_COLUMN_CLASS} />
@@ -667,7 +836,7 @@ const ServerListTable: FunctionComponent<ServerListTableProps> = ({
                         key={rowKey}
                         hover
                         className='cursor-pointer'
-                        onClick={() => handleViewDetails(server)}>
+                        onClick={() => handleViewDetails(server, 'Logs')}>
                         {headings.map((heading) => (
                           <TableCell className={heading.className} key={heading.id}>
                             {renderServerCell(server, heading.id)}
@@ -690,7 +859,7 @@ const ServerListTable: FunctionComponent<ServerListTableProps> = ({
                 </TableBody>
               </Table>
             </div>
-          </Card>
+          </div>
         </div>
       </div>
       <div className='flex justify-end items-center'>
@@ -727,11 +896,11 @@ const ServerListTable: FunctionComponent<ServerListTableProps> = ({
           className='min-width-150'
           onClick={() => {
             if (menuServer) {
-              handleViewDetails(menuServer);
+              handleViewDetails(menuServer, 'Players');
             }
             handleMenuClose();
           }}>
-          {translate('ServerListTable.Actions.ViewDetails')}
+          {translate('ServerListTable.Actions.ViewPlayers')}
         </MenuItem>
         <MenuItem
           className='min-width-150'

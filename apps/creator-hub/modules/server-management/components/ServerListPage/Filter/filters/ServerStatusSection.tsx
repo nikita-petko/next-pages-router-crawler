@@ -36,7 +36,7 @@ const ServerStatusSection: FunctionComponent<ServerStatusSectionProps> = ({
       </Grid>
       <Grid item>
         <Button
-          variant='Link'
+          variant='Utility'
           size='Small'
           onClick={() =>
             setServerStatus(

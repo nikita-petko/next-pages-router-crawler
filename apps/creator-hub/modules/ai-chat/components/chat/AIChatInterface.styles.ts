@@ -30,10 +30,12 @@ const useAIChatInterfaceStyles = makeStyles()((theme) => ({
   cardContent: {
     flex: 1,
     padding: theme.spacing(0, 3),
-    overflow: 'auto',
+    // Positioning context for the floating composer; the message list is the
+    // scroller, so this container clips rather than scrolls.
+    position: 'relative',
+    overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
-    ...ASSISTANT_SCROLLBAR_STYLES,
     // Override MUI's default `&:last-child { padding-bottom: 24px }`.
     '&:last-child': {
       paddingBottom: 0,
@@ -45,6 +47,31 @@ const useAIChatInterfaceStyles = makeStyles()((theme) => ({
     minHeight: 0,
     padding: theme.spacing(1, 0),
     ...ASSISTANT_SCROLLBAR_STYLES,
+  },
+  // The composer (review chip + clarifying-question card + input + disclaimer)
+  // floats over the bottom of the transcript so messages scroll behind it; its
+  // background fades in at the top so the transition reads as sliding under.
+  composer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    padding: theme.spacing(0, 3),
+    backgroundColor: 'var(--color-surface-0)',
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: 0,
+      height: theme.spacing(2),
+      transform: 'translateY(-100%)',
+      background: 'linear-gradient(to top, var(--color-surface-0), transparent)',
+      pointerEvents: 'none',
+    },
   },
   messagesContent: {
     display: 'flex',

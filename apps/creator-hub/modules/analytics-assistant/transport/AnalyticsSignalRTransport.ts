@@ -1,7 +1,11 @@
-/* eslint-disable no-console -- Debug warnings */
 import type { UIMessage, UIMessageChunk } from 'ai';
-import { sendMessage } from '@modules/react-query/analyticsAssistant';
-import { getConversationStream } from '@modules/react-query/analyticsAssistant/analyticsAssistantRequests';
+import {
+  getConversationStream,
+  sendMessage,
+  type ContentPart,
+} from '@modules/react-query/analyticsAssistant/analyticsAssistantRequests';
+import { isAskQuestionAnswerPart } from '../adapters/streamingProtocol/adaptAskQuestionPart';
+import { AnalyticsChatDataPartType, type AnalyticsChatMessage } from '../types/AnalyticsChatTypes';
 import type { BaseSignalRTransportConfig } from './BaseSignalRTransport';
 import { BaseSignalRTransport } from './BaseSignalRTransport';
 import { logStreamTransportDiagnostic } from './streamTransportDiagnostics';
@@ -143,8 +147,9 @@ class AnalyticsSignalRTransport extends BaseSignalRTransport<
   /**
    * Send message to the Analytics Assistant API
    *
-   * Extracts the last user message from the conversation history and
-   * sends it to the backend, which triggers streaming via SignalR.
+   * Extracts the last user message from the conversation history, builds its
+   * content parts, and sends them to the backend, which triggers streaming via
+   * SignalR.
    */
   protected async sendMessageToAPI(conversationId: string, messages: UIMessage[]): Promise<void> {
     const userMessages = messages.filter((m) => m.role === 'user');
@@ -153,23 +158,52 @@ class AnalyticsSignalRTransport extends BaseSignalRTransport<
     }
 
     const lastUserMessage = userMessages[userMessages.length - 1];
+    // The analytics transport only ever carries AnalyticsChatMessages; narrow
+    // from the SDK's generic UIMessage so the typed data-part guard applies
+    // (same SDK-boundary assertion as parsePayload above).
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- runtime type is always AnalyticsChatMessage
+    const content = this.buildContentParts(lastUserMessage as AnalyticsChatMessage);
 
-    // Extract text from parts
-    const textParts = lastUserMessage.parts?.filter((p) => p.type === 'text') || [];
-    const input = textParts.map((p) => (p as { text: string }).text).join('');
-
-    if (!input) {
-      throw new Error('User message has no text content');
+    if (content.length === 0) {
+      throw new Error('User message has no content to send');
     }
 
-    console.log(
-      `[AnalyticsSignalRTransport] Sending message to API for conversation: ${conversationId}`,
-    );
+    // The API requires exactly one of `content` or `input`; `input` is
+    // deprecated, so every turn — plain text or a clarifying-question answer —
+    // is sent as `content`. Response is empty; streaming happens via SignalR.
+    await sendMessage(conversationId, this.universeId, content);
+  }
 
-    // Call API (response is empty, streaming happens via SignalR)
-    await sendMessage(conversationId, this.universeId, input);
+  /**
+   * Map a user turn's parts to API content parts: text parts collapse into a
+   * single text part (preserving the whole typed message), and a
+   * clarifying-question answer becomes a `data-ask-question-answer` data part.
+   */
+  private buildContentParts(message: AnalyticsChatMessage): ContentPart[] {
+    const content: ContentPart[] = [];
+    // Defend against a malformed turn whose `parts` is absent at runtime.
+    const parts = message.parts ?? [];
+
+    const text = parts.flatMap((part) => (part.type === 'text' ? [part.text] : [])).join('');
+    if (text) {
+      content.push({ type: 'text', text });
+    }
+
+    const answerPart = parts.find(isAskQuestionAnswerPart);
+    if (answerPart) {
+      content.push({
+        type: 'data',
+        // Inner DataPart.type is the PREFIXED wire form the backend expects.
+        data: {
+          type: AnalyticsChatDataPartType.AskQuestionAnswer,
+          id: answerPart.id,
+          data: answerPart.data,
+        },
+      });
+    }
+
+    return content;
   }
 }
 
 export default AnalyticsSignalRTransport;
-/* eslint-enable no-console -- Debug warnings */

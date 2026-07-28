@@ -1,5 +1,6 @@
 import type { FC } from 'react';
 import React, { useCallback, useEffect, useMemo } from 'react';
+import { isAskQuestionAnswerPart } from '@modules/analytics-assistant/adapters/streamingProtocol/adaptAskQuestionPart';
 import MarkdownContent from '@modules/analytics-assistant/components/markdown/MDX';
 import { useGetAnalyticsChatMessageContent } from '@modules/analytics-assistant/hooks/useGetAnalyticsChatMessageContent';
 import type { AnalyticsChatMessage } from '@modules/analytics-assistant/types/AnalyticsChatTypes';
@@ -7,6 +8,7 @@ import { useUniverseResource } from '@modules/experience-analytics-shared/hooks/
 import { useAIChatContext } from '../../providers/AIChatProvider';
 import useAIChatInterfaceStyles from './AIChatInterface.styles';
 import AIChatMessageFeedback from './AIChatMessageFeedback';
+import AskQuestionAnswerSummary from './askQuestion/AskQuestionAnswerSummary';
 import ThinkingSteps from './thinking/ThinkingSteps';
 
 interface AIChatMessageProps {
@@ -46,12 +48,10 @@ const AIChatMessage: FC<AIChatMessageProps> = ({ message, isLastAssistantMessage
   const isMessageLoading =
     isLastAssistantMessage && (status === 'submitted' || status === 'streaming');
 
-  const { textContent, chartElements, thinkingSteps } = useGetAnalyticsChatMessageContent(
-    message,
-    universeId,
-    conversationId,
-    { finalizeInProgress: !isMessageLoading },
-  );
+  const { textContent, chartElements, thinkingSteps, askQuestion } =
+    useGetAnalyticsChatMessageContent(message, universeId, conversationId, {
+      finalizeInProgress: !isMessageLoading,
+    });
   const canvas = useMemo(() => {
     return chartElements.length > 0 ? (
       <div className={CANVAS_CLASS_NAME}>{chartElements}</div>
@@ -96,6 +96,11 @@ const AIChatMessage: FC<AIChatMessageProps> = ({ message, isLastAssistantMessage
     [handleSelectMessageArtifact, shouldIgnoreNestedInteraction],
   );
 
+  // A submitted answer arrives as a data-only user turn; render it as the
+  // creator's message text. The interactive card itself is rendered once by
+  // AIChatInterface, docked above the input — never inline here.
+  const answerPart = message.parts.find(isAskQuestionAnswerPart);
+
   const messageContent = isInteractiveArtifactMessage ? (
     <button
       type='button'
@@ -117,7 +122,11 @@ const AIChatMessage: FC<AIChatMessageProps> = ({ message, isLastAssistantMessage
         messageCard,
         isUserMessage ? userMessageCard : assistantMessageCard,
       )}>
-      <MarkdownContent content={textContent} />
+      {isUserMessage && answerPart ? (
+        <AskQuestionAnswerSummary answer={answerPart.data} />
+      ) : (
+        <MarkdownContent content={textContent} />
+      )}
     </article>
   );
 
@@ -144,7 +153,8 @@ const AIChatMessage: FC<AIChatMessageProps> = ({ message, isLastAssistantMessage
           {textContent && messageContent}
         </div>
       ) : (
-        messageContent
+        // Suppress an empty bubble on a card-only assistant turn (no summary text).
+        (textContent || !askQuestion) && messageContent
       )}
       {showFeedback ? (
         <AIChatMessageFeedback messageId={message.id} messageText={textContent} />

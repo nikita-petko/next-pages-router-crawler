@@ -1,9 +1,15 @@
 import type { FC } from 'react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IconButton } from '@rbx/foundation-ui';
 import { withTranslation } from '@rbx/intl';
 import { Alert, Card, CardContent, Typography } from '@rbx/ui';
+import { adaptAskQuestionParts } from '@modules/analytics-assistant/adapters/streamingProtocol/adaptAskQuestionPart';
 import AssistantDisclaimer from '@modules/analytics-assistant/components/disclaimer/AssistantDisclaimer';
+import {
+  AnalyticsChatDataPartType,
+  type AskQuestionAnswerDataPart,
+} from '@modules/analytics-assistant/types/AnalyticsChatTypes';
+import type { AskQuestionAnswer } from '@modules/analytics-assistant/types/AskQuestion';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import useRAQIV2TranslationDependencies from '@modules/experience-analytics-shared/hooks/useRAQIV2TranslationDependencies';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -13,11 +19,12 @@ import AIChatInput from './AIChatInput';
 import useAIChatInterfaceStyles from './AIChatInterface.styles';
 import AIChatMessage from './AIChatMessage';
 import AIChatReviewArtifactsChip from './AIChatReviewArtifactsChip';
+import AskQuestionCard from './askQuestion/AskQuestionCard';
 import { useStickToBottom } from './useStickToBottom';
 
 const AIChatInterface: FC = () => {
   const {
-    classes: { contentContainer, card, cardContent, messagesContainer, messagesContent },
+    classes: { contentContainer, card, cardContent, messagesContainer, messagesContent, composer },
   } = useAIChatInterfaceStyles();
   const {
     messages,
@@ -36,6 +43,23 @@ const AIChatInterface: FC = () => {
   const isInputDisabled = isLoading || !canSendMessage;
   const hasMessages = messages.length > 0;
   const hasCanvas = canvasElement !== null;
+
+  // The clarifying-question card docks above the input while the trailing
+  // assistant turn carries a pending ask and the viewer can answer. Once
+  // answered, the answer turn appends and this turn is no longer trailing, so
+  // the card clears on its own.
+  const trailingMessage = messages[messages.length - 1];
+  const pendingAsk = useMemo(() => {
+    if (!trailingMessage || trailingMessage.role !== 'assistant' || isLoading || !canSendMessage) {
+      return null;
+    }
+    return adaptAskQuestionParts(trailingMessage.parts);
+  }, [trailingMessage, isLoading, canSendMessage]);
+
+  // The composer (card + input) floats over the transcript; pad the message list
+  // by the composer's live height so the newest message can scroll clear of it.
+  const composerRef = useRef<HTMLDivElement>(null);
+  const [composerHeight, setComposerHeight] = useState(0);
 
   const readOnlyTooltip = tPendingTranslation(
     'Only the conversation owner can send messages in this chat.',
@@ -81,6 +105,33 @@ const AIChatInterface: FC = () => {
 
   const handleScrollToBottomClick = useCallback(() => pinToBottom('smooth'), [pinToBottom]);
 
+  // Submitting or skipping the card posts a data-only user turn carrying the
+  // structured answer; the backend derives the transcript text from it.
+  const handleAnswerSubmit = useCallback(
+    (answer: AskQuestionAnswer) => {
+      const answerPart: AskQuestionAnswerDataPart = {
+        type: AnalyticsChatDataPartType.AskQuestionAnswer,
+        id: answer.askId,
+        data: answer,
+      };
+      sendMessage({ parts: [answerPart] });
+      pinToBottom();
+    },
+    [sendMessage, pinToBottom],
+  );
+
+  useEffect(() => {
+    const composerEl = composerRef.current;
+    if (typeof ResizeObserver === 'undefined' || !composerEl) {
+      return undefined;
+    }
+    const updateHeight = () => setComposerHeight(composerEl.offsetHeight);
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(composerEl);
+    return () => observer.disconnect();
+  }, []);
+
   const scrollToArtifactMessage = useCallback(
     (messageId: string) => {
       const container = scrollRef.current;
@@ -124,7 +175,10 @@ const AIChatInterface: FC = () => {
             </Alert>
           )}
           <div className={messagesContainer} ref={scrollRef} onScroll={handleScroll}>
-            <div ref={contentRef} className={messagesContent}>
+            <div
+              ref={contentRef}
+              className={messagesContent}
+              style={{ paddingBottom: composerHeight }}>
               {!hasMessages && <AIChatHomePage onQuestionSelect={handleQuestionSelect} />}
 
               {messages.map((message) => (
@@ -137,36 +191,41 @@ const AIChatInterface: FC = () => {
             </div>
           </div>
 
-          {(hasCanvas || !isPinned) && (
-            <div
-              className={`flex items-center padding-y-xsmall gap-medium ${
-                hasCanvas ? 'justify-start' : 'justify-center'
-              }`}>
-              <AIChatReviewArtifactsChip />
-              {!isPinned && (
-                <IconButton
-                  type='button'
-                  variant='Standard'
-                  size='Small'
-                  isCircular
-                  className='shrink-0 !bg-shift-300'
-                  icon='icon-regular-chevron-large-down'
-                  ariaLabel={scrollToBottomLabel}
-                  onClick={handleScrollToBottomClick}
-                />
-              )}
-            </div>
-          )}
-          <AIChatInput
-            inputValue={inputValue}
-            onInputChange={setInputValue}
-            onSend={handleSendMessage}
-            onStop={stopGeneration}
-            isLoading={isLoading}
-            isDisabled={!canSendMessage}
-            disabledTooltip={!canSendMessage ? readOnlyTooltip : undefined}
-          />
-          <AssistantDisclaimer />
+          <div className={composer} ref={composerRef}>
+            {(hasCanvas || !isPinned) && (
+              <div
+                className={`flex items-center padding-y-xsmall gap-medium ${
+                  hasCanvas ? 'justify-start' : 'justify-center'
+                }`}>
+                <AIChatReviewArtifactsChip />
+                {!isPinned && (
+                  <IconButton
+                    type='button'
+                    variant='Standard'
+                    size='Small'
+                    isCircular
+                    className='shrink-0 !bg-shift-300'
+                    icon='icon-regular-chevron-large-down'
+                    ariaLabel={scrollToBottomLabel}
+                    onClick={handleScrollToBottomClick}
+                  />
+                )}
+              </div>
+            )}
+            {pendingAsk && (
+              <AskQuestionCard askQuestion={pendingAsk} onSubmit={handleAnswerSubmit} />
+            )}
+            <AIChatInput
+              inputValue={inputValue}
+              onInputChange={setInputValue}
+              onSend={handleSendMessage}
+              onStop={stopGeneration}
+              isLoading={isLoading}
+              isDisabled={!canSendMessage}
+              disabledTooltip={!canSendMessage ? readOnlyTooltip : undefined}
+            />
+            <AssistantDisclaimer />
+          </div>
         </CardContent>
       </Card>
     </div>

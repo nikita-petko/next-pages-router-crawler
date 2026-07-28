@@ -53,7 +53,7 @@ const ServerTypeSection: FunctionComponent<ServerTypeSectionProps> = ({
       </Grid>
       <Grid item>
         <Button
-          variant='Link'
+          variant='Utility'
           size='Small'
           onClick={() =>
             setServerType(allSelected ? { ...NONE_SERVER_TYPES } : { ...ALL_SERVER_TYPES })

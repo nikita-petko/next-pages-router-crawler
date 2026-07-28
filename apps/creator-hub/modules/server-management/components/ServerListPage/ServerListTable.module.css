@@ -1,5 +1,30 @@
+/* match body scroller border exactly so dual-table column sync isn't off by a stroke */
+.headerScroller {
+  overflow-x: hidden;
+  box-sizing: border-box;
+  border: 1px solid var(--color-stroke-default, rgba(0, 0, 0, 0.12));
+  border-bottom: none;
+  border-top-left-radius: var(--radius-large, 16px);
+  border-top-right-radius: var(--radius-large, 16px);
+}
+
 .tableScroller {
   overflow-x: auto;
+  border: 1px solid var(--color-stroke-default, rgba(0, 0, 0, 0.12));
+  border-top: none;
+  border-bottom-left-radius: var(--radius-large, 16px);
+  border-bottom-right-radius: var(--radius-large, 16px);
+}
+
+/* measure-only thead: keeps column widths, hidden visually (SO dual-table pattern) */
+.measureHeader th {
+  line-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border-bottom: none !important;
+  color: transparent !important;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .table tbody tr:last-child td {
@@ -37,4 +62,3 @@
   gap: var(--gap-small, 8px);
   pointer-events: none;
 }
-

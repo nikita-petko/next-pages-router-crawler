@@ -6,9 +6,8 @@ import type {
   PlaceFilter,
   RestartsLaunchRestartRequest,
 } from '@rbx/client-server-management-service/v1';
-import { TextInput, Button, Snackbar } from '@rbx/foundation-ui';
+import { TextInput, Button, Snackbar, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
-import { Typography } from '@rbx/ui';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import { DEFAULT_VALUES, POLLING_CONSTANTS, UI_CONSTANTS } from '../../constants';
@@ -36,7 +35,7 @@ import ServerListTable from './ServerListTable';
 import styles from './ServerListPage.module.css';
 
 const ServerListPage: FunctionComponent = () => {
-  const { translate, translateHTML } = useTranslation();
+  const { translate } = useTranslation();
   const { locale } = useLocalization();
   const numberFormatter = useMemo(() => new Intl.NumberFormat(locale ?? Locale.English), [locale]);
   const { unifiedLogger } = useUnifiedLoggerProvider();
@@ -285,15 +284,8 @@ const ServerListPage: FunctionComponent = () => {
     return translate('ServerListTable.Button.RestartAllServers');
   }, [restartJustCompleted, restartFilter, serverCount, numberFormatter, translate]);
 
-  const makeFiltersRestartViable = useCallback(() => {
-    const versions = restartFilter?.placeVersion ?? [];
-    setFilter({
-      ...defaultFilters,
-      placeVersion: validRestartVersions
-        ? versions.filter((v) => validRestartVersions.includes(v))
-        : versions,
-    });
-  }, [restartFilter, validRestartVersions]);
+  const isRestartDisabledByFilter =
+    !isFilterRestartViable(restartFilter, validRestartVersions) && !rawLooksLikeIdSearch;
 
   return (
     <div className='flex flex-col gap-large medium:gap-xxlarge padding-top-medium'>
@@ -334,45 +326,33 @@ const ServerListPage: FunctionComponent = () => {
               {translate('ServerListTable.Filter')}
             </Button>
           </div>
-          {/* absolute helper so restart-disabled copy can't shove FilterChipRow down */}
-          <div className='relative flex flex-col items-end min-width-0'>
+          {isRestartDisabledByFilter ? (
+            <Tooltip
+              title={translate('ServerListTable.Filter.RestartRestrction.Tooltip')}
+              position='bottom-end'>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    variant='Emphasis'
+                    isLoading={isRestarting}
+                    isDisabled
+                    icon={restartJustCompleted ? 'icon-regular-check' : undefined}
+                    onClick={() => setModalOpen(true)}>
+                    {restartButtonText}
+                  </Button>
+                </span>
+              </TooltipTrigger>
+            </Tooltip>
+          ) : (
             <Button
               variant='Emphasis'
               isLoading={isRestarting}
-              isDisabled={
-                !isFilterRestartViable(restartFilter, validRestartVersions) ||
-                serverCount === 0 ||
-                rawLooksLikeIdSearch
-              }
+              isDisabled={serverCount === 0 || rawLooksLikeIdSearch}
               icon={restartJustCompleted ? 'icon-regular-check' : undefined}
               onClick={() => setModalOpen(true)}>
               {restartButtonText}
             </Button>
-            {!isFilterRestartViable(restartFilter, validRestartVersions) &&
-              !rawLooksLikeIdSearch && (
-                <div className='absolute text-align-x-end top-[100%] right-[0] margin-top-[var(--gap-xsmall)] [overflow:hidden] max-width-full [z-index:1]'>
-                  <Typography variant='smallLabel1'>
-                    {translateHTML('ServerListPage.Error.RestartDisabled', [
-                      {
-                        opening: 'linkStart',
-                        closing: 'linkEnd',
-                        content(chunks) {
-                          return (
-                            <button
-                              className='inline bg-none padding-none cursor-pointer underline'
-                              style={{ border: 'none', font: 'inherit', color: 'inherit' }}
-                              onClick={makeFiltersRestartViable}
-                              type='button'>
-                              {chunks}
-                            </button>
-                          );
-                        },
-                      },
-                    ])}
-                  </Typography>
-                </div>
-              )}
-          </div>
+          )}
         </div>
       </div>
       {/* keep one chip-row tall so the table doesn't jump when chips appear/clear */}
