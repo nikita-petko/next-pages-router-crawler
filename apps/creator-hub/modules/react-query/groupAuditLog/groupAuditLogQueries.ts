@@ -15,6 +15,7 @@ const GroupAuditLogFetchActionTypes = [
   GroupAuditLogActionTypeEnum.LeaveGroup,
   GroupAuditLogActionTypeEnum.RemoveMember,
   GroupAuditLogActionTypeEnum.UpdateGroupIcon,
+  GroupAuditLogActionTypeEnum.UpdateRoleSetPermissions,
 ];
 
 const fetchAuditLogResponsesUpToDate = async (

@@ -123,6 +123,7 @@ enum TranslationNamespace {
   DataStoresManager = 'CreatorDashboard.DataStoresManager',
   AccessPolicy = 'CreatorDashboard.AccessPolicy',
   Groups = 'Feature.Groups',
+  GroupManagement = 'Feature.GroupManagement',
   Privacy = 'Feature.Privacy',
   ManagedPricing = 'CreatorDashboard.ManagedPricing',
   HardCodedPrices = 'CreatorDashboard.HardCodedPrices',

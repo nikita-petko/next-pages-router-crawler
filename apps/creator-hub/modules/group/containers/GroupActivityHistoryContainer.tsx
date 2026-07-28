@@ -1,5 +1,5 @@
-import type { FunctionComponent } from 'react';
-import React, { Fragment, useEffect, useState } from 'react';
+import type { FunctionComponent, PropsWithChildren } from 'react';
+import { useEffect, useState } from 'react';
 import { buildBreadcrumb, buildTitle, HubMeta } from '@rbx/creator-hub-history';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { CircularProgress, Typography, Grid, useMediaQuery, useTheme } from '@rbx/ui';
@@ -10,7 +10,7 @@ import GroupActivityHistory from '../components/GroupActivityHistory';
 import PermissionDeniedPage from '../components/PermissionDeniedPage';
 import useCurrentOrganization from '../hooks/useCurrentOrganization';
 
-const GroupActivityHistoryContainer: FunctionComponent<React.PropsWithChildren> = () => {
+const GroupActivityHistoryContainer: FunctionComponent<PropsWithChildren> = () => {
   const {
     classes: { section },
   } = useActivityFeedStyles();
@@ -24,12 +24,9 @@ const GroupActivityHistoryContainer: FunctionComponent<React.PropsWithChildren> 
   const [initialized, setInitialized] = useState<boolean>(false);
 
   useEffect(() => {
-    const fetchPermissions = async () => {
-      await refreshPermission();
+    void refreshPermission().finally(() => {
       setInitialized(true);
-    };
-
-    fetchPermissions();
+    });
   }, [refreshPermission]);
 
   return (
@@ -43,7 +40,7 @@ const GroupActivityHistoryContainer: FunctionComponent<React.PropsWithChildren> 
           <CircularProgress />
         </Grid>
       ) : (
-        <Fragment>
+        <>
           {!permissions?.isOwner && !permissions?.canViewAuditLogs ? (
             <PermissionDeniedPage />
           ) : (
@@ -67,7 +64,7 @@ const GroupActivityHistoryContainer: FunctionComponent<React.PropsWithChildren> 
               </Grid>
             </section>
           )}
-        </Fragment>
+        </>
       )}
     </>
   );
@@ -77,4 +74,6 @@ export default withTranslation(GroupActivityHistoryContainer, [
   TranslationNamespace.Organization,
   TranslationNamespace.ActivityFeed,
   TranslationNamespace.Groups,
+  TranslationNamespace.GroupManagement,
+  TranslationNamespace.Permissions,
 ]);

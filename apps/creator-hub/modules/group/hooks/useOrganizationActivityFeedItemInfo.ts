@@ -3,6 +3,7 @@
 /* oxlint-disable typescript/no-unsafe-member-access -- pre-existing pattern; data is parsed from a trusted internal API with no schema. See modules/analytics-assistant/markdown/getMarkdownProcessor.ts for precedent. */
 /* oxlint-disable typescript/no-unsafe-type-assertion -- pre-existing pattern; description fields are cast to known shapes at call sites. See modules/data-collection/components/SettingsV2.tsx for precedent. */
 import { useEffect, useMemo, useState } from 'react';
+import type { TTranslationKey } from '@rbx/intl';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import developClient from '@modules/clients/develop';
 import type { GroupAuditLogResponseItem, GroupAuditLogResponsePage } from '@modules/clients/groups';
@@ -19,6 +20,7 @@ import {
   parseMemberPayouts,
 } from '@modules/creations/activityFeed/utils/recurringPayoutUtils';
 import { Asset } from '@modules/miscellaneous/common';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { universeEvents } from '../constants/groupConstants';
 
 export const affectedUserKey = 'affectedUser';
@@ -375,6 +377,8 @@ function parseGroupAuditLogItemInfo(
   response: GroupAuditLogResponseItem,
   getDateTime: (createdUtc: Date) => string,
   translate: (key: string, args?: Record<string, string>) => string,
+  translateWithNamespace: ReturnType<typeof useTranslation>['translateWithNamespace'],
+  universePlaceIds: Record<string, number>,
 ) {
   const wwwPath = `https://${process.env.robloxSiteDomain}`;
   const userPath = `${wwwPath}/users/${response.actor?.user?.userId}/profile`;
@@ -384,8 +388,11 @@ function parseGroupAuditLogItemInfo(
   const groupPayoutPath = `/dashboard/group/payouts?groupId=${groupId}`;
   const assetPath = `/store/asset/${(response.description as { AssetId?: number })?.AssetId}`;
   const placePath = `${wwwPath}/games/${(response.description as { AssetId?: number })?.AssetId}`;
+  const universePath = `/dashboard/creations/experiences/${(response.description as { EntityValue?: number })?.EntityValue}/overview`;
+  const universeOnRobloxPath = `${wwwPath}/games/${universePlaceIds[`${(response.description as { EntityValue?: number })?.EntityValue}`]}`;
   const adsPath = `https://advertise.${process.env.robloxSiteDomain}`;
   const groupMemberPath = `/dashboard/group/members?groupId=${groupId}&activeTab=GroupMembersTab`;
+  const groupRolePath = `/dashboard/group/roles?groupId=${groupId}&activeTab=GroupRolesTab`;
 
   const filters = {
     eventType: response.actionType?.replaceAll(/\s/g, ''),
@@ -492,6 +499,51 @@ function parseGroupAuditLogItemInfo(
         viewBasicSettingsLink = groupProfilePath;
         break;
       }
+      case GroupAuditLogActionTypeEnum.UpdateRoleSetPermissions: {
+        const description = response.description as {
+          AddedPermissions?: string[];
+          RemovedPermissions?: string[];
+          RoleSetName?: string;
+          EntityType?: string;
+          EntityName?: string;
+        };
+        const translatePermissions = (permissions?: string[]) =>
+          permissions
+            ?.map((permission) =>
+              translateWithNamespace(
+                TranslationNamespace.GroupManagement,
+                `${permission}.Label` as TTranslationKey<
+                  typeof TranslationNamespace.GroupManagement
+                >,
+              ),
+            )
+            .join(', ') ?? '';
+
+        translationString = `${translate(`Message.UpdateRolesetPermissions`, {
+          actor: response.actor?.user?.username ?? '',
+          rolesetName: description.RoleSetName ?? '',
+          entityType: description.EntityType?.toLowerCase() ?? '',
+          entityName: description.EntityName ?? '',
+        })} ${
+          description.AddedPermissions && description.AddedPermissions.length > 0
+            ? translate(`Message.UpdateRoleSetPermissionsAdded`, {
+                addedPermissions: translatePermissions(description.AddedPermissions),
+              })
+            : ''
+        } ${
+          description.RemovedPermissions && description.RemovedPermissions.length > 0
+            ? translate(`Message.UpdateRoleSetPermissionsRemoved`, {
+                removedPermissions: translatePermissions(description.RemovedPermissions),
+              })
+            : ''
+        }`;
+        iconType =
+          description.EntityType === 'Universe' ? ResourceType.Universe : ResourceType.Group;
+        viewBasicSettingsLink =
+          description.EntityType === 'Universe' ? universePath : groupRolePath;
+        viewOnRobloxLink = description.EntityType === 'Universe' ? universeOnRobloxPath : undefined;
+        break;
+      }
       default:
         iconId = 0;
         iconType = ResourceType.Group;
@@ -527,6 +579,11 @@ function parseGroupAuditLogItemInfo(
     case ResourceType.Asset:
       iconId = (response.description as { AssetId?: number })?.AssetId ?? 0;
       thumbnailLink = assetPath;
+      break;
+    case ResourceType.Universe:
+      iconId =
+        universePlaceIds[`${(response.description as { EntityValue?: number })?.EntityValue}`];
+      thumbnailLink = universePath;
       break;
     default:
       iconId = 0;
@@ -574,7 +631,7 @@ export function useOrganizationActivityFeedItemInfo(
   responses: OrganizationActivityFeedEvent[],
   auditLogResponse?: GroupAuditLogResponsePage,
 ) {
-  const { translate } = useTranslation();
+  const { translate, translateWithNamespace } = useTranslation();
   const { locale } = useLocalization();
 
   const [usernames, setUsernames] = useState('');
@@ -648,6 +705,15 @@ export function useOrganizationActivityFeedItemInfo(
           universeIds.add(res.resourceId);
         }
       });
+      auditLogResponse?.forEach((auditLogItem) => {
+        const description = auditLogItem.description as {
+          EntityType?: string;
+          EntityValue?: number;
+        };
+        if (description.EntityType === 'Universe' && description.EntityValue) {
+          universeIds.add(description.EntityValue);
+        }
+      });
 
       // Send request for universe data
       if (universeIds.size !== 0) {
@@ -668,7 +734,7 @@ export function useOrganizationActivityFeedItemInfo(
     };
 
     void getUniverseDetails();
-  }, [responses, groupId]);
+  }, [responses, auditLogResponse, groupId]);
 
   const activityFeedItemInfo = useMemo(() => {
     if (loadingInfo) {
@@ -688,7 +754,16 @@ export function useOrganizationActivityFeedItemInfo(
       );
     }
     auditLogResponse?.forEach((auditLogItem) => {
-      items.push(parseGroupAuditLogItemInfo(groupId, auditLogItem, getDateTime, translate));
+      items.push(
+        parseGroupAuditLogItemInfo(
+          groupId,
+          auditLogItem,
+          getDateTime,
+          translate,
+          translateWithNamespace,
+          universePlaceIds,
+        ),
+      );
     });
     return items.sort((a, b) => b.filters.createdUtc - a.filters.createdUtc);
   }, [
@@ -696,6 +771,7 @@ export function useOrganizationActivityFeedItemInfo(
     getDateTime,
     responses,
     translate,
+    translateWithNamespace,
     usernames,
     groupId,
     universePlaceIds,

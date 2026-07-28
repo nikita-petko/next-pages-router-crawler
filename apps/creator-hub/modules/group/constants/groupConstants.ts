@@ -208,7 +208,7 @@ const GroupActivityHistoryFilterOptionsMapping: {
 };
 
 const GroupActivityHistoryEventTypesMapping: {
-  [key in GroupActivityHistoryFilterCategories]: EventType[] | GroupAuditLogActionTypes[];
+  [key in GroupActivityHistoryFilterCategories]: (EventType | GroupAuditLogActionTypes)[];
 } = {
   [GroupActivityHistoryFilterCategories.CreateOrDeleteRoles]: [
     EventType.RoleCreated,
@@ -217,6 +217,7 @@ const GroupActivityHistoryEventTypesMapping: {
   [GroupActivityHistoryFilterCategories.ConfigureRolesPermissions]: [
     EventType.RolePermissionsUpdated,
     EventType.ExperiencePermissionsUpdated,
+    GroupAuditLogActionTypeEnum.UpdateRoleSetPermissions,
   ],
   [GroupActivityHistoryFilterCategories.ConfigureRolesSettings]: [EventType.RoleNameUpdated],
   [GroupActivityHistoryFilterCategories.Invitation]: [

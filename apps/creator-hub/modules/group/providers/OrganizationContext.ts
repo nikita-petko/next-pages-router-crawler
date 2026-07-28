@@ -6,7 +6,7 @@ export interface OrganizationContextValue {
   organization: Organization | null | undefined;
   permissions: OrganizationPermissions | null | undefined;
   refreshOrganization: () => void;
-  refreshPermission: () => void;
+  refreshPermission: () => Promise<void>;
   isOrganizationLoading: boolean;
 }
 
@@ -15,7 +15,7 @@ const OrganizationContext = createContext<OrganizationContextValue>({
   organization: undefined,
   permissions: undefined,
   refreshOrganization: () => ({}),
-  refreshPermission: () => ({}),
+  refreshPermission: () => Promise.resolve(),
   isOrganizationLoading: false,
 });
 OrganizationContext.displayName = 'Organization';
