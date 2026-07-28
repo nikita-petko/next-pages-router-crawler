@@ -20,9 +20,13 @@ import {
   RAQIV2Dimension,
   RAQIV2MetricToSupportedDimensions,
   RAQIV2UIMetric,
-  type TRAQIV2APIMetric,
+  RAQIV2UIMetricToAPIConfig,
+  RAQIV2UIPseudoDimension,
+  type RAQIV2AggregationType,
+  type RAQIV2PercentileType,
   type TRAQIV2Dimension,
   type TRAQIV2UIMetric,
+  type TRAQIV2UIMetricFanoutDimensionValues,
 } from '@rbx/creator-hub-analytics-config';
 import type { AnalyticsQueryGatewayExecuteDagRequest } from '@modules/clients/analytics/analyticsQueryGateway';
 import type { TQueryFilter as RAQIV2QueryFilter } from '@modules/clients/analytics/analyticsRAQIShared';
@@ -37,7 +41,6 @@ import {
   type ComputedMetricSource,
 } from '../../types/ComputedMetric';
 import type { RAQIV2UIQueryRequest } from '../../types/RAQIV2UIQueryRequest';
-import { getAPIMetricFromUIMetric } from '../getAPIMetricFromUIMetric';
 import isMetricFanoutDimension, { hasMetricFanoutBreakdown } from '../isMetricFanoutDimension';
 import { getTopNBreakdownConfig, isTopNBreakdownDimension } from '../isTopNBreakdownDimension';
 import { RAQIV2ValidationError, RAQIV2ValidationErrorType } from '../validateRAQIV2Request';
@@ -106,13 +109,30 @@ const operatorToNodeType: Record<BinaryOperator, DagNodeType> = {
 const isSourceOwnedGlobalFilterDimension = (dimension: TRAQIV2Dimension): boolean =>
   isMetricFanoutDimension(dimension) || dimension === RAQIV2Dimension.CustomEventName;
 
-type ResolvedSourceMetric = {
-  apiMetric: TRAQIV2APIMetric;
+type AcePseudoDimensionValue = RAQIV2AggregationType | RAQIV2PercentileType;
+
+type PreparedSourceMetric = {
+  /**
+   * Metric name emitted on `QueryNodeConfig.metric`. For fanout UI metrics
+   * this is the pseudo name (`ServerMemoryUsageV2`, `CustomEventsV2`, …);
+   * ACE resolves the variant server-side. For non-UI metrics this is the
+   * API metric name passed through unchanged.
+   */
+  queryMetric: TRAQIV2UIMetric;
+  /**
+   * The caller's fanout selection, as a single variant — multi-value fanout is
+   * not used on the computed-metric path, so this is a scalar rather than
+   * ACE's `string[]` wire shape. `buildBranch` wraps it at the wire boundary.
+   *
+   * Undefined when the source has no selection (ACE uses the UI metric's
+   * default variant) or when the metric is not a fanout UI metric.
+   */
+  acePseudoDimensionValue: AcePseudoDimensionValue | undefined;
   queryFilters: readonly RAQIV2QueryFilter[] | undefined;
   supportedDimensions: readonly TRAQIV2Dimension[];
 };
 
-type ResolvedComputedMetricSource = ComputedMetricSource & ResolvedSourceMetric;
+type PreparedComputedMetricSource = ComputedMetricSource & PreparedSourceMetric;
 
 type SupportedDimensionsMetric = Extract<
   keyof typeof RAQIV2MetricToSupportedDimensions,
@@ -126,24 +146,63 @@ const hasSupportedDimensionsConfig = (
 const getSupportedDimensionsForMetric = (metric: TRAQIV2UIMetric): readonly TRAQIV2Dimension[] =>
   hasSupportedDimensionsConfig(metric) ? RAQIV2MetricToSupportedDimensions[metric] : [];
 
+const isFanoutUIMetric = (metric: TRAQIV2UIMetric): metric is RAQIV2UIMetric =>
+  Object.hasOwn(RAQIV2UIMetricToAPIConfig, metric);
+
 /**
- * Resolves a source metric to an API metric name. For UI metrics
+ * Picks the caller's selection for the metric's configured fanout dimension.
+ *
+ * Only that one dimension's value is used. Sending both AggregationType and
+ * PercentileType would make ACE treat the node as a multi-value fanout
+ * (`Count > 1`) rather than a single-variant resolve. Empty / null selection →
+ * `undefined` so ACE uses the default variant.
+ *
+ * ACE's `MetricVariantKeys.ToStableKey` normalizes FE enum strings
+ * (`"P90"`, `"Sum"`, `"AVG"`, `"Average"`, …) to stable keys, so we emit
+ * the FE enum values directly.
+ *
+ * Exhaustive over the fanout dimensions so that a new one added upstream in
+ * `RAQIV2UIMetricToAPIConfig` fails the build here rather than silently
+ * dropping the selection and letting ACE fall back to the default variant.
+ */
+const toAcePseudoDimensionValue = (
+  uiMetric: RAQIV2UIMetric,
+  values: TRAQIV2UIMetricFanoutDimensionValues | undefined,
+): AcePseudoDimensionValue | undefined => {
+  if (!values) {
+    return undefined;
+  }
+
+  const { dimension } = RAQIV2UIMetricToAPIConfig[uiMetric];
+  switch (dimension) {
+    case RAQIV2UIPseudoDimension.PercentileType:
+      return values.percentile ?? undefined;
+    case RAQIV2UIPseudoDimension.AggregationType:
+      return values.aggregationType ?? undefined;
+    default: {
+      const exhaustiveCheck: never = dimension;
+      throw new Error(`Unhandled fanout dimension: ${String(exhaustiveCheck)}`);
+    }
+  }
+};
+
+/**
+ * Prepares a computed-metric source for ACE DAG emission. For UI metrics
  * (`ServerMemoryUsageV2`, `CustomEventsV2`, …), the typed
  * `pseudoDimensionValues` carries the caller's fanout selection
  * (AggregationType / PercentileType), and `customEventName` carries the
  * CustomEventsV2 source identity. Both are authoritative.
  *
+ * Emits the UI metric name + ACE `pseudoDimensionValues` so ACE resolves
+ * the variant server-side via the shared MetricResolution library
+ * (DSA-5716 / pseudo-metrics RFC §4.6.1 step 3.b). Does not call
+ * `getAPIMetricFromUIMetric`.
+ *
  * `filters` must already be real query filters only. Fanout pseudo-dimension
  * filters and CustomEventName source identity are stripped at producer
  * boundaries (L7 smoothing helper, equation builder, URL deserializer).
- *
- * TODO(DSA-5716): once ACE's server-side UI-metric resolution (DSA-5693) is at
- * 100% in prod, delete this helper entirely. The DAG builder should emit the
- * UI metric name on `QueryNodeConfig.metric` and carry `pseudoDimensionValues`
- * straight through on `QueryNodeConfig.pseudoDimensionValues`, letting ACE
- * resolve the variant server-side (pseudo-metrics RFC §4.6.1 step 3.b).
  */
-const resolveSourceMetric = (source: ComputedMetricSource): ResolvedSourceMetric => {
+const prepareSourceMetric = (source: ComputedMetricSource): PreparedSourceMetric => {
   const { metric, filters: sourceFilters, pseudoDimensionValues } = source;
   const uiMetric = getUIMetricFromAtomicMetricLike(metric);
   const customEventsMetric = isCustomEventsAtomicMetricLike(metric) ? metric : null;
@@ -183,29 +242,32 @@ const resolveSourceMetric = (source: ComputedMetricSource): ResolvedSourceMetric
         ]
       : sourceFilters;
 
-  if (!isValidEnumValue(RAQIV2UIMetric, uiMetric)) {
+  const queryFilters =
+    resolvedSourceFilters && resolvedSourceFilters.length > 0 ? resolvedSourceFilters : undefined;
+  const supportedDimensions = getSupportedDimensionsForMetric(uiMetric);
+
+  if (!isFanoutUIMetric(uiMetric)) {
+    // Non-fanout metrics (plain API metrics, or unexpected enum members) pass
+    // through with no pseudoDimensionValues — ACE treats them as ordinary
+    // metric names.
     return {
-      apiMetric: uiMetric,
-      queryFilters: resolvedSourceFilters,
-      supportedDimensions: getSupportedDimensionsForMetric(uiMetric),
+      queryMetric: uiMetric,
+      acePseudoDimensionValue: undefined,
+      queryFilters,
+      supportedDimensions,
     };
   }
 
-  const apiMetric = getAPIMetricFromUIMetric(
-    uiMetric,
-    sourcePseudoDimensionValues ?? { aggregationType: null, percentile: null },
-  );
-
   return {
-    apiMetric,
-    supportedDimensions: getSupportedDimensionsForMetric(uiMetric),
-    queryFilters:
-      resolvedSourceFilters && resolvedSourceFilters.length > 0 ? resolvedSourceFilters : undefined,
+    queryMetric: uiMetric,
+    acePseudoDimensionValue: toAcePseudoDimensionValue(uiMetric, sourcePseudoDimensionValues),
+    queryFilters,
+    supportedDimensions,
   };
 };
 
 const getSharedSupportedDimensions = (
-  sources: readonly ResolvedComputedMetricSource[],
+  sources: readonly PreparedComputedMetricSource[],
 ): Set<TRAQIV2Dimension> => {
   const [firstSource, ...otherSources] = sources;
   if (!firstSource) {
@@ -219,12 +281,12 @@ const getSharedSupportedDimensions = (
   );
 };
 
-const validateSourceLevelFilters = (source: ResolvedComputedMetricSource) => {
+const validateSourceLevelFilters = (source: PreparedComputedMetricSource) => {
   source.queryFilters?.forEach((filter) => {
     if (!source.supportedDimensions.includes(filter.dimension)) {
       throw new RAQIV2ValidationError(
         RAQIV2ValidationErrorType.UnsupportedFilter,
-        `Metric ${source.apiMetric} does not support source-level filter dimension ${filter.dimension}.`,
+        `Metric ${source.queryMetric} does not support source-level filter dimension ${filter.dimension}.`,
         getUIMetricFromAtomicMetricLike(source.metric),
         filter.dimension,
       );
@@ -395,7 +457,7 @@ const mergeSourceAndDagLevelFilters = (
 
 type BranchBuildArgs = {
   computedMetric: ComputedMetric;
-  resolvedSources: readonly ResolvedComputedMetricSource[];
+  preparedSources: readonly PreparedComputedMetricSource[];
   ast: FormulaAstNode;
   globalFilters: readonly RAQIV2QueryFilter[] | undefined;
   branchBreakdown: QueryBreakdown[] | undefined;
@@ -422,7 +484,7 @@ type BranchBuildArgs = {
 const buildBranch = (args: BranchBuildArgs): void => {
   const {
     computedMetric,
-    resolvedSources,
+    preparedSources,
     ast,
     globalFilters,
     branchBreakdown,
@@ -436,23 +498,24 @@ const buildBranch = (args: BranchBuildArgs): void => {
 
   const nodeByVariable = new Map<string, string>();
   const seenVariableKeys = new Set<string>();
-  resolvedSources.forEach((source) => {
+  preparedSources.forEach((source) => {
     if (seenVariableKeys.has(source.key)) {
       throw new Error(`Duplicate variable key "${source.key}" in computed metric`);
     }
     seenVariableKeys.add(source.key);
 
-    const { apiMetric, queryFilters } = source;
+    const { queryMetric, acePseudoDimensionValue, queryFilters } = source;
     validateSourceLevelFilters(source);
 
     const queryNodeId = `query_${source.key}${nodeIdSuffix}`;
     nodeByVariable.set(source.key, queryNodeId);
     const queryConfig: RankQueryNodeConfig = {
-      metric: apiMetric,
+      metric: queryMetric,
       breakdown: branchBreakdown,
       filters: mergeSourceAndDagLevelFilters(queryFilters, globalFilters),
       topN: rankBreakdownSpecs ? undefined : topNConfig,
       breakdownSpecs: rankBreakdownSpecs,
+      pseudoDimensionValues: acePseudoDimensionValue ? [acePseudoDimensionValue] : undefined,
     };
 
     nodes.push({
@@ -545,21 +608,18 @@ export const buildComputedMetricDag = (
   const referencedSources = getReferencedComputedMetricSources(computedMetric);
   const referencedSourceKeys = referencedSources.map((source) => source.key);
 
-  const resolvedSources = referencedSources.map((source) => ({
+  const preparedSources = referencedSources.map((source) => ({
     ...source,
-    ...resolveSourceMetric(source),
+    ...prepareSourceMetric(source),
   }));
-  const sharedSupportedDimensions = getSharedSupportedDimensions(resolvedSources);
+  const sharedSupportedDimensions = getSharedSupportedDimensions(preparedSources);
 
   // Page-level filters may contain source-owned values persisted in URL params
-  // from non-computed mode. These are per-source concerns already handled by
-  // resolveSourceMetric and ComputedMetricSource.filters, so strip them from
-  // the global filter set.
-  //
-  // TODO(DSA-5716): remove this strip once ACE resolves UI metrics server-side.
-  // At that point the DAG carries the pseudo metric name + pseudoDimensionValues
-  // on each query node, and there is no client-side resolution path that could
-  // confuse a page-level fanout-dimension filter for a query filter.
+  // from non-computed mode (AggregationType / PercentileType / CustomEventName).
+  // Those are not valid ACE QueryFilters — fanout selections live on each
+  // query node's `pseudoDimensionValues`, and CustomEventName is synthesized
+  // per-source from the atomic identity. Strip them from the global filter
+  // set so they never leak onto ACE query nodes.
   const { topNBreakdowns, passthroughBreakdowns } = splitTopNBreakdownDimensions(request.breakdown);
   const topNConfigs = getSupportedTopNBreakdownConfigs(topNBreakdowns, sharedSupportedDimensions);
   if (!options.emitRankBreakdownSpec && topNConfigs.length > 1) {
@@ -610,7 +670,7 @@ export const buildComputedMetricDag = (
 
   buildBranch({
     computedMetric,
-    resolvedSources,
+    preparedSources,
     ast: parseResult.ast,
     globalFilters,
     branchBreakdown: queryBreakdowns,
@@ -640,7 +700,7 @@ export const buildComputedMetricDag = (
   if (shouldEmitTotalBranch) {
     buildBranch({
       computedMetric,
-      resolvedSources,
+      preparedSources,
       ast: parseResult.ast,
       globalFilters,
       branchBreakdown: totalBranchBreakdown,
