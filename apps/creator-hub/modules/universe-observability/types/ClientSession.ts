@@ -1,5 +1,6 @@
 // These data models are tentative and may change as the backend API contract is finalized.
 // TODO: Replace Date with Temporal after https://github.rbx.com/Roblox/creator-hub/pull/13197 merges.
+// https://roblox.atlassian.net/browse/DSA-6049
 import { z } from 'zod';
 import { RAQIV2OperatingSystem, RAQIV2Platform } from '@rbx/creator-hub-analytics-config';
 
@@ -17,12 +18,31 @@ export enum ClientSessionStatus {
   Crashed = 'CRASHED',
 }
 
+export enum ClientSessionDataAvailability {
+  MicroProfiler = 'MICRO_PROFILER',
+  DMR = 'DMR',
+  MemoryDump = 'MEMORY_DUMP',
+}
+
 export const ClientSessionSchema = z.object({
   id: z.string(),
   device: ClientSessionDeviceSchema,
   status: z.enum(ClientSessionStatus),
   startTime: z.date(),
   durationMinute: z.int().nonnegative(),
+  placeVersion: z.string(),
+  placeName: z.string(),
+  averageFps: z.number().nonnegative(),
+  memoryUsageMB: z.number().nonnegative(),
+  dataAvailability: z
+    .array(z.enum(ClientSessionDataAvailability))
+    .refine((availability) => new Set(availability).size === availability.length),
+  // TODO: following metadata are listed in PRD
+  // but we are not showing them anywhere on the UI (at least not for now)
+  // can be added later once we figure out the visuals with design
+  // https://roblox.atlassian.net/browse/DSA-6048
+  // - associated bug report
+  // - custom events triggered
 });
 
 export type ClientSession = z.infer<typeof ClientSessionSchema>;
