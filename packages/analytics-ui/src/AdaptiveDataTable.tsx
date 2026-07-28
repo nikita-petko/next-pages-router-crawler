@@ -73,7 +73,6 @@ const RowHeightBySize: Readonly<Record<AdaptiveDataTableSize, number>> = {
 const TruncatedCellClassName = 'text-truncate-end';
 const PaginationClassName = 'flex items-center justify-end';
 const PaginationContentClassName = 'flex items-center gap-large';
-const PaginationStatusClassName = 'flex items-center gap-small';
 const PaginationPaddingClassNameBySize: Readonly<Record<AdaptiveDataTableSize, string>> = {
   XSmall: 'padding-x-small padding-y-xsmall',
   Small: 'padding-x-medium padding-y-small',
@@ -106,7 +105,7 @@ const TooltipPositionByTriggerKind: Readonly<
 };
 
 const ScrollContainerStyle: CSSProperties = {
-  overflowY: 'auto',
+  overflow: 'auto',
   position: 'relative',
   width: '100%',
 };
@@ -911,16 +910,13 @@ const AdaptiveDataTable = <
   }, [infiniteNextCursor, isLoadingMore, loadMoreIfNeeded, tableRenderItems.length]);
 
   const headerGroups = table.getHeaderGroups();
-  const canScrollHorizontally =
-    scrollViewportWidth !== undefined && columnLayout.tableWidth > scrollViewportWidth;
-  const scrollStyle = useMemo<CSSProperties>(
+  const scrollStyle = useMemo(
     () => ({
       ...ScrollContainerStyle,
-      overflowX: canScrollHorizontally ? 'auto' : 'hidden',
       ...(shouldFrameScrollContainer ? FramedScrollContainerStyle : undefined),
       ...(isInfinite ? { height: InfiniteViewportHeight } : undefined),
     }),
-    [canScrollHorizontally, isInfinite, shouldFrameScrollContainer],
+    [isInfinite, shouldFrameScrollContainer],
   );
   const tableStyle = useMemo(
     () => ({ ...TableStyle, minWidth: columnLayout.tableWidth }),
@@ -940,7 +936,7 @@ const AdaptiveDataTable = <
       return labels.error;
     }
     if (isLoading && tableRows.length === 0) {
-      return <ProgressCircle ariaLabel={labels.loading} size='Medium' variant='Indeterminate' />;
+      return <ProgressCircle ariaLabel={labels.loading} size='Medium' />;
     }
     if (tableRows.length === 0) {
       return labels.emptyState;
@@ -1029,11 +1025,7 @@ const AdaptiveDataTable = <
                               </Button>
                             </div>
                           ) : (
-                            <ProgressCircle
-                              ariaLabel={labels.loading}
-                              size='Small'
-                              variant='Indeterminate'
-                            />
+                            <ProgressCircle ariaLabel={labels.loading} size='Small' />
                           )}
                         </TableCell>
                       </TableRow>
@@ -1110,14 +1102,9 @@ const AdaptiveDataTable = <
       {navigation.mode === 'pagination' ? (
         <div className={`${PaginationClassName} ${PaginationPaddingClassNameBySize[size]}`}>
           <div className={PaginationContentClassName}>
-            <div className={PaginationStatusClassName}>
-              {isLoading && tableRows.length > 0 ? (
-                <ProgressCircle ariaLabel={labels.loading} size='Small' variant='Indeterminate' />
-              ) : null}
-              <span className={`${PaginationTextClassNameBySize[size]} content-default`}>
-                {labels.page(navigation.pageIndex, navigation.pageSize, navigation.totalRowCount)}
-              </span>
-            </div>
+            <span className={`${PaginationTextClassNameBySize[size]} content-default`}>
+              {labels.page(navigation.pageIndex, navigation.pageSize, navigation.totalRowCount)}
+            </span>
             <div className={PaginationControlsClassNameBySize[size]}>
               <IconButton
                 ariaLabel={labels.previousPage}

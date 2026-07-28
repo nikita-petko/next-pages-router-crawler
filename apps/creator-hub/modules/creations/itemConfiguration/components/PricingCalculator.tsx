@@ -10,8 +10,6 @@ import {
   RobloxItemConfigurationApiModelsResponseBundleBundleInfoBundleTypeEnum,
   V1ItemsPriceFloorGetCollectibleItemTypeEnum,
   V1ItemsPriceFloorGetCreationTypeEnum,
-  V1PermissionsActionAllowedForItemTypeGetActionEnum,
-  V1PermissionsActionAllowedForItemTypeGetAssetTypeEnum,
 } from '@rbx/client-itemconfiguration/v1';
 import { HubMeta, buildTitle } from '@rbx/creator-hub-history';
 import { useTranslation, withTranslation } from '@rbx/intl';
@@ -32,7 +30,6 @@ import { EmptyGrid } from '@modules/miscellaneous/components';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import type { BundleType } from '../../avatarItem/constants/avatarItemConstants';
 import { translateBundleType } from '../../avatarItem/utils/loadAvatarItemsUtils';
 import {
@@ -97,14 +94,7 @@ const fetchPriceFloorVariables = async () => {
   return { itemTypes, categories };
 };
 
-const QUERY_PARAM_KEYS = [
-  'itemType',
-  'category',
-  'isPbr',
-  'isEmissive',
-  'isLimited',
-  'isIec',
-] as const;
+const QUERY_PARAM_KEYS = ['itemType', 'category', 'isPbr', 'isLimited', 'isIec'] as const;
 
 const parseBoolParam = (v: string | string[] | undefined): boolean => v === 'true' || v === '1';
 
@@ -139,10 +129,6 @@ const PricingCalculator: FunctionComponent<React.PropsWithChildren> = () => {
   const isIec = parseBoolParam(queryParams.isIec ?? undefined);
   const isLimited = parseBoolParam(queryParams.isLimited ?? undefined);
   const isPbr = parseBoolParam(queryParams.isPbr ?? undefined);
-  const { settings } = useSettings();
-  const [isEmissivePermitted, setIsEmissivePermitted] = useState(false);
-  const isEmissiveEnabled = settings?.enableEmissive && isEmissivePermitted;
-  const isEmissive = isEmissiveEnabled && parseBoolParam(queryParams.isEmissive ?? undefined);
 
   const showCategorySelect = !isIec;
   const showItemTypeSelect = isIec;
@@ -150,38 +136,20 @@ const PricingCalculator: FunctionComponent<React.PropsWithChildren> = () => {
   const itemTypeForPriceFloor = showItemTypeSelect ? itemType : undefined;
   const categoryIdForPriceFloor = showCategorySelect ? categoryId : undefined;
 
-  useEffect(() => {
-    const updatePriceFloorVariables = async () => {
-      try {
-        const response = await fetchPriceFloorVariables();
-        setItemTypes(response.itemTypes);
-        setCategories(response.categories);
-        setLoadingStatus(LoadingStatus.SUCCESS);
-      } catch {
-        setLoadingStatus(LoadingStatus.FAILED);
-      }
-    };
-    void updatePriceFloorVariables();
-  }, []);
+  const updatePriceFloorVariables = async () => {
+    try {
+      const response = await fetchPriceFloorVariables();
+      setItemTypes(response.itemTypes);
+      setCategories(response.categories);
+      setLoadingStatus(LoadingStatus.SUCCESS);
+    } catch {
+      setLoadingStatus(LoadingStatus.FAILED);
+    }
+  };
 
   useEffect(() => {
-    if (!settings?.enableEmissive) {
-      return;
-    }
-    const fetchMetadataPermissions = async () => {
-      // Hardcoded to check if the metadata is allowed for a BackAccessory since the categories use taxonomy and not asset/bundle types.
-      // Assumes future metadata will be allowed for BackAccessory - if not, this will need to be updated to check for a correct asset/bundle type.
-      const response = await itemConfigurationClient.isActionAllowedForItemType(
-        V1PermissionsActionAllowedForItemTypeGetActionEnum.NUMBER_6,
-        undefined,
-        V1PermissionsActionAllowedForItemTypeGetAssetTypeEnum.NUMBER_46,
-        undefined,
-        true,
-      );
-      setIsEmissivePermitted(response.metadataPermissions?.EmissiveResult === true);
-    };
-    void fetchMetadataPermissions();
-  }, [settings?.enableEmissive]);
+    void updatePriceFloorVariables();
+  }, []);
 
   useEffect(() => {
     const hasItemTypeParam =
@@ -261,7 +229,6 @@ const PricingCalculator: FunctionComponent<React.PropsWithChildren> = () => {
           assetType,
           bundleType,
           categoryIdForPriceFloor,
-          isEmissive,
         );
         setPriceFloor(response.priceFloor ?? 0);
         setErrorMessage(undefined);
@@ -272,15 +239,7 @@ const PricingCalculator: FunctionComponent<React.PropsWithChildren> = () => {
     };
 
     void fetchPriceFloor();
-  }, [
-    translate,
-    isIec,
-    itemTypeForPriceFloor,
-    categoryIdForPriceFloor,
-    isLimited,
-    isPbr,
-    isEmissive,
-  ]);
+  }, [translate, isIec, itemTypeForPriceFloor, categoryIdForPriceFloor, isLimited, isPbr]);
 
   if (loadingStatus === LoadingStatus.LOADING) {
     return (
@@ -421,20 +380,6 @@ const PricingCalculator: FunctionComponent<React.PropsWithChildren> = () => {
             }
             label={translate('Label.PBR')}
           />
-          {isEmissiveEnabled && (
-            <FormControlLabel
-              className='margin-right-medium margin-top-medium'
-              control={
-                <Checkbox
-                  checked={isEmissive}
-                  onClick={() =>
-                    setQueryParamValues({ isEmissive: !isEmissive }, { skipHistory: true })
-                  }
-                />
-              }
-              label={translate('Label.Emissive')}
-            />
-          )}
         </Grid>
       </Grid>
     </>

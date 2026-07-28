@@ -2,7 +2,7 @@ import type { ClientSessionLog } from '../types/ClientSession';
 import { ClientSessionLogSeverity } from '../types/ClientSession';
 
 const DEFAULT_PAGE_SIZE = 10;
-const MOCK_RESPONSE_DELAY_MS = 1000;
+const MOCK_RESPONSE_DELAY_MS = 300;
 const MOCK_LOG_INTERVAL_MS = 3 * 60 * 1000;
 const MOCK_LOG_START_TIME_MS = new Date('2025-10-30T15:57:00Z').getTime();
 

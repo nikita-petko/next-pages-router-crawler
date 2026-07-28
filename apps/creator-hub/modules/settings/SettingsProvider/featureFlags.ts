@@ -98,7 +98,6 @@ export enum FeatureFlagName {
   enableUgcUploadPublishBlockBanner = 'enableUgcUploadPublishBlockBanner',
   enableDataStoreRequestSourceAnalytics = 'enableDataStoreRequestSourceAnalytics',
   enableIpPlatformMatchesTableEsIndexImprovements = 'enableIpPlatformMatchesTableEsIndexImprovements',
-  enableEmissive = 'enableEmissive',
 }
 
 export type FeatureFlagValue = string | number | boolean;
@@ -212,5 +211,4 @@ export const featureFlagDefaults = defineFeatureFlagDefaults({
   [FeatureFlagName.enableUgcUploadPublishBlockBanner]: false,
   [FeatureFlagName.enableDataStoreRequestSourceAnalytics]: false,
   [FeatureFlagName.enableIpPlatformMatchesTableEsIndexImprovements]: false,
-  [FeatureFlagName.enableEmissive]: false,
 } as const);

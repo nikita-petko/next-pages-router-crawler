@@ -68,7 +68,6 @@ import { hasMetricFanoutBreakdown } from '../../utils/isMetricFanoutDimension';
 import type { MakeRAQIV2RequestOptions } from '../../utils/makeRAQIV2Request';
 import { getMetricLabelFromMetricLike } from '../../utils/metricLikeSemantics';
 import resolveComparisonConfig from '../../utils/resolveComparisonConfig';
-import shouldFetchTotalSeries from '../../utils/shouldFetchTotalSeries';
 import useLoadThumbnailAssetIdsForData from '../../utils/thumbnailsUtils';
 import getDimensionRenderer from '../getDimensionRenderer';
 import genericChartStateToChartAbnormalState from './genericChartStateToChartAbnormalState';
@@ -202,9 +201,7 @@ const GenericRAQIV2SplineChartV2: FC<GenericRAQIV2SplineChartV2Props> = ({
       : getAnalyticsMetricDisplayConfig(getUIMetricFromAtomicMetricLike(metric))
           .fillMissingDatapoints;
     return {
-      fetchTotalSeries:
-        !hasMetricFanoutBreakdown(breakdown) &&
-        shouldFetchTotalSeries(summarySpecOrDefault, hideTotalSeriesInChart),
+      fetchTotalSeries: !hasMetricFanoutBreakdown(breakdown),
       fetchComparison: getFetchComparison(
         fetchComparison,
         granularity,
@@ -223,9 +220,7 @@ const GenericRAQIV2SplineChartV2: FC<GenericRAQIV2SplineChartV2Props> = ({
     comparisonRelativeOffset,
     comparisonCustomStartDate,
     allowComparisonWithBreakdown,
-    hideTotalSeriesInChart,
     resolvedComparison.rangePolicy,
-    summarySpecOrDefault,
   ]);
 
   const queryRequest: RAQIV2UIQueryRequest = useMemo(() => {
