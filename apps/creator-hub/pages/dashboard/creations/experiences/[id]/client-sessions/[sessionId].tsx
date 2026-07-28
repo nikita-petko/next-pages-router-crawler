@@ -5,6 +5,7 @@ import Authenticated from '@modules/authentication/Authenticated';
 import getCreationsPageLayout from '@modules/creations/common/implementations/getCreationsPageLayout';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { PageNotFound } from '@modules/miscellaneous/error';
+import ClientSessionDetailsPageContent from '@modules/universe-observability/components/ClientSessionDetailsPageContent';
 import ClientSessionsPageTitle from '@modules/universe-observability/components/ClientSessionsPageTitle';
 import useUniverseRelatedSession from '@modules/universe-observability/hooks/useUniverseRelatedSession';
 
@@ -22,7 +23,11 @@ const ClientSession: NextLayoutPage = () => {
     return <PageNotFound />;
   }
 
-  return <Authenticated />;
+  return (
+    <Authenticated>
+      <ClientSessionDetailsPageContent />
+    </Authenticated>
+  );
 };
 
 ClientSession.getPageLayout = (page) =>
