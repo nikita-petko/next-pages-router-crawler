@@ -5,6 +5,8 @@ import { TextInput, Icon } from '@rbx/foundation-ui';
 import type { TLabelTooltipConfig, TTextInputSize } from '@rbx/foundation-ui';
 
 const VIEWPORT_BOTTOM_PADDING = 16;
+const LISTBOX_GAP = 4;
+const MIN_PREFERRED_LISTBOX_HEIGHT = 160;
 /**
  * Matches Foundation's `.foundation-web-portal-zindex` (Dialog / Dropdown /
  * Autocomplete portals). Inline `zIndex: 1000` sits under that layer, so a
@@ -136,16 +138,28 @@ const ComboboxTypeahead: FC<ComboboxTypeaheadProps> = ({
       return;
     }
     const rect = containerRef.current.getBoundingClientRect();
-    const nextMaxHeight = window.innerHeight - rect.bottom - VIEWPORT_BOTTOM_PADDING;
+    const availableBelow = Math.max(
+      0,
+      window.innerHeight - rect.bottom - VIEWPORT_BOTTOM_PADDING - LISTBOX_GAP,
+    );
+    const availableAbove = Math.max(0, rect.top - VIEWPORT_BOTTOM_PADDING - LISTBOX_GAP);
+    const shouldOpenAbove =
+      renderListboxInPortal &&
+      availableBelow < MIN_PREFERRED_LISTBOX_HEIGHT &&
+      availableAbove > availableBelow;
+    const nextMaxHeight = shouldOpenAbove ? availableAbove : availableBelow;
     setMaxHeight(nextMaxHeight);
     if (renderListboxInPortal) {
       setPortalPanelStyle({
         position: 'fixed',
-        top: rect.bottom,
+        top: shouldOpenAbove ? 'auto' : rect.bottom,
+        bottom: shouldOpenAbove ? window.innerHeight - rect.top : 'auto',
         left: rect.left,
         right: 'auto',
         width: rect.width,
         maxHeight: nextMaxHeight,
+        marginTop: shouldOpenAbove ? 0 : LISTBOX_GAP,
+        marginBottom: shouldOpenAbove ? LISTBOX_GAP : 0,
         zIndex: FOUNDATION_PORTAL_Z_INDEX,
         // Modal Dialogs set `pointer-events: none` on `body`. Portaled listboxes
         // are body children, so they must opt back in or clicks fall through.

@@ -87,7 +87,8 @@ const ChartConfiguratorMetricSelector: FC<ChartConfiguratorMetricSelectorProps> 
       placeholder={placeholder ?? selectMetricPlaceholder}
       selectedLabel={selectedLabel}
       hasResults={groups.length > 0}
-      isRequired={isRequired}>
+      isRequired={isRequired}
+      renderListboxInPortal>
       {({ searchText, close }) => {
         const filtered = filterGroups(groups, searchText);
         return filtered.map((group, idx) => (

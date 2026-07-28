@@ -6,6 +6,8 @@ import useTranslationWrapper from '@modules/analytics-translations/useTranslatio
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { RevShareConfirmationStatus } from '../interface/RevShareViewModel';
+import type { ClassifiedRevShareMutationError } from '../utils/revShareMutationError';
+import { translateRevShareMutationError } from '../utils/revShareMutationErrorPresentation';
 import { translateRevShareRecipientSettledStatusBanner } from '../utils/revShareRecipientProposalStatusPresentation';
 import RevShareBanner from './RevShareBanner';
 import RevShareReviewShell from './RevShareReviewShell';
@@ -16,7 +18,9 @@ export type RevShareRecipientReviewViewProps = {
   confirmation: RevShareConfirmationStatus;
   canRespond: boolean;
   isSubmitting?: boolean;
-  hasError?: boolean;
+  mutationError?: ClassifiedRevShareMutationError | null;
+  onRefreshStaleError?: () => void;
+  isRefreshingStaleError?: boolean;
   onBack: () => void;
   onAccept: () => void;
 };
@@ -26,18 +30,21 @@ const RevShareRecipientReviewView: FunctionComponent<RevShareRecipientReviewView
   confirmation,
   canRespond,
   isSubmitting = false,
-  hasError = false,
+  mutationError = null,
+  onRefreshStaleError,
+  isRefreshingStaleError = false,
   onBack,
   onAccept,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const errorBannerRef = useRef<HTMLDivElement>(null);
   const isPending = confirmation === RevShareConfirmationStatus.Pending;
+  const hasError = mutationError != null;
   useEffect(() => {
     if (hasError) {
       errorBannerRef.current?.focus();
     }
-  }, [hasError]);
+  }, [hasError, mutationError?.kind, mutationError?.result]);
   const backLabel = tPendingTranslation(
     'Back',
     'Label on a button that returns to the previous step in a multi-step wizard.',
@@ -48,6 +55,12 @@ const RevShareRecipientReviewView: FunctionComponent<RevShareRecipientReviewView
     'Button label for continuing to accept a recipient revenue-share proposal.',
     translationKey('Action.Accept', TranslationNamespace.RevenueShareAgreements),
   );
+  const refreshLabel = tPendingTranslation(
+    'Refresh',
+    'Button label to refresh revenue-share data after a stale mutation error.',
+    translationKey('Action.Refresh', TranslationNamespace.Controls),
+  );
+  const controlsDisabled = isSubmitting || isRefreshingStaleError;
   const footer = useMemo(() => {
     if (isPending && canRespond) {
       return (
@@ -56,7 +69,7 @@ const RevShareRecipientReviewView: FunctionComponent<RevShareRecipientReviewView
             type='button'
             variant='Standard'
             size='Medium'
-            isDisabled={isSubmitting}
+            isDisabled={controlsDisabled}
             onClick={onBack}>
             {backLabel}
           </Button>
@@ -64,7 +77,7 @@ const RevShareRecipientReviewView: FunctionComponent<RevShareRecipientReviewView
             type='button'
             variant='Emphasis'
             size='Medium'
-            isDisabled={isSubmitting}
+            isDisabled={controlsDisabled}
             onClick={onAccept}>
             {acceptLabel}
           </Button>
@@ -78,22 +91,30 @@ const RevShareRecipientReviewView: FunctionComponent<RevShareRecipientReviewView
         </Button>
       </div>
     );
-  }, [acceptLabel, backLabel, canRespond, isPending, isSubmitting, onAccept, onBack]);
+  }, [acceptLabel, backLabel, canRespond, controlsDisabled, isPending, onAccept, onBack]);
   const banner = useMemo(() => {
-    if (hasError) {
-      return (
+    if (mutationError != null) {
+      const presentation = translateRevShareMutationError(
+        'respond',
+        mutationError,
+        tPendingTranslation,
+      );
+      const showRefresh = presentation.kind === 'stale' && onRefreshStaleError !== undefined;
+      return showRefresh ? (
         <RevShareBanner
           ref={errorBannerRef}
           tabIndex={-1}
           tone='alert'
-          message={tPendingTranslation(
-            'We could not update this proposal. Refresh and try again.',
-            'Generic error shown when accepting a recipient revenue-share proposal fails.',
-            translationKey(
-              'Message.RecipientResponseFailed',
-              TranslationNamespace.RevenueShareAgreements,
-            ),
-          )}
+          message={presentation.message}
+          actionLabel={refreshLabel}
+          onAction={onRefreshStaleError}
+        />
+      ) : (
+        <RevShareBanner
+          ref={errorBannerRef}
+          tabIndex={-1}
+          tone='alert'
+          message={presentation.message}
         />
       );
     }
@@ -128,7 +149,14 @@ const RevShareRecipientReviewView: FunctionComponent<RevShareRecipientReviewView
         }
       />
     );
-  }, [canRespond, confirmation, hasError, tPendingTranslation]);
+  }, [
+    canRespond,
+    confirmation,
+    mutationError,
+    onRefreshStaleError,
+    refreshLabel,
+    tPendingTranslation,
+  ]);
 
   return <RevShareReviewShell banner={banner} rows={rows} footer={footer} />;
 };

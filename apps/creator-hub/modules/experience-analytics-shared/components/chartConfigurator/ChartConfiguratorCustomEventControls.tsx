@@ -24,6 +24,7 @@ import {
   updateFilterValues,
   type UIFilters,
 } from '../../layout/ExperienceAnalyticsPageControlBar/filterUtils';
+import { isLoadingRAQIV2Prerequisites } from '../../utils/RAQIV2InternalException';
 import getDimensionRenderer from '../getDimensionRenderer';
 import useChartConfiguratorAutoFocusEventName from './useChartConfiguratorAutoFocusEventName';
 
@@ -91,13 +92,25 @@ const ChartConfiguratorCustomEventControls: FC<ChartConfiguratorCustomEventContr
     'Placeholder text shown while event types are being loaded.',
     translationKey('Label.ExploreMode.Loading', TranslationNamespace.Analytics),
   );
+  const eventTypesLoadError = tPendingTranslation(
+    "Custom event types couldn't be loaded",
+    'Error shown when the custom event type options request fails.',
+    translationKey('Error.ExploreMode.CustomEventTypesLoadFailed', TranslationNamespace.Analytics),
+  );
+  const tryAgainLabel = tPendingTranslation(
+    'Try again',
+    'Button label for retrying the custom event type options request.',
+    translationKey('Action.TryAgain', TranslationNamespace.Analytics),
+  );
 
   const contextMetrics = useMemo(() => [RAQIV2APIMetric.CustomEventCount], []);
   const {
     data: eventTypeData,
     isDataLoading: isEventTypeLoading,
     isResponseFailed: isEventTypeRequestFailed,
+    refresh: refreshEventTypes,
   } = useRAQIV2DimensionValuesRequest(resource, RAQIV2Dimension.CustomEventName, contextMetrics);
+  const isEventTypeResolving = isEventTypeLoading || isLoadingRAQIV2Prerequisites(resource);
 
   const eventTypeValues = useMemo(() => {
     const raw = eventTypeData?.values?.map((v) => v.value ?? '').filter(Boolean) ?? [];
@@ -111,10 +124,17 @@ const ChartConfiguratorCustomEventControls: FC<ChartConfiguratorCustomEventContr
   // that we received a non-null response and the request didn't fail —
   // otherwise the banner would flash on mount before the fetch resolves.
   const hasNoEvents =
-    !isEventTypeLoading &&
+    !isEventTypeResolving &&
     !isEventTypeRequestFailed &&
     eventTypeData !== null &&
     eventTypeValues.length === 0;
+
+  // A failed request and a completed request with no usable response both
+  // previously left an enabled combobox with `hasResults=false`. Clicking it
+  // appeared to do nothing because ComboboxTypeahead correctly suppresses an
+  // empty listbox. Surface a recovery action instead. If a later refresh fails
+  // after data was already loaded, keep the still-usable options visible.
+  const couldNotLoadEventTypes = !isEventTypeResolving && eventTypeData === null;
 
   // Whenever this control's dimension fetch resolves, write the result
   // through to the per-universe localStorage cache. Two downstream consumers
@@ -124,7 +144,7 @@ const ChartConfiguratorCustomEventControls: FC<ChartConfiguratorCustomEventContr
   //   - Explore mode at mount time, to decide whether to default the source
   //     picker to Custom Events — see `useExploreModeHasCustomEventsProbe`.
   useEffect(() => {
-    if (isEventTypeLoading || isEventTypeRequestFailed) {
+    if (isEventTypeResolving || isEventTypeRequestFailed) {
       return;
     }
     if (eventTypeData === null || eventTypeData === undefined) {
@@ -134,7 +154,7 @@ const ChartConfiguratorCustomEventControls: FC<ChartConfiguratorCustomEventContr
   }, [
     eventTypeData,
     eventTypeValues.length,
-    isEventTypeLoading,
+    isEventTypeResolving,
     isEventTypeRequestFailed,
     resource.id,
   ]);
@@ -171,7 +191,7 @@ const ChartConfiguratorCustomEventControls: FC<ChartConfiguratorCustomEventContr
     autoFocusEventName,
     resourceId: resource.id,
     eventTypeValues,
-    isEventTypeLoading,
+    isEventTypeLoading: isEventTypeResolving,
     isEventTypeRequestFailed,
     isEventTypeResolved: eventTypeData !== null && eventTypeData !== undefined,
     selectedEventType,
@@ -243,15 +263,28 @@ const ChartConfiguratorCustomEventControls: FC<ChartConfiguratorCustomEventContr
     );
   }
 
+  if (couldNotLoadEventTypes) {
+    return (
+      <FeedbackBanner
+        severity='Error'
+        variant='Standard'
+        layout='Stacked'
+        title={eventTypesLoadError}
+        primaryActionLabel={tryAgainLabel}
+        onPrimaryAction={refreshEventTypes}
+      />
+    );
+  }
+
   return (
     <>
       <ComboboxTypeahead
         label={eventTypeLabel}
-        placeholder={isEventTypeLoading ? loadingPlaceholder : selectEventTypePlaceholder}
+        placeholder={isEventTypeResolving ? loadingPlaceholder : selectEventTypePlaceholder}
         selectedLabel={selectedEventType ?? ''}
         hasResults={eventTypeValues.length > 0}
         hasError={hasEventTypeError}
-        disabled={isEventTypeLoading}
+        disabled={isEventTypeResolving}
         isRequired
         renderListboxInPortal
         // Only fires when Explore mode auto-defaulted the source to Custom

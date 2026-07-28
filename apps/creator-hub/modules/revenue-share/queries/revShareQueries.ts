@@ -217,13 +217,19 @@ export function useRevShareProposalMutations(
   const queryClient = useQueryClient();
   const { user } = useAuthentication();
   const currentUserId = user?.id ?? '';
-  const invalidate = useCallback(async () => {
-    if (managingGroupId !== undefined) {
-      await queryClient.invalidateQueries({
-        queryKey: managerKey(managingGroupId, currentUserId),
-      });
-    }
-  }, [currentUserId, managingGroupId, queryClient]);
+  const invalidate = useCallback(
+    async (options?: { throwOnError?: boolean }) => {
+      if (managingGroupId !== undefined) {
+        await queryClient.invalidateQueries(
+          {
+            queryKey: managerKey(managingGroupId, currentUserId),
+          },
+          { throwOnError: options?.throwOnError },
+        );
+      }
+    },
+    [currentUserId, managingGroupId, queryClient],
+  );
 
   const propose = useMutation<RevShareProposeResult, Error, ProposeRevShareArgs>({
     mutationFn: ({ target: proposedTarget, activeRevShareId, allocations, allocateUnallocated }) =>
@@ -235,7 +241,11 @@ export function useRevShareProposalMutations(
             currentUserId,
           )
         : proposeRevShareChange(proposedTarget, activeRevShareId, allocations, currentUserId),
-    onSuccess: invalidate,
+    onSuccess: async (data) => {
+      if (data.updateSucceeded) {
+        await invalidate();
+      }
+    },
   });
   const cancel = useMutation<void, Error, string>({
     mutationFn: cancelRevShareProposal,
@@ -246,7 +256,7 @@ export function useRevShareProposalMutations(
     },
   });
 
-  return { propose, cancel };
+  return { propose, cancel, invalidateManager: invalidate };
 }
 
 export type RespondToRevShareProposalArgs = {
@@ -270,7 +280,7 @@ export function useRevShareRespondMutation(recipientRef?: RevShareRecipient) {
       }
       return respondToRevShareProposal({ proposedRevShareId, recipientRef, response });
     },
-    // Refresh on failures too: stale/already-accepted proposals should reconcile to server state.
-    onSettled: invalidateRecipient,
+    // Keep failures on-screen; callers refresh explicitly for stale results.
+    onSuccess: invalidateRecipient,
   });
 }

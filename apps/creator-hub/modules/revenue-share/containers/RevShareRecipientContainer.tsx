@@ -50,6 +50,7 @@ type RecipientRespondLifecycleDialogProps = {
   canRespond: boolean;
   closeLabel: string;
   onDone: () => void;
+  onStaleRefresh: () => void | Promise<void>;
 };
 
 // Keyed by proposal identity so remounts reset dialog title state with the flow.
@@ -60,6 +61,7 @@ const RecipientRespondLifecycleDialog: FunctionComponent<RecipientRespondLifecyc
   canRespond,
   closeLabel,
   onDone,
+  onStaleRefresh,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const [respondFlowStep, setRespondFlowStep] = useState<RevShareRespondFlowStep>('review');
@@ -87,6 +89,7 @@ const RecipientRespondLifecycleDialog: FunctionComponent<RecipientRespondLifecyc
         recipientParty={recipientParty}
         canRespond={canRespond}
         onDone={onDone}
+        onStaleRefresh={onStaleRefresh}
         onStepChange={setRespondFlowStep}
       />
     </RevShareLifecycleDialog>
@@ -239,6 +242,10 @@ const RevShareRecipientContainer: FunctionComponent<RevShareRecipientContainerPr
   const handleDoneResponding = useCallback(() => {
     setRecipientQuery({ action: undefined });
   }, [setRecipientQuery]);
+  const handleRespondStaleRefresh = useCallback(async () => {
+    await refetchAgreements({ throwOnError: true });
+    setRecipientQuery({ action: undefined });
+  }, [refetchAgreements, setRecipientQuery]);
   const lifecycleCloseLabel = tPendingTranslation(
     'Close',
     'Accessible label for closing a revenue share lifecycle dialog.',
@@ -262,6 +269,7 @@ const RevShareRecipientContainer: FunctionComponent<RevShareRecipientContainerPr
         canRespond={canRespond}
         closeLabel={lifecycleCloseLabel}
         onDone={handleDoneResponding}
+        onStaleRefresh={handleRespondStaleRefresh}
       />
     ) : null;
 

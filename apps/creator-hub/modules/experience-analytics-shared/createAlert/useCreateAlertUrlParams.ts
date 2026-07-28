@@ -74,16 +74,17 @@ const useCreateAlertUrlParams = (spec: RAQIV2ChartSpec | null): AnalyticsSearchP
     isMetricEligible;
 
   const dimensions = useMemo(() => {
-    if (!uiMetric) {
+    if (!isEligible || !uiMetric) {
       return [];
     }
     const chartConfiguratorDimensions = getChartConfiguratorDimensions();
     return chartConfiguratorDimensions?.[uiMetric] || [];
-  }, [uiMetric]);
+  }, [isEligible, uiMetric]);
 
-  // `useCurrentChartContext` is a hook and must run unconditionally; passing a
-  // null metric short-circuits it to a sensible default context. The spec is
-  // assignable to `RAQIV2ChartContext` (a metric-less superset), so its
+  // `useCurrentChartContext` is a hook and must run unconditionally. Ineligible
+  // metrics use no configurable dimensions so internal-only dimensions do not
+  // get resolved as filter-bar controls. The spec is assignable to
+  // `RAQIV2ChartContext` (a metric-less superset), so its
   // granularity/filter/breakdown override the provider-derived defaults.
   const chartContext = useCurrentChartContext({
     resource,

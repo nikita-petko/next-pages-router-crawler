@@ -9,6 +9,7 @@ import type { RevShareTermsActionProps } from './revShareTermsActionProps';
 
 type RevShareTermsShellProps = RevShareTermsActionProps & {
   chrome?: ReactNode;
+  footerBanner?: ReactNode;
   description: string;
   termsHeading?: string;
   consentLabel: string;
@@ -19,6 +20,7 @@ type RevShareTermsShellProps = RevShareTermsActionProps & {
 
 const RevShareTermsShell: FunctionComponent<RevShareTermsShellProps> = ({
   chrome,
+  footerBanner,
   description,
   termsHeading,
   consentLabel,
@@ -104,24 +106,27 @@ const RevShareTermsShell: FunctionComponent<RevShareTermsShellProps> = ({
         isDisabled={controlsDisabled}
         onCheckedChange={handleAcceptedChange}
       />
-      <div className='flex justify-end gap-medium'>
-        <Button
-          type='button'
-          variant='Standard'
-          size='Medium'
-          isDisabled={controlsDisabled}
-          onClick={onBack}>
-          {backLabel}
-        </Button>
-        <Button
-          type='button'
-          variant={submitVariant}
-          size='Medium'
-          isDisabled={!isAccepted || controlsDisabled}
-          isLoading={isSubmitting}
-          onClick={handleSubmit}>
-          {submitLabel}
-        </Button>
+      <div className='flex flex-col gap-medium'>
+        {footerBanner}
+        <div className='flex justify-end gap-medium'>
+          <Button
+            type='button'
+            variant='Standard'
+            size='Medium'
+            isDisabled={controlsDisabled}
+            onClick={onBack}>
+            {backLabel}
+          </Button>
+          <Button
+            type='button'
+            variant={submitVariant}
+            size='Medium'
+            isDisabled={!isAccepted || controlsDisabled}
+            isLoading={isSubmitting}
+            onClick={handleSubmit}>
+            {submitLabel}
+          </Button>
+        </div>
       </div>
     </div>
   );

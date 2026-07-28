@@ -1,5 +1,5 @@
 // Orchestrates recipient proposal review and terms steps before submitting the acceptance mutation.
-import { useCallback, useMemo, useRef, useState, type FunctionComponent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FunctionComponent } from 'react';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
@@ -19,6 +19,10 @@ import {
   type RevShareRecipient,
 } from '../interface/RevShareViewModel';
 import { useRevShareRespondMutation } from '../queries/revShareQueries';
+import {
+  classifyRevShareMutationError,
+  type ClassifiedRevShareMutationError,
+} from '../utils/revShareMutationError';
 import { AGGREGATE_REMAINING_COLOR, UNALLOCATED_COLOR } from '../utils/revShareSplitColors';
 import { getRevShareRecipientKey, isRevShareCurrentUserRecipient } from '../utils/revShareUtils';
 
@@ -85,6 +89,7 @@ export type RevShareRespondFlowContainerProps = {
   recipientParty: ResolvedRevShareParty;
   canRespond: boolean;
   onDone: () => void;
+  onStaleRefresh: () => void | Promise<void>;
   onStepChange?: (step: RevShareRespondFlowStep) => void;
 };
 
@@ -94,6 +99,7 @@ const RevShareRespondFlowContainer: FunctionComponent<RevShareRespondFlowContain
   recipientParty,
   canRespond,
   onDone,
+  onStaleRefresh,
   onStepChange,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
@@ -101,8 +107,14 @@ const RevShareRespondFlowContainer: FunctionComponent<RevShareRespondFlowContain
   const currentUserId = user?.id;
   const [step, setStep] = useState<RevShareRespondFlowStep>('review');
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const [mutationError, setMutationError] = useState<ClassifiedRevShareMutationError | null>(null);
+  const [isRefreshingStaleError, setIsRefreshingStaleError] = useState(false);
   const isRespondPendingRef = useRef(false);
+  const isRefreshingStaleErrorRef = useRef(false);
+  const onStaleRefreshRef = useRef(onStaleRefresh);
+  useEffect(() => {
+    onStaleRefreshRef.current = onStaleRefresh;
+  }, [onStaleRefresh]);
   const { mutateAsync: respond, isPending: isResponding } = useRevShareRespondMutation(recipient);
   const proposal = agreement.proposed;
   const labels = useMemo<RevShareRecipientRowLabels>(
@@ -147,7 +159,7 @@ const RevShareRespondFlowContainer: FunctionComponent<RevShareRespondFlowContain
     [onStepChange],
   );
   const handleShowTerms = useCallback(() => {
-    setHasError(false);
+    setMutationError(null);
     transitionToStep('terms');
   }, [transitionToStep]);
   const handleBackToReview = useCallback(() => {
@@ -158,21 +170,35 @@ const RevShareRespondFlowContainer: FunctionComponent<RevShareRespondFlowContain
       return;
     }
     isRespondPendingRef.current = true;
-    setHasError(false);
+    setMutationError(null);
     try {
       await respond({
         proposedRevShareId: proposal.id,
         response: RevShareAcceptOrDecline.Accept,
       });
       onDone();
-    } catch {
-      // The query hook invalidates on settlement so stale/already-accepted proposals reconcile.
-      setHasError(true);
+    } catch (error) {
+      setMutationError(classifyRevShareMutationError('respond', error));
       transitionToStep('review');
     } finally {
       isRespondPendingRef.current = false;
     }
   }, [canRespond, isResponding, onDone, proposal, respond, transitionToStep]);
+  const handleRefreshStaleError = useCallback(async () => {
+    if (isRefreshingStaleErrorRef.current) {
+      return;
+    }
+    isRefreshingStaleErrorRef.current = true;
+    setIsRefreshingStaleError(true);
+    try {
+      await onStaleRefreshRef.current();
+    } catch {
+      // Keep the stale banner open when refresh fails.
+    } finally {
+      isRefreshingStaleErrorRef.current = false;
+      setIsRefreshingStaleError(false);
+    }
+  }, []);
 
   if (!proposal) {
     return null;
@@ -197,7 +223,11 @@ const RevShareRespondFlowContainer: FunctionComponent<RevShareRespondFlowContain
       confirmation={proposal.confirmation}
       canRespond={canRespond}
       isSubmitting={isResponding}
-      hasError={hasError}
+      mutationError={mutationError}
+      onRefreshStaleError={
+        mutationError?.kind === 'stale' ? () => void handleRefreshStaleError() : undefined
+      }
+      isRefreshingStaleError={isRefreshingStaleError}
       onBack={onDone}
       onAccept={handleShowTerms}
     />

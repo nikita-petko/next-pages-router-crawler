@@ -13,6 +13,7 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { chartConfigDataStoreRequestsByEndpoint } from './dataStoreChartConfigs';
 
 const DataStoreRequestOperationGroup = {
+  All: 'All',
   Read: 'Read',
   Write: 'Write',
   List: 'List',
@@ -23,6 +24,7 @@ type DataStoreRequestOperationGroup =
   (typeof DataStoreRequestOperationGroup)[keyof typeof DataStoreRequestOperationGroup];
 
 const DataStoreRequestOperationGroupOptions = [
+  DataStoreRequestOperationGroup.All,
   DataStoreRequestOperationGroup.Read,
   DataStoreRequestOperationGroup.Write,
   DataStoreRequestOperationGroup.List,
@@ -30,11 +32,13 @@ const DataStoreRequestOperationGroupOptions = [
 ] as const satisfies readonly DataStoreRequestOperationGroup[];
 
 const DataStoreRequestOperationGroupFilters = {
+  [DataStoreRequestOperationGroup.All]: null,
   [DataStoreRequestOperationGroup.Read]: [
     'GetAsync',
     'GetSortedAsync',
     'GetVersionAsync',
     'GetVersionAtTimeAsync',
+    'UpdateAsync',
   ],
   [DataStoreRequestOperationGroup.Write]: ['SetAsync', 'UpdateAsync', 'IncrementAsync'],
   [DataStoreRequestOperationGroup.List]: [
@@ -47,13 +51,18 @@ const DataStoreRequestOperationGroupFilters = {
     'DataStoreListingPagesAdvanceToNextPageAsync',
   ],
   [DataStoreRequestOperationGroup.Remove]: ['RemoveAsync'],
-} as const satisfies Record<DataStoreRequestOperationGroup, readonly string[]>;
+} as const satisfies Record<DataStoreRequestOperationGroup, readonly string[] | null>;
 
 const ChartControlClassName = '[min-width:180px] padding-top-small';
 const HiddenChartControlClassName = `${ChartControlClassName} pointer-events-none invisible`;
 
 const getOperationGroupTranslationKey = (operationGroup: DataStoreRequestOperationGroup) => {
   switch (operationGroup) {
+    case DataStoreRequestOperationGroup.All:
+      return translationKey(
+        'Label.DataStoreRequestsBreakdownAll',
+        TranslationNamespace.CloudServices,
+      );
     case DataStoreRequestOperationGroup.Read:
       return translationKey(
         'Label.DataStoreRequestsBreakdownRead',
@@ -145,9 +154,13 @@ const DataStoreRequestsByApiChart: FunctionComponent<DataStoreRequestsByApiChart
     useState<DataStoreRequestOperationGroup>(DataStoreRequestOperationGroup.Read);
 
   const chartContextWithOperationFilter = useMemo(() => {
+    const operationGroupFilter = DataStoreRequestOperationGroupFilters[selectedOperationGroup];
+    if (operationGroupFilter === null) {
+      return chartContext;
+    }
     const operationFilter: RAQIV2QueryFilter = {
       dimension: RAQIV2Dimension.DataStoreOperation,
-      values: [...DataStoreRequestOperationGroupFilters[selectedOperationGroup]],
+      values: [...operationGroupFilter],
     };
     return computeRAQIV2SpecOverride(chartContext, {
       filter: {

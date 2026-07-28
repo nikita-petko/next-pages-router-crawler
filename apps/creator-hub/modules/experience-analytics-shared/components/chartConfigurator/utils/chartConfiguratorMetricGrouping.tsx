@@ -6,6 +6,7 @@ import type {
   TranslationKey,
   TranslationKeyToFormattedText,
 } from '@modules/analytics-translations/types';
+import { brandUntranslatableText } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import type { TChartConfiguratorMetrics } from '../../../chartConfigurator/chartConfiguratorMetricsConfig';
 import { codegenChartConfiguratorMetricToGroup } from '../../../chartConfigurator/codegenChartConfiguratorMetricGrouping';
@@ -57,19 +58,29 @@ export function groupMetricsByCategory(
     const mapKey = groupKey.key;
     let group = groupMap.get(mapKey);
     if (!group) {
+      const translatedGroupLabel = translate(groupKey);
       group = {
         groupKey,
-        groupLabel: translate(groupKey),
+        // Translation resources load asynchronously. Keep the selector usable
+        // on a cold cache or after a namespace fetch failure; the translated
+        // labels replace these stable identifiers when resources arrive.
+        groupLabel:
+          translatedGroupLabel.length > 0
+            ? translatedGroupLabel
+            : brandUntranslatableText(groupKey.key),
         metrics: [],
       };
       groupMap.set(mapKey, group);
     }
     const { localizedName } = getAnalyticsMetricDisplayConfig(metric);
     const translatedLabel = localizedName ? translate(localizedName) : null;
-    if (!translatedLabel) {
-      return;
-    }
-    group.metrics.push({ metric, label: translatedLabel });
+    group.metrics.push({
+      metric,
+      label:
+        translatedLabel !== null && translatedLabel.length > 0
+          ? translatedLabel
+          : brandUntranslatableText(metric),
+    });
   });
   const groups = Array.from(groupMap.values()).filter((group) => group.metrics.length > 0);
   groups.forEach((group) => {
