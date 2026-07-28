@@ -32,10 +32,6 @@ export const tableConfigIphEarnings = {
     columnDivider: false,
   },
   dataColumns: [tableColumnConfigIphEarningsRobux, tableColumnConfigIphTransactionCount],
-  breakdowns: [
-    RAQIV2Dimension.IpFamilyName,
-    RAQIV2Dimension.LicenseName,
-    RAQIV2Dimension.EarningsType,
-  ],
+  breakdowns: [RAQIV2Dimension.EarningsType],
   isTotalRowIncluded: true,
 } as const satisfies TAnalyticsSerializableTableConfig;

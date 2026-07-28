@@ -3,6 +3,7 @@ import { downloadBlob } from '@rbx/core';
 import {
   RAQIV2DateRangeType,
   RAQIV2Dimension,
+  RAQIV2Metric,
   RAQIV2MetricGranularity,
 } from '@rbx/creator-hub-analytics-config';
 import { useFlag } from '@rbx/flags';
@@ -22,7 +23,10 @@ import {
 } from '@modules/experience-analytics-shared/components/RAQIV2/ChartActionsContext';
 import type { ArbitraryComponentConfig } from '@modules/experience-analytics-shared/components/RAQIV2/layout/AnalyticsArbitraryComponent';
 import CreatorAnalyticsLayout from '@modules/experience-analytics-shared/components/RAQIV2/layout/CreatorAnalyticsLayout';
+import AnalyticsConfigTable from '@modules/experience-analytics-shared/components/RAQIV2/table/AnalyticsConfigTable';
+import type { AnalyticsTableConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedTableConfig';
 import getCreatorAnalyticsPageLayout from '@modules/experience-analytics-shared/pages/getCreatorAnalyticsPageLayout';
+import type RAQIV2ChartContext from '@modules/experience-analytics-shared/types/RAQIV2ChartContext';
 import type {
   AnalyticsPageConfigDateOptions,
   CreatorAnalyticsEmbeddedSurfaceConfig,
@@ -36,6 +40,20 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { tabbedChartConfigIphEarnings } from './chartConfigs';
 import IphGatewayInterceptor from './IphGatewayInterceptor';
 import { tableConfigIphEarnings } from './tableConfigs';
+
+const DynamicEarningsTable: FC<{ chartContext: RAQIV2ChartContext }> = ({ chartContext }) => {
+  const { breakdown } = chartContext;
+  const tableConfig: AnalyticsTableConfig = useMemo(
+    () => ({
+      ...tableConfigIphEarnings,
+      dataColumns: [...tableConfigIphEarnings.dataColumns],
+      breakdowns:
+        breakdown && breakdown.length > 0 ? [...breakdown] : [RAQIV2Dimension.EarningsType],
+    }),
+    [breakdown],
+  );
+  return <AnalyticsConfigTable config={tableConfig} tableContext={chartContext} />;
+};
 
 const surfaceAnnotationOptions: {
   supportedAnnotationTypes: AnnotationType[];
@@ -141,6 +159,18 @@ const IpLicensingEarningsPage = () => {
     dateRangeRef.current = { startDate, endDate };
   }, []);
 
+  const dynamicTableConfig: ArbitraryComponentConfig = useMemo(
+    () => ({
+      type: AnalyticsComponentType.NonGeneric,
+      metrics: [RAQIV2Metric.IphEarningsRobux, RAQIV2Metric.IphTransactionCount],
+      renderer: {
+        type: 'withChartContext',
+        render: (chartContext) => <DynamicEarningsTable chartContext={chartContext} />,
+      },
+    }),
+    [],
+  );
+
   const dateSyncConfig: ArbitraryComponentConfig = useMemo(
     () => ({
       type: AnalyticsComponentType.NonGeneric,
@@ -164,12 +194,14 @@ const IpLicensingEarningsPage = () => {
         RAQIV2Dimension.IpFamilyName,
         RAQIV2Dimension.LicenseName,
         RAQIV2Dimension.EarningsType,
+        RAQIV2Dimension.Country,
       ],
       defaultBreakdown: [RAQIV2Dimension.EarningsType],
       filterDimensions: [
         RAQIV2Dimension.IpFamilyName,
         RAQIV2Dimension.LicenseName,
         RAQIV2Dimension.EarningsType,
+        RAQIV2Dimension.Country,
       ],
       timeRangeOptions: {
         type: 'dateRange',
@@ -188,12 +220,12 @@ const IpLicensingEarningsPage = () => {
         },
         {
           type: RAQIV2SpecialLayoutType.FullWidthLayout,
-          items: [tableConfigIphEarnings],
+          items: [dynamicTableConfig],
         },
         dateSyncConfig,
       ],
     }),
-    [dateSyncConfig],
+    [dateSyncConfig, dynamicTableConfig],
   );
 
   if (!isFlagReady) {
