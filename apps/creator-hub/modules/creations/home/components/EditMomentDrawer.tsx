@@ -7,9 +7,9 @@ import {
   SheetContent,
   SheetRoot,
   SheetTitle,
+  TextArea,
 } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
-import { TextField } from '@rbx/ui';
 import type { TExperience } from '@modules/home/providers/ExperienceProvider';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { MAX_MOMENT_DESCRIPTION_LENGTH } from '../constants/momentConstants';
@@ -33,8 +33,6 @@ type EditMomentDrawerProps = {
   deletingMomentId?: string | null;
   isPublishDisabled?: boolean;
 };
-
-const EDIT_MOMENT_DESCRIPTION_INPUT_PROPS = { maxLength: MAX_MOMENT_DESCRIPTION_LENGTH };
 
 function getInitialSelectedExperience(
   moment: MomentCreation,
@@ -98,12 +96,9 @@ const EditMomentDrawer: FC<EditMomentDrawerProps> = ({
     [moment, onMomentMetadataChange],
   );
 
-  const handleDescriptionChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      setDescription(event.target.value);
-    },
-    [],
-  );
+  const handleDescriptionChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
+    setDescription(event.target.value);
+  }, []);
 
   const flushDescription = useCallback(() => {
     if (!moment || description === moment.description) {
@@ -178,21 +173,18 @@ const EditMomentDrawer: FC<EditMomentDrawerProps> = ({
           <div className='flex flex-col gap-y-xsmall width-full padding-top-small'>
             {isEditable ? (
               <>
-                <TextField
-                  fullWidth
+                <TextArea
                   id={`edit-moment-description-${moment.id}`}
                   label={translate(
                     'MomentsTable.Header.Description' /* TranslationNamespace.Creations */,
                   )}
-                  minRows={3}
-                  multiline
+                  rows={3}
                   placeholder={translate(
                     'MomentsTable.Placeholders.Description' /* TranslationNamespace.Creations */,
                   )}
-                  size='small'
+                  size='Small'
                   value={description}
-                  variant='outlined'
-                  inputProps={EDIT_MOMENT_DESCRIPTION_INPUT_PROPS}
+                  maxLength={MAX_MOMENT_DESCRIPTION_LENGTH}
                   onBlur={handleDescriptionBlur}
                   onChange={handleDescriptionChange}
                 />
@@ -200,8 +192,8 @@ const EditMomentDrawer: FC<EditMomentDrawerProps> = ({
                   aria-live='polite'
                   className={
                     isDescriptionAtMaxLength
-                      ? 'text-body-small content-system-alert'
-                      : 'text-body-small content-muted'
+                      ? 'text-body-small content-system-alert text-align-x-right'
+                      : 'text-body-small content-muted text-align-x-right'
                   }
                   data-testid='edit-moment-description-char-count'>
                   {`${description.length}/${MAX_MOMENT_DESCRIPTION_LENGTH}`}

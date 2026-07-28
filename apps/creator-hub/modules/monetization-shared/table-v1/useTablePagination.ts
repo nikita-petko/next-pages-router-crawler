@@ -12,7 +12,9 @@ type UsePaginationConfig = {
 };
 
 /**
- * Hook for exposing pagination state and handlers for WebBlox `TablePagination`.
+ * Hook for exposing pagination state and handlers for table pagination.
+ * `onRowsPerPageChange` accepts either a Foundation-style number or a
+ * WebBlox-style `ChangeEvent<HTMLInputElement>`.
  */
 export function useTablePagination({
   count,
@@ -41,11 +43,17 @@ export function useTablePagination({
     [maxPage],
   );
 
-  const onRowsPerPageChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const newRowsPerPage = parseInt(event.target.value, 10);
-    setRowsPerPage(newRowsPerPage);
-    setPage(0);
-  }, []);
+  const onRowsPerPageChange = useCallback(
+    (eventOrRowsPerPage: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | number) => {
+      const newRowsPerPage =
+        typeof eventOrRowsPerPage === 'number'
+          ? eventOrRowsPerPage
+          : parseInt(eventOrRowsPerPage.target.value, 10);
+      setRowsPerPage(newRowsPerPage);
+      setPage(0);
+    },
+    [],
+  );
 
   return {
     page: safePage,

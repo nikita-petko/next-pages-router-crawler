@@ -1,22 +1,21 @@
-import type { FC } from 'react';
-import { useCallback, useMemo } from 'react';
-import { clsx } from '@rbx/foundation-ui';
-import { useTranslation, withTranslation } from '@rbx/intl';
+import type { ChangeEvent, FC, FocusEvent } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Button,
-  EditOutlinedIcon,
+  clsx,
   IconButton,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
-  TableFooter,
-  TableHead,
+  TableHeader,
+  TableHeaderCell,
   TablePagination,
   TableRow,
-  TextField,
+  TextInput,
   Tooltip,
-} from '@rbx/ui';
+  TooltipTrigger,
+} from '@rbx/foundation-ui';
+import { useTranslation, withTranslation } from '@rbx/intl';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentPage } from '@modules/monetization-shared/table-v1/useCurrentPage';
 import { useTablePagination } from '@modules/monetization-shared/table-v1/useTablePagination';
@@ -36,11 +35,146 @@ import MomentVideoThumbnail from './MomentVideoThumbnail';
 
 const MOMENTS_TABLE_ROWS_PER_PAGE_OPTIONS_MUTABLE = [...MOMENTS_TABLE_ROWS_PER_PAGE_OPTIONS];
 
-const MOMENT_DESCRIPTION_INPUT_PROPS = { maxLength: MAX_MOMENT_DESCRIPTION_LENGTH };
-
 const EMPTY_FILTER_MESSAGE_KEYS: Record<MomentCreationStatusFilterTab, string> = {
   [MomentCreationStatus.ACTIVE]: 'MomentsTable.NoActiveMoments',
   [MomentCreationStatus.DRAFT]: 'MomentsTable.NoDraftMoments',
+};
+
+type MomentDescriptionFieldProps = {
+  moment: MomentCreation;
+  disabled: boolean;
+  onBlur: (moment: MomentCreation, event: FocusEvent<HTMLInputElement>) => void;
+};
+
+const MomentDescriptionField: FC<MomentDescriptionFieldProps> = ({ moment, disabled, onBlur }) => {
+  const { translate } = useTranslation();
+  const [description, setDescription] = useState(moment.description);
+  const isDescriptionAtMaxLength = description.length >= MAX_MOMENT_DESCRIPTION_LENGTH;
+
+  const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setDescription(event.target.value);
+  }, []);
+
+  const handleBlur = useCallback(
+    (event: FocusEvent<HTMLInputElement>) => {
+      onBlur(moment, event);
+    },
+    [moment, onBlur],
+  );
+
+  return (
+    <div className='flex flex-col gap-y-xsmall width-full'>
+      <TextInput
+        id={`moment-description-${moment.id}`}
+        label={translate('MomentsTable.Header.Description' /* TranslationNamespace.Creations */)}
+        value={description}
+        isDisabled={disabled}
+        maxLength={MAX_MOMENT_DESCRIPTION_LENGTH}
+        placeholder={translate(
+          'MomentsTable.Placeholders.Description' /* TranslationNamespace.Creations */,
+        )}
+        size='Small'
+        onBlur={handleBlur}
+        onChange={handleChange}
+      />
+      <span
+        aria-live='polite'
+        className={
+          isDescriptionAtMaxLength
+            ? 'text-body-small content-system-alert text-align-x-right'
+            : 'text-body-small content-muted text-align-x-right'
+        }
+        data-testid={`moment-description-char-count-${moment.id}`}>
+        {`${description.length}/${MAX_MOMENT_DESCRIPTION_LENGTH}`}
+      </span>
+    </div>
+  );
+};
+
+type MomentTableRowProps = {
+  moment: MomentCreation;
+  editLabel: string;
+  publishingMomentId: string | null;
+  isPublishDisabled: boolean;
+  statusLabel: string;
+  onEditMoment: (moment: MomentCreation) => void;
+  onDescriptionBlur: (moment: MomentCreation, event: FocusEvent<HTMLInputElement>) => void;
+  onPublishMoment?: (momentId: string) => void;
+};
+
+const MomentTableRow: FC<MomentTableRowProps> = ({
+  moment,
+  editLabel,
+  publishingMomentId,
+  isPublishDisabled,
+  statusLabel,
+  onEditMoment,
+  onDescriptionBlur,
+  onPublishMoment,
+}) => {
+  const { translate } = useTranslation();
+  const isPublishing = publishingMomentId === moment.id;
+
+  const handleEdit = useCallback(() => {
+    onEditMoment(moment);
+  }, [moment, onEditMoment]);
+
+  const handlePublish = useCallback(() => {
+    onPublishMoment?.(moment.id);
+  }, [moment.id, onPublishMoment]);
+
+  return (
+    <TableRow isHoverable data-testid={`moment-row-${moment.id}`}>
+      <TableCell>
+        <MomentVideoThumbnail moment={moment} />
+      </TableCell>
+      <TableCell>{moment.experienceName}</TableCell>
+      <TableCell>
+        {moment.status === MomentCreationStatus.ACTIVE ? (
+          <span data-testid={`moment-description-${moment.id}`}>{moment.description || '-'}</span>
+        ) : (
+          <MomentDescriptionField
+            key={`moment-description-${moment.id}-${moment.modifiedAt}`}
+            moment={moment}
+            disabled={isPublishing}
+            onBlur={onDescriptionBlur}
+          />
+        )}
+      </TableCell>
+      <TableCell>
+        <MomentStatusIndicator label={statusLabel} status={moment.status} />
+      </TableCell>
+      <TableCell align='end'>
+        <div className='inline-flex items-center gap-xsmall'>
+          <Tooltip position='top-center' title={editLabel}>
+            <TooltipTrigger asChild>
+              <IconButton
+                ariaLabel={editLabel}
+                icon='icon-regular-pencil'
+                size='Small'
+                type='button'
+                variant='Utility'
+                onClick={handleEdit}
+              />
+            </TooltipTrigger>
+          </Tooltip>
+          {moment.status === MomentCreationStatus.DRAFT &&
+          'hasLocalVideo' in moment &&
+          moment.hasLocalVideo === true &&
+          onPublishMoment ? (
+            <Button
+              size='Small'
+              type='button'
+              variant='Standard'
+              isDisabled={isPublishDisabled || publishingMomentId != null}
+              onClick={handlePublish}>
+              {translate('Action.Publish' /* TranslationNamespace.Creations */)}
+            </Button>
+          ) : null}
+        </div>
+      </TableCell>
+    </TableRow>
+  );
 };
 
 type MomentsCreationsTableProps = {
@@ -121,7 +255,7 @@ const MomentsCreationsTable: FC<MomentsCreationsTableProps> = ({
   });
 
   const handleDescriptionBlur = useCallback(
-    (moment: MomentCreation, event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    (moment: MomentCreation, event: FocusEvent<HTMLInputElement>) => {
       const description = event.target.value;
       if (description === moment.description) {
         return;
@@ -132,40 +266,42 @@ const MomentsCreationsTable: FC<MomentsCreationsTableProps> = ({
     [onMomentMetadataChange],
   );
 
-  const handlePublishMoment = useCallback(
-    (momentId: string) => {
-      onPublishMoment?.(momentId);
+  const handleFoundationPageChange = useCallback(
+    (nextPage: number) => {
+      onPageChange(undefined, nextPage);
     },
-    [onPublishMoment],
+    [onPageChange],
   );
+
+  const editLabel = translate('Action.Edit' /* TranslationNamespace.Controls */);
 
   return (
     <div className={gridContainer}>
       <div
         className={clsx(createButtonContainer, 'flex flex-col gap-xlarge width-full self-stretch')}>
-        <TableContainer className='width-full stroke-standard stroke-default radius-medium clip'>
-          <Table>
-            <TableHead>
+        <div className='flex flex-col gap-y-medium width-full'>
+          <Table className='width-full' variant='Framed'>
+            <TableHeader>
               <TableRow>
-                <TableCell>
+                <TableHeaderCell>
                   {translate('MomentsTable.Header.Moments' /* TranslationNamespace.Creations */)}
-                </TableCell>
-                <TableCell>
+                </TableHeaderCell>
+                <TableHeaderCell>
                   {translate(
                     'MomentsTable.Header.ExperienceName' /* TranslationNamespace.Creations */,
                   )}
-                </TableCell>
-                <TableCell>
+                </TableHeaderCell>
+                <TableHeaderCell>
                   {translate(
                     'MomentsTable.Header.Description' /* TranslationNamespace.Creations */,
                   )}
-                </TableCell>
-                <TableCell>
+                </TableHeaderCell>
+                <TableHeaderCell>
                   {translate('MomentsTable.Header.Status' /* TranslationNamespace.Creations */)}
-                </TableCell>
-                <TableCell align='right' />
+                </TableHeaderCell>
+                <TableHeaderCell align='end'> </TableHeaderCell>
               </TableRow>
-            </TableHead>
+            </TableHeader>
             <TableBody>
               {filteredMoments.length === 0 ? (
                 <TableRow>
@@ -181,97 +317,32 @@ const MomentsCreationsTable: FC<MomentsCreationsTableProps> = ({
                 </TableRow>
               ) : (
                 paginatedMoments.map((moment) => (
-                  <TableRow
+                  <MomentTableRow
                     key={moment.id}
-                    className='transition-colors hover:bg-shift-200'
-                    data-testid={`moment-row-${moment.id}`}>
-                    <TableCell>
-                      <MomentVideoThumbnail moment={moment} />
-                    </TableCell>
-                    <TableCell>{moment.experienceName}</TableCell>
-                    <TableCell>
-                      {moment.status === MomentCreationStatus.ACTIVE ? (
-                        <span data-testid={`moment-description-${moment.id}`}>
-                          {moment.description || '-'}
-                        </span>
-                      ) : (
-                        <TextField
-                          key={`moment-description-${moment.id}-${moment.modifiedAt}`}
-                          id={`moment-description-${moment.id}`}
-                          label={translate(
-                            'MomentsTable.Header.Description' /* TranslationNamespace.Creations */,
-                          )}
-                          defaultValue={moment.description}
-                          disabled={publishingMomentId === moment.id}
-                          fullWidth
-                          inputProps={MOMENT_DESCRIPTION_INPUT_PROPS}
-                          placeholder={translate(
-                            'MomentsTable.Placeholders.Description' /* TranslationNamespace.Creations */,
-                          )}
-                          size='small'
-                          variant='outlined'
-                          onBlur={(event) => handleDescriptionBlur(moment, event)}
-                        />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <MomentStatusIndicator
-                        label={getStatusLabel(moment.status)}
-                        status={moment.status}
-                      />
-                    </TableCell>
-                    <TableCell align='right'>
-                      <div className='inline-flex items-center gap-xsmall'>
-                        <Tooltip
-                          title={translate('Action.Edit' /* TranslationNamespace.Controls */)}>
-                          <IconButton
-                            aria-label={translate(
-                              'Action.Edit' /* TranslationNamespace.Controls */,
-                            )}
-                            color='secondary'
-                            size='small'
-                            type='button'
-                            onClick={() => onEditMoment(moment)}>
-                            <EditOutlinedIcon />
-                          </IconButton>
-                        </Tooltip>
-                        {moment.status === MomentCreationStatus.DRAFT &&
-                        'hasLocalVideo' in moment &&
-                        moment.hasLocalVideo === true &&
-                        onPublishMoment ? (
-                          <Button
-                            color='secondary'
-                            size='small'
-                            type='button'
-                            variant='contained'
-                            disabled={isPublishDisabled || publishingMomentId != null}
-                            onClick={() => handlePublishMoment(moment.id)}>
-                            {translate('Action.Publish' /* TranslationNamespace.Creations */)}
-                          </Button>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                    moment={moment}
+                    editLabel={editLabel}
+                    publishingMomentId={publishingMomentId}
+                    isPublishDisabled={isPublishDisabled}
+                    statusLabel={getStatusLabel(moment.status)}
+                    onEditMoment={onEditMoment}
+                    onDescriptionBlur={handleDescriptionBlur}
+                    onPublishMoment={onPublishMoment}
+                  />
                 ))
               )}
             </TableBody>
-            {filteredMoments.length > 0 ? (
-              <TableFooter>
-                <TableRow>
-                  <TablePagination
-                    colSpan={5}
-                    count={filteredMoments.length}
-                    onPageChange={onPageChange}
-                    onRowsPerPageChange={onRowsPerPageChange}
-                    page={page}
-                    rowsPerPage={rowsPerPage}
-                    rowsPerPageOptions={MOMENTS_TABLE_ROWS_PER_PAGE_OPTIONS_MUTABLE}
-                  />
-                </TableRow>
-              </TableFooter>
-            ) : null}
           </Table>
-        </TableContainer>
+          {filteredMoments.length > 0 ? (
+            <TablePagination
+              page={page}
+              rowsPerPage={rowsPerPage}
+              totalRows={filteredMoments.length}
+              rowsPerPageOptions={MOMENTS_TABLE_ROWS_PER_PAGE_OPTIONS_MUTABLE}
+              onPageChange={handleFoundationPageChange}
+              onRowsPerPageChange={onRowsPerPageChange}
+            />
+          ) : null}
+        </div>
       </div>
     </div>
   );
