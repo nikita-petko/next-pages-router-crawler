@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ColumnDef, OnChangeFn, SortingState, Updater } from '@tanstack/react-table';
+import type {
+  ColumnDef,
+  ExpandedState,
+  OnChangeFn,
+  SortingState,
+  Updater,
+} from '@tanstack/react-table';
 import { createColumnHelper, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import {
   getAdaptiveDataTableColumnLayout,
@@ -7,11 +13,13 @@ import {
 } from './adaptiveDataTableColumnSizing';
 import type { AdaptiveDataTableTextStyles } from './measureAdaptiveDataTableText';
 import type {
+  AdaptiveDataTableExpandableRow,
   AdaptiveDataTablePrimitive,
   AdaptiveDataTableProps,
   AdaptiveDataTableRow,
   AdaptiveDataTableValueColumnId,
 } from './types/AdaptiveDataTable';
+import { AdaptiveDataTableExpandedRows } from './types/AdaptiveDataTable';
 
 /* oxlint-disable react/react-compiler -- TanStack Table returns intentionally non-memoizable callbacks. */
 
@@ -28,11 +36,16 @@ type CachedTableShape<TRow extends AdaptiveDataTableRow> = {
   readonly measurementRows: readonly TRow[];
 };
 
-type UseAdaptiveDataTableOptions<TRow extends AdaptiveDataTableRow> = Pick<
-  AdaptiveDataTableProps<TRow>,
+type UseAdaptiveDataTableOptions<
+  TRow extends AdaptiveDataTableRow,
+  TExpandedRow extends AdaptiveDataTableRow,
+> = Pick<
+  AdaptiveDataTableProps<TRow, TExpandedRow>,
   'getRowId' | 'onSortChange' | 'rows' | 'sort'
 > & {
   readonly availableWidth?: number;
+  readonly expanded: ExpandedState;
+  readonly onExpandedChange: OnChangeFn<ExpandedState>;
   readonly textStyles?: AdaptiveDataTableTextStyles;
 };
 
@@ -55,15 +68,30 @@ const isValueColumnId = <TRow extends AdaptiveDataTableRow>(
 ): id is AdaptiveDataTableValueColumnId<TRow> =>
   blueprints.some((blueprint) => blueprint.id === id && blueprint.cell.type === 'value');
 
+const hasExpandedRows = <
+  TRow extends AdaptiveDataTableRow,
+  TExpandedRow extends AdaptiveDataTableRow,
+>(
+  row: TRow,
+): boolean => {
+  const expandableRow: AdaptiveDataTableExpandableRow<TRow, TExpandedRow> = row;
+  return (expandableRow[AdaptiveDataTableExpandedRows]?.length ?? 0) > 0;
+};
+
 /** Internal TanStack adapter. No TanStack type is exposed by the package API. */
-export const useAdaptiveDataTable = <TRow extends AdaptiveDataTableRow>({
+export const useAdaptiveDataTable = <
+  TRow extends AdaptiveDataTableRow,
+  TExpandedRow extends AdaptiveDataTableRow,
+>({
   availableWidth,
+  expanded,
   getRowId,
+  onExpandedChange,
   onSortChange,
   rows,
   sort,
   textStyles,
-}: UseAdaptiveDataTableOptions<TRow>) => {
+}: UseAdaptiveDataTableOptions<TRow, TExpandedRow>) => {
   const firstRow = rows[0];
   const [cachedTableShape, setCachedTableShape] = useState<CachedTableShape<TRow> | undefined>(() =>
     firstRow
@@ -91,7 +119,6 @@ export const useAdaptiveDataTable = <TRow extends AdaptiveDataTableRow>({
     () => (sort ? [{ id: sort.columnId, desc: sort.direction === 'descending' }] : []),
     [sort],
   );
-
   const handleSortingChange = useCallback<OnChangeFn<SortingState>>(
     (updater) => {
       const nextSorting = resolveSortingUpdater(updater, sorting)[0];
@@ -134,16 +161,19 @@ export const useAdaptiveDataTable = <TRow extends AdaptiveDataTableRow>({
     return columns;
   }, [columnBlueprints, onSortChange]);
 
-  const tableData = useMemo(() => [...rows], [rows]);
+  const tableData = useMemo<TRow[]>(() => [...rows], [rows]);
   const table = useReactTable({
+    autoResetExpanded: false,
     columns: tableColumns,
     data: tableData,
     enableMultiSort: false,
     getCoreRowModel: getCoreRowModel(),
     getRowId,
+    getRowCanExpand: (row) => row.depth === 0 && hasExpandedRows<TRow, TExpandedRow>(row.original),
     manualSorting: true,
+    onExpandedChange,
     onSortingChange: handleSortingChange,
-    state: { sorting },
+    state: { expanded, sorting },
   });
 
   const cellsByColumnId = useMemo(

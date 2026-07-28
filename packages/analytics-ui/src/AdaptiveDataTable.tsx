@@ -7,7 +7,7 @@ import React, {
   useState,
   useSyncExternalStore,
 } from 'react';
-import type { Row } from '@tanstack/react-table';
+import type { ExpandedState, Row } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Button,
@@ -27,11 +27,17 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@rbx/foundation-ui';
+import {
+  getAdaptiveDataTableColumnLayout,
+  type AdaptiveDataTableColumnBlueprint,
+} from './adaptiveDataTableColumnSizing';
 import type {
   AdaptiveDataTableTextStyle,
   AdaptiveDataTableTextStyles,
 } from './measureAdaptiveDataTableText';
 import type {
+  AdaptiveDataTableCell,
+  AdaptiveDataTableExpandableRow,
   AdaptiveDataTableMenuCell,
   AdaptiveDataTableMenuItem,
   AdaptiveDataTableProps,
@@ -39,6 +45,7 @@ import type {
   AdaptiveDataTableTooltipConfig,
   AdaptiveDataTableValueCell,
 } from './types/AdaptiveDataTable';
+import { AdaptiveDataTableExpandedRows } from './types/AdaptiveDataTable';
 import { useAdaptiveDataTable } from './useAdaptiveDataTable';
 
 /* oxlint-disable react/react-compiler -- TanStack Table and Virtual return intentionally non-memoizable callbacks. */
@@ -133,6 +140,12 @@ const VirtualRowStyle: CSSProperties = {
   width: '100%',
 };
 const StateRowStyle: CSSProperties = { display: 'block', width: '100%' };
+const ExpandedRowsCellStyle: CSSProperties = {
+  boxSizing: 'border-box',
+  display: 'block',
+  height: 'auto',
+  width: '100%',
+};
 const VirtualStateRowStyle: CSSProperties = {
   display: 'block',
   left: 0,
@@ -168,6 +181,7 @@ const PinnedCellStyle: CSSProperties = {
   zIndex: 1,
 };
 const PinnedHeaderCellStyle: CSSProperties = { ...PinnedCellStyle, zIndex: 4 };
+const HeaderWithoutDividerStyle: CSSProperties = { borderBottom: 'none' };
 const FramedScrollContainerStyle: CSSProperties = {
   backgroundColor: 'var(--color-surface-100)',
   borderColor: 'var(--color-stroke-default)',
@@ -360,6 +374,164 @@ const renderValueCell = (cell: AdaptiveDataTableValueCell) => {
   return cell.renderContainer?.({ children: displayString, value: cell.value }) ?? displayString;
 };
 
+const noop = () => undefined;
+
+const renderExpandedRowCell = (cell: AdaptiveDataTableCell): ReactNode => {
+  if (cell.type === 'value') {
+    return renderValueCell(cell);
+  }
+  if (cell.display === 'menu') {
+    return <MenuCell cell={cell} />;
+  }
+  return cell.render({ canExpand: false, isExpanded: false, onToggleExpanded: noop });
+};
+
+type ExpandedRowsTableProps<TExpandedRow extends AdaptiveDataTableRow> = {
+  readonly getExpandedRowId?: (row: TExpandedRow) => string;
+  readonly rows: readonly TExpandedRow[];
+  readonly size: AdaptiveDataTableSize;
+  readonly textStyles?: AdaptiveDataTableTextStyles;
+};
+
+const ExpandedRowsTable = <TExpandedRow extends AdaptiveDataTableRow>({
+  getExpandedRowId,
+  rows,
+  size,
+  textStyles,
+}: ExpandedRowsTableProps<TExpandedRow>) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [availableWidth, setAvailableWidth] = useState<number>();
+  const columns = useMemo(() => {
+    const firstRow = rows[0];
+    const result: AdaptiveDataTableColumnBlueprint[] = [];
+    if (firstRow) {
+      for (const id in firstRow) {
+        result.push({ cell: firstRow[id], id });
+      }
+    }
+    return result;
+  }, [rows]);
+  const columnLayout = useMemo(
+    () =>
+      getAdaptiveDataTableColumnLayout({
+        availableWidth,
+        columns,
+        isSortingEnabled: false,
+        rows,
+        textStyles,
+      }),
+    [availableWidth, columns, rows, textStyles],
+  );
+  const keyedRows = useMemo(() => {
+    if (getExpandedRowId) {
+      return rows.map((row) => ({ key: getExpandedRowId(row), row }));
+    }
+    const identityOccurrences = new Map<string, number>();
+    return rows.map((row) => {
+      const identity = JSON.stringify(
+        columns.map(({ id }) => {
+          const cell = row[id];
+          return cell.type === 'value'
+            ? [id, typeof cell.value, cell.value]
+            : [id, 'display', cell.display];
+        }),
+      );
+      const occurrence = identityOccurrences.get(identity) ?? 0;
+      identityOccurrences.set(identity, occurrence + 1);
+      return { key: `${identity}-${occurrence}`, row };
+    });
+  }, [columns, getExpandedRowId, rows]);
+  const tableStyle = useMemo(
+    () => ({ ...TableStyle, minWidth: columnLayout.tableWidth }),
+    [columnLayout.tableWidth],
+  );
+  const rowStyle = useMemo(
+    () => ({ ...GridRowStyle, gridTemplateColumns: columnLayout.gridTemplateColumns }),
+    [columnLayout.gridTemplateColumns],
+  );
+
+  // Track the nested table's available width so expanded-row columns resize with their container.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return undefined;
+    }
+    const updateAvailableWidth = (entries?: ResizeObserverEntry[]) => {
+      const nextWidth = entries?.[0]?.contentRect.width ?? container.clientWidth;
+      setAvailableWidth(nextWidth > 0 ? nextWidth : undefined);
+    };
+    updateAvailableWidth();
+    if (typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+    const resizeObserver = new ResizeObserver(updateAvailableWidth);
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef}>
+      <Table size={size} style={tableStyle} variant='Divided'>
+        <TableHeader style={BodyStyle}>
+          <TableRow style={rowStyle}>
+            {columns.map(({ cell, id }) => (
+              <TableHeaderCell
+                align={cell.align ?? (cell.type === 'display' ? 'end' : 'start')}
+                key={id}
+                style={cell.headerDivider === false ? HeaderWithoutDividerStyle : undefined}>
+                {cell.header ?? ''}
+              </TableHeaderCell>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody style={BodyStyle}>
+          {keyedRows.map(({ key, row }) => {
+            const canRowWrap = columns.some(({ id }) => {
+              const cell = row[id];
+              return (
+                cell.type === 'value' &&
+                typeof cell.value === 'string' &&
+                cell.textOverflow !== 'truncate'
+              );
+            });
+            return (
+              <TableRow key={key} style={rowStyle}>
+                {columns.map(({ id }) => {
+                  const cell = row[id];
+                  const alignment = cell.align ?? (cell.type === 'display' ? 'end' : 'start');
+                  const isStringValue = cell.type === 'value' && typeof cell.value === 'string';
+                  const shouldTruncate = isStringValue && cell.textOverflow === 'truncate';
+                  const shouldWrap = isStringValue && !shouldTruncate;
+                  return (
+                    <TableCell
+                      align={alignment}
+                      className={shouldTruncate ? TruncatedCellClassName : undefined}
+                      key={id}
+                      style={{
+                        ...GridCellStyle,
+                        ...(shouldWrap
+                          ? WrappedCellStyle
+                          : shouldTruncate
+                            ? TruncatedCellStyle
+                            : UnbrokenCellStyle),
+                        ...(canRowWrap
+                          ? { height: 'auto', minHeight: RowHeightBySize[size] }
+                          : undefined),
+                        justifyContent: GridCellJustificationByAlignment[alignment],
+                      }}>
+                      {renderExpandedRowCell(cell)}
+                    </TableCell>
+                  );
+                })}
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  );
+};
+
 type DataRowProps<TRow extends AdaptiveDataTableRow> = {
   readonly columnGrid: string;
   readonly row: Row<TRow>;
@@ -369,6 +541,7 @@ type DataRowProps<TRow extends AdaptiveDataTableRow> = {
   readonly measurementCellRef?: Ref<HTMLTableCellElement>;
   readonly minimumHeight: number;
   readonly transform?: string;
+  readonly virtualIndex?: number;
 };
 
 const DataRow = <TRow extends AdaptiveDataTableRow>({
@@ -380,6 +553,7 @@ const DataRow = <TRow extends AdaptiveDataTableRow>({
   minimumHeight,
   row,
   transform,
+  virtualIndex,
 }: DataRowProps<TRow>) => {
   const visibleCells = row.getVisibleCells();
   const canRowWrap = visibleCells.some((cell) => {
@@ -393,7 +567,7 @@ const DataRow = <TRow extends AdaptiveDataTableRow>({
 
   return (
     <TableRow
-      data-index={row.index}
+      data-index={virtualIndex ?? row.index}
       ref={measureElement}
       style={{
         ...(isVirtual ? VirtualRowStyle : GridRowStyle),
@@ -424,7 +598,15 @@ const DataRow = <TRow extends AdaptiveDataTableRow>({
               ...(isSmallScreen && cellIndex === 0 ? PinnedCellStyle : undefined),
             }}>
             {cellConfig.type === 'display' ? (
-              <MenuCell cell={cellConfig} />
+              cellConfig.display === 'menu' ? (
+                <MenuCell cell={cellConfig} />
+              ) : (
+                cellConfig.render({
+                  canExpand: row.getCanExpand(),
+                  isExpanded: row.getIsExpanded(),
+                  onToggleExpanded: row.getToggleExpandedHandler(),
+                })
+              )
             ) : (
               renderValueCell(cellConfig)
             )}
@@ -434,6 +616,81 @@ const DataRow = <TRow extends AdaptiveDataTableRow>({
     </TableRow>
   );
 };
+
+type TableRenderItem<
+  TRow extends AdaptiveDataTableRow,
+  TExpandedRow extends AdaptiveDataTableRow,
+> =
+  | {
+      readonly kind: 'data';
+      readonly row: Row<TRow>;
+    }
+  | {
+      readonly expandedRows: readonly TExpandedRow[];
+      readonly kind: 'expandedRows';
+      readonly row: Row<TRow>;
+    };
+
+const getDataRowKey = (rowId: string): string => `data-${rowId}`;
+const getExpandedRowsKey = (rowId: string): string => `expanded-rows-${rowId}`;
+
+const getTableRenderItems = <
+  TRow extends AdaptiveDataTableRow,
+  TExpandedRow extends AdaptiveDataTableRow,
+>(
+  rows: readonly Row<TRow>[],
+  expanded: ExpandedState,
+): readonly TableRenderItem<TRow, TExpandedRow>[] =>
+  rows.flatMap((row): readonly TableRenderItem<TRow, TExpandedRow>[] => {
+    const expandableRow: AdaptiveDataTableExpandableRow<TRow, TExpandedRow> = row.original;
+    const expandedRows = expandableRow[AdaptiveDataTableExpandedRows];
+    const dataItem: TableRenderItem<TRow, TExpandedRow> = { kind: 'data', row };
+    const isExpanded = expanded === true || expanded[row.id];
+    return isExpanded && expandedRows && expandedRows.length > 0
+      ? [dataItem, { expandedRows, kind: 'expandedRows', row }]
+      : [dataItem];
+  });
+
+type ExpandedRowsContentRowProps<TExpandedRow extends AdaptiveDataTableRow> = {
+  readonly columnCount: number;
+  readonly expandedRows: readonly TExpandedRow[];
+  readonly getExpandedRowId?: (row: TExpandedRow) => string;
+  readonly isVirtual?: boolean;
+  readonly measureElement?: (node: HTMLTableRowElement | null) => void;
+  readonly size: AdaptiveDataTableSize;
+  readonly textStyles?: AdaptiveDataTableTextStyles;
+  readonly transform?: string;
+  readonly virtualIndex?: number;
+};
+
+const ExpandedRowsContentRow = <TExpandedRow extends AdaptiveDataTableRow>({
+  columnCount,
+  expandedRows,
+  getExpandedRowId,
+  isVirtual = false,
+  measureElement,
+  size,
+  textStyles,
+  transform,
+  virtualIndex,
+}: ExpandedRowsContentRowProps<TExpandedRow>) => (
+  <TableRow
+    data-index={virtualIndex}
+    ref={measureElement}
+    style={{
+      ...(isVirtual ? VirtualStateRowStyle : StateRowStyle),
+      transform,
+    }}>
+    <TableCell colSpan={columnCount} style={ExpandedRowsCellStyle}>
+      <ExpandedRowsTable
+        getExpandedRowId={getExpandedRowId}
+        rows={expandedRows}
+        size={size}
+        textStyles={textStyles}
+      />
+    </TableCell>
+  </TableRow>
+);
 
 type StateRowProps = {
   readonly cellStyle: CSSProperties;
@@ -459,7 +716,11 @@ const StateRow: FC<StateRowProps> = ({ cellStyle, children, columnCount }) => (
  * @deprecated EXPERIMENTAL: Do not use in production. To opt into evaluation,
  * explicitly disable the `typescript/no-deprecated` lint rule at the usage site.
  */
-const AdaptiveDataTable = <TRow extends AdaptiveDataTableRow>({
+const AdaptiveDataTable = <
+  TRow extends AdaptiveDataTableRow,
+  TExpandedRow extends AdaptiveDataTableRow = TRow,
+>({
+  getExpandedRowId,
   getRowId,
   isError = false,
   isLoading = false,
@@ -470,7 +731,8 @@ const AdaptiveDataTable = <TRow extends AdaptiveDataTableRow>({
   size = 'Medium',
   sort,
   variant = 'Divided',
-}: AdaptiveDataTableProps<TRow>) => {
+}: AdaptiveDataTableProps<TRow, TExpandedRow>) => {
+  const [expanded, setExpanded] = useState<ExpandedState>({});
   const isSmallScreen = useSyncExternalStore(
     subscribeToSmallScreen,
     getSmallScreenSnapshot,
@@ -485,13 +747,19 @@ const AdaptiveDataTable = <TRow extends AdaptiveDataTableRow>({
   const [textStyles, setTextStyles] = useState<AdaptiveDataTableTextStyles>();
   const { cellsByColumnId, columnBlueprints, columnLayout, table } = useAdaptiveDataTable({
     availableWidth: scrollViewportWidth,
+    expanded,
     getRowId,
+    onExpandedChange: setExpanded,
     onSortChange,
     rows,
     sort,
     textStyles,
   });
   const tableRows = table.getRowModel().rows;
+  const tableRenderItems = useMemo(
+    () => getTableRenderItems<TRow, TExpandedRow>(tableRows, expanded),
+    [expanded, tableRows],
+  );
   const hasWrappingColumn = columnBlueprints.some(
     (blueprint) =>
       blueprint.cell.type === 'value' &&
@@ -502,12 +770,25 @@ const AdaptiveDataTable = <TRow extends AdaptiveDataTableRow>({
   const isTableError = isError && tableRows.length === 0;
   const shouldFrameScrollContainer = variant === 'Framed' && (isInfinite || isSmallScreen);
   const isLoadMoreError = navigation.mode === 'infinite' && navigation.isLoadMoreError === true;
+  const getVirtualItemKey = useCallback(
+    (index: number): string => {
+      const renderItem = tableRenderItems[index];
+      if (!renderItem) {
+        return isLoadMoreError ? 'load-more-error' : 'loading-more';
+      }
+      return renderItem.kind === 'data'
+        ? getDataRowKey(renderItem.row.id)
+        : getExpandedRowsKey(renderItem.row.id);
+    },
+    [isLoadMoreError, tableRenderItems],
+  );
   const virtualCount = isInfinite
-    ? tableRows.length + (navigation.isLoadingMore || isLoadMoreError ? 1 : 0)
-    : tableRows.length;
+    ? tableRenderItems.length + (navigation.isLoadingMore || isLoadMoreError ? 1 : 0)
+    : tableRenderItems.length;
   const rowVirtualizer = useVirtualizer({
     count: virtualCount,
     estimateSize: () => RowHeightBySize[size],
+    getItemKey: getVirtualItemKey,
     getScrollElement: () => scrollContainerRef.current,
     overscan: VirtualRowOverscan,
   });
@@ -516,6 +797,7 @@ const AdaptiveDataTable = <TRow extends AdaptiveDataTableRow>({
   const isLoadingMore = navigation.mode === 'infinite' && navigation.isLoadingMore === true;
   const onLoadMore = navigation.mode === 'infinite' ? navigation.onLoadMore : undefined;
 
+  // Measure rendered typography so column sizing reflects the active fonts, row data, and size.
   useEffect(() => {
     let isCancelled = false;
     const updateTextStyles = () => {
@@ -584,6 +866,7 @@ const AdaptiveDataTable = <TRow extends AdaptiveDataTableRow>({
     onLoadMore(infiniteNextCursor);
   }, [infiniteNextCursor, isLoadingMore, onLoadMore]);
 
+  // Track the scroll viewport width so the table layout and state rows respond to resizes.
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
     if (!scrollContainer) {
@@ -601,6 +884,7 @@ const AdaptiveDataTable = <TRow extends AdaptiveDataTableRow>({
     return () => resizeObserver.disconnect();
   }, []);
 
+  // Reset infinite-scroll request state and return to the top when the controlled sort changes.
   useEffect(() => {
     const previousSort = previousSortRef.current;
     const didSortChange =
@@ -617,12 +901,13 @@ const AdaptiveDataTable = <TRow extends AdaptiveDataTableRow>({
     }
   }, [sort]);
 
+  // Recheck loading after cursor or row changes so an underfilled viewport keeps fetching pages.
   useEffect(() => {
     if (requestedCursorRef.current !== null && requestedCursorRef.current !== infiniteNextCursor) {
       requestedCursorRef.current = null;
     }
     loadMoreIfNeeded(scrollContainerRef.current);
-  }, [infiniteNextCursor, isLoadingMore, loadMoreIfNeeded, tableRows.length]);
+  }, [infiniteNextCursor, isLoadingMore, loadMoreIfNeeded, tableRenderItems.length]);
 
   const headerGroups = table.getHeaderGroups();
   const scrollStyle = useMemo(
@@ -699,9 +984,12 @@ const AdaptiveDataTable = <TRow extends AdaptiveDataTableRow>({
                               : 'none'
                         }
                         sortLabel={cell.type === 'value' ? cell.sortAriaLabel : undefined}
-                        style={
-                          isSmallScreen && headerIndex === 0 ? PinnedHeaderCellStyle : undefined
-                        }>
+                        style={{
+                          ...(cell.headerDivider === false ? HeaderWithoutDividerStyle : undefined),
+                          ...(isSmallScreen && headerIndex === 0
+                            ? PinnedHeaderCellStyle
+                            : undefined),
+                        }}>
                         {cell.header ?? ''}
                       </TableHeaderCell>
                     );
@@ -718,8 +1006,8 @@ const AdaptiveDataTable = <TRow extends AdaptiveDataTableRow>({
             ) : isInfinite ? (
               <TableBody style={{ ...VirtualBodyStyle, height: rowVirtualizer.getTotalSize() }}>
                 {virtualRows.map((virtualRow, virtualRowIndex) => {
-                  const row = tableRows[virtualRow.index];
-                  if (!row) {
+                  const renderItem = tableRenderItems[virtualRow.index];
+                  if (!renderItem) {
                     const showLoadMoreError = isLoadMoreError && !isLoadingMore;
                     return (
                       <TableRow
@@ -743,12 +1031,29 @@ const AdaptiveDataTable = <TRow extends AdaptiveDataTableRow>({
                       </TableRow>
                     );
                   }
+                  if (renderItem.kind === 'expandedRows') {
+                    return (
+                      <ExpandedRowsContentRow
+                        columnCount={columnCount}
+                        expandedRows={renderItem.expandedRows}
+                        getExpandedRowId={getExpandedRowId}
+                        isVirtual
+                        key={getExpandedRowsKey(renderItem.row.id)}
+                        measureElement={rowVirtualizer.measureElement}
+                        size={size}
+                        textStyles={textStyles}
+                        transform={`translateY(${virtualRow.start}px)`}
+                        virtualIndex={virtualRow.index}
+                      />
+                    );
+                  }
+                  const { row } = renderItem;
                   return (
                     <DataRow
                       columnGrid={columnLayout.gridTemplateColumns}
                       isSmallScreen={isSmallScreen}
                       isVirtual
-                      key={row.id}
+                      key={getDataRowKey(row.id)}
                       measureElement={
                         hasWrappingColumn ||
                         canMeasureVirtualRows(
@@ -761,22 +1066,34 @@ const AdaptiveDataTable = <TRow extends AdaptiveDataTableRow>({
                       minimumHeight={RowHeightBySize[size]}
                       row={row}
                       transform={`translateY(${virtualRow.start}px)`}
+                      virtualIndex={virtualRow.index}
                     />
                   );
                 })}
               </TableBody>
             ) : (
               <TableBody style={BodyStyle}>
-                {tableRows.map((row, rowIndex) => (
-                  <DataRow
-                    columnGrid={columnLayout.gridTemplateColumns}
-                    isSmallScreen={isSmallScreen}
-                    key={row.id}
-                    measurementCellRef={rowIndex === 0 ? cellMeasurementRef : undefined}
-                    minimumHeight={RowHeightBySize[size]}
-                    row={row}
-                  />
-                ))}
+                {tableRenderItems.map((renderItem, rowIndex) =>
+                  renderItem.kind === 'expandedRows' ? (
+                    <ExpandedRowsContentRow
+                      columnCount={columnCount}
+                      expandedRows={renderItem.expandedRows}
+                      getExpandedRowId={getExpandedRowId}
+                      key={getExpandedRowsKey(renderItem.row.id)}
+                      size={size}
+                      textStyles={textStyles}
+                    />
+                  ) : (
+                    <DataRow
+                      columnGrid={columnLayout.gridTemplateColumns}
+                      isSmallScreen={isSmallScreen}
+                      key={getDataRowKey(renderItem.row.id)}
+                      measurementCellRef={rowIndex === 0 ? cellMeasurementRef : undefined}
+                      minimumHeight={RowHeightBySize[size]}
+                      row={renderItem.row}
+                    />
+                  ),
+                )}
               </TableBody>
             )}
           </Table>
