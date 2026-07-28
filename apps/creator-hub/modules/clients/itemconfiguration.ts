@@ -68,6 +68,11 @@ import type {
   RobloxItemConfigurationApiModelsResponseCollectiblesRestockCollectibleItemResponse,
   RobloxItemConfigurationApiModelsResponseCollectiblesRestockingFeeResponse,
   RobloxItemConfigurationApiModelsResponseCollectiblesRestockEligibilityResponse,
+  V1PermissionsActionAllowedForItemTypeGetRequest,
+  RobloxItemConfigurationApiModelsResponseIsActionAllowedForItemTypeResponse,
+  V1PermissionsActionAllowedForItemTypeGetActionEnum,
+  V1PermissionsActionAllowedForItemTypeGetAssetTypeEnum,
+  V1PermissionsActionAllowedForItemTypeGetBundleTypeEnum,
 } from '@rbx/client-itemconfiguration/v1';
 import {
   CollectiblesApi,
@@ -445,6 +450,24 @@ export class ItemConfigurationClient {
     };
 
     return this.permissionsApi.v1PermissionsItemTypesGet(request);
+  }
+
+  isActionAllowedForItemType(
+    action: V1PermissionsActionAllowedForItemTypeGetActionEnum,
+    groupId?: number,
+    assetType?: V1PermissionsActionAllowedForItemTypeGetAssetTypeEnum,
+    bundleType?: V1PermissionsActionAllowedForItemTypeGetBundleTypeEnum,
+    trustedCreatorCheck?: boolean,
+  ): Promise<RobloxItemConfigurationApiModelsResponseIsActionAllowedForItemTypeResponse> {
+    const request: V1PermissionsActionAllowedForItemTypeGetRequest = {
+      action,
+      groupId,
+      assetType,
+      bundleType,
+      trustedCreatorCheck,
+    };
+
+    return this.permissionsApi.v1PermissionsActionAllowedForItemTypeGet(request);
   }
 
   async getItemUploadFee(
