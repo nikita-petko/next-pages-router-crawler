@@ -69,6 +69,25 @@ function parseAuthorId(author?: string): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
+const COMMUNITY_POST_METADATA_KEY = 'community_post';
+const COMMUNITY_POST_EXPECTED_PARTS = 3;
+
+// `community_post` is the underscore-joined `{groupId}_{categoryId}_{postId}`; `c-`/`p-` prefix the short ids and `g` is a community-slug placeholder.
+function buildCommunityPostUrl(rawValue?: string): string | null {
+  if (!rawValue) {
+    return null;
+  }
+  const parts = rawValue.split('_');
+  if (parts.length !== COMMUNITY_POST_EXPECTED_PARTS) {
+    return null;
+  }
+  const [groupId, categoryId, postId] = parts;
+  if (!groupId || !categoryId || !postId) {
+    return null;
+  }
+  return `https://www.${process.env.robloxSiteDomain}/communities/${groupId}/g#!/forums/c-${categoryId}/post/p-${postId}`;
+}
+
 function isReporterIdentified(ticket: CreatorTicket): boolean {
   return !!ticket.summary?.userId;
 }
@@ -445,6 +464,16 @@ const DetailsSidebar: React.FunctionComponent<{
   const { translate } = useTranslation();
   const { summary, metadata } = ticket;
 
+  const communityPostUrl = useMemo(() => {
+    if (!metadata) {
+      return null;
+    }
+    const matchedEntry = Object.entries(metadata).find(
+      ([k]) => k.toLowerCase() === COMMUNITY_POST_METADATA_KEY,
+    );
+    return buildCommunityPostUrl(matchedEntry?.[1]);
+  }, [metadata]);
+
   const categoryKey =
     summary?.category && hasTicketCategoryTranslationKey(summary.category)
       ? TICKET_CATEGORY_TRANSLATION_KEY[summary.category]
@@ -584,6 +613,27 @@ const DetailsSidebar: React.FunctionComponent<{
               </DetailRow>
             );
           })}
+        {communityPostUrl && (
+          <DetailRow label={translate('Label.DetailsSidebar.ForumPost')}>
+            <a
+              href={communityPostUrl}
+              target='_blank'
+              rel='noopener noreferrer'
+              className='content-link text-title-medium no-underline hover:underline'
+              onClick={() => {
+                unifiedLoggerClient.logClickEvent({
+                  eventName: 'playerSupport.viewForumPost',
+                  parameters: {
+                    universeId: String(universeId ?? ''),
+                    ticketId: ticketId ?? '',
+                    ticketCategory: summary?.category ?? '',
+                  },
+                });
+              }}>
+              {translate('Action.DetailsSidebar.ViewForumPost')}
+            </a>
+          </DetailRow>
+        )}
       </div>
     </div>
   );
