@@ -710,6 +710,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: immersiveAdsFlags.isAdsPageRedesignEnabled,
+      metadata: {
+        namespace: 'immersive-ads',
+        name: 'isAdsPageRedesignEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: immersiveAdsFlags.isRewardedVideoRedesignEnabled,
       metadata: {
         namespace: 'immersive-ads',

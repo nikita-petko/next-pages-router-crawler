@@ -1,5 +1,5 @@
-import type { DataLabelsFormatterCallbackFunction, PlotOptions } from 'highcharts';
 import { useMemo } from 'react';
+import type { DataLabelsFormatterCallbackFunction, PlotOptions } from 'highcharts';
 import type { TIconProps } from '@rbx/ui';
 import { useTheme } from '@rbx/ui';
 import { getChartThemedColors } from '../color';
@@ -128,7 +128,7 @@ export const usePieChartPlotOptions = ({
         allowPointSelect: true,
         cursor: 'pointer',
         size: '100%',
-        borderColor: borderColor || 'transparent',
+        borderColor: borderColor ?? 'transparent',
         borderWidth: borderWidth ?? (borderColor ? 1 : 0),
         borderRadius: 0,
         dataLabels: {

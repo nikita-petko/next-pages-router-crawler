@@ -280,8 +280,9 @@ const GenericRAQIV2PieChartV2: FC<GenericRAQIV2ChartProps & Omit<PieChartConfig,
         tooltipFormatters={tooltipFormatters}
         formatDataLabel={formatDataLabel}
         DataLabelLeadingIcon={
+          !labelDataAsPercent &&
           // eslint-disable-next-line deprecation/deprecation, @typescript-eslint/no-deprecated -- migration in progress. Will be removed in DSA-4660.
-          unit.unit === ChartUnit.Robux || unit.formattingSpec?.icon === NumberIcon.Robux
+          (unit.unit === ChartUnit.Robux || unit.formattingSpec?.icon === NumberIcon.Robux)
             ? RobuxIcon
             : undefined
         }
@@ -294,6 +295,7 @@ const GenericRAQIV2PieChartV2: FC<GenericRAQIV2ChartProps & Omit<PieChartConfig,
       chartStyleMode,
       data,
       formatDataLabel,
+      labelDataAsPercent,
       tooltipFormatters,
       unit,
       theme.palette.surface,

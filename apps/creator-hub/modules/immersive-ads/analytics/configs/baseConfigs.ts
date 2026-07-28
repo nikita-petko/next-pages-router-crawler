@@ -4,7 +4,7 @@ import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import type { ChartConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedChartConfig';
 import type { TAnalyticsMetricTableColumnConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedTableColumnConfig';
 import type { TAnalyticsSerializableTableConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedTableConfig';
-import RAQIV2SummaryType from '@modules/experience-analytics-shared/enums/RAQIV2SummaryType';
+import { RAQIV2SummaryType } from '@modules/experience-analytics-shared/enums/RAQIV2SummaryType';
 import type { SpecOverride } from '@modules/experience-analytics-shared/utils/computeRAQIV2SpecOverride';
 
 export const baseSplineChartConfig = {
@@ -108,6 +108,12 @@ export const noFilterOrBreakdownOverride = {
   },
 } as const satisfies Partial<SpecOverride>;
 
+export const noBreakdownOverride = {
+  breakdown: {
+    override: [],
+  },
+} as const satisfies Partial<SpecOverride>;
+
 export default {
   baseSplineChartConfig,
   baseSplineChartConfigWithTotalAndAverageSummary,
@@ -117,5 +123,6 @@ export default {
   baseTableConfigForAdPlacement,
   baseAdInstanceNameDataColumnConfig,
   noFilterOrBreakdownOverride,
+  noBreakdownOverride,
   basePieChartConfigWithTotalBreakdownSummary,
 };

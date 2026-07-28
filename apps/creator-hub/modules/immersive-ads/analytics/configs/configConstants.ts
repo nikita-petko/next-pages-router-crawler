@@ -11,6 +11,16 @@ const TotalImpressionsTitleKey = translationKey(
   TranslationNamespace.ImmersiveAdsAnalytics,
 );
 
+const EarningsByFormatTitleKey = translationKey(
+  'Title.EarningsByFormat',
+  TranslationNamespace.ImmersiveAdsAnalytics,
+);
+
+const ImpressionsByFormatTitleKey = translationKey(
+  'Title.ImpressionsByFormat',
+  TranslationNamespace.ImmersiveAdsAnalytics,
+);
+
 const TotalRobuxEarningsTitleKey = translationKey(
   'Title.TotalRobuxEarnings',
   TranslationNamespace.ImmersiveAdsAnalytics,
@@ -311,6 +321,8 @@ const RewardRateDescriptionKey = translationKey(
 );
 
 export default {
+  EarningsByFormatTitleKey,
+  ImpressionsByFormatTitleKey,
   TotalEarningsAndImpressionsTitleKey,
   ImpressionsTitleKey,
   TotalImpressionsTitleKey,

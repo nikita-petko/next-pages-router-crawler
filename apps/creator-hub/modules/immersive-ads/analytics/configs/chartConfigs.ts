@@ -1,11 +1,13 @@
 import { RAQIV2AdFormat, RAQIV2Dimension, RAQIV2Metric } from '@rbx/creator-hub-analytics-config';
 import type { ChartConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedChartConfig';
-import RAQIV2SummaryType from '@modules/experience-analytics-shared/enums/RAQIV2SummaryType';
+import { RAQIV2SummaryType } from '@modules/experience-analytics-shared/enums/RAQIV2SummaryType';
+import { ChartOverlay } from '@modules/experience-analytics-shared/types/RAQIV2ChartSpec';
 import {
   baseSplineChartConfig,
   baseSplineChartConfigWithAverageSummary,
   baseSplineChartConfigWithTotalAndAverageSummary,
   basePieChartConfigWithTotalBreakdownSummary,
+  noBreakdownOverride,
 } from './baseConfigs';
 import configConstants from './configConstants';
 
@@ -39,6 +41,38 @@ const totalRevenueRobuxPieChartConfig = {
 const totalImpressionsPieChartConfig = {
   ...basePieChartConfigWithTotalBreakdownSummary,
   titleKey: configConstants.TotalImpressionsTitleKey,
+  definitionTooltipKey: configConstants.TotalImpressionsDescriptionKey,
+  metric: RAQIV2Metric.AdsPublisherReportingTotalImpressions,
+} as const satisfies ChartConfig;
+
+const overviewEarningsChartConfig = {
+  ...baseSplineChartConfigWithTotalAndAverageSummary,
+  titleKey: configConstants.TotalRobuxEarningsTitleKey,
+  definitionTooltipKey: configConstants.TotalRobuxEarningsDescriptionKey,
+  metric: RAQIV2Metric.AdsPublisherReportingTotalRevenueRobux,
+  overrides: noBreakdownOverride,
+  overlays: [ChartOverlay.benchmark()],
+} as const satisfies ChartConfig;
+
+const overviewImpressionsChartConfig = {
+  ...baseSplineChartConfigWithTotalAndAverageSummary,
+  titleKey: configConstants.TotalImpressionsTitleKey,
+  definitionTooltipKey: configConstants.TotalImpressionsDescriptionKey,
+  metric: RAQIV2Metric.AdsPublisherReportingTotalImpressions,
+  overrides: noBreakdownOverride,
+  overlays: [ChartOverlay.benchmark()],
+} as const satisfies ChartConfig;
+
+const overviewEarningsByFormatChartConfig = {
+  ...basePieChartConfigWithTotalBreakdownSummary,
+  titleKey: configConstants.EarningsByFormatTitleKey,
+  definitionTooltipKey: configConstants.TotalRobuxEarningsDescriptionKey,
+  metric: RAQIV2Metric.AdsPublisherReportingTotalRevenueRobux,
+} as const satisfies ChartConfig;
+
+const overviewImpressionsByFormatChartConfig = {
+  ...basePieChartConfigWithTotalBreakdownSummary,
+  titleKey: configConstants.ImpressionsByFormatTitleKey,
   definitionTooltipKey: configConstants.TotalImpressionsDescriptionKey,
   metric: RAQIV2Metric.AdsPublisherReportingTotalImpressions,
 } as const satisfies ChartConfig;
@@ -159,6 +193,10 @@ END: Teleports Summary Charts
 */
 
 export default {
+  overviewEarningsChartConfig,
+  overviewImpressionsChartConfig,
+  overviewEarningsByFormatChartConfig,
+  overviewImpressionsByFormatChartConfig,
   totalRevenueRobuxChartConfig,
   totalImpressionsChartConfig,
   totalTeleportsSummaryChartConfig,

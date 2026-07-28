@@ -1,5 +1,6 @@
 import { useMemo, useCallback, useEffect, useReducer } from 'react';
 import { StatusCodes } from '@rbx/core';
+import { useFlag } from '@rbx/flags';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import {
   Link,
@@ -13,6 +14,7 @@ import {
   Chip,
   useTheme,
 } from '@rbx/ui';
+import { isAdsPageRedesignEnabled } from '@generated/flags/immersiveAds';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { analyticsImmersiveAdsNavigationItem } from '@modules/charts-generic/constants/analyticsNavigationItems';
@@ -213,6 +215,8 @@ const ImmersiveAdsPageContent = () => {
   const theme = useTheme();
   const intl = useTranslation();
   const { translate, translateHTML } = useTranslationWrapper(intl);
+  const { value: adsPageRedesignFlagValue } = useFlag(isAdsPageRedesignEnabled);
+  const isAdsPageRedesignOn = adsPageRedesignFlagValue ?? false;
   const { canConfigure, isLoadingGame } = useCurrentGame();
   const { id: universeId } = useUniverseResource();
   const { isPending: isPendingAnalyticsExperiencePermissions } =
@@ -552,8 +556,11 @@ const ImmersiveAdsPageContent = () => {
 
     // Analytics tab can be shown to all users. The analytics components render permission errors inline.
     tabs.push(analyticsTab);
+    if (isAdsPageRedesignOn && shouldShowPlacementTab) {
+      tabs.push(placementTab);
+    }
     tabs.push(settingsTab);
-    if (shouldShowPlacementTab) {
+    if (!isAdsPageRedesignOn && shouldShowPlacementTab) {
       tabs.push(placementTab);
     }
     // Eligibility tab with calculator is always at the end
@@ -564,6 +571,7 @@ const ImmersiveAdsPageContent = () => {
     eligibilityState.isUniverseEligible,
     universeAdsSettingsState.isRewardedAdsEnabled,
     eligibilityTab,
+    isAdsPageRedesignOn,
     settingsTab,
     placementTab,
   ]);

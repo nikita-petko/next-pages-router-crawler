@@ -4,7 +4,10 @@ import { useFlag } from '@rbx/flags';
 import { clsx } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { Chip, Typography } from '@rbx/ui';
-import { isRewardedVideoRedesignEnabled } from '@generated/flags/immersiveAds';
+import {
+  isAdsPageRedesignEnabled,
+  isRewardedVideoRedesignEnabled,
+} from '@generated/flags/immersiveAds';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import ChartResourceType from '@modules/charts-generic/enums/ChartResourceType';
@@ -20,6 +23,7 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import useAdsAnalyticsStyles from '../AdsAnalytics.styles';
 import {
   analyticsViewTypeToPageLayoutMap,
+  overviewPageLayoutRedesign,
   rewardedVideoPageLayout,
   rewardedVideoPageLayoutLegacy,
   viewTypeDefaultBreakdownDimension,
@@ -82,13 +86,18 @@ const AnalyticsPageContentV2 = ({
 
   const { value: redesignFlagValue } = useFlag(isRewardedVideoRedesignEnabled);
   const isRedesignEnabled = redesignFlagValue ?? false;
+  const { value: adsPageRedesignFlagValue } = useFlag(isAdsPageRedesignEnabled);
+  const isAdsPageRedesignOn = adsPageRedesignFlagValue ?? false;
 
   const getPageLayout = useMemo(() => {
+    if (analyticsViewType === AnalyticsViewType.Overview && isAdsPageRedesignOn) {
+      return overviewPageLayoutRedesign;
+    }
     if (analyticsViewType === AnalyticsViewType.RewardedAds) {
       return isRedesignEnabled ? rewardedVideoPageLayout : rewardedVideoPageLayoutLegacy;
     }
     return analyticsViewTypeToPageLayoutMap[analyticsViewType] || [];
-  }, [analyticsViewType, isRedesignEnabled]);
+  }, [analyticsViewType, isAdsPageRedesignOn, isRedesignEnabled]);
 
   const analyticsPageConfig: CreatorAnalyticsEmbeddedSurfaceConfig = useMemo(
     () => ({

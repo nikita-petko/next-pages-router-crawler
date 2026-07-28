@@ -21,6 +21,21 @@ export const overviewPageLayout: RAQIV2UIComponent[] = [
   chartConfigs.totalImpressionsPieChartConfig,
 ];
 
+export const overviewPageLayoutRedesign: RAQIV2UIComponent[] = [
+  {
+    type: RAQIV2SpecialLayoutType.FullWidthLayout,
+    items: [chartConfigs.overviewEarningsChartConfig, chartConfigs.overviewImpressionsChartConfig],
+  },
+  {
+    type: RAQIV2SpecialLayoutType.TwoPerRowLayout,
+    items: [
+      chartConfigs.overviewEarningsByFormatChartConfig,
+      chartConfigs.overviewImpressionsByFormatChartConfig,
+    ],
+    stackOnCompact: true,
+  },
+];
+
 export const portalsPageLayout: RAQIV2UIComponent[] = [
   {
     type: RAQIV2SpecialLayoutType.FullWidthLayout,

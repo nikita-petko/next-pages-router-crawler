@@ -1,5 +1,5 @@
-import type { Options, SeriesPieOptions } from 'highcharts';
 import React, { useMemo } from 'react';
+import type { Options, SeriesPieOptions } from 'highcharts';
 import type { TIconProps } from '@rbx/ui';
 import { useTheme } from '@rbx/ui';
 import { getChartColorHexString } from './color';

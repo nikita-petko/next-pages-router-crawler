@@ -141,15 +141,6 @@ export const RAQIV2MetricWarningsConfig: Map<TRAQIV2UIMetric, TRAQIV2PredefinedW
       ],
     ],
     [
-      RAQIV2Metric.AdsPublisherReportingTotalImpressions,
-      [
-        {
-          type: RAQIV2PredefinedWarningCondition.Always,
-          warning: RAQIV2PredefinedWarnings.ImmersiveAdsImpressions,
-        },
-      ],
-    ],
-    [
       RAQIV2Metric.AdsPublisherReportingPortalRevenueRobux,
       [
         {
