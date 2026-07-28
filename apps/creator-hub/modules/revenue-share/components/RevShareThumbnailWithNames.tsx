@@ -233,7 +233,7 @@ const RevShareThumbnailWithNames: FunctionComponent<
       ) : (
         <div className='flex items-center gap-xsmall min-width-0'>
           <span
-            className={`block clip text-no-wrap min-width-0 ${primaryTextClass} ${primaryLineHeightClass ?? ''} ${mutedPrimaryClass ?? ''}`}>
+            className={`block clip text-no-wrap text-truncate-end min-width-0 ${primaryTextClass} ${primaryLineHeightClass ?? ''} ${mutedPrimaryClass ?? ''}`}>
             {obfuscate ? translate('Label.Other') : derivedPrimaryLabel}
           </span>
           {label && label.length > 0 ? (
@@ -259,13 +259,13 @@ const RevShareThumbnailWithNames: FunctionComponent<
             />
           ) : (
             <span
-              className={`block clip text-no-wrap min-width-0 ${secondaryTextClass} ${mutedSecondaryClass ?? ''}`}>
+              className={`block clip text-no-wrap text-truncate-end min-width-0 ${secondaryTextClass} ${mutedSecondaryClass ?? ''}`}>
               {obfuscate ? translate('Label.Other') : `@${'name' in target ? target.name : ''}`}
             </span>
           )
         ) : (
           <span
-            className={`block clip text-no-wrap min-width-0 ${secondaryTextClass} ${mutedSecondaryClass ?? ''}`}>
+            className={`block clip text-no-wrap text-truncate-end min-width-0 ${secondaryTextClass} ${mutedSecondaryClass ?? ''}`}>
             {obfuscate ? translate('Label.Other') : target.id}
           </span>
         )
