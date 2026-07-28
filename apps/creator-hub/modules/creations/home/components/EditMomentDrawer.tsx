@@ -105,13 +105,28 @@ const EditMomentDrawer: FC<EditMomentDrawerProps> = ({
     [],
   );
 
-  const handleDescriptionBlur = useCallback(() => {
+  const flushDescription = useCallback(() => {
     if (!moment || description === moment.description) {
       return;
     }
 
     onMomentMetadataChange?.(moment.id, { description });
   }, [description, moment, onMomentMetadataChange]);
+
+  const handleDescriptionBlur = useCallback(() => {
+    flushDescription();
+  }, [flushDescription]);
+
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        // Overlay dismiss can skip input blur; persist pending edits on close.
+        flushDescription();
+      }
+      onOpenChange(nextOpen);
+    },
+    [flushDescription, onOpenChange],
+  );
 
   if (!moment) {
     return null;
@@ -129,7 +144,7 @@ const EditMomentDrawer: FC<EditMomentDrawerProps> = ({
   const isDescriptionAtMaxLength = description.length >= MAX_MOMENT_DESCRIPTION_LENGTH;
 
   return (
-    <SheetRoot open={open} onOpenChange={onOpenChange}>
+    <SheetRoot open={open} onOpenChange={handleOpenChange}>
       <SheetContent closeLabel={translate('Action.Close')} largeScreenVariant='side'>
         <SheetTitle>
           {translate('Heading.EditMoment' /* TranslationNamespace.Creations */)}

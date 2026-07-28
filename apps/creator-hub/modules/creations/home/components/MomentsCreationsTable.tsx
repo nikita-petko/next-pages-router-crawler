@@ -20,6 +20,7 @@ import {
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentPage } from '@modules/monetization-shared/table-v1/useCurrentPage';
 import { useTablePagination } from '@modules/monetization-shared/table-v1/useTablePagination';
+import { MAX_MOMENT_DESCRIPTION_LENGTH } from '../constants/momentConstants';
 import {
   DEFAULT_MOMENTS_TABLE_ROWS_PER_PAGE,
   MOMENTS_LIST_PAGE_SIZE,
@@ -34,6 +35,8 @@ import MomentStatusIndicator from './MomentStatusIndicator';
 import MomentVideoThumbnail from './MomentVideoThumbnail';
 
 const MOMENTS_TABLE_ROWS_PER_PAGE_OPTIONS_MUTABLE = [...MOMENTS_TABLE_ROWS_PER_PAGE_OPTIONS];
+
+const MOMENT_DESCRIPTION_INPUT_PROPS = { maxLength: MAX_MOMENT_DESCRIPTION_LENGTH };
 
 const EMPTY_FILTER_MESSAGE_KEYS: Record<MomentCreationStatusFilterTab, string> = {
   [MomentCreationStatus.ACTIVE]: 'MomentsTable.NoActiveMoments',
@@ -201,6 +204,7 @@ const MomentsCreationsTable: FC<MomentsCreationsTableProps> = ({
                           defaultValue={moment.description}
                           disabled={publishingMomentId === moment.id}
                           fullWidth
+                          inputProps={MOMENT_DESCRIPTION_INPUT_PROPS}
                           placeholder={translate(
                             'MomentsTable.Placeholders.Description' /* TranslationNamespace.Creations */,
                           )}
