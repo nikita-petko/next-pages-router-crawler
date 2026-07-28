@@ -137,8 +137,8 @@ const getUniverseMetricName = (
 
 /**
  * Builds the universe-authorized CAaaS request used by page-scoped reporting.
- * AttributionDateHour uses a strict exclusive end so the advertiser-local
- * midnight row cannot overlap the EaaS current-day bucket.
+ * AttributionDateHour uses a half-open [start, end) range so a bucket whose
+ * timestamp equals the next period's start is not included.
  */
 export const buildUniverseAnalyticsQueryRequest = ({
   endTime,

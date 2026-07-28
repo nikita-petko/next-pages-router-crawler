@@ -39,6 +39,7 @@ export const appMetadataDefaults: GetAdsMetadataResponseType = {
   cptMinimumBidValueMicroUsd: UsdToMicroUsd(appDataDefaults.cptMinimumBidUsd),
   defaultBudgetRecommendationMicroUsd: 8000000,
   defaultDurationRecommendationDays: 7,
+  enableFrontendDevTools: false,
   EURegionCodeList: euRegionCodeList,
   isAdAccountAutoCreateEnabled: false,
   isAdIntegrationRevenueShareEstimateEnabled: false,

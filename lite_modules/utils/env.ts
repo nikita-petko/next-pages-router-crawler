@@ -65,5 +65,6 @@ export const GetCurrentEnv = () => {
   return EnvEnum.PRODUCTION;
 };
 
-/** Non-production hosts (localhost, sitetest1, sitetest3) and non-prod build targets. */
-export const IsMetadataOverridesEnabled = (): boolean => GetCurrentEnv() !== EnvEnum.PRODUCTION;
+/** Non-production hosts/build targets, or production users enabled by backend metadata. */
+export const IsMetadataOverridesEnabled = (enableFrontendDevTools = false): boolean =>
+  GetCurrentEnv() !== EnvEnum.PRODUCTION || enableFrontendDevTools;

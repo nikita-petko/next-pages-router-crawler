@@ -18,14 +18,15 @@ type MetadataBooleanOverrides = Partial<Record<MetadataBooleanFlagKey, boolean>>
 const METADATA_BOOLEAN_OVERRIDES_STORAGE_KEY = 'adsManagerMetadataBooleanOverrides';
 
 export const metadataBooleanFlagKeys = Object.entries(appMetadataDefaults)
-  .filter(([, value]) => typeof value === 'boolean')
+  .filter(([key, value]) => key !== 'enableFrontendDevTools' && typeof value === 'boolean')
   .map(([key]) => key as MetadataBooleanFlagKey)
   .sort((a, b) => a.localeCompare(b));
 
 const isMetadataBooleanFlagKey = (key: string): key is MetadataBooleanFlagKey =>
   metadataBooleanFlagKeys.includes(key as MetadataBooleanFlagKey);
 
-const areMetadataOverridesAllowed = (): boolean => InBrowser() && IsMetadataOverridesEnabled();
+const areMetadataOverridesAllowed = (enableFrontendDevTools = false): boolean =>
+  InBrowser() && IsMetadataOverridesEnabled(enableFrontendDevTools);
 
 const sanitizeOverrides = (
   raw: Record<string, unknown> | null | undefined,
@@ -45,8 +46,8 @@ const sanitizeOverrides = (
   return sanitized;
 };
 
-const readOverridesFromStorage = (): MetadataBooleanOverrides => {
-  if (!areMetadataOverridesAllowed()) {
+const readOverridesFromStorage = (enableFrontendDevTools = false): MetadataBooleanOverrides => {
+  if (!areMetadataOverridesAllowed(enableFrontendDevTools)) {
     return {};
   }
 
@@ -62,8 +63,11 @@ const readOverridesFromStorage = (): MetadataBooleanOverrides => {
   }
 };
 
-const writeOverridesToStorage = (overrides: MetadataBooleanOverrides): void => {
-  if (!areMetadataOverridesAllowed()) {
+const writeOverridesToStorage = (
+  overrides: MetadataBooleanOverrides,
+  enableFrontendDevTools = false,
+): void => {
+  if (!areMetadataOverridesAllowed(enableFrontendDevTools)) {
     return;
   }
 
@@ -75,18 +79,20 @@ const writeOverridesToStorage = (overrides: MetadataBooleanOverrides): void => {
   window.localStorage.setItem(METADATA_BOOLEAN_OVERRIDES_STORAGE_KEY, JSON.stringify(overrides));
 };
 
-export const getMetadataBooleanOverrides = (): MetadataBooleanOverrides =>
-  readOverridesFromStorage();
+export const getMetadataBooleanOverrides = (
+  enableFrontendDevTools = false,
+): MetadataBooleanOverrides => readOverridesFromStorage(enableFrontendDevTools);
 
 export const setMetadataBooleanOverride = (
   key: MetadataBooleanFlagKey,
   value: boolean | null,
+  enableFrontendDevTools = false,
 ): MetadataBooleanOverrides => {
-  if (!areMetadataOverridesAllowed()) {
+  if (!areMetadataOverridesAllowed(enableFrontendDevTools)) {
     return {};
   }
 
-  const nextOverrides = { ...readOverridesFromStorage() };
+  const nextOverrides = { ...readOverridesFromStorage(enableFrontendDevTools) };
 
   if (value === null) {
     delete nextOverrides[key];
@@ -94,26 +100,27 @@ export const setMetadataBooleanOverride = (
     nextOverrides[key] = value;
   }
 
-  writeOverridesToStorage(nextOverrides);
+  writeOverridesToStorage(nextOverrides, enableFrontendDevTools);
   return nextOverrides;
 };
 
-export const clearAllMetadataBooleanOverrides = (): void => {
-  if (!areMetadataOverridesAllowed()) {
+export const clearAllMetadataBooleanOverrides = (enableFrontendDevTools = false): void => {
+  if (!areMetadataOverridesAllowed(enableFrontendDevTools)) {
     return;
   }
 
-  writeOverridesToStorage({});
+  writeOverridesToStorage({}, enableFrontendDevTools);
 };
 
 export const applyMetadataBooleanOverrides = (
   metadata: GetAdsMetadataResponseType,
 ): GetAdsMetadataResponseType => {
-  if (!areMetadataOverridesAllowed()) {
+  const enableFrontendDevTools = metadata.enableFrontendDevTools === true;
+  if (!areMetadataOverridesAllowed(enableFrontendDevTools)) {
     return metadata;
   }
 
-  const overrides = readOverridesFromStorage();
+  const overrides = readOverridesFromStorage(enableFrontendDevTools);
 
   if (Object.keys(overrides).length === 0) {
     return metadata;

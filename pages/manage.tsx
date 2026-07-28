@@ -90,7 +90,7 @@ const NewFlow = () => {
   // has an ad account or a new-flow campaign.
   if (fetchingEssentialAppInfo || (shouldRequireNewFlowCampaign && hasNewFlowCampaignLoading)) {
     return (
-      <AdsManagerPageBaseLayout isLoading={false}>
+      <AdsManagerPageBaseLayout isLoading>
         <div>
           <StackedToasts />
         </div>

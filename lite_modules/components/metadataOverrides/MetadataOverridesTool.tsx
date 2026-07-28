@@ -3,24 +3,28 @@ import { useCallback, useEffect, useState } from 'react';
 import DevToolsPanel from '@components/devtools/DevToolsPanel';
 import MetadataOverridesPanel from '@components/metadataOverrides/MetadataOverridesPanel';
 import useMediaQuery from '@hooks/useMediaQuery';
+import { useAppStore } from '@stores/appStoreProvider';
 import { IsMetadataOverridesEnabled } from '@utils/env';
 import { getMetadataBooleanOverrides } from '@utils/metadataOverrides';
 
 const MetadataOverridesTool = () => {
   const { isMedium } = useMediaQuery();
+  const enableFrontendDevTools = useAppStore(
+    (state) => state.appMetadataBaseData?.enableFrontendDevTools === true,
+  );
   const [hasMounted, setHasMounted] = useState<boolean>(false);
   const [overrideCount, setOverrideCount] = useState<number>(0);
 
   useEffect(() => {
     setHasMounted(true);
-    setOverrideCount(Object.keys(getMetadataBooleanOverrides()).length);
-  }, []);
+    setOverrideCount(Object.keys(getMetadataBooleanOverrides(enableFrontendDevTools)).length);
+  }, [enableFrontendDevTools]);
 
   const handleOverrideCountChange = useCallback((count: number) => {
     setOverrideCount(count);
   }, []);
 
-  if (!hasMounted || !IsMetadataOverridesEnabled() || !isMedium) {
+  if (!hasMounted || !IsMetadataOverridesEnabled(enableFrontendDevTools) || !isMedium) {
     return null;
   }
 
@@ -31,7 +35,10 @@ const MetadataOverridesTool = () => {
       openLabel='Flags'
       positionVariant='metadataOverrides'
       title='Flags'>
-      <MetadataOverridesPanel onOverrideCountChange={handleOverrideCountChange} />
+      <MetadataOverridesPanel
+        enableFrontendDevTools={enableFrontendDevTools}
+        onOverrideCountChange={handleOverrideCountChange}
+      />
     </DevToolsPanel>
   );
 };

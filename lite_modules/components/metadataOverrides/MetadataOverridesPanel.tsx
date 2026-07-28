@@ -103,10 +103,14 @@ const getTriStateForKey = (
 };
 
 interface MetadataOverridesPanelProps {
+  enableFrontendDevTools?: boolean;
   onOverrideCountChange?: (count: number) => void;
 }
 
-const MetadataOverridesPanel = ({ onOverrideCountChange }: MetadataOverridesPanelProps) => {
+const MetadataOverridesPanel = ({
+  enableFrontendDevTools = false,
+  onOverrideCountChange,
+}: MetadataOverridesPanelProps) => {
   const applyLocalMetadataOverrides = useAppStore((state) => state.applyLocalMetadataOverrides);
   const metadata = useAppStore((state) => state.appMetadataState.data);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -116,7 +120,12 @@ const MetadataOverridesPanel = ({ onOverrideCountChange }: MetadataOverridesPane
   // the user overrides. Entries are never removed while open (so a flag set back
   // to Auto keeps its position); the set resets when the panel unmounts (closes).
   const [pinnedKeys, setPinnedKeys] = useState<Set<MetadataBooleanFlagKey>>(
-    () => new Set(Object.keys(getMetadataBooleanOverrides()) as MetadataBooleanFlagKey[]),
+    () =>
+      new Set(
+        Object.keys(
+          getMetadataBooleanOverrides(enableFrontendDevTools),
+        ) as MetadataBooleanFlagKey[],
+      ),
   );
 
   const {
@@ -137,9 +146,9 @@ const MetadataOverridesPanel = ({ onOverrideCountChange }: MetadataOverridesPane
   } = useMetadataOverridesPanelStyles();
 
   const overrides = useMemo(
-    () => getMetadataBooleanOverrides(),
+    () => getMetadataBooleanOverrides(enableFrontendDevTools),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- overridesVersion bumps after localStorage writes
-    [overridesVersion],
+    [enableFrontendDevTools, overridesVersion],
   );
 
   const filteredFlagKeys = useMemo(() => {
@@ -167,9 +176,9 @@ const MetadataOverridesPanel = ({ onOverrideCountChange }: MetadataOverridesPane
   const handleTriStateChange = useCallback(
     (key: MetadataBooleanFlagKey, triState: TriStateValue) => {
       if (triState === 'auto') {
-        setMetadataBooleanOverride(key, null);
+        setMetadataBooleanOverride(key, null, enableFrontendDevTools);
       } else {
-        setMetadataBooleanOverride(key, triState === 'on');
+        setMetadataBooleanOverride(key, triState === 'on', enableFrontendDevTools);
         setPinnedKeys((previous) => {
           if (previous.has(key)) {
             return previous;
@@ -183,11 +192,11 @@ const MetadataOverridesPanel = ({ onOverrideCountChange }: MetadataOverridesPane
       setOverridesVersion((version) => version + 1);
       applyLocalMetadataOverrides();
     },
-    [applyLocalMetadataOverrides],
+    [applyLocalMetadataOverrides, enableFrontendDevTools],
   );
 
   const handleResetAll = () => {
-    clearAllMetadataBooleanOverrides();
+    clearAllMetadataBooleanOverrides(enableFrontendDevTools);
     setOverridesVersion((version) => version + 1);
     applyLocalMetadataOverrides();
   };
