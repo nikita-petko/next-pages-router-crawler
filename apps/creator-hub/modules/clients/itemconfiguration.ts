@@ -471,12 +471,14 @@ export class ItemConfigurationClient {
     assetType?: V1ItemsPriceFloorGetAssetTypeEnum,
     bundleType?: V1ItemsPriceFloorGetBundleTypeEnum,
     categoryId?: string,
+    isEmissive = false,
   ) {
     const request: V1ItemsPriceFloorGetRequest = {
       collectibleItemType,
       creationType,
       isPbr,
       isBodysuit,
+      isEmissive,
       assetType,
       bundleType,
       categoryId,
