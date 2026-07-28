@@ -1,14 +1,18 @@
 import {
+  RAQIV2AnnouncementEventType,
   RAQIV2Dimension,
   RAQIV2ForumContentEventType,
   RAQIV2MembershipEventType,
   RAQIV2Metric,
+  RAQIV2MetricGranularity,
   RAQIV2PageViewContext,
 } from '@rbx/creator-hub-analytics-config';
 import AnalyticsComponentType from '@modules/analytics-configurations/AnalyticsComponentType';
+import type { TranslationKeyToFormattedText } from '@modules/analytics-translations/types';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import type { ChartConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedChartConfig';
+import type { TAnalyticsSerializableTableConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedTableConfig';
 import {
   RAQIV2SummaryType,
   type RAQIV2CompoundSummaryType,
@@ -382,3 +386,143 @@ export const tabbedChartConfigPostReactions = {
     },
   ],
 } as const satisfies TabbedChartConfig;
+
+// -- Announcement History Table --
+
+const announcementHistoryBreakdowns = [
+  RAQIV2Dimension.AnnouncementId,
+  RAQIV2Dimension.AnnouncementPublishDate,
+];
+
+const announcementHistoryOverrides = {
+  breakdown: { override: announcementHistoryBreakdowns },
+  granularity: { override: RAQIV2MetricGranularity.None },
+};
+
+const makeAnnouncementTableOverrides = (eventType: RAQIV2AnnouncementEventType) => ({
+  ...announcementHistoryOverrides,
+  filter: {
+    intersect: [{ dimension: RAQIV2Dimension.AnnouncementEventType, values: [eventType] }],
+  },
+});
+
+export const getTableConfigAnnouncementHistory = (
+  translate: TranslationKeyToFormattedText,
+): TAnalyticsSerializableTableConfig => ({
+  type: AnalyticsComponentType.Table,
+  tableKey: 'CommunityAnnouncementHistory',
+  tableConfig: {
+    stickyHeader: true,
+    stickyFirstColumn: true,
+    columnDivider: false,
+    defaultActiveSort: RAQIV2Dimension.AnnouncementPublishDate,
+  },
+  dataColumns: [
+    {
+      key: 'AnnouncementViews',
+      metric: RAQIV2Metric.CommunityAnnouncementEventCount,
+      overrides: makeAnnouncementTableOverrides(RAQIV2AnnouncementEventType.View),
+      titleOverride: translate(
+        translationKey('Label.Column.AnnouncementViews', TranslationNamespace.Community),
+      ),
+    },
+    {
+      key: 'AnnouncementUniqueViewers',
+      metric: RAQIV2Metric.CommunityAnnouncementUniqueUsers,
+      overrides: makeAnnouncementTableOverrides(RAQIV2AnnouncementEventType.View),
+      titleOverride: translate(
+        translationKey('Label.Column.AnnouncementUniqueViewers', TranslationNamespace.Community),
+      ),
+    },
+    {
+      key: 'AnnouncementEngagement',
+      metric: RAQIV2Metric.CommunityAnnouncementEventCount,
+      overrides: {
+        ...announcementHistoryOverrides,
+        filter: {
+          intersect: [
+            {
+              dimension: RAQIV2Dimension.AnnouncementEventType,
+              values: [
+                RAQIV2AnnouncementEventType.NetReaction,
+                RAQIV2AnnouncementEventType.PollVote,
+              ],
+            },
+          ],
+        },
+      },
+      titleOverride: translate(
+        translationKey('Label.Column.AnnouncementEngagement', TranslationNamespace.Community),
+      ),
+    },
+    {
+      key: 'AnnouncementUniqueEngagement',
+      metric: RAQIV2Metric.CommunityAnnouncementUniqueUsers,
+      overrides: {
+        ...announcementHistoryOverrides,
+        filter: {
+          intersect: [
+            {
+              dimension: RAQIV2Dimension.AnnouncementEventType,
+              values: [
+                RAQIV2AnnouncementEventType.NetReaction,
+                RAQIV2AnnouncementEventType.PollVote,
+              ],
+            },
+          ],
+        },
+      },
+      titleOverride: translate(
+        translationKey(
+          'Label.Column.AnnouncementUniqueEngagedUsers',
+          TranslationNamespace.Community,
+        ),
+      ),
+    },
+    {
+      key: 'AnnouncementPushNotificationsDelivered',
+      metric: RAQIV2Metric.CommunityAnnouncementEventCount,
+      overrides: makeAnnouncementTableOverrides(RAQIV2AnnouncementEventType.PushDelivered),
+      titleOverride: translate(
+        translationKey('Label.Column.AnnouncementPushDelivered', TranslationNamespace.Community),
+      ),
+    },
+    {
+      key: 'AnnouncementPushNotificationCtr',
+      metric: RAQIV2Metric.CommunityAnnouncementNotificationCTR,
+      overrides: {
+        ...announcementHistoryOverrides,
+        filter: {
+          intersect: [{ dimension: RAQIV2Dimension.NotificationChannel, values: ['Push'] }],
+        },
+      },
+      titleOverride: translate(
+        translationKey('Label.Column.AnnouncementPushCtr', TranslationNamespace.Community),
+      ),
+    },
+    {
+      key: 'AnnouncementStreamNotificationsDelivered',
+      metric: RAQIV2Metric.CommunityAnnouncementEventCount,
+      overrides: makeAnnouncementTableOverrides(RAQIV2AnnouncementEventType.StreamDelivered),
+      titleOverride: translate(
+        translationKey('Label.Column.AnnouncementStreamDelivered', TranslationNamespace.Community),
+      ),
+    },
+    {
+      key: 'AnnouncementStreamNotificationCtr',
+      metric: RAQIV2Metric.CommunityAnnouncementNotificationCTR,
+      overrides: {
+        ...announcementHistoryOverrides,
+        filter: {
+          intersect: [{ dimension: RAQIV2Dimension.NotificationChannel, values: ['Stream'] }],
+        },
+      },
+      titleOverride: translate(
+        translationKey('Label.Column.AnnouncementStreamCtr', TranslationNamespace.Community),
+      ),
+    },
+  ],
+  breakdowns: announcementHistoryBreakdowns,
+  isTotalRowIncluded: false,
+  titleKey: translationKey('Title.AnnouncementHistory', TranslationNamespace.Community),
+});

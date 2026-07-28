@@ -56,5 +56,14 @@ const RAQIV2DimensionTableConfig: Partial<Record<string, RAQIV2DimensionTableCol
     columnType: ColumnType.Text,
     sort: { direction: TableSortOrder.asc },
   },
+  [RAQIV2Dimension.AnnouncementId]: {
+    columnType: ColumnType.Text,
+    sort: { direction: TableSortOrder.desc },
+    widthWeight: 12,
+  },
+  [RAQIV2Dimension.AnnouncementPublishDate]: {
+    columnType: ColumnType.Date,
+    sort: { direction: TableSortOrder.desc },
+  },
 };
 export default RAQIV2DimensionTableConfig;

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import useLocale from '@modules/charts-generic/context/useLocale';
+import { useAnnouncementNameMapFromContext } from '../context/AnnouncementNameMapProvider';
 import { useAvatarItemNamesMapFromContext } from '../context/AvatarItemNamesMapProvider';
 import { useCountryMapFromContext } from '../context/CountryMapProvider';
 import { useLocaleMapFromContext } from '../context/LocaleMapProvider';
@@ -17,6 +18,7 @@ const useRAQIV2TranslationDependencies = (): RAQIV2TranslationDependencies => {
   const { thumbnailUrlsMap } = useThumbnailUrlsMapFromContext();
   const { universeNamesMap } = useUniverseNameMapFromContext();
   const { avatarItemNamesMap } = useAvatarItemNamesMapFromContext();
+  const { announcementNamesMap } = useAnnouncementNameMapFromContext();
   const locale = useLocale();
 
   return useMemo(() => {
@@ -30,6 +32,7 @@ const useRAQIV2TranslationDependencies = (): RAQIV2TranslationDependencies => {
       thumbnailUrlsMap,
       universeNamesMap,
       avatarItemNamesMap,
+      announcementNamesMap,
       ready,
       locale,
     };
@@ -44,6 +47,7 @@ const useRAQIV2TranslationDependencies = (): RAQIV2TranslationDependencies => {
     thumbnailUrlsMap,
     universeNamesMap,
     avatarItemNamesMap,
+    announcementNamesMap,
     locale,
   ]);
 };

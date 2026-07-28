@@ -7,3 +7,8 @@ export const creatorAnalytics = defineFlag({
     name: 'CreatorAnalytics',
     defaultValue: true,
   });
+export const announcementAnalytics = defineFlag({
+    namespace: 'communities',
+    name: 'AnnouncementAnalytics',
+    defaultValue: false,
+  });

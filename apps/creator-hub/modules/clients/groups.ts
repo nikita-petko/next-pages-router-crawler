@@ -65,9 +65,71 @@ import {
   V2UsersUserIdGroupsRolesGetDiscoveryTypeEnum,
 } from '@rbx/client-groups/v2';
 import type { RobloxWebWebAPIModelsApiArrayResponseRobloxWebResponsesThumbnailsThumbnailResponse } from '@rbx/client-thumbnails/v1';
+import { BaseAPI } from '@rbx/clients-core';
 import { createClientConfiguration } from './utils/createClientConfiguration';
 
 const configuration = createClientConfiguration('groups', 'bedev1');
+
+// AnnouncementsController is excluded from swagger generation via
+// [ApiExplorerSettings(IgnoreApi = true)], so no generated client method exists.
+class AnnouncementsApi extends BaseAPI {
+  constructor() {
+    super(configuration);
+  }
+
+  private isAnnouncementEntry(entry: unknown): entry is { id: string; name: string } {
+    if (
+      entry == null ||
+      typeof entry !== 'object' ||
+      Array.isArray(entry) ||
+      !('id' in entry) ||
+      !('name' in entry)
+    ) {
+      return false;
+    }
+    return (
+      typeof entry.id === 'string' &&
+      typeof entry.name === 'string' &&
+      entry.id.length > 0 &&
+      entry.name.length > 0
+    );
+  }
+
+  async getAnnouncementNames(
+    groupId: number,
+    announcementIds: string[],
+  ): Promise<Map<string, string>> {
+    try {
+      const response = await this.request({
+        path: `/v1/groups/${groupId}/announcements`,
+        method: 'GET',
+        headers: {},
+        query: { announcementIds },
+        schemaPath: '/v1/groups/{groupId}/announcements',
+      });
+      const json: unknown = await response.json();
+      if (
+        json == null ||
+        typeof json !== 'object' ||
+        !('data' in json) ||
+        !Array.isArray(json.data)
+      ) {
+        return new Map<string, string>();
+      }
+      const namesMap = new Map<string, string>();
+      for (const entry of json.data as unknown[]) {
+        if (this.isAnnouncementEntry(entry)) {
+          namesMap.set(entry.id, entry.name);
+        }
+      }
+      return namesMap;
+    } catch {
+      return new Map<string, string>();
+    }
+  }
+}
+
+const announcementsApi = new AnnouncementsApi();
 
 const groupSearchApi = new GroupSearchApi(configuration);
 const groupApi = new GroupsApi(configuration);
@@ -196,6 +258,7 @@ export interface GroupsClient {
     request: SetGroupFeaturesRequest,
   ): Promise<SetGroupFeaturesResponse>;
   getGroupMigrationStatus(groupId: number): Promise<RobloxGroupsApiGroupMigrationStatusResponse>;
+  getAnnouncementNames(groupId: number, announcementIds: string[]): Promise<Map<string, string>>;
 }
 
 const groupsClient: GroupsClient = {
@@ -344,6 +407,9 @@ const groupsClient: GroupsClient = {
       groupId,
     };
     return migrationApi.v1GroupsGroupIdMigrationGet(request);
+  },
+  getAnnouncementNames(groupId: number, announcementIds: string[]) {
+    return announcementsApi.getAnnouncementNames(groupId, announcementIds);
   },
 };
 

@@ -160,6 +160,9 @@ const RAQIV2NumericMetricDisplayConfig: Partial<Record<TRAQIV2Metric, NumericMet
         ),
       },
     },
+    [RAQIV2Metric.CommunityAnnouncementNotificationCTR]: {
+      defaultTotalSummaryTypes: lastValueSummary,
+    },
     [RAQIV2Metric.EconomyTransactionAmount]: {
       defaultTotalSummaryTypes: totalSummationSummary,
       exploreModeChartType: ChartType.Column,

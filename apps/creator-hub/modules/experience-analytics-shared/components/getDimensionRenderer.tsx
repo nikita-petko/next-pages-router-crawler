@@ -27,6 +27,7 @@ import type {
   RAQIV2TranslationDependencies,
 } from '../types/RAQIV2DimensionRenderer';
 import type RAQIV2DimensionRenderer from '../types/RAQIV2DimensionRenderer';
+import { brandUserSuppliedText } from '../utils/metricLikeSemantics';
 import { TOP_N_OTHER_BREAKDOWN_VALUE } from '../utils/topNResponseUtils';
 
 const buildDimensionRenderer = <TDimensionValues extends string>(
@@ -334,6 +335,33 @@ const descriptionLinkByDimension: Partial<Record<TRAQIV2Dimension, string>> = {
   [RAQIV2Dimension.UserSegmentationPayerStatus]: docs.getAnalyticsFilterByMetricsGuideUrl(),
 };
 
+const announcementIdRenderer: RAQIV2DimensionRenderer = {
+  name: translationKey('Label.Dimension.AnnouncementId', TranslationNamespace.Analytics),
+  getBreakdownValueName: ({ value }, { announcementNamesMap }) => {
+    return brandUserSuppliedText(announcementNamesMap.get(value) ?? value);
+  },
+  getBreakdownValueTooltip: () => undefined,
+};
+
+const announcementPublishDateRenderer: RAQIV2DimensionRenderer = {
+  name: translationKey('Label.Dimension.AnnouncementPublishDate', TranslationNamespace.Analytics),
+  getBreakdownValueName: ({ value }, { locale }) => {
+    const timestamp = Number(value);
+    if (!timestamp || isNaN(timestamp)) {
+      return brandUserSuppliedText(value);
+    }
+    return brandUserSuppliedText(
+      new Date(timestamp).toLocaleString([locale, 'en-us'], {
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        timeZone: 'UTC',
+      }),
+    );
+  },
+  getBreakdownValueTooltip: () => undefined,
+};
+
 const workflowTypeTranslationKeys: Record<string, TranslationKey> = {
   LMaaS: translationKey('Label.WorkflowType.TextGeneration', TranslationNamespace.Analytics),
   ModelGenWorkflow: translationKey(
@@ -378,6 +406,14 @@ const build = (dimension: TRAQIV2Dimension): RAQIV2DimensionRenderer => {
   if (dimension === RAQIV2Dimension.JourneyVersion) {
     return journeyVersionRenderer;
   }
+  if (dimension === RAQIV2Dimension.AnnouncementId) {
+    return announcementIdRenderer;
+  }
+
+  if (dimension === RAQIV2Dimension.AnnouncementPublishDate) {
+    return announcementPublishDateRenderer;
+  }
+
   if (dimension === RAQIV2Dimension.WorkflowType) {
     return workflowTypeRenderer;
   }

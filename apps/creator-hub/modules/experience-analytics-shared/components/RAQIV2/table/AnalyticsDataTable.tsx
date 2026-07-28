@@ -25,6 +25,7 @@ import { TIMESTAMP_PSEUDO_DIMENSION } from '../../../adapters/genericRAQIV2Table
 import { useRAQIV2Client } from '../../../context/RAQIV2ClientProvider';
 import type { PaginationResponse } from '../../../hooks/usePaginatedRequest';
 import useRAQIV2TranslationDependencies from '../../../hooks/useRAQIV2TranslationDependencies';
+import { useLoadAnnouncementIds } from '../../../utils/announcementUtils';
 import computeRAQIV2MetricColumnConfigOverride from '../../../utils/computeRAQIV2MetricColumnConfigOverride';
 import { getMetricLabelFromMetricLike } from '../../../utils/metricLikeSemantics';
 import { useLoadUniverseIds } from '../../../utils/universeUtils';
@@ -78,8 +79,6 @@ const buildTableDataColumnConfig = <TKey extends string>(
       ...metricBasedConfig,
       sort: direction !== undefined ? { ...spec.sort, direction } : undefined,
       columnKey: spec.columnKey,
-      // Caller-supplied display label takes precedence over the metric-derived
-      // titleKey. `resolveTableColumnTitle` honors `titleOverride` first.
       titleOverride: spec.titleOverride,
     };
   }
@@ -202,10 +201,12 @@ const AnalyticsDataTable = <TColumnKey extends string>({
 
   const translationDependencies = useRAQIV2TranslationDependencies();
   const translationDependenciesRef = useRef(translationDependencies);
+  // oxlint-disable-next-line react/react-compiler -- callbacks read this ref asynchronously and need the latest value without triggering callback recreation
   translationDependenciesRef.current = translationDependencies;
 
   const { client } = useRAQIV2Client(ignoreCache ?? false);
   const loadUniverseForRowResponses = useLoadUniverseIds();
+  const loadAnnouncementForRowResponses = useLoadAnnouncementIds();
 
   // Helper to extract resource/timeSpec/metric from the first metric spec.
   // Granularity comes along for the ride because the synthetic Timestamp
@@ -225,6 +226,7 @@ const AnalyticsDataTable = <TColumnKey extends string>({
     };
   }, [dataColumnSpecs]);
 
+  /* oxlint-disable react/react-compiler -- ref reads are deferred to async invocation time, not executed during render */
   const makeDimensionGetData = useCallback(
     (dimension: TRAQIV2Dimension | typeof TIMESTAMP_PSEUDO_DIMENSION) =>
       async (
@@ -395,12 +397,14 @@ const AnalyticsDataTable = <TColumnKey extends string>({
           mergeMetricBreakdownRows ? dataColumnSpecs.filter(isRAQIV2TableColumnSpec) : undefined,
         );
         loadUniverseForRowResponses(response.values);
+        loadAnnouncementForRowResponses(response.values);
         return response;
       }
 
       const customResponse = await dataSpec.getData(request);
       if (request.rows.length === 0) {
         loadUniverseForRowResponses(customResponse.values);
+        loadAnnouncementForRowResponses(customResponse.values);
       }
       return customResponse;
     },
@@ -412,6 +416,7 @@ const AnalyticsDataTable = <TColumnKey extends string>({
       mergeMetricBreakdownRows,
       requiredBreakdownRows,
       loadUniverseForRowResponses,
+      loadAnnouncementForRowResponses,
     ],
   );
 
@@ -457,6 +462,7 @@ const AnalyticsDataTable = <TColumnKey extends string>({
   const columnConfigs: TableDataColumnConfig<ColumnKeyWithTimestamp>[] = useMemo(() => {
     return allColumnSpecs.map((spec) => buildTableDataColumnConfig(spec));
   }, [allColumnSpecs]);
+  /* oxlint-enable react/react-compiler */
 
   const emptyStateTableHeight = useMemo<number | undefined>(() => {
     if (!requiredBreakdownRows?.length) {
@@ -467,7 +473,7 @@ const AnalyticsDataTable = <TColumnKey extends string>({
       ? requiredBreakdownRows.length + 1
       : requiredBreakdownRows.length;
     return rows * HeightPerTableRow;
-  }, [isTotalRowIncluded, requiredBreakdownRows?.length]);
+  }, [isTotalRowIncluded, requiredBreakdownRows]);
 
   const getTableHeader = useCallback(
     (data: Map<ColumnKeyWithTimestamp, CellDataType>[], isDataLoading: boolean) => {
