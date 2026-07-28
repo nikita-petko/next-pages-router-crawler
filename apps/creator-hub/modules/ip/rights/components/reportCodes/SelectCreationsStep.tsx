@@ -198,14 +198,16 @@ const SelectCreationsStep: FunctionComponent<SelectCreationsStepProps> = ({
                   />
                 </Grid>
               ))}
-              <Grid item sx={{ width: TILE_WIDTH }}>
-                <ReportExperienceTile
-                  rootPlaceId={rootPlaceId}
-                  experienceName={experienceDetails?.contentName ?? ''}
-                  isLoading={isExperienceDetailsPending}
-                  onReportExperience={handleReportExperienceDirectly}
-                />
-              </Grid>
+              {rootPlaceId ? (
+                <Grid item sx={{ width: TILE_WIDTH }}>
+                  <ReportExperienceTile
+                    rootPlaceId={rootPlaceId}
+                    experienceName={experienceDetails?.contentName ?? ''}
+                    isLoading={isExperienceDetailsPending}
+                    onReportExperience={handleReportExperienceDirectly}
+                  />
+                </Grid>
+              ) : null}
             </Grid>
           </Grid>
         ) : (

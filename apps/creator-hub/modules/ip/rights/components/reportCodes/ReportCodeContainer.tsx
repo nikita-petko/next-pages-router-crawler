@@ -1,11 +1,12 @@
-import { useRouter } from 'next/router';
 import type { FunctionComponent } from 'react';
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/router';
 import {
   AccountStatusEnum,
   ClaimContentContentTypeEnum,
   ClaimItemDiscoveredFromEnum,
   ClaimItemSourceEnum,
+  SnapshotChannelEnum,
   SnapshotContentContentTypeEnum,
 } from '@rbx/client-rights/v1';
 import type { SnapshotContent } from '@rbx/client-rights/v1';
@@ -109,7 +110,6 @@ const UseReportCodeContainer: FunctionComponent<UseReportCodeContainerProps> = (
   enableClaimsAndDisputes = false,
 }) => {
   const { account, user, features } = useCurrentAccountContext();
-  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const {
     handler,
     handlerReset,
@@ -141,7 +141,11 @@ const UseReportCodeContainer: FunctionComponent<UseReportCodeContainerProps> = (
   const [requestName, setRequestName] = useState('');
 
   const [rootPlaceId, setRootPlaceId] = useState(0);
-  const snapshotUniverseId = snapshotView?.snapshot?.universeId;
+  // Direct experience reporting only applies to Experience-channel snapshots.
+  // Other channels (e.g. Feed) target individual snapshot contents only, so we
+  // withhold the universe id to suppress the resolve-to-experience UI path.
+  const isExperienceChannel = snapshotView?.snapshot?.channel === SnapshotChannelEnum.Experience;
+  const snapshotUniverseId = isExperienceChannel ? snapshotView?.snapshot?.universeId : undefined;
 
   const [reportCodeCart, setReportCodeCart] = useState<Map<string, SnapshotContent>>(
     () => new Map(),
@@ -287,17 +291,16 @@ const UseReportCodeContainer: FunctionComponent<UseReportCodeContainerProps> = (
     handleClickNext();
   }, [handleClickNext]);
 
-  useEffect(() => {
-    if (handlerIsError && !isErrorDialogOpen) {
-      setIsErrorDialogOpen(true);
-    }
-  }, [handlerIsError, isErrorDialogOpen]);
+  // The error dialog's visibility is derived directly from the handler's error
+  // state rather than mirrored into separate state: closing the dialog resets
+  // the handler (below), which clears handlerIsError and hides the dialog.
+  const isErrorDialogOpen = handlerIsError;
 
   const redirectUrl = enableClaimsAndDisputes ? CLAIMS_HREF : ACCOUNTS_HREF;
 
   const reset = useCallback(() => {
     handlerReset();
-    router.push(redirectUrl);
+    void router.push(redirectUrl);
   }, [handlerReset, router, redirectUrl]);
 
   useEffect(() => {
@@ -319,7 +322,7 @@ const UseReportCodeContainer: FunctionComponent<UseReportCodeContainerProps> = (
   }
 
   if (account && account.status && account.status !== AccountStatusEnum.Verified) {
-    router.push(ACCOUNTS_HREF);
+    void router.push(ACCOUNTS_HREF);
     return null;
   }
 
@@ -332,10 +335,7 @@ const UseReportCodeContainer: FunctionComponent<UseReportCodeContainerProps> = (
   const HandlerErrorDialog = createClaimHandlerErrorDialog({
     open: isErrorDialogOpen,
     reset: handlerReset,
-    onClose: () => {
-      setIsErrorDialogOpen(false);
-      handlerReset();
-    },
+    onClose: handlerReset,
     isLoading: handlerIsPending,
     onSubmit: () => handler(submissionData),
     shouldEditConflictClaim,
@@ -386,7 +386,9 @@ const UseReportCodeContainer: FunctionComponent<UseReportCodeContainerProps> = (
             isDrawerOpen={isSelectCartDrawerOpen}
             onDrawerOpenChange={setIsSelectCartDrawerOpen}
             onReportItems={handleReportSnapshotItems}
-            onReportExperienceDirectly={handleReportExperienceDirectly}
+            onReportExperienceDirectly={
+              isExperienceChannel ? handleReportExperienceDirectly : undefined
+            }
             onCancel={() => router.push(redirectUrl)}
             isSnapshotLoading={isSnapshotPending}
             snapshotLoadError={snapshotLoadError}
