@@ -60,6 +60,7 @@ import GroupFeaturesStatus from '@modules/group/components/moderation/GroupFeatu
 import { toastDurationTime, CreatorType } from '@modules/miscellaneous/common';
 import { ACCOUNT_VERIFICATION_URL } from '@modules/miscellaneous/common/constants/linkConstants';
 import FormMode from '@modules/miscellaneous/common/enums/FormMode';
+import useFormSubmissionAnalytics from '@modules/miscellaneous/hooks/useFormSubmissionAnalytics';
 import TranslationNamespace from '@modules/miscellaneous/localization/enums/TranslationNamespace';
 import { creatorHub, www } from '@modules/miscellaneous/urls';
 import { getEnumKeyByValue } from '@modules/miscellaneous/utils';
@@ -123,6 +124,7 @@ export type ConfigureExperienceFormProps = {
   enableAudienceControls?: boolean;
 };
 
+/* oxlint-disable react/react-compiler -- react-hook-form watch() is incompatible with React Compiler memoization */
 const ConfigureExperienceForm: FunctionComponent<
   React.PropsWithChildren<ConfigureExperienceFormProps>
 > = ({
@@ -158,6 +160,7 @@ const ConfigureExperienceForm: FunctionComponent<
     cx,
   } = useConfigureExperienceFormStyles();
   const queryClient = useQueryClient();
+  const formSubmissionAnalytics = useFormSubmissionAnalytics('configure_experience');
   const { refreshGameDetails, isLoadingGame, gameDetails } = useCurrentGame();
   const { user } = useAuthentication();
   const useTranslationResult = useTranslation();
@@ -616,6 +619,7 @@ const ConfigureExperienceForm: FunctionComponent<
 
   const handleFormSubmit: SubmitHandler<ConfigureExperienceFormType> = useCallback(
     async (data) => {
+      formSubmissionAnalytics.started();
       setFormSubmissionErrorMsg(null);
       const genre = getGenreType(data.genre, data.subgenre, genreToSubgenre);
 
@@ -697,6 +701,7 @@ const ConfigureExperienceForm: FunctionComponent<
             },
           ]),
         );
+        formSubmissionAnalytics.failed();
         return;
       }
 
@@ -761,8 +766,11 @@ const ConfigureExperienceForm: FunctionComponent<
           fieldNameList: errorFields.join(', '),
         })}`;
         setFormSubmissionErrorMsg(errorFieldsString);
+        formSubmissionAnalytics.failed();
         return;
       }
+
+      formSubmissionAnalytics.succeeded();
 
       // Show beta mode alert if user successfully saved with privacy=Public and beta mode enabled
       // Otherwise, hide the alert
@@ -834,6 +842,7 @@ const ConfigureExperienceForm: FunctionComponent<
       dirtyFields.name,
       dirtyFields.subgenre,
       enableAudienceControls,
+      formSubmissionAnalytics,
     ],
   );
 
@@ -1717,5 +1726,6 @@ const ConfigureExperienceForm: FunctionComponent<
     </Grid>
   );
 };
+/* oxlint-enable react/react-compiler */
 
 export default ConfigureExperienceForm;
