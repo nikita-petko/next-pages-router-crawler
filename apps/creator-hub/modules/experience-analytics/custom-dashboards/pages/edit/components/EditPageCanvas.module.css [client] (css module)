@@ -17,6 +17,7 @@ __turbopack_context__.v({
   "chartTableFrame": "EditPageCanvas-module__pZAamq__chartTableFrame",
   "chartTileMount": "EditPageCanvas-module__pZAamq__chartTileMount",
   "chartTileMountSelected": "EditPageCanvas-module__pZAamq__chartTileMountSelected",
+  "summaryRow": "EditPageCanvas-module__pZAamq__summaryRow",
   "summaryTileMount": "EditPageCanvas-module__pZAamq__summaryTileMount",
   "summaryTileMountSelected": "EditPageCanvas-module__pZAamq__summaryTileMountSelected",
   "summaryTileSelectionTarget": "EditPageCanvas-module__pZAamq__summaryTileSelectionTarget",

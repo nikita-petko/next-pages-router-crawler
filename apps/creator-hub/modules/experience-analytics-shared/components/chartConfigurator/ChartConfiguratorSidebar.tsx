@@ -98,7 +98,7 @@ const useStyles = makeStyles()(() => ({
   // token (`xxlarge` ≈ 1.5rem) is far short of what's needed here, so this
   // stays in CSS rather than a Tailwind utility.
   lastSection: {
-    paddingBottom: '10rem',
+    paddingBottom: 'var(--chart-configurator-scroll-headroom, 10rem)',
   },
 }));
 

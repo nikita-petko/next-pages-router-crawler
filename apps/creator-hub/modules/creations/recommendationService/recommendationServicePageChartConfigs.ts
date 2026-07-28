@@ -1,0 +1,68 @@
+import { RAQIV2Dimension, RAQIV2Metric } from '@rbx/creator-hub-analytics-config';
+import AnalyticsComponentType from '@modules/analytics-configurations/AnalyticsComponentType';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
+import type { ChartConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedChartConfig';
+import RAQIV2SummaryType from '@modules/experience-analytics-shared/enums/RAQIV2SummaryType';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
+
+export const chartConfigAverageViewTimePerUser = {
+  type: AnalyticsComponentType.Chart,
+  titleKey: translationKey(
+    'Label.Metric.AvgViewTimePerViewer',
+    TranslationNamespace.RecommendationService,
+  ),
+  definitionTooltipKey: translationKey(
+    'Description.AvgViewTimePerViewer',
+    TranslationNamespace.RecommendationService,
+  ),
+  metric: RAQIV2Metric.AvgViewTimePerViewer,
+  overrides: {},
+  chartType: ChartType.Spline,
+  summarySpec: {
+    totalSummaryTypes: [{ type: RAQIV2SummaryType.Average }],
+    perBreakdownSummaryTypes: [],
+    aggregatedBreakdownSummaryTypes: [],
+  },
+} as const satisfies ChartConfig;
+
+export const chartConfigNumItemsImpressedPerUser = {
+  type: AnalyticsComponentType.Chart,
+  titleKey: translationKey(
+    'Label.Metric.NumItemsImpressedPerUser',
+    TranslationNamespace.RecommendationService,
+  ),
+  definitionTooltipKey: translationKey(
+    'Description.UniqueItemsPerUser',
+    TranslationNamespace.RecommendationService,
+  ),
+  metric: RAQIV2Metric.AverageImpressionsPerUser,
+  overrides: {},
+  chartType: ChartType.Spline,
+  summarySpec: {
+    totalSummaryTypes: [{ type: RAQIV2SummaryType.Average }],
+    perBreakdownSummaryTypes: [],
+    aggregatedBreakdownSummaryTypes: [],
+  },
+} as const satisfies ChartConfig;
+
+export const chartConfigTotalActionsByActionType = {
+  type: AnalyticsComponentType.Chart,
+  titleKey: translationKey('Label.Card.TotalActions', TranslationNamespace.RecommendationService),
+  definitionTooltipKey: translationKey(
+    'Description.TotalActions',
+    TranslationNamespace.RecommendationService,
+  ),
+  metric: RAQIV2Metric.TotalActionsByActionType,
+  overrides: {
+    breakdown: {
+      override: [RAQIV2Dimension.ActionType],
+    },
+  },
+  chartType: ChartType.Spline,
+  summarySpec: {
+    totalSummaryTypes: [{ type: RAQIV2SummaryType.Average }],
+    perBreakdownSummaryTypes: [],
+    aggregatedBreakdownSummaryTypes: [],
+  },
+} as const satisfies ChartConfig;

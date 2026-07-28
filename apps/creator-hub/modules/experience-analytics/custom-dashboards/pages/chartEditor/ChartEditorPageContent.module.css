@@ -44,9 +44,13 @@
   }
 
   .chartConfigurator > .chartConfiguratorContent {
+    --chart-configurator-scroll-headroom: var(--gap-xxlarge);
+
     display: flex;
     flex-direction: column;
     flex: 0 1 auto;
+    /* Desktop keeps the 12px control↔preview gutter; narrow stacks flush. */
+    gap: 0;
     min-height: 0;
     overflow: visible;
   }
@@ -62,6 +66,6 @@
     border-right: 0;
     border-bottom: 1px solid var(--stroke-default);
     padding-right: 0;
-    padding-bottom: 24px;
+    padding-bottom: 0;
   }
 }

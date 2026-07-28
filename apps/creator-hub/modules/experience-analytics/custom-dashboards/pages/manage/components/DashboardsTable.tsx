@@ -1,4 +1,5 @@
 import type { FC, ReactNode } from 'react';
+import { Table, TableBody, TableCell, TableRow } from '@rbx/foundation-ui';
 import type { UserDisplayNamesById } from '../../../hooks/useUserDisplayNamesQuery';
 import type { CustomDashboardListItem } from '../../../types';
 import type { DashboardActionHandlers } from '../hooks/useDashboardActions';
@@ -6,6 +7,7 @@ import DashboardsTableHeader from './DashboardsTableHeader';
 import DashboardsTableRow from './DashboardsTableRow';
 import DashboardsTableSkeletonRow from './DashboardsTableSkeletonRow';
 import { MANAGE_TABLE_COLUMN_COUNT } from './manageTableColumns';
+import styles from './DashboardsTable.module.css';
 
 /** Manage-page table chrome. Three render modes drive `<tbody>`. */
 type DashboardsTableMode =
@@ -25,10 +27,10 @@ type DashboardsTableProps = {
 
 const DashboardsTable: FC<DashboardsTableProps> = ({ mode }) => {
   return (
-    <div className='width-full scroll-x radius-medium stroke-standard stroke-default'>
-      <table className='width-full [border-collapse:collapse]'>
+    <div className={`${styles.tableScroller} width-full`}>
+      <Table variant='Framed' size='Small' className={styles.table}>
         <DashboardsTableHeader />
-        <tbody>
+        <TableBody className={styles.tableBody}>
           {mode.kind === 'loading' &&
             Array.from({ length: mode.skeletonRowCount }, (_, idx) => (
               <DashboardsTableSkeletonRow key={`dashboards-skeleton-${idx}`} />
@@ -49,14 +51,16 @@ const DashboardsTable: FC<DashboardsTableProps> = ({ mode }) => {
               />
             ))}
           {mode.kind === 'custom' && (
-            <tr>
-              <td colSpan={MANAGE_TABLE_COLUMN_COUNT} className='padding-x-medium'>
+            <TableRow className={styles.customRow}>
+              <TableCell
+                colSpan={MANAGE_TABLE_COLUMN_COUNT}
+                className={`${styles.customCell} padding-x-medium`}>
                 {mode.content}
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           )}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 };

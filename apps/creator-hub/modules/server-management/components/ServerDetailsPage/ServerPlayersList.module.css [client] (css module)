@@ -1,0 +1,5 @@
+__turbopack_context__.v({
+  "playerAvatar": "ServerPlayersList-module__wIh_MG__playerAvatar",
+  "snackbarContainer": "ServerPlayersList-module__wIh_MG__snackbarContainer",
+  "tightOutline": "ServerPlayersList-module__wIh_MG__tightOutline",
+});

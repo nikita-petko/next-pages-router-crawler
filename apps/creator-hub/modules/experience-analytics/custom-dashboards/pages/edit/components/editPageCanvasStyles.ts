@@ -39,7 +39,6 @@ const emptySkeletonBorderStyle: CSSProperties = {
 const SUMMARY_TILE_MIN_HEIGHT_PX = 95;
 export const SUMMARY_ROW_GAP_PX = WORKSPACE_GAP_PX;
 export const SUMMARY_TILE_MIN_WIDTH_PX = 190;
-const SUMMARY_TILE_MAX_WIDTH_PX = 217;
 export const summaryTileConfiguredSizeStyle: CSSProperties = {
   minWidth: 0,
   width: '100%',
@@ -50,14 +49,8 @@ const summaryTileAddCardSizeStyle: CSSProperties = {
   minHeight: SUMMARY_TILE_MIN_HEIGHT_PX,
   height: '100%',
 };
-export const summaryRowStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: `repeat(auto-fill, minmax(min(${SUMMARY_TILE_MIN_WIDTH_PX}px, 100%), ${SUMMARY_TILE_MAX_WIDTH_PX}px))`,
-  gap: SUMMARY_ROW_GAP_PX,
-  alignItems: 'stretch',
-  justifyContent: 'start',
-  width: '100%',
-};
+// The summary grid and narrow chart-preview override live in `EditPageCanvas.module.css`;
+// the chart canvas grid uses Foundation Tailwind utilities on its `<section>`.
 
 export const tileChromeHostStyle: CSSProperties = {
   position: 'relative',
@@ -126,20 +119,12 @@ export const summarySkeletonStyle: CSSProperties = {
 // supposed to do but doesn't always (native `<button>` perturbs the math).
 // Figma node 2384-62450: chart tiles use 24px row/column gaps in the workspace.
 const CHART_TILE_HEIGHT_PX = CUSTOM_DASHBOARD_CHART_TILE_HEIGHT_PX;
-const CHART_ROW_GAP_PX = WORKSPACE_GAP_PX;
 export const CHART_COLUMN_GAP_PX = WORKSPACE_GAP_PX;
 const chartTileBaseStyle: CSSProperties = {
   minWidth: 0,
   width: '100%',
   height: CHART_TILE_HEIGHT_PX,
   boxSizing: 'border-box',
-};
-export const chartCanvasGridStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-  columnGap: CHART_COLUMN_GAP_PX,
-  rowGap: CHART_ROW_GAP_PX,
-  width: '100%',
 };
 export const chartFullWidthCellStyle: CSSProperties = {
   gridColumn: '1 / -1',

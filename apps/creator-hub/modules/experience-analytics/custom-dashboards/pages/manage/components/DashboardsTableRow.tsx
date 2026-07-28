@@ -1,5 +1,5 @@
-import { type CSSProperties, type FC, type ReactNode, useCallback } from 'react';
-import { Button, Toggle, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
+import { type FC, type ReactNode, useCallback } from 'react';
+import { Button, TableCell, TableRow, Toggle, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
 import LocalCopyBadge from '../../../components/LocalCopyBadge';
 import type { UserDisplayNamesById } from '../../../hooks/useUserDisplayNamesQuery';
 import type { CustomDashboardListItem } from '../../../types';
@@ -8,16 +8,13 @@ import { useManagePageTranslations } from '../useManagePageTranslations';
 import { formatLastModifiedDate } from '../utils/customDashboardFormatting';
 import DashboardRowOverflowMenu from './DashboardRowOverflowMenu';
 import { MANAGE_TABLE_COLUMNS } from './manageTableColumns';
+import tableStyles from './DashboardsTable.module.css';
 import styles from './DashboardsTableRow.module.css';
 
-const DIVIDER_STYLE: CSSProperties = {
-  borderBottom: 'var(--stroke-standard) solid var(--color-stroke-default)',
-};
-
 /**
- * One populated row. The final `<td>` reserves width unconditionally so
- * column widths don't reflow when the trailing controls fade in on hover /
- * focus-within.
+ * One populated row. On wide viewports, the final `<td>` reserves width so
+ * the columns don't reflow when its controls appear. On narrow viewports,
+ * CSS moves that cell beside the name to form the row-section header.
  */
 type DashboardsTableRowProps = {
   readonly dashboard: CustomDashboardListItem;
@@ -120,26 +117,44 @@ const DashboardsTableRow: FC<DashboardsTableRowProps> = ({
     ),
   };
 
+  const mobileLabelsByColumn: Partial<Record<(typeof MANAGE_TABLE_COLUMNS)[number], ReactNode>> = {
+    createdBy: t.columnCreatedBy,
+    modifiedBy: t.columnModifiedBy,
+    lastModified: t.columnLastModified,
+    pinToSidebar: t.columnPinToSidebar,
+  };
+
+  const cellClassesByColumn: Record<(typeof MANAGE_TABLE_COLUMNS)[number], string> = {
+    name: tableStyles.nameCell,
+    createdBy: tableStyles.createdByCell,
+    modifiedBy: tableStyles.modifiedByCell,
+    lastModified: tableStyles.lastModifiedCell,
+    pinToSidebar: tableStyles.pinToSidebarCell,
+    actions: tableStyles.actionsCell,
+  };
+
   return (
-    <tr
-      style={DIVIDER_STYLE}
-      className={`${styles.customDashboardManageTableRow} hover:bg-surface-100 focus-within:bg-surface-100`}>
-      {MANAGE_TABLE_COLUMNS.map((columnKey) => (
-        <td
-          key={columnKey}
-          className={
-            columnKey === 'actions'
-              ? 'padding-x-medium padding-y-small width-[120px]'
-              : columnKey === 'name'
-                ? 'padding-x-medium padding-y-small min-width-0'
-                : columnKey === 'lastModified'
-                  ? 'padding-x-medium padding-y-small'
-                  : 'padding-x-medium padding-y-small'
-          }>
-          {cellsByColumn[columnKey]}
-        </td>
-      ))}
-    </tr>
+    <TableRow
+      isHoverable
+      className={`${tableStyles.tableRow} ${styles.customDashboardManageTableRow}`}>
+      {MANAGE_TABLE_COLUMNS.map((columnKey) => {
+        const mobileLabel = mobileLabelsByColumn[columnKey];
+        return (
+          <TableCell
+            key={columnKey}
+            className={`${tableStyles.tableCell} ${cellClassesByColumn[columnKey]}`}>
+            {mobileLabel ? (
+              <span className={`${tableStyles.mobileCellLabel} text-title-small content-muted`}>
+                {mobileLabel}
+              </span>
+            ) : null}
+            <div className={mobileLabel ? tableStyles.mobileCellContent : undefined}>
+              {cellsByColumn[columnKey]}
+            </div>
+          </TableCell>
+        );
+      })}
+    </TableRow>
   );
 };
 

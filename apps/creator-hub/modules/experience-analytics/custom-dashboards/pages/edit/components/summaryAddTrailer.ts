@@ -19,6 +19,14 @@ export function getSummaryTrailerCounts(
     MAX_SUMMARY_CARDS_PER_DASHBOARD - configuredCount - addSlots,
   );
   const normalizedColumnCapacity = Math.max(0, Math.floor(columnCapacity));
+  // Single-column (narrow/mobile) rows stack full-width cards — decorative
+  // empty skeletons only pad multi-column desktop rows.
+  if (normalizedColumnCapacity > 0 && normalizedColumnCapacity <= 1) {
+    return {
+      addPlaceholderAllowed,
+      skeletonCount: 0,
+    };
+  }
   const occupiedSlots =
     normalizedColumnCapacity > 0 ? configuredCount % normalizedColumnCapacity : 0;
   const slotsOnCurrentRow =

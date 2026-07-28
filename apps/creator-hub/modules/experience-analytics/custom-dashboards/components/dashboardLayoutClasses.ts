@@ -15,4 +15,5 @@ export const DASHBOARD_BODY_COMPONENT_NODE_CLASSES = 'min-width-0 width-full';
 export const DASHBOARD_BODY_SUMMARY_COLLECTION_CLASSES =
   'flex flex-row wrap gap-xxlarge width-full min-width-0 items-start justify-start';
 
-export const DASHBOARD_BODY_SUMMARY_COMPONENT_NODE_CLASSES = 'min-width-0 [width:217px]';
+export const DASHBOARD_BODY_SUMMARY_COMPONENT_NODE_CLASSES =
+  'min-width-0 [width:217px] max-[900px]:width-full';

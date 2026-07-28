@@ -1,11 +1,9 @@
-import type { CSSProperties, FC } from 'react';
+import type { FC } from 'react';
+import { TableHeader, TableHeaderCell, TableRow } from '@rbx/foundation-ui';
 import { useManagePageTranslations } from '../useManagePageTranslations';
 import { MANAGE_TABLE_COLUMNS } from './manageTableColumns';
 import PinToSidebarColumnHeader from './PinToSidebarColumnHeader';
-
-const DIVIDER_STYLE: CSSProperties = {
-  borderBottom: 'var(--stroke-standard) solid var(--color-stroke-default)',
-};
+import styles from './DashboardsTable.module.css';
 
 /**
  * Column-header row for the dashboards table. The final column is the
@@ -15,63 +13,39 @@ const DIVIDER_STYLE: CSSProperties = {
 const DashboardsTableHeader: FC = () => {
   const t = useManagePageTranslations();
   return (
-    <thead style={DIVIDER_STYLE}>
-      <tr className='text-caption-medium content-muted'>
+    <TableHeader className={styles.tableHeader}>
+      <TableRow>
         {MANAGE_TABLE_COLUMNS.map((columnKey) => {
           if (columnKey === 'name') {
-            return (
-              <th
-                key={columnKey}
-                scope='col'
-                className='text-align-x-left padding-x-medium padding-y-small'>
-                {t.columnName}
-              </th>
-            );
+            return <TableHeaderCell key={columnKey}>{t.columnName}</TableHeaderCell>;
           }
           if (columnKey === 'createdBy') {
-            return (
-              <th
-                key={columnKey}
-                scope='col'
-                className='text-align-x-left padding-x-medium padding-y-small'>
-                {t.columnCreatedBy}
-              </th>
-            );
+            return <TableHeaderCell key={columnKey}>{t.columnCreatedBy}</TableHeaderCell>;
           }
           if (columnKey === 'modifiedBy') {
-            return (
-              <th
-                key={columnKey}
-                scope='col'
-                className='text-align-x-left padding-x-medium padding-y-small'>
-                {t.columnModifiedBy}
-              </th>
-            );
+            return <TableHeaderCell key={columnKey}>{t.columnModifiedBy}</TableHeaderCell>;
           }
           if (columnKey === 'lastModified') {
-            return (
-              <th
-                key={columnKey}
-                scope='col'
-                className='text-align-x-left padding-x-medium padding-y-small'>
-                {t.columnLastModified}
-              </th>
-            );
+            return <TableHeaderCell key={columnKey}>{t.columnLastModified}</TableHeaderCell>;
           }
           if (columnKey === 'pinToSidebar') {
             return (
-              <th
-                key={columnKey}
-                scope='col'
-                className='text-align-x-left padding-x-medium padding-y-small'>
+              <TableHeaderCell key={columnKey}>
                 <PinToSidebarColumnHeader />
-              </th>
+              </TableHeaderCell>
             );
           }
-          return <th key={columnKey} scope='col' className='width-[120px]' aria-hidden='true' />;
+          return (
+            <TableHeaderCell
+              key={columnKey}
+              className={styles.desktopActionsColumn}
+              aria-hidden='true'>
+              {null}
+            </TableHeaderCell>
+          );
         })}
-      </tr>
-    </thead>
+      </TableRow>
+    </TableHeader>
   );
 };
 

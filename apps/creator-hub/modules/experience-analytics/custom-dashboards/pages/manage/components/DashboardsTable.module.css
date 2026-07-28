@@ -1,0 +1,139 @@
+.tableScroller {
+  overflow-x: auto;
+}
+
+.desktopActionsColumn,
+.actionsCell {
+  width: 120px;
+}
+
+.mobileCellLabel {
+  display: none;
+}
+
+/* Keep this synchronized with constants/narrowViewport.ts. */
+@media (max-width: 900px) {
+  .tableScroller {
+    overflow: visible;
+  }
+
+  /* Foundation Table owns this framing wrapper, which is useful on desktop
+   * but would visually join the independent compact-view row sections. */
+  .tableScroller > div {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .table,
+  .tableBody {
+    display: block;
+    width: 100%;
+  }
+
+  .tableHeader {
+    display: none;
+  }
+
+  .tableBody {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-500);
+  }
+
+  .tableRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'name actions'
+      'created-by created-by'
+      'modified-by modified-by'
+      'last-modified last-modified'
+      'pin-to-sidebar pin-to-sidebar';
+    width: 100%;
+  }
+
+  .tableCell {
+    min-width: 0;
+    padding: var(--size-200) var(--size-400);
+    border-bottom: 0;
+  }
+
+  .nameCell {
+    grid-area: name;
+    display: flex;
+    align-items: center;
+    min-height: var(--size-1200);
+    background: var(--color-surface-100);
+    border-radius: var(--radius-medium) 0 0 var(--radius-medium);
+  }
+
+  .createdByCell {
+    grid-area: created-by;
+  }
+
+  .modifiedByCell {
+    grid-area: modified-by;
+  }
+
+  .lastModifiedCell {
+    grid-area: last-modified;
+  }
+
+  .pinToSidebarCell {
+    grid-area: pin-to-sidebar;
+  }
+
+  .actionsCell {
+    grid-area: actions;
+    display: flex;
+    align-items: center;
+    width: auto;
+    min-height: var(--size-1200);
+    padding-left: 0;
+    background: var(--color-surface-100);
+    border-radius: 0 var(--radius-medium) var(--radius-medium) 0;
+  }
+
+  .createdByCell,
+  .modifiedByCell,
+  .lastModifiedCell,
+  .pinToSidebarCell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--size-400);
+  }
+
+  .mobileCellLabel {
+    display: block;
+    min-width: 0;
+  }
+
+  .mobileCellContent {
+    min-width: 0;
+    justify-self: end;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  .skeletonRow .nameCell {
+    grid-column: 1 / -1;
+    border-radius: var(--radius-medium);
+  }
+
+  .skeletonRow .actionsCell {
+    display: none;
+  }
+
+  .customRow {
+    display: block;
+  }
+
+  .customCell {
+    display: block;
+    width: 100%;
+    border-bottom: 0;
+  }
+}

@@ -67,6 +67,7 @@ import DashboardTileControlError, {
   type DashboardControlOverrideState,
 } from '../../../components/DashboardTileControlError';
 import { CUSTOM_DASHBOARDS_LEARN_MORE_HREF } from '../../../constants/docsLinks';
+import useIsCustomDashboardNarrowViewport from '../../../hooks/useIsCustomDashboardNarrowViewport';
 import {
   getEmptyChartSlotTarget,
   selectChartPlacements,
@@ -132,7 +133,6 @@ import {
   chartAddPlaceholderActionsStyle,
   chartAddPlaceholderCardStyle,
   chartAddPlaceholderCopyStyle,
-  chartCanvasGridStyle,
   CHART_COLUMN_GAP_PX,
   chartFullWidthCellStyle,
   chartHalfWidthCellStyle,
@@ -143,7 +143,6 @@ import {
   SUMMARY_TILE_MIN_WIDTH_PX,
   summaryAddPlaceholderIconStyle,
   summaryAddPlaceholderStyle,
-  summaryRowStyle,
   summarySkeletonStyle,
   summaryTileChromeStyle,
   summaryTileConfiguredSizeStyle,
@@ -192,6 +191,7 @@ const RESIZE_UP_TRIGGER_TARGET_RATIO = 0.7;
 const RESIZE_PREVIEW_ANCHOR_BLEND_RANGE_PX = 48;
 const POINTER_DRAG_ACTIVATION_DISTANCE_PX = 6;
 const MULTI_TILE_RESIZE_MIN_WIDTH_RATIO = 0.35;
+const EMPTY_SENSORS: ReturnType<typeof useSensors> = [];
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
@@ -602,13 +602,16 @@ const ChartAddPlaceholderCard: FC<ChartAddPlaceholderCardProps> = ({
   );
 };
 
-const ChartAddRowAffordance: FC<ChartAddPlaceholderCardProps> = ({
+const ChartAddRowAffordance: FC<
+  ChartAddPlaceholderCardProps & { readonly isNarrowViewport: boolean }
+> = ({
   onAddPlaceholder,
   illustrationLabel,
   addChartHeadline,
   addChartDescription,
   addChartLearnMoreLabel,
   addChartButtonLabel,
+  isNarrowViewport,
 }) => (
   <>
     <ChartAddPlaceholderCard
@@ -618,14 +621,15 @@ const ChartAddRowAffordance: FC<ChartAddPlaceholderCardProps> = ({
       addChartDescription={addChartDescription}
       addChartLearnMoreLabel={addChartLearnMoreLabel}
       addChartButtonLabel={addChartButtonLabel}
-      layoutStyle={chartHalfWidthCellStyle}
+      layoutStyle={isNarrowViewport ? chartFullWidthCellStyle : chartHalfWidthCellStyle}
     />
-    <ChartSkeleton layoutStyle={chartHalfWidthCellStyle} />
+    {isNarrowViewport ? null : <ChartSkeleton layoutStyle={chartHalfWidthCellStyle} />}
   </>
 );
 
 type ChartCanvasEmptyStateProps = ChartAddPlaceholderCardProps & {
   readonly sectionLabel: string;
+  readonly isNarrowViewport: boolean;
 };
 
 const buildRowGridStyle = (cellCount: number): CSSProperties => ({
@@ -636,8 +640,8 @@ const buildRowGridStyle = (cellCount: number): CSSProperties => ({
 });
 
 /**
- * Half-width chart-add placeholder with an empty visual slot, matching the
- * first persisted chart row that will be created from it.
+ * Chart-add placeholder for an empty canvas. Desktop pairs it with an empty
+ * half-width visual slot; narrow viewports show a single full-width add card.
  */
 const ChartCanvasEmptyState: FC<ChartCanvasEmptyStateProps> = ({
   onAddPlaceholder,
@@ -647,8 +651,12 @@ const ChartCanvasEmptyState: FC<ChartCanvasEmptyStateProps> = ({
   addChartLearnMoreLabel,
   addChartButtonLabel,
   sectionLabel,
+  isNarrowViewport,
 }) => (
-  <section aria-label={sectionLabel} className='width-full' style={buildRowGridStyle(2)}>
+  <section
+    aria-label={sectionLabel}
+    className='width-full'
+    style={buildRowGridStyle(isNarrowViewport ? 1 : 2)}>
     <ChartAddPlaceholderCard
       onAddPlaceholder={onAddPlaceholder}
       illustrationLabel={illustrationLabel}
@@ -657,7 +665,7 @@ const ChartCanvasEmptyState: FC<ChartCanvasEmptyStateProps> = ({
       addChartLearnMoreLabel={addChartLearnMoreLabel}
       addChartButtonLabel={addChartButtonLabel}
     />
-    <ChartSkeleton />
+    {isNarrowViewport ? null : <ChartSkeleton />}
   </section>
 );
 
@@ -1110,6 +1118,7 @@ type DashboardCanvasBodyProps = {
   readonly activeChartDragId: TileId | null;
   readonly summaryCardCount: number;
   readonly activeEmptySlotId: string | null;
+  readonly isNarrowViewport: boolean;
   readonly onAddSummaryCard: () => void;
   readonly onAddChart: () => void;
   readonly onSelectSummaryCard: (tileId: TileId) => void;
@@ -1131,6 +1140,7 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
   activeChartDragId,
   summaryCardCount,
   activeEmptySlotId,
+  isNarrowViewport,
   onAddSummaryCard,
   onAddChart,
   onSelectSummaryCard,
@@ -1173,8 +1183,7 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
       <section
         ref={summaryRowRef}
         aria-label={t.summaryRowLabel}
-        className='width-full'
-        style={summaryRowStyle}>
+        className={`${styles.summaryRow} width-full`}>
         {summaries.map((entry) => (
           <SelectableSummaryCardMount
             key={entry.tileId}
@@ -1195,7 +1204,7 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
         ))}
         <SummaryAddTrailer
           configuredCount={summaryCardCount}
-          columnCapacity={summaryRowColumnCapacity}
+          columnCapacity={isNarrowViewport ? 1 : summaryRowColumnCapacity}
           onAddPlaceholder={handleAddSummaryCard}
           addPlaceholderLabel={t.addSummaryCardPlaceholderLabel}
         />
@@ -1204,10 +1213,17 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
         <section
           aria-label={t.chartCanvasLabel}
           data-raqi-layout='row'
-          className={`${styles.chartCanvasSection} width-full`}
-          style={chartCanvasGridStyle}>
+          className={`${styles.chartCanvasSection} grid [grid-template-columns:repeat(2,minmax(0,1fr))] gap-xxlarge width-full max-[900px]:[grid-template-columns:minmax(0,1fr)]`}>
           {chartPlacements.map((placement) => {
             if (placement.kind === 'empty-slot') {
+              // Narrow viewports stack every chart full-width and disable DnD, so
+              // half-row drop skeletons are decorative noise — keep only Add.
+              if (isNarrowViewport && !placement.isAddPlaceholderSlot) {
+                return null;
+              }
+              const emptySlotLayoutStyle = isNarrowViewport
+                ? chartFullWidthCellStyle
+                : chartHalfWidthCellStyle;
               return placement.isAddPlaceholderSlot ? (
                 <ChartAddPlaceholderCard
                   key={placement.emptySlotId}
@@ -1217,23 +1233,27 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
                   addChartDescription={t.addChartPlaceholderDescription}
                   addChartLearnMoreLabel={t.addChartPlaceholderLearnMoreLabel}
                   addChartButtonLabel={t.addChartPlaceholderButtonLabel}
-                  droppableId={placement.emptySlotId}
-                  isActiveDropTarget={activeEmptySlotId === placement.emptySlotId}
-                  layoutStyle={chartHalfWidthCellStyle}
+                  droppableId={isNarrowViewport ? undefined : placement.emptySlotId}
+                  isActiveDropTarget={
+                    !isNarrowViewport && activeEmptySlotId === placement.emptySlotId
+                  }
+                  layoutStyle={emptySlotLayoutStyle}
                 />
               ) : (
                 <DroppableChartSkeleton
                   key={placement.emptySlotId}
                   id={placement.emptySlotId}
                   isActiveDropTarget={activeEmptySlotId === placement.emptySlotId}
-                  layoutStyle={chartHalfWidthCellStyle}
+                  layoutStyle={emptySlotLayoutStyle}
                 />
               );
             }
 
             const entry = chartEntriesByTileId.get(placement.tileId);
             const tileLayoutStyle =
-              placement.columnSpan === 2 ? chartFullWidthCellStyle : chartHalfWidthCellStyle;
+              isNarrowViewport || placement.columnSpan === 2
+                ? chartFullWidthCellStyle
+                : chartHalfWidthCellStyle;
             if (!entry) {
               // Placement exists but the tile failed to synthesize: render an
               // error placeholder instead of a silent empty grid cell (Finding #2).
@@ -1250,7 +1270,7 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
                 title={placement.tile.title}
                 chartContext={chartContext}
                 layoutStyle={tileLayoutStyle}
-                isActiveDragTile={placement.tileId === activeChartDragId}
+                isActiveDragTile={!isNarrowViewport && placement.tileId === activeChartDragId}
                 overflowMenuLabel={t.tileOverflowMenuLabel}
                 selectLabel={t.chartTileSelectLabel}
                 editLabel={t.tileMenuEdit}
@@ -1272,9 +1292,10 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
               addChartDescription={t.addChartPlaceholderDescription}
               addChartLearnMoreLabel={t.addChartPlaceholderLearnMoreLabel}
               addChartButtonLabel={t.addChartPlaceholderButtonLabel}
+              isNarrowViewport={isNarrowViewport}
             />
           )}
-          {chartDragPreviewRows && activeChartDragId ? (
+          {!isNarrowViewport && chartDragPreviewRows && activeChartDragId ? (
             <ChartDragPreviewOverlay rows={chartDragPreviewRows} activeTileId={activeChartDragId} />
           ) : null}
         </section>
@@ -1287,6 +1308,7 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
           addChartLearnMoreLabel={t.addChartPlaceholderLearnMoreLabel}
           addChartButtonLabel={t.addChartPlaceholderButtonLabel}
           sectionLabel={t.chartCanvasLabel}
+          isNarrowViewport={isNarrowViewport}
         />
       )}
     </div>
@@ -1308,6 +1330,7 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
   onRedo,
 }) => {
   const t = useEditPageTranslations();
+  const isNarrowViewport = useIsCustomDashboardNarrowViewport();
   const canvasRef = useRef<HTMLElement | null>(null);
   const [activeId, setActiveId] = useState<TileId | null>(null);
   const [overId, setOverId] = useState<TileId | null>(null);
@@ -1861,21 +1884,22 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
 
   const getResizeOptions = useCallback(
     (itemId: string) => ({
-      handles: getResizeHandlesForTile(chartRows, itemId),
-      cue: getResizeCue(itemId),
-      ...getResizePreview(itemId),
-      ...getResizeSnapPreview(itemId),
+      handles: isNarrowViewport ? [] : getResizeHandlesForTile(chartRows, itemId),
+      cue: isNarrowViewport ? undefined : getResizeCue(itemId),
+      ...(isNarrowViewport ? {} : getResizePreview(itemId)),
+      ...(isNarrowViewport ? {} : getResizeSnapPreview(itemId)),
     }),
-    [chartRows, getResizeCue, getResizePreview, getResizeSnapPreview],
+    [chartRows, getResizeCue, getResizePreview, getResizeSnapPreview, isNarrowViewport],
   );
 
   const dragDropContextValue = useMemo(
     () => ({
-      isEnabled: true,
+      // Narrow viewports stack full-width tiles — drag/resize is desktop-only.
+      isEnabled: !isNarrowViewport,
       getDropIndicator,
       getResizeOptions,
     }),
-    [getDropIndicator, getResizeOptions],
+    [getDropIndicator, getResizeOptions, isNarrowViewport],
   );
 
   const resizePreviewBodyRows = useMemo(() => {
@@ -1935,7 +1959,7 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
             style={canvasContainerStyle}>
             <AnalyticsChartContainerDragDropProvider value={dragDropContextValue}>
               <DndContext
-                sensors={sensors}
+                sensors={isNarrowViewport ? EMPTY_SENSORS : sensors}
                 collisionDetection={closestCenter}
                 onDragStart={handleDragStart}
                 onDragOver={handleDragOver}
@@ -1953,6 +1977,7 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
                       activeChartDragId={activeId}
                       summaryCardCount={summaryCards.length}
                       activeEmptySlotId={getEmptyChartSlotTarget(overId) ? overId : null}
+                      isNarrowViewport={isNarrowViewport}
                       onAddSummaryCard={onAddSummaryCard}
                       onAddChart={onAddChart}
                       onSelectSummaryCard={selectSummaryCard}

@@ -4014,9 +4014,6 @@
 .\!\[border-collapse\:collapse\] {
   border-collapse: collapse !important;
 }
-.\[border-collapse\:collapse\] {
-  border-collapse: collapse;
-}
 .\[border-color\:var\(--color-content-emphasis\)\] {
   border-color: var(--color-content-emphasis);
 }
@@ -4701,10 +4698,6 @@ html.studio-webview.dark-theme,
   outline-offset: var(--stroke-thicker);
 }
 
-.focus-within\:bg-surface-100:focus-within {
-  background-color: var(--color-surface-100);
-}
-
 .hover\:underline:hover {
   -webkit-text-decoration-line: underline;
           text-decoration-line: underline;
@@ -4738,10 +4731,6 @@ html.studio-webview.dark-theme,
 
 .hover\:bg-shift-300:hover {
   background-color: var(--color-shift-300);
-}
-
-.hover\:bg-surface-100:hover {
-  background-color: var(--color-surface-100);
 }
 
 .hover\:bg-surface-200:hover {
@@ -5017,6 +5006,9 @@ html.studio-webview.dark-theme,
 }
 
 @media (max-width: 900px) {
+  .max-\[900px\]\:width-full {
+    width: 100%;
+  }
   .max-\[900px\]\:\[grid-template-columns\:minmax\(0\2c 1fr\)\] {
     grid-template-columns: minmax(0,1fr);
   }
