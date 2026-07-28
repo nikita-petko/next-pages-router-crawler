@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CreatorEligibilityEnum } from '@rbx/client-core-content-api/v1';
+import { ProgressCircle } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { LinearProgress } from '@rbx/ui';
 import { useAuthentication } from '@modules/authentication/providers';
 import LoadError from '@modules/miscellaneous/error/LoadError';
 import { toast } from '@modules/monetization-shared/snackbar/actions';
@@ -329,7 +329,11 @@ const MomentsCreationsPanel = () => {
   if (isPending && !hasMoments) {
     return (
       <div className='flex grow-1 flex-col items-center justify-center self-stretch width-full'>
-        <LinearProgress className='width-[50%]' title={translate('Label.Loading')} />
+        <ProgressCircle
+          ariaLabel={translate('Label.Loading')}
+          size='Large'
+          variant='Indeterminate'
+        />
       </div>
     );
   }
@@ -337,7 +341,11 @@ const MomentsCreationsPanel = () => {
   if (!isAllServerMomentsLoaded && !hasMoments) {
     return (
       <div className='flex grow-1 flex-col items-center justify-center self-stretch width-full'>
-        <LinearProgress className='width-[50%]' title={translate('Label.Loading')} />
+        <ProgressCircle
+          ariaLabel={translate('Label.Loading')}
+          size='Large'
+          variant='Indeterminate'
+        />
       </div>
     );
   }

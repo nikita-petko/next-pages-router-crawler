@@ -1,5 +1,5 @@
+import { Button, Link } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { Button, Link } from '@rbx/ui';
 import { MOMENTS_LEARN_MORE_URL } from '@modules/miscellaneous/common/constants/linkConstants';
 import EmptyState from '@modules/miscellaneous/components/EmptyState/EmptyState';
 
@@ -20,20 +20,17 @@ const MomentsCreationsEmptyState = ({ onCreateClick }: MomentsCreationsEmptyStat
           {translate('Description.UploadExternalVideosToMoments')}{' '}
           <Link
             aria-label={translate('Label.LearnMore')}
-            color='inherit'
             href={MOMENTS_LEARN_MORE_URL}
             target='_blank'
-            underline='always'>
+            rel='noopener noreferrer'
+            variant='Inline'
+            underline='always'
+            isExternal={false}>
             {translate('Label.LearnMore')}
           </Link>
         </>
       }>
-      <Button
-        variant='contained'
-        size='large'
-        fullWidth={false}
-        type='button'
-        onClick={onCreateClick}>
+      <Button variant='Emphasis' size='Large' type='button' onClick={onCreateClick}>
         {translate('Action.CreateMoments')}
       </Button>
     </EmptyState>

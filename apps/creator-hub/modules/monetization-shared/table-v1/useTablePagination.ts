@@ -14,7 +14,7 @@ type UsePaginationConfig = {
 /**
  * Hook for exposing pagination state and handlers for table pagination.
  * `onRowsPerPageChange` accepts either a Foundation-style number or a
- * WebBlox-style `ChangeEvent<HTMLInputElement>`.
+ * WebBlox-style `ChangeEvent<HTMLInputElement | HTMLTextAreaElement>`.
  */
 export function useTablePagination({
   count,
