@@ -387,6 +387,155 @@ export const tabbedChartConfigPostReactions = {
   ],
 } as const satisfies TabbedChartConfig;
 
+// -- Announcement Analytics --
+
+const announcementEventTypeFilter = (eventType: RAQIV2AnnouncementEventType) => ({
+  filter: {
+    intersect: [{ dimension: RAQIV2Dimension.AnnouncementEventType, values: [eventType] }],
+  },
+});
+
+const chartConfigAnnouncementViews = {
+  type: AnalyticsComponentType.Chart,
+  titleKey: translationKey(
+    'Label.Metric.CommunityAnnouncementViews',
+    TranslationNamespace.Community,
+  ),
+  definitionTooltipKey: translationKey(
+    'Description.CommunityAnnouncementViews',
+    TranslationNamespace.Analytics,
+  ),
+  metric: RAQIV2Metric.CommunityAnnouncementEventCount,
+  overrides: announcementEventTypeFilter(RAQIV2AnnouncementEventType.View),
+  chartType: ChartType.Spline,
+  summarySpec: {
+    totalSummaryTypes: [...totalAndAverageSummary],
+    perBreakdownSummaryTypes: [],
+    aggregatedBreakdownSummaryTypes: [],
+  },
+} satisfies ChartConfig;
+
+const chartConfigAnnouncementUniqueViewers = {
+  type: AnalyticsComponentType.Chart,
+  titleKey: translationKey(
+    'Label.Metric.CommunityAnnouncementViews',
+    TranslationNamespace.Community,
+  ),
+  definitionTooltipKey: translationKey(
+    'Description.CommunityAnnouncementViews',
+    TranslationNamespace.Analytics,
+  ),
+  metric: RAQIV2Metric.CommunityAnnouncementUniqueUsers,
+  overrides: announcementEventTypeFilter(RAQIV2AnnouncementEventType.View),
+  chartType: ChartType.Spline,
+  summarySpec: {
+    totalSummaryTypes: [...totalAndAverageSummary],
+    perBreakdownSummaryTypes: [],
+    aggregatedBreakdownSummaryTypes: [],
+  },
+} satisfies ChartConfig;
+
+export const tabbedChartConfigAnnouncementVisits = {
+  type: AnalyticsComponentType.TabbedChart,
+  titleKey: translationKey(
+    'Label.Metric.CommunityAnnouncementViews',
+    TranslationNamespace.Community,
+  ),
+  definitionTooltipKey: translationKey(
+    'Description.CommunityAnnouncementViews',
+    TranslationNamespace.Analytics,
+  ),
+  tabs: [
+    {
+      chart: chartConfigAnnouncementViews,
+      tabLabel: translationKey('Label.Total', TranslationNamespace.Community),
+    },
+    {
+      chart: chartConfigAnnouncementUniqueViewers,
+      tabLabel: translationKey('Label.Unique', TranslationNamespace.Community),
+    },
+  ],
+} as const satisfies TabbedChartConfig;
+
+// -- Announcement Engagement (Reactions + Polls) --
+
+export type EngagementType = 'all' | 'reactions' | 'polls';
+
+const ENGAGEMENT_TYPE_FILTER_VALUES: Record<EngagementType, RAQIV2AnnouncementEventType[]> = {
+  all: [RAQIV2AnnouncementEventType.NetReaction, RAQIV2AnnouncementEventType.PollVote],
+  reactions: [RAQIV2AnnouncementEventType.NetReaction],
+  polls: [RAQIV2AnnouncementEventType.PollVote],
+};
+
+export function buildEngagementTabbedConfig(engagementType: EngagementType): TabbedChartConfig {
+  const filterValues = ENGAGEMENT_TYPE_FILTER_VALUES[engagementType];
+  const overrides = {
+    filter: {
+      intersect: [{ dimension: RAQIV2Dimension.AnnouncementEventType, values: filterValues }],
+    },
+  };
+
+  return {
+    type: AnalyticsComponentType.TabbedChart,
+    titleKey: translationKey(
+      'Label.Metric.CommunityAnnouncementEngagement',
+      TranslationNamespace.Community,
+    ),
+    definitionTooltipKey: translationKey(
+      'Description.CommunityAnnouncementEngagement',
+      TranslationNamespace.Analytics,
+    ),
+    tabs: [
+      {
+        chart: {
+          type: AnalyticsComponentType.Chart,
+          chartKey: 'announcement-engagement-total',
+          titleKey: translationKey(
+            'Label.Metric.CommunityAnnouncementEngagement',
+            TranslationNamespace.Community,
+          ),
+          definitionTooltipKey: translationKey(
+            'Description.CommunityAnnouncementEngagement',
+            TranslationNamespace.Analytics,
+          ),
+          metric: RAQIV2Metric.CommunityAnnouncementEventCount,
+          overrides,
+          chartType: ChartType.Spline,
+          summarySpec: {
+            totalSummaryTypes: [...totalOnlySummary],
+            perBreakdownSummaryTypes: [],
+            aggregatedBreakdownSummaryTypes: [],
+          },
+        } satisfies ChartConfig,
+        tabLabel: translationKey('Label.Total', TranslationNamespace.Community),
+      },
+      {
+        chart: {
+          type: AnalyticsComponentType.Chart,
+          chartKey: 'announcement-engagement-unique',
+          titleKey: translationKey(
+            'Label.Metric.CommunityAnnouncementEngagement',
+            TranslationNamespace.Community,
+          ),
+          definitionTooltipKey: translationKey(
+            'Description.CommunityAnnouncementEngagement',
+            TranslationNamespace.Analytics,
+          ),
+          metric: RAQIV2Metric.CommunityAnnouncementUniqueUsers,
+          overrides,
+          chartType: ChartType.Spline,
+          summarySpec: {
+            totalSummaryTypes: [...totalOnlySummary],
+            perBreakdownSummaryTypes: [],
+            aggregatedBreakdownSummaryTypes: [],
+          },
+        } satisfies ChartConfig,
+        tabLabel: translationKey('Label.Unique', TranslationNamespace.Community),
+      },
+    ],
+  };
+}
+
 // -- Announcement History Table --
 
 const announcementHistoryBreakdowns = [
@@ -525,4 +674,8 @@ export const getTableConfigAnnouncementHistory = (
   breakdowns: announcementHistoryBreakdowns,
   isTotalRowIncluded: false,
   titleKey: translationKey('Title.AnnouncementHistory', TranslationNamespace.Community),
+  definitionTooltipKey: translationKey(
+    'Description.AnnouncementDataAvailability',
+    TranslationNamespace.Community,
+  ),
 });

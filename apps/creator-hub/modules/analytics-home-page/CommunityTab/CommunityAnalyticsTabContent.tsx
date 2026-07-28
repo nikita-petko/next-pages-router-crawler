@@ -15,7 +15,6 @@ import { AnalyticsQueryGatewayAPIFilterOperation } from '@modules/clients/analyt
 import type { ArbitraryComponentConfig } from '@modules/experience-analytics-shared/components/RAQIV2/layout/AnalyticsArbitraryComponent';
 import CreatorAnalyticsLayout from '@modules/experience-analytics-shared/components/RAQIV2/layout/CreatorAnalyticsLayout';
 import AnalyticsConfigTable from '@modules/experience-analytics-shared/components/RAQIV2/table/AnalyticsConfigTable';
-import { ANNOUNCEMENT_ANALYTICS_START_DATE } from '@modules/experience-analytics-shared/constants/announcementDisplay';
 import { AnnouncementNameMapProvider } from '@modules/experience-analytics-shared/context/AnnouncementNameMapProvider';
 import useRAQIV2TranslationDependencies from '@modules/experience-analytics-shared/hooks/useRAQIV2TranslationDependencies';
 import getCreatorAnalyticsPageLayout from '@modules/experience-analytics-shared/pages/getCreatorAnalyticsPageLayout';
@@ -31,6 +30,8 @@ import {
 import { RAQIV2SpecialLayoutType } from '@modules/experience-analytics-shared/types/RAQIV2SpecialLayoutConfig';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGroup } from '@modules/providers/groups/GroupsProvider';
+import { getAnnouncementEngagementConfig } from './AnnouncementEngagementDropdown';
+import { getAnnouncementNotificationCtrConfig } from './AnnouncementNotificationCtrDropdown';
 import {
   tabbedChartConfigCommunityVisits,
   tabbedChartConfigMembershipTrends,
@@ -39,10 +40,12 @@ import {
   tabbedChartConfigPostViews,
   tabbedChartConfigPostComments,
   tabbedChartConfigPostReactions,
+  tabbedChartConfigAnnouncementVisits,
   getTableConfigAnnouncementHistory,
 } from './chartConfigs';
 
 const COMMUNITY_ANALYTICS_START_DATE = new Date('2026-04-01');
+const ANNOUNCEMENT_ANALYTICS_START_DATE = new Date('2026-06-30');
 
 function getAnnouncementHistoryTableConfig(
   translate: ReturnType<typeof useRAQIV2TranslationDependencies>['translate'],
@@ -137,6 +140,16 @@ const CommunityAnalyticsTabContent: React.FC = () => {
         {
           type: RAQIV2SpecialLayoutType.SectionTitle,
           titleKey: translationKey('Heading.Announcements', TranslationNamespace.Community),
+          tooltipKey: translationKey(
+            'Description.AnnouncementDataAvailability',
+            TranslationNamespace.Community,
+          ),
+        },
+        tabbedChartConfigAnnouncementVisits,
+        getAnnouncementEngagementConfig(),
+        {
+          type: RAQIV2SpecialLayoutType.FullWidthLayout,
+          items: [getAnnouncementNotificationCtrConfig()],
         },
         {
           type: RAQIV2SpecialLayoutType.FullWidthLayout,

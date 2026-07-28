@@ -160,6 +160,12 @@ const RAQIV2NumericMetricDisplayConfig: Partial<Record<TRAQIV2Metric, NumericMet
         ),
       },
     },
+    [RAQIV2Metric.CommunityAnnouncementEventCount]: {
+      defaultTotalSummaryTypes: totalSummationSummary,
+    },
+    [RAQIV2Metric.CommunityAnnouncementUniqueUsers]: {
+      defaultTotalSummaryTypes: totalSummationSummary,
+    },
     [RAQIV2Metric.CommunityAnnouncementNotificationCTR]: {
       defaultTotalSummaryTypes: lastValueSummary,
     },

@@ -62,6 +62,7 @@ import {
 } from '../../types/ComputedMetric';
 import type GenericRAQIV2ChartProps from '../../types/GenericRAQIV2ChartProps';
 import type { RAQIV2UIQueryRequest } from '../../types/RAQIV2UIQueryRequest';
+import useLoadAnnouncementIdsForData from '../../utils/announcementUtils';
 import getFetchComparison from '../../utils/getFetchComparison';
 import { hasMetricFanoutBreakdown } from '../../utils/isMetricFanoutDimension';
 import type { MakeRAQIV2RequestOptions } from '../../utils/makeRAQIV2Request';
@@ -249,6 +250,7 @@ const GenericRAQIV2SplineChartV2: FC<GenericRAQIV2SplineChartV2Props> = ({
   sentryBundle.handleRAQIV2RequestResult(requestStatus);
 
   useLoadThumbnailAssetIdsForData(raqiData);
+  useLoadAnnouncementIdsForData(raqiData);
 
   const {
     data: rawBenchmarkData,
