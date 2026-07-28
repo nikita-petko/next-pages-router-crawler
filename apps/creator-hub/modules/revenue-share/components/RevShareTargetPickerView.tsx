@@ -1,8 +1,7 @@
 // Renders searchable experience and UGC target selection with tab filtering, pagination, loading, and retry states.
 import { useCallback, useMemo, useState, type ChangeEvent, type FunctionComponent } from 'react';
-import { Button, Chip, TextInput } from '@rbx/foundation-ui';
+import { Button, Chip, ProgressCircle, TextInput } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { CircularProgress } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -20,6 +19,8 @@ export type RevShareTargetPickerViewProps = {
   activeTab: RevShareTargetTab;
   onTabChange: (tab: RevShareTargetTab) => void;
   isUgcLoading: boolean;
+  /** True while more target inventory pages are still loading for the active tab. */
+  isInventoryLoading?: boolean;
   ugcError: Error | null;
   onRetryUgc: () => void;
 };
@@ -31,6 +32,7 @@ const RevShareTargetPickerView: FunctionComponent<RevShareTargetPickerViewProps>
   activeTab,
   onTabChange,
   isUgcLoading,
+  isInventoryLoading = false,
   ugcError,
   onRetryUgc,
 }) => {
@@ -64,8 +66,9 @@ const RevShareTargetPickerView: FunctionComponent<RevShareTargetPickerViewProps>
       totalRows: filteredRows.length,
       onPageChange,
       onRowsPerPageChange,
+      isInventoryLoading,
     }),
-    [page, rowsPerPage, filteredRows.length, onPageChange, onRowsPerPageChange],
+    [page, rowsPerPage, filteredRows.length, onPageChange, onRowsPerPageChange, isInventoryLoading],
   );
 
   const handleQueryChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
@@ -101,6 +104,11 @@ const RevShareTargetPickerView: FunctionComponent<RevShareTargetPickerViewProps>
     'Retry',
     'Button label to retry loading UGC items in the revenue share target picker.',
     translationKey('Action.RetryUgcTargets', TranslationNamespace.RevenueShareAgreements),
+  );
+  const ugcLoadingLabel = tPendingTranslation(
+    'Loading',
+    'Button label while loading the next page of UGC items in the revenue share target picker.',
+    translationKey('Label.LoadingUgcTargets', TranslationNamespace.RevenueShareAgreements),
   );
 
   return (
@@ -158,8 +166,9 @@ const RevShareTargetPickerView: FunctionComponent<RevShareTargetPickerViewProps>
         />
       </div>
       {activeTab === 'ugc' && isUgcLoading ? (
-        <div className='flex items-center justify-center width-full'>
-          <CircularProgress />
+        <div className='flex items-center justify-center gap-small width-full'>
+          <ProgressCircle size='Large' variant='Indeterminate' ariaLabel={ugcLoadingLabel} />
+          <span className='text-body-medium content-muted'>{ugcLoadingLabel}</span>
         </div>
       ) : activeTab === 'ugc' && ugcError !== null ? (
         <div className='flex flex-col items-center gap-small width-full'>

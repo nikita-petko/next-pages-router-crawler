@@ -7,7 +7,10 @@ import {
   MANAGING_GROUP_COLOR,
   UNALLOCATED_COLOR,
 } from '../utils/revShareSplitColors';
-import { isRevShareCurrentUserRecipient } from '../utils/revShareUtils';
+import {
+  isRevShareCurrentUserRecipient,
+  sortRevShareRecipientsForStableDisplay,
+} from '../utils/revShareUtils';
 import RevSharePieChart from './RevSharePieChart';
 import RevShareSplitTable, { type RevShareSplitRowData } from './tables/RevShareSplitTable';
 const MANAGING_GROUP_ROW_KEY_PREFIX = 'managing-group';
@@ -54,6 +57,28 @@ const RevShareSplitPanel: FunctionComponent<RevShareSplitPanelProps> = ({
     ) {
       return [];
     }
+    const orderedRecipients = sortRevShareRecipientsForStableDisplay(
+      split.recipients.map((allocation, inputIndex) => ({
+        recipient: allocation.recipient,
+        isAddition: false,
+        inputIndex,
+        allocation,
+      })),
+      currentUserId ?? '',
+    ).map(({ allocation, inputIndex }) => {
+      const { recipient, splitBasisPoints } = allocation;
+      const resolvedParty = resolveRecipientParty(recipient);
+      return {
+        id: `${recipient.type}:${recipient.id}`,
+        name: resolvedParty.name,
+        identity: resolvedParty,
+        basisPoints: splitBasisPoints,
+        // Keep palette tied to original API order so pin-sorting does not reshuffle colors.
+        color: getRecipientColorByIndex(inputIndex),
+        isCurrentUser: isRevShareCurrentUserRecipient(recipient, currentUserId),
+      };
+    });
+
     const splitRows: RevShareSplitRowData[] = [
       {
         id: `${MANAGING_GROUP_ROW_KEY_PREFIX}:${managingGroupParty.target.id}`,
@@ -64,17 +89,7 @@ const RevShareSplitPanel: FunctionComponent<RevShareSplitPanelProps> = ({
         color: MANAGING_GROUP_COLOR,
         isManagingGroup: true,
       },
-      ...split.recipients.map(({ recipient, splitBasisPoints }, index) => {
-        const resolvedParty = resolveRecipientParty(recipient);
-        return {
-          id: `${recipient.type}:${recipient.id}`,
-          name: resolvedParty.name,
-          identity: resolvedParty,
-          basisPoints: splitBasisPoints,
-          color: getRecipientColorByIndex(index),
-          isCurrentUser: isRevShareCurrentUserRecipient(recipient, currentUserId),
-        };
-      }),
+      ...orderedRecipients,
     ];
 
     if (split.unallocatedBasisPoints > 0) {

@@ -458,6 +458,11 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
         activeTab={targetTab}
         onTabChange={setTargetTab}
         isUgcLoading={ugcTargetsQuery.isLoading}
+        isInventoryLoading={
+          targetTab === 'experiences'
+            ? experienceTargetsQuery.hasNextPage
+            : ugcTargetsQuery.hasNextPage
+        }
         ugcError={ugcTargetsQuery.error}
         onRetryUgc={() => {
           ugcTargetsQuery.refetch();

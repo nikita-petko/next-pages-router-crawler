@@ -9,6 +9,7 @@ import {
 } from 'react';
 import {
   Icon,
+  ProgressCircle,
   Table,
   TableBody,
   TableCell,
@@ -46,6 +47,8 @@ export type RevShareLandingTablePagination = {
   totalRows: number;
   onPageChange: (page: number) => void;
   onRowsPerPageChange?: (rowsPerPage: number) => void;
+  /** True while more inventory pages are still loading in the background. */
+  isInventoryLoading?: boolean;
 };
 
 type RevShareLandingTableCommonProps = {
@@ -286,13 +289,19 @@ const RevShareLandingTable: FunctionComponent<RevShareLandingTableProps> = (prop
   const rowsPerPageLabel = translate(
     translationKey('Label.RowsPerPage', TranslationNamespace.Table),
   );
+  const isInventoryLoading = pagination?.isInventoryLoading === true;
+  const inventoryLoadingLabel = tPendingTranslation(
+    'Loading more results',
+    'Accessible label for the progress circle while revenue share inventory continues loading.',
+    translationKey('Label.LoadingMoreTargets', TranslationNamespace.RevenueShareAgreements),
+  );
   const rangeLabel = useCallback(
     (start: number, end: number, total: number) =>
       translate(translationKey('Label.PageRange', TranslationNamespace.Table), {
         pageRange: `${start}-${end}`,
-        totalPageCount: String(total),
+        totalPageCount: isInventoryLoading ? `${total}+` : String(total),
       }),
-    [translate],
+    [isInventoryLoading, translate],
   );
 
   const bodyRows = (() => {
@@ -407,6 +416,12 @@ const RevShareLandingTable: FunctionComponent<RevShareLandingTableProps> = (prop
           </TableBody>
         </Table>
       </div>
+      {isInventoryLoading ? (
+        <div className='flex items-center justify-center gap-small width-full' aria-live='polite'>
+          <ProgressCircle size='Small' variant='Indeterminate' ariaLabel={inventoryLoadingLabel} />
+          <span className='text-body-small content-muted'>{inventoryLoadingLabel}</span>
+        </div>
+      ) : null}
       {pagination && pagination.totalRows > 0 ? (
         <TablePagination
           size='Medium'
