@@ -11,6 +11,12 @@ import React, {
 import type { FeedbackRating } from '@rbx/conv-ai-provider';
 import { useAnalyticsChat } from '@modules/analytics-assistant/hooks/useAnalyticsChat';
 import type { AnalyticsChatMessage } from '@modules/analytics-assistant/types/AnalyticsChatTypes';
+import {
+  AssistantImpressionEventName,
+  buildChatEventEnvelope,
+  logAssistantEvent,
+} from '@modules/analytics-assistant/utils/AssistantLogger';
+import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 
 export type ChatStatus = 'ready' | 'submitted' | 'streaming' | 'error';
 
@@ -126,6 +132,7 @@ export const AIChatProvider: FC<React.PropsWithChildren<AIChatProviderProps>> = 
     canSendMessage,
   });
   const analyticsMessages = messages;
+  const { unifiedLogger } = useUnifiedLoggerProvider();
   const [artifactElementsByMessageId, setArtifactElementsByMessageId] = useState<
     Record<string, ReactNode>
   >({});
@@ -204,6 +211,48 @@ export const AIChatProvider: FC<React.PropsWithChildren<AIChatProviderProps>> = 
     selectedArtifactMessageId,
   ]);
   /* oxlint-enable react/react-compiler */
+
+  // Emit a chatArtifactImpression when the artifact shown in the canvas changes.
+  // Deduped on the artifact message id so streaming ticks (which churn the
+  // message list) don't re-log the same chart.
+  const lastArtifactImpressionRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (selectedArtifactMessageId === null || !isCanvasOpen) {
+      return;
+    }
+    if (lastArtifactImpressionRef.current === selectedArtifactMessageId) {
+      return;
+    }
+    lastArtifactImpressionRef.current = selectedArtifactMessageId;
+
+    const turnIndex = analyticsMessages.reduce(
+      (count, message) => (message.role === 'user' ? count + 1 : count),
+      0,
+    );
+    logAssistantEvent(unifiedLogger, AssistantImpressionEventName.AssistantChatArtifactImpression, {
+      ...buildChatEventEnvelope({
+        universeId,
+        conversationId: activeConversationId,
+        isReadOnly: !canSendMessage,
+        turnIndex,
+      }),
+      messageId: selectedArtifactMessageId,
+      artifactIndex: selectedArtifactIndex,
+      artifactCount,
+      openTrigger: isFollowingLatestArtifact ? 'auto_followed' : 'manual',
+    });
+  }, [
+    selectedArtifactMessageId,
+    isCanvasOpen,
+    analyticsMessages,
+    selectedArtifactIndex,
+    artifactCount,
+    isFollowingLatestArtifact,
+    activeConversationId,
+    canSendMessage,
+    universeId,
+    unifiedLogger,
+  ]);
 
   const registerMessageArtifacts = useCallback((messageId: string, element: ReactNode) => {
     setArtifactElementsByMessageId((prev) => {

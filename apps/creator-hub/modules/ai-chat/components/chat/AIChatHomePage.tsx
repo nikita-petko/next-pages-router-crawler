@@ -10,27 +10,46 @@ import {
   Link,
   Typography,
 } from '@rbx/ui';
+import {
+  AssistantClickEventName,
+  buildChatEventEnvelope,
+  logAssistantEvent,
+} from '@modules/analytics-assistant/utils/AssistantLogger';
 import type { FormattedText } from '@modules/analytics-translations/types';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { useExperienceAnalyticsGameDetails } from '@modules/experience-analytics-shared/context/ExperienceAnalyticsGameDetailsProvider';
 import { useUniverseResource } from '@modules/experience-analytics-shared/hooks/useChartResourceProvider';
 import useRAQIV2TranslationDependencies from '@modules/experience-analytics-shared/hooks/useRAQIV2TranslationDependencies';
 import { EStudioTaskType, useStudio } from '@modules/miscellaneous/hooks';
+import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { useAIChatContext } from '../../providers/AIChatProvider';
 
 const CARD_CONTENT_SX = { padding: 3, '&:last-child': { paddingBottom: 3 } } as const;
 
 type StarterQuestionIcon = FC<ComponentProps<typeof InsightsIcon>>;
 
+export type StarterCardCategory = 'understand' | 'analyze' | 'take_action';
+
 interface StarterQuestionCardProps {
   Icon: StarterQuestionIcon;
+  category: StarterCardCategory;
   title: FormattedText;
   question: FormattedText;
-  onSelect: (question: string) => void;
+  onSelect: (question: string, category: StarterCardCategory) => void;
 }
 
-const StarterQuestionCard: FC<StarterQuestionCardProps> = ({ Icon, title, question, onSelect }) => {
-  const handleClick = useCallback(() => onSelect(question), [onSelect, question]);
+const StarterQuestionCard: FC<StarterQuestionCardProps> = ({
+  Icon,
+  category,
+  title,
+  question,
+  onSelect,
+}) => {
+  const handleClick = useCallback(
+    () => onSelect(question, category),
+    [onSelect, question, category],
+  );
   return (
     <Card className='medium:basis-0 medium:grow-1 medium:shrink-1'>
       <CardActionArea onClick={handleClick} className='height-full'>
@@ -51,7 +70,7 @@ const StarterQuestionCard: FC<StarterQuestionCardProps> = ({ Icon, title, questi
 };
 
 interface AIChatHomePageProps {
-  onQuestionSelect: (question: string) => void;
+  onQuestionSelect: (question: string, cardCategory: StarterCardCategory) => void;
 }
 
 const AIChatHomePage: FC<AIChatHomePageProps> = ({ onQuestionSelect }) => {
@@ -59,6 +78,8 @@ const AIChatHomePage: FC<AIChatHomePageProps> = ({ onQuestionSelect }) => {
   const { id: universeId } = useUniverseResource();
   const { rootPlaceId } = useExperienceAnalyticsGameDetails();
   const { open: openStudio, dialog: studioDialog } = useStudio();
+  const { unifiedLogger } = useUnifiedLoggerProvider();
+  const { conversationId, canSendMessage } = useAIChatContext();
 
   const handleOpenStudio = useCallback(() => {
     openStudio({
@@ -68,9 +89,28 @@ const AIChatHomePage: FC<AIChatHomePageProps> = ({ onQuestionSelect }) => {
     });
   }, [openStudio, universeId, rootPlaceId]);
 
+  const handleSelect = useCallback(
+    (question: string, cardCategory: StarterCardCategory) => {
+      logAssistantEvent(unifiedLogger, AssistantClickEventName.AssistantChatStarterCardClick, {
+        ...buildChatEventEnvelope({
+          universeId,
+          conversationId,
+          isReadOnly: !canSendMessage,
+          // The home page renders only before any turn exists.
+          turnIndex: 0,
+        }),
+        cardCategory,
+        question,
+      });
+      onQuestionSelect(question, cardCategory);
+    },
+    [unifiedLogger, universeId, conversationId, canSendMessage, onQuestionSelect],
+  );
+
   const cards = [
     {
       Icon: InsightsIcon,
+      category: 'understand' as const,
       key: 'Heading.AskAssistant.Card.Understand',
       title: tPendingTranslation(
         'Understand',
@@ -91,6 +131,7 @@ const AIChatHomePage: FC<AIChatHomePageProps> = ({ onQuestionSelect }) => {
     },
     {
       Icon: BarChartIcon,
+      category: 'analyze' as const,
       key: 'Heading.AskAssistant.Card.Analyze',
       title: tPendingTranslation(
         'Analyze',
@@ -111,6 +152,7 @@ const AIChatHomePage: FC<AIChatHomePageProps> = ({ onQuestionSelect }) => {
     },
     {
       Icon: EditIcon,
+      category: 'take_action' as const,
       key: 'Heading.AskAssistant.Card.TakeAction',
       title: tPendingTranslation(
         'Take action',
@@ -167,13 +209,14 @@ const AIChatHomePage: FC<AIChatHomePageProps> = ({ onQuestionSelect }) => {
           </div>
 
           <div className='flex flex-col gap-medium medium:flex-row'>
-            {cards.map(({ Icon, key, title, question }) => (
+            {cards.map(({ Icon, category, key, title, question }) => (
               <StarterQuestionCard
                 key={key}
                 Icon={Icon}
+                category={category}
                 title={title}
                 question={question}
-                onSelect={onQuestionSelect}
+                onSelect={handleSelect}
               />
             ))}
           </div>

@@ -10,6 +10,7 @@ import {
   type SignalRConnectionState,
   type SignalRConnectionStateMeta,
 } from '@rbx/signalr-userhub-client';
+import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 import {
   cancelMessage,
   type ConversationItem,
@@ -23,10 +24,18 @@ import { ANALYTICS_ASSISTANT_NAMESPACE } from '../constants/signalr';
 import AnalyticsSignalRTransport from '../transport/AnalyticsSignalRTransport';
 import {
   AnalyticsChatDataPartType,
+  ThinkingStepKind,
   ThinkingStepStatus,
   type AnalyticsChatMessage,
   type ThinkingStepDataPart,
 } from '../types/AnalyticsChatTypes';
+import {
+  AssistantApiVitalsEventName,
+  AssistantClickEventName,
+  AssistantErrorEventName,
+  buildChatEventEnvelope,
+  logAssistantEvent,
+} from '../utils/AssistantLogger';
 import { transformConversationItemsToUIMessages } from '../utils/transformConversationItems';
 
 /**
@@ -46,6 +55,92 @@ const CHAT_MESSAGES_THROTTLE_MS = 50;
 
 const isTurnInProgress = (status: string): boolean =>
   status === 'streaming' || status === 'submitted';
+
+/** Cap on the raw prompt text sent with chatMessageSend so a pasted wall of text can't bloat the event. */
+const PROMPT_TEXT_MAX_LENGTH = 1000;
+
+/** How a message send was initiated, for chatMessageSend attribution. */
+export type ChatSendSource = 'typed' | 'starter_card' | 'ask_question_answer';
+
+export interface ChatSendTelemetry {
+  source?: ChatSendSource;
+  /** Starter-card category when source === 'starter_card'. */
+  cardCategory?: string;
+}
+
+type SendMessageInput = Parameters<AbstractChat<AnalyticsChatMessage>['sendMessage']>[0];
+
+const extractPromptText = (message: SendMessageInput): string => {
+  if (typeof message === 'string') {
+    return message;
+  }
+  if (
+    message !== null &&
+    typeof message === 'object' &&
+    'text' in message &&
+    typeof message.text === 'string'
+  ) {
+    return message.text;
+  }
+  return '';
+};
+
+const countUserMessages = (messages: AnalyticsChatMessage[]): number =>
+  messages.reduce((count, message) => (message.role === 'user' ? count + 1 : count), 0);
+
+interface AssistantMessageSummary {
+  thinkingStepCount: number;
+  toolStepCount: number;
+  artifactCount: number;
+  responseCharCount: number;
+}
+
+const isThinkingStep = (
+  part: AnalyticsChatMessage['parts'][number],
+): part is ThinkingStepDataPart => part.type === AnalyticsChatDataPartType.ThinkingStep;
+
+const summarizeAssistantMessage = (message: AnalyticsChatMessage): AssistantMessageSummary => {
+  let thinkingStepCount = 0;
+  let toolStepCount = 0;
+  let artifactCount = 0;
+  let responseCharCount = 0;
+
+  for (const part of message.parts) {
+    if (part.type === 'text') {
+      responseCharCount += part.text.length;
+    } else if (isThinkingStep(part)) {
+      thinkingStepCount += 1;
+      if (part.data.kind === ThinkingStepKind.Tool) {
+        toolStepCount += 1;
+      }
+    } else if (
+      part.type === AnalyticsChatDataPartType.Signal ||
+      part.type === AnalyticsChatDataPartType.Visualization
+    ) {
+      artifactCount += 1;
+    }
+  }
+
+  return { thinkingStepCount, toolStepCount, artifactCount, responseCharCount };
+};
+
+/**
+ * Known backend conversation-error codes. `onError` only surfaces a generic
+ * `Error`, so we best-effort match these codes out of it; anything else logs as
+ * `Unknown`. Kept in sync with `ConversationError` from `@rbx/conv-ai-provider`.
+ */
+const KNOWN_CHAT_ERROR_CODES = [
+  'ContentFilterFailed',
+  'ServiceRateLimitExceeded',
+  'TokenLimitExceeded',
+  'UserRateLimitExceeded',
+  'InternalError',
+] as const;
+
+const classifyChatError = (error: Error): string => {
+  const haystack = `${error.name} ${error.message}`;
+  return KNOWN_CHAT_ERROR_CODES.find((code) => haystack.includes(code)) ?? 'Unknown';
+};
 
 export interface UseAnalyticsChatOptions {
   universeId: number;
@@ -159,6 +254,7 @@ export function useAnalyticsChat({
   const { settings, isFetched } = useSettings();
   const { environment } = useNavigationConfigs();
   const basePath = getRealTimeNotificationsBasePath(environment);
+  const { unifiedLogger } = useUnifiedLoggerProvider();
 
   const [conversationId, setConversationId] = useState<string | undefined>(initialConversationId);
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
@@ -192,6 +288,32 @@ export function useAnalyticsChat({
   const definitiveDeathCountRef = useRef(0);
   const isRecoveringRef = useRef(false);
 
+  // Telemetry refs: latest messages for envelope/summary, per-turn timing anchors
+  // for latency (client-side FE estimate), and per-turn terminal-state flags.
+  const messagesRef = useRef<AnalyticsChatMessage[]>(messages ?? []);
+  const prevStatusRef = useRef<string>('ready');
+  const turnSendAtRef = useRef<number | null>(null);
+  const firstChunkAtRef = useRef<number | null>(null);
+  const stopRequestedRef = useRef(false);
+  const turnWasResumedRef = useRef(false);
+  // Turn index captured once when a turn starts (send/resume), so every event for
+  // that turn (send, response-complete, stop, error) reports the same value.
+  // Recomputing per-event would drift: send fires before the SDK appends the user
+  // message, later events after.
+  const currentTurnIndexRef = useRef(0);
+
+  // Common chat-event envelope, built from refs so the callback stays stable.
+  const buildEnvelope = useCallback(
+    () =>
+      buildChatEventEnvelope({
+        universeId,
+        conversationId: conversationIdRef.current,
+        isReadOnly: !canSendMessage,
+        turnIndex: currentTurnIndexRef.current,
+      }),
+    [universeId, canSendMessage],
+  );
+
   // Worst-case backstop: rebuild the message list from persisted conversation
   // history (the source of truth). If the turn is genuinely still incomplete,
   // surface the failure on the in-progress thinking steps so the UI never spins.
@@ -202,6 +324,11 @@ export function useAnalyticsChat({
     if (!targetConversationId || !applyMessages) {
       return;
     }
+
+    // This turn is being abandoned (a failure terminal, not a natural finish):
+    // flag it so the forced streaming→ready settle below does not emit a
+    // chatResponseComplete with finishReason 'completed'.
+    stopRequestedRef.current = true;
 
     // Abort the in-flight SDK turn before rebuilding from history. Nothing closes
     // the transport's ReadableStream on a definitive socket death, so the SDK
@@ -321,6 +448,15 @@ export function useAnalyticsChat({
       experimental_throttle: CHAT_MESSAGES_THROTTLE_MS,
       onError: (chatError) => {
         console.error('[useAnalyticsChat] Chat error', chatError);
+        const lastMessage = messagesRef.current.at(-1);
+        logAssistantEvent(unifiedLogger, AssistantErrorEventName.AssistantChatError, {
+          ...buildEnvelope(),
+          errorType: classifyChatError(chatError),
+          errorName: chatError.name,
+          phase: statusRef.current === 'submitted' ? 'submitted' : 'streaming',
+          wasRecovered: definitiveDeathCountRef.current > 0,
+          ...(lastMessage ? { messageId: lastMessage.id } : {}),
+        });
       },
     });
 
@@ -333,7 +469,64 @@ export function useAnalyticsChat({
     resumeStreamRef.current = resumeStream;
     setMessagesRef.current = setMessages;
     stopRef.current = stop;
+    messagesRef.current = restOfChat.messages;
   });
+
+  // Emit the completed-response performance event (apivitals). Fires only on a
+  // natural streaming→ready settle; stop() and error terminals are covered by
+  // chatStop / chatError instead. Latency is a client-side FE estimate anchored
+  // on the send/first-chunk timestamps, falling back to the server-provided
+  // turnStartedAtMs when available (absent on resumed turns).
+  const logResponseComplete = useCallback(() => {
+    const finishAtMs = Date.now();
+    const lastMessage = messagesRef.current.at(-1);
+    if (!lastMessage || lastMessage.role !== 'assistant') {
+      return;
+    }
+
+    const summary = summarizeAssistantMessage(lastMessage);
+    const turnStartedAtMs = lastMessage.metadata?.turnStartedAtMs;
+    const thinkingDurationMs = lastMessage.metadata?.thinkingDurationMs;
+    const turnSendAtMs = turnSendAtRef.current;
+    const firstChunkAtMs = firstChunkAtRef.current;
+    const totalLatencyMs =
+      turnStartedAtMs != null
+        ? finishAtMs - turnStartedAtMs
+        : turnSendAtMs != null
+          ? finishAtMs - turnSendAtMs
+          : undefined;
+    const timeToFirstTokenMs =
+      firstChunkAtMs != null && turnSendAtMs != null ? firstChunkAtMs - turnSendAtMs : undefined;
+
+    logAssistantEvent(unifiedLogger, AssistantApiVitalsEventName.AssistantChatResponseComplete, {
+      ...buildEnvelope(),
+      messageId: lastMessage.id,
+      thinkingStepCount: summary.thinkingStepCount,
+      toolStepCount: summary.toolStepCount,
+      artifactCount: summary.artifactCount,
+      hadArtifact: summary.artifactCount > 0,
+      responseCharCount: summary.responseCharCount,
+      finishReason: 'completed',
+      wasResumed: turnWasResumedRef.current,
+      ...(totalLatencyMs != null ? { totalLatencyMs } : {}),
+      ...(timeToFirstTokenMs != null ? { timeToFirstTokenMs } : {}),
+      ...(thinkingDurationMs != null ? { thinkingDurationMs } : {}),
+    });
+  }, [unifiedLogger, buildEnvelope]);
+
+  useEffect(() => {
+    const previousStatus = prevStatusRef.current;
+    prevStatusRef.current = status;
+
+    if (status === 'streaming' && firstChunkAtRef.current == null) {
+      firstChunkAtRef.current = Date.now();
+    }
+
+    const wasInProgress = previousStatus === 'streaming' || previousStatus === 'submitted';
+    if (wasInProgress && status === 'ready' && !stopRequestedRef.current) {
+      logResponseComplete();
+    }
+  }, [status, logResponseComplete]);
 
   // Reset the per-turn recovery budget when the turn settles so a later turn
   // starts with a fresh attempt count.
@@ -352,6 +545,15 @@ export function useAnalyticsChat({
 
     transport.setInProgressMessageId(inProgressMessageId);
     hasResumedRef.current = true;
+    // Resumed turn: no reliable original-send anchor, so skip latency timing and
+    // flag it so chatResponseComplete reports wasResumed without a bogus latency.
+    turnWasResumedRef.current = true;
+    turnSendAtRef.current = null;
+    firstChunkAtRef.current = null;
+    stopRequestedRef.current = false;
+    // The resumed turn's user message is already in history; its zero-based index
+    // is the user-message count minus that message.
+    currentTurnIndexRef.current = Math.max(0, countUserMessages(messagesRef.current) - 1);
     void resumeStream().catch((resumeError: unknown) => {
       console.error('[useAnalyticsChat] Failed to resume stream', resumeError);
     });
@@ -360,6 +562,12 @@ export function useAnalyticsChat({
   // SINGLE PLACE for sending: when transport is ready and there's a pending message
   useEffect(() => {
     if (transport && pendingMessage && !isCreatingConversation) {
+      // Anchor per-turn latency timing at the actual backend dispatch (after any
+      // lazy conversation creation) and reset the prior turn's terminal flags.
+      turnSendAtRef.current = Date.now();
+      firstChunkAtRef.current = null;
+      stopRequestedRef.current = false;
+      turnWasResumedRef.current = false;
       void sendMessage(pendingMessage);
       // oxlint-disable-next-line react/react-compiler -- pre-existing one-shot send-queue clear (predates this change)
       setPendingMessage(null);
@@ -369,13 +577,27 @@ export function useAnalyticsChat({
   // wrappedSendMessage: ONLY queues message + creates conversation if needed
   // Never calls chat.sendMessage directly - that's useEffect's job
   const wrappedSendMessage = useCallback(
-    (message: Parameters<AbstractChat<AnalyticsChatMessage>['sendMessage']>[0]) => {
+    (message: SendMessageInput, telemetry?: ChatSendTelemetry) => {
       if (!message || !canSendMessage) {
         return;
       }
 
       // Fresh turn: reset the per-turn auto-recovery budget.
       definitiveDeathCountRef.current = 0;
+
+      // Capture the turn index now (before the SDK appends this user message) so
+      // it stays stable across this turn's send/response/stop/error events.
+      currentTurnIndexRef.current = countUserMessages(messagesRef.current);
+
+      const promptText = extractPromptText(message);
+      logAssistantEvent(unifiedLogger, AssistantClickEventName.AssistantChatMessageSend, {
+        ...buildEnvelope(),
+        isFirstMessage: !conversationId,
+        source: telemetry?.source ?? 'typed',
+        promptText: promptText.slice(0, PROMPT_TEXT_MAX_LENGTH),
+        promptCharCount: promptText.length,
+        ...(telemetry?.cardCategory ? { cardCategory: telemetry.cardCategory } : {}),
+      });
 
       if (!conversationId && !isCreatingConversation) {
         setIsCreatingConversation(true);
@@ -399,10 +621,36 @@ export function useAnalyticsChat({
 
       setPendingMessage(message);
     },
-    [canSendMessage, conversationId, isCreatingConversation, universeId, onConversationCreated],
+    [
+      canSendMessage,
+      conversationId,
+      isCreatingConversation,
+      universeId,
+      onConversationCreated,
+      unifiedLogger,
+      buildEnvelope,
+    ],
   );
 
   const handleStop = useCallback(() => {
+    // Flag the turn as user-stopped so the status→ready settle does not also emit
+    // a chatResponseComplete for it.
+    stopRequestedRef.current = true;
+
+    const lastMessage = messagesRef.current.at(-1);
+    const summary =
+      lastMessage && lastMessage.role === 'assistant'
+        ? summarizeAssistantMessage(lastMessage)
+        : undefined;
+    const turnSendAtMs = turnSendAtRef.current;
+    logAssistantEvent(unifiedLogger, AssistantClickEventName.AssistantChatStop, {
+      ...buildEnvelope(),
+      thinkingStepCount: summary?.thinkingStepCount ?? 0,
+      hadPartialArtifact: (summary?.artifactCount ?? 0) > 0,
+      ...(lastMessage ? { messageId: lastMessage.id } : {}),
+      ...(turnSendAtMs != null ? { elapsedMs: Date.now() - turnSendAtMs } : {}),
+    });
+
     setMessages(markLastAssistantThinkingStepsCancelled);
     void stop();
 
@@ -411,7 +659,7 @@ export function useAnalyticsChat({
         console.error('[useAnalyticsChat] Failed to cancel message', cancelError);
       });
     }
-  }, [conversationId, setMessages, stop, universeId]);
+  }, [conversationId, setMessages, stop, universeId, unifiedLogger, buildEnvelope]);
 
   useEffect(() => {
     return () => {

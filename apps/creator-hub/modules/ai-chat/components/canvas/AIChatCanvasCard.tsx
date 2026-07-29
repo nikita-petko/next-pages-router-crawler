@@ -1,10 +1,17 @@
 import type { FC } from 'react';
+import { useCallback } from 'react';
 import { IconButton } from '@rbx/foundation-ui';
 import GenericCanvasCard from '@modules/analytics-assistant/components/canvas/GenericCanvasCard';
+import {
+  AssistantClickEventName,
+  logAssistantEvent,
+} from '@modules/analytics-assistant/utils/AssistantLogger';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import useRAQIV2TranslationDependencies from '@modules/experience-analytics-shared/hooks/useRAQIV2TranslationDependencies';
+import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useAIChatContext } from '../../providers/AIChatProvider';
+import { useChatEventEnvelope } from '../../providers/useChatEventEnvelope';
 
 const AIChatCanvasCard: FC = () => {
   const {
@@ -14,8 +21,38 @@ const AIChatCanvasCard: FC = () => {
     canSelectNextArtifact,
     selectPreviousArtifact,
     selectNextArtifact,
+    selectedArtifactIndex,
   } = useAIChatContext();
+  const { unifiedLogger } = useUnifiedLoggerProvider();
+  const chatEnvelope = useChatEventEnvelope();
   const { tPendingTranslation } = useRAQIV2TranslationDependencies();
+
+  const handlePreviousArtifact = useCallback(() => {
+    logAssistantEvent(unifiedLogger, AssistantClickEventName.AssistantChatArtifactInteract, {
+      ...chatEnvelope,
+      action: 'nav_prev',
+      artifactIndex: selectedArtifactIndex,
+    });
+    selectPreviousArtifact();
+  }, [chatEnvelope, unifiedLogger, selectedArtifactIndex, selectPreviousArtifact]);
+
+  const handleNextArtifact = useCallback(() => {
+    logAssistantEvent(unifiedLogger, AssistantClickEventName.AssistantChatArtifactInteract, {
+      ...chatEnvelope,
+      action: 'nav_next',
+      artifactIndex: selectedArtifactIndex,
+    });
+    selectNextArtifact();
+  }, [chatEnvelope, unifiedLogger, selectedArtifactIndex, selectNextArtifact]);
+
+  const handleCloseCanvas = useCallback(() => {
+    logAssistantEvent(unifiedLogger, AssistantClickEventName.AssistantChatArtifactInteract, {
+      ...chatEnvelope,
+      action: 'close_canvas',
+      artifactIndex: selectedArtifactIndex,
+    });
+    closeCanvas();
+  }, [chatEnvelope, unifiedLogger, selectedArtifactIndex, closeCanvas]);
   const previousArtifactLabel = tPendingTranslation(
     'Previous artifact',
     'Accessible label for the button that shows the previous analytics AI chat artifact in the charts panel.',
@@ -41,7 +78,7 @@ const AIChatCanvasCard: FC = () => {
             icon='icon-filled-chevron-large-left'
             ariaLabel={previousArtifactLabel}
             isDisabled={!canSelectPreviousArtifact}
-            onClick={selectPreviousArtifact}
+            onClick={handlePreviousArtifact}
           />
           <IconButton
             type='button'
@@ -50,11 +87,11 @@ const AIChatCanvasCard: FC = () => {
             icon='icon-filled-chevron-large-right'
             ariaLabel={nextArtifactLabel}
             isDisabled={!canSelectNextArtifact}
-            onClick={selectNextArtifact}
+            onClick={handleNextArtifact}
           />
         </div>
       }
-      onClose={closeCanvas}
+      onClose={handleCloseCanvas}
       closeAriaLabel={tPendingTranslation(
         'Close charts',
         'Accessible label for the close (X) button on the charts panel in the analytics AI chat.',

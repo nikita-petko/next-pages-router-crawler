@@ -10,11 +10,18 @@ import {
   type AskQuestionAnswerDataPart,
 } from '@modules/analytics-assistant/types/AnalyticsChatTypes';
 import type { AskQuestionAnswer } from '@modules/analytics-assistant/types/AskQuestion';
+import {
+  AssistantClickEventName,
+  AssistantImpressionEventName,
+  logAssistantEvent,
+} from '@modules/analytics-assistant/utils/AssistantLogger';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import useRAQIV2TranslationDependencies from '@modules/experience-analytics-shared/hooks/useRAQIV2TranslationDependencies';
+import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useAIChatContext } from '../../providers/AIChatProvider';
-import AIChatHomePage from './AIChatHomePage';
+import { useChatEventEnvelope } from '../../providers/useChatEventEnvelope';
+import AIChatHomePage, { type StarterCardCategory } from './AIChatHomePage';
 import AIChatInput from './AIChatInput';
 import useAIChatInterfaceStyles from './AIChatInterface.styles';
 import AIChatMessage from './AIChatMessage';
@@ -37,6 +44,8 @@ const AIChatInterface: FC = () => {
     canvasElement,
   } = useAIChatContext();
   const { tPendingTranslation } = useRAQIV2TranslationDependencies();
+  const { unifiedLogger } = useUnifiedLoggerProvider();
+  const chatEnvelope = useChatEventEnvelope();
 
   const [inputValue, setInputValue] = useState('');
   const isLoading = status === 'streaming' || status === 'submitted';
@@ -55,6 +64,28 @@ const AIChatInterface: FC = () => {
     }
     return adaptAskQuestionParts(trailingMessage.parts);
   }, [trailingMessage, isLoading, canSendMessage]);
+
+  // Emit askQuestionImpression once per card (deduped on askId) and stamp when it
+  // was shown so the answer event can report time-to-answer.
+  const lastAskImpressionRef = useRef<string | null>(null);
+  const askShownAtRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!pendingAsk || lastAskImpressionRef.current === pendingAsk.askId) {
+      return;
+    }
+    lastAskImpressionRef.current = pendingAsk.askId;
+    askShownAtRef.current = Date.now();
+    logAssistantEvent(unifiedLogger, AssistantImpressionEventName.AssistantAskQuestionImpression, {
+      ...chatEnvelope,
+      questionId: pendingAsk.askId,
+      intent: pendingAsk.intent,
+      questionCount: pendingAsk.questions.length,
+      optionCount: pendingAsk.questions.reduce(
+        (total, question) => total + question.options.length,
+        0,
+      ),
+    });
+  }, [pendingAsk, chatEnvelope, unifiedLogger]);
 
   // The composer (card + input) floats over the transcript; pad the message list
   // by the composer's live height so the newest message can scroll clear of it.
@@ -94,9 +125,9 @@ const AIChatInterface: FC = () => {
   }, [inputValue, isInputDisabled, sendMessage, pinToBottom]);
 
   const handleQuestionSelect = useCallback(
-    (question: string) => {
+    (question: string, cardCategory: StarterCardCategory) => {
       if (!isInputDisabled) {
-        sendMessage({ text: question });
+        sendMessage({ text: question }, { source: 'starter_card', cardCategory });
         pinToBottom();
       }
     },
@@ -109,15 +140,34 @@ const AIChatInterface: FC = () => {
   // structured answer; the backend derives the transcript text from it.
   const handleAnswerSubmit = useCallback(
     (answer: AskQuestionAnswer) => {
+      const shownAtMs = askShownAtRef.current;
+      logAssistantEvent(unifiedLogger, AssistantClickEventName.AssistantAskQuestionAnswer, {
+        ...chatEnvelope,
+        questionId: answer.askId,
+        answerCount: answer.answers.length,
+        answeredCount: answer.answers.filter((questionAnswer) => !questionAnswer.skipped).length,
+        wasFullySkipped:
+          answer.answers.length > 0 &&
+          answer.answers.every((questionAnswer) => questionAnswer.skipped),
+        wasFreeText: answer.answers.some(
+          (questionAnswer) => (questionAnswer.otherText?.trim().length ?? 0) > 0,
+        ),
+        selectedOptionCount: answer.answers.reduce(
+          (total, questionAnswer) => total + questionAnswer.optionIds.length,
+          0,
+        ),
+        ...(shownAtMs != null ? { msToAnswer: Date.now() - shownAtMs } : {}),
+      });
+
       const answerPart: AskQuestionAnswerDataPart = {
         type: AnalyticsChatDataPartType.AskQuestionAnswer,
         id: answer.askId,
         data: answer,
       };
-      sendMessage({ parts: [answerPart] });
+      sendMessage({ parts: [answerPart] }, { source: 'ask_question_answer' });
       pinToBottom();
     },
-    [sendMessage, pinToBottom],
+    [sendMessage, pinToBottom, unifiedLogger, chatEnvelope],
   );
 
   useEffect(() => {

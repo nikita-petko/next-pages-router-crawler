@@ -40,3 +40,23 @@ export const logAnalyticsClickEvent = <T extends Record<string, string | number 
   const transformedParams = transformParameters(params);
   client.logClickEvent({ eventName, parameters: transformedParams });
 };
+
+export const logAnalyticsApiVitalsEvent = <
+  T extends Record<string, string | number | boolean | Date>,
+>(
+  client: UnifiedLogger,
+  eventName: string,
+  params: T,
+) => {
+  const transformedParams = transformParameters(params);
+  client.logApiVitalsEvent({ eventName, parameters: transformedParams });
+};
+
+export const logAnalyticsErrorEvent = <T extends Record<string, string | number | boolean | Date>>(
+  client: UnifiedLogger,
+  eventName: string,
+  params: T,
+) => {
+  const transformedParams = transformParameters(params);
+  client.logErrorEvent({ eventName, parameters: transformedParams });
+};

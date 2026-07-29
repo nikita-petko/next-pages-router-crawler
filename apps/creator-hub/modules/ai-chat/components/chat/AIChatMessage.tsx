@@ -4,8 +4,14 @@ import { isAskQuestionAnswerPart } from '@modules/analytics-assistant/adapters/s
 import MarkdownContent from '@modules/analytics-assistant/components/markdown/MDX';
 import { useGetAnalyticsChatMessageContent } from '@modules/analytics-assistant/hooks/useGetAnalyticsChatMessageContent';
 import type { AnalyticsChatMessage } from '@modules/analytics-assistant/types/AnalyticsChatTypes';
+import {
+  AssistantClickEventName,
+  logAssistantEvent,
+} from '@modules/analytics-assistant/utils/AssistantLogger';
 import { useUniverseResource } from '@modules/experience-analytics-shared/hooks/useChartResourceProvider';
+import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 import { useAIChatContext } from '../../providers/AIChatProvider';
+import { useChatEventEnvelope } from '../../providers/useChatEventEnvelope';
 import useAIChatInterfaceStyles from './AIChatInterface.styles';
 import AIChatMessageFeedback from './AIChatMessageFeedback';
 import AskQuestionAnswerSummary from './askQuestion/AskQuestionAnswerSummary';
@@ -29,6 +35,8 @@ const AIChatMessage: FC<AIChatMessageProps> = ({ message, isLastAssistantMessage
     status,
   } = useAIChatContext();
   const { id: universeId } = useUniverseResource();
+  const { unifiedLogger } = useUnifiedLoggerProvider();
+  const chatEnvelope = useChatEventEnvelope();
   const {
     classes: {
       messageWrapper,
@@ -73,8 +81,13 @@ const AIChatMessage: FC<AIChatMessageProps> = ({ message, isLastAssistantMessage
   }, [message.id, unregisterMessageArtifacts]);
 
   const handleSelectMessageArtifact = useCallback(() => {
+    logAssistantEvent(unifiedLogger, AssistantClickEventName.AssistantChatArtifactInteract, {
+      ...chatEnvelope,
+      action: 'open_from_message',
+      messageId: message.id,
+    });
     selectMessageArtifact(message.id);
-  }, [message.id, selectMessageArtifact]);
+  }, [chatEnvelope, unifiedLogger, message.id, selectMessageArtifact]);
 
   const shouldIgnoreNestedInteraction = useCallback((event: React.MouseEvent<HTMLElement>) => {
     if (!(event.target instanceof HTMLElement)) {
