@@ -1,12 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
+  RobloxItemConfigurationApiGetItemResponse,
   RobloxItemConfigurationApiModelsRequestCollectiblesSaleLocationConfigurationModel,
   RobloxItemConfigurationApiModelsResponseBundleBundleInfoBundleTypeEnum,
 } from '@rbx/client-itemconfiguration/v1';
-import {
-  V1PermissionsItemTypesGetActionEnum,
-  V1PermissionsItemTypesGetTargetTypesEnum,
-} from '@rbx/client-itemconfiguration/v1';
+import { V1PermissionsActionAllowedForItemTypeGetActionEnum } from '@rbx/client-itemconfiguration/v1';
 import { uuidService } from '@rbx/core';
 import { getProductionCreatorHubUrl } from '@rbx/env-utils';
 import { useTranslation } from '@rbx/intl';
@@ -52,8 +50,6 @@ import {
   getIsDurableType,
   getIsRentableType,
 } from '../helper/UnifiedFeeSystemHelper';
-
-const normalizePublishItemType = (type: string) => type.toLowerCase();
 
 const useStyles = makeStyles()((theme) => ({
   fieldValue: {
@@ -127,6 +123,7 @@ interface PublishPanelProps {
   wearTime?: DurationOptionsEnum;
   isRentableOptIn: boolean | undefined;
   priceFloor: number;
+  itemDetails?: RobloxItemConfigurationApiGetItemResponse;
 }
 
 function PublishPanel(props: PublishPanelProps) {
@@ -156,6 +153,7 @@ function PublishPanel(props: PublishPanelProps) {
     wearTime,
     isRentableOptIn,
     priceFloor,
+    itemDetails,
   } = props;
   const [publishingFees, setPublishingFees] = useState<number | undefined>();
   const [showPrepublishDialog, setShowPrepublishDialog] = useState(false);
@@ -166,6 +164,7 @@ function PublishPanel(props: PublishPanelProps) {
   const [showPublishFeeInfoDialog, setShowPublishFeeInfoDialog] = useState(false);
   const [showPublishAdvanceInfoDialog, setShowPublishAdvanceInfoDialog] = useState(false);
   const [isPublishAllowedForItemType, setIsPublishAllowedForItemType] = useState(true);
+  const [isMetadataAllowed, setIsMetadataAllowed] = useState(true);
   const { user } = useAuthentication();
   const { enqueue } = useSnackbar();
   const { translate, translateHTML } = useTranslation();
@@ -195,31 +194,46 @@ function PublishPanel(props: PublishPanelProps) {
   );
 
   const isPublishAllowed =
-    !(isLimited && !quantity) && !!description && isPublishAllowedForItemType;
+    !(isLimited && !quantity) && !!description && isPublishAllowedForItemType && isMetadataAllowed;
+
+  const itemAssetType = itemDetails?.item?.marketplaceItemDetails?.assetDetails?.assetType;
+  const itemBundleType = itemDetails?.item?.marketplaceItemDetails?.bundleDetails?.bundleType;
+  const itemGroupId = itemDetails?.item?.creator?.group?.groupId;
+  const itemIsEmissive = itemDetails?.item?.isEmissive ?? false;
 
   useEffect(() => {
-    async function fetchAllowedPublishTypes() {
+    if (itemAssetType === undefined && itemBundleType === undefined) {
+      return;
+    }
+    async function fetchActionAllowed() {
       try {
-        // Action type 6 = publish permission check for current asset/bundle type
-        const response = await itemconfigurationClient.getAllowedAssetTypes(
-          V1PermissionsItemTypesGetActionEnum.NUMBER_6,
-          [
-            V1PermissionsItemTypesGetTargetTypesEnum.NUMBER_0,
-            V1PermissionsItemTypesGetTargetTypesEnum.NUMBER_1,
-          ],
+        const response = await itemconfigurationClient.isActionAllowedForItemType(
+          V1PermissionsActionAllowedForItemTypeGetActionEnum.NUMBER_6, // PublishToMarketplace
+          itemGroupId,
+          itemAssetType,
+          itemBundleType,
+          undefined,
         );
-
-        const allowedTypes = [
-          ...(response.allowedAssetTypes?.map(normalizePublishItemType) ?? []),
-          ...(response.allowedBundleTypes?.map(normalizePublishItemType) ?? []),
-        ];
-        setIsPublishAllowedForItemType(allowedTypes.includes(normalizePublishItemType(itemType)));
+        if (!response.isActionAllowed) {
+          setIsPublishAllowedForItemType(false);
+          return;
+        }
+        setIsPublishAllowedForItemType(true);
+        if (response.metadataPermissions) {
+          // oxlint-disable-next-line typescript-eslint/no-unnecessary-boolean-literal-compare -- distinguishes absent key (unrestricted) from explicit false (blocked)
+          if (itemIsEmissive && response.metadataPermissions.EmissiveResult === false) {
+            setIsMetadataAllowed(false);
+            return;
+          }
+        }
+        setIsMetadataAllowed(true);
       } catch {
         setIsPublishAllowedForItemType(true);
+        setIsMetadataAllowed(true);
       }
     }
-    void fetchAllowedPublishTypes();
-  }, [itemType]);
+    void fetchActionAllowed();
+  }, [itemAssetType, itemBundleType, itemGroupId, itemIsEmissive]);
 
   useEffect(() => {
     async function fetchPublishingFees() {

@@ -569,6 +569,7 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
             wearTime={wearTime}
             isRentableOptIn={isRentableOptIn}
             priceFloor={priceFloor}
+            itemDetails={itemDetails}
           />
         ) : (
           <SavePanel
