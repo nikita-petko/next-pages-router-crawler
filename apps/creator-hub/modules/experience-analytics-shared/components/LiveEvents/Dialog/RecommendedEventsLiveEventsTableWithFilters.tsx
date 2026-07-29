@@ -31,12 +31,17 @@ const EventTypeToTranslationKey: Record<RecommendedEventType, TranslationKey> = 
     TranslationNamespace.Analytics,
   ),
   [RecommendedEventType.Invalid]: translationKey('Label.Invalid', TranslationNamespace.Analytics),
+  [RecommendedEventType.JourneyEvents]: translationKey(
+    'Label.Dimension.EventType.JourneyEvents',
+    TranslationNamespace.Analytics,
+  ),
 };
 
 const eventTypeOptions = [
   RecommendedEventType.EconomyEvents,
   RecommendedEventType.ProgressionEvents,
   RecommendedEventType.CustomEvents,
+  RecommendedEventType.JourneyEvents,
 ];
 
 // Mirrors the popover anchoring used by the page-level FilterBarSingleSelector

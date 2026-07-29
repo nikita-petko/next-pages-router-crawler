@@ -1,7 +1,6 @@
 import type { FC } from 'react';
 import React, { useCallback } from 'react';
 import type { GetLiveEventsResponse, RecommendedEventType } from '@modules/clients/analytics';
-import { useUniverseResource } from '../../hooks/useChartResourceProvider';
 import { useRecommendedEventsLiveStatsClient } from '../RecommendedEventsLiveStatsClientProvider';
 import getAnalyticsApiDataProvider from './AnalyticsApiDataProvider';
 
@@ -13,10 +12,10 @@ const { useAnalyticsApiData: useRecommendedEventsLiveEventsApiData, AnalyticsApi
 const RecommendedEventsLiveEventsApiDataContextProvider: FC<
   React.PropsWithChildren<{
     eventType: RecommendedEventType;
+    universeId: number;
   }>
-> = ({ children, eventType }) => {
+> = ({ children, eventType, universeId }) => {
   const liveStatsClient = useRecommendedEventsLiveStatsClient();
-  const { id: universeId } = useUniverseResource();
   const fetchLiveEvents = useCallback(
     () =>
       liveStatsClient.getLiveEvents({
@@ -30,7 +29,7 @@ const RecommendedEventsLiveEventsApiDataContextProvider: FC<
   return (
     <AnalyticsApiDataProvider
       fetchApi={fetchLiveEvents}
-      options={{ refetchShouldSetLoading: true }}>
+      options={{ enabled: universeId > 0, refetchShouldSetLoading: true }}>
       {children}
     </AnalyticsApiDataProvider>
   );

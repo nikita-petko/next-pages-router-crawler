@@ -1,7 +1,6 @@
 import type { FC } from 'react';
 import React, { useCallback } from 'react';
 import { RecommendedEventType } from '@modules/clients/analytics';
-import { useUniverseResource } from '../../hooks/useChartResourceProvider';
 import { useRecommendedEventsLiveStatsClient } from '../RecommendedEventsLiveStatsClientProvider';
 import getAnalyticsApiDataProvider from './AnalyticsApiDataProvider';
 
@@ -13,16 +12,16 @@ const {
 // NOTE(shumingxu, 03/28/2024): We need an additional check to see if there are any live events without filters to
 // distinguish not having any events vs having events but they are filtered out.
 export const RecommendedEventsLiveEventsHasEventsApiDataContextProvider: FC<
-  React.PropsWithChildren
-> = ({ children }) => {
+  React.PropsWithChildren<{ universeId: number }>
+> = ({ children, universeId }) => {
   const liveStatsClient = useRecommendedEventsLiveStatsClient();
-  const { id: universeId } = useUniverseResource();
 
   const fetchLiveEvents = useCallback(async () => {
     const eventTypesToCheck = [
       RecommendedEventType.EconomyEvents,
       RecommendedEventType.ProgressionEvents,
       RecommendedEventType.CustomEvents,
+      RecommendedEventType.JourneyEvents,
     ];
     const requests = eventTypesToCheck.map((eventType) =>
       liveStatsClient.getLiveEvents({
@@ -45,7 +44,7 @@ export const RecommendedEventsLiveEventsHasEventsApiDataContextProvider: FC<
   return (
     <AnalyticsApiDataProvider
       fetchApi={fetchLiveEvents}
-      options={{ refetchShouldSetLoading: true }}>
+      options={{ enabled: universeId > 0, refetchShouldSetLoading: true }}>
       {children}
     </AnalyticsApiDataProvider>
   );

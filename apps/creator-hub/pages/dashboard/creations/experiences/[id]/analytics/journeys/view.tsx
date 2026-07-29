@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { useFlag } from '@rbx/flags';
 import { isJourneyEventsEnabled as isJourneysEnabledFlag } from '@generated/flags/creatorAnalytics';
 import { analyticsRecommendedEventsJourneyViewNavigationItem } from '@modules/charts-generic/constants/analyticsNavigationItems';
+import RecommendedEventsLiveStatsClientProvider from '@modules/experience-analytics-shared/context/RecommendedEventsLiveStatsClientProvider';
 import getAnalyticsPageLayout from '@modules/experience-analytics-shared/pages/getUniverseAnalyticsPageLayout';
 import JourneysPageContent from '@modules/experience-analytics/pages/RecommendedEvents/Journeys/JourneysPageContent';
 import JourneysPageTitle from '@modules/experience-analytics/pages/RecommendedEvents/Journeys/JourneysPageTitle';
@@ -26,7 +27,11 @@ const AnalyticsJourneyViewPage: NextLayoutPage = () => {
     return null;
   }
 
-  return <JourneysPageContent />;
+  return (
+    <RecommendedEventsLiveStatsClientProvider>
+      <JourneysPageContent />
+    </RecommendedEventsLiveStatsClientProvider>
+  );
 };
 
 AnalyticsJourneyViewPage.getPageLayout = (page) =>

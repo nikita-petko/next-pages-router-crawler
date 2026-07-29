@@ -12,13 +12,20 @@ const LiveEventsButtonWithDialog: FC<TButtonProps & { showRecordIcon?: boolean }
   const { defaultEventType } = useLiveEventsDialog();
 
   const [liveEventsDialogOpen, setLiveEventsDialogOpen] = React.useState(false);
-  const openLiveEventsDialog = useCallback(() => setLiveEventsDialogOpen(true), []);
+  // Increment on each open so the container remounts with fresh state,
+  // ensuring the dropdown always resets to the page's defaultEventType.
+  const [openKey, setOpenKey] = React.useState(0);
+  const openLiveEventsDialog = useCallback(() => {
+    setOpenKey((k) => k + 1);
+    setLiveEventsDialogOpen(true);
+  }, []);
   const closeLiveEventsDialog = useCallback(() => setLiveEventsDialogOpen(false), []);
 
   return (
     <>
       <LiveEventsButton onClick={openLiveEventsDialog} showRecordIcon={showRecordIcon} {...props} />
       <RecommendedEventsLiveEventsDialogContainer
+        key={openKey}
         open={liveEventsDialogOpen}
         onClose={closeLiveEventsDialog}
         defaultEventType={defaultEventType}

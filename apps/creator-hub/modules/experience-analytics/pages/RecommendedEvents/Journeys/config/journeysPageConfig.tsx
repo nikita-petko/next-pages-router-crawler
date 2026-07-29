@@ -11,6 +11,7 @@ import type { CreatorAnalyticsFixedTabPageConfig } from '@modules/experience-ana
 import { CreatorAnalyticsPageMode } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
 import { RAQIV2SpecialLayoutType } from '@modules/experience-analytics-shared/types/RAQIV2SpecialLayoutConfig';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { arbitraryComponentConfigRecommendedEventsLiveEventsButton } from '../../Economy/economyPageComponentsConfig';
 import { journeysTimeRangeOptions } from '../../recommendedEventsAnalyticsControlOptions';
 import JourneySankeyChart from '../components/JourneySankeyChart';
 import type { JourneySankeyMetric } from '../types';
@@ -55,6 +56,7 @@ const getJourneysPageConfig = (): CreatorAnalyticsFixedTabPageConfig<JourneySank
     tabs: {
       sessions: {
         ...sharedTabConfig,
+        preControlCharts: [arbitraryComponentConfigRecommendedEventsLiveEventsButton],
         tabKey: 'sessions',
         label: translationKey('Label.JourneyMetricSessions', TranslationNamespace.Analytics),
         body: [
@@ -79,6 +81,7 @@ const getJourneysPageConfig = (): CreatorAnalyticsFixedTabPageConfig<JourneySank
       },
       users: {
         ...sharedTabConfig,
+        preControlCharts: [arbitraryComponentConfigRecommendedEventsLiveEventsButton],
         tabKey: 'users',
         label: translationKey('Label.JourneyMetricUsers', TranslationNamespace.Analytics),
         body: [

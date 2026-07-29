@@ -2,6 +2,8 @@ import type { FC } from 'react';
 import { useMemo } from 'react';
 import { RAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
 import { withTranslation } from '@rbx/intl';
+import { RecommendedEventType } from '@modules/clients/analytics';
+import LiveEventsDialogProvider from '@modules/experience-analytics-shared/components/LiveEvents/LiveEventsDialogProvider';
 import CreatorAnalyticsLayout from '@modules/experience-analytics-shared/components/RAQIV2/layout/CreatorAnalyticsLayout';
 import { useRawAnalyticsQueryParams } from '@modules/experience-analytics-shared/context/rawQueryParams/RawAnalyticsQueryParamsProvider';
 import { getFilterValueForDimension } from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/filterUtils';
@@ -19,7 +21,11 @@ const JourneysPageContent: FC = () => {
 
   const config = useMemo(() => getJourneysPageConfig(), []);
 
-  return <CreatorAnalyticsLayout config={config} />;
+  return (
+    <LiveEventsDialogProvider defaultEventType={RecommendedEventType.JourneyEvents}>
+      <CreatorAnalyticsLayout config={config} />
+    </LiveEventsDialogProvider>
+  );
 };
 
 export default withTranslation(JourneysPageContent, [
