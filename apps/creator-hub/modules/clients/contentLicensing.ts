@@ -25,6 +25,7 @@ import type {
   AgreementCandidateResponse,
   AgreementStatus,
   GetAgreementCountByStatusResponse,
+  ListRevenueTargetsResponse,
   RequestedScanCandidatesCreateRequestedScanCandidateRequest,
   RequestedScanCandidateResponse,
   ValidateRequestedScanResponse,
@@ -193,6 +194,27 @@ export class ContentLicensingApiClient {
     }
 
     return this.agreementsApi.agreementsListAgreementActivitiesByAccount({
+      accountId,
+      agreementId: agreementId.trim(),
+      pageSize: pageSize ?? DEFAULT_PAGE_SIZE,
+      pageToken,
+    });
+  }
+
+  /**
+   * Fetches paginated revenue targets for a single agreement.
+   */
+  async listRevenueTargetsByAgreement(
+    accountId: string,
+    agreementId: string,
+    pageSize?: number,
+    pageToken?: string,
+  ): Promise<ListRevenueTargetsResponse> {
+    if (!agreementId || agreementId.trim().length === 0) {
+      throw new Error('Agreement ID is required');
+    }
+
+    return this.agreementsApi.agreementsListRevenueTargetsByAgreement({
       accountId,
       agreementId: agreementId.trim(),
       pageSize: pageSize ?? DEFAULT_PAGE_SIZE,
