@@ -5463,6 +5463,9 @@ html.studio-webview.dark-theme,
 }
 
 @media (min-width: 1141px) {
+  .large\:margin-left-auto {
+    margin-left: auto;
+  }
   .large\:flex-row {
     flex-direction: row;
   }
@@ -5474,6 +5477,9 @@ html.studio-webview.dark-theme,
   }
   .large\:text-no-wrap {
     white-space: nowrap;
+  }
+  .large\:width-\[280px\] {
+    width: 280px;
   }
   .large\:padding-large {
     padding: var(--padding-large);

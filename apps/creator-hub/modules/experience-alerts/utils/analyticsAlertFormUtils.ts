@@ -620,8 +620,11 @@ const pickLatestDataPointValue = (value: RAQIV2MetricValue): number | null => {
  * non-percent units we still append the short unit suffix that the firing
  * column uses, keeping the two columns visually aligned.
  *
- * Values that have no usable data point are dropped; callers should treat an
- * empty array as a "no data" signal in the cell UI.
+ * When the query returns no values at all (e.g. a brand-new alert with no
+ * data yet), a single `"0<unit>"` line is returned instead of an empty array,
+ * so the cell reads as "nothing has happened yet" rather than blank. Values
+ * that come back but have no usable data point are still dropped; callers
+ * should treat an empty array as a "no data" signal in that case.
  */
 export function formatCurrentValueLines(
   values: readonly RAQIV2MetricValue[] | undefined,
@@ -629,11 +632,14 @@ export function formatCurrentValueLines(
   translationDependencies: RAQIV2TranslationDependencies,
   evaluationMode: AnalyticsAlertEvaluationMode,
 ): string[] {
-  if (!values?.length) {
-    return [];
-  }
   const { translate } = translationDependencies;
   const unitSuffix = dataPointUnitSuffix(metric, translate, evaluationMode);
+  if (!values?.length) {
+    const zeroStr = formatRawDataPointValueOrNull(0, metric, translationDependencies);
+    return zeroStr === null
+      ? []
+      : [formatBreakdownValueLine(zeroStr, unitSuffix, undefined, translationDependencies)];
+  }
   return values.flatMap((value) => {
     const rawValue = pickLatestDataPointValue(value);
     if (rawValue === null) {

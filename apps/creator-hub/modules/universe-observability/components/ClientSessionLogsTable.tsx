@@ -14,12 +14,12 @@ import useClientLogs from '../hooks/useClientLogs';
 import type { ClientSessionLog } from '../types/ClientSession';
 import type { DateRangeSelection } from '../types/Filters';
 import { LogSeverity } from '../types/LogSeverity';
-import { getClientLogFilter } from '../utils/logFilters';
+import { getLogFilter } from '../utils/logFilters';
 import DateRangeControl from './DateRangeControl';
+import LogSearchInput from './LogSearchInput';
 import SeveritySelector from './SeveritySelector';
 
-const PAGE_SIZE = 10;
-const INITIAL_PAGE_TOKEN = '';
+const PAGE_SIZE = 50;
 const CLIENT_LOG_SEVERITIES = [
   LogSeverity.Output,
   LogSeverity.Info,
@@ -46,28 +46,35 @@ type ClientLogRow = {
 };
 
 type ClientSessionLogsTableProps = {
+  readonly universeId: number | undefined;
   readonly sessionId: string | undefined;
 };
 
 const getRowId = (row: ClientLogRow): string => row.time.value;
 
-const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ sessionId }) => {
+const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ universeId, sessionId }) => {
   const { locale } = useLocalization();
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
-  const [pageTokens, setPageTokens] = useState<readonly string[]>([INITIAL_PAGE_TOKEN]);
   const [dateRangeSelection, setDateRangeSelection] = useState<DateRangeSelection>({
     preset: 'all',
   });
   const [severity, setSeverity] = useState<LogSeverity>();
-  const pageIndex = pageTokens.length - 1;
-  const pageToken = pageTokens[pageIndex];
+  const [logSearchKey, setLogSearchKey] = useState('');
   const filter = useMemo(
-    () => getClientLogFilter(dateRangeSelection, severity),
-    [dateRangeSelection, severity],
+    () => getLogFilter(dateRangeSelection, severity, logSearchKey),
+    [dateRangeSelection, logSearchKey, severity],
   );
-  const { data, isError, isFetching } = useClientLogs({
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isError,
+    isFetchNextPageError,
+    isFetchingNextPage,
+    isPending,
+  } = useClientLogs({
+    universeId,
     sessionId,
-    pageToken: pageToken || undefined,
     pageSize: PAGE_SIZE,
     filter,
   });
@@ -134,9 +141,10 @@ const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ sessionId }) 
     }),
     [tPendingTranslation],
   );
+  const logs = useMemo(() => data?.pages.flatMap((page) => page.logs) ?? [], [data?.pages]);
   const rows = useMemo<ClientLogRow[]>(
     () =>
-      (isError ? [] : (data?.clientLogs ?? [])).map((log: ClientSessionLog) => {
+      logs.map((log: ClientSessionLog) => {
         const severityLabel = severityLabels[log.severity];
         return {
           time: {
@@ -167,7 +175,7 @@ const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ sessionId }) 
           },
         };
       }),
-    [columnLabels, data?.clientLogs, isError, severityLabels, timeFormatter],
+    [columnLabels, logs, severityLabels, timeFormatter],
   );
   const tableLabels = useMemo(
     () => ({
@@ -222,48 +230,52 @@ const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ sessionId }) 
     [numberFormatter, tPendingTranslation],
   );
 
-  const handlePreviousPage = useCallback(() => {
-    setPageTokens((tokens) => (tokens.length > 1 ? tokens.slice(0, -1) : tokens));
-  }, []);
-  const handleNextPage = useCallback((nextPageToken: string) => {
-    setPageTokens((tokens) => [...tokens, nextPageToken]);
-  }, []);
   const handleDateRangeChange = useCallback((selection: DateRangeSelection) => {
     setDateRangeSelection(selection);
-    setPageTokens([INITIAL_PAGE_TOKEN]);
   }, []);
   const handleSeverityChange = useCallback((nextSeverity: LogSeverity | undefined) => {
     setSeverity(nextSeverity);
-    setPageTokens([INITIAL_PAGE_TOKEN]);
   }, []);
+  const handleLogSearchChange = useCallback((nextLogSearchKey: string) => {
+    setLogSearchKey(nextLogSearchKey);
+  }, []);
+  const handleLoadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage({ cancelRefetch: false });
+    }
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  const lastPage = data?.pages[data.pages.length - 1];
   const navigation = useMemo(
     () => ({
-      mode: 'pagination' as const,
-      pageIndex,
-      pageSize: PAGE_SIZE,
-      hasPreviousPage: pageIndex > 0,
-      nextCursor: data?.nextPageToken ?? null,
-      totalRowCount: data?.totalCount ?? 0,
-      onPreviousPage: handlePreviousPage,
-      onNextPage: handleNextPage,
+      mode: 'infinite' as const,
+      nextCursor: lastPage?.nextPageToken ?? null,
+      onLoadMore: handleLoadMore,
+      isLoadingMore: isFetchingNextPage,
+      isLoadMoreError: isFetchNextPageError,
     }),
-    [data?.nextPageToken, data?.totalCount, handleNextPage, handlePreviousPage, pageIndex],
+    [handleLoadMore, isFetchNextPageError, isFetchingNextPage, lastPage?.nextPageToken],
+  );
+  const tableResetKey = useMemo(
+    () => JSON.stringify({ universeId, sessionId, filter }),
+    [filter, sessionId, universeId],
   );
 
   return (
     <div className='flex flex-col gap-medium'>
-      <div className='flex flex-row gap-medium max-width-fit'>
+      <div className='flex flex-col gap-medium width-full large:flex-row'>
         <DateRangeControl value={dateRangeSelection} onChange={handleDateRangeChange} />
         <SeveritySelector
           allowedSeverities={CLIENT_LOG_SEVERITIES}
           value={severity}
           onChange={handleSeverityChange}
         />
+        <LogSearchInput value={logSearchKey} onDebouncedChange={handleLogSearchChange} />
       </div>
       <AdaptiveDataTable
+        key={tableResetKey}
         getRowId={getRowId}
         isError={isError}
-        isLoading={isFetching || !sessionId}
+        isLoading={isPending || !sessionId || universeId == null || universeId <= 0}
         labels={tableLabels}
         navigation={navigation}
         rows={rows}

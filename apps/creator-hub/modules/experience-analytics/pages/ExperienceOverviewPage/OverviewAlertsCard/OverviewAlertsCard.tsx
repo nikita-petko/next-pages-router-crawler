@@ -2,9 +2,10 @@ import type { FC } from 'react';
 import { useCallback, useMemo } from 'react';
 import { Button } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { Card, Skeleton } from '@rbx/ui';
+import { Card } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import useAnalyticsAlertsListQuery from '@modules/experience-alerts/hooks/useAnalyticsAlertsListQuery';
 import { useUniverseResource } from '@modules/experience-analytics-shared/hooks/useChartResourceProvider';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -20,7 +21,6 @@ import useFiringAlertRows from './useFiringAlertRows';
 import useNewPlaceVersionRow from './useNewPlaceVersionRow';
 
 const MAX_VISIBLE_ROWS = 5;
-const NUM_LOADING_SKELETON_ROWS = 2;
 
 /**
  * Minimum card width sized to fit the longest expected single-line alert
@@ -37,6 +37,11 @@ const OverviewAlertsCard: FC = () => {
 
   const firingResult = useFiringAlertRows(MAX_VISIBLE_ROWS);
   const { rows: firingRows, isLoading: isFiringLoading } = firingResult;
+
+  const { data: alertConfigurations, isLoading: isAlertConfigurationsLoading } =
+    useAnalyticsAlertsListQuery(universeId);
+  const hasNoAlertConfigurations =
+    !isAlertConfigurationsLoading && (alertConfigurations?.length ?? 0) === 0;
 
   const handleMonitorClick = useCallback(
     (versionNumber: number) => {
@@ -83,7 +88,7 @@ const OverviewAlertsCard: FC = () => {
     });
   }, [firingRows, newPlaceVersionRow, unifiedLogger, universeId]);
 
-  if (!isFiringLoading && visibleRows.length === 0) {
+  if (isFiringLoading || isAlertConfigurationsLoading || visibleRows.length === 0) {
     return null;
   }
 
@@ -93,9 +98,15 @@ const OverviewAlertsCard: FC = () => {
       as='a'
       variant='ActionUtility'
       size='XSmall'
-      href={`${creatorHub.dashboard.getExperienceAlertsUrl(universeId)}?tab=AlertConfiguration-Analytics`}
+      href={
+        hasNoAlertConfigurations
+          ? creatorHub.dashboard.getExperienceAlertCreateUrl(universeId)
+          : `${creatorHub.dashboard.getExperienceAlertsUrl(universeId)}?tab=AlertConfiguration-Analytics`
+      }
       onClick={() => logClickOverviewAlertsViewAll(unifiedLogger, universeId)}>
-      {translate(translationKey('Label.ViewAll', TranslationNamespace.Insights))}
+      {hasNoAlertConfigurations
+        ? translate(translationKey('Action.Create', TranslationNamespace.Analytics))
+        : translate(translationKey('Label.ViewAll', TranslationNamespace.Insights))}
     </Button>
   );
 
@@ -108,30 +119,16 @@ const OverviewAlertsCard: FC = () => {
         className='bg-surface-100 width-full'
         style={{ minWidth: CARD_MIN_WIDTH_PX }}
         data-testid='overview-alerts-card'>
-        {isFiringLoading && visibleRows.length === 0 ? (
-          <ul
-            className='margin-none padding-xlarge list-none flex flex-col gap-xlarge'
-            style={{ listStyle: 'none' }}>
-            {Array.from({ length: NUM_LOADING_SKELETON_ROWS }).map((_, i) => (
-              <li
-                // oxlint-disable-next-line react/no-array-index-key -- static skeleton placeholders, no semantic identity
-                key={`overview-alerts-skeleton-${i}`}>
-                <Skeleton animate width='100%' height={20} />
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <ul
-            className='margin-none padding-xlarge list-none flex flex-col gap-xlarge'
-            style={{ listStyle: 'none' }}>
-            {visibleRows.map((row) => (
-              <OverviewAlertRow
-                key={row.testId ?? `overview-alert-row-${row.timeAgo ?? ''}`}
-                {...row}
-              />
-            ))}
-          </ul>
-        )}
+        <ul
+          className='margin-none padding-xlarge flex flex-col gap-xlarge'
+          style={{ listStyle: 'none' }}>
+          {visibleRows.map((row) => (
+            <OverviewAlertRow
+              key={row.testId ?? `overview-alert-row-${row.timeAgo ?? ''}`}
+              {...row}
+            />
+          ))}
+        </ul>
       </Card>
     </Section>
   );

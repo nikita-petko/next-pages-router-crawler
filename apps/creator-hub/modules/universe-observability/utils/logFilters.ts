@@ -12,12 +12,14 @@ const getEndOfUtcDay = (date: Date): Date =>
       1,
   );
 
-export const getClientLogFilter = (
+export const getLogFilter = (
   dateRangeSelection: DateRangeSelection,
   severity?: LogSeverity,
+  logSearchKey?: string,
 ): LogFilter | undefined => {
   const now = new Date();
   let dateRange: LogFilter['dateRange'];
+  const normalizedLogSearchKey = logSearchKey?.trim();
 
   switch (dateRangeSelection.preset) {
     case 'last1Hour':
@@ -51,12 +53,36 @@ export const getClientLogFilter = (
       dateRange = undefined;
   }
 
-  if (!dateRange && severity === undefined) {
+  if (!dateRange && severity === undefined && !normalizedLogSearchKey) {
     return undefined;
   }
 
   return {
     ...(dateRange ? { dateRange } : {}),
     ...(severity !== undefined ? { severity } : {}),
+    ...(normalizedLogSearchKey ? { logSearchKey: normalizedLogSearchKey } : {}),
   };
+};
+
+export const clientLogFilterToQuery = (filter: LogFilter | undefined): string | undefined => {
+  if (!filter) {
+    return undefined;
+  }
+
+  const parts: string[] = [];
+  if (filter.severity !== undefined) {
+    parts.push(`severity in [${filter.severity}]`);
+  }
+  if (filter.logSearchKey) {
+    const escapedSearch = filter.logSearchKey.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
+    parts.push(`search == "${escapedSearch}"`);
+  }
+  if (filter.dateRange?.min) {
+    parts.push(`message_timestamp >= "${filter.dateRange.min.toISOString()}"`);
+  }
+  if (filter.dateRange?.max) {
+    parts.push(`message_timestamp <= "${filter.dateRange.max.toISOString()}"`);
+  }
+
+  return parts.length > 0 ? parts.join(' && ') : undefined;
 };

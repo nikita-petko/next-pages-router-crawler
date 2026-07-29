@@ -9,7 +9,7 @@ import ClientSessionLogsTable from './ClientSessionLogsTable';
 import ClientSessionMetadata from './ClientSessionMetadata';
 
 const ClientSessionDetailsPageContent: FC = () => {
-  const { sessionId } = useUniverseRelatedSession();
+  const { sessionId, universeId } = useUniverseRelatedSession();
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const metadataHeading = tPendingTranslation(
     'Metadata',
@@ -23,14 +23,14 @@ const ClientSessionDetailsPageContent: FC = () => {
   );
 
   return (
-    <div className='flex flex-col gap-xxlarge'>
+    <div className='flex flex-col gap-xxlarge padding-top-small'>
       <section className='flex flex-col gap-medium'>
         <h2 className='text-heading-small margin-none'>{metadataHeading}</h2>
         <ClientSessionMetadata sessionId={sessionId} />
       </section>
       <section className='flex flex-col gap-medium'>
         <h2 className='text-heading-small margin-none'>{logsHeading}</h2>
-        <ClientSessionLogsTable sessionId={sessionId} />
+        <ClientSessionLogsTable universeId={universeId} sessionId={sessionId} />
       </section>
     </div>
   );

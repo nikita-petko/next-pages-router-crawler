@@ -97,6 +97,7 @@ const SeveritySelector: FC<SeveritySelectorProps> = ({
 
   return (
     <Dropdown
+      className='min-width-[220px]'
       label={resolvedLabel}
       size='Medium'
       placeholder={allSeveritiesLabel}
