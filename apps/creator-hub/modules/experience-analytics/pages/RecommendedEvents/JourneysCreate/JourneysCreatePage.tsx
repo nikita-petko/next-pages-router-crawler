@@ -1,8 +1,10 @@
 import type { FC, ReactNode } from 'react';
-import { useCallback } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/router';
 import type { Control, FieldPath, UseFormGetValues, UseFormTrigger } from 'react-hook-form';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import type { TStepperStep } from '@rbx/foundation-ui';
 import {
   Accordion,
   AccordionItem,
@@ -11,18 +13,24 @@ import {
   Button,
   IconButton,
   ProgressCircle,
+  Snackbar,
+  Stepper,
   TextInput,
 } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { Grid } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import HighlightingCodeBlock, {
+  HighlightingCodeBlockLanguage,
+} from '@modules/charts-generic/components/HighlightingCodeBlock/HighlightingCodeBlock';
 import { AnalyticsPageDescription } from '@modules/charts-generic/layout/AnalyticsPageDescription';
 import { Link } from '@modules/miscellaneous/components';
 import LoadError from '@modules/miscellaneous/error/LoadError';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import BreadcrumbItemType from '@modules/navigation/layout/enums/BreadcrumbsItemType';
 import useBreadcrumbRegistration from '@modules/navigation/layout/hooks/useBreadcrumbRegistration';
+import generateJourneySnippet from './generateJourneySnippet';
 import type { JourneyNameError, NodeNameError } from './journeyValidation';
 import {
   NODES_PER_STAGE_MAX,
@@ -36,6 +44,11 @@ import { useJourneyConfigs, useSaveJourneyConfig } from './useJourneyConfigStora
 import type { JourneyEntry } from './useJourneyConfigStorage';
 
 const journeysDocsLink = '/docs/production/analytics/journey-events';
+
+enum JourneyStep {
+  Configure = 0,
+  AddToCode = 1,
+}
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -206,11 +219,19 @@ const StageFields: FC<StageFieldsProps> = ({
 type JourneyFormProps = {
   defaultValues: JourneyFormValues;
   originalName?: string;
+  onSaved: (entry: JourneyEntry) => void;
+  onCancel: () => void;
+  actionBarContainer?: HTMLElement | null;
 };
 
-const JourneyForm: FC<JourneyFormProps> = ({ defaultValues, originalName }) => {
+const JourneyForm: FC<JourneyFormProps> = ({
+  defaultValues,
+  originalName,
+  onSaved,
+  onCancel,
+  actionBarContainer,
+}) => {
   const { tPendingTranslation, translate } = useTranslationWrapper(useTranslation());
-  const router = useRouter();
   const { mutateAsync: saveConfig } = useSaveJourneyConfig();
 
   const {
@@ -324,20 +345,19 @@ const JourneyForm: FC<JourneyFormProps> = ({ defaultValues, originalName }) => {
 
   const onSubmit = useCallback(
     async (values: JourneyFormValues) => {
-      const { id } = router.query;
-      const viewUrl = `/dashboard/creations/experiences/${String(id)}/analytics/journeys/view?filter_JourneyName=${encodeURIComponent(values.name.trim())}`;
       if (!isDirty) {
-        void router.push(viewUrl);
+        onSaved(formValuesToEntry(values));
         return;
       }
       try {
-        await saveConfig({ ...formValuesToEntry(values), originalName });
-        void router.push(viewUrl);
+        const entry = formValuesToEntry(values);
+        await saveConfig({ ...entry, originalName });
+        onSaved(entry);
       } catch {
         setError('root.serverError', { type: 'server', message: saveErrorMessage });
       }
     },
-    [router, isDirty, saveConfig, originalName, setError, saveErrorMessage],
+    [isDirty, saveConfig, originalName, onSaved, setError, saveErrorMessage],
   );
 
   // ── labels ───────────────────────────────────────────────────────────────
@@ -354,23 +374,23 @@ const JourneyForm: FC<JourneyFormProps> = ({ defaultValues, originalName }) => {
   );
   const addNodeLabel = tPendingTranslation(
     'Add node',
-    'Button to add another node/event to this stage',
-    translationKey('Action.AddNode', TranslationNamespace.Analytics),
+    'Button to add a new event node within a stage',
+    translationKey('Action.AddJourneyNode', TranslationNamespace.Analytics),
   );
   const addStageLabel = tPendingTranslation(
     'Add stage',
-    'Button to append a new stage to the journey',
-    translationKey('Action.AddStage', TranslationNamespace.Analytics),
+    'Button to append a new stage to the journey config',
+    translationKey('Action.AddJourneyStage', TranslationNamespace.Analytics),
   );
   const removeStageLabel = tPendingTranslation(
     'Remove stage',
-    'Button to remove this stage from the journey',
-    translationKey('Action.RemoveStage', TranslationNamespace.Analytics),
+    'Button to delete a stage from a journey config',
+    translationKey('Action.RemoveJourneyStage', TranslationNamespace.Analytics),
   );
   const removeNodeLabel = tPendingTranslation(
     'Remove node',
     'Aria label for remove node button',
-    translationKey('Action.RemoveNode', TranslationNamespace.Analytics),
+    translationKey('Action.RemoveJourneyNode', TranslationNamespace.Analytics),
   );
   const nodeNamePlaceholder = tPendingTranslation(
     'Node name',
@@ -382,6 +402,7 @@ const JourneyForm: FC<JourneyFormProps> = ({ defaultValues, originalName }) => {
 
   return (
     <form
+      id='journey-config-form'
       className='flex flex-col gap-large padding-bottom-xlarge'
       onSubmit={(e) => {
         void handleSubmit(onSubmit)(e);
@@ -489,31 +510,48 @@ const JourneyForm: FC<JourneyFormProps> = ({ defaultValues, originalName }) => {
         </p>
       )}
 
-      <div className='flex items-center gap-medium padding-top-large'>
-        <Button variant='Emphasis' size='Medium' type='submit' isLoading={isSubmitting}>
-          {translate(translationKey('Action.Save', TranslationNamespace.Controls))}
-        </Button>
-        <Button
-          variant='Standard'
-          size='Medium'
-          type='button'
-          onClick={() =>
-            void router.push(
-              `/dashboard/creations/experiences/${String(router.query.id)}/analytics/journeys`,
-            )
-          }>
-          {translate(translationKey('Action.Cancel', TranslationNamespace.Controls))}
-        </Button>
-      </div>
+      {actionBarContainer ? (
+        createPortal(
+          <div className='flex items-center gap-medium'>
+            <Button
+              variant='Emphasis'
+              size='Medium'
+              type='submit'
+              form='journey-config-form'
+              isLoading={isSubmitting}>
+              {translate(translationKey('Action.Next', TranslationNamespace.Controls))}
+            </Button>
+            <Button variant='Standard' size='Medium' type='button' onClick={onCancel}>
+              {translate(translationKey('Action.Cancel', TranslationNamespace.Controls))}
+            </Button>
+          </div>,
+          actionBarContainer,
+        )
+      ) : (
+        <div className='flex items-center gap-medium padding-top-large'>
+          <Button variant='Emphasis' size='Medium' type='submit' isLoading={isSubmitting}>
+            {translate(translationKey('Action.Next', TranslationNamespace.Controls))}
+          </Button>
+          <Button variant='Standard' size='Medium' type='button' onClick={onCancel}>
+            {translate(translationKey('Action.Cancel', TranslationNamespace.Controls))}
+          </Button>
+        </div>
+      )}
     </form>
   );
 };
 
-// ── outer wrapper: handles loading / error, then renders form ─────────────────
+// ── JourneysCreatePage: handles loading/error, then mounts stepper ────────────
 
 const JourneysCreatePage: FC = () => {
   const { tPendingTranslation, translate, translateHTML } = useTranslationWrapper(useTranslation());
   const router = useRouter();
+  const isEdit = router.pathname.endsWith('/edit');
+
+  const [activeStep, setActiveStep] = useState<JourneyStep>(JourneyStep.Configure);
+  const [savedEntry, setSavedEntry] = useState<JourneyEntry | null>(null);
+  const [showCopySnackbar, setShowCopySnackbar] = useState(false);
+  const [actionBarContainer, setActionBarContainer] = useState<HTMLDivElement | null>(null);
 
   useBreadcrumbRegistration(
     BreadcrumbItemType.Create,
@@ -521,8 +559,83 @@ const JourneysCreatePage: FC = () => {
       undefined,
   );
   const { data: apiConfigs, isLoading, error, refetch } = useJourneyConfigs();
+
   const requestedJourneyName =
     typeof router.query.journeyName === 'string' ? router.query.journeyName : undefined;
+
+  // Entry for step 2: just-saved, or (on edit) the existing API entry.
+  const snippetEntry = useMemo(() => {
+    if (savedEntry !== null) {
+      return savedEntry;
+    }
+    if (isEdit && requestedJourneyName !== undefined) {
+      return (apiConfigs ?? []).find((e) => e.journeyName === requestedJourneyName) ?? null;
+    }
+    return null;
+  }, [savedEntry, isEdit, requestedJourneyName, apiConfigs]);
+
+  const snippetText = useMemo(
+    () => (snippetEntry !== null ? generateJourneySnippet(snippetEntry) : null),
+    [snippetEntry],
+  );
+
+  const onCancel = useCallback(() => {
+    void router.push(
+      `/dashboard/creations/experiences/${String(router.query.id)}/analytics/journeys`,
+    );
+  }, [router]);
+
+  const onSaved = useCallback((entry: JourneyEntry) => {
+    setSavedEntry(entry);
+    setActiveStep(JourneyStep.AddToCode);
+  }, []);
+
+  const onDone = useCallback(() => {
+    const name = savedEntry?.journeyName ?? requestedJourneyName ?? '';
+    void router.push(
+      `/dashboard/creations/experiences/${String(router.query.id)}/analytics/journeys/view?filter_JourneyName=${encodeURIComponent(name)}`,
+    );
+  }, [savedEntry, requestedJourneyName, router]);
+
+  const onCopyClick = useCallback(() => {
+    if (snippetText === null) {
+      return;
+    }
+    navigator.clipboard.writeText(snippetText).then(
+      () => setShowCopySnackbar(true),
+      () => undefined,
+    );
+  }, [snippetText]);
+
+  const steps = useMemo<TStepperStep[]>(
+    () => [
+      {
+        label: tPendingTranslation(
+          'Setup',
+          'First step in the journey config wizard: set up the journey stages',
+          translationKey('Label.JourneyStep.Configure', TranslationNamespace.Analytics),
+        ),
+        description: tPendingTranslation(
+          'Required',
+          'Description for the first step in the journey config wizard',
+          translationKey('Label.JourneyStep.ConfigureDescription', TranslationNamespace.Analytics),
+        ),
+      },
+      {
+        label: tPendingTranslation(
+          'Add to code',
+          'Second step in the journey config wizard: copy the generated Lua snippet',
+          translationKey('Label.JourneyStep.AddToCode', TranslationNamespace.Analytics),
+        ),
+        description: tPendingTranslation(
+          'Optional',
+          'Description for the second step in the journey config wizard',
+          translationKey('Label.JourneyStep.AddToCodeDescription', TranslationNamespace.Analytics),
+        ),
+      },
+    ],
+    [tPendingTranslation],
+  );
 
   const description = (
     <Grid container>
@@ -573,14 +686,97 @@ const JourneysCreatePage: FC = () => {
   }
 
   return (
-    <>
-      {description}
-      <JourneyForm
-        key={requestedJourneyName ?? 'new'}
-        defaultValues={defaultValues}
-        originalName={requestedJourneyName}
-      />
-    </>
+    <div className='flex flex-col width-full min-height-[calc(100vh-280px)]'>
+      {showCopySnackbar && (
+        <Snackbar
+          title={tPendingTranslation(
+            'Copied to clipboard',
+            'Snackbar shown after copying the journey code snippet',
+            translationKey('Toast.JourneySnippetCopied', TranslationNamespace.Analytics),
+          )}
+          shouldAutoDismiss
+          onClose={() => setShowCopySnackbar(false)}
+        />
+      )}
+
+      <div className='width-full'>
+        {description}
+
+        <div className='margin-bottom-large'>
+          <Stepper steps={steps} currentStepIndex={activeStep} size='Medium' showDescription />
+        </div>
+
+        {activeStep === JourneyStep.Configure && (
+          <JourneyForm
+            key={requestedJourneyName ?? 'new'}
+            defaultValues={defaultValues}
+            originalName={requestedJourneyName}
+            onSaved={onSaved}
+            onCancel={onCancel}
+            actionBarContainer={actionBarContainer}
+          />
+        )}
+
+        {activeStep === JourneyStep.AddToCode && snippetEntry !== null && (
+          <div className='margin-top-large'>
+            <p className='text-title-medium content-emphasis margin-none margin-bottom-small'>
+              {tPendingTranslation(
+                'Code snippet',
+                'Label above the generated Lua code block',
+                translationKey('Label.JourneyCodeSnippet', TranslationNamespace.Analytics),
+              )}
+            </p>
+
+            <div className='stroke-standard stroke-default padding-medium radius-medium'>
+              <HighlightingCodeBlock
+                code={snippetText ?? ''}
+                codePreviewSnippet={snippetText ?? ''}
+                language={HighlightingCodeBlockLanguage.Lua}
+                expanded
+              />
+            </div>
+
+            <p className='text-body-small content-muted margin-none margin-top-small'>
+              {tPendingTranslation(
+                'Copy the following code snippet and add to your codebase',
+                'Helper text below the journey code snippet',
+                translationKey('Description.JourneySnippet', TranslationNamespace.Analytics),
+              )}
+            </p>
+
+            <div className='margin-top-large'>
+              <Button
+                type='button'
+                variant='Standard'
+                size='Medium'
+                isDisabled={!snippetText}
+                onClick={onCopyClick}>
+                {tPendingTranslation(
+                  'Copy',
+                  'action for copy',
+                  translationKey('Action.Copy', TranslationNamespace.Controls),
+                )}
+              </Button>
+            </div>
+
+            {actionBarContainer &&
+              createPortal(
+                <Button type='button' variant='Emphasis' size='Medium' onClick={onDone}>
+                  {tPendingTranslation(
+                    'Done',
+                    'Done',
+                    translationKey('Action.Done', TranslationNamespace.Controls),
+                  )}
+                </Button>,
+                actionBarContainer,
+              )}
+          </div>
+        )}
+      </div>
+
+      {/* Action bar — pushed to page bottom via margin-top-auto */}
+      <div ref={setActionBarContainer} className='padding-y-large margin-top-auto' />
+    </div>
   );
 };
 

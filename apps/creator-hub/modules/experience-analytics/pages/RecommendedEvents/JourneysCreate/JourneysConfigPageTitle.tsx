@@ -9,21 +9,22 @@ function JourneysConfigPageTitle() {
   const { pathname } = useRouter();
   const isEdit = pathname.endsWith('/edit');
 
-  return (
-    <h1 className='text-heading-large margin-none'>
-      {isEdit
-        ? tPendingTranslation(
-            'Edit Journey',
-            'Page heading for the journey config edit form',
-            translationKey('Heading.EditJourney', TranslationNamespace.Analytics),
-          )
-        : tPendingTranslation(
-            'Create Journey',
-            'Page heading for the journey config creation form',
-            translationKey('Heading.CreateJourney', TranslationNamespace.Analytics),
-          )}
-    </h1>
-  );
+  const title = isEdit
+    ? tPendingTranslation(
+        'Edit Journey',
+        'Page heading for the journey config edit form',
+        translationKey('Heading.EditJourney', TranslationNamespace.Analytics),
+      )
+    : tPendingTranslation(
+        'Create Journey',
+        'Page heading for the journey config creation form',
+        translationKey('Heading.CreateJourney', TranslationNamespace.Analytics),
+      );
+
+  return <h1 className='text-heading-large margin-none'>{title}</h1>;
 }
 
-export default withTranslation(JourneysConfigPageTitle, [TranslationNamespace.Analytics]);
+export default withTranslation(JourneysConfigPageTitle, [
+  TranslationNamespace.Analytics,
+  TranslationNamespace.Controls,
+]);
