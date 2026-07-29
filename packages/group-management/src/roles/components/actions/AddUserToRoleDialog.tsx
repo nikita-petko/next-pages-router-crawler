@@ -46,7 +46,14 @@ const useStyles = makeStyles()((theme) => ({
 export const AddUserToRoleDialog: FunctionComponent<
   React.PropsWithChildren<AddUserToRoleDialogProps>
 > = ({ open, onClose, role }) => {
-  const { organization, group, unifiedLogger, showToast } = useCurrentGroup();
+  const {
+    organization,
+    group,
+    refreshPermission,
+    user: currentUser,
+    unifiedLogger,
+    showToast,
+  } = useCurrentGroup();
   const { translate } = useTranslation();
   const { mutateAsync: addUserToRole } = useAddUserToRole();
   const { mutateAsync: addInvitedToRole } = useAddInvitedToRole();
@@ -118,6 +125,12 @@ export const AddUserToRoleDialog: FunctionComponent<
         });
       await Promise.all(requests);
 
+      if (
+        currentUser.id !== undefined &&
+        selectedUsers.some((selectedUser) => selectedUser.id === currentUser.id)
+      ) {
+        await refreshPermission();
+      }
       showToast(translate('Message.RoleAddedToUsers'));
     } catch {
       showToast(translate('Error.AddingUsersToRole'), true);

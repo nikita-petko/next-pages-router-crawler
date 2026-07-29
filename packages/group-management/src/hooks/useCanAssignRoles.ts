@@ -1,24 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
+import { canAssignRole } from '../utils/groupPermissions';
 import useCurrentGroup from './useCurrentGroup';
 
 const useCanAssignRoles = (): {
   canAssignRoles: boolean;
   isUnrestricted: boolean;
 } => {
-  const [canAssignRoles, setCanAssignRoles] = useState<boolean>(false);
-  const [isUnrestricted, setIsUnrestricted] = useState<boolean>(false);
+  const { isOwner, rolePermissions } = useCurrentGroup();
 
-  const { permissions } = useCurrentGroup();
+  const canAssignRoles = useMemo(
+    () => isOwner === true || Object.values(rolePermissions ?? {}).some(canAssignRole),
+    [isOwner, rolePermissions],
+  );
 
-  useEffect(() => {
-    const hasAssignableRoles = (permissions?.assignableRoleIds?.length ?? 0) > 0;
-    const isOwner = permissions?.isOwner === true;
-
-    setCanAssignRoles(hasAssignableRoles || isOwner);
-    setIsUnrestricted(isOwner);
-  }, [permissions?.assignableRoleIds, permissions?.isOwner]);
-
-  return useMemo(() => ({ canAssignRoles, isUnrestricted }), [canAssignRoles, isUnrestricted]);
+  return useMemo(
+    () => ({ canAssignRoles, isUnrestricted: isOwner === true }),
+    [canAssignRoles, isOwner],
+  );
 };
 
 export default useCanAssignRoles;

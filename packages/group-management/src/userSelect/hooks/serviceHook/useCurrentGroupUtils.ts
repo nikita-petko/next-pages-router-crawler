@@ -41,22 +41,30 @@ const useCurrentGroupUtils = ({
   const orgInvitationsCache = useRef<Map<string, string | undefined>>(new Map());
   const groupFriendshipCache = useRef<Map<string, boolean>>(new Map());
 
-  const { user, organization } = useCurrentGroup();
+  const { user, organization, permissions } = useCurrentGroup();
   const checkFriendship = useFriendsBatchRequester();
 
   const groupId = organization?.groupId ? parseInt(organization.groupId, 10) : undefined;
   const organizationId = organization?.id;
   const authenticatedUserId = user?.id;
+  const canInviteMembers = permissions?.canInviteMembers === true;
 
   const { data: groupMembers, isFetching: isGroupMembersFetching } = useGetGroupMembers(
     groupId?.toString(),
     V1GroupsGroupIdUsersGetLimitEnum.NUMBER_100,
   );
-  const { data: invitations, isFetching: isInvitationsFetching } =
-    useGetInvitationsByOrganizationId(organization?.id, undefined, MAX_FETCH_SIZE);
+  const {
+    data: invitations,
+    isFetching: isInvitationsFetching,
+    isError: isInvitationsError,
+  } = useGetInvitationsByOrganizationId(
+    canInviteMembers ? organization?.id : undefined,
+    undefined,
+    MAX_FETCH_SIZE,
+  );
   const { data: invitationsByRole, isFetching: isUsersWithRoleFetching } = useGetInvitationsByRole(
-    organization?.id,
-    roleId,
+    canInviteMembers ? organization?.id : undefined,
+    canInviteMembers ? roleId : undefined,
     undefined,
     MAX_FETCH_SIZE,
   );
@@ -106,6 +114,9 @@ const useCurrentGroupUtils = ({
 
   const getUserInvitationId = useCallback(
     async (userId: number): Promise<string | undefined> => {
+      if (!canInviteMembers) {
+        return undefined;
+      }
       if (cacheState.current.invitations) {
         return orgInvitationsCache.current.get(userId.toString());
       }
@@ -124,7 +135,7 @@ const useCurrentGroupUtils = ({
         return undefined;
       }
     },
-    [organizationId],
+    [canInviteMembers, organizationId],
   );
 
   const isUserInvited = useCallback(
@@ -201,12 +212,16 @@ const useCurrentGroupUtils = ({
     }
 
     cacheState.current = {
-      invitations: !!invitations && invitations.invitations.length < MAX_FETCH_SIZE,
+      invitations:
+        !canInviteMembers ||
+        (!isInvitationsError && !!invitations && invitations.invitations.length < MAX_FETCH_SIZE),
       membership:
         !!groupMembers &&
         (groupMembers.data?.length ?? 0) < V1GroupsGroupIdUsersGetLimitEnum.NUMBER_100,
       friendship: !!friends && friends.length < 200,
-      inviteRoles: !!invitationsByRole && invitationsByRole.invitations.length < MAX_FETCH_SIZE,
+      inviteRoles:
+        !canInviteMembers ||
+        (!!invitationsByRole && invitationsByRole.invitations.length < MAX_FETCH_SIZE),
     };
 
     groupMembersCache.current = new Map(
@@ -219,7 +234,7 @@ const useCurrentGroupUtils = ({
     );
 
     orgInvitationsCache.current = new Map(
-      invitations?.invitations
+      (!canInviteMembers || isInvitationsError ? [] : (invitations?.invitations ?? []))
         .filter(
           (invitation): invitation is typeof invitation & { recipientUserId: string } =>
             !!invitation.recipientUserId,
@@ -244,11 +259,13 @@ const useCurrentGroupUtils = ({
           groupRoleUserIds.has(entry.user.userId.toString()),
         ]) ?? [],
     );
-    invitationsByRole?.invitations.forEach((invitation) => {
-      if (invitation.recipientUserId !== undefined) {
-        groupRoleCache.current.set(invitation.recipientUserId, true);
-      }
-    });
+    if (canInviteMembers) {
+      invitationsByRole?.invitations.forEach((invitation) => {
+        if (invitation.recipientUserId !== undefined) {
+          groupRoleCache.current.set(invitation.recipientUserId, true);
+        }
+      });
+    }
 
     groupFriendshipCache.current = new Map(
       friends
@@ -261,7 +278,11 @@ const useCurrentGroupUtils = ({
         ? overrideFetchAllInvitedUsersAndMembers
         : !!roleId;
 
-    if (cacheState.current.membership && cacheState.current.invitations && shouldFetch) {
+    if (
+      cacheState.current.membership &&
+      (cacheState.current.invitations || isInvitationsError) &&
+      shouldFetch
+    ) {
       void fetchAllInvitedUsersAndMembers();
     }
   }, [
@@ -272,8 +293,10 @@ const useCurrentGroupUtils = ({
     groupUsersWithRole,
     invitations,
     invitationsByRole,
+    isInvitationsError,
     roleId,
     overrideFetchAllInvitedUsersAndMembers,
+    canInviteMembers,
   ]);
 
   const returnValue = useMemo(

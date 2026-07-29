@@ -22,7 +22,9 @@ import type {
   V2GroupsGroupIdUsersGetRequest,
   RobloxGroupsApiUserGroupRolesResponse,
   RobloxGroupsApiModelsRequestUpdateRoleSetPositionRequest,
+  RobloxGroupsApiResolvedPermissionsForEntityResponse,
   RobloxGroupsApiRolePermissionsForEntityResponse,
+  RobloxWebWebAPIModelsApiPageResponseRobloxGroupsApiModelsResponseResolvedPermissionsForEntityPageItemResponse,
   RobloxGroupsApiModelsRequestUpdateRolePermissionsForEntityRequest,
 } from '@rbx/client-groups/v2';
 import {
@@ -54,6 +56,13 @@ export type GroupUserWithRoles = RobloxGroupsApiUserGroupRolesResponse;
 export type GroupMembersResponse =
   RobloxWebWebAPIModelsApiPageResponseRobloxGroupsApiUserGroupRoleResponse;
 export type GroupMember = RobloxGroupsApiUserGroupRoleResponse;
+export type ResolvedPermissions = NonNullable<
+  RobloxGroupsApiResolvedPermissionsForEntityResponse['permissions']
+>;
+export type GroupPermissions = ResolvedPermissions;
+export type GroupRolePermissions = Record<string, ResolvedPermissions>;
+export type GroupRolePermissionsPage =
+  RobloxWebWebAPIModelsApiPageResponseRobloxGroupsApiModelsResponseResolvedPermissionsForEntityPageItemResponse;
 
 interface GroupsClient {
   getGroupInfo(groupId: number): Promise<RobloxGroupsApiGroupDetailResponse>;
@@ -65,6 +74,11 @@ interface GroupsClient {
   getGroupUsersWithRoles(
     params: V2GroupsGroupIdUsersGetRequest,
   ): Promise<GroupUsersWithRolesResponse>;
+  getAuthenticatedUserIsOwner(groupId: number): Promise<boolean>;
+  getGroupPermissions(
+    groupId: number,
+  ): Promise<RobloxGroupsApiResolvedPermissionsForEntityResponse>;
+  getGroupRolePermissionsPage(groupId: number): Promise<GroupRolePermissionsPage>;
   createRoleSet(
     groupId: number,
     request: RobloxGroupsApiModelsRequestCreateRoleSetRequest,
@@ -120,6 +134,24 @@ const groupsClient: GroupsClient = {
   },
   getGroupUsersWithRoles(params: V2GroupsGroupIdUsersGetRequest) {
     return membershipV2Api.v2GroupsGroupIdUsersGet(params);
+  },
+  async getAuthenticatedUserIsOwner(groupId: number) {
+    const membership = await membershipApi.v1GroupsGroupIdMembershipGet({
+      groupId,
+      includeNotificationPreferences: false,
+    });
+    return membership.isOwner === true;
+  },
+  getGroupPermissions(groupId: number) {
+    return permissionsV2Api.v2GroupsGroupIdPermissionsResolvedGet({
+      groupId,
+    });
+  },
+  getGroupRolePermissionsPage(groupId: number) {
+    return permissionsV2Api.v2GroupsGroupIdEntityTypePermissionsResolvedGet({
+      groupId,
+      entityType: 'roles',
+    });
   },
   async createRoleSet(groupId: number, request: RobloxGroupsApiModelsRequestCreateRoleSetRequest) {
     return rolesetsApi.v1GroupsGroupIdRolesetsCreatePost({

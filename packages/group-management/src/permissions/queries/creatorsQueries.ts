@@ -1,12 +1,12 @@
 import { useCallback } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
-import type { PermissionsResponseModel } from '@rbx/client-organizations-service-api/v1';
 import developApiClient from '../../clients/developApi';
-import type { GroupRoleMetadata } from '../../clients/groups';
+import type { GroupRoleMetadata, GroupRolePermissions } from '../../clients/groups';
 import groupsClient from '../../clients/groups';
 import type { Organization } from '../../clients/organizationApi';
 import { DefaultMemberRoleIdNumber, GuestRoleRank } from '../../utils/constants';
+import { canEditRolePermissions } from '../../utils/groupPermissions';
 import type {
   CreatorDetails,
   CreatorFilter,
@@ -29,14 +29,9 @@ function isCreatorDetails(value: CreatorTypes | CreatorDetails): value is Creato
 
 function buildOrganizationRolesGroup(
   roles: GroupRoleMetadata[] | undefined,
-  permissions: PermissionsResponseModel | undefined,
+  rolePermissions: GroupRolePermissions | undefined,
+  isOwner: boolean,
 ): CreatorGroupDetails {
-  const enabledRoles = new Set([
-    ...(permissions?.assignableRoleIds ?? []),
-    ...(permissions?.permissionEditableRoleIds ?? []),
-    ...(permissions?.metadataEditableRoleIds ?? []),
-  ]);
-
   const creatorsList = (roles ?? [])
     .filter((role) => role.id && role.id !== DefaultMemberRoleIdNumber)
     .filter((role) => role.rank && role.rank !== GuestRoleRank)
@@ -45,7 +40,7 @@ function buildOrganizationRolesGroup(
       id: role.id?.toString() ?? '',
       name: role.name ?? '',
       color: role.color,
-      disabled: !enabledRoles.has(role.id?.toString() ?? ''),
+      disabled: !isOwner && !canEditRolePermissions(rolePermissions?.[role.id?.toString() ?? '']),
       type: CreatorTypes.ROLE,
     }));
 
@@ -99,12 +94,13 @@ export function useGetAllCreators(
   creatorFilter?: CreatorFilter,
   entity?: EntityDetails,
   organization?: Organization,
-  permissions?: PermissionsResponseModel,
+  rolePermissions?: GroupRolePermissions,
+  isOwner = false,
 ): UseQueryResult<CreatorGroupDetails[]> {
   const enabled = !!(
     creatorFilter &&
     entity &&
-    (entity.owner?.type === CreatorTypes.USER || (organization && permissions))
+    (entity.owner?.type === CreatorTypes.USER || (organization && rolePermissions))
   );
   const wantsOrgRoles =
     enabled &&
@@ -122,7 +118,7 @@ export function useGetAllCreators(
     (raw: RawCreatorsData): CreatorGroupDetails[] => {
       const allCreators: CreatorGroupDetails[] = [];
       if (wantsOrgRoles) {
-        allCreators.push(buildOrganizationRolesGroup(raw.roles, permissions));
+        allCreators.push(buildOrganizationRolesGroup(raw.roles, rolePermissions, isOwner));
       }
       if (wantsLegacy) {
         allCreators.push(
@@ -143,7 +139,7 @@ export function useGetAllCreators(
       });
       return allCreators;
     },
-    [creatorFilter, permissions, wantsOrgRoles, wantsLegacy],
+    [creatorFilter, isOwner, rolePermissions, wantsOrgRoles, wantsLegacy],
   );
 
   return useQuery<RawCreatorsData, Error, CreatorGroupDetails[]>({

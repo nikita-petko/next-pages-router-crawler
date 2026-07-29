@@ -1,5 +1,6 @@
 import { createContext } from 'react';
-import type { Organization, OrganizationPermissions } from '../clients/organizationApi';
+import type { GroupPermissions, GroupRolePermissions } from '../clients/groups';
+import type { Organization } from '../clients/organizationApi';
 import type {
   GroupData,
   AuthenticatedUser,
@@ -16,7 +17,9 @@ export interface GroupManagementContextValue {
   surface: GroupManagementSurface;
   navigation: GroupManagementNavigation;
   organization: Organization | null | undefined;
-  permissions: OrganizationPermissions | null | undefined;
+  permissions: GroupPermissions | null | undefined;
+  rolePermissions?: GroupRolePermissions | null;
+  isOwner?: boolean;
   refreshOrganization: () => void;
   refreshPermission: () => Promise<void>;
   showToast: (message: string, isError?: boolean) => void;

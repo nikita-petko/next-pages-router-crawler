@@ -12,6 +12,7 @@ import {
   GroupMembersMenuState,
   MembersPageSize,
 } from '../../utils/constants';
+import { canAssignRole } from '../../utils/groupPermissions';
 import AddUserToRoleButton from './actions/AddUserToRoleButton';
 
 export type RoleMembersProps = {
@@ -21,10 +22,11 @@ export type RoleMembersProps = {
 const RoleMembers: FunctionComponent<RoleMembersProps> = ({ role }) => {
   const { translate } = useTranslation();
 
-  const { organization, permissions } = useCurrentGroup();
+  const { isOwner, organization, permissions, rolePermissions } = useCurrentGroup();
+  const canInviteMembers = permissions?.canInviteMembers === true;
   const { data: { invitationRoles } = {} } = useGetInvitationsWithRole(
-    organization?.id,
-    role.id?.toString(),
+    canInviteMembers ? organization?.id : undefined,
+    canInviteMembers ? role.id?.toString() : undefined,
     undefined,
     MembersPageSize,
     role.id === DefaultMemberRoleIdNumber,
@@ -59,8 +61,10 @@ const RoleMembers: FunctionComponent<RoleMembersProps> = ({ role }) => {
             </>
           )}
         </Grid>
-        {/* TODO: Update permissions check for Manage Roles of Members */}
-        {permissions?.isOwner && <AddUserToRoleButton role={role} />}
+        {role.id !== undefined &&
+          (isOwner === true || canAssignRole(rolePermissions?.[role.id.toString()])) && (
+            <AddUserToRoleButton role={role} />
+          )}
       </Grid>
       <GroupMembersTable menuState={effectiveMenuState} roleFilter={role} isRoleMembersPage />
     </Grid>

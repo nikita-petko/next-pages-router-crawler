@@ -24,6 +24,7 @@ import {
   GroupMembersMenuState,
 } from '../../utils/constants';
 import { OrganizationsEventName, logOrganizationsEvent } from '../../utils/eventUtils';
+import { canAssignRole } from '../../utils/groupPermissions';
 import { getRoleStyle, sortRolesById } from '../../utils/groupUtils';
 
 const useGroupMemberRoleChipsStyles = makeStyles()((theme) => ({
@@ -48,7 +49,7 @@ const GroupMemberRoleChips: FunctionComponent<GroupMemberRoleChipsProps> = ({
 
   const {
     organization,
-    permissions,
+    rolePermissions,
     refreshPermission,
     user: currentUser,
     unifiedLogger,
@@ -200,7 +201,7 @@ const GroupMemberRoleChips: FunctionComponent<GroupMemberRoleChipsProps> = ({
                 onMouseEnter={() => {
                   if (
                     role.id &&
-                    (permissions?.assignableRoleIds.includes(role.id.toString()) || isUnrestricted)
+                    (canAssignRole(rolePermissions?.[role.id.toString()]) || isUnrestricted)
                   ) {
                     setHoveredChip(role.id);
                   }

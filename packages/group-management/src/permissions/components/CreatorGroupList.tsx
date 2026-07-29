@@ -64,12 +64,18 @@ const CreatorGroupList: FunctionComponent<CreatorGroupListProps> = ({
   } = useCreatorGroupListStyles();
   const { showMobileView } = usePermissionsUiConfig();
   const { translate } = usePermissionsTranslation();
-  const { organization, permissions } = useCurrentGroup();
+  const { isOwner, organization, rolePermissions } = useCurrentGroup();
   const {
     data: creatorData,
     isPending,
     isError,
-  } = useGetAllCreators(creatorFilter, entity, organization ?? undefined, permissions ?? undefined);
+  } = useGetAllCreators(
+    creatorFilter,
+    entity,
+    organization ?? undefined,
+    rolePermissions ?? undefined,
+    isOwner,
+  );
   const [selectedChip, setSelectedChip] = useState<number>(0);
 
   const chipsToShow = ALL_CHIPS.filter((chip) =>

@@ -39,7 +39,7 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
 }) => {
   const { translate, translateWithNamespace } = useTranslation();
   const { palette } = useTheme();
-  const { organization, permissions, unifiedLogger } = useCurrentGroup();
+  const { isOwner, organization, permissions, unifiedLogger } = useCurrentGroup();
   const { configure: configureDialog, open: openDialog, close: closeDialog } = useDialog();
 
   const { data: configMetadata } = useGetGroupConfigurationMetadata();
@@ -186,9 +186,7 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
   const isSaveButtonDisabled = !name.trim() || rankHasError || isGuestRole || !hasUnsavedChanges;
 
   const showDeleteRole =
-    (permissions?.isOwner === true || permissions?.canDeleteRoles === true) &&
-    !isBaseMemberRole &&
-    !isGuestRole;
+    (isOwner === true || permissions?.canDeleteRoles === true) && !isBaseMemberRole && !isGuestRole;
 
   return (
     <Grid

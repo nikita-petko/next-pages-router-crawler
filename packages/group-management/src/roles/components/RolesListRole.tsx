@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import type { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd';
-import { Icon } from '@rbx/foundation-ui';
-import { Button, buttonClasses, ChevronRightIcon, Grid, makeStyles, useTheme } from '@rbx/ui';
+import { Button, Icon } from '@rbx/foundation-ui';
+import { buttonClasses, Grid, makeStyles, useTheme } from '@rbx/ui';
 import type { GroupRoleColorType } from '../../clients/groups';
-import useCanAssignRoles from '../../hooks/useCanAssignRoles';
 import useCurrentGroup from '../../hooks/useCurrentGroup';
-import { DefaultMemberRoleId } from '../../utils/constants';
+import { DefaultMemberRoleId, GuestRoleRank } from '../../utils/constants';
+import { canViewAnyRoleTab } from '../../utils/groupPermissions';
 import { getRoleStyle } from '../../utils/groupUtils';
 
 const useRolesSidebarStyles = makeStyles()((theme) => ({
   roleButtonContainer: {
     width: '100%',
-    flexGrow: 1,
+    height: 'fit-content !important',
+    flexGrow: '1 !important',
     display: 'flex',
     justifyContent: 'flex-start',
     textTransform: 'none',
@@ -24,6 +25,9 @@ const useRolesSidebarStyles = makeStyles()((theme) => ({
       flexGrow: 1,
       maxWidth: '100%',
       minWidth: 0,
+      [`& > span:nth-child(1)`]: {
+        width: '100%',
+      },
     },
   },
   buttonContentContainer: {
@@ -33,13 +37,7 @@ const useRolesSidebarStyles = makeStyles()((theme) => ({
     flexWrap: 'nowrap',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  dragHandleContainer: {
-    flexGrow: 0,
-    flexShrink: 0,
-  },
-  dragHandleIcon: {
-    minWidth: 28,
+    padding: '6px 0px',
   },
   textContainer: {
     display: 'block',
@@ -49,15 +47,22 @@ const useRolesSidebarStyles = makeStyles()((theme) => ({
     flexGrow: 1,
     flexShrink: 1,
     textAlign: 'left',
+    paddingLeft: theme.spacing(1),
   },
   selectedButton: {
     borderRadius: 4,
     background: theme.palette.states.selected,
   },
+  disabledButton: {
+    '&&.Mui-disabled': {
+      color: 'var(--inverse-content-default)',
+    },
+  },
 }));
 
 type TRolesListRoleProps = {
   roleId: string;
+  roleRank?: number;
   roleName: string;
   roleColor: GroupRoleColorType;
   isNewRole: boolean;
@@ -72,6 +77,7 @@ type TRolesListRoleProps = {
 
 const RolesListRole: React.FC<TRolesListRoleProps> = ({
   roleId,
+  roleRank,
   roleName,
   roleColor,
   isNewRole,
@@ -88,74 +94,76 @@ const RolesListRole: React.FC<TRolesListRoleProps> = ({
       roleButtonContainer,
       selectedButton,
       textContainer,
-      dragHandleContainer,
       buttonContentContainer,
+      disabledButton,
     },
     cx,
   } = useRolesSidebarStyles();
   const { palette } = useTheme();
-  const { permissions } = useCurrentGroup();
-  const { isUnrestricted } = useCanAssignRoles();
+  const { isOwner, permissions, rolePermissions } = useCurrentGroup();
   const [isHovered, setIsHovered] = useState(false);
 
-  const isOwner = permissions?.isOwner === true;
-  const canAssignRole = isOwner || permissions?.assignableRoleIds?.includes(roleId) === true;
-  const canEditPermissions =
-    isOwner || permissions?.permissionEditableRoleIds?.includes(roleId) === true;
-  const canEditMetadata =
-    isOwner || permissions?.metadataEditableRoleIds?.includes(roleId) === true;
+  const permissionsForRole = rolePermissions?.[roleId];
+  const isDefaultMemberRole = roleId === DefaultMemberRoleId;
+  const canViewAnyTab = canViewAnyRoleTab(
+    permissionsForRole,
+    isDefaultMemberRole,
+    roleRank === GuestRoleRank,
+    isOwner,
+  );
+  const isExistingRoleDisabled = !isNewRole && !canViewAnyTab;
 
-  const isExistingRoleDisabled =
-    !isNewRole && !(isUnrestricted || canAssignRole || canEditPermissions || canEditMetadata);
-
-  const canCreateRoles = permissions?.canCreateRoles === true || isOwner;
+  const canCreateRoles = isOwner === true || permissions?.canCreateRoles === true;
   const isNewRoleDisabled = isNewRole && !canCreateRoles;
 
-  const isDefaultMemberRole = roleId === DefaultMemberRoleId;
   const shouldShowDragHandleIcon = isMobile || isDragging || (!isAnyRoleDragging && isHovered);
 
   return (
     <Button
       data-testid={`role-button-${roleId}`}
       key={roleId}
-      size='small'
+      size='Small'
       color='primary'
-      variant='text'
-      disabled={disabled || isNewRoleDisabled || isExistingRoleDisabled}
+      variant={isSelected ? 'Standard' : 'Utility'}
+      isDisabled={disabled || isNewRoleDisabled || isExistingRoleDisabled}
       onClick={onClickRole}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      startIcon={
-        isDefaultMemberRole ? (
-          <Icon
-            name='icon-filled-square-person'
-            size='Medium'
-            style={getRoleStyle(roleColor, palette.mode, 'color')}
-          />
-        ) : (
-          <Icon
-            name='icon-filled-person-rectangle-horizontal-line'
-            size='Medium'
-            style={getRoleStyle(roleColor, palette.mode, 'color')}
-          />
-        )
-      }
-      endIcon={isMobile && <ChevronRightIcon />}
-      className={cx(roleButtonContainer, {
-        [selectedButton]: isSelected,
-      })}
-      fullWidth={isMobile}>
+      className={cx(
+        roleButtonContainer,
+        {
+          [selectedButton]: isSelected,
+        },
+        (disabled || isNewRoleDisabled || isExistingRoleDisabled) && disabledButton,
+      )}>
       <Grid container className={buttonContentContainer}>
-        <span className={textContainer}>{roleName}</span>
-        {!!dragHandleProps && (
-          <span className={dragHandleContainer} {...dragHandleProps}>
+        <div className='flex grow-1 flex-row items-center width-full'>
+          {isDefaultMemberRole ? (
             <Icon
-              name='icon-regular-three-bars-horizontal-triangles-vertical'
-              size='Large'
-              style={{ visibility: shouldShowDragHandleIcon ? 'visible' : 'hidden' }}
+              name='icon-filled-square-person'
+              size='Medium'
+              style={getRoleStyle(roleColor, palette.mode, 'color')}
             />
-          </span>
-        )}
+          ) : (
+            <Icon
+              name='icon-filled-person-rectangle-horizontal-line'
+              size='Medium'
+              style={getRoleStyle(roleColor, palette.mode, 'color')}
+            />
+          )}
+          <span className={textContainer}>{roleName}</span>
+          {!!dragHandleProps && (
+            <span
+              className={`flex grow-0 shrink-0 ${!shouldShowDragHandleIcon ? 'min-w-0 w-0' : ''}`}
+              {...dragHandleProps}>
+              <Icon
+                name='icon-regular-three-bars-horizontal-triangles-vertical'
+                size='Medium'
+                className={shouldShowDragHandleIcon ? 'visible' : 'invisible'}
+              />
+            </span>
+          )}
+        </div>
       </Grid>
     </Button>
   );

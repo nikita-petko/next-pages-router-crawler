@@ -1,6 +1,8 @@
 import type { FunctionComponent, PropsWithChildren } from 'react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Organization, OrganizationPermissions } from '../clients/organizationApi';
+import groupsClient from '../clients/groups';
+import type { GroupPermissions, GroupRolePermissions } from '../clients/groups';
+import type { Organization } from '../clients/organizationApi';
 import organizationApiClient from '../clients/organizationApi';
 import type {
   GroupManagementSurface,
@@ -24,6 +26,17 @@ type GroupManagementProviderProps = PropsWithChildren<{
   unifiedLogger?: GroupManagementLogger;
 }>;
 
+const getRolePermissions = async (groupId: number): Promise<GroupRolePermissions> => {
+  const rolePermissions: GroupRolePermissions = {};
+  const response = await groupsClient.getGroupRolePermissionsPage(groupId);
+  response.data?.forEach(({ entityId, permissions }) => {
+    if (entityId !== undefined && permissions !== undefined) {
+      rolePermissions[entityId] = permissions;
+    }
+  });
+  return rolePermissions;
+};
+
 const GroupManagementProvider: FunctionComponent<GroupManagementProviderProps> = ({
   group,
   user,
@@ -36,34 +49,39 @@ const GroupManagementProvider: FunctionComponent<GroupManagementProviderProps> =
   children,
 }) => {
   const [organization, setOrganization] = useState<Organization | undefined | null>();
-  const [permissions, setPermissions] = useState<OrganizationPermissions | undefined | null>();
+  const [permissions, setPermissions] = useState<GroupPermissions | undefined | null>();
+  const [rolePermissions, setRolePermissions] = useState<GroupRolePermissions | undefined | null>();
+  const [isOwner, setIsOwner] = useState(false);
   const [isOrganizationRefreshRequired, setIsOrganizationRefreshRequired] =
     useState<boolean>(false);
   const [isOrganizationLoading, setIsOrganizationLoading] = useState<boolean>(false);
 
   const groupId = group.id;
-  const userId = user.id;
 
-  const getPermissions = useCallback(
-    async (organizationId: string) => {
-      if (userId === undefined || userId === null) {
-        setPermissions(null);
-        return;
-      }
+  const getPermissions = useCallback(async () => {
+    if (groupId === undefined || groupId === null) {
+      setPermissions(null);
+      setRolePermissions(null);
+      setIsOwner(false);
+      return;
+    }
 
-      try {
-        const permissionsResponse = await organizationApiClient.userClient.getUserPermissions(
-          organizationId,
-          userId.toString(),
-        );
-
-        setPermissions(permissionsResponse);
-      } catch {
-        setPermissions(null);
-      }
-    },
-    [userId],
-  );
+    try {
+      const [permissionsResponse, resolvedRolePermissions, authenticatedUserIsOwner] =
+        await Promise.all([
+          groupsClient.getGroupPermissions(groupId),
+          getRolePermissions(groupId),
+          groupsClient.getAuthenticatedUserIsOwner(groupId).catch(() => false),
+        ]);
+      setPermissions(permissionsResponse.permissions ?? {});
+      setRolePermissions(resolvedRolePermissions);
+      setIsOwner(authenticatedUserIsOwner);
+    } catch {
+      setPermissions(null);
+      setRolePermissions(null);
+      setIsOwner(false);
+    }
+  }, [groupId]);
 
   const getOrganization = useCallback(async () => {
     setIsOrganizationLoading(true);
@@ -79,12 +97,14 @@ const GroupManagementProvider: FunctionComponent<GroupManagementProviderProps> =
       );
 
       setOrganization(organizationResponse);
-      await getPermissions(organizationResponse.id);
+      await getPermissions();
 
       setIsOrganizationRefreshRequired(false);
     } catch {
       setOrganization(null);
       setPermissions(null);
+      setRolePermissions(null);
+      setIsOwner(false);
     } finally {
       setIsOrganizationLoading(false);
     }
@@ -96,12 +116,8 @@ const GroupManagementProvider: FunctionComponent<GroupManagementProviderProps> =
   }, [getOrganization]);
 
   const refreshPermission = useCallback(async () => {
-    if (!organization?.id) {
-      return;
-    }
-
-    await getPermissions(organization.id);
-  }, [getPermissions, organization]);
+    await getPermissions();
+  }, [getPermissions]);
 
   const value = useMemo(
     () => ({
@@ -115,6 +131,8 @@ const GroupManagementProvider: FunctionComponent<GroupManagementProviderProps> =
       unifiedLogger,
       organization,
       permissions,
+      rolePermissions,
+      isOwner,
       refreshOrganization,
       refreshPermission,
       isOrganizationRefreshRequired,
@@ -131,6 +149,8 @@ const GroupManagementProvider: FunctionComponent<GroupManagementProviderProps> =
       unifiedLogger,
       organization,
       permissions,
+      rolePermissions,
+      isOwner,
       refreshOrganization,
       refreshPermission,
       isOrganizationRefreshRequired,

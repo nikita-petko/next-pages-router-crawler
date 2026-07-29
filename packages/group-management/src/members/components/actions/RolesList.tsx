@@ -5,6 +5,7 @@ import type { GroupRoleMetadata } from '../../../clients/groups';
 import useCanAssignRoles from '../../../hooks/useCanAssignRoles';
 import useCurrentGroup from '../../../hooks/useCurrentGroup';
 import { DefaultMemberRoleIdNumber } from '../../../utils/constants';
+import { canAssignRole } from '../../../utils/groupPermissions';
 import { getRoleStyle } from '../../../utils/groupUtils';
 
 const useRolesListStyles = makeStyles()((theme) => ({
@@ -76,7 +77,7 @@ const RolesList: FunctionComponent<React.PropsWithChildren<RolesListProps>> = ({
   disabled,
 }) => {
   const { palette } = useTheme();
-  const { permissions } = useCurrentGroup();
+  const { rolePermissions } = useCurrentGroup();
   const { isUnrestricted } = useCanAssignRoles();
 
   const {
@@ -89,10 +90,10 @@ const RolesList: FunctionComponent<React.PropsWithChildren<RolesListProps>> = ({
         disabled !== true &&
         role?.id &&
         role.id !== DefaultMemberRoleIdNumber &&
-        (permissions?.assignableRoleIds?.includes(role.id.toString()) === true || isUnrestricted)
+        (canAssignRole(rolePermissions?.[role.id.toString()]) || isUnrestricted)
       );
     },
-    [disabled, permissions, isUnrestricted],
+    [disabled, rolePermissions, isUnrestricted],
   );
 
   return (

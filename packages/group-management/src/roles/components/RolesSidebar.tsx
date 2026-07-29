@@ -16,6 +16,7 @@ import {
   MaximumRoles,
 } from '../../utils/constants';
 import { OrganizationsEventName, logOrganizationsEvent } from '../../utils/eventUtils';
+import { canUpdateRolePosition } from '../../utils/groupPermissions';
 import type { RoleCreationMetadata } from '../../utils/types';
 import RolesListDraggableContainer from './RolesListDraggableContainer';
 import RolesListRole from './RolesListRole';
@@ -63,9 +64,7 @@ const RolesSidebar: FunctionComponent<React.PropsWithChildren<RolesSidebarProps>
 }) => {
   const [activeDragRoleId, setActiveDragRoleId] = useState<string | null>(null);
   const { translateWithNamespace } = useTranslation();
-  const { organization, permissions, unifiedLogger } = useCurrentGroup();
-  const canUpdateRolePositions =
-    !!permissions && (permissions.isOwner || permissions.canCreateRoles);
+  const { isOwner, organization, permissions, rolePermissions, unifiedLogger } = useCurrentGroup();
   const displayedRoles = useMemo(() => (roles ?? []).toReversed(), [roles]);
   const orderableDisplayedRoles = useMemo(
     () => displayedRoles.filter(isOrderableRole),
@@ -162,12 +161,26 @@ const RolesSidebar: FunctionComponent<React.PropsWithChildren<RolesSidebarProps>
                     return null;
                   }
 
-                  return (
+                  return !(
+                    isOwner || canUpdateRolePosition(rolePermissions?.[roleMetadata.id.toString()])
+                  ) ? (
+                    <RolesListRole
+                      key={roleMetadata.id}
+                      roleId={roleMetadata.id?.toString() ?? ''}
+                      roleRank={roleMetadata.rank}
+                      roleName={roleMetadata.name ?? ''}
+                      roleColor={roleMetadata.color ?? DefaultRoleColor}
+                      isNewRole={isNewRole}
+                      disabled={disabled}
+                      isSelected={selectedRole?.metadata?.id === roleMetadata.id}
+                      isMobile={isMobile}
+                      onClickRole={() => handleSelectRole(roleMetadata)}
+                    />
+                  ) : (
                     <Draggable
                       key={roleMetadata.id}
                       draggableId={roleMetadata.id.toString()}
                       index={index}
-                      isDragDisabled={!canUpdateRolePositions}
                       disableInteractiveElementBlocking>
                       {(provided, snapshot) => (
                         <div
@@ -177,6 +190,7 @@ const RolesSidebar: FunctionComponent<React.PropsWithChildren<RolesSidebarProps>
                           <RolesListRole
                             key={roleMetadata.id}
                             roleId={roleMetadata.id?.toString() ?? ''}
+                            roleRank={roleMetadata.rank}
                             roleName={roleMetadata.name ?? ''}
                             roleColor={roleMetadata.color ?? DefaultRoleColor}
                             isNewRole={isNewRole}
@@ -205,6 +219,7 @@ const RolesSidebar: FunctionComponent<React.PropsWithChildren<RolesSidebarProps>
                 <RolesListRole
                   key={role.id}
                   roleId={role.id?.toString() ?? ''}
+                  roleRank={role.rank}
                   roleName={role.name}
                   roleColor={role.color ?? DefaultRoleColor}
                   isNewRole={isNewRole}
@@ -217,7 +232,7 @@ const RolesSidebar: FunctionComponent<React.PropsWithChildren<RolesSidebarProps>
             })}
           </div>
 
-          {(permissions?.isOwner === true || permissions?.canCreateRoles === true) && (
+          {(isOwner === true || permissions?.canCreateRoles === true) && (
             <Button
               variant='Standard'
               size='Medium'
