@@ -1,5 +1,5 @@
-import type { ChartOptions } from 'highcharts';
 import { useMemo } from 'react';
+import type { ChartOptions } from 'highcharts';
 import type { TTheme } from '@rbx/ui';
 import { useTheme } from '@rbx/ui';
 import { ChartStyleMode, ChartType } from '../types/BaseChart';
@@ -33,7 +33,8 @@ const getBaseChartOptions = ({
     }
     default: {
       const exhaustiveCheck: never = chartStyleMode;
-      throw new Error(`Unhandle ChartStyleMode ${exhaustiveCheck}`);
+      void exhaustiveCheck;
+      throw new Error('Unhandled ChartStyleMode');
     }
   }
   return {
@@ -96,7 +97,7 @@ export const useLineChartChartOptions = <X>({
     () => ({
       ...baseChartOptions,
       ...spacingOptions,
-      height: givenHeight || baseChartOptions.height,
+      height: givenHeight ?? baseChartOptions.height,
     }),
     [baseChartOptions, givenHeight],
   );
@@ -135,7 +136,7 @@ export const useAreaChartChartOptions = <X>({
     () => ({
       ...baseChartOptions,
       ...spacingOptions,
-      height: givenHeight || baseChartOptions.height,
+      height: givenHeight ?? baseChartOptions.height,
     }),
     [baseChartOptions, givenHeight],
   );
@@ -174,7 +175,7 @@ export const useColumnChartChartOptions = <X>({
     () => ({
       ...baseChartOptions,
       ...spacingOptions,
-      height: givenHeight || baseChartOptions.height,
+      height: givenHeight ?? baseChartOptions.height,
     }),
     [baseChartOptions, givenHeight],
   );
@@ -207,7 +208,7 @@ export const useBarChartChartOptions = ({
     () => ({
       ...baseChartOptions,
       ...spacingOptions,
-      height: givenHeight || baseChartOptions.height,
+      height: givenHeight ?? baseChartOptions.height,
       // leave some room to accommodate data labels
       // approximating 6px per character, the longest data label should have
       // longestDataLabelLength * 6px margin on the right
@@ -245,7 +246,7 @@ export const useMapChartChartOptions = ({
       ...baseChartOptions,
       ...spacingOptions,
       map: topoJSONData,
-      height: givenHeight || baseChartOptions.height,
+      height: givenHeight ?? baseChartOptions.height,
     }),
     [baseChartOptions, givenHeight, topoJSONData],
   );
@@ -276,7 +277,7 @@ export const usePieChartChartOptions = ({
     () => ({
       ...baseChartOptions,
       ...spacingOptions,
-      height: givenHeight || baseChartOptions.height,
+      height: givenHeight ?? baseChartOptions.height,
       // Pie charts don't need zoom functionality
       zoomType: 'none',
     }),
@@ -310,7 +311,46 @@ export const useTreemapChartOptions = ({
     () => ({
       ...baseChartOptions,
       ...spacingOptions,
-      height: givenHeight || baseChartOptions.height,
+      height: givenHeight ?? baseChartOptions.height,
+    }),
+    [baseChartOptions, givenHeight],
+  );
+};
+
+export const useSankeyChartOptions = ({
+  chartStyleMode,
+  onChartLoad,
+  height: givenHeight,
+}: {
+  chartStyleMode: ChartStyleMode;
+  onChartLoad?: Highcharts.ChartLoadCallbackFunction;
+  height?: number;
+}): ChartOptions => {
+  const theme = useTheme();
+
+  const baseChartOptions = useMemo(
+    () =>
+      getBaseChartOptions({
+        theme,
+        chartType: ChartType.Sankey,
+        chartStyleMode,
+        onChartLoad,
+      }),
+    [chartStyleMode, onChartLoad, theme],
+  );
+
+  return useMemo(
+    () => ({
+      ...baseChartOptions,
+      ...spacingOptions,
+      height: givenHeight ?? baseChartOptions.height,
+      // Sankey is not a cartesian chart; disable region zoom.
+      zoomType: 'none',
+      // Keep ribbons/labels from painting outside the scroll-clipped stage.
+      style: {
+        ...baseChartOptions.style,
+        overflow: 'hidden',
+      },
     }),
     [baseChartOptions, givenHeight],
   );

@@ -8,6 +8,7 @@ export enum ChartType {
   Bar = 'bar',
   Pie = 'pie',
   Treemap = 'treemap',
+  Sankey = 'sankey',
 }
 
 export enum ChartStyleMode {

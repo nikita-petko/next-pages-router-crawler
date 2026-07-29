@@ -1,5 +1,5 @@
-import type { TooltipOptions, Point } from 'highcharts';
 import { useCallback, useMemo } from 'react';
+import type { TooltipOptions, Point } from 'highcharts';
 import type { TTheme } from '@rbx/ui';
 import { useTheme } from '@rbx/ui';
 import { getChartThemedColors } from '../color';
@@ -13,6 +13,7 @@ import {
   useTooltipContainerStyle,
   highchartsSkipTooltipToken,
 } from '../formatters/tooltipFormatters';
+import { escapeHtmlString } from '../utils/escape-html';
 
 const getBaseOptions = ({ theme }: { theme: TTheme }): TooltipOptions => {
   const { tooltipText } = getChartThemedColors(theme);
@@ -194,6 +195,66 @@ export const useTreemapTooltipOptions = (
       return `<div style="${tooltipBackgroundStyle}">${formattedContent}</div>`;
     },
     [formatTooltip, tooltipBackgroundStyle],
+  );
+
+  return useMemo(
+    () => ({
+      ...getBaseOptions({ theme }),
+      split: false,
+      formatter,
+    }),
+    [theme, formatter],
+  );
+};
+
+/**
+ * Sankey points carry link weights and end-node references that Highcharts'
+ * `Point` type omits; node points additionally expose their throughput `sum`.
+ */
+type SankeyTooltipPointContext = Point & {
+  fromNode?: { name?: string; sum?: number };
+  toNode?: { name?: string };
+  weight?: number;
+  sum?: number;
+  isNode?: boolean;
+};
+
+export const useSankeyTooltipOptions = ({
+  formatNodeCount,
+}: {
+  formatNodeCount: (value: number) => string;
+}): TooltipOptions => {
+  const theme = useTheme();
+  const tooltipBackgroundStyle = useTooltipContainerStyle();
+
+  const percentFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat(undefined, {
+        style: 'percent',
+        maximumFractionDigits: 1,
+      }),
+    [],
+  );
+
+  const formatter = useCallback(
+    function sankeyTooltipFormatter(this: SankeyTooltipPointContext) {
+      const count = this.isNode ? (this.sum ?? this.weight ?? 0) : (this.weight ?? 0);
+      const countLabel = escapeHtmlString(formatNodeCount(count));
+
+      if (this.isNode) {
+        const name = escapeHtmlString(this.name ?? '');
+        return `<div style="${tooltipBackgroundStyle}"><b>${name}</b><br/>${countLabel}</div>`;
+      }
+
+      const fromName = escapeHtmlString(this.fromNode?.name ?? '');
+      const toName = escapeHtmlString(this.toNode?.name ?? '');
+      const sourceSum = this.fromNode?.sum ?? 0;
+      const percentLabel =
+        sourceSum > 0 ? ` (${escapeHtmlString(percentFormatter.format(count / sourceSum))})` : '';
+      // Match Recommended Events design: "Source → Target  10,000 (50.2%)"
+      return `<div style="${tooltipBackgroundStyle}"><b>${fromName} → ${toName}</b>&nbsp;&nbsp;${countLabel}${percentLabel}</div>`;
+    },
+    [formatNodeCount, percentFormatter, tooltipBackgroundStyle],
   );
 
   return useMemo(

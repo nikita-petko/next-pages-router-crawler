@@ -19,6 +19,7 @@ const loadHighchartsModules = (): Promise<void> => {
     import('highcharts/modules/map'),
     import('highcharts/modules/annotations'),
     import('highcharts/modules/treemap'),
+    import('highcharts/modules/sankey'),
   ]).then(() => {
     modulesLoaded = true;
     return undefined;

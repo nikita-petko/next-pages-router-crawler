@@ -239,6 +239,11 @@ export const useSankeyViewport = ({
       if (event.pointerType !== 'mouse' || event.button !== 0) {
         return;
       }
+      // Ignore interactive controls inside the canvas (if any are added later).
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest('button, a, input, textarea, select')) {
+        return;
+      }
       wasDraggedRef.current = false;
       start = {
         x: event.clientX,
@@ -288,12 +293,13 @@ export const useSankeyViewport = ({
     };
 
     element.style.cursor = 'grab';
-    element.addEventListener('pointerdown', handlePointerDown);
+    // Capture phase so Highcharts point handlers cannot swallow the pan gesture.
+    element.addEventListener('pointerdown', handlePointerDown, { capture: true });
     window.addEventListener('pointermove', handlePointerMove, { passive: false });
     window.addEventListener('pointerup', handlePointerUp);
     return () => {
       element.style.cursor = '';
-      element.removeEventListener('pointerdown', handlePointerDown);
+      element.removeEventListener('pointerdown', handlePointerDown, { capture: true });
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
     };

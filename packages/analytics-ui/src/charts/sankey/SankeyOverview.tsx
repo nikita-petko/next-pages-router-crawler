@@ -1,19 +1,26 @@
 import React, { type FC, useCallback, useRef } from 'react';
-import type { SankeyLayout } from './sankeyLayout';
+import type { SankeyOverviewModel } from '../../utils/extractSankeyOverviewModel';
 import type { SankeyViewport } from './useSankeyViewport';
 
 export const DefaultOverviewMaxWidth = 176;
 export const DefaultOverviewMaxHeight = 120;
-const OverviewClassName =
-  'block cursor-pointer [touch-action:none] [background:rgba(18,18,21,0.5)] [backdrop-filter:blur(4px)] [border:1px_solid_rgba(255,255,255,0.12)] [border-radius:6px]';
 const OverviewLinkOpacity = 0.25;
 const OverviewNodeOpacity = 0.65;
 const OverviewViewportFill = 'rgba(255, 255, 255, 0.1)';
 const OverviewViewportStroke = '#f7f7f8';
 const OverviewViewportStrokeWidth = 1.5;
+/** Keep minimap ribbons from reading as solid blocks at small scale. */
+const OverviewMaxLinkStroke = 18;
+
+/**
+ * Requires Creator Hub Tailwind to scan `packages/analytics-ui` (see
+ * `apps/creator-hub/tailwind.config.ts`).
+ */
+const OverviewClassName =
+  'block cursor-pointer [touch-action:none] [background:rgba(18,18,21,0.72)] [backdrop-filter:blur(4px)] [border:1px_solid_rgba(255,255,255,0.12)] [border-radius:6px] [box-shadow:0_2px_10px_rgba(0,0,0,0.35)]';
 
 type SankeyOverviewProps = {
-  layout: SankeyLayout;
+  model: SankeyOverviewModel;
   viewport: SankeyViewport;
   zoom: number;
   maxWidth?: number;
@@ -26,11 +33,10 @@ type SankeyOverviewProps = {
 
 /**
  * A compact whole-diagram overview (minimap) with a draggable viewport
- * rectangle. Provides orientation when the main canvas is zoomed or scrolled,
- * replacing the need for pinned endpoint columns on large funnels.
+ * rectangle. Provides orientation when the main canvas is zoomed or scrolled.
  */
 const SankeyOverview: FC<SankeyOverviewProps> = ({
-  layout,
+  model,
   viewport,
   zoom,
   maxWidth = DefaultOverviewMaxWidth,
@@ -38,7 +44,7 @@ const SankeyOverview: FC<SankeyOverviewProps> = ({
   onNavigate,
   onPanActivity,
 }) => {
-  const { width: contentWidth, height: contentHeight } = layout;
+  const { width: contentWidth, height: contentHeight } = model;
   const svgRef = useRef<SVGSVGElement>(null);
   const draggingRef = useRef(false);
 
@@ -46,8 +52,6 @@ const SankeyOverview: FC<SankeyOverviewProps> = ({
   const miniWidth = contentWidth * scale;
   const miniHeight = contentHeight * scale;
 
-  // The SVG viewBox is in content units, so the viewport rectangle is expressed
-  // in content units too (the viewBox handles scaling to the minimap's size).
   const viewLeft = viewport.scrollLeft / zoom;
   const viewTop = viewport.scrollTop / zoom;
   const viewWidth = viewport.clientWidth / zoom;
@@ -62,7 +66,6 @@ const SankeyOverview: FC<SankeyOverviewProps> = ({
       const rect = svg.getBoundingClientRect();
       const miniX = clientX - rect.left;
       const miniY = clientY - rect.top;
-      // Convert minimap point to content coords, center the viewport on it.
       const contentX = miniX / scale;
       const contentY = miniY / scale;
       onNavigate(
@@ -116,19 +119,19 @@ const SankeyOverview: FC<SankeyOverviewProps> = ({
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
       className={OverviewClassName}>
-      {layout.links.map((link) => (
+      {model.links.map((link) => (
         <line
           key={link.id}
-          x1={link.source.x1}
-          y1={link.sourceY}
-          x2={link.target.x0}
-          y2={link.targetY}
-          stroke={link.source.color}
+          x1={link.x1}
+          y1={link.y1}
+          x2={link.x2}
+          y2={link.y2}
+          stroke={link.color}
           strokeOpacity={OverviewLinkOpacity}
-          strokeWidth={Math.max(1, link.width)}
+          strokeWidth={Math.max(1, Math.min(OverviewMaxLinkStroke, link.width))}
         />
       ))}
-      {layout.nodes.map((node) => (
+      {model.nodes.map((node) => (
         <rect
           key={node.id}
           x={node.x0}
