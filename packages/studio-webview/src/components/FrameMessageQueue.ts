@@ -1,4 +1,4 @@
-import debounce from 'lodash.debounce';
+import { debounce } from '@rbx/core';
 
 export type FrameMessageQueueOptions = {
   flushInterval?: number;
@@ -22,7 +22,7 @@ export default class FrameMessageQueue {
     this.url = url;
     this.frameRemoveDelay = frameRemoveDelay;
     this.maxUrlLength = maxUrlLength;
-    this.debouncedFlush = debounce(() => this.flush(), flushInterval);
+    [this.debouncedFlush] = debounce(() => this.flush(), flushInterval);
   }
 
   public enqueueMessage(message: string) {

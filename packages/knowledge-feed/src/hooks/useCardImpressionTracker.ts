@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef } from 'react';
+import { debounce } from '@rbx/core';
 import type { UnifiedLogger } from '@rbx/unified-logger';
 import type { KnowledgeFeedEvent } from '../constants/eventParams';
 import type { TBaseEventParams } from '../types';
-import debounce from '../utilities/debounce';
 
 const outOfViewThresholdMs = 60000;
 
