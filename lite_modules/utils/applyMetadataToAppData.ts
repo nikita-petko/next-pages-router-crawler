@@ -26,6 +26,8 @@ export const applyMetadataToAppData = (
   const metadataFields: Pick<
     AppDataBase,
     | 'adCreditFromRobuxPurchaseRate'
+    | 'adCreditO18UsdPerRobux'
+    | 'adCreditStandardUsdPerRobux'
     | 'adCreditMaximumPurchaseAmount'
     | 'adCreditMinimumPurchaseAmount'
     | 'campaignMaximumDailyExpectedPlays'
@@ -49,6 +51,14 @@ export const applyMetadataToAppData = (
     adCreditMinimumPurchaseAmount: getValueWithDefaultFallthrough(
       resolvedMetadata.adCreditMinimumPurchaseAmount,
       getAppDataDefault('adCreditMinimumPurchaseAmount'),
+    ),
+    adCreditO18UsdPerRobux: getValueWithDefaultFallthrough(
+      resolvedMetadata.adCreditO18UsdPerRobux,
+      getAppDataDefault('adCreditO18UsdPerRobux'),
+    ),
+    adCreditStandardUsdPerRobux: getValueWithDefaultFallthrough(
+      resolvedMetadata.adCreditStandardUsdPerRobux,
+      getAppDataDefault('adCreditStandardUsdPerRobux'),
     ),
     campaignMaximumDailyExpectedPlays: getValueWithDefaultFallthrough(
       resolvedMetadata.campaignMaximumDailyExpectedPlays,

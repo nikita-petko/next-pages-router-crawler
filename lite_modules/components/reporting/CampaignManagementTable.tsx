@@ -1,3 +1,4 @@
+import { Button } from '@rbx/foundation-ui';
 import { useEffect, useMemo } from 'react';
 
 import DismissibleTooltip from '@components/common/DismissibleTooltip';
@@ -43,7 +44,9 @@ interface CampaignManagementTableProps {
 
 const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManagementTableProps) => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Report);
+  const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
   const campaignsState = useNewFlowStore((state: NewFlowStoreType) => state.campaignsState);
+  const retryCampaigns = useNewFlowStore((state: NewFlowStoreType) => state.retryCampaigns);
   const { campaignStatuses, updatedCampaignStatuses } = useNewFlowStore(
     (state: NewFlowStoreType) => state.statusesState,
   );
@@ -165,7 +168,23 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
   if (campaignsState.isError || campaignNameSearchIsError) {
     return (
       <GenericNoDataPage
-        subtitle={translate('Description.FailedToFetchTryRefreshing')}
+        primaryButton={
+          campaignsState.isError ? (
+            <Button
+              onClick={() => {
+                retryCampaigns().catch(() => undefined);
+              }}
+              size='Medium'
+              variant='Emphasis'>
+              {translateMisc('Action.Retry')}
+            </Button>
+          ) : undefined
+        }
+        subtitle={translate(
+          campaignsState.isError
+            ? 'Message.ErrorOccurredTryAgain'
+            : 'Description.FailedToFetchTryRefreshing',
+        )}
         title={translate('Heading.UnableToLoadCampaigns')}
       />
     );

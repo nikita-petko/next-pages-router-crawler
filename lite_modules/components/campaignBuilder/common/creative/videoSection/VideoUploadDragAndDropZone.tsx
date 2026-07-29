@@ -1,5 +1,5 @@
-import { Button, Divider } from '@rbx/foundation-ui';
-import { Card, Grid, useTheme } from '@rbx/ui';
+import { Button, Card, Divider } from '@rbx/foundation-ui';
+import { Grid, useTheme } from '@rbx/ui';
 import React, { DragEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
@@ -44,7 +44,8 @@ const VideoUploadDragAndDropZone = ({
   const { translate } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const theme = useTheme();
   const {
-    classes: { sectionMarginTop },
+    classes: { disabledDropZone, dragActiveDropZone, dropZone, sectionMarginTop },
+    cx,
   } = useVideoUploadDragAndDropZoneStyles();
   const { adAccountId = GetLocalStorage(StorageKeys.AD_ACCOUNT_ID) } = useAppStore(
     (state: AppStoreType) => state.appData,
@@ -502,15 +503,6 @@ const VideoUploadDragAndDropZone = ({
   });
   const uploadButtonText = translate('Action.UploadMedia');
 
-  const dragOverStyle = useMemo(
-    () => ({
-      backgroundColor: dragActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
-      borderStyle: 'dashed',
-      cursor: 'pointer',
-    }),
-    [dragActive],
-  );
-
   const renderFileInput = useCallback(
     () => (
       <input
@@ -533,24 +525,26 @@ const VideoUploadDragAndDropZone = ({
     () => (
       <Grid className={sectionMarginTop} item>
         <Card
+          className={cx(
+            dropZone,
+            dragActive && dragActiveDropZone,
+            isAtCapacity && disabledDropZone,
+          )}
+          data-testid='video-upload-drop-zone'
+          density='Compact'
           onClick={isAtCapacity ? undefined : onVideoUploadClick}
           onDragEnter={isAtCapacity ? undefined : handleDrag}
           onDragLeave={isAtCapacity ? undefined : handleDrag}
           onDragOver={isAtCapacity ? undefined : handleDrag}
           onDrop={isAtCapacity ? undefined : handleDrop}
-          style={{
-            ...dragOverStyle,
-            cursor: isAtCapacity ? 'not-allowed' : 'pointer',
-            opacity: isAtCapacity ? 0.5 : 1,
-          }}
-          variant='outlined'>
+          variant='Standard'>
           <Grid
             alignItems='center'
             container
             direction='column'
-            paddingBottom='32px'
-            paddingTop='32px'
-            paddingX={2}
+            paddingBottom='20px'
+            paddingTop='20px'
+            paddingX='4px'
             spacing={1}>
             <Grid item>
               <Button
@@ -585,7 +579,11 @@ const VideoUploadDragAndDropZone = ({
       onVideoUploadClick,
       handleDrag,
       handleDrop,
-      dragOverStyle,
+      cx,
+      disabledDropZone,
+      dragActive,
+      dragActiveDropZone,
+      dropZone,
       isAtCapacity,
       maxAllowedVideos,
       translate,

@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Divider, Dropdown, Icon, Menu, MenuItem } from '@rbx/foundation-ui';
-import { Card, TextField } from '@rbx/ui';
+import { Button, Card, Divider, Dropdown, Icon, Menu, MenuItem } from '@rbx/foundation-ui';
+import { TextField } from '@rbx/ui';
 import { ReactElement, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Controller, useForm } from 'react-hook-form';
@@ -142,6 +142,7 @@ export const BuyAdCredit = ({
       balanceContainerSection,
       balanceContainerSectionItem,
       balanceInfoRow,
+      balanceInfoRows,
       balanceScopeSelector,
       balanceScopeSelectorContainer,
       balanceTypography,
@@ -337,35 +338,37 @@ export const BuyAdCredit = ({
   );
 
   const balanceContainer = (
-    <Card className={balanceCard}>
+    <Card className={balanceCard} density='Default' variant='Emphasis'>
       <div>
         <span className='text-title-large'>{translateBilling('Heading.CurrentBalance')}</span>
       </div>
-      <div className={balanceInfoRow}>
-        <span className={`text-body-large content-default ${balanceTypography}`}>
-          {translateBilling('Label.AdCredit')}
-        </span>
-        <span className='text-body-large'>
-          {MicroUsdToUsdStringRoundedDown(selectedAdCreditBalance)}
-        </span>
-      </div>
-      <div className={balanceInfoRow}>
-        <span className={`text-body-large content-default ${balanceTypography}`}>
-          {translateBilling('Label.Robux')}
-        </span>
-        <div className={robuxBalanceContainer}>
-          <Icon
-            className={cx(
-              smallRobuxIcon,
-              calculateRemainingRobuxBalance() < 0 && 'content-system-alert',
-            )}
-            name='icon-filled-robux'
-            size='Small'
-          />
-          <span
-            className={`text-body-large ${calculateRemainingRobuxBalance() < 0 ? 'content-system-alert' : 'content-emphasis'}`}>
-            {selectedRobuxBalance.toLocaleString()}
+      <div className={balanceInfoRows} data-testid='balance-info-rows'>
+        <div className={balanceInfoRow}>
+          <span className={`text-body-large content-default min-width-[72px] ${balanceTypography}`}>
+            {translateBilling('Label.AdCredit')}
           </span>
+          <span className='text-body-large'>
+            {MicroUsdToUsdStringRoundedDown(selectedAdCreditBalance)}
+          </span>
+        </div>
+        <div className={balanceInfoRow}>
+          <span className={`text-body-large content-default min-width-[72px] ${balanceTypography}`}>
+            {translateBilling('Label.Robux')}
+          </span>
+          <div className={robuxBalanceContainer}>
+            <Icon
+              className={cx(
+                smallRobuxIcon,
+                calculateRemainingRobuxBalance() < 0 && 'content-system-alert',
+              )}
+              name='icon-filled-robux'
+              size='Small'
+            />
+            <span
+              className={`text-body-large ${calculateRemainingRobuxBalance() < 0 ? 'content-system-alert' : 'content-emphasis'}`}>
+              {selectedRobuxBalance.toLocaleString()}
+            </span>
+          </div>
         </div>
       </div>
       {calculateRemainingRobuxBalance() < 0 && (

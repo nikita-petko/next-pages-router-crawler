@@ -34,13 +34,8 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     position: 'relative',
   },
   balanceCard: {
-    border: 4,
-    display: 'flex',
     flex: '1 0 0',
-    flexDirection: 'column',
     minWidth: 200,
-    padding: '16px',
-    width: '100%',
   },
   balanceContainerSection: {
     display: 'grid',
@@ -54,10 +49,16 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     minWidth: 0,
   },
   balanceInfoRow: {
+    display: 'contents',
+  },
+  balanceInfoRows: {
     alignItems: 'center',
-    display: 'flex',
-    height: 28,
+    columnGap: 8,
+    display: 'grid',
+    gridAutoRows: '28px',
+    gridTemplateColumns: 'max-content minmax(0, 1fr)',
     marginBottom: marginUnit,
+    rowGap: marginUnit,
   },
   balanceScopeSelector: {
     minWidth: 180,
@@ -75,10 +76,14 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
   },
   balanceTypography: {
     fontWeight: 300,
-    marginRight: 8,
-    width: 72,
+    whiteSpace: 'nowrap',
   },
   buyAdCreditFormContainer: {
+    margin: 0,
+    maxWidth: 747,
+  },
+  buyAdCreditFormContainerCentered: {
+    margin: '0 auto',
     maxWidth: 747,
   },
   buyAdCreditRow: {
@@ -218,16 +223,30 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     opacity: 1,
     textTransform: 'uppercase',
   },
+  watermarkedAdCreditBalanceSegment: {
+    gridColumn: 3,
+    [theme.breakpoints.down('Small')]: {
+      gridColumn: 'auto',
+    },
+  },
   watermarkedBalanceBand: {
     alignItems: 'center',
     backgroundColor: theme.palette.action.hover,
     borderRadius: 8,
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '8px 24px',
-    justifyContent: 'space-between',
+    display: 'grid',
+    gap: '8px 16px',
+    gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
     marginBottom: 24,
     padding: '16px 20px',
+    [theme.breakpoints.down('Small')]: {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  watermarkedBalanceOr: {
+    [theme.breakpoints.down('Small')]: {
+      display: 'none',
+    },
+    visibility: 'hidden',
   },
   watermarkedBalanceScopeSelector: {
     width: '100%',
@@ -244,23 +263,14 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     gap: '6px',
   },
   watermarkedDualInputRow: {
+    alignItems: 'start',
     display: 'grid',
     gap: '16px',
-    gridTemplateColumns: '1fr 1fr',
+    gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
     marginBottom: 8,
     [theme.breakpoints.down('Small')]: {
       gridTemplateColumns: '1fr',
     },
-  },
-  watermarkedErrorCard: {
-    border: '1px solid',
-    borderColor: theme.palette.error.main,
-    borderRadius: 8,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    marginTop: 16,
-    padding: '16px 20px',
   },
   watermarkedInfoAlert: {
     alignItems: 'flex-start',
@@ -277,6 +287,11 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
   },
   watermarkedInfoAlertContent: {
     flex: 1,
+  },
+  watermarkedInputOr: {
+    alignSelf: 'start',
+    marginTop: '16px',
+    textAlign: 'center',
   },
   watermarkedInputRobuxAdornment: {
     marginRight: 8,

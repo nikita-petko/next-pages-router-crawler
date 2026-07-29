@@ -20,6 +20,7 @@ interface PaymentStepProps {
   groupName?: string;
   groupRobuxBalance?: number;
   initialBalanceScope?: AdCreditBalanceScope;
+  isDrawer?: boolean;
   isUnlocked: boolean;
   onCancel?: () => void;
   onComplete?: (completion: PaymentSetupCompletion) => void;
@@ -39,6 +40,7 @@ const PaymentStep = ({
   groupName,
   groupRobuxBalance,
   initialBalanceScope,
+  isDrawer = false,
   isUnlocked,
   onCancel,
   onComplete,
@@ -58,6 +60,7 @@ const PaymentStep = ({
   const {
     classes: {
       buyAdCreditFormContainer,
+      buyAdCreditFormContainerCentered,
       creditCardFormContainer,
       stepLockedMessage,
       tab,
@@ -105,7 +108,7 @@ const PaymentStep = ({
         </Tabs>
       )}
       <CustomTabPanel index={0} value={Object.values(ADD_PAYMENT_TABS).indexOf(paymentTab)}>
-        <div className={buyAdCreditFormContainer}>
+        <div className={isDrawer ? buyAdCreditFormContainerCentered : buyAdCreditFormContainer}>
           {isWatermarkedRobuxConversionEnabled ? (
             <WatermarkedBuyAdCredit
               actionsContainer={

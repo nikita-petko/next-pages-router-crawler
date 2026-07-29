@@ -1,4 +1,4 @@
-import { Button, Divider, Icon, Link } from '@rbx/foundation-ui';
+import { Button, Divider, Icon, IconButton, Link } from '@rbx/foundation-ui';
 import { Tooltip } from '@rbx/ui';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect } from 'react';
@@ -22,13 +22,15 @@ import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider'
 const PageHeader = () => {
   const { translate, translateHTML } = useNamespacedTranslation(TranslationNamespace.Report);
   const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
+  const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
   const router = useRouter();
   const { advertisingShouldBeEnabled, disabledTooltip } = useAppStore((state) =>
     state.advertisingShouldBeEnabled(),
   );
-  const summaryStatsIsError = useNewFlowStore(
-    (state: NewFlowStoreType) => state.summaryStatsState.isError,
+  const { isError: summaryStatsIsError, isLoading: summaryStatsIsLoading } = useNewFlowStore(
+    (state: NewFlowStoreType) => state.summaryStatsState,
   );
+  const retrySummaryStats = useNewFlowStore((state: NewFlowStoreType) => state.retrySummaryStats);
   const navigateToCreateCampaign = useCallback(() => {
     logNativeClickEvent(EventName.CreateCampaignButtonClicked);
     router.push(Routes.NEW_CREATE_CAMPAIGN);
@@ -105,9 +107,22 @@ const PageHeader = () => {
             </div>
           </div>
           {summaryStatsIsError ? (
-            <p className='margin-[0px] text-body-small content-system-alert'>
-              {translate('Description.SummaryDataFailedToFetch')}
-            </p>
+            <div className='flex items-center gap-xsmall'>
+              <p className='margin-[0px] text-body-small content-system-alert'>
+                {translate('Description.SummaryDataFailedToFetch')}
+              </p>
+              <IconButton
+                ariaLabel={translateMisc('Action.Retry')}
+                icon='icon-regular-arrow-spin-clockwise'
+                isCircular
+                isDisabled={summaryStatsIsLoading}
+                onClick={() => {
+                  retrySummaryStats().catch(() => undefined);
+                }}
+                size='XSmall'
+                variant='Utility'
+              />
+            </div>
           ) : (
             <p className='margin-[0px] text-body-small content-default'>
               {translate('Description.StatsDelayedUnifiedAttribution')}

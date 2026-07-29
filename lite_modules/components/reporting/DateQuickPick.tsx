@@ -3,9 +3,10 @@ import {
   PopoverDateRangeControl,
   PopoverDateRangeControlProps,
 } from '@rbx/date-range-picker';
+import { IconButton } from '@rbx/foundation-ui';
 import { FormControl, FormHelperText } from '@rbx/ui';
 import moment from 'moment-timezone';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
 import useDateQuickPickStyles from '@components/reporting/DateQuickPick.styles';
@@ -93,6 +94,15 @@ const DateQuickPick = () => {
   const currentPreset =
     dateFilteringTimePeriodToPreset(dateSelectionState.currentSelection) ??
     DateRangePreset.Last7Days;
+  const lastRequestedDateSelection = useRef<{
+    customEndDate?: string;
+    customStartDate?: string;
+    selection: DateFilteringTimePeriod;
+  }>({
+    customEndDate: dateSelectionState.customEndDate,
+    customStartDate: dateSelectionState.customStartDate,
+    selection: dateSelectionState.currentSelection,
+  });
 
   const presetLabels = useMemo<PopoverDateRangeControlProps['presetLabels']>(() => {
     const entries = WACAM_DATE_RANGE_PRESETS.map(
@@ -133,6 +143,7 @@ const DateQuickPick = () => {
     if (backendValue === DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM) {
       return;
     }
+    lastRequestedDateSelection.current = { selection: backendValue };
     handleDateSelectionChange(backendValue);
     logNativeClickEvent(EventName.DateFilteringOptionClicked, {
       dateFilteringOption: ConvertDateFilteringEnumToString(backendValue),
@@ -145,6 +156,11 @@ const DateQuickPick = () => {
     }
     const customStartDate = formatCustomDate(startDate);
     const customEndDate = formatCustomDate(endDate);
+    lastRequestedDateSelection.current = {
+      customEndDate,
+      customStartDate,
+      selection: DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM,
+    };
     handleDateSelectionChange(
       DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM,
       customStartDate,
@@ -198,8 +214,30 @@ const DateQuickPick = () => {
         />
       </div>
       {dateSelectionState.isError && (
-        <FormHelperText data-testid='datePickerErrorHelperText'>
+        <FormHelperText
+          className='flex items-center gap-xsmall'
+          data-testid='datePickerErrorHelperText'>
           {translateCampaign('Description.FailedToFetch')}
+          <IconButton
+            ariaLabel={translateMisc('Action.Retry')}
+            icon='icon-regular-arrow-spin-clockwise'
+            isCircular
+            isDisabled={isDisabled}
+            onClick={() => {
+              const {
+                customEndDate: requestedCustomEndDate,
+                customStartDate: requestedCustomStartDate,
+                selection,
+              } = lastRequestedDateSelection.current;
+              handleDateSelectionChange(
+                selection,
+                requestedCustomStartDate,
+                requestedCustomEndDate,
+              );
+            }}
+            size='XSmall'
+            variant='Utility'
+          />
         </FormHelperText>
       )}
     </FormControl>

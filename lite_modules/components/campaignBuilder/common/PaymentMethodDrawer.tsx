@@ -206,6 +206,7 @@ const PaymentMethodDrawer = () => {
             groupName={currentWorkspace?.creatorName}
             groupRobuxBalance={groupRobuxBalance}
             initialBalanceScope={initialBalanceScope ?? undefined}
+            isDrawer
             isUnlocked
             onCancel={handleClose}
             onComplete={handleComplete}

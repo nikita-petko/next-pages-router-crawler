@@ -51,6 +51,8 @@ export const appDataDefaults: AppDataDefaultsType = {
   adCreditFromRobuxPurchaseRate: 263,
   adCreditMaximumPurchaseAmount: 1000000,
   adCreditMinimumPurchaseAmount: 10,
+  adCreditO18UsdPerRobux: 0,
+  adCreditStandardUsdPerRobux: 0,
   adFormats: [],
   adLimit: 0,
   ads: [],

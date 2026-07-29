@@ -10,21 +10,6 @@ const useSummaryCardStyles = makeStyles()((theme) => ({
   },
 
   /* eslint-disable perfectionist/sort-objects */
-  cardContentContainer: {
-    display: 'flex',
-    padding: '12px',
-    [theme.breakpoints.up('Small')]: {
-      padding: '16px',
-    },
-    [theme.breakpoints.up('Medium')]: {
-      padding: '20px',
-    },
-    [theme.breakpoints.up('Large')]: {
-      padding: '24px',
-    },
-  },
-
-  /* eslint-disable perfectionist/sort-objects */
   cardRow: {
     display: 'grid',
     gap: '12px',
@@ -40,10 +25,6 @@ const useSummaryCardStyles = makeStyles()((theme) => ({
     [theme.breakpoints.up('Large')]: {
       gap: '24px',
     },
-  },
-
-  metricCard: {
-    backgroundColor: theme.palette.surface[200],
   },
 
   metricDivider: {

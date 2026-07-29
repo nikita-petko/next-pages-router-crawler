@@ -273,6 +273,8 @@ interface SponsoredAdsPageActionType {
     universeId?: number;
   }) => Promise<boolean>;
   resetFilterState: () => void;
+  retryCampaigns: () => Promise<void>;
+  retrySummaryStats: () => Promise<void>;
   toggleAd: (
     adId: string,
     toggleTo: ServerAdStatusType.STOPPED | ServerAdStatusType.ENABLED,
@@ -1875,6 +1877,145 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
           universeFilter: defaultAdvertisedUniverse,
         };
       });
+    },
+    retryCampaigns: async () => {
+      const {
+        advertisedUniversesState,
+        campaignNameFilterState,
+        dateSelectionState,
+        reportingViewState,
+        universePickerFilterState,
+      } = get();
+      const isCustom =
+        dateSelectionState.currentSelection ===
+        DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM;
+      const customStartDate = isCustom ? dateSelectionState.customStartDate : undefined;
+      const customEndDate = isCustom ? dateSelectionState.customEndDate : undefined;
+      const shouldUseWorkspaceUniverseFiltering = getShouldUseWorkspaceUniverseFiltering();
+      const universeIds = shouldUseWorkspaceUniverseFiltering
+        ? resolveUniverseIdsForDateFilter(
+            universePickerFilterState.universeFilter,
+            advertisedUniversesState.data,
+          )
+        : undefined;
+      const requestTimestamp = new Date().toISOString();
+
+      set((draft) => {
+        draft.campaignsState.isError = false;
+        draft.campaignsState.isLoading = true;
+      });
+
+      try {
+        const fetchedCampaigns = await get().getDateFilteredCampaigns(
+          dateSelectionState.currentSelection,
+          reportingViewState.currentSelection,
+          undefined,
+          customStartDate,
+          customEndDate,
+          universeIds,
+          requestTimestamp,
+        );
+        if (get().reportingRequestTimestamp !== requestTimestamp) {
+          return;
+        }
+        set((draft) => {
+          draft.campaignsState.data = fetchedCampaigns;
+          draft.campaignsState.isError = false;
+
+          if (campaignNameFilterState.campaignNameSearch) {
+            const universeId =
+              draft.universePickerFilterState.universeFilter.universe_id || undefined;
+            draft.filteredIdsState = {
+              filteredCampaignIds: filterCampaignIdsLocally(
+                fetchedCampaigns,
+                campaignNameFilterState.campaignNameSearch,
+                universeId,
+              ),
+              isLoading: false,
+            };
+          }
+        });
+      } catch {
+        if (get().reportingRequestTimestamp === requestTimestamp) {
+          set((draft) => {
+            draft.campaignsState.isError = true;
+          });
+        }
+      } finally {
+        if (get().reportingRequestTimestamp === requestTimestamp) {
+          set((draft) => {
+            draft.campaignsState.isLoading = false;
+          });
+        }
+      }
+    },
+    retrySummaryStats: async () => {
+      const {
+        advertisedUniversesState,
+        campaignsState,
+        dateSelectionState,
+        reportingViewState,
+        universePickerFilterState,
+      } = get();
+      const isCustom =
+        dateSelectionState.currentSelection ===
+        DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM;
+      const customStartDate = isCustom ? dateSelectionState.customStartDate : undefined;
+      const customEndDate = isCustom ? dateSelectionState.customEndDate : undefined;
+      const shouldUseWorkspaceUniverseFiltering = getShouldUseWorkspaceUniverseFiltering();
+      const universeId = getSummaryUniverseId(universePickerFilterState.universeFilter);
+      const universeIds = shouldUseWorkspaceUniverseFiltering
+        ? resolveUniverseIdsForDateFilter(
+            universePickerFilterState.universeFilter,
+            advertisedUniversesState.data,
+          )
+        : undefined;
+      const requestTimestamp = new Date().toISOString();
+      const shouldUseFrontendSummary = getShouldUseFrontendReportingStats();
+
+      set((draft) => {
+        draft.summaryStatsState.isError = false;
+        draft.summaryStatsState.isLoading = true;
+      });
+
+      try {
+        const backendSummary = shouldUseFrontendSummary
+          ? undefined
+          : await get().getSummaryStats(
+              dateSelectionState.currentSelection,
+              reportingViewState.currentSelection,
+              universeId,
+              undefined,
+              customStartDate,
+              customEndDate,
+              requestTimestamp,
+            );
+        const summaryStats = shouldUseFrontendSummary
+          ? await fetchFrontendSummaryStats({
+              backendSummary,
+              campaigns: campaignsState.data ?? [],
+              reportingView: reportingViewState.currentSelection,
+              requestTimestamp,
+              timePeriod: dateSelectionState.currentSelection,
+              universeId,
+              universeIds,
+            })
+          : backendSummary;
+
+        set((draft) => {
+          draft.summaryStatsState.data = summaryStats;
+          draft.summaryStatsState.isError = false;
+        });
+      } catch (error) {
+        set((draft) => {
+          draft.summaryStatsState.isError = true;
+        });
+        CaptureException(error, { context: 'retrySummaryStats' });
+      } finally {
+        set((draft) => {
+          draft.summaryStatsState.isLoading = false;
+        });
+      }
     },
     statusesState: {
       adStatuses: new Map<string, GetAdStatusResponseType>(),

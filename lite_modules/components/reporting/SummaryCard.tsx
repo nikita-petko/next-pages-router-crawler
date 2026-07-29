@@ -1,5 +1,4 @@
-import { Divider } from '@rbx/foundation-ui';
-import { Card, CardContent } from '@rbx/ui';
+import { Card, Divider } from '@rbx/foundation-ui';
 import type { JSX } from 'react';
 
 import Skeleton from '@components/common/Skeleton';
@@ -29,8 +28,6 @@ const SummaryCard = ({
     classes: {
       cardContainer,
       cardContainerWithMultiple,
-      cardContentContainer,
-      metricCard,
       metricDivider,
       metricDividerContainer,
       multipleStatsContainer,
@@ -99,13 +96,11 @@ const SummaryCard = ({
         [cardContainer]: !secondValue,
         [cardContainerWithMultiple]: !!secondValue,
       })}>
-      <Card className={metricCard} variant='filled'>
-        <CardContent className={cardContentContainer}>
-          <div className='flex flex-col gap-small'>
-            {titleContent}
-            <div className={multipleStatsContainer}>{valueContent}</div>
-          </div>
-        </CardContent>
+      <Card density='Default' variant='Emphasis'>
+        <div className='flex flex-col gap-small'>
+          {titleContent}
+          <div className={multipleStatsContainer}>{valueContent}</div>
+        </div>
       </Card>
     </div>
   );

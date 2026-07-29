@@ -49,6 +49,21 @@ import { CaptureException, IsImpersonationError } from '@utils/error';
 import { GetUrlWithParams } from '@utils/url';
 
 const QUOTE_DEBOUNCE_MS = 350;
+const INITIAL_QUOTE_VALUE = '--';
+const INITIAL_TIER_BREAKDOWN: AdCreditPurchaseQuoteTier[] = [
+  {
+    ad_credit_micros: 0,
+    ad_credit_per_robux: 0,
+    robux_amount: 0,
+    tier: AdCreditQuoteTierValues.O18,
+  },
+  {
+    ad_credit_micros: 0,
+    ad_credit_per_robux: 0,
+    robux_amount: 0,
+    tier: AdCreditQuoteTierValues.STANDARD,
+  },
+];
 
 const resolveInitialBalanceScope = (
   showGroupBalanceOption: boolean,
@@ -87,6 +102,8 @@ export const WatermarkedBuyAdCredit = ({
     adCreditActivated,
     adCreditMaximumPurchaseAmount,
     adCreditMinimumPurchaseAmount,
+    adCreditO18UsdPerRobux,
+    adCreditStandardUsdPerRobux,
     paymentProfiles,
   } = useAppStore((state: AppStoreType) => state.appData);
   const { setShowPurchaseAdCreditError } = useToastStore();
@@ -104,15 +121,17 @@ export const WatermarkedBuyAdCredit = ({
       robuxBalanceContainer,
       smallRobuxIcon,
       subtitleContainer,
+      watermarkedAdCreditBalanceSegment,
       watermarkedBalanceBand,
+      watermarkedBalanceOr,
       watermarkedBalanceScopeSelector,
       watermarkedBalanceScopeSelectorContainer,
       watermarkedBalanceSegment,
       watermarkedDualInputRow,
-      watermarkedErrorCard,
       watermarkedInfoAlert,
       watermarkedInfoAlertClose,
       watermarkedInfoAlertContent,
+      watermarkedInputOr,
       watermarkedInputRobuxAdornment,
       watermarkedStrikethroughRobux,
       watermarkedTierCard,
@@ -213,7 +232,7 @@ export const WatermarkedBuyAdCredit = ({
       return undefined;
     }
     return resolveAdCreditQuoteErrorDisplay(quote.error_code, quoteErrorBounds, {
-      minAdCreditAmount: MicroUsdToUsdString(quote.ad_credit_quantity_micros),
+      minAdCreditAmount: quoteErrorBounds.minAmount,
       minRobuxAmount: quote.robux_charge.toLocaleString(),
     });
   }, [quote, quoteErrorBounds]);
@@ -234,7 +253,8 @@ export const WatermarkedBuyAdCredit = ({
   const showInsufficientRobuxPanel =
     exceedsRobuxBalance || activeErrorDisplay?.type === 'insufficient_robux';
 
-  const showErrorPanel = showInsufficientRobuxPanel || activeErrorDisplay !== undefined;
+  const showErrorPanel =
+    showInsufficientRobuxPanel || activeErrorDisplay !== undefined || quoteQuery.isError;
 
   const hasRobuxInputError =
     showErrorPanel &&
@@ -274,7 +294,7 @@ export const WatermarkedBuyAdCredit = ({
     sourceField === AdCreditQuoteSourceFieldValues.AD_CREDIT_AMOUNT &&
     quote !== undefined &&
     quote.ad_credit_quantity_micros > 0
-      ? MicroUsdToUsdString(quote.ad_credit_quantity_micros)
+      ? MicroUsdToUsdStringRoundedDown(quote.ad_credit_quantity_micros)
       : undefined;
 
   const errorPanelMessage =
@@ -282,8 +302,29 @@ export const WatermarkedBuyAdCredit = ({
       ? translateBilling(activeErrorDisplay.translationKey, activeErrorDisplay.args)
       : undefined;
 
-  const showTierBreakdown =
-    !showErrorPanel && quote !== undefined && quote.is_valid && quote.tier_breakdown.length > 0;
+  let inputErrorMessage: string | undefined;
+  if (quoteQuery.isError) {
+    inputErrorMessage = translateMisc('Message.GenericError');
+  } else if (showInsufficientRobuxPanel && maxConvertibleAdCreditAmount !== undefined) {
+    inputErrorMessage = translateBilling('Message.MaximumConvertibleAdCredit', {
+      amount: maxConvertibleAdCreditAmount,
+    });
+  } else if (showInsufficientRobuxPanel) {
+    inputErrorMessage = translateBilling('Message.NeedMoreRobux', {
+      robuxNeeded: (robuxNeededForPurchase ?? 0).toLocaleString(),
+    });
+  } else {
+    inputErrorMessage = errorPanelMessage;
+  }
+  const robuxInputHelperText = hasRobuxInputError ? inputErrorMessage : undefined;
+  const adCreditInputHelperText = hasAdCreditInputError ? inputErrorMessage : undefined;
+
+  const showTierBreakdown = !quoteQuery.isError && !(isQuoteLoading && quote === undefined);
+  const displayedTierBreakdown =
+    quote?.is_valid && quote.tier_breakdown.length > 0
+      ? quote.tier_breakdown
+      : INITIAL_TIER_BREAKDOWN;
+  const hasQuoteValues = quote?.is_valid === true;
 
   const navigateToPaymentSettingsPage = (state?: BuyAdCreditEnum) => {
     if (state === BuyAdCreditEnum.SUCCESS && !hasVerifiedPaymentProfiles && !adCreditActivated) {
@@ -412,7 +453,10 @@ export const WatermarkedBuyAdCredit = ({
           robuxIcon: <Icon className={smallRobuxIcon} name='icon-filled-robux' size='Small' />,
         })}
       </span>
-      <span className='text-body-medium content-default'>
+      <span aria-hidden='true' className={`text-body-large ${watermarkedBalanceOr}`}>
+        {translateMisc('Label.Or')}
+      </span>
+      <span className={`text-body-medium content-default ${watermarkedAdCreditBalanceSegment}`}>
         {translateBilling('Label.AdCreditBalanceWithAmount', {
           amount: MicroUsdToUsdStringRoundedDown(selectedAdCreditBalance),
         })}
@@ -429,6 +473,7 @@ export const WatermarkedBuyAdCredit = ({
         customInput={TextField}
         decimalScale={0}
         error={hasRobuxInputError}
+        helperText={robuxInputHelperText}
         id='watermarkedConvertRobux'
         InputProps={{
           inputProps: { 'data-testid': 'convertRobuxInput' },
@@ -454,6 +499,9 @@ export const WatermarkedBuyAdCredit = ({
         value={robuxFieldValue ?? ''}
         variant='outlined'
       />
+      <span className={`text-body-large content-default ${watermarkedInputOr}`}>
+        {translateMisc('Label.Or')}
+      </span>
       <NumericFormat
         allowNegative={false}
         className={fullWidth}
@@ -461,9 +509,7 @@ export const WatermarkedBuyAdCredit = ({
         customInput={TextField}
         decimalScale={2}
         error={hasAdCreditInputError}
-        helperText={translateBilling('Description.MinimumAdCreditHint', {
-          minAmount: adCreditMinimumPurchaseAmount.toLocaleString(),
-        })}
+        helperText={adCreditInputHelperText}
         id='watermarkedAdCreditAmount'
         inputProps={{ 'data-testid': 'adCreditAmountInput' }}
         label={translateBilling('Title.AdCreditAmount')}
@@ -482,125 +528,39 @@ export const WatermarkedBuyAdCredit = ({
     </div>
   );
 
-  const genericQuoteErrorPanel = quoteQuery.isError ? (
-    <div className={watermarkedErrorCard} data-testid='watermarkedGenericErrorPanel'>
-      <span className='text-body-medium content-system-alert'>
-        {translateMisc('Message.GenericError')}
+  const infoAlert = isInfoAlertDismissed ? null : (
+    <div className={watermarkedInfoAlert} data-testid='watermarkedInfoAlert'>
+      <Icon className='content-emphasis' name='icon-filled-circle-i' size='Small' />
+      <div className={watermarkedInfoAlertContent}>
+        <span className='text-body-medium'>
+          {translateBilling('Message.WatermarkedConversionInfo')}{' '}
+          <Link
+            href={AdCreditConversionLearnMoreUrl}
+            size='Small'
+            target='_blank'
+            underline='always'>
+            {translateReport('Action.LearnMoreManage')}
+          </Link>
+        </span>
+      </div>
+      <span
+        className={watermarkedInfoAlertClose}
+        data-testid='dismissInfoAlert'
+        onClick={() => setIsInfoAlertDismissed(true)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            setIsInfoAlertDismissed(true);
+          }
+        }}
+        role='button'
+        tabIndex={0}>
+        <Icon name='icon-regular-x' size='Small' />
       </span>
     </div>
-  ) : null;
-
-  const conversionErrorPanel = showErrorPanel ? (
-    <div className={watermarkedErrorCard} data-testid='watermarkedErrorPanel'>
-      {showInsufficientRobuxPanel ? (
-        <>
-          <span className='text-body-medium content-default'>
-            {translateBillingHTML('Label.RobuxBalanceWithAmount', null, {
-              amount: selectedRobuxBalance.toLocaleString(),
-              robuxIcon: <Icon className={smallRobuxIcon} name='icon-filled-robux' size='Small' />,
-            })}
-          </span>
-          {maxConvertibleAdCreditAmount !== undefined ? (
-            <span
-              className='text-body-medium content-system-alert'
-              data-testid='maxConvertibleAdCreditMessage'>
-              {translateBilling('Message.MaximumConvertibleAdCredit', {
-                amount: maxConvertibleAdCreditAmount,
-              })}
-            </span>
-          ) : (
-            <span
-              className='text-body-medium content-system-alert'
-              data-testid='needMoreRobuxDescription'>
-              {translateBilling('Message.NeedMoreRobux', {
-                robuxNeeded: (robuxNeededForPurchase ?? 0).toLocaleString(),
-              })}
-            </span>
-          )}
-        </>
-      ) : (
-        <span
-          className='text-body-medium content-system-alert'
-          data-testid='watermarkedValidationError'>
-          {errorPanelMessage}
-        </span>
-      )}
-    </div>
-  ) : null;
-
-  const tierBreakdown = showTierBreakdown ? (
-    <div className={watermarkedTierCard} data-testid='watermarkedTierBreakdown'>
-      {quote.tier_breakdown.map((tier: AdCreditPurchaseQuoteTier) => (
-        <div className={watermarkedTierRow} key={tier.tier}>
-          <div className={watermarkedTierLabelGroup}>
-            <span className={`text-body-large ${watermarkedTierLabel}`}>
-              {translateBilling(tierLabelKey(tier.tier))}
-            </span>
-            <span className={`text-body-medium content-default ${watermarkedTierSubtext}`}>
-              {translateBilling('Description.EarnedAtRate', {
-                rate: String(tier.ad_credit_per_robux),
-              })}
-            </span>
-          </div>
-          <div className={watermarkedTierRowValues}>
-            <span className='text-body-large'>
-              {translateBilling('Label.AdCreditWithAmount', {
-                amount: MicroUsdToUsdString(tier.ad_credit_micros),
-              })}
-            </span>
-            <div className={robuxBalanceContainer}>
-              <Icon className={smallRobuxIcon} name='icon-filled-robux' size='Small' />
-              <span className='text-body-medium content-default'>
-                {tier.robux_amount.toLocaleString()}
-              </span>
-            </div>
-          </div>
-        </div>
-      ))}
-      <Divider className={divider} />
-      <div className={watermarkedTotalRow}>
-        <span className={`text-body-large ${watermarkedTotalLabel}`}>
-          {translateForecast('Label.PeriodTotal')}
-        </span>
-        <div className={watermarkedTierRowValues}>
-          <span className='text-body-large'>
-            {translateBilling('Label.AdCreditWithAmount', {
-              amount: MicroUsdToUsdString(quote.ad_credit_quantity_micros),
-            })}
-          </span>
-          <div className={robuxBalanceContainer}>
-            <Icon className={smallRobuxIcon} name='icon-filled-robux' size='Small' />
-            {isRobuxAdjustedDown && (
-              <span
-                className={`text-body-medium content-default ${watermarkedStrikethroughRobux}`}
-                data-testid='adjustedRobuxInput'>
-                {robuxAmount.toLocaleString()}
-              </span>
-            )}
-            <span className='text-body-medium content-default'>
-              {quote.robux_charge.toLocaleString()}
-            </span>
-            {isRobuxAdjustedDown && (
-              <Tooltip
-                position='top-center'
-                title={translateBilling('Description.AdjustedForConversion')}>
-                <TooltipTrigger asChild>
-                  <span
-                    className={watermarkedTooltipIcon}
-                    data-testid='adjustedForConversionTooltip'>
-                    <Icon name='icon-regular-circle-i' size='Small' />
-                  </span>
-                </TooltipTrigger>
-              </Tooltip>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  ) : null;
+  );
 
   const quoteLoadingSkeleton =
-    isQuoteLoading && quote === undefined ? (
+    !showErrorPanel && quoteQuery.isFetching && quote === undefined ? (
       <div
         aria-label={translateBilling('Description.LoadingQuote')}
         className={watermarkedTierCard}
@@ -661,39 +621,91 @@ export const WatermarkedBuyAdCredit = ({
             />
           </div>
         </div>
+        {infoAlert}
       </div>
     ) : null;
 
-  const infoAlert = isInfoAlertDismissed ? null : (
-    <div className={watermarkedInfoAlert} data-testid='watermarkedInfoAlert'>
-      <Icon className='content-emphasis' name='icon-filled-circle-i' size='Small' />
-      <div className={watermarkedInfoAlertContent}>
-        <span className='text-body-medium'>
-          {translateBilling('Message.WatermarkedConversionInfo')}{' '}
-          <Link
-            href={AdCreditConversionLearnMoreUrl}
-            size='Small'
-            target='_blank'
-            underline='always'>
-            {translateReport('Action.LearnMoreManage')}
-          </Link>
+  const tierBreakdown = showTierBreakdown ? (
+    <div className={watermarkedTierCard} data-testid='watermarkedTierBreakdown'>
+      {displayedTierBreakdown.map((tier: AdCreditPurchaseQuoteTier) => (
+        <div className={watermarkedTierRow} key={tier.tier}>
+          <div className={watermarkedTierLabelGroup}>
+            <span className={`text-body-large ${watermarkedTierLabel}`}>
+              {translateBilling(tierLabelKey(tier.tier))}
+            </span>
+            <span className={`text-body-medium content-default ${watermarkedTierSubtext}`}>
+              {translateBilling('Description.EarnedAtRate', {
+                rate: hasQuoteValues
+                  ? String(tier.ad_credit_per_robux)
+                  : String(
+                      tier.tier === AdCreditQuoteTierValues.O18
+                        ? adCreditO18UsdPerRobux || INITIAL_QUOTE_VALUE
+                        : adCreditStandardUsdPerRobux || INITIAL_QUOTE_VALUE,
+                    ),
+              })}
+            </span>
+          </div>
+          <div className={watermarkedTierRowValues}>
+            <span className='text-body-large'>
+              {translateBilling('Label.AdCreditWithAmount', {
+                amount: hasQuoteValues
+                  ? MicroUsdToUsdString(tier.ad_credit_micros)
+                  : INITIAL_QUOTE_VALUE,
+              })}
+            </span>
+            <div className={robuxBalanceContainer}>
+              <Icon className={smallRobuxIcon} name='icon-filled-robux' size='Small' />
+              <span className='text-body-medium content-default'>
+                {hasQuoteValues ? tier.robux_amount.toLocaleString() : INITIAL_QUOTE_VALUE}
+              </span>
+            </div>
+          </div>
+        </div>
+      ))}
+      <Divider className={divider} />
+      <div className={watermarkedTotalRow}>
+        <span className={`text-body-large ${watermarkedTotalLabel}`}>
+          {translateForecast('Label.PeriodTotal')}
         </span>
+        <div className={watermarkedTierRowValues}>
+          <span className='text-body-large'>
+            {translateBilling('Label.AdCreditWithAmount', {
+              amount: hasQuoteValues
+                ? MicroUsdToUsdString(quote?.ad_credit_quantity_micros ?? 0)
+                : INITIAL_QUOTE_VALUE,
+            })}
+          </span>
+          <div className={robuxBalanceContainer}>
+            {isRobuxAdjustedDown && hasQuoteValues && (
+              <Tooltip
+                position='left-center'
+                title={translateBilling('Description.AdjustedForConversion')}>
+                <TooltipTrigger asChild>
+                  <span
+                    className={watermarkedTooltipIcon}
+                    data-testid='adjustedForConversionTooltip'>
+                    <Icon name='icon-regular-circle-i' size='Small' />
+                  </span>
+                </TooltipTrigger>
+              </Tooltip>
+            )}
+            <Icon className={smallRobuxIcon} name='icon-filled-robux' size='Small' />
+            {isRobuxAdjustedDown && hasQuoteValues && (
+              <span
+                className={`text-body-medium content-default ${watermarkedStrikethroughRobux}`}
+                data-testid='adjustedRobuxInput'>
+                {robuxAmount.toLocaleString()}
+              </span>
+            )}
+            <span className='text-body-medium content-default'>
+              {hasQuoteValues ? (quote?.robux_charge ?? 0).toLocaleString() : INITIAL_QUOTE_VALUE}
+            </span>
+          </div>
+        </div>
       </div>
-      <span
-        className={watermarkedInfoAlertClose}
-        data-testid='dismissInfoAlert'
-        onClick={() => setIsInfoAlertDismissed(true)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            setIsInfoAlertDismissed(true);
-          }
-        }}
-        role='button'
-        tabIndex={0}>
-        <Icon name='icon-regular-x' size='Small' />
-      </span>
+      {infoAlert}
     </div>
-  );
+  ) : null;
 
   const disclaimer = (
     <>
@@ -768,10 +780,7 @@ export const WatermarkedBuyAdCredit = ({
       {balanceContainer}
       {dualInput}
       {quoteLoadingSkeleton}
-      {genericQuoteErrorPanel}
-      {conversionErrorPanel}
       {tierBreakdown}
-      {infoAlert}
       {disclaimer}
       {footer}
     </div>
