@@ -215,19 +215,20 @@ const getAlertType = (
           break;
       }
     }
-    if (enableIpPlatformConditionalOffers && status === AgreementStatus.ConditionalOffer) {
-      if (numDisputeReasons > 0 && transition === AgreementTransition.RejectDispute) {
-        return AlertType.ConditionalChangeRequestResent;
-      }
-      switch (transition) {
-        case AgreementTransition.CreatorCompleteConditionalChangeRequest:
+    if (enableIpPlatformConditionalOffers) {
+      if (status === AgreementStatus.ConditionalOffer) {
+        if (numDisputeReasons > 0 && transition === AgreementTransition.RejectDispute) {
+          return AlertType.ConditionalChangeRequestResent;
+        }
+        if (transition === AgreementTransition.CreatorCompleteConditionalChangeRequest) {
           return AlertType.ConditionalChangeRequestConfirmed;
-        case AgreementTransition.IphInitiateConditionalChangeRequest:
+        }
+        if (transition === AgreementTransition.IphInitiateConditionalChangeRequest) {
           return AlertType.ConditionalChangeRequestReceived;
-        case AgreementTransition.ExpireConditionalChangeRequest:
-          return AlertType.ConditionalChangeRequestExpired;
-        default:
-          break;
+        }
+      }
+      if (transition === AgreementTransition.ExpireConditionalChangeRequest) {
+        return AlertType.ConditionalChangeRequestExpired;
       }
     }
     if (

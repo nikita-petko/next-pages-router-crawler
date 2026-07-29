@@ -600,6 +600,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: creatorCreationsFlags.isBadgeDefaultIconEnabled,
+      metadata: {
+        namespace: 'creator-creations',
+        name: 'isBadgeDefaultIconEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: creatorCreationsFlags.isMomentsUploadEnabled,
       metadata: {
         namespace: 'creator-creations',

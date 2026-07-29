@@ -4,7 +4,7 @@ export const CreateBadgeRegisterOptions = {
     maxLength: 50,
   },
   description: { maxLength: 1000 },
-  file: { required: true },
+  file: {},
 };
 
 export const CreateBadgeFormDefaultValue = {

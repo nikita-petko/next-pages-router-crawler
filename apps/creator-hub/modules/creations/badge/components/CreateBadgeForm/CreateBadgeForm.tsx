@@ -1,10 +1,13 @@
 import type { FunctionComponent } from 'react';
-import React, { Fragment, useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import type { SubmitHandler, ControllerRenderProps } from 'react-hook-form';
 import { useForm, Controller } from 'react-hook-form';
 import { useTranslation } from '@rbx/intl';
+import { ReturnPolicy, ThumbnailTypes } from '@rbx/thumbnails';
 import {
+  Alert,
+  AlertTitle,
   Button,
   Checkbox,
   CircularProgress,
@@ -44,11 +47,15 @@ const { docs } = creatorHub;
 export interface CreateBadgeFormProps {
   badgeMetadata: GetBadgesMetadataResponse;
   hasFreeQuota: boolean;
+  defaultBadgeIconImageId?: number;
+  isDefaultBadgeIconEnabled: boolean;
 }
 
 const CreateBadgeForm: FunctionComponent<React.PropsWithChildren<CreateBadgeFormProps>> = ({
   badgeMetadata,
   hasFreeQuota,
+  defaultBadgeIconImageId,
+  isDefaultBadgeIconEnabled,
 }) => {
   const {
     classes: {
@@ -68,6 +75,7 @@ const CreateBadgeForm: FunctionComponent<React.PropsWithChildren<CreateBadgeForm
   const { isLoadingGame, gameDetails } = useCurrentGame();
   const { user } = useAuthentication();
   const { sourceLanguageCode } = useLanguageManagement();
+  const showDefaultIconExperience = isDefaultBadgeIconEnabled && (defaultBadgeIconImageId ?? 0) > 0;
   const { register, handleSubmit, control, setValue, formState, getValues, getFieldState } =
     useForm<CreateBadgeFormType>({
       mode: FormMode.OnTouched,
@@ -97,7 +105,7 @@ const CreateBadgeForm: FunctionComponent<React.PropsWithChildren<CreateBadgeForm
           paymentResourceType,
           expectedCost,
           data.isItemActive,
-          data.file as Blob,
+          data.file ?? undefined,
         );
         return true;
       } catch (e) {
@@ -178,46 +186,41 @@ const CreateBadgeForm: FunctionComponent<React.PropsWithChildren<CreateBadgeForm
   }, [badgeMetadata, hasFreeQuota]);
 
   const handleFormSubmit: SubmitHandler<CreateBadgeFormType> = useCallback(
-    (data) => {
+    async (data) => {
       setIsConfirmDialogShown(false);
       setBadgeCreationErrorMsg('');
-      if (!isLoadingGame && gameDetails && gameDetails.id) {
-        return createNewBadge(
-          gameDetails.id,
-          data,
-          badgeCreationPrice,
-          data.isGroupFundUsed ? 'Group' : 'User',
-        ).then(async (isBadgeCreatedSuccess) => {
-          if (isBadgeCreatedSuccess) {
-            const { id: _, ...routerQueryWithoutId } = router.query;
-            await router
-              .push({
-                pathname: `/dashboard/creations/experiences/${gameDetails.id}/associated-items`,
-                query: { ...routerQueryWithoutId, activeTab: Item.Badge },
-              })
-              .then(() => {
-                enqueue(
-                  {
-                    message: translate('Message.BadgeCreationSuccess'),
-                    autoHide: true,
-                  },
-                  (reason) => reason === 'timeout',
-                );
-              });
-          }
-        });
+      if (isLoadingGame || !gameDetails || !gameDetails.id) {
+        await router.push('/dashboard/creations');
+        return;
       }
-      return router.push('/dashboard/creations');
+      const isBadgeCreatedSuccess = await createNewBadge(
+        gameDetails.id,
+        data,
+        badgeCreationPrice,
+        data.isGroupFundUsed ? 'Group' : 'User',
+      );
+      if (!isBadgeCreatedSuccess) {
+        return;
+      }
+      const { id: _, ...routerQueryWithoutId } = router.query;
+      await router.push({
+        pathname: `/dashboard/creations/experiences/${gameDetails.id}/associated-items`,
+        query: { ...routerQueryWithoutId, activeTab: Item.Badge },
+      });
+      enqueue(
+        {
+          message: translate('Message.BadgeCreationSuccess'),
+          autoHide: true,
+        },
+        (reason) => reason === 'timeout',
+      );
     },
-    /* eslint-disable-next-line react-hooks/exhaustive-deps -- NOTE (jcountryman, 6/10/24): Turned off to check in text field consolidation work. Codeowners is
-     * responsible for triaging issue.
-     */
-    [badgeCreationPrice, gameDetails, router, isLoadingGame, createNewBadge, translate],
+    [badgeCreationPrice, gameDetails, router, isLoadingGame, createNewBadge, translate, enqueue],
   );
 
   const handlePrimaryButtonClick = useCallback(() => {
     if (hasFreeQuota) {
-      handleSubmit(handleFormSubmit)();
+      void handleSubmit(handleFormSubmit)();
     } else {
       setIsConfirmDialogShown(true);
     }
@@ -225,7 +228,7 @@ const CreateBadgeForm: FunctionComponent<React.PropsWithChildren<CreateBadgeForm
 
   const handleFormCancel = useCallback(() => {
     const { id: _, ...routerQueryWithoutId } = router.query;
-    router.push({
+    void router.push({
       pathname: `/dashboard/creations/experiences/${gameDetails?.id ?? 0}/associated-items`,
       query: { ...routerQueryWithoutId, activeTab: Item.Badge },
     });
@@ -240,19 +243,20 @@ const CreateBadgeForm: FunctionComponent<React.PropsWithChildren<CreateBadgeForm
 
   const inputStyleWithRtlSupport = useMemo(
     () => (rtlLanguages.has(sourceLanguageCode ?? '') ? rtlInputStyle : ''),
-    /* eslint-disable-next-line react-hooks/exhaustive-deps -- NOTE (jcountryman, 6/10/24): Turned off to check in text field consolidation work. Codeowners is
-     * responsible for triaging issue.
-     */
-    [sourceLanguageCode],
+    [sourceLanguageCode, rtlInputStyle],
   );
 
   useEffect(() => {
-    register('file', CreateBadgeRegisterOptions.file);
+    register(
+      'file',
+      showDefaultIconExperience ? CreateBadgeRegisterOptions.file : { required: true },
+    );
   });
 
   useEffect(() => {
     if (user && user.id) {
-      loadCurrency(CreatorType.User, user.id);
+      // oxlint-disable-next-line react/react-compiler -- initial balance fetch is intentionally effect-driven; setState happens in the async loadCurrency call
+      void loadCurrency(CreatorType.User, user.id);
     }
   }, [user, loadCurrency]);
 
@@ -275,8 +279,25 @@ const CreateBadgeForm: FunctionComponent<React.PropsWithChildren<CreateBadgeForm
           </Grid>
         </Grid>
 
+        {showDefaultIconExperience && (
+          <Grid container item XSmall={12}>
+            <Alert severity='info' variant='outlined'>
+              <AlertTitle>{translate('Heading.OptionalImage')}</AlertTitle>
+              {translate('Message.OptionalImageDescription')}
+            </Alert>
+          </Grid>
+        )}
+
         <Grid container item direction='row' XSmall={12}>
           <ThumbnailImageUploader
+            {...(showDefaultIconExperience
+              ? {
+                  targetId: defaultBadgeIconImageId,
+                  targetType: ThumbnailTypes.assetThumbnail,
+                  targetReturnPolicy: ReturnPolicy.PlaceHolder,
+                  removeButtonEnabled: false,
+                }
+              : {})}
             imageAltText={translate('Label.BadgeImage')}
             ariaDescribedBy='thumbnail-aria-description'
             onChange={handleFileChange}
@@ -426,9 +447,9 @@ const CreateBadgeForm: FunctionComponent<React.PropsWithChildren<CreateBadgeForm
                 {isLoadingCurrency ? (
                   <CircularProgress size={14} />
                 ) : (
-                  <Fragment>
+                  <>
                     <RobuxIcon className={priceIcon} /> <span>{currentBalance}</span>
-                  </Fragment>
+                  </>
                 )}
               </Typography>
             )}

@@ -1,8 +1,10 @@
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { StatusCodes } from '@rbx/core';
+import { useFlag } from '@rbx/flags';
 import { withTranslation, useTranslation } from '@rbx/intl';
 import { Grid, CircularProgress } from '@rbx/ui';
+import { isBadgeDefaultIconEnabled } from '@generated/flags/creatorCreations';
 import type { GetBadgesMetadataResponse } from '@modules/clients/badges';
 import badgesClient from '@modules/clients/badges';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
@@ -20,6 +22,8 @@ const CreateBadgeContainer: FunctionComponent<React.PropsWithChildren> = () => {
   const { translate } = useTranslation();
   const { error } = useMetricsMonitoring();
   const { canConfigure, isLoadingGame, gameDetails } = useCurrentGame();
+  const { ready: isFlagReady, value: isDefaultBadgeIconEnabled } =
+    useFlag(isBadgeDefaultIconEnabled);
 
   const [isInitializing, setIsInitializing] = useState<boolean>(false);
   const [isInitializationFailed, setIsInitializationFailed] = useState<boolean>(false);
@@ -52,15 +56,16 @@ const CreateBadgeContainer: FunctionComponent<React.PropsWithChildren> = () => {
 
   const loadPage = useCallback(() => {
     if (!isLoadingGame && gameDetails && gameDetails.id) {
-      loadBadgeMetadata(gameDetails.id);
+      void loadBadgeMetadata(gameDetails.id);
     }
   }, [isLoadingGame, gameDetails, loadBadgeMetadata]);
 
   useEffect(() => {
+    // oxlint-disable-next-line react/react-compiler -- initial metadata load is intentionally effect-driven; setState happens in the async loadBadgeMetadata call
     loadPage();
   }, [loadPage]);
 
-  if (isInitializing) {
+  if (isInitializing || !isFlagReady) {
     return (
       <Grid container justifyContent='center' alignItems='center' className={pageContainer}>
         <CircularProgress />
@@ -83,7 +88,14 @@ const CreateBadgeContainer: FunctionComponent<React.PropsWithChildren> = () => {
     );
   }
 
-  return <CreateBadgeForm hasFreeQuota={hasFreeQuota} badgeMetadata={badgeMetadata} />;
+  return (
+    <CreateBadgeForm
+      hasFreeQuota={hasFreeQuota}
+      badgeMetadata={badgeMetadata}
+      defaultBadgeIconImageId={badgeMetadata.defaultBadgeIconImageId}
+      isDefaultBadgeIconEnabled={isDefaultBadgeIconEnabled ?? false}
+    />
+  );
 };
 
 export default withTranslation(CreateBadgeContainer, [

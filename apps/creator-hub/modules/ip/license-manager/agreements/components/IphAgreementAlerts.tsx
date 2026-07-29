@@ -229,17 +229,17 @@ const getAlertType = (
           break;
       }
     }
-    if (enableIpPlatformConditionalOffers && status === AgreementStatus.ConditionalOffer) {
-      // oxlint-disable-next-line typescript/switch-exhaustiveness-check -- non-conditional transitions fall through
-      switch (transition) {
-        case AgreementTransition.IphInitiateConditionalChangeRequest:
+    if (enableIpPlatformConditionalOffers) {
+      if (status === AgreementStatus.ConditionalOffer) {
+        if (transition === AgreementTransition.IphInitiateConditionalChangeRequest) {
           return AlertType.ConditionalChangeRequestInitiated;
-        case AgreementTransition.CreatorCompleteConditionalChangeRequest:
+        }
+        if (transition === AgreementTransition.CreatorCompleteConditionalChangeRequest) {
           return AlertType.ConditionalChangeRequestCompleted;
-        case AgreementTransition.ExpireConditionalChangeRequest:
-          return AlertType.ConditionalChangeRequestExpired;
-        default:
-          break;
+        }
+      }
+      if (transition === AgreementTransition.ExpireConditionalChangeRequest) {
+        return AlertType.ConditionalChangeRequestExpired;
       }
     }
     if (

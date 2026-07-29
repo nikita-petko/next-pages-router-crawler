@@ -24,7 +24,7 @@ const useCreateBadgeFormStyles = makeStyles()((theme) => ({
   formContainer: {
     width: '100%',
     '& > *:not(:last-child)': {
-      paddingBottom: 48,
+      paddingBottom: 24,
     },
     [theme.breakpoints.down('Medium')]: {
       paddingLeft: 12,
