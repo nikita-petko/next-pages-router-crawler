@@ -121,11 +121,13 @@ const TicketRow = ({
             )}
           </span>
           {isBulkManagementEnabled && (
-            <PlayerSupportTableRowCheckbox
-              ticket={ticket}
-              ariaLabel={displayTitle}
-              isDisabled={isSelectionDisabled}
-            />
+            <span className='margin-right-small shrink-0'>
+              <PlayerSupportTableRowCheckbox
+                ticket={ticket}
+                ariaLabel={displayTitle}
+                isDisabled={isSelectionDisabled}
+              />
+            </span>
           )}
           <div className='items-center min-width-0 gap-medium flex'>
             {isReportedToRoblox && (
@@ -330,7 +332,11 @@ const PlayerSupportTableContent = ({
   const selectedCategoryLabel = categoryKey ? translate(categoryKey) : '';
 
   const reconcileSelection = useCallback(
-    (response: BulkManageCreatorTicketsResponse) => {
+    (response: BulkManageCreatorTicketsResponse, action: BulkManageCreatorTicketsAction) => {
+      if (action !== BulkManageCreatorTicketsAction.BulkReply) {
+        return;
+      }
+
       const failedIds = new Set(
         (response.results ?? []).flatMap((result) =>
           result.resultStatus === BulkManageCreatorTicketResultStatus.Failed &&
@@ -425,7 +431,7 @@ const PlayerSupportTableContent = ({
           action,
           response,
         });
-        reconcileSelection(result);
+        reconcileSelection(result, action);
 
         const succeededCount =
           result.succeededCount ??
@@ -480,9 +486,10 @@ const PlayerSupportTableContent = ({
     <Button
       variant='Emphasis'
       size='Medium'
+      className='min-width-[120px]'
       isDisabled={!canBulkReply || isPending}
       onClick={() => setIsBulkReplyOpen(true)}>
-      {translate('Action.PlayerSupport.BulkReply')}
+      {selectedCount === 1 ? replyLabel : translate('Action.PlayerSupport.BulkReply')}
     </Button>
   );
   const mobileReplyButton = (
@@ -591,7 +598,7 @@ const PlayerSupportTableContent = ({
         <>
           {isBulkManagementEnabled && selectedCount > 0 && (
             <div className='items-center gap-medium margin-top-large flex'>
-              <span className='content-default text-label-medium margin-right-small'>
+              <span className='content-default text-label-medium min-width-[120px] margin-right-small'>
                 {selectedLabel}
               </span>
               {selectedStatus !== TicketStatus.Archived &&
@@ -635,10 +642,12 @@ const PlayerSupportTableContent = ({
                     <span className='items-center gap-small flex'>
                       <span className='size-200 shrink-0' aria-hidden />
                       {isBulkManagementEnabled && (
-                        <PlayerSupportTableHeaderCheckbox
-                          ariaLabel={translate('Title.Table.Details')}
-                          isDisabled={isPending}
-                        />
+                        <span className='margin-right-small shrink-0'>
+                          <PlayerSupportTableHeaderCheckbox
+                            ariaLabel={translate('Title.Table.Details')}
+                            isDisabled={isPending}
+                          />
+                        </span>
                       )}
                       {translate('Title.Table.Details')}
                     </span>

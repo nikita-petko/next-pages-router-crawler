@@ -73,7 +73,14 @@ const RowHeightBySize: Readonly<Record<AdaptiveDataTableSize, number>> = {
 const TruncatedCellClassName = 'text-truncate-end';
 const PaginationClassName = 'flex items-center justify-end';
 const PaginationContentClassName = 'flex items-center gap-large';
-const PaginationStatusClassName = 'flex items-center gap-small';
+const LoadingOverlayClassName = 'absolute inset-[0] flex items-center justify-center';
+const LoadingOverlayStyle: CSSProperties = {
+  backgroundColor: 'color-mix(in srgb, var(--color-surface-100) 72%, transparent)',
+  zIndex: 5,
+};
+const LoadingContentStyle: CSSProperties = {
+  filter: 'blur(2.5px)',
+};
 const PaginationPaddingClassNameBySize: Readonly<Record<AdaptiveDataTableSize, string>> = {
   XSmall: 'padding-x-small padding-y-xsmall',
   Small: 'padding-x-medium padding-y-small',
@@ -949,175 +956,189 @@ const AdaptiveDataTable = <
   };
   const state = renderState();
   const columnCount = Math.max(columnBlueprints.length, MinimumColumnSpan);
+  const showLoadingOverlay = isLoading && tableRows.length > 0;
+  const loadingScrollStyle = useMemo(
+    () => ({ ...scrollStyle, ...(showLoadingOverlay ? LoadingContentStyle : undefined) }),
+    [scrollStyle, showLoadingOverlay],
+  );
 
   return (
     <div>
-      <div
-        onScroll={navigation.mode === 'infinite' ? handleInfiniteScroll : undefined}
-        ref={scrollContainerRef}
-        style={scrollStyle}>
-        <div style={tableStyle}>
-          <Table
-            size={size}
-            style={TableStyle}
-            variant={shouldFrameScrollContainer ? 'Divided' : variant}>
-            <TableHeader style={HeaderStyle}>
-              {headerGroups.map((headerGroup) => (
-                <TableRow key={headerGroup.id} style={headerRowStyle}>
-                  {headerGroup.headers.map((header, headerIndex) => {
-                    const cell = cellsByColumnId.get(header.column.id);
-                    if (!cell) {
-                      return null;
+      <div className='relative'>
+        <div
+          aria-busy={isLoading}
+          inert={showLoadingOverlay ? true : undefined}
+          onScroll={navigation.mode === 'infinite' ? handleInfiniteScroll : undefined}
+          ref={scrollContainerRef}
+          style={loadingScrollStyle}>
+          <div style={tableStyle}>
+            <Table
+              size={size}
+              style={TableStyle}
+              variant={shouldFrameScrollContainer ? 'Divided' : variant}>
+              <TableHeader style={HeaderStyle}>
+                {headerGroups.map((headerGroup) => (
+                  <TableRow key={headerGroup.id} style={headerRowStyle}>
+                    {headerGroup.headers.map((header, headerIndex) => {
+                      const cell = cellsByColumnId.get(header.column.id);
+                      if (!cell) {
+                        return null;
+                      }
+                      const sortDirection = header.column.getIsSorted();
+                      return (
+                        <TableHeaderCell
+                          align={cell.align ?? (cell.type === 'display' ? 'end' : 'start')}
+                          key={header.id}
+                          ref={headerIndex === 0 ? headerMeasurementRef : undefined}
+                          onSort={
+                            header.column.getCanSort()
+                              ? () => header.column.toggleSorting()
+                              : undefined
+                          }
+                          sortDirection={
+                            sortDirection === 'asc'
+                              ? 'ascending'
+                              : sortDirection === 'desc'
+                                ? 'descending'
+                                : 'none'
+                          }
+                          sortLabel={cell.type === 'value' ? cell.sortAriaLabel : undefined}
+                          style={{
+                            ...(cell.headerDivider === false
+                              ? HeaderWithoutDividerStyle
+                              : undefined),
+                            ...(isSmallScreen && headerIndex === 0
+                              ? PinnedHeaderCellStyle
+                              : undefined),
+                          }}>
+                          {cell.header ?? ''}
+                        </TableHeaderCell>
+                      );
+                    })}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              {state !== undefined ? (
+                <TableBody style={BodyStyle}>
+                  <StateRow cellStyle={stateCellStyle} columnCount={columnCount}>
+                    {state}
+                  </StateRow>
+                </TableBody>
+              ) : isInfinite ? (
+                <TableBody style={{ ...VirtualBodyStyle, height: rowVirtualizer.getTotalSize() }}>
+                  {virtualRows.map((virtualRow, virtualRowIndex) => {
+                    const renderItem = tableRenderItems[virtualRow.index];
+                    if (!renderItem) {
+                      const showLoadMoreError = isLoadMoreError && !isLoadingMore;
+                      return (
+                        <TableRow
+                          key={showLoadMoreError ? 'load-more-error' : 'loading-more'}
+                          style={{
+                            ...VirtualStateRowStyle,
+                            transform: `translateY(${virtualRow.start}px)`,
+                          }}>
+                          <TableCell align='center' colSpan={columnCount} style={stateCellStyle}>
+                            {showLoadMoreError ? (
+                              <div className='flex items-center gap-small'>
+                                <span>{labels.error}</span>
+                                <Button
+                                  onClick={handleRetryLoadMore}
+                                  size='Small'
+                                  variant='Standard'>
+                                  {labels.retry}
+                                </Button>
+                              </div>
+                            ) : (
+                              <ProgressCircle
+                                ariaLabel={labels.loading}
+                                size='Small'
+                                variant='Indeterminate'
+                              />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
                     }
-                    const sortDirection = header.column.getIsSorted();
+                    if (renderItem.kind === 'expandedRows') {
+                      return (
+                        <ExpandedRowsContentRow
+                          columnCount={columnCount}
+                          expandedRows={renderItem.expandedRows}
+                          getExpandedRowId={getExpandedRowId}
+                          isVirtual
+                          key={getExpandedRowsKey(renderItem.row.id)}
+                          measureElement={rowVirtualizer.measureElement}
+                          size={size}
+                          textStyles={textStyles}
+                          transform={`translateY(${virtualRow.start}px)`}
+                          virtualIndex={virtualRow.index}
+                        />
+                      );
+                    }
+                    const { row } = renderItem;
                     return (
-                      <TableHeaderCell
-                        align={cell.align ?? (cell.type === 'display' ? 'end' : 'start')}
-                        key={header.id}
-                        ref={headerIndex === 0 ? headerMeasurementRef : undefined}
-                        onSort={
-                          header.column.getCanSort()
-                            ? () => header.column.toggleSorting()
+                      <DataRow
+                        columnGrid={columnLayout.gridTemplateColumns}
+                        isSmallScreen={isSmallScreen}
+                        isVirtual
+                        key={getDataRowKey(row.id)}
+                        measureElement={
+                          hasWrappingColumn ||
+                          canMeasureVirtualRows(
+                            typeof navigator === 'undefined' ? undefined : navigator.userAgent,
+                          )
+                            ? rowVirtualizer.measureElement
                             : undefined
                         }
-                        sortDirection={
-                          sortDirection === 'asc'
-                            ? 'ascending'
-                            : sortDirection === 'desc'
-                              ? 'descending'
-                              : 'none'
-                        }
-                        sortLabel={cell.type === 'value' ? cell.sortAriaLabel : undefined}
-                        style={{
-                          ...(cell.headerDivider === false ? HeaderWithoutDividerStyle : undefined),
-                          ...(isSmallScreen && headerIndex === 0
-                            ? PinnedHeaderCellStyle
-                            : undefined),
-                        }}>
-                        {cell.header ?? ''}
-                      </TableHeaderCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            {state !== undefined ? (
-              <TableBody style={BodyStyle}>
-                <StateRow cellStyle={stateCellStyle} columnCount={columnCount}>
-                  {state}
-                </StateRow>
-              </TableBody>
-            ) : isInfinite ? (
-              <TableBody style={{ ...VirtualBodyStyle, height: rowVirtualizer.getTotalSize() }}>
-                {virtualRows.map((virtualRow, virtualRowIndex) => {
-                  const renderItem = tableRenderItems[virtualRow.index];
-                  if (!renderItem) {
-                    const showLoadMoreError = isLoadMoreError && !isLoadingMore;
-                    return (
-                      <TableRow
-                        key={showLoadMoreError ? 'load-more-error' : 'loading-more'}
-                        style={{
-                          ...VirtualStateRowStyle,
-                          transform: `translateY(${virtualRow.start}px)`,
-                        }}>
-                        <TableCell align='center' colSpan={columnCount} style={stateCellStyle}>
-                          {showLoadMoreError ? (
-                            <div className='flex items-center gap-small'>
-                              <span>{labels.error}</span>
-                              <Button onClick={handleRetryLoadMore} size='Small' variant='Standard'>
-                                {labels.retry}
-                              </Button>
-                            </div>
-                          ) : (
-                            <ProgressCircle
-                              ariaLabel={labels.loading}
-                              size='Small'
-                              variant='Indeterminate'
-                            />
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  }
-                  if (renderItem.kind === 'expandedRows') {
-                    return (
-                      <ExpandedRowsContentRow
-                        columnCount={columnCount}
-                        expandedRows={renderItem.expandedRows}
-                        getExpandedRowId={getExpandedRowId}
-                        isVirtual
-                        key={getExpandedRowsKey(renderItem.row.id)}
-                        measureElement={rowVirtualizer.measureElement}
-                        size={size}
-                        textStyles={textStyles}
+                        measurementCellRef={virtualRowIndex === 0 ? cellMeasurementRef : undefined}
+                        minimumHeight={RowHeightBySize[size]}
+                        row={row}
                         transform={`translateY(${virtualRow.start}px)`}
                         virtualIndex={virtualRow.index}
                       />
                     );
-                  }
-                  const { row } = renderItem;
-                  return (
-                    <DataRow
-                      columnGrid={columnLayout.gridTemplateColumns}
-                      isSmallScreen={isSmallScreen}
-                      isVirtual
-                      key={getDataRowKey(row.id)}
-                      measureElement={
-                        hasWrappingColumn ||
-                        canMeasureVirtualRows(
-                          typeof navigator === 'undefined' ? undefined : navigator.userAgent,
-                        )
-                          ? rowVirtualizer.measureElement
-                          : undefined
-                      }
-                      measurementCellRef={virtualRowIndex === 0 ? cellMeasurementRef : undefined}
-                      minimumHeight={RowHeightBySize[size]}
-                      row={row}
-                      transform={`translateY(${virtualRow.start}px)`}
-                      virtualIndex={virtualRow.index}
-                    />
-                  );
-                })}
-              </TableBody>
-            ) : (
-              <TableBody style={BodyStyle}>
-                {tableRenderItems.map((renderItem, rowIndex) =>
-                  renderItem.kind === 'expandedRows' ? (
-                    <ExpandedRowsContentRow
-                      columnCount={columnCount}
-                      expandedRows={renderItem.expandedRows}
-                      getExpandedRowId={getExpandedRowId}
-                      key={getExpandedRowsKey(renderItem.row.id)}
-                      size={size}
-                      textStyles={textStyles}
-                    />
-                  ) : (
-                    <DataRow
-                      columnGrid={columnLayout.gridTemplateColumns}
-                      isSmallScreen={isSmallScreen}
-                      key={getDataRowKey(renderItem.row.id)}
-                      measurementCellRef={rowIndex === 0 ? cellMeasurementRef : undefined}
-                      minimumHeight={RowHeightBySize[size]}
-                      row={renderItem.row}
-                    />
-                  ),
-                )}
-              </TableBody>
-            )}
-          </Table>
+                  })}
+                </TableBody>
+              ) : (
+                <TableBody style={BodyStyle}>
+                  {tableRenderItems.map((renderItem, rowIndex) =>
+                    renderItem.kind === 'expandedRows' ? (
+                      <ExpandedRowsContentRow
+                        columnCount={columnCount}
+                        expandedRows={renderItem.expandedRows}
+                        getExpandedRowId={getExpandedRowId}
+                        key={getExpandedRowsKey(renderItem.row.id)}
+                        size={size}
+                        textStyles={textStyles}
+                      />
+                    ) : (
+                      <DataRow
+                        columnGrid={columnLayout.gridTemplateColumns}
+                        isSmallScreen={isSmallScreen}
+                        key={getDataRowKey(renderItem.row.id)}
+                        measurementCellRef={rowIndex === 0 ? cellMeasurementRef : undefined}
+                        minimumHeight={RowHeightBySize[size]}
+                        row={renderItem.row}
+                      />
+                    ),
+                  )}
+                </TableBody>
+              )}
+            </Table>
+          </div>
         </div>
+        {showLoadingOverlay ? (
+          <div className={LoadingOverlayClassName} style={LoadingOverlayStyle}>
+            <ProgressCircle ariaLabel={labels.loading} size='Medium' variant='Indeterminate' />
+          </div>
+        ) : null}
       </div>
       {navigation.mode === 'pagination' ? (
         <div className={`${PaginationClassName} ${PaginationPaddingClassNameBySize[size]}`}>
           <div className={PaginationContentClassName}>
-            <div className={PaginationStatusClassName}>
-              {isLoading && tableRows.length > 0 ? (
-                <ProgressCircle ariaLabel={labels.loading} size='Small' variant='Indeterminate' />
-              ) : null}
-              <span className={`${PaginationTextClassNameBySize[size]} content-default`}>
-                {labels.page(navigation.pageIndex, navigation.pageSize, navigation.totalRowCount)}
-              </span>
-            </div>
+            <span className={`${PaginationTextClassNameBySize[size]} content-default`}>
+              {labels.page(navigation.pageIndex, navigation.pageSize, navigation.totalRowCount)}
+            </span>
             <div className={PaginationControlsClassNameBySize[size]}>
               <IconButton
                 ariaLabel={labels.previousPage}

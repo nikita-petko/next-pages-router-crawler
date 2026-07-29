@@ -11,11 +11,21 @@ import withNamespaceSwitchedTranslation from '@modules/analytics-translations/wi
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import useClientLogs from '../hooks/useClientLogs';
-import { ClientSessionLogSeverity } from '../types/ClientSession';
 import type { ClientSessionLog } from '../types/ClientSession';
+import type { DateRangeSelection } from '../types/Filters';
+import { LogSeverity } from '../types/LogSeverity';
+import { getClientLogFilter } from '../utils/logFilters';
+import DateRangeControl from './DateRangeControl';
+import SeveritySelector from './SeveritySelector';
 
 const PAGE_SIZE = 10;
 const INITIAL_PAGE_TOKEN = '';
+const CLIENT_LOG_SEVERITIES = [
+  LogSeverity.Output,
+  LogSeverity.Info,
+  LogSeverity.Warning,
+  LogSeverity.Error,
+] as const;
 
 const DATE_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
   dateStyle: 'medium',
@@ -23,10 +33,10 @@ const DATE_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
 };
 
 const SEVERITY_BADGE_VARIANTS = {
-  [ClientSessionLogSeverity.Output]: 'Neutral',
-  [ClientSessionLogSeverity.Info]: 'Standard',
-  [ClientSessionLogSeverity.Warning]: 'Warning',
-  [ClientSessionLogSeverity.Error]: 'Alert',
+  [LogSeverity.Output]: 'Neutral',
+  [LogSeverity.Info]: 'Standard',
+  [LogSeverity.Warning]: 'Warning',
+  [LogSeverity.Error]: 'Alert',
 } as const;
 
 type ClientLogRow = {
@@ -45,12 +55,21 @@ const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ sessionId }) 
   const { locale } = useLocalization();
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const [pageTokens, setPageTokens] = useState<readonly string[]>([INITIAL_PAGE_TOKEN]);
+  const [dateRangeSelection, setDateRangeSelection] = useState<DateRangeSelection>({
+    preset: 'all',
+  });
+  const [severity, setSeverity] = useState<LogSeverity>();
   const pageIndex = pageTokens.length - 1;
   const pageToken = pageTokens[pageIndex];
+  const filter = useMemo(
+    () => getClientLogFilter(dateRangeSelection, severity),
+    [dateRangeSelection, severity],
+  );
   const { data, isError, isFetching } = useClientLogs({
     sessionId,
     pageToken: pageToken || undefined,
     pageSize: PAGE_SIZE,
+    filter,
   });
 
   const timeFormatter = useMemo(
@@ -80,7 +99,7 @@ const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ sessionId }) 
   );
   const severityLabels = useMemo(
     () => ({
-      [ClientSessionLogSeverity.Output]: tPendingTranslation(
+      [LogSeverity.Output]: tPendingTranslation(
         'Output',
         'Output severity label for a client session log.',
         translationKey(
@@ -88,7 +107,7 @@ const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ sessionId }) 
           TranslationNamespace.ServerManagement,
         ),
       ),
-      [ClientSessionLogSeverity.Info]: tPendingTranslation(
+      [LogSeverity.Info]: tPendingTranslation(
         'Info',
         'Informational severity label for a client session log.',
         translationKey(
@@ -96,7 +115,7 @@ const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ sessionId }) 
           TranslationNamespace.ServerManagement,
         ),
       ),
-      [ClientSessionLogSeverity.Warning]: tPendingTranslation(
+      [LogSeverity.Warning]: tPendingTranslation(
         'Warning',
         'Warning severity label for a client session log.',
         translationKey(
@@ -104,7 +123,7 @@ const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ sessionId }) 
           TranslationNamespace.ServerManagement,
         ),
       ),
-      [ClientSessionLogSeverity.Error]: tPendingTranslation(
+      [LogSeverity.Error]: tPendingTranslation(
         'Error',
         'Error severity label for a client session log.',
         translationKey(
@@ -209,6 +228,14 @@ const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ sessionId }) 
   const handleNextPage = useCallback((nextPageToken: string) => {
     setPageTokens((tokens) => [...tokens, nextPageToken]);
   }, []);
+  const handleDateRangeChange = useCallback((selection: DateRangeSelection) => {
+    setDateRangeSelection(selection);
+    setPageTokens([INITIAL_PAGE_TOKEN]);
+  }, []);
+  const handleSeverityChange = useCallback((nextSeverity: LogSeverity | undefined) => {
+    setSeverity(nextSeverity);
+    setPageTokens([INITIAL_PAGE_TOKEN]);
+  }, []);
   const navigation = useMemo(
     () => ({
       mode: 'pagination' as const,
@@ -224,15 +251,25 @@ const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ sessionId }) 
   );
 
   return (
-    <AdaptiveDataTable
-      getRowId={getRowId}
-      isError={isError}
-      isLoading={isFetching || !sessionId}
-      labels={tableLabels}
-      navigation={navigation}
-      rows={rows}
-      size='Medium'
-    />
+    <div className='flex flex-col gap-medium'>
+      <div className='flex flex-row gap-medium max-width-fit'>
+        <DateRangeControl value={dateRangeSelection} onChange={handleDateRangeChange} />
+        <SeveritySelector
+          allowedSeverities={CLIENT_LOG_SEVERITIES}
+          value={severity}
+          onChange={handleSeverityChange}
+        />
+      </div>
+      <AdaptiveDataTable
+        getRowId={getRowId}
+        isError={isError}
+        isLoading={isFetching || !sessionId}
+        labels={tableLabels}
+        navigation={navigation}
+        rows={rows}
+        size='Medium'
+      />
+    </div>
   );
 };
 

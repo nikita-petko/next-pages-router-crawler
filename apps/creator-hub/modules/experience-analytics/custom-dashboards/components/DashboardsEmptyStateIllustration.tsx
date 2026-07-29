@@ -56,7 +56,7 @@ const DashboardsEmptyStateIllustration: FC<DashboardsEmptyStateIllustrationProps
           rx='4.6'
           ry='4.6'
           transform='rotate(-15 72 72)'
-          stroke='var(--color-stroke-emphasis, rgba(208, 217, 251, 0.16))'
+          stroke='var(--color-stroke-emphasis)'
           strokeWidth='1.15'
           fill='none'
         />

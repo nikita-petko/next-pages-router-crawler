@@ -3,6 +3,7 @@
 // https://roblox.atlassian.net/browse/DSA-6049
 import { z } from 'zod';
 import { RAQIV2OperatingSystem, RAQIV2Platform } from '@rbx/creator-hub-analytics-config';
+import { LogSeverity } from './LogSeverity';
 
 const ClientSessionDeviceSchema = z.object({
   // Reuse RAQIV2 dimension values for now; Client Sessions may need dedicated enums.
@@ -47,17 +48,10 @@ export const ClientSessionSchema = z.object({
 
 export type ClientSession = z.infer<typeof ClientSessionSchema>;
 
-export enum ClientSessionLogSeverity {
-  Output = 'Output',
-  Info = 'Info',
-  Warning = 'Warning',
-  Error = 'Error',
-}
-
 export const ClientSessionLogSchema = z.object({
   id: z.string(),
   sessionId: ClientSessionSchema.shape.id,
-  severity: z.enum(ClientSessionLogSeverity),
+  severity: z.enum(LogSeverity),
   message: z.string(),
   skipped: z.int().nonnegative(),
   createTime: z.date(),

@@ -11,7 +11,7 @@ import {
   TooltipTrigger,
 } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import type { TicketCategory, TicketResponse } from '@modules/clients/creatorCommunication';
+import { TicketCategory, type TicketResponse } from '@modules/clients/creatorCommunication';
 import unifiedLoggerClient from '@modules/eventStream/unifiedLoggerClient';
 import { getCannedRepliesForCategory } from '../constants/cannedReplies';
 
@@ -39,6 +39,26 @@ const PlayerSupportBulkReplyDialog = ({
   const { translate } = useTranslation();
   const [selectedReply, setSelectedReply] = useState<TicketResponse>();
   const replies = useMemo(() => getCannedRepliesForCategory(category, false), [category]);
+  const displayCategoryLabel = useMemo(() => {
+    if (selectedCount === 1) {
+      return categoryLabel;
+    }
+
+    switch (category) {
+      case TicketCategory.BugReport:
+        return translate('Label.TicketCategory.BugReportPlural');
+      case TicketCategory.DataRestoreRequest:
+        return translate('Label.TicketCategory.DataRestoreRequestPlural');
+      case TicketCategory.PurchasingIssue:
+        return translate('Label.TicketCategory.PurchasingIssuePlural');
+      case TicketCategory.Other:
+        return translate('Label.TicketCategory.OtherPlural');
+      case TicketCategory.Invalid:
+        return categoryLabel;
+    }
+
+    return categoryLabel;
+  }, [category, categoryLabel, selectedCount, translate]);
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -81,7 +101,7 @@ const PlayerSupportBulkReplyDialog = ({
             <span className='content-muted text-body-medium'>
               {translate('Label.PlayerSupport.BulkReplySelectionSummary', {
                 count: String(selectedCount),
-                category: categoryLabel,
+                category: displayCategoryLabel,
               })}
             </span>
           </div>

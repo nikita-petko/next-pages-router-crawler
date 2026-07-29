@@ -174,7 +174,7 @@
   height: 555px;
   box-sizing: border-box;
   border-radius: 12px;
-  border: 2px dashed var(--Components-Divider, rgba(255, 255, 255, 0.12));
+  border: 2px dashed var(--color-stroke-default);
   background: transparent;
 }
 
@@ -255,10 +255,10 @@
   gap: 24px;
   padding: 24px;
   overflow: hidden;
-  border: 1px solid var(--Components-Divider, rgba(255, 255, 255, 0.12));
+  border: 1px solid var(--color-stroke-default);
   border-radius: 12px;
-  background: var(--Surface-100, #191b21);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  background: var(--color-surface-100);
+  box-shadow: inset 0 1px 0 var(--color-shift-100);
   cursor: move;
 }
 
@@ -270,8 +270,8 @@
   left: 0;
   border-radius: inherit;
   background:
-    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.045), transparent),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 42%);
+    linear-gradient(90deg, transparent, var(--color-shift-100), transparent),
+    linear-gradient(180deg, var(--color-shift-100), transparent 42%);
   content: '';
   pointer-events: none;
 }
@@ -288,9 +288,9 @@
   gap: 24px;
   padding: 24px;
   overflow: hidden;
-  border: 1px solid var(--Components-Divider, rgba(255, 255, 255, 0.12));
+  border: 1px solid var(--color-stroke-default);
   border-radius: 12px;
-  background: var(--Surface-100, #191b21);
+  background: var(--color-surface-100);
   box-shadow:
     0 16px 40px rgba(0, 0, 0, 0.28),
     inset 0 0 0 1px rgba(59, 130, 246, 0.35);
@@ -305,8 +305,8 @@
   left: 0;
   border-radius: inherit;
   background:
-    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.045), transparent),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 42%);
+    linear-gradient(90deg, transparent, var(--color-shift-100), transparent),
+    linear-gradient(180deg, var(--color-shift-100), transparent 42%);
   content: '';
   pointer-events: none;
 }
@@ -315,7 +315,7 @@
   position: relative;
   z-index: 1;
   overflow: hidden;
-  color: var(--Content-Emphasis, #f2f4f7);
+  color: var(--color-content-emphasis);
   font: inherit;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -337,7 +337,7 @@
 .chartPreviewSkeletonBody,
 .chartPreviewSkeletonFooter {
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--color-shift-200);
 }
 
 .chartPreviewSkeletonHeader {

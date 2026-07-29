@@ -14,21 +14,21 @@ const WORKSPACE_GAP_PX = 24;
 
 export const canvasContainerStyle: CSSProperties = {
   borderRadius: 12,
-  border: '2px dashed var(--Components-Divider, rgba(255, 255, 255, 0.12))',
-  background: 'var(--Surface-0, #111216)',
+  border: '2px dashed var(--color-stroke-default)',
+  background: 'var(--color-surface-0)',
   padding: WORKSPACE_GAP_PX,
   gap: WORKSPACE_GAP_PX,
 };
 
 const addPlaceholderBorderStyle: CSSProperties = {
   borderRadius: 12,
-  border: '1px solid var(--Components-Divider, rgba(255, 255, 255, 0.12))',
+  border: '1px solid var(--color-stroke-default)',
   background: 'transparent',
 };
 
 const emptySkeletonBorderStyle: CSSProperties = {
   borderRadius: 12,
-  border: '2px dashed var(--Components-Divider, rgba(255, 255, 255, 0.12))',
+  border: '2px dashed var(--color-stroke-default)',
   background: 'transparent',
 };
 
@@ -88,13 +88,13 @@ export const summaryTileErrorChromeStyle: CSSProperties = {
 export const summaryAddPlaceholderStyle: CSSProperties = {
   ...summaryTileAddCardSizeStyle,
   ...addPlaceholderBorderStyle,
-  background: 'var(--Surface-0, #111216)',
+  background: 'var(--color-surface-0)',
   padding: '21px 26px',
   gap: 8,
   justifyContent: 'center',
   cursor: 'pointer',
   appearance: 'none',
-  color: 'var(--Content-Default, #FFFFFF)',
+  color: 'var(--color-content-default)',
   textAlign: 'left',
 };
 
@@ -151,7 +151,7 @@ const CHART_ADD_PLACEHOLDER_COPY_MAX_WIDTH_PX = 383;
 export const chartAddPlaceholderCardStyle: CSSProperties = {
   ...chartTileBaseStyle,
   ...addPlaceholderBorderStyle,
-  background: 'var(--Surface-0, #111216)',
+  background: 'var(--color-surface-0)',
   overflow: 'hidden',
   padding: '91px',
   gap: CHART_ADD_PLACEHOLDER_CONTENT_GAP_PX,
