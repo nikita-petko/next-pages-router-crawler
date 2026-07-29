@@ -1350,6 +1350,9 @@
 .bottom-\[0px\] {
   bottom: 0px;
 }
+.left-\[0\] {
+  left: 0;
+}
 .left-\[0px\] {
   left: 0px;
 }
@@ -1486,6 +1489,9 @@
 }
 .margin-left-\[8px\] {
   margin-left: 8px;
+}
+.margin-left-auto {
+  margin-left: auto;
 }
 .margin-left-small {
   margin-left: var(--margin-small);
@@ -2949,11 +2955,17 @@
 .\!padding-bottom-large {
   padding-bottom: var(--padding-large) !important;
 }
+.\!padding-left-small {
+  padding-left: var(--padding-small) !important;
+}
 .\!padding-left-xxlarge {
   padding-left: var(--padding-xxlarge) !important;
 }
 .\!padding-right-large {
   padding-right: var(--padding-large) !important;
+}
+.\!padding-right-small {
+  padding-right: var(--padding-small) !important;
 }
 .\!padding-top-none {
   padding-top: var(--padding-none) !important;
@@ -4220,6 +4232,9 @@
 .\[grid-template-columns\:repeat\(auto-fill\2c 184px\)\] {
   grid-template-columns: repeat(auto-fill,184px);
 }
+.\[grid-template-columns\:repeat\(auto-fill\2c minmax\(min\(150px\2c 100\%\)\2c 1fr\)\)\] {
+  grid-template-columns: repeat(auto-fill,minmax(min(150px, 100%),1fr));
+}
 .\[grid-template-columns\:repeat\(auto-fill\2c minmax\(min\(290px\2c 100\%\)\2c 1fr\)\)\] {
   grid-template-columns: repeat(auto-fill,minmax(min(290px, 100%),1fr));
 }
@@ -4352,6 +4367,9 @@
 .\[max-width\:1120px\] {
   max-width: 1120px;
 }
+.\[max-width\:384px\] {
+  max-width: 384px;
+}
 .\!\[max-width\:480px\] {
   max-width: 480px !important;
 }
@@ -4373,6 +4391,9 @@
 .\[min-width\:0\] {
   min-width: 0;
 }
+.\[min-width\:1040px\] {
+  min-width: 1040px;
+}
 .\[min-width\:118px\] {
   min-width: 118px;
 }
@@ -4381,6 +4402,9 @@
 }
 .\[min-width\:190px\] {
   min-width: 190px;
+}
+.\[min-width\:192px\] {
+  min-width: 192px;
 }
 .\[min-width\:200px\] {
   min-width: 200px;
@@ -4531,6 +4555,9 @@
 }
 .\[top\:8px\] {
   top: 8px;
+}
+.\[top\:calc\(100\%\+4px\)\] {
+  top: calc(100% + 4px);
 }
 .\[touch-action\:none\] {
   touch-action: none;
@@ -4847,6 +4874,10 @@ html.studio-webview.dark-theme,
 
 .group\/interactable:hover .group-hover\/interactable\:bg-\[var\(--color-state-hover\)\] {
   background-color: var(--color-state-hover);
+}
+
+.group:hover .group-hover\:bg-shift-100 {
+  background-color: var(--color-shift-100);
 }
 
 .group:hover .group-hover\:opacity-\[1\] {
@@ -5532,6 +5563,14 @@ html.studio-webview.dark-theme,
   padding-bottom: 40px;
 }
 
+.\[\&\>div\]\:\!scroll-x>div {
+  overflow-x: auto !important;
+}
+
+.\[\&\>div\]\:max-width-full>div {
+  max-width: 100%;
+}
+
 .\[\&\>div\]\:bg-none>div {
   background-color: var(--color-none);
 }
@@ -5679,6 +5718,10 @@ html.studio-webview.dark-theme,
   padding-bottom: var(--padding-none);
 }
 
+.\[\&_td\:first-child\]\:\[min-width\:260px\] td:first-child {
+  min-width: 260px;
+}
+
 .\[\&_textarea\]\:min-height-1600 textarea {
   min-height: var(--size-1600);
 }
@@ -5689,6 +5732,10 @@ html.studio-webview.dark-theme,
 
 .\[\&_textarea\]\:\[resize\:none\] textarea {
   resize: none;
+}
+
+.\[\&_th\:first-child\]\:\[min-width\:260px\] th:first-child {
+  min-width: 260px;
 }
 
 .\[\&_tr\:last-child\>td\]\:\[vertical-align\:top\] tr:last-child>td {
@@ -5710,5 +5757,17 @@ html.studio-webview.dark-theme,
   }
   .\[\@container\(min-width\:900px\)\]\:padding-right-\[max\(22\%\2c 300px\)\] {
     padding-right: max(22%, 300px);
+  }
+}
+
+@media(hover:hover) {
+  .\[\@media\(hover\:hover\)\]\:invisible {
+    visibility: hidden;
+  }
+  .group:focus-within .\[\@media\(hover\:hover\)\]\:group-focus-within\:visible {
+    visibility: visible;
+  }
+  .group:hover .\[\@media\(hover\:hover\)\]\:group-hover\:visible {
+    visibility: visible;
   }
 }
