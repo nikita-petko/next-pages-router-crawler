@@ -68,9 +68,6 @@ const defaultBounds: RangeBounds = {
   occupancy: { min: 0, max: 200 },
 };
 
-const defaultPlaceVersions = ['1', '2', '3', '4', '5', '6'];
-const defaultEngineVersions = ['710', '711', '712', '713', '714', '715'];
-
 const FilterSidebar: FunctionComponent<SidebarProps> = ({
   onOpenChange,
   setFilters,
@@ -235,7 +232,7 @@ const FilterSidebar: FunctionComponent<SidebarProps> = ({
         <SheetBody className={filterBody}>
           <DropdownSection
             label={translate('ServerListTable.Filter.PlaceVersion')}
-            options={validPlaceVersions ?? defaultPlaceVersions}
+            options={validPlaceVersions ?? []}
             displayFormatter={(option) => `v${option}`}
             setValue={setFilterField('placeVersion')}
             currentValue={draftFilters.placeVersion}
@@ -243,7 +240,7 @@ const FilterSidebar: FunctionComponent<SidebarProps> = ({
           <Divider />
           <DropdownSection
             label={translate('ServerListTable.Filter.EngineVersion')}
-            options={validEngineVersions ?? defaultEngineVersions}
+            options={validEngineVersions ?? []}
             setValue={setFilterField('engineVersion')}
             currentValue={draftFilters.engineVersion}
           />

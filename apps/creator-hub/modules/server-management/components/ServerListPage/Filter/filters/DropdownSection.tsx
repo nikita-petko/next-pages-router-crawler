@@ -43,6 +43,17 @@ const DropdownSection: FunctionComponent<DropdownSectionProps> = ({
           ),
         )}
         size='small'
+        disabled={options.length === 0}
+        helperText={
+          options.length === 0
+            ? translateFT(
+                translationKey(
+                  'ServerListTable.Filter.Dropdown.NoValues',
+                  TranslationNamespace.ServerManagement,
+                ),
+              )
+            : undefined
+        }
         SelectProps={{
           IconComponent: (props) => (
             <Icon name='icon-regular-chevron-large-down' className={dropdownIcon} {...props} />

@@ -60,6 +60,7 @@ const ServerListPage: FunctionComponent = () => {
   const [restartJustCompleted, setRestartJustCompleted] = useState(false);
   const [showRestartSnackbar, setShowRestartSnackbar] = useState(false);
   const [engineVersions, setEngineVersions] = useState<string[] | undefined>(undefined);
+  const [placeVersions, setPlaceVersions] = useState<string[] | undefined>(undefined);
   const restartConfirmedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
   const showToast = useToast();
@@ -88,7 +89,6 @@ const ServerListPage: FunctionComponent = () => {
   }, [placeId, placesInfo]);
   const placeDisplayId = placeId?.toString() ?? DEFAULT_VALUES.PLACE_ID.toString();
   const placeDisplayName = place?.name ?? placeDisplayId;
-  const placeVersions = place?.allPublishedVersions?.map(String);
 
   const { data: validRestartVersions } = useQuery({
     queryKey: ['serverManagement', 'validRestartVersions', gameDetails?.id, placeId],
@@ -111,8 +111,10 @@ const ServerListPage: FunctionComponent = () => {
       return;
     }
     void fetchFilterOptions(placeId).then((response) => {
-      const versions = response?.filters?.EngineVersion?.values;
-      setEngineVersions(versions ?? undefined);
+      const engineValues = response?.filters?.EngineVersion?.values;
+      setEngineVersions(engineValues ? engineValues.map(String) : undefined);
+      const placeValues = response?.filters?.PlaceVersion?.values;
+      setPlaceVersions(placeValues ? placeValues.map(String) : undefined);
     });
   }, [placeId, fetchFilterOptions]);
 
