@@ -4039,6 +4039,9 @@
 .\[background\:none\] {
   background: none;
 }
+.\[background\:rgba\(0\2c 0\2c 0\2c 0\.5\)\] {
+  background: rgba(0,0,0,0.5);
+}
 .\[background\:rgba\(18\2c 18\2c 21\2c 0\.72\)\] {
   background: rgba(18,18,21,0.72);
 }
@@ -5770,6 +5773,10 @@ html.studio-webview.dark-theme,
 
 .\[\&_\[data-radix-popper-content-wrapper\]\]\:\!\[z-index\:1500\] [data-radix-popper-content-wrapper] {
   z-index: 1500 !important;
+}
+
+.\[\&_\[data-slot\=checkbox\]\]\:\!\[border-color\:white\] [data-slot=checkbox] {
+  border-color: white !important;
 }
 
 .\[\&_a\]\:cursor-pointer a {

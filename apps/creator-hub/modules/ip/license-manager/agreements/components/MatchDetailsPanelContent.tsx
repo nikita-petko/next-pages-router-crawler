@@ -401,8 +401,8 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
               <Flex flexDirection='column' gap={8}>
                 <Flex alignItems='center' gap={8}>
                   <Typography variant='h6'>{screenshotsTitle}</Typography>
-                  {matchScreenshotsGalleryHref != null && (
-                    <FoundationLink asChild size='Small' color='Emphasis' underline='none'>
+                  {!isScreenshotsLoading && matchScreenshotsGalleryHref != null && (
+                    <FoundationLink asChild size='Small' underline='none' className='content-link'>
                       <Link href={matchScreenshotsGalleryHref}>
                         <span className='inline-flex items-center gap-xsmall'>
                           {viewGalleryLinkLabel}

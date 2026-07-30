@@ -19,7 +19,10 @@ const galleryGridClassName =
 const galleryCellFillClassName = 'absolute inset-0 width-full height-full';
 const galleryCellClassName = 'width-full relative clip radius-medium [aspect-ratio:4/3]';
 
-const CHECKBOX_OVERLAY_CLASS = 'absolute [top:8px] [left:8px]';
+const CHECKBOX_OVERLAY_CLASS =
+  'absolute [top:8px] [left:8px] [&_[data-slot=checkbox]]:![border-color:white]';
+const SELECTED_OVERLAY_CLASS =
+  'absolute inset-0 width-full height-full [background:rgba(0,0,0,0.5)] pointer-events-none';
 const EMPTY_STATE_CLASS =
   'grow flex flex-col justify-center items-center gap-large min-height-[480px] padding-x-medium';
 const EMPTY_STATE_TITLE_CLASS = 'text-heading-medium content-emphasis margin-none max-width-[28ch]';
@@ -295,6 +298,7 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
         {!isImageLoaded && (
           <Skeleton animate variant='rectangular' className={galleryCellFillClassName} />
         )}
+        {isSelected && <div className={SELECTED_OVERLAY_CLASS} />}
         {showCheckbox && (
           // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
           <div className={CHECKBOX_OVERLAY_CLASS} onClick={(e) => e.stopPropagation()}>

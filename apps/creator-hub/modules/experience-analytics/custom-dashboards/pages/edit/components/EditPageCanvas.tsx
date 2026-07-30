@@ -1168,8 +1168,10 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
   const hasAddPlaceholderPlacement = chartPlacements.some(
     (placement) => placement.kind === 'empty-slot' && placement.isAddPlaceholderSlot,
   );
+  const chartTileCount = chartPlacements.filter((p) => p.kind === 'tile').length;
   const canAddSummaryCard = summaryCardCount < MAX_SUMMARY_CARDS_PER_DASHBOARD;
-  const canDuplicateChart = chartRows.flat().length < MAX_CHART_TILES_PER_DASHBOARD;
+  const canAddChart = chartTileCount < MAX_CHART_TILES_PER_DASHBOARD;
+  const canDuplicateChart = chartTileCount < MAX_CHART_TILES_PER_DASHBOARD;
   const { ref: summaryRowRef, columnCapacity: summaryRowColumnCapacity } =
     useSummaryRowColumnCapacity();
   const handleAddSummaryCard = useCallback(() => {
@@ -1177,6 +1179,11 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
       onAddSummaryCard();
     }
   }, [canAddSummaryCard, onAddSummaryCard]);
+  const handleAddChart = useCallback(() => {
+    if (canAddChart) {
+      onAddChart();
+    }
+  }, [canAddChart, onAddChart]);
 
   return (
     <div className='flex flex-col items-start width-full gap-xxlarge'>
@@ -1218,16 +1225,17 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
             if (placement.kind === 'empty-slot') {
               // Narrow viewports stack every chart full-width and disable DnD, so
               // half-row drop skeletons are decorative noise — keep only Add.
-              if (isNarrowViewport && !placement.isAddPlaceholderSlot) {
+              // Also hide the add-placeholder slot when at the chart cap.
+              if (isNarrowViewport && (!placement.isAddPlaceholderSlot || !canAddChart)) {
                 return null;
               }
               const emptySlotLayoutStyle = isNarrowViewport
                 ? chartFullWidthCellStyle
                 : chartHalfWidthCellStyle;
-              return placement.isAddPlaceholderSlot ? (
+              return placement.isAddPlaceholderSlot && canAddChart ? (
                 <ChartAddPlaceholderCard
                   key={placement.emptySlotId}
-                  onAddPlaceholder={onAddChart}
+                  onAddPlaceholder={handleAddChart}
                   illustrationLabel={t.canvasIllustrationLabel}
                   addChartHeadline={t.addChartPlaceholderHeadline}
                   addChartDescription={t.addChartPlaceholderDescription}
@@ -1284,9 +1292,9 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
               />
             );
           })}
-          {hasAddPlaceholderPlacement ? null : (
+          {hasAddPlaceholderPlacement || !canAddChart ? null : (
             <ChartAddRowAffordance
-              onAddPlaceholder={onAddChart}
+              onAddPlaceholder={handleAddChart}
               illustrationLabel={t.canvasIllustrationLabel}
               addChartHeadline={t.addChartPlaceholderHeadline}
               addChartDescription={t.addChartPlaceholderDescription}
@@ -1301,7 +1309,7 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
         </section>
       ) : (
         <ChartCanvasEmptyState
-          onAddPlaceholder={onAddChart}
+          onAddPlaceholder={handleAddChart}
           illustrationLabel={t.canvasIllustrationLabel}
           addChartHeadline={t.addChartPlaceholderHeadline}
           addChartDescription={t.addChartPlaceholderDescription}
