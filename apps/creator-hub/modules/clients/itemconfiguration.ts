@@ -22,6 +22,9 @@ import type {
   V1ItemsByCreatorGetBundleTypeEnum,
   V1ItemsByCreatorGetAssetTypeEnum,
   V1ItemsByCreatorGetRequest,
+  V1ItemsCategoriesGetRequest,
+  RobloxItemConfigurationApiModelsResponseGetCategoriesResponse,
+  RobloxItemConfigurationApiModelsResponseCategoryNode,
   V1CollectiblesRegionalPricingPreviewGetRequest,
   V1ItemsGetRequest,
   V1CollectiblesRevenueSplitGetRequest,
@@ -99,6 +102,7 @@ import {
   V1CollectiblesPriceFloorGetPublishingTypeEnum,
   MarketplaceItemApi,
   V1ItemsGetItemTypeEnum,
+  V1ItemsCategoriesGetCategoryDomainEnum,
   PermissionsApi,
   ContentMetadataApi,
   FoldersApi,
@@ -134,6 +138,9 @@ export type DeleteItemRequest = RobloxItemConfigurationApiModelsRequestFolderDel
 export type UpdateFolderRequest = RobloxItemConfigurationApiModelsRequestFolderUpdateFolderRequest;
 export type Folder = RobloxItemConfigurationApiModelsFolderFolder;
 export type FolderItemDetails = RobloxItemConfigurationApiModelsFolderFolderItemDetails;
+export type GetCategoriesResponse = RobloxItemConfigurationApiModelsResponseGetCategoriesResponse;
+export type CategoryNode = RobloxItemConfigurationApiModelsResponseCategoryNode;
+export { V1ItemsCategoriesGetCategoryDomainEnum as CategoryDomain };
 
 export class ItemConfigurationClient {
   private collectiblesApi: CollectiblesApi;
@@ -525,6 +532,7 @@ export class ItemConfigurationClient {
     creatorGroupId?: number,
     bundleType?: V1ItemsByCreatorGetBundleTypeEnum,
     assetType?: V1ItemsByCreatorGetAssetTypeEnum,
+    taxonomy?: string,
   ) {
     const request: V1ItemsByCreatorGetRequest = {
       limit,
@@ -532,9 +540,18 @@ export class ItemConfigurationClient {
       groupId: creatorGroupId,
       bundleType,
       assetType,
+      taxonomy,
     };
 
     return this.marketplaceItemApi.v1ItemsByCreatorGet(request);
+  }
+
+  getItemCategories(categoryDomain?: V1ItemsCategoriesGetCategoryDomainEnum) {
+    const request: V1ItemsCategoriesGetRequest = {
+      categoryDomain,
+    };
+
+    return this.marketplaceItemApi.v1ItemsCategoriesGet(request);
   }
 
   getItemsByToken(tokenId: string, limit: number, cursor?: string) {

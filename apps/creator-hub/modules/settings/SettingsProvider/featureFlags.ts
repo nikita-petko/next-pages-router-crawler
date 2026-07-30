@@ -99,6 +99,7 @@ export enum FeatureFlagName {
   enableDataStoreRequestSourceAnalytics = 'enableDataStoreRequestSourceAnalytics',
   enableIpPlatformMatchesTableEsIndexImprovements = 'enableIpPlatformMatchesTableEsIndexImprovements',
   enableEmissive = 'enableEmissive',
+  enableTaxonomyBasedCreatorDashboard = 'enableTaxonomyBasedCreatorDashboard',
 }
 
 export type FeatureFlagValue = string | number | boolean;
@@ -213,4 +214,5 @@ export const featureFlagDefaults = defineFeatureFlagDefaults({
   [FeatureFlagName.enableDataStoreRequestSourceAnalytics]: false,
   [FeatureFlagName.enableIpPlatformMatchesTableEsIndexImprovements]: false,
   [FeatureFlagName.enableEmissive]: false,
+  [FeatureFlagName.enableTaxonomyBasedCreatorDashboard]: false,
 } as const);

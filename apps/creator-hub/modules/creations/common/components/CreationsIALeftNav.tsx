@@ -6,11 +6,17 @@ import { useTranslation } from '@rbx/intl';
 import { isAssetAccessRequestsEnabled } from '@generated/flags/contentAccessAndInventory';
 import { Asset } from '@modules/miscellaneous/common';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
+import { readQueryValue } from '@modules/miscellaneous/utils/queryToString';
 import LeftNavigationMenuV2, {
   type TMenuItem,
 } from '@modules/navigation/leftNavigation/components/LeftNavigationMenuV2';
 import { useCurrentGroup } from '@modules/providers/groups/GroupsProvider';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
+import {
+  AVATAR_ITEMS_ACTIVE_TAB,
+  isTaxonomyActiveTab,
+  TAXONOMY_HOST_ASSET,
+} from '../../avatarItem/utils/taxonomyRoutingUtils';
 import useMomentsGate from '../../home/hooks/useMomentsGate';
 import menuItems from '../../menu/constants/MenuConstants';
 import creationsMenuManager from '../../menu/implementations/CreationsMenuManager';
@@ -26,15 +32,9 @@ const creationMenuLabelKeys: Partial<Record<Asset, string>> = {
 };
 
 const parseActiveTabQueryParam = (value: string | string[] | undefined): Asset | undefined => {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (typeof raw === 'string' && isValidEnumValue(Asset, raw)) {
-    return raw;
-  }
-  return undefined;
+  const raw = readQueryValue(value);
+  return raw !== undefined && isValidEnumValue(Asset, raw) ? raw : undefined;
 };
-
-const getStringQueryParam = (value: string | string[] | undefined): string | undefined =>
-  typeof value === 'string' ? value : undefined;
 
 const CreationsIALeftNav: FunctionComponent = () => {
   const router = useRouter();
@@ -43,12 +43,13 @@ const CreationsIALeftNav: FunctionComponent = () => {
   const currentGroup = useCurrentGroup();
   const isMomentsTabEnabled = useMomentsGate();
   const { value: isAAREnabled } = useFlag(isAssetAccessRequestsEnabled);
+  const isTaxonomyEnabled = settings.enableTaxonomyBasedCreatorDashboard ?? false;
 
   const creationHref = useMemo(
     () =>
-      (activeTab?: Asset, filterIndex?: number): string => {
+      (activeTab?: Asset | string, filterIndex?: number): string => {
         const params = new URLSearchParams();
-        const groupId = getStringQueryParam(router.query.groupId);
+        const groupId = readQueryValue(router.query.groupId);
 
         if (groupId) {
           params.set('groupId', groupId);
@@ -82,6 +83,12 @@ const CreationsIALeftNav: FunctionComponent = () => {
       .map((menuItem) => {
         const activeTab = menuItem.submenuItems?.[0]?.type ?? menuItem.type;
         const labelKey = creationMenuLabelKeys[menuItem.type];
+        const isAvatarItems = menuItem.type === Asset.TShirt;
+        // Avatar Items opens straight into the category view when it is enabled, so the landing URL
+        // does not have to be rewritten after the fact. Every other entry is left untouched.
+        const avatarItemsActiveTab = isTaxonomyEnabled
+          ? AVATAR_ITEMS_ACTIVE_TAB
+          : Asset.AvatarLooks;
         return {
           key: `${CREATION_MENU_ITEM_PREFIX}${menuItem.type}`,
           label: labelKey ? translate(labelKey) : translate(menuItem.nameKey),
@@ -89,16 +96,28 @@ const CreationsIALeftNav: FunctionComponent = () => {
             menuItem.type === Asset.Place
               ? creationHref()
               : creationHref(
-                  menuItem.type === Asset.TShirt ? Asset.AvatarLooks : activeTab,
-                  menuItem.type === Asset.TShirt ? 0 : undefined,
+                  isAvatarItems ? avatarItemsActiveTab : activeTab,
+                  isAvatarItems ? 0 : undefined,
                 ),
         };
       });
-  }, [creationHref, currentGroup, isAAREnabled, isMomentsTabEnabled, settings, translate]);
+  }, [
+    creationHref,
+    currentGroup,
+    isAAREnabled,
+    isMomentsTabEnabled,
+    isTaxonomyEnabled,
+    settings,
+    translate,
+  ]);
 
   const activeKey = useMemo(() => {
+    // A taxonomy activeTab carries no asset type, so resolve it through the Avatar Items host tab
+    // instead of falling back to the default (Experiences) menu item.
     const activeMenuState = creationsMenuManager.getMenuState(
-      parseActiveTabQueryParam(router.query.activeTab),
+      isTaxonomyActiveTab(router.query.activeTab)
+        ? TAXONOMY_HOST_ASSET
+        : parseActiveTabQueryParam(router.query.activeTab),
       [],
     );
     return `${CREATION_MENU_ITEM_PREFIX}${activeMenuState.menuItem.type}`;

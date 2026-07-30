@@ -8,6 +8,8 @@ import type { TGroup } from '@modules/authentication/types';
 import type { Asset } from '@modules/miscellaneous/common';
 import { Flex } from '@modules/miscellaneous/components';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
+import TaxonomyL1Chips from '../../avatarItem/components/TaxonomyL1Chips';
+import useTaxonomyView from '../../avatarItem/hooks/useTaxonomyView';
 import useMomentsGate from '../../home/hooks/useMomentsGate';
 import useUGCFoldersGate from '../../home/hooks/useUGCFoldersGate';
 import {
@@ -78,6 +80,10 @@ const CreationsSubmenu: FunctionComponent<React.PropsWithChildren<TCreationsSubm
 
   const [allowedAssetTypes, setAllowedAssetTypes] = useState<Set<Asset> | undefined>(undefined);
 
+  // The taxonomy chip row replaces this item-type submenu, so only one of them is ever shown.
+  // Guarded here rather than in the callers so both menu layouts stay in sync.
+  const { isTaxonomyMode } = useTaxonomyView(creationsMenuManager.getAssetType(menuState));
+
   /** Used to fetch allowed asset types for the creator. This allows us to block
    * TIC/non-TIC users depending on a BE setting. This can be used for future new UGC menu
    * items as well.
@@ -146,6 +152,12 @@ const CreationsSubmenu: FunctionComponent<React.PropsWithChildren<TCreationsSubm
       }
     };
   }, []);
+
+  // Rendered in the submenu slot so the chips occupy the same row as the toolbar controls, which
+  // keeps Show Archived and the settings icon aligned to the right exactly as in the item-type view.
+  if (isTaxonomyMode) {
+    return <TaxonomyL1Chips />;
+  }
 
   return (
     <Flex classes={{ root: subMenuContainer }}>

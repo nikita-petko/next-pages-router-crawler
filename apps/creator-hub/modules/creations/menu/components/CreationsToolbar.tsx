@@ -26,6 +26,8 @@ import { Flex } from '@modules/miscellaneous/components/Flex';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 import { AvatarMenuMap } from '../../avatarItem/constants/avatarItemConstants';
+import useTaxonomyView from '../../avatarItem/hooks/useTaxonomyView';
+import { buildTaxonomyActiveTab } from '../../avatarItem/utils/taxonomyRoutingUtils';
 import useCreationsFilters from '../../common/hooks/useCreationsFilters';
 import { getSortForAssetType } from '../../common/interfaces/CreationsFilters';
 import { getValidTimedOptionsTypes } from '../../unifiedFeeSystem/helper/UnifiedFeeSystemConstants';
@@ -87,27 +89,57 @@ const CreationsToolbar: FunctionComponent<React.PropsWithChildren<CreationsToolb
   } = useCreationsFilters();
 
   const [{ filterIndex }] = useQueryParams(['filterIndex']);
-  const { assetType, isSortable, isArchivable } = useMemo(() => {
-    const type = creationsMenuManager.getAssetType(menuState);
-    const isAssetSortable = creationsMenuManager.isAssetTypeSortable(type);
+  const [, setViewParams] = useQueryParams(['activeTab', 'filterIndex']);
+  const assetType = useMemo(() => creationsMenuManager.getAssetType(menuState), [menuState]);
+
+  // Taxonomy is the default view for the Avatar Items tabs it replaces; the URL only records an
+  // explicit opt-out back to the legacy item-type view.
+  // The toggle tracks the category experience as a whole, not whether the grid happens to be
+  // filtering by a category: All Asset Types keeps the chips on screen while filtering by folder, and
+  // the switch must still read as on there.
+  const { canUseTaxonomy: showTaxonomyToggle, isTaxonomyMode } = useTaxonomyView(assetType);
+
+  const { isSortable, isArchivable } = useMemo(() => {
+    // In the category view `filterIndex` addresses taxonomy sub-categories, not entries in
+    // AvatarMenuMap, so resolving it here would look up the wrong option (and hide Show Archived).
     const parsedFilterIndex =
-      filterIndex !== undefined && filterIndex !== null ? Number(filterIndex) : undefined;
-    const isAssetArchivable = creationsMenuManager.isAssetTypeArchivable(type, parsedFilterIndex);
-    const isAssetDirectlyArchivable = creationsMenuManager.isAssetTypeDirectlyArchivable(type);
+      isTaxonomyMode || filterIndex === undefined || filterIndex === null
+        ? undefined
+        : Number(filterIndex);
+    const isAssetArchivable = creationsMenuManager.isAssetTypeArchivable(
+      assetType,
+      parsedFilterIndex,
+    );
     return {
-      assetType: type,
-      isSortable: isAssetSortable,
-      isArchivable: isAssetArchivable || isAssetDirectlyArchivable,
+      isSortable: creationsMenuManager.isAssetTypeSortable(assetType),
+      isArchivable:
+        isAssetArchivable || creationsMenuManager.isAssetTypeDirectlyArchivable(assetType),
     };
-  }, [menuState, filterIndex]);
+  }, [assetType, filterIndex, isTaxonomyMode]);
+
+  const taxonomyToggleLabel = translate('Label.CategorizeByTaxonomy');
+
+  const handleTaxonomyToggle = useCallback(() => {
+    // The view follows activeTab, so switching is just a move between the two namespaces. Replace
+    // the current entry rather than pushing: toggling back and forth should not have to be undone
+    // one step at a time.
+    setViewParams(
+      {
+        activeTab: isTaxonomyMode ? assetType : buildTaxonomyActiveTab(),
+        filterIndex: 0,
+      },
+      { skipHistory: true },
+    );
+  }, [isTaxonomyMode, assetType, setViewParams]);
 
   const isToolbarHidden = useMemo(
     () =>
       !isSortable &&
       !isArchivable &&
+      !showTaxonomyToggle &&
       assetType !== Asset.MyExperiences &&
       assetType !== Asset.SharedExperiences,
-    [isSortable, isArchivable, assetType],
+    [isSortable, isArchivable, showTaxonomyToggle, assetType],
   );
 
   const handleMenuOnchange = useCallback(
@@ -176,8 +208,12 @@ const CreationsToolbar: FunctionComponent<React.PropsWithChildren<CreationsToolb
     if (!timedOptionsTypesLoaded) {
       return false;
     }
+    // See the archivable check above: `filterIndex` does not address AvatarMenuMap in the category
+    // view, so it must not be used to look up the selected item type here either.
     const parsedFilterIndex =
-      filterIndex !== undefined && filterIndex !== null ? Number(filterIndex) : undefined;
+      isTaxonomyMode || filterIndex === undefined || filterIndex === null
+        ? undefined
+        : Number(filterIndex);
     if (parsedFilterIndex !== undefined && AvatarMenuMap[assetType]) {
       const menuOptions = AvatarMenuMap[assetType];
       const selectedOption = menuOptions[parsedFilterIndex];
@@ -186,7 +222,13 @@ const CreationsToolbar: FunctionComponent<React.PropsWithChildren<CreationsToolb
       }
     }
     return getIsRentableType(menuState.submenuItem?.type ?? assetType, undefined);
-  }, [assetType, filterIndex, menuState.submenuItem?.type, timedOptionsTypesLoaded]);
+  }, [
+    assetType,
+    filterIndex,
+    isTaxonomyMode,
+    menuState.submenuItem?.type,
+    timedOptionsTypesLoaded,
+  ]);
 
   if (isToolbarHidden) {
     return null;
@@ -196,6 +238,7 @@ const CreationsToolbar: FunctionComponent<React.PropsWithChildren<CreationsToolb
     assetType === Asset.MyExperiences ||
     assetType === Asset.SharedExperiences ||
     isArchivable ||
+    showTaxonomyToggle ||
     assetType === Asset.MeshPart;
 
   const shouldShowAgeRestrictedCollaborationFilter =
@@ -287,6 +330,18 @@ const CreationsToolbar: FunctionComponent<React.PropsWithChildren<CreationsToolb
                   ? translate('Action.ShowArchived')
                   : translate('Label.Archived')
               }
+            />
+          )}
+          {showTaxonomyToggle && (
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isTaxonomyMode}
+                  onChange={handleTaxonomyToggle}
+                  aria-label={taxonomyToggleLabel}
+                />
+              }
+              label={taxonomyToggleLabel}
             />
           )}
           {isAvatarItemSettings && (

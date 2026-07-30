@@ -11,6 +11,27 @@ export interface AvatarItemDropdown {
   isFolder?: boolean;
   skipTranslation?: boolean;
   folderId?: string;
+  /**
+   * What to filter the listing by: a taxonomy category `web_stable_id` (from GET
+   * v1/items/categories). When set, the by-creator listing filters by this category instead of a
+   * concrete asset/bundle type. Used only by the taxonomy-based Creator Dashboard view.
+   *
+   * Distinct from {@link AvatarItemDropdown.taxonomyKey}, which identifies the category in the URL:
+   * a client-invented L1 such as Classics is addressable but has no server id to filter by, because
+   * only its leaves exist in the tree.
+   */
+  taxonomy?: string;
+  /**
+   * How to address the L1 in the URL. The L1's `webStableId` for tree-backed categories, or a
+   * synthetic key (e.g. `classics`) for client-only ones. Drives chip selection and the
+   * `AvatarItems-{taxonomyKey}` activeTab.
+   */
+  taxonomyKey?: string;
+  /**
+   * Asset type ids backing a taxonomy category. Used only to decide which upload / create-asset
+   * entry point to surface; filtering still happens through `taxonomy`.
+   */
+  taxonomyAssetTypeIds?: number[];
 }
 
 export const MarketplaceItemsApiLimit = 25;

@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { PagingParameters, SortOrder } from '@rbx/core';
 import { useFlag } from '@rbx/flags';
 import { useTranslation } from '@rbx/intl';
-import { Grid } from '@rbx/ui';
+import { CircularProgress, Grid } from '@rbx/ui';
 import { enableAvatarLooks } from '@generated/flags/avatarMarketplace';
 import AssetCreationEntryway from '@modules/asset-creation/components/AssetCreationEntryway';
 import { isCreateAssetAvailable } from '@modules/asset-creation/constants/AssetTypeConstants';
@@ -31,6 +31,7 @@ import AddItemToFolderButton from '../components/AddItemToFolderButton';
 import AvatarItemsDropdownCategorySubmenu from '../components/AvatarItemsDropdownCategorySubmenu';
 import CreateFolderButton from '../components/CreateFolderButton';
 import DeleteFolderButton from '../components/DeleteFolderButton';
+import TaxonomyCategorySelector from '../components/TaxonomyCategorySelector';
 import type { AvatarItemDropdown, BundleType } from '../constants/avatarItemConstants';
 import {
   AvatarItemDropdownTitles,
@@ -38,11 +39,14 @@ import {
   UnfolderedDropdownOption,
 } from '../constants/avatarItemConstants';
 import avatarItemTypeConstants from '../constants/avatarItemTypeConstants';
+import useTaxonomySelection from '../hooks/useTaxonomySelection';
+import useTaxonomyView from '../hooks/useTaxonomyView';
 import {
   invertAvatarMenuMap,
   serializeMenuMapKey,
   isValidIndex,
 } from '../utils/avatarMenuMapUtils';
+import { mapAssetTypeIdToAsset } from '../utils/loadAvatarItemsUtils';
 import {
   loadCreationsByCreator,
   loadCreationsByFolder,
@@ -50,6 +54,7 @@ import {
   loadLooksByCreator,
   loadLooksByGroup,
 } from '../utils/loadAvatarItemsUtils';
+import { taxonomyOptionValue } from '../utils/taxonomyCategoriesUtils';
 
 const AVATAR_LOOKS_GRID_SELECTION: AvatarItemDropdown = {
   lookType: Look.Avatar,
@@ -90,8 +95,11 @@ const AvatarItemsGridContainer: FunctionComponent<
   const { value: isAvatarLooksEnabled } = useFlag(enableAvatarLooks);
   const { user } = useAuthentication();
   const [{ filterIndex }, setFilterIndexParams] = useQueryParams(['filterIndex']);
-  const [{ activeTab }] = useQueryParams(['activeTab']);
-  const [hasData, setHasData] = useState<boolean>(false);
+  const [{ activeTab }, setTaxonomyTabParams] = useQueryParams(['activeTab', 'filterIndex']);
+  const [lastLoad, setLastLoad] = useState<{ params: unknown; hasItems: boolean }>(() => ({
+    params: undefined,
+    hasItems: false,
+  }));
   const [fromUtc] = useState<Date | undefined>(() => new Date());
   const [folderDropdownOptions, setFolderDropdownOptions] = useState<AvatarItemDropdown[]>([]);
   const [allowedAssetTypes, setAllowedAssetTypes] = useState<Set<Asset>>(() => new Set());
@@ -104,6 +112,28 @@ const AvatarItemsGridContainer: FunctionComponent<
   const isAssetAll = assetType === Asset.AllCatalogAsset;
   const isAvatarLooksTab = assetType === Asset.AvatarLooks;
   const isAvatarBackgroundsTab = assetType === Asset.AvatarBackground;
+
+  // `activeTab=AvatarItems` selects the category view, and `AvatarItems-{key}` additionally selects
+  // which L1 is active.
+  const { canUseTaxonomy: taxonomyFlagEnabled, isTaxonomyView } = useTaxonomyView(assetType);
+  // `filterIndex` addresses the sub-category here, mirroring the item-type view, so a category and
+  // its sub-category are both shareable through the URL.
+  const {
+    activeL1Node,
+    l2Options,
+    filterIndex: taxonomyFilterIndex,
+    selection: effectiveTaxonomySelection,
+    isLoading: isTaxonomyLoading,
+  } = useTaxonomySelection(taxonomyFlagEnabled);
+  // In the category view the grid must not fall back to the item-type query: the asset type is the
+  // Avatar Items host tab, so it would briefly show an unrelated category's items on first paint.
+  const isAwaitingTaxonomySelection = isTaxonomyView && !effectiveTaxonomySelection;
+  // A category backed by exactly one asset type keeps that type's upload / create-asset entry
+  // point (e.g. Backgrounds, the classic 2D categories).
+  const taxonomyCreateAssetType = useMemo(() => {
+    const assetTypeIds = effectiveTaxonomySelection?.taxonomyAssetTypeIds ?? [];
+    return assetTypeIds.length === 1 ? mapAssetTypeIdToAsset(assetTypeIds[0]) : undefined;
+  }, [effectiveTaxonomySelection]);
   const menuOptions = useMemo((): AvatarItemDropdown[] | undefined => {
     if (isAssetAll) {
       return folderDropdownOptions;
@@ -170,9 +200,23 @@ const AvatarItemsGridContainer: FunctionComponent<
     }
   }, [assetType, initialIndex, filterIndex, menuOptions]);
 
+  const handleSelectL2 = useCallback(
+    (option: AvatarItemDropdown) => {
+      const selectedIndex = l2Options.findIndex(
+        (candidate) => taxonomyOptionValue(candidate) === taxonomyOptionValue(option),
+      );
+      if (selectedIndex >= 0) {
+        setFilterIndexParams({ filterIndex: selectedIndex });
+      }
+    },
+    [l2Options, setFilterIndexParams],
+  );
+
   const pagingParameters = useMemo(() => {
     return {
-      avatarItem: selectedAvatarItemDropdown,
+      avatarItem: isTaxonomyView
+        ? (effectiveTaxonomySelection ?? selectedAvatarItemDropdown)
+        : selectedAvatarItemDropdown,
       groupId,
       isArchived,
       isActive: isPublicOnly ? true : undefined,
@@ -185,6 +229,8 @@ const AvatarItemsGridContainer: FunctionComponent<
     };
   }, [
     selectedAvatarItemDropdown,
+    isTaxonomyView,
+    effectiveTaxonomySelection,
     groupId,
     isArchived,
     isPublicOnly,
@@ -194,6 +240,11 @@ const AvatarItemsGridContainer: FunctionComponent<
     settings.enableBundlePaginationOffset,
     lastModified,
   ]);
+
+  // Tied to the query it came from rather than tracked separately, so changing category invalidates
+  // it by construction. Otherwise the previous result briefly describes the new query and the create
+  // button and the empty state render at the same time.
+  const hasData = lastLoad.params === pagingParameters && lastLoad.hasItems;
 
   const { itemType, lookType } = selectedAvatarItemDropdown;
 
@@ -217,9 +268,14 @@ const AvatarItemsGridContainer: FunctionComponent<
       );
       */
     }
-    const currentAssetType = selectedAvatarItemDropdown.assetType ?? assetType;
+    // In the taxonomy view the legacy item-type selection no longer describes what is on screen, so
+    // the create/upload entry point follows the selected category instead. Categories that span
+    // several asset types have no single entry point.
+    const currentAssetType = isTaxonomyView
+      ? taxonomyCreateAssetType
+      : (selectedAvatarItemDropdown.assetType ?? assetType);
 
-    if (isCreateAssetAvailable(currentAssetType)) {
+    if (currentAssetType !== undefined && isCreateAssetAvailable(currentAssetType)) {
       if (!hasData) {
         return <CreationsGridEmptyState assetType={currentAssetType} />;
       }
@@ -228,13 +284,41 @@ const AvatarItemsGridContainer: FunctionComponent<
       );
     }
     return undefined;
-  }, [pagingParameters, assetType, hasData, selectedAvatarItemDropdown]);
+  }, [
+    pagingParameters,
+    assetType,
+    hasData,
+    selectedAvatarItemDropdown,
+    isTaxonomyView,
+    taxonomyCreateAssetType,
+  ]);
 
   const createButton = createInExperienceButton;
+
+  // Names the thing the grid actually tried to load. In the category view that is the selected
+  // sub-category, whose name comes from the taxonomy service already localized rather than as a
+  // translation key.
+  const loadErrorItemLabel = useMemo(() => {
+    const selection =
+      isTaxonomyView && effectiveTaxonomySelection
+        ? effectiveTaxonomySelection
+        : selectedAvatarItemDropdown;
+    return selection.skipTranslation ? selection.nameKey : translate(selection.nameKey);
+  }, [isTaxonomyView, effectiveTaxonomySelection, selectedAvatarItemDropdown, translate]);
 
   const errorContent = useMemo(() => {
     if (isAssetAll) {
       return <CreationsGridEmptyState assetType={Asset.AllCatalogAsset} lookType={lookType} />;
+    }
+    if (isTaxonomyView) {
+      // Looks are overlaid into the taxonomy sub-selector and have their own empty state.
+      const selectedLookType = effectiveTaxonomySelection?.lookType;
+      if (selectedLookType !== undefined) {
+        return <CreationsGridEmptyState assetType={assetType} lookType={selectedLookType} />;
+      }
+      // `createButton` already renders the category-specific empty state when one exists; fall back
+      // to the generic avatar-items empty state for multi-type categories.
+      return createButton ?? <CreationsGridEmptyState assetType={assetType} />;
     }
     const selectedAssetType = selectedAvatarItemDropdown.assetType;
     if (
@@ -247,14 +331,34 @@ const AvatarItemsGridContainer: FunctionComponent<
       );
     }
     return createButton;
-  }, [selectedAvatarItemDropdown, createButton, isAssetAll, lookType, assetType]);
+  }, [
+    selectedAvatarItemDropdown,
+    createButton,
+    isAssetAll,
+    lookType,
+    assetType,
+    isTaxonomyView,
+    effectiveTaxonomySelection,
+  ]);
 
   const onLoad = useCallback(
     (data: CreationData[]) => {
-      setHasData(data.length > 0);
+      setLastLoad({ params: pagingParameters, hasItems: data.length > 0 });
     },
-    [setHasData],
+    [pagingParameters],
   );
+
+  useEffect(() => {
+    // Pin the sub-category the grid actually resolved to, so a missing or out-of-range filterIndex
+    // becomes a concrete, shareable URL instead of an implicit default. Safe to do here because the
+    // view follows activeTab, so nothing else is writing these params concurrently.
+    if (!isTaxonomyView || l2Options.length === 0) {
+      return;
+    }
+    if (Number(filterIndex) !== taxonomyFilterIndex) {
+      setTaxonomyTabParams({ filterIndex: taxonomyFilterIndex }, { skipHistory: true });
+    }
+  }, [isTaxonomyView, l2Options.length, filterIndex, taxonomyFilterIndex, setTaxonomyTabParams]);
 
   const handleFolderDeleted = useCallback(async () => {
     if (isAssetAll) {
@@ -329,7 +433,9 @@ const AvatarItemsGridContainer: FunctionComponent<
   );
 
   const loadCreations = useMemo(() => {
-    if (isAssetAll) {
+    // The taxonomy view filters by category across every Avatar Items tab, including the
+    // folder-backed "All" tab, so it never uses the folder loader.
+    if (isAssetAll && !isTaxonomyView) {
       return loadCreationsByFolder;
     }
     return (creationsParameters: AvatarItemsGridPagingParameters) => {
@@ -350,11 +456,18 @@ const AvatarItemsGridContainer: FunctionComponent<
       }
       return loadCreationsByCreator(creationsParameters, user?.id ?? 0);
     };
-  }, [isAssetAll, settings.enableMakeupAssets, isAvatarLooksEnabled, user?.id, groupId]);
+  }, [
+    isAssetAll,
+    isTaxonomyView,
+    settings.enableMakeupAssets,
+    isAvatarLooksEnabled,
+    user?.id,
+    groupId,
+  ]);
 
   return (
     <>
-      {!isAvatarLooksTab && !isAvatarBackgroundsTab && (
+      {(isTaxonomyView || (!isAvatarLooksTab && !isAvatarBackgroundsTab)) && (
         <Grid
           container
           item
@@ -364,17 +477,31 @@ const AvatarItemsGridContainer: FunctionComponent<
           wrap='nowrap'
           direction='row'>
           <Grid item className={folderActionContainer}>
-            <AvatarItemsDropdownCategorySubmenu
-              dropdownTitle={AvatarItemDropdownTitles[assetType] ?? ''}
-              dropdownOptions={menuOptions}
-              isFolderMode={isAssetAll}
-              filterIndex={filterIndex ? parseInt(filterIndex.toString(), 10) : 0}
-              onMenuStateChange={onMenuStateChange}
-              allowedAssetTypes={allowedAssetTypes}
-              allowedBundleTypes={allowedBundleTypes}
-            />
+            {isTaxonomyView ? (
+              <TaxonomyCategorySelector
+                l2Options={l2Options}
+                categoryName={activeL1Node?.name}
+                selectedOptionValue={
+                  effectiveTaxonomySelection === undefined
+                    ? undefined
+                    : taxonomyOptionValue(effectiveTaxonomySelection)
+                }
+                onSelectL2={handleSelectL2}
+                isLoading={isTaxonomyLoading}
+              />
+            ) : (
+              <AvatarItemsDropdownCategorySubmenu
+                dropdownTitle={AvatarItemDropdownTitles[assetType] ?? ''}
+                dropdownOptions={menuOptions}
+                isFolderMode={isAssetAll}
+                filterIndex={filterIndex ? parseInt(filterIndex.toString(), 10) : 0}
+                onMenuStateChange={onMenuStateChange}
+                allowedAssetTypes={allowedAssetTypes}
+                allowedBundleTypes={allowedBundleTypes}
+              />
+            )}
           </Grid>
-          {isAssetAll && (
+          {isAssetAll && !isTaxonomyView && (
             <Grid item className={folderActionContainer}>
               <Grid container item direction='row' spacing={2} justifyContent='flex-end'>
                 <CreateFolderButton
@@ -412,18 +539,22 @@ const AvatarItemsGridContainer: FunctionComponent<
             {createButton}
           </Grid>
         )}
-        <ItemGridContainer
-          pagingParameters={pagingParameters}
-          loadItems={loadCreations}
-          getItemKey={(item) => item.assetId ?? item.bundleId ?? item.lookId ?? 0}
-          GridItemComponent={ItemCardContainer}
-          errorMessage={translate('Message.LoadItemsError', {
-            itemType: translate(selectedAvatarItemDropdown.nameKey),
-          })}
-          emptyMessage={errorContent}
-          onLoad={onLoad}
-          useWideIcons={itemType === Item.Event}
-        />
+        {isAwaitingTaxonomySelection ? (
+          <Grid container item justifyContent='center'>
+            <CircularProgress />
+          </Grid>
+        ) : (
+          <ItemGridContainer
+            pagingParameters={pagingParameters}
+            loadItems={loadCreations}
+            getItemKey={(item) => item.assetId ?? item.bundleId ?? item.lookId ?? 0}
+            GridItemComponent={ItemCardContainer}
+            errorMessage={translate('Message.LoadItemsError', { itemType: loadErrorItemLabel })}
+            emptyMessage={errorContent}
+            onLoad={onLoad}
+            useWideIcons={itemType === Item.Event}
+          />
+        )}
       </Grid>
     </>
   );
