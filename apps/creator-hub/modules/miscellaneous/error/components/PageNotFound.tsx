@@ -1,19 +1,19 @@
-import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/router';
 import { StatusCodes } from '@rbx/core';
 import errorIllustrationDark from '@rbx/foundation-images/pictograms/alert_dark.svg';
 import errorIllustrationLight from '@rbx/foundation-images/pictograms/alert_light.svg';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { Grid, Typography, Button } from '@rbx/ui';
 import CreatorDashboardEventType from '@modules/eventStream/enum/CreatorDashboardEventType';
-import * as components from '../../components';
+import Flex from '../../components/Flex';
+import ThemedImage from '../../components/ThemedImage';
 import { useUnifiedLoggerProvider } from '../../hooks/UnifiedLoggerProvider';
 import { TranslationNamespace } from '../../localization';
 import * as urls from '../../urls';
 import { errorCodeKeyDictionary } from '../constants/errorCodeKeyConstants';
 import usePageNotFoundStyles from './PageNotFound.styles';
 
-const { Flex, ThemedImage } = components;
 const {
   creatorHub: { creatorStore },
 } = urls;

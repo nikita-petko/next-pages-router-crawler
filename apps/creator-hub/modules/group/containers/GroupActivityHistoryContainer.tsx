@@ -1,11 +1,15 @@
 import type { FunctionComponent, PropsWithChildren } from 'react';
 import { useEffect, useState } from 'react';
 import { buildBreadcrumb, buildTitle, HubMeta } from '@rbx/creator-hub-history';
+import { useFlag } from '@rbx/flags';
+import { UnificationOptInModal } from '@rbx/group-management';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { CircularProgress, Typography, Grid, useMediaQuery, useTheme } from '@rbx/ui';
+import { isUnifiedUiEnabled } from '@generated/flags/groups';
 import useActivityFeedStyles from '@modules/creations/activityFeed/components/ActivityFeed.styles';
 import { EmptyGrid } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { creatorHub, www } from '@modules/miscellaneous/urls';
 import GroupActivityHistory from '../components/GroupActivityHistory';
 import PermissionDeniedPage from '../components/PermissionDeniedPage';
 import useCurrentOrganization from '../hooks/useCurrentOrganization';
@@ -17,6 +21,7 @@ const GroupActivityHistoryContainer: FunctionComponent<PropsWithChildren> = () =
 
   const { translate } = useTranslation();
   const { organization, permissions, refreshPermission } = useCurrentOrganization();
+  const { value: isUnifiedUIEnabled } = useFlag(isUnifiedUiEnabled);
 
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('Small'));
@@ -41,6 +46,13 @@ const GroupActivityHistoryContainer: FunctionComponent<PropsWithChildren> = () =
         </Grid>
       ) : (
         <>
+          {organization.groupId && isUnifiedUIEnabled && permissions?.isOwner && (
+            <UnificationOptInModal
+              groupId={Number(organization.groupId)}
+              getCreatorHubRoleUrl={creatorHub.getGroupRoleUrl}
+              getLegacyRolesUrl={www.getConfigureGroupRolesUrl}
+            />
+          )}
           {!permissions?.isOwner && !permissions?.canViewAuditLogs ? (
             <PermissionDeniedPage />
           ) : (

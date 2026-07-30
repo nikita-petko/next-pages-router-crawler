@@ -41,3 +41,5 @@ export const getLegacyGroupTransactionsUrl = (groupId: number) =>
   `${basePath}/groups/configure?id=${groupId}#!/revenue/sales`;
 export const getEventUrl = (eventId: string) => `${basePath}/events/${eventId}`;
 export const getSupportFormUrl = () => `${basePath}/support`;
+export const getConfigureGroupRolesUrl = (groupId: string) =>
+  `${basePath}/groups/configure?id=${groupId}#!/roles`;

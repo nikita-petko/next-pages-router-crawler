@@ -10,10 +10,13 @@ import type {
   RobloxGroupsApiUserGroupRoleResponse,
   RobloxWebWebAPIModelsApiPageResponseRobloxGroupsApiUserGroupRoleResponse,
   V1GroupsGroupIdUsersGetRequest,
+  RobloxGroupsApiGroupMigrationStatusResponse,
+  RobloxGroupsApiGroupMigrationBreakingChangesResponse,
 } from '@rbx/client-groups/v1';
 import {
   GroupsApi,
   MembershipApi,
+  MigrationApi,
   RobloxGroupsApiGroupRoleResponseColorEnum,
   RoleSetsApi,
 } from '@rbx/client-groups/v1';
@@ -46,6 +49,7 @@ const membershipV2Api = new MembershipV2Api(configuration);
 const rolesetsApi = new RoleSetsApi(configuration);
 const rolesetsV2Api = new RolesetsV2Api(configuration);
 const permissionsV2Api = new PermissionsV2Api(configuration);
+const migrationApi = new MigrationApi(configuration);
 
 export type GroupAllRolesResponse = RobloxGroupsApiGroupAllRolesResponse;
 export type GroupRoleMetadata = RobloxGroupsApiGroupRoleResponse;
@@ -65,6 +69,9 @@ export type GroupPermissions = ResolvedPermissions;
 export type GroupRolePermissions = Record<string, ResolvedPermissions>;
 export type GroupRolePermissionsPage =
   RobloxWebWebAPIModelsApiPageResponseRobloxGroupsApiModelsResponseResolvedPermissionsForEntityPageItemResponse;
+export type GroupMigrationStatusResponse = RobloxGroupsApiGroupMigrationStatusResponse;
+export type GroupMigrationBreakingChangesResponse =
+  RobloxGroupsApiGroupMigrationBreakingChangesResponse;
 
 interface GroupsClient {
   getGroupInfo(groupId: number): Promise<RobloxGroupsApiGroupDetailResponse>;
@@ -120,6 +127,11 @@ interface GroupsClient {
     roleId: number,
     request: RobloxGroupsApiModelsRequestUpdateRolePermissionsForEntityRequest,
   ): Promise<RobloxGroupsApiRolePermissionsForEntityResponse>;
+  getGroupMigrationStatus(groupId: number): Promise<RobloxGroupsApiGroupMigrationStatusResponse>;
+  getGroupMigrationBreakingChanges(
+    groupId: number,
+  ): Promise<RobloxGroupsApiGroupMigrationBreakingChangesResponse>;
+  migrateGroup(groupId: number): Promise<void>;
 }
 
 const groupsClient: GroupsClient = {
@@ -244,6 +256,15 @@ const groupsClient: GroupsClient = {
       entityId: groupId.toString(),
       request,
     });
+  },
+  getGroupMigrationStatus(groupId: number) {
+    return migrationApi.v1GroupsGroupIdMigrationGet({ groupId });
+  },
+  getGroupMigrationBreakingChanges(groupId: number) {
+    return migrationApi.v1GroupsGroupIdMigrationBreakingChangesGet({ groupId });
+  },
+  migrateGroup(groupId: number) {
+    return migrationApi.v1GroupsGroupIdMigrationMigratePost({ groupId });
   },
 };
 

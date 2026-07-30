@@ -2,10 +2,14 @@ import type { FunctionComponent } from 'react';
 import React, { useCallback, useMemo } from 'react';
 import { StatusCodes } from '@rbx/core';
 import { buildBreadcrumb, buildTitle, HubMeta } from '@rbx/creator-hub-history';
+import { useFlag } from '@rbx/flags';
+import { UnificationOptInModal } from '@rbx/group-management';
 import { withTranslation, useTranslation } from '@rbx/intl';
 import { CircularProgress, Grid } from '@rbx/ui';
+import { isUnifiedUiEnabled } from '@generated/flags/groups';
 import { ErrorPage } from '@modules/miscellaneous/error';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { creatorHub, www } from '@modules/miscellaneous/urls';
 import { useCurrentGroup } from '@modules/providers/groups/GroupsProvider';
 import {
   AssetPrivacyLevel,
@@ -28,6 +32,7 @@ const GroupProfileContainer: FunctionComponent<React.PropsWithChildren> = () => 
   const { permissions } = useCurrentOrganization();
   const { data: assetPrivacyDefault, isFetching: assetPrivacyDefaultFetching } =
     useGetGroupAssetPrivacyDefault(currentGroup?.id ?? -1, !!currentGroup?.id);
+  const { value: isUnifiedUIEnabled } = useFlag(isUnifiedUiEnabled);
 
   const { data: isGroupEligibleForBeta, isFetching: isGroupEligibleForBetaFetching } =
     useGetIsGroupEligibleForBeta(currentGroup?.id ?? -1, !!currentGroup?.id);
@@ -103,6 +108,13 @@ const GroupProfileContainer: FunctionComponent<React.PropsWithChildren> = () => 
         breadcrumb={buildBreadcrumb(translate('Label.Group'), translate('Label.GroupProfile'))}
       />
       <GroupOwnershipTransferAlert groupConfiguration={groupConfiguration} />
+      {currentGroup?.id && isUnifiedUIEnabled && permissions?.isOwner && (
+        <UnificationOptInModal
+          groupId={currentGroup.id}
+          getCreatorHubRoleUrl={creatorHub.getGroupRoleUrl}
+          getLegacyRolesUrl={www.getConfigureGroupRolesUrl}
+        />
+      )}
       {canAccess ? (
         <ConfigureGroupForm
           groupConfiguration={groupConfiguration}
