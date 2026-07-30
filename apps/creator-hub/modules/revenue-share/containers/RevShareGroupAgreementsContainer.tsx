@@ -1,6 +1,5 @@
 // Group revenue-share shell: URL-synced managed/recipient perspective, manager landing/detail/lifecycles, and delegation of recipient detail/respond to RevShareRecipientContainer.
 import { useCallback, useEffect, useMemo, useState, type FunctionComponent } from 'react';
-import { Button } from '@rbx/foundation-ui';
 import { useLocalization, useTranslation } from '@rbx/intl';
 import { CircularProgress, Grid } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
@@ -14,6 +13,7 @@ import RevShareBanner from '../components/RevShareBanner';
 import RevShareDetailView from '../components/RevShareDetailView';
 import RevShareLandingView from '../components/RevShareLandingView';
 import RevShareLifecycleDialog from '../components/RevShareLifecycleDialog';
+import RevShareManageActionButton from '../components/RevShareManageActionButton';
 import RevSharePendingProposalFlow from '../components/RevSharePendingProposalFlow';
 import type { RevShareSplitEditorFlowStep } from '../components/RevShareSplitEditorFlow';
 import type {
@@ -53,7 +53,13 @@ const EMPTY_RECIPIENT_ROWS: RecipientAgreement[] = [];
 const QUERY_TRANSITION_OPTIONS = { scroll: false } as const;
 const MANAGING_GROUP_PARTY_COUNT = 1;
 
-const RevShareGroupAgreementsContainer: FunctionComponent = () => {
+type RevShareGroupAgreementsContainerProps = {
+  canManage: boolean;
+};
+
+const RevShareGroupAgreementsContainer: FunctionComponent<
+  RevShareGroupAgreementsContainerProps
+> = ({ canManage }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const { locale } = useLocalization();
   const { user } = useAuthentication();
@@ -216,6 +222,34 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
       perspective: 'managed' as const,
     });
   }, [selectedTarget, setQuery]);
+
+  useEffect(() => {
+    if (isOrganizationLoading || !managingGroupId) {
+      return;
+    }
+
+    if (
+      !canManage &&
+      (selectedAction === 'create' || selectedAction === 'propose' || selectedAction === 'cancel')
+    ) {
+      if (selectedAction === 'create') {
+        setQuery(
+          { action: undefined, targetType: undefined, targetId: undefined },
+          { skipHistory: true },
+        );
+        return;
+      }
+      setQuery(
+        {
+          action: undefined,
+          targetType: selectedTarget?.type,
+          targetId: selectedTarget?.id,
+          perspective: 'managed',
+        },
+        { skipHistory: true },
+      );
+    }
+  }, [canManage, isOrganizationLoading, managingGroupId, selectedAction, selectedTarget, setQuery]);
 
   useEffect(() => {
     if (
@@ -517,11 +551,12 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
       onManagerRowClick={handleManagerRowClick}
       onRecipientRowClick={handleRecipientRowClick}
       onNewAgreement={handleNewAgreement}
+      canManage={canManage}
       focusTarget={focusReturnTarget}
     />
   );
 
-  if (perspective === 'managed' && selectedAction === 'create') {
+  if (perspective === 'managed' && selectedAction === 'create' && canManage) {
     return (
       <RevShareProposeFlowContainer
         {...proposeFlowSharedProps}
@@ -537,7 +572,7 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
         {!hasTargetQuery && landingView}
         <RevShareRecipientContainer
           recipient={groupRecipient}
-          canRespond
+          canRespond={canManage}
           isReady
           surface='embedded'
         />
@@ -548,7 +583,7 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
   const pendingLifecycleAction =
     selectedManagerAgreement !== null &&
     selectedManagerAgreement.proposed !== null &&
-    (selectedAction === 'cancel' || selectedAction === 'review')
+    (selectedAction === 'review' || (selectedAction === 'cancel' && canManage))
       ? selectedAction
       : null;
   const managedLifecycleFlow =
@@ -561,6 +596,7 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
         resolveRecipientParty={resolveRecipientParty}
         currentUserId={currentUserId}
         action={pendingLifecycleAction}
+        canManage={canManage}
         isTermsAccepted={isCancelTermsAccepted}
         onTermsAcceptedChange={setIsCancelTermsAccepted}
         onBack={handlePendingBack}
@@ -568,7 +604,7 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
         onCancelTermsBack={handleCancelTermsBack}
         onDone={handleCancelSuccess}
       />
-    ) : selectedManagerAgreement && selectedAction === 'propose' ? (
+    ) : selectedManagerAgreement && selectedAction === 'propose' && canManage ? (
       <RevShareProposeFlowContainer
         key={`${selectedManagerAgreement.target.type}:${selectedManagerAgreement.target.id}`}
         {...proposeFlowSharedProps}
@@ -646,9 +682,13 @@ const RevShareGroupAgreementsContainer: FunctionComponent = () => {
       { id: selectedManagerAgreement.target.id },
     );
   const proposeChangesButton = (
-    <Button variant='Emphasis' size='Medium' onClick={handleProposeChanges}>
+    <RevShareManageActionButton
+      variant='Emphasis'
+      size='Medium'
+      canManage={canManage}
+      onClick={handleProposeChanges}>
       {proposeChangesLabel}
-    </Button>
+    </RevShareManageActionButton>
   );
 
   return (

@@ -22,8 +22,8 @@ export const PLAYER_SUPPORT_VIEW_FILTER_VALUES: Record<
   CreatorTicketReadFilterValue | undefined
 > = {
   [PlayerSupportViewFilter.All]: undefined,
-  [PlayerSupportViewFilter.Read]: CreatorTicketReadFilter.NUMBER_1,
-  [PlayerSupportViewFilter.Unread]: CreatorTicketReadFilter.NUMBER_2,
+  [PlayerSupportViewFilter.Read]: CreatorTicketReadFilter.Read,
+  [PlayerSupportViewFilter.Unread]: CreatorTicketReadFilter.Unread,
 };
 
 export const PlayerSupportCategoryFilter = {

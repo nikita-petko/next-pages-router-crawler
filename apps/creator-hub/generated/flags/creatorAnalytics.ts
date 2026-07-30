@@ -15,7 +15,7 @@ export const isCpuCoreUtilizationEnabled = defineFlag({
 export const isExperienceAlertsEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isExperienceAlertsEnabled',
-    defaultValue: false,
+    defaultValue: true,
   });
 export const isOwnershipWatermarkEnabled = defineFlag({
     namespace: 'creator-analytics',

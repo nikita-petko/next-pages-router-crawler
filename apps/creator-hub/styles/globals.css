@@ -2808,6 +2808,9 @@
 .\!radius-circle {
   border-radius: var(--radius-circle) !important;
 }
+.\!radius-small {
+  border-radius: var(--radius-small) !important;
+}
 .radius-\[12px\] {
   border-radius: 12px;
 }
@@ -4671,6 +4674,9 @@
 .\[width\:18\%\] {
   width: 18%;
 }
+.\[width\:192px\] {
+  width: 192px;
+}
 .\[width\:1px\] {
   width: 1px;
 }
@@ -4930,10 +4936,6 @@ html.studio-webview.dark-theme,
 
 .group\/interactable:hover .group-hover\/interactable\:bg-\[var\(--color-state-hover\)\] {
   background-color: var(--color-state-hover);
-}
-
-.group:hover .group-hover\:bg-shift-100 {
-  background-color: var(--color-shift-100);
 }
 
 .group:hover .group-hover\:opacity-\[1\] {

@@ -34,10 +34,10 @@ const isTicketVisibleAfterReadUpdate = (
   queryKey: readonly unknown[],
 ): boolean => {
   const readFilter = queryKey[PLAYER_SUPPORT_QUERY_READ_FILTER_INDEX];
-  if (readFilter === CreatorTicketReadFilter.NUMBER_1) {
+  if (readFilter === CreatorTicketReadFilter.Read) {
     return ticket.viewedByCreator === true;
   }
-  if (readFilter === CreatorTicketReadFilter.NUMBER_2) {
+  if (readFilter === CreatorTicketReadFilter.Unread) {
     return ticket.viewedByCreator !== true;
   }
   return true;

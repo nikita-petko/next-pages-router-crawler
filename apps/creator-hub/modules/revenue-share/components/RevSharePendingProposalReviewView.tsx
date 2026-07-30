@@ -5,6 +5,7 @@ import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import RevShareManageActionButton from './RevShareManageActionButton';
 import RevShareReviewShell from './RevShareReviewShell';
 import type { RevShareDiffRowData } from './tables/RevShareDiffTable';
 
@@ -12,11 +13,12 @@ type RevSharePendingProposalReviewViewProps = {
   rows: readonly RevShareDiffRowData[];
   onBack: () => void;
   onCancelProposal: () => void;
+  canManage?: boolean;
 };
 
 const RevSharePendingProposalReviewView: FunctionComponent<
   RevSharePendingProposalReviewViewProps
-> = ({ rows, onBack, onCancelProposal }) => {
+> = ({ rows, onBack, onCancelProposal, canManage = true }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
 
   return (
@@ -39,13 +41,18 @@ const RevSharePendingProposalReviewView: FunctionComponent<
               translationKey('Action.Back', TranslationNamespace.Controls),
             )}
           </Button>
-          <Button type='button' variant='Alert' size='Medium' onClick={onCancelProposal}>
+          <RevShareManageActionButton
+            type='button'
+            variant='Alert'
+            size='Medium'
+            canManage={canManage}
+            onClick={onCancelProposal}>
             {tPendingTranslation(
               'Cancel proposal',
               'Button label for cancelling a pending revenue share proposal.',
               translationKey('Action.CancelProposal', TranslationNamespace.RevenueShareAgreements),
             )}
-          </Button>
+          </RevShareManageActionButton>
         </div>
       }
     />

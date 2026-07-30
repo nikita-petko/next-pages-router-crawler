@@ -1,6 +1,6 @@
 // Presents the revenue-share landing page with tabs, filters, agreement rows, and target action routing.
 import { useCallback, useMemo, useState, type ChangeEvent, type FunctionComponent } from 'react';
-import { Button, Chip, Tabs, TabsList, TabsTrigger, TextInput } from '@rbx/foundation-ui';
+import { Chip, Tabs, TabsList, TabsTrigger, TextInput } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
@@ -17,6 +17,7 @@ import {
   filterLandingRecipientAgreements,
 } from '../utils/revShareModel';
 import type { RevSharePerspective } from '../utils/revShareRouteState';
+import RevShareManageActionButton from './RevShareManageActionButton';
 import RevShareLandingTable from './tables/RevShareLandingTable';
 
 type RevShareLandingViewBaseProps = {
@@ -25,6 +26,7 @@ type RevShareLandingViewBaseProps = {
   onManagerRowClick?: (row: ManagerAgreement) => void;
   onRecipientRowClick?: (row: RecipientAgreement) => void;
   onNewAgreement?: () => void;
+  canManage?: boolean;
   emptyMessage?: string;
   isUserView?: boolean;
   focusTarget?: RevShareTarget | null;
@@ -57,6 +59,7 @@ const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
   onManagerRowClick,
   onRecipientRowClick,
   onNewAgreement,
+  canManage = true,
   emptyMessage,
   isUserView = false,
   focusTarget,
@@ -200,9 +203,13 @@ const RevShareLandingView: FunctionComponent<RevShareLandingViewProps> = ({
     translationKey('Label.SearchTargets', TranslationNamespace.RevenueShareAgreements),
   );
   const newAgreementAction = onNewAgreement ? (
-    <Button variant='Emphasis' size='Medium' onClick={onNewAgreement}>
+    <RevShareManageActionButton
+      variant='Emphasis'
+      size='Medium'
+      canManage={canManage}
+      onClick={onNewAgreement}>
       {newAgreementLabel}
-    </Button>
+    </RevShareManageActionButton>
   ) : null;
 
   return (

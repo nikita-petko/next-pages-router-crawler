@@ -25,6 +25,7 @@ export type RevSharePendingProposalFlowProps = {
   resolveRecipientParty: (recipient: RevShareRecipient) => ResolvedRevShareParty;
   currentUserId?: string | number | null;
   action: 'review' | 'cancel';
+  canManage?: boolean;
   isTermsAccepted: boolean;
   onTermsAcceptedChange: (isAccepted: boolean) => void;
   onBack: () => void;
@@ -41,6 +42,7 @@ const RevSharePendingProposalFlow: FunctionComponent<RevSharePendingProposalFlow
   resolveRecipientParty,
   currentUserId,
   action,
+  canManage = true,
   isTermsAccepted,
   onTermsAcceptedChange,
   onBack,
@@ -142,6 +144,7 @@ const RevSharePendingProposalFlow: FunctionComponent<RevSharePendingProposalFlow
       rows={rows}
       onBack={onBack}
       onCancelProposal={onCancelProposal}
+      canManage={canManage}
     />
   );
 };

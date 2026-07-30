@@ -7,11 +7,13 @@ import { isRevenueShareAgreementsEnabled } from '@generated/flags/creatorBusines
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import Authenticated from '@modules/authentication/Authenticated';
+import useCurrentOrganization from '@modules/group/hooks/useCurrentOrganization';
 import getOrganizationLayout from '@modules/group/layout/getOrganizationLayout';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { PageNotFound } from '@modules/miscellaneous/error';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import RevShareGroupAgreementsContainer from '@modules/revenue-share/containers/RevShareGroupAgreementsContainer';
+import { resolveRevShareAccess } from '@modules/revenue-share/utils/revSharePermissions';
 
 const ManagedRevShareAgreementsTitle: FunctionComponent = () => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
@@ -29,6 +31,15 @@ const ManagedRevShareAgreementsTitle: FunctionComponent = () => {
   );
 };
 
+const RevShareGroupPageContent: FunctionComponent = () => {
+  const { permissions, isOrganizationLoading } = useCurrentOrganization();
+  if (isOrganizationLoading || permissions === undefined) {
+    return <PageLoading />;
+  }
+  const { canManage } = resolveRevShareAccess(permissions);
+  return <RevShareGroupAgreementsContainer canManage={canManage} />;
+};
+
 const RevShareGroupPage: NextLayoutPage = () => {
   const { ready, value: isEnabled } = useFlag(isRevenueShareAgreementsEnabled);
   if (!ready) {
@@ -39,7 +50,7 @@ const RevShareGroupPage: NextLayoutPage = () => {
   }
   return (
     <Authenticated>
-      <RevShareGroupAgreementsContainer />
+      <RevShareGroupPageContent />
     </Authenticated>
   );
 };

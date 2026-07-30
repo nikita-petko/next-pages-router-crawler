@@ -17,6 +17,7 @@ import {
   RevShareRecipientType,
   type RevShareRecipient,
 } from '@modules/revenue-share/interface/RevShareViewModel';
+import { FULL_REV_SHARE_ACCESS } from '@modules/revenue-share/utils/revSharePermissions';
 
 // `Heading.RecipientRevenueShareAgreements` isn't registered in Translations Hub yet, so this
 // layout title (unlike the page's in-content heading) can't use `<Translate>` directly; it needs
@@ -54,7 +55,7 @@ const RecipientRevShareAgreementsContent: FunctionComponent = () => {
   return (
     <RevShareRecipientContainer
       recipient={recipient}
-      canRespond
+      canRespond={FULL_REV_SHARE_ACCESS.canManage}
       isReady={user !== null}
       surface='page'
     />

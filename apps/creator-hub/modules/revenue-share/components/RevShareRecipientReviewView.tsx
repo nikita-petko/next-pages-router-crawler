@@ -8,6 +8,7 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { RevShareConfirmationStatus } from '../interface/RevShareViewModel';
 import { translateRevShareRecipientSettledStatusBanner } from '../utils/revShareRecipientProposalStatusPresentation';
 import RevShareBanner from './RevShareBanner';
+import RevShareManageActionButton from './RevShareManageActionButton';
 import RevShareReviewShell from './RevShareReviewShell';
 import type { RevShareDiffRowData } from './tables/RevShareDiffTable';
 
@@ -42,7 +43,7 @@ const RevShareRecipientReviewView: FunctionComponent<RevShareRecipientReviewView
   );
   const controlsDisabled = isSubmitting;
   const footer = useMemo(() => {
-    if (isPending && canRespond) {
+    if (isPending) {
       return (
         <div className='flex justify-end gap-medium'>
           <Button
@@ -53,14 +54,15 @@ const RevShareRecipientReviewView: FunctionComponent<RevShareRecipientReviewView
             onClick={onBack}>
             {backLabel}
           </Button>
-          <Button
+          <RevShareManageActionButton
             type='button'
             variant='Emphasis'
             size='Medium'
+            canManage={canRespond}
             isDisabled={controlsDisabled}
             onClick={onAccept}>
             {acceptLabel}
-          </Button>
+          </RevShareManageActionButton>
         </div>
       );
     }

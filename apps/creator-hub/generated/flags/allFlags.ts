@@ -194,7 +194,7 @@ export const generatedFlags = [
       metadata: {
         namespace: 'creator-analytics',
         name: 'isExperienceAlertsEnabled',
-        defaultValue: false,
+        defaultValue: true,
         valueType: 'boolean',
         contextType: 'universe',
       },
