@@ -155,26 +155,26 @@ export const applySankeyNodePresentation = (
         cornerMode,
       });
 
-      const element = node.graphic.element;
-      if (element) {
-        element.setAttribute('d', path);
-        element.setAttribute('stroke', borderColor);
-        element.setAttribute('stroke-width', String(borderWidth));
-        element.setAttribute('paint-order', 'stroke fill');
-        element.setAttribute('stroke-linejoin', 'round');
-        element.setAttribute('opacity', String(nodeOpacity));
-        if (nodeId) {
-          element.setAttribute('data-sankey-node', '');
-          element.setAttribute('data-node-id', nodeId);
-        }
-      }
-
+      // Use the Highcharts API for attributes Highcharts manages so its
+      // internal state stays consistent with the DOM on redraws.
       node.graphic.attr({
         d: path,
         stroke: borderColor,
         'stroke-width': borderWidth,
         opacity: nodeOpacity,
       });
+
+      // SVG presentation attributes Highcharts does not manage — these must
+      // be set directly on the DOM element.
+      const element = node.graphic.element;
+      if (element) {
+        element.setAttribute('paint-order', 'stroke fill');
+        element.setAttribute('stroke-linejoin', 'round');
+        if (nodeId) {
+          element.setAttribute('data-sankey-node', '');
+          element.setAttribute('data-node-id', nodeId);
+        }
+      }
     }
 
     if (node.dataLabel) {
@@ -207,6 +207,5 @@ export const applySankeyNodePresentation = (
       'fill-opacity': linkOpacity,
       opacity: 1,
     });
-    point.graphic.element?.setAttribute('fill-opacity', String(linkOpacity));
   }
 };

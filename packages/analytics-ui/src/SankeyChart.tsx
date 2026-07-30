@@ -169,7 +169,7 @@ const SankeyChart = ({
   });
 
   const applyPresentation = useCallback(
-    (chart: Chart, options?: { refreshOverview?: boolean }) => {
+    (chart: Chart) => {
       applySankeyNodePresentation(chart, {
         nodeRadius,
         borderWidth: DefaultNodeBorderWidth,
@@ -181,20 +181,21 @@ const SankeyChart = ({
         dimmedLinkOpacity: FocusDimmedLinkOpacity,
         dimmedNodeOpacity: FocusDimmedNodeOpacity,
       });
-      if (options?.refreshOverview !== false) {
-        const nextModel = extractSankeyOverviewModel(chart);
-        setOverviewModel((previous) =>
-          previous?.width === nextModel?.width &&
-          previous?.height === nextModel?.height &&
-          previous?.nodes.length === nextModel?.nodes.length &&
-          previous?.links.length === nextModel?.links.length
-            ? previous
-            : nextModel,
-        );
-      }
     },
     [focusedNodeId, linkOpacity, nodeBorderColor, nodeRadius],
   );
+
+  const refreshOverviewModel = useCallback((chart: Chart) => {
+    const nextModel = extractSankeyOverviewModel(chart);
+    setOverviewModel((previous) =>
+      previous?.width === nextModel?.width &&
+      previous?.height === nextModel?.height &&
+      previous?.nodes.length === nextModel?.nodes.length &&
+      previous?.links.length === nextModel?.links.length
+        ? previous
+        : nextModel,
+    );
+  }, []);
 
   const nodesById = useMemo(() => {
     const map = new Map<string, SankeyNode>();
@@ -322,20 +323,17 @@ const SankeyChart = ({
           chartRef.current = this;
           chartOptions.events?.load?.call(this, event);
           applyPresentation(this);
+          refreshOverviewModel(this);
         },
         render(this: Chart, event: Event) {
           chartRef.current = this;
           chartOptions.events?.render?.call(this, event);
-          requestAnimationFrame(() => {
-            const chart = chartRef.current;
-            if (chart) {
-              applyPresentation(chart);
-            }
-          });
+          applyPresentation(this);
+          refreshOverviewModel(this);
         },
       },
     }),
-    [applyPresentation, chartOptions, contentWidth],
+    [applyPresentation, refreshOverviewModel, chartOptions, contentWidth],
   );
   const tooltipOptions = useSankeyTooltipOptions({ formatNodeCount });
 
@@ -356,30 +354,38 @@ const SankeyChart = ({
   );
 
   // Measure the scroll container width so the chart can fill it at zoom 1.
+  // A 1px threshold ignores sub-pixel noise and scrollbar jitter that would
+  // otherwise cause a measure → re-render → re-measure cycle.
   useLayoutEffect(() => {
     const element = scrollRef.current;
     if (!element) {
       return undefined;
     }
+    let lastWidth = 0;
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
-      if (entry) {
-        setMeasuredWidth(entry.contentRect.width);
+      if (!entry) {
+        return;
+      }
+      const nextWidth = entry.contentRect.width;
+      if (nextWidth > 0 && Math.abs(nextWidth - lastWidth) >= 1) {
+        lastWidth = nextWidth;
+        setMeasuredWidth(nextWidth);
       }
     });
     observer.observe(element);
     if (element.clientWidth > 0) {
+      lastWidth = element.clientWidth;
       setMeasuredWidth(element.clientWidth);
     }
     return () => observer.disconnect();
   }, [scrollRef]);
 
   // Re-apply presentation when focus changes without waiting for a Highcharts redraw.
-  // Skip overview refresh here so setState does not loop on every focus toggle.
   useLayoutEffect(() => {
     const chart = chartRef.current;
     if (chart) {
-      applyPresentation(chart, { refreshOverview: false });
+      applyPresentation(chart);
     }
   }, [applyPresentation]);
 
@@ -492,7 +498,11 @@ const SankeyChart = ({
                 transform: `scale(${zoom})`,
               }}>
               {measuredWidth > 0 ? (
-                <GenericSeriesChart options={highchartsOptions} showLocalizedTime={false} />
+                <GenericSeriesChart
+                  options={highchartsOptions}
+                  showLocalizedTime={false}
+                  chartUpdatePolicy='non-animated'
+                />
               ) : null}
             </div>
           </div>

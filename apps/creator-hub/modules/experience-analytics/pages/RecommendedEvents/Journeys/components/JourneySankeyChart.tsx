@@ -45,6 +45,11 @@ const JourneySankeyChart: FC<{ chartContext: RAQIV2ChartContext }> = ({ chartCon
     }));
   }, [journeyData, sankeyMetric]);
 
+  // Stabilize the node reference so React Query background refetches that return
+  // identical data don't bypass SankeyChart's React.memo and trigger spurious
+  // chart.update() redraws.
+  const sankeyNodes = useMemo(() => sankeyData?.nodes, [sankeyData]);
+
   if (!journeyName) {
     return null;
   }
@@ -66,8 +71,8 @@ const JourneySankeyChart: FC<{ chartContext: RAQIV2ChartContext }> = ({ chartCon
             )}
           />
         </div>
-      ) : sankeyData && activeSankeyLinks ? (
-        <SankeyChart nodes={sankeyData.nodes} links={activeSankeyLinks} />
+      ) : sankeyNodes && activeSankeyLinks ? (
+        <SankeyChart nodes={sankeyNodes} links={activeSankeyLinks} />
       ) : (
         <p className='content-muted'>
           {tPendingTranslation(
