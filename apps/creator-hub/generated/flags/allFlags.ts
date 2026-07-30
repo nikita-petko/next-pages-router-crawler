@@ -210,6 +210,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: creatorAnalyticsFlags.isExperimentationTemplatesEnabled,
+      metadata: {
+        namespace: 'creator-analytics',
+        name: 'isExperimentationTemplatesEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: creatorAnalyticsFlags.isExperimentTargetingEnabled,
       metadata: {
         namespace: 'creator-analytics',

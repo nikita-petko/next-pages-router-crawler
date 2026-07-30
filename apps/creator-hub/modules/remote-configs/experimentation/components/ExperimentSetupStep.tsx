@@ -15,7 +15,10 @@ import {
   FormLabel,
   Typography,
 } from '@rbx/ui';
-import { isExperimentTargetingEnabled as isExperimentTargetingEnabledFlag } from '@generated/flags/creatorAnalytics';
+import {
+  isExperimentTargetingEnabled as isExperimentTargetingEnabledFlag,
+  isExperimentationTemplatesEnabled as isExperimentationTemplatesEnabledFlag,
+} from '@generated/flags/creatorAnalytics';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import getAnalyticsMetricDisplayConfig from '@modules/experience-analytics-shared/constants/AnalyticsMetricDisplayConfig';
@@ -41,6 +44,7 @@ import ExperimentTypeTranslationKeys from '../utils/experimentTypeTranslationKey
 import CreationStepperButtons from './CreationStepperButtons';
 import ExperimentTargetingCopyModal from './ExperimentTargetingCopyModal';
 import MDECardInForm from './MDECardInForm';
+import MetricSetSelector from './MetricSetSelector';
 
 type ExperimentSetupStepProps = {
   onNext: () => void;
@@ -78,6 +82,10 @@ const ExperimentSetupStep: FunctionComponent<ExperimentSetupStepProps> = ({
   );
   const isExperimentTargetingEnabled =
     isExperimentTargetingFlagReady && (isExperimentTargetingFlagValue ?? false);
+  const { ready: isExperimentationTemplatesFlagReady, value: isExperimentationTemplatesFlagValue } =
+    useFlag(isExperimentationTemplatesEnabledFlag);
+  const isExperimentationTemplatesEnabled =
+    isExperimentationTemplatesFlagReady && (isExperimentationTemplatesFlagValue ?? false);
   const { translate, tPendingTranslation } = useTranslationWrapper(useTranslation());
 
   const validateTargetingClauses: Validate<TargetingClauseFormData[], SetupStepFormData> =
@@ -362,6 +370,14 @@ const ExperimentSetupStep: FunctionComponent<ExperimentSetupStepProps> = ({
           )}
         />
       </Grid>
+      {/* Metric set selector (flag-gated) */}
+      {isExperimentationTemplatesEnabled && (
+        <Grid item>
+          <MetricSetSelector
+            disabled={!!(experiment && experiment.state !== ExperimentState.Draft)}
+          />
+        </Grid>
+      )}
       {/* Goal metric selector */}
       <Grid item>
         <Controller

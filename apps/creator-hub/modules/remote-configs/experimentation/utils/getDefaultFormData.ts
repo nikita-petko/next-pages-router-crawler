@@ -17,6 +17,7 @@ export const getDefaultFormData = (type: ExperimentProductType): ExperimentFormD
   const base = {
     type,
     name: '',
+    metricTemplateType: null,
     exposurePercent: 100,
     variants: [],
     chosenConfig: null,

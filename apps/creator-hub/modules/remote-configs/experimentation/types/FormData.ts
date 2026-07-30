@@ -11,6 +11,7 @@ import type {
 } from '../../api/universeExperimentationClientEnums';
 import type { ValidExperimentConfigurationForCreation } from '../../api/validExperimentationTypes';
 import type { TargetingClauseFormData } from '../../types/FormData';
+import type { MetricTemplateType } from './MetricTemplateType';
 
 export type PlaceScoringConfig = {
   placeId: number | undefined;
@@ -44,6 +45,10 @@ export type ConfigurationStepFormDataMatchmaking = {
 export type SetupStepFormData = {
   type: ExperimentProductType;
   name: string;
+  // Metric set / experiment template selection. Optional for now — captured in
+  // the form but only surfaced behind the `isExperimentationTemplatesEnabled` flag
+  // and not yet sent to the backend.
+  metricTemplateType: MetricTemplateType | null;
   exposurePercent: number;
   goalMetric: ExperimentMetric | null;
   durationDays: number;
@@ -53,6 +58,7 @@ export type SetupStepFormData = {
 export const setupStepFormDataKeys = [
   'type',
   'name',
+  'metricTemplateType',
   'exposurePercent',
   'goalMetric',
   'durationDays',

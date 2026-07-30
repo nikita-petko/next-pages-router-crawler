@@ -22,6 +22,11 @@ export const isOwnershipWatermarkEnabled = defineFlag({
     name: 'isOwnershipWatermarkEnabled',
     defaultValue: true,
   });
+export const isExperimentationTemplatesEnabled = defineFlag({
+    namespace: 'creator-analytics',
+    name: 'isExperimentationTemplatesEnabled',
+    defaultValue: false,
+  });
 export const isExperimentTargetingEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isExperimentTargetingEnabled',
