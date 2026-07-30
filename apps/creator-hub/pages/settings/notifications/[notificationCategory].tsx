@@ -3,7 +3,6 @@ import { Translate } from '@rbx/intl';
 import Authenticated from '@modules/authentication/Authenticated';
 import { getCreatorSettingsAppNavigationLayout } from '@modules/creator-settings/CreatorSettingsAppNavigationLayout';
 import CreatorSettingsNotificationsCategoryMetadataContainer from '@modules/creator-settings/notifications-settings/category/CreatorSettingsNotificationsCategoryMetadataContainer';
-import { PageNotFound } from '@modules/miscellaneous/error';
 
 const VALID_CATEGORY_KEYS = [
   'CloudServices',
@@ -35,10 +34,6 @@ const getSettingsPageLayout: NextGetPageLayout = (page, { query }) => {
 };
 
 const NotificationsSettingsCategoryPage: NextLayoutPage = () => {
-  if (process.env.buildTarget === 'luobu') {
-    return <PageNotFound />;
-  }
-
   return (
     <Authenticated>
       <CreatorSettingsNotificationsCategoryMetadataContainer />

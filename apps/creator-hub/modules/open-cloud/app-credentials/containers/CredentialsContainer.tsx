@@ -1,11 +1,9 @@
+import { useReducer, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { Fragment, useReducer, useCallback, useMemo } from 'react';
-import { StatusCodes } from '@rbx/core';
 import { HubMeta } from '@rbx/creator-hub-history';
 import { withTranslation, useTranslation } from '@rbx/intl';
 import { Link, Grid, CircularProgress, Typography, List, ListItem, ListItemText } from '@rbx/ui';
 import { EmptyGrid } from '@modules/miscellaneous/components';
-import { ErrorPage } from '@modules/miscellaneous/error';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { creatorHub } from '@modules/miscellaneous/urls';
 import { useCurrentGroup } from '@modules/providers/groups/GroupsProvider';
@@ -58,9 +56,11 @@ const CredentialsContainer = () => {
   const router = useRouter();
   const activeTabState = useMemo(() => {
     const { activeTab } = router.query;
-    if (!Object.values(CredentialsTabsStates).includes(activeTab as CredentialsTabsStates)) {
+    const tabValues: string[] = Object.values(CredentialsTabsStates);
+    if (typeof activeTab !== 'string' || !tabValues.includes(activeTab)) {
       return CredentialsTabsStates.ApiKeysTab;
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowed by includes() above
     return activeTab as CredentialsTabsStates;
   }, [router]);
   const { translate, translateHTML } = useTranslation();
@@ -84,10 +84,6 @@ const CredentialsContainer = () => {
       );
     },
   };
-
-  if (process.env.buildTarget !== 'global') {
-    return <ErrorPage errorCode={StatusCodes.NOT_FOUND} />;
-  }
 
   if (OAuthMetadata.isLoading) {
     return (

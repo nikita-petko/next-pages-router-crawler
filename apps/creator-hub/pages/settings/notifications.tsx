@@ -4,7 +4,6 @@ import { Translate } from '@rbx/intl';
 import Authenticated from '@modules/authentication/Authenticated';
 import { getCreatorSettingsAppNavigationLayout } from '@modules/creator-settings/CreatorSettingsAppNavigationLayout';
 import CreatorSettingsNotificationsMetadataContainer from '@modules/creator-settings/notifications-settings/CreatorSettingsNotificationsMetadataContainer';
-import { PageNotFound } from '@modules/miscellaneous/error';
 
 const getSettingsPageLayout = (page: ReactNode) =>
   getCreatorSettingsAppNavigationLayout(page, {
@@ -14,10 +13,6 @@ const getSettingsPageLayout = (page: ReactNode) =>
   });
 
 const NotificationsSettingsPage: NextLayoutPage = () => {
-  if (process.env.buildTarget === 'luobu') {
-    return <PageNotFound />;
-  }
-
   return (
     <Authenticated>
       <CreatorSettingsNotificationsMetadataContainer />
