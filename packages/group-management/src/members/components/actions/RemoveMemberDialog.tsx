@@ -2,39 +2,36 @@ import type { FunctionComponent } from 'react';
 import React, { useCallback } from 'react';
 import { useTranslation } from '@rbx/intl';
 import { Dialog, DialogTemplate } from '@rbx/ui';
-import type { GroupUserWithRoles } from '../../../clients/groups';
 import useCurrentGroup from '../../../hooks/useCurrentGroup';
-import { useRemoveMemberFromOrg } from '../../../queries';
+import { useRemoveMemberFromGroup } from '../../../queries';
+import type { Member } from '../../../utils/constants';
 import { OrganizationsEventName, logOrganizationsEvent } from '../../../utils/eventUtils';
 
 export type RemoveMemberDialogProps = {
   open: boolean;
-  setOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  member: GroupUserWithRoles;
+  onClose: () => void;
+  member: Member;
   username?: string;
 };
 
+/** Confirmation for kicking a member out of the group. */
 const RemoveMemberDialog: FunctionComponent<RemoveMemberDialogProps> = ({
   open,
-  setOpen,
+  onClose,
   member,
   username,
 }) => {
   const { translate } = useTranslation();
 
   const { organization, unifiedLogger, showToast } = useCurrentGroup();
-  const { mutate: removeMemberFromOrg } = useRemoveMemberFromOrg();
+  const { mutate: removeMemberFromGroup } = useRemoveMemberFromGroup();
 
   const handleConfirmDialog = useCallback(() => {
-    if (!organization?.id || !member.user?.userId) {
+    if (!organization?.groupId || !member.user?.userId) {
       return;
     }
-    removeMemberFromOrg(
-      {
-        organizationId: organization.id,
-        groupId: organization.groupId,
-        member,
-      },
+    removeMemberFromGroup(
+      { groupId: organization.groupId, member },
       {
         onSuccess: () => {
           showToast(translate('Message.UserRemoved'));
@@ -48,8 +45,8 @@ const RemoveMemberDialog: FunctionComponent<RemoveMemberDialogProps> = ({
       group_id: organization?.groupId ?? '',
       user_id: member.user?.userId?.toString() ?? '',
     });
-    setOpen(false);
-  }, [removeMemberFromOrg, unifiedLogger, organization, member, setOpen, showToast, translate]);
+    onClose();
+  }, [removeMemberFromGroup, unifiedLogger, organization, member, onClose, showToast, translate]);
 
   return (
     <Dialog open={open}>
@@ -64,7 +61,7 @@ const RemoveMemberDialog: FunctionComponent<RemoveMemberDialogProps> = ({
         confirmText={translate('Action.Remove')}
         onConfirm={handleConfirmDialog}
         cancelText={translate('Action.Cancel')}
-        onCancel={() => setOpen(false)}
+        onCancel={onClose}
       />
     </Dialog>
   );

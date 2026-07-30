@@ -1,258 +1,327 @@
-import type { FunctionComponent } from 'react';
-import React, { useMemo, useState } from 'react';
-import { useTranslation } from '@rbx/intl';
-import {
-  CircularProgress,
-  Grid,
-  makeStyles,
-  Pagination,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Typography,
-  useMediaQuery,
-} from '@rbx/ui';
-import type { GroupRoleMetadata, GroupUserWithRoles } from '../../clients/groups';
+import type { FunctionComponent, ReactNode } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Dropdown, Menu, MenuItem, MenuSection, ProgressCircle } from '@rbx/foundation-ui';
+import { useTranslation, withTranslation } from '@rbx/intl';
+import type { GroupRoleMetadata } from '../../clients/groups';
+import TranslationNamespace from '../../constants/TranslationNamespace';
 import useCurrentGroup from '../../hooks/useCurrentGroup';
 import {
-  useGetInvitationsWithRole,
   useGetGroupUsersWithRoles,
   useGetGroupsRoles,
+  useGetInvitationsWithRole,
+  useGetUserByUsername,
 } from '../../queries';
+import type { Member } from '../../utils/constants';
 import {
+  DefaultMemberRoleId,
   DefaultMemberRoleIdNumber,
   GroupMembersMenuState,
+  GuestRoleRank,
   MembersPageSize,
-  noResultsIconPath,
 } from '../../utils/constants';
+import RemoveFromRoleButton from './actions/RemoveFromRoleButton';
+import PaginatedMemberList from './common/PaginatedMemberList';
+import RoleIcon from './common/RoleIcon';
+import SearchInput from './common/SearchInput';
+import GroupMemberRoleChips from './GroupMemberRoleChips';
 import GroupMembersRow from './GroupMembersRow';
-import RoleMembersRow from './RoleMembersRow';
-
-const useGroupMembersTableStyles = makeStyles()((theme) => ({
-  table: {
-    [theme.breakpoints.down('Medium')]: {
-      display: 'flex',
-    },
-  },
-}));
 
 export type GroupMembersTableProps = {
   menuState: GroupMembersMenuState;
-  roleFilter: GroupRoleMetadata | null;
+  roleFilter?: GroupRoleMetadata | null;
   isRoleMembersPage?: boolean;
+  toolbarStart?: ReactNode;
 };
 
+/**
+ * Searchable, paginated list of a group's members or pending invitations for a single role,
+ * defaulting to the default member role. All actions on a row are gated by resolved permissions.
+ */
 const GroupMembersTable: FunctionComponent<GroupMembersTableProps> = ({
   menuState,
-  roleFilter,
+  roleFilter = null,
   isRoleMembersPage = false,
+  toolbarStart,
 }) => {
-  const {
-    classes: { table },
-  } = useGroupMembersTableStyles();
-  const { translate } = useTranslation();
-  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('Medium'));
+  const { translate, translateWithNamespace } = useTranslation();
+  const { organization, permissions } = useCurrentGroup();
+  const { data: roles, isLoading: isRolesLoading } = useGetGroupsRoles(organization?.groupId);
 
-  const { organization } = useCurrentGroup();
-  const { data: roles } = useGetGroupsRoles(organization?.groupId);
-
-  const [membersPageTokens, setMembersPageTokens] = useState<(string | null | undefined)[]>([]);
-  const [invitationsPageTokens, setInvitationsPageTokens] = useState<(string | null | undefined)[]>(
+  const [selectedRoleValue, setSelectedRoleValue] = useState<string>(DefaultMemberRoleId);
+  const [searchedUsername, setSearchedUsername] = useState<string>('');
+  const [page, setPage] = useState(0);
+  const [memberPageCursors, setMemberPageCursors] = useState<(string | null | undefined)[]>([]);
+  const [invitationPageTokens, setInvitationPageTokens] = useState<(string | null | undefined)[]>(
     [],
   );
-  const [page, setPage] = useState<number>(0);
-  const [nextPageDisabled, setNextPageDisabled] = useState<boolean>(false);
-  const [prevMenuState, setPrevMenuState] = useState(menuState);
-  const [prevRoleFilter, setPrevRoleFilter] = useState(roleFilter);
-  if (prevMenuState !== menuState || prevRoleFilter !== roleFilter) {
-    setPrevMenuState(menuState);
-    setPrevRoleFilter(roleFilter);
+
+  const isInvited = menuState === GroupMembersMenuState.Invited;
+  const canFetchInvitations = permissions?.canInviteMembers === true && isInvited;
+
+  const sortedRoles = useMemo(() => {
+    const selectableRoles = (roles ?? []).filter((role) => role.rank !== GuestRoleRank);
+    return [
+      ...selectableRoles.filter((role) => role.id === DefaultMemberRoleIdNumber),
+      ...selectableRoles.filter((role) => role.id !== DefaultMemberRoleIdNumber).toReversed(),
+    ];
+  }, [roles]);
+
+  const activeRole = useMemo(() => {
+    if (isRoleMembersPage) {
+      return roleFilter;
+    }
+    return (
+      sortedRoles.find((role) => role.id?.toString() === selectedRoleValue) ??
+      sortedRoles[0] ??
+      null
+    );
+  }, [isRoleMembersPage, roleFilter, selectedRoleValue, sortedRoles]);
+
+  const pagingKey = `${menuState}:${activeRole?.id ?? ''}:${searchedUsername}`;
+  const [renderedPagingKey, setRenderedPagingKey] = useState(pagingKey);
+  if (renderedPagingKey !== pagingKey) {
+    setRenderedPagingKey(pagingKey);
     setPage(0);
-    setNextPageDisabled(false);
+    setMemberPageCursors([]);
+    setInvitationPageTokens([]);
   }
 
-  const { data: usersWithRole, isFetching: isUsersFetching } = useGetGroupUsersWithRoles(
-    organization?.groupId ?? '',
-    roleFilter?.id,
-    MembersPageSize,
-    membersPageTokens[page],
-  );
+  const { data: searchedUser, isFetching: isSearching } = useGetUserByUsername(searchedUsername);
+  const hasUnmatchedSearch = searchedUsername !== '' && !isSearching && !searchedUser;
+
+  const isFilterReady = isRoleMembersPage || !isRolesLoading;
+
+  const membersEnabled = !isInvited && !hasUnmatchedSearch && isFilterReady;
+
+  const isAllRolesFilter = !isRoleMembersPage && activeRole?.id === DefaultMemberRoleIdNumber;
+  const searchRoleId = isAllRolesFilter && searchedUser ? null : activeRole?.id;
+
   const {
-    data: { invitationRoles, invitationsUserMap, invitationsPageToken } = {},
-    isFetching: isInvitationsFetching,
-  } = useGetInvitationsWithRole(
-    organization?.id,
-    roleFilter?.id?.toString(),
-    invitationsPageTokens[page],
+    data: membersPage,
+    isLoading: isMembersLoading,
+    isFetching: isMembersFetching,
+    isError: isMembersError,
+  } = useGetGroupUsersWithRoles(
+    organization?.groupId ?? '',
+    searchRoleId,
     MembersPageSize,
-    roleFilter?.id === DefaultMemberRoleIdNumber,
+    memberPageCursors[page],
+    { enabled: membersEnabled, filteredUserId: searchedUser?.id },
   );
-  const mappedInvitations: GroupUserWithRoles[] | undefined = useMemo(() => {
-    return invitationRoles?.map((invitation) => ({
-      user: {
-        userId: Number.parseInt(invitation?.userId ?? '0', 10),
-        displayName: invitationsUserMap?.get(`${invitation?.userId}`)?.displayName,
-        username: invitationsUserMap?.get(`${invitation?.userId}`)?.name,
-      },
-      roles:
-        roles?.filter(
-          (role) =>
-            (role.id !== undefined && invitation?.roleIds?.includes(role.id.toString()) === true) ||
-            role.id === DefaultMemberRoleIdNumber,
-        ) ?? [],
-      invitationId: invitation?.invitationId,
-    }));
-  }, [invitationRoles, invitationsUserMap, roles]);
 
-  const [prevUsersWithRole, setPrevUsersWithRole] = useState<typeof usersWithRole | null>(null);
-  if (menuState === GroupMembersMenuState.Members && prevUsersWithRole !== usersWithRole) {
-    setPrevUsersWithRole(usersWithRole);
-    setMembersPageTokens((prevPageTokens) => {
-      const updatedPageTokens = [...prevPageTokens];
-      updatedPageTokens[page + 1] = usersWithRole?.nextPageCursor;
-      return updatedPageTokens;
-    });
-    if (page > 0 && usersWithRole?.data?.length === 0) {
-      setPage((prevPage) => prevPage - 1);
-      setNextPageDisabled(true);
+  const {
+    data: invitationsPage,
+    isLoading: isInvitationsLoading,
+    isFetching: isInvitationsFetching,
+    isError: isInvitationsError,
+  } = useGetInvitationsWithRole(
+    canFetchInvitations ? organization?.id : undefined,
+    canFetchInvitations ? (activeRole?.id?.toString() ?? DefaultMemberRoleId) : undefined,
+    invitationPageTokens[page],
+    MembersPageSize,
+    !activeRole || activeRole.id === DefaultMemberRoleIdNumber,
+    canFetchInvitations && isFilterReady,
+  );
+
+  const members: Member[] = useMemo(() => {
+    if (isInvited) {
+      return (
+        invitationsPage?.invitationRoles.flatMap((invitation) => {
+          if (!invitation) {
+            return [];
+          }
+          const invitedUser = invitationsPage.invitationsUserMap.get(invitation.userId);
+          return [
+            {
+              user: {
+                userId: Number.parseInt(invitation.userId, 10),
+                displayName: invitedUser?.displayName,
+                username: invitedUser?.name,
+              },
+              roles:
+                roles?.filter(
+                  (role) =>
+                    role.id !== undefined && invitation.roleIds.includes(role.id.toString()),
+                ) ?? [],
+              invitationId: invitation.invitationId,
+            },
+          ];
+        }) ?? []
+      );
     }
+
+    return membersPage?.data ?? [];
+  }, [invitationsPage, isInvited, membersPage, roles]);
+
+  const isPageSettled = isInvited
+    ? canFetchInvitations && !isInvitationsLoading && !isInvitationsFetching
+    : membersEnabled && !isMembersLoading && !isMembersFetching && !isSearching;
+  if (page > 0 && members.length === 0 && isPageSettled) {
+    setPage(page - 1);
   }
 
-  const [prevInvitationsPageToken, setPrevInvitationsPageToken] = useState<
-    typeof invitationsPageToken | null
-  >(null);
-  const [prevInvitationRoles, setPrevInvitationRoles] = useState<typeof invitationRoles | null>(
-    null,
+  const onSearchSubmit = useCallback((value: string) => setSearchedUsername(value.trim()), []);
+  const onSearchClear = useCallback(() => setSearchedUsername(''), []);
+
+  const renderMember = useCallback(
+    (member: Member) => (
+      <GroupMembersRow
+        key={member.user?.userId}
+        member={member}
+        menuState={menuState}
+        hideOverflow={isRoleMembersPage}
+        content={
+          isRoleMembersPage ? (
+            <span className='margin-left-auto invisible group-hover/row:visible max-[720px]:visible'>
+              <RemoveFromRoleButton member={member} menuState={menuState} role={activeRole} />
+            </span>
+          ) : (
+            <GroupMemberRoleChips member={member} menuState={menuState} />
+          )
+        }
+      />
+    ),
+    [menuState, isRoleMembersPage, activeRole],
   );
-  if (
-    menuState === GroupMembersMenuState.Invited &&
-    (prevInvitationsPageToken !== invitationsPageToken || prevInvitationRoles !== invitationRoles)
-  ) {
-    setPrevInvitationsPageToken(invitationsPageToken);
-    setPrevInvitationRoles(invitationRoles);
-    setInvitationsPageTokens((prevPageTokens) => {
-      const updatedPageTokens = [...prevPageTokens];
-      updatedPageTokens[page + 1] = invitationsPageToken;
-      return updatedPageTokens;
-    });
-    if (page > 0 && invitationRoles?.length === 0) {
-      setPage((prevPage) => prevPage - 1);
-      setNextPageDisabled(true);
+
+  const emptyMessage = useMemo(() => {
+    if (hasUnmatchedSearch) {
+      return translate('Label.NoResults');
     }
+    return isInvited ? translate('Label.NoInvitedMembers') : translate('Label.NoMembers');
+  }, [hasUnmatchedSearch, isInvited, translate]);
+
+  const isNextDisabled = useMemo(() => {
+    if (isInvited) {
+      return (
+        !invitationsPage?.invitationsPageToken ||
+        (invitationsPage.invitationRoles?.length ?? 0) < MembersPageSize
+      );
+    }
+
+    return !membersPage?.nextPageCursor || (membersPage.data?.length ?? 0) < MembersPageSize;
+  }, [invitationsPage, isInvited, membersPage]);
+
+  const goToPreviousPage = useCallback(() => {
+    setPage((previousPage) => previousPage - 1);
+  }, []);
+
+  const goToNextPage = useCallback(() => {
+    const nextPage = page + 1;
+
+    if (isInvited) {
+      setInvitationPageTokens((previousTokens) => {
+        const updatedTokens = [...previousTokens];
+        updatedTokens[nextPage] = invitationsPage?.invitationsPageToken;
+        return updatedTokens;
+      });
+    } else {
+      setMemberPageCursors((previousCursors) => {
+        const updatedCursors = [...previousCursors];
+        updatedCursors[nextPage] = membersPage?.nextPageCursor;
+        return updatedCursors;
+      });
+    }
+
+    setPage(nextPage);
+  }, [invitationsPage, isInvited, membersPage, page]);
+
+  if (!isFilterReady) {
+    return (
+      <div className='flex flex-col gap-medium width-full'>
+        <ProgressCircle
+          variant='Indeterminate'
+          size='Medium'
+          ariaLabel={translate('Label.Loading')}
+        />
+      </div>
+    );
   }
+
+  const showSearch = !isInvited;
+  const showRoleFilter = !isRoleMembersPage;
+  const showToolbar = Boolean(toolbarStart) || showSearch || showRoleFilter;
 
   return (
-    <Grid container direction='row' wrap='wrap'>
-      {(menuState === GroupMembersMenuState.Members && usersWithRole?.data?.length === 0) ||
-      (menuState === GroupMembersMenuState.Invited && mappedInvitations?.length === 0) ? (
-        <Grid container direction='column' alignItems='center' padding={3} gap={3}>
-          <Grid container justifyContent='center'>
-            <img
-              style={{ width: 145 }}
-              src={noResultsIconPath}
-              alt={translate('Label.NoMembers')}
-            />
-          </Grid>
-          <Grid container direction='column' justifyContent='center' alignItems='center' gap={1}>
-            <Typography variant='h6'>
-              {menuState === GroupMembersMenuState.Members
-                ? translate('Label.NoMembers')
-                : translate('Label.NoInvitedMembers')}
-            </Typography>
-            {isRoleMembersPage && (
-              <Typography variant='body1' align='center'>
-                {translate('Description.AddMembersToRole')}
-              </Typography>
-            )}
-          </Grid>
-        </Grid>
-      ) : (
-        <>
-          <Table className={table}>
-            {!isMobile && !isRoleMembersPage && (
-              <TableHead>
-                <TableRow className='flex'>
-                  <TableCell style={{ flex: '1 0 0' }}>
-                    <Typography variant='body2'>{translate('Label.User')}</Typography>
-                  </TableCell>
-                  <TableCell style={{ flex: '2 0 0' }}>
-                    <Typography variant='body2'>{translate('Label.Roles')}</Typography>
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-            )}
-            <TableBody className='width-full'>
-              {menuState === GroupMembersMenuState.Members && usersWithRole?.data && (
-                <>
-                  {usersWithRole.data.map((member) => (
-                    <TableRow key={member.user?.userId} className='flex'>
-                      {isRoleMembersPage ? (
-                        <RoleMembersRow member={member} menuState={menuState} role={roleFilter} />
-                      ) : (
-                        <GroupMembersRow member={member} menuState={menuState} />
-                      )}
-                    </TableRow>
-                  ))}
-                </>
+    <div className='flex flex-col gap-medium width-full'>
+      {showToolbar && (
+        <div className='flex items-center gap-small width-full'>
+          {toolbarStart && <div className='shrink-0'>{toolbarStart}</div>}
+          {(showSearch || showRoleFilter) && (
+            <div className='flex items-center gap-small min-width-0 grow-1'>
+              {showSearch && (
+                <div className='min-width-0 grow-2 basis-0'>
+                  <SearchInput
+                    className='width-full'
+                    size='Medium'
+                    placeholder={translate('Label.SearchMembers')}
+                    onSubmit={onSearchSubmit}
+                    onClear={onSearchClear}
+                  />
+                </div>
               )}
-              {menuState === GroupMembersMenuState.Invited && mappedInvitations && (
-                <>
-                  {mappedInvitations.map((member) => (
-                    <TableRow key={member.user?.userId} className='flex'>
-                      {isRoleMembersPage ? (
-                        <RoleMembersRow member={member} menuState={menuState} role={roleFilter} />
-                      ) : (
-                        <GroupMembersRow member={member} menuState={menuState} />
-                      )}
-                    </TableRow>
-                  ))}
-                </>
+              {showRoleFilter && (
+                <div className='grow-1 basis-0 min-width-150'>
+                  <Dropdown
+                    className='width-full'
+                    size='Medium'
+                    placeholder={translate('Action.FilterBy')}
+                    value={activeRole?.id?.toString() ?? selectedRoleValue}
+                    onValueChange={setSelectedRoleValue}>
+                    <Menu size='Medium'>
+                      <MenuSection>
+                        {sortedRoles.map((role) => {
+                          const isAllRoles = role.id === DefaultMemberRoleIdNumber;
+                          return (
+                            <MenuItem
+                              key={role.id}
+                              value={role.id?.toString() ?? ''}
+                              title={
+                                isAllRoles
+                                  ? translateWithNamespace(
+                                      TranslationNamespace.Groups,
+                                      'Label.AllRoles',
+                                    )
+                                  : (role.name ?? '')
+                              }
+                              leading={
+                                isAllRoles ? undefined : (
+                                  <RoleIcon roleId={role.id} color={role.color} />
+                                )
+                              }
+                            />
+                          );
+                        })}
+                      </MenuSection>
+                    </Menu>
+                  </Dropdown>
+                </div>
               )}
-            </TableBody>
-          </Table>
-          {((menuState === GroupMembersMenuState.Members &&
-            isUsersFetching &&
-            !usersWithRole?.data) ||
-            (menuState === GroupMembersMenuState.Invited &&
-              isInvitationsFetching &&
-              !invitationRoles)) && (
-            <Grid container justifyContent='center'>
-              <CircularProgress />
-            </Grid>
+            </div>
           )}
-          <Grid container width='100%' marginTop='16px' justifyContent='center'>
-            <Pagination
-              nextProps={{
-                disabled:
-                  nextPageDisabled ||
-                  (menuState === GroupMembersMenuState.Members &&
-                    (!usersWithRole?.nextPageCursor ||
-                      (usersWithRole?.data?.length ?? 0) < MembersPageSize)) ||
-                  (menuState === GroupMembersMenuState.Invited &&
-                    (!invitationsPageToken || (invitationRoles?.length ?? 0) < MembersPageSize)),
-                onClick: () => {
-                  setPage((prevPage) => prevPage + 1);
-                },
-              }}
-              page={page + 1}
-              previousProps={{
-                disabled: page === 0,
-                onClick: () => {
-                  setPage((prevPage) => prevPage - 1);
-                  setNextPageDisabled(false);
-                },
-              }}
-              shape='rounded'
-              size='medium'
-              variant='reduced'
-            />
-          </Grid>
-        </>
+        </div>
       )}
-    </Grid>
+
+      <PaginatedMemberList<Member>
+        items={members}
+        isLoading={isInvited ? isInvitationsLoading : isMembersLoading || isSearching}
+        isFetching={isInvited ? isInvitationsFetching : isMembersFetching}
+        isError={isInvited ? isInvitationsError : isMembersError}
+        renderItem={renderMember}
+        emptyMessage={emptyMessage}
+        hideResults={hasUnmatchedSearch && !isInvited}
+        page={page}
+        onPreviousPage={goToPreviousPage}
+        onNextPage={goToNextPage}
+        isPreviousDisabled={page === 0}
+        isNextDisabled={isNextDisabled}
+      />
+    </div>
   );
 };
 
-export default GroupMembersTable;
+export default withTranslation(GroupMembersTable, [
+  TranslationNamespace.Groups,
+  TranslationNamespace.Organization,
+  TranslationNamespace.GroupManagement,
+]);

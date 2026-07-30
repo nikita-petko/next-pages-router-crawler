@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   RobloxGroupsApiModelsRequestCreateRoleSetRequest,
   RobloxGroupsApiModelsRequestUpdateRoleSetRequest,
@@ -8,6 +8,7 @@ import type {
   RobloxGroupsApiModelsRequestUpdateRoleSetPositionRequest,
   V2GroupsGroupIdUsersGetLimitEnum,
 } from '@rbx/client-groups/v2';
+import { V2GroupsGroupIdUsersGetSortOrderEnum } from '@rbx/client-groups/v2';
 import groupsClient from '../clients/groups';
 import type { Invitation } from '../clients/organizationApi';
 import organizationApiClient from '../clients/organizationApi';
@@ -20,6 +21,7 @@ const GROUPS_CONFIGURATION_KEY = 'groupsApi_configuration_metadata';
 export function useGetGroupsRoles(groupId: string | undefined) {
   return useQuery({
     enabled: groupId !== undefined && groupId !== '',
+    placeholderData: keepPreviousData,
     queryKey: [`${GROUPS_ROLES_KEY_PREFIX}all`, groupId],
     queryFn: async () => {
       if (!groupId) {
@@ -33,28 +35,45 @@ export function useGetGroupsRoles(groupId: string | undefined) {
   });
 }
 
+/**
+ * A group's members, scoped to `roleId`. Pass `null` to reach members across every role, or leave
+ * it `undefined` while the caller is still resolving which role to ask for, which keeps the query
+ * idle rather than firing a request the endpoint would reject.
+ */
 export const useGetGroupUsersWithRoles = (
   groupId: string,
-  roleId?: number,
+  roleId?: number | null,
   limit?: V2GroupsGroupIdUsersGetLimitEnum,
   cursor?: string | null,
+  options?: { enabled?: boolean; filteredUserId?: number },
 ) => {
+  const enabled = (options?.enabled ?? true) && !!groupId && roleId !== undefined;
+
   return useQuery({
-    enabled: !!groupId,
+    enabled,
+    placeholderData: keepPreviousData,
     queryKey: [
       `${GROUPS_ROLES_KEY_PREFIX}usersWithRole`,
       groupId,
-      String(roleId ?? 0),
+      String(roleId),
       limit,
       cursor,
+      options?.filteredUserId,
     ],
     queryFn: async () => {
+      if (roleId === undefined) {
+        throw new Error('Tried to fetch a group role\u2019s users but role id was undefined');
+      }
+
+      const userIds = options?.filteredUserId ? [options.filteredUserId] : [];
+
       return groupsClient.getGroupUsersWithRoles({
         groupId: Number(groupId),
-        roleSetId: roleId ?? 0,
-        userIds: [],
+        ...(roleId !== null && { roleSetId: roleId }),
+        userIds,
         limit,
         cursor: cursor ?? undefined,
+        ...(roleId === null && { sortOrder: V2GroupsGroupIdUsersGetSortOrderEnum.Desc }),
       });
     },
   });
@@ -68,7 +87,8 @@ export const useGetInvitationsByRole = (
   isDefault?: boolean,
 ) => {
   return useQuery({
-    enabled: !!organizationId || !!roleId,
+    enabled: !!organizationId && !!roleId,
+    placeholderData: keepPreviousData,
     queryKey: [
       `${ORGANIZATIONS_ROLES_KEY_PREFIX}invitationsByRole`,
       organizationId,
@@ -79,7 +99,9 @@ export const useGetInvitationsByRole = (
     ],
     queryFn: async () => {
       if (!organizationId || !roleId) {
-        return undefined;
+        throw new Error(
+          'Tried to fetch invitations by role but organization id or role id was undefined',
+        );
       }
       if (isDefault) {
         return organizationApiClient.invitationClient.getInvitationsByOrganizationId(
@@ -104,9 +126,11 @@ export const useGetInvitationsWithRole = (
   pageToken?: string | null,
   maxPageSize?: number,
   isDefault?: boolean,
+  queryEnabled = true,
 ) => {
   return useQuery({
-    enabled: !!organizationId || !!roleId,
+    enabled: queryEnabled && !!organizationId && !!roleId,
+    placeholderData: keepPreviousData,
     queryKey: [
       `${ORGANIZATIONS_ROLES_KEY_PREFIX}invitationsWithRole`,
       organizationId,
@@ -117,7 +141,9 @@ export const useGetInvitationsWithRole = (
     ],
     queryFn: async () => {
       if (!organizationId || !roleId) {
-        return undefined;
+        throw new Error(
+          'Tried to fetch invitations with role but organization id or role id was undefined',
+        );
       }
       let invitationsWithRole;
       if (isDefault) {
@@ -326,6 +352,7 @@ export function useCreateRole() {
 
 export function useGetGroupConfigurationMetadata() {
   return useQuery({
+    placeholderData: keepPreviousData,
     queryKey: [GROUPS_CONFIGURATION_KEY],
     queryFn: () => groupsClient.getConfigurationMetadata(),
   });

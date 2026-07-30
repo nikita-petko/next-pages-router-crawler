@@ -1,7 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { GroupUserWithRoles } from '../clients/groups';
 import groupsClient from '../clients/groups';
 import organizationApiClient from '../clients/organizationApi';
+import usersClient from '../clients/users';
 import type { InvitedMember } from '../utils/constants';
 import { invalidateInvitationQueries, invalidateMemberQueries } from './rolesQueries';
 
@@ -18,6 +19,21 @@ type TChangeInvitedUserRolesProps = {
 };
 
 const GET_USERS_BY_ORGANIZATION_ID_QUERY_PREFIX = 'organizationsApi_users';
+const USER_BY_USERNAME_QUERY_PREFIX = 'usersApi_userByUsername';
+
+export const useGetUserByUsername = (username: string) => {
+  return useQuery({
+    placeholderData: keepPreviousData,
+    queryKey: [USER_BY_USERNAME_QUERY_PREFIX, username],
+    queryFn: async () => {
+      if (!username) {
+        return null;
+      }
+      const users = await usersClient.getUsersByUsernames([username]);
+      return users[0] ?? null;
+    },
+  });
+};
 
 export const useGetUsersByOrganizationId = (
   organizationId?: string,
@@ -26,6 +42,7 @@ export const useGetUsersByOrganizationId = (
 ) => {
   return useQuery({
     enabled: !!organizationId,
+    placeholderData: keepPreviousData,
     queryKey: [GET_USERS_BY_ORGANIZATION_ID_QUERY_PREFIX, organizationId, pageToken, maxPageSize],
     queryFn: async () => {
       if (!organizationId) {
@@ -107,6 +124,31 @@ export const useRemoveInvitedFromRole = () => {
         invalidateInvitationQueries(queryClient, variables.organizationId, [
           role.id?.toString() ?? '',
         ]);
+      });
+    },
+  });
+};
+
+type TRemoveMemberFromGroupProps = {
+  groupId: string;
+  member: GroupUserWithRoles;
+};
+
+export const useRemoveMemberFromGroup = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ groupId, member }: TRemoveMemberFromGroupProps) => {
+      return groupsClient.removeUserFromGroup(Number(groupId), member.user?.userId ?? 0);
+    },
+    onSuccess: (_, variables) => {
+      void queryClient.invalidateQueries({
+        predicate(query) {
+          return (
+            query.queryKey[0] === 'groupsApi_roles_usersWithRole' &&
+            query.queryKey[1] === variables.groupId
+          );
+        },
       });
     },
   });

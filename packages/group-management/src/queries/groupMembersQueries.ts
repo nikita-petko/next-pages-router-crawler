@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type {
   V1GroupsGroupIdUsersGetLimitEnum,
   V1GroupsGroupIdUsersGetSortOrderEnum,
@@ -17,6 +17,7 @@ type TGroupInfo = {
 export const useGetGroupInfo = (groupId?: string) => {
   return useQuery({
     enabled: !!groupId,
+    placeholderData: keepPreviousData,
     queryKey: [`${ORGANIZATIONS_GROUPS_KEY_PREFIX}groupInfo`, groupId],
     queryFn: async (): Promise<TGroupInfo | undefined> => {
       if (!groupId) {
@@ -41,6 +42,7 @@ export const useGetGroupMembers = (
 ) => {
   return useQuery({
     enabled: !!groupId,
+    placeholderData: keepPreviousData,
     queryKey: [`${GROUPS_MEMBERS_KEY_PREFIX}members`, groupId, limit, cursor, sortOrder],
     queryFn: async () => {
       if (!groupId) {
@@ -54,6 +56,7 @@ export const useGetGroupMembers = (
 export const useGetUsersGroupRole = (userId: number, groupId?: string) => {
   return useQuery({
     enabled: !!userId && !!groupId,
+    placeholderData: keepPreviousData,
     queryKey: [`${ORGANIZATIONS_GROUPS_KEY_PREFIX}userGroupRole`, userId, groupId],
     queryFn: async () => {
       if (!userId || !groupId) {

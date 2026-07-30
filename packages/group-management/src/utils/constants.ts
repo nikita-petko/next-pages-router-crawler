@@ -1,6 +1,11 @@
 import type { RobloxGroupsApiModelsResponseUserModel } from '@rbx/client-groups/v2';
 import { V2GroupsGroupIdUsersGetLimitEnum } from '@rbx/client-groups/v2';
-import type { GroupRoleMetadata, GroupRoleColorType } from '../clients/groups';
+import type {
+  GroupRoleColorType,
+  GroupRoleMetadata,
+  GroupUserRole,
+  GroupUserWithRoles,
+} from '../clients/groups';
 import { GroupRoleColor } from '../clients/groups';
 
 export const MembersPageSize = V2GroupsGroupIdUsersGetLimitEnum.NUMBER_10;
@@ -173,3 +178,7 @@ export type InvitedMember = {
   roles?: Array<GroupRoleMetadata> | undefined;
   invitationId: string;
 };
+
+export type Member = GroupUserWithRoles | InvitedMember;
+
+export type MemberRole = GroupUserRole | GroupRoleMetadata;

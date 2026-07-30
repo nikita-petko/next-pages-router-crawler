@@ -93,7 +93,7 @@ const UserSelect: FunctionComponent<UserSelectProps> = ({
       }
       getOptionLabel={() => ''}
       loading={isFetching}
-      noOptionsText={translate(noOptionsText)}
+      noOptionsText={noOptionsText}
       renderOption={(props, option) => {
         const status = option.id !== undefined ? userStatus.get(option.id) : undefined;
 
@@ -139,7 +139,7 @@ const UserSelect: FunctionComponent<UserSelectProps> = ({
           {bottomText && (
             <div className={bottomTextWrapper}>
               <Typography variant='body2' color='secondary'>
-                {translate(bottomText)}
+                {bottomText}
               </Typography>
             </div>
           )}

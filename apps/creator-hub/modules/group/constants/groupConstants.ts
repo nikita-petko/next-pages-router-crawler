@@ -89,6 +89,8 @@ const MaximumRoles = 99;
 
 const InviteQueryKey = 'invitationGroupId';
 
+const MigratedGroupStatus = 'Migrated';
+
 const NewGroupPrice = 100;
 
 const GroupNameChangeCost = 100;
@@ -292,6 +294,7 @@ export {
   noResultsIconPath,
   MaximumRoles,
   InviteQueryKey,
+  MigratedGroupStatus,
   NewGroupPrice,
   GroupNameChangeCost,
   GroupMembersMenuState,

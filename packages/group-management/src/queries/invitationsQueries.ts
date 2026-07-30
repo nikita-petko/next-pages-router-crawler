@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateInvitationRequestModel } from '@rbx/client-organizations-service-api/v1';
 import organizationApiClient from '../clients/organizationApi';
 import type { InvitedMember } from '../utils/constants';
@@ -18,6 +18,7 @@ export const useGetInvitationsByOrganizationId = (
   return useQuery({
     queryKey: [ORGANIZATIONS_INVITATIONS_KEY, organizationId, pageToken, maxPageSize],
     enabled: !!organizationId,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!organizationId) {
         return undefined;

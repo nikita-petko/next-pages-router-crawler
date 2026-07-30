@@ -1,6 +1,7 @@
 import type {
   RobloxUsersApiAuthenticatedGetUserResponse,
   RobloxUsersApiGetUserResponse,
+  RobloxUsersApiMultiGetUserByNameResponse,
   RobloxWebWebAPIModelsApiArrayResponseRobloxUsersApiMultiGetUserResponse,
   RobloxWebWebAPIModelsApiPageResponseRobloxUsersApiSearchGetUserResponse,
   V1UsersSearchGetLimitEnum,
@@ -12,6 +13,7 @@ export type User = RobloxUsersApiAuthenticatedGetUserResponse;
 export type UserSearchResponse =
   RobloxWebWebAPIModelsApiPageResponseRobloxUsersApiSearchGetUserResponse;
 export type GetUserByIdResponse = RobloxUsersApiGetUserResponse;
+export type UserByUsername = RobloxUsersApiMultiGetUserByNameResponse;
 
 export class UsersClassClient {
   private usersApi: UsersApi;
@@ -36,6 +38,11 @@ export class UsersClassClient {
     cursor?: string,
   ): Promise<UserSearchResponse> {
     return this.userSearchApi.v1UsersSearchGet({ keyword, limit, cursor });
+  }
+
+  async getUsersByUsernames(usernames: string[]): Promise<UserByUsername[]> {
+    const response = await this.usersApi.v1UsernamesUsersPost({ request: { usernames } });
+    return response.data ?? [];
   }
 
   getUserById(userId: number): Promise<GetUserByIdResponse> {

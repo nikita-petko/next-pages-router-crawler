@@ -21,6 +21,7 @@ import type {
   RobloxWebWebAPIModelsApiPageResponseRobloxGroupsApiUserGroupRolesResponse,
   V2GroupsGroupIdUsersGetRequest,
   RobloxGroupsApiUserGroupRolesResponse,
+  RobloxGroupsApiUserRoleResponse,
   RobloxGroupsApiModelsRequestUpdateRoleSetPositionRequest,
   RobloxGroupsApiResolvedPermissionsForEntityResponse,
   RobloxGroupsApiRolePermissionsForEntityResponse,
@@ -53,6 +54,7 @@ export const GroupRoleColor = RobloxGroupsApiGroupRoleResponseColorEnum;
 export type GroupUsersWithRolesResponse =
   RobloxWebWebAPIModelsApiPageResponseRobloxGroupsApiUserGroupRolesResponse;
 export type GroupUserWithRoles = RobloxGroupsApiUserGroupRolesResponse;
+export type GroupUserRole = RobloxGroupsApiUserRoleResponse;
 export type GroupMembersResponse =
   RobloxWebWebAPIModelsApiPageResponseRobloxGroupsApiUserGroupRoleResponse;
 export type GroupMember = RobloxGroupsApiUserGroupRoleResponse;
@@ -96,6 +98,7 @@ interface GroupsClient {
   ): Promise<GroupRoleMetadata>;
   addRoleToUser(groupId: number, roleId: number, userId: number): Promise<void>;
   removeRoleFromUser(groupId: number, roleId: number, userId: number): Promise<void>;
+  removeUserFromGroup(groupId: number, userId: number): Promise<void>;
   getConfigurationMetadata(): Promise<RobloxGroupsApiGroupConfigurationDisplayOptionsResponse>;
   getUniverseRolePermissions(
     groupId: number,
@@ -192,6 +195,9 @@ const groupsClient: GroupsClient = {
   },
   async removeRoleFromUser(groupId: number, roleId: number, userId: number) {
     await membershipApi.v1GroupsGroupIdRolesRoleIdUsersUserIdDelete({ groupId, roleId, userId });
+  },
+  async removeUserFromGroup(groupId: number, userId: number) {
+    await membershipApi.v1GroupsGroupIdUsersUserIdDelete({ groupId, userId });
   },
   getConfigurationMetadata() {
     return groupApi.v1GroupsConfigurationMetadataGet();

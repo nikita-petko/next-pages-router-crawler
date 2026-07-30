@@ -63,8 +63,8 @@ const useCurrentGroupUtils = ({
     MAX_FETCH_SIZE,
   );
   const { data: invitationsByRole, isFetching: isUsersWithRoleFetching } = useGetInvitationsByRole(
-    canInviteMembers ? organization?.id : undefined,
-    canInviteMembers ? roleId : undefined,
+    canInviteMembers && roleId ? organization?.id : undefined,
+    canInviteMembers && roleId ? roleId : undefined,
     undefined,
     MAX_FETCH_SIZE,
   );
@@ -78,7 +78,7 @@ const useCurrentGroupUtils = ({
     !authenticatedUserId ||
     isGroupMembersFetching ||
     isInvitationsFetching ||
-    isUsersWithRoleFetching ||
+    (!!roleId && isUsersWithRoleFetching) ||
     (!!roleId && isGroupUsersWithRoleFetching) ||
     isFriendsFetching;
 
@@ -221,6 +221,7 @@ const useCurrentGroupUtils = ({
       friendship: !!friends && friends.length < 200,
       inviteRoles:
         !canInviteMembers ||
+        !roleId ||
         (!!invitationsByRole && invitationsByRole.invitations.length < MAX_FETCH_SIZE),
     };
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { V1UsersSearchGetLimitEnum } from '@rbx/client-users/v1';
+import { useTranslation } from '@rbx/intl';
 import type { User } from '../../../clients/users';
 import usersClient from '../../../clients/users';
 import useDebouncedFunction from '../../../hooks/useDebouncedFunction';
@@ -7,6 +8,7 @@ import type { UserOptionsHook, UserStatus } from '../../types';
 import useCurrentGroupUtils from '../serviceHook/useCurrentGroupUtils';
 
 const useUserOptionsForOrgRoles: UserOptionsHook = (roleId: string) => {
+  const { translate } = useTranslation();
   const {
     isUserInGroup,
     isUserInvited,
@@ -18,7 +20,10 @@ const useUserOptionsForOrgRoles: UserOptionsHook = (roleId: string) => {
   const [userOptions, setUserOptions] = useState<User[]>([]);
   const [userStatus, setUserStatus] = useState<Map<number, UserStatus>>(new Map());
   const [isFetching, setIsFetching] = useState(false);
-  const [noOptionsText, setNoOptionsText] = useState<string>('Label.NeedMoreThanTwoCharacters');
+  const [hasValidSearch, setHasValidSearch] = useState(false);
+  const noOptionsText = translate(
+    hasValidSearch ? 'Label.NoCreatorsFound' : 'Label.NeedMoreThanTwoCharacters',
+  );
 
   const filterAndUpdateUserStatus = useCallback(
     async (foundUsers: User[]) => {
@@ -60,6 +65,7 @@ const useUserOptionsForOrgRoles: UserOptionsHook = (roleId: string) => {
 
   useEffect(() => {
     if (allInvitedUsersAndMembers) {
+      // oxlint-disable-next-line react/react-compiler -- filtering externally loaded memberships updates the hook's result state
       void filterAndUpdateUserStatus(allInvitedUsersAndMembers);
     }
   }, [allInvitedUsersAndMembers, filterAndUpdateUserStatus]);
@@ -106,14 +112,14 @@ const useUserOptionsForOrgRoles: UserOptionsHook = (roleId: string) => {
   const updateUserSuggestions = useCallback(
     (searchValue: string) => {
       const trimmedValue = searchValue.trim();
-      setNoOptionsText('Label.NoCreatorsFound');
+      setHasValidSearch(true);
       setIsFetching(true);
       if (allInvitedUsersAndMembers) {
         void updateUserSuggestionsInternal(trimmedValue);
       } else if (trimmedValue.length > 2) {
         updateUserSuggestionsDebounced(trimmedValue);
       } else {
-        setNoOptionsText('Label.NeedMoreThanTwoCharacters');
+        setHasValidSearch(false);
       }
     },
     [allInvitedUsersAndMembers, updateUserSuggestionsDebounced, updateUserSuggestionsInternal],
