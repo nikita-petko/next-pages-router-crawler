@@ -134,6 +134,8 @@ type SplitPercentCellProps = {
   onSplitValidityChange?: (key: string, isValid: boolean) => void;
 };
 
+const NEGATIVE_MANAGING_GROUP_SPLIT_PLACEHOLDER = '—';
+
 const SplitPercentCell: FunctionComponent<SplitPercentCellProps> = ({
   row,
   onSplitChange,
@@ -153,6 +155,15 @@ const SplitPercentCell: FunctionComponent<SplitPercentCellProps> = ({
   );
 
   if (row.isManagingGroup) {
+    if (row.basisPoints < 0) {
+      return (
+        <span
+          aria-hidden
+          className='flex items-center justify-center width-1900 text-body-medium content-emphasis [font-weight:600]'>
+          {NEGATIVE_MANAGING_GROUP_SPLIT_PLACEHOLDER}
+        </span>
+      );
+    }
     return <RevSharePercentInput basisPoints={row.basisPoints} isCalculatedDisplay />;
   }
 

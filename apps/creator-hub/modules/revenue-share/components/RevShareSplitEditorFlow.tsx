@@ -203,6 +203,16 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
           translationKey('Error.NoRecipients', TranslationNamespace.RevenueShareAgreements),
         );
       }
+      if (validation.reason === 'recipient-over-total') {
+        return tPendingTranslation(
+          'Recipient shares cannot total more than 100%.',
+          'Validation error when recipient revenue shares total more than 100%.',
+          translationKey(
+            'Error.RecipientSplitOverTotal',
+            TranslationNamespace.RevenueShareAgreements,
+          ),
+        );
+      }
       if (validation.reason === 'recipient-zero' || validation.reason === 'invalid-basis-points') {
         return invalidRecipientShareMessage;
       }

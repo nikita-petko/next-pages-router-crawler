@@ -18,6 +18,7 @@ export type ConfigureExperienceFormType = {
   isStudioAccessToApisAllowed: boolean;
   isMeshTextureApiAccessAllowed: boolean;
   isReleaseStatusEnabled?: boolean;
+  playerHostedEventsEnabled?: boolean;
 };
 
 export type UniverseConfiguration = ConfigureExperienceFormType & { id: number };

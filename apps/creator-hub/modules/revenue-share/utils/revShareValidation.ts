@@ -184,6 +184,7 @@ const MAX_REV_SHARE_RECIPIENTS = 100;
 
 export type RevShareSplitEditorValidationReason =
   | 'empty'
+  | 'recipient-over-total'
   | 'invalid-basis-points'
   | 'recipient-zero'
   | 'recipient-limit'
@@ -200,6 +201,12 @@ export const validateRevShareSplitEditorAllocations = (
   let reason: RevShareSplitEditorValidationReason | null = null;
   if (allocations.length === 0) {
     reason = 'empty';
+  } else if (
+    allocations.some(
+      ({ splitBasisPoints, isManagingGroup }) => isManagingGroup === true && splitBasisPoints < 0,
+    )
+  ) {
+    reason = 'recipient-over-total';
   } else if (
     allocations.some(
       ({ splitBasisPoints }) =>

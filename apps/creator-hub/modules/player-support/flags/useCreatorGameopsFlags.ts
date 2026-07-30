@@ -1,7 +1,12 @@
 import { useFlag } from '@rbx/flags';
-import { enableExpeditedReview, enablePlayerSupport } from '@generated/flags/creatorGameops';
+import {
+  enableExpeditedReview,
+  enablePlayerHostedEvents,
+  enablePlayerSupport,
+} from '@generated/flags/creatorGameops';
 
 const creatorGameopsFlags = {
+  enablePlayerHostedEvents,
   enablePlayerSupport,
   enableExpeditedReview,
 } as const;
@@ -30,10 +35,12 @@ function useCreatorGameopsFlags<TFlagName extends CreatorGameopsFlagName>(
     universeId: context?.universeId ?? 0,
   });
   const expeditedReviewResult = useFlag(enableExpeditedReview);
+  const playerHostedEventsResult = useFlag(enablePlayerHostedEvents);
 
   const results = {
     enablePlayerSupport: playerSupportResult,
     enableExpeditedReview: expeditedReviewResult,
+    enablePlayerHostedEvents: playerHostedEventsResult,
   } as const;
 
   const { ready, value } = results[flagName];

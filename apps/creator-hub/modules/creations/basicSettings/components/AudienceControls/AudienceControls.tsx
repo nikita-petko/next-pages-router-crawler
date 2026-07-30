@@ -106,7 +106,7 @@ const AudienceControls: FunctionComponent<AudienceControlsProps> = ({
   );
 
   return (
-    <Grid container item XSmall={12} style={{ paddingBottom: 16 }}>
+    <Grid container item XSmall={12} className='padding-bottom-xlarge'>
       <Grid item XSmall={12}>
         <FormLabel>{translate('Label.Audience')}</FormLabel>
       </Grid>

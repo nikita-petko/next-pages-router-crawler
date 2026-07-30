@@ -660,6 +660,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: creatorGameopsFlags.enablePlayerHostedEvents,
+      metadata: {
+        namespace: 'creator-gameops',
+        name: 'enablePlayerHostedEvents',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: creatorRoadmapFlags.creatorRoadmapEnabled,
       metadata: {
         namespace: 'creator-roadmap',

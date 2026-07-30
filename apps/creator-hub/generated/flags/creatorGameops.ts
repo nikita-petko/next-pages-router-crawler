@@ -17,3 +17,8 @@ export const enableExpeditedReview = defineFlag({
     name: 'enableExpeditedReview',
     defaultValue: false,
   });
+export const enablePlayerHostedEvents = defineFlag({
+    namespace: 'creator-gameops',
+    name: 'enablePlayerHostedEvents',
+    defaultValue: false,
+  });

@@ -6,6 +6,7 @@ import type { ControllerRenderProps, SubmitHandler } from 'react-hook-form';
 import { Controller, useForm } from 'react-hook-form';
 import { CreatorTierEnum } from '@rbx/client-core-content-api/v1';
 import { ReleaseStatus, ReleaseTransitionError } from '@rbx/client-experience-releases-api/v1';
+import { UniversePlayerHostingStatus } from '@rbx/client-player-hosted-events-api/v1';
 import { getProductionCreatorHubUrl } from '@rbx/env-utils';
 import { FeedbackBanner } from '@rbx/foundation-ui';
 import { useLocalization, useTranslation } from '@rbx/intl';
@@ -64,6 +65,7 @@ import useFormSubmissionAnalytics from '@modules/miscellaneous/hooks/useFormSubm
 import TranslationNamespace from '@modules/miscellaneous/localization/enums/TranslationNamespace';
 import { creatorHub, www } from '@modules/miscellaneous/urls';
 import { getEnumKeyByValue } from '@modules/miscellaneous/utils';
+import { useCreatorGameopsFlags } from '@modules/player-support/flags/useCreatorGameopsFlags';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import { useCreatorEligibility } from '@modules/publishing-permissions/hooks/useCreatorEligibility';
 import { useGetActivationEligibilityForUniverse } from '@modules/react-query/develop';
@@ -75,6 +77,11 @@ import {
 import { useUpdateExperienceGenre } from '@modules/react-query/experienceGenre';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import StepsToGoPublicModal from '../../../common/components/StepsToGoPublicModal';
+import UniverseHostingPolicyToggle from '../../../event/components/common/UniverseHostingPolicyToggle';
+import {
+  useUniverseHostingPolicy,
+  useUpdateUniverseHostingPolicy,
+} from '../../hooks/useUniverseHostingPolicy';
 import { fetchUserAmpStatusOfEnableMeshTextureApi } from '../../utils/checkConfigureEligibility';
 import { mapStateToBannerProps } from '../AudienceControls/audienceBannerProps';
 import AudienceControls from '../AudienceControls/AudienceControls';
@@ -257,6 +264,12 @@ const ConfigureExperienceForm: FunctionComponent<
     });
   const { isSubmitting, errors, isValid, isValidating, isDirty, dirtyFields } = formState;
 
+  useEffect(() => {
+    if (!isDirty) {
+      setFormSubmissionErrorMsg(null);
+    }
+  }, [isDirty]);
+
   const selectedAudiences = watch('audiences');
 
   const currentPrivacy = watch('privacy');
@@ -271,6 +284,33 @@ const ConfigureExperienceForm: FunctionComponent<
     (enableAudienceControls ? isAudiencePublic : currentPrivacy !== Privacy.Private) &&
     ((canSetReleaseStatusData?.allowed ?? false) ||
       canSetReleaseStatusData?.reasonEnum === ReleaseTransitionError.Cooldown);
+
+  const { enablePlayerHostedEvents: isPlayerHostedEventsEnabled } = useCreatorGameopsFlags(
+    'enablePlayerHostedEvents',
+  );
+
+  const {
+    data: hostingPolicyData,
+    isLoading: isHostingPolicyLoading,
+    isError: isHostingPolicyError,
+  } = useUniverseHostingPolicy(universeConfiguration.id);
+  const { mutateAsync: updateHostingPolicyMutateAsync } = useUpdateUniverseHostingPolicy(
+    universeConfiguration.id,
+  );
+
+  const [hostingPolicyInitialized, setHostingPolicyInitialized] = useState(false);
+  useEffect(() => {
+    if (
+      isPlayerHostedEventsEnabled &&
+      hostingPolicyData !== undefined &&
+      !hostingPolicyInitialized
+    ) {
+      setHostingPolicyInitialized(true);
+      resetField('playerHostedEventsEnabled', {
+        defaultValue: hostingPolicyData.policy?.status === UniversePlayerHostingStatus.Enabled,
+      });
+    }
+  }, [hostingPolicyData, isPlayerHostedEventsEnabled, resetField, hostingPolicyInitialized]);
 
   const validation = useAudienceValidation({
     universeId: universeConfiguration.id,
@@ -705,6 +745,16 @@ const ConfigureExperienceForm: FunctionComponent<
         return;
       }
 
+      let updateHostingPolicyUpdated: boolean | null = null;
+      if (isPlayerHostedEventsEnabled && dirtyFields.playerHostedEventsEnabled) {
+        try {
+          await updateHostingPolicyMutateAsync(data.playerHostedEventsEnabled ?? false);
+          updateHostingPolicyUpdated = true;
+        } catch {
+          updateHostingPolicyUpdated = false;
+        }
+      }
+
       const errorFields = [];
 
       // reset fields if the response is updated. Add to error message if the field update failed.
@@ -760,6 +810,16 @@ const ConfigureExperienceForm: FunctionComponent<
         if (dirtyFields.isReleaseStatusEnabled) {
           errorFields.push(translate('Label.EnableBetaMode'));
         }
+      }
+      if (updateHostingPolicyUpdated === true) {
+        resetField('playerHostedEventsEnabled', { defaultValue: data.playerHostedEventsEnabled });
+      } else if (updateHostingPolicyUpdated === false && !errorMsgKey) {
+        setFormSubmissionErrorMsg(
+          translate('Error.PartialError', {
+            fieldNameList: translate('Label.PlayerHostedEvents'),
+          }),
+        );
+        return;
       }
       if (errorMsgKey) {
         const errorFieldsString = `${translate(errorMsgKey)} ${translate('Error.PartialError', {
@@ -842,6 +902,9 @@ const ConfigureExperienceForm: FunctionComponent<
       dirtyFields.name,
       dirtyFields.subgenre,
       enableAudienceControls,
+      isPlayerHostedEventsEnabled,
+      dirtyFields.playerHostedEventsEnabled,
+      updateHostingPolicyMutateAsync,
       formSubmissionAnalytics,
     ],
   );
@@ -1397,6 +1460,34 @@ const ConfigureExperienceForm: FunctionComponent<
               </Grid>
             )}
           </>
+        )}
+
+        {isPlayerHostedEventsEnabled && (
+          <Grid container item XSmall={12}>
+            <Grid item XSmall={12}>
+              <FormLabel>
+                {tPendingTranslation(
+                  'Player Hosted Events',
+                  'Section label for player-hosted events settings on the experience configure page',
+                  translationKey('Label.PlayerHostedEvents', TranslationNamespace.ConfigureItem),
+                )}
+              </FormLabel>
+            </Grid>
+            <Grid item XSmall={12}>
+              <Controller
+                name='playerHostedEventsEnabled'
+                control={control}
+                render={({ field }) => (
+                  <UniverseHostingPolicyToggle
+                    checked={field.value ?? false}
+                    onChange={field.onChange}
+                    isLoading={isHostingPolicyLoading}
+                    isError={isHostingPolicyError}
+                  />
+                )}
+              />
+            </Grid>
+          </Grid>
         )}
 
         {isBetaToggleVisible && (
