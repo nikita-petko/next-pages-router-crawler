@@ -41,7 +41,7 @@ const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
 const MOCK_RESPONSE_DELAY_MS = 1000;
 const MOCK_LOG_INTERVAL_MS = 3 * 60 * 1000;
-const MOCK_LOG_START_TIME_MS = new Date('2026-07-29T19:57:00Z').getTime();
+const MOCK_LOG_START_TIME_MS = new Date('2026-07-30T18:19:55.250Z').getTime();
 const MOCK_LOG_COUNT = 125;
 const MOCK_PLACE_ID = '1818';
 const MOCK_PLACE_VERSION = '1240';
@@ -142,6 +142,8 @@ const MOCK_CLIENT_LOG_DEFINITIONS: readonly MockClientLogDefinition[] = [
     message:
       'MarketplaceService request failed with status code 503 while retrieving product information for developer product 1847293056. Purchase presentation has been deferred because the catalog response was unavailable after multiple attempts and could not be safely cached for this session. Correlation ID market-2d94e89f6c3a indicates that all three requests reached the upstream service but received a transient unavailable response after 1,500 ms. The purchase button will remain disabled, no currency was charged, and the product details panel will retry when the user reopens it or connectivity changes.',
     skippedCount: 0,
+    stackTrace:
+      "Script 'Players.LocalPlayer.PlayerScripts.Marketplace.MarketplaceController', Line 142 - function fetchProductInfo\nScript 'Players.LocalPlayer.PlayerScripts.Marketplace.MarketplaceController', Line 58 - function showPurchasePrompt\nScript 'Players.LocalPlayer.PlayerScripts.PurchaseFlow', Line 91\nStack End",
   },
   {
     severity: LogSeverity.Output,
@@ -168,6 +170,8 @@ const MOCK_CLIENT_LOG_DEFINITIONS: readonly MockClientLogDefinition[] = [
     severity: LogSeverity.Error,
     message: 'Unable to deserialize cached player preferences.',
     skippedCount: 1,
+    stackTrace:
+      "Script 'ReplicatedStorage.Client.Settings.PlayerPreferences', Line 67 - function deserialize\nScript 'Players.LocalPlayer.PlayerScripts.Bootstrap', Line 114 - function loadCachedPreferences\nStack End",
   },
   {
     severity: LogSeverity.Info,

@@ -1475,6 +1475,9 @@
 .margin-bottom-\[8px\] {
   margin-bottom: 8px;
 }
+.margin-bottom-\[var\(--size-400\)\] {
+  margin-bottom: var(--size-400);
+}
 .margin-bottom-large {
   margin-bottom: var(--margin-large);
 }

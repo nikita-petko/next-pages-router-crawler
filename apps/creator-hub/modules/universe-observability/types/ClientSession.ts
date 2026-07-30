@@ -55,6 +55,9 @@ export const ClientSessionLogSchema = z.object({
   message: z.string(),
   skipped: z.int().nonnegative(),
   createTime: z.date(),
+  // TODO: stackTrace might also be structured
+  // so it has clickable lines. but that part is TBD on the GSM side
+  stackTrace: z.string().optional(),
 });
 
 export type ClientSessionLog = z.infer<typeof ClientSessionLogSchema>;

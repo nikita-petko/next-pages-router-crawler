@@ -2,9 +2,13 @@
 
 import type { FC } from 'react';
 import { useCallback, useMemo, useState } from 'react';
-import type { AdaptiveDataTableValueCell } from '@rbx/analytics-ui';
-import { AdaptiveDataTable } from '@rbx/analytics-ui';
-import { Badge } from '@rbx/foundation-ui';
+import type {
+  AdaptiveDataTableExpandableRow,
+  AdaptiveDataTableExpansionCell,
+  AdaptiveDataTableValueCell,
+} from '@rbx/analytics-ui';
+import { AdaptiveDataTable, AdaptiveDataTableExpandedRows } from '@rbx/analytics-ui';
+import { Badge, IconButton } from '@rbx/foundation-ui';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import withNamespaceSwitchedTranslation from '@modules/analytics-translations/withNamespaceSwitchedTranslation';
@@ -28,8 +32,13 @@ const CLIENT_LOG_SEVERITIES = [
 ] as const;
 
 const DATE_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
-  dateStyle: 'medium',
-  timeStyle: 'short',
+  day: 'numeric',
+  fractionalSecondDigits: 3,
+  hour: 'numeric',
+  minute: '2-digit',
+  month: 'short',
+  second: '2-digit',
+  year: 'numeric',
 };
 
 const SEVERITY_BADGE_VARIANTS = {
@@ -43,6 +52,11 @@ type ClientLogRow = {
   readonly time: AdaptiveDataTableValueCell<string>;
   readonly severity: AdaptiveDataTableValueCell<string>;
   readonly message: AdaptiveDataTableValueCell<string>;
+  readonly expansion: AdaptiveDataTableExpansionCell;
+};
+
+type StackTraceRow = {
+  readonly stackTrace: AdaptiveDataTableValueCell<string>;
 };
 
 type ClientSessionLogsTableProps = {
@@ -101,6 +115,36 @@ const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ universeId, s
         'Column heading for a client session log message.',
         translationKey('Label.ClientSessionLogMessage', TranslationNamespace.ServerManagement),
       ),
+      stackTrace: tPendingTranslation(
+        'Stack trace',
+        'Column heading for a client session log stack trace.',
+        translationKey('Label.ClientSessionLogStackTrace', TranslationNamespace.ServerManagement),
+      ),
+    }),
+    [tPendingTranslation],
+  );
+  const expansionLabels = useMemo(
+    () => ({
+      expand: (time: string) =>
+        tPendingTranslation(
+          'Expand stack trace for log at {time}',
+          'Accessible label for expanding a client session log stack trace; {time} is the log time.',
+          translationKey(
+            'Action.ExpandClientSessionLogStackTrace',
+            TranslationNamespace.ServerManagement,
+          ),
+          { time },
+        ),
+      collapse: (time: string) =>
+        tPendingTranslation(
+          'Collapse stack trace for log at {time}',
+          'Accessible label for collapsing a client session log stack trace; {time} is the log time.',
+          translationKey(
+            'Action.CollapseClientSessionLogStackTrace',
+            TranslationNamespace.ServerManagement,
+          ),
+          { time },
+        ),
     }),
     [tPendingTranslation],
   );
@@ -142,41 +186,85 @@ const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ universeId, s
     [tPendingTranslation],
   );
   const logs = useMemo(() => data?.pages.flatMap((page) => page.logs) ?? [], [data?.pages]);
-  const rows = useMemo<ClientLogRow[]>(
-    () =>
-      logs.map((log: ClientSessionLog) => {
-        const severityLabel = severityLabels[log.severity];
-        return {
-          time: {
-            type: 'value',
-            header: columnLabels.time,
-            value: log.id,
-            displayString: () => timeFormatter.format(log.createTime),
-            sortable: false,
-          },
-          severity: {
-            type: 'value',
-            header: columnLabels.severity,
-            value: severityLabel,
-            renderContainer: () => (
-              <Badge
-                label={severityLabel}
+  const rows = useMemo<AdaptiveDataTableExpandableRow<ClientLogRow, StackTraceRow>[]>(() => {
+    const rowIdOccurrences = new Map<string, number>();
+    return logs.map((log: ClientSessionLog) => {
+      const severityLabel = severityLabels[log.severity];
+      const formattedTime = timeFormatter.format(log.createTime);
+      const rowIdOccurrence = rowIdOccurrences.get(log.id) ?? 0;
+      rowIdOccurrences.set(log.id, rowIdOccurrence + 1);
+      return {
+        time: {
+          type: 'value',
+          header: columnLabels.time,
+          value: `${log.id}#${rowIdOccurrence}`,
+          displayString: () => formattedTime,
+          sortable: false,
+        },
+        severity: {
+          type: 'value',
+          header: columnLabels.severity,
+          value: severityLabel,
+          renderContainer: () => (
+            <Badge
+              label={severityLabel}
+              size='Small'
+              variant={SEVERITY_BADGE_VARIANTS[log.severity]}
+            />
+          ),
+          sortable: false,
+        },
+        message: {
+          type: 'value',
+          header: columnLabels.message,
+          value: log.message,
+          sortable: false,
+        },
+        expansion: {
+          type: 'display',
+          display: 'expansion',
+          align: 'center',
+          render: ({ canExpand, isExpanded, onToggleExpanded }) =>
+            canExpand ? (
+              <IconButton
+                aria-expanded={isExpanded}
+                ariaLabel={
+                  isExpanded
+                    ? expansionLabels.collapse(formattedTime)
+                    : expansionLabels.expand(formattedTime)
+                }
+                icon={
+                  isExpanded ? 'icon-regular-chevron-small-up' : 'icon-regular-chevron-small-down'
+                }
+                onClick={onToggleExpanded}
                 size='Small'
-                variant={SEVERITY_BADGE_VARIANTS[log.severity]}
+                variant='Utility'
               />
-            ),
-            sortable: false,
-          },
-          message: {
-            type: 'value',
-            header: columnLabels.message,
-            value: log.message,
-            sortable: false,
-          },
-        };
-      }),
-    [columnLabels, logs, severityLabels, timeFormatter],
-  );
+            ) : null,
+        },
+        [AdaptiveDataTableExpandedRows]: log.stackTrace
+          ? [
+              {
+                stackTrace: {
+                  type: 'value',
+                  header: columnLabels.stackTrace,
+                  headerDivider: false,
+                  sortable: false,
+                  value: log.stackTrace,
+                  renderContainer: ({ children }) => (
+                    <div className='margin-bottom-[var(--size-400)] width-full radius-medium stroke-standard stroke-default padding-large'>
+                      <pre className='margin-none [white-space:pre-wrap] [overflow-wrap:anywhere] [font-family:monospace]'>
+                        {children}
+                      </pre>
+                    </div>
+                  ),
+                },
+              },
+            ]
+          : [],
+      };
+    });
+  }, [columnLabels, expansionLabels, logs, severityLabels, timeFormatter]);
   const tableLabels = useMemo(
     () => ({
       loading: tPendingTranslation(

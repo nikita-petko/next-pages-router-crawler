@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { clientLogsApi } from '../clients/clientLogsApi';
-import type { ListClientLogsResponse } from '../mockData/clientLogs';
+import type { ApiClientLog, ListClientLogsResponse } from '../mockData/clientLogs';
 import { ClientSessionLogSchema, type ClientSessionLog } from '../types/ClientSession';
 import type { LogFilter } from '../types/Filters';
 import { clientLogFilterToQuery } from '../utils/logFilters';
@@ -12,18 +12,37 @@ const DEFAULT_RETRIES = 3;
 const DEFAULT_STALE_TIME_MS = 10 * 60 * 1000;
 const EMPTY_CLIENT_LOGS: readonly ClientSessionLog[] = [];
 
+// The endpoint does not provide a log ID. Derive one from immutable transport fields so a
+// reordered refetch cannot transfer row state to a different log.
+const getStableClientLogId = (log: ApiClientLog): string =>
+  JSON.stringify([
+    log.sessionId ?? null,
+    log.messageTimestampMs?.getTime() ?? null,
+    log.universeId ?? null,
+    log.placeId ?? null,
+    log.placeVersion ?? null,
+    log.severity ?? null,
+    log.message ?? null,
+    log.stackTrace ?? null,
+    log.messageTemplate ?? null,
+    log.context ?? null,
+    log.skippedCount ?? null,
+    log.rateLimitedCount ?? null,
+  ]);
+
 const mapResponseLogs = (
   response: ListClientLogsResponse,
   pageToken: string | undefined,
 ): readonly ClientSessionLog[] =>
   (response.clientLogs ?? []).flatMap((log, logIndex) => {
     const parseResult = ClientSessionLogSchema.safeParse({
-      id: `${log.sessionId ?? 'invalid-session'}:${pageToken ?? 'initial'}:${logIndex}`,
+      id: getStableClientLogId(log),
       sessionId: log.sessionId,
       severity: log.severity,
       message: log.message ?? '',
       skipped: log.skippedCount ?? 0,
       createTime: log.messageTimestampMs,
+      stackTrace: log.stackTrace ?? undefined,
     });
     if (!parseResult.success) {
       console.error('Failed to parse client log response.', {

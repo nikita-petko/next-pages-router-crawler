@@ -113,7 +113,7 @@ const TooltipPositionByTriggerKind: Readonly<
 };
 
 const ScrollContainerStyle: CSSProperties = {
-  overflowY: 'auto',
+  overflowY: 'hidden',
   position: 'relative',
   width: '100%',
 };
@@ -121,9 +121,12 @@ const TableStyle: CSSProperties = { display: 'grid', width: '100%' };
 const HeaderStyle: CSSProperties = {
   backgroundColor: 'var(--color-surface-100)',
   display: 'grid',
-  position: 'sticky',
-  top: 0,
-  zIndex: 3,
+};
+const InfiniteHeaderStyle: CSSProperties = {
+  overflowX: 'hidden',
+  overflowY: 'hidden',
+  scrollbarGutter: 'stable',
+  width: '100%',
 };
 const BodyStyle: CSSProperties = { display: 'grid' };
 const GridRowStyle: CSSProperties = { display: 'grid' };
@@ -139,7 +142,25 @@ const GridCellJustificationByAlignment: Readonly<
   center: 'center',
   end: 'flex-end',
 };
-const VirtualBodyStyle: CSSProperties = { display: 'block', position: 'relative' };
+const VirtualBodyStyle: CSSProperties = {
+  display: 'block',
+  overflowY: 'auto',
+  position: 'relative',
+  scrollbarGutter: 'stable',
+  width: '100%',
+};
+const VirtualSpacerRowStyle: CSSProperties = {
+  display: 'block',
+  pointerEvents: 'none',
+  width: '100%',
+};
+const VirtualSpacerCellStyle: CSSProperties = {
+  borderBottom: 'none',
+  display: 'block',
+  height: '100%',
+  padding: 0,
+  width: '100%',
+};
 const VirtualRowStyle: CSSProperties = {
   display: 'grid',
   left: 0,
@@ -746,7 +767,9 @@ const AdaptiveDataTable = <
     getSmallScreenSnapshot,
     getServerSmallScreenSnapshot,
   );
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const tableViewportRef = useRef<HTMLDivElement>(null);
+  const tableHeaderRef = useRef<HTMLTableSectionElement>(null);
+  const infiniteBodyRef = useRef<HTMLTableSectionElement>(null);
   const headerMeasurementRef = useRef<HTMLTableCellElement>(null);
   const cellMeasurementRef = useRef<HTMLTableCellElement>(null);
   const requestedCursorRef = useRef<string | null>(null);
@@ -797,7 +820,7 @@ const AdaptiveDataTable = <
     count: virtualCount,
     estimateSize: () => RowHeightBySize[size],
     getItemKey: getVirtualItemKey,
-    getScrollElement: () => scrollContainerRef.current,
+    getScrollElement: () => infiniteBodyRef.current,
     overscan: VirtualRowOverscan,
   });
   const virtualRows = rowVirtualizer.getVirtualItems();
@@ -836,7 +859,7 @@ const AdaptiveDataTable = <
   }, [rows.length, size, virtualRows.length]);
 
   const loadMoreIfNeeded = useCallback(
-    (scrollContainer: HTMLDivElement | null) => {
+    (scrollContainer: HTMLElement | null) => {
       if (
         !scrollContainer ||
         !onLoadMore ||
@@ -863,7 +886,11 @@ const AdaptiveDataTable = <
   );
 
   const handleInfiniteScroll = useCallback(() => {
-    loadMoreIfNeeded(scrollContainerRef.current);
+    const scrollContainer = infiniteBodyRef.current;
+    if (scrollContainer && tableHeaderRef.current) {
+      tableHeaderRef.current.scrollLeft = scrollContainer.scrollLeft;
+    }
+    loadMoreIfNeeded(scrollContainer);
   }, [loadMoreIfNeeded]);
 
   const handleRetryLoadMore = useCallback(() => {
@@ -876,7 +903,7 @@ const AdaptiveDataTable = <
 
   // Track the scroll viewport width so the table layout and state rows respond to resizes.
   useEffect(() => {
-    const scrollContainer = scrollContainerRef.current;
+    const scrollContainer = tableViewportRef.current;
     if (!scrollContainer) {
       return undefined;
     }
@@ -904,8 +931,8 @@ const AdaptiveDataTable = <
     }
 
     requestedCursorRef.current = null;
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 0;
+    if (infiniteBodyRef.current) {
+      infiniteBodyRef.current.scrollTop = 0;
     }
   }, [sort]);
 
@@ -914,24 +941,48 @@ const AdaptiveDataTable = <
     if (requestedCursorRef.current !== null && requestedCursorRef.current !== infiniteNextCursor) {
       requestedCursorRef.current = null;
     }
-    loadMoreIfNeeded(scrollContainerRef.current);
+    loadMoreIfNeeded(infiniteBodyRef.current);
   }, [infiniteNextCursor, isLoadingMore, loadMoreIfNeeded, tableRenderItems.length]);
 
   const headerGroups = table.getHeaderGroups();
   const canScrollHorizontally =
     scrollViewportWidth !== undefined && columnLayout.tableWidth > scrollViewportWidth;
+
+  // A hidden-overflow header retains its scroll offset after the body stops overflowing or the
+  // table leaves infinite mode. Reset it so the first columns do not remain shifted out of view.
+  useEffect(() => {
+    if ((!isInfinite || !canScrollHorizontally) && tableHeaderRef.current) {
+      tableHeaderRef.current.scrollLeft = 0;
+    }
+  }, [canScrollHorizontally, isInfinite]);
+
   const scrollStyle = useMemo<CSSProperties>(
     () => ({
       ...ScrollContainerStyle,
-      overflowX: canScrollHorizontally ? 'auto' : 'hidden',
+      overflowX: !isInfinite && canScrollHorizontally ? 'auto' : 'hidden',
       ...(shouldFrameScrollContainer ? FramedScrollContainerStyle : undefined),
-      ...(isInfinite ? { height: InfiniteViewportHeight } : undefined),
     }),
     [canScrollHorizontally, isInfinite, shouldFrameScrollContainer],
   );
   const tableStyle = useMemo(
-    () => ({ ...TableStyle, minWidth: columnLayout.tableWidth }),
-    [columnLayout.tableWidth],
+    () => ({
+      ...TableStyle,
+      ...(!isInfinite ? { minWidth: columnLayout.tableWidth } : undefined),
+    }),
+    [columnLayout.tableWidth, isInfinite],
+  );
+  const headerStyle = useMemo(
+    () => ({ ...HeaderStyle, ...(isInfinite ? InfiniteHeaderStyle : undefined) }),
+    [isInfinite],
+  );
+  const infiniteBodyViewportHeight = InfiniteViewportHeight - RowHeightBySize[size];
+  const infiniteBodyStyle = useMemo<CSSProperties>(
+    () => ({
+      ...VirtualBodyStyle,
+      height: infiniteBodyViewportHeight,
+      overflowX: canScrollHorizontally ? 'auto' : 'hidden',
+    }),
+    [canScrollHorizontally, infiniteBodyViewportHeight],
   );
   const headerRowStyle = useMemo(
     () => ({ ...GridRowStyle, gridTemplateColumns: columnLayout.gridTemplateColumns }),
@@ -940,6 +991,13 @@ const AdaptiveDataTable = <
   const stateCellStyle = useMemo(
     () => ({ ...StateCellStyle, width: scrollViewportWidth ?? '100%' }),
     [scrollViewportWidth],
+  );
+  const emptyStateCellStyle = useMemo(
+    () => ({
+      ...stateCellStyle,
+      ...(isInfinite ? { minHeight: infiniteBodyViewportHeight } : undefined),
+    }),
+    [infiniteBodyViewportHeight, isInfinite, stateCellStyle],
   );
 
   const renderState = () => {
@@ -968,15 +1026,14 @@ const AdaptiveDataTable = <
         <div
           aria-busy={isLoading}
           inert={showLoadingOverlay ? true : undefined}
-          onScroll={navigation.mode === 'infinite' ? handleInfiniteScroll : undefined}
-          ref={scrollContainerRef}
+          ref={tableViewportRef}
           style={loadingScrollStyle}>
           <div style={tableStyle}>
             <Table
               size={size}
               style={TableStyle}
               variant={shouldFrameScrollContainer ? 'Divided' : variant}>
-              <TableHeader style={HeaderStyle}>
+              <TableHeader ref={tableHeaderRef} style={headerStyle}>
                 {headerGroups.map((headerGroup) => (
                   <TableRow key={headerGroup.id} style={headerRowStyle}>
                     {headerGroup.headers.map((header, headerIndex) => {
@@ -1019,13 +1076,28 @@ const AdaptiveDataTable = <
                 ))}
               </TableHeader>
               {state !== undefined ? (
-                <TableBody style={BodyStyle}>
-                  <StateRow cellStyle={stateCellStyle} columnCount={columnCount}>
+                <TableBody
+                  onScroll={isInfinite ? handleInfiniteScroll : undefined}
+                  ref={isInfinite ? infiniteBodyRef : undefined}
+                  style={isInfinite ? infiniteBodyStyle : BodyStyle}>
+                  <StateRow cellStyle={emptyStateCellStyle} columnCount={columnCount}>
                     {state}
                   </StateRow>
                 </TableBody>
               ) : isInfinite ? (
-                <TableBody style={{ ...VirtualBodyStyle, height: rowVirtualizer.getTotalSize() }}>
+                <TableBody
+                  onScroll={handleInfiniteScroll}
+                  ref={infiniteBodyRef}
+                  style={infiniteBodyStyle}>
+                  <TableRow
+                    aria-hidden
+                    style={{
+                      ...VirtualSpacerRowStyle,
+                      height: rowVirtualizer.getTotalSize(),
+                      minWidth: columnLayout.tableWidth,
+                    }}>
+                    <TableCell colSpan={columnCount} style={VirtualSpacerCellStyle} />
+                  </TableRow>
                   {virtualRows.map((virtualRow, virtualRowIndex) => {
                     const renderItem = tableRenderItems[virtualRow.index];
                     if (!renderItem) {
