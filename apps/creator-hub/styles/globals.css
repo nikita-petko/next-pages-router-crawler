@@ -4350,6 +4350,9 @@
 .\[line-height\:clamp\(36px\2c 4\.8vw\2c 48px\)\] {
   line-height: clamp(36px, 4.8vw, 48px);
 }
+.\[list-style-position\:inside\] {
+  list-style-position: inside;
+}
 .\[list-style-type\:disc\] {
   list-style-type: disc;
 }
@@ -4403,6 +4406,9 @@
 }
 .\[max-height\:100vh\] {
   max-height: 100vh;
+}
+.\[max-height\:14lh\] {
+  max-height: 14lh;
 }
 .\[max-height\:320px\] {
   max-height: 320px;
