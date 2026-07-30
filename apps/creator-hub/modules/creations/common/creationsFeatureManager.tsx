@@ -3,7 +3,6 @@ import type { ResolvedUniversePermissionsResponse } from '@rbx/client-organizati
 import type { Locale } from '@rbx/intl';
 import { OpenInNewIcon } from '@rbx/ui';
 import {
-  analyticsAgentNavigationItem,
   analyticsAudienceNavigationItem,
   analyticsConfigsNavigationItem,
   analyticsCrashesNavigationItem,
@@ -109,15 +108,6 @@ const overviewFeature: Feature = {
   key: 'overview',
   nameKey: 'Heading.Overview',
   path: '/overview',
-};
-
-const analyticsAgentFeature: Feature<CreationsFeatureSettings> = {
-  key: 'analyticsAgent',
-  nameKey: analyticsAgentNavigationItem.title.key,
-  path: '/analytics/agent',
-  isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
-    (settings?.isAnalyticsAssistantChatEnabled && settings?.userCanViewAnalyticsForUniverse) ??
-    false,
 };
 
 // Content
@@ -752,7 +742,6 @@ const safetyCollaboratorsFeature: Feature<CreationsFeatureSettings> = {
 // ============= V2 Nav Layout ========================================
 // Overview
 creationsFeatureManager.addFeature(overviewFeature);
-creationsFeatureManager.addFeature(analyticsAgentFeature);
 // Configure
 const contentSettingsFeatureV2 = { ...contentSettingsFeature, nameKey: 'Heading.Settings' };
 const configureCategoryFeature: Feature<CreationsFeatureSettings> = {

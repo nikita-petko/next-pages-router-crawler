@@ -17,10 +17,10 @@ import {
   translationKey,
   translationKeyWithoutNamespace,
 } from '@modules/analytics-translations/wrapperFunctions';
-import { TableCellBackgroundColor } from '@modules/charts-generic/charts/options';
 import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import type { TableColumnConfig } from '@modules/charts-generic/tables/types/GenericColumnType';
 import { CellBackgroundType } from '@modules/charts-generic/tables/types/GenericColumnType';
+import { TableCellBackgroundColor } from '@modules/charts-generic/tables/types/TableCellBackgroundColor';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
 import type { RAQIV2CompoundSummaryType } from '../enums/RAQIV2SummaryType';

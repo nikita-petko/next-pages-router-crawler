@@ -1,5 +1,6 @@
 import { ChartStyleMode } from '@rbx/analytics-ui';
 import type { TTheme } from '@rbx/ui';
+import { TableCellBackgroundColor } from '../tables/types/TableCellBackgroundColor';
 
 export const chartDefaultHeight = 450;
 
@@ -79,13 +80,6 @@ export const getChartDefaultHeightByMode = (chartStyleMode: ChartStyleMode): num
 export interface ExtendedAnnotationsShapesOptions extends Highcharts.AnnotationsShapesOptions {
   x: number;
   y: number;
-}
-
-export enum TableCellBackgroundColor {
-  Positive = 'Positive',
-  Negative = 'Negative',
-  Progression = 'Progression',
-  Highlight = 'Highlight',
 }
 
 /**

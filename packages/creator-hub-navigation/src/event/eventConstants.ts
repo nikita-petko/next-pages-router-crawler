@@ -42,6 +42,7 @@ enum EventName {
   ClickNavList = 'clickNavList',
   ClickNavMenuIcon = 'clickNavMenuIcon',
   clickCreatorIcon = 'clickCreatorIcon',
+  ClickNavAssistant = 'clickNavAssistant',
   ClickNavDropdownTab = 'ClickNavDropdownTab',
   ClickNavBackToCreator = 'clickNavBackToCreator',
   ClickNavDropdownMenuItemTab = 'ClickNavDropdownMenuItemTab',
@@ -76,12 +77,17 @@ const NOTIFICATION_PRODUCT_TEAM = 'knowledge';
 const convertNotificationCommonEventParametersToParameters = (
   parameters: NotificationCommonEventParameters,
 ): Record<string, string> => {
-  return Object.entries(parameters).reduce<Record<string, string>>((acc, [key, value]) => {
-    if (value !== undefined) {
-      acc[key] = value.toString();
-    }
-    return acc;
-  }, {});
+  const result: Record<string, string> = {};
+  if (parameters.hasUnSeenNotifications !== undefined) {
+    result.hasUnSeenNotifications = parameters.hasUnSeenNotifications.toString();
+  }
+  if (parameters.unreadNotificationCount !== undefined) {
+    result.unreadNotificationCount = parameters.unreadNotificationCount.toString();
+  }
+  if (parameters.notificationsCount !== undefined) {
+    result.notificationsCount = parameters.notificationsCount.toString();
+  }
+  return result;
 };
 
 export const loadNavEventModel: TrackerClientRequest = {
@@ -142,6 +148,12 @@ export const clickBackToCreatorEventModel: TrackerClientRequest = {
   eventType: EventName.ClickNavBackToCreator,
   context: EventContext.Click,
 };
+
+export const clickNavAssistantEventModel = (universeId?: string): TrackerClientRequest => ({
+  eventType: EventName.ClickNavAssistant,
+  context: EventContext.Click,
+  ...(universeId ? { parameters: { universeId } } : {}),
+});
 
 export const openNavUserMenuButtonEventModel: TrackerClientRequest = {
   eventType: EventName.OpenNavUserMenuButton,

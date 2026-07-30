@@ -3,7 +3,6 @@ import { useCallback, useMemo } from 'react';
 import { RAQIV2Metric, RAQIV2MetricGranularity } from '@rbx/creator-hub-analytics-config';
 import type { TranslationKey } from '@modules/analytics-translations/types';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
-import { TableCellBackgroundColor } from '@modules/charts-generic/charts/options';
 import type { GenericTablePaginationSpec } from '@modules/charts-generic/tables/GenericTablePagination';
 import GenericTableV2 from '@modules/charts-generic/tables/GenericTableV2';
 import {
@@ -13,6 +12,7 @@ import {
 } from '@modules/charts-generic/tables/types/GenericColumnType';
 import type { CellDataType } from '@modules/charts-generic/tables/types/GenericTableType';
 import type { TableConfig } from '@modules/charts-generic/tables/types/GenericTableType';
+import { TableCellBackgroundColor } from '@modules/charts-generic/tables/types/TableCellBackgroundColor';
 import type { TableSortOrder } from '@modules/charts-generic/tables/types/TableSort';
 import { getCurrentDate } from '@modules/charts-generic/utils/dateUtils';
 import { millisecondsInInterval } from '@modules/charts-generic/utils/granularityUtils';

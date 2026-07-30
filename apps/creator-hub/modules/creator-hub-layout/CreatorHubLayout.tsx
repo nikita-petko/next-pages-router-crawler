@@ -19,7 +19,17 @@ type AppNavigationProps = {
 };
 
 type CreatorHubLayoutProps = TCreatorHubLayoutInnerProps &
-  AppNavigationProps & { product?: TProductKey };
+  AppNavigationProps & {
+    product?: TProductKey;
+    /**
+     * Destination for the top-nav nebula analytics assistant chat entrypoint. Computed by the
+     * experience layout from the analytics assistant chat flag + analytics-view permission; left
+     * unset elsewhere, and its presence alone enables the entrypoint.
+     */
+    analyticsAssistantChatHref?: string;
+    /** Universe id backing the analytics assistant chat entrypoint, used for click telemetry. */
+    analyticsAssistantChatUniverseId?: number;
+  };
 
 const CreatorHubLayout: React.FC<PropsWithChildren<CreatorHubLayoutProps>> = ({
   product,
@@ -30,6 +40,8 @@ const CreatorHubLayout: React.FC<PropsWithChildren<CreatorHubLayoutProps>> = ({
   secondaryRail,
   pageBanner,
   omitPageTitle,
+  analyticsAssistantChatHref,
+  analyticsAssistantChatUniverseId,
   ...appNavigationProps
 }) => {
   const { noBreadCrumbs, leftNavigationContents } = appNavigationProps;
@@ -57,7 +69,9 @@ const CreatorHubLayout: React.FC<PropsWithChildren<CreatorHubLayoutProps>> = ({
           enabled: settings.enableSignalRCrossTab,
           isFetched: isSettingsFetched,
         }}
-        enableGroupModeration={settings.enableGroupModerationPage}>
+        enableGroupModeration={settings.enableGroupModerationPage}
+        analyticsAssistantChatHref={analyticsAssistantChatHref}
+        analyticsAssistantChatUniverseId={analyticsAssistantChatUniverseId}>
         <CreatorHubLayoutInner
           beta={beta}
           title={title}

@@ -1,13 +1,13 @@
 import { RAQIV2MetricValueType } from '@rbx/creator-hub-analytics-config';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { NumberContext } from '@modules/charts-generic/charts/numberFormatters';
-import { TableCellBackgroundColor } from '@modules/charts-generic/charts/options';
 import type { TableColumnConfig } from '@modules/charts-generic/tables/types/GenericColumnType';
 import {
   CellBackgroundType,
   ColumnType,
 } from '@modules/charts-generic/tables/types/GenericColumnType';
 import type { TableConfig } from '@modules/charts-generic/tables/types/GenericTableType';
+import { TableCellBackgroundColor } from '@modules/charts-generic/tables/types/TableCellBackgroundColor';
 import { TableSortOrder } from '@modules/charts-generic/tables/types/TableSort';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { isComputedMetric, getUIMetricFromAtomicMetricLike } from '../types/ComputedMetric';
@@ -47,7 +47,7 @@ export type TPersonalizedThumbnailsTableColumnKey =
 export const isPersonalizedThumbnailsColumnKeyRAQIV2Compatible = (
   columnKey: TPersonalizedThumbnailsTableColumnKey,
 ): columnKey is RAQIV2CompatibleColumnKey => {
-  return orderedThumbnailTableRAQIColumnKeys.includes(columnKey as RAQIV2CompatibleColumnKey);
+  return orderedThumbnailTableRAQIColumnKeys.some((compatibleKey) => compatibleKey === columnKey);
 };
 
 export const getColumnConfigByKey = (
@@ -66,7 +66,7 @@ export const getColumnConfigByKey = (
       return tableColumnConfigThumbnailWinningSegments;
     default: {
       const exhaustiveCheck: never = columnKey;
-      throw new Error(`Unknown thumbnail table column key: ${exhaustiveCheck}`);
+      throw new Error(`Unknown thumbnail table column key: ${String(exhaustiveCheck)}`);
     }
   }
 };

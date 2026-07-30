@@ -11,7 +11,6 @@ import {
   formatNumberWithSpec,
   NumberContext,
 } from '@modules/charts-generic/charts/numberFormatters';
-import { TableCellBackgroundColor } from '@modules/charts-generic/charts/options';
 import type { GenericChartState } from '@modules/charts-generic/charts/types/ChartTypes';
 import useLocale from '@modules/charts-generic/context/useLocale';
 import GenericTableV2 from '@modules/charts-generic/tables/GenericTableV2';
@@ -25,6 +24,7 @@ import type {
   TableConfig,
   TableValueTypes,
 } from '@modules/charts-generic/tables/types/GenericTableType';
+import { TableCellBackgroundColor } from '@modules/charts-generic/tables/types/TableCellBackgroundColor';
 import { getComparisonChipSpec } from '@modules/charts-generic/utils/comparisonChipUtils';
 import getAnalyticsMetricDisplayConfig from '@modules/experience-analytics-shared/constants/AnalyticsMetricDisplayConfig';
 import { generateAnalyticsNumberFormattingSpec } from '@modules/experience-analytics-shared/utils/analyticsNumberFormattingSpec';

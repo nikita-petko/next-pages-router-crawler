@@ -1,9 +1,9 @@
 import type { ParsedUrlQuery } from 'node:querystring';
 import type { ReactNode } from 'react';
 import Authenticated from '@modules/authentication/Authenticated';
-import CreatorHubLayout from '@modules/creator-hub-layout/CreatorHubLayout';
 import ExperienceGuidelinesProvider from '@modules/experience-guidelines/providers/ExperienceGuidelinesProvider';
 import GameProvider from '@modules/providers/game/GameProvider';
+import ExperienceCreatorHubLayout from '../components/ExperienceCreatorHubLayout';
 import GameLeftNavigation from '../components/GameLeftNavigation';
 import { CreationsCustomSettingsProvider } from './creationsCustomSettings';
 
@@ -24,12 +24,12 @@ export default function getCreationsPageLayout(
             {/* (@dbrunais, 05-27-2025) The CreatorHub Layout should be above the providers.
             But to support both versions during the A/B test it needs to remain here for the left navigation.
             Being here will cause the app layout to fully rerender when navigating to and from a creations page */}
-            <CreatorHubLayout
+            <ExperienceCreatorHubLayout
               {...context}
               leftNavigationContents={<GameLeftNavigation />}
               secondarySize='small'>
               {page}
-            </CreatorHubLayout>
+            </ExperienceCreatorHubLayout>
           </GameProvider>
         </ExperienceGuidelinesProvider>
       </Authenticated>

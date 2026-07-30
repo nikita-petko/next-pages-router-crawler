@@ -36,6 +36,15 @@ export type NavigationConfigsProviderProps = {
    */
   useStaticTranslations?: boolean;
   enableGroupModeration?: boolean;
+  /**
+   * Destination for the top-nav nebula analytics assistant chat entrypoint (experience-scoped).
+   * When set, the nebula links here instead of the docs assistant. The app sets it on experience
+   * pages when the analytics assistant chat flag + analytics-view permission are satisfied, so its
+   * presence alone signals the entrypoint is enabled.
+   */
+  analyticsAssistantChatHref?: string;
+  /** Universe id backing the analytics assistant chat entrypoint, used for click telemetry. */
+  analyticsAssistantChatUniverseId?: number;
 };
 
 const defaultSignalRCrossTab = { enabled: false, isFetched: false };
@@ -51,6 +60,8 @@ const NavigationConfigsProvider: FunctionComponent<NavigationConfigsProviderProp
   signalRCrossTab = defaultSignalRCrossTab,
   useStaticTranslations = false,
   enableGroupModeration = false,
+  analyticsAssistantChatHref,
+  analyticsAssistantChatUniverseId,
 }) => {
   const isCompact = useMediaQuery((theme) => theme.breakpoints.down(compactBreakpoint ?? 'Large'));
   const robloxEnv = robloxEnvironment ?? getRobloxEnvironment(environment);
@@ -128,6 +139,8 @@ const NavigationConfigsProvider: FunctionComponent<NavigationConfigsProviderProp
       isCompact,
       signalRCrossTab,
       enableGroupModeration,
+      analyticsAssistantChatHref,
+      analyticsAssistantChatUniverseId,
       ...drawerState,
       sendEvent,
     }),
@@ -142,6 +155,8 @@ const NavigationConfigsProvider: FunctionComponent<NavigationConfigsProviderProp
       isCompact,
       signalRCrossTab,
       enableGroupModeration,
+      analyticsAssistantChatHref,
+      analyticsAssistantChatUniverseId,
       drawerState,
       sendEvent,
       useStaticTranslations,

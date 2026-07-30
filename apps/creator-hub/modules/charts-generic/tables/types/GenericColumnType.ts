@@ -1,8 +1,9 @@
 import type { TTableCellProps } from '@rbx/ui';
 import type { FormattedText, TranslationKey } from '@modules/analytics-translations/types';
+import { brandUntranslatableText } from '@modules/analytics-translations/wrapperFunctions';
 import type { TFormattingSpec } from '../../charts/numberFormatters';
-import type { TableCellBackgroundColor } from '../../charts/options';
 import type { FormattingSpec } from '../../components/MetricValue/MetricValue';
+import type { TableCellBackgroundColor } from './TableCellBackgroundColor';
 import type { TableSort } from './TableSort';
 
 export enum ColumnType {
@@ -123,7 +124,7 @@ export const resolveTableColumnTitle = (
 ): FormattedText => {
   if (titleOverride !== undefined) {
     // titleOverride is already user-facing display text.
-    return titleOverride as FormattedText;
+    return brandUntranslatableText(titleOverride);
   }
   return typeof title === 'string' ? title : translate(title);
 };
