@@ -1,7 +1,6 @@
 import NextLink from 'next/link';
 import type { TBadgeProps, TIconProps } from '@rbx/foundation-ui';
-import { Badge, Button, clsx, Icon } from '@rbx/foundation-ui';
-import { Skeleton } from '@rbx/ui';
+import { Badge, Button, clsx, Icon, Skeleton } from '@rbx/foundation-ui';
 import { Tooltip } from '@modules/monetization-shared/tooltip';
 
 type BadgeProps =
@@ -39,14 +38,9 @@ function ManagedPricingCard({
   if (loading) {
     return (
       <div className={clsx(outerContainerClassName, innerContainerClassName, className)}>
-        <Skeleton animate variant='text' height={14} width={140} />
-        <Skeleton
-          animate
-          variant='rectangular'
-          height={28}
-          width={badgeProps || badge ? 180 : 120}
-        />
-        {hint && <Skeleton animate variant='text' height={20} width={160} />}
+        <Skeleton variant='Text' height={14} width={140} />
+        <Skeleton variant='Rectangle' height={28} width={badgeProps || badge ? 180 : 120} />
+        {hint && <Skeleton variant='Text' height={20} width={160} />}
       </div>
     );
   }

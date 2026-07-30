@@ -1,7 +1,7 @@
 import { memo } from 'react';
-import { Checkbox } from '@rbx/foundation-ui';
+import { Checkbox, Skeleton } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { Skeleton, TableBody, TableCell, TableHead, TableRow } from '@rbx/ui';
+import { TableBody, TableCell, TableHead, TableRow } from '@rbx/ui';
 import TableBase from '@modules/monetization-shared/table-v1/TableBase';
 import ManagedProductsActionBar from './ManagedProductsActionBar';
 
@@ -25,30 +25,30 @@ function SkeletonRow() {
       {/* Avatar + Name + Type */}
       <TableCell>
         <div className='flex items-center gap-small'>
-          <Skeleton animate variant='rectangular' width={40} height={40} />
+          <Skeleton variant='Rectangle' width={40} height={40} />
           <div className='flex flex-col gap-xsmall'>
-            <Skeleton animate variant='text' width={140} height={16} />
-            <Skeleton animate variant='text' width={90} height={14} />
+            <Skeleton variant='Text' width={140} height={16} />
+            <Skeleton variant='Text' width={90} height={14} />
           </div>
         </div>
       </TableCell>
 
       {/* Managed Pricing status */}
       <TableCell>
-        <Skeleton animate variant='rectangular' width={64} height={24} />
+        <Skeleton variant='Rectangle' width={64} height={24} />
       </TableCell>
 
       {/* Current Price */}
       <TableCell>
         <div className='flex items-center gap-xsmall'>
-          <Skeleton animate variant='rectangular' width={16} height={16} />
-          <Skeleton animate variant='text' width={48} height={16} />
+          <Skeleton variant='Rectangle' width={16} height={16} />
+          <Skeleton variant='Text' width={48} height={16} />
         </div>
       </TableCell>
 
       {/* Last Updated */}
       <TableCell>
-        <Skeleton animate variant='text' width={80} height={16} />
+        <Skeleton variant='Text' width={80} height={16} />
       </TableCell>
     </TableRow>
   );

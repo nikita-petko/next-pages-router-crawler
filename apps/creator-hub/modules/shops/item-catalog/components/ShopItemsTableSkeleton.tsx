@@ -1,7 +1,7 @@
 import { memo } from 'react';
-import { Checkbox } from '@rbx/foundation-ui';
+import { Checkbox, Skeleton } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { Skeleton, TableBody, TableCell, TableHead, TableRow } from '@rbx/ui';
+import { TableBody, TableCell, TableHead, TableRow } from '@rbx/ui';
 import TableBase from '@modules/monetization-shared/table-v1/TableBase';
 import ShopItemsActionBar from './ShopItemsActionBar';
 
@@ -25,29 +25,29 @@ function SkeletonRow() {
       {/* Avatar + Name */}
       <TableCell>
         <div className='flex items-center gap-small'>
-          <Skeleton animate variant='rectangular' width={40} height={40} />
-          <Skeleton animate variant='text' width={160} height={16} />
+          <Skeleton variant='Rectangle' width={40} height={40} />
+          <Skeleton variant='Text' width={160} height={16} />
         </div>
       </TableCell>
 
       {/* Type */}
       <TableCell>
-        <Skeleton animate variant='text' width={96} height={16} />
+        <Skeleton variant='Text' width={96} height={16} />
       </TableCell>
 
       {/* Shop visibility badge */}
       <TableCell>
-        <Skeleton animate variant='rectangular' width={88} height={24} />
+        <Skeleton variant='Rectangle' width={88} height={24} />
       </TableCell>
 
       {/* Category dropdown */}
       <TableCell>
-        <Skeleton animate variant='rectangular' width={140} height={32} />
+        <Skeleton variant='Rectangle' width={140} height={32} />
       </TableCell>
 
       {/* Row actions */}
       <TableCell padding='checkbox' align='center'>
-        <Skeleton animate variant='rectangular' width={24} height={24} />
+        <Skeleton variant='Rectangle' width={24} height={24} />
       </TableCell>
     </TableRow>
   );

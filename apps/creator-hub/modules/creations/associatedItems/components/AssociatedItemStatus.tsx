@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { useRouter } from 'next/router';
+import { Skeleton } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { ThumbnailTypes, ThumbnailResponseState, ThumbnailClient } from '@rbx/thumbnails';
 import {
@@ -9,7 +10,6 @@ import {
   HourglassEmptyIcon,
   ImageIcon,
   BlockIcon,
-  Skeleton,
   List,
   ListItemSecondaryAction,
   ListItemText,
@@ -295,7 +295,7 @@ const AssociatedItemStatus = ({ currentItemType }: AssociatedItemStatusProps) =>
           </ListItemSecondaryAction>
         </ListItem>
       ) : (
-        <Skeleton animate variant='rectangular' width={40} height={40} />
+        <Skeleton variant='Rectangle' width={40} height={40} />
       )}
     </List>
   );

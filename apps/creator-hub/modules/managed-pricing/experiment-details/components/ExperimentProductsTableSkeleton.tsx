@@ -1,7 +1,7 @@
 import { memo } from 'react';
-import { TextInput } from '@rbx/foundation-ui';
+import { Skeleton, TextInput } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { Skeleton, TableBody, TableCell, TableHead, TableRow } from '@rbx/ui';
+import { TableBody, TableCell, TableHead, TableRow } from '@rbx/ui';
 import TableBase from '@modules/monetization-shared/table-v1/TableBase';
 import { ExperimentProductsFilterTrigger } from './ExperimentProductsFilterTrigger';
 
@@ -12,35 +12,35 @@ function SkeletonRow({ showOptimization }: { showOptimization: boolean }) {
     <TableRow>
       <TableCell className='max-width-0'>
         <div className='flex min-width-0 items-center gap-small'>
-          <Skeleton animate variant='rectangular' width={40} height={40} />
+          <Skeleton variant='Rectangle' width={40} height={40} />
           <div className='flex min-width-0 flex-col gap-xsmall'>
-            <Skeleton animate variant='text' width={140} height={16} />
-            <Skeleton animate variant='text' width={72} height={14} />
+            <Skeleton variant='Text' width={140} height={16} />
+            <Skeleton variant='Text' width={72} height={14} />
           </div>
         </div>
       </TableCell>
 
       <TableCell>
-        <Skeleton animate variant='text' width={100} height={16} />
+        <Skeleton variant='Text' width={100} height={16} />
       </TableCell>
 
       {showOptimization && (
         <TableCell>
-          <Skeleton animate variant='text' width={48} height={16} />
+          <Skeleton variant='Text' width={48} height={16} />
         </TableCell>
       )}
 
       <TableCell>
         <div className='flex items-center gap-xsmall'>
-          <Skeleton animate variant='rectangular' width={16} height={16} />
-          <Skeleton animate variant='text' width={48} height={16} />
+          <Skeleton variant='Rectangle' width={16} height={16} />
+          <Skeleton variant='Text' width={48} height={16} />
         </div>
       </TableCell>
 
       <TableCell className='bg-shift-200'>
         <div className='flex items-center gap-xsmall'>
-          <Skeleton animate variant='rectangular' width={16} height={16} />
-          <Skeleton animate variant='text' width={48} height={16} />
+          <Skeleton variant='Rectangle' width={16} height={16} />
+          <Skeleton variant='Text' width={48} height={16} />
         </div>
       </TableCell>
     </TableRow>

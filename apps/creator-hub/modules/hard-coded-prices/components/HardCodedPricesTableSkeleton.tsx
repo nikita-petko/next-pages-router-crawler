@@ -1,4 +1,5 @@
-import { Skeleton, TableCell, TableRow } from '@rbx/ui';
+import { Skeleton } from '@rbx/foundation-ui';
+import { TableCell, TableRow } from '@rbx/ui';
 import HardCodedPricesTableBase from './HardCodedPricesTableBase';
 import StudioLauncherButton from './StudioLauncherButton';
 
@@ -10,19 +11,19 @@ function SkeletonRow() {
       {/* File Name (avatar + path) */}
       <TableCell>
         <div className='flex items-center gap-small'>
-          <Skeleton animate variant='rectangular' width={40} height={40} />
-          <Skeleton animate variant='text' width={280} height={16} />
+          <Skeleton variant='Rectangle' width={40} height={40} />
+          <Skeleton variant='Text' width={280} height={16} />
         </div>
       </TableCell>
 
       {/* Line Item */}
       <TableCell>
-        <Skeleton animate variant='text' width={32} height={16} />
+        <Skeleton variant='Text' width={32} height={16} />
       </TableCell>
 
       {/* Code snippet */}
       <TableCell>
-        <Skeleton animate variant='rectangular' width={280} height={32} />
+        <Skeleton variant='Rectangle' width={280} height={32} />
       </TableCell>
 
       {/* Studio Launcher */}
