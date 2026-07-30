@@ -35,13 +35,13 @@ const DataStoreRequestOperationGroupFilters = {
   [DataStoreRequestOperationGroup.All]: null,
   [DataStoreRequestOperationGroup.Read]: [
     'GetAsync',
-    'GetSortedAsync',
     'GetVersionAsync',
     'GetVersionAtTimeAsync',
     'UpdateAsync',
   ],
   [DataStoreRequestOperationGroup.Write]: ['SetAsync', 'UpdateAsync', 'IncrementAsync'],
   [DataStoreRequestOperationGroup.List]: [
+    'GetSortedAsync',
     'ListKeysAsync',
     'ListVersionsAsync',
     'ListDataStoresAsync',
@@ -134,7 +134,7 @@ export const DataStoreRequestsByApiChartControlSpacer: FunctionComponent = () =>
 
   return (
     <DataStoreRequestsByApiChartControl
-      selectedOperationGroup={DataStoreRequestOperationGroup.Read}
+      selectedOperationGroup={DataStoreRequestOperationGroup.All}
       onChangeOperationGroup={onChangeOperationGroup}
       hidden
     />
@@ -151,7 +151,7 @@ const DataStoreRequestsByApiChart: FunctionComponent<DataStoreRequestsByApiChart
   onSelectChartRegion,
 }) => {
   const [selectedOperationGroup, setSelectedOperationGroup] =
-    useState<DataStoreRequestOperationGroup>(DataStoreRequestOperationGroup.Read);
+    useState<DataStoreRequestOperationGroup>(DataStoreRequestOperationGroup.All);
 
   const chartContextWithOperationFilter = useMemo(() => {
     const operationGroupFilter = DataStoreRequestOperationGroupFilters[selectedOperationGroup];
