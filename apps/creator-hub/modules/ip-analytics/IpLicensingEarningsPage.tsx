@@ -151,7 +151,14 @@ const IpLicensingEarningsPage = () => {
   );
 
   const chartActionsPolicy: ChartActionsPolicy = useMemo(
-    () => ({ actions: [downloadAction] }),
+    () => ({
+      strategy: 'compose',
+      overrides: {
+        showExploreAction: false,
+        showDownloadAction: false,
+      },
+      primaryActions: [downloadAction],
+    }),
     [downloadAction],
   );
 
