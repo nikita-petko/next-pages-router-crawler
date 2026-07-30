@@ -50,6 +50,14 @@ const JourneySankeyChart: FC<{ chartContext: RAQIV2ChartContext }> = ({ chartCon
   // chart.update() redraws.
   const sankeyNodes = useMemo(() => sankeyData?.nodes, [sankeyData]);
 
+  const sankeyDataProp = useMemo(
+    () =>
+      sankeyNodes && activeSankeyLinks
+        ? { nodes: sankeyNodes, links: activeSankeyLinks }
+        : undefined,
+    [sankeyNodes, activeSankeyLinks],
+  );
+
   if (!journeyName) {
     return null;
   }
@@ -71,8 +79,8 @@ const JourneySankeyChart: FC<{ chartContext: RAQIV2ChartContext }> = ({ chartCon
             )}
           />
         </div>
-      ) : sankeyNodes && activeSankeyLinks ? (
-        <SankeyChart nodes={sankeyNodes} links={activeSankeyLinks} />
+      ) : sankeyDataProp ? (
+        <SankeyChart data={sankeyDataProp} />
       ) : (
         <p className='content-muted'>
           {tPendingTranslation(

@@ -28,7 +28,7 @@ import { RAQIV2SpecialLayoutType } from '@modules/experience-analytics-shared/ty
 import DevExO18PromotionBanner from '@modules/experience-monetization/components/DevExO18PromotionBanner/DevExO18PromotionBanner';
 import useDevExO18EligibilityState from '@modules/experience-monetization/hooks/useDevExO18EligibilityState';
 import ManagedPricingPromotionBanner from '@modules/managed-pricing/banners/ManagedPricingPromotionBanner';
-import { useIsManagedPricingPromotionBannerShown } from '@modules/managed-pricing/banners/useManagedPricingPromotionBanner';
+import { useManagedPricingPromotionBanner } from '@modules/managed-pricing/banners/useManagedPricingPromotionBanner';
 import { useIsManagedPricingAvailable } from '@modules/managed-pricing/hooks/useIsManagedPricingAvailable';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useUniverseId } from '@modules/monetization-shared/route/useUniverseId';
@@ -199,7 +199,7 @@ export const arbitraryComponentConfigMonetizationFeaturePromotionBanner = {
           <ManagedPricingPromotionBanner
             universeId={universeId}
             page='monetization/overview'
-            emphasizePrimaryButton={isPersonalizedShopBannerShown === false}
+            emphasizePrimaryButton={!isPersonalizedShopBannerShown}
             className='margin-bottom-medium'
           />
         );
@@ -222,16 +222,19 @@ export const arbitraryComponentConfigDevExO18PromotionBanner = {
         enabled: showDevExO18 === true,
       });
       const isPersonalizedShopBannerShown = useIsPersonalizedShopPromotionBannerShown(universeId);
-      const isManagedPricingBannerShown = useIsManagedPricingPromotionBannerShown(
+
+      const { data: isManagedPricingAvailable } = useIsManagedPricingAvailable(universeId);
+      const { isOpen } = useManagedPricingPromotionBanner({
         universeId,
-        'monetization/overview',
-      );
+        page: 'monetization/overview',
+      });
+      const isManagedPricingBannerShown = isManagedPricingAvailable && isOpen;
 
       // Only surface this banner if the shop or the managed-pricing banner is no longer taking the slot
       if (
         !showDevExO18 ||
         !Number.isFinite(universeId) ||
-        (isPersonalizedShopBannerShown !== false && isManagedPricingBannerShown !== false)
+        (isPersonalizedShopBannerShown && isManagedPricingBannerShown !== false)
       ) {
         return null;
       }

@@ -13,6 +13,7 @@ import { useSankeyChartOptions } from './highchart-options/chartOptions';
 import { useSankeyTooltipOptions } from './highchart-options/tooltipOptions';
 import { ChartStyleMode, ChartType } from './types/BaseChart';
 import type { SankeyChartProps, SankeyNode } from './types/SankeyChart';
+import type { SankeyLink } from './types/SankeyChart';
 import { applySankeyNodePresentation } from './utils/applySankeyNodePresentation';
 import { computeSankeyContentSize } from './utils/computeSankeyContentSize';
 import {
@@ -33,6 +34,8 @@ const DefaultNodeWidth = 8;
 const DefaultNodeRadius = 4;
 const DefaultLabelFontSize = 12;
 const DefaultMaxZoom = 8;
+const DefaultMinNodeThickness = 0;
+const DefaultMinColumnWidth = 0;
 /** Soft ribbons so gradients don't overpower the stage bars (design idle). */
 const DefaultLinkOpacity = 0.3;
 /** Hovered ribbon opacity (design on-hover). */
@@ -87,27 +90,11 @@ const defaultFormatNodeCount = (value: number): string =>
   new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value);
 
 const SankeyChart = ({
-  nodes,
-  links,
+  data,
   height = DefaultHeight,
   containerHeight: containerHeightProp,
-  maxHeight = DefaultMaxHeight,
-  nodePadding = DefaultNodePadding,
-  nodeWidth = DefaultNodeWidth,
-  nodeRadius = DefaultNodeRadius,
-  minNodeThickness = 0,
-  minColumnWidth = 0,
-  labelFontSize = DefaultLabelFontSize,
-  linkOpacity = DefaultLinkOpacity,
   enableZoom = true,
-  maxZoom = DefaultMaxZoom,
-  colors = ExtendedCategoricalChartColors,
-  showZoomControls = true,
   zoomControlLabels,
-  showOverview = true,
-  overviewMaxWidth = DefaultOverviewMaxWidth,
-  overviewMaxHeight = DefaultOverviewMaxHeight,
-  overviewHideDelayMs = DefaultOverviewHideDelayMs,
   enableNodeFocus = true,
   chartStyleMode = ChartStyleMode.Normal,
   formatNodeLabel,
@@ -117,9 +104,22 @@ const SankeyChart = ({
   className,
   'data-testid': dataTestId,
 }: SankeyChartProps) => {
+  const { nodes, links } = data;
   const theme = useTheme();
   const { dataLabelText } = getChartThemedColors(theme);
   const nodeBorderColor = theme.palette.surface[0];
+
+  /**
+   * Forces GenericSeriesChart to unmount/remount when the underlying data
+   * changes. Highcharts' `chart.update()` with `oneToOne` does not properly
+   * reconcile sankey nodes — stale nodes from the previous dataset persist
+   * alongside the new ones. A key change ensures a clean chart instance.
+   */
+  const chartKey = useMemo(
+    () =>
+      `${nodes.map((n: SankeyNode) => n.id).join(',')}|${links.map((l: SankeyLink) => `${l.source}:${l.target}`).join(',')}`,
+    [nodes, links],
+  );
 
   const outerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<Chart | null>(null);
@@ -136,17 +136,19 @@ const SankeyChart = ({
         links,
         measuredWidth,
         height,
-        nodeWidth,
-        nodePadding,
-        minNodeThickness,
-        minColumnWidth,
+        nodeWidth: DefaultNodeWidth,
+        nodePadding: DefaultNodePadding,
+        minNodeThickness: DefaultMinNodeThickness,
+        minColumnWidth: DefaultMinColumnWidth,
       }),
-    [nodes, links, measuredWidth, height, nodeWidth, nodePadding, minNodeThickness, minColumnWidth],
+    [nodes, links, measuredWidth, height],
   );
 
   // Small funnels keep a zoom floor of 1; larger canvases can zoom out to fit.
   const fitZoom =
-    measuredWidth > 0 ? Math.min(1, measuredWidth / contentWidth, maxHeight / contentHeight) : 1;
+    measuredWidth > 0
+      ? Math.min(1, measuredWidth / contentWidth, DefaultMaxHeight / contentHeight)
+      : 1;
 
   const {
     scrollRef,
@@ -164,25 +166,25 @@ const SankeyChart = ({
     contentHeight,
     enabled: enableZoom,
     minZoom: fitZoom,
-    maxZoom,
-    panHideDelayMs: overviewHideDelayMs,
+    maxZoom: DefaultMaxZoom,
+    panHideDelayMs: DefaultOverviewHideDelayMs,
   });
 
   const applyPresentation = useCallback(
     (chart: Chart) => {
       applySankeyNodePresentation(chart, {
-        nodeRadius,
+        nodeRadius: DefaultNodeRadius,
         borderWidth: DefaultNodeBorderWidth,
         borderColor: nodeBorderColor,
         labelGap: SankeyLabelGap,
         focusedNodeId,
-        idleLinkOpacity: linkOpacity,
+        idleLinkOpacity: DefaultLinkOpacity,
         activeLinkOpacity: FocusActiveLinkOpacity,
         dimmedLinkOpacity: FocusDimmedLinkOpacity,
         dimmedNodeOpacity: FocusDimmedNodeOpacity,
       });
     },
-    [focusedNodeId, linkOpacity, nodeBorderColor, nodeRadius],
+    [focusedNodeId, nodeBorderColor],
   );
 
   const refreshOverviewModel = useCallback((chart: Chart) => {
@@ -238,13 +240,13 @@ const SankeyChart = ({
       {
         type: ChartType.Sankey,
         data: buildSankeyLinks(links),
-        nodes: buildSankeyNodes({ nodes, colors, theme }),
-        nodePadding,
-        nodeWidth,
-        linkOpacity,
+        nodes: buildSankeyNodes({ nodes, colors: ExtendedCategoricalChartColors, theme }),
+        nodePadding: DefaultNodePadding,
+        nodeWidth: DefaultNodeWidth,
+        linkOpacity: DefaultLinkOpacity,
         linkColorMode: 'gradient',
         // Highcharts uses minLinkWidth as a floor for both link and node thickness.
-        minLinkWidth: minNodeThickness,
+        minLinkWidth: DefaultMinNodeThickness,
         borderWidth: DefaultNodeBorderWidth,
         borderColor: nodeBorderColor,
         states: {
@@ -254,7 +256,7 @@ const SankeyChart = ({
           },
           inactive: {
             // When focus is pinned, presentation owns dimming; keep hover soft.
-            linkOpacity: focusedNodeId ? linkOpacity : InactiveLinkOpacity,
+            linkOpacity: focusedNodeId ? DefaultLinkOpacity : InactiveLinkOpacity,
             opacity: focusedNodeId ? 1 : InactiveNodeOpacity,
           },
         },
@@ -282,7 +284,7 @@ const SankeyChart = ({
           color: dataLabelText,
           style: {
             textOutline: 'none',
-            fontSize: `${labelFontSize}px`,
+            fontSize: `${DefaultLabelFontSize}px`,
             fontWeight: '400',
           },
           nodeFormatter,
@@ -292,18 +294,12 @@ const SankeyChart = ({
   }, [
     links,
     nodes,
-    colors,
     theme,
-    nodePadding,
-    nodeWidth,
-    linkOpacity,
-    minNodeThickness,
     nodeBorderColor,
     focusedNodeId,
     enableNodeFocus,
     toggleFocus,
     dataLabelText,
-    labelFontSize,
     nodeFormatter,
   ]);
 
@@ -417,14 +413,14 @@ const SankeyChart = ({
   const scaledWidth = contentWidth * zoom;
   const scaledHeight = contentHeight * zoom;
   // Fixed viewport when containerHeight is set; otherwise shrink-to-content with a cap.
-  const viewportHeight = containerHeightProp ?? Math.min(scaledHeight, maxHeight);
+  const viewportHeight = containerHeightProp ?? Math.min(scaledHeight, DefaultMaxHeight);
   const verticalCenterOffset =
     scaledHeight + 1 < viewportHeight ? (viewportHeight - scaledHeight) / 2 : 0;
   const clientWidth = viewport.clientWidth || measuredWidth;
   const overflows = scaledWidth > clientWidth + 1 || scaledHeight > viewportHeight + 1;
   const overviewVisible =
-    showOverview && overflows && !!overviewModel && (isPanning || isOverviewHovered);
-  const zoomControlsVisible = enableZoom && showZoomControls && zoomControlLabels !== undefined;
+    enableZoom && overflows && !!overviewModel && (isPanning || isOverviewHovered);
+  const zoomControlsVisible = enableZoom && zoomControlLabels !== undefined;
 
   const handleOverviewMouseEnter = useCallback(() => {
     if (overviewHoverHideTimerRef.current) {
@@ -441,8 +437,8 @@ const SankeyChart = ({
     overviewHoverHideTimerRef.current = setTimeout(() => {
       setIsOverviewHovered(false);
       overviewHoverHideTimerRef.current = null;
-    }, overviewHideDelayMs);
-  }, [overviewHideDelayMs]);
+    }, DefaultOverviewHideDelayMs);
+  }, []);
 
   useLayoutEffect(
     () => () => {
@@ -462,8 +458,8 @@ const SankeyChart = ({
       ref={outerRef}
       className={className ? `${RootClassName} ${className}` : RootClassName}
       data-testid={dataTestId}
-      onMouseEnter={showOverview && overflows ? handleOverviewMouseEnter : undefined}
-      onMouseLeave={showOverview && overflows ? handleOverviewMouseLeave : undefined}>
+      onMouseEnter={enableZoom && overflows ? handleOverviewMouseEnter : undefined}
+      onMouseLeave={enableZoom && overflows ? handleOverviewMouseLeave : undefined}>
       <div
         ref={scrollRef}
         data-testid={dataTestId ? `${dataTestId}-viewport` : undefined}
@@ -472,7 +468,7 @@ const SankeyChart = ({
         }`}
         style={{
           height: viewportHeight,
-          maxHeight: containerHeightProp !== undefined ? undefined : maxHeight,
+          maxHeight: containerHeightProp !== undefined ? undefined : DefaultMaxHeight,
         }}>
         <div
           className={CenteringWrapperClassName}
@@ -499,6 +495,7 @@ const SankeyChart = ({
               }}>
               {measuredWidth > 0 ? (
                 <GenericSeriesChart
+                  key={chartKey}
                   options={highchartsOptions}
                   showLocalizedTime={false}
                   chartUpdatePolicy='non-animated'
@@ -535,7 +532,7 @@ const SankeyChart = ({
         </div>
       ) : null}
 
-      {showOverview && overflows && overviewModel ? (
+      {enableZoom && overflows && overviewModel ? (
         <div
           className={`${OverviewContainerClassName} ${
             overviewVisible ? OverviewVisibleClassName : OverviewHiddenClassName
@@ -544,8 +541,8 @@ const SankeyChart = ({
             model={overviewModel}
             viewport={viewport}
             zoom={zoom}
-            maxWidth={overviewMaxWidth}
-            maxHeight={overviewMaxHeight}
+            maxWidth={DefaultOverviewMaxWidth}
+            maxHeight={DefaultOverviewMaxHeight}
             onNavigate={scrollTo}
             onPanActivity={signalPanActivity}
           />

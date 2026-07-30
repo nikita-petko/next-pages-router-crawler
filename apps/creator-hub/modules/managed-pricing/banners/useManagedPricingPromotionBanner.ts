@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from 'react';
 import { useLocalStorage } from '@rbx/react-utilities';
-import { useIsManagedPricingAvailable } from '../hooks/useIsManagedPricingAvailable';
 
 export const PromotionBannerPageKeys = {
   'managed-pricing/overview': (universeId: number) =>
@@ -58,23 +57,4 @@ export function useManagedPricingPromotionBanner({
     () => ({ isOpen, close, closeManagedPricingOverviewBanner }) as const,
     [close, closeManagedPricingOverviewBanner, isOpen],
   );
-}
-
-/**
- * Resolves whether the managed-pricing promotion banner currently occupies its
- * slot on the given page. Managed pricing must be available and the banner not
- * dismissed
- */
-export function useIsManagedPricingPromotionBannerShown(
-  universeId: number,
-  page: keyof typeof PromotionBannerPageKeys,
-): boolean | undefined {
-  const { data: isManagedPricingAvailable } = useIsManagedPricingAvailable(universeId);
-  const { isOpen } = useManagedPricingPromotionBanner({ universeId, page });
-
-  if (isManagedPricingAvailable === undefined) {
-    return undefined;
-  }
-
-  return isManagedPricingAvailable && isOpen;
 }
