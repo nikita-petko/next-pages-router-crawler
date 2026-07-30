@@ -17,6 +17,7 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import { useAuthentication } from '@modules/authentication/providers';
 import CreatorType from '@modules/miscellaneous/common/enums/Creator';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import type { RevShareRefreshStaleErrorHandler } from '../hooks/useRevShareMutationErrorBanner';
 import {
   RevShareRecipientType,
   type RevShareRecipientAllocation,
@@ -65,15 +66,13 @@ type RevShareSplitEditorFlowProps = {
   searchError?: boolean;
   onSearchQueryChange?: (query: string) => void;
   onExit?: () => void;
-  onSubmitProposal?: (
-    allocations: readonly RevShareRecipientAllocation[],
-  ) => boolean | void | Promise<boolean | void>;
+  onSubmitProposal?: (allocations: readonly RevShareRecipientAllocation[]) => void | Promise<void>;
   isSubmitting?: boolean;
   replacesOpenProposal?: boolean;
   presentation?: RevShareSplitEditorFlowPresentation;
   onStepChange?: (step: RevShareSplitEditorFlowStep) => void;
   submissionError?: ClassifiedRevShareMutationError | null;
-  onRefreshSubmissionError?: () => void;
+  onRefreshSubmissionError?: RevShareRefreshStaleErrorHandler;
   isRefreshingSubmissionError?: boolean;
 };
 
@@ -459,12 +458,8 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
       isSubmitPendingRef.current = true;
       setIsSubmitPending(true);
       try {
-        const succeeded = await onSubmitProposal(
-          splitEditorRowsToRecipientAllocations(getValues('rows')),
-        );
-        if (succeeded === false) {
-          transitionToStepRef.current('review');
-        }
+        // Failures stay on this step; the owning container surfaces them in the terms footer.
+        await onSubmitProposal(splitEditorRowsToRecipientAllocations(getValues('rows')));
       } finally {
         isSubmitPendingRef.current = false;
         setIsSubmitPending(false);
@@ -508,7 +503,9 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
         onAcceptedChange={setIsTermsAccepted}
         onBack={handleTermsBack}
         onSubmit={handleTermsSubmit}
-        isSubmitting={termsSubmitting}
+        isSubmitting={termsSubmitting || isRefreshingSubmissionError}
+        submissionError={submissionError}
+        onRefreshSubmissionError={onRefreshSubmissionError}
       />
     );
   }
@@ -522,11 +519,9 @@ const RevShareSplitEditorFlow: FunctionComponent<RevShareSplitEditorFlowProps> =
         wizardAriaLabel={wizardAriaLabel}
         onBack={handleReviewBack}
         onContinue={onSubmitProposal ? handleReviewContinue : undefined}
-        isSubmitting={isSubmitting || isRefreshingSubmissionError}
+        isSubmitting={isSubmitting}
         replacesOpenProposal={replacesOpenProposal}
         stepFocusRef={setStepFocusElement}
-        submissionError={submissionError}
-        onRefreshSubmissionError={onRefreshSubmissionError}
       />
     );
   }

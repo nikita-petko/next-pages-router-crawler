@@ -1,13 +1,11 @@
 // Presents recipient pending-proposal review with the shared diff table and Back and Accept actions before terms.
-import { useEffect, useMemo, useRef, type FunctionComponent } from 'react';
+import { useMemo, type FunctionComponent } from 'react';
 import { Button } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { RevShareConfirmationStatus } from '../interface/RevShareViewModel';
-import type { ClassifiedRevShareMutationError } from '../utils/revShareMutationError';
-import { translateRevShareMutationError } from '../utils/revShareMutationErrorPresentation';
 import { translateRevShareRecipientSettledStatusBanner } from '../utils/revShareRecipientProposalStatusPresentation';
 import RevShareBanner from './RevShareBanner';
 import RevShareReviewShell from './RevShareReviewShell';
@@ -18,9 +16,6 @@ export type RevShareRecipientReviewViewProps = {
   confirmation: RevShareConfirmationStatus;
   canRespond: boolean;
   isSubmitting?: boolean;
-  mutationError?: ClassifiedRevShareMutationError | null;
-  onRefreshStaleError?: () => void;
-  isRefreshingStaleError?: boolean;
   onBack: () => void;
   onAccept: () => void;
 };
@@ -30,21 +25,11 @@ const RevShareRecipientReviewView: FunctionComponent<RevShareRecipientReviewView
   confirmation,
   canRespond,
   isSubmitting = false,
-  mutationError = null,
-  onRefreshStaleError,
-  isRefreshingStaleError = false,
   onBack,
   onAccept,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
-  const errorBannerRef = useRef<HTMLDivElement>(null);
   const isPending = confirmation === RevShareConfirmationStatus.Pending;
-  const hasError = mutationError != null;
-  useEffect(() => {
-    if (hasError) {
-      errorBannerRef.current?.focus();
-    }
-  }, [hasError, mutationError?.kind, mutationError?.result]);
   const backLabel = tPendingTranslation(
     'Back',
     'Label on a button that returns to the previous step in a multi-step wizard.',
@@ -55,12 +40,7 @@ const RevShareRecipientReviewView: FunctionComponent<RevShareRecipientReviewView
     'Button label for continuing to accept a recipient revenue-share proposal.',
     translationKey('Action.Accept', TranslationNamespace.RevenueShareAgreements),
   );
-  const refreshLabel = tPendingTranslation(
-    'Refresh',
-    'Button label to refresh revenue-share data after a stale mutation error.',
-    translationKey('Action.Refresh', TranslationNamespace.Controls),
-  );
-  const controlsDisabled = isSubmitting || isRefreshingStaleError;
+  const controlsDisabled = isSubmitting;
   const footer = useMemo(() => {
     if (isPending && canRespond) {
       return (
@@ -93,31 +73,6 @@ const RevShareRecipientReviewView: FunctionComponent<RevShareRecipientReviewView
     );
   }, [acceptLabel, backLabel, canRespond, controlsDisabled, isPending, onAccept, onBack]);
   const banner = useMemo(() => {
-    if (mutationError != null) {
-      const presentation = translateRevShareMutationError(
-        'respond',
-        mutationError,
-        tPendingTranslation,
-      );
-      const showRefresh = presentation.kind === 'stale' && onRefreshStaleError !== undefined;
-      return showRefresh ? (
-        <RevShareBanner
-          ref={errorBannerRef}
-          tabIndex={-1}
-          tone='alert'
-          message={presentation.message}
-          actionLabel={refreshLabel}
-          onAction={onRefreshStaleError}
-        />
-      ) : (
-        <RevShareBanner
-          ref={errorBannerRef}
-          tabIndex={-1}
-          tone='alert'
-          message={presentation.message}
-        />
-      );
-    }
     const settledBanner = translateRevShareRecipientSettledStatusBanner(
       confirmation,
       tPendingTranslation,
@@ -149,14 +104,7 @@ const RevShareRecipientReviewView: FunctionComponent<RevShareRecipientReviewView
         }
       />
     );
-  }, [
-    canRespond,
-    confirmation,
-    mutationError,
-    onRefreshStaleError,
-    refreshLabel,
-    tPendingTranslation,
-  ]);
+  }, [canRespond, confirmation, tPendingTranslation]);
 
   return <RevShareReviewShell banner={banner} rows={rows} footer={footer} />;
 };

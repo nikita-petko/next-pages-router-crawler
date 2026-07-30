@@ -163,6 +163,7 @@ const RevShareRespondFlowContainer: FunctionComponent<RevShareRespondFlowContain
     transitionToStep('terms');
   }, [transitionToStep]);
   const handleBackToReview = useCallback(() => {
+    setMutationError(null);
     transitionToStep('review');
   }, [transitionToStep]);
   const handleAccept = useCallback(async () => {
@@ -178,12 +179,12 @@ const RevShareRespondFlowContainer: FunctionComponent<RevShareRespondFlowContain
       });
       onDone();
     } catch (error) {
+      // Stay on terms so the consent the user just gave, and their place in the flow, survive.
       setMutationError(classifyRevShareMutationError('respond', error));
-      transitionToStep('review');
     } finally {
       isRespondPendingRef.current = false;
     }
-  }, [canRespond, isResponding, onDone, proposal, respond, transitionToStep]);
+  }, [canRespond, isResponding, onDone, proposal, respond]);
   const handleRefreshStaleError = useCallback(async () => {
     if (isRefreshingStaleErrorRef.current) {
       return;
@@ -212,7 +213,9 @@ const RevShareRespondFlowContainer: FunctionComponent<RevShareRespondFlowContain
         onBack={handleBackToReview}
         onSubmit={handleAccept}
         isDisabled={!canRespond}
-        isSubmitting={isResponding}
+        isSubmitting={isResponding || isRefreshingStaleError}
+        mutationError={mutationError}
+        onRefreshStaleError={mutationError?.kind === 'stale' ? handleRefreshStaleError : undefined}
       />
     );
   }
@@ -223,11 +226,6 @@ const RevShareRespondFlowContainer: FunctionComponent<RevShareRespondFlowContain
       confirmation={proposal.confirmation}
       canRespond={canRespond}
       isSubmitting={isResponding}
-      mutationError={mutationError}
-      onRefreshStaleError={
-        mutationError?.kind === 'stale' ? () => void handleRefreshStaleError() : undefined
-      }
-      isRefreshingStaleError={isRefreshingStaleError}
       onBack={onDone}
       onAccept={handleShowTerms}
     />

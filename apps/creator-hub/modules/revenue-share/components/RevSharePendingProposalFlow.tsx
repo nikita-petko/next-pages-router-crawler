@@ -132,9 +132,7 @@ const RevSharePendingProposalFlow: FunctionComponent<RevSharePendingProposalFlow
         onSubmit={handleCancelSubmit}
         isSubmitting={cancel.isPending || isRefreshingStaleError}
         mutationError={mutationError}
-        onRefreshStaleError={
-          mutationError?.kind === 'stale' ? () => void handleRefreshStaleError() : undefined
-        }
+        onRefreshStaleError={mutationError?.kind === 'stale' ? handleRefreshStaleError : undefined}
       />
     );
   }

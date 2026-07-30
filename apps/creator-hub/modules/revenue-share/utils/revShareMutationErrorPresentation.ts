@@ -111,6 +111,13 @@ const translateActionableMutationError = (
       translationKey('Message.MutationUnauthorized', TranslationNamespace.RevenueShareAgreements),
     );
   }
+  if (result === RevShareResult.TwoFaFailed) {
+    return tPendingTranslation(
+      'Two-step verification failed. Try again.',
+      'Error when the two-step verification challenge for a revenue-share action fails.',
+      translationKey('Message.TwoFaFailed', TranslationNamespace.RevenueShareAgreements),
+    );
+  }
   if (result === RevShareResult.SplitSumInvalid) {
     return tPendingTranslation(
       'The split must total 100%. Adjust the shares and try again.',

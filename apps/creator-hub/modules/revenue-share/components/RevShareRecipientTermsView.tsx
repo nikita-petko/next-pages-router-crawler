@@ -4,12 +4,18 @@ import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import useRevShareMutationErrorBanner, {
+  type RevShareRefreshStaleErrorHandler,
+} from '../hooks/useRevShareMutationErrorBanner';
+import type { ClassifiedRevShareMutationError } from '../utils/revShareMutationError';
 import type { RevShareTermsActionProps } from './revShareTermsActionProps';
 import RevShareTermsShell from './RevShareTermsShell';
 
 export type RevShareRecipientTermsViewProps = RevShareTermsActionProps & {
   /** Optional wizard progress supplied by the flow that owns this presentational step. */
   stepIndicator?: ReactNode;
+  mutationError?: ClassifiedRevShareMutationError | null;
+  onRefreshStaleError?: RevShareRefreshStaleErrorHandler;
 };
 
 const RevShareRecipientTermsView: FunctionComponent<RevShareRecipientTermsViewProps> = ({
@@ -20,12 +26,20 @@ const RevShareRecipientTermsView: FunctionComponent<RevShareRecipientTermsViewPr
   onSubmit,
   isDisabled = false,
   isSubmitting = false,
+  mutationError = null,
+  onRefreshStaleError,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+  const banner = useRevShareMutationErrorBanner({
+    operation: 'respond',
+    mutationError,
+    onRefreshStaleError,
+  });
 
   return (
     <RevShareTermsShell
       chrome={stepIndicator}
+      footerBanner={banner}
       description={tPendingTranslation(
         'Please read and accept before submitting. These terms apply to everyone in the agreement.',
         'Instructions shown above the revenue-share proposal terms and consent control.',

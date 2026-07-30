@@ -1,18 +1,19 @@
 // Presents cancellation terms with consent checkbox and controlled submit for cancelling a pending revenue share proposal.
-import { useEffect, useMemo, useRef, type FunctionComponent } from 'react';
+import type { FunctionComponent } from 'react';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import useRevShareMutationErrorBanner, {
+  type RevShareRefreshStaleErrorHandler,
+} from '../hooks/useRevShareMutationErrorBanner';
 import type { ClassifiedRevShareMutationError } from '../utils/revShareMutationError';
-import { translateRevShareMutationError } from '../utils/revShareMutationErrorPresentation';
-import RevShareBanner from './RevShareBanner';
 import type { RevShareTermsActionProps } from './revShareTermsActionProps';
 import RevShareTermsShell from './RevShareTermsShell';
 
 type RevShareCancelTermsViewProps = RevShareTermsActionProps & {
   mutationError?: ClassifiedRevShareMutationError | null;
-  onRefreshStaleError?: () => void;
+  onRefreshStaleError?: RevShareRefreshStaleErrorHandler;
 };
 
 const RevShareCancelTermsView: FunctionComponent<RevShareCancelTermsViewProps> = ({
@@ -25,45 +26,11 @@ const RevShareCancelTermsView: FunctionComponent<RevShareCancelTermsViewProps> =
   onRefreshStaleError,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
-  const errorBannerRef = useRef<HTMLDivElement>(null);
-  const refreshLabel = tPendingTranslation(
-    'Refresh',
-    'Button label to refresh revenue-share data after a stale mutation error.',
-    translationKey('Action.Refresh', TranslationNamespace.Controls),
-  );
-  useEffect(() => {
-    if (mutationError != null) {
-      errorBannerRef.current?.focus();
-    }
-  }, [mutationError]);
-  const banner = useMemo(() => {
-    if (mutationError == null) {
-      return undefined;
-    }
-    const presentation = translateRevShareMutationError(
-      'cancel',
-      mutationError,
-      tPendingTranslation,
-    );
-    const showRefresh = presentation.kind === 'stale' && onRefreshStaleError !== undefined;
-    return showRefresh ? (
-      <RevShareBanner
-        ref={errorBannerRef}
-        tabIndex={-1}
-        tone='alert'
-        message={presentation.message}
-        actionLabel={refreshLabel}
-        onAction={onRefreshStaleError}
-      />
-    ) : (
-      <RevShareBanner
-        ref={errorBannerRef}
-        tabIndex={-1}
-        tone='alert'
-        message={presentation.message}
-      />
-    );
-  }, [mutationError, onRefreshStaleError, refreshLabel, tPendingTranslation]);
+  const banner = useRevShareMutationErrorBanner({
+    operation: 'cancel',
+    mutationError,
+    onRefreshStaleError,
+  });
 
   return (
     <RevShareTermsShell

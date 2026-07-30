@@ -46,6 +46,12 @@ const CANCEL_STALE: ReadonlySet<RevShareResult> = new Set([
 
 const CANCEL_ACTIONABLE: ReadonlySet<RevShareResult> = new Set([RevShareResult.Unauthorized]);
 
+// Every mutation is gated behind the same 2SV challenge, so the failure is actionable regardless
+// of which one the caller attempted: retrying the challenge is all that is needed.
+const ACTIONABLE_FOR_EVERY_OPERATION: ReadonlySet<RevShareResult> = new Set([
+  RevShareResult.TwoFaFailed,
+]);
+
 const parseRevShareResult = (value: string): RevShareResult | null =>
   RESULT_BY_VALUE.get(value) ?? null;
 
@@ -65,6 +71,9 @@ const kindForResult = (
 ): RevShareMutationErrorKind => {
   if (result === RevShareResult.Succeeded) {
     return 'generic';
+  }
+  if (ACTIONABLE_FOR_EVERY_OPERATION.has(result)) {
+    return 'actionable';
   }
 
   const staleResults =

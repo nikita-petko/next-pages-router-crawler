@@ -183,6 +183,7 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
   const showSuccessRef = useRef(showSuccess);
   const onProposeSuccessRef = useRef(onProposeSuccess);
   const onExitRef = useRef(onExit);
+  const onStepChangeRef = useRef(onStepChange);
   const isRefreshingSubmissionErrorRef = useRef(false);
   useEffect(() => {
     proposeRef.current = propose;
@@ -193,10 +194,12 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
     showSuccessRef.current = showSuccess;
     onProposeSuccessRef.current = onProposeSuccess;
     onExitRef.current = onExit;
+    onStepChangeRef.current = onStepChange;
   }, [
     currentUserId,
     onExit,
     onProposeSuccess,
+    onStepChange,
     propose,
     refetchManagerAgreements,
     respond,
@@ -298,9 +301,9 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
     target,
   ]);
   const handleSubmitProposal = useCallback(
-    async (allocations: readonly RevShareRecipientAllocation[]): Promise<boolean> => {
+    async (allocations: readonly RevShareRecipientAllocation[]): Promise<void> => {
       if (target === null) {
-        return false;
+        return;
       }
       setIsSubmittingProposal(true);
       setSubmissionError(null);
@@ -326,7 +329,7 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
           });
           if (!result.updateSucceeded) {
             setSubmissionError(classifyRevShareMutationError('propose', result.result));
-            return false;
+            return;
           }
           if (
             result.proposedAgreementId != null &&
@@ -349,10 +352,9 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
           }
           showSuccessRef.current('propose');
           onProposeSuccessRef.current();
-          return true;
         } catch (error) {
+          // Stay on the terms step; the banner renders beside the submit button.
           setSubmissionError(classifyRevShareMutationError('propose', error));
-          return false;
         }
       } finally {
         setIsSubmittingProposal(false);
@@ -375,6 +377,13 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
       isRefreshingSubmissionErrorRef.current = false;
       setIsRefreshingSubmissionError(false);
     }
+  }, []);
+  const handleStepChange = useCallback((step: RevShareSplitEditorFlowStep) => {
+    // The banner belongs to the terms step, so leaving it discards the failed attempt.
+    if (step !== 'terms') {
+      setSubmissionError(null);
+    }
+    onStepChangeRef.current?.(step);
   }, []);
   useEffect(() => {
     if (!shouldHydrateTarget || existingAgreement == null || target !== null) {
@@ -533,10 +542,10 @@ const RevShareProposeFlowContainer: FunctionComponent<RevShareProposeFlowContain
       isSubmitting={propose.isPending || respond.isPending || isSubmittingProposal}
       replacesOpenProposal={target.proposed != null}
       presentation={mode === 'propose' ? 'dialog' : 'page'}
-      onStepChange={onStepChange}
+      onStepChange={handleStepChange}
       submissionError={submissionError}
       onRefreshSubmissionError={
-        submissionError?.kind === 'stale' ? () => void handleRefreshSubmissionError() : undefined
+        submissionError?.kind === 'stale' ? handleRefreshSubmissionError : undefined
       }
       isRefreshingSubmissionError={isRefreshingSubmissionError}
     />
