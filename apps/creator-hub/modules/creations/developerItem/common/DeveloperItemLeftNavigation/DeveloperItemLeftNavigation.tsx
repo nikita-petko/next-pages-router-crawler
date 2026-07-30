@@ -9,6 +9,10 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import Features from '@modules/navigation/leftNavigation/components/Features';
 import useLeftNavigationStyles from '@modules/navigation/leftNavigation/components/LeftNavigation.styles';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
+import {
+  getPublishingConsolidationReturnTo,
+  PUBLISHING_CONSOLIDATION_RETURN_TO_QUERY_KEY,
+} from '../../../common/utils/publishingConsolidationNavigation';
 import VERSION_HISTORY_ASSETS, { ASSET_ACCESS_FORM_ASSETS } from '../../constants';
 import { useCurrentDeveloperItem } from '../DeveloperItemProvider';
 import {
@@ -86,17 +90,24 @@ const DeveloperItemLeftNavigation: FunctionComponent<React.PropsWithChildren> = 
     [features, router],
   );
   const { classes: styles } = useLeftNavigationStyles();
+  const publishingConsolidationReturnTo =
+    router.query[PUBLISHING_CONSOLIDATION_RETURN_TO_QUERY_KEY];
   const backToCreationsPageLink = useMemo(() => {
+    const preservedReturnUrl = getPublishingConsolidationReturnTo(publishingConsolidationReturnTo);
+    if (preservedReturnUrl != null) {
+      return preservedReturnUrl;
+    }
+
     let url = '/dashboard/creations';
     if (developerItemDetails?.type) {
-      if (developerItemDetails?.creator.type === Creator.Group) {
+      if (developerItemDetails.creator.type === Creator.Group) {
         url += `?activeTab=${developerItemDetails.type}&groupId=${developerItemDetails.creator.id}`;
       } else {
         url += `?activeTab=${developerItemDetails.type}`;
       }
     }
     return url;
-  }, [developerItemDetails]);
+  }, [developerItemDetails, publishingConsolidationReturnTo]);
 
   return (
     <>
