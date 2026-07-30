@@ -20,18 +20,17 @@ import ChartOverflowMenu, {
   ChartSourceQueryDialog,
   ChartSourceQueryMenuItem,
 } from '../ChartOverflowMenu';
-
-export type ChartHeaderActionLayout = {
-  readonly showExploreAction?: boolean;
-  readonly showDownloadAction?: boolean;
-  readonly showCreateAlertAction?: boolean;
-};
+import type { ChartHeaderActionLayout, ChartSecondaryAction } from './ChartActionsContext';
 
 const DEFAULT_LAYOUT: Required<ChartHeaderActionLayout> = {
   showExploreAction: true,
   showDownloadAction: true,
   showCreateAlertAction: true,
+  showViewSourceQueryAction: true,
 };
+
+const EMPTY_PRIMARY_ACTIONS: readonly ChartCardHeaderAction[] = [];
+const EMPTY_SECONDARY_ACTIONS: readonly ChartSecondaryAction[] = [];
 
 // Minimum number of secondary (non-explore) actions before they collapse into a
 // single overflow / "More options" menu instead of rendering inline.
@@ -53,7 +52,17 @@ type UseDefaultChartHeaderActionsArgs = UseExploreHeaderActionArgs &
   UseDownloadHeaderActionArgs & {
     readonly chartLocation?: ChartLocation;
     readonly actionLayout?: ChartHeaderActionLayout;
+    readonly primaryActions?: readonly ChartCardHeaderAction[];
+    readonly secondaryActions?: readonly ChartSecondaryAction[];
   };
+
+type UseResolvedChartHeaderActionsArgs = {
+  readonly primaryActions: readonly ChartCardHeaderAction[];
+  readonly secondaryActions: readonly ChartSecondaryAction[];
+  readonly chartActionsMenuLabel: string;
+  readonly overflowMenuItems: readonly ChartCardHeaderAction[];
+  readonly chartLocation?: ChartLocation;
+};
 
 type ChartHeaderActionsByLayout = {
   readonly inlineAction: ChartCardHeaderAction;
@@ -231,6 +240,59 @@ export function useViewSourceQueryHeaderAction(spec: RAQIV2ChartSpec): ChartCard
   );
 }
 
+/**
+ * Pure layout resolver for chart header actions. Composes primary actions
+ * (always standalone inline buttons) with secondary actions (inline or
+ * collapsed into an overflow menu), then optionally wraps everything in a
+ * feature-flagged overflow menu when `overflowMenuItems` is non-empty.
+ *
+ * Separated from `useDefaultChartHeaderActions` so surfaces with chart
+ * context can compose primitives directly without the RAQI preset.
+ */
+export function useResolvedChartHeaderActions({
+  primaryActions,
+  secondaryActions,
+  chartActionsMenuLabel,
+  overflowMenuItems,
+  chartLocation,
+}: UseResolvedChartHeaderActionsArgs): readonly ChartCardHeaderAction[] {
+  // Secondary actions collapse into a single insight-card style menu when
+  // there are 2+ of them, otherwise a lone action renders inline. Primary
+  // actions always stay standalone.
+  const inlineActions = useMemo(() => {
+    const inlineSecondaryActions = secondaryActions.filter(
+      (
+        action,
+      ): action is ChartSecondaryAction & {
+        readonly inlineAction: ChartCardHeaderAction;
+      } => action.inlineAction !== undefined,
+    );
+
+    if (inlineSecondaryActions.length >= MIN_ACTIONS_FOR_OVERFLOW_MENU) {
+      const actionsMenu: ChartCardHeaderAction = {
+        id: 'chart-actions-menu',
+        kind: 'menu',
+        label: chartActionsMenuLabel,
+        items: inlineSecondaryActions.map((action) => action.menuAction),
+        testId: 'chart-actions-menu-button',
+        renderMenu: ({ action, items }) => <ChartOverflowMenu action={action} actions={items} />,
+      };
+      return [...primaryActions, actionsMenu];
+    }
+
+    return [...primaryActions, ...inlineSecondaryActions.map((action) => action.inlineAction)];
+  }, [chartActionsMenuLabel, primaryActions, secondaryActions]);
+
+  const overflowMenuAction = useChartOverflowMenu({
+    actions: overflowMenuItems,
+    chartLocation,
+  });
+
+  return useMemo(() => {
+    return overflowMenuAction ? [...primaryActions, overflowMenuAction] : inlineActions;
+  }, [inlineActions, overflowMenuAction, primaryActions]);
+}
+
 export function useDefaultChartHeaderActions({
   chartKeyOrConfig,
   spec,
@@ -239,12 +301,16 @@ export function useDefaultChartHeaderActions({
   chartLocation,
   visibleTimeSeriesAnnotations,
   actionLayout,
+  primaryActions = EMPTY_PRIMARY_ACTIONS,
+  secondaryActions: contributedSecondaryActions = EMPTY_SECONDARY_ACTIONS,
   disabled,
 }: UseDefaultChartHeaderActionsArgs): readonly ChartCardHeaderAction[] {
-  const { showExploreAction, showDownloadAction, showCreateAlertAction } = {
-    ...DEFAULT_LAYOUT,
-    ...actionLayout,
-  };
+  const {
+    showExploreAction,
+    showDownloadAction,
+    showCreateAlertAction,
+    showViewSourceQueryAction,
+  } = { ...DEFAULT_LAYOUT, ...actionLayout };
   const exploreActions = useExploreHeaderAction({
     chartKeyOrConfig,
     spec,
@@ -264,21 +330,22 @@ export function useDefaultChartHeaderActions({
   // actions collapse into a single insight-card style menu when there are 2+ of
   // them, otherwise a lone action renders inline.
   const secondaryActions = useMemo(() => {
-    const result: {
-      readonly inline: ChartCardHeaderAction;
-      readonly menu: ChartCardHeaderAction;
-    }[] = [];
+    const result: ChartSecondaryAction[] = [];
     if (showCreateAlertAction && createAlertActions.inlineAction && createAlertActions.menuAction) {
       result.push({
-        inline: createAlertActions.inlineAction,
-        menu: createAlertActions.menuAction,
+        inlineAction: createAlertActions.inlineAction,
+        menuAction: createAlertActions.menuAction,
       });
     }
     if (showDownloadAction) {
-      result.push({ inline: downloadActions.inlineAction, menu: downloadActions.menuAction });
+      result.push({
+        inlineAction: downloadActions.inlineAction,
+        menuAction: downloadActions.menuAction,
+      });
     }
-    return result;
+    return [...result, ...contributedSecondaryActions];
   }, [
+    contributedSecondaryActions,
     createAlertActions.inlineAction,
     createAlertActions.menuAction,
     downloadActions.inlineAction,
@@ -290,49 +357,30 @@ export function useDefaultChartHeaderActions({
   // Explore always renders as its own standalone inline button and never
   // collapses into the overflow / "More options" menu, even when the
   // chart-overflow-menu feature flags are enabled.
-  const exploreInlineActions = useMemo(
-    () => (showExploreAction && exploreActions.inlineAction ? [exploreActions.inlineAction] : []),
-    [exploreActions.inlineAction, showExploreAction],
-  );
-
-  const inlineActions = useMemo(() => {
-    if (secondaryActions.length >= MIN_ACTIONS_FOR_OVERFLOW_MENU) {
-      const actionsMenu: ChartCardHeaderAction = {
-        id: 'chart-actions-menu',
-        kind: 'menu',
-        label: chartActionsMenuLabel,
-        items: secondaryActions.map((action) => action.menu),
-        testId: 'chart-actions-menu-button',
-        renderMenu: ({ action, items }) => <ChartOverflowMenu action={action} actions={items} />,
-      };
-      return [...exploreInlineActions, actionsMenu];
-    }
-
-    return [...exploreInlineActions, ...secondaryActions.map((action) => action.inline)];
-  }, [chartActionsMenuLabel, exploreInlineActions, secondaryActions]);
-  // Explore is intentionally excluded here so it stays a standalone button
-  // rather than being folded into the overflow menu.
-  const menuItems = useMemo(
-    () =>
-      [
-        showCreateAlertAction ? createAlertActions.menuAction : undefined,
-        showDownloadAction ? downloadActions.menuAction : undefined,
-        viewSourceAction,
-      ].filter((action): action is ChartCardHeaderAction => action !== undefined),
-    [
-      createAlertActions.menuAction,
-      downloadActions.menuAction,
-      showCreateAlertAction,
-      showDownloadAction,
-      viewSourceAction,
+  const primaryHeaderActions = useMemo(
+    () => [
+      ...(showExploreAction && exploreActions.inlineAction ? [exploreActions.inlineAction] : []),
+      ...primaryActions,
     ],
+    [exploreActions.inlineAction, primaryActions, showExploreAction],
   );
-  const overflowMenuAction = useChartOverflowMenu({
-    actions: menuItems,
+
+  // Primary actions are intentionally excluded here so they stay standalone
+  // rather than being folded into the overflow menu. View-source is gated by
+  // `showViewSourceQueryAction` so compose surfaces can suppress it.
+  const overflowMenuItems = useMemo(
+    () => [
+      ...secondaryActions.map((action) => action.menuAction),
+      ...(showViewSourceQueryAction ? [viewSourceAction] : []),
+    ],
+    [secondaryActions, viewSourceAction, showViewSourceQueryAction],
+  );
+
+  return useResolvedChartHeaderActions({
+    primaryActions: primaryHeaderActions,
+    secondaryActions,
+    chartActionsMenuLabel,
+    overflowMenuItems,
     chartLocation,
   });
-
-  return useMemo(() => {
-    return overflowMenuAction ? [...exploreInlineActions, overflowMenuAction] : inlineActions;
-  }, [exploreInlineActions, inlineActions, overflowMenuAction]);
 }

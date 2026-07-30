@@ -5,11 +5,12 @@ import type { TimeSeriesAnnotation } from '@modules/charts-generic/charts/types/
 import type { ChartLocation } from '@modules/charts-generic/context/ChartLocation';
 import type { ChartConfigOrPredefinedKey } from '../../constants/RAQIV2PredefinedChartConfig';
 import type RAQIV2ChartSpec from '../../types/RAQIV2ChartSpec';
-import { useChartActionsPolicy } from './ChartActionsContext';
 import {
+  type ChartActionsCompositionPolicy,
   type ChartHeaderActionLayout,
-  useDefaultChartHeaderActions,
-} from './composeChartHeaderActions';
+  useChartActionsPolicy,
+} from './ChartActionsContext';
+import { useDefaultChartHeaderActions } from './composeChartHeaderActions';
 
 export type ResolvedChartHeaderActions = {
   readonly headerActionItems: readonly ChartCardHeaderAction[];
@@ -30,9 +31,13 @@ type ChartActionsSlotProps = ChartHeaderActionsOptions & {
   readonly children: (actions: ResolvedChartHeaderActions) => ReactNode;
 };
 
+type DefaultChartActionsSlotProps = ChartActionsSlotProps & {
+  readonly compositionPolicy?: ChartActionsCompositionPolicy;
+};
+
 /**
  * Resolves chart header action items from `ChartActionsProvider` policy, then
- * falls back to RAQI defaults when the policy does not replace them.
+ * composes or falls back to RAQI defaults when the policy does not replace them.
  */
 export default function ChartActionsSlot({ children, ...options }: ChartActionsSlotProps) {
   const policy = useChartActionsPolicy();
@@ -41,11 +46,17 @@ export default function ChartActionsSlot({ children, ...options }: ChartActionsS
     return children({ headerActionItems: [] });
   }
 
-  if (policy?.actions) {
+  if (policy && 'actions' in policy) {
     return children({ headerActionItems: policy.actions });
   }
 
-  return <DefaultChartActionsSlot {...options}>{children}</DefaultChartActionsSlot>;
+  return (
+    <DefaultChartActionsSlot
+      {...options}
+      compositionPolicy={policy && 'strategy' in policy ? policy : undefined}>
+      {children}
+    </DefaultChartActionsSlot>
+  );
 }
 
 function DefaultChartActionsSlot({
@@ -58,7 +69,8 @@ function DefaultChartActionsSlot({
   visibleTimeSeriesAnnotations,
   actionLayout,
   downloadDisabled,
-}: ChartActionsSlotProps) {
+  compositionPolicy,
+}: DefaultChartActionsSlotProps) {
   const defaults = useDefaultChartHeaderActions({
     chartKeyOrConfig,
     spec,
@@ -66,7 +78,12 @@ function DefaultChartActionsSlot({
     exporter,
     chartLocation,
     visibleTimeSeriesAnnotations,
-    actionLayout,
+    actionLayout: {
+      ...actionLayout,
+      ...compositionPolicy?.overrides,
+    },
+    primaryActions: compositionPolicy?.primaryActions,
+    secondaryActions: compositionPolicy?.secondaryActions,
     disabled: downloadDisabled,
   });
 

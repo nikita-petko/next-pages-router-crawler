@@ -7,8 +7,8 @@ import type { TimeSeriesAnnotation } from '@modules/charts-generic/charts/types/
 import type { ChartLocation } from '@modules/charts-generic/context/ChartLocation';
 import type { ChartConfigOrPredefinedKey } from '../../constants/RAQIV2PredefinedChartConfig';
 import type RAQIV2ChartSpec from '../../types/RAQIV2ChartSpec';
+import type { ChartHeaderActionLayout } from './ChartActionsContext';
 import ChartActionsSlot from './ChartActionsSlot';
-import type { ChartHeaderActionLayout } from './composeChartHeaderActions';
 
 export type RAQIV2ChartActionLayout = ChartHeaderActionLayout;
 
