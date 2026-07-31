@@ -35,6 +35,7 @@ import {
 import useBulkManageTicketsMutation from '../hooks/useBulkManageTicketsMutation';
 import { getTicketId } from '../utils/ticketSelection';
 import PlayerSupportBulkReplyDialog from './PlayerSupportBulkReplyDialog';
+import { PlayerSupportTableHeaderCheckbox } from './PlayerSupportTableCheckbox';
 
 interface PlayerSupportBulkActionsProps {
   universeId: number;
@@ -56,7 +57,7 @@ const PlayerSupportBulkActions: FunctionComponent<PlayerSupportBulkActionsProps>
   const showSnackbarMessage = useSnackbarAlert();
   const selectionStore = useTableSelectionContext<string, CreatorTicketSummary>();
   const selectionState = useSelectionStore<string, CreatorTicketSummary>();
-  const { reset, toggleBulk, toggleItem } = useSelectionActions<string, CreatorTicketSummary>();
+  const { reset, toggleItem } = useSelectionActions<string, CreatorTicketSummary>();
   const { mutateAsync: manageTickets, isPending } = useBulkManageTicketsMutation();
   const [isBulkReplyOpen, setIsBulkReplyOpen] = useState(false);
 
@@ -261,25 +262,31 @@ const PlayerSupportBulkActions: FunctionComponent<PlayerSupportBulkActionsProps>
 
   // The card layout pins its actions to the bottom of the viewport.
   if (isMobile) {
+    const bulkSelectionLabel = selectedCount === 0 ? selectAllLabel : deselectAllLabel;
+
     return (
-      <div className='bg-surface-0 stroke-default stroke-thin padding-medium [position:fixed] [bottom:0] [left:0] [right:0] [z-index:1]'>
+      <div className='bg-surface-100 padding-x-large padding-y-small [position:fixed] [bottom:0] [left:0] [right:0] [z-index:1]'>
         <div className='items-center gap-small flex'>
-          <IconButton
-            icon='icon-regular-chevron-large-left'
-            ariaLabel={translate('Action.BackToSupportRequests')}
-            variant='Utility'
-            size='Small'
-            isDisabled={isPending}
-            onClick={handleExitSelectionMode}
-          />
-          <Button
-            variant='Link'
-            size='Small'
-            isDisabled={isPending}
-            onClick={() => toggleBulk(selectedCount === 0)}>
-            {selectedCount === 0 ? selectAllLabel : deselectAllLabel}
-          </Button>
-          <span className='content-emphasis text-label-medium grow-1'>{selectedLabel}</span>
+          <div className='items-center gap-medium shrink-0 flex'>
+            <IconButton
+              icon='icon-regular-chevron-large-left'
+              ariaLabel={translate('Action.BackToSupportRequests')}
+              variant='Utility'
+              size='Small'
+              isDisabled={isPending}
+              onClick={handleExitSelectionMode}
+            />
+            <PlayerSupportTableHeaderCheckbox
+              ariaLabel={bulkSelectionLabel}
+              label={bulkSelectionLabel}
+              isDisabled={isPending}
+            />
+          </div>
+          <span
+            className='content-emphasis text-label-medium text-align-x-right grow-1'
+            aria-label={selectedCount > 0 ? selectedLabel : undefined}>
+            {selectedCount > 0 ? selectedCount : null}
+          </span>
           {selectedStatus !== TicketStatus.Archived && (
             <Button
               variant='Emphasis'
@@ -299,7 +306,11 @@ const PlayerSupportBulkActions: FunctionComponent<PlayerSupportBulkActionsProps>
                 isDisabled={selectedCount === 0 || isPending}
               />
             </PopoverTrigger>
-            <PopoverContent side='top' align='end' ariaLabel={translate('Action.More')}>
+            <PopoverContent
+              side='top'
+              align='end'
+              className='width-[232px]'
+              ariaLabel={translate('Action.More')}>
               <Menu size='Medium'>
                 <MenuSection>
                   <MenuItem

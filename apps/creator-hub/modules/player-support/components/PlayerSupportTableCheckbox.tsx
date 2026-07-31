@@ -14,19 +14,21 @@ const stopPropagation = (event: SyntheticEvent) => {
 interface HeaderCheckboxProps {
   ariaLabel: string;
   isDisabled: boolean;
+  label?: string;
 }
 
 export const PlayerSupportTableHeaderCheckbox = memo(
-  ({ ariaLabel, isDisabled }: HeaderCheckboxProps) => {
+  ({ ariaLabel, isDisabled, label }: HeaderCheckboxProps) => {
     const { checked, indeterminate, disabled } = useHeaderSelection<string, CreatorTicketSummary>();
     const { toggleBulk } = useSelectionActions<string, CreatorTicketSummary>();
     const isSelectionDisabled = disabled || isDisabled;
+    const accessibleProps = label ? { label } : { 'aria-label': ariaLabel };
 
     return (
       <Checkbox
+        {...accessibleProps}
         placement='Start'
         size='Small'
-        aria-label={ariaLabel}
         isChecked={indeterminate ? 'indeterminate' : checked}
         isDisabled={isSelectionDisabled}
         onCheckedChange={(isChecked) => {

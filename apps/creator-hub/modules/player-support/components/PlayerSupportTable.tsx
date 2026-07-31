@@ -1,6 +1,6 @@
 import type { KeyboardEvent, ReactNode } from 'react';
 import { useIsMutating } from '@tanstack/react-query';
-import { Badge, Button } from '@rbx/foundation-ui';
+import { Badge, Button, clsx } from '@rbx/foundation-ui';
 import type { Locale } from '@rbx/intl';
 import { useTranslation } from '@rbx/intl';
 import { TicketStatus, type CreatorTicketSummary } from '@modules/clients/creatorCommunication';
@@ -186,19 +186,25 @@ const MobileTicketCard = ({
           isSelectionMode ? 'bg-surface-100' : 'bg-shift-300'
         }`}>
         <div className='items-center justify-between gap-small flex'>
-          <div className='items-center min-width-0 gap-large flex'>
-            <span className='items-center justify-center size-200 shrink-0 flex'>
-              {!ticket.viewedByCreator && ticket.status !== TicketStatus.Archived && (
-                <span className='bg-action-emphasis size-200 radius-circle' />
+          <div
+            className={clsx(
+              'items-center min-width-0 flex [transition:gap_300ms_ease] motion-reduce:[transition:none]',
+              isSelectionMode ? 'gap-large' : 'gap-[0px]',
+            )}>
+            <span
+              className={clsx(
+                'clip shrink-0 motion-reduce:[transition:none]',
+                isSelectionMode
+                  ? 'visible max-width-800 opacity-[1] [transition:max-width_300ms_ease,opacity_300ms_ease,visibility_0s_linear_0s]'
+                  : 'invisible max-width-0 opacity-[0] [transition:max-width_300ms_ease,opacity_300ms_ease,visibility_0s_linear_300ms]',
               )}
-            </span>
-            {isSelectionMode && (
+              aria-hidden={!isSelectionMode}>
               <PlayerSupportTableRowCheckbox
                 ticket={ticket}
                 ariaLabel={displayTitle}
-                isDisabled={isSelectionDisabled}
+                isDisabled={isSelectionDisabled || !isSelectionMode}
               />
-            )}
+            </span>
             <div className='items-start min-width-0 gap-xsmall flex flex-col'>
               {isReportedToRoblox && (
                 /* TODO: update this to 20% opacity when Foundation Web is updated. */
@@ -208,24 +214,31 @@ const MobileTicketCard = ({
                   icon='icon-filled-flag'
                 />
               )}
-              <span className='content-emphasis text-body-medium min-width-0 clip [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]'>
-                {displayTitle}
+              <span className='items-center min-width-0 max-width-full gap-xsmall flex'>
+                <span className='content-emphasis text-body-medium min-width-0 clip [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]'>
+                  {displayTitle}
+                </span>
+                {!ticket.viewedByCreator && ticket.status !== TicketStatus.Archived && (
+                  <span
+                    className='bg-action-emphasis size-200 radius-circle shrink-0'
+                    aria-hidden='true'
+                  />
+                )}
               </span>
             </div>
           </div>
-          {!isSelectionMode &&
-            (ticket.creatorTicketId && ticket.status !== TicketStatus.Archived ? (
-              <TicketActionsMenu
-                universeId={universeId}
-                ticketId={ticket.creatorTicketId}
-                alwaysVisible
-                surface='list'
-              />
-            ) : (
-              // Reserve the kebab's 32px footprint so archived cards keep the same
-              // spacing (and title wrap width) as support-request cards.
-              <span className='size-800 shrink-0' aria-hidden />
-            ))}
+          {ticket.creatorTicketId && ticket.status !== TicketStatus.Archived ? (
+            <TicketActionsMenu
+              universeId={universeId}
+              ticketId={ticket.creatorTicketId}
+              alwaysVisible
+              surface='list'
+            />
+          ) : (
+            // Reserve the kebab's 32px footprint so archived cards keep the same
+            // spacing (and title wrap width) as support-request cards.
+            <span className='size-800 shrink-0' aria-hidden />
+          )}
         </div>
       </div>
       <div className='padding-x-xxlarge gap-medium flex flex-col'>
@@ -281,7 +294,7 @@ const PlayerSupportTable = ({
         )}
         <div
           className={`margin-top-medium gap-[var(--size-1000)] flex flex-col ${
-            isCardSelectionMode ? 'padding-bottom-[72px]' : ''
+            isCardSelectionMode ? 'padding-bottom-[56px]' : ''
           }`}>
           {tickets.map((ticket, index) => (
             <MobileTicketCard

@@ -1646,6 +1646,9 @@
 .\!gap-medium {
   gap: var(--gap-medium) !important;
 }
+.gap-\[0px\] {
+  gap: 0px;
+}
 .gap-\[10px\] {
   gap: 10px;
 }
@@ -2117,6 +2120,9 @@
 .height-min {
   height: min-content;
 }
+.max-height-0 {
+  max-height: var(--size-0);
+}
 .max-height-600 {
   max-height: var(--size-600);
 }
@@ -2125,6 +2131,9 @@
 }
 .max-height-\[300px\] {
   max-height: 300px;
+}
+.max-height-\[320px\] {
+  max-height: 320px;
 }
 .max-height-\[380px\] {
   max-height: 380px;
@@ -2635,6 +2644,9 @@
 .width-\[220px\] {
   width: 220px;
 }
+.width-\[232px\] {
+  width: 232px;
+}
 .width-\[240px\] {
   width: 240px;
 }
@@ -3025,11 +3037,11 @@
 .padding-bottom-\[4px\] {
   padding-bottom: 4px;
 }
+.padding-bottom-\[56px\] {
+  padding-bottom: 56px;
+}
 .padding-bottom-\[5px\] {
   padding-bottom: 5px;
-}
-.padding-bottom-\[72px\] {
-  padding-bottom: 72px;
 }
 .padding-bottom-large {
   padding-bottom: var(--padding-large);
@@ -4682,6 +4694,21 @@
 .\[transition\:all_var\(--time-200\)_var\(--ease-standard-out\)\] {
   transition: all var(--time-200) var(--ease-standard-out);
 }
+.\[transition\:gap_300ms_ease\] {
+  transition: gap 300ms ease;
+}
+.\[transition\:max-height_300ms_ease\2c opacity_300ms_ease\2c visibility_0s_linear_0s\] {
+  transition: max-height 300ms ease,opacity 300ms ease,visibility 0s linear 0s;
+}
+.\[transition\:max-height_300ms_ease\2c opacity_300ms_ease\2c visibility_0s_linear_300ms\] {
+  transition: max-height 300ms ease,opacity 300ms ease,visibility 0s linear 300ms;
+}
+.\[transition\:max-width_300ms_ease\2c opacity_300ms_ease\2c visibility_0s_linear_0s\] {
+  transition: max-width 300ms ease,opacity 300ms ease,visibility 0s linear 0s;
+}
+.\[transition\:max-width_300ms_ease\2c opacity_300ms_ease\2c visibility_0s_linear_300ms\] {
+  transition: max-width 300ms ease,opacity 300ms ease,visibility 0s linear 300ms;
+}
 .\[translated\:Test\.Key\] {
   translated: Test.Key;
 }
@@ -5111,6 +5138,12 @@ html.studio-webview.dark-theme,
   }
   .motion-safe\:transition-all {
     transition-property: all;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-reduce\:\[transition\:none\] {
+    transition: none;
   }
 }
 

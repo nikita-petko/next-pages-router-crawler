@@ -1,5 +1,5 @@
 import { useCallback, type ChangeEvent, type FunctionComponent, type ReactNode } from 'react';
-import { Button, Dropdown, Menu, MenuItem, SearchInput } from '@rbx/foundation-ui';
+import { Button, clsx, Dropdown, Menu, MenuItem, SearchInput } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import {
   PLAYER_SUPPORT_CATEGORY_FILTER_OPTIONS,
@@ -96,34 +96,42 @@ const PlayerSupportToolbar: FunctionComponent<PlayerSupportToolbarProps> = ({
     search.trim().length > 0 ||
     view !== PlayerSupportViewFilter.All ||
     category !== PlayerSupportCategoryFilter.All;
+  const hasBulkActions = Boolean(bulkActions);
+  const shouldShowToolbar = !isSelectionMode || hasBulkActions || Boolean(trailingActions);
+  const toolbarCollapseClassName = clsx(
+    'clip motion-reduce:[transition:none]',
+    shouldShowToolbar
+      ? 'visible max-height-[320px] opacity-[1] [transition:max-height_300ms_ease,opacity_300ms_ease,visibility_0s_linear_0s]'
+      : 'invisible max-height-0 opacity-[0] [transition:max-height_300ms_ease,opacity_300ms_ease,visibility_0s_linear_300ms]',
+  );
 
   return (
-    <div className='margin-top-medium gap-medium flex flex-col'>
-      <SearchInput
-        aria-label={searchLabel}
-        id='search-player-support-requests'
-        inputContainerClassName={SEARCH_INPUT_CONTAINER_CLASS_NAME}
-        onChange={handleSearchChange}
-        placeholder={searchLabel}
-        shape='Pill'
-        size='Large'
-        trailingIconNode={
-          search.length > 0 ? (
-            <Button
-              className='!content-action-link !text-label-medium shrink-0'
-              variant='Link'
-              size='XSmall'
-              onClick={handleClearSearch}>
-              {clearLabel}
-            </Button>
-          ) : undefined
-        }
-        variant='Contrast'
-        value={search}
-      />
-      {(!isSelectionMode || Boolean(bulkActions) || Boolean(trailingActions)) && (
+    <div className={toolbarCollapseClassName} aria-hidden={!shouldShowToolbar}>
+      <div className='padding-top-medium gap-medium flex flex-col'>
+        <SearchInput
+          aria-label={searchLabel}
+          id='search-player-support-requests'
+          inputContainerClassName={SEARCH_INPUT_CONTAINER_CLASS_NAME}
+          onChange={handleSearchChange}
+          placeholder={searchLabel}
+          shape='Pill'
+          size='Large'
+          trailingIconNode={
+            search.length > 0 ? (
+              <Button
+                className='!content-action-link !text-label-medium shrink-0'
+                variant='Link'
+                size='XSmall'
+                onClick={handleClearSearch}>
+                {clearLabel}
+              </Button>
+            ) : undefined
+          }
+          variant='Contrast'
+          value={search}
+        />
         <div className={TOOLBAR_ROW_CLASS_NAME}>
-          {!isSelectionMode ? (
+          {!isSelectionMode || !hasBulkActions ? (
             <div className='gap-medium flex flex-col medium:flex-row'>
               <Dropdown
                 className={FILTER_DROPDOWN_CLASS_NAME}
@@ -174,7 +182,7 @@ const PlayerSupportToolbar: FunctionComponent<PlayerSupportToolbarProps> = ({
           )}
           {trailingActions}
         </div>
-      )}
+      </div>
     </div>
   );
 };
