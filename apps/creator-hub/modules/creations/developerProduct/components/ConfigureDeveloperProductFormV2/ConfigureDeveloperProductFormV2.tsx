@@ -20,7 +20,6 @@ import DeveloperProductRegionalPricingDisclaimerModal, {
   useDeveloperProductRegionalPricingDisclaimer,
 } from '@modules/regional-pricing/components/DeveloperProductRegionalPricingDisclaimerModal/DeveloperProductRegionalPricingDisclaimerModal';
 import GiftingTradingWarningBanner from '@modules/regional-pricing/components/GiftingTradingWarningBanner';
-import NewRegionalPricingBanner from '@modules/regional-pricing/components/NewRegionalPricingBanner';
 import type { DeveloperProduct, ConfigureDeveloperProductFormV2Values } from '../../types';
 import {
   NameTextField,
@@ -150,12 +149,6 @@ function ConfigureDeveloperProductFormV2({
         page='/configure'
         giftingTradingStatus={giftingTradingStatus}
         enabled={shouldShowGiftingTradingWarningBanner}
-      />
-
-      <NewRegionalPricingBanner
-        universeId={universeId}
-        type='developerproduct'
-        enabled={isPricingConfigChangeAllowed && !shouldShowGiftingTradingWarningBanner}
       />
 
       <DisallowPriceChangeInExperimentBanner

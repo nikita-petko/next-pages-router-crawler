@@ -18,7 +18,6 @@ import { toast } from '@modules/monetization-shared/snackbar/actions';
 import DeveloperProductRegionalPricingDisclaimerModal, {
   useDeveloperProductRegionalPricingDisclaimer,
 } from '@modules/regional-pricing/components/DeveloperProductRegionalPricingDisclaimerModal/DeveloperProductRegionalPricingDisclaimerModal';
-import NewRegionalPricingBanner from '@modules/regional-pricing/components/NewRegionalPricingBanner';
 import type { ConfigureDeveloperProductFormV2Values } from '../../types';
 import {
   NameTextField,
@@ -133,8 +132,6 @@ function CreateDeveloperProductFormV2({ universeId, shopId }: Props) {
       </div>
 
       <PriceCheckProductCreationWarning />
-
-      <NewRegionalPricingBanner universeId={universeId} type='developerproduct' enabled />
 
       <ThumbnailImageUploader onChange={handleFileChange} imageType={['jpg', 'png', 'bmp']} />
 

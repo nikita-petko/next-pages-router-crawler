@@ -17,7 +17,6 @@ import { Link } from '@modules/monetization-shared/link';
 import { toast } from '@modules/monetization-shared/snackbar/actions';
 import { useUpdateGamePass } from '@modules/passes/queries/useUpdateGamePass';
 import DisallowPriceChangeInExperimentBanner from '@modules/price-optimization/components/DisallowPriceChangeInExperimentBanner';
-import NewRegionalPricingBanner from '@modules/regional-pricing/components/NewRegionalPricingBanner';
 import RegionalPricingDisclaimerModal, {
   useRegionalPricingDisclaimer,
 } from '@modules/regional-pricing/components/RegionalPricingDisclaimerModal/RegionalPricingDisclaimerModal';
@@ -138,12 +137,6 @@ const ConfigureSalesForm = ({
 
   return (
     <form className='flex flex-col' onSubmit={handleSubmit(initiateSaveChanges)}>
-      <NewRegionalPricingBanner
-        universeId={universeId}
-        type='gamepass'
-        enabled={!isInActivePriceOptimizationExperiment}
-      />
-
       <DisallowPriceChangeInExperimentBanner enabled={isInActivePriceOptimizationExperiment} />
 
       <div className='flex flex-col max-width-[678px] margin-top-medium'>
