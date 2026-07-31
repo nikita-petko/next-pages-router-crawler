@@ -116,6 +116,29 @@ function toCustomEventQueryFilters(filters: UIFilters): readonly TQueryFilter[] 
   return queryFilters;
 }
 
+/**
+ * Extracts per-tile filter dimensions (Place, Country, Locale, etc.) from the
+ * configurator's working filters, excluding `CustomEventName` and pseudo-dimensions
+ * which are handled by `toCustomEventQueryFilters` and the metric variant respectively.
+ * These flow into the preview's `chartContext.filter` so the user sees per-tile
+ * filters applied before saving.
+ */
+function toTileQueryFilters(filters: UIFilters): readonly TQueryFilter[] {
+  return filters.flatMap((filter) => {
+    if (
+      filter.dimension === RAQIV2Dimension.CustomEventName ||
+      filter.dimension === RAQIV2UIPseudoDimension.AggregationType ||
+      filter.dimension === RAQIV2UIPseudoDimension.PercentileType
+    ) {
+      return [];
+    }
+    if (!isValidEnumValue(RAQIV2Dimension, filter.dimension)) {
+      return [];
+    }
+    return [{ dimension: filter.dimension as RAQIV2Dimension, values: [...filter.values] }];
+  });
+}
+
 export type { ControlledChartConfiguratorInitialState } from '../../chartConfigurator/controlledChartConfiguratorState';
 export {
   ControlledChartConfiguratorActionType,
@@ -382,6 +405,7 @@ export default function useControlledChartConfigurator({
     initialState?.breakdownDimensions ?? EMPTY_BREAKDOWN_DIMENSIONS,
   );
   useEffect(() => {
+    // oxlint-disable-next-line react/react-compiler -- pre-existing EffectSetState pattern; re-seeds breakdown when available dimensions or seed change
     setBreakdown(resolveBreakdownDimensions(stableInitialBreakdownDimensions, dimensions));
   }, [dimensions, stableInitialBreakdownDimensions, seedKey, setBreakdown]);
 
@@ -419,12 +443,20 @@ export default function useControlledChartConfigurator({
     ],
   );
 
+  const tileQueryFilters = useMemo(
+    () => toTileQueryFilters(customEventFilters),
+    [customEventFilters],
+  );
+
   const effectiveChartContext = useMemo(
     () => ({
       ...requestedChartContext,
       granularity: granularitySelection.effectiveGranularity,
+      ...(tileQueryFilters.length > 0
+        ? { filter: [...(requestedChartContext.filter ?? []), ...tileQueryFilters] }
+        : {}),
     }),
-    [granularitySelection.effectiveGranularity, requestedChartContext],
+    [granularitySelection.effectiveGranularity, requestedChartContext, tileQueryFilters],
   );
 
   // The sidebar control always shows the coerced (effective) granularity so the

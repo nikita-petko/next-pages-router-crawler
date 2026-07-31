@@ -1,4 +1,4 @@
-import { type FC, useMemo } from 'react';
+import { type FC, type ReactNode, useMemo } from 'react';
 import { ChartStyleMode } from '@rbx/analytics-ui';
 import type { RAQIV2DateRangeType } from '@rbx/creator-hub-analytics-config';
 import { Icon } from '@rbx/foundation-ui';
@@ -88,6 +88,12 @@ export type ChartConfiguratorPreviewProps = {
    */
   readonly chartHeight?: number;
   /**
+   * Optional slot for a per-tile filter control (e.g. the custom dashboard
+   * chart editor's "Filter by" drawer button). Rendered in the preview toolbar
+   * row alongside the date range control, matching Explore Mode's layout.
+   */
+  readonly filterControlSlot?: ReactNode;
+  /**
    * Header-action policy for the preview chart card. Defaults to
    * no actions for the in-editor preview. Hosts that render the preview as an
    * interactive tile (e.g. the custom dashboard editor) pass their own policy
@@ -121,6 +127,7 @@ const ChartConfiguratorPreview: FC<ChartConfiguratorPreviewProps> = ({
   chartLocation = 'explore-mode',
   chartHeight,
   actionsPolicy = false,
+  filterControlSlot,
 }) => {
   const { translate } = useRAQIV2TranslationDependencies();
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
@@ -320,6 +327,7 @@ const ChartConfiguratorPreview: FC<ChartConfiguratorPreviewProps> = ({
     <div className='flex flex-col [flex:1_1_0%] width-full min-width-0 gap-medium'>
       <div className='width-full flex flex-row items-end [flex-wrap:wrap] gap-medium padding-bottom-medium [border-bottom:var(--stroke-standard)_solid_var(--color-stroke-default)]'>
         <ChartConfiguratorDateRangeControl dateRangeOptions={dateRangeOptions} />
+        {filterControlSlot}
       </div>
       {shouldShowUnsupportedGranularityWarning && (
         <div className='flex items-center gap-xsmall content-system-warning'>

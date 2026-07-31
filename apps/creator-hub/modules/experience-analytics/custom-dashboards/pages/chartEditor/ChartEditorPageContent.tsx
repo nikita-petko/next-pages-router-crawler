@@ -1,16 +1,26 @@
 import React, { type FC, useCallback, useMemo, useState } from 'react';
-import { RAQIV2DateRangeType } from '@rbx/creator-hub-analytics-config';
+import { RAQIV2DateRangeType, RAQIV2UIPseudoDimension } from '@rbx/creator-hub-analytics-config';
 import { Button, IconButton } from '@rbx/foundation-ui';
 import { useAnalyticsCurrentDateRangeBundle } from '@modules/charts-generic/context/AnalyticsQueryDateRangeBundleContext';
 import { AnnotationType } from '@modules/clients/analytics/annotations/annotations';
-import { getSharedChartConfiguratorDimensions } from '@modules/experience-analytics-shared/chartConfigurator/ChartConfiguratorDimensions';
+import {
+  ChartConfiguratorFilterOnlyDimensions,
+  getChartConfiguratorDimensions,
+  getSharedChartConfiguratorDimensions,
+} from '@modules/experience-analytics-shared/chartConfigurator/ChartConfiguratorDimensions';
 import type { TChartConfiguratorMetrics } from '@modules/experience-analytics-shared/chartConfigurator/chartConfiguratorMetricsConfig';
 import { DefaultExploreModeDateRanges } from '@modules/experience-analytics-shared/chartConfigurator/resolveChartConfiguratorComputedMetricSources';
 import ChartConfigurator from '@modules/experience-analytics-shared/components/chartConfigurator/ChartConfigurator';
 import ChartConfiguratorPreview from '@modules/experience-analytics-shared/components/chartConfigurator/ChartConfiguratorPreview';
+import {
+  getFilterBarDimensionForRAQIV2Dimension,
+  type TSupportedFilterBarDimensions,
+} from '@modules/experience-analytics-shared/constants/FilterDimensionConfig';
 import { AnalyticsContextLayerInnerProvider } from '@modules/experience-analytics-shared/context/AnalyticsContextLayerProvider';
 import { UniversePerformanceRaqiClientProvider } from '@modules/experience-analytics-shared/context/UniversePerformanceRaqiClientProvider';
 import { useUniverseResource } from '@modules/experience-analytics-shared/hooks/useChartResourceProvider';
+import ExperienceAnalyticsPageFilterDrawerButton from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/ExperienceAnalyticsPageFilterDrawerButton';
+import type { UIFilters } from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/filterUtils';
 import useTextFilterValidation from '@modules/experience-analytics-shared/text-filter/useTextFilterValidation';
 import type {
   AnalyticsPageConfigAnnotationOptions,
@@ -275,6 +285,48 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
   const isChartTitlePending = chartTitleFilterStatus === 'pending';
   const pageTitle = isNewTile ? t.chartEditorAddHeadline : t.chartEditorHeadline;
 
+  const filterDrawerDimensions = useMemo<TSupportedFilterBarDimensions[]>(() => {
+    if (!metric) {
+      return [];
+    }
+    const chartConfiguratorDimensions = getChartConfiguratorDimensions();
+    const metricDimensions = chartConfiguratorDimensions[metric] ?? [];
+    const filterOnlySet = new Set<string>(ChartConfiguratorFilterOnlyDimensions);
+    const pseudoDimensionValues = new Set<string>(Object.values(RAQIV2UIPseudoDimension));
+    return Array.from(
+      new Set(
+        metricDimensions
+          .filter((dim) => filterOnlySet.has(dim) && !pseudoDimensionValues.has(dim))
+          .flatMap((dim) => {
+            const filterDim = getFilterBarDimensionForRAQIV2Dimension(dim);
+            return filterDim ? [filterDim] : [];
+          }),
+      ),
+    );
+  }, [metric]);
+
+  const onTileFiltersChange = useCallback(
+    (filters: UIFilters) => {
+      sidebarProps.dispatch({ type: 'set-custom-event-filters', filters });
+    },
+    [sidebarProps],
+  );
+
+  const filterControlSlot = useMemo(() => {
+    if (filterDrawerDimensions.length === 0) {
+      return undefined;
+    }
+    return (
+      <ExperienceAnalyticsPageFilterDrawerButton
+        resource={resource}
+        dimensions={filterDrawerDimensions}
+        filters={customEventFilters}
+        onFiltersChange={onTileFiltersChange}
+        triggerVariant='standard'
+      />
+    );
+  }, [customEventFilters, filterDrawerDimensions, onTileFiltersChange, resource]);
+
   const draftTile = useMemo(() => {
     if (!metric) {
       return null;
@@ -460,6 +512,7 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
             {...chartPreview}
             chartTitleLabel={confirmedChartTitle}
             dateRangeOptions={resolvedDateRangeOptions}
+            filterControlSlot={filterControlSlot}
           />
         }
       />

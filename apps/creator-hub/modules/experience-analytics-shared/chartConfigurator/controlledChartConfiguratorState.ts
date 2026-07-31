@@ -12,6 +12,7 @@ import type { UIFilters } from '../layout/ExperienceAnalyticsPageControlBar/filt
 import type { ComputedMetric, MetricLike } from '../types/ComputedMetric';
 import type { TUIGranularity } from '../utils/seriesGranularities';
 import type { ChartConfiguratorChartType } from './ChartConfiguratorChartTypes';
+import { getChartConfiguratorDimensions } from './ChartConfiguratorDimensions';
 import type { TChartConfiguratorMetrics } from './chartConfiguratorMetricsConfig';
 import getSharedGranularityOptionsForMetrics from './getSharedGranularityOptionsForMetrics';
 import getChartTypeSupportForMetric, {
@@ -454,6 +455,29 @@ export function deriveControlledChartConfiguratorMetrics({
 }
 
 /**
+ * Drops per-tile filter dimensions the new metric does not support so stale
+ * filters from a previous metric selection don't cause empty states or wrong
+ * data on the dashboard. Pseudo-dimensions (AggregationType, PercentileType)
+ * are included in the codegen supported-dimensions list, so they are naturally
+ * kept or dropped based on the new metric's capabilities.
+ */
+function sanitizeFiltersForMetric(
+  filters: UIFilters,
+  metric: TChartConfiguratorMetrics | null,
+): UIFilters {
+  if (!metric) {
+    return [];
+  }
+  const chartConfiguratorDimensions = getChartConfiguratorDimensions();
+  const supportedDimensions = chartConfiguratorDimensions[metric];
+  if (!supportedDimensions) {
+    return [];
+  }
+  const supportedSet = new Set<string>(supportedDimensions);
+  return filters.filter((filter) => supportedSet.has(filter.dimension));
+}
+
+/**
  * Owns only draft state transitions. Derived outputs such as selected chart type
  * and sanitized granularity stay in separate helpers so callers can recompute
  * them from provider/date-range context without storing duplicate state.
@@ -472,6 +496,7 @@ export function controlledChartConfiguratorReducer(
         computedMetric: null,
         isOperationsToggleOn: false,
         operationsDraftMetric: null,
+        customEventFilters: sanitizeFiltersForMetric(state.customEventFilters, action.metric),
       };
     case ControlledChartConfiguratorActionType.SetComputedMetric:
       return {
