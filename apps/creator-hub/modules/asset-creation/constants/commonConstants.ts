@@ -50,5 +50,12 @@ export const imagePreviewRequiredAssetTypes: Set<Asset> = new Set<Asset>([
   Asset.AvatarBackground,
 ]);
 
-export const assetUploadOperationStatusPollingIntervalSeconds = 1;
+export const assetUploadOperationStatusPollingIntervalMs = 1000;
 export const assetUploadOperationStatusPollingMaxRetries = 11;
+// Base of the exponential backoff between consecutive transient poll retries:
+// delay = intervalMs * base ** consecutivePollErrors (1s, 2s, 4s ...).
+export const assetUploadOperationStatusBackoffBase = 2;
+// Number of consecutive transient getOperationStatus failures tolerated (with backoff)
+// before the poll gives up and surfaces an error, so a single network/gateway blip does
+// not abort an upload that is still succeeding server-side.
+export const assetUploadOperationStatusMaxConsecutivePollErrors = 3;

@@ -58,8 +58,10 @@ import {
   maxResolution,
 } from '../constants/AssetTypeConstants';
 import {
-  assetUploadOperationStatusPollingIntervalSeconds,
+  assetUploadOperationStatusPollingIntervalMs,
   assetUploadOperationStatusPollingMaxRetries,
+  assetUploadOperationStatusMaxConsecutivePollErrors,
+  assetUploadOperationStatusBackoffBase,
 } from '../constants/commonConstants';
 import {
   assetCreationAttemptEventModel,
@@ -275,6 +277,7 @@ const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetForm
   }, [selectAssetType]);
 
   useEffect(() => {
+    // oxlint-disable-next-line react/react-compiler -- intentional reset of transient error/disabled state when the selected asset type changes; paired with the upload-fee refetch below
     setAssetCreationErrorMsg('');
     setDisableUpload(false);
     const fetchData = async (creatorId: number | undefined) => {
@@ -496,8 +499,35 @@ const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetForm
     operationId: string,
     creatorId: number | undefined,
     currentAttempt: number,
+    consecutivePollErrors = 0,
   ): Promise<number | null> => {
-    const operation = await assetsUploadApiClient.getOperationStatus(operationId);
+    let operation: Awaited<ReturnType<typeof assetsUploadApiClient.getOperationStatus>>;
+    try {
+      operation = await assetsUploadApiClient.getOperationStatus(operationId);
+    } catch (e) {
+      // A single transient getOperationStatus failure must not abort an upload that is
+      // still succeeding server-side. Retry with backoff up to a bounded number of
+      // consecutive failures before surfacing the error.
+      // Exhausted transient-failure tolerance: re-throw so the single error handler in
+      // uploadAsset's catch reports it (consistent with createAssetAndGetOperationId failures).
+      if (consecutivePollErrors >= assetUploadOperationStatusMaxConsecutivePollErrors) {
+        throw e;
+      }
+      await new Promise((r) => {
+        setTimeout(
+          r,
+          assetUploadOperationStatusPollingIntervalMs *
+            assetUploadOperationStatusBackoffBase ** consecutivePollErrors,
+        );
+      });
+      return pollForCompletedOperation(
+        operationId,
+        creatorId,
+        currentAttempt + 1,
+        consecutivePollErrors + 1,
+      );
+    }
+
     const isOperationDone = operation?.done ?? false;
 
     if (
@@ -513,11 +543,12 @@ const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetForm
       return null;
     }
     await new Promise((r) => {
-      setTimeout(r, 1000 * assetUploadOperationStatusPollingIntervalSeconds);
+      setTimeout(r, assetUploadOperationStatusPollingIntervalMs);
     });
-    return pollForCompletedOperation(operationId, creatorId, currentAttempt + 1);
+    return pollForCompletedOperation(operationId, creatorId, currentAttempt + 1, 0);
   };
 
+  /* oxlint-disable react/react-compiler -- dependency array is intentionally curated to keep uploadAsset stable; the flagged helpers (getGroupId, pollForCompletedOperation, getErrorMessageFromAssetUploadAPI, redirectBack, enqueue, translate, settings.enableAudioUploadRevamp) close over current state, and listing them would recreate the callback every render. See adjacent exhaustive-deps note. */
   const uploadAsset = useCallback(
     async (file: File, name: string, description: string) => {
       setAssetCreationErrorMsg('');
@@ -599,6 +630,7 @@ const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetForm
     // eslint-disable-next-line react-hooks/exhaustive-deps -- TODO: Codeowners should check this
     [selectAssetType, user, uploadFee, assetsUploadApiClient, trackerClient, thumbnailFile],
   );
+  /* oxlint-enable react/react-compiler */
 
   const onButtonSubmit: SubmitHandler<AssetUploadFormType> = useCallback(
     async (data) => {
@@ -614,6 +646,7 @@ const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetForm
     register('file', CreateAssetRegisterOptions.file);
 
     if (droppedFile != null) {
+      // oxlint-disable-next-line react/react-compiler -- intentional external->React sync: applies a file dropped via CreateAssetFormContext into react-hook-form state
       handleFileChange(droppedFile);
       updateDroppedFile();
     }
