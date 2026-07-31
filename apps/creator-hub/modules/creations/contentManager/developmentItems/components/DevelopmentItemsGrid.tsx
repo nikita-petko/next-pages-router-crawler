@@ -30,7 +30,7 @@ const DevelopmentItemsGridItem: FunctionComponent<DevelopmentItemsGridItemProps>
           className='flex flex-col gap-small min-width-0 width-full bg-none stroke-none padding-none cursor-pointer text-align-x-left focus-visible:outline-focus'
           onClick={handleSelect}
           type='button'>
-          <div className='relative width-full aspect-1-1 clip radius-medium bg-surface-200'>
+          <div className='relative width-full aspect-1-1 clip radius-medium bg-shift-300'>
             {thumbnailUrl != null && (
               <img
                 alt=''

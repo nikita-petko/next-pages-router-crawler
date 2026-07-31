@@ -93,7 +93,7 @@ const InventoryFilterDropdown: FunctionComponent<InventoryFilterDropdownProps> =
               HEIGHT_CLASS_BY_SIZE.Medium,
               PADDING_X_CLASS_BY_SIZE.Medium,
               TEXT_CLASS_BY_SIZE.Medium,
-              'stroke-default content-default',
+              'stroke-default content-emphasis',
             )}
             type='button'>
             <StateLayer />
@@ -104,7 +104,7 @@ const InventoryFilterDropdown: FunctionComponent<InventoryFilterDropdownProps> =
               aria-hidden
               className={clsx(
                 ICON_SIZE_CLASS_BY_SIZE.Medium,
-                'icon content-default icon-regular-chevron-large-down shrink-0 margin-left-small',
+                'icon content-emphasis icon-regular-chevron-large-down shrink-0 margin-left-small',
               )}
             />
           </button>
