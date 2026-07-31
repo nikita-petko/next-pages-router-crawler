@@ -101,10 +101,9 @@ function ExperimentSummaryContainer({
   const formatCount = (count: number) => formatItemCount(count, translate);
 
   const experimentPopulationInMicroUnits = summary?.experimentPopulationInMicroUnits;
-  const testPopulationPercent =
-    experimentPopulationInMicroUnits != null
-      ? formatMicrosToPercent(experimentPopulationInMicroUnits, locale)
-      : null;
+  const testPopulationPercent = experimentPopulationInMicroUnits
+    ? formatMicrosToPercent(experimentPopulationInMicroUnits, locale)
+    : null;
 
   if (status === 'Upcoming') {
     return (
@@ -177,7 +176,7 @@ function ExperimentSummaryContainer({
   }
 
   // Completed
-  const revenueLiftMicros = summary?.revenueLiftInMicroUnits ?? 0;
+  const revenueLiftMicros = summary?.revenueLiftInMicroUnits;
   const statCards: React.ComponentProps<typeof ManagedPricingCard>[] = [
     {
       label: translate('Label.PriceIncrease' /* TranslationNamespace.ManagedPricing */),
@@ -191,15 +190,19 @@ function ExperimentSummaryContainer({
       label: translate('Label.NoChangeInPrice' /* TranslationNamespace.ManagedPricing */),
       content: formatCount(breakdown?.noChange ?? 0),
     },
-    {
+  ];
+
+  if (revenueLiftMicros) {
+    statCards.push({
       label: translate('Label.RevenueImpact' /* TranslationNamespace.ManagedPricing */),
       content: formatMicrosToPercent(revenueLiftMicros, locale),
-    },
-    {
-      label: translate('Label.ProductsTested' /* TranslationNamespace.ManagedPricing */),
-      content: formatCount(productCount),
-    },
-  ];
+    });
+  }
+
+  statCards.push({
+    label: translate('Label.ProductsTested' /* TranslationNamespace.ManagedPricing */),
+    content: formatCount(productCount),
+  });
 
   if (testPopulationPercent != null) {
     statCards.push({
