@@ -1,11 +1,11 @@
 import type { FunctionComponent } from 'react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import Router from 'next/router';
 import { LinearProgress, makeStyles } from '@rbx/ui';
 import { useAuthentication } from '@modules/authentication/providers';
-import { CreatorHomeClient } from '@modules/clients/creatorHome';
 import getHomePageAnalyticsSectionProviders from '@modules/experience-analytics-shared/pages/getHomePageAnalyticsSectionProviders';
 import { useGroups } from '@modules/providers/groups/GroupsProvider';
+import useGetUserScreen from '@modules/react-query/creatorHome/useGetUserScreen';
 import CreatorProvider from '../providers/CreatorProvider';
 import { BannerProvider } from './banners/BannerProvider';
 import Home from './Home';
@@ -46,7 +46,7 @@ const HomeContainer: FunctionComponent<React.PropsWithChildren> = () => {
   const {
     classes: { background, content, loading },
   } = useStyles();
-  const [suppressed, setSuppressed] = useState<boolean>();
+  const { data: userScreen } = useGetUserScreen();
 
   const isUnauthenticatedUser =
     status === 'unauthenticated' ||
@@ -63,22 +63,12 @@ const HomeContainer: FunctionComponent<React.PropsWithChildren> = () => {
   }, [redirectToLanding]);
 
   useEffect(() => {
-    const fetchSuppression = async () => {
-      try {
-        const { isSuppressed } = await CreatorHomeClient.userScreenApi.userScreenListUserScreen();
-        setSuppressed(isSuppressed);
-        if (!isSuppressed) {
-          void Router.replace('/landing');
-        }
-      } catch {
-        setSuppressed(true);
-      }
-    };
+    if (userScreen && !userScreen.isSuppressed) {
+      void Router.replace('/landing');
+    }
+  }, [userScreen]);
 
-    void fetchSuppression();
-  }, []);
-
-  if (suppressed === undefined || !suppressed || redirectToLanding) {
+  if (redirectToLanding) {
     return (
       <div className={background}>
         <div className={content}>
