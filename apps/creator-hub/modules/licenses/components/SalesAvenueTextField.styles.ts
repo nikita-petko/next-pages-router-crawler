@@ -24,6 +24,25 @@ const useSalesAvenueTextFieldStyles = makeStyles()((theme) => {
       position: 'relative',
       width: '100%',
     },
+    inputRowShell: {
+      width: '100%',
+    },
+    inputRow: {
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: theme.spacing(1),
+      width: '100%',
+    },
+    inputFieldGrow: {
+      flex: 1,
+      minWidth: 0,
+    },
+    addButton: {
+      flexShrink: 0,
+      height: SALES_AVENUE_FIELD_HEIGHT_PX,
+      minHeight: SALES_AVENUE_FIELD_HEIGHT_PX,
+      alignSelf: 'flex-start',
+    },
     clearIcon: {
       cursor: 'pointer',
       color: theme.palette.content.muted,
@@ -101,6 +120,17 @@ const useSalesAvenueTextFieldStyles = makeStyles()((theme) => {
     },
     resolvedRootError: {
       borderColor: `${theme.palette.actionV2.important.fill} !important`,
+    },
+    resolvedListItemRoot: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: theme.spacing(1.5),
+      width: '100%',
+      minHeight: SALES_AVENUE_FIELD_HEIGHT_PX,
+    },
+    resolvedListItemRemoveButton: {
+      flexShrink: 0,
+      marginLeft: 'auto',
     },
     thumbnailContainer: {
       width: THUMBNAIL_SIZE_PX,

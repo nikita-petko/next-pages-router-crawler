@@ -22,11 +22,10 @@ import SelectedExperienceContext from '../context/SelectedExperienceContext';
 import useApplyToPublicLicenseMutation from '../hooks/useApplyToLicenseMutation';
 import { getApplyFlowRevShareOnActivation } from '../utils/getApplyFlowRevShareOnActivation';
 import type { CollaborationSalesAvenues } from '../utils/salesAvenue';
-import { hasResolvedSalesAvenue } from '../utils/salesAvenue';
 import ApplicationSubmissionModal from './ApplicationSubmissionModal';
 import ExperienceSummaryCardContainer from './ExperienceSummaryCardContainer';
 import LicenseSummaryCardContainer from './LicenseSummaryCardContainer';
-import SalesAvenueResolvedTile from './SalesAvenueResolvedTile';
+import SalesAvenueResolvedGrid from './SalesAvenueResolvedGrid';
 
 interface SubmitApplicationStepProps {
   onPrev: () => void;
@@ -149,7 +148,33 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
             <Typography variant='h5' color='primary'>
               {translate('Label.SelectedCreation')}
             </Typography>
-            <ExperienceSummaryCardContainer experienceId={selectedExperienceId} />
+            <ExperienceSummaryCardContainer
+              experienceId={selectedExperienceId}
+              creationDetailsContent={
+                showCollaborationSalesAvenueFields && collaborationSalesAvenues ? (
+                  <KeyValuePairContainer>
+                    {collaborationSalesAvenues.developerProducts.length > 0 && (
+                      <KeyValuePair
+                        label={translate('Label.DeveloperProducts')}
+                        value={
+                          <SalesAvenueResolvedGrid
+                            entries={collaborationSalesAvenues.developerProducts}
+                          />
+                        }
+                      />
+                    )}
+                    {collaborationSalesAvenues.gamePasses.length > 0 && (
+                      <KeyValuePair
+                        label={translate('Label.GamePasses')}
+                        value={
+                          <SalesAvenueResolvedGrid entries={collaborationSalesAvenues.gamePasses} />
+                        }
+                      />
+                    )}
+                  </KeyValuePairContainer>
+                ) : undefined
+              }
+            />
           </Grid>
           <Grid item flexDirection='column' marginTop={2}>
             <KeyValuePairContainer>
@@ -166,31 +191,6 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
                       dateRange.endDate,
                       locale ?? Locale.English,
                     )}
-                  />
-                )}
-              {showCollaborationSalesAvenueFields &&
-                collaborationSalesAvenues &&
-                hasResolvedSalesAvenue(collaborationSalesAvenues) && (
-                  <KeyValuePair
-                    label={translate('Label.CollaborationLicenseRevenueTargetSummary')}
-                    value={
-                      <Flex flexDirection='column' gap={1}>
-                        {collaborationSalesAvenues.developerProducts.map((entry) => (
-                          <SalesAvenueResolvedTile
-                            key={`developer-product-${entry.id}`}
-                            entry={entry}
-                            productType='DeveloperProduct'
-                          />
-                        ))}
-                        {collaborationSalesAvenues.gamePasses.map((entry) => (
-                          <SalesAvenueResolvedTile
-                            key={`game-pass-${entry.id}`}
-                            entry={entry}
-                            productType='GamePass'
-                          />
-                        ))}
-                      </Flex>
-                    }
                   />
                 )}
             </KeyValuePairContainer>

@@ -1,7 +1,9 @@
 import type { FunctionComponent } from 'react';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { Link } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { Grid, Typography } from '@rbx/ui';
+import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
 import {
   getTotalResolvedSalesAvenues,
   hasResolvedSalesAvenue,
@@ -12,6 +14,29 @@ import {
 } from '../utils/salesAvenue';
 import SalesAvenueResolvedListItem from './SalesAvenueResolvedListItem';
 import SalesAvenueTextField from './SalesAvenueTextField';
+
+interface SalesAvenueSectionHeaderProps {
+  label: string;
+  href: string | null;
+}
+
+function SalesAvenueSectionHeader({ label, href }: SalesAvenueSectionHeaderProps) {
+  if (!href) {
+    return (
+      <Typography variant='h6' component='h3'>
+        {label}
+      </Typography>
+    );
+  }
+
+  return (
+    <Typography variant='h6' component='h3'>
+      <Link href={href} target='_blank' rel='noopener noreferrer'>
+        {label}
+      </Link>
+    </Typography>
+  );
+}
 
 interface CollaborationSalesAvenueFieldsProps {
   universeId: number | null;
@@ -39,6 +64,25 @@ const CollaborationSalesAvenueFields: FunctionComponent<CollaborationSalesAvenue
   const totalResolved = getTotalResolvedSalesAvenues(salesAvenues);
   const inputsDisabled = totalResolved >= MAX_COLLABORATION_SALES_AVENUES;
   const showRequiredError = showRequiredErrors && !hasResolvedSalesAvenue(salesAvenues);
+  const developerProductsHref = useMemo(
+    () =>
+      universeId != null
+        ? `${process.env.baseUrl}${dashboard.getMonetizationDeveloperProductsUrl(universeId)}`
+        : null,
+    [universeId],
+  );
+  const gamePassesHref = useMemo(
+    () =>
+      universeId != null
+        ? `${process.env.baseUrl}${dashboard.getMonetizationPassesUrl(universeId)}`
+        : null,
+    [universeId],
+  );
+
+  const clearDuplicateErrors = useCallback(() => {
+    setDeveloperProductDuplicateError(false);
+    setGamePassDuplicateError(false);
+  }, []);
 
   const resetInputsAfterReachingCap = useCallback(() => {
     // Remount both inputs so leftover invalid/pending text cannot remain stuck in a disabled
@@ -189,9 +233,10 @@ const CollaborationSalesAvenueFields: FunctionComponent<CollaborationSalesAvenue
       </Grid>
       <Grid item container flexDirection='column' spacing={1}>
         <Grid item>
-          <Typography variant='body1' component='h3'>
-            {translate('Label.DeveloperProduct')}
-          </Typography>
+          <SalesAvenueSectionHeader
+            label={translate('Label.DeveloperProducts')}
+            href={developerProductsHref}
+          />
         </Grid>
         <Grid item>
           <SalesAvenueTextField
@@ -202,7 +247,8 @@ const CollaborationSalesAvenueFields: FunctionComponent<CollaborationSalesAvenue
             productType='DeveloperProduct'
             onChange={handleDeveloperProductResolved}
             onPendingChange={handleDeveloperProductPendingChange}
-            disabled={inputsDisabled}
+            onDuplicateErrorReset={clearDuplicateErrors}
+            disabled={inputsDisabled || gamePassPending}
             showRequiredError={showRequiredError && !developerProductDuplicateError}
             requiredErrorMessage={translate('Error.CollaborationLicenseRevenueTargetRequired')}
             error={developerProductDuplicateError}
@@ -227,9 +273,7 @@ const CollaborationSalesAvenueFields: FunctionComponent<CollaborationSalesAvenue
       </Grid>
       <Grid item container flexDirection='column' spacing={1}>
         <Grid item>
-          <Typography variant='body1' component='h3'>
-            {translate('Label.GamePass')}
-          </Typography>
+          <SalesAvenueSectionHeader label={translate('Label.GamePasses')} href={gamePassesHref} />
         </Grid>
         <Grid item>
           <SalesAvenueTextField
@@ -240,7 +284,8 @@ const CollaborationSalesAvenueFields: FunctionComponent<CollaborationSalesAvenue
             productType='GamePass'
             onChange={handleGamePassResolved}
             onPendingChange={handleGamePassPendingChange}
-            disabled={inputsDisabled}
+            onDuplicateErrorReset={clearDuplicateErrors}
+            disabled={inputsDisabled || developerProductPending}
             showRequiredError={showRequiredError && !gamePassDuplicateError}
             requiredErrorMessage={translate('Error.CollaborationLicenseRevenueTargetRequired')}
             error={gamePassDuplicateError}

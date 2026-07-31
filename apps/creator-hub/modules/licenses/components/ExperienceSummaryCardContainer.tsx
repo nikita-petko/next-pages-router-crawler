@@ -14,11 +14,13 @@ import CommonSummaryCardContainerSkeleton from './CommonSummaryCardContainerSkel
 
 interface ExperienceSummaryCardContainerProps {
   experienceId: number;
+  /** Rendered between the experience tile and content maturity (e.g. collaboration revenue targets). */
+  creationDetailsContent?: React.ReactNode;
 }
 
 const ExperienceSummaryCardContainer: FunctionComponent<
   React.PropsWithChildren<ExperienceSummaryCardContainerProps>
-> = ({ experienceId }) => {
+> = ({ experienceId, creationDetailsContent }) => {
   const { translate } = useTranslation();
   const {
     classes: { summaryContainer },
@@ -38,7 +40,16 @@ const ExperienceSummaryCardContainer: FunctionComponent<
   });
 
   if (areExperienceDetailsPending || areExperienceGuidelinesPending) {
-    return <CommonSummaryCardContainerSkeleton testId='experience-summary-skeleton' />;
+    return (
+      <>
+        <CommonSummaryCardContainerSkeleton testId='experience-summary-skeleton' />
+        {creationDetailsContent != null && (
+          <Grid container flexDirection='column' width='auto'>
+            <Grid item>{creationDetailsContent}</Grid>
+          </Grid>
+        )}
+      </>
+    );
   }
 
   if (hasExperienceDetailsError || !experienceData) {
@@ -71,6 +82,7 @@ const ExperienceSummaryCardContainer: FunctionComponent<
           type={ContentType.Universe}
         />
       </Grid>
+      {creationDetailsContent != null && <Grid item>{creationDetailsContent}</Grid>}
       <Grid item>
         <KeyValuePairContainer>
           <KeyValuePair label={translate('Label.ContentMaturity')} value={experienceGuidelines} />

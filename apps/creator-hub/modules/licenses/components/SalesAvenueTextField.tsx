@@ -1,10 +1,11 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from '@rbx/intl';
-import { Thumbnail2d, AssetThumbnailSize } from '@rbx/thumbnails';
+import { Thumbnail2d } from '@rbx/thumbnails';
 import type { TTextFieldProps } from '@rbx/ui';
-import { TextField, CircularProgress, CancelIcon, FormHelperText } from '@rbx/ui';
+import { TextField, CircularProgress, CancelIcon, FormHelperText, Button } from '@rbx/ui';
 import { useSalesAvenueProductInput } from '../hooks/useSalesAvenueProductInput';
 import {
+  getSalesAvenueThumbnailSize,
   getSalesAvenueThumbnailTarget,
   type SalesAvenueProductType,
   type SalesAvenueSelection,
@@ -14,9 +15,6 @@ import useSalesAvenueTextFieldStyles, {
   foundationInputRootClass,
 } from './SalesAvenueTextField.styles';
 
-// eslint-disable-next-line no-underscore-dangle -- Swagger generated enum has underscore
-const ASSET_THUMBNAIL_SIZE = AssetThumbnailSize._50x50;
-
 export type SalesAvenueTextFieldProps = Omit<TTextFieldProps, 'onChange' | 'value' | 'label'> & {
   label?: TTextFieldProps['label'];
   universeId: number | null;
@@ -25,6 +23,8 @@ export type SalesAvenueTextFieldProps = Omit<TTextFieldProps, 'onChange' | 'valu
   onChange?: (value: SalesAvenueSelection | undefined) => void;
   onPendingChange?: (isPending: boolean) => void;
   onValidationErrorChange?: (hasValidationError: boolean) => void;
+  /** Resets parent-managed duplicate errors when this field is edited, cleared, or submitted. */
+  onDuplicateErrorReset?: () => void;
   showRequiredError?: boolean;
   requiredErrorMessage?: string;
 };
@@ -41,6 +41,7 @@ export const SalesAvenueTextField = React.forwardRef<HTMLDivElement, SalesAvenue
       onChange,
       onPendingChange,
       onValidationErrorChange,
+      onDuplicateErrorReset,
       showRequiredError = false,
       requiredErrorMessage,
       onBlur,
@@ -77,6 +78,11 @@ export const SalesAvenueTextField = React.forwardRef<HTMLDivElement, SalesAvenue
       if (showRequiredError && !value && !validationErrorCode) {
         return requiredErrorMessage ?? translate('Label.FieldIsRequired');
       }
+      if (validationErrorCode === 'empty-product-id') {
+        return productType === 'GamePass'
+          ? translate('Error.GamePassIdRequired')
+          : translate('Error.DeveloperProductIdRequired');
+      }
       if (validationErrorCode === 'invalid-product-id') {
         return productType === 'GamePass'
           ? translate('Error.InvalidGamePass')
@@ -107,7 +113,7 @@ export const SalesAvenueTextField = React.forwardRef<HTMLDivElement, SalesAvenue
       [onChange, value],
     );
 
-    const { inputValue, handleChange, isLoading } = useSalesAvenueProductInput({
+    const { inputValue, handleChange, handleSubmit, isLoading } = useSalesAvenueProductInput({
       universeId,
       productType,
       resolvedId: value?.id,
@@ -117,26 +123,52 @@ export const SalesAvenueTextField = React.forwardRef<HTMLDivElement, SalesAvenue
     });
 
     const handleClear = useCallback(() => {
+      onDuplicateErrorReset?.();
       handleChange('');
       onChange?.(undefined);
       setValidationError(undefined);
-    }, [handleChange, onChange, setValidationError]);
+    }, [handleChange, onChange, onDuplicateErrorReset, setValidationError]);
 
     const handleInputChange = useCallback(
       (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        onDuplicateErrorReset?.();
         handleChange(event.target.value);
       },
-      [handleChange],
+      [handleChange, onDuplicateErrorReset],
     );
 
-    const showError = error || !!validationErrorCode || (showRequiredError && !value);
-    const helperText = helperTextProp ?? validationErrorMessage;
+    const handleAddClick = useCallback(() => {
+      onDuplicateErrorReset?.();
+      handleSubmit();
+    }, [handleSubmit, onDuplicateErrorReset]);
+
+    const handleKeyDown = useCallback(
+      (event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        if (event.key !== 'Enter') {
+          return;
+        }
+        event.preventDefault();
+        if (!disabled && !isLoading) {
+          handleAddClick();
+        }
+      },
+      [disabled, handleAddClick, isLoading],
+    );
+
+    const showFormRequiredError = showRequiredError && !value && !validationErrorCode;
+    const showError = !!validationErrorCode || error || showFormRequiredError;
+    const helperText = validationErrorMessage ?? helperTextProp;
     const isResolved = !!value?.name;
-    const showClearAffordance = !disabled && (isResolved || isLoading || inputValue.length > 0);
+    const isFieldDisabled = (disabled ?? false) || isLoading;
+    const showClearAffordance =
+      !isFieldDisabled && (isResolved || isLoading || inputValue.length > 0);
 
     const textFieldInputProps = useMemo(
-      () => ({ 'aria-label': placeholderText }),
-      [placeholderText],
+      () => ({
+        'aria-label': placeholderText,
+        onKeyDown: handleKeyDown,
+      }),
+      [handleKeyDown, placeholderText],
     );
 
     const textFieldInputClasses = useMemo(
@@ -154,13 +186,23 @@ export const SalesAvenueTextField = React.forwardRef<HTMLDivElement, SalesAvenue
       </div>
     ) : null;
 
+    const addButton = (
+      <Button
+        variant='contained'
+        color='secondary'
+        size='large'
+        className={classes.addButton}
+        data-testid={id ? `${id}-add-button` : 'sales-avenue-add-button'}
+        disabled={isFieldDisabled}
+        loading={isLoading}
+        onClick={handleAddClick}>
+        {translate('Action.Add')}
+      </Button>
+    );
+
     if (isResolved) {
-      const productTypeLabel =
-        productType === 'GamePass'
-          ? translate('Label.GamePass')
-          : translate('Label.DeveloperProduct');
-      const idLabel = translate('Label.IdWithInput', { assetId: String(value.id) });
       const thumbnail = getSalesAvenueThumbnailTarget(value);
+      const thumbnailSize = getSalesAvenueThumbnailSize(value);
 
       return (
         <div ref={ref} className={className}>
@@ -175,17 +217,13 @@ export const SalesAvenueTextField = React.forwardRef<HTMLDivElement, SalesAvenue
                   key={`${thumbnail.type}-${thumbnail.targetId}`}
                   alt={value.name}
                   targetId={thumbnail.targetId}
-                  size={ASSET_THUMBNAIL_SIZE}
+                  size={thumbnailSize}
                   skeletonVariant='square'
                   containerClass={classes.thumbnailContainer}
                   type={thumbnail.type}
                 />
               </div>
-              <SalesAvenueResolvedEntry
-                entry={value}
-                productTypeLabel={productTypeLabel}
-                idLabel={idLabel}
-              />
+              <SalesAvenueResolvedEntry entry={value} />
             </div>
             {clearAffordance}
           </div>
@@ -196,26 +234,33 @@ export const SalesAvenueTextField = React.forwardRef<HTMLDivElement, SalesAvenue
 
     return (
       <div ref={ref} className={className}>
-        <div className={classes.fieldShell}>
-          <TextField
-            {...rest}
-            className={`${classes.textFieldRoot} ${classes.textFieldInput}`}
-            fullWidth={fullWidth}
-            id={id ?? ''}
-            name={name}
-            label={label ?? ''}
-            value={inputValue}
-            onChange={handleInputChange}
-            onBlur={onBlur}
-            onFocus={onFocus}
-            placeholder={placeholderText}
-            disabled={(disabled ?? false) || isLoading}
-            error={showError}
-            helperText={helperText}
-            inputProps={textFieldInputProps}
-            InputProps={textFieldInputClasses}
-          />
-          {clearAffordance}
+        <div className={classes.inputRowShell}>
+          <div className={classes.inputRow}>
+            <div className={classes.inputFieldGrow}>
+              <div className={classes.fieldShell}>
+                <TextField
+                  {...rest}
+                  className={`${classes.textFieldRoot} ${classes.textFieldInput}`}
+                  fullWidth={fullWidth}
+                  id={id ?? ''}
+                  name={name}
+                  label={label ?? ''}
+                  value={inputValue}
+                  onChange={handleInputChange}
+                  onBlur={onBlur}
+                  onFocus={onFocus}
+                  placeholder={placeholderText}
+                  disabled={isFieldDisabled}
+                  error={showError}
+                  inputProps={textFieldInputProps}
+                  InputProps={textFieldInputClasses}
+                />
+                {clearAffordance}
+              </div>
+            </div>
+            {addButton}
+          </div>
+          {helperText ? <FormHelperText error={showError}>{helperText}</FormHelperText> : null}
         </div>
       </div>
     );

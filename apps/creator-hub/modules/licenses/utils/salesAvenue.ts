@@ -3,7 +3,12 @@ import {
   RevenueTargetType,
   type RevenueTargetReference,
 } from '@rbx/client-content-licensing-api/v1';
-import { ThumbnailTypes } from '@rbx/thumbnails';
+import {
+  AssetThumbnailSize,
+  DeveloperProductIconSize,
+  GamePassIconSize,
+  ThumbnailTypes,
+} from '@rbx/thumbnails';
 import developerProductsClient from '@modules/clients/developerProducts';
 import passesClient from '@modules/clients/passes';
 
@@ -142,6 +147,22 @@ export function getSalesAvenueThumbnailTarget(entry: SalesAvenueSelection): {
     targetId: entry.id,
     type: ThumbnailTypes.developerProductIcon,
   };
+}
+
+/** Thumbnail fetch size for a sales-avenue entry; each Thumbnails API type accepts different sizes. */
+export function getSalesAvenueThumbnailSize(entry: SalesAvenueSelection) {
+  const { type } = getSalesAvenueThumbnailTarget(entry);
+
+  if (type === ThumbnailTypes.gamePassIcon) {
+    // eslint-disable-next-line no-underscore-dangle -- Swagger generated enum has underscore
+    return GamePassIconSize._150x150;
+  }
+  if (type === ThumbnailTypes.developerProductIcon) {
+    // eslint-disable-next-line no-underscore-dangle -- Swagger generated enum has underscore
+    return DeveloperProductIconSize._150x150;
+  }
+  // eslint-disable-next-line no-underscore-dangle -- Swagger generated enum has underscore
+  return AssetThumbnailSize._50x50;
 }
 
 interface BuildApplyToLicenseRevenueTargetsParams {

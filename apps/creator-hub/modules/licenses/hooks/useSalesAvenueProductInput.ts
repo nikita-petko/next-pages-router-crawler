@@ -5,8 +5,6 @@ import {
   type SalesAvenueSelection,
 } from '../utils/salesAvenue';
 
-const DEFAULT_DEBOUNCE_MS = 500;
-
 function parseProductId(value: string): number | undefined {
   const trimmed = value.trim();
   if (!/^\d+$/.test(trimmed)) {
@@ -26,18 +24,18 @@ export interface UseSalesAvenueProductInputOptions {
   onResolved: (selection: SalesAvenueSelection | undefined) => void;
   onError?: (message: string | undefined) => void;
   onPendingChange?: (isPending: boolean) => void;
-  debounceMs?: number;
 }
 
 export interface UseSalesAvenueProductInputResult {
   inputValue: string;
   handleChange: (newValue: string) => void;
+  handleSubmit: () => void;
   isLoading: boolean;
 }
 
 /**
- * Debounced numeric product ID input that resolves a typed game pass or developer product
- * within the selected experience universe.
+ * Numeric product ID input that resolves a game pass or developer product within the
+ * selected experience universe when explicitly submitted.
  */
 export function useSalesAvenueProductInput({
   universeId,
@@ -46,12 +44,10 @@ export function useSalesAvenueProductInput({
   onResolved,
   onError,
   onPendingChange,
-  debounceMs = DEFAULT_DEBOUNCE_MS,
 }: UseSalesAvenueProductInputOptions): UseSalesAvenueProductInputResult {
   const [inputValue, setInputValue] = useState(resolvedId != null ? String(resolvedId) : '');
   const [isLoading, setIsLoading] = useState(false);
   const [prevResolvedId, setPrevResolvedId] = useState(resolvedId);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestIdRef = useRef(0);
 
   if (!isLoading && resolvedId !== prevResolvedId) {
@@ -62,68 +58,63 @@ export function useSalesAvenueProductInput({
   const handleChange = useCallback(
     (newValue: string) => {
       setInputValue(newValue);
-
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-        debounceRef.current = null;
-      }
-
-      const trimmed = newValue.trim();
-      if (!trimmed) {
-        onError?.(undefined);
-        onResolved(undefined);
-        return;
-      }
-
-      const productId = parseProductId(trimmed);
-      if (productId === undefined) {
-        onError?.('invalid-product-id');
-        onResolved(undefined);
-        return;
-      }
-
-      if (universeId == null) {
-        onResolved(undefined);
-        return;
-      }
-
       onError?.(undefined);
-
-      debounceRef.current = setTimeout(() => {
-        debounceRef.current = null;
-        const requestId = requestIdRef.current + 1;
-        requestIdRef.current = requestId;
-        setIsLoading(true);
-        onPendingChange?.(true);
-        void (async () => {
-          try {
-            const resolved = await resolveSalesAvenueProduct(universeId, productId, productType);
-            if (requestIdRef.current !== requestId) {
-              return;
-            }
-            if (resolved) {
-              onError?.(undefined);
-              onResolved(resolved);
-            } else {
-              onError?.('product-not-found');
-              onResolved(undefined);
-            }
-          } catch {
-            if (requestIdRef.current === requestId) {
-              onError?.('product-not-found');
-              onResolved(undefined);
-            }
-          } finally {
-            if (requestIdRef.current === requestId) {
-              setIsLoading(false);
-              onPendingChange?.(false);
-            }
-          }
-        })();
-      }, debounceMs);
     },
-    [debounceMs, onError, onPendingChange, onResolved, productType, universeId],
+    [onError],
   );
 
-  return { inputValue, handleChange, isLoading };
+  const handleSubmit = useCallback(() => {
+    const trimmed = inputValue.trim();
+    if (!trimmed) {
+      onError?.('empty-product-id');
+      onResolved(undefined);
+      return;
+    }
+
+    const productId = parseProductId(trimmed);
+    if (productId === undefined) {
+      onError?.('invalid-product-id');
+      onResolved(undefined);
+      return;
+    }
+
+    if (universeId == null) {
+      onResolved(undefined);
+      return;
+    }
+
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+    setIsLoading(true);
+    onPendingChange?.(true);
+    onError?.(undefined);
+
+    void (async () => {
+      try {
+        const resolved = await resolveSalesAvenueProduct(universeId, productId, productType);
+        if (requestIdRef.current !== requestId) {
+          return;
+        }
+        if (resolved) {
+          onError?.(undefined);
+          onResolved(resolved);
+        } else {
+          onError?.('product-not-found');
+          onResolved(undefined);
+        }
+      } catch {
+        if (requestIdRef.current === requestId) {
+          onError?.('product-not-found');
+          onResolved(undefined);
+        }
+      } finally {
+        if (requestIdRef.current === requestId) {
+          setIsLoading(false);
+          onPendingChange?.(false);
+        }
+      }
+    })();
+  }, [inputValue, onError, onPendingChange, onResolved, productType, universeId]);
+
+  return { inputValue, handleChange, handleSubmit, isLoading };
 }
