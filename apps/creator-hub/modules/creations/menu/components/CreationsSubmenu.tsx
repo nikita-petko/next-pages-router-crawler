@@ -1,15 +1,14 @@
 import type { FunctionComponent } from 'react';
 import React, { useMemo, useEffect, useRef, useState } from 'react';
-import { useFlag } from '@rbx/flags';
 import { useTranslation } from '@rbx/intl';
 import { Chip, IconButton, NavigateBeforeIcon, NavigateNextIcon, makeStyles } from '@rbx/ui';
-import { enableAvatarLooks } from '@generated/flags/avatarMarketplace';
 import type { TGroup } from '@modules/authentication/types';
 import type { Asset } from '@modules/miscellaneous/common';
 import { Flex } from '@modules/miscellaneous/components';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import TaxonomyL1Chips from '../../avatarItem/components/TaxonomyL1Chips';
 import useTaxonomyView from '../../avatarItem/hooks/useTaxonomyView';
+import useAvatarLooksGate from '../../home/hooks/useAvatarLooksGate';
 import useMomentsGate from '../../home/hooks/useMomentsGate';
 import useUGCFoldersGate from '../../home/hooks/useUGCFoldersGate';
 import {
@@ -72,7 +71,7 @@ const CreationsSubmenu: FunctionComponent<React.PropsWithChildren<TCreationsSubm
   const { settings } = useSettings();
   const isMomentsTabEnabled = useMomentsGate();
   const isUGCFoldersEnabled = useUGCFoldersGate();
-  const { value: isAvatarLooksEnabled } = useFlag(enableAvatarLooks);
+  const isAvatarLooksEnabled = useAvatarLooksGate();
   const { translate } = useTranslation();
   const [scrollLeft, setScrollLeft] = useState<number>(0);
   const [scrollWidth, setScrollWidth] = useState<number>(0);

@@ -1,15 +1,14 @@
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useState } from 'react';
 import { useRouter } from 'next/router';
-import { useFlag } from '@rbx/flags';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { CircularProgress, Divider, Grid, useMediaQuery, useTheme } from '@rbx/ui';
-import { enableAvatarLooks } from '@generated/flags/avatarMarketplace';
 import Look from '@modules/miscellaneous/common/enums/Look';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import useOverviewStyles from '../../common/components/Overview.styles';
+import useAvatarLooksGate from '../../home/hooks/useAvatarLooksGate';
 import VerificationAlert from '../../unifiedFeeSystem/components/VerificationAlert';
 import useCurrentLook from '../hooks/useCurrentLook';
 import LookItemDetails from './LookItemDetails';
@@ -29,8 +28,7 @@ const LookConfigureContainer: FunctionComponent<React.PropsWithChildren> = () =>
   const isXlScreen = useMediaQuery(theme.breakpoints.up('XXLarge'));
 
   const enableMakeupAssets = settings?.enableMakeupAssets;
-  const { ready: avatarLooksReady, value: avatarLooksValue } = useFlag(enableAvatarLooks);
-  const isAvatarLooksEnabled = avatarLooksValue ?? false;
+  const avatarLooksEnabled = useAvatarLooksGate();
   const router = useRouter();
 
   const [name, setName] = useState(lookDetail?.name ?? '');
@@ -42,7 +40,7 @@ const LookConfigureContainer: FunctionComponent<React.PropsWithChildren> = () =>
     router.reload();
   }, [router]);
 
-  if (isLoadingLook || !avatarLooksReady) {
+  if (isLoadingLook || avatarLooksEnabled === undefined) {
     return (
       <Grid container className={emptyGrid} justifyContent='center' alignItems='center'>
         <CircularProgress />
@@ -51,7 +49,7 @@ const LookConfigureContainer: FunctionComponent<React.PropsWithChildren> = () =>
   }
 
   const looksFeatureEnabled =
-    lookDetail?.lookType === Look.Avatar ? isAvatarLooksEnabled : enableMakeupAssets;
+    lookDetail?.lookType === Look.Avatar ? (avatarLooksEnabled ?? false) : enableMakeupAssets;
 
   // IEC looks have no independent marketplace pricing/availability — gate the
   // Pricing section and the LookItems "Unavailable" subsection.

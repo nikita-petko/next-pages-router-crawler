@@ -1,10 +1,8 @@
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { PagingParameters, SortOrder } from '@rbx/core';
-import { useFlag } from '@rbx/flags';
 import { useTranslation } from '@rbx/intl';
 import { CircularProgress, Grid } from '@rbx/ui';
-import { enableAvatarLooks } from '@generated/flags/avatarMarketplace';
 import AssetCreationEntryway from '@modules/asset-creation/components/AssetCreationEntryway';
 import { isCreateAssetAvailable } from '@modules/asset-creation/constants/AssetTypeConstants';
 import { useAuthentication } from '@modules/authentication/providers';
@@ -19,6 +17,7 @@ import useCreationsFilters from '../../common/hooks/useCreationsFilters';
 import type CreationData from '../../common/interfaces/CreationData';
 import type { AssetSorts } from '../../common/interfaces/CreationsFilters';
 import useCreationsGridContainerStyles from '../../home/containers/CreationsGridContainer.styles';
+import useAvatarLooksGate from '../../home/hooks/useAvatarLooksGate';
 import {
   getAllowedMarketplaceItemTypes,
   getDefaultAllowedMarketplaceItemTypes,
@@ -92,7 +91,7 @@ const AvatarItemsGridContainer: FunctionComponent<
   const { sort, sortOrder, isArchived, isPublicOnly } = useCreationsFilters();
   const { translate } = useTranslation();
   const { settings } = useSettings();
-  const { value: isAvatarLooksEnabled } = useFlag(enableAvatarLooks);
+  const isAvatarLooksEnabled = useAvatarLooksGate();
   const { user } = useAuthentication();
   const [{ filterIndex }, setFilterIndexParams] = useQueryParams(['filterIndex']);
   const [{ activeTab }, setTaxonomyTabParams] = useQueryParams(['activeTab', 'filterIndex']);

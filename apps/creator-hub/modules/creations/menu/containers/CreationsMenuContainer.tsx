@@ -24,6 +24,7 @@ export interface CreationsMenuContainerProps {
   verificationMetadata: VerificationMetadataContextValue | undefined;
   group: TGroup | null;
   isMarketplaceAssetType?: boolean;
+  hideContextualControls?: boolean;
 }
 
 const CreationsMenuContainer: FunctionComponent<
@@ -35,6 +36,7 @@ const CreationsMenuContainer: FunctionComponent<
   verificationMetadata,
   group,
   isMarketplaceAssetType,
+  hideContextualControls = false,
 }) => {
   const eventItemTypes = ['UpcomingEvent', 'PastEvent', 'DraftEvent'];
   const {
@@ -62,7 +64,7 @@ const CreationsMenuContainer: FunctionComponent<
       {menuState.menuItem.type === Asset.TShirt && (
         <CreationAccessBlockedBanner data={verificationMetadata} />
       )}
-      {!eventItemTypes.includes(menuState.submenuItem?.type ?? '') && (
+      {!hideContextualControls && !eventItemTypes.includes(menuState.submenuItem?.type ?? '') && (
         <Flex
           classes={{ root: subMenuToolbarContainer }}
           justifyContent='space-between'

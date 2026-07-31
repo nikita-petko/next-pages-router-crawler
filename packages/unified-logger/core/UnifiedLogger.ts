@@ -10,6 +10,7 @@ import {
   SessionEvent,
 } from '../event';
 import ApiVitalsEvent from '../event/ApiVitalsEvent';
+import FormVitalsEvent from '../event/FormVitalsEvent';
 import type { TSessionEventName } from '../event/SessionEvent';
 import TaggableEvent from '../event/TaggableEvent';
 import type { EventLogger } from '../eventLogger';
@@ -54,6 +55,9 @@ export type TRawWebVitalsEvent = TRawTaggableEvent;
 export type TRawAPIErrorEvent = TRawTaggableEvent;
 export type TRawAPILoadEvent = TRawTaggableEvent;
 export type TRawErrorEvent = TRawTaggableEvent;
+export type TRawFormVitalsEvent = TRawTaggableEvent & {
+  eventName: 'form_submission_started' | 'form_submission_succeeded' | 'form_submission_failed';
+};
 export type TRawSessionEvent = TRawTaggableEvent & {
   eventName: TSessionEventName;
   sessionId: string;
@@ -65,6 +69,7 @@ export type TRawEvent =
   | ({ eventType: 'hover' } & TRawHoverEvent)
   | ({ eventType: 'webvitals' } & TRawWebVitalsEvent)
   | ({ eventType: 'apivitals' } & TRawWebVitalsEvent)
+  | ({ eventType: 'formvitals' } & TRawTaggableEvent)
   | ({ eventType: 'error' } & TRawErrorEvent)
   | ({ eventType: 'session' } & TRawSessionEvent);
 
@@ -76,6 +81,7 @@ type EventsMap = {
   hover: HoverEvent;
   webvitals: WebVitalsEvent;
   apivitals: ApiVitalsEvent;
+  formvitals: FormVitalsEvent;
   error: ErrorEvent;
   session: SessionEvent;
 };
@@ -373,6 +379,22 @@ export default class UnifiedLogger {
     });
 
     this.events.emit('webvitals', event);
+    this.logEventToLogger(event);
+  }
+
+  logFormVitalsEvent({ eventName, parameters, tags }: TRawFormVitalsEvent) {
+    const currentUrl = getCurrentUrl();
+    const sessionId = this.sessionService.getOrCreateSessionId();
+    const event = new FormVitalsEvent({
+      product: this.product,
+      url: currentUrl,
+      sessionId,
+      eventName,
+      parameters,
+      tags,
+    });
+
+    this.events.emit('formvitals', event);
     this.logEventToLogger(event);
   }
 

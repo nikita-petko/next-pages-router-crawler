@@ -1,46 +1,15 @@
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react';
-import {
-  Badge,
-  Button,
-  IconButton,
-  Menu,
-  MenuItem,
-  MenuSection,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Tooltip,
-  TooltipTrigger,
-} from '@rbx/foundation-ui';
+import type { KeyboardEvent, ReactNode } from 'react';
+import { useIsMutating } from '@tanstack/react-query';
+import { Badge, Button } from '@rbx/foundation-ui';
 import type { Locale } from '@rbx/intl';
 import { useTranslation } from '@rbx/intl';
-import {
-  BulkManageCreatorTicketResultStatus,
-  BulkManageCreatorTicketsAction,
-  TicketCategory,
-  TicketStatus,
-  type BulkManageCreatorTicketsResponse,
-  type CreatorTicketSummary,
-  type TicketResponse,
-} from '@modules/clients/creatorCommunication';
-import unifiedLoggerClient from '@modules/eventStream/unifiedLoggerClient';
-import useSnackbarAlert from '@modules/miscellaneous/hooks/useSnackbarAlert';
+import { TicketStatus, type CreatorTicketSummary } from '@modules/clients/creatorCommunication';
 import { formatDate } from '@modules/miscellaneous/utils/dateUtils';
-import {
-  TableSelectionProvider,
-  useTableSelectionContext,
-  useTableSelectionStoreInstance,
-} from '@modules/monetization-shared/table-selection/context';
-import {
-  useSelectionActions,
-  useSelectionStore,
-} from '@modules/monetization-shared/table-selection/hooks';
 import {
   hasTicketCategoryTranslationKey,
   TICKET_CATEGORY_TRANSLATION_KEY,
 } from '../constants/ticketLabels';
-import useBulkManageTicketsMutation from '../hooks/useBulkManageTicketsMutation';
-import PlayerSupportBulkReplyDialog from './PlayerSupportBulkReplyDialog';
+import { BULK_MANAGE_TICKETS_MUTATION_KEY } from '../hooks/useBulkManageTicketsMutation';
 import {
   PlayerSupportTableHeaderCheckbox,
   PlayerSupportTableRowCheckbox,
@@ -51,16 +20,17 @@ interface PlayerSupportTableProps {
   tickets: CreatorTicketSummary[];
   universeId: number;
   locale: Locale;
-  selectedStatus: TicketStatus;
   isMobile: boolean;
   isBulkManagementEnabled: boolean;
+  /** Whether the card layout is in selection mode; only the card layout reads it. */
+  isSelectionMode: boolean;
   onTicketClick: (ticketId: string, category?: string) => void;
-  onSelectionChange: (hasSelection: boolean) => void;
+  onEnterSelectionMode: () => void;
+  /** The card layout's bulk actions, which pin themselves to the bottom of the viewport. */
+  bulkActions?: ReactNode;
+  /** Rendered trailing the `Select` button on the card layout. */
+  trailingActions?: ReactNode;
 }
-
-const getTicketId = (ticket: CreatorTicketSummary): string => ticket.creatorTicketId ?? '';
-const isTicketSelectable = (ticket: CreatorTicketSummary): boolean =>
-  Boolean(ticket.creatorTicketId);
 
 interface TicketRowProps {
   ticket: CreatorTicketSummary;
@@ -276,443 +246,103 @@ const MobileTicketCard = ({
   );
 };
 
-const PlayerSupportTableContent = ({
+const PlayerSupportTable = ({
   tickets,
   universeId,
   locale,
-  selectedStatus,
   isMobile,
   isBulkManagementEnabled,
+  isSelectionMode,
   onTicketClick,
-  onSelectionChange,
+  onEnterSelectionMode,
+  bulkActions,
+  trailingActions,
 }: PlayerSupportTableProps) => {
   const { translate } = useTranslation();
-  const showSnackbarMessage = useSnackbarAlert();
-  const selectionStore = useTableSelectionContext<string, CreatorTicketSummary>();
-  const selectionState = useSelectionStore<string, CreatorTicketSummary>();
-  const { reset, toggleBulk, toggleItem } = useSelectionActions<string, CreatorTicketSummary>();
-  const { mutateAsync: manageTickets, isPending } = useBulkManageTicketsMutation();
-  const [isBulkReplyOpen, setIsBulkReplyOpen] = useState(false);
-  const [isMobileSelectionMode, setIsMobileSelectionMode] = useState(false);
+  // Selection freezes until a bulk action settles. The actions live outside this table,
+  // hence the shared mutation key.
+  const isBulkActionPending = useIsMutating({ mutationKey: BULK_MANAGE_TICKETS_MUTATION_KEY }) > 0;
+  const isCardSelectionMode = isBulkManagementEnabled && isSelectionMode;
 
-  const selectedTickets = useMemo(
-    () =>
-      selectionState.data.items.filter(
-        (ticket) =>
-          ticket.creatorTicketId && selectionState.selectedMap.has(ticket.creatorTicketId),
-      ),
-    [selectionState],
-  );
-  const selectedCount = selectedTickets.length;
-  useEffect(() => {
-    onSelectionChange(
-      isBulkManagementEnabled && (isMobile ? isMobileSelectionMode : selectedCount > 0),
-    );
-  }, [isBulkManagementEnabled, isMobile, isMobileSelectionMode, onSelectionChange, selectedCount]);
-  useEffect(
-    () => () => {
-      onSelectionChange(false);
-    },
-    [onSelectionChange],
-  );
-  const allSelectedRead =
-    selectedCount > 0 && selectedTickets.every((ticket) => ticket.viewedByCreator === true);
-  const allSelectedUnread =
-    selectedCount > 0 && selectedTickets.every((ticket) => ticket.viewedByCreator !== true);
-  const selectedCategories = new Set(selectedTickets.map((ticket) => ticket.category));
-  const selectedCategory = selectedCategories.size === 1 ? selectedTickets[0]?.category : undefined;
-  const canBulkReply =
-    selectedCategory !== undefined &&
-    selectedCategory !== TicketCategory.Invalid &&
-    selectedStatus !== TicketStatus.Archived;
-  const categoryKey =
-    selectedCategory && hasTicketCategoryTranslationKey(selectedCategory)
-      ? TICKET_CATEGORY_TRANSLATION_KEY[selectedCategory]
-      : undefined;
-  const selectedCategoryLabel = categoryKey ? translate(categoryKey) : '';
-
-  const reconcileSelection = useCallback(
-    (response: BulkManageCreatorTicketsResponse, action: BulkManageCreatorTicketsAction) => {
-      if (action !== BulkManageCreatorTicketsAction.BulkReply) {
-        return;
-      }
-
-      const failedIds = new Set(
-        (response.results ?? []).flatMap((result) =>
-          result.resultStatus === BulkManageCreatorTicketResultStatus.Failed &&
-          result.creatorTicketId
-            ? [result.creatorTicketId]
-            : [],
-        ),
-      );
-      const failedCount = response.failedCount ?? failedIds.size;
-
-      if (failedCount === 0) {
-        reset();
-        return;
-      }
-
-      if (failedIds.size > 0) {
-        selectionStore.getSelectedViewableItems().forEach((ticket) => {
-          if (!failedIds.has(getTicketId(ticket))) {
-            toggleItem(ticket, false);
-          }
-        });
-      }
-    },
-    [reset, selectionStore, toggleItem],
-  );
-
-  const showFailureMessage = useCallback(
-    (succeededCount?: number, failedCount?: number) => {
-      if ((succeededCount ?? 0) > 0 && (failedCount ?? 0) > 0) {
-        showSnackbarMessage(
-          'error',
-          translate('Message.PlayerSupport.BulkActionPartialFailure', {
-            succeeded: String(succeededCount),
-            failed: String(failedCount),
-          }),
-          'standard',
-          { vertical: 'bottom', horizontal: 'center' },
-        );
-        return;
-      }
-
-      showSnackbarMessage(
-        'error',
-        translate('Message.PlayerSupport.BulkActionFailure'),
-        'standard',
-        { vertical: 'bottom', horizontal: 'center' },
-      );
-    },
-    [showSnackbarMessage, translate],
-  );
-
-  const showBulkReplySuccessMessage = useCallback(
-    (count: number) => {
-      showSnackbarMessage(
-        'success',
-        translate('Message.PlayerSupport.BulkRepliesSent', { count: String(count) }),
-        'standard',
-        {
-          vertical: 'bottom',
-          horizontal: 'center',
-        },
-      );
-    },
-    [showSnackbarMessage, translate],
-  );
-
-  const handleBulkAction = useCallback(
-    async (action: BulkManageCreatorTicketsAction, response?: TicketResponse): Promise<boolean> => {
-      const currentSelection = selectionStore.getSelectedViewableItems();
-      const creatorTicketIds = currentSelection.flatMap((ticket) =>
-        ticket.creatorTicketId ? [ticket.creatorTicketId] : [],
-      );
-      if (creatorTicketIds.length === 0) {
-        return false;
-      }
-
-      unifiedLoggerClient.logClickEvent({
-        eventName: 'playerSupport.bulkManage',
-        parameters: {
-          universeId: String(universeId),
-          action,
-          selectedCount: String(creatorTicketIds.length),
-          ticketCategory: selectedCategory ?? '',
-          replyType: response ?? '',
-        },
-      });
-
-      try {
-        const result = await manageTickets({
-          universeId,
-          creatorTicketIds,
-          action,
-          response,
-        });
-        reconcileSelection(result, action);
-
-        const succeededCount =
-          result.succeededCount ??
-          (result.results ?? []).filter(
-            (ticketResult) =>
-              ticketResult.resultStatus === BulkManageCreatorTicketResultStatus.Succeeded,
-          ).length;
-        const failedCount =
-          result.failedCount ??
-          (result.results ?? []).filter(
-            (ticketResult) =>
-              ticketResult.resultStatus === BulkManageCreatorTicketResultStatus.Failed,
-          ).length;
-        if (failedCount > 0) {
-          showFailureMessage(succeededCount, failedCount);
-          return false;
-        }
-
-        if (action === BulkManageCreatorTicketsAction.BulkReply) {
-          showBulkReplySuccessMessage(succeededCount || creatorTicketIds.length);
-        }
-        return true;
-      } catch {
-        showFailureMessage();
-        return false;
-      }
-    },
-    [
-      manageTickets,
-      reconcileSelection,
-      selectedCategory,
-      selectionStore,
-      showBulkReplySuccessMessage,
-      showFailureMessage,
-      universeId,
-    ],
-  );
-
-  const handleExitMobileSelection = useCallback(() => {
-    reset();
-    setIsMobileSelectionMode(false);
-  }, [reset]);
-
-  const selectedLabel = translate('Label.PlayerSupport.SelectedCount', {
-    count: String(selectedCount),
-  });
-  const selectLabel = translate('Action.PlayerSupport.Select');
-  const selectAllLabel = translate('Action.PlayerSupport.SelectAll');
-  const deselectAllLabel = translate('Action.PlayerSupport.DeselectAll');
-  const replyLabel = translate('Action.PlayerSupport.Reply');
-  const bulkReplyButton = (
-    <Button
-      variant='Emphasis'
-      size='Medium'
-      className='min-width-[120px]'
-      isDisabled={!canBulkReply || isPending}
-      onClick={() => setIsBulkReplyOpen(true)}>
-      {selectedCount === 1 ? replyLabel : translate('Action.PlayerSupport.BulkReply')}
-    </Button>
-  );
-  const mobileReplyButton = (
-    <Button
-      variant='Emphasis'
-      size='Small'
-      isDisabled={!canBulkReply || isPending}
-      onClick={() => setIsBulkReplyOpen(true)}>
-      {replyLabel}
-    </Button>
-  );
-  const markAsReadLabel = translate('Action.PlayerSupport.MarkAsRead');
-  const markAsUnreadLabel = translate('Action.PlayerSupport.MarkAsUnread');
-  const mobileSelectionToolbar =
-    isBulkManagementEnabled && isMobile && isMobileSelectionMode ? (
-      <div className='bg-surface-0 stroke-default stroke-thin padding-medium [position:fixed] [bottom:0] [left:0] [right:0] [z-index:1]'>
-        <div className='items-center gap-small flex'>
-          <IconButton
-            icon='icon-regular-chevron-large-left'
-            ariaLabel={translate('Action.BackToSupportRequests')}
-            variant='Utility'
-            size='Small'
-            isDisabled={isPending}
-            onClick={handleExitMobileSelection}
-          />
-          <Button
-            variant='Link'
-            size='Small'
-            isDisabled={isPending}
-            onClick={() => toggleBulk(selectedCount === 0)}>
-            {selectedCount === 0 ? selectAllLabel : deselectAllLabel}
-          </Button>
-          <span className='content-emphasis text-label-medium grow-1'>{selectedLabel}</span>
-          {selectedStatus !== TicketStatus.Archived && mobileReplyButton}
-          <Popover>
-            <PopoverTrigger asChild>
-              <IconButton
-                icon='icon-filled-three-dots-vertical'
-                ariaLabel={translate('Action.More')}
-                variant='Utility'
-                size='Small'
-                isDisabled={selectedCount === 0 || isPending}
-              />
-            </PopoverTrigger>
-            <PopoverContent side='top' align='end' ariaLabel={translate('Action.More')}>
-              <Menu size='Medium'>
-                <MenuSection>
-                  <MenuItem
-                    value='mark-as-read'
-                    title={markAsReadLabel}
-                    disabled={selectedCount === 0 || allSelectedRead || isPending}
-                    onSelect={() => {
-                      void handleBulkAction(BulkManageCreatorTicketsAction.MarkAsRead);
-                    }}
-                  />
-                  <MenuItem
-                    value='mark-as-unread'
-                    title={markAsUnreadLabel}
-                    disabled={selectedCount === 0 || allSelectedUnread || isPending}
-                    onSelect={() => {
-                      void handleBulkAction(BulkManageCreatorTicketsAction.MarkAsUnread);
-                    }}
-                  />
-                </MenuSection>
-              </Menu>
-            </PopoverContent>
-          </Popover>
+  if (isMobile) {
+    return (
+      <>
+        {isBulkManagementEnabled && (
+          <div className='items-center justify-between margin-top-medium gap-medium flex'>
+            <Button
+              variant='SoftEmphasis'
+              size='Small'
+              isDisabled={isSelectionMode || isBulkActionPending}
+              onClick={onEnterSelectionMode}>
+              {translate('Action.PlayerSupport.Select')}
+            </Button>
+            {trailingActions}
+          </div>
+        )}
+        <div
+          className={`margin-top-medium gap-[var(--size-1000)] flex flex-col ${
+            isCardSelectionMode ? 'padding-bottom-[72px]' : ''
+          }`}>
+          {tickets.map((ticket, index) => (
+            <MobileTicketCard
+              key={ticket.creatorTicketId ?? `ticket-${index}`}
+              ticket={ticket}
+              universeId={universeId}
+              locale={locale}
+              isSelectionMode={isCardSelectionMode}
+              isSelectionDisabled={isBulkActionPending}
+              onClick={onTicketClick}
+            />
+          ))}
         </div>
-      </div>
-    ) : null;
+        {isCardSelectionMode && bulkActions}
+      </>
+    );
+  }
 
   return (
-    <>
-      {isMobile ? (
-        <>
-          {isBulkManagementEnabled && (
-            <div className='items-start margin-top-medium flex flex-col'>
-              <Button
-                variant='SoftEmphasis'
-                size='Small'
-                isDisabled={isMobileSelectionMode || isPending}
-                onClick={() => setIsMobileSelectionMode(true)}>
-                {selectLabel}
-              </Button>
-            </div>
-          )}
-          <div
-            className={`margin-top-medium gap-[var(--size-1000)] flex flex-col ${
-              isBulkManagementEnabled && isMobileSelectionMode ? 'padding-bottom-[72px]' : ''
-            }`}>
-            {tickets.map((ticket, index) => (
-              <MobileTicketCard
-                key={ticket.creatorTicketId ?? `ticket-${index}`}
-                ticket={ticket}
-                universeId={universeId}
-                locale={locale}
-                isSelectionMode={isBulkManagementEnabled && isMobileSelectionMode}
-                isSelectionDisabled={isPending}
-                onClick={onTicketClick}
-              />
-            ))}
-          </div>
-          {mobileSelectionToolbar}
-        </>
-      ) : (
-        <>
-          {isBulkManagementEnabled && selectedCount > 0 && (
-            <div className='items-center gap-medium margin-top-large flex'>
-              <span className='content-default text-label-medium min-width-[120px] margin-right-small'>
-                {selectedLabel}
+    <div className='stroke-default margin-top-medium stroke-thin radius-large clip'>
+      <table className='width-full ![border-collapse:collapse]'>
+        <thead>
+          <tr className='height-1200 [border-bottom:var(--stroke-thin)_solid_var(--color-stroke-default)]'>
+            <th className='content-emphasis text-label-medium text-align-x-left width-[50%] padding-x-medium'>
+              <span className='items-center gap-small flex'>
+                <span className='size-200 shrink-0' aria-hidden />
+                {isBulkManagementEnabled && (
+                  <span className='margin-right-small shrink-0'>
+                    <PlayerSupportTableHeaderCheckbox
+                      ariaLabel={translate('Title.Table.Details')}
+                      isDisabled={isBulkActionPending}
+                    />
+                  </span>
+                )}
+                {translate('Title.Table.Details')}
               </span>
-              {selectedStatus !== TicketStatus.Archived &&
-                (canBulkReply ? (
-                  bulkReplyButton
-                ) : (
-                  <Tooltip
-                    position='top-center'
-                    delayDurationMs={0}
-                    title={translate('Description.PlayerSupport.BulkReplySameCategory')}>
-                    <TooltipTrigger asChild>
-                      <span>{bulkReplyButton}</span>
-                    </TooltipTrigger>
-                  </Tooltip>
-                ))}
-              <Button
-                variant='Standard'
-                size='Medium'
-                isDisabled={allSelectedRead || isPending}
-                onClick={() => {
-                  void handleBulkAction(BulkManageCreatorTicketsAction.MarkAsRead);
-                }}>
-                {markAsReadLabel}
-              </Button>
-              <Button
-                variant='Standard'
-                size='Medium'
-                isDisabled={allSelectedUnread || isPending}
-                onClick={() => {
-                  void handleBulkAction(BulkManageCreatorTicketsAction.MarkAsUnread);
-                }}>
-                {markAsUnreadLabel}
-              </Button>
-            </div>
-          )}
-          <div className='stroke-default margin-top-medium stroke-thin radius-large clip'>
-            <table className='width-full ![border-collapse:collapse]'>
-              <thead>
-                <tr className='height-1200 [border-bottom:var(--stroke-thin)_solid_var(--color-stroke-default)]'>
-                  <th className='content-emphasis text-label-medium text-align-x-left width-[50%] padding-x-medium'>
-                    <span className='items-center gap-small flex'>
-                      <span className='size-200 shrink-0' aria-hidden />
-                      {isBulkManagementEnabled && (
-                        <span className='margin-right-small shrink-0'>
-                          <PlayerSupportTableHeaderCheckbox
-                            ariaLabel={translate('Title.Table.Details')}
-                            isDisabled={isPending}
-                          />
-                        </span>
-                      )}
-                      {translate('Title.Table.Details')}
-                    </span>
-                  </th>
-                  <th className='content-emphasis text-label-medium text-no-wrap text-align-x-left width-[176px] padding-x-medium'>
-                    {translate('Title.Table.Type')}
-                  </th>
-                  <th className='content-emphasis text-label-medium text-no-wrap text-align-x-left width-[176px] padding-x-medium'>
-                    {translate('Title.Table.Created')}
-                  </th>
-                  <th className='width-[1%] padding-x-medium' aria-hidden='true' />
-                </tr>
-              </thead>
-              <tbody>
-                {tickets.map((ticket, index) => (
-                  <TicketRow
-                    key={ticket.creatorTicketId ?? `ticket-${index}`}
-                    ticket={ticket}
-                    universeId={universeId}
-                    locale={locale}
-                    isBulkManagementEnabled={isBulkManagementEnabled}
-                    isSelectionDisabled={isPending}
-                    onClick={onTicketClick}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-      {isBulkManagementEnabled && canBulkReply && selectedCategory && (
-        <PlayerSupportBulkReplyDialog
-          open={isBulkReplyOpen}
-          category={selectedCategory}
-          categoryLabel={selectedCategoryLabel}
-          selectedCount={selectedCount}
-          isPending={isPending}
-          universeId={universeId}
-          onOpenChange={setIsBulkReplyOpen}
-          onSend={(response) =>
-            handleBulkAction(BulkManageCreatorTicketsAction.BulkReply, response)
-          }
-        />
-      )}
-    </>
-  );
-};
-
-const PlayerSupportTable = (props: PlayerSupportTableProps) => {
-  const selectionStore = useTableSelectionStoreInstance(
-    {
-      identifier: getTicketId,
-      selectable: isTicketSelectable,
-    },
-    {
-      currentPage: props.tickets,
-      items: props.tickets,
-      mode: 'page',
-    },
-  );
-
-  return (
-    <TableSelectionProvider store={selectionStore}>
-      <PlayerSupportTableContent {...props} />
-    </TableSelectionProvider>
+            </th>
+            <th className='content-emphasis text-label-medium text-no-wrap text-align-x-left width-[176px] padding-x-medium'>
+              {translate('Title.Table.Type')}
+            </th>
+            <th className='content-emphasis text-label-medium text-no-wrap text-align-x-left width-[176px] padding-x-medium'>
+              {translate('Title.Table.Created')}
+            </th>
+            <th className='width-[1%] padding-x-medium' aria-hidden='true' />
+          </tr>
+        </thead>
+        <tbody>
+          {tickets.map((ticket, index) => (
+            <TicketRow
+              key={ticket.creatorTicketId ?? `ticket-${index}`}
+              ticket={ticket}
+              universeId={universeId}
+              locale={locale}
+              isBulkManagementEnabled={isBulkManagementEnabled}
+              isSelectionDisabled={isBulkActionPending}
+              onClick={onTicketClick}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 };
 

@@ -8,6 +8,7 @@ import {
   AgreementStatus,
   AgreementTransition,
   LicenseDurationType,
+  LicenseType,
   LicenseVisibility,
 } from '@rbx/client-content-licensing-api/v1';
 import type { RobloxGamesApiModelsResponseGameDetailResponse } from '@rbx/client-games/v1';
@@ -25,11 +26,15 @@ import {
 } from '@rbx/ui';
 import { EXPLORE_LISTING_DETAILS } from '@modules/licenses/urls';
 import { formatRoyaltyRate } from '@modules/licenses/utils/format';
+import { getLicenseTypeTranslationKeys } from '@modules/licenses/utils/licenseTypeTranslationKeys';
 import { Flex } from '@modules/miscellaneous/components/Flex';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { isNonEmptyString } from '@modules/miscellaneous/utils';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
+import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
+import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
 import LinkButton from '../../../components/LinkButton';
+import AgreementRevenueTargetsSection from '../../agreements/components/AgreementRevenueTargetsSection';
 import AmDivider from '../../components/AmDivider';
 import { ContentTile, ContentType } from '../../components/ContentTile';
 import GuidelinesAndRestrictionsSummaryModal from '../../components/GuidelinesAndRestrictionsSummaryModal';
@@ -79,6 +84,10 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
   const { locale } = useLocalization();
   const { logEvent } = useLicenseManagerLogger();
   const { isFetched, settings } = useSettings();
+  const { frontendFlags } = useToolboxServiceApiProvider();
+  const enableCollaborationLicensing =
+    frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
+  const licenseTypeLabels = getLicenseTypeTranslationKeys(license.licenseType);
   const isTimeLimitedLicense =
     license.licenseDuration?.durationType === LicenseDurationType.TimeLimited;
   const keys = getRevShareTimingKeys(agreement, true, isTimeLimitedLicense);
@@ -299,6 +308,14 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
       )}
 
       <KeyValuePairContainer>
+        {enableCollaborationLicensing && (
+          <KeyValuePair
+            label={translate('Label.LicenseType')}
+            value={translate(licenseTypeLabels.detail)}
+            tooltipText={translate(licenseTypeLabels.tooltip)}
+          />
+        )}
+
         <KeyValuePair
           label={translate('Label.RevenueShare')}
           value={formatRoyaltyRate(license.royaltyRate)}
@@ -358,6 +375,14 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
         />
       )}
 
+      {enableCollaborationLicensing &&
+        license.licenseType === LicenseType.CollaborationInExperienceSale && (
+          <AgreementRevenueTargetsSection
+            agreementId={agreement.id ?? undefined}
+            universeId={universeNumericId}
+          />
+        )}
+
       <KeyValuePairContainer>
         <KeyValuePair
           label={translate('Label.ContentMaturity')}
@@ -397,4 +422,5 @@ export default withTranslation(CreatorAgreementDetailsTabContent, [
   TranslationNamespace.Licenses,
   TranslationNamespace.Error,
   TranslationNamespace.AgreementsManager,
+  TranslationNamespace.Navigation,
 ]);

@@ -11,6 +11,9 @@ import creatorCommunicationApi, {
 } from '@modules/clients/creatorCommunication';
 import useIdempotencyKey, { idempotentRetryConfig } from './useIdempotencyKey';
 
+/** Lets surfaces that render outside the bulk actions observe an in-flight bulk action. */
+export const BULK_MANAGE_TICKETS_MUTATION_KEY = ['bulkManageTickets'] as const;
+
 export interface BulkManageTicketsVariables {
   universeId: number;
   creatorTicketIds: readonly string[];
@@ -74,6 +77,7 @@ const useBulkManageTicketsMutation = (): UseMutationResult<
 
   return useMutation({
     ...idempotentRetryConfig,
+    mutationKey: BULK_MANAGE_TICKETS_MUTATION_KEY,
     mutationFn: ({ universeId, creatorTicketIds, action, response }) =>
       creatorCommunicationApi.v1beta1CreatorCommunicationApiUniversesUniverseIdCreatorTicketsBulkManagePost(
         {

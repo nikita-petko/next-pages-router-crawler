@@ -53,7 +53,7 @@ const creationsMenuManager: MenuManager = {
     allowedAssetTypes?: Set<Asset>,
     isMomentsTabEnabled?: boolean,
     isUGCFoldersEnabled?: boolean,
-    isAvatarLooksEnabled?: boolean | null,
+    showAvatarLooksInCreations?: boolean | null,
   ): boolean {
     if (menuItem?.type === Asset.AllCatalogAsset) {
       return isUGCFoldersEnabled ?? false;
@@ -69,7 +69,7 @@ const creationsMenuManager: MenuManager = {
       return true;
     }
     if (menuItem?.type === AVATAR_LOOKS_ASSET_TYPE) {
-      return isAvatarLooksEnabled ?? false;
+      return showAvatarLooksInCreations ?? false;
     }
     if (menuItem?.type === AVATAR_BACKGROUND_ASSET_TYPE) {
       return settings.enableAvatarBackgrounds && (allowedAssetTypes?.has(menuItem.type) ?? false);
@@ -103,7 +103,7 @@ const creationsMenuManager: MenuManager = {
     allowedAssetTypes?: Set<Asset>,
     isMomentsTabEnabled?: boolean,
     isUGCFoldersEnabled?: boolean,
-    isAvatarLooksEnabled?: boolean | null,
+    showAvatarLooksInCreations?: boolean | null,
   ): MenuState {
     let validMenuItem;
     let validSubmenuItem;
@@ -126,7 +126,7 @@ const creationsMenuManager: MenuManager = {
         allowedAssetTypes,
         isMomentsTabEnabled,
         isUGCFoldersEnabled,
-        isAvatarLooksEnabled,
+        showAvatarLooksInCreations,
       )
     ) {
       [validMenuItem] = menuItems;
@@ -142,7 +142,7 @@ const creationsMenuManager: MenuManager = {
         allowedAssetTypes,
         isMomentsTabEnabled,
         isUGCFoldersEnabled,
-        isAvatarLooksEnabled,
+        showAvatarLooksInCreations,
       )
     ) {
       if (menuState.menuItem.submenuItems !== undefined) {
@@ -158,7 +158,7 @@ const creationsMenuManager: MenuManager = {
               allowedAssetTypes,
               isMomentsTabEnabled,
               isUGCFoldersEnabled,
-              isAvatarLooksEnabled,
+              showAvatarLooksInCreations,
             )
           ) {
             validSubmenuIndex = submenuSeekIndex;

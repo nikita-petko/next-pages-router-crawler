@@ -7,6 +7,7 @@ import { ContentLicensingCustomSettingsProvider } from '@modules/ip/common/imple
 import IpAppNavigationLayout from '@modules/ip/IpAppNavigationLayout';
 import CreatorAgreementDetailsContainer from '@modules/ip/license-manager/creatorAgreements/CreatorAgreementDetailsContainer';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
+import ToolboxServiceApiProvider from '@modules/toolboxService/ToolboxServiceApiProvider';
 
 const AgreementDetailsPage: NextLayoutPage = () => {
   const router = useRouter();
@@ -25,7 +26,9 @@ const AgreementDetailsPage: NextLayoutPage = () => {
   return (
     <Authenticated>
       <ContentLicensingCustomSettingsProvider>
-        <CreatorAgreementDetailsContainer agreementId={id} />
+        <ToolboxServiceApiProvider>
+          <CreatorAgreementDetailsContainer agreementId={id} />
+        </ToolboxServiceApiProvider>
       </ContentLicensingCustomSettingsProvider>
     </Authenticated>
   );

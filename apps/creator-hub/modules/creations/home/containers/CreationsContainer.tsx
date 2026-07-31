@@ -3,10 +3,8 @@ import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { SearchCreatorType } from '@rbx/client-universes-api/v1';
 import { buildBreadcrumb, buildTitle, HubMeta } from '@rbx/creator-hub-history';
-import { useFlag } from '@rbx/flags';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { Grid } from '@rbx/ui';
-import { enableAvatarLooks } from '@generated/flags/avatarMarketplace';
 import {
   AgeVerificationUpsellBanner,
   AgeVerificationUpsellPage,
@@ -32,6 +30,8 @@ import {
 } from '../../avatarItem/utils/taxonomyRoutingUtils';
 import useCreationsFilters from '../../common/hooks/useCreationsFilters';
 import useEnableCreationsNavLayout from '../../common/hooks/useEnableCreationsNavLayout';
+import useEnablePublishingConsolidation from '../../common/hooks/useEnablePublishingConsolidation';
+import { isDevelopmentItemAsset } from '../../contentManager/developmentItems/developmentItemsInventoryUtils';
 import { isPrimitiveAssetType } from '../../developerItem/primitives/types';
 import menuItems from '../../menu/constants/MenuConstants';
 import CreationsIANavigationControls from '../../menu/containers/CreationsIANavigationControls';
@@ -41,6 +41,7 @@ import type MenuState from '../../menu/interfaces/MenuState';
 import type { VerificationMetadataContextValue } from '../../verification/hooks/VerificationMetadataContext';
 import useCreationsStyles from '../components/Creations.styles';
 import MomentsCreationsPanel from '../components/MomentsCreationsPanel';
+import useAvatarLooksGate from '../hooks/useAvatarLooksGate';
 import useMomentsGate from '../hooks/useMomentsGate';
 import useUGCFoldersGate from '../hooks/useUGCFoldersGate';
 
@@ -81,6 +82,10 @@ const ShareLinkContainer = dynamic(
   { ssr: false },
 );
 const CreationsGridContainer = dynamic(() => import('./CreationsGridContainer'), { ssr: false });
+const DevelopmentItemsInventory = dynamic(
+  () => import('../../contentManager/developmentItems/DevelopmentItemsInventory'),
+  { ssr: false },
+);
 const UniversalAccessRequestsView = dynamic(
   () => import('@modules/creations/assetAccessRequests/components/UniversalAccessRequestsView'),
   { ssr: false },
@@ -115,10 +120,11 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
   const { settings } = useSettings();
   const isMomentsTabEnabled = useMomentsGate();
   const isUGCFoldersEnabled = useUGCFoldersGate();
-  const { ready: avatarLooksReady, value: isAvatarLooksEnabled } = useFlag(enableAvatarLooks);
+  const isAvatarLooksEnabled = useAvatarLooksGate();
   const { translate } = useTranslation();
   const isTaxonomyEnabled = settings.enableTaxonomyBasedCreatorDashboard ?? false;
   const enableCreationsNavLayout = useEnableCreationsNavLayout();
+  const enablePublishingConsolidation = useEnablePublishingConsolidation();
   const previousAssetTypeRef = useRef<Asset | undefined>(undefined);
 
   const filteredTypes = useMemo(() => {
@@ -194,7 +200,7 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
     }
 
     const isOnAvatarLooksTab = parseActiveTabQueryParam(query.activeTab) === Asset.AvatarLooks;
-    if (!avatarLooksReady && isOnAvatarLooksTab) {
+    if (isAvatarLooksEnabled === undefined && isOnAvatarLooksTab) {
       return menuState;
     }
 
@@ -234,7 +240,6 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
     isMomentsTabEnabled,
     isUGCFoldersEnabled,
     isAvatarLooksEnabled,
-    avatarLooksReady,
     setQueryParams,
   ]);
 
@@ -260,8 +265,19 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
   const isMarketplaceAssetType = useMemo(() => {
     return allowedAssetTypes?.has(assetType);
   }, [assetType, allowedAssetTypes]);
+  const showPublishingConsolidation =
+    enablePublishingConsolidation && isDevelopmentItemAsset(assetType);
 
   const assetsGridContainer = useMemo(() => {
+    if (showPublishingConsolidation) {
+      return (
+        <DevelopmentItemsInventory
+          groupId={currentGroup?.id}
+          useTabNavigationSpacing={!enableCreationsNavLayout}
+          userId={currentUser?.id}
+        />
+      );
+    }
     if (assetType === Asset.Decal) {
       return <DecalGridContainer groupId={currentGroup?.id} />;
     }
@@ -311,7 +327,14 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
         creatorTargetId={currentGroup?.id ?? currentUser?.id ?? 0}
       />
     );
-  }, [assetType, currentGroup?.id, currentUser?.id, isMarketplaceAssetType]);
+  }, [
+    assetType,
+    currentGroup?.id,
+    currentUser?.id,
+    enableCreationsNavLayout,
+    isMarketplaceAssetType,
+    showPublishingConsolidation,
+  ]);
 
   return (
     <ToolboxServiceApiRoot>
@@ -332,7 +355,19 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
       <section className={section}>
         <Grid container direction='column' className={container}>
           <AgeVerificationUpsellBanner trackingPage={AgeVerificationUpsellPage.Creations} />
-          {enableCreationsNavLayout ? (
+          {showPublishingConsolidation ? (
+            !enableCreationsNavLayout && (
+              <CreationsMenuContainer
+                menuItems={filteredMenuItems}
+                menuState={validatedMenuState}
+                onMenuStateChange={onMenuStateChange}
+                verificationMetadata={verificationMetadata}
+                group={currentGroup}
+                isMarketplaceAssetType={isMarketplaceAssetType}
+                hideContextualControls
+              />
+            )
+          ) : enableCreationsNavLayout ? (
             <CreationsIANavigationControls
               menuState={validatedMenuState}
               onMenuStateChange={onMenuStateChange}

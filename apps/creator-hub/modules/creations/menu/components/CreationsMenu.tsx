@@ -1,11 +1,10 @@
 import type { ChangeEvent, FunctionComponent } from 'react';
 import React, { useCallback, useMemo } from 'react';
-import { useFlag } from '@rbx/flags';
 import { useTranslation } from '@rbx/intl';
 import { Tab, Tabs } from '@rbx/ui';
-import { enableAvatarLooks } from '@generated/flags/avatarMarketplace';
 import type { TGroup } from '@modules/authentication/types';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
+import useAvatarLooksGate from '../../home/hooks/useAvatarLooksGate';
 import useMomentsGate from '../../home/hooks/useMomentsGate';
 import creationsMenuManager from '../implementations/CreationsMenuManager';
 import type MenuItem from '../interfaces/MenuItem';
@@ -37,7 +36,7 @@ const CreationsMenu: FunctionComponent<React.PropsWithChildren<CreationsMenuProp
   } = useMenuStyles(menuItems.length)();
   const { settings } = useSettings();
   const isMomentsTabEnabled = useMomentsGate();
-  const { value: isAvatarLooksEnabled } = useFlag(enableAvatarLooks);
+  const isAvatarLooksEnabled = useAvatarLooksGate();
 
   const getValidSubmenuItem = useCallback(
     (menuItem: MenuItem) => {

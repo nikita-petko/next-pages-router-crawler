@@ -40,16 +40,6 @@ export const generatedFlags = [
       },
     },
     {
-      flag: avatarMarketplaceFlags.enableAvatarLooks,
-      metadata: {
-        namespace: 'avatar-marketplace',
-        name: 'enableAvatarLooks',
-        defaultValue: false,
-        valueType: 'boolean',
-        contextType: 'static',
-      },
-    },
-    {
       flag: avatarMarketplaceFlags.enableUgcFolders,
       metadata: {
         namespace: 'avatar-marketplace',

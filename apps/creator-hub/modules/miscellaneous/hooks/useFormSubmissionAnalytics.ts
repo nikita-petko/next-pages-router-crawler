@@ -1,12 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useUnifiedLoggerProvider } from './UnifiedLoggerProvider';
 
-export const FormSubmissionEventName = {
-  Started: 'form_submission_started',
-  Succeeded: 'form_submission_succeeded',
-  Failed: 'form_submission_failed',
-} as const;
-
 export type FormSubmissionAnalytics = {
   started: () => void;
   succeeded: () => void;
@@ -18,22 +12,22 @@ const useFormSubmissionAnalytics = (formName: string): FormSubmissionAnalytics =
   const parameters = useMemo(() => ({ form_name: formName }), [formName]);
 
   const started = useCallback(() => {
-    unifiedLogger.logClickEvent({
-      eventName: FormSubmissionEventName.Started,
+    unifiedLogger.logFormVitalsEvent({
+      eventName: 'form_submission_started',
       parameters,
     });
   }, [parameters, unifiedLogger]);
 
   const succeeded = useCallback(() => {
-    unifiedLogger.logImpressionEvent({
-      eventName: FormSubmissionEventName.Succeeded,
+    unifiedLogger.logFormVitalsEvent({
+      eventName: 'form_submission_succeeded',
       parameters,
     });
   }, [parameters, unifiedLogger]);
 
   const failed = useCallback(() => {
-    unifiedLogger.logErrorEvent({
-      eventName: FormSubmissionEventName.Failed,
+    unifiedLogger.logFormVitalsEvent({
+      eventName: 'form_submission_failed',
       parameters,
     });
   }, [parameters, unifiedLogger]);

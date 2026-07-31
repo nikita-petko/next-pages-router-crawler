@@ -124,17 +124,17 @@ export function getSalesAvenueThumbnailTarget(entry: SalesAvenueSelection): {
   targetId: number;
   type: ThumbnailTypes;
 } {
-  if (entry.iconAssetId) {
-    return {
-      targetId: entry.iconAssetId,
-      type: ThumbnailTypes.assetThumbnail,
-    };
-  }
-
   if (entry.type === SalesAvenueProductType.GamePass) {
     return {
       targetId: entry.id,
       type: ThumbnailTypes.gamePassIcon,
+    };
+  }
+
+  if (entry.iconAssetId) {
+    return {
+      targetId: entry.iconAssetId,
+      type: ThumbnailTypes.assetThumbnail,
     };
   }
 

@@ -91,7 +91,8 @@ const LabeledAnnouncementSelectorsContainer: FC<LabeledAnnouncementSelectorsCont
   const selectors = useMemo(() => {
     const result = selectedOptions.map((opt, index) => (
       <AnnouncementSelector
-        key={opt.id}
+        // oxlint-disable-next-line react/no-array-index-key -- The slot position is the identity. An id-based key makes React reuse the trailing empty selector as the next slot, which carries over its input text and its focus.
+        key={index}
         label={translate(translationKey('Label.DateRangeNumber', TranslationNamespace.Analytics), {
           number: (index + 1).toString(),
         })}
@@ -105,17 +106,18 @@ const LabeledAnnouncementSelectorsContainer: FC<LabeledAnnouncementSelectorsCont
     ));
 
     if (result.length < maximumSelections) {
+      const emptyIndex = result.length;
       result.push(
         <AnnouncementSelector
-          key='empty'
+          key={emptyIndex}
           label={translate(
             translationKey('Label.DateRangeNumber', TranslationNamespace.Analytics),
-            { number: (result.length + 1).toString() },
+            { number: (emptyIndex + 1).toString() },
           )}
           options={options}
           selectedOptions={selectedOptions}
           value={undefined}
-          onChange={(val) => handleChange(result.length, val)}
+          onChange={(val) => handleChange(emptyIndex, val)}
           allowEmpty
           getOptionLabel={getOptionLabel}
         />,

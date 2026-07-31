@@ -12,11 +12,6 @@ export const freeAvatarModuleDocsPageLink = defineFlag({
     name: 'freeAvatarModuleDocsPageLink',
     defaultValue: "#",
   });
-export const enableAvatarLooks = defineFlag({
-    namespace: 'avatar-marketplace',
-    name: 'enableAvatarLooks',
-    defaultValue: false,
-  });
 export const enableUgcFolders = defineFlag({
     namespace: 'avatar-marketplace',
     name: 'enableUGCFolders',

@@ -11,7 +11,8 @@ export type TEventType =
   | 'webvitals'
   | 'error'
   | 'session'
-  | 'apivitals';
+  | 'apivitals'
+  | 'formvitals';
 
 // configurable fields of the event, here are shared contextual event fields
 // across event types

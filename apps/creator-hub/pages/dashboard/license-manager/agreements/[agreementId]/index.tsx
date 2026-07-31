@@ -6,6 +6,7 @@ import Authenticated from '@modules/authentication/Authenticated';
 import IpAppNavigationLayout from '@modules/ip/IpAppNavigationLayout';
 import IphAgreementDetailsContainer from '@modules/ip/license-manager/agreements/IphAgreementDetailsContainer';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
+import ToolboxServiceApiProvider from '@modules/toolboxService/ToolboxServiceApiProvider';
 
 const AgreementsPage: NextLayoutPage = () => {
   const { translate } = useTranslation();
@@ -24,7 +25,9 @@ const AgreementsPage: NextLayoutPage = () => {
 
   return (
     <Authenticated>
-      <IphAgreementDetailsContainer agreementId={agreementId} />
+      <ToolboxServiceApiProvider>
+        <IphAgreementDetailsContainer agreementId={agreementId} />
+      </ToolboxServiceApiProvider>
     </Authenticated>
   );
 };

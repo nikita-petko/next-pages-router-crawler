@@ -5,7 +5,11 @@ import type {
   LicenseResponse,
   ListingResponse,
 } from '@rbx/client-content-licensing-api/v1';
-import { AgreementStatus, LicenseDurationType } from '@rbx/client-content-licensing-api/v1';
+import {
+  AgreementStatus,
+  LicenseDurationType,
+  LicenseType,
+} from '@rbx/client-content-licensing-api/v1';
 import type { RobloxApiDevelopModelsUniverseModel } from '@rbx/client-develop/v1';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import {
@@ -17,8 +21,11 @@ import {
   Typography,
 } from '@rbx/ui';
 import { formatRoyaltyRate } from '@modules/licenses/utils/format';
+import { getLicenseTypeTranslationKeys } from '@modules/licenses/utils/licenseTypeTranslationKeys';
 import { Flex } from '@modules/miscellaneous/components/Flex';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
+import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
+import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
 import LinkButton from '../../../components/LinkButton';
 import AmDivider from '../../components/AmDivider';
 import { ContentTile, ContentType } from '../../components/ContentTile';
@@ -34,6 +41,7 @@ import {
 import { getMaturityRatingLabel } from '../../utils/maturityRating';
 import { getRevShareTimingKeys } from '../../utils/revShareTiming';
 import { getDateRangeLabel } from '../../utils/timeLimitedLicense';
+import AgreementRevenueTargetsSection from './AgreementRevenueTargetsSection';
 
 const useStyles = makeStyles()(() => ({
   iconContainer: {
@@ -68,6 +76,10 @@ const AgreementDetailsTab: FunctionComponent<AgreementDetailsTabProps> = ({
   const { locale } = useLocalization();
   const { translate } = useTranslation();
   const { isFetched } = useSettings();
+  const { frontendFlags } = useToolboxServiceApiProvider();
+  const enableCollaborationLicensing =
+    frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
+  const licenseTypeLabels = getLicenseTypeTranslationKeys(license.licenseType);
   const isTimeLimitedLicense =
     license.licenseDuration?.durationType === LicenseDurationType.TimeLimited;
   const keys = getRevShareTimingKeys(agreement, false, isTimeLimitedLicense);
@@ -168,6 +180,14 @@ const AgreementDetailsTab: FunctionComponent<AgreementDetailsTabProps> = ({
         }
       />
 
+      {enableCollaborationLicensing &&
+        license.licenseType === LicenseType.CollaborationInExperienceSale && (
+          <AgreementRevenueTargetsSection
+            agreementId={agreement.id ?? undefined}
+            universeId={universe.id ?? undefined}
+          />
+        )}
+
       <KeyValuePairContainer>
         {agreement.status === AgreementStatus.Active && (
           <KeyValuePair label={translate('Label.ExperienceId')} value={universe.rootPlaceId} />
@@ -217,6 +237,14 @@ const AgreementDetailsTab: FunctionComponent<AgreementDetailsTabProps> = ({
       />
 
       <KeyValuePairContainer>
+        {enableCollaborationLicensing && (
+          <KeyValuePair
+            label={translate('Label.LicenseType')}
+            value={translate(licenseTypeLabels.detail)}
+            tooltipText={translate(licenseTypeLabels.tooltip)}
+          />
+        )}
+
         <KeyValuePair
           label={translate('Label.RevenueShare')}
           value={formatRoyaltyRate(license.royaltyRate)}
