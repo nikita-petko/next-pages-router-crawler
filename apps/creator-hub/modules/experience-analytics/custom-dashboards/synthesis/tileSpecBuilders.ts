@@ -110,9 +110,12 @@ export function getMetricMappingOptions(filters: readonly TQueryFilter[]) {
 }
 
 function buildRenderableTileFilters(filters: ReadonlyArray<TileFilter>): TQueryFilter[] {
+  // Keep CustomEventName (and any other real dimensions) from the tile; variant
+  // pseudo-dimensions live on `variantSelections` and must not be double-applied.
+  // Mirrors the summary-card filter path; the table path carries the event
+  // identity per-column, so it does not use this builder.
   return buildTileQueryFilters(filters).filter(
     (filter) =>
-      filter.dimension !== RAQIV2Dimension.CustomEventName &&
       filter.dimension !== RAQIV2UIPseudoDimension.AggregationType &&
       filter.dimension !== RAQIV2UIPseudoDimension.PercentileType,
   );
