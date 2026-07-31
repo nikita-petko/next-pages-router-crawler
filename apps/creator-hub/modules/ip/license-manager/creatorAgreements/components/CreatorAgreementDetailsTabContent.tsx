@@ -379,6 +379,7 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
         license.licenseType === LicenseType.CollaborationInExperienceSale && (
           <AgreementRevenueTargetsSection
             agreementId={agreement.id ?? undefined}
+            showMonetizationLinks
             universeId={universeNumericId}
           />
         )}
