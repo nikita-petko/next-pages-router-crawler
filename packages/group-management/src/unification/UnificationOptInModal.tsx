@@ -5,6 +5,7 @@ import TranslationNamespace from '../constants/TranslationNamespace';
 import type { UseUnificationOptInOptions } from '../hooks/useUnificationOptIn';
 import { useUnificationOptIn } from '../hooks/useUnificationOptIn';
 import { ModalState } from '../utils/unificationUtils';
+import { BreakingChangesModal } from './BreakingChangesModal';
 import { NoBreakingChangesModal } from './NoBreakingChangesModal';
 
 export type UnificationOptInModalProps = UseUnificationOptInOptions & {
@@ -18,19 +19,33 @@ const UnificationOptInModalInner: FC<UnificationOptInModalProps> = ({
   ...unificationOptions
 }) => {
   const { ready } = useTranslation();
-  const { modalState, onContinue, onAskLater } = useUnificationOptIn(unificationOptions);
+  const { modalState, onContinue, onAskLater, breakingChanges } =
+    useUnificationOptIn(unificationOptions);
 
-  if (!ready || modalState === ModalState.None) {
+  if (!ready) {
     return null;
   }
 
-  return (
-    <NoBreakingChangesModal
-      isOpen={modalState === ModalState.NonBreaking}
-      onContinue={onContinue}
-      onAskLater={onAskLater}
-    />
-  );
+  switch (modalState) {
+    case ModalState.NonBreaking:
+      return <NoBreakingChangesModal isOpen onContinue={onContinue} onAskLater={onAskLater} />;
+    case ModalState.Breaking:
+      return (
+        <BreakingChangesModal
+          isOpen
+          breakingChanges={breakingChanges}
+          groupId={unificationOptions.groupId}
+          getCreatorHubRoleUrl={getCreatorHubRoleUrl}
+          getLegacyRolesUrl={getLegacyRolesUrl}
+          onContinue={onContinue}
+          onAskLater={onAskLater}
+        />
+      );
+    case ModalState.None:
+    case ModalState.Migrated:
+    default:
+      return null;
+  }
 };
 
 const UnificationOptInModal = withTranslation(UnificationOptInModalInner, [

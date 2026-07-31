@@ -10,16 +10,25 @@ import {
 } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import TranslationNamespace from '../constants/TranslationNamespace';
-import { DEVFORUM_URL } from '../utils/unificationUtils';
+import { DEVFORUM_URL, type BreakingChangeEntry } from '../utils/unificationUtils';
+import { BreakingChangesTable } from './BreakingChangesTable';
 
-type NoBreakingChangesModalProps = {
+type BreakingChangesModalProps = {
   isOpen: boolean;
+  breakingChanges: BreakingChangeEntry[];
+  groupId: number;
+  getCreatorHubRoleUrl?: (roleId: string) => string;
+  getLegacyRolesUrl?: (groupId: string) => string;
   onContinue: () => void;
   onAskLater: () => void;
 };
 
-const NoBreakingChangesModal: FC<NoBreakingChangesModalProps> = ({
+const BreakingChangesModal: FC<BreakingChangesModalProps> = ({
   isOpen,
+  breakingChanges,
+  groupId,
+  getCreatorHubRoleUrl,
+  getLegacyRolesUrl,
   onContinue,
   onAskLater,
 }) => {
@@ -31,12 +40,21 @@ const NoBreakingChangesModal: FC<NoBreakingChangesModalProps> = ({
     <Dialog size='Large' isModal hasCloseAffordance={false} open={isOpen}>
       <DialogContent>
         <DialogBody className='flex flex-col gap-large'>
-          <DialogTitle className='margin-none'>
-            {translate('Heading.NoBreakingChanges')}
-          </DialogTitle>
-          <p className='text-body-medium content-default margin-none'>
-            {translate('Label.NoBreakingChanges')}
-          </p>
+          <DialogTitle className='margin-none'>{translate('Heading.BreakingChanges')}</DialogTitle>
+          <div className='flex flex-col gap-large margin-none'>
+            <p className='text-body-medium content-default margin-none'>
+              {translate('Description.BreakingChanges')}
+            </p>
+            <p className='text-body-medium content-default margin-none'>
+              {translate('Description.RemovePermissions')}
+            </p>
+            <BreakingChangesTable
+              breakingChanges={breakingChanges}
+              groupId={groupId}
+              getCreatorHubRoleUrl={getCreatorHubRoleUrl}
+              getLegacyRolesUrl={getLegacyRolesUrl}
+            />
+          </div>
         </DialogBody>
         <DialogFooter>
           <div className='flex flex-row gap-small'>
@@ -62,4 +80,4 @@ const NoBreakingChangesModal: FC<NoBreakingChangesModalProps> = ({
   );
 };
 
-export { NoBreakingChangesModal };
+export { BreakingChangesModal };

@@ -4229,6 +4229,9 @@
 .\[flex\:1_1_auto\] {
   flex: 1 1 auto;
 }
+.\[flex\:2_1_0\%\] {
+  flex: 2 1 0%;
+}
 .\[font-family\:\'Builder_Mono\'\] {
   font-family: 'Builder Mono';
 }
@@ -4330,6 +4333,9 @@
 }
 .\[height\:80px\] {
   height: 80px;
+}
+.\[height\:auto\] {
+  height: auto;
 }
 .\[inset\:0\] {
   inset: 0;

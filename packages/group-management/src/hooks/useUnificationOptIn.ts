@@ -5,7 +5,13 @@ import {
   useMigrateGroup,
 } from '../queries/migrationQueries';
 import type { BreakingChangeEntry } from '../utils/unificationUtils';
-import { MIGRATION_STATUS, ModalState, isSnoozed, snooze } from '../utils/unificationUtils';
+import {
+  MIGRATION_STATUS,
+  ModalState,
+  isSnoozed,
+  isUnificationModalSuppressed,
+  snooze,
+} from '../utils/unificationUtils';
 
 export type UseUnificationOptInOptions = {
   groupId: number;
@@ -24,6 +30,7 @@ export function useUnificationOptIn({
 }: UseUnificationOptInOptions): UseUnificationOptInResult {
   const [isSnoozedState, setIsSnoozedState] = useState(() => isSnoozed(groupId));
   const [hasContinued, setHasContinued] = useState(false);
+  const isModalSuppressed = isUnificationModalSuppressed();
   const { mutate: migrateGroup } = useMigrateGroup();
 
   const { data: migrationStatus, isLoading: isStatusLoading } = useGetMigrationStatus(groupId);
@@ -37,7 +44,7 @@ export function useUnificationOptIn({
     isLoading: isBreakingChangesLoading,
     isError: isBreakingChangesError,
   } = useGetMigrationBreakingChanges(groupId, {
-    enabled: isNotMigrated && !isSnoozedState,
+    enabled: isNotMigrated && !isSnoozedState && !isModalSuppressed,
   });
 
   const breakingChanges = useMemo(
@@ -46,6 +53,10 @@ export function useUnificationOptIn({
   );
 
   const modalState = useMemo<ModalState>(() => {
+    if (isModalSuppressed) {
+      return ModalState.None;
+    }
+
     if (!status || status === MIGRATION_STATUS.MIGRATING) {
       return ModalState.None;
     }
@@ -64,6 +75,7 @@ export function useUnificationOptIn({
     return ModalState.None;
   }, [
     status,
+    isModalSuppressed,
     isMigrated,
     isNotMigrated,
     isSnoozedState,
