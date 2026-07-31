@@ -44,6 +44,7 @@ const PlaceVersionHistoryContainer: FunctionComponent<PropsWithChildren> = () =>
     currentVersionHistory,
     isLoadingCurrentVersionHistory,
     count,
+    maxVersionNumber,
     isPublishedVersionsOnly,
     nextPage,
     previousPage,
@@ -172,7 +173,7 @@ const PlaceVersionHistoryContainer: FunctionComponent<PropsWithChildren> = () =>
                   key={version.assetVersionNumber}
                   version={version}
                   openDialog={setDialogVersion}
-                  showRestore={version.assetVersionNumber !== count}
+                  showRestore={version.assetVersionNumber !== maxVersionNumber}
                 />
               ))}
             </TableBody>

@@ -16,6 +16,7 @@ export async function setPlaceVersionHistory(
     React.SetStateAction<RobloxApiDevelopAssetVersion[] | undefined>
   >,
   setVersionHistoryCount: React.Dispatch<React.SetStateAction<number>>,
+  setMaxVersionNumber: React.Dispatch<React.SetStateAction<number>>,
   limit?: number,
   cursor?: string,
   prevPageCount?: number,
@@ -42,6 +43,17 @@ export async function setPlaceVersionHistory(
       setNextPageCursor(currNextPage);
       setCurrentVersionHistory(accumulatedVersionHistory);
 
+      const maxVersionNumber = accumulatedVersionHistory.length
+        ? Math.max(...accumulatedVersionHistory.map((version) => version.assetVersionNumber ?? 0))
+        : 0;
+
+      // The unfiltered first page is newest-first and includes the latest (current) version, so
+      // its highest version number is the current version regardless of the published-only
+      // filter or pagination. Latch it so callers can identify the current version row.
+      if (!publishedVersionsOnly && cursor === undefined && accumulatedVersionHistory.length > 0) {
+        setMaxVersionNumber(maxVersionNumber);
+      }
+
       // fetched all published versions, meaning we know the total count
       if (
         publishedVersionsOnly &&
@@ -55,9 +67,7 @@ export async function setPlaceVersionHistory(
         // sets the count of versions to the max version number
         // if getting all place versions this is fine
         // for 'only published', this will allow for continued pagination until all published versions are fetched
-        setVersionHistoryCount(
-          Math.max(...accumulatedVersionHistory.map((version) => version.assetVersionNumber ?? 0)),
-        );
+        setVersionHistoryCount(maxVersionNumber);
       }
     } catch {
       setCurrentVersionHistory(undefined);
@@ -65,6 +75,17 @@ export async function setPlaceVersionHistory(
       setIsLoadingCurrentVersionHistory(false);
     }
   }
+}
+
+export async function getMaxVersionNumber(placeId: number): Promise<number | undefined> {
+  if (!placeId) {
+    return undefined;
+  }
+  const response = await developClient.getAssetSavedVersions(placeId);
+  if (!response.data?.length) {
+    return undefined;
+  }
+  return Math.max(...response.data.map((version) => version.assetVersionNumber ?? 0));
 }
 
 async function getPlaceVersionHistory(

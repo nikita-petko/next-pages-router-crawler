@@ -10,6 +10,7 @@ export interface PlaceVersionHistoryContext {
   page: number;
   pageSize: number;
   count: number;
+  maxVersionNumber: number;
   isPublishedVersionsOnly: boolean;
   restoreCurrentVersionHistory: (assetVersionNumber: number) => Promise<void>;
   refreshCurrentVersionHistory: () => Promise<void>;
@@ -25,6 +26,7 @@ const placeVersionHistoryContext = createContext<PlaceVersionHistoryContext>({
   pageCount: 0,
   page: 0,
   count: 0,
+  maxVersionNumber: 0,
   isPublishedVersionsOnly: false,
   pageSize: DEFAULT_PAGE_SIZE,
   restoreCurrentVersionHistory: () => {

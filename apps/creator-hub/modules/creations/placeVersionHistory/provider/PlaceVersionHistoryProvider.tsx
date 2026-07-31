@@ -5,7 +5,7 @@ import type { RobloxApiDevelopAssetVersion } from '@rbx/client-develop/v1';
 import developClient from '@modules/clients/develop';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import placeVersionHistoryContext from '../hooks/PlaceVersionHistoryContext';
-import { setPlaceVersionHistory } from '../utils/PlaceVersionHistoryUtils';
+import { getMaxVersionNumber, setPlaceVersionHistory } from '../utils/PlaceVersionHistoryUtils';
 
 type PagingParameters = {
   currentLimit: number;
@@ -33,6 +33,10 @@ const PlaceVersionHistoryProvider: FunctionComponent<React.PropsWithChildren> = 
     prevPageCount: 0,
   });
   const [publishedVersionsOnly, setPublishedVersionsOnly] = useState<boolean>(false);
+  // The latest saved version number (the current/live version). Fetched once on load and
+  // refreshed after a restore, independent of the published-only filter, so the "current
+  // version" check stays correct regardless of what `versionHistoryCount` represents.
+  const [maxVersionNumber, setMaxVersionNumber] = useState(0);
 
   const { currentLimit } = pagingParameters;
 
@@ -64,6 +68,7 @@ const PlaceVersionHistoryProvider: FunctionComponent<React.PropsWithChildren> = 
             setNextPageCursor,
             setCurrentVersionHistory,
             setVersionHistoryCount,
+            setMaxVersionNumber,
             limit,
             cursor,
             prevPageCount,
@@ -76,6 +81,7 @@ const PlaceVersionHistoryProvider: FunctionComponent<React.PropsWithChildren> = 
             setNextPageCursor,
             setCurrentVersionHistory,
             setVersionHistoryCount,
+            setMaxVersionNumber,
             limit,
             cursor,
             prevPageCount,
@@ -93,6 +99,10 @@ const PlaceVersionHistoryProvider: FunctionComponent<React.PropsWithChildren> = 
         await developClient.postAssetPublishedVersions(currentPlaceId, assetVersionNumber);
         setIsRestoring(false);
         setCurrentPage(0);
+        const latestVersionNumber = await getMaxVersionNumber(currentPlaceId);
+        if (latestVersionNumber !== undefined) {
+          setMaxVersionNumber(latestVersionNumber);
+        }
         setPreviousPageCursors([]);
         setPagingParameters((previousPageParameters) => {
           return { ...previousPageParameters, currentCursor: undefined };
@@ -171,6 +181,7 @@ const PlaceVersionHistoryProvider: FunctionComponent<React.PropsWithChildren> = 
       pageCount,
       pageSize: currentLimit,
       count: versionHistoryCount,
+      maxVersionNumber,
       isPublishedVersionsOnly: publishedVersionsOnly,
       setPageSize: setCurrentLimit,
       nextPage,
@@ -187,6 +198,7 @@ const PlaceVersionHistoryProvider: FunctionComponent<React.PropsWithChildren> = 
       pageCount,
       currentLimit,
       versionHistoryCount,
+      maxVersionNumber,
       publishedVersionsOnly,
       setCurrentLimit,
       nextPage,
