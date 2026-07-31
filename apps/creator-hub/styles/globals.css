@@ -3252,6 +3252,9 @@
 .\!content-action-link {
   color: var(--color-action-link-foreground) !important;
 }
+.\!content-emphasis {
+  color: var(--color-content-emphasis) !important;
+}
 .\!content-muted {
   color: var(--color-content-muted) !important;
 }
@@ -5393,6 +5396,9 @@ html.studio-webview.dark-theme,
 }
 
 @media (min-width: 601px) {
+  .medium\:self-end {
+    align-self: flex-end;
+  }
   .medium\:margin-top-medium {
     margin-top: var(--margin-medium);
   }
@@ -5745,6 +5751,14 @@ html.studio-webview.dark-theme,
 
 .\[\&\>div\:last-child\]\:padding-bottom-\[40px\]>div:last-child {
   padding-bottom: 40px;
+}
+
+.\[\&\>div\[role\=presentation\]\]\:\!bg-none>div[role=presentation] {
+  background-color: var(--color-none) !important;
+}
+
+.\[\&\>div\[role\=presentation\]\]\:\!transition-none>div[role=presentation] {
+  transition-property: none !important;
 }
 
 .\[\&\>div\]\:\!scroll-x>div {

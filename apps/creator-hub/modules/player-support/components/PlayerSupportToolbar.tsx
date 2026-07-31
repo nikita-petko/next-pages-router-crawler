@@ -18,6 +18,7 @@ interface PlayerSupportToolbarProps {
   onSearchChange: (value: string) => void;
   onViewChange: (value: PlayerSupportViewFilter) => void;
   onCategoryChange: (value: PlayerSupportCategoryFilter) => void;
+  onClearFilters: () => void;
   /** Replaces the filters while rows are selected. */
   bulkActions?: ReactNode;
   /** Rendered at the trailing edge of the filter row, in both states. */
@@ -40,6 +41,7 @@ const PlayerSupportToolbar: FunctionComponent<PlayerSupportToolbarProps> = ({
   onSearchChange,
   onViewChange,
   onCategoryChange,
+  onClearFilters,
   bulkActions,
   trailingActions,
 }) => {
@@ -48,6 +50,7 @@ const PlayerSupportToolbar: FunctionComponent<PlayerSupportToolbarProps> = ({
   const searchLabel = translate('Label.PlayerSupport.Search');
   const allLabel = translate('Label.PlayerSupport.Filter.All');
   const clearLabel = translate('Action.PlayerSupport.ClearSearch');
+  const clearFiltersLabel = translate('Action.PlayerSupport.ClearFilters');
   const viewLabel = translate('Label.PlayerSupport.Filter.View');
   const categoryLabel = translate('Label.PlayerSupport.Filter.Category');
   const readLabel = translate('Label.PlayerSupport.Filter.Read');
@@ -89,6 +92,10 @@ const PlayerSupportToolbar: FunctionComponent<PlayerSupportToolbarProps> = ({
   const handleClearSearch = useCallback(() => {
     onSearchChange('');
   }, [onSearchChange]);
+  const hasActiveFilters =
+    search.trim().length > 0 ||
+    view !== PlayerSupportViewFilter.All ||
+    category !== PlayerSupportCategoryFilter.All;
 
   return (
     <div className='margin-top-medium gap-medium flex flex-col'>
@@ -152,6 +159,15 @@ const PlayerSupportToolbar: FunctionComponent<PlayerSupportToolbarProps> = ({
                   ))}
                 </Menu>
               </Dropdown>
+              {hasActiveFilters && (
+                <Button
+                  className='self-start medium:self-end !bg-none !content-emphasis [&>div[role=presentation]]:!bg-none [&>div[role=presentation]]:!transition-none'
+                  variant='Link'
+                  size='Medium'
+                  onClick={onClearFilters}>
+                  {clearFiltersLabel}
+                </Button>
+              )}
             </div>
           ) : (
             bulkActions

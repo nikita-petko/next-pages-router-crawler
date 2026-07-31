@@ -320,6 +320,20 @@ const PlayerSupportPage: React.FunctionComponent = () => {
     [resetPagination, setQueryParams],
   );
 
+  const handleClearFilters = useCallback(() => {
+    setSearchState((current) => ({ ...current, inputValue: '' }));
+    resetPagination();
+    setQueryParams(
+      {
+        query: null,
+        view: null,
+        category: null,
+        pageToken: null,
+      },
+      { skipHistory: true },
+    );
+  }, [resetPagination, setQueryParams]);
+
   const handleStatusChange = useCallback(
     (status: TicketStatus) => {
       unifiedLoggerClient.logClickEvent({
@@ -509,6 +523,7 @@ const PlayerSupportPage: React.FunctionComponent = () => {
                 onSearchChange={handleSearchChange}
                 onViewChange={handleViewChange}
                 onCategoryChange={handleCategoryChange}
+                onClearFilters={handleClearFilters}
                 bulkActions={isMobile ? undefined : bulkActions}
                 trailingActions={isMobile ? undefined : exportMenu}
               />
