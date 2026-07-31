@@ -1,5 +1,5 @@
 import type { FunctionComponent, ReactNode } from 'react';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NextLink from 'next/link';
 import { AgreementStatus } from '@rbx/client-content-licensing-api/v1';
 import { useFlag } from '@rbx/flags';
@@ -23,6 +23,7 @@ import IpLoadError from '../../components/error/IpLoadError';
 import { useIpLayoutContext } from '../../IpAppNavigationLayout';
 import AmDivider from '../components/AmDivider';
 import { EXTERNAL_EXPERIENCE_HREF, IPH_AGREEMENT_DETAILS_HREF } from '../urls';
+import { LicenseManagerImpressionEvent, useLicenseManagerLoggerLogOnce } from '../utils/logger';
 import GalleryTabContent from './components/GalleryTabContent';
 import {
   AgreementStatusFromBatchMaps,
@@ -36,6 +37,8 @@ import MatchDetailsTabs, { isMatchDetailsTab } from './enums/MatchDetailsTabs';
 import { useAgreementStatusesByIdsQuery } from './hooks/useAgreementStatusesByIdsQuery';
 import { useGetAgreementCandidateByIdQuery } from './hooks/useGetAgreementCandidateByIdQuery';
 import { useUniverseDetailsQuery } from './hooks/useUniverseDetailsQuery';
+import { logExperiencePreviewEvent } from './utils/experiencePreviewAnalytics';
+import { getExperiencePreviewAnalyticsContext } from './utils/experiencePreviewAnalytics';
 
 const AGREEMENT_STATUSES_FOR_VIEW_AGREEMENT = new Set<AgreementStatus>([
   AgreementStatus.ConditionalOffer,
@@ -63,6 +66,7 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
   const { translate } = useTranslation();
   const { isFetched } = useSettings();
   const { setPageTitle } = useIpLayoutContext();
+  const { logOnce } = useLicenseManagerLoggerLogOnce();
 
   const [isOfferPanelOpen, setIsOfferPanelOpen] = useState(false);
 
@@ -90,16 +94,32 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
   // object, whose identity changes on every state transition.
   const { refetch: refetchAgreementStatuses } = statusQuery;
 
-  const [queryParams, setQueryParams] = useQueryParams(['tab']);
+  const [queryParams, setQueryParams] = useQueryParams(['tab', 'ref']);
   const rawTab = queryParams.tab;
+  const rawRef = queryParams.ref;
+  const refParam = Array.isArray(rawRef) ? rawRef[0] : (rawRef ?? undefined);
   const tabParam = Array.isArray(rawTab) ? rawTab[0] : (rawTab ?? undefined);
   const currentTab = isMatchDetailsTab(tabParam) ? tabParam : MatchDetailsTabs.Details;
 
+  // Capture the initial ref param on mount before the URL-stripping effect clears it, so the
+  // page-visit impression can attribute the correct source even when isContentReady resolves later.
+  const [initialRefParam] = useState(refParam);
+  const [isImageDeepLink] = useState(() =>
+    new URLSearchParams(window.location.search).has('inspect'),
+  );
+
+  const analyticsContext = useMemo(
+    () => (candidate ? getExperiencePreviewAnalyticsContext(candidate) : null),
+    [candidate],
+  );
+
   useEffect(() => {
     if (!isMatchDetailsTab(tabParam)) {
-      setQueryParams({ tab: MatchDetailsTabs.Details }, { skipHistory: true });
+      setQueryParams({ tab: MatchDetailsTabs.Details, ref: null }, { skipHistory: true });
+    } else if (refParam) {
+      setQueryParams({ ref: null }, { skipHistory: true });
     }
-  }, [tabParam, setQueryParams]);
+  }, [tabParam, refParam, setQueryParams]);
 
   const handleTabChange = useCallback(
     (_event: unknown, newTabValue: string) => {
@@ -128,6 +148,50 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
   }, [refetchAgreementStatuses]);
 
   const hasValidExperienceId = experienceId != null && Number.isFinite(experienceId);
+
+  // Tab impressions fire once the page will actually render its content (mirrors the pending/not-
+  // found/error guards below), so we don't log a tab view for a page that never renders.
+  const isContentReady =
+    !candidateQuery.isPending &&
+    !!candidate &&
+    hasValidExperienceId &&
+    !universeQuery.isPending &&
+    !universeQuery.isError &&
+    !candidateQuery.isError &&
+    !!universe &&
+    !!gameName &&
+    isExperiencePreviewFlagReady &&
+    isExperiencePreviewEnabled &&
+    isFetched;
+
+  useEffect(() => {
+    if (!isContentReady || !analyticsContext || isImageDeepLink) {
+      return;
+    }
+    const source = initialRefParam === 'sidebar' ? 'sidebar' : 'deepLink';
+    logExperiencePreviewEvent(
+      logOnce,
+      LicenseManagerImpressionEvent.ExperiencePreviewPageVisitImpressionEvent,
+      { ...analyticsContext, source },
+      analyticsContext.agreementCandidateId,
+    );
+  }, [isContentReady, analyticsContext, initialRefParam, isImageDeepLink, logOnce]);
+
+  useEffect(() => {
+    if (!isContentReady || !analyticsContext) {
+      return;
+    }
+    const tabImpressionEvent =
+      currentTab === MatchDetailsTabs.Gallery
+        ? LicenseManagerImpressionEvent.ExperiencePreviewGalleryTabImpressionEvent
+        : LicenseManagerImpressionEvent.ExperiencePreviewDetailsTabImpressionEvent;
+    logExperiencePreviewEvent(
+      logOnce,
+      tabImpressionEvent,
+      { ...analyticsContext, tab: currentTab },
+      `${analyticsContext.agreementCandidateId}:${currentTab}`,
+    );
+  }, [isContentReady, analyticsContext, currentTab, logOnce]);
 
   if (
     candidateQuery.isPending ||
@@ -286,6 +350,7 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
             candidate={candidate}
             onSuccess={handleAgreementSuccess}
             onClose={handleCloseOfferPanel}
+            source={currentTab === MatchDetailsTabs.Gallery ? 'galleryView' : 'detailsView'}
           />
         )}
       </MatchesSidePanel>

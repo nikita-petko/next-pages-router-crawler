@@ -710,6 +710,7 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
             candidate={selectedCandidate}
             onSuccess={handleAgreementSuccess}
             onClose={handleCloseMatchPanel}
+            source='sidebar'
           />
         )}
       </MatchesSidePanel>

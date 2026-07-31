@@ -168,13 +168,14 @@ interface Props {
   candidate: AgreementCandidateResponse;
   onSuccess: (agreement: AgreementResponse) => void;
   onClose: () => void;
+  source?: 'sidebar' | 'galleryView' | 'detailsView';
 }
 
 /**
  * A form to allow IPH to initiate an agreement from `AgreementCandidate`
  */
 /* oxlint-disable react/react-compiler -- react-hook-form watch() is incompatible with React Compiler memoization */
-const MatchOfferPanelContent = ({ candidate, onSuccess, onClose }: Props) => {
+const MatchOfferPanelContent = ({ candidate, onSuccess, onClose, source }: Props) => {
   const { classes } = useStyles();
   const { translate } = useTranslation();
   const { logEvent } = useLicenseManagerLogger();
@@ -316,7 +317,15 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose }: Props) => {
       }
       logEvent(LicenseManagerImpressionEvent.SuccessfulLicenseOfferImpressionEvent, {
         agreementId,
+        agreementCandidateId: candidate.id ?? '',
       });
+      if (source) {
+        logEvent(LicenseManagerImpressionEvent.ExperiencePreviewOfferSentImpressionEvent, {
+          agreementId,
+          agreementCandidateId: candidate.id ?? '',
+          source,
+        });
+      }
       enqueueWithDefaults({
         children: (
           // I initially pulled this out into a new component, but then

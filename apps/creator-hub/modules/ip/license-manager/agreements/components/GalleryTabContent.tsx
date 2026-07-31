@@ -8,9 +8,18 @@ import type { UniverseResponse } from '@modules/clients/develop';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
 import useIpSnackbar from '../../../hooks/useIpSnackbar';
 import { EXTERNAL_EXPERIENCE_HREF } from '../../urls';
+import {
+  LicenseManagerClickEvent,
+  LicenseManagerImpressionEvent,
+  useLicenseManagerLogger,
+} from '../../utils/logger';
 import MatchDetailsTabs from '../enums/MatchDetailsTabs';
 import { useGetPlacefileImagesQuery } from '../hooks/useGetPlacefileImagesQuery';
 import { usePlacefileImageUrlsQuery } from '../hooks/usePlacefileImageUrlsQuery';
+import {
+  getExperiencePreviewAnalyticsContext,
+  logExperiencePreviewEvent,
+} from '../utils/experiencePreviewAnalytics';
 import type { InspectorImage } from './ScreenshotInspector';
 import ScreenshotInspector from './ScreenshotInspector';
 
@@ -53,6 +62,11 @@ interface GalleryTabContentProps {
 const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidate, universe }) => {
   const { translate } = useTranslation();
   const { enqueueWithDefaults } = useIpSnackbar();
+  const { logEvent } = useLicenseManagerLogger();
+  const analyticsContext = useMemo(
+    () => getExperiencePreviewAnalyticsContext(candidate),
+    [candidate],
+  );
 
   const inspectorTitle = universe.name?.trim() ? universe.name : '';
   const inspectorRootPlaceId =
@@ -122,9 +136,14 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
 
   // Deep link: `?tab=Gallery&inspect=<assetId>` opens the inspector on just that screenshot once the
   // grid resolves.
-  const [inspectQueryParams, setInspectQueryParams] = useQueryParams(['inspect']);
+  const [inspectQueryParams, setInspectQueryParams] = useQueryParams(['inspect', 'inspectRef']);
   const rawInspect = inspectQueryParams.inspect;
   const inspectAssetIdParam = Array.isArray(rawInspect) ? rawInspect[0] : (rawInspect ?? undefined);
+  const rawInspectRef = inspectQueryParams.inspectRef;
+  const inspectRefParam = Array.isArray(rawInspectRef)
+    ? rawInspectRef[0]
+    : (rawInspectRef ?? undefined);
+  const [initialInspectRefParam] = useState(inspectRefParam);
 
   // Button-initiated inspector: holds the ordered snapshot (all/selected) taken when it was opened.
   const [inspectorImages, setInspectorImages] = useState<InspectorImage[] | null>(null);
@@ -140,6 +159,29 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
   }, [cells, inspectAssetIdParam, isLoading]);
   const activeInspectorImages = inspectorImages ?? deepLinkImages;
   const isInspectorOpen = activeInspectorImages !== null;
+
+  const hasHandledDeepLink = useRef(false);
+  useEffect(() => {
+    if (!deepLinkImages || hasHandledDeepLink.current) {
+      return;
+    }
+    hasHandledDeepLink.current = true;
+    logExperiencePreviewEvent(
+      logEvent,
+      LicenseManagerImpressionEvent.ExperiencePreviewPageVisitImpressionEvent,
+      { ...analyticsContext, source: 'imageDeepLink', assetId: inspectAssetIdParam ?? '' },
+    );
+    if (initialInspectRefParam) {
+      setInspectQueryParams({ inspectRef: null }, { skipHistory: true });
+    }
+  }, [
+    deepLinkImages,
+    initialInspectRefParam,
+    logEvent,
+    analyticsContext,
+    inspectAssetIdParam,
+    setInspectQueryParams,
+  ]);
   // Also drop the `inspect` param on close so a deep-linked view doesn't persist in the URL (a refresh
   // then lands on the gallery instead of reopening the inspector). No-ops when the param is absent.
   const closeInspector = useCallback(() => {
@@ -160,16 +202,26 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
   }, [cells, selectedKeys]);
 
   const openInspector = useCallback(() => {
+    logExperiencePreviewEvent(
+      logEvent,
+      LicenseManagerClickEvent.ExperiencePreviewInspectButtonClickEvent,
+      analyticsContext,
+    );
     setInitialInspectorIndex(0);
     setInspectorImages(orderedInspectorImages);
-  }, [orderedInspectorImages]);
+  }, [orderedInspectorImages, logEvent, analyticsContext]);
 
   const openInspectorAtIndex = useCallback(
     (index: number) => {
+      logExperiencePreviewEvent(
+        logEvent,
+        LicenseManagerClickEvent.ExperiencePreviewImageClickEvent,
+        { ...analyticsContext, source: 'gallery' },
+      );
       setInitialInspectorIndex(index);
       setInspectorImages(cells);
     },
-    [cells],
+    [cells, logEvent, analyticsContext],
   );
 
   const getShareUrl = useCallback((image: InspectorImage) => {
@@ -203,10 +255,14 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
   );
 
   const linkCopiedLabel = translate('Label.LinkCopied');
-  const notifyLinkCopied = useCallback(
-    () => showNeutralToast(linkCopiedLabel),
-    [showNeutralToast, linkCopiedLabel],
-  );
+  const handleLinkCopied = useCallback(() => {
+    logExperiencePreviewEvent(
+      logEvent,
+      LicenseManagerClickEvent.ExperiencePreviewCopyImageLinkClickEvent,
+      analyticsContext,
+    );
+    showNeutralToast(linkCopiedLabel);
+  }, [logEvent, analyticsContext, showNeutralToast, linkCopiedLabel]);
 
   // An unresolvable `?inspect=<assetId>` (once data has settled) can't be shown: surface a popup and
   // drop the param so a refresh stays on the gallery. Only side effects here (toast + URL change, no
@@ -351,7 +407,7 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
           title={inspectorTitle}
           experienceHref={inspectorHref}
           getShareUrl={getShareUrl}
-          onLinkCopied={notifyLinkCopied}
+          onLinkCopied={handleLinkCopied}
           onClose={closeInspector}
           initialIndex={initialInspectorIndex}
         />

@@ -77,6 +77,15 @@ export enum LicenseManagerClickEvent {
   CreatorAgreementCancelModalDismissClickEvent = 'creatorAgreementCancelModalDismissClickEvent',
   CreatorAgreementCancelModalConfirmClickEvent = 'creatorAgreementCancelModalConfirmClickEvent',
   IphAgreementDetailsPageRightsHolderOutcomeCommitClickEvent = 'iphAgreementDetailsPageRightsHolderOutcomeCommitClickEvent',
+
+  // Experience Preview: "View gallery" / "View details" clicked from the match sidebar.
+  ExperiencePreviewSidebarExpandClickEvent = 'experiencePreviewSidebarExpandClickEvent',
+  // Experience Preview: screenshot image clicked (source: sidebar or gallery).
+  ExperiencePreviewImageClickEvent = 'experiencePreviewImageClickEvent',
+  // Experience Preview: "Inspect" button clicked in gallery header.
+  ExperiencePreviewInspectButtonClickEvent = 'experiencePreviewInspectButtonClickEvent',
+  // Experience Preview: copy image link clicked in inspector.
+  ExperiencePreviewCopyImageLinkClickEvent = 'experiencePreviewCopyImageLinkClickEvent',
 }
 
 export enum LicenseManagerImpressionEvent {
@@ -117,6 +126,18 @@ export enum LicenseManagerImpressionEvent {
   EmptyStateIphListingsGridCreateListingImpressionEvent = 'emptyStateIphListingsGridCreateListingImpressionEvent',
   EmptyStateIphListingsGridCreateIpFamilyImpressionEvent = 'emptyStateIphListingsGridCreateIpFamilyImpressionEvent',
   MatchOfferDrawerNoPerpetualLicensesEmptyStateImpressionEvent = 'matchOfferDrawerNoPerpetualLicensesEmptyStateImpressionEvent',
+
+  // Experience Preview: first time the match sidebar opens (start of the time-to-offer clock) and
+  // each preview-page tab view.
+  ExperiencePreviewMatchDetailsPanelImpressionEvent = 'experiencePreviewMatchDetailsPanelImpressionEvent',
+  ExperiencePreviewDetailsTabImpressionEvent = 'experiencePreviewDetailsTabImpressionEvent',
+  ExperiencePreviewGalleryTabImpressionEvent = 'experiencePreviewGalleryTabImpressionEvent',
+  // Experience Preview: page visit (full-page view) with navigation source.
+  ExperiencePreviewPageVisitImpressionEvent = 'experiencePreviewPageVisitImpressionEvent',
+  // Experience Preview: offer sent with source (sidebar, detailsView, galleryView).
+  ExperiencePreviewOfferSentImpressionEvent = 'experiencePreviewOfferSentImpressionEvent',
+  // Experience Preview: screenshot availability resolved (total detected vs available after moderation).
+  ExperiencePreviewScreenshotsAvailableImpressionEvent = 'experiencePreviewScreenshotsAvailableImpressionEvent',
 }
 
 type LicenseManagerEventName = LicenseManagerImpressionEvent | LicenseManagerClickEvent;

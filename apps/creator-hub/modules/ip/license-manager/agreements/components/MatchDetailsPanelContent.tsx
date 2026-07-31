@@ -1,5 +1,5 @@
 import type { FunctionComponent } from 'react';
-import React, { type ReactNode, useCallback, useState } from 'react';
+import React, { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   AgreementStatus,
@@ -25,6 +25,12 @@ import {
   getCreationDauRangeLabelFromEnum,
   getLifetimeVisitsRangeLabelFromEnum,
 } from '../../utils/dauEnum';
+import {
+  LicenseManagerClickEvent,
+  LicenseManagerImpressionEvent,
+  useLicenseManagerLogger,
+  useLicenseManagerLoggerLogOnce,
+} from '../../utils/logger';
 import MatchDetailsTabs from '../enums/MatchDetailsTabs';
 import useDebouncedContentMaturity, {
   NO_CONTENT_MATURITY_FOUND_FOR_ID,
@@ -33,6 +39,11 @@ import { NO_GAME_FOUND_FOR_ID, useDebouncedGameDetails } from '../hooks/games';
 import type { AgreementStatusBatchItemError } from '../hooks/useAgreementStatusesByIdsQuery';
 import { useGetPlacefileImagesQuery } from '../hooks/useGetPlacefileImagesQuery';
 import { usePlacefileImageUrlsQuery } from '../hooks/usePlacefileImageUrlsQuery';
+import {
+  getExperiencePreviewAnalyticsContext,
+  logExperiencePreviewEvent,
+  serializeExperiencePreviewAnalyticsContext,
+} from '../utils/experiencePreviewAnalytics';
 import formatDate from '../utils/formatDate';
 import DetectedScreenshotsGrid from './DetectedScreenshotsGrid';
 import {
@@ -91,14 +102,46 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
   const resolvedLocale = locale ?? Locale.English;
   const { isFetched } = useSettings();
   const { enqueueWithDefaults } = useIpSnackbar();
+  const { logEvent } = useLicenseManagerLogger();
+  const { logOnce } = useLicenseManagerLoggerLogOnce();
+
+  const analyticsContext = useMemo(
+    () => getExperiencePreviewAnalyticsContext(candidate),
+    [candidate],
+  );
+  const analyticsContextDedupeKey = serializeExperiencePreviewAnalyticsContext(analyticsContext);
 
   const [inspectorOpenIndex, setInspectorOpenIndex] = useState<number | null>(null);
-  const handleScreenshotClick = useCallback((index: number) => {
-    setInspectorOpenIndex(index);
-  }, []);
+  const handleScreenshotClick = useCallback(
+    (index: number) => {
+      logExperiencePreviewEvent(
+        logEvent,
+        LicenseManagerClickEvent.ExperiencePreviewImageClickEvent,
+        { ...analyticsContext, source: 'sidebar' },
+      );
+      setInspectorOpenIndex(index);
+    },
+    [logEvent, analyticsContext],
+  );
   const handleInspectorClose = useCallback(() => {
     setInspectorOpenIndex(null);
   }, []);
+
+  const handleViewDetailsClick = useCallback(() => {
+    logExperiencePreviewEvent(
+      logEvent,
+      LicenseManagerClickEvent.ExperiencePreviewSidebarExpandClickEvent,
+      { ...analyticsContext, destination: MatchDetailsTabs.Details },
+    );
+  }, [logEvent, analyticsContext]);
+
+  const handleViewGalleryClick = useCallback(() => {
+    logExperiencePreviewEvent(
+      logEvent,
+      LicenseManagerClickEvent.ExperiencePreviewSidebarExpandClickEvent,
+      { ...analyticsContext, destination: MatchDetailsTabs.Gallery },
+    );
+  }, [logEvent, analyticsContext]);
 
   const notifyLinkCopied = useCallback(() => {
     enqueueWithDefaults({
@@ -161,6 +204,54 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
   const hasError =
     (gameRequest.error ?? maturityRequest.error ?? ipFamilyRequest.error) != null ||
     gameRequest.data === NO_GAME_FOUND_FOR_ID;
+
+  const isPanelContentReady =
+    !isPending &&
+    isFetched &&
+    !hasError &&
+    gameRequest.data != null &&
+    gameRequest.data !== NO_GAME_FOUND_FOR_ID;
+
+  useEffect(() => {
+    if (!isPanelContentReady) {
+      return;
+    }
+    logExperiencePreviewEvent(
+      logOnce,
+      LicenseManagerImpressionEvent.ExperiencePreviewMatchDetailsPanelImpressionEvent,
+      analyticsContext,
+      analyticsContextDedupeKey,
+    );
+  }, [isPanelContentReady, logOnce, analyticsContext, analyticsContextDedupeKey]);
+
+  const isScreenshotDataSettled =
+    isExperiencePreviewFlagReady &&
+    (!showPlacefileScreenshots || (placefileImagesQuery.isFetched && !isScreenshotsLoading));
+
+  useEffect(() => {
+    if (!isPanelContentReady || !isScreenshotDataSettled || !showPlacefileScreenshots) {
+      return;
+    }
+    logExperiencePreviewEvent(
+      logOnce,
+      LicenseManagerImpressionEvent.ExperiencePreviewScreenshotsAvailableImpressionEvent,
+      {
+        ...analyticsContext,
+        totalImages: placefileAssetIds.length,
+        availableImages: screenshotItems.length,
+      },
+      `${analyticsContextDedupeKey}:screenshots`,
+    );
+  }, [
+    isPanelContentReady,
+    isScreenshotDataSettled,
+    showPlacefileScreenshots,
+    logOnce,
+    analyticsContext,
+    analyticsContextDedupeKey,
+    placefileAssetIds.length,
+    screenshotItems.length,
+  ]);
 
   const title = translate('Heading.ViewMatch');
 
@@ -240,17 +331,16 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
   const agreementCandidateId = candidate.id;
   const matchDetailsPageHref =
     agreementCandidateId != null
-      ? IPH_MATCH_DETAILS_TAB_HREF(agreementCandidateId, MatchDetailsTabs.Details)
+      ? `${IPH_MATCH_DETAILS_TAB_HREF(agreementCandidateId, MatchDetailsTabs.Details)}&ref=sidebar`
       : undefined;
   const matchScreenshotsGalleryHref =
     agreementCandidateId != null
-      ? IPH_MATCH_DETAILS_TAB_HREF(agreementCandidateId, MatchDetailsTabs.Gallery)
+      ? `${IPH_MATCH_DETAILS_TAB_HREF(agreementCandidateId, MatchDetailsTabs.Gallery)}&ref=sidebar`
       : undefined;
 
   const viewDetailsButtonLabel = translate('Action.ViewDetails');
   const viewGalleryLinkLabel = translate('Action.ViewGallery');
 
-  // The screenshots are captured when the match candidate is created, so surface that same date.
   const imagesAsOfDate = candidate.discoveredAt
     ? formatDate(candidate.discoveredAt, resolvedLocale)
     : translate('Label.Unknown');
@@ -319,7 +409,8 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
           size='large'
           component={Link}
           href={matchDetailsPageHref}
-          className='fill'>
+          className='fill'
+          onClick={handleViewDetailsClick}>
           {viewDetailsButtonLabel}
         </Button>
       </>
@@ -403,7 +494,7 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
                   <Typography variant='h6'>{screenshotsTitle}</Typography>
                   {!isScreenshotsLoading && matchScreenshotsGalleryHref != null && (
                     <FoundationLink asChild size='Small' underline='none' className='content-link'>
-                      <Link href={matchScreenshotsGalleryHref}>
+                      <Link href={matchScreenshotsGalleryHref} onClick={handleViewGalleryClick}>
                         <span className='inline-flex items-center gap-xsmall'>
                           {viewGalleryLinkLabel}
                           <Icon name='icon-regular-chevron-small-right' size='XSmall' />
