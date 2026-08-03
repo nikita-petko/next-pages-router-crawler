@@ -29,6 +29,13 @@ export const permissionsFeature: Feature = {
   sectionTitleKey: 'Heading.Details',
 };
 
+export const dependenciesFeature: Feature = {
+  key: 'dependencies',
+  nameKey: 'Heading.Dependencies',
+  path: '/dependencies',
+  sectionTitleKey: 'Heading.Details',
+};
+
 const openInMarketplace: Feature = {
   adornment: <OpenInNewIcon fontSize='small' />,
   getExternalPath: creatorStore.getAssetUrl,
@@ -52,6 +59,7 @@ export const openInExperience: Feature = {
 
 developerItemFeatureManager.addFeature(configureFeature);
 developerItemFeatureManager.addFeature(permissionsFeature);
+developerItemFeatureManager.addFeature(dependenciesFeature);
 developerItemFeatureManager.addFeature(openInMarketplace);
 developerItemFeatureManager.addFeature(openInExperience);
 developerItemFeatureManager.addFeature(versionHistoryFeature);

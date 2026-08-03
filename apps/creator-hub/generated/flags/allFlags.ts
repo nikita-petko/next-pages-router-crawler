@@ -110,6 +110,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: contentAccessAndInventoryFlags.isAssetDependenciesViewerEnabled,
+      metadata: {
+        namespace: 'content-access-and-inventory',
+        name: 'isAssetDependenciesViewerEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: contentLicensingFlags.isExperiencePreviewEnabled,
       metadata: {
         namespace: 'content-licensing',

@@ -213,6 +213,14 @@ export const RouterParseItemToBreadcrumbItemDetails: { [key: string]: Breadcrumb
     getLinkPath: getCreatorStoreItemConfigurePathFromLinkPath,
     withId: false,
   },
+  dependencies: {
+    displayName: ({ translate }) => {
+      return createNameWithTranslate({ key: 'Heading.Dependencies' }, translate);
+    },
+    breadcrumbType: BreadcrumbItemType.CreatorStore,
+    getLinkPath: getCreatorStoreItemConfigurePathFromLinkPath,
+    withId: false,
+  },
   localization: {
     displayName: ({ translate }) => {
       return createNameWithTranslate({ key: 'Heading.Localization' }, translate);

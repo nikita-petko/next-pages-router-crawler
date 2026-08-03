@@ -17,3 +17,8 @@ export const isModelCustomThumbnailUploadEnabled = defineFlag({
     name: 'isModelCustomThumbnailUploadEnabled',
     defaultValue: false,
   });
+export const isAssetDependenciesViewerEnabled = defineFlag({
+    namespace: 'content-access-and-inventory',
+    name: 'isAssetDependenciesViewerEnabled',
+    defaultValue: false,
+  });

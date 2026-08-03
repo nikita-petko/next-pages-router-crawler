@@ -1,8 +1,10 @@
 import type { FunctionComponent } from 'react';
 import React, { useMemo } from 'react';
 import { useRouter } from 'next/router';
+import { useFlag } from '@rbx/flags';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { ArrowBackIcon, Button, Divider, Grid } from '@rbx/ui';
+import { isAssetDependenciesViewerEnabled } from '@generated/flags/contentAccessAndInventory';
 import Creator from '@modules/miscellaneous/common/enums/Creator';
 import { Link } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -13,7 +15,10 @@ import {
   getPublishingConsolidationReturnTo,
   PUBLISHING_CONSOLIDATION_RETURN_TO_QUERY_KEY,
 } from '../../../common/utils/publishingConsolidationNavigation';
-import VERSION_HISTORY_ASSETS, { ASSET_ACCESS_FORM_ASSETS } from '../../constants';
+import VERSION_HISTORY_ASSETS, {
+  ASSET_ACCESS_FORM_ASSETS,
+  DEPENDENCIES_ASSETS,
+} from '../../constants';
 import { useCurrentDeveloperItem } from '../DeveloperItemProvider';
 import {
   publishAttribtuionEnabledAssetTypes,
@@ -22,6 +27,7 @@ import {
 import DeveloperItemAttributionText from './DeveloperItemAttributionText';
 import developerItemFeatureManager, {
   DeveloperItemNavigationSectionTitleKeys,
+  dependenciesFeature,
   openInExperience,
   permissionsFeature,
   versionHistoryFeature,
@@ -32,6 +38,7 @@ const DeveloperItemLeftNavigation: FunctionComponent<React.PropsWithChildren> = 
   const { translate } = useTranslation();
   const router = useRouter();
   const { settings } = useSettings();
+  const { value: isDependenciesViewerEnabled } = useFlag(isAssetDependenciesViewerEnabled);
   const { developerItemDetails } = useCurrentDeveloperItem();
   const { creatingUniverse } = useCurrentDeveloperItemPublishAttribution();
   const allFeatures = developerItemFeatureManager.getAllFeatures();
@@ -44,6 +51,12 @@ const DeveloperItemLeftNavigation: FunctionComponent<React.PropsWithChildren> = 
             filter = !!(
               developerItemDetails?.type &&
               VERSION_HISTORY_ASSETS.includes(developerItemDetails.type)
+            );
+          } else if (filter && feature.key === dependenciesFeature.key) {
+            filter = !!(
+              isDependenciesViewerEnabled &&
+              developerItemDetails?.type &&
+              DEPENDENCIES_ASSETS.includes(developerItemDetails.type)
             );
           } else if (filter && feature.key === openInExperience.key) {
             filter = !!(
@@ -82,7 +95,14 @@ const DeveloperItemLeftNavigation: FunctionComponent<React.PropsWithChildren> = 
           }
           return feature;
         }),
-    [allFeatures, creatingUniverse, developerItemDetails, router.query.id, settings],
+    [
+      allFeatures,
+      creatingUniverse,
+      developerItemDetails,
+      isDependenciesViewerEnabled,
+      router.query.id,
+      settings,
+    ],
   );
 
   const activeFeature = useMemo(

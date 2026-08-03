@@ -14,6 +14,8 @@ export const ASSET_ACCESS_FORM_ASSETS = [
   Asset.Video,
 ];
 
+export const DEPENDENCIES_ASSETS = [Asset.Model, Asset.MeshPart];
+
 // EDIT permissions are only available for Model/Package collaborators
 // Experiences and other asset types only support USE permissions
 export const EDIT_PERMISSION_ASSETS = [Asset.Model];
