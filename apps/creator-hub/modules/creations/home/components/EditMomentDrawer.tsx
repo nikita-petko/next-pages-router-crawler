@@ -9,17 +9,24 @@ import {
   SheetTitle,
   TextArea,
 } from '@rbx/foundation-ui';
-import { useTranslation, withTranslation } from '@rbx/intl';
+import type { Locale } from '@rbx/intl';
+import { useLocalization, useTranslation, withTranslation } from '@rbx/intl';
 import type { TExperience } from '@modules/home/providers/ExperienceProvider';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { MAX_MOMENT_DESCRIPTION_LENGTH } from '../constants/momentConstants';
+import useMomentsUploadLanguageSelectEnabled from '../hooks/useMomentsUploadLanguageSelectEnabled';
 import { useMomentVideoMedia } from '../hooks/useMomentVideoMedia';
 import type { MomentCreation } from '../types/MomentCreation';
 import { MomentCreationStatus } from '../types/MomentCreation';
 import type { MomentMetadataUpdate } from '../utils/momentsLocalDraftStorage';
+import {
+  formatMomentContentLanguage,
+  getDefaultMomentsUploadLocale,
+} from '../utils/momentsUploadLocaleUtils';
 import { momentToExperienceStub, type MomentExperienceStub } from '../utils/momentToExperienceStub';
 import MomentsExperiencePreview from './MomentsExperiencePreview';
 import MomentsExperienceUrlInput from './MomentsExperienceUrlInput';
+import MomentsLanguageSelect from './MomentsLanguageSelect';
 import MomentsVideoPreview from './MomentsVideoPreview';
 
 type EditMomentDrawerProps = {
@@ -53,10 +60,15 @@ const EditMomentDrawer: FC<EditMomentDrawerProps> = ({
   isPublishDisabled = false,
 }) => {
   const { translate } = useTranslation();
+  const { locale: uiLocale } = useLocalization();
+  const isLanguageSelectEnabled = useMomentsUploadLanguageSelectEnabled();
+  const defaultLocale = getDefaultMomentsUploadLocale(uiLocale);
   const [selectedExperience, setSelectedExperience] = useState<
     TExperience | MomentExperienceStub | undefined
   >(() => (moment ? getInitialSelectedExperience(moment) : undefined));
   const [description, setDescription] = useState(() => moment?.description ?? '');
+  const [localeOverride, setLocaleOverride] = useState<Locale | undefined>();
+  const selectedLocale = localeOverride ?? moment?.locale ?? defaultLocale;
 
   const hasLocalVideo =
     moment != null && 'hasLocalVideo' in moment && moment.hasLocalVideo === true;
@@ -99,6 +111,18 @@ const EditMomentDrawer: FC<EditMomentDrawerProps> = ({
   const handleDescriptionChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
     setDescription(event.target.value);
   }, []);
+
+  const handleLocaleChange = useCallback(
+    (locale: Locale) => {
+      setLocaleOverride(locale);
+      if (!moment || locale === moment.locale) {
+        return;
+      }
+
+      onMomentMetadataChange?.(moment.id, { locale });
+    },
+    [moment, onMomentMetadataChange],
+  );
 
   const flushDescription = useCallback(() => {
     if (!moment || description === moment.description) {
@@ -167,6 +191,29 @@ const EditMomentDrawer: FC<EditMomentDrawerProps> = ({
                 {translate('CreateMomentModal.ExperienceInput.Label')}
               </span>
               <MomentsExperiencePreview experience={selectedExperience} hideTitle />
+            </div>
+          ) : null}
+
+          {isLanguageSelectEnabled ? (
+            <div className='flex flex-col gap-y-xsmall width-full padding-top-small'>
+              {isEditable ? (
+                <MomentsLanguageSelect
+                  value={selectedLocale}
+                  onChange={handleLocaleChange}
+                  isDisabled={isPublishingThisMoment}
+                />
+              ) : (
+                <>
+                  <span className='text-body-small content-muted'>
+                    {translate(
+                      'CreateMomentModal.LanguageInput.Label' /* TranslationNamespace.Creations */,
+                    )}
+                  </span>
+                  <span data-testid='edit-moment-content-language-readonly'>
+                    {formatMomentContentLanguage(moment.locale)}
+                  </span>
+                </>
+              )}
             </div>
           ) : null}
 

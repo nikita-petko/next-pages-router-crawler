@@ -27,9 +27,11 @@ import {
 } from '../constants/momentsCreationsConstants';
 import useCreationsGridContainerStyles from '../containers/CreationsGridContainer.styles';
 import { useMomentsStatusFilter } from '../hooks/useMomentsStatusFilter';
+import useMomentsUploadLanguageSelectEnabled from '../hooks/useMomentsUploadLanguageSelectEnabled';
 import type { MomentCreation, MomentCreationStatusFilterTab } from '../types/MomentCreation';
 import { MomentCreationStatus } from '../types/MomentCreation';
 import type { MomentMetadataUpdate } from '../utils/momentsLocalDraftStorage';
+import { formatMomentContentLanguage } from '../utils/momentsUploadLocaleUtils';
 import MomentStatusIndicator from './MomentStatusIndicator';
 import MomentVideoThumbnail from './MomentVideoThumbnail';
 
@@ -96,6 +98,7 @@ type MomentTableRowProps = {
   editLabel: string;
   publishingMomentId: string | null;
   isPublishDisabled: boolean;
+  showContentLanguageColumn: boolean;
   statusLabel: string;
   onEditMoment: (moment: MomentCreation) => void;
   onDescriptionBlur: (moment: MomentCreation, event: FocusEvent<HTMLInputElement>) => void;
@@ -107,6 +110,7 @@ const MomentTableRow: FC<MomentTableRowProps> = ({
   editLabel,
   publishingMomentId,
   isPublishDisabled,
+  showContentLanguageColumn,
   statusLabel,
   onEditMoment,
   onDescriptionBlur,
@@ -141,6 +145,13 @@ const MomentTableRow: FC<MomentTableRowProps> = ({
           />
         )}
       </TableCell>
+      {showContentLanguageColumn ? (
+        <TableCell>
+          <span data-testid={`moment-content-language-${moment.id}`}>
+            {formatMomentContentLanguage(moment.locale)}
+          </span>
+        </TableCell>
+      ) : null}
       <TableCell>
         <MomentStatusIndicator label={statusLabel} status={moment.status} />
       </TableCell>
@@ -205,6 +216,7 @@ const MomentsCreationsTable: FC<MomentsCreationsTableProps> = ({
     classes: { gridContainer, createButtonContainer },
   } = useCreationsGridContainerStyles();
   const { statusTab } = useMomentsStatusFilter();
+  const showContentLanguageColumn = useMomentsUploadLanguageSelectEnabled();
 
   const getStatusLabel = useCallback(
     (status: MomentCreation['status']) => {
@@ -274,6 +286,7 @@ const MomentsCreationsTable: FC<MomentsCreationsTableProps> = ({
   );
 
   const editLabel = translate('Action.Edit' /* TranslationNamespace.Controls */);
+  const tableColumnCount = showContentLanguageColumn ? 6 : 5;
 
   return (
     <div className={gridContainer}>
@@ -296,6 +309,13 @@ const MomentsCreationsTable: FC<MomentsCreationsTableProps> = ({
                     'MomentsTable.Header.Description' /* TranslationNamespace.Creations */,
                   )}
                 </TableHeaderCell>
+                {showContentLanguageColumn ? (
+                  <TableHeaderCell>
+                    {translate(
+                      'CreateMomentModal.LanguageInput.Label' /* TranslationNamespace.Creations */,
+                    )}
+                  </TableHeaderCell>
+                ) : null}
                 <TableHeaderCell>
                   {translate('MomentsTable.Header.Status' /* TranslationNamespace.Creations */)}
                 </TableHeaderCell>
@@ -305,7 +325,10 @@ const MomentsCreationsTable: FC<MomentsCreationsTableProps> = ({
             <TableBody>
               {filteredMoments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} align='center' className='padding-y-xxlarge'>
+                  <TableCell
+                    colSpan={tableColumnCount}
+                    align='center'
+                    className='padding-y-xxlarge'>
                     <span
                       className='text-body-medium content-muted block padding-y-xxlarge'
                       data-testid='moments-table-empty-filter-message'>
@@ -323,6 +346,7 @@ const MomentsCreationsTable: FC<MomentsCreationsTableProps> = ({
                     editLabel={editLabel}
                     publishingMomentId={publishingMomentId}
                     isPublishDisabled={isPublishDisabled}
+                    showContentLanguageColumn={showContentLanguageColumn}
                     statusLabel={getStatusLabel(moment.status)}
                     onEditMoment={onEditMoment}
                     onDescriptionBlur={handleDescriptionBlur}

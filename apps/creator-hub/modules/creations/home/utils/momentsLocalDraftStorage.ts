@@ -108,7 +108,7 @@ export const getNonDraftMomentIds = (moments: StoredMomentCreation[]): string[] 
 export type MomentMetadataUpdate = Partial<
   Pick<
     StoredMomentCreation,
-    'description' | 'status' | 'experienceName' | 'experienceId' | 'rootPlaceId'
+    'description' | 'status' | 'experienceName' | 'experienceId' | 'rootPlaceId' | 'locale'
   >
 >;
 

@@ -1,4 +1,4 @@
-import { Locale } from '@rbx/intl';
+import { Locale, toLocaleNativeName } from '@rbx/intl';
 import { availableDocsLocales } from '@modules/creator-settings/container/preferences/LocaleConstants';
 
 export const MOMENTS_UPLOAD_LOCALES: readonly Locale[] = availableDocsLocales;
@@ -29,3 +29,7 @@ export const resolveMomentPublishLocale = (
   moment: { locale?: Locale },
   uiLocale?: Locale | null,
 ): Locale => moment.locale ?? getDefaultMomentsUploadLocale(uiLocale);
+
+/** Read-only label for a moment's content language in the Creations table. */
+export const formatMomentContentLanguage = (locale: Locale | undefined): string =>
+  locale != null ? toLocaleNativeName(locale) : '-';
