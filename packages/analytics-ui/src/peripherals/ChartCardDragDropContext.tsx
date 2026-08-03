@@ -27,6 +27,7 @@ export type ChartCardDragDropOptions = {
     y: number;
   };
   containerAttributes?: React.HTMLAttributes<HTMLDivElement>;
+  containerItemId?: string;
   containerClassName?: string;
   handleAttributes?: React.HTMLAttributes<HTMLButtonElement>;
   handleListeners?: React.HTMLAttributes<HTMLButtonElement>;

@@ -1,20 +1,10 @@
-import type { DragEndEvent, Modifier } from '@dnd-kit/core';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { useMemo } from 'react';
+import { RestrictToVerticalAxis } from '@dnd-kit/abstract/modifiers';
+import { closestCenter } from '@dnd-kit/collision';
+import { PointerActivationConstraints } from '@dnd-kit/dom';
+import type { DragEndEvent } from '@dnd-kit/react';
+import { DragDropProvider, KeyboardSensor, PointerSensor } from '@dnd-kit/react';
+import { isSortableOperation, useSortable } from '@dnd-kit/react/sortable';
 import { AssetThumbnailSize, ReturnPolicy, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
 import { IconButton, makeStyles, DeleteOutlinedIcon, DragHandleIcon } from '@rbx/ui';
 import type { ImageAsset } from '../../utils/uploadImageAssetsIfNeeded';
@@ -88,15 +78,16 @@ const useStyles = makeStyles<void, 'actions'>()((theme, _, classes) => ({
   },
 }));
 
-/**
- * Can only be dragged up/down e.g. vertical.
- */
-const verticalLockModifier: Modifier = ({ transform }) => {
-  return {
-    ...transform,
-    x: 0,
-  };
-};
+const DRAG_ACTIVATION_DISTANCE_PX = 5;
+const VERTICAL_SORTABLE_MODIFIERS = [RestrictToVerticalAxis];
+const IMAGE_LIST_SENSORS = [
+  PointerSensor.configure({
+    activationConstraints: [
+      new PointerActivationConstraints.Distance({ value: DRAG_ACTIVATION_DISTANCE_PX }),
+    ],
+  }),
+  KeyboardSensor,
+];
 
 /**
  * A preview of an image we have not uploaded (e.g. it is not an asset yet)
@@ -104,12 +95,7 @@ const verticalLockModifier: Modifier = ({ transform }) => {
 const ImageBeforeUploadPreview = ({ file }: { file: File }) => {
   const { classes } = useStyles();
 
-  const clientOnlyAssetUrl = useMemo(() => {
-    if (file) {
-      return URL.createObjectURL(file);
-    }
-    return;
-  }, [file]);
+  const clientOnlyAssetUrl = useMemo(() => URL.createObjectURL(file), [file]);
 
   return <img className={classes.imagePreview} src={clientOnlyAssetUrl} alt='preview' />;
 };
@@ -143,19 +129,20 @@ const SortableImageItem = ({
   showDragHandle?: boolean;
 }) => {
   const { classes } = useStyles();
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const { handleRef, isDragging, ref } = useSortable({
     id: item.id,
-    disabled,
+    index,
+    disabled: disabled === true || !showDragHandle,
+    collisionDetector: closestCenter,
+    modifiers: VERTICAL_SORTABLE_MODIFIERS,
   });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
     opacity: isDragging ? 0.5 : 1,
   };
 
   return (
-    <div ref={setNodeRef} style={style} className={classes.listItem}>
+    <div ref={ref} style={style} className={classes.listItem}>
       <div className={classes.thumbnailWrapper}>
         {item.type === 'existing' && (
           <Thumbnail2d
@@ -184,11 +171,7 @@ const SortableImageItem = ({
           <DeleteOutlinedIcon />
         </IconButton>
         {showDragHandle && (
-          <div
-            className={classes.dragHandle}
-            {...attributes}
-            {...listeners}
-            data-testid='drag-handle'>
+          <div ref={handleRef} className={classes.dragHandle} data-testid='drag-handle'>
             <DragHandleIcon color='action' />
           </div>
         )}
@@ -211,25 +194,12 @@ const EditableImageList = ({
   disabled = false,
   className,
 }: ThumbnailListProps) => {
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
-
   const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = thumbnails.findIndex((item) => item.id === active.id);
-      const newIndex = thumbnails.findIndex((item) => item.id === over.id);
-
-      onReorder(oldIndex, newIndex);
+    if (!event.canceled && event.operation.source && isSortableOperation(event.operation)) {
+      const { initialIndex, index } = event.operation.source;
+      if (initialIndex !== index) {
+        onReorder(initialIndex, index);
+      }
     }
   };
 
@@ -239,26 +209,18 @@ const EditableImageList = ({
 
   return (
     <div className={className}>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-        modifiers={[verticalLockModifier]}>
-        <SortableContext
-          items={thumbnails.map((item) => item.id)}
-          strategy={verticalListSortingStrategy}>
-          {thumbnails.map((thumbnail, index) => (
-            <SortableImageItem
-              key={thumbnail.id}
-              item={thumbnail}
-              index={index}
-              onRemove={onRemove}
-              disabled={disabled}
-              showDragHandle={thumbnails.length > 1}
-            />
-          ))}
-        </SortableContext>
-      </DndContext>
+      <DragDropProvider sensors={IMAGE_LIST_SENSORS} onDragEnd={handleDragEnd}>
+        {thumbnails.map((thumbnail, index) => (
+          <SortableImageItem
+            key={thumbnail.id}
+            item={thumbnail}
+            index={index}
+            onRemove={onRemove}
+            disabled={disabled}
+            showDragHandle={thumbnails.length > 1}
+          />
+        ))}
+      </DragDropProvider>
     </div>
   );
 };

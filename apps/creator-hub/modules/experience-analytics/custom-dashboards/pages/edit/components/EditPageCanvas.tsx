@@ -16,21 +16,10 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import type { DragEndEvent, DragMoveEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core';
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useDroppable,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  rectSortingStrategy,
-  sortableKeyboardCoordinates,
-} from '@dnd-kit/sortable';
+import { closestCenter } from '@dnd-kit/collision';
+import { PointerActivationConstraints } from '@dnd-kit/dom';
+import type { DragEndEvent, DragMoveEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/react';
+import { DragDropProvider, KeyboardSensor, PointerSensor, useDroppable } from '@dnd-kit/react';
 import type { ChartCardResizeCue } from '@rbx/analytics-ui';
 import {
   Button,
@@ -191,7 +180,15 @@ const RESIZE_UP_TRIGGER_TARGET_RATIO = 0.7;
 const RESIZE_PREVIEW_ANCHOR_BLEND_RANGE_PX = 48;
 const POINTER_DRAG_ACTIVATION_DISTANCE_PX = 6;
 const MULTI_TILE_RESIZE_MIN_WIDTH_RATIO = 0.35;
-const EMPTY_SENSORS: ReturnType<typeof useSensors> = [];
+const EMPTY_SENSORS: [] = [];
+const DASHBOARD_SENSORS = [
+  PointerSensor.configure({
+    activationConstraints: [
+      new PointerActivationConstraints.Distance({ value: POINTER_DRAG_ACTIVATION_DISTANCE_PX }),
+    ],
+  }),
+  KeyboardSensor,
+];
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
@@ -325,7 +322,7 @@ const isDragDataRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
 const getActiveResizeHandle = (event: DragStartEvent): ActiveResizeHandle | null => {
-  const data = event.active.data.current;
+  const data = event.operation.source?.data;
   if (!isDragDataRecord(data) || data.kind !== 'chart-resize-handle') {
     return null;
   }
@@ -506,15 +503,16 @@ const DroppableChartSkeleton: FC<{
   readonly isActiveDropTarget: boolean;
   readonly layoutStyle?: CSSProperties;
 }> = ({ id, isActiveDropTarget, layoutStyle }) => {
-  const { setNodeRef } = useDroppable({
+  const { ref } = useDroppable({
     id,
+    collisionDetector: closestCenter,
     data: {
       kind: 'chart-empty-slot',
     },
   });
   return (
     <div
-      ref={setNodeRef}
+      ref={ref}
       aria-hidden='true'
       className={`${styles.chartSkeleton} ${
         isActiveDropTarget ? styles.chartSkeletonActiveDrop : ''
@@ -552,16 +550,17 @@ const ChartAddPlaceholderCard: FC<ChartAddPlaceholderCardProps> = ({
 }) => {
   const headlineId = useId();
   const descriptionId = useId();
-  const { setNodeRef } = useDroppable({
+  const { ref } = useDroppable({
     id: droppableId ?? DISABLED_CHART_ADD_PLACEHOLDER_DROPPABLE_ID,
     disabled: !droppableId,
+    collisionDetector: closestCenter,
     data: {
       kind: 'chart-empty-slot',
     },
   });
   return (
     <section
-      ref={setNodeRef}
+      ref={ref}
       aria-labelledby={headlineId}
       aria-describedby={descriptionId}
       className={`flex flex-col items-center justify-center text-align-x-center width-full ${
@@ -1660,17 +1659,6 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
     setActiveResizePreviewBounds(null);
   }, []);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: POINTER_DRAG_ACTIVATION_DISTANCE_PX,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
-
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
       const nextResizeHandle = getActiveResizeHandle(event);
@@ -1711,7 +1699,11 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
         setOverId((current) => (current === null ? current : null));
         return;
       }
-      const nextActiveId = String(event.active.id);
+      const source = event.operation.source;
+      if (!source) {
+        return;
+      }
+      const nextActiveId = String(source.id);
       setActiveId((current) => (current === nextActiveId ? current : nextActiveId));
     },
     [chartRows],
@@ -1722,7 +1714,7 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
       if (activeResizeHandle) {
         return;
       }
-      const nextOverId = event.over ? String(event.over.id) : null;
+      const nextOverId = event.operation.target ? String(event.operation.target.id) : null;
       const emptySlotTarget = getEmptyChartSlotTarget(nextOverId);
       if (activeId && emptySlotTarget) {
         const sourcePosition = findTilePosition(chartRows, activeId);
@@ -1740,13 +1732,18 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
       if (!activeResizeHandle) {
         return;
       }
-      setActiveResizeDeltaX((current) => (current === event.delta.x ? current : event.delta.x));
+      const deltaX = event.operation.position.delta.x;
+      setActiveResizeDeltaX((current) => (current === deltaX ? current : deltaX));
     },
     [activeResizeHandle],
   );
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
+      if (event.canceled) {
+        resetDragState();
+        return;
+      }
       if (activeResizeHandle) {
         const resizeAction = getResizeActionForDrag(
           chartRows,
@@ -1764,12 +1761,14 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
         return;
       }
 
-      const active = String(event.active.id);
-      const over = event.over ? String(event.over.id) : null;
+      const source = event.operation.source;
+      const target = event.operation.target;
       resetDragState();
-      if (!over || active === over) {
+      if (!source || !target || source.id === target.id) {
         return;
       }
+      const active = String(source.id);
+      const over = String(target.id);
       const emptySlotTarget = getEmptyChartSlotTarget(over);
       const nextRows = emptySlotTarget
         ? moveTileToEmptySlot(chartRows, active, emptySlotTarget.rowIndex)
@@ -1802,6 +1801,8 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
     },
     [activeId, activeResizeHandle, itemIds, overId],
   );
+
+  const getIndex = useCallback((itemId: string) => itemIds.indexOf(itemId), [itemIds]);
 
   const getResizeCue = useCallback(
     (itemId: string): ChartCardResizeCue => {
@@ -1904,10 +1905,11 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
     () => ({
       // Narrow viewports stack full-width tiles — drag/resize is desktop-only.
       isEnabled: !isNarrowViewport,
+      getIndex,
       getDropIndicator,
       getResizeOptions,
     }),
-    [getDropIndicator, getResizeOptions, isNarrowViewport],
+    [getDropIndicator, getIndex, getResizeOptions, isNarrowViewport],
   );
 
   const resizePreviewBodyRows = useMemo(() => {
@@ -1966,40 +1968,36 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
             onMouseDownCapture={handleCanvasMouseDownCapture}
             style={canvasContainerStyle}>
             <AnalyticsChartContainerDragDropProvider value={dragDropContextValue}>
-              <DndContext
-                sensors={isNarrowViewport ? EMPTY_SENSORS : sensors}
-                collisionDetection={closestCenter}
+              <DragDropProvider
+                sensors={isNarrowViewport ? EMPTY_SENSORS : DASHBOARD_SENSORS}
                 onDragStart={handleDragStart}
                 onDragOver={handleDragOver}
                 onDragMove={handleDragMove}
-                onDragCancel={resetDragState}
                 onDragEnd={handleDragEnd}>
-                <SortableContext items={itemIds} strategy={rectSortingStrategy}>
-                  <CanvasSelectionStoreContext.Provider value={selectionStore}>
-                    <DashboardCanvasBody
-                      pageConfig={pageConfig}
-                      summaries={summaries}
-                      chartRows={synthesizedChartRows}
-                      chartPlacements={chartPlacements}
-                      chartDragPreviewRows={chartDragPreviewRows}
-                      activeChartDragId={activeId}
-                      summaryCardCount={summaryCards.length}
-                      activeEmptySlotId={getEmptyChartSlotTarget(overId) ? overId : null}
-                      isNarrowViewport={isNarrowViewport}
-                      onAddSummaryCard={onAddSummaryCard}
-                      onAddChart={onAddChart}
-                      onSelectSummaryCard={selectSummaryCard}
-                      onSelectChart={selectChartTile}
-                      onEditSummaryCard={onEditSummaryCard}
-                      onEditChart={onEditChart}
-                      onDuplicateSummaryCard={handleDuplicateSummaryCard}
-                      onDuplicateChart={handleDuplicateChart}
-                      onRemoveSummaryCard={handleRemoveSummaryCard}
-                      onRemoveChart={handleRemoveChart}
-                    />
-                  </CanvasSelectionStoreContext.Provider>
-                </SortableContext>
-              </DndContext>
+                <CanvasSelectionStoreContext.Provider value={selectionStore}>
+                  <DashboardCanvasBody
+                    pageConfig={pageConfig}
+                    summaries={summaries}
+                    chartRows={synthesizedChartRows}
+                    chartPlacements={chartPlacements}
+                    chartDragPreviewRows={chartDragPreviewRows}
+                    activeChartDragId={activeId}
+                    summaryCardCount={summaryCards.length}
+                    activeEmptySlotId={getEmptyChartSlotTarget(overId) ? overId : null}
+                    isNarrowViewport={isNarrowViewport}
+                    onAddSummaryCard={onAddSummaryCard}
+                    onAddChart={onAddChart}
+                    onSelectSummaryCard={selectSummaryCard}
+                    onSelectChart={selectChartTile}
+                    onEditSummaryCard={onEditSummaryCard}
+                    onEditChart={onEditChart}
+                    onDuplicateSummaryCard={handleDuplicateSummaryCard}
+                    onDuplicateChart={handleDuplicateChart}
+                    onRemoveSummaryCard={handleRemoveSummaryCard}
+                    onRemoveChart={handleRemoveChart}
+                  />
+                </CanvasSelectionStoreContext.Provider>
+              </DragDropProvider>
             </AnalyticsChartContainerDragDropProvider>
           </section>
         </div>

@@ -170,11 +170,10 @@ const ChartCardDragAndResizeContainer: React.FC<ChartCardDragAndResizeContainerP
   const canShowRightResizeHandle = !!(
     effectiveResizeOptions?.isEnabled && effectiveResizeOptions.handles.includes('right')
   );
-  const shouldShowResizeHandles = !!(
+  const shouldShowResizeHandles =
     isHoveringContainer ||
-    effectiveResizeOptions?.isResizing ||
-    effectiveDragAndDropOptions?.isDragging
-  );
+    (effectiveResizeOptions?.isResizing ?? false) ||
+    (effectiveDragAndDropOptions?.isDragging ?? false);
   const shouldShowSnapPreview = !!(
     effectiveResizeOptions?.isResizing &&
     typeof effectiveResizeOptions.snapPreviewWidthPx === 'number' &&
@@ -183,7 +182,7 @@ const ChartCardDragAndResizeContainer: React.FC<ChartCardDragAndResizeContainerP
   const dropTargetHighlightStyle = useMemo(() => {
     const transformOffset = effectiveDragAndDropOptions?.containerTransform;
     if (!transformOffset) {
-      return;
+      return undefined;
     }
     return {
       transform: `translate(${-transformOffset.x}px, ${-transformOffset.y}px)`,
@@ -191,7 +190,7 @@ const ChartCardDragAndResizeContainer: React.FC<ChartCardDragAndResizeContainerP
   }, [effectiveDragAndDropOptions?.containerTransform]);
   useEffect(() => {
     if (typeof document === 'undefined' || !effectiveResizeOptions?.isResizing) {
-      return;
+      return undefined;
     }
 
     const previousCursor = document.body.style.cursor;
@@ -211,6 +210,7 @@ const ChartCardDragAndResizeContainer: React.FC<ChartCardDragAndResizeContainerP
   return (
     <div
       ref={effectiveDragAndDropOptions?.containerRef}
+      data-chart-container-item-id={effectiveDragAndDropOptions?.containerItemId}
       style={effectiveDragAndDropOptions?.containerStyle}
       {...effectiveDragAndDropOptions?.containerAttributes}
       onMouseEnter={() => setIsHoveringContainer(true)}
@@ -244,6 +244,7 @@ const ChartCardDragAndResizeContainer: React.FC<ChartCardDragAndResizeContainerP
       )}
       {canShowLeftResizeHandle && (
         <IconButton
+          data-chart-resize-handle='left'
           {...effectiveResizeOptions?.leftHandleAttributes}
           {...effectiveResizeOptions?.leftHandleListeners}
           aria-label='Resize chart from left edge'
@@ -269,6 +270,7 @@ const ChartCardDragAndResizeContainer: React.FC<ChartCardDragAndResizeContainerP
       )}
       {canShowRightResizeHandle && (
         <IconButton
+          data-chart-resize-handle='right'
           {...effectiveResizeOptions?.rightHandleAttributes}
           {...effectiveResizeOptions?.rightHandleListeners}
           aria-label='Resize chart from right edge'
@@ -294,6 +296,7 @@ const ChartCardDragAndResizeContainer: React.FC<ChartCardDragAndResizeContainerP
       )}
       {effectiveDragAndDropOptions?.isEnabled && (
         <IconButton
+          data-chart-drag-handle
           {...effectiveDragAndDropOptions.handleAttributes}
           {...effectiveDragAndDropOptions.handleListeners}
           aria-label='Drag to reorder chart'

@@ -1,14 +1,10 @@
-import type { CSSProperties, FC, FunctionComponent } from 'react';
+import type { FC, FunctionComponent } from 'react';
 import React, { useCallback, useState } from 'react';
-import type { DragEndEvent } from '@dnd-kit/core';
-import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { PointerActivationConstraints } from '@dnd-kit/dom';
+import { arrayMove } from '@dnd-kit/helpers';
+import type { DragEndEvent } from '@dnd-kit/react';
+import { DragDropProvider, KeyboardSensor, PointerSensor } from '@dnd-kit/react';
+import { isSortableOperation, useSortable } from '@dnd-kit/react/sortable';
 // TODO: Replace with `@rbx/ui` or `@rbx/foundation-ui` import — `createFilterOptions` is not yet exported from either
 import { createFilterOptions } from '@mui/material/Autocomplete';
 import { useTranslation } from '@rbx/intl';
@@ -33,27 +29,26 @@ export type SongArtistsSectionProps = {
 
 type SortableArtistChipProps = {
   artist: SongArtist;
+  index: number;
   onDelete: (event: React.SyntheticEvent) => void;
 };
 
 const getArtistLabel = (artist: SongArtist) => artist.displayName ?? artist.username;
 
-const SortableArtistChip: FC<SortableArtistChipProps> = ({ artist, onDelete }) => {
+const SortableArtistChip: FC<SortableArtistChipProps> = ({ artist, index, onDelete }) => {
   const { translate } = useTranslation();
-  const { attributes, isDragging, listeners, setNodeRef, transform, transition } = useSortable({
+  const { handleRef, isDragging, ref } = useSortable({
     id: artist.userId,
+    index,
   });
   const artistLabel = getArtistLabel(artist);
 
-  const style: CSSProperties = {
-    opacity: isDragging ? 0.4 : undefined,
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
   return (
-    <div ref={setNodeRef} style={style} className='flex items-center width-full padding-y-xsmall'>
-      <div className='flex items-center cursor-pointer' {...attributes} {...listeners}>
+    <div
+      ref={ref}
+      style={{ opacity: isDragging ? 0.4 : undefined }}
+      className='flex items-center width-full padding-y-xsmall'>
+      <div ref={handleRef} className='flex items-center cursor-pointer'>
         <DragHandleIcon style={{ fontSize: 18 }} color='disabled' />
       </div>
       <div className='grow-1 margin-left-small'>
@@ -87,6 +82,13 @@ const getOptionLabel = (option: SongArtist) => getArtistLabel(option);
 const isOptionEqualToValue = (option: SongArtist, value: SongArtist) =>
   option.userId === value.userId;
 
+const SONG_ARTIST_SENSORS = [
+  PointerSensor.configure({
+    activationConstraints: [new PointerActivationConstraints.Distance({ value: 5 })],
+  }),
+  KeyboardSensor,
+];
+
 const SongArtistsSection: FunctionComponent<SongArtistsSectionProps> = ({
   artists,
   onArtistsChange,
@@ -100,19 +102,14 @@ const SongArtistsSection: FunctionComponent<SongArtistsSectionProps> = ({
     (friend) => !artists.some((artist) => artist.userId === friend.userId),
   );
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
   const handleDragEnd = useCallback(
-    ({ active, over }: DragEndEvent) => {
-      if (over && active.id !== over.id) {
-        const oldIndex = artists.findIndex((a) => a.userId === active.id);
-        const newIndex = artists.findIndex((a) => a.userId === over.id);
-        if (oldIndex !== -1 && newIndex !== -1) {
-          onArtistsChange(arrayMove(artists, oldIndex, newIndex));
-        }
+    (event: DragEndEvent) => {
+      if (event.canceled || !event.operation.source || !isSortableOperation(event.operation)) {
+        return;
+      }
+      const { initialIndex, index } = event.operation.source;
+      if (initialIndex !== index) {
+        onArtistsChange(arrayMove(artists, initialIndex, index));
       }
     },
     [artists, onArtistsChange],
@@ -198,21 +195,20 @@ const SongArtistsSection: FunctionComponent<SongArtistsSectionProps> = ({
       />
       {artists.length > 0 && (
         <>
-          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-            <SortableContext items={artists.map((v) => v.userId)}>
-              <div className='flex flex-col'>
-                {artists.map((artist) => (
-                  <SortableArtistChip
-                    key={artist.userId}
-                    artist={artist}
-                    onDelete={() =>
-                      onArtistsChange(artists.filter((a) => a.userId !== artist.userId))
-                    }
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
+          <DragDropProvider sensors={SONG_ARTIST_SENSORS} onDragEnd={handleDragEnd}>
+            <div className='flex flex-col'>
+              {artists.map((artist, index) => (
+                <SortableArtistChip
+                  key={artist.userId}
+                  artist={artist}
+                  index={index}
+                  onDelete={() =>
+                    onArtistsChange(artists.filter((a) => a.userId !== artist.userId))
+                  }
+                />
+              ))}
+            </div>
+          </DragDropProvider>
           <Typography variant='caption' color='secondary'>
             {`${artists.length}/${maxArtists}`}
           </Typography>

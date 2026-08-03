@@ -1,20 +1,8 @@
 import React, { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type Modifier,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+import { PointerActivationConstraints } from '@dnd-kit/dom';
+import { move } from '@dnd-kit/helpers';
+import type { DragEndEvent } from '@dnd-kit/react';
+import { DragDropProvider, KeyboardSensor, PointerSensor } from '@dnd-kit/react';
 import { Snackbar } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
@@ -52,12 +40,16 @@ type ConditionsTabContentProps = {
   onConditionMutationSuccess?: () => void;
 };
 
-const verticalLockModifier: Modifier = ({ transform }) => ({
-  ...transform,
-  x: 0,
-});
-
 const EMPTY_LOCKED_KEYS: ReadonlySet<string> = new Set();
+const DRAG_ACTIVATION_DISTANCE_PX = 5;
+const CONDITION_LIST_SENSORS = [
+  PointerSensor.configure({
+    activationConstraints: [
+      new PointerActivationConstraints.Distance({ value: DRAG_ACTIVATION_DISTANCE_PX }),
+    ],
+  }),
+  KeyboardSensor,
+];
 
 const deriveDisplayKeys = (
   orderedKeys: string[],
@@ -147,17 +139,13 @@ const ConditionsTabContent: FC<ConditionsTabContentProps> = ({
   const previousOrderRef = useRef<string[]>(orderedKeys);
 
   useEffect(() => {
+    // eslint-disable-next-line react/react-compiler -- Resets optimistic ordering when authoritative server ordering changes.
     setOrderedKeys(initialOrder);
   }, [initialOrder]);
 
   const displayKeys = useMemo(
     () => deriveDisplayKeys(orderedKeys, mergedRules, !isStagedConditionOrderActive),
     [isStagedConditionOrderActive, orderedKeys, mergedRules],
-  );
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   const reorderErrorLabel = tPendingTranslation(
@@ -188,19 +176,13 @@ const ConditionsTabContent: FC<ConditionsTabContentProps> = ({
         return;
       }
 
-      const { active, over } = event;
-      if (!over || active.id === over.id) {
+      if (event.canceled) {
         return;
       }
-
-      const oldIndex = displayKeys.indexOf(String(active.id));
-      const newIndex = displayKeys.indexOf(String(over.id));
-      if (oldIndex === -1 || newIndex === -1) {
+      const newOrder = move(displayKeys, event);
+      if (newOrder === displayKeys) {
         return;
       }
-
-      const newOrder = arrayMove(displayKeys, oldIndex, newIndex);
-
       previousOrderRef.current = orderedKeys;
       setOrderedKeys(newOrder);
 
@@ -292,34 +274,29 @@ const ConditionsTabContent: FC<ConditionsTabContentProps> = ({
           <div className='shrink-0 min-height-1200 padding-y-medium padding-x-xlarge width-[124px]' />
         </div>
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-          modifiers={[verticalLockModifier]}>
-          <SortableContext items={displayKeys} strategy={verticalListSortingStrategy}>
-            <div className='flex flex-col gap-xlarge width-full'>
-              {displayKeys.map((key) => {
-                const rule = mergedRules.get(key);
-                if (!rule) {
-                  return null;
-                }
-                return (
-                  <ConditionRuleListItem
-                    key={key}
-                    conditionKey={key}
-                    rule={rule}
-                    isStaged={draftRules?.has(key) ?? false}
-                    hasStagedChanges={hasAnyStagedChanges}
-                    lockedByExperiment={lockedConditionKeys.has(key)}
-                    disabled={!canConfigure}
-                    onMutationSuccess={onConditionMutationSuccess}
-                  />
-                );
-              })}
-            </div>
-          </SortableContext>
-        </DndContext>
+        <DragDropProvider sensors={CONDITION_LIST_SENSORS} onDragEnd={handleDragEnd}>
+          <div className='flex flex-col gap-xlarge width-full'>
+            {displayKeys.map((key, index) => {
+              const rule = mergedRules.get(key);
+              if (!rule) {
+                return null;
+              }
+              return (
+                <ConditionRuleListItem
+                  key={key}
+                  conditionKey={key}
+                  index={index}
+                  rule={rule}
+                  isStaged={draftRules?.has(key) ?? false}
+                  hasStagedChanges={hasAnyStagedChanges}
+                  lockedByExperiment={lockedConditionKeys.has(key)}
+                  disabled={!canConfigure}
+                  onMutationSuccess={onConditionMutationSuccess}
+                />
+              );
+            })}
+          </div>
+        </DragDropProvider>
       </div>
 
       {errorSnackbarMessage ? (

@@ -1,9 +1,10 @@
-import { arrayMove } from '@dnd-kit/sortable';
 import type { FC, FunctionComponent } from 'react';
 import { useCallback, useMemo } from 'react';
+import { arrayMove } from '@dnd-kit/helpers';
 import { Card, Grid, Skeleton, useMediaQuery } from '@rbx/ui';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import gamesClient from '@modules/clients/games';
+import type { GameDetailResponse, MultigetGameVotesResponse } from '@modules/clients/games/games';
 import { ExperienceTileStyles } from '@modules/experience-analytics-shared/constants/tileConstants';
 import { useAnalyticsWatchlist } from '@modules/experience-analytics-shared/context/AnalyticsWatchlistProvider';
 import useOwner from '@modules/experience-analytics-shared/context/useOwner';
@@ -18,6 +19,33 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import useWatchlistDragAndDropItemStyles from './WatchlistDragAndDropItem.styles';
 import type { WatchlistExperienceTileSpec } from './WatchlistExperienceTile';
 import WatchlistExperienceTile from './WatchlistExperienceTile';
+
+const MOBILE_LOADING_TILE_COUNT = 5;
+type GameVoteResponse = NonNullable<MultigetGameVotesResponse['data']>[number];
+
+const RenderTile: FunctionComponent<{
+  data: { id: string; exp: WatchlistExperienceTileSpec };
+}> = ({ data }) => (
+  <div
+    style={{
+      width: ExperienceTileStyles.small.maxWidth,
+      height: ExperienceTileStyles.small.height,
+    }}>
+    <WatchlistExperienceTile {...data.exp} styleConfig={ExperienceTileStyles.small} />
+  </div>
+);
+
+const LoadingTile: FunctionComponent = () => (
+  <div
+    style={{
+      width: ExperienceTileStyles.small.maxWidth,
+      height: ExperienceTileStyles.small.height,
+    }}>
+    <Card>
+      <Skeleton animate variant='rectangular' />
+    </Card>
+  </div>
+);
 
 const WatchlistExperienceTiles: FC = () => {
   const { translate } = useRAQIV2TranslationDependencies();
@@ -53,7 +81,13 @@ const WatchlistExperienceTiles: FC = () => {
   // Spread fetches to game details and votes
   const fetchExperienceDetails = useCallback(async (ids: string[]) => {
     const response = await gamesClient.getDetails(ids.map((id) => Number(id)));
-    return new Map(response?.data?.map((data) => [data.id?.toString() as string, data]));
+    const detailsById = new Map<string, GameDetailResponse>();
+    response?.data?.forEach((data) => {
+      if (data.id !== undefined) {
+        detailsById.set(data.id.toString(), data);
+      }
+    });
+    return detailsById;
   }, []);
   const {
     data: experienceDetailsData,
@@ -64,7 +98,13 @@ const WatchlistExperienceTiles: FC = () => {
 
   const fetchVotesData = useCallback(async (ids: string[]) => {
     const response = await gamesClient.multigetGameVotes(ids.map((id) => Number(id)));
-    return new Map(response?.data?.map((data) => [data.id?.toString() as string, data]));
+    const votesById = new Map<string, GameVoteResponse>();
+    response?.data?.forEach((data) => {
+      if (data.id !== undefined) {
+        votesById.set(data.id.toString(), data);
+      }
+    });
+    return votesById;
   }, []);
   const { data: votesData } = useMappedApiRequest(watchlistExperienceIds, fetchVotesData);
 
@@ -125,7 +165,7 @@ const WatchlistExperienceTiles: FC = () => {
   const reorderWatchlist = useCallback(
     (originIndex: number, resultIndex: number) => {
       const reorderedIds = arrayMove(watchlistExperienceIds, originIndex, resultIndex);
-      upsertWatchlist(reorderedIds, true);
+      void upsertWatchlist(reorderedIds, true);
     },
     [watchlistExperienceIds, upsertWatchlist],
   );
@@ -170,34 +210,6 @@ const WatchlistExperienceTiles: FC = () => {
     ],
   );
 
-  // NOTE(shumingxu, 10/31/2023): Will do a refactor later to clean this up by
-  // separating mobile and desktop views into separate components.
-  const RenderTile: FunctionComponent<{
-    data: { id: string; exp: WatchlistExperienceTileSpec };
-  }> = ({ data }) => {
-    return (
-      <div
-        style={{
-          width: ExperienceTileStyles.small.maxWidth,
-          height: ExperienceTileStyles.small.height,
-        }}>
-        <WatchlistExperienceTile {...data.exp} styleConfig={ExperienceTileStyles.small} />
-      </div>
-    );
-  };
-  const LoadingTile: FunctionComponent = () => {
-    return (
-      <div
-        style={{
-          width: ExperienceTileStyles.small.maxWidth,
-          height: ExperienceTileStyles.small.height,
-        }}>
-        <Card>
-          <Skeleton animate variant='rectangular' />
-        </Card>
-      </div>
-    );
-  };
   const watchlistCarouselData = useMemo(
     () =>
       experiences.map((exp) => ({
@@ -210,7 +222,7 @@ const WatchlistExperienceTiles: FC = () => {
     () =>
       isDetailsLoading ? (
         <LoadingCarousel>
-          {new Array(5).fill(0).map((_, id) => (
+          {Array.from({ length: MOBILE_LOADING_TILE_COUNT }, (_, id) => (
             /* eslint-disable-next-line react/no-array-index-key -- NOTE(jcountryman, 03/06/24): Not important since this are
             // throwaway components that do not have a true lifecycle in application 
              */

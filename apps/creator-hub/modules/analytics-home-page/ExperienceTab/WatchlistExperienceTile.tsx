@@ -1,6 +1,6 @@
-import { useSortable } from '@dnd-kit/sortable';
 import type { FC } from 'react';
 import React, { useCallback, useRef, useState } from 'react';
+import { useDragOperation } from '@dnd-kit/react';
 import { CloseIcon, Fab } from '@rbx/ui';
 import AnalyticsExperienceTile, {
   type AnalyticsExperienceTileSpec,
@@ -22,12 +22,13 @@ const WatchlistExperienceTile: FC<WatchlistExperienceTileSpec> = (spec) => {
   const { removeItem } = useAnalyticsWatchlist();
   const [isHover, setIsHover] = useState(false);
   const containerRef = useRef(null);
-  const { isDragging } = useSortable({ id: universeId.toString() });
+  const { source } = useDragOperation();
+  const isDragging = source?.id === universeId.toString();
 
   const onRemoveClick = useCallback<NonNullable<React.ComponentProps<typeof Fab>['onClick']>>(
     (e) => {
       e.preventDefault();
-      removeItem(universeId.toString());
+      void removeItem(universeId.toString());
     },
     [removeItem, universeId],
   );

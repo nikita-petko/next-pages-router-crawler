@@ -17,6 +17,7 @@ export type AnalyticsChartContainerResizeOptions = {
 
 type AnalyticsChartContainerDragDropContextValue = {
   isEnabled: boolean;
+  getIndex: (itemId: string) => number;
   getDropIndicator: (itemId: string) => ChartCardDropIndicator;
   getResizeOptions?: (itemId: string) => AnalyticsChartContainerResizeOptions;
 };

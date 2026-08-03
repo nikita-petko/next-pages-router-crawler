@@ -1,9 +1,18 @@
-import { useDraggable } from '@dnd-kit/core';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import React, { useMemo } from 'react';
-import { ChartCardDragDropProvider, type ChartCardResizeSide } from '@rbx/analytics-ui';
-import type { AnalyticsChartContainerResizeOptions } from './AnalyticsChartContainerDragDropContext';
+import React, { useCallback, useMemo } from 'react';
+import { closestCenter } from '@dnd-kit/collision';
+import { Feedback } from '@dnd-kit/dom';
+import { SortableKeyboardPlugin } from '@dnd-kit/dom/sortable';
+import { useDraggable } from '@dnd-kit/react';
+import { useSortable } from '@dnd-kit/react/sortable';
+import {
+  ChartCardDragDropProvider,
+  type ChartCardDragDropOptions,
+  type ChartCardResizeSide,
+} from '@rbx/analytics-ui';
+import {
+  type AnalyticsChartContainerResizeOptions,
+  useAnalyticsChartContainerDragDropContext,
+} from './AnalyticsChartContainerDragDropContext';
 
 type SortableAnalyticsChartContainerProps = {
   itemId: string;
@@ -11,15 +20,24 @@ type SortableAnalyticsChartContainerProps = {
   resizeOptions?: AnalyticsChartContainerResizeOptions;
 };
 
+const RESIZE_HANDLE_PLUGINS = [Feedback.configure({ feedback: 'none' })];
+// Chart rows render their own preview and commit custom row-layout mutations. Keep keyboard sorting,
+// but do not let the default optimistic plugin reparent chart containers outside their grid wrappers.
+const CHART_SORTABLE_PLUGINS = [SortableKeyboardPlugin];
+
 const SortableAnalyticsChartContainer: React.FC<
   React.PropsWithChildren<SortableAnalyticsChartContainerProps>
 > = ({ itemId, dropIndicator, resizeOptions, children }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const dragDropContext = useAnalyticsChartContainerDragDropContext();
+  const { handleRef, isDragging, ref } = useSortable({
     id: itemId,
+    index: dragDropContext?.getIndex(itemId) ?? -1,
+    collisionDetector: closestCenter,
+    plugins: CHART_SORTABLE_PLUGINS,
   });
   const canResizeFromLeft = !!resizeOptions?.handles.includes('left');
   const canResizeFromRight = !!resizeOptions?.handles.includes('right');
-  const leftResizeHandle = useDraggable({
+  const { isDragging: isLeftResizeHandleDragging, ref: leftResizeHandleRef } = useDraggable({
     id: `chart-resize-handle:${itemId}:left`,
     disabled: !canResizeFromLeft,
     data: {
@@ -27,8 +45,9 @@ const SortableAnalyticsChartContainer: React.FC<
       itemId,
       side: 'left' as ChartCardResizeSide,
     },
+    plugins: RESIZE_HANDLE_PLUGINS,
   });
-  const rightResizeHandle = useDraggable({
+  const { isDragging: isRightResizeHandleDragging, ref: rightResizeHandleRef } = useDraggable({
     id: `chart-resize-handle:${itemId}:right`,
     disabled: !canResizeFromRight,
     data: {
@@ -36,61 +55,63 @@ const SortableAnalyticsChartContainer: React.FC<
       itemId,
       side: 'right' as ChartCardResizeSide,
     },
+    plugins: RESIZE_HANDLE_PLUGINS,
   });
   let activeResizeHandle: ChartCardResizeSide | null = null;
-  if (leftResizeHandle.isDragging) {
+  if (isLeftResizeHandleDragging) {
     activeResizeHandle = 'left';
-  } else if (rightResizeHandle.isDragging) {
+  } else if (isRightResizeHandleDragging) {
     activeResizeHandle = 'right';
   }
-  const transformValue = useMemo(() => {
-    if (!transform) {
-      return;
-    }
-    // Keep chart cards from stretching when moving between
-    // full-width and row-width slots during sorting.
-    return CSS.Transform.toString({
-      ...transform,
-      scaleX: 1,
-      scaleY: 1,
-    });
-  }, [transform]);
+  const connectContainerRef = useCallback(
+    (element: HTMLDivElement | null) => {
+      ref(element);
+      // `ChartCardDragDropProvider` renders these controls before this container ref runs.
+      // Their data attributes are a cross-package contract with
+      // `@rbx/analytics-ui`'s `ChartCardDragAndResizeContainer`.
+      handleRef(element?.querySelector<HTMLButtonElement>('[data-chart-drag-handle]') ?? null);
+      leftResizeHandleRef(
+        canResizeFromLeft
+          ? (element?.querySelector<HTMLButtonElement>('[data-chart-resize-handle="left"]') ?? null)
+          : null,
+      );
+      rightResizeHandleRef(
+        canResizeFromRight
+          ? (element?.querySelector<HTMLButtonElement>('[data-chart-resize-handle="right"]') ??
+              null)
+          : null,
+      );
+    },
+    [
+      canResizeFromLeft,
+      canResizeFromRight,
+      handleRef,
+      leftResizeHandleRef,
+      ref,
+      rightResizeHandleRef,
+    ],
+  );
   const resizePreviewTransform = useMemo(() => {
     if (!activeResizeHandle || !resizeOptions?.previewOffsetXPx) {
-      return;
+      return undefined;
     }
     return `translateX(${resizeOptions.previewOffsetXPx}px)`;
   }, [activeResizeHandle, resizeOptions?.previewOffsetXPx]);
 
-  const dragDropOptions = useMemo(
+  const dragDropOptions = useMemo<ChartCardDragDropOptions>(
     () => ({
       isEnabled: true,
-      containerRef: setNodeRef,
+      containerRef: connectContainerRef,
       containerStyle: {
-        transform: activeResizeHandle ? resizePreviewTransform : transformValue,
+        transform: activeResizeHandle ? resizePreviewTransform : undefined,
         width: resizeOptions?.previewWidthPx,
-        transition: activeResizeHandle ? undefined : transition,
       },
-      containerTransform: transform
-        ? {
-            x: transform.x,
-            y: transform.y,
-          }
-        : undefined,
-      containerAttributes: {
-        'data-chart-container-item-id': itemId,
-      } as React.HTMLAttributes<HTMLDivElement>,
-      handleAttributes: attributes,
-      handleListeners: listeners,
+      containerItemId: itemId,
       isDragging,
       dropIndicator,
       resizeOptions: resizeOptions && {
         isEnabled: resizeOptions.handles.length > 0,
         handles: resizeOptions.handles,
-        leftHandleAttributes: leftResizeHandle.attributes,
-        leftHandleListeners: leftResizeHandle.listeners,
-        rightHandleAttributes: rightResizeHandle.attributes,
-        rightHandleListeners: rightResizeHandle.listeners,
         isResizing: activeResizeHandle !== null,
         activeHandle: activeResizeHandle,
         cue: resizeOptions.cue ?? null,
@@ -100,21 +121,12 @@ const SortableAnalyticsChartContainer: React.FC<
     }),
     [
       activeResizeHandle,
-      attributes,
+      connectContainerRef,
       dropIndicator,
       isDragging,
-      leftResizeHandle.attributes,
-      leftResizeHandle.listeners,
-      listeners,
       resizeOptions,
-      rightResizeHandle.attributes,
-      rightResizeHandle.listeners,
-      setNodeRef,
       itemId,
       resizePreviewTransform,
-      transform,
-      transformValue,
-      transition,
     ],
   );
 

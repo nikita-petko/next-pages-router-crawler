@@ -1,7 +1,6 @@
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import type { FC, CSSProperties } from 'react';
 import { useMemo } from 'react';
+import { useSortable } from '@dnd-kit/react/sortable';
 import { useTranslation } from '@rbx/intl';
 import { DragHandleIcon, IconButton, Tooltip } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
@@ -16,37 +15,26 @@ import VideoPreview from './VideoPreview';
 
 type MediaListItemProps = {
   item: Media;
+  index: number;
   placeId: number;
-  isActiveItem?: boolean;
   isAssetUploading: boolean;
 };
 
-const MediaListItem: FC<MediaListItemProps> = ({
-  item,
-  placeId,
-  isActiveItem,
-  isAssetUploading,
-}) => {
+const MediaListItem: FC<MediaListItemProps> = ({ item, index, placeId, isAssetUploading }) => {
   const { translate } = useTranslationWrapper(useTranslation());
 
   const { type, id: assetId } = item;
-  const {
-    attributes,
-    isDragging,
-    listeners,
-    setNodeRef,
-    setActivatorNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id: assetId });
+  const { handleRef, isDragging, ref } = useSortable({
+    id: assetId,
+    index,
+    disabled: isAssetUploading,
+  });
   const {
     classes: { listItem },
   } = useMediaListStyles();
 
   const style: CSSProperties = {
     opacity: isDragging ? 0.4 : undefined,
-    transform: CSS.Transform.toString(transform),
-    transition,
   };
 
   const preview = useMemo(() => {
@@ -57,13 +45,13 @@ const MediaListItem: FC<MediaListItemProps> = ({
         return <VideoPreview item={item} />;
       default: {
         const exhaustiveCheck: never = type;
-        throw new Error(`Unhandled media type: ${exhaustiveCheck}`);
+        throw new Error(`Unhandled media type: ${String(exhaustiveCheck)}`);
       }
     }
   }, [item, type]);
 
   return (
-    <li ref={setNodeRef} style={style} className={listItem}>
+    <li ref={ref} style={style} className={listItem}>
       {preview}
       <div>
         <MediaListItemOptionMenuButton
@@ -86,11 +74,9 @@ const MediaListItem: FC<MediaListItemProps> = ({
             <IconButton
               aria-label='drag-handle'
               color='inherit'
-              style={{ cursor: isActiveItem ? 'grabbing' : 'grab' }}
-              ref={setActivatorNodeRef}
-              disabled={isAssetUploading}
-              {...attributes}
-              {...listeners}>
+              style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+              ref={handleRef}
+              disabled={isAssetUploading}>
               <DragHandleIcon />
             </IconButton>
           </span>

@@ -1,23 +1,12 @@
-import type { CSSProperties, FC, ReactNode } from 'react';
+import type { FC, ReactNode } from 'react';
 import { useCallback, useMemo, useState } from 'react';
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type Modifier,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { RestrictToVerticalAxis } from '@dnd-kit/abstract/modifiers';
+import { closestCenter } from '@dnd-kit/collision';
+import { PointerActivationConstraints } from '@dnd-kit/dom';
+import { move } from '@dnd-kit/helpers';
+import type { DragEndEvent } from '@dnd-kit/react';
+import { DragDropProvider, KeyboardSensor, PointerSensor } from '@dnd-kit/react';
+import { useSortable } from '@dnd-kit/react/sortable';
 import { useFlag } from '@rbx/flags';
 import {
   Badge,
@@ -68,12 +57,16 @@ import {
 } from '../../hooks/useUniverseRegexes';
 import ErrorReportRuleFormDialog from './ErrorReportRuleFormDialog';
 
-const verticalLockModifier: Modifier = ({ transform }) => ({
-  ...transform,
-  x: 0,
-});
-const VERTICAL_LOCK_MODIFIERS = [verticalLockModifier];
 const DRAG_ACTIVATION_DISTANCE_PX = 5;
+const VERTICAL_SORTABLE_MODIFIERS = [RestrictToVerticalAxis];
+const RULE_LIST_SENSORS = [
+  PointerSensor.configure({
+    activationConstraints: [
+      new PointerActivationConstraints.Distance({ value: DRAG_ACTIVATION_DISTANCE_PX }),
+    ],
+  }),
+  KeyboardSensor,
+];
 const EMPTY_TABLE_VALUE = '-';
 
 const SUGGESTED_RULE_TABLE_COLUMN_KEYS = {
@@ -219,14 +212,18 @@ const LastModifiedCell: FC<{ locale: string; updatedTime: string }> = ({ locale,
 );
 
 const SortableErrorReportRuleRow: FC<{
+  index: number;
   locale: string;
   rule: UniverseRegex;
   onEdit: (rule: UniverseRegex) => void;
   onDelete: (rule: UniverseRegex) => void;
-}> = ({ locale, rule, onEdit, onDelete }) => {
+}> = ({ index, locale, rule, onEdit, onDelete }) => {
   const { translate } = useTranslationWrapper(useTranslation());
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const { handleRef, isDragging, ref } = useSortable({
     id: String(rule.id),
+    index,
+    collisionDetector: closestCenter,
+    modifiers: VERTICAL_SORTABLE_MODIFIERS,
   });
 
   const reorderLabel = translate(
@@ -242,17 +239,12 @@ const SortableErrorReportRuleRow: FC<{
   const handleEditClick = useCallback(() => onEdit(rule), [onEdit, rule]);
   const handleDeleteClick = useCallback(() => onDelete(rule), [onDelete, rule]);
 
-  const rowStyle: CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
   const showsOutput = rule.regexOperation === RegexOperation.Group && rule.output.length > 0;
 
   return (
     <div
-      ref={setNodeRef}
-      style={rowStyle}
+      ref={ref}
+      style={{ opacity: isDragging ? 0.5 : 1 }}
       className='flex items-center width-full stroke-standard stroke-default radius-[12px] padding-y-xsmall'>
       <div className='flex grow-1 shrink-0 basis-0 items-center min-height-1300 min-width-0'>
         <RuleRegexCell>{rule.pattern}</RuleRegexCell>
@@ -263,9 +255,8 @@ const SortableErrorReportRuleRow: FC<{
         <LastModifiedCell locale={locale} updatedTime={rule.updatedTime} />
         <div className='flex gap-xsmall items-center padding-x-xlarge shrink-0'>
           <div
-            className={`[touch-action:none] ${isDragging ? '[cursor:grabbing]' : '[cursor:grab]'}`}
-            {...attributes}
-            {...listeners}>
+            ref={handleRef}
+            className={`[touch-action:none] ${isDragging ? '[cursor:grabbing]' : '[cursor:grab]'}`}>
             <IconButton
               as='button'
               variant='Utility'
@@ -447,28 +438,21 @@ const ErrorReportRulesTabContent: FC = () => {
     [hasSuggestedRules],
   );
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE_PX } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
   const ruleIds = useMemo(() => displayRules.map((rule) => String(rule.id)), [displayRules]);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
-      const { active, over } = event;
-      if (!over || active.id === over.id) {
+      const { source } = event.operation;
+      if (event.canceled || !source) {
         return;
       }
-
-      const oldIndex = ruleIds.indexOf(String(active.id));
-      const newIndex = ruleIds.indexOf(String(over.id));
-      if (oldIndex === -1 || newIndex === -1) {
+      const nextRuleIds = move(ruleIds, event);
+      if (nextRuleIds === ruleIds) {
         return;
       }
-
-      setOptimisticRuleIds(arrayMove(ruleIds, oldIndex, newIndex));
-      reorderRule({ id: Number(active.id), order: newIndex + 1 });
+      const sourceId = String(source.id);
+      setOptimisticRuleIds(nextRuleIds);
+      reorderRule({ id: Number(sourceId), order: nextRuleIds.indexOf(sourceId) + 1 });
     },
     [ruleIds, reorderRule],
   );
@@ -693,25 +677,20 @@ const ErrorReportRulesTabContent: FC = () => {
             />
             <RuleHeaderCell className='width-[124px] shrink-0' />
           </div>
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-            modifiers={VERTICAL_LOCK_MODIFIERS}>
-            <SortableContext items={ruleIds} strategy={verticalListSortingStrategy}>
-              <div className='flex flex-col gap-xlarge width-full'>
-                {displayRules.map((rule) => (
-                  <SortableErrorReportRuleRow
-                    key={rule.id}
-                    locale={resolvedLocale}
-                    rule={rule}
-                    onEdit={openEdit}
-                    onDelete={openDelete}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
+          <DragDropProvider sensors={RULE_LIST_SENSORS} onDragEnd={handleDragEnd}>
+            <div className='flex flex-col gap-xlarge width-full'>
+              {displayRules.map((rule, index) => (
+                <SortableErrorReportRuleRow
+                  key={rule.id}
+                  index={index}
+                  locale={resolvedLocale}
+                  rule={rule}
+                  onEdit={openEdit}
+                  onDelete={openDelete}
+                />
+              ))}
+            </div>
+          </DragDropProvider>
         </div>
       </div>
     );

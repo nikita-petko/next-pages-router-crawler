@@ -1,7 +1,8 @@
 import type { FC } from 'react';
 import React, { useCallback, useEffect, useState } from 'react';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { RestrictToVerticalAxis } from '@dnd-kit/abstract/modifiers';
+import { closestCenter } from '@dnd-kit/collision';
+import { useSortable } from '@dnd-kit/react/sortable';
 import {
   IconButton,
   Menu,
@@ -41,8 +42,11 @@ const floatingSnackbarStyle: React.CSSProperties = {
   pointerEvents: 'auto',
 };
 
+const VERTICAL_SORTABLE_MODIFIERS = [RestrictToVerticalAxis];
+
 type ConditionRuleListItemProps = {
   conditionKey: string;
+  index: number;
   rule: ValidConditionRule;
   isStaged?: boolean;
   hasStagedChanges?: boolean;
@@ -63,6 +67,7 @@ type ConditionRuleListItemProps = {
 
 const ConditionRuleListItem: FC<ConditionRuleListItemProps> = ({
   conditionKey,
+  index,
   rule,
   isStaged = false,
   hasStagedChanges = false,
@@ -77,17 +82,15 @@ const ConditionRuleListItem: FC<ConditionRuleListItemProps> = ({
     useUpdateConditionMutation();
   const { deleteCondition, deleteError } = useDeleteConditionMutation();
 
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const { handleRef, isDragging, ref } = useSortable({
     id: conditionKey,
-    // dnd-kit gates sensors/listeners on this flag. Without it, the outer div
-    // still captures pointer events even if the drag handle IconButton is
-    // visually disabled.
+    index,
     disabled,
+    collisionDetector: closestCenter,
+    modifiers: VERTICAL_SORTABLE_MODIFIERS,
   });
 
   const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
     opacity: isDragging ? 0.5 : 1,
   };
 
@@ -192,6 +195,7 @@ const ConditionRuleListItem: FC<ConditionRuleListItemProps> = ({
     if (!conditionActionError) {
       return;
     }
+    // eslint-disable-next-line react/react-compiler -- Mirrors external mutation errors into dismissible UI state.
     handleConditionActionError(conditionActionError);
   }, [deleteError, handleConditionActionError, updateError]);
 
@@ -217,7 +221,7 @@ const ConditionRuleListItem: FC<ConditionRuleListItemProps> = ({
   return (
     <>
       <div
-        ref={setNodeRef}
+        ref={ref}
         style={{
           ...style,
           display: 'flex',
@@ -267,12 +271,11 @@ const ConditionRuleListItem: FC<ConditionRuleListItemProps> = ({
               flexShrink: 0,
             }}>
             <div
+              ref={handleRef}
               style={{
                 cursor: dragHandleCursor,
                 touchAction: 'none',
-              }}
-              {...(disabled ? {} : attributes)}
-              {...(disabled ? {} : listeners)}>
+              }}>
               <IconButton
                 variant='Utility'
                 size='Medium'

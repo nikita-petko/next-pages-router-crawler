@@ -1,8 +1,9 @@
-import type { DragEndEvent } from '@dnd-kit/core';
-import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext } from '@dnd-kit/sortable';
 import type { ReactElement } from 'react';
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
+import { PointerActivationConstraints } from '@dnd-kit/dom';
+import type { DragEndEvent } from '@dnd-kit/react';
+import { DragDropProvider, KeyboardSensor, PointerSensor } from '@dnd-kit/react';
+import { isSortableOperation } from '@dnd-kit/react/sortable';
 import SortableItem from './SortableItem';
 
 export interface DragDropSortProps {
@@ -24,40 +25,44 @@ const DragDropSort = ({
 }: DragDropSortProps) => {
   const handleDragEnd = useCallback(
     (result: DragEndEvent) => {
-      if (result.over === null) {
+      if (result.canceled || !result.operation.source || !isSortableOperation(result.operation)) {
         return;
       }
-      onReorder(
-        sortItems.findIndex((item) => item.key === result.active.id),
-        sortItems.findIndex((item) => item.key === result.over?.id),
-      );
+      const { initialIndex, index } = result.operation.source;
+      if (initialIndex !== index) {
+        onReorder(initialIndex, index);
+      }
     },
-    [onReorder, sortItems],
+    [onReorder],
   );
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: config?.startDragPixelDistance ?? 0, // in pixels
-      },
-    }),
-    useSensor(KeyboardSensor),
+  const sensors = useMemo(
+    () => [
+      PointerSensor.configure({
+        activationConstraints: [
+          new PointerActivationConstraints.Distance({
+            value: config?.startDragPixelDistance ?? 0,
+          }),
+        ],
+      }),
+      KeyboardSensor,
+    ],
+    [config?.startDragPixelDistance],
   );
 
   return (
-    <DndContext onDragEnd={handleDragEnd} sensors={sensors}>
-      <SortableContext items={sortItems.map((item) => item.key)}>
-        {sortItems.map((item) => (
-          <SortableItem
-            key={item.key}
-            id={item.key}
-            item={item.item}
-            component={itemComponent}
-            disabled={disabled}
-          />
-        ))}
-      </SortableContext>
-    </DndContext>
+    <DragDropProvider onDragEnd={handleDragEnd} sensors={sensors}>
+      {sortItems.map((item, index) => (
+        <SortableItem
+          key={item.key}
+          id={item.key}
+          index={index}
+          item={item.item}
+          component={itemComponent}
+          disabled={disabled}
+        />
+      ))}
+    </DragDropProvider>
   );
 };
 
