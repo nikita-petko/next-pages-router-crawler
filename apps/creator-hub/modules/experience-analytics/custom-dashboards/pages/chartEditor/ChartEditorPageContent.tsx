@@ -1,10 +1,16 @@
 import React, { type FC, useCallback, useMemo, useState } from 'react';
-import { RAQIV2DateRangeType, RAQIV2UIPseudoDimension } from '@rbx/creator-hub-analytics-config';
+import {
+  RAQIV2DateRangeType,
+  RAQIV2Dimension,
+  RAQIV2UIPseudoDimension,
+  RAQIV2UIMetric,
+  type TRAQIV2APIMetric,
+  type TRAQIV2UIMetricFanoutDimensionValues,
+} from '@rbx/creator-hub-analytics-config';
 import { Button, IconButton } from '@rbx/foundation-ui';
 import { useAnalyticsCurrentDateRangeBundle } from '@modules/charts-generic/context/AnalyticsQueryDateRangeBundleContext';
 import { AnnotationType } from '@modules/clients/analytics/annotations/annotations';
 import {
-  ChartConfiguratorFilterOnlyDimensions,
   getChartConfiguratorDimensions,
   getSharedChartConfiguratorDimensions,
 } from '@modules/experience-analytics-shared/chartConfigurator/ChartConfiguratorDimensions';
@@ -12,6 +18,9 @@ import type { TChartConfiguratorMetrics } from '@modules/experience-analytics-sh
 import { DefaultExploreModeDateRanges } from '@modules/experience-analytics-shared/chartConfigurator/resolveChartConfiguratorComputedMetricSources';
 import ChartConfigurator from '@modules/experience-analytics-shared/components/chartConfigurator/ChartConfigurator';
 import ChartConfiguratorPreview from '@modules/experience-analytics-shared/components/chartConfigurator/ChartConfiguratorPreview';
+import { customEventsMetric } from '@modules/experience-analytics-shared/components/chartConfigurator/useChartConfiguratorSourceSelection';
+import { SourceMetricContextProvider } from '@modules/experience-analytics-shared/components/RAQIV2/layout/RAQIV2ConfigurablePageContext';
+import { isNumericUIMetric } from '@modules/experience-analytics-shared/constants/AnalyticsMetricDisplayConfig';
 import {
   getFilterBarDimensionForRAQIV2Dimension,
   type TSupportedFilterBarDimensions,
@@ -22,11 +31,19 @@ import { useUniverseResource } from '@modules/experience-analytics-shared/hooks/
 import ExperienceAnalyticsPageFilterDrawerButton from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/ExperienceAnalyticsPageFilterDrawerButton';
 import type { UIFilters } from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/filterUtils';
 import useTextFilterValidation from '@modules/experience-analytics-shared/text-filter/useTextFilterValidation';
+import {
+  getUIMetricFromAtomicMetricLike,
+  isComputedMetric,
+  isCustomEventsAtomicMetricLike,
+  type MetricLike,
+} from '@modules/experience-analytics-shared/types/ComputedMetric';
 import type {
   AnalyticsPageConfigAnnotationOptions,
   AnalyticsPageConfigDateOptions,
   CreatorAnalyticsPageSurfaceConfig,
 } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
+import { getAPIMetricFromUIMetric } from '@modules/experience-analytics-shared/utils/getAPIMetricFromUIMetric';
+import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
 import { CustomDashboardNotFoundError } from '../../errors';
 import { getChartRows, withChartRows } from '../../layout/dashboardLayout';
 import { appendTileAsRow, flattenRows, replaceTile } from '../../layout/rowLayout';
@@ -68,6 +85,60 @@ const exploreSurfaceAnnotationOptions: AnalyticsPageConfigAnnotationOptions = {
   ],
   defaultAnnotationTypes: [],
   showAnnotationsControl: true,
+};
+
+const resolveApiMetric = (
+  sourceMetric: TChartConfiguratorMetrics,
+  pseudoDimensionValues: TRAQIV2UIMetricFanoutDimensionValues,
+): TRAQIV2APIMetric =>
+  isValidEnumValue(RAQIV2UIMetric, sourceMetric)
+    ? getAPIMetricFromUIMetric(sourceMetric, pseudoDimensionValues)
+    : sourceMetric;
+
+const getChartContextApiMetrics = (metricLike: MetricLike | null): TRAQIV2APIMetric[] => {
+  if (!metricLike) {
+    return [];
+  }
+  const seen = new Set<TRAQIV2APIMetric>();
+  const out: TRAQIV2APIMetric[] = [];
+  const collect = (
+    sourceMetric: TChartConfiguratorMetrics,
+    pseudoDimensionValues: TRAQIV2UIMetricFanoutDimensionValues,
+  ) => {
+    const apiMetric = resolveApiMetric(sourceMetric, pseudoDimensionValues);
+    if (!seen.has(apiMetric)) {
+      seen.add(apiMetric);
+      out.push(apiMetric);
+    }
+  };
+  if (isComputedMetric(metricLike)) {
+    metricLike.sources.forEach((source) => {
+      const sourceMetric = getUIMetricFromAtomicMetricLike(source.metric);
+      if (!isNumericUIMetric(sourceMetric)) {
+        return;
+      }
+      const pseudoDimensionValues = isCustomEventsAtomicMetricLike(source.metric)
+        ? {
+            aggregationType:
+              source.metric.aggregationType ??
+              source.pseudoDimensionValues?.aggregationType ??
+              null,
+            percentile: source.pseudoDimensionValues?.percentile ?? null,
+          }
+        : (source.pseudoDimensionValues ?? { aggregationType: null, percentile: null });
+      collect(sourceMetric, pseudoDimensionValues);
+    });
+    return out;
+  }
+  const sourceMetric = getUIMetricFromAtomicMetricLike(metricLike);
+  if (!isNumericUIMetric(sourceMetric)) {
+    return out;
+  }
+  const pseudoDimensionValues = isCustomEventsAtomicMetricLike(metricLike)
+    ? { aggregationType: metricLike.aggregationType ?? null, percentile: null }
+    : { aggregationType: null, percentile: null };
+  collect(sourceMetric, pseudoDimensionValues);
+  return out;
 };
 
 type ChartEditorPageContentProps = {
@@ -291,12 +362,18 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
     }
     const chartConfiguratorDimensions = getChartConfiguratorDimensions();
     const metricDimensions = chartConfiguratorDimensions[metric] ?? [];
-    const filterOnlySet = new Set<string>(ChartConfiguratorFilterOnlyDimensions);
-    const pseudoDimensionValues = new Set<string>(Object.values(RAQIV2UIPseudoDimension));
     return Array.from(
       new Set(
         metricDimensions
-          .filter((dim) => filterOnlySet.has(dim) && !pseudoDimensionValues.has(dim))
+          .filter((dim) => {
+            if (dim === RAQIV2Dimension.CustomEventName) {
+              return false;
+            }
+            if (dim === RAQIV2UIPseudoDimension.AggregationType && metric === customEventsMetric) {
+              return false;
+            }
+            return true;
+          })
           .flatMap((dim) => {
             const filterDim = getFilterBarDimensionForRAQIV2Dimension(dim);
             return filterDim ? [filterDim] : [];
@@ -312,20 +389,33 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
     [sidebarProps],
   );
 
+  const chartContextApiMetrics = useMemo<TRAQIV2APIMetric[]>(
+    () => getChartContextApiMetrics(chartPreview.chartSpec?.metric ?? null),
+    [chartPreview.chartSpec],
+  );
+
   const filterControlSlot = useMemo(() => {
     if (filterDrawerDimensions.length === 0) {
       return undefined;
     }
     return (
-      <ExperienceAnalyticsPageFilterDrawerButton
-        resource={resource}
-        dimensions={filterDrawerDimensions}
-        filters={customEventFilters}
-        onFiltersChange={onTileFiltersChange}
-        triggerVariant='standard'
-      />
+      <SourceMetricContextProvider metrics={chartContextApiMetrics}>
+        <ExperienceAnalyticsPageFilterDrawerButton
+          resource={resource}
+          dimensions={filterDrawerDimensions}
+          filters={customEventFilters}
+          onFiltersChange={onTileFiltersChange}
+          triggerVariant='plain'
+        />
+      </SourceMetricContextProvider>
     );
-  }, [customEventFilters, filterDrawerDimensions, onTileFiltersChange, resource]);
+  }, [
+    chartContextApiMetrics,
+    customEventFilters,
+    filterDrawerDimensions,
+    onTileFiltersChange,
+    resource,
+  ]);
 
   const draftTile = useMemo(() => {
     if (!metric) {

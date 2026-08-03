@@ -31,7 +31,7 @@ type ExperienceAnalyticsFilterDrawerButtonProps = {
   filters: UIFilters;
   onFiltersChange: (filters: UIFilters) => void;
   loggingTarget?: LoggingTarget;
-  triggerVariant?: 'default' | 'utilityPlus' | 'standard';
+  triggerVariant?: 'default' | 'utilityPlus' | 'standard' | 'plain';
   triggerLabel?: string;
 };
 
@@ -110,9 +110,9 @@ const ExperienceAnalyticsFilterDrawerButton: FC<ExperienceAnalyticsFilterDrawerB
 
   const foundationButton = (
     <FoundationButton
-      variant={triggerVariant === 'standard' ? 'Standard' : 'Utility'}
-      size={triggerVariant === 'standard' ? 'Medium' : 'Small'}
-      icon={triggerVariant === 'standard' ? undefined : 'icon-filled-plus-large'}
+      variant={triggerVariant === 'utilityPlus' ? 'Utility' : 'Standard'}
+      size={triggerVariant === 'utilityPlus' ? 'Small' : 'Medium'}
+      icon={triggerVariant === 'utilityPlus' ? 'icon-filled-plus-large' : undefined}
       onClick={openDrawer}>
       {triggerLabel ?? translate(translationKey('Action.FilterBy', TranslationNamespace.Analytics))}
     </FoundationButton>
@@ -127,7 +127,9 @@ const ExperienceAnalyticsFilterDrawerButton: FC<ExperienceAnalyticsFilterDrawerB
       // and manages its own spacing.
       className={triggerVariant === 'default' ? controlBarFilter : undefined}
       onClick={() => logFilterButtonClick()}>
-      {triggerVariant === 'utilityPlus' || triggerVariant === 'standard' ? (
+      {triggerVariant === 'utilityPlus' ||
+      triggerVariant === 'standard' ||
+      triggerVariant === 'plain' ? (
         <>
           {triggerVariant === 'standard' ? (
             // The adjacent control-bar controls render a label above the input,
