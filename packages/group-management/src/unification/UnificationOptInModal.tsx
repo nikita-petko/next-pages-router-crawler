@@ -7,6 +7,7 @@ import { useUnificationOptIn } from '../hooks/useUnificationOptIn';
 import { ModalState } from '../utils/unificationUtils';
 import { BreakingChangesModal } from './BreakingChangesModal';
 import { NoBreakingChangesModal } from './NoBreakingChangesModal';
+import { MigrationCompleteModal } from './UnificationCompleteModal';
 
 export type UnificationOptInModalProps = UseUnificationOptInOptions & {
   getCreatorHubRoleUrl?: (roleId: string) => string;
@@ -19,7 +20,7 @@ const UnificationOptInModalInner: FC<UnificationOptInModalProps> = ({
   ...unificationOptions
 }) => {
   const { ready } = useTranslation();
-  const { modalState, onContinue, onAskLater, breakingChanges } =
+  const { modalState, onContinue, onAskLater, onAcknowledge, breakingChanges } =
     useUnificationOptIn(unificationOptions);
 
   if (!ready) {
@@ -41,8 +42,9 @@ const UnificationOptInModalInner: FC<UnificationOptInModalProps> = ({
           onAskLater={onAskLater}
         />
       );
-    case ModalState.None:
     case ModalState.Migrated:
+      return <MigrationCompleteModal isOpen onAcknowledge={onAcknowledge} />;
+    case ModalState.None:
     default:
       return null;
   }

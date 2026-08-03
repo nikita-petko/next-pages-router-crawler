@@ -1,4 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useRobloxAuthentication } from '@rbx/auth';
+import {
+  useAcknowledgeGroupUnification,
+  useGetGroupUnifiedAcknowledgements,
+} from '../queries/creatorSettingsQueries';
 import {
   useGetMigrationBreakingChanges,
   useGetMigrationStatus,
@@ -23,6 +28,7 @@ export type UseUnificationOptInResult = {
   isLoading: boolean;
   onContinue: () => void;
   onAskLater: () => void;
+  onAcknowledge: () => void;
 };
 
 export function useUnificationOptIn({
@@ -30,14 +36,25 @@ export function useUnificationOptIn({
 }: UseUnificationOptInOptions): UseUnificationOptInResult {
   const [isSnoozedState, setIsSnoozedState] = useState(() => isSnoozed(groupId));
   const [hasContinued, setHasContinued] = useState(false);
+  const [acknowledgedGroupIdsState, setAcknowledgedGroupIdsState] = useState<number[]>([]);
   const isModalSuppressed = isUnificationModalSuppressed();
+  const { user, isFetched: isAuthenticationFetched } = useRobloxAuthentication();
   const { mutate: migrateGroup } = useMigrateGroup();
+  const { mutate: acknowledgeGroupUnification } = useAcknowledgeGroupUnification();
 
   const { data: migrationStatus, isLoading: isStatusLoading } = useGetMigrationStatus(groupId);
 
   const status = migrationStatus?.status;
   const isNotMigrated = status === MIGRATION_STATUS.NOT_MIGRATED;
   const isMigrated = status === MIGRATION_STATUS.MIGRATED;
+
+  const {
+    data: acknowledgedGroupIds,
+    isLoading: isAcknowledgementsLoading,
+    isError: isAcknowledgementsError,
+  } = useGetGroupUnifiedAcknowledgements(user?.id, {
+    enabled: isMigrated,
+  });
 
   const {
     data: breakingChangesData,
@@ -62,7 +79,18 @@ export function useUnificationOptIn({
     }
 
     if (isMigrated) {
-      return ModalState.None;
+      if (
+        !isAuthenticationFetched ||
+        !user ||
+        isAcknowledgementsLoading ||
+        isAcknowledgementsError
+      ) {
+        return ModalState.None;
+      }
+
+      return acknowledgedGroupIds?.includes(groupId) || acknowledgedGroupIdsState.includes(groupId)
+        ? ModalState.None
+        : ModalState.Migrated;
     }
 
     if (isNotMigrated) {
@@ -77,6 +105,13 @@ export function useUnificationOptIn({
     status,
     isModalSuppressed,
     isMigrated,
+    isAuthenticationFetched,
+    user,
+    isAcknowledgementsLoading,
+    isAcknowledgementsError,
+    acknowledgedGroupIds,
+    acknowledgedGroupIdsState,
+    groupId,
     isNotMigrated,
     isSnoozedState,
     hasContinued,
@@ -95,11 +130,28 @@ export function useUnificationOptIn({
     setIsSnoozedState(true);
   }, [groupId]);
 
+  const onAcknowledge = useCallback(() => {
+    if (!user) {
+      return;
+    }
+
+    const updatedGroupIds = [...(acknowledgedGroupIds ?? []), groupId];
+    setAcknowledgedGroupIdsState((currentGroupIds) => [...currentGroupIds, groupId]);
+    acknowledgeGroupUnification({
+      userId: user.id,
+      groupIds: updatedGroupIds,
+    });
+  }, [acknowledgeGroupUnification, acknowledgedGroupIds, groupId, user]);
+
   return {
     modalState,
     breakingChanges,
-    isLoading: isStatusLoading || isBreakingChangesLoading,
+    isLoading:
+      isStatusLoading ||
+      isBreakingChangesLoading ||
+      (isMigrated && (!isAuthenticationFetched || isAcknowledgementsLoading)),
     onContinue,
     onAskLater,
+    onAcknowledge,
   };
 }

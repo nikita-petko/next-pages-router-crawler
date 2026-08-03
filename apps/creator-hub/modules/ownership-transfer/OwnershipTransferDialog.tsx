@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import {
   Button,
@@ -10,8 +10,11 @@ import {
   Divider,
   makeStyles,
 } from '@rbx/ui';
-import type { TransferCreator } from '@modules/clients/ownershipTransferApi';
+import { useAuthentication } from '@modules/authentication/providers';
+import groupsClient from '@modules/clients/groups';
+import { TransferResourceType, type TransferCreator } from '@modules/clients/ownershipTransferApi';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { useAcknowledgeGroupUnification } from '@modules/react-query/creatorSettings/creatorSettingsQueries';
 import {
   useAcceptTransfer,
   useCancelTransfer,
@@ -90,10 +93,12 @@ const OwnershipTransferDialog: React.FC<TOwnershipTransferDialogProps> = ({
   const showTransferSuccess = useShowTransferSuccess();
 
   const { translate } = useTranslation();
+  const { user } = useAuthentication();
   const { mutate: createTransfer, isPending: isCreatingTransfer } = useCreateTransfer();
-  const { mutate: acceptTransfer, isPending: isAcceptingTransfer } = useAcceptTransfer();
+  const { mutateAsync: acceptTransferAsync, isPending: isAcceptingTransfer } = useAcceptTransfer();
   const { mutate: rejectTransfer, isPending: isRejectingTransfer } = useRejectTransfer();
   const { mutate: cancelTransfer, isPending: isCancelingTransfer } = useCancelTransfer();
+  const { mutateAsync: acknowledgeGroupUnificationAsync } = useAcknowledgeGroupUnification();
 
   const [currentStageIndex, setCurrentStageIndex] = useState<number>(0);
 
@@ -115,12 +120,6 @@ const OwnershipTransferDialog: React.FC<TOwnershipTransferDialogProps> = ({
   }, [setCurrentStageIndex, resetState]);
 
   const shouldBeOpen = !!activeVariant;
-
-  useEffect(() => {
-    if (!shouldBeOpen) {
-      resetDialogState();
-    }
-  }, [shouldBeOpen, resetDialogState]);
 
   if (!flowStages) {
     return shouldBeOpen ? <CircularProgress /> : undefined;
@@ -191,20 +190,33 @@ const OwnershipTransferDialog: React.FC<TOwnershipTransferDialogProps> = ({
         },
       );
     },
-    acceptTransfer: () => {
-      acceptTransfer(
-        { resourceId: resource.resourceId, resourceType: resource.resourceType },
-        {
-          onSuccess: () => {
-            showTransferSuccess('acceptTransfer');
-            closeDialog();
-            resetDialogState();
-          },
-          onError: () => {
-            showTransferError('acceptTransfer');
-          },
-        },
-      );
+    acceptTransfer: async () => {
+      try {
+        await acceptTransferAsync({
+          resourceId: resource.resourceId,
+          resourceType: resource.resourceType,
+        });
+
+        if (user && resource.resourceType === TransferResourceType.Group) {
+          try {
+            const status = await groupsClient.getGroupMigrationStatus(resource.resourceId);
+            if (status?.status === 'Migrated') {
+              await acknowledgeGroupUnificationAsync({
+                userId: user.id,
+                groupId: resource.resourceId,
+              });
+            }
+          } catch {
+            // Acknowledging migration is best effort after a successful transfer.
+          }
+        }
+
+        showTransferSuccess('acceptTransfer');
+        closeDialog();
+        resetDialogState();
+      } catch {
+        showTransferError('acceptTransfer');
+      }
     },
   };
 
@@ -248,7 +260,7 @@ const OwnershipTransferDialog: React.FC<TOwnershipTransferDialogProps> = ({
               key={label}
               onClick={() => onClick(actions)}
               disabled={disabled?.(state, mutationStates)}
-              loading={isLoading?.(mutationStates) || false}
+              loading={isLoading?.(mutationStates) ?? false}
               variant={variant}
               color={color}
               size={size}>

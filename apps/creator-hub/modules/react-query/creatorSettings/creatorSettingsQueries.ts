@@ -1,8 +1,35 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
-import type { GenericCreatorSettingType } from '@rbx/client-creator-settings/v1';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  GenericCreatorSettingType,
+  type GenericCreatorSettingType as TGenericCreatorSettingType,
+} from '@rbx/client-creator-settings/v1';
 import type { NotificationChannel } from '@modules/clients/creatorSettings';
 import { genericCreatorSettingsClient } from '@modules/clients/creatorSettings';
 import getCreatorSettings from './creatorSettingsRequests';
+
+const GROUP_UNIFIED_ACKNOWLEDGEMENT_SETTING_TYPE =
+  GenericCreatorSettingType.GroupUnifiedAcknowledgement;
+
+const parseAcknowledgedGroupIds = (settingValue: string | undefined): number[] => {
+  if (!settingValue) {
+    return [];
+  }
+
+  const parsedValue: unknown = JSON.parse(settingValue);
+  if (!Array.isArray(parsedValue)) {
+    throw new TypeError('Invalid group unified acknowledgement setting');
+  }
+
+  const groupIds: number[] = [];
+  for (const groupId of parsedValue) {
+    if (typeof groupId !== 'number' || !Number.isSafeInteger(groupId)) {
+      throw new TypeError('Invalid group unified acknowledgement setting');
+    }
+    groupIds.push(groupId);
+  }
+
+  return groupIds;
+};
 
 export function useGetCreatorSettings(
   userId?: number | null,
@@ -26,9 +53,12 @@ export function useGetGenericCreatorSettings(userId: number | undefined) {
   return useQuery({
     queryKey: ['creatorSettings', userId],
     queryFn: async () => {
-      const res = await genericCreatorSettingsClient.getGenericCreatorSettingsByUserId(userId!);
+      if (userId === undefined) {
+        throw new TypeError('Invalid user id');
+      }
 
-      const settings = {} as Record<GenericCreatorSettingType, string>;
+      const res = await genericCreatorSettingsClient.getGenericCreatorSettingsByUserId(userId);
+      const settings: Partial<Record<TGenericCreatorSettingType, string>> = {};
       if (!res.settings) {
         return settings;
       }
@@ -51,7 +81,10 @@ export function useGetGenericCreatorSetting(
   return useQuery({
     queryKey: ['creatorSettings', userId, setting],
     queryFn: async () => {
-      const res = await genericCreatorSettingsClient.getGenericCreatorSetting(userId!, setting);
+      if (userId === undefined) {
+        throw new TypeError('Invalid user id');
+      }
+      const res = await genericCreatorSettingsClient.getGenericCreatorSetting(userId, setting);
       return res.settingValue ?? '';
     },
     enabled: Boolean(userId),
@@ -79,6 +112,37 @@ export function useCreateOrUpdateGenericCreatorSettings() {
         setting,
         settingValue,
       );
+    },
+  });
+}
+
+type TAcknowledgeGroupUnificationRequest = {
+  userId: number;
+  groupId: number;
+};
+
+export function useAcknowledgeGroupUnification() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ userId, groupId }: TAcknowledgeGroupUnificationRequest) => {
+      const { settingValue } = await genericCreatorSettingsClient.getGenericCreatorSetting(
+        userId,
+        GROUP_UNIFIED_ACKNOWLEDGEMENT_SETTING_TYPE,
+      );
+      const acknowledgedGroupIds = parseAcknowledgedGroupIds(settingValue);
+      if (!acknowledgedGroupIds.includes(groupId)) {
+        await genericCreatorSettingsClient.updateGenericCreatorSetting(
+          userId,
+          GROUP_UNIFIED_ACKNOWLEDGEMENT_SETTING_TYPE,
+          JSON.stringify([...acknowledgedGroupIds, groupId]),
+        );
+      }
+    },
+    onSuccess: (_data, { userId }) => {
+      void queryClient.invalidateQueries({
+        queryKey: ['creatorSettings', userId, GROUP_UNIFIED_ACKNOWLEDGEMENT_SETTING_TYPE],
+      });
     },
   });
 }
