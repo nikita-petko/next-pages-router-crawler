@@ -83,7 +83,6 @@ const TestPage = () => {
 
         <TextField id="test-id" label="Test Dialog Content" sx={{ mt: 3 }} onChange={(e) => setText(e.target.value)} />
 
-        {/* I might change this to a dialog popup or a snackbar */}
         <Button variant='contained' onClick={handleClickOpen} sx={{ mt: 2 }}>Test Button</Button>
         <TestDialog title="Test Dialog" content={text} open={open} handleClose={handleClose} />
       </Grid>
