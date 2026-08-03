@@ -190,6 +190,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: creatorAnalyticsFlags.isLimitedAnalyticsAdminMonitoringNavigationEnabled,
+      metadata: {
+        namespace: 'creator-analytics',
+        name: 'isLimitedAnalyticsAdminMonitoringNavigationEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: creatorAnalyticsFlags.visibleAssetIdInPersonalizationEnabled,
       metadata: {
         namespace: 'creator-analytics',

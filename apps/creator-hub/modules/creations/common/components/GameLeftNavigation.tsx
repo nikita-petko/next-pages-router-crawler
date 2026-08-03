@@ -12,6 +12,7 @@ import {
   isCustomDashboardsEnabled as isCustomDashboardsEnabledFlag,
   isExperienceAlertsEnabled,
   isJourneyEventsEnabled as isJourneysEnabledFlag,
+  isLimitedAnalyticsAdminMonitoringNavigationEnabled as isLimitedAnalyticsAdminMonitoringNavigationEnabledFlag,
   showVideoServiceDashboard as showVideoServiceDashboardFlag,
 } from '@generated/flags/creatorAnalytics';
 import { isLeaderboardConfigsEnabled as isLeaderboardConfigsEnabledFlag } from '@generated/flags/leaderboards';
@@ -130,6 +131,10 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
     isLeaderboardConfigsEnabledFlag,
   );
   const { ready: isJourneysReady, value: isJourneysEnabledValue } = useFlag(isJourneysEnabledFlag);
+  const {
+    ready: isLimitedAnalyticsAdminMonitoringNavigationReady,
+    value: isLimitedAnalyticsAdminMonitoringNavigationEnabled,
+  } = useFlag(isLimitedAnalyticsAdminMonitoringNavigationEnabledFlag);
   const { ready: showVideoServiceDashboardReady, value: showVideoServiceDashboardValue } = useFlag(
     showVideoServiceDashboardFlag,
   );
@@ -185,6 +190,10 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
             isLeaderboardConfigsEnabled:
               isLeaderboardConfigsReady && isLeaderboardConfigsEnabledValue,
             isJourneysEnabled: isJourneysReady && isJourneysEnabledValue,
+            canViewMonitoringNavigation:
+              analyticsUserPermissions.userCanViewAnalyticsForUniverse ||
+              (isLimitedAnalyticsAdminMonitoringNavigationReady &&
+                isLimitedAnalyticsAdminMonitoringNavigationEnabled),
             showVideoServiceDashboard:
               showVideoServiceDashboardReady && showVideoServiceDashboardValue,
             isExperienceAlertsEnabled: isExperienceAlertsReady && isExperienceAlertsEnabledFlag,
@@ -283,6 +292,8 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
     isLeaderboardConfigsEnabledValue,
     isJourneysReady,
     isJourneysEnabledValue,
+    isLimitedAnalyticsAdminMonitoringNavigationReady,
+    isLimitedAnalyticsAdminMonitoringNavigationEnabled,
     showVideoServiceDashboardReady,
     showVideoServiceDashboardValue,
     isExperienceAlertsReady,

@@ -73,6 +73,7 @@ export type CreationsFeatureSettings = TSettings &
     isLeaderboardConfigsEnabled: boolean;
     showVideoServiceDashboard: boolean;
     isJourneysEnabled: boolean;
+    canViewMonitoringNavigation: boolean;
   } & Pick<
     AnalyticsExperiencePermissions,
     'userCanViewAnalyticsForUniverse' | 'userCanManageAnalyticsAlertForUniverse'
@@ -618,7 +619,7 @@ const performanceFeature: Feature<CreationsFeatureSettings> = {
   path: '/analytics/performance',
   sectionTitleKey: 'Heading.RealtimeMonitoring',
   isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
-    settings?.userCanViewAnalyticsForUniverse ?? false,
+    settings?.canViewMonitoringNavigation ?? false,
 };
 
 const crashesFeature: Feature<CreationsFeatureSettings> = {
@@ -627,7 +628,7 @@ const crashesFeature: Feature<CreationsFeatureSettings> = {
   path: analyticsCrashesNavigationItem.path,
   sectionTitleKey: 'Heading.RealtimeMonitoring',
   isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
-    settings?.userCanViewAnalyticsForUniverse ?? false,
+    settings?.canViewMonitoringNavigation ?? false,
 };
 
 const errorReportFeature: Feature<CreationsFeatureSettings> = {
@@ -636,7 +637,7 @@ const errorReportFeature: Feature<CreationsFeatureSettings> = {
   path: '/analytics/errors',
   sectionTitleKey: 'Heading.RealtimeMonitoring',
   isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
-    settings?.userCanViewAnalyticsForUniverse ?? false,
+    settings?.canViewMonitoringNavigation ?? false,
   adornment: <AnalyticsPageNewChip pagePath={analyticsErrorReportNavigationItem.path} />,
 };
 
@@ -646,7 +647,7 @@ const memoryStoresFeature: Feature<CreationsFeatureSettings> = {
   path: '/analytics/memory-stores',
   sectionTitleKey: 'Heading.RealtimeMonitoring',
   isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
-    settings?.userCanViewAnalyticsForUniverse ?? false,
+    settings?.canViewMonitoringNavigation ?? false,
 };
 
 const speechToTextFeature: Feature<CreationsFeatureSettings> = {
@@ -655,7 +656,7 @@ const speechToTextFeature: Feature<CreationsFeatureSettings> = {
   path: '/analytics/speech-to-text',
   sectionTitleKey: 'Heading.RealtimeMonitoring',
   isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
-    settings?.userCanViewAnalyticsForUniverse ?? false,
+    settings?.canViewMonitoringNavigation ?? false,
 };
 
 const textToSpeechFeature: Feature<CreationsFeatureSettings> = {
@@ -664,7 +665,7 @@ const textToSpeechFeature: Feature<CreationsFeatureSettings> = {
   path: '/analytics/text-to-speech',
   sectionTitleKey: 'Heading.RealtimeMonitoring',
   isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
-    settings?.userCanViewAnalyticsForUniverse ?? false,
+    settings?.canViewMonitoringNavigation ?? false,
 };
 
 const dataStoresFeature: Feature<CreationsFeatureSettings> = {
@@ -674,7 +675,7 @@ const dataStoresFeature: Feature<CreationsFeatureSettings> = {
   query: { activeTab: 'Dashboard' },
   sectionTitleKey: 'Heading.RealtimeMonitoring',
   isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
-    settings?.userCanViewAnalyticsForUniverse ?? false,
+    settings?.canViewMonitoringNavigation ?? false,
 };
 
 const httpServiceFeature: Feature<CreationsFeatureSettings> = {
@@ -683,7 +684,7 @@ const httpServiceFeature: Feature<CreationsFeatureSettings> = {
   path: '/analytics/http-service',
   sectionTitleKey: 'Heading.RealtimeMonitoring',
   isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
-    settings?.userCanViewAnalyticsForUniverse ?? false,
+    settings?.canViewMonitoringNavigation ?? false,
 };
 
 const messagingServiceFeature: Feature<CreationsFeatureSettings> = {
@@ -692,7 +693,7 @@ const messagingServiceFeature: Feature<CreationsFeatureSettings> = {
   path: '/analytics/messaging-service',
   sectionTitleKey: 'Heading.RealtimeMonitoring',
   isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
-    settings?.userCanViewAnalyticsForUniverse ?? false,
+    settings?.canViewMonitoringNavigation ?? false,
 };
 
 const videoServiceFeature: Feature<CreationsFeatureSettings> = {
@@ -701,7 +702,7 @@ const videoServiceFeature: Feature<CreationsFeatureSettings> = {
   path: '/analytics/video-service',
   sectionTitleKey: 'Heading.RealtimeMonitoring',
   isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
-    settings?.userCanViewAnalyticsForUniverse ?? false,
+    settings?.canViewMonitoringNavigation ?? false,
   adornment: <AnalyticsPageNewChip pagePath={analyticsVideoServiceNavigationItem.path} />,
 };
 
@@ -711,7 +712,7 @@ const generativeAIFeature: Feature<CreationsFeatureSettings> = {
   path: '/analytics/generative-ai',
   sectionTitleKey: 'Heading.RealtimeMonitoring',
   isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
-    settings?.userCanViewAnalyticsForUniverse ?? false,
+    settings?.canViewMonitoringNavigation ?? false,
 };
 
 // Safety
