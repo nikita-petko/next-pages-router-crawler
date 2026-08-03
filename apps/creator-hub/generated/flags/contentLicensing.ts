@@ -17,3 +17,8 @@ export const isIpLicensingEarningsEnabled = defineFlag({
     name: 'isIpLicensingEarningsEnabled',
     defaultValue: false,
   });
+export const isImageAttachmentEnabledInLicenseApplication = defineFlag({
+    namespace: 'content-licensing',
+    name: 'isImageAttachmentEnabledInLicenseApplication',
+    defaultValue: false,
+  });

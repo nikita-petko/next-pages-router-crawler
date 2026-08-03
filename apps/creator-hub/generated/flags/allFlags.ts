@@ -140,6 +140,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: contentLicensingFlags.isImageAttachmentEnabledInLicenseApplication,
+      metadata: {
+        namespace: 'content-licensing',
+        name: 'isImageAttachmentEnabledInLicenseApplication',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: contentSuitabilityFlags.questionnaireV2Allowlist,
       metadata: {
         namespace: 'content-suitability',

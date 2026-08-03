@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Skeleton } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
@@ -13,18 +13,9 @@ import {
   List,
   ListItemSecondaryAction,
   ListItemText,
-  MenuItem,
 } from '@rbx/ui';
-import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
-import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
-import { openDeveloperProductArchiveDialog } from '@modules/developer-products/components/DeveloperProductArchiveDialog';
 import { Item, itemTypeToPath } from '@modules/miscellaneous/common';
-import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useMetricsMonitoring } from '@modules/miscellaneous/metricsMonitoring';
-import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
-import type { ArchiveItemType } from '@modules/monetization-shared/archive-dialog/ArchiveConfirmationDialog';
-import { useMonetizationFlags } from '@modules/monetization-shared/flags/useMonetizationFlags';
-import { useUniverseId } from '@modules/monetization-shared/route/useUniverseId';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import useCurrentBadge from '../../badge/hooks/useCurrentBadge';
 import CopyTextActionMenuItem from '../../common/components/CopyTextActionMenuItem';
@@ -37,13 +28,6 @@ import useAssociatedItemsStyles from './AssociatedItem.styles';
 export interface AssociatedItemStatusProps {
   currentItemType?: Item;
 }
-
-/** Item types that can show an Archive/Unarchive action in the status menu. */
-const ARCHIVABLE_ITEM_TYPES: Partial<Record<Item, ArchiveItemType>> = {
-  [Item.DeveloperProduct]: 'developerProduct',
-  // Game passes will plug in once their archive mutation path lands.
-  // [Item.GamePass]: 'gamePass',
-};
 
 function ThumbnailImage({
   type,
@@ -124,13 +108,7 @@ const AssociatedItemStatus = ({ currentItemType }: AssociatedItemStatusProps) =>
   const { passDetails } = useCurrentPass();
   const { experienceSubscriptionDetails } = useCurrentExperienceSubscription();
 
-  const { pathname, push } = useRouter();
-  const universeIdResult = useUniverseId();
-  const { isProductArchiveEnabled } = useMonetizationFlags('isProductArchiveEnabled');
-
-  const unwrapped = useTranslation();
-  const { translate } = unwrapped;
-  const { tPendingTranslation } = useTranslationWrapper(unwrapped);
+  const { pathname } = useRouter();
 
   /** "Asset ID" to copy */
   const itemAssetId = useMemo(() => {
@@ -199,6 +177,8 @@ const AssociatedItemStatus = ({ currentItemType }: AssociatedItemStatusProps) =>
     passDetails?.iconAssetId,
   ]);
 
+  const { translate } = useTranslation();
+
   const itemImage = useMemo(
     () => (
       <ThumbnailImage
@@ -211,75 +191,6 @@ const AssociatedItemStatus = ({ currentItemType }: AssociatedItemStatusProps) =>
     [isBadgeRefreshRequired, itemName, itemThumbnailId, itemThumbnailType],
   );
 
-  const archiveItemType = currentItemType ? ARCHIVABLE_ITEM_TYPES[currentItemType] : undefined;
-  const isArchived =
-    archiveItemType === 'developerProduct' ? !!developerProductDetails?.isArchived : false;
-
-  const canOpenArchiveDialog =
-    !!archiveItemType &&
-    itemAssetId !== undefined &&
-    !universeIdResult.isError &&
-    !universeIdResult.isLoading;
-
-  const showArchiveAction = canOpenArchiveDialog && isProductArchiveEnabled;
-
-  const handleArchiveClick = (event: MouseEvent) => {
-    event.preventDefault();
-    if (!canOpenArchiveDialog) {
-      return;
-    }
-
-    const { universeId } = universeIdResult as { universeId: number };
-
-    switch (archiveItemType) {
-      case 'developerProduct':
-        openDeveloperProductArchiveDialog({
-          universeId,
-          itemId: itemAssetId,
-          isArchived,
-          onSuccess: () => {
-            void push(dashboard.getMonetizationDeveloperProductsUrl(universeId));
-          },
-        });
-        return;
-      case 'gamePass':
-        // TODO(DMP-2775): wire game-pass archive mutation once GP archive lands.
-        throw new Error('Archive is not yet supported for game passes');
-      default: {
-        const exhaustiveCheck: never = archiveItemType;
-        throw new Error(`Unsupported archive item type: ${String(exhaustiveCheck)}`);
-      }
-    }
-  };
-
-  const menuItems = [
-    <CopyTextActionMenuItem
-      actionName={translate('Action.CopyAssetID')}
-      itemName={translate('Label.AssetID')}
-      key='copy-asset-id'
-      actionKey='copyAssetId'
-      textToCopy={itemAssetId?.toString()}
-    />,
-  ];
-
-  if (showArchiveAction) {
-    menuItems.push(
-      <MenuItem key='archive' onClick={handleArchiveClick}>
-        {isArchived
-          ? tPendingTranslation(
-              'Unarchive',
-              'Label for the action to unarchive a monetization item.',
-              translationKey('Action.Unarchive', TranslationNamespace.Creations),
-            )
-          : tPendingTranslation(
-              'Archive',
-              'Label for the action to archive a monetization item.',
-              translationKey('Action.Archive', TranslationNamespace.Creations),
-            )}
-      </MenuItem>,
-    );
-  }
-
   return (
     <List disablePadding>
       {currentItemType && canConfigure && !!itemImage ? (
@@ -291,7 +202,17 @@ const AssociatedItemStatus = ({ currentItemType }: AssociatedItemStatusProps) =>
           </ListItemAvatar>
           <ListItemText primary={itemName} />
           <ListItemSecondaryAction>
-            <StatusCardContextMenu menuItems={menuItems} />
+            <StatusCardContextMenu
+              menuItems={[
+                <CopyTextActionMenuItem
+                  actionName={translate('Action.CopyAssetID')}
+                  itemName={translate('Label.AssetID')}
+                  key='copy-asset-id'
+                  actionKey='copyAssetId'
+                  textToCopy={itemAssetId?.toString()}
+                />,
+              ]}
+            />
           </ListItemSecondaryAction>
         </ListItem>
       ) : (

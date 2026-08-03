@@ -5,12 +5,6 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { toast } from '../snackbar/actions';
 
-/**
- * Monetization item kinds that share this archive confirmation dialog.
- * Game passes will plug in once their archive mutation path lands.
- */
-export type ArchiveItemType = 'developerProduct' | 'gamePass';
-
 type ArchiveConfirmationDialogContentProps = {
   isArchived: boolean;
   isPending: boolean;
