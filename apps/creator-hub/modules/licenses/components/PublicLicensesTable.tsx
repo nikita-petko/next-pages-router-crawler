@@ -14,12 +14,15 @@ import {
   TableRow,
   makeStyles,
 } from '@rbx/ui';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { useAuthentication } from '@modules/authentication/providers';
 import GuidelinesAndRestrictionsSummaryModal from '@modules/ip/license-manager/components/GuidelinesAndRestrictionsSummaryModal';
 import {
   LicenseManagerClickEvent,
   LicenseManagerImpressionEvent,
   useLicenseManagerLogger,
+  useLicenseManagerLoggerLogOnce,
 } from '@modules/ip/license-manager/utils/logger';
 import { getMaturityRatingLabel } from '@modules/ip/license-manager/utils/maturityRating';
 import TranslatedFailureView from '@modules/miscellaneous/components/FailureView/FailureView';
@@ -32,16 +35,42 @@ import { EXPLORE_LICENSES_ACTION_TOOLBAR_HEIGHT_PX } from '../utils/constants';
 import { formatRoyaltyRate } from '../utils/format';
 import {
   buildPublicLicensesCatalogFilter,
+  getPublicLicensesTableAnalyticsContext,
+  hasActivePublicLicenseCatalogFilters,
   type PublicLicenseDurationFilter,
+  type PublicLicenseTypeFilter,
 } from '../utils/publicLicenseDurationFilter';
 import ExploreLicensesEmptyState from './ExploreLicensesEmptyState';
 import LicenseDetailsModal from './LicenseDetailsModal';
 import PublicLicensesDurationFilterPills from './PublicLicensesDurationFilterPills';
+import PublicLicensesFilterChip, {
+  type PublicLicensesFilterOption,
+} from './PublicLicensesFilterChip';
 
 const LICENSE_TYPE_LABEL_KEYS: Record<LicenseType, string> = {
   FullExperience: 'Label.FullExperience',
   CollaborationInExperienceSale: 'Label.Collaboration',
   MarketplaceSale: 'Label.MarketplaceSale',
+};
+
+const DURATION_FILTER_OPTIONS: PublicLicensesFilterOption<PublicLicenseDurationFilter>[] = [
+  { value: 'all', label: 'Label.All' },
+  { value: LicenseDurationType.TimeLimited, label: 'Label.TimeLimited' },
+  { value: LicenseDurationType.Perpetual, label: 'Label.Perpetual' },
+];
+
+const LICENSE_TYPE_FILTER_OPTIONS: PublicLicensesFilterOption<PublicLicenseTypeFilter>[] = [
+  { value: 'all', label: 'Label.All' },
+  { value: LicenseType.FullExperience, label: LICENSE_TYPE_LABEL_KEYS[LicenseType.FullExperience] },
+  {
+    value: LicenseType.CollaborationInExperienceSale,
+    label: LICENSE_TYPE_LABEL_KEYS[LicenseType.CollaborationInExperienceSale],
+  },
+];
+
+const MARKETPLACE_SALE_FILTER_OPTION: PublicLicensesFilterOption<PublicLicenseTypeFilter> = {
+  value: LicenseType.MarketplaceSale,
+  label: LICENSE_TYPE_LABEL_KEYS[LicenseType.MarketplaceSale],
 };
 
 const useStyles = makeStyles<
@@ -68,6 +97,7 @@ const useStyles = makeStyles<
   controlsBarLeading: {
     display: 'flex',
     alignItems: 'center',
+    gap: theme.spacing(1),
     minWidth: 0,
     flex: '1 1 auto',
     overflowX: 'auto',
@@ -190,42 +220,114 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
   browseViewToolbarEndSlot,
 }) => {
   const { classes } = useStyles();
-  const { translate } = useTranslation();
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
+  const resetFiltersLabel = tPendingTranslation(
+    'Reset filters',
+    'Action text shown to users when they have filters applied to their current view so that they can easily remove all actively applied filters',
+    translationKey('Action.ResetFilters', TranslationNamespace.Licenses),
+  );
   const { logEvent } = useLicenseManagerLogger();
+  const { logOnce } = useLicenseManagerLoggerLogOnce();
   const authentication = useAuthentication();
   const { user, isFetched: isAuthenticationFetched } = authentication;
   const isAuthenticated = user !== null;
   const { frontendFlags, loadingFrontendFlags } = useToolboxServiceApiProvider();
   const enableCollaborationLicensing =
     frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
+  const enableMarketplaceSalesLicensing =
+    frontendFlags[FrontendFlagName.FrontendFlagEnableMarketplaceSalesLicensing] ?? false;
 
   const [isLicenseDetailsModalOpen, setIsLicenseDetailsModalOpen] = useState(false);
   const [isGuidelinesAndRestrictionsModalOpen, setIsGuidelinesAndRestrictionsModalOpen] =
     useState(false);
   const [selectedLicense, setSelectedLicense] = useState<LicenseResponse | null>(null);
   const [durationFilter, setDurationFilter] = useState<PublicLicenseDurationFilter>('all');
+  const [licenseTypeFilter, setLicenseTypeFilter] = useState<PublicLicenseTypeFilter>('all');
+  const effectiveLicenseTypeFilter =
+    licenseTypeFilter === LicenseType.MarketplaceSale && !enableMarketplaceSalesLicensing
+      ? 'all'
+      : licenseTypeFilter;
+  const licenseTypeFilterOptions =
+    useMemo((): PublicLicensesFilterOption<PublicLicenseTypeFilter>[] => {
+      const options = LICENSE_TYPE_FILTER_OPTIONS.map((option) => ({
+        value: option.value,
+        label: translate(option.label),
+      }));
+      if (enableMarketplaceSalesLicensing) {
+        options.push({
+          value: MARKETPLACE_SALE_FILTER_OPTION.value,
+          label: translate(MARKETPLACE_SALE_FILTER_OPTION.label),
+        });
+      }
+      return options;
+    }, [translate, enableMarketplaceSalesLicensing]);
+  const durationFilterOptions = useMemo(
+    (): PublicLicensesFilterOption<PublicLicenseDurationFilter>[] =>
+      DURATION_FILTER_OPTIONS.map((option) => ({
+        value: option.value,
+        label: translate(option.label),
+      })),
+    [translate],
+  );
 
   const handleDurationFilterChange = useCallback(
     (next: PublicLicenseDurationFilter) => {
-      let selectedFilter: string;
-      if (next === 'all') {
-        selectedFilter = 'all';
-      } else if (next === LicenseDurationType.TimeLimited) {
-        selectedFilter = 'TimeLimited';
-      } else {
-        selectedFilter = 'Perpetual';
-      }
       logEvent(LicenseManagerClickEvent.PublicLicensesTableDurationTypeFilterClickEvent, {
-        selectedFilter,
+        selectedFilter: next,
       });
       setDurationFilter(next);
     },
     [logEvent],
   );
 
+  const handleLicenseTypeFilterChange = useCallback(
+    (next: PublicLicenseTypeFilter) => {
+      logEvent(LicenseManagerClickEvent.PublicLicensesTableLicenseTypeFilterClickEvent, {
+        selectedFilter: next,
+      });
+      setLicenseTypeFilter(next);
+    },
+    [logEvent],
+  );
+
   const catalogFilter = useMemo(
-    () => buildPublicLicensesCatalogFilter(durationFilter),
-    [durationFilter],
+    () =>
+      buildPublicLicensesCatalogFilter({
+        durationType: durationFilter,
+        licenseType: enableCollaborationLicensing ? effectiveLicenseTypeFilter : 'all',
+      }),
+    [durationFilter, effectiveLicenseTypeFilter, enableCollaborationLicensing],
+  );
+
+  const hasActiveFilters = hasActivePublicLicenseCatalogFilters({
+    durationType: durationFilter,
+    licenseType: effectiveLicenseTypeFilter,
+    enableLicenseTypeFilter: enableCollaborationLicensing,
+  });
+
+  const analyticsContext = useMemo(
+    () =>
+      getPublicLicensesTableAnalyticsContext({
+        durationType: durationFilter,
+        licenseType: effectiveLicenseTypeFilter,
+        enableLicenseTypeFilter: enableCollaborationLicensing,
+      }),
+    [durationFilter, effectiveLicenseTypeFilter, enableCollaborationLicensing],
+  );
+  const analyticsContextDedupeKey = JSON.stringify(analyticsContext);
+
+  const handleResetFilters = useCallback(
+    (resetSource: 'toolbar' | 'empty_state') => {
+      logEvent(LicenseManagerClickEvent.PublicLicensesTableClearFiltersClickEvent, {
+        ...analyticsContext,
+        resetSource,
+      });
+      setDurationFilter('all');
+      setLicenseTypeFilter('all');
+    },
+    [analyticsContext, logEvent],
   );
 
   const { isPending, isError, allLicenses, fetchNextPage, hasNextPage, isFetchingNextPage } =
@@ -235,11 +337,24 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
     });
 
   const showFilteredEmptyState =
-    durationFilter !== 'all' &&
+    hasActiveFilters &&
     !isPending &&
+    !isError &&
     !isFetchingNextPage &&
     allLicenses.length === 0 &&
     !hasNextPage;
+
+  useEffect(() => {
+    if (!showFilteredEmptyState) {
+      return;
+    }
+
+    logOnce(
+      LicenseManagerImpressionEvent.EmptyStatePublicLicensesTableNoMatchesWithAppliedFiltersImpressionEvent,
+      analyticsContext,
+      analyticsContextDedupeKey,
+    );
+  }, [analyticsContext, analyticsContextDedupeKey, logOnce, showFilteredEmptyState]);
 
   const onClickViewDetails = (license: PublicCatalogLicense, rowPosition: number) => () => {
     const licenseId = license.id;
@@ -256,7 +371,7 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
       viewMode: 'list',
       listingId,
       rowPosition,
-      filterTab: durationFilter,
+      filterTab: catalogFilter || 'all',
     });
   };
 
@@ -268,14 +383,44 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
   const controlsToolbar = (
     <div className={classes.controlsBar}>
       <div className={classes.controlsBarLeading}>
-        <PublicLicensesDurationFilterPills
-          selected={durationFilter}
-          onChange={handleDurationFilterChange}
-        />
+        {enableCollaborationLicensing ? (
+          <>
+            <PublicLicensesFilterChip
+              filterLabel={translate('Label.LicenseType')}
+              options={licenseTypeFilterOptions}
+              selected={effectiveLicenseTypeFilter}
+              onChange={handleLicenseTypeFilterChange}
+              testId='public-licenses-license-type-filter-chip'
+            />
+            <PublicLicensesFilterChip
+              filterLabel={translate('Label.LicenseDuration')}
+              options={durationFilterOptions}
+              selected={durationFilter}
+              onChange={handleDurationFilterChange}
+              testId='public-licenses-duration-filter-chip'
+            />
+          </>
+        ) : (
+          <PublicLicensesDurationFilterPills
+            selected={durationFilter}
+            onChange={handleDurationFilterChange}
+          />
+        )}
       </div>
-      {browseViewToolbarEndSlot != null ? (
-        <div className={classes.controlsBarEnd}>{browseViewToolbarEndSlot}</div>
-      ) : null}
+      {(hasActiveFilters || browseViewToolbarEndSlot != null) && (
+        <div className={classes.controlsBarEnd}>
+          {hasActiveFilters && (
+            <Button
+              variant='text'
+              color='secondary'
+              onClick={() => handleResetFilters('toolbar')}
+              data-testid='public-licenses-reset-filters-button'>
+              {resetFiltersLabel}
+            </Button>
+          )}
+          {browseViewToolbarEndSlot}
+        </div>
+      )}
     </div>
   );
 
@@ -304,7 +449,7 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
     <>
       {controlsToolbar}
       {showFilteredEmptyState ? (
-        <ExploreLicensesEmptyState />
+        <ExploreLicensesEmptyState onResetFilters={() => handleResetFilters('empty_state')} />
       ) : (
         <TableContainer data-testid='public-licenses-table'>
           <Table>
@@ -333,10 +478,10 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
             <TableBody>
               {allLicenses.map((license, index) => (
                 <PublicLicensesTableDataRow
-                  key={`${license.id ?? index}-${durationFilter}`}
+                  key={`${license.id ?? index}-${catalogFilter}`}
                   license={license}
                   rowPosition={index + 1}
-                  filterTab={durationFilter}
+                  filterTab={catalogFilter || 'all'}
                   className={classes.row}
                   onClick={
                     isAuthenticated

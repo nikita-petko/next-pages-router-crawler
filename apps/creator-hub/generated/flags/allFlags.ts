@@ -114,7 +114,7 @@ export const generatedFlags = [
       metadata: {
         namespace: 'content-licensing',
         name: 'isExperiencePreviewEnabled',
-        defaultValue: false,
+        defaultValue: true,
         valueType: 'boolean',
         contextType: 'universe',
       },
@@ -144,6 +144,16 @@ export const generatedFlags = [
       metadata: {
         namespace: 'content-licensing',
         name: 'isImageAttachmentEnabledInLicenseApplication',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
+      flag: contentLicensingFlags.isShowcaseExperiencesEnabled,
+      metadata: {
+        namespace: 'content-licensing',
+        name: 'isShowcaseExperiencesEnabled',
         defaultValue: false,
         valueType: 'boolean',
         contextType: 'static',

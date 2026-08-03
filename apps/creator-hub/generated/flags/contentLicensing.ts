@@ -5,7 +5,7 @@ import { defineFlag } from '@rbx/flags';
 export const isExperiencePreviewEnabled = defineFlag({
     namespace: 'content-licensing',
     name: 'isExperiencePreviewEnabled',
-    defaultValue: false,
+    defaultValue: true,
   });
 export const enableIpPlatformLicenseRecommendations = defineFlag({
     namespace: 'content-licensing',
@@ -20,5 +20,10 @@ export const isIpLicensingEarningsEnabled = defineFlag({
 export const isImageAttachmentEnabledInLicenseApplication = defineFlag({
     namespace: 'content-licensing',
     name: 'isImageAttachmentEnabledInLicenseApplication',
+    defaultValue: false,
+  });
+export const isShowcaseExperiencesEnabled = defineFlag({
+    namespace: 'content-licensing',
+    name: 'isShowcaseExperiencesEnabled',
     defaultValue: false,
   });
