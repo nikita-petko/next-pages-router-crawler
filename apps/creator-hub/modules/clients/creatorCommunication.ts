@@ -29,6 +29,8 @@ export type {
   SearchCreatorTicketsResponse,
   ReportCreatorTicketRequest,
   ReportCreatorTicketResponse,
+  RerouteCreatorTicketToRobloxCSRequest,
+  RerouteCreatorTicketToRobloxCSResponse,
   UpdateTicketAsCreatorResponse,
   UpdateViewedByCreatorResponse,
 } from '@rbx/client-creator-communication-service/v1';

@@ -14,7 +14,10 @@ import type {
   TranslationKey,
   TranslationKeyToFormattedText,
 } from '@modules/analytics-translations/types';
-import { NumberContext } from '@modules/charts-generic/charts/numberFormatters';
+import {
+  formatNumberWithSpec,
+  NumberContext,
+} from '@modules/charts-generic/charts/numberFormatters';
 import type {
   AnalyticsQueryGatewayAPIBreakdownValue as RAQIV2BreakdownValue,
   AnalyticsQueryGatewayAPIMetricValue as RAQIV2MetricValue,
@@ -548,10 +551,33 @@ const dataPointUnitSuffix = (
   translate: TranslationKeyToFormattedText,
   evaluationMode: AnalyticsAlertEvaluationMode,
 ): string => {
+  if (isPercentageUiMetric(metric)) {
+    return '';
+  }
   if (evaluationMode === AnalyticsAlertEvaluationMode.PeriodOverPeriod) {
     return '%';
   }
-  return isPercentageUiMetric(metric) ? '' : getMetricUnitSuffix(metric, translate);
+  return getMetricUnitSuffix(metric, translate);
+};
+
+const formatPeriodOverPeriodChangeOrNull = (
+  rawValue: number,
+  translationDependencies: RAQIV2TranslationDependencies,
+): string | null => {
+  if (!Number.isFinite(rawValue)) {
+    return null;
+  }
+  return formatNumberWithSpec(
+    rawValue,
+    {
+      abbreviate: false,
+      numberFormatOptions: {
+        style: 'percent',
+        maximumFractionDigits: PERIOD_OVER_PERIOD_MAX_DECIMAL_PLACES,
+      },
+    },
+    translationDependencies,
+  );
 };
 
 export function formatIncidentFiringConditions(
@@ -563,18 +589,15 @@ export function formatIncidentFiringConditions(
     return [];
   }
   const { translate } = translationDependencies;
-  const unitSuffix = dataPointUnitSuffix(
-    metric,
-    translate,
-    firingMetadata.condition.evaluationMode,
-  );
+  const evaluationMode = firingMetadata.condition.evaluationMode;
+  const isPeriodOverPeriod = evaluationMode === AnalyticsAlertEvaluationMode.PeriodOverPeriod;
+  const unitSuffix = isPeriodOverPeriod
+    ? ''
+    : dataPointUnitSuffix(metric, translate, evaluationMode);
   return firingMetadata.firingCondition.flatMap(({ firingValue, firingDimension }) => {
-    // `firingValue` is the raw API value the alert engine evaluated against
-    // (e.g. `0.0532` for a 5.32% Percentage01 metric). Run it through the same
-    // data-point formatter the spline tooltip uses so the user sees the
-    // metric-config-honored display value (decimal precision, percent style,
-    // memory-byte → GB transform, locale separators, etc.).
-    const valueStr = formatRawDataPointValueOrNull(firingValue, metric, translationDependencies);
+    const valueStr = isPeriodOverPeriod
+      ? formatPeriodOverPeriodChangeOrNull(firingValue, translationDependencies)
+      : formatRawDataPointValueOrNull(firingValue, metric, translationDependencies);
     if (valueStr === null) {
       return [];
     }

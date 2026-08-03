@@ -1,9 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useQueryClient } from '@tanstack/react-query';
+import { useFlag } from '@rbx/flags';
 import {
   Badge,
   Button,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogTitle,
   Divider,
   Icon,
   ProgressCircle,
@@ -16,6 +22,7 @@ import type { Locale } from '@rbx/intl';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { ReturnPolicy, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
 import { Alert, Avatar, useMediaQuery, useSnackbar, type TTheme } from '@rbx/ui';
+import { enablePlayerSupportCreatorTicketReroute } from '@generated/flags/creatorGameops';
 import useLocale from '@modules/charts-generic/context/useLocale';
 import {
   TicketResponse,
@@ -39,6 +46,7 @@ import {
 } from '../constants/ticketLabels';
 import { SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_MINUTE } from '../constants/timeConstants';
 import useMarkTicketViewedMutation from '../hooks/useMarkTicketViewedMutation';
+import useRerouteTicketMutation from '../hooks/useRerouteTicketMutation';
 import useSendTicketReplyMutation from '../hooks/useSendTicketReplyMutation';
 import useTicketDetailQuery from '../hooks/useTicketDetailQuery';
 import useTicketUsernamesQuery, { type UsernameMap } from '../hooks/useTicketUsernamesQuery';
@@ -293,7 +301,11 @@ const ReplySelector: React.FunctionComponent<{
 }> = ({ ticketId, ticket, onSendSuccess }) => {
   const { translate } = useTranslation();
   const [selectedReply, setSelectedReply] = useState<TicketResponse | undefined>();
+  const [isRerouteConfirmOpen, setIsRerouteConfirmOpen] = useState(false);
   const { enqueue, close } = useSnackbar();
+  const { value: isRerouteEnabled } = useFlag(enablePlayerSupportCreatorTicketReroute);
+
+  const universeId = ticket.summary?.universeId;
 
   const isArchived = ticket.summary?.status === TicketStatus.Archived;
   const isCreatorBlockedFromResponding = useMemo(() => {
@@ -324,11 +336,11 @@ const ReplySelector: React.FunctionComponent<{
     );
   }, [ticket.summary?.category, reporterIdentified]);
 
-  const showErrorToast = useCallback(
-    (message: string) => {
+  const showToast = useCallback(
+    (severity: 'error' | 'success', message: string) => {
       enqueue({
         children: (
-          <Alert variant='standard' severity='error'>
+          <Alert variant='standard' severity={severity}>
             {message}
           </Alert>
         ),
@@ -343,30 +355,80 @@ const ReplySelector: React.FunctionComponent<{
 
   const { mutate: sendReply, isPending: isSending } = useSendTicketReplyMutation({
     ticketId,
-    universeId: ticket.summary?.universeId,
+    universeId,
     onSuccess: (response) => {
       onSendSuccess?.(response);
       setSelectedReply(undefined);
     },
     onError: () => {
-      showErrorToast(translate('Message.SendReplyError.Generic'));
+      showToast('error', translate('Message.SendReplyError.Generic'));
     },
   });
 
+  const { mutate: rerouteTicket, isPending: isRerouting } = useRerouteTicketMutation({
+    ticketId,
+    universeId: universeId ?? 0,
+    onSuccess: () => {
+      setIsRerouteConfirmOpen(false);
+      setSelectedReply(undefined);
+      showToast('success', translate('Message.PlayerSupport.RerouteSuccess'));
+    },
+    onError: () => {
+      setIsRerouteConfirmOpen(false);
+      showToast('error', translate('Message.PlayerSupport.RerouteError'));
+    },
+  });
+
+  // The final canned reply forwards ("reroutes") the ticket to Roblox Customer
+  // Service instead of sending a normal reply. It's flag-gated and guarded by a
+  // confirmation dialog because the ticket then leaves the creator's inbox.
+  const shouldRerouteOnSend =
+    isRerouteEnabled === true &&
+    selectedReply === TicketResponse.ReportToCustomerService &&
+    universeId != null;
+
   const handleSend = useCallback(() => {
-    if (selectedReply) {
-      unifiedLoggerClient.logClickEvent({
-        eventName: 'playerSupport.sendReply',
-        parameters: {
-          universeId: String(ticket.summary?.universeId ?? ''),
-          ticketId,
-          ticketCategory: ticket.summary?.category ?? '',
-          replyType: selectedReply,
-        },
-      });
-      sendReply(selectedReply);
+    if (!selectedReply) {
+      return;
     }
-  }, [selectedReply, sendReply, ticket.summary?.universeId, ticket.summary?.category, ticketId]);
+    if (shouldRerouteOnSend) {
+      setIsRerouteConfirmOpen(true);
+      return;
+    }
+    unifiedLoggerClient.logClickEvent({
+      eventName: 'playerSupport.sendReply',
+      parameters: {
+        universeId: String(universeId ?? ''),
+        ticketId,
+        ticketCategory: ticket.summary?.category ?? '',
+        replyType: selectedReply,
+      },
+    });
+    sendReply(selectedReply);
+  }, [
+    selectedReply,
+    shouldRerouteOnSend,
+    sendReply,
+    universeId,
+    ticket.summary?.category,
+    ticketId,
+  ]);
+
+  const handleConfirmReroute = useCallback(() => {
+    unifiedLoggerClient.logClickEvent({
+      eventName: 'playerSupport.confirmReroute',
+      parameters: {
+        universeId: String(universeId ?? ''),
+        ticketId,
+        ticketCategory: ticket.summary?.category ?? '',
+      },
+    });
+    rerouteTicket();
+  }, [rerouteTicket, universeId, ticketId, ticket.summary?.category]);
+
+  const handleCancelReroute = useCallback(() => {
+    setIsRerouteConfirmOpen(false);
+  }, []);
 
   if (isArchived || isCreatorBlockedFromResponding || visibleReplies.length === 0) {
     return null;
@@ -398,6 +460,13 @@ const ReplySelector: React.FunctionComponent<{
         <div className='gap-small flex flex-col'>
           {visibleReplies.map((reply) => {
             const isSelected = selectedReply === reply.value;
+            // With reroute enabled, the customer-service reply forwards the
+            // ticket rather than sending a canned response, so it reads
+            // "Forwarded to Customer Service" instead of "Report to...".
+            const labelKey =
+              isRerouteEnabled === true && reply.value === TicketResponse.ReportToCustomerService
+                ? 'Message.CannedResponse.ForwardedToCustomerService'
+                : reply.labelKey;
             return (
               <button
                 key={reply.value}
@@ -422,7 +491,7 @@ const ReplySelector: React.FunctionComponent<{
                     ? 'bg-action-subtle content-emphasis [border-color:var(--color-selection-start)]'
                     : 'content-emphasis stroke-default [background:transparent] hover:bg-surface-200'
                 }`}>
-                {translate(reply.labelKey)}
+                {translate(labelKey)}
               </button>
             );
           })}
@@ -431,12 +500,47 @@ const ReplySelector: React.FunctionComponent<{
           <Button
             variant='Emphasis'
             size='Medium'
-            isLoading={isSending}
-            isDisabled={!selectedReply || isSending}
+            isLoading={isSending || isRerouting}
+            isDisabled={!selectedReply || isSending || isRerouting}
             onClick={handleSend}>
             {translate('Action.Send')}
           </Button>
         </div>
+        <Dialog
+          open={isRerouteConfirmOpen}
+          onOpenChange={setIsRerouteConfirmOpen}
+          isModal
+          size='Medium'
+          hasCloseAffordance={false}>
+          <DialogContent className='width-full'>
+            <DialogBody className='gap-xsmall flex flex-col'>
+              <DialogTitle className='text-heading-small margin-y-none padding-bottom-xsmall'>
+                {translate('Description.PlayerSupport.ConfirmRerouteTicket')}
+              </DialogTitle>
+              <span className='content-default text-body-medium'>
+                {translate('Description.PlayerSupport.ConfirmRerouteTicketDesc')}
+              </span>
+            </DialogBody>
+            <DialogFooter className='gap-small flex flex-row'>
+              <Button
+                variant='Standard'
+                size='Medium'
+                className='grow-1 basis-0'
+                isDisabled={isRerouting}
+                onClick={handleCancelReroute}>
+                {translate('Action.Cancel')}
+              </Button>
+              <Button
+                variant='Alert'
+                size='Medium'
+                className='grow-1 basis-0'
+                isLoading={isRerouting}
+                onClick={handleConfirmReroute}>
+                {translate('Action.Continue')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </TimelineItem>
   );

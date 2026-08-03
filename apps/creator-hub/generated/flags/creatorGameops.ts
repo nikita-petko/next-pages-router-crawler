@@ -22,3 +22,8 @@ export const enablePlayerHostedEvents = defineFlag({
     name: 'enablePlayerHostedEvents',
     defaultValue: false,
   });
+export const enablePlayerSupportCreatorTicketReroute = defineFlag({
+    namespace: 'creator-gameops',
+    name: 'enablePlayerSupportCreatorTicketReroute',
+    defaultValue: false,
+  });

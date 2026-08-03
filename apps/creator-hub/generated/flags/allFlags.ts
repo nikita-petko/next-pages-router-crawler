@@ -720,6 +720,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: creatorGameopsFlags.enablePlayerSupportCreatorTicketReroute,
+      metadata: {
+        namespace: 'creator-gameops',
+        name: 'enablePlayerSupportCreatorTicketReroute',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: creatorRoadmapFlags.creatorRoadmapEnabled,
       metadata: {
         namespace: 'creator-roadmap',
