@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import type { Locale } from '@rbx/intl';
 import { useAuthentication } from '@modules/authentication/providers';
 import type { TExperience } from '@modules/home/providers/ExperienceProvider';
 import momentsCreationsClient from '../clients/momentsCreationsClient';
@@ -19,11 +20,13 @@ import { saveMomentVideoMediaWithEviction } from '../utils/momentsVideoMediaStor
 
 type UploadMomentsVideoParams = {
   experience: TExperience;
+  locale?: Locale;
   file: File;
 };
 
 type UploadMomentsVideosParams = {
   experience: TExperience;
+  locale?: Locale;
   files: File[];
 };
 
@@ -91,7 +94,11 @@ export const useMomentsVideoUpload = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
 
   const uploadVideo = useCallback(
-    async ({ experience, file }: UploadMomentsVideoParams): Promise<StoredMomentCreation> => {
+    async ({
+      experience,
+      locale,
+      file,
+    }: UploadMomentsVideoParams): Promise<StoredMomentCreation> => {
       const userId = user?.id;
       if (userId == null) {
         throw new Error('Cannot upload Moments video without a signed-in user');
@@ -105,6 +112,7 @@ export const useMomentsVideoUpload = () => {
           experienceId: experience.id,
           experienceName: experience.name ?? '',
           rootPlaceId: experience.rootPlaceId,
+          ...(locale != null ? { locale } : {}),
           file,
           onProgress: setUploadProgress,
         });
@@ -125,6 +133,7 @@ export const useMomentsVideoUpload = () => {
   const uploadVideos = useCallback(
     async ({
       experience,
+      locale,
       files,
     }: UploadMomentsVideosParams): Promise<UploadMomentsVideosResult> => {
       const userId = user?.id;
@@ -148,6 +157,7 @@ export const useMomentsVideoUpload = () => {
             experienceId: experience.id,
             experienceName: experience.name ?? '',
             rootPlaceId: experience.rootPlaceId,
+            ...(locale != null ? { locale } : {}),
             file,
             onProgress: setUploadProgress,
           });

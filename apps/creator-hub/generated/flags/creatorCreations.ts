@@ -17,3 +17,8 @@ export const isMomentsSitetestUrlParsingEnabled = defineFlag({
     name: 'isMomentsSitetestUrlParsingEnabled',
     defaultValue: false,
   });
+export const isMomentsUploadLanguageSelectEnabled = defineFlag({
+    namespace: 'creator-creations',
+    name: 'isMomentsUploadLanguageSelectEnabled',
+    defaultValue: false,
+  });

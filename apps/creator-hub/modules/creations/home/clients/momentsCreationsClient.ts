@@ -1,4 +1,5 @@
 import type { GetUsersMomentsResponse } from '@rbx/client-content-captures-api/v1';
+import type { Locale } from '@rbx/intl';
 import contentCapturesApiClient from '@modules/clients/contentCapturesApi';
 import developClient from '@modules/clients/develop';
 import { MOMENTS_LIST_PAGE_SIZE } from '../constants/momentsCreationsConstants';
@@ -24,6 +25,7 @@ export type UploadMomentVideoRequest = {
   experienceId: number;
   experienceName: string;
   rootPlaceId?: number;
+  locale?: Locale;
   file: File;
   onProgress?: (progress: number) => void;
 };
@@ -141,6 +143,7 @@ const uploadMomentVideo = async ({
   experienceId,
   experienceName,
   rootPlaceId,
+  locale,
   onProgress,
 }: UploadMomentVideoRequest): Promise<StoredMomentCreation> => {
   for (let step = 1; step <= UPLOAD_PROGRESS_STEPS; step += 1) {
@@ -158,6 +161,7 @@ const uploadMomentVideo = async ({
     description: '',
     modifiedAt: new Date().toISOString(),
     status: MomentCreationStatus.DRAFT,
+    ...(locale != null ? { locale } : {}),
   };
 };
 

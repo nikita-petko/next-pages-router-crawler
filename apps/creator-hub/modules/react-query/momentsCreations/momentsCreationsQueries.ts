@@ -1,11 +1,12 @@
 import { useCallback } from 'react';
 import { skipToken, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
-import { useTranslation } from '@rbx/intl';
+import { useLocalization, useTranslation } from '@rbx/intl';
 import { useAuthentication } from '@modules/authentication/providers';
 import momentsCreationsClient from '@modules/creations/home/clients/momentsCreationsClient';
 import { deleteMoment as deleteMomentRequest } from '@modules/creations/home/clients/momentsDeleteClient';
 import { publishMoment as publishMomentRequest } from '@modules/creations/home/clients/momentsPublishClient';
+import useMomentsUploadLanguageSelectEnabled from '@modules/creations/home/hooks/useMomentsUploadLanguageSelectEnabled';
 import type {
   ListMomentsPageParams,
   ListMomentsPageResponse,
@@ -96,6 +97,8 @@ type PublishMomentVariables = {
 
 export function useMomentsPublish() {
   const { translate } = useTranslation();
+  const { locale: uiLocale } = useLocalization();
+  const isLanguageSelectEnabled = useMomentsUploadLanguageSelectEnabled();
   const { user } = useAuthentication();
   const userId = user?.id;
 
@@ -114,6 +117,8 @@ export function useMomentsPublish() {
         moment,
         file,
         userId,
+        uiLocale,
+        sendVideoContentLanguage: isLanguageSelectEnabled,
         displayName:
           translate('Label.PublishMomentDisplayName' /* TranslationNamespace.Creations */) ||
           'Creator Hub Moment',

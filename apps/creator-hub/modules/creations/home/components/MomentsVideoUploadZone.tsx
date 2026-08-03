@@ -20,6 +20,7 @@ import {
 
 type MomentsVideoUploadZoneProps = {
   hasSelectedExperience: boolean;
+  hasSelectedLanguage: boolean;
   selectedFiles: File[];
   isUploading?: boolean;
   onFilesChange: (files: File[]) => void;
@@ -38,6 +39,7 @@ const logRejectedMomentsVideoFiles = (errors: MomentsVideoValidationError[]): vo
 
 const MomentsVideoUploadZone: FC<MomentsVideoUploadZoneProps> = ({
   hasSelectedExperience,
+  hasSelectedLanguage,
   selectedFiles,
   isUploading = false,
   onFilesChange,
@@ -56,6 +58,7 @@ const MomentsVideoUploadZone: FC<MomentsVideoUploadZoneProps> = ({
 
   const [isDragActive, setIsDragActive] = useState(false);
 
+  const isUploadReady = hasSelectedExperience && hasSelectedLanguage;
   const helperLabel = hasSelectedExperience ? dragAndDropLabel : addExperienceToUploadLabel;
 
   const onFilesChangeRef = useRef(onFilesChange);
@@ -71,7 +74,7 @@ const MomentsVideoUploadZone: FC<MomentsVideoUploadZoneProps> = ({
     async (files: FileList | null) => {
       setIsDragActive(false);
 
-      if (!hasSelectedExperience || isUploading || isValidating) {
+      if (!isUploadReady || isUploading || isValidating) {
         return;
       }
 
@@ -103,20 +106,20 @@ const MomentsVideoUploadZone: FC<MomentsVideoUploadZoneProps> = ({
         setIsValidating(false);
       }
     },
-    [hasSelectedExperience, isUploading, isValidating],
+    [isUploadReady, isUploading, isValidating],
   );
 
   const handleDragActive = useCallback(() => {
-    if (hasSelectedExperience && !isUploading && !isValidating) {
+    if (isUploadReady && !isUploading && !isValidating) {
       setIsDragActive(true);
     }
-  }, [hasSelectedExperience, isUploading, isValidating]);
+  }, [isUploadReady, isUploading, isValidating]);
 
   const handleDragLeave = useCallback(() => {
     setIsDragActive(false);
   }, []);
 
-  const isUploadDisabled = !hasSelectedExperience || isUploading || isValidating;
+  const isUploadDisabled = !isUploadReady || isUploading || isValidating;
 
   return (
     <div className='flex flex-col gap-y-small width-full'>

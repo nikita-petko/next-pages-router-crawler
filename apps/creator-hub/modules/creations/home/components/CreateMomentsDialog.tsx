@@ -1,12 +1,14 @@
 import type { FC } from 'react';
 import { useCallback, useRef, useState } from 'react';
 import { Dialog, DialogBody, DialogContent, DialogTitle, FeedbackBanner } from '@rbx/foundation-ui';
-import { useTranslation, withTranslation } from '@rbx/intl';
+import type { Locale } from '@rbx/intl';
+import { useLocalization, useTranslation, withTranslation } from '@rbx/intl';
 import type { TExperience } from '@modules/home/providers/ExperienceProvider';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { openDialog } from '@modules/monetization-shared/dialog/actions';
 import { useMomentsLocalMoments } from '../hooks/useMomentsLocalMoments';
 import { useMomentsStatusFilter } from '../hooks/useMomentsStatusFilter';
+import useMomentsUploadLanguageSelectEnabled from '../hooks/useMomentsUploadLanguageSelectEnabled';
 import { useMomentsVideoUpload } from '../hooks/useMomentsVideoUpload';
 import {
   logMomentsCreationsError,
@@ -19,8 +21,10 @@ import {
 } from '../logging/momentsCreationsEventLogging';
 import { MomentCreationStatus } from '../types/MomentCreation';
 import type { StoredMomentCreation } from '../types/StoredMomentCreation';
+import { getDefaultMomentsUploadLocale } from '../utils/momentsUploadLocaleUtils';
 import MomentsExperiencePreview from './MomentsExperiencePreview';
 import MomentsExperienceUrlInput from './MomentsExperienceUrlInput';
+import MomentsLanguageSelect from './MomentsLanguageSelect';
 import MomentsVideoUploadZone from './MomentsVideoUploadZone';
 
 type CreateMomentsDialogProps = {
@@ -36,8 +40,13 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
 }) => {
   const { addMoments } = useMomentsLocalMoments();
   const { setStatusTab } = useMomentsStatusFilter();
+  const isLanguageSelectEnabled = useMomentsUploadLanguageSelectEnabled();
   const { translate } = useTranslation();
+  const { locale: uiLocale } = useLocalization();
+  const defaultLocale = getDefaultMomentsUploadLocale(uiLocale);
   const [selectedExperience, setSelectedExperience] = useState<TExperience | undefined>();
+  const [localeOverride, setLocaleOverride] = useState<Locale | undefined>();
+  const selectedLocale = localeOverride ?? defaultLocale;
   const [selectedVideoFiles, setSelectedVideoFiles] = useState<File[]>([]);
   const [validationErrorMessages, setValidationErrorMessages] = useState<string[]>([]);
   const uploadSessionRef = useRef(0);
@@ -45,6 +54,7 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
 
   const resetForm = useCallback(() => {
     setSelectedExperience(undefined);
+    setLocaleOverride(undefined);
     setSelectedVideoFiles([]);
     setValidationErrorMessages([]);
   }, []);
@@ -56,6 +66,10 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
 
   const handleExperienceResolved = useCallback((experience: TExperience) => {
     setSelectedExperience(experience);
+  }, []);
+
+  const handleLocaleChange = useCallback((locale: Locale) => {
+    setLocaleOverride(locale);
   }, []);
 
   const handleChangeExperience = useCallback(() => {
@@ -89,7 +103,12 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
 
   const handleFilesChange = useCallback(
     async (files: File[]) => {
-      if (files.length === 0 || selectedExperience?.id == null || isUploading) {
+      if (
+        files.length === 0 ||
+        selectedExperience?.id == null ||
+        (isLanguageSelectEnabled && selectedLocale == null) ||
+        isUploading
+      ) {
         setSelectedVideoFiles(files);
         return;
       }
@@ -103,12 +122,14 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
         fileCount: files.length,
         fileSize: files.reduce((total, file) => total + file.size, 0),
         fileType: files[0]?.type,
+        ...(isLanguageSelectEnabled ? { locale: selectedLocale } : {}),
       });
 
       try {
         const { moments: uploadedMoments, storageEvictedMediaMomentIds } = await uploadVideos({
           experience: selectedExperience,
           files,
+          ...(isLanguageSelectEnabled ? { locale: selectedLocale } : {}),
         });
         if (uploadSessionRef.current !== uploadSession) {
           return;
@@ -127,6 +148,7 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
           persistedVideoCount: uploadedMoments.filter((moment) => moment.hasLocalVideo).length,
           fileSize: files.reduce((total, file) => total + file.size, 0),
           fileType: files[0]?.type,
+          ...(isLanguageSelectEnabled ? { locale: selectedLocale } : {}),
         });
         setStatusTab(MomentCreationStatus.DRAFT);
         closeDialog();
@@ -140,6 +162,7 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
           fileCount: files.length,
           fileSize: files.reduce((total, file) => total + file.size, 0),
           fileType: files[0]?.type,
+          ...(isLanguageSelectEnabled ? { locale: selectedLocale } : {}),
         });
         setSelectedVideoFiles([]);
       }
@@ -147,9 +170,11 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
     [
       addMoments,
       closeDialog,
+      isLanguageSelectEnabled,
       isUploading,
       onMomentUploaded,
       selectedExperience,
+      selectedLocale,
       setStatusTab,
       uploadVideos,
     ],
@@ -202,8 +227,17 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
             />
           )}
 
+          {isLanguageSelectEnabled ? (
+            <MomentsLanguageSelect
+              value={selectedLocale}
+              onChange={handleLocaleChange}
+              isDisabled={isUploading}
+            />
+          ) : null}
+
           <MomentsVideoUploadZone
             hasSelectedExperience={selectedExperience?.id != null}
+            hasSelectedLanguage={!isLanguageSelectEnabled || selectedLocale != null}
             selectedFiles={selectedVideoFiles}
             isUploading={isUploading}
             onFilesChange={handleFilesChange}

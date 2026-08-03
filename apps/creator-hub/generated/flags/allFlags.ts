@@ -650,6 +650,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: creatorCreationsFlags.isMomentsUploadLanguageSelectEnabled,
+      metadata: {
+        namespace: 'creator-creations',
+        name: 'isMomentsUploadLanguageSelectEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: creatorGameopsFlags.enablePlayerSupport,
       metadata: {
         namespace: 'creator-gameops',

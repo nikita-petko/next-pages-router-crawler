@@ -18,6 +18,7 @@ export type MomentsCreationsContext = {
   fileCount?: number;
   fileSize?: number;
   fileType?: string;
+  locale?: string;
   reason?: string;
   inputValue?: string;
   idType?: string;
@@ -61,6 +62,10 @@ export const appendMomentsCreationsContextParameters = (
 
   if (context.fileType != null && context.fileType.length > 0) {
     parameters.fileType = context.fileType;
+  }
+
+  if (context.locale != null && context.locale.length > 0) {
+    parameters.locale = context.locale;
   }
 
   if (context.inputValue != null && context.inputValue.length > 0) {

@@ -1,3 +1,5 @@
+import type { Locale } from '@rbx/intl';
+
 export const MomentCreationStatus = {
   ACTIVE: 'active',
   PENDING: 'pending',
@@ -28,6 +30,8 @@ export type MomentCreation = {
   modifiedAt: string;
   status: MomentCreationStatus;
   universeId?: number;
+  /** Spoken/on-screen language of the Moments video, when provided at upload. */
+  locale?: Locale;
 };
 
 export type ListMomentsResponse = {

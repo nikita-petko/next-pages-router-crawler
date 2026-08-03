@@ -1,6 +1,8 @@
 import type { MomentPublishData } from '@rbx/client-content-captures-api/v1';
+import type { Locale } from '@rbx/intl';
 import contentCapturesApiClient from '@modules/clients/contentCapturesApi';
 import type { StoredMomentCreation } from '../types/StoredMomentCreation';
+import { resolveMomentPublishLocale } from '../utils/momentsUploadLocaleUtils';
 import { getVideoDurationSeconds } from '../utils/momentsVideoDurationUtils';
 
 export type PublishMomentRequest = {
@@ -8,12 +10,17 @@ export type PublishMomentRequest = {
   file: File;
   userId: number;
   displayName: string;
+  uiLocale?: Locale | null;
+  sendVideoContentLanguage?: boolean;
 };
 
 export type PublishMomentResult = {
   operationId: string;
   momentId?: string | null;
 };
+
+/** Content-captures expects cookie-style lowercase locale tags (e.g. `en-us`). */
+export const toVideoContentLanguage = (locale: Locale): string => locale.toLowerCase();
 
 function buildMomentPublishData(
   moment: StoredMomentCreation,
@@ -41,6 +48,8 @@ export async function publishMoment({
   moment,
   file,
   displayName,
+  uiLocale,
+  sendVideoContentLanguage = true,
 }: PublishMomentRequest): Promise<PublishMomentResult> {
   if (moment.experienceId == null) {
     throw new Error('Moment experience is required before publishing');
@@ -55,6 +64,13 @@ export async function publishMoment({
     description: moment.description,
     universeId: moment.experienceId,
     momentPublishData: JSON.stringify(momentPublishData),
+    ...(sendVideoContentLanguage
+      ? {
+          videoContentLanguage: toVideoContentLanguage(
+            resolveMomentPublishLocale(moment, uiLocale),
+          ),
+        }
+      : {}),
   });
 
   const operationId = response.operationId;
