@@ -9,7 +9,7 @@ import { PageLoading } from '@modules/miscellaneous/components';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import convertToRobloxLocale from '../../../utils/localizationHelper';
-import { useLatestQuestionnaireId, useQuestionnaire, useAnswers } from '../../../utils/queries';
+import { useLatestQuestionnaireId, useQuestionnaire } from '../../../utils/queries';
 import AdditionalQuestionnaire from './AdditionalQuestionnaire';
 import GuidanceSideSheet, { GuidanceFloatingButton } from './GuidanceSideSheet';
 import MainQuestionnaire from './MainQuestionnaire';
@@ -28,12 +28,16 @@ function findScrollParent(node: HTMLElement): HTMLElement | null {
 }
 
 interface QuestionnaireStepperV2Props {
+  attemptId: string;
+  entryPoint: string;
   universeId: number;
   onComplete: () => void;
   onCancel: () => void;
 }
 
 const QuestionnaireStepperV2: FunctionComponent<QuestionnaireStepperV2Props> = ({
+  attemptId,
+  entryPoint,
   universeId,
   onComplete,
   onCancel,
@@ -53,7 +57,6 @@ const QuestionnaireStepperV2: FunctionComponent<QuestionnaireStepperV2Props> = (
     isLoading: isQuestionnaireLoading,
     isError: isQuestionnaireError,
   } = useQuestionnaire(questionnaireId, localeCode);
-  const { data: answersData } = useAnswers(universeId);
   const shouldUseAppTypeQuestion = (questionnaireData?.sections?.length ?? 0) === 1;
   const mainQuestionsLabel = isOverEighteenQuestionnaire
     ? translate('Stepper.IARCQuestions')
@@ -246,6 +249,8 @@ const QuestionnaireStepperV2: FunctionComponent<QuestionnaireStepperV2Props> = (
           {activeStep < additionalStepIndex && (
             <MainQuestionnaire
               universeId={universeId}
+              attemptId={attemptId}
+              entryPoint={entryPoint}
               activeStep={activeStep}
               onNext={() => goToStep((current) => current + 1)}
               onBack={() =>
@@ -268,15 +273,10 @@ const QuestionnaireStepperV2: FunctionComponent<QuestionnaireStepperV2Props> = (
           {activeStep === additionalStepIndex && (
             <AdditionalQuestionnaire
               universeId={universeId}
+              attemptId={attemptId}
+              entryPoint={entryPoint}
               onComplete={handleAdditionalQuestionnaireComplete}
-              onBack={() => {
-                const hasAnswers = answersData && answersData.length > 0;
-                if (!hasAnswers) {
-                  goToStep(0);
-                } else {
-                  goToStep(shouldUseAppTypeQuestion ? 1 : 0);
-                }
-              }}
+              onBack={() => goToStep(additionalStepIndex - 1)}
               onCancel={onCancel}
               onViolation={handleViolation}
               actionBarContainer={actionBarContainer}

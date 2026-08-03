@@ -9,7 +9,10 @@ import { PageLoading } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import QuestionnaireAccordions from '../../../components/QuestionnaireAccordions';
 import { QUESTIONNAIRE_TRANSLATION_KEYS } from '../../../constants/questionnaireConstants';
+import { QuestionnaireTelemetryProvider } from '../../../contexts/QuestionnaireTelemetryContext';
+import useQuestionnaireTelemetry from '../../../hooks/useQuestionnaireTelemetry';
 import useQuestionnaireToast from '../../../hooks/useQuestionnaireToast';
+import useTimedQuestionnaireView from '../../../hooks/useTimedQuestionnaireView';
 import networkRequestManager from '../../../implementations/QuestionnaireNetworkRequestManager';
 import type {
   ValidatedAnswer,
@@ -31,6 +34,8 @@ import { validateQuestions, validateSections } from '../../../utils/validationHe
 import QuestionnaireQuestionContainer from '../../QuestionnaireQuestionContainer';
 
 interface MainQuestionnaireProps {
+  attemptId: string;
+  entryPoint: string;
   universeId: number;
   activeStep: number;
   onNext: () => void;
@@ -44,7 +49,36 @@ interface MainQuestionnaireProps {
 
 const noop = () => {};
 
+const parseSelectedOptionIds = (value: string): string[] => {
+  const parsed: unknown = JSON.parse(value);
+  if (typeof parsed === 'string') {
+    return [parsed];
+  }
+  if (Array.isArray(parsed)) {
+    return parsed.filter((id): id is string => typeof id === 'string');
+  }
+  return [];
+};
+
+const validateChildSections = (sections: Section[]): DeepValidatedQuestionnaire['sections'] => {
+  const validatedSections: DeepValidatedQuestionnaire['sections'] = [];
+  sections.forEach((section) => {
+    if (section.id && section.name && section.questions) {
+      validatedSections.push({
+        id: section.id,
+        name: section.name,
+        description: section.description ?? null,
+        questions: validateQuestions(section.questions),
+        metadata: section.metadata ?? {},
+      });
+    }
+  });
+  return validatedSections;
+};
+
 const MainQuestionnaire: FunctionComponent<MainQuestionnaireProps> = ({
+  attemptId,
+  entryPoint,
   universeId,
   activeStep,
   onNext,
@@ -67,6 +101,13 @@ const MainQuestionnaire: FunctionComponent<MainQuestionnaireProps> = ({
   const localeCode = convertToRobloxLocale(locale);
   const { data: questionnaireIdData } = useLatestQuestionnaireId(universeId);
   const questionnaireId = questionnaireIdData?.questionnaireId;
+  const telemetry = useQuestionnaireTelemetry({
+    attemptId,
+    entryPoint,
+    locale,
+    questionnaireId,
+    universeId,
+  });
 
   const { data: questionnaireData, isLoading: isQuestionnaireLoading } = useQuestionnaire(
     questionnaireId,
@@ -84,9 +125,30 @@ const MainQuestionnaire: FunctionComponent<MainQuestionnaireProps> = ({
     useQuestionnaireTraverser();
 
   const shouldUseAppTypeQuestion = (questionnaireData?.sections?.length ?? 0) === 1;
+  const isStep0 = shouldUseAppTypeQuestion && activeStep === 0;
+  const isStep1 = shouldUseAppTypeQuestion ? activeStep === 1 : activeStep === 0;
   const appTypeQuestion = shouldUseAppTypeQuestion
     ? questionnaireData?.sections?.[0]?.questions?.[0]
     : null;
+  const appTypeSectionId = questionnaireData?.sections?.[0]?.id;
+  const handleAppTypeSectionView = useCallback(
+    (timing: Parameters<NonNullable<typeof telemetry.onSectionViewed>>[1]) => {
+      if (appTypeSectionId) {
+        telemetry.onSectionViewed?.(appTypeSectionId, timing);
+      }
+    },
+    [appTypeSectionId, telemetry],
+  );
+  useTimedQuestionnaireView(isStep0 && !!appTypeSectionId, handleAppTypeSectionView);
+  const handleAppTypeQuestionView = useCallback(
+    (timing: Parameters<NonNullable<typeof telemetry.onQuestionViewed>>[1]) => {
+      if (appTypeQuestion) {
+        telemetry.onQuestionViewed?.(appTypeQuestion.id, timing);
+      }
+    },
+    [appTypeQuestion, telemetry],
+  );
+  useTimedQuestionnaireView(isStep0 && !!appTypeQuestion, handleAppTypeQuestionView);
 
   const appTypeQuestionStripped = useMemo(() => {
     if (!appTypeQuestion || !('options' in appTypeQuestion)) {
@@ -111,18 +173,15 @@ const MainQuestionnaire: FunctionComponent<MainQuestionnaireProps> = ({
       return null;
     }
     const answer = pendingAnswers.find((a) => a.questionId === appTypeQuestion.id);
-    return answer ? JSON.parse(answer.value) : null;
+    return answer ? (parseSelectedOptionIds(answer.value)[0] ?? null) : null;
   }, [appTypeQuestion, pendingAnswers]);
 
   const selectedChildSections = useMemo(() => {
     if (!shouldUseAppTypeQuestion || !appTypeQuestion || !('options' in appTypeQuestion)) {
       return null;
     }
-    const { options } = appTypeQuestion as {
-      options?: { id?: string; childSections?: unknown }[];
-    };
-    const option = options?.find((opt) => opt.id === selectedAppTypeOptionId);
-    return (option?.childSections as DeepValidatedQuestionnaire['sections'] | undefined) ?? null;
+    const option = appTypeQuestion.options.find((opt) => opt.id === selectedAppTypeOptionId);
+    return option?.childSections ? validateChildSections(option.childSections) : null;
   }, [appTypeQuestion, selectedAppTypeOptionId, shouldUseAppTypeQuestion]);
 
   const remainingSectionsQuestionnaire: DeepValidatedQuestionnaire | null = useMemo(() => {
@@ -148,6 +207,7 @@ const MainQuestionnaire: FunctionComponent<MainQuestionnaireProps> = ({
       return;
     }
     if (answersData) {
+      // oxlint-disable-next-line react/react-compiler -- initializing editable answers from the server response
       setPendingAnswers(answersData);
     }
   }, [answersData, saveStatus]);
@@ -243,9 +303,6 @@ const MainQuestionnaire: FunctionComponent<MainQuestionnaireProps> = ({
     onViolation,
   ]);
 
-  const isStep0 = shouldUseAppTypeQuestion && activeStep === 0;
-  const isStep1 = shouldUseAppTypeQuestion ? activeStep === 1 : activeStep === 0;
-
   const initialQuestion = appTypeQuestion;
   const hasAnsweredInitialQuestion = initialQuestion
     ? pendingAnswers.some((a) => a.questionId === initialQuestion.id)
@@ -328,10 +385,8 @@ const MainQuestionnaire: FunctionComponent<MainQuestionnaireProps> = ({
             question={appTypeQuestionStripped ?? initialQuestion}
             updateAnswer={async (questionId: string, value: string) => {
               const currentAnswer = pendingAnswers.find((a) => a.questionId === questionId);
-              const oldParsed = currentAnswer ? JSON.parse(currentAnswer.value) : null;
-              const oldIds: string[] = oldParsed ? [].concat(oldParsed) : [];
-              const newParsed = JSON.parse(value);
-              const newIds: string[] = Array.isArray(newParsed) ? newParsed : [newParsed];
+              const oldIds = currentAnswer ? parseSelectedOptionIds(currentAnswer.value) : [];
+              const newIds = parseSelectedOptionIds(value);
               const deselectedIds = oldIds.filter((id) => !newIds.includes(id));
               const deselectedOptions =
                 appTypeQuestion && 'options' in appTypeQuestion
@@ -382,21 +437,23 @@ const MainQuestionnaire: FunctionComponent<MainQuestionnaireProps> = ({
             completed: completedSectionsCount.toString(),
             total: totalSectionsCount.toString(),
           })}
-          <QuestionnaireAccordions
-            questionnaire={remainingSectionsQuestionnaire}
-            answers={pendingAnswers}
-            errors={errors}
-            isSaving={isSaving}
-            setAnswers={setAnswers}
-            send={noop}
-            save={handleSave}
-            goToLanding={noop}
-            omitActionBar
-            onExpandedSectionChange={onActiveSectionChange}
-            violatedSectionIds={violatedSectionIds}
-          />
+          <QuestionnaireTelemetryProvider value={telemetry}>
+            <QuestionnaireAccordions
+              questionnaire={remainingSectionsQuestionnaire}
+              answers={pendingAnswers}
+              errors={errors}
+              isSaving={isSaving}
+              setAnswers={setAnswers}
+              send={noop}
+              save={handleSave}
+              goToLanding={noop}
+              omitActionBar
+              onExpandedSectionChange={onActiveSectionChange}
+              violatedSectionIds={violatedSectionIds}
+            />
+          </QuestionnaireTelemetryProvider>
           {renderActionBar(
-            <React.Fragment>
+            <>
               <Button variant='Utility' size='Medium' onClick={onBack}>
                 {translate('Button.Back')}
               </Button>
@@ -408,7 +465,7 @@ const MainQuestionnaire: FunctionComponent<MainQuestionnaireProps> = ({
                 isLoading={isSaving}>
                 {translate('Button.Continue')}
               </Button>
-            </React.Fragment>,
+            </>,
           )}
         </>
       )}

@@ -22,6 +22,7 @@ const ContextBanner: FunctionComponent<ContextBannerProps> = ({
           href={linkHref}
           target='_blank'
           color='Standard'
+          underline='always'
           isExternal={false}
           className='shrink-0'>
           {linkLabel}

@@ -1,5 +1,5 @@
-import type { FunctionComponent } from 'react';
-import React from 'react';
+import type { ForwardedRef } from 'react';
+import React, { forwardRef } from 'react';
 import useQuestionnaireStyles from './QuestionnaireContainer.styles';
 
 export interface QuestionnaireQuestionSectionProps {
@@ -7,16 +7,18 @@ export interface QuestionnaireQuestionSectionProps {
   children: React.ReactNode;
 }
 
-const QuestionnaireQuestionSection: FunctionComponent<QuestionnaireQuestionSectionProps> = ({
-  isSubQuestion,
-  children,
-}) => {
+const QuestionnaireQuestionSection = (
+  { isSubQuestion, children }: QuestionnaireQuestionSectionProps,
+  ref: ForwardedRef<HTMLElement>,
+) => {
   const {
     classes: { sectionQuestion, sectionSubQuestion },
   } = useQuestionnaireStyles();
   return (
-    <section className={isSubQuestion ? sectionSubQuestion : sectionQuestion}>{children}</section>
+    <section ref={ref} className={isSubQuestion ? sectionSubQuestion : sectionQuestion}>
+      {children}
+    </section>
   );
 };
 
-export default QuestionnaireQuestionSection;
+export default forwardRef(QuestionnaireQuestionSection);

@@ -8,6 +8,8 @@ import { PageLoading } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import QuestionnaireAccordions from '../../../components/QuestionnaireAccordions';
 import { QUESTIONNAIRE_TRANSLATION_KEYS } from '../../../constants/questionnaireConstants';
+import { QuestionnaireTelemetryProvider } from '../../../contexts/QuestionnaireTelemetryContext';
+import useQuestionnaireTelemetry from '../../../hooks/useQuestionnaireTelemetry';
 import useQuestionnaireToast from '../../../hooks/useQuestionnaireToast';
 import networkRequestManager from '../../../implementations/QuestionnaireNetworkRequestManager';
 import type { ValidatedAnswer, QuestionnaireResponseErrors } from '../../../interfaces/types';
@@ -22,6 +24,8 @@ import {
 } from '../../../utils/queries';
 
 interface AdditionalQuestionnaireProps {
+  attemptId: string;
+  entryPoint: string;
   universeId: number;
   onComplete: (questionnaireId: string) => void;
   onBack: () => void;
@@ -33,6 +37,8 @@ interface AdditionalQuestionnaireProps {
 const noop = () => {};
 
 const AdditionalQuestionnaire: FunctionComponent<AdditionalQuestionnaireProps> = ({
+  attemptId,
+  entryPoint,
   universeId,
   onComplete,
   onBack,
@@ -58,6 +64,13 @@ const AdditionalQuestionnaire: FunctionComponent<AdditionalQuestionnaireProps> =
     locale,
   );
   const additionalQuestionnaireId = questionnaireData?.id;
+  const telemetry = useQuestionnaireTelemetry({
+    attemptId,
+    entryPoint,
+    locale,
+    questionnaireId: additionalQuestionnaireId,
+    universeId,
+  });
 
   const {
     data: savedAnswersData,
@@ -73,6 +86,7 @@ const AdditionalQuestionnaire: FunctionComponent<AdditionalQuestionnaireProps> =
       return;
     }
     if (savedAnswersData) {
+      // oxlint-disable-next-line react/react-compiler -- initializing editable answers from the server response
       setPendingAnswers(savedAnswersData);
     }
   }, [savedAnswersData, saveStatus]);
@@ -209,18 +223,20 @@ const AdditionalQuestionnaire: FunctionComponent<AdditionalQuestionnaireProps> =
         completed: completedSectionsCount.toString(),
         total: totalSectionsCount.toString(),
       })}
-      <QuestionnaireAccordions
-        questionnaire={questionnaireData}
-        answers={pendingAnswers}
-        errors={errors}
-        isSaving={isSaving}
-        setAnswers={setAnswers}
-        omitActionBar
-        send={noop}
-        save={handleSave}
-        goToLanding={noop}
-        violatedSectionIds={violatedSectionIds}
-      />
+      <QuestionnaireTelemetryProvider value={telemetry}>
+        <QuestionnaireAccordions
+          questionnaire={questionnaireData}
+          answers={pendingAnswers}
+          errors={errors}
+          isSaving={isSaving}
+          setAnswers={setAnswers}
+          omitActionBar
+          send={noop}
+          save={handleSave}
+          goToLanding={noop}
+          violatedSectionIds={violatedSectionIds}
+        />
+      </QuestionnaireTelemetryProvider>
       {actionBarContainer &&
         createPortal(
           <div className='flex justify-between items-center gap-medium padding-top-medium'>

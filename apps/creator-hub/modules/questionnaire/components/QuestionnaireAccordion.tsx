@@ -11,6 +11,11 @@ import {
 } from '@rbx/ui';
 import Flex from '@modules/miscellaneous/components/Flex';
 import QuestionnaireQuestionContainer from '../containers/QuestionnaireQuestionContainer';
+import {
+  QuestionnaireSectionTelemetryProvider,
+  useQuestionnaireTelemetryContext,
+} from '../contexts/QuestionnaireTelemetryContext';
+import useTimedQuestionnaireView from '../hooks/useTimedQuestionnaireView';
 import type {
   QuestionnaireResponseErrors,
   ValidatedAnswer,
@@ -63,6 +68,15 @@ const QuestionnaireAccordion: FunctionComponent<
   completed = false,
   violated = false,
 }) => {
+  const { onSectionViewed } = useQuestionnaireTelemetryContext();
+  const handleSectionViewEnd = React.useCallback(
+    (timing: Parameters<NonNullable<typeof onSectionViewed>>[1]) => {
+      onSectionViewed?.(id, timing);
+    },
+    [id, onSectionViewed],
+  );
+  useTimedQuestionnaireView(expanded && !!onSectionViewed, handleSectionViewEnd);
+
   const {
     classes: { accordionRoot, accordionSummaryContent },
   } = useStyles();
@@ -83,16 +97,18 @@ const QuestionnaireAccordion: FunctionComponent<
         {!violated && completed && <CheckCircleOutlineIcon color='success' />}
       </AccordionSummary>
       <AccordionDetails>
-        {questions.map((question) => (
-          <QuestionnaireQuestionContainer
-            errors={errors}
-            validatedAnswers={answers}
-            key={question.id}
-            question={question}
-            updateAnswer={updateAnswer}
-          />
-        ))}
-        <Flex gap={10}>{children}</Flex>
+        <QuestionnaireSectionTelemetryProvider isActive={expanded}>
+          {questions.map((question) => (
+            <QuestionnaireQuestionContainer
+              errors={errors}
+              validatedAnswers={answers}
+              key={question.id}
+              question={question}
+              updateAnswer={updateAnswer}
+            />
+          ))}
+          <Flex gap={10}>{children}</Flex>
+        </QuestionnaireSectionTelemetryProvider>
       </AccordionDetails>
     </Accordion>
   );
