@@ -81,14 +81,16 @@ function buildRows(breakingChanges: BreakingChangeEntry[]): BreakingChangeRow[] 
     });
   });
 
-  return Array.from(roleMap.values()).map((role) => ({
-    key: getRoleKey(role),
-    roleId: role.id,
-    roleName: role.name ?? '',
-    roleColor: getRoleColor(role),
-    isOrgRole: role.isOrgRole ?? false,
-    permissions: role.permissions ?? [],
-  }));
+  return Array.from(roleMap.values())
+    .filter((role) => (role.permissions?.length ?? 0) > 0)
+    .map((role) => ({
+      key: getRoleKey(role),
+      roleId: role.id,
+      roleName: role.name ?? '',
+      roleColor: getRoleColor(role),
+      isOrgRole: role.isOrgRole ?? false,
+      permissions: role.permissions ?? [],
+    }));
 }
 
 function addModalSuppressionQueryParam(url: string): string {
@@ -107,7 +109,8 @@ const BreakingChangesTable: FC<BreakingChangesTableProps> = ({
   getLegacyRolesUrl,
 }) => {
   const { translateWithNamespace } = useTranslation();
-  const tGM = (key: string) => translateWithNamespace(TranslationNamespace.GroupManagement, key);
+  const tGM = (key: string, args?: Record<string, string>) =>
+    translateWithNamespace(TranslationNamespace.GroupManagement, key, args);
   const tPerms = (key: string, args?: Record<string, string>) =>
     translateWithNamespace(TranslationNamespace.Permissions, key, args);
   const tGroups = (key: string) => translateWithNamespace(TranslationNamespace.Groups, key);
@@ -167,9 +170,9 @@ const BreakingChangesTable: FC<BreakingChangesTableProps> = ({
                 </TableCell>
                 <TableCell className='flex flex-row items-center padding-medium min-width-0 [height:auto] [flex:2_1_0%]'>
                   <span className='text-body-medium content-default min-width-0 [overflow-wrap:anywhere]'>
-                    {translatedPermissions.length > 0
-                      ? `${tGM('Description.PermissionsRemoved')} ${translatedPermissions.join(', ')}`
-                      : null}
+                    {tGM('Description.PermissionsRemoved', {
+                      permissions: translatedPermissions.join(', '),
+                    })}
                   </span>
                 </TableCell>
               </TableRow>

@@ -7,6 +7,7 @@ import { UnificationOptInModal } from '@rbx/group-management';
 import { withTranslation, useTranslation } from '@rbx/intl';
 import { CircularProgress, Grid } from '@rbx/ui';
 import { isUnifiedUiEnabled } from '@generated/flags/groups';
+import { useAuthentication } from '@modules/authentication/providers';
 import { ErrorPage } from '@modules/miscellaneous/error';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { creatorHub, www } from '@modules/miscellaneous/urls';
@@ -28,6 +29,7 @@ import useCurrentOrganization from '../hooks/useCurrentOrganization';
 const GroupProfileContainer: FunctionComponent<React.PropsWithChildren> = () => {
   const { translate } = useTranslation();
   const currentGroup = useCurrentGroup();
+  const { user } = useAuthentication();
   const { canAccess, isLoading: isLoadingAccess } = useCanAccessGroupProfile(currentGroup?.id);
   const { permissions } = useCurrentOrganization();
   const { data: assetPrivacyDefault, isFetching: assetPrivacyDefaultFetching } =
@@ -108,9 +110,10 @@ const GroupProfileContainer: FunctionComponent<React.PropsWithChildren> = () => 
         breadcrumb={buildBreadcrumb(translate('Label.Group'), translate('Label.GroupProfile'))}
       />
       <GroupOwnershipTransferAlert groupConfiguration={groupConfiguration} />
-      {currentGroup?.id && isUnifiedUIEnabled && permissions?.isOwner && (
+      {currentGroup?.id && user?.id && isUnifiedUIEnabled && permissions?.isOwner && (
         <UnificationOptInModal
           groupId={currentGroup.id}
+          userId={user.id}
           getCreatorHubRoleUrl={creatorHub.getGroupRoleUrl}
           getLegacyRolesUrl={www.getConfigureGroupRolesUrl}
         />

@@ -6,6 +6,7 @@ import { UnificationOptInModal } from '@rbx/group-management';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { CircularProgress, Typography, Grid, useMediaQuery, useTheme } from '@rbx/ui';
 import { isUnifiedUiEnabled } from '@generated/flags/groups';
+import { useAuthentication } from '@modules/authentication/providers';
 import useActivityFeedStyles from '@modules/creations/activityFeed/components/ActivityFeed.styles';
 import { EmptyGrid } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -21,6 +22,7 @@ const GroupActivityHistoryContainer: FunctionComponent<PropsWithChildren> = () =
 
   const { translate } = useTranslation();
   const { organization, permissions, refreshPermission } = useCurrentOrganization();
+  const { user } = useAuthentication();
   const { value: isUnifiedUIEnabled } = useFlag(isUnifiedUiEnabled);
 
   const theme = useTheme();
@@ -46,9 +48,10 @@ const GroupActivityHistoryContainer: FunctionComponent<PropsWithChildren> = () =
         </Grid>
       ) : (
         <>
-          {organization.groupId && isUnifiedUIEnabled && permissions?.isOwner && (
+          {organization.groupId && user?.id && isUnifiedUIEnabled && permissions?.isOwner && (
             <UnificationOptInModal
               groupId={Number(organization.groupId)}
+              userId={user.id}
               getCreatorHubRoleUrl={creatorHub.getGroupRoleUrl}
               getLegacyRolesUrl={www.getConfigureGroupRolesUrl}
             />
