@@ -387,10 +387,19 @@ export default function useControlledChartConfigurator({
   // Mode, which sources breakdown from the URL (`AnalyticsQueryParams.Breakdown`)
   // and never stores it in reducer state; pushing breakdown into the reducer
   // would add a field that surface ignores. Breakdown also has to be resolved
-  // against the derived, metric-dependent `dimensions` (see the seeding effect
+  // against the derived, metric-dependent `dimensions` (see the re-seed logic
   // below) that the pure reducer has no access to, so the hook owns that
   // resolution while the reducer stays URL/derivation-agnostic.
-  const [breakdown, setBreakdownState] = useState<readonly TRAQIV2Dimension[]>([]);
+  //
+  // `useStableArray` keeps the dependency referentially stable while the seeded
+  // contents are unchanged, so rebuilding an equivalent `initialState` does not
+  // re-seed and wipe in-progress breakdown edits (mirrors the seedKey guard).
+  const stableInitialBreakdownDimensions = useStableArray(
+    initialState?.breakdownDimensions ?? EMPTY_BREAKDOWN_DIMENSIONS,
+  );
+  const [breakdown, setBreakdownState] = useState<readonly TRAQIV2Dimension[]>(() =>
+    resolveBreakdownDimensions(stableInitialBreakdownDimensions, dimensions),
+  );
   const setBreakdown = useCallback(
     (nextBreakdown: TRAQIV2Dimension[]) => {
       setBreakdownState(resolveBreakdownDimensions(nextBreakdown, dimensions));
@@ -398,16 +407,25 @@ export default function useControlledChartConfigurator({
     [dimensions],
   );
 
-  // `useStableArray` keeps the dependency referentially stable while the seeded
-  // contents are unchanged, so rebuilding an equivalent `initialState` does not
-  // re-seed and wipe in-progress breakdown edits (mirrors the seedKey guard).
-  const stableInitialBreakdownDimensions = useStableArray(
-    initialState?.breakdownDimensions ?? EMPTY_BREAKDOWN_DIMENSIONS,
+  // Re-seed breakdown when the available dimensions or the seeded breakdown
+  // change. Using the "adjusting state during render" pattern (React docs:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)
+  // instead of a `useEffect` to avoid cascading renders.
+  const [lastSeedKey, setLastSeedKey] = useState(seedKey);
+  const [lastDimensions, setLastDimensions] = useState(dimensions);
+  const [lastInitialBreakdownDimensions, setLastInitialBreakdownDimensions] = useState(
+    stableInitialBreakdownDimensions,
   );
-  useEffect(() => {
-    // oxlint-disable-next-line react/react-compiler -- pre-existing EffectSetState pattern; re-seeds breakdown when available dimensions or seed change
-    setBreakdown(resolveBreakdownDimensions(stableInitialBreakdownDimensions, dimensions));
-  }, [dimensions, stableInitialBreakdownDimensions, seedKey, setBreakdown]);
+  if (
+    seedKey !== lastSeedKey ||
+    dimensions !== lastDimensions ||
+    stableInitialBreakdownDimensions !== lastInitialBreakdownDimensions
+  ) {
+    setLastSeedKey(seedKey);
+    setLastDimensions(dimensions);
+    setLastInitialBreakdownDimensions(stableInitialBreakdownDimensions);
+    setBreakdownState(resolveBreakdownDimensions(stableInitialBreakdownDimensions, dimensions));
+  }
 
   const chartContextFromProvider = useCurrentChartContext({
     resource,
