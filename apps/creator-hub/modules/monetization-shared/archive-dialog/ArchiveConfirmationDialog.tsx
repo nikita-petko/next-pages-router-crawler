@@ -30,24 +30,24 @@ function ArchiveConfirmationDialogContent({
 
   const title = !isArchived
     ? tPendingTranslation(
-        'Archive item?',
-        'Title of the confirmation dialog shown when a creator archives a monetization item.',
+        'Archive item',
+        'Title of the confirmation dialog shown when a creator archives a single monetization item from the row menu.',
         translationKey('Heading.ArchiveItem', TranslationNamespace.Creations),
       )
     : tPendingTranslation(
-        'Unarchive item?',
-        'Title of the confirmation dialog shown when a creator unarchives a monetization item.',
+        'Unarchive item',
+        'Title of the confirmation dialog shown when a creator unarchives a single monetization item from the row menu.',
         translationKey('Heading.UnarchiveItem', TranslationNamespace.Creations),
       );
 
   const body = !isArchived
     ? tPendingTranslation(
-        'Archiving this item removes it from sale and hides it from your experience. You can unarchive it later.',
+        'If you archive this item, it will be taken off sale and removed from Managed Pricing.',
         'Body text of the confirmation dialog shown when archiving a monetization item.',
         translationKey('Message.ArchiveItemWarning', TranslationNamespace.Creations),
       )
     : tPendingTranslation(
-        'Unarchiving this item makes it available again. You can put it back on sale from its settings.',
+        "This item will be restored to your Current tab, but won't be visible to buyers until you put it back on sale.",
         'Body text of the confirmation dialog shown when unarchiving a monetization item.',
         translationKey('Message.UnarchiveItemWarning', TranslationNamespace.Creations),
       );
