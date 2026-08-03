@@ -1,6 +1,6 @@
-import router from 'next/router';
 import type { FunctionComponent } from 'react';
-import React, { useEffect, useState, useCallback, Fragment, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/router';
 import { withTranslation } from '@rbx/intl';
 import { useAuthentication } from '@modules/authentication/providers';
 import type {
@@ -18,6 +18,7 @@ import { InviteQueryKey } from '../constants/groupConstants';
 import OrganizationContext from './OrganizationContext';
 
 const OrganizationProvider: FunctionComponent<React.PropsWithChildren> = ({ children }) => {
+  const router = useRouter();
   const { user } = useAuthentication();
   const currentGroup = useCurrentGroup();
   const { currentItemGroupId } = useAppBreadcrumbsData();
@@ -32,12 +33,13 @@ const OrganizationProvider: FunctionComponent<React.PropsWithChildren> = ({ chil
   const [isActionDialogOpen, setIsActionDialogOpen] = useState<boolean>(false);
 
   const currentGroupId = useMemo(() => {
-    return currentGroup?.id || currentItemGroupId;
+    return currentGroup?.id ?? currentItemGroupId;
   }, [currentGroup, currentItemGroupId]);
+  const invitationOrganizationId = router.query[InviteQueryKey];
 
   const redirectToDashboard = useCallback(() => {
-    router.push(`https://create.${process.env.robloxSiteDomain}/dashboard/creations`);
-  }, []);
+    void router.push(`https://create.${process.env.robloxSiteDomain}/dashboard/creations`);
+  }, [router]);
 
   const getInvitation = useCallback(
     async (organizationId: string) => {
@@ -84,15 +86,16 @@ const OrganizationProvider: FunctionComponent<React.PropsWithChildren> = ({ chil
   );
 
   const getOrganization = useCallback(async () => {
+    if (!router.isReady) {
+      return;
+    }
+
     setIsOrganizationLoading(true);
 
     try {
-      // Use query string for invites when users are not authorized as group yet
-      const organizationIdString = router.query[`${InviteQueryKey}`] as string | undefined;
-
-      if (!currentGroupId && typeof organizationIdString !== 'undefined') {
-        // No group selected, but there is specified invitation in query
-        await getInvitation(organizationIdString);
+      // Invite links take precedence over any group cached from a previous session.
+      if (typeof invitationOrganizationId === 'string') {
+        await getInvitation(invitationOrganizationId);
         return;
       }
 
@@ -124,11 +127,11 @@ const OrganizationProvider: FunctionComponent<React.PropsWithChildren> = ({ chil
     } finally {
       setIsOrganizationLoading(false);
     }
-  }, [currentGroupId, getInvitation, getPermissions]);
+  }, [currentGroupId, getInvitation, getPermissions, invitationOrganizationId, router.isReady]);
 
   const refreshOrganization = useCallback(() => {
     setIsOrganizationRefreshRequired(true);
-    getOrganization();
+    void getOrganization();
   }, [getOrganization]);
 
   const refreshPermission = useCallback(async () => {
@@ -158,7 +161,8 @@ const OrganizationProvider: FunctionComponent<React.PropsWithChildren> = ({ chil
   ]);
 
   useEffect(() => {
-    getOrganization();
+    // oxlint-disable-next-line react/react-compiler -- initial fetch sets the loading state before starting its asynchronous request
+    void getOrganization();
   }, [getOrganization]);
 
   return (
@@ -167,7 +171,7 @@ const OrganizationProvider: FunctionComponent<React.PropsWithChildren> = ({ chil
         {children}
 
         {invitation && (
-          <Fragment>
+          <>
             <AcceptInviteDialog
               open={
                 invitation.invitationStatusType === InvitationStatusType.Open &&
@@ -203,7 +207,7 @@ const OrganizationProvider: FunctionComponent<React.PropsWithChildren> = ({ chil
               invitation={invitation}
               accepted={invitationAccepted === true}
             />
-          </Fragment>
+          </>
         )}
       </>
     </OrganizationContext.Provider>
