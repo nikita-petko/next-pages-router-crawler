@@ -36,9 +36,9 @@ const SEARCH_INPUT_CONTAINER_CLASS_NAME = '!outline-none !stroke-none ![box-shad
 // the row, and the table below it, stay put when the bulk actions replace the filters.
 const TOOLBAR_ROW_CLASS_NAME =
   'items-start justify-between padding-top-small gap-medium flex flex-col medium:items-end medium:height-[calc(var(--padding-small)+var(--size-600)+var(--gap-small)+var(--size-1000))] medium:flex-row';
-const FILTER_CONTROL_WIDTH_CLASS_NAME = 'width-[263px] medium:width-[208px]';
 // The label is a bare span, so its height would otherwise come from the font's line box.
-const FILTER_DROPDOWN_CLASS_NAME = `${FILTER_CONTROL_WIDTH_CLASS_NAME} [&>span]:items-center [&>span]:height-600 [&>span]:flex [&>.foundation-web-input]:!outline-none [&>.foundation-web-input]:!stroke-default [&>.foundation-web-input]:![box-shadow:none]`;
+const FILTER_CONTROL_CLASS_NAME =
+  'flex flex-col width-[263px] medium:width-[208px] [&>span]:items-center [&>span]:height-600 [&>span]:flex [&>button]:!stroke-default [&>.foundation-web-input]:!outline-none [&>.foundation-web-input]:!stroke-default [&>.foundation-web-input]:![box-shadow:none]';
 const PlayerSupportToolbar: FunctionComponent<PlayerSupportToolbarProps> = ({
   search,
   dateFilter,
@@ -145,14 +145,14 @@ const PlayerSupportToolbar: FunctionComponent<PlayerSupportToolbarProps> = ({
           {!isSelectionMode || !hasBulkActions ? (
             <div className='gap-medium flex flex-col medium:flex-row'>
               <PlayerSupportDateRangeFilter
-                className={FILTER_CONTROL_WIDTH_CLASS_NAME}
+                className={FILTER_CONTROL_CLASS_NAME}
                 dateFilter={dateFilter}
                 customStartDate={customStartDate}
                 customEndDate={customEndDate}
                 onChange={onDateFilterChange}
               />
               <Dropdown
-                className={FILTER_DROPDOWN_CLASS_NAME}
+                className={FILTER_CONTROL_CLASS_NAME}
                 label={viewLabel}
                 onValueChange={handleViewChange}
                 placeholder={allLabel}
@@ -165,7 +165,7 @@ const PlayerSupportToolbar: FunctionComponent<PlayerSupportToolbarProps> = ({
                 </Menu>
               </Dropdown>
               <Dropdown
-                className={FILTER_DROPDOWN_CLASS_NAME}
+                className={FILTER_CONTROL_CLASS_NAME}
                 label={categoryLabel}
                 onValueChange={handleCategoryChange}
                 placeholder={allLabel}

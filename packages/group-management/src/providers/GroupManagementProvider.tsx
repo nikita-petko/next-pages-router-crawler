@@ -4,6 +4,7 @@ import groupsClient from '../clients/groups';
 import type { GroupPermissions, GroupRolePermissions } from '../clients/groups';
 import type { Organization } from '../clients/organizationApi';
 import organizationApiClient from '../clients/organizationApi';
+import { getResolvedGroupRolePermissions } from '../queries/groupPermissionsQueries';
 import type {
   GroupManagementSurface,
   GroupData,
@@ -25,17 +26,6 @@ type GroupManagementProviderProps = PropsWithChildren<{
   errorComponents?: GroupManagementErrorComponents;
   unifiedLogger?: GroupManagementLogger;
 }>;
-
-const getRolePermissions = async (groupId: number): Promise<GroupRolePermissions> => {
-  const rolePermissions: GroupRolePermissions = {};
-  const response = await groupsClient.getGroupRolePermissionsPage(groupId);
-  response.data?.forEach(({ entityId, permissions }) => {
-    if (entityId !== undefined && permissions !== undefined) {
-      rolePermissions[entityId] = permissions;
-    }
-  });
-  return rolePermissions;
-};
 
 const GroupManagementProvider: FunctionComponent<GroupManagementProviderProps> = ({
   group,
@@ -70,7 +60,7 @@ const GroupManagementProvider: FunctionComponent<GroupManagementProviderProps> =
       const [permissionsResponse, resolvedRolePermissions, authenticatedUserIsOwner] =
         await Promise.all([
           groupsClient.getGroupPermissions(groupId),
-          getRolePermissions(groupId),
+          getResolvedGroupRolePermissions(groupId),
           groupsClient.getAuthenticatedUserIsOwner(groupId).catch(() => false),
         ]);
       setPermissions(permissionsResponse.permissions ?? {});

@@ -5808,6 +5808,10 @@ html.studio-webview.dark-theme,
   background-color: var(--color-system-neutral) !important;
 }
 
+.\[\&\>button\]\:\!stroke-default>button {
+  border-color: var(--color-stroke-default) !important;
+}
+
 .\[\&\>div\:first-child\>span\:first-child\]\:grow-0>div:first-child>span:first-child {
   flex-grow: 0;
 }

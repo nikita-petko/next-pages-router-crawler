@@ -3,15 +3,26 @@ import groupsClient from '../clients/groups';
 
 const MIGRATION_KEY_PREFIX = 'groupMigration_';
 
-export function useGetMigrationStatus(groupId: number | undefined) {
+export type MigrationStatusQueryOptions = {
+  enabled?: boolean;
+};
+
+export function getGroupMigrationStatus(groupId: number) {
+  return groupsClient.getGroupMigrationStatus(groupId);
+}
+
+export function useGetMigrationStatus(
+  groupId: number | undefined,
+  options?: MigrationStatusQueryOptions,
+) {
   return useQuery({
-    enabled: !!groupId,
+    enabled: !!groupId && (options?.enabled ?? true),
     queryKey: [`${MIGRATION_KEY_PREFIX}status`, groupId],
     queryFn: async () => {
       if (!groupId) {
         throw new Error('groupId required');
       }
-      return groupsClient.getGroupMigrationStatus(groupId);
+      return getGroupMigrationStatus(groupId);
     },
   });
 }
