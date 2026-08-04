@@ -15,6 +15,7 @@ import {
   AGREEMENTS_QUERY_KEY,
   GET_LICENSE_BY_IP_FAMILY_ID_QUERY_KEY,
 } from '../../queryKeys';
+import type IgnoreReason from '../enums/IgnoreReason';
 import { patchPromotedCandidateInMatchesQueries } from '../utils/patchPromotedCandidateInMatchesQueries';
 
 const DEFAULT_PAGE_SIZE = 100;
@@ -144,6 +145,43 @@ export const usePromoteAgreementCandidateMutation = () => {
       captureException(error, {
         tags: { module: 'license-manager', operation: 'promoteAgreementCandidate' },
         extra: { candidateId: account?.id },
+      });
+    },
+  });
+};
+
+export interface IgnoreAgreementCandidateParams {
+  agreementCandidateId: string;
+  reason: IgnoreReason;
+}
+
+/**
+ * IPH dismisses a specific agreement candidate so it no longer surfaces as a match. On success the
+ * matches list is invalidated so the ignored candidate drops out of the table.
+ */
+export const useIgnoreAgreementCandidateMutation = () => {
+  const queryClient = useQueryClient();
+  const { account } = useCurrentAccountContext();
+  const accountId = account?.id;
+
+  return useMutation({
+    mutationFn: async ({ agreementCandidateId, reason }: IgnoreAgreementCandidateParams) => {
+      if (!accountId) {
+        throw new Error('Missing account ID');
+      }
+      return contentLicensingClient.ignoreAgreementCandidate(
+        accountId,
+        agreementCandidateId,
+        reason,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
+    },
+    onError: (error, { agreementCandidateId }) => {
+      captureException(error, {
+        tags: { module: 'license-manager', operation: 'ignoreAgreementCandidate' },
+        extra: { agreementCandidateId, accountId },
       });
     },
   });

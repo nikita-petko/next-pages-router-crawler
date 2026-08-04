@@ -752,6 +752,22 @@ export class ContentLicensingApiClient {
   }
 
   /**
+   * As an IP Holder this ignores (dismisses) a specific agreement candidate so it no longer
+   * surfaces as a match. A non-empty reason is required by the API.
+   */
+  async ignoreAgreementCandidate(
+    accountId: string,
+    agreementCandidateId: string,
+    reason: string,
+  ): Promise<AgreementCandidateResponse> {
+    return this.agreementCandidatesApi.agreementCandidatesIgnoreAgreementCandidate({
+      accountId,
+      agreementCandidateId,
+      agreementCandidatesIgnoreAgreementCandidateRequest: { reason },
+    });
+  }
+
+  /**
    * As an IP Holder this rejects a Creator-initiated license application.
    */
   async rejectLicenseApplication(
