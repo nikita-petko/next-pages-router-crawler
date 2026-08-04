@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import type { SubmitHandler } from 'react-hook-form';
 import { Controller, FormProvider, useForm, useFormContext, useWatch } from 'react-hook-form';
 import type { GiftingTradingStatus } from '@rbx/client-developer-products-api/v1';
-import { Button, clsx, Toggle } from '@rbx/foundation-ui';
+import { Alert, Button, clsx, Toggle } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { ReturnPolicy, ThumbnailTypes } from '@rbx/thumbnails';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { openDeveloperProductArchiveDialog } from '@modules/developer-products/components/DeveloperProductArchiveDialog';
 import { useUpdateDeveloperProduct } from '@modules/developer-products/queries/useUpdateDeveloperProduct';
 import { withManagedPricingSubmitGuard } from '@modules/managed-pricing/dialogs/withManagedPricingSubmitGuard';
 import GiftingTradingWarningBannerV2 from '@modules/managed-pricing/gifting-trading/GiftingTradingWarningBannerV2';
@@ -12,12 +16,16 @@ import { shouldShowGiftingTradingReminder } from '@modules/managed-pricing/gifti
 import type { ManagedPricingOnboardingStatus } from '@modules/managed-pricing/types';
 import { DEVELOPER_PRODUCT_LEARN_MORE_URL } from '@modules/miscellaneous/common/constants/linkConstants';
 import ThumbnailImageUploader from '@modules/miscellaneous/components/uploaders/components/ThumbnailImageUploader';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
+import { logProductArchiveClick } from '@modules/monetization-shared/archive-dialog/logging';
 import { ButtonLink } from '@modules/monetization-shared/button-link';
+import { useMonetizationFlags } from '@modules/monetization-shared/flags/useMonetizationFlags';
 import { Link } from '@modules/monetization-shared/link';
 import { toast } from '@modules/monetization-shared/snackbar/actions';
 import DisallowPriceChangeInExperimentBanner from '@modules/price-optimization/components/DisallowPriceChangeInExperimentBanner';
 import type { ConfigureDeveloperProductFormV2Values, DeveloperProduct } from '../../types';
+import { canToggleArchived } from '../../utils/developerProductUtils';
 import {
   DescriptionTextArea,
   NameTextInput,
@@ -46,7 +54,10 @@ function ConfigureDeveloperProductFormV3({
   isPending = false,
   shopId,
 }: Props) {
-  const { translate } = useTranslation();
+  const { push } = useRouter();
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
 
   const {
     register,
@@ -59,6 +70,9 @@ function ConfigureDeveloperProductFormV3({
     getValues,
   } = useFormContext<ConfigureDeveloperProductFormV2Values>();
 
+  const isReadOnly = developerProduct.isImmutable || developerProduct.isArchived;
+  // Immutable products keep this error even while archived: it's the only thing explaining why the
+  // Unarchive button the archive banner points at is disabled.
   const [errorMessage, setErrorMessage] = useState<string>(() =>
     developerProduct.isImmutable ? translate('Error.UnsupportedDeveloperProductUpdate') : '',
   );
@@ -82,6 +96,9 @@ function ConfigureDeveloperProductFormV3({
 
   const saveChanges: SubmitHandler<ConfigureDeveloperProductFormV2Values> =
     useCallback(async () => {
+      if (isReadOnly) {
+        return;
+      }
       setErrorMessage('');
       // Note: we use getValues() instead of submit data as submit data does not include disabled fields
       // Only use submit data to trigger final state validation e.g., disclaimers
@@ -106,7 +123,7 @@ function ConfigureDeveloperProductFormV3({
         // Errors are surfaced via the mutation hook's onErrorResponse/onError callbacks,
         // which already populate `errorMessage`. Don't overwrite that specific message here.
       }
-    }, [getValues, reset, translate, updateDeveloperProduct]);
+    }, [getValues, isReadOnly, reset, translate, updateDeveloperProduct]);
 
   const initiateSaveChanges: SubmitHandler<ConfigureDeveloperProductFormV2Values> = useCallback(
     async (data) => {
@@ -146,7 +163,7 @@ function ConfigureDeveloperProductFormV3({
   const isAllPending = isSubmitting || isPending || isUpdatePending;
 
   const isPricingConfigChangeAllowed =
-    !developerProduct.isInActivePriceOptimizationExperiment && !developerProduct.isImmutable;
+    !developerProduct.isInActivePriceOptimizationExperiment && !isReadOnly;
 
   // Only show gifting trading warnings if managed pricing is already enabled
   const shouldShowGiftingTradingWarningBanner =
@@ -155,6 +172,52 @@ function ConfigureDeveloperProductFormV3({
 
   // Use `useWatch` so that toggling `isForSale` re-renders dependent disabling/dimming logic.
   const currentIsForSale = useWatch({ control, name: 'isForSale' });
+
+  const { isProductArchiveEnabled } = useMonetizationFlags('isProductArchiveEnabled');
+  const isArchiveActionVisible = isProductArchiveEnabled === true;
+  // A live price experiment ends on its own, so disable rather than hide: the action stays
+  // discoverable and the banners already on the page say why it's blocked.
+  const isArchiveActionDisabled = isAllPending || !canToggleArchived(developerProduct);
+
+  const handleArchiveClick = useCallback(() => {
+    logProductArchiveClick({
+      productType: 'developerProduct',
+      itemId: productId,
+      universeId,
+      isArchived: developerProduct.isArchived,
+    });
+    openDeveloperProductArchiveDialog({
+      universeId,
+      itemId: productId,
+      isArchived: developerProduct.isArchived,
+      onSuccess: () => {
+        void push(developerProductsUrl);
+      },
+    });
+  }, [developerProduct.isArchived, universeId, productId, push, developerProductsUrl]);
+
+  const formActions = (
+    <>
+      <ButtonLink
+        variant='Standard'
+        size='Large'
+        className='padding-x-xlarge'
+        href={developerProductsUrl}
+        isDisabled={isSubmitting}>
+        {translate('Action.Cancel')}
+      </ButtonLink>
+
+      <Button
+        type='submit'
+        variant='Emphasis'
+        size='Large'
+        className='padding-x-xlarge'
+        isDisabled={!isDirty || !isValid || isAllPending || isReadOnly}
+        isLoading={isAllPending}>
+        {translate('Action.SaveChanges')}
+      </Button>
+    </>
+  );
 
   return (
     <form
@@ -168,6 +231,19 @@ function ConfigureDeveloperProductFormV3({
             {translate('Label.LearnMore')}
           </Link>
         </span>
+
+        {developerProduct.isArchived && (
+          <Alert variant='Feedback' severity='Info' hasCloseAffordance={false}>
+            {tPendingTranslation(
+              'This product is archived. Unarchive it to make changes.',
+              'Shown on configure when the product is archived and fields are read-only.',
+              translationKey(
+                'Message.ArchivedProductReadOnly',
+                TranslationNamespace.DeveloperProducts,
+              ),
+            )}
+          </Alert>
+        )}
 
         <GiftingTradingWarningBannerV2
           universeId={universeId}
@@ -187,7 +263,7 @@ function ConfigureDeveloperProductFormV3({
         targetType={ThumbnailTypes.assetThumbnail}
         targetReturnPolicy={ReturnPolicy.PlaceHolder}
         imageType={['jpg', 'png', 'bmp']}
-        disabled={developerProduct.isImmutable}
+        disabled={isReadOnly}
       />
 
       <section className='flex flex-col gap-xlarge max-width-[678px]'>
@@ -199,14 +275,14 @@ function ConfigureDeveloperProductFormV3({
           control={control}
           register={register}
           label={translate('Label.Name')}
-          disabled={developerProduct.isImmutable}
+          disabled={isReadOnly}
         />
 
         <DescriptionTextArea
           control={control}
           register={register}
           label={translate('Label.Description')}
-          disabled={developerProduct.isImmutable}
+          disabled={isReadOnly}
         />
 
         <div className='flex flex-col gap-large'>
@@ -282,26 +358,34 @@ function ConfigureDeveloperProductFormV3({
         </div>
 
         <div className='flex flex-col gap-small'>
-          <div className='flex flex-col-reverse gap-medium padding-top-small medium:flex-row'>
-            <ButtonLink
-              variant='Standard'
-              size='Large'
-              className='padding-x-xlarge'
-              href={developerProductsUrl}
-              isDisabled={isSubmitting}>
-              {translate('Action.Cancel')}
-            </ButtonLink>
-
-            <Button
-              type='submit'
-              variant='Emphasis'
-              size='Large'
-              className='padding-x-xlarge'
-              isDisabled={!isDirty || !isValid || isAllPending || developerProduct.isImmutable}
-              isLoading={isAllPending}>
-              {translate('Action.SaveChanges')}
-            </Button>
-          </div>
+          {isArchiveActionVisible ? (
+            <div className='flex flex-col gap-medium medium:flex-row medium:items-center medium:justify-between padding-top-small'>
+              <div className='flex flex-col-reverse gap-medium medium:flex-row'>{formActions}</div>
+              <Button
+                type='button'
+                variant='Standard'
+                size='Large'
+                className='padding-x-xlarge'
+                onClick={handleArchiveClick}
+                isDisabled={isArchiveActionDisabled}>
+                {developerProduct.isArchived
+                  ? tPendingTranslation(
+                      'Unarchive',
+                      'Label for the action to unarchive a developer product.',
+                      translationKey('Action.Unarchive', TranslationNamespace.DeveloperProducts),
+                    )
+                  : tPendingTranslation(
+                      'Archive',
+                      'Label for the action to archive a developer product.',
+                      translationKey('Action.Archive', TranslationNamespace.DeveloperProducts),
+                    )}
+              </Button>
+            </div>
+          ) : (
+            <div className='flex flex-col-reverse gap-medium padding-top-small medium:flex-row'>
+              {formActions}
+            </div>
+          )}
 
           {errorMessage && (
             <span
