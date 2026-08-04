@@ -10,12 +10,17 @@ import type {
   ListIpFamiliesByAccountRequest,
   TrademarkContent,
 } from '@rbx/client-rights/v1';
-import { IPContentContentTypeEnum, IPFamilyStatusEnum } from '@rbx/client-rights/v1';
+import {
+  IPContentContentTypeEnum,
+  IPContentStatusEnum,
+  IPFamilyStatusEnum,
+} from '@rbx/client-rights/v1';
 import rightsClient from '@modules/clients/rights';
 import { listAll } from '@modules/clients/utils';
 import type { Doc } from '@modules/miscellaneous/components/uploaders/components/MultiDocumentUploader/MultiDocumentUploader';
 import { useCurrentAccountContext } from '../../components/AccountProvider';
 import createDocuments from '../../rights/hooks/document';
+import listUntil from '../../utils/listUntil';
 import type { ImageAsset } from '../../utils/uploadImageAssetsIfNeeded';
 import uploadImageAssetsIfNeeded from '../../utils/uploadImageAssetsIfNeeded';
 import { SupportedRobloxAssetTypeEnum } from '../constants';
@@ -27,6 +32,7 @@ import {
   LIST_IP_CONTENTS_BY_FAMILY,
   LIST_IP_CONTENTS_BY_FAMILY_PAGINATED,
   LIST_IP_FAMILIES,
+  HAS_APPROVED_SEARCHABLE_IMAGES,
 } from '../queryKeys';
 import batchArray from '../utils/batchArray';
 
@@ -758,6 +764,64 @@ export const useListAllIpContentsByAccount = (params: { filter?: IPContentsByAcc
         ipContents,
       };
     },
+  });
+};
+
+const isApprovedImage = (content: IPContent) => {
+  if (content.status !== IPContentStatusEnum.Approved) {
+    return false;
+  }
+  if (content.contentType === IPContentContentTypeEnum.Image) {
+    return true;
+  }
+  return (
+    content.contentType === IPContentContentTypeEnum.Asset &&
+    content.robloxAssetType === SupportedRobloxAssetTypeEnum.Image
+  );
+};
+
+const findApprovedSearchableImage = async (accountId: string, filter: string) => {
+  return listUntil({
+    api: (pageToken: string | undefined) =>
+      rightsClient.listIpContentsByAccount({
+        accountId,
+        pageSize: 100,
+        pageToken,
+        filter,
+      }),
+    getItems: (response) => response.ipContents ?? [],
+    getPageToken: (response) => response.nextPageToken,
+    predicate: isApprovedImage,
+  });
+};
+
+/**
+ * Checks whether the account has any approved searchable image IP content.
+ * Uses early-exit pagination and should only be enabled when primary keywords are unavailable.
+ */
+export const useHasApprovedSearchableImages = (enabled: boolean) => {
+  const { account } = useCurrentAccountContext();
+  const accountId = account?.id;
+
+  return useQuery({
+    queryKey: HAS_APPROVED_SEARCHABLE_IMAGES(accountId ?? ''),
+    queryFn: async () => {
+      if (!accountId) {
+        throw new Error('Missing account ID');
+      }
+
+      const imageContentMatch = await findApprovedSearchableImage(
+        accountId,
+        'ip_content_type="Image"',
+      );
+      if (imageContentMatch) {
+        return true;
+      }
+
+      const assetImageMatch = await findApprovedSearchableImage(accountId, 'asset_type="Image"');
+      return !!assetImageMatch;
+    },
+    enabled: enabled && !!accountId,
   });
 };
 

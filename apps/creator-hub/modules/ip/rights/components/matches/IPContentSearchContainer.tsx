@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CircularProgress } from '@mui/material';
 import type { FetchNextPageOptions } from '@tanstack/react-query';
-import { ClaimItemDiscoveredFromEnum } from '@rbx/client-rights/v1';
+import { ClaimItemDiscoveredFromEnum, IPContentStatusEnum } from '@rbx/client-rights/v1';
 import type { IPContent } from '@rbx/client-rights/v1';
 import { Button as FUIButton } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
@@ -23,7 +23,10 @@ import { eventStreamBaseUrl } from '@modules/eventStream/tracker';
 import { EmptyState, EmptyStateBorder, PageLoading } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentAccountContext } from '../../../components/AccountProvider';
-import { useListAllIpContentsByAccount } from '../../../ipFamilies/hooks/ipFamily';
+import {
+  useListAllIpContentsByAccount,
+  useHasApprovedSearchableImages,
+} from '../../../ipFamilies/hooks/ipFamily';
 import {
   RMCreateClaimFeatureName,
   useGetRightsFeatureTimeoutIntervention,
@@ -98,7 +101,11 @@ const IPContentSearchContainer = ({
   const isBlockedByFeatureTimeout = !!account && !!intervention;
 
   // Get all keywords (text only, no images)
-  const { data: keywordData, isError: errorFetchingKeywords } = useListAllIpContentsByAccount({
+  const {
+    data: keywordData,
+    isError: errorFetchingKeywords,
+    isLoading: isLoadingKeywords,
+  } = useListAllIpContentsByAccount({
     filter: { key: 'ip_content_type', value: 'Text' },
   });
 
@@ -108,6 +115,10 @@ const IPContentSearchContainer = ({
     const primary: IPContent[] = [];
     const secondary: Record<string, IPContent[]> = {};
     keywordData?.ipContents.forEach((content) => {
+      // Skip unapproved keywords
+      if (content.status !== IPContentStatusEnum.Approved) {
+        return;
+      }
       if (content.isPrimary) {
         primary.push(content);
       } else {
@@ -119,6 +130,18 @@ const IPContentSearchContainer = ({
     });
     return [primary, secondary];
   }, [keywordData]);
+
+  // If we have no primary keywords, we might want to display
+  // the message about having no approved IP contents.
+  // So we should make sure there are no approved images either before displaying it.
+  // In practice, users with large numbers of images should generally
+  // also have at least one primary keyword, so this eager fetch is reasonable.
+  const shouldCheckForApprovedImages = !isLoadingKeywords && primaryKeywords.length === 0;
+  const {
+    data: hasApprovedImages,
+    isLoading: isCheckingForApprovedImages,
+    isError: errorCheckingForApprovedImages,
+  } = useHasApprovedSearchableImages(shouldCheckForApprovedImages);
 
   // The currently selected keywords in the combo boxes
   const [currentPrimary, setCurrentPrimary] = useState<IPContent | undefined>(undefined);
@@ -268,15 +291,24 @@ const IPContentSearchContainer = ({
         fetchNextPage={fetchNextPageWrapper}
         hasNextPage={hasNextPage}
       />
-    ) : isFetching ? (
+    ) : isFetching || isLoadingKeywords || isCheckingForApprovedImages ? (
       <div style={{ display: 'flex ', justifyContent: 'center' }}>
         <CircularProgress color='secondary' />
       </div>
-    ) : hasTopLevelSearchError || errorFetchingKeywords ? (
+    ) : hasTopLevelSearchError || errorFetchingKeywords || errorCheckingForApprovedImages ? (
       <EmptyStateBorder>
         <EmptyState
           title={translate('Heading.GenericError')}
           description={translate('Response.TryAgainLater')}
+          size='small'
+          illustration='oof'
+        />
+      </EmptyStateBorder>
+    ) : primaryKeywords.length === 0 && hasApprovedImages === false ? (
+      <EmptyStateBorder>
+        <EmptyState
+          title={translate('Heading.NoApprovedIPContent')}
+          description={translate('Description.NoApprovedIPContent')}
           size='small'
           illustration='oof'
         />

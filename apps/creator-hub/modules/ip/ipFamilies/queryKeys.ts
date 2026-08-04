@@ -22,6 +22,11 @@ export const LIST_IP_CONTENTS_BY_ACCOUNT = (accountId: string, filter: string | 
   accountId,
   filter ?? '',
 ];
+export const HAS_APPROVED_SEARCHABLE_IMAGES = (accountId: string) => [
+  rootIpContentByAccountKey,
+  accountId,
+  'has_approved_searchable_images',
+];
 export const LIST_IP_CONTENTS_BY_ACCOUNT_PAGINATED = (
   accountId: string,
   filter: string | undefined,

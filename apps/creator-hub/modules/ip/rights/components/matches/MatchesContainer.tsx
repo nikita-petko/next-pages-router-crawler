@@ -180,7 +180,7 @@ const MatchesContainer = () => {
   return (
     <>
       <div style={{ display: createClaimDisplayMode }}>{creatingContainer}</div>
-      <Grid display={searchDisplaymode} container direction='column' spacing={3}>
+      <Grid display={searchDisplaymode} container direction='column' spacing={1}>
         <Grid item>
           {shouldShowOnlyOneLinkAlert && (
             <Grid direction='row' item container XSmall={12}>
@@ -204,12 +204,10 @@ const MatchesContainer = () => {
             </Grid>
           )}
         </Grid>
-        <Grid item container spacing={2} direction='column'>
-          <Grid item paddingBottom={3}>
-            <Typography variant='body1' color='secondary'>
-              {translate('Label.MatchesExplanation')}
-            </Typography>
-          </Grid>
+        <Grid item>
+          <Typography variant='body1' color='secondary'>
+            {translate('Label.MatchesExplanation')}
+          </Typography>
         </Grid>
         <Grid item>
           <Tabs
