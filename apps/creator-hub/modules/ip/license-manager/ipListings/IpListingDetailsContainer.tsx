@@ -1,10 +1,15 @@
+import React, { useCallback, useEffect, useState } from 'react';
 import NextLink from 'next/link';
 import { useRouter } from 'next/router';
-import React, { useEffect, useState } from 'react';
 import { ListingStatus, ListingVisibility } from '@rbx/client-content-licensing-api/v1';
+import { useFlag } from '@rbx/flags';
+import { Button as FoundationButton } from '@rbx/foundation-ui';
 import { withTranslation, useTranslation } from '@rbx/intl';
 import { AssetThumbnailSize, ReturnPolicy, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
-import { Grid, Typography, Button, makeStyles, OpenInNewIcon, Alert } from '@rbx/ui';
+import { Alert, Button, Grid, makeStyles, OpenInNewIcon, Typography } from '@rbx/ui';
+import { isShowcaseExperiencesEnabled as isShowcaseExperiencesEnabledFlag } from '@generated/flags/contentLicensing';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { EXPLORE_LISTING_DETAILS } from '@modules/licenses/urls';
 import { Link, PageLoading } from '@modules/miscellaneous/components';
 import Flex from '@modules/miscellaneous/components/Flex';
@@ -18,6 +23,7 @@ import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../utils/logg
 import IpListingsBreadcrumbs from './components/IpListingsBreadcrumbs';
 import IpListingStatusChip from './components/IpListingStatusChip';
 import LicenseTable from './components/LicenseTable';
+import ShowcasedExperiencesDialog from './components/ShowcasedExperiencesDialog';
 import { useIpListingQuery, useLicensesQuery } from './hooks/ipListings';
 
 // API returns a string, not an enum, so we create the enum here for more robust checking.
@@ -26,7 +32,7 @@ enum ListingRejectionReason {
   InappropriateContent = 'inappropriate content',
 }
 
-const reasonToLabelKey: { [reason in ListingRejectionReason]: string } = {
+const reasonToLabelKey: Partial<Record<string, string>> = {
   [ListingRejectionReason.UnconfirmedOwnership]: 'Label.RejectReasonIpOwnership',
   [ListingRejectionReason.InappropriateContent]: 'Label.RejectReasonInappropriateContent',
 };
@@ -45,27 +51,59 @@ const useStyles = makeStyles()(() => ({
 }));
 
 const IpListingDetailsContainer = () => {
-  const { translate } = useTranslation();
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
   const router = useRouter();
   const { logEvent } = useLicenseManagerLogger();
   const { classes } = useStyles();
 
   const { id } = router.query;
-  const ipListingId = id as string;
+  const ipListingId = typeof id === 'string' ? id : '';
   const ipListingReq = useIpListingQuery(ipListingId);
   const licensesReq = useLicensesQuery(ipListingId);
   const ipFamilyReq = useIpFamilyQuery(ipListingReq.data?.ipFamilyId ?? undefined);
   const [reasonDialogOpen, setReasonDialogOpen] = useState(false);
-
+  const [showcasedExperiencesDialogOpen, setShowcasedExperiencesDialogOpen] = useState(false);
+  const handleCloseShowcasedExperiences = useCallback(() => {
+    setShowcasedExperiencesDialogOpen(false);
+  }, []);
+  const { ready: isShowcaseExperiencesFlagReady, value: isShowcaseExperiencesEnabled } = useFlag(
+    isShowcaseExperiencesEnabledFlag,
+  );
+  const showcasedExperiencesLabel = tPendingTranslation(
+    'Showcased experiences',
+    'Section heading for experiences showcased on an IP listing details page',
+    translationKey('Label.ShowcasedExperiences', TranslationNamespace.AgreementsManager),
+  );
+  const showcasedExperiencesSelectedCount = tPendingTranslation(
+    '{selectedCount}/10 selected.',
+    'Count of experiences selected for an IP listing showcase',
+    translationKey(
+      'Label.ShowcasedExperiencesSelectedCount',
+      TranslationNamespace.AgreementsManager,
+    ),
+    { selectedCount: '0' },
+  );
+  const noShowcasedExperiencesDescription = tPendingTranslation(
+    'No showcased experiences',
+    'Empty state shown when an IP listing has no showcased experiences',
+    translationKey('Description.NoShowcasedExperiences', TranslationNamespace.AgreementsManager),
+  );
+  const manageShowcasedExperiencesLabel = tPendingTranslation(
+    'Manage',
+    'Action to manage content, such as the experiences showcased on an IP listing',
+    translationKey('Action.Manage', TranslationNamespace.AgreementsManager),
+  );
   const { setPageTitle } = useIpLayoutContext();
   useEffect(() => {
     if (ipListingReq?.data) {
-      setPageTitle(<IpListingsBreadcrumbs pages={[{ title: ipListingReq.data.name || '' }]} />);
+      setPageTitle(<IpListingsBreadcrumbs pages={[{ title: ipListingReq.data.name ?? '' }]} />);
     }
   }, [ipListingReq.data, setPageTitle]);
 
-  if (ipListingReq.error || ipFamilyReq.error || licensesReq.error) {
-    return <IpLoadError error={ipListingReq.error || ipFamilyReq.error || licensesReq.error} />;
+  if (ipListingReq.isError || ipFamilyReq.isError || licensesReq.isError) {
+    return <IpLoadError error={ipListingReq.error ?? ipFamilyReq.error ?? licensesReq.error} />;
   }
 
   if (ipListingReq.isPending || ipFamilyReq.isPending || licensesReq.isPending) {
@@ -75,10 +113,20 @@ const IpListingDetailsContainer = () => {
   const listing = ipListingReq.data;
   const ipFamily = ipFamilyReq.data;
   const licenses = licensesReq.data;
-  const thumbnailAssetIds = listing.thumbnailAssetIds || [];
+  const thumbnailAssetIds = listing.thumbnailAssetIds ?? [];
+  const rejectionReasonLabelKey = listing.statusReason
+    ? reasonToLabelKey[listing.statusReason]
+    : undefined;
 
   const isPublic = listing.visibility === ListingVisibility.Public;
   const showPublicLink = isPublic && listing.status === ListingStatus.Approved;
+
+  const handleManageShowcasedExperiences = () => {
+    logEvent(LicenseManagerClickEvent.IphListingsDetailsPageManageShowcasedExperiencesClickEvent, {
+      listingId: ipListingId,
+    });
+    setShowcasedExperiencesDialogOpen(true);
+  };
 
   let alertMessage;
   if (listing.status === ListingStatus.Pending) {
@@ -128,7 +176,7 @@ const IpListingDetailsContainer = () => {
         <Grid item>
           <Flex gap={8} alignItems='center'>
             <IpListingStatusChip status={listing.status} isPublic={isPublic} />
-            {listing.status === ListingStatus.Rejected && listing.statusReason && (
+            {listing.status === ListingStatus.Rejected && rejectionReasonLabelKey && (
               <>
                 <Button
                   sx={{ textTransform: 'none' }}
@@ -140,9 +188,7 @@ const IpListingDetailsContainer = () => {
                   {translate('Label.ViewRejectReason')}
                 </Button>
                 <RejectReasonModal
-                  reason={translate(
-                    reasonToLabelKey[listing.statusReason as ListingRejectionReason],
-                  )}
+                  reason={translate(rejectionReasonLabelKey)}
                   dialogOpen={reasonDialogOpen}
                   setDialogOpen={setReasonDialogOpen}
                 />
@@ -201,7 +247,7 @@ const IpListingDetailsContainer = () => {
                 type={ThumbnailTypes.assetThumbnail}
                 returnPolicy={ReturnPolicy.PlaceHolder}
                 includeBackground={false}
-                alt={listing.name || ''}
+                alt={listing.name ?? ''}
                 // eslint-disable-next-line no-underscore-dangle -- Swagger generated enum has underscore
                 size={AssetThumbnailSize._256x144}
                 containerClass={classes.thumbnailContainer}
@@ -210,6 +256,24 @@ const IpListingDetailsContainer = () => {
           </Flex>
         </Flex>
       </Grid>
+
+      {isShowcaseExperiencesFlagReady && isShowcaseExperiencesEnabled && (
+        <Grid item>
+          <Flex gap={8} flexDirection='column'>
+            <Typography variant='h6'>{showcasedExperiencesLabel}</Typography>
+            <Flex gap={8} alignItems='center'>
+              <Typography>{showcasedExperiencesSelectedCount}</Typography>
+              <FoundationButton
+                variant='Link'
+                size='Medium'
+                onClick={handleManageShowcasedExperiences}>
+                {manageShowcasedExperiencesLabel}
+              </FoundationButton>
+            </Flex>
+            <Typography>{noShowcasedExperiencesDescription}</Typography>
+          </Flex>
+        </Grid>
+      )}
 
       <Grid item container flexDirection='column'>
         <Grid item>
@@ -227,6 +291,14 @@ const IpListingDetailsContainer = () => {
           </Grid>
         )}
       </Grid>
+
+      {isShowcaseExperiencesFlagReady && isShowcaseExperiencesEnabled && (
+        <ShowcasedExperiencesDialog
+          open={showcasedExperiencesDialogOpen}
+          listingId={ipListingId}
+          onClose={handleCloseShowcasedExperiences}
+        />
+      )}
     </Grid>
   );
 };

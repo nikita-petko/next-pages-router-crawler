@@ -37,6 +37,9 @@ export enum LicenseManagerClickEvent {
   IphListingsGridCreateListingClickEvent = 'iphListingsGridCreateListingClickEvent',
   IphListingsGridViewListingClickEvent = 'iphListingsGridViewListingClickEvent',
   IphListingsDetailsPageViewPublicListingClickEvent = 'iphListingsDetailsPageViewPublicListingClickEvent',
+  IphListingsDetailsPageManageShowcasedExperiencesClickEvent = 'iphListingsDetailsPageManageShowcasedExperiencesClickEvent',
+  IphListingsDetailsPageCancelShowcasedExperiencesClickEvent = 'iphListingsDetailsPageCancelShowcasedExperiencesClickEvent',
+  IphListingsDetailsPageSaveShowcasedExperiencesClickEvent = 'iphListingsDetailsPageSaveShowcasedExperiencesClickEvent',
   IphListingsDetailsPageEditListingClickEvent = 'iphListingsDetailsPageEditListingClickEvent',
   IphListingsDetailsPageEditLicenseClickEvent = 'iphListingsDetailsPageEditLicenseClickEvent',
   IphListingsDetailsPageAddLicenseClickEvent = 'iphListingsDetailsPageAddLicenseClickEvent',
@@ -128,6 +131,7 @@ export enum LicenseManagerImpressionEvent {
   EmptyStateCreatorAgreementsTableNoInactiveImpressionEvent = 'emptyStateCreatorAgreementsTableNoInactiveImpressionEvent',
   EmptyStateIphListingsGridCreateListingImpressionEvent = 'emptyStateIphListingsGridCreateListingImpressionEvent',
   EmptyStateIphListingsGridCreateIpFamilyImpressionEvent = 'emptyStateIphListingsGridCreateIpFamilyImpressionEvent',
+  EmptyStateIphListingsDetailsPageNoLicensedExperiencesImpressionEvent = 'emptyStateIphListingsDetailsPageNoLicensedExperiencesImpressionEvent',
   MatchOfferDrawerNoPerpetualLicensesEmptyStateImpressionEvent = 'matchOfferDrawerNoPerpetualLicensesEmptyStateImpressionEvent',
 
   // Experience Preview: first time the match sidebar opens (start of the time-to-offer clock) and
