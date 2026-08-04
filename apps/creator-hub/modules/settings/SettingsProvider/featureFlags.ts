@@ -100,6 +100,7 @@ export enum FeatureFlagName {
   enableIpPlatformMatchesTableEsIndexImprovements = 'enableIpPlatformMatchesTableEsIndexImprovements',
   enableEmissive = 'enableEmissive',
   enableTaxonomyBasedCreatorDashboard = 'enableTaxonomyBasedCreatorDashboard',
+  enableCustomPresetChat = 'enableCustomPresetChat',
 }
 
 export type FeatureFlagValue = string | number | boolean;
@@ -215,4 +216,5 @@ export const featureFlagDefaults = defineFeatureFlagDefaults({
   [FeatureFlagName.enableIpPlatformMatchesTableEsIndexImprovements]: false,
   [FeatureFlagName.enableEmissive]: false,
   [FeatureFlagName.enableTaxonomyBasedCreatorDashboard]: false,
+  [FeatureFlagName.enableCustomPresetChat]: false,
 } as const);

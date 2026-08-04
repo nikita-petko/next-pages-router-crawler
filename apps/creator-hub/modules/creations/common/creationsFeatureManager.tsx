@@ -745,12 +745,22 @@ const safetyCollaboratorsFeature: Feature<CreationsFeatureSettings> = {
 creationsFeatureManager.addFeature(overviewFeature);
 // Configure
 const contentSettingsFeatureV2 = { ...contentSettingsFeature, nameKey: 'Heading.Settings' };
+
+const chatCategoryFeature: Feature<CreationsFeatureSettings> = {
+  key: 'chat',
+  nameKey: 'Heading.Chat',
+  path: '/chat',
+  isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
+    (settings?.enableCustomPresetChat && settings?.canConfigure) || false,
+};
+
 const configureCategoryFeature: Feature<CreationsFeatureSettings> = {
   key: 'configureCategory',
   nameKey: 'Heading.Configure',
   subFeatures: [
     contentSettingsFeatureV2,
     placesFeature,
+    chatCategoryFeature,
     environmentsFeature,
     matchmakingFeature,
     serverManagementFeature,

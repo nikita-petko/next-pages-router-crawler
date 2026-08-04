@@ -132,6 +132,7 @@ enum TranslationNamespace {
   TalentHubV2 = 'CreatorDashboard.TalentHubV2',
   Leaderboards = 'CreatorDashboard.Leaderboards',
   PersonalizedShop = 'CreatorDashboard.PersonalizedShop',
+  PresetChat = 'CreatorDashboard.PresetChat',
 }
 
 export default TranslationNamespace;
