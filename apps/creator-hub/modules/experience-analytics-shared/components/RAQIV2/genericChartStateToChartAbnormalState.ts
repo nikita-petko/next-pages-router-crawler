@@ -162,9 +162,11 @@ const genericChartStateToChartAbnormalState = ({
     }
     if (isAceDagExecutionError(error)) {
       // Any other ACE DAG execution failure (e.g. metric variant fanout,
-      // DSA-5784). Falls back to the generic recoverable request-failure copy
-      // rather than the computed-metric formula message above, which would
-      // misdescribe a non-formula failure.
+      // DSA-5784, TopN / rank (DSA-6052), L7 smoothing, or a caller that
+      // inherited the generic default factory from `makeACERequest`). Falls
+      // back to the generic recoverable request-failure copy rather than the
+      // computed-metric formula message above, which would misdescribe a
+      // non-formula failure.
       return requestFailed(tPendingTranslation);
     }
     if (isRAQIQueryError(error)) {

@@ -143,6 +143,41 @@ export const getMetricForL7Smoothing = (
 };
 
 /**
+ * A computed metric whose formula is a passthrough of a single source
+ * (`{ sources: [{ key: K, metric }], formula: K }`). An identity formula
+ * has no user-authored expression that could fail — execution failures are
+ * upstream-query-only — so error classification renders the generic
+ * "request failed" copy rather than the computed-metric "Unable to compute
+ * this formula …" copy. This covers both pure L7 smoothing (single-source
+ * identity + `l7Smoothing`, see {@link isPureL7SmoothingComputedMetric})
+ * and the plain toggle-ON seed (single-source identity without
+ * `l7Smoothing`). A user-authored formula with L7 smoothing enabled
+ * (e.g. `formula: 'A / B', l7Smoothing: true`) does NOT match — those
+ * still evaluate the formula in the DAG and can fail on the formula
+ * itself.
+ */
+export const isIdentityFormulaComputedMetric = (metric: ComputedMetric): boolean => {
+  if (metric.sources.length !== 1) {
+    return false;
+  }
+  return metric.formula.trim() === metric.sources[0].key;
+};
+
+/**
+ * A "pure L7 smoothing" ComputedMetric is a single-source identity formula
+ * (`{ sources: [{ key: K, metric }], formula: K, l7Smoothing: true }`)
+ * produced by {@link buildL7SmoothingComputedMetric} for metrics without a
+ * pre-computed L7 counterpart. Its output is unitarily the rolling average
+ * of one underlying metric, so it should render with that metric's units
+ * and formatting (Robux icon, percentage scaling, decimal precision,
+ * suffix, etc.) rather than the neutral computed-metric fallback used for
+ * arbitrary equations. Delegates to {@link isIdentityFormulaComputedMetric}
+ * for the structural check.
+ */
+export const isPureL7SmoothingComputedMetric = (metric: ComputedMetric): boolean =>
+  Boolean(metric.l7Smoothing) && isIdentityFormulaComputedMetric(metric);
+
+/**
  * If `metric` is a pre-computed L7 metric, returns the corresponding base metric.
  * Otherwise returns `null`.
  */

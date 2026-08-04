@@ -49,6 +49,7 @@ import { isValidEnumValue, isValidArrayEnumValue } from '@modules/miscellaneous/
 import {
   buildL7SmoothingComputedMetric,
   getBaseMetricFromL7,
+  isIdentityFormulaComputedMetric,
 } from '../chartConfigurator/l7MetricMapping';
 import getAnalyticsMetricDisplayConfig from '../constants/AnalyticsMetricDisplayConfig';
 import type { TComparisonOffset } from '../constants/comparisonOffset';
@@ -75,6 +76,7 @@ import {
   buildComputedMetricDag,
   MAIN_OUTPUT_NODE_ID,
 } from './computedMetrics/buildComputedMetricDag';
+import ComputedMetricDagExecutionError from './computedMetrics/ComputedMetricDagExecutionError';
 import { PRESET_DATE_RANGE_DURATION_MS } from './dateRangeUtils';
 import { getAPIMetricFromUIMetric } from './getAPIMetricFromUIMetric';
 import getComparisonRange, { type ComparisonRangeSpec } from './getComparisonRange';
@@ -1626,7 +1628,24 @@ const makeComputedMetricRequest = async ({
       );
       throw error;
     }
-    return makeACERequest(clients, dagRequest);
+    return makeACERequest(clients, dagRequest, {
+      // Real user-authored formulas opt in to the computed-metric error so
+      // the chart abnormal-state mapper renders the formula-specific copy.
+      // Identity formulas (single-source `formula: 'A'`) — whether
+      // L7-smoothed or the plain toggle-ON seed — inherit the generic
+      // default because the formula is a passthrough with no user-authored
+      // expression that could fail; execution failures are
+      // upstream-query-only and render the recoverable "request failed"
+      // copy instead of the misleading "Unable to compute this formula …"
+      // message. A user-authored formula WITH L7 smoothing enabled (e.g.
+      // `formula: 'A / B', l7Smoothing: true`) still gets the
+      // computed-metric error because the DAG builder evaluates the formula
+      // before the rolling window — formula failures (division by zero,
+      // complexity exceeded) can still occur on those.
+      createExecutionError: isIdentityFormulaComputedMetric(metric)
+        ? undefined
+        : (details) => new ComputedMetricDagExecutionError(details),
+    });
   };
 
   return executeAceDagComparison(executeForTimeSpec, snappedTimeSpec, comparison);

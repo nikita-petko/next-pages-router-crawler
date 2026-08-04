@@ -9,23 +9,30 @@ import type {
   AnalyticsQueryGatewayExecuteDagRequest,
   AnalyticsQueryGatewayExecuteDagResult,
 } from '@modules/clients/analytics/analyticsQueryGateway';
-import type AceDagExecutionError from './AceDagExecutionError';
-import type { AceDagExecutionErrorDetails } from './AceDagExecutionError';
+import AceDagExecutionError, { type AceDagExecutionErrorDetails } from './AceDagExecutionError';
 import type { RAQIV2QueryResponses } from './combineRAQIV2QueryResponses';
 import adaptExecuteDagResponseToRAQIV2Result from './computedMetrics/adaptExecuteDagResponseToRAQIV2Result';
-import ComputedMetricDagExecutionError from './computedMetrics/ComputedMetricDagExecutionError';
 import getComputedMetricDagExecutionError from './computedMetrics/getComputedMetricDagExecutionError';
 
-// Maps structured DAG error fields to a typed, kind-specific ACE error.
-// Defaults to the computed-metric error so existing callers are unchanged;
-// the variant fanout path supplies its own factory (DSA-5784) so failures are
-// labeled accurately for operators/Sentry.
+// Maps structured DAG error fields to a typed, kind-specific ACE error. The
+// default produces the generic base class so a caller that forgets to pass a
+// factory gets the safe generic "request failed" copy rather than the
+// computed-metric "Unable to compute this formula …" message, which only
+// applies to user-authored formulas. Surface-specific paths opt in to a
+// subclass for accurate operator/Sentry routing (DSA-5784 variant fanout,
+// DSA-6052 TopN/rank). See `genericChartStateToChartAbnormalState` for the
+// mapper hierarchy: `ComputedMetricDagExecutionError` is matched first
+// (formula copy); the generic base falls through to `requestFailed`.
 export type AceDagExecutionErrorFactory = (
   details: AceDagExecutionErrorDetails,
 ) => AceDagExecutionError;
 
 const defaultExecutionErrorFactory: AceDagExecutionErrorFactory = (details) =>
-  new ComputedMetricDagExecutionError(details);
+  new AceDagExecutionError(
+    `ACE DAG execution failed: ${details.message}`,
+    'AceDagExecutionError',
+    details,
+  );
 
 const aceDagExecutionPollOptions: RAQIClientOptions = {
   maxAttempts: 6,
@@ -43,8 +50,10 @@ export type DagResultAdapter<TResult> = (
 
 export type MakeACERequestOptions = {
   /**
-   * Labels DAG execution failures for the calling surface. Defaults to the
-   * computed-metric error so existing callers are unchanged.
+   * Labels DAG execution failures for the calling surface. Defaults to
+   * the generic base class so a caller that forgets to pass a factory
+   * gets the safe "request failed" copy. Surface-specific paths opt in
+   * to a subclass for accurate operator/Sentry routing.
    */
   createExecutionError?: AceDagExecutionErrorFactory;
   /** Projects a successful DAG response into the RAQI-shaped response. */

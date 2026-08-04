@@ -86,6 +86,7 @@ import {
 } from './computedMetrics/topNPseudoDimensionToAceConfig';
 import getComparisonRange, { type ComparisonRangeSpec } from './getComparisonRange';
 import makeACERequest, { type ACERequestClients, type DagResultAdapter } from './makeACERequest';
+import RankDagExecutionError from './RankDagExecutionError';
 import sliceRAQIV2QueryResultByTimeRange from './sliceRAQIV2QueryResultByTimeRange';
 import { processUngroupedOtherResponse } from './topNResponseUtils';
 
@@ -481,6 +482,9 @@ const executeStandardRankAceRequest = async ({
         topNConfigs,
         fetchTotalSeries,
       }),
+      {
+        createExecutionError: (details) => new RankDagExecutionError(details),
+      },
     );
   }
 
@@ -509,6 +513,7 @@ const executeStandardRankAceRequest = async ({
       useDynamicFilterBindings: true,
     }),
     {
+      createExecutionError: (details) => new RankDagExecutionError(details),
       adaptResult: adaptStandardRankDagResponseToRAQIV2Result(
         getOtherRemainderDimensions(topNConfigs),
       ),

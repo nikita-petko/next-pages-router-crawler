@@ -121,12 +121,13 @@ const useApiRequest = <ResponseType>(
           },
         });
       } else if (isAceDagExecutionError(e)) {
-        // Known ACE DAG execution failure (computed metric or variant fanout).
-        // The chart abnormal-state mapper renders ACE-specific copy; Sentry
-        // gets structured fields for triage. Tags stay bounded-cardinality
-        // (safe to aggregate); identifiers go on `extra`. `errorType` uses the
-        // concrete subclass name so the two ACE failure kinds stay
-        // distinguishable in Sentry.
+        // Known ACE DAG execution failure (computed metric, variant fanout,
+        // TopN / rank, L7 smoothing, or the generic base for callers that
+        // don't specialize). The chart abnormal-state mapper renders
+        // ACE-specific copy; Sentry gets structured fields for triage. Tags
+        // stay bounded-cardinality (safe to aggregate); identifiers go on
+        // `extra`. `errorType` uses the concrete subclass name so the ACE
+        // failure kinds stay distinguishable in Sentry.
         captureException(e, {
           tags: {
             module: 'analytics',

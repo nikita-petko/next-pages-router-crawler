@@ -19,11 +19,12 @@ import { NumberContext, NumberIcon } from '@modules/charts-generic/charts/number
 import { percentageFormattingSpec } from '@modules/charts-generic/constants/analyticsNumberFormattingSpec';
 import ChartSummaryType from '@modules/charts-generic/enums/ChartSummaryType';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { isPureL7SmoothingComputedMetric } from '../chartConfigurator/l7MetricMapping';
 import getMetricDisplayConfig, {
   isRAQIV2UIMetric,
 } from '../constants/AnalyticsMetricDisplayConfig';
 import AnalyticsSpecialNumberFormatting from '../constants/AnalyticsSpecialNumberFormatting';
-import type { AtomicMetricLike, ComputedMetric, MetricLike } from '../types/ComputedMetric';
+import type { AtomicMetricLike, MetricLike } from '../types/ComputedMetric';
 import {
   getUIMetricFromAtomicMetricLike,
   isComputedMetric,
@@ -247,23 +248,6 @@ const getChartSummaryOverrideFormattingSpec = (
   }
 };
 
-/**
- * A "pure L7 smoothing" ComputedMetric is a single-source identity formula
- * (`{ sources: [{ key: K, metric }], formula: K, l7Smoothing: true }`)
- * produced by `buildL7SmoothingComputedMetric` for metrics without a
- * pre-computed L7 counterpart. Its output is unitarily the rolling average
- * of one underlying metric, so it should render with that metric's units
- * and formatting (Robux icon, percentage scaling, decimal precision,
- * suffix, etc.) rather than the neutral computed-metric fallback used for
- * arbitrary equations.
- */
-const isPureL7SmoothingComputedMetric = (metric: ComputedMetric): boolean => {
-  if (!metric.l7Smoothing || metric.sources.length !== 1) {
-    return false;
-  }
-  return metric.formula.trim() === metric.sources[0].key;
-};
-
 const getComputedMetricVerbosity = (numberContext: NumberContext): NumberVerbosity => {
   switch (numberContext) {
     case NumberContext.CardSummary:
@@ -356,6 +340,22 @@ const getAggregationAwareDecimalPrecision = (
   return Math.max(configDecimalPrecision, AGGREGATION_TYPE_DECIMAL_PRECISION);
 };
 
+const getCurrencyNameFromChartSpec = (
+  spec: Pick<RAQIV2ChartSpec, 'filter'> | null | undefined,
+): string => {
+  if (!spec) {
+    return '';
+  }
+  const currencyFilterValue = spec.filter?.find(
+    (f) => f.dimension === RAQIV2Dimension.CurrencyType,
+  )?.values;
+  if (currencyFilterValue?.length === 1) {
+    // oxlint-disable-next-line @typescript-eslint/no-unnecessary-template-expression
+    return `${currencyFilterValue[0]}`;
+  }
+  return '';
+};
+
 export const generateAnalyticsNumberFormattingSpec = ({
   metric,
   context,
@@ -419,21 +419,6 @@ export const generateAnalyticsNumberFormattingSpec = ({
   let suffix = getSuffix(displayMetric, verbosity);
 
   if (specialNumberFormatting === AnalyticsSpecialNumberFormatting.InExperienceCurrency) {
-    const getCurrencyNameFromChartSpec = (
-      spec: Pick<RAQIV2ChartSpec, 'filter'> | null | undefined,
-    ): string => {
-      if (!spec) {
-        return '';
-      }
-      const currencyFilterValue = spec.filter?.find(
-        (f) => f.dimension === RAQIV2Dimension.CurrencyType,
-      )?.values;
-      if (currencyFilterValue?.length === 1) {
-        // oxlint-disable-next-line @typescript-eslint/no-unnecessary-template-expression
-        return `${currencyFilterValue[0]}`;
-      }
-      return '';
-    };
     const currencyName = getCurrencyNameFromChartSpec(numberContextMetadata?.chartSpec);
     if (verbosity === NumberVerbosity.ShortSuffix || verbosity === NumberVerbosity.LongSuffix) {
       suffix = {
