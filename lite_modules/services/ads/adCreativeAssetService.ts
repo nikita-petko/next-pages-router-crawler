@@ -20,7 +20,7 @@ interface AdCreativeRequestOptions {
   groupId?: number;
 }
 
-export interface RegisterAdCreativeAssetParams {
+interface RegisterAdCreativeAssetParams {
   assetId: number;
   assetType: AdAssetType;
   /** For video assets, in milliseconds. */

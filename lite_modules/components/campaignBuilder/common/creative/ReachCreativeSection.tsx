@@ -54,14 +54,6 @@ const ReachCreativeSection = ({
   const maxSubtitleLength =
     useAppStore((state) => state.appMetadataState?.data?.maxSubtitleLengthInChars) ||
     DEFAULT_SUBTITLE_MAX_LENGTH;
-  // The creative-library flow surfaces a "(selected/max)" count next to
-  // the image-asset header so users can see at a glance how many slots
-  // they still have when picking from a shared library. Pre-library reach
-  // campaigns only ever uploaded one asset in-place, so the count would
-  // have been noise — keep the legacy h5 label there.
-  const isCreativeLibraryEnabled = useAppStore(
-    (state) => state.appMetadataState?.data?.isCreativeLibraryEnabled ?? false,
-  );
   const isGenAiCreativesEnabled = useAppStore(
     (state) => state.appMetadataState?.data?.isGenAiCreativesEnabled ?? false,
   );
@@ -127,11 +119,9 @@ const ReachCreativeSection = ({
   const shouldShowLogoErrorMessage = hasLogoError && !!logoIsTouched;
   const shouldShowVideoErrorMessage = !!videoError && !!videoIsTouched;
 
-  const showCreativeAddMenu = isCreativeLibraryEnabled && isGenAiCreativesEnabled;
+  const showCreativeAddMenu = isGenAiCreativesEnabled;
   const showAiGenerateMenuItem =
-    isGenAiCreativesEnabled &&
-    isCreativeLibraryEnabled &&
-    selectedThumbnails.length < maxAllowedThumbnails;
+    isGenAiCreativesEnabled && selectedThumbnails.length < maxAllowedThumbnails;
 
   const maybeRenderImageUploadButton = () => {
     if (editMode) {
@@ -281,28 +271,24 @@ const ReachCreativeSection = ({
         <div className='flex flex-row gap-large'>
           {/* Image asset section */}
           <div className={`text-body-large ${reachCreativeFieldContainer}`}>
-            {isCreativeLibraryEnabled ? (
-              <p
-                className='margin-[0px] text-body-medium content-default'
-                data-testid='reach-image-asset-count'>
-                {translateCreativeLibraryHTML(
-                  'Label.ImageAssetsCount',
-                  [
-                    {
-                      closing: 'boldEnd',
-                      content: (chunks) => <span className='text-label-medium'>{chunks}</span>,
-                      opening: 'boldStart',
-                    },
-                  ],
+            <p
+              className='margin-[0px] text-body-medium content-default'
+              data-testid='reach-image-asset-count'>
+              {translateCreativeLibraryHTML(
+                'Label.ImageAssetsCount',
+                [
                   {
-                    max: String(maxAllowedThumbnails),
-                    selected: String(selectedThumbnails.length),
+                    closing: 'boldEnd',
+                    content: (chunks) => <span className='text-label-medium'>{chunks}</span>,
+                    opening: 'boldStart',
                   },
-                )}
-              </p>
-            ) : (
-              <label className='text-heading-small'>{translateCampaign('Label.ImageAsset')}</label>
-            )}
+                ],
+                {
+                  max: String(maxAllowedThumbnails),
+                  selected: String(selectedThumbnails.length),
+                },
+              )}
+            </p>
             <div className={creativeSectionPreviewContainer}>
               {selectedThumbnails.map(({ assetId }: ThumbnailType) => (
                 <Creative assetId={assetId} className={thumbnailStyle} key={assetId} />
@@ -317,17 +303,11 @@ const ReachCreativeSection = ({
           {/* Video asset section (1x2 vertical format only) */}
           {isVerticalFormat && (
             <div className={`text-body-large ${reachCreativeFieldContainer}`}>
-              {isCreativeLibraryEnabled ? (
-                <p
-                  className='margin-[0px] text-body-medium content-default'
-                  data-testid='reach-video-asset-label'>
-                  {translateCampaign('Label.VideoAsset')}
-                </p>
-              ) : (
-                <label className='text-heading-small'>
-                  {translateCampaign('Label.VideoAsset')}
-                </label>
-              )}
+              <p
+                className='margin-[0px] text-body-medium content-default'
+                data-testid='reach-video-asset-label'>
+                {translateCampaign('Label.VideoAsset')}
+              </p>
               <div className={creativeSectionPreviewContainer}>
                 {finishedVideos.map((video: UploadedVideoType) => (
                   <Creative
@@ -347,30 +327,24 @@ const ReachCreativeSection = ({
 
         {/* Logo asset section */}
         <div className={`text-body-large ${reachCreativeFieldContainer}`}>
-          {isCreativeLibraryEnabled ? (
-            <p
-              className='margin-[0px] text-body-medium content-default'
-              data-testid='reach-logo-asset-count'>
-              {translateCreativeLibraryHTML(
-                'Label.LogoAssetsCount',
-                [
-                  {
-                    closing: 'boldEnd',
-                    content: (chunks) => <span className='text-label-medium'>{chunks}</span>,
-                    opening: 'boldStart',
-                  },
-                ],
+          <p
+            className='margin-[0px] text-body-medium content-default'
+            data-testid='reach-logo-asset-count'>
+            {translateCreativeLibraryHTML(
+              'Label.LogoAssetsCount',
+              [
                 {
-                  max: String(MAX_LOGO_SELECTIONS),
-                  selected: String(selectedLogos.length),
+                  closing: 'boldEnd',
+                  content: (chunks) => <span className='text-label-medium'>{chunks}</span>,
+                  opening: 'boldStart',
                 },
-              )}
-            </p>
-          ) : (
-            <label className='text-heading-small'>
-              {translateCampaign('Label.LogoAssetOptional')}
-            </label>
-          )}
+              ],
+              {
+                max: String(MAX_LOGO_SELECTIONS),
+                selected: String(selectedLogos.length),
+              },
+            )}
+          </p>
           <div className={creativeSectionPreviewContainer}>
             {selectedLogos.map(({ assetId }) => (
               <Creative assetId={assetId} className={logoStyle} key={assetId} />

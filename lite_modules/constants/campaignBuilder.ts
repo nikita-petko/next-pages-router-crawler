@@ -77,7 +77,6 @@ export const LogoSize = {
 
 export const MAX_ALLOWED_CREATIVES = 5; // TODO: fetch from metadata
 export const MAX_DISPLAYABLE_ADS = 100;
-export const UPLOAD_BUFFER_COUNT = 10; // We allow a buffer of uploads above the max allowed creatives to account for failed uploads and deletions
 // Reach campaigns allow exactly one selected logo at a time. Lives here
 // (vs. the drawer content file) so the reach creative section can render a
 // matching "(selected/max)" count next to the logo header without
@@ -88,8 +87,6 @@ export enum AssetSource {
   ADS_MANAGER = 'AdsManager',
   CREATOR = 'Creator',
 }
-
-export const CreativeMarketingBlurb = 'Description.CreativeMarketingBlurb';
 
 export const warningUniverseId = 0;
 

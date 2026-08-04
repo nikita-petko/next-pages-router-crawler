@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 
-import { EventName, logNativeImpressionEvent } from '@clients/unifiedLogger';
 import useCampaignBuilderCommonStyles from '@components/campaignBuilder/common/CampaignBuilderCommon.styles';
 import ReachCreativeSection from '@components/campaignBuilder/common/creative/ReachCreativeSection';
 import ReachCreativePreview from '@components/campaignBuilder/common/creative/reachSection/ReachCreativePreview';
@@ -16,7 +15,6 @@ import { TranslationNamespace } from '@constants/localization';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { getThumbnailsByUniverseId } from '@services/games/getGameInfoService';
-import { useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
 
 const CreativeSection = () => {
@@ -53,14 +51,6 @@ const CreativeSection = () => {
   const editMode = flowType === FlowTypes.EDIT;
   const cloneMode = flowType === FlowTypes.CLONE;
 
-  // With the creative library on, the experience's auto-imported thumbnails
-  // are surfaced as opt-in tiles in the "Add creatives" drawer
-  // (CreativeImportTab) instead of being force-prepopulated onto the form, so
-  // the drawer is the single place they enter the campaign.
-  const isCreativeLibraryEnabled = useAppStore(
-    (state) => state.appMetadataState?.data?.isCreativeLibraryEnabled ?? false,
-  );
-
   const isEditingGaasCampaignWithNoCreatives =
     editMode && isExtendToOffPlatformEnabled && !videos.length;
 
@@ -70,10 +60,8 @@ const CreativeSection = () => {
   const simplifiedCampaignAssetIds = useCampaignBuilderStore(
     (state) => state.simplifiedCampaign?.data?.asset_ids,
   );
-  const createMode = useCampaignBuilderStore((state) => state.flowType === FlowTypes.CREATE);
-
   const { data: thumbnails } = useQuery({
-    enabled: !!universeId && (createMode || editMode),
+    enabled: !!universeId && editMode,
     queryFn: () => getThumbnailsByUniverseId(universeId),
     queryKey: ['thumbnails', universeId],
   });
@@ -116,26 +104,6 @@ const CreativeSection = () => {
   }, [setValue, editMode, cloneMode, simplifiedCampaignAssetIds]);
 
   useEffect(() => {
-    if (thumbnails && createMode && !isCreativeLibraryEnabled) {
-      const assetIds = thumbnails.assetIds.map((assetId, index) => ({
-        assetId: Number(assetId),
-        existing: false, // Create mode cannot have published thumbnails.
-        isSelected: index === 0,
-        source: AssetSource.CREATOR,
-      }));
-
-      logNativeImpressionEvent(EventName.AssetsFetched, {
-        count: assetIds.length.toString(),
-        flowType,
-        universeId: universeId?.toString() || '',
-      });
-
-      // Reset Field will reset touched and dirty to false
-      resetField(FormField.THUMBNAILS, {
-        defaultValue: assetIds,
-      });
-      trigger(FormField.THUMBNAILS);
-    }
     if (thumbnails && editMode) {
       const existingAssetIds = getValues(FormField.THUMBNAILS).map((creative) => creative.assetId);
       const newAssetIds = thumbnails.assetIds.filter(
@@ -161,18 +129,7 @@ const CreativeSection = () => {
       });
       trigger(FormField.THUMBNAILS);
     }
-  }, [
-    thumbnails,
-    resetField,
-    createMode,
-    universeId,
-    flowType,
-    trigger,
-    editMode,
-    getValues,
-    setValue,
-    isCreativeLibraryEnabled,
-  ]);
+  }, [thumbnails, resetField, trigger, editMode, getValues, setValue]);
 
   // Show (and count) every creative the user has selected on the form,
   // including existing ones that may be paused/stopped. This intentionally does

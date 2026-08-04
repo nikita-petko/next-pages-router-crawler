@@ -28,9 +28,14 @@ export const EMPTY_RAW_REPORTING_STATS: RawReportingStats = {
   twoSecVideoViewCount: 0,
 };
 
-export const shouldUseFrontendReportingStats = (state: FrontendReportingStatsGateState): boolean =>
-  Boolean(state.appMetadataState?.data?.isFrontendReportingStatsEnabled) ||
+export const shouldUseCaaSReportingStats = (state: FrontendReportingStatsGateState): boolean =>
   state.shouldUseWorkspaceUniverseFiltering();
+
+export const shouldUseProgressiveCampaignStats = (
+  state: FrontendReportingStatsGateState,
+): boolean =>
+  !shouldUseCaaSReportingStats(state) &&
+  Boolean(state.appMetadataState?.data?.isFrontendReportingStatsEnabled);
 
 const roundSpendUpToCentMicroUsd = (spendMicroUsd: number): number =>
   Math.ceil(spendMicroUsd / 10000) * 10000;
@@ -102,9 +107,9 @@ export const buildFrontendReportingStats = ({
         ? undefined
         : divideWhenAvailable(rawStats.playCount, rawStats.impressionCount),
     roas:
-      hasFailed(failedMetrics, 'robuxRevenue30d') || hasFailed(failedMetrics, 'roasSpendMicroUsd')
+      hasFailed(failedMetrics, 'robuxRevenue30d') || hasFailed(failedMetrics, 'spendMicroUsd')
         ? undefined
-        : divideWhenAvailable(rawStats.robuxRevenue30d, caas.roasSpendMicroUsd / MICRO_USD_IN_USD),
+        : divideWhenAvailable(rawStats.robuxRevenue30d, rawStats.spendMicroUsd / MICRO_USD_IN_USD),
     spend_micro_usd: hasFailed(failedMetrics, 'spendMicroUsd') ? undefined : rawStats.spendMicroUsd,
     total_play_time_hours_7d: hasFailed(failedMetrics, 'playTimeSeconds7d')
       ? undefined

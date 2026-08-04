@@ -58,7 +58,8 @@ import { CaptureException } from '@utils/error';
 import {
   buildFrontendReportingStats,
   getDisplaySpendUsd,
-  shouldUseFrontendReportingStats,
+  shouldUseCaaSReportingStats,
+  shouldUseProgressiveCampaignStats,
 } from '@utils/frontendReportingStats';
 import {
   buildPickerUniversesWithAllOption,
@@ -95,6 +96,22 @@ interface CampaignDetailsStateType {
 
 interface VisibleStatsState extends RequestStateType<FrontendReportingStatsById> {
   requestKey?: string;
+}
+
+interface CampaignPerformanceState {
+  isError: boolean;
+  isLoading: boolean;
+}
+
+interface CampaignPerformanceResult {
+  campaigns?: Campaign[];
+  error?: unknown;
+}
+
+interface CampaignFetchResult {
+  campaigns: Campaign[];
+  performancePromise?: Promise<CampaignPerformanceResult>;
+  requestTimestamp: string;
 }
 
 interface FilterState {
@@ -137,12 +154,14 @@ interface SponsoredAdsPageStateType {
   advertisedUniversesState: RequestStateType<AdvertisedUniverse[]>;
   campaignDetailsState: CampaignDetailsStateType;
   campaignNameFilterState: CampaignNameFilterState;
+  campaignPerformanceState: CampaignPerformanceState;
   campaignsState: RequestStateType<Campaign[]>;
   dateSelectionState: DateSelectionStateType;
   filteredIdsState: FilterState;
   reportingRequestTimestamp: string;
   reportingViewState: ReportingViewStateType;
   statusesState: DisplayStatusesStateType;
+  summaryRequestTimestamp: string;
   summaryStatsState: EmptyRequestStateType<AdAccountSummary>;
   tableRowsState: TableRowsStateType;
   universePickerFilterState: UniversePickerFilterState;
@@ -193,13 +212,17 @@ export interface FetchInitialDataOptions {
 const getShouldUseWorkspaceUniverseFiltering = (): boolean =>
   useAppStore.getState().shouldUseWorkspaceUniverseFiltering();
 
-const getShouldUseFrontendReportingStats = (): boolean =>
-  shouldUseFrontendReportingStats(useAppStore.getState());
+const getShouldUseCaaSReportingStats = (): boolean =>
+  shouldUseCaaSReportingStats(useAppStore.getState());
+
+const getShouldUseProgressiveCampaignStats = (): boolean =>
+  shouldUseProgressiveCampaignStats(useAppStore.getState());
 
 const getSummaryUniverseId = (universe: AdvertisedUniverse): number | undefined =>
   universe.universe_id === 0 ? undefined : universe.universe_id;
 
 interface SponsoredAdsPageActionType {
+  applyCampaignPerformanceResult: (result: CampaignFetchResult) => Promise<void>;
   cancelCampaign: (campaignId: string) => Promise<void>;
   // Resets
   closeDrawer: () => void;
@@ -236,7 +259,7 @@ interface SponsoredAdsPageActionType {
     customEndDate?: string,
     universeIds?: number[],
     requestTimestamp?: string,
-  ) => Promise<Campaign[]>;
+  ) => Promise<CampaignFetchResult>;
   getFilteredCampaignIds: (request: FilteredCampaignIdsRequest) => Promise<Set<string> | undefined>;
   getSummaryStats: (
     dateSelection: DateFilteringTimePeriod,
@@ -403,7 +426,6 @@ const fetchFrontendSummaryStats = async ({
         ...result.campaignSpendMicroUsd,
       },
       failedMetrics: Array.from(new Set([...total.failedMetrics, ...result.failedMetrics])),
-      roasSpendMicroUsd: total.roasSpendMicroUsd + result.roasSpendMicroUsd,
       stats: {
         clickCount: total.stats.clickCount + result.stats.clickCount,
         fifteenSecVideoViewCount:
@@ -419,7 +441,6 @@ const fetchFrontendSummaryStats = async ({
     {
       campaignSpendMicroUsd: {},
       failedMetrics: [],
-      roasSpendMicroUsd: 0,
       stats: {
         clickCount: 0,
         fifteenSecVideoViewCount: 0,
@@ -469,6 +490,34 @@ const fetchFrontendSummaryStats = async ({
 export const useNewFlowStore = create<NewFlowStoreType>()(
   immer((set, get) => ({
     advertisedUniversesState: GetInitialRequestState<AdvertisedUniverse[]>([]),
+    applyCampaignPerformanceResult: async (result: CampaignFetchResult) => {
+      if (!result.performancePromise) {
+        return;
+      }
+
+      const performanceResult = await result.performancePromise;
+      if (get().reportingRequestTimestamp !== result.requestTimestamp) {
+        return;
+      }
+
+      const performanceCampaigns = performanceResult.campaigns;
+      if (performanceResult.error || !performanceCampaigns) {
+        set((draft) => {
+          draft.campaignPerformanceState.isError = true;
+          draft.campaignPerformanceState.isLoading = false;
+        });
+        CaptureException(performanceResult.error, {
+          context: 'fetchProgressiveCampaignPerformance',
+        });
+        return;
+      }
+
+      set((draft) => {
+        draft.campaignsState.data = performanceCampaigns;
+        draft.campaignPerformanceState.isError = false;
+        draft.campaignPerformanceState.isLoading = false;
+      });
+    },
     campaignDetailsState: {
       adsState: GetInitialRequestState<Ad[]>([]),
       campaign: undefined,
@@ -478,6 +527,10 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       visibleStatsState: GetInitialRequestState<FrontendReportingStatsById>({}),
     },
     campaignNameFilterState: { isError: false },
+    campaignPerformanceState: {
+      isError: false,
+      isLoading: false,
+    },
     campaignsState: GetInitialRequestState<Campaign[]>([]),
     cancelCampaign: async (campaignId: string) =>
       get().updateCampaignStatus(campaignId, ServerCampaignStatusType.CANCELLED),
@@ -560,7 +613,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
           requestTimestamp: get().reportingRequestTimestamp,
           timePeriod,
           timezoneDbName: REPORTING_TIMEZONE_DB_NAME,
-          unifiedAttributionCutoverDate: getShouldUseFrontendReportingStats()
+          unifiedAttributionCutoverDate: getShouldUseCaaSReportingStats()
             ? FRONTEND_REPORTING_CAAS_START_DATE
             : reportingMetadata?.unifiedAttributionCutoverDate,
         });
@@ -631,7 +684,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
           universeIds,
           reportingRequestTimestamp,
         );
-        const shouldUseFrontendSummary = getShouldUseFrontendReportingStats();
+        const shouldUseFrontendSummary = getShouldUseCaaSReportingStats();
         const summaryPromise = shouldUseFrontendSummary
           ? Promise.resolve(undefined)
           : get().getSummaryStats(
@@ -658,11 +711,14 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         });
 
         const campaignsUpdate = campaignsPromise
-          .then((fetchedCampaigns) => {
+          .then((fetchResult) => {
             set((draft) => {
-              draft.campaignsState.data = fetchedCampaigns;
+              draft.campaignsState.data = fetchResult.campaigns;
               draft.campaignsState.isError = false;
             });
+            get()
+              .applyCampaignPerformanceResult(fetchResult)
+              .catch(() => undefined);
             if (campaignId) {
               get().getAdsAndOpenDrawer(campaignId);
             }
@@ -685,7 +741,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
               try {
                 frontendSummary = await fetchFrontendSummaryStats({
                   backendSummary,
-                  campaigns: await campaignsPromise,
+                  campaigns: (await campaignsPromise).campaigns,
                   reportingView: initialReportingView,
                   requestTimestamp: reportingRequestTimestamp,
                   timePeriod: initialDateSelection,
@@ -696,7 +752,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
                 CaptureException(error, { context: 'fetchInitialFrontendSummary' });
               }
             }
-            if (get().reportingRequestTimestamp !== reportingRequestTimestamp) {
+            if (get().summaryRequestTimestamp !== reportingRequestTimestamp) {
               return;
             }
             set((draft) => {
@@ -859,7 +915,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         });
     },
     fetchVisibleAdStats: async (adIds: string[]) => {
-      if (!getShouldUseFrontendReportingStats() || adIds.length === 0) {
+      if (!getShouldUseCaaSReportingStats() || adIds.length === 0) {
         return;
       }
       const { campaign } = get().campaignDetailsState;
@@ -923,7 +979,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       }
     },
     fetchVisibleCampaignStats: async (campaignIds: string[]) => {
-      if (!getShouldUseFrontendReportingStats() || campaignIds.length === 0) {
+      if (!getShouldUseCaaSReportingStats() || campaignIds.length === 0) {
         return;
       }
       const requestKey = JSON.stringify({
@@ -1066,7 +1122,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         const customStartDate = isCustom ? storedCustomStart : undefined;
         const customEndDate = isCustom ? storedCustomEnd : undefined;
         const reportingView = get().reportingViewState.currentSelection;
-        const includePerformance = !getShouldUseFrontendReportingStats();
+        const includePerformance = !getShouldUseCaaSReportingStats();
         set((draft) => {
           draft.reportingRequestTimestamp = requestTimestamp;
           draft.campaignDetailsState.visibleStatsState =
@@ -1267,53 +1323,78 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       reportingRequestTimestamp?: string,
     ) => {
       const requestTimestamp = reportingRequestTimestamp ?? new Date().toISOString();
-      const includePerformance = !getShouldUseFrontendReportingStats();
+      const shouldUseCaaSStats = getShouldUseCaaSReportingStats();
+      const shouldUseProgressiveStats = getShouldUseProgressiveCampaignStats();
+      const includePerformance = !shouldUseCaaSStats && !shouldUseProgressiveStats;
       set((draft) => {
         draft.reportingRequestTimestamp = requestTimestamp;
+        draft.summaryRequestTimestamp = requestTimestamp;
+        draft.campaignPerformanceState = {
+          isError: false,
+          isLoading: shouldUseProgressiveStats,
+        };
         draft.visibleCampaignStatsState = GetInitialRequestState<FrontendReportingStatsById>({});
       });
       try {
-        // Fetch campaigns in pages
-        const fetchedCampaigns = await getDateFilteredCampaigns({
-          abortSignal,
-          customEndDate,
-          customStartDate,
-          includePerformance,
-          reportingView,
-          requestTimestamp,
-          timePeriod: dateSelection,
-          universeIds,
-        });
-
-        let nextSerialCursor = fetchedCampaigns.next_cursor;
-        let allCampaigns = fetchedCampaigns.campaigns || [];
-
-        /* eslint-disable no-await-in-loop */
-        while (nextSerialCursor) {
-          const nextFetchedCampaigns = await getDateFilteredCampaigns({
+        const fetchCampaignPages = async (fetchPerformance: boolean): Promise<Campaign[]> => {
+          const fetchedCampaigns = await getDateFilteredCampaigns({
             abortSignal,
             customEndDate,
             customStartDate,
-            includePerformance,
-            paginationOptions: { cursor: nextSerialCursor },
+            includePerformance: fetchPerformance,
             reportingView,
             requestTimestamp,
             timePeriod: dateSelection,
             universeIds,
           });
-          nextSerialCursor = nextFetchedCampaigns.next_cursor;
-          allCampaigns = allCampaigns.concat(nextFetchedCampaigns.campaigns || []);
-          if (!nextSerialCursor) {
-            break;
+
+          let nextSerialCursor = fetchedCampaigns.next_cursor;
+          let allCampaigns = fetchedCampaigns.campaigns || [];
+
+          /* eslint-disable no-await-in-loop */
+          while (nextSerialCursor) {
+            const nextFetchedCampaigns = await getDateFilteredCampaigns({
+              abortSignal,
+              customEndDate,
+              customStartDate,
+              includePerformance: fetchPerformance,
+              paginationOptions: { cursor: nextSerialCursor },
+              reportingView,
+              requestTimestamp,
+              timePeriod: dateSelection,
+              universeIds,
+            });
+            nextSerialCursor = nextFetchedCampaigns.next_cursor;
+            allCampaigns = allCampaigns.concat(nextFetchedCampaigns.campaigns || []);
+            if (!nextSerialCursor) {
+              break;
+            }
           }
-        }
+          return allCampaigns;
+        };
+
+        const campaignsPromise = fetchCampaignPages(includePerformance);
+        const performancePromise = shouldUseProgressiveStats
+          ? fetchCampaignPages(true).then(
+              (campaigns): CampaignPerformanceResult => ({ campaigns }),
+              (error: unknown): CampaignPerformanceResult => ({ error }),
+            )
+          : undefined;
+        const allCampaigns = await campaignsPromise;
 
         // Status fetch always after campaigns fetch
         const campaignIds = allCampaigns.map((campaign) => campaign.id);
         get().getCampaignStatuses(campaignIds);
 
-        return allCampaigns;
+        return {
+          campaigns: allCampaigns,
+          performancePromise,
+          requestTimestamp,
+        };
       } catch (error) {
+        set((draft) => {
+          draft.campaignPerformanceState.isLoading = false;
+        });
         logNativeErrorEvent({
           error,
           eventName: EventName.DateFilteringError,
@@ -1508,12 +1589,13 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         ? resolveUniverseIdsForDateFilter(universeFilter, pickerUniverses)
         : undefined;
 
-      if (getShouldUseFrontendReportingStats()) {
+      if (getShouldUseCaaSReportingStats()) {
         const requestTimestamp = new Date().toISOString();
         const campaigns = get().campaignsState.data ?? [];
 
         set((draft) => {
           draft.reportingRequestTimestamp = requestTimestamp;
+          draft.summaryRequestTimestamp = requestTimestamp;
           draft.reportingViewState = {
             currentSelection: newReportingView,
             isError: false,
@@ -1534,7 +1616,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             }),
           )
           .then((summaryStats) => {
-            if (summaryStats === null || get().reportingRequestTimestamp !== requestTimestamp) {
+            if (summaryStats === null || get().summaryRequestTimestamp !== requestTimestamp) {
               return;
             }
             set((draft) => {
@@ -1546,7 +1628,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             });
           })
           .catch(() => {
-            if (get().reportingRequestTimestamp !== requestTimestamp) {
+            if (get().summaryRequestTimestamp !== requestTimestamp) {
               return;
             }
             set((draft) => {
@@ -1652,39 +1734,41 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       dateReportingViewRequestManager
         .executeRequest(async (abortSignal) => {
           const requestTimestamp = new Date().toISOString();
-          const shouldUseFrontendSummary = getShouldUseFrontendReportingStats();
-          const [campaigns, filteredCampaignIds, backendSummaryStats] = await Promise.all([
-            get().getDateFilteredCampaigns(
-              currentDateSelection,
-              currentReportingView,
-              abortSignal,
-              customStartDate,
-              customEndDate,
-              universeIds,
-              requestTimestamp,
-            ),
-            shouldUseWorkspaceUniverseFiltering
-              ? Promise.resolve(undefined)
-              : get().getFilteredCampaignIds({
-                  newCampaignNameSearch: undefined,
-                  newUniverseId: universe.universe_id,
-                }),
-            shouldUseFrontendSummary
-              ? Promise.resolve(undefined)
-              : get().getSummaryStats(
-                  currentDateSelection,
-                  currentReportingView,
-                  summaryUniverseId,
-                  abortSignal,
-                  customStartDate,
-                  customEndDate,
-                  requestTimestamp,
-                ),
-          ]);
+          const shouldUseFrontendSummary = getShouldUseCaaSReportingStats();
+          const [campaignFetchResult, filteredCampaignIds, backendSummaryStats] = await Promise.all(
+            [
+              get().getDateFilteredCampaigns(
+                currentDateSelection,
+                currentReportingView,
+                abortSignal,
+                customStartDate,
+                customEndDate,
+                universeIds,
+                requestTimestamp,
+              ),
+              shouldUseWorkspaceUniverseFiltering
+                ? Promise.resolve(undefined)
+                : get().getFilteredCampaignIds({
+                    newCampaignNameSearch: undefined,
+                    newUniverseId: universe.universe_id,
+                  }),
+              shouldUseFrontendSummary
+                ? Promise.resolve(undefined)
+                : get().getSummaryStats(
+                    currentDateSelection,
+                    currentReportingView,
+                    summaryUniverseId,
+                    abortSignal,
+                    customStartDate,
+                    customEndDate,
+                    requestTimestamp,
+                  ),
+            ],
+          );
           const frontendSummaryStats = shouldUseFrontendSummary
             ? await fetchFrontendSummaryStats({
                 backendSummary: backendSummaryStats,
-                campaigns,
+                campaigns: campaignFetchResult.campaigns,
                 reportingView: currentReportingView,
                 requestTimestamp,
                 timePeriod: currentDateSelection,
@@ -1699,7 +1783,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
 
           return {
             backendSummaryStats,
-            campaigns,
+            campaignFetchResult,
             filteredCampaignIds,
             frontendSummaryStats,
             summaryStats,
@@ -1711,7 +1795,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             return;
           }
           set((draft) => {
-            draft.campaignsState.data = result.campaigns;
+            draft.campaignsState.data = result.campaignFetchResult.campaigns;
             draft.campaignsState.isError = false;
             draft.filteredIdsState = {
               filteredCampaignIds: result.filteredCampaignIds,
@@ -1725,6 +1809,9 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             // Clear campaign name search error as a successful filter request has been sent
             draft.campaignNameFilterState.isError = false;
           });
+          get()
+            .applyCampaignPerformanceResult(result.campaignFetchResult)
+            .catch(() => undefined);
         })
         .catch(() => {
           set((draft) => {
@@ -1761,16 +1848,18 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       universeIds?: number[];
       universeId?: number;
     }) => {
+      const requestTimestamp = new Date().toISOString();
       set((draft) => {
         draft.campaignsState.isLoading = true;
+        draft.summaryRequestTimestamp = requestTimestamp;
         draft.summaryStatsState.isLoading = true;
       });
 
+      let keepFrontendSummaryLoading = false;
       try {
         // Use request manager to handle cancellation of stale requests
         const result = await dateReportingViewRequestManager.executeRequest(async (abortSignal) => {
-          const requestTimestamp = new Date().toISOString();
-          const shouldUseFrontendSummary = getShouldUseFrontendReportingStats();
+          const shouldUseFrontendSummary = getShouldUseCaaSReportingStats();
           const summaryPromise = shouldUseFrontendSummary
             ? Promise.resolve(undefined)
             : get().getSummaryStats(
@@ -1782,7 +1871,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
                 params.customEndDate,
                 requestTimestamp,
               );
-          const [fetchedCampaigns, backendSummaryStats] = await Promise.all([
+          const [campaignFetchResult, backendSummaryStats] = await Promise.all([
             get().getDateFilteredCampaigns(
               params.dateSelection,
               params.reportingView,
@@ -1794,10 +1883,10 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             ),
             summaryPromise,
           ]);
-          const frontendSummaryStats = shouldUseFrontendSummary
-            ? await fetchFrontendSummaryStats({
+          const frontendSummaryPromise = shouldUseFrontendSummary
+            ? fetchFrontendSummaryStats({
                 backendSummary: backendSummaryStats,
-                campaigns: fetchedCampaigns,
+                campaigns: campaignFetchResult.campaigns,
                 reportingView: params.reportingView,
                 requestTimestamp,
                 timePeriod: params.dateSelection,
@@ -1808,9 +1897,9 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
 
           return {
             backendSummaryStats,
-            fetchedCampaigns,
-            frontendSummaryStats,
-            shouldUseFrontendSummary,
+            campaignFetchResult,
+            frontendSummaryPromise,
+            requestTimestamp,
           };
         });
 
@@ -1819,14 +1908,14 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
           return false;
         }
         set((draft) => {
-          draft.campaignsState.data = result.fetchedCampaigns;
+          draft.campaignsState.data = result.campaignFetchResult.campaigns;
           draft.campaignsState.isError = false;
-          const summaryStats =
-            result.shouldUseFrontendSummary && result.frontendSummaryStats
-              ? result.frontendSummaryStats
-              : result.backendSummaryStats;
-          draft.summaryStatsState.data = summaryStats;
-          draft.summaryStatsState.isError = false;
+          if (result.frontendSummaryPromise) {
+            draft.summaryStatsState.isLoading = true;
+          } else {
+            draft.summaryStatsState.data = result.backendSummaryStats;
+            draft.summaryStatsState.isError = false;
+          }
 
           // Client-side name search IDs are scoped to the campaigns currently in memory.
           // Recompute against the newly fetched set so date/view changes don't hide matches.
@@ -1836,7 +1925,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
               draft.universePickerFilterState.universeFilter.universe_id || undefined;
             draft.filteredIdsState = {
               filteredCampaignIds: filterCampaignIdsLocally(
-                result.fetchedCampaigns,
+                result.campaignFetchResult.campaigns,
                 campaignNameSearch,
                 universeId,
               ),
@@ -1844,8 +1933,35 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             };
           }
 
-          params.onSuccess(result.fetchedCampaigns, summaryStats, draft);
+          params.onSuccess(result.campaignFetchResult.campaigns, result.backendSummaryStats, draft);
         });
+        get()
+          .applyCampaignPerformanceResult(result.campaignFetchResult)
+          .catch(() => undefined);
+        if (result.frontendSummaryPromise) {
+          keepFrontendSummaryLoading = true;
+          result.frontendSummaryPromise
+            .then((frontendSummaryStats) => {
+              if (get().summaryRequestTimestamp !== result.requestTimestamp) {
+                return;
+              }
+              set((draft) => {
+                draft.summaryStatsState.data = frontendSummaryStats;
+                draft.summaryStatsState.isError = false;
+                draft.summaryStatsState.isLoading = false;
+              });
+            })
+            .catch((error) => {
+              if (get().summaryRequestTimestamp !== result.requestTimestamp) {
+                return;
+              }
+              set((draft) => {
+                draft.summaryStatsState.isError = true;
+                draft.summaryStatsState.isLoading = false;
+              });
+              CaptureException(error, { context: 'fetchFilteredFrontendSummary' });
+            });
+        }
         return true;
       } catch {
         set((draft) => {
@@ -1857,7 +1973,9 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
           // Clear errors from related states as more recent requests have been sent
           draft.universePickerFilterState.isError = false;
           draft.campaignsState.isLoading = false;
-          draft.summaryStatsState.isLoading = false;
+          if (draft.summaryRequestTimestamp === requestTimestamp && !keepFrontendSummaryLoading) {
+            draft.summaryStatsState.isLoading = false;
+          }
         });
       }
     },
@@ -1906,7 +2024,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       });
 
       try {
-        const fetchedCampaigns = await get().getDateFilteredCampaigns(
+        const campaignFetchResult = await get().getDateFilteredCampaigns(
           dateSelectionState.currentSelection,
           reportingViewState.currentSelection,
           undefined,
@@ -1919,7 +2037,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
           return;
         }
         set((draft) => {
-          draft.campaignsState.data = fetchedCampaigns;
+          draft.campaignsState.data = campaignFetchResult.campaigns;
           draft.campaignsState.isError = false;
 
           if (campaignNameFilterState.campaignNameSearch) {
@@ -1927,7 +2045,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
               draft.universePickerFilterState.universeFilter.universe_id || undefined;
             draft.filteredIdsState = {
               filteredCampaignIds: filterCampaignIdsLocally(
-                fetchedCampaigns,
+                campaignFetchResult.campaigns,
                 campaignNameFilterState.campaignNameSearch,
                 universeId,
               ),
@@ -1935,6 +2053,9 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             };
           }
         });
+        get()
+          .applyCampaignPerformanceResult(campaignFetchResult)
+          .catch(() => undefined);
       } catch {
         if (get().reportingRequestTimestamp === requestTimestamp) {
           set((draft) => {
@@ -1971,7 +2092,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
           )
         : undefined;
       const requestTimestamp = new Date().toISOString();
-      const shouldUseFrontendSummary = getShouldUseFrontendReportingStats();
+      const shouldUseFrontendSummary = getShouldUseCaaSReportingStats();
 
       set((draft) => {
         draft.summaryStatsState.isError = false;
@@ -2023,6 +2144,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       updatedAdStatuses: new Map<string, GetAdStatusResponseType>(),
       updatedCampaignStatuses: new Map<string, GetCampaignStatusResponseType>(),
     },
+    summaryRequestTimestamp: new Date().toISOString(),
     summaryStatsState: GetEmptyRequestState<AdAccountSummary>(),
     tableRowsState: {
       adToggleLoadingMap: new Map<string, boolean>(),

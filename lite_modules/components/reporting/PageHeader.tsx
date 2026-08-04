@@ -53,7 +53,7 @@ const PageHeader = () => {
     <>
       <div className='margin-bottom-medium flex width-full flex-col gap-xxlarge'>
         {/* Figma Body order: pageHeaderStack → banners → filters/metrics/search */}
-        <div className='flex width-full flex-wrap items-center justify-between gap-xlarge padding-y-xsmall'>
+        <div className='flex width-full wrap items-center justify-between gap-xlarge padding-y-xsmall'>
           <h1 className='margin-[0px] text-heading-large content-emphasis min-width-[300px] grow'>
             {translateCampaign('Heading.ManageAds')}
           </h1>
@@ -75,8 +75,8 @@ const PageHeader = () => {
         <PromotionBanner />
 
         <div className='flex width-full flex-col gap-small'>
-          <div className='flex width-full flex-wrap items-end justify-between gap-medium'>
-            <div className='flex flex-wrap items-end gap-medium'>
+          <div className='flex width-full wrap items-start justify-between gap-medium'>
+            <div className='flex wrap items-start gap-medium'>
               <DateQuickPick />
               <ExperienceFilterPicker />
               <ReportingViewQuickPick />
@@ -117,6 +117,9 @@ const PageHeader = () => {
                 isCircular
                 isDisabled={summaryStatsIsLoading}
                 onClick={() => {
+                  logNativeClickEvent(EventName.ReportingRetryClicked, {
+                    retryTarget: 'summary',
+                  });
                   retrySummaryStats().catch(() => undefined);
                 }}
                 size='XSmall'

@@ -635,10 +635,20 @@ const CreativeLibrary = () => {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteAdCreativeForCurrentWorkspace(id),
-    onError: () => {
-      setToast({ message: translate('Description.DeleteCreativeFailed'), severity: 'error' });
+    onError: (error: unknown) => {
+      const message =
+        getHttpStatusFromError(error) === 409
+          ? translate('Message.UnableToArchiveAssetInUse')
+          : translate('Description.DeleteCreativeFailed');
+      setToast({ message, severity: 'error' });
     },
-    onSuccess: async () => {
+    onSuccess: async (_data, id) => {
+      if (selectedAsset?.adAssetId === id) {
+        setDetailSheetOpen(false);
+        setSelectedAsset(null);
+        setPendingUniverseId(undefined);
+        setPendingAssetName(undefined);
+      }
       await refetchAdCreatives();
       setToast({ message: translate('Description.DeleteCreativeSuccess'), severity: 'success' });
     },
@@ -1041,15 +1051,6 @@ const CreativeLibrary = () => {
     }
     const id = assetPendingDelete.adAssetId;
     setAssetPendingDelete(null);
-    // Close the detail sheet too if we're deleting the asset it's
-    // currently displaying — otherwise the sheet would render a
-    // ghost of an archived asset until the user manually closes it.
-    if (selectedAsset?.adAssetId === id) {
-      setDetailSheetOpen(false);
-      setSelectedAsset(null);
-      setPendingUniverseId(undefined);
-      setPendingAssetName(undefined);
-    }
     deleteMutation.mutate(id);
   };
 
@@ -1765,6 +1766,7 @@ const CreativeLibrary = () => {
           <div className='flex gap-small justify-end width-full'>
             <Button
               className='min-width-1600'
+              isDisabled={deleteMutation.isPending}
               onClick={handleConfirmDelete}
               size='Medium'
               variant='Alert'>

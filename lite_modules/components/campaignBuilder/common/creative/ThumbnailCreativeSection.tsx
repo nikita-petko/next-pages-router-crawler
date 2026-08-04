@@ -87,9 +87,6 @@ const ThumbnailSection = ({
   const { isImageUploadInProgress, setThumbnailDrawerOpen, thumbnailDrawerOpen } =
     useCampaignBuilderStore();
 
-  const isCreativeLibraryEnabled = useAppStore(
-    (state) => state.appMetadataState?.data?.isCreativeLibraryEnabled ?? false,
-  );
   const isGenAiCreativesEnabled = useAppStore(
     (state) => state.appMetadataState?.data?.isGenAiCreativesEnabled ?? false,
   );
@@ -142,13 +139,12 @@ const ThumbnailSection = ({
   // With both flags on, the add tile becomes a Popover menu (Add creative +
   // AI generate); otherwise it's a single-action tile. Same 160x90 styling
   // either way (per Figma 17315:135712).
-  const showCreativeAddMenu = isCreativeLibraryEnabled && isGenAiCreativesEnabled;
+  const showCreativeAddMenu = isGenAiCreativesEnabled;
   // No room left in the campaign for another thumbnail. Hides the add (+) tile
   // entirely so the user can't open a drawer they can't add from; the AI
   // generate menu item is gated on the same condition.
   const isThumbnailSpaceFull = selectedThumbnails.length >= maxAllowedThumbnails;
-  const showAiGenerateMenuItem =
-    isGenAiCreativesEnabled && isCreativeLibraryEnabled && !isThumbnailSpaceFull;
+  const showAiGenerateMenuItem = isGenAiCreativesEnabled && !isThumbnailSpaceFull;
 
   const maybeRenderUploadThumbnailButton = () => {
     if (isFormReadOnly) {

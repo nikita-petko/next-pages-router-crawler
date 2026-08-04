@@ -1,6 +1,7 @@
 import { Button } from '@rbx/foundation-ui';
 import { useEffect, useMemo } from 'react';
 
+import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
 import DismissibleTooltip from '@components/common/DismissibleTooltip';
 import GenericNoDataPage from '@components/common/GenericNoDataPage';
 import useCampaignManagementTableStyles from '@components/reporting/CampaignManagementTable.styles';
@@ -31,7 +32,10 @@ import {
   GetCampaignStatusText,
   GetToggleDisabled,
 } from '@utils/displayStatus';
-import { shouldUseFrontendReportingStats } from '@utils/frontendReportingStats';
+import {
+  shouldUseCaaSReportingStats,
+  shouldUseProgressiveCampaignStats,
+} from '@utils/frontendReportingStats';
 import { GetTimezoneObjFromEnum, GetValidatedTimezoneDbName } from '@utils/timezone';
 
 // Generally performance always has payment type (even if campaign doesn't have stats), but in case it doesn't, we fallback to the payment type stored on the campaign
@@ -87,7 +91,11 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
   const isCampaignRoasEnabled = useAppStore(
     (state: AppStoreType) => state.appMetadataState?.data?.isCampaignRoasEnabled ?? false,
   );
-  const useFrontendReportingStats = useAppStore(shouldUseFrontendReportingStats);
+  const useCaaSReportingStats = useAppStore(shouldUseCaaSReportingStats);
+  const useProgressiveCampaignStats = useAppStore(shouldUseProgressiveCampaignStats);
+  const campaignPerformanceState = useNewFlowStore(
+    (state: NewFlowStoreType) => state.campaignPerformanceState,
+  );
   const visibleCampaignStatsState = useNewFlowStore(
     (state: NewFlowStoreType) => state.visibleCampaignStatsState,
   );
@@ -172,6 +180,9 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
           campaignsState.isError ? (
             <Button
               onClick={() => {
+                logNativeClickEvent(EventName.ReportingRetryClicked, {
+                  retryTarget: 'campaignDateFilter',
+                });
                 retryCampaigns().catch(() => undefined);
               }}
               size='Medium'
@@ -204,7 +215,7 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
   }
 
   const rows: GenericSortableRowData[] = filteredCampaigns.map((campaign: Campaign) => {
-    const performance = useFrontendReportingStats
+    const performance = useCaaSReportingStats
       ? visibleCampaignStatsState.data?.[campaign.id]?.performance
       : campaign.performance;
     const creatorProfile =
@@ -234,9 +245,13 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
       is_off_platform_request: campaign.is_off_platform_request || false,
       is_reporting_enabled: campaign.is_reporting_enabled || false,
       is_stats_loading:
-        useFrontendReportingStats &&
-        !visibleCampaignStatsState.isError &&
-        (visibleCampaignStatsState.isLoading || performance === undefined),
+        (useCaaSReportingStats &&
+          !visibleCampaignStatsState.isError &&
+          (visibleCampaignStatsState.isLoading || performance === undefined)) ||
+        (useProgressiveCampaignStats &&
+          campaignPerformanceState.isLoading &&
+          !campaignPerformanceState.isError &&
+          performance === undefined),
       name: campaign.name,
       objective: campaign.objective,
       play_count: performance?.play_count || 0,
@@ -338,11 +353,11 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
       firstColumnMeasurement={firstColumnMeasurement}
       getTooltipAnchorRowId={getRetentionTooltipAnchorRowId}
       headCells={headCells}
-      onVisibleEntityIdsChange={fetchVisibleCampaignStats}
+      onVisibleEntityIdsChange={useCaaSReportingStats ? fetchVisibleCampaignStats : undefined}
       RowElement={CampaignTableRow}
       showFooter
       sortableData={rows}
-      sortWithinPage={useFrontendReportingStats}
+      sortWithinPage={useCaaSReportingStats}
       visibleEntityIdsRefreshKey={visibleStatsRefreshKey}
     />
   );

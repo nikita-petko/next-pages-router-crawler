@@ -109,10 +109,10 @@ const CreativeAssetImage = memo(({ alt, assetId, className }: CreativeAssetImage
         : { src: blobUrl, status: IMAGE_STATUS.SUCCESS };
     }
 
-    if (data?.state === ThumbnailResponseState.Completed && data.imageUrl) {
-      return data.imageUrl === failedImageSrc
+    if (data?.state === ThumbnailResponseState.Completed && data?.imageUrl) {
+      return data?.imageUrl === failedImageSrc
         ? { status: IMAGE_STATUS.ERROR }
-        : { src: data.imageUrl, status: IMAGE_STATUS.SUCCESS };
+        : { src: data?.imageUrl, status: IMAGE_STATUS.SUCCESS };
     }
 
     // Terminal: a broken/blocked thumbnail, or a request the store has stopped

@@ -369,7 +369,7 @@ export const regionsAndCountriesSortedAlph: RegionsAndLocationsFormInputObj[] = 
   { countryCode: 'LV', regionCode: 'EASTERN_EUROPE', title: 'Latvia', value: 125 },
   { countryCode: 'ME', regionCode: 'EASTERN_EUROPE', title: 'Montenegro', value: 151 },
   { countryCode: 'PL', regionCode: 'EASTERN_EUROPE', title: 'Poland', value: 180 },
-  { countryCode: 'LT', regionCode: 'EASTERN_EUROPE', title: 'Republic of Lithuania', value: 30 },
+  { countryCode: 'LT', regionCode: 'EASTERN_EUROPE', title: 'Republic of Lithuania', value: 131 },
   { countryCode: 'MD', regionCode: 'EASTERN_EUROPE', title: 'Republic of Moldova', value: 148 },
   { countryCode: 'RO', regionCode: 'EASTERN_EUROPE', title: 'Romania', value: 185 },
   { countryCode: 'RU', regionCode: 'EASTERN_EUROPE', title: 'Russia', value: 186 },
@@ -455,7 +455,6 @@ export const regionsAndCountriesSortedAlph: RegionsAndLocationsFormInputObj[] = 
   { countryCode: 'PE', regionCode: 'LATIN_AMERICA', title: 'Peru', value: 177 },
   { countryCode: 'PR', regionCode: 'LATIN_AMERICA', title: 'Puerto Rico', value: 182 },
   { countryCode: 'BL', regionCode: 'LATIN_AMERICA', title: 'Saint Barthélemy', value: 188 },
-  { countryCode: 'SH', regionCode: 'LATIN_AMERICA', title: 'Saint Helena', value: 189 },
   { countryCode: 'LC', regionCode: 'LATIN_AMERICA', title: 'Saint Lucia', value: 191 },
   { countryCode: 'MF', regionCode: 'LATIN_AMERICA', title: 'Saint Martin', value: 192 },
   {
@@ -593,7 +592,6 @@ export const regionsAndCountriesSortedAlph: RegionsAndLocationsFormInputObj[] = 
     title: 'United Kingdom',
     value: 3,
   },
-  { countryCode: 'VA', regionCode: 'WESTERN_EUROPE', title: 'Vatican City', value: 101 },
 ];
 
 export const getMixedRegionCountryObjFromCountryCode = (countryCode: string) => {

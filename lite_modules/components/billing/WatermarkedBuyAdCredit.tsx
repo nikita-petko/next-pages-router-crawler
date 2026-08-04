@@ -370,19 +370,25 @@ export const WatermarkedBuyAdCredit = ({
           adCreditActivated: adCreditActivated.toString(),
           adCreditAmount: MicroUsdToUsdString(quote.ad_credit_quantity_micros),
         });
-        if (onComplete) {
-          if (showSuccessDialog) {
-            setIsPurchasing(false);
-            openBuyAdCreditSuccessDialog(
-              MicroUsdToUsdString(quote.ad_credit_quantity_micros),
-              quote.robux_charge.toLocaleString(),
-              async () => {
-                await onComplete(paymentSetupCompletion);
-              },
-            );
-          } else {
-            await onComplete(paymentSetupCompletion);
-          }
+        if (showSuccessDialog) {
+          setIsPurchasing(false);
+          openBuyAdCreditSuccessDialog(
+            MicroUsdToUsdString(quote.ad_credit_quantity_micros),
+            quote.robux_charge.toLocaleString(),
+            onComplete
+              ? async () => {
+                  await onComplete(paymentSetupCompletion);
+                }
+              : () => {
+                  navigateToPaymentSettingsPage(
+                    !hasVerifiedPaymentProfiles && !adCreditActivated
+                      ? BuyAdCreditEnum.SUCCESS
+                      : undefined,
+                  );
+                },
+          );
+        } else if (onComplete) {
+          await onComplete(paymentSetupCompletion);
         } else {
           navigateToPaymentSettingsPage(BuyAdCreditEnum.SUCCESS);
         }

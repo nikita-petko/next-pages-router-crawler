@@ -132,6 +132,7 @@ export enum EventName {
   PromotionBannerRendered = 'promotionBannerRendered',
   RecommendationDataFetched = 'recommendationDataFetched',
   RecommendedInvalidBudget = 'recommendedInvalidBudget',
+  ReportingRetryClicked = 'reportingRetryClicked',
   ReportingViewOptionClicked = 'reportingViewOptionClicked',
   ResetAdvancedTargeting = 'resetAdvancedTargeting',
   RootPlaceIdFetched = 'rootPlaceIdFetched',

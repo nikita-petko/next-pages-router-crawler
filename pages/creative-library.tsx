@@ -5,15 +5,11 @@ import AdsManagerPageBaseLayout from '@components/common/AdsManagerDefaultLayout
 import { getCreatorHubPageLayout } from '@components/common/CreatorHubPageLayout';
 import CreativeLibrary from '@components/creativeLibrary/CreativeLibrary';
 import { TranslationNamespace } from '@constants/localization';
-import PageNotFound from '@pages/404';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
 import { getSelectedGroupId } from '@utils/groupScopedAccount';
 
 const CreativeLibraryPage = () => {
   const fetchEssentialAppInfo = useAppStore((state: AppStoreType) => state.fetchEssentialAppInfo);
-  const isCreativeLibraryEnabled = useAppStore(
-    (state: AppStoreType) => state.appMetadataState?.data?.isCreativeLibraryEnabled,
-  );
   const isAdAccountAutoCreateEnabled = useAppStore(
     (state: AppStoreType) => state.appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false,
   );
@@ -30,10 +26,6 @@ const CreativeLibraryPage = () => {
     setIsLoading(true);
     fetchEssentialAppInfo({ groupId }).finally(() => setIsLoading(false));
   }, [fetchEssentialAppInfo, groupId, isWorkspaceGateLoading]);
-
-  if (!isLoading && !isCreativeLibraryEnabled) {
-    return <PageNotFound />;
-  }
 
   return (
     <AdsManagerPageBaseLayout groupId={groupId} isLoading={isLoading || isWorkspaceGateLoading}>

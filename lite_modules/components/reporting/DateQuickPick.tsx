@@ -224,6 +224,9 @@ const DateQuickPick = () => {
             isCircular
             isDisabled={isDisabled}
             onClick={() => {
+              logNativeClickEvent(EventName.ReportingRetryClicked, {
+                retryTarget: 'dateSelection',
+              });
               const {
                 customEndDate: requestedCustomEndDate,
                 customStartDate: requestedCustomStartDate,

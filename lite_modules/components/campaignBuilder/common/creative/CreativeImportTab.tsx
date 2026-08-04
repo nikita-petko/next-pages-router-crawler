@@ -93,7 +93,6 @@ const getTileImageClass = ({
 // "Select from library" tab for the campaign-builder drawers. Scoped to the
 // campaign's experience plus untagged (account-level) assets. Selecting
 // only mutates the form; published campaign assets stay locked in-grid.
-// Caller gates behind isCreativeLibraryEnabled.
 const CreativeImportTab = ({
   formField,
   maxAllowedSelections,
@@ -463,7 +462,7 @@ const CreativeImportTab = ({
             // dimensions, so gate on Completed in both the cache and the fallback.
             const cached = useThumbnailStore.getState().thumbnailsByAssetId[assetId]?.data;
             let imageUrl =
-              cached?.state === ThumbnailResponseState.Completed ? cached.imageUrl : undefined;
+              cached?.state === ThumbnailResponseState.Completed ? cached?.imageUrl : undefined;
             if (!imageUrl) {
               const { data } = await fetchThumbnailByAssetId(assetId);
               imageUrl = data.find(

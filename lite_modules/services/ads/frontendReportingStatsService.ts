@@ -49,7 +49,7 @@ interface MetricQuery {
   failureMetric: RawReportingMetric;
   metric: UniverseReportingMetric;
   startTime: Date;
-  target: keyof RawReportingStats | 'roasSpendMicroUsd';
+  target: keyof RawReportingStats;
 }
 
 const resultCache = new Map<string, Promise<Record<string, CaaSReportingStatsResult>>>();
@@ -113,7 +113,6 @@ const createResult = (): CaaSReportingStatsResult => ({
   // The current universe CAaaS contract does not expose video-view metrics.
   // Keep them unavailable instead of presenting initialized zeroes as totals.
   failedMetrics: ['fifteenSecVideoViewCount', 'twoSecVideoViewCount'],
-  roasSpendMicroUsd: 0,
   stats: { ...EMPTY_RAW_REPORTING_STATS },
 });
 
@@ -166,13 +165,6 @@ const buildMetricQueries = (context: ReportingQueryContext): MetricQuery[] => {
       startTime,
       target: 'robuxRevenue30d',
     },
-    {
-      endTime,
-      failureMetric: 'roasSpendMicroUsd',
-      metric: 'spend',
-      startTime,
-      target: 'roasSpendMicroUsd',
-    },
   ];
 };
 
@@ -216,11 +208,7 @@ const fetchCaaSStats = async (
       if (!result) {
         return;
       }
-      if (query.target === 'roasSpendMicroUsd') {
-        result.roasSpendMicroUsd += value;
-      } else {
-        result.stats[query.target] += value;
-      }
+      result.stats[query.target] += value;
     });
   });
   return results;

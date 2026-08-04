@@ -282,9 +282,7 @@ export const useCampaignBuilderStore = create<CampaignBuilderStoreType>()(
       }
     },
     getEligibility: async (universeId?: number) => {
-      const isEligibilityEndpointEnabled =
-        useAppStore.getState().appMetadataState?.data?.isEligibilityEndpointEnabled ?? false;
-      if (!isEligibilityEndpointEnabled || !universeId) {
+      if (!universeId) {
         return;
       }
       try {

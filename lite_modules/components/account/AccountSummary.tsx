@@ -35,6 +35,7 @@ const AccountSummary = ({ accounts, onSetUpAccount }: AccountSummaryProps): Reac
             ) : (
               <>
                 <AccountSummaryLineItem
+                  copyValue={adAccountId}
                   isLoading={isLoading}
                   label={translateAccount('Label.AdAccountId')}
                   value={adAccountId}

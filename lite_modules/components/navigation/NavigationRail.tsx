@@ -113,10 +113,6 @@ const NavigationRail = () => {
     (state: AppStoreType) => state.appMetadataState?.data?.isAdIntegrationsEnabled,
   );
 
-  const isCreativeLibraryEnabled = useAppStore(
-    (state: AppStoreType) => state.appMetadataState?.data?.isCreativeLibraryEnabled,
-  );
-
   const accountIsInternal = useAppStore((state: AppStoreType) =>
     state.adAccountIsInternalManaged(),
   );
@@ -200,31 +196,29 @@ const NavigationRail = () => {
           />
         )}
       </NavigationTreeItem>
-      {isCreativeLibraryEnabled && (
-        <DismissibleTooltip
-          anchorElement={
-            <NavigationTreeItem
-              href={Routes.CREATIVE_LIBRARY}
-              label={
-                <span className={creativeLibraryLabel}>
-                  {translateNavigation('Label.CreativeLibrary')}
-                  <Badge label={translateNavigation('Label.New')} />
-                </span>
-              }
-              nodeId='creativeLibrary'
-              variant='smallLabel2'
-            />
-          }
-          // Clicking through to the Asset Library means the user has found it,
-          // so retire the coachmark instead of waiting for the OK button.
-          dismissOnAnchorClick
-          // Suppress while the rail is collapsed so the beak doesn't point at a
-          // hidden anchor (mirrors the forecaster coachmark below), and while
-          // the user is already on the Creative Library page.
-          enabled={drawerVariant === 'persistent' && !isOnCreativeLibrary}
-          tooltip={Tooltips.CREATIVE_LIBRARY_NAV}
-        />
-      )}
+      <DismissibleTooltip
+        anchorElement={
+          <NavigationTreeItem
+            href={Routes.CREATIVE_LIBRARY}
+            label={
+              <span className={creativeLibraryLabel}>
+                {translateNavigation('Label.CreativeLibrary')}
+                <Badge label={translateNavigation('Label.New')} />
+              </span>
+            }
+            nodeId='creativeLibrary'
+            variant='smallLabel2'
+          />
+        }
+        // Clicking through to the Asset Library means the user has found it,
+        // so retire the coachmark instead of waiting for the OK button.
+        dismissOnAnchorClick
+        // Suppress while the rail is collapsed so the beak doesn't point at a
+        // hidden anchor (mirrors the forecaster coachmark below), and while
+        // the user is already on the Creative Library page.
+        enabled={drawerVariant === 'persistent' && !isOnCreativeLibrary}
+        tooltip={Tooltips.CREATIVE_LIBRARY_NAV}
+      />
       {isAdIntegrationsEnabled && (
         <NavigationTreeItem
           href={Routes.AD_INTEGRATIONS}

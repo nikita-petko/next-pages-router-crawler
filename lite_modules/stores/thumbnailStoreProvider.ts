@@ -96,8 +96,8 @@ const NonFinalThumbnailStates = new Set<ThumbnailResponseState>([
 // already resolved can never ride along on another request.
 const isUsableCompletedThumbnail = (entry?: ThumbnailRequestStateType): boolean =>
   entry?.data?.state === ThumbnailResponseState.Completed &&
-  Boolean(entry.data.imageUrl) &&
-  !entry.isError;
+  Boolean(entry?.data?.imageUrl) &&
+  !entry?.isError;
 
 // Assigned when the store initializes so tests can clear the module-closure
 // queue/retry state (pending IDs, in-flight flag, attempt counters, timer) that
@@ -278,7 +278,7 @@ export const useThumbnailStore = create<ThumbnailStoreType>()(
                 batch.forEach((id) => {
                   const matched = thumbnails.find(({ targetId }) => targetId === id);
                   const isCompletedWithoutUrl =
-                    matched?.state === ThumbnailResponseState.Completed && !matched.imageUrl;
+                    matched?.state === ThumbnailResponseState.Completed && !matched?.imageUrl;
                   const isNotReady =
                     matched === undefined ||
                     (matched.state !== undefined && NonFinalThumbnailStates.has(matched.state)) ||

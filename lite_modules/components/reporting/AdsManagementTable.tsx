@@ -17,7 +17,7 @@ import { Campaign, GetAdStatusResponseType } from '@type/campaign';
 import { GenericSortableRowData, UnsortableRowData } from '@type/genericManagementTable';
 import { SimplifiedUploadedCreative } from '@type/uploadedCreative';
 import { GetAdStatusTextForAd } from '@utils/displayStatus';
-import { shouldUseFrontendReportingStats } from '@utils/frontendReportingStats';
+import { shouldUseCaaSReportingStats } from '@utils/frontendReportingStats';
 import { GetCreativesForAd, IsOffPlatformAd } from '@utils/offPlatformAdUtils';
 import { buildReachTablePreviewDataFromAd } from '@utils/reachSponsoredAdUtils';
 
@@ -115,7 +115,7 @@ const AdsManagementTable = () => {
     (state: NewFlowStoreType) => state.tableRowsState,
   );
   const adTogglingShouldBeEnabled = useAppStore((state) => state.adTogglingShouldBeEnabled);
-  const useFrontendReportingStats = useAppStore(shouldUseFrontendReportingStats);
+  const useCaaSReportingStats = useAppStore(shouldUseCaaSReportingStats);
   const visibleAdStatsState = useNewFlowStore(
     (state: NewFlowStoreType) => state.campaignDetailsState.visibleStatsState,
   );
@@ -179,14 +179,14 @@ const AdsManagementTable = () => {
   // === Main Flow: Regular Roblox Ads ===
   const effectiveAds = (adsState.data || []).map((ad) => ({
     ...ad,
-    performance: useFrontendReportingStats
+    performance: useCaaSReportingStats
       ? visibleAdStatsState.data?.[ad.id]?.performance
       : ad.performance,
   }));
   const regularAdRows = createRegularAdRows(effectiveAds, adStatuses).map((row) => ({
     ...row,
     is_stats_loading:
-      useFrontendReportingStats &&
+      useCaaSReportingStats &&
       !visibleAdStatsState.isError &&
       (visibleAdStatsState.isLoading ||
         visibleAdStatsState.data?.[row.id]?.performance === undefined),
@@ -214,7 +214,7 @@ const AdsManagementTable = () => {
       entityType={EntityType.ENTITY_TYPE_AD}
       headCells={headCells}
       isLoading={adsState.isLoading}
-      onVisibleEntityIdsChange={fetchVisibleAdStats}
+      onVisibleEntityIdsChange={useCaaSReportingStats ? fetchVisibleAdStats : undefined}
       RowElement={AdTableRow}
       showFooter={false}
       sortableData={rows}
