@@ -1,5 +1,8 @@
 import { Locale, toLocaleNativeName } from '@rbx/intl';
-import { availableDocsLocales } from '@modules/creator-settings/container/preferences/LocaleConstants';
+import {
+  availableDocsLocales,
+  StringLocaleMap,
+} from '@modules/creator-settings/container/preferences/LocaleConstants';
 
 export const MOMENTS_UPLOAD_LOCALES: readonly Locale[] = availableDocsLocales;
 
@@ -29,6 +32,17 @@ export const resolveMomentPublishLocale = (
   moment: { locale?: Locale },
   uiLocale?: Locale | null,
 ): Locale => moment.locale ?? getDefaultMomentsUploadLocale(uiLocale);
+
+/** Parses content-captures cookie-style locale tags (e.g. `es-es`) into a supported upload Locale. */
+export const parseVideoContentLanguage = (
+  videoContentLanguage: string | null | undefined,
+): Locale | undefined => {
+  if (videoContentLanguage == null || videoContentLanguage === '') {
+    return undefined;
+  }
+
+  return StringLocaleMap.get(videoContentLanguage.toLowerCase());
+};
 
 /** Read-only label for a moment's content language in the Creations table. */
 export const formatMomentContentLanguage = (locale: Locale | undefined): string =>

@@ -1,6 +1,7 @@
 import type { GetUsersMomentsResponse, MomentItem } from '@rbx/client-content-captures-api/v1';
 import type { MomentCreation } from '../types/MomentCreation';
 import { MomentCreationStatus } from '../types/MomentCreation';
+import { parseVideoContentLanguage } from './momentsUploadLocaleUtils';
 
 const MOMENT_TYPE_STATUS_MAP: Record<string, MomentCreationStatus> = {
   active: MomentCreationStatus.ACTIVE,
@@ -63,6 +64,7 @@ export const parseMomentItemToCreation = (
 
   const captionedAssetMoment = item.captionedAssetMoment;
   const universeId = item.primaryCta?.experienceCta?.experienceId;
+  const locale = parseVideoContentLanguage(captionedAssetMoment?.videoContentLanguage);
 
   return {
     id: momentId,
@@ -72,6 +74,7 @@ export const parseMomentItemToCreation = (
     modifiedAt: UNKNOWN_MODIFIED_AT,
     status: parseMomentCreationStatus(momentId, item.type, moderatedMomentIds),
     universeId,
+    ...(locale != null ? { locale } : {}),
   };
 };
 
