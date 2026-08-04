@@ -5,7 +5,6 @@ import { withTranslation } from '@rbx/intl';
 import { Grid } from '@rbx/ui';
 import {
   isClientScriptCpuTimeEnabled as isClientScriptCPUTimeEnabledFlag,
-  isCpuCoreUtilizationEnabled as isCpuCoreUtilizationFlag,
   isExperienceAlertsEnabled,
 } from '@generated/flags/creatorAnalytics';
 import AnalyticsAlertClientProvider from '@modules/experience-alerts/components/AnalyticsAlertClientProvider';
@@ -24,9 +23,6 @@ const PerformancePageContent: FC = () => {
   );
   const isClientScriptCPUTimeEnabled =
     isClientScriptCPUTimeReady && isClientScriptCPUTimeEnabledValue;
-  const { ready: isCpuCoreUtilizationReady, value: isCpuCoreUtilizationEnabledValue } =
-    useFlag(isCpuCoreUtilizationFlag);
-  const isCpuCoreUtilizationEnabled = isCpuCoreUtilizationReady && isCpuCoreUtilizationEnabledValue;
 
   const { id } = useUniverseResource();
   const { value: isExperienceAlertsEnabledFlag, ready: isExperienceAlertsFlagReady } = useFlag(
@@ -41,13 +37,11 @@ const PerformancePageContent: FC = () => {
   const performancePageConfig = useMemo(() => {
     return getPerformancePageConfig(
       isClientScriptCPUTimeEnabled,
-      isCpuCoreUtilizationEnabled,
       !!isExperienceAlertsEnabledFlag,
       extendedServicesComputeInsightConfigs,
     );
   }, [
     isClientScriptCPUTimeEnabled,
-    isCpuCoreUtilizationEnabled,
     isExperienceAlertsEnabledFlag,
     extendedServicesComputeInsightConfigs,
   ]);

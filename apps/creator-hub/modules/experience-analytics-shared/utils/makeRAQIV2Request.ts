@@ -827,8 +827,7 @@ export type MakeRAQIV2RequestOptions = {
   /**
    * DSA-5784: when true (and the request qualifies), metric variant fanout is
    * delegated to ACE/AFC via a single DAG request instead of the legacy
-   * client-side N-query fanout. Resolved centrally by
-   * `useRAQIV2RequestFlags` from the `isAceMetricVariantFanoutEnabled` flag.
+   * client-side N-query fanout.
    */
   enableAceVariantFanout?: boolean;
 };

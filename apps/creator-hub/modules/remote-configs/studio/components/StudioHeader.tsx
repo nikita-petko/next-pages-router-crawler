@@ -1,7 +1,6 @@
 /* oxlint-disable react/react-compiler -- existing Studio webview state/effect wiring is not React Compiler compatible (https://roblox.atlassian.net/browse/DSA-5952) */
 import type { CSSProperties } from 'react';
 import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
-import { useFlag } from '@rbx/flags';
 import {
   Icon,
   TooltipTrigger,
@@ -17,11 +16,6 @@ import {
 } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { isWebViewAvailable } from '@rbx/studio-webview';
-import {
-  isCreatorConfigPublishAsEnabled as isCreatorConfigPublishAsEnabledFlag,
-  isCreatorConfigStudioPublishTimerEnabled as isCreatorConfigStudioPublishTimerEnabledFlag,
-  isCreatorConfigStudioPublishWorkflowEnabled as isCreatorConfigStudioPublishWorkflowEnabledFlag,
-} from '@generated/flags/creatorAnalytics';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { analyticsConfigsHistoryNavigationItem } from '@modules/charts-generic/constants/analyticsNavigationItems';
@@ -32,7 +26,6 @@ import { useUniverseResource } from '@modules/experience-analytics-shared/hooks/
 import { useDebouncedFunction } from '@modules/miscellaneous/hooks/useDebouncedFunction';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { DeploymentStrategy } from '../../api/universeConfigsClientEnums';
-import useConfigDescriptionField from '../../hooks/useConfigDescriptionField';
 import type { ActionInvokers } from '../../hooks/useConfigEntriesActions';
 import usePublishRemainingMs, {
   publishRemainingMsToTimeStr,
@@ -156,122 +149,42 @@ const SearchIconOrBox = ({
   );
 };
 
-const HistoryButton = () => {
-  const { id: universeId } = useUniverseResource();
-  const { translate } = useTranslationWrapper(useTranslation());
-  const historyPageUrl = useMemo(() => {
-    return buildExperienceAnalyticsUrlWithParams(
-      analyticsConfigsHistoryNavigationItem,
-      {},
-      universeId,
-    );
-  }, [universeId]);
-
-  return (
-    <Button
-      size='XSmall'
-      type='button'
-      variant='Standard'
-      as='a'
-      href={historyPageUrl}
-      target='_blank'>
-      <div className='flex items-center gap-xsmall'>
-        <Icon name='icon-regular-arrow-up-right-from-square' size='XSmall' />
-        {translate(
-          translationKey(
-            'Label.Button.History',
-            TranslationNamespace.UniverseConfigAndExperimentation,
-          ),
-        )}
-      </div>
-    </Button>
-  );
-};
-
-type ValidDeploymentStrategy = Exclude<DeploymentStrategy, typeof DeploymentStrategy.Invalid>;
-
 const PublishButton = ({
   isEmptyDrafts,
   stagedCount,
   tab,
-  startPublishFlow,
 }: {
   isEmptyDrafts: boolean;
   stagedCount: number;
   tab: ConfigsStudioTab;
-  startPublishFlow: (strategy: ValidDeploymentStrategy) => void;
 }) => {
   const { translate } = useTranslationWrapper(useTranslation());
-  const [deploymentStrategy, setDeploymentStrategy] = useState<ValidDeploymentStrategy>(
-    DeploymentStrategy.Immediate,
-  );
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { fire } = useConfigsStudioMessageBusProviderContext();
 
-  const {
-    ready: isCreatorConfigStudioPublishWorkflowReady,
-    value: isCreatorConfigStudioPublishWorkflowEnabledValue,
-  } = useFlag(isCreatorConfigStudioPublishWorkflowEnabledFlag);
-  const isCreatorConfigStudioPublishWorkflowEnabled =
-    isCreatorConfigStudioPublishWorkflowReady && isCreatorConfigStudioPublishWorkflowEnabledValue;
-
   const startPublishFlowImmediate = useCallback(() => {
     setIsMenuOpen(false);
-    setDeploymentStrategy(DeploymentStrategy.Immediate);
-    if (isCreatorConfigStudioPublishWorkflowEnabled) {
-      fire(CreatorConfigStudioMessageBusEvent.OpenPublishModal, {
-        strategy: DeploymentStrategy.Immediate,
-        changeCount: stagedCount,
-      });
-    } else {
-      startPublishFlow(DeploymentStrategy.Immediate);
-    }
-  }, [startPublishFlow, fire, stagedCount, isCreatorConfigStudioPublishWorkflowEnabled]);
+    fire(CreatorConfigStudioMessageBusEvent.OpenPublishModal, {
+      strategy: DeploymentStrategy.Immediate,
+      changeCount: stagedCount,
+    });
+  }, [fire, stagedCount]);
   const startPublishFlowGradualRollout = useCallback(() => {
     setIsMenuOpen(false);
-    setDeploymentStrategy(DeploymentStrategy.GradualRollout);
-    if (isCreatorConfigStudioPublishWorkflowEnabled) {
-      fire(CreatorConfigStudioMessageBusEvent.OpenPublishModal, {
-        strategy: DeploymentStrategy.GradualRollout,
-        changeCount: stagedCount,
-      });
-    } else {
-      startPublishFlow(DeploymentStrategy.GradualRollout);
-    }
-  }, [startPublishFlow, fire, stagedCount, isCreatorConfigStudioPublishWorkflowEnabled]);
+    fire(CreatorConfigStudioMessageBusEvent.OpenPublishModal, {
+      strategy: DeploymentStrategy.GradualRollout,
+      changeCount: stagedCount,
+    });
+  }, [fire, stagedCount]);
 
   const publishButtonLabel = useMemo(() => {
-    if (isCreatorConfigStudioPublishWorkflowEnabled) {
-      return translate(
-        translationKey(
-          'Action.Button.PublishWithoutChangeCount',
-          TranslationNamespace.UniverseConfigAndExperimentation,
-        ),
-      );
-    }
-    switch (deploymentStrategy) {
-      case DeploymentStrategy.Immediate:
-        return translate(
-          translationKey(
-            'Action.Button.PublishNowWithChangeCount',
-            TranslationNamespace.UniverseConfigAndExperimentation,
-          ),
-          { changeCount: `${stagedCount}` },
-        );
-      case DeploymentStrategy.GradualRollout:
-        return translate(
-          translationKey(
-            'Action.Button.PublishSlowlyWithChangeCount',
-            TranslationNamespace.UniverseConfigAndExperimentation,
-          ),
-          { changeCount: `${stagedCount}` },
-        );
-      default: {
-        const exhaustiveCheck: never = deploymentStrategy;
-        throw new Error(`Invalid deployment strategy: ${String(exhaustiveCheck)}`);
-      }
-    }
-  }, [stagedCount, translate, deploymentStrategy, isCreatorConfigStudioPublishWorkflowEnabled]);
+    return translate(
+      translationKey(
+        'Action.Button.PublishWithoutChangeCount',
+        TranslationNamespace.UniverseConfigAndExperimentation,
+      ),
+    );
+  }, [translate]);
   return tab === ConfigsStudioTab.Staged && !isEmptyDrafts ? (
     <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
       <PopoverTrigger asChild disabled={isEmptyDrafts}>
@@ -416,117 +329,6 @@ const MoreOptionsButton = ({ publishedCount }: { publishedCount: number }) => {
   );
 };
 
-type PendingPublishState = {
-  pendingPublishStrategy: DeploymentStrategy | null;
-  pendingPublishMessage: string | null;
-  setPendingPublishMessage: (message: string) => void;
-  startPublishFlow: (strategy: DeploymentStrategy) => void;
-  clearPublishFlow: () => void;
-  completePublishFlow: () => void;
-};
-
-const usePendingPublishState = (publish: ActionInvokers['publish']): PendingPublishState => {
-  const [pendingPublishStrategy, setPendingPublishStrategy] = useState<DeploymentStrategy | null>(
-    null,
-  );
-  const [pendingPublishMessage, setPendingPublishMessage] = useState<string | null>(null);
-  const startPublishFlow = useCallback((strategy: DeploymentStrategy) => {
-    setPendingPublishStrategy(strategy);
-    setPendingPublishMessage(null);
-  }, []);
-  const clearPublishFlow = useCallback(() => {
-    setPendingPublishStrategy(null);
-    setPendingPublishMessage(null);
-  }, []);
-  const completePublishFlow = useCallback(() => {
-    if (!pendingPublishStrategy) {
-      return;
-    }
-    void publish({
-      message: pendingPublishMessage ?? '',
-      deploymentStrategy: pendingPublishStrategy,
-    });
-    clearPublishFlow();
-  }, [publish, pendingPublishMessage, pendingPublishStrategy, clearPublishFlow]);
-
-  return {
-    pendingPublishStrategy,
-    pendingPublishMessage,
-    setPendingPublishMessage,
-    startPublishFlow,
-    clearPublishFlow,
-    completePublishFlow,
-  };
-};
-
-const PendingPublishInput = ({
-  pendingPublishStrategy,
-  pendingPublishMessage,
-  setPendingPublishMessage,
-  completePublishFlow,
-  clearPublishFlow,
-}: Omit<PendingPublishState, 'startPublishFlow'>) => {
-  const { translate } = useTranslationWrapper(useTranslation());
-  const { textInput, textInputInputContainer } = foundationClasses;
-  const { isError: hasMessageError, helperText: messageHelperText } = useConfigDescriptionField(
-    pendingPublishMessage ?? '',
-  );
-
-  if (!pendingPublishStrategy) {
-    return null;
-  }
-  return (
-    <div
-      className={strictly(
-        'flex',
-        'flex-col',
-        'gap-y-xsmall',
-        'padding-x-large',
-        'padding-y-small',
-        'bg-shift-400',
-      )}>
-      <TextInputForWebview
-        size='XSmall'
-        className={textInput}
-        inputContainerClassName={textInputInputContainer}
-        value={pendingPublishMessage ?? ''}
-        placeholder={translate(
-          translationKey(
-            'Dialog.Publish.Label.Message',
-            TranslationNamespace.UniverseConfigAndExperimentation,
-          ),
-        )}
-        hasError={hasMessageError}
-        error={hasMessageError ? messageHelperText : undefined}
-        onChange={(e) => setPendingPublishMessage(e.target.value)}
-      />
-      <div className={strictly('flex', 'gap-xsmall')}>
-        <Button
-          size='XSmall'
-          type='button'
-          variant='Emphasis'
-          isDisabled={hasMessageError}
-          onClick={completePublishFlow}>
-          {translate(
-            translationKey(
-              'Dialog.Publish.Button.Confirm',
-              TranslationNamespace.UniverseConfigAndExperimentation,
-            ),
-          )}
-        </Button>
-        <Button size='XSmall' type='button' variant='Standard' onClick={clearPublishFlow}>
-          {translate(
-            translationKey(
-              'Dialog.Publish.Button.Cancel',
-              TranslationNamespace.UniverseConfigAndExperimentation,
-            ),
-          )}
-        </Button>
-      </div>
-    </div>
-  );
-};
-
 const headerLeftStyle: CSSProperties = { borderBottom: `1px solid var(--color-shift-400)` };
 
 const StudioHeader = ({
@@ -570,38 +372,13 @@ const StudioHeader = ({
     setIsFilterOpen(isOpen);
   };
 
-  const { startPublishFlow, ...pendingPublishState } = usePendingPublishState(publish);
   const { setListener, removeListener, isWebView, fire } =
     useConfigsStudioMessageBusProviderContext();
 
-  const {
-    ready: isCreatorConfigStudioPublishWorkflowReady,
-    value: isCreatorConfigStudioPublishWorkflowEnabledValue,
-  } = useFlag(isCreatorConfigStudioPublishWorkflowEnabledFlag);
-  const {
-    ready: isCreatorConfigStudioPublishTimerReady,
-    value: isCreatorConfigStudioPublishTimerEnabledValue,
-  } = useFlag(isCreatorConfigStudioPublishTimerEnabledFlag);
-  const { ready: isCreatorConfigPublishAsReady, value: isCreatorConfigPublishAsEnabledValue } =
-    useFlag(isCreatorConfigPublishAsEnabledFlag);
-  const isCreatorConfigStudioPublishWorkflowEnabled =
-    isCreatorConfigStudioPublishWorkflowReady && isCreatorConfigStudioPublishWorkflowEnabledValue;
-  const isCreatorConfigStudioPublishTimerEnabled =
-    isCreatorConfigStudioPublishTimerReady && isCreatorConfigStudioPublishTimerEnabledValue;
-  const isCreatorConfigPublishAsEnabled =
-    isCreatorConfigPublishAsReady && isCreatorConfigPublishAsEnabledValue;
-
-  const publishRemainingMs = usePublishRemainingMs(
-    isCreatorConfigStudioPublishTimerEnabled ? publishingMetadata : undefined,
-    isCreatorConfigStudioPublishTimerEnabled ? refresh : undefined,
-  );
-  const isPublishTimerRunning =
-    isCreatorConfigStudioPublishTimerEnabled && !!publishingMetadata && publishRemainingMs > 0;
+  const publishRemainingMs = usePublishRemainingMs(publishingMetadata, refresh);
+  const isPublishTimerRunning = !!publishingMetadata && publishRemainingMs > 0;
 
   useEffect(() => {
-    if (!isCreatorConfigStudioPublishWorkflowEnabled) {
-      return undefined;
-    }
     if (!isWebView || !isWebViewAvailable()) {
       return undefined;
     }
@@ -624,19 +401,9 @@ const StudioHeader = ({
     return () => {
       removeListener(CreatorConfigStudioMessageBusEvent.StartPublishWorkflow, listener);
     };
-  }, [
-    publish,
-    isWebView,
-    removeListener,
-    setListener,
-    setTab,
-    isCreatorConfigStudioPublishWorkflowEnabled,
-  ]);
+  }, [publish, isWebView, removeListener, setListener, setTab]);
 
   useEffect(() => {
-    if (!isCreatorConfigPublishAsEnabled) {
-      return undefined;
-    }
     if (!isWebView || !isWebViewAvailable()) {
       return undefined;
     }
@@ -691,12 +458,9 @@ const StudioHeader = ({
     return () => {
       removeListener(CreatorConfigStudioMessageBusEvent.StartPublishAsWorkflow, listener);
     };
-  }, [fire, publishAs, isWebView, removeListener, setListener, isCreatorConfigPublishAsEnabled]);
+  }, [fire, publishAs, isWebView, removeListener, setListener]);
 
   useEffect(() => {
-    if (!isCreatorConfigStudioPublishTimerEnabled) {
-      return undefined;
-    }
     if (!isWebView || !isWebViewAvailable()) {
       return undefined;
     }
@@ -708,30 +472,9 @@ const StudioHeader = ({
     return () => {
       removeListener(CreatorConfigStudioMessageBusEvent.CancelPublishWorkflow, listener);
     };
-  }, [
-    cancelPublish,
-    isCreatorConfigStudioPublishTimerEnabled,
-    isWebView,
-    removeListener,
-    setListener,
-  ]);
+  }, [cancelPublish, isWebView, removeListener, setListener]);
 
-  const specialState = useMemo(() => {
-    if (pendingPublishState.pendingPublishStrategy) {
-      return StudioHeaderSpecialStates.Publishing;
-    }
-    if (isFilterOpen) {
-      return StudioHeaderSpecialStates.Filtering;
-    }
-    return null;
-  }, [pendingPublishState.pendingPublishStrategy, isFilterOpen]);
-
-  const historyButton = useMemo(() => {
-    if (isCreatorConfigPublishAsEnabled) {
-      return null;
-    }
-    return tab === ConfigsStudioTab.Published && !specialState ? <HistoryButton /> : null;
-  }, [tab, specialState, isCreatorConfigPublishAsEnabled]);
+  const specialState = isFilterOpen ? StudioHeaderSpecialStates.Filtering : null;
 
   const onStagedTabClick = useCallback(() => {
     setTab(ConfigsStudioTab.Staged);
@@ -790,25 +533,15 @@ const StudioHeader = ({
     if (specialState === StudioHeaderSpecialStates.Filtering) {
       return null;
     }
-    return (
-      <PublishButton
-        isEmptyDrafts={isEmptyDrafts}
-        stagedCount={stagedCount}
-        tab={tab}
-        startPublishFlow={startPublishFlow}
-      />
-    );
-  }, [isEmptyDrafts, stagedCount, tab, startPublishFlow, specialState]);
+    return <PublishButton isEmptyDrafts={isEmptyDrafts} stagedCount={stagedCount} tab={tab} />;
+  }, [isEmptyDrafts, stagedCount, tab, specialState]);
 
   const cancelPublishButton = useMemo(() => {
-    if (!isCreatorConfigStudioPublishTimerEnabled) {
-      return null;
-    }
     if (specialState === StudioHeaderSpecialStates.Filtering) {
       return null;
     }
     return <CancelPublishButton publishRemainingMs={publishRemainingMs} />;
-  }, [isCreatorConfigStudioPublishTimerEnabled, specialState, publishRemainingMs]);
+  }, [specialState, publishRemainingMs]);
 
   const createButton = useMemo(() => {
     if (specialState) {
@@ -818,9 +551,6 @@ const StudioHeader = ({
   }, [onCreateSuccess, onCreateClose, specialState]);
 
   const searchIconOrBox = useMemo(() => {
-    if (specialState === StudioHeaderSpecialStates.Publishing) {
-      return null;
-    }
     return (
       <SearchIconOrBox
         handleSearchChange={handleSearchChange}
@@ -828,17 +558,14 @@ const StudioHeader = ({
         onFilterOpenChange={handleFilterOpen}
       />
     );
-  }, [handleSearchChange, searchKey, specialState]);
+  }, [handleSearchChange, searchKey]);
 
   const moreOptionsButton = useMemo(() => {
-    if (!isCreatorConfigPublishAsEnabled) {
-      return null;
-    }
     if (tab === ConfigsStudioTab.Staged) {
       return null;
     }
     return <MoreOptionsButton publishedCount={publishedCount} />;
-  }, [publishedCount, isCreatorConfigPublishAsEnabled, tab]);
+  }, [publishedCount, tab]);
 
   const left = useMemo(() => {
     const selectedTabStyle = {
@@ -880,10 +607,7 @@ const StudioHeader = ({
   const right = useMemo(
     () => (
       <div className={strictly('flex', 'gap-xsmall')}>
-        {isCreatorConfigStudioPublishTimerEnabled && isPublishTimerRunning
-          ? cancelPublishButton
-          : publishButton}
-        {historyButton}
+        {isPublishTimerRunning ? cancelPublishButton : publishButton}
         {deleteButton}
         {searchIconOrBox}
         {createButton}
@@ -891,9 +615,7 @@ const StudioHeader = ({
       </div>
     ),
     [
-      isCreatorConfigStudioPublishTimerEnabled,
       isPublishTimerRunning,
-      historyButton,
       publishButton,
       cancelPublishButton,
       deleteButton,
@@ -904,13 +626,10 @@ const StudioHeader = ({
   );
 
   return (
-    <>
-      <div className={header}>
-        {left}
-        {right}
-      </div>
-      <PendingPublishInput {...pendingPublishState} />
-    </>
+    <div className={header}>
+      {left}
+      {right}
+    </div>
   );
 };
 export default StudioHeader;

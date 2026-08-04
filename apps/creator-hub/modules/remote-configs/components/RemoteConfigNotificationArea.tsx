@@ -1,8 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useFlag } from '@rbx/flags';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from '@rbx/intl';
 import { Alert, AlertTitle, makeStyles, Typography } from '@rbx/ui';
-import { isCreatorConfigStudioPublishTimerEnabled as isCreatorConfigStudioPublishTimerEnabledFlag } from '@generated/flags/creatorAnalytics';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import type { PublishingMetadata } from '@modules/clients/analytics/universeConfigs';
@@ -81,19 +79,7 @@ const RemoteConfigNotificationArea = ({
     [onPublish],
   );
 
-  const {
-    ready: isCreatorConfigStudioPublishTimerReady,
-    value: isCreatorConfigStudioPublishTimerEnabledValue,
-  } = useFlag(isCreatorConfigStudioPublishTimerEnabledFlag);
-  const isCreatorConfigStudioPublishTimerEnabled =
-    isCreatorConfigStudioPublishTimerReady && isCreatorConfigStudioPublishTimerEnabledValue;
-
-  const sharedPublishRemainingMs = usePublishRemainingMs(
-    isCreatorConfigStudioPublishTimerEnabled ? publishing : undefined,
-    isCreatorConfigStudioPublishTimerEnabled ? refresh : undefined,
-  );
-
-  const [publishRemainingMs, setPublishRemainingMs] = useState(0);
+  const publishRemainingMs = usePublishRemainingMs(publishing, refresh);
   const stagedRuleOrderingOnlyTitle = tPendingTranslation(
     'You have staged rule ordering changes.',
     'Title shown when there are only staged rule ordering changes.',
@@ -128,33 +114,6 @@ const RemoteConfigNotificationArea = ({
     ),
   );
 
-  useEffect(() => {
-    if (isCreatorConfigStudioPublishTimerEnabled) {
-      return () => {};
-    }
-    const estimatedCompletionTime = publishing?.estimatedCompletionTime;
-    if (!estimatedCompletionTime) {
-      return () => {};
-    }
-
-    let interval: NodeJS.Timeout | null = null;
-    const updatePublishRemainingMs = () => {
-      const msRemaining = new Date(estimatedCompletionTime).getTime() - Date.now();
-      setPublishRemainingMs(msRemaining);
-      if (msRemaining <= 0 && interval) {
-        clearInterval(interval);
-        refresh();
-      }
-    };
-    interval = setInterval(updatePublishRemainingMs, 1000);
-    updatePublishRemainingMs();
-    return () => clearInterval(interval);
-  }, [publishing, refresh, isCreatorConfigStudioPublishTimerEnabled]);
-
-  const effectivePublishRemainingMs = isCreatorConfigStudioPublishTimerEnabled
-    ? sharedPublishRemainingMs
-    : publishRemainingMs;
-
   const notificationAreaSpec: null | {
     severity: 'info' | 'warning' | 'error';
     title: string;
@@ -170,8 +129,8 @@ const RemoteConfigNotificationArea = ({
   } = useMemo(() => {
     if (publishing) {
       const timeRemainingStr =
-        effectivePublishRemainingMs > 0
-          ? publishRemainingMsToTimeStr(effectivePublishRemainingMs)
+        publishRemainingMs > 0
+          ? publishRemainingMsToTimeStr(publishRemainingMs)
           : translate(
               translationKey(
                 'Label.TimeRemaining.Unknown',
@@ -338,7 +297,7 @@ const RemoteConfigNotificationArea = ({
     stagedConfigsAndRuleOrderingTitle,
     stagedRuleOrderingOnlySubtext,
     stagedRuleOrderingOnlyTitle,
-    effectivePublishRemainingMs,
+    publishRemainingMs,
     translate,
     onForcePublish,
     isDisabledDueToMissingDraftHash,

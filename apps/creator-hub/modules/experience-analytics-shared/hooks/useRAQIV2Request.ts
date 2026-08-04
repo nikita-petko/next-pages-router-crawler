@@ -24,14 +24,14 @@ const useRAQIV2Request = (
 
   const resolvedOptions = useMemo((): MakeRAQIV2RequestOptions => {
     const callerOptions = stripFetchComparisonForBreakdown(request, makeRAQIV2RequestOptions) ?? {};
-    // An explicit caller value wins for both rollout flags (Storybook and tests
-    // pin a path); otherwise the resolved flag decides. Values are unreadable
-    // until every flag resolves, and the request stays disabled until then.
+    // An explicit caller value wins for both request options (Storybook and tests
+    // pin a path); otherwise ACE variant fanout stays enabled and the remaining
+    // rollout flag decides rank breakdown behavior. The request stays disabled
+    // until that flag resolves.
     const effectiveOptions: MakeRAQIV2RequestOptions = requestFlags.ready
       ? {
           ...callerOptions,
-          enableAceVariantFanout:
-            makeRAQIV2RequestOptions?.enableAceVariantFanout ?? requestFlags.enableAceVariantFanout,
+          enableAceVariantFanout: makeRAQIV2RequestOptions?.enableAceVariantFanout ?? true,
           emitAceRankBreakdownSpec:
             makeRAQIV2RequestOptions?.emitAceRankBreakdownSpec ??
             requestFlags.emitAceRankBreakdownSpec,

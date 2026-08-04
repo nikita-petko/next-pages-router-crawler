@@ -12,11 +12,6 @@ export const visibleAssetIdInPersonalizationEnabled = defineFlag({
     name: 'visibleAssetIdInPersonalizationEnabled',
     defaultValue: false,
   });
-export const isCpuCoreUtilizationEnabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'isCpuCoreUtilizationEnabled',
-    defaultValue: true,
-  });
 export const isExperienceAlertsEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isExperienceAlertsEnabled',
@@ -60,11 +55,6 @@ export const isFirstSeenColumnEnabled = defineFlag({
 export const isAceRankBreakdownSpecEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isAceRankBreakdownSpecEnabled',
-    defaultValue: false,
-  });
-export const isAceMetricVariantFanoutEnabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'isAceMetricVariantFanoutEnabled',
     defaultValue: false,
   });
 export const sentryChartTracingEnabled = defineFlag({
@@ -142,29 +132,9 @@ export const isTreemapColorBySiblingProportionEnabled = defineFlag({
     name: 'isTreemapColorBySiblingProportionEnabled',
     defaultValue: false,
   });
-export const isChartOverflowMenuEnabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'isChartOverflowMenuEnabled',
-    defaultValue: true,
-  });
 export const isAssistantChartOverflowMenuEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isAssistantChartOverflowMenuEnabled',
-    defaultValue: false,
-  });
-export const isCreatorConfigStudioPublishWorkflowEnabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'isCreatorConfigStudioPublishWorkflowEnabled',
-    defaultValue: false,
-  });
-export const isCreatorConfigStudioPublishTimerEnabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'isCreatorConfigStudioPublishTimerEnabled',
-    defaultValue: false,
-  });
-export const isCreatorConfigPublishAsEnabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'isCreatorConfigPublishAsEnabled',
     defaultValue: false,
   });
 export const isAnalyticsMetricAwareYAxisFormatterEnabled = defineFlag({

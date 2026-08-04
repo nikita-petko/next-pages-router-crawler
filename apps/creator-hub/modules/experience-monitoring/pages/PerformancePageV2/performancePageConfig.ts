@@ -18,8 +18,6 @@ import {
   chartConfigPerformanceClientOomUnexpectedExits,
   chartConfigPerformancePeakConcurrentPlayers,
   chartConfigPerformanceServerCpuCoreUtilization,
-  chartConfigPerformanceServerCpuEfficiency,
-  chartConfigPerformanceServerCpuUsageV2,
   chartConfigPerformanceSessionTime,
 } from '@modules/experience-analytics-shared/constants/chart-configs/PredefinedChartConfigLiterals';
 import {
@@ -80,7 +78,6 @@ type TPerformanceTabKeys = (typeof orderedTabKeys)[number];
 
 const getPerformancePageConfig = (
   isClientScriptCPUTimeEnabled: boolean,
-  isCpuCoreUtilizationEnabled: boolean,
   isExperienceAlertsEnabled: boolean,
   serverTabPrependedBody: RAQIV2UIComponent[] = [],
 ): CreatorAnalyticsFixedTabPageConfig<TPerformanceTabKeys> => {
@@ -163,14 +160,14 @@ const getPerformancePageConfig = (
             AnnotationType.ConfigVersion,
             AnnotationType.EngineRelease,
             AnnotationType.Announcement,
-            ...(isCpuCoreUtilizationEnabled ? [AnnotationType.ExtendedServicesEnablement] : []),
+            AnnotationType.ExtendedServicesEnablement,
             ...(isExperienceAlertsEnabled ? [AnnotationType.ConfiguredAlertIncident] : []),
           ],
           defaultAnnotationTypes: [
             AnnotationType.PlaceVersion,
             AnnotationType.EngineRelease,
             AnnotationType.ClientCrashRateNotStableAlert,
-            ...(isCpuCoreUtilizationEnabled ? [AnnotationType.ExtendedServicesEnablement] : []),
+            AnnotationType.ExtendedServicesEnablement,
             ...(isExperienceAlertsEnabled ? [AnnotationType.ConfiguredAlertIncident] : []),
           ],
           showAnnotationsControl: true,
@@ -190,25 +187,15 @@ const getPerformancePageConfig = (
         resourceTypes: [RAQIV2ChartResourceType.Universe],
         label: translationKey('Label.Server', TranslationNamespace.Analytics),
         body: [
-          ...(isCpuCoreUtilizationEnabled ? serverTabPrependedBody : []),
+          ...serverTabPrependedBody,
           controlledSubcontextConfigPerformanceCpuTimeCategory,
           controlledSubcontextConfigPerformanceServerFpsByPercentile,
-          // When the flag is on, the legacy 'Cores used per server' and 'Compute efficiency'
-          // charts are replaced by the single full-width CPU core utilization chart, surfaced
-          // here as the third chart.
-          ...(isCpuCoreUtilizationEnabled
-            ? [
-                {
-                  type: RAQIV2SpecialLayoutType.FullWidthLayout as const,
-                  items: [chartConfigPerformanceServerCpuCoreUtilization],
-                },
-              ]
-            : []),
+          {
+            type: RAQIV2SpecialLayoutType.FullWidthLayout as const,
+            items: [chartConfigPerformanceServerCpuCoreUtilization],
+          },
           controlledSubcontextConfigPerformanceServerMemoryUsageCategory,
           controlledSubcontextConfigPerformanceServerMemoryUsageByAgeCategory,
-          ...(isCpuCoreUtilizationEnabled
-            ? []
-            : [chartConfigPerformanceServerCpuUsageV2, chartConfigPerformanceServerCpuEfficiency]),
         ],
         filterDimensions: [RAQIV2Dimension.Place, RAQIV2UIPseudoDimension.PercentileType],
         breakdownDimensions: [],
@@ -233,13 +220,13 @@ const getPerformancePageConfig = (
             AnnotationType.ConfigVersion,
             AnnotationType.EngineRelease,
             AnnotationType.Announcement,
-            ...(isCpuCoreUtilizationEnabled ? [AnnotationType.ExtendedServicesEnablement] : []),
+            AnnotationType.ExtendedServicesEnablement,
           ],
           defaultAnnotationTypes: [
             AnnotationType.PlaceVersion,
             AnnotationType.EngineRelease,
             AnnotationType.ClientCrashRateNotStableAlert,
-            ...(isCpuCoreUtilizationEnabled ? [AnnotationType.ExtendedServicesEnablement] : []),
+            AnnotationType.ExtendedServicesEnablement,
           ],
           showAnnotationsControl: true,
         } as const satisfies AnalyticsPageConfigAnnotationOptions,

@@ -1,13 +1,10 @@
 import { useMemo } from 'react';
 import { useFlag } from '@rbx/flags';
-import {
-  isAceMetricVariantFanoutEnabled,
-  isAceRankBreakdownSpecEnabled,
-} from '@generated/flags/creatorAnalytics';
+import { isAceRankBreakdownSpecEnabled } from '@generated/flags/creatorAnalytics';
 import type { MakeRAQIV2RequestOptions } from '../utils/makeRAQIV2Request';
 
 export type RAQIV2RequestFlagValues = Required<
-  Pick<MakeRAQIV2RequestOptions, 'enableAceVariantFanout' | 'emitAceRankBreakdownSpec'>
+  Pick<MakeRAQIV2RequestOptions, 'emitAceRankBreakdownSpec'>
 >;
 
 /**
@@ -22,21 +19,15 @@ export type RAQIV2RequestFlags = ({ ready: true } & RAQIV2RequestFlagValues) | {
  * Resolves request-level rollout flags through the React flag runtime so
  * request execution never evaluates flags directly. `ready` lets request hooks
  * defer execution instead of sending requests with provisional values.
- *
- * The ACE flag must not lead the backend `PseudoMetricResolutionEnabled`
- * rollout or AQG can return `ERROR_CODE_METRIC_NOT_RESOLVABLE`.
  */
 const useRAQIV2RequestFlags = (): RAQIV2RequestFlags => {
-  const aceVariantFanout = useFlag(isAceMetricVariantFanoutEnabled);
   const aceRankBreakdownSpec = useFlag(isAceRankBreakdownSpecEnabled);
-  const ready = aceVariantFanout.ready && aceRankBreakdownSpec.ready;
-  const enableAceVariantFanout = aceVariantFanout.ready && aceVariantFanout.value;
+  const ready = aceRankBreakdownSpec.ready;
   const emitAceRankBreakdownSpec = aceRankBreakdownSpec.ready && aceRankBreakdownSpec.value;
 
   return useMemo(
-    (): RAQIV2RequestFlags =>
-      ready ? { ready, enableAceVariantFanout, emitAceRankBreakdownSpec } : { ready },
-    [ready, enableAceVariantFanout, emitAceRankBreakdownSpec],
+    (): RAQIV2RequestFlags => (ready ? { ready, emitAceRankBreakdownSpec } : { ready }),
+    [ready, emitAceRankBreakdownSpec],
   );
 };
 

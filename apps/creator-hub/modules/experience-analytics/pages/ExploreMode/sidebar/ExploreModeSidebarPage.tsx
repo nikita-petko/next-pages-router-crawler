@@ -23,7 +23,6 @@ import {
   useMediaQuery,
 } from '@rbx/ui';
 import {
-  isChartOverflowMenuEnabled as isChartOverflowMenuEnabledFlag,
   isCustomDashboardsEnabled as isCustomDashboardsEnabledFlag,
   isExperienceAlertsEnabled,
 } from '@generated/flags/creatorAnalytics';
@@ -397,15 +396,11 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
   priorUri,
   clearPreset,
 }) => {
-  const { ready: isChartOverflowMenuFetched, value: isChartOverflowMenuEnabledValue } = useFlag(
-    isChartOverflowMenuEnabledFlag,
-  );
   const { ready: isCustomDashboardsFetched, value: isCustomDashboardsEnabledValue } = useFlag(
     isCustomDashboardsEnabledFlag,
     { universeId: resource.id },
   );
-  const areFeatureFlagsFetched = isChartOverflowMenuFetched && isCustomDashboardsFetched;
-  const isChartOverflowMenuEnabled = isChartOverflowMenuFetched && isChartOverflowMenuEnabledValue;
+  const areFeatureFlagsFetched = isCustomDashboardsFetched;
   const isCustomDashboardsEnabled = isCustomDashboardsFetched && isCustomDashboardsEnabledValue;
 
   const {
@@ -2214,15 +2209,13 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
       });
     }
 
-    if (isChartOverflowMenuEnabled) {
-      items.push({
-        kind: 'menu-item',
-        id: 'view-source-query',
-        label: viewSourceQueryLabel,
-        disabled: !chartSpec,
-        onSelect: handleOpenSourceDialog,
-      });
-    }
+    items.push({
+      kind: 'menu-item',
+      id: 'view-source-query',
+      label: viewSourceQueryLabel,
+      disabled: !chartSpec,
+      onSelect: handleOpenSourceDialog,
+    });
 
     return items;
   }, [
@@ -2244,7 +2237,6 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
     capturedDashboardTile,
     addToDashboardDisabledReason,
     isCustomDashboardsEnabled,
-    isChartOverflowMenuEnabled,
     viewSourceQueryLabel,
     chartSpec,
     handleOpenSourceDialog,

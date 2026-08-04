@@ -210,16 +210,6 @@ export const generatedFlags = [
       },
     },
     {
-      flag: creatorAnalyticsFlags.isCpuCoreUtilizationEnabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'isCpuCoreUtilizationEnabled',
-        defaultValue: true,
-        valueType: 'boolean',
-        contextType: 'static',
-      },
-    },
-    {
       flag: creatorAnalyticsFlags.isExperienceAlertsEnabled,
       metadata: {
         namespace: 'creator-analytics',
@@ -304,16 +294,6 @@ export const generatedFlags = [
       metadata: {
         namespace: 'creator-analytics',
         name: 'isAceRankBreakdownSpecEnabled',
-        defaultValue: false,
-        valueType: 'boolean',
-        contextType: 'static',
-      },
-    },
-    {
-      flag: creatorAnalyticsFlags.isAceMetricVariantFanoutEnabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'isAceMetricVariantFanoutEnabled',
         defaultValue: false,
         valueType: 'boolean',
         contextType: 'static',
@@ -470,50 +450,10 @@ export const generatedFlags = [
       },
     },
     {
-      flag: creatorAnalyticsFlags.isChartOverflowMenuEnabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'isChartOverflowMenuEnabled',
-        defaultValue: true,
-        valueType: 'boolean',
-        contextType: 'static',
-      },
-    },
-    {
       flag: creatorAnalyticsFlags.isAssistantChartOverflowMenuEnabled,
       metadata: {
         namespace: 'creator-analytics',
         name: 'isAssistantChartOverflowMenuEnabled',
-        defaultValue: false,
-        valueType: 'boolean',
-        contextType: 'static',
-      },
-    },
-    {
-      flag: creatorAnalyticsFlags.isCreatorConfigStudioPublishWorkflowEnabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'isCreatorConfigStudioPublishWorkflowEnabled',
-        defaultValue: false,
-        valueType: 'boolean',
-        contextType: 'static',
-      },
-    },
-    {
-      flag: creatorAnalyticsFlags.isCreatorConfigStudioPublishTimerEnabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'isCreatorConfigStudioPublishTimerEnabled',
-        defaultValue: false,
-        valueType: 'boolean',
-        contextType: 'static',
-      },
-    },
-    {
-      flag: creatorAnalyticsFlags.isCreatorConfigPublishAsEnabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'isCreatorConfigPublishAsEnabled',
         defaultValue: false,
         valueType: 'boolean',
         contextType: 'static',
