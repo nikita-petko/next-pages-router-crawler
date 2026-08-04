@@ -5,17 +5,23 @@ import {
   PLAYER_SUPPORT_CATEGORY_FILTER_OPTIONS,
   PLAYER_SUPPORT_VIEW_FILTER_OPTIONS,
   PlayerSupportCategoryFilter,
+  PlayerSupportDateFilter,
   PlayerSupportViewFilter,
 } from '../constants/ticketFilters';
 import { TICKET_CATEGORY_TRANSLATION_KEY } from '../constants/ticketLabels';
+import PlayerSupportDateRangeFilter from './PlayerSupportDateRangeFilter';
 
 interface PlayerSupportToolbarProps {
   search: string;
+  dateFilter: PlayerSupportDateFilter;
+  customStartDate?: Date;
+  customEndDate?: Date;
   view: PlayerSupportViewFilter;
   category: PlayerSupportCategoryFilter;
   /** While a selection is active the filters give way to `bulkActions`. */
   isSelectionMode: boolean;
   onSearchChange: (value: string) => void;
+  onDateFilterChange: (value: PlayerSupportDateFilter, startDate?: Date, endDate?: Date) => void;
   onViewChange: (value: PlayerSupportViewFilter) => void;
   onCategoryChange: (value: PlayerSupportCategoryFilter) => void;
   onClearFilters: () => void;
@@ -30,15 +36,19 @@ const SEARCH_INPUT_CONTAINER_CLASS_NAME = '!outline-none !stroke-none ![box-shad
 // the row, and the table below it, stay put when the bulk actions replace the filters.
 const TOOLBAR_ROW_CLASS_NAME =
   'items-start justify-between padding-top-small gap-medium flex flex-col medium:items-end medium:height-[calc(var(--padding-small)+var(--size-600)+var(--gap-small)+var(--size-1000))] medium:flex-row';
+const FILTER_CONTROL_WIDTH_CLASS_NAME = 'width-[263px] medium:width-[208px]';
 // The label is a bare span, so its height would otherwise come from the font's line box.
-const FILTER_DROPDOWN_CLASS_NAME =
-  'width-[263px] medium:width-[208px] [&>span]:items-center [&>span]:height-600 [&>span]:flex [&>.foundation-web-input]:!outline-none [&>.foundation-web-input]:!stroke-default [&>.foundation-web-input]:![box-shadow:none]';
+const FILTER_DROPDOWN_CLASS_NAME = `${FILTER_CONTROL_WIDTH_CLASS_NAME} [&>span]:items-center [&>span]:height-600 [&>span]:flex [&>.foundation-web-input]:!outline-none [&>.foundation-web-input]:!stroke-default [&>.foundation-web-input]:![box-shadow:none]`;
 const PlayerSupportToolbar: FunctionComponent<PlayerSupportToolbarProps> = ({
   search,
+  dateFilter,
+  customStartDate,
+  customEndDate,
   view,
   category,
   isSelectionMode,
   onSearchChange,
+  onDateFilterChange,
   onViewChange,
   onCategoryChange,
   onClearFilters,
@@ -94,6 +104,7 @@ const PlayerSupportToolbar: FunctionComponent<PlayerSupportToolbarProps> = ({
   }, [onSearchChange]);
   const hasActiveFilters =
     search.trim().length > 0 ||
+    dateFilter !== PlayerSupportDateFilter.AllTime ||
     view !== PlayerSupportViewFilter.All ||
     category !== PlayerSupportCategoryFilter.All;
   const hasBulkActions = Boolean(bulkActions);
@@ -133,6 +144,13 @@ const PlayerSupportToolbar: FunctionComponent<PlayerSupportToolbarProps> = ({
         <div className={TOOLBAR_ROW_CLASS_NAME}>
           {!isSelectionMode || !hasBulkActions ? (
             <div className='gap-medium flex flex-col medium:flex-row'>
+              <PlayerSupportDateRangeFilter
+                className={FILTER_CONTROL_WIDTH_CLASS_NAME}
+                dateFilter={dateFilter}
+                customStartDate={customStartDate}
+                customEndDate={customEndDate}
+                onChange={onDateFilterChange}
+              />
               <Dropdown
                 className={FILTER_DROPDOWN_CLASS_NAME}
                 label={viewLabel}

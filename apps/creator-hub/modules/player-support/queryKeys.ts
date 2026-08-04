@@ -10,6 +10,9 @@ export interface PlayerSupportTicketsQueryKeyParams {
   query?: string;
   readFilter?: CreatorTicketReadFilter;
   category?: TicketCategory;
+  /** Inclusive bounds on the ticket's updated time, as RFC 3339 strings. */
+  startTime?: string;
+  endTime?: string;
   pageToken?: string;
   pageSize: number;
 }
@@ -20,6 +23,8 @@ const getPlayerSupportTicketsQueryKey = ({
   query,
   readFilter,
   category,
+  startTime,
+  endTime,
   pageToken,
   pageSize,
 }: PlayerSupportTicketsQueryKeyParams) =>
@@ -30,6 +35,8 @@ const getPlayerSupportTicketsQueryKey = ({
     query,
     readFilter,
     category,
+    startTime,
+    endTime,
     pageToken,
     pageSize,
   ] as const;

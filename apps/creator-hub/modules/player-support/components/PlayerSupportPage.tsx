@@ -29,10 +29,12 @@ import {
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import {
   isPlayerSupportCategoryFilter,
+  isPlayerSupportDateFilter,
   isPlayerSupportViewFilter,
   PLAYER_SUPPORT_SEARCH_DEBOUNCE_DELAY_MS,
   PLAYER_SUPPORT_VIEW_FILTER_VALUES,
   PlayerSupportCategoryFilter,
+  PlayerSupportDateFilter,
   PlayerSupportViewFilter,
 } from '../constants/ticketFilters';
 import usePlayerSupportExportMutation from '../hooks/usePlayerSupportExportMutation';
@@ -41,6 +43,11 @@ import {
   generatePlayerSupportCsv,
   getPlayerSupportExportFilename,
 } from '../utils/playerSupportCsv';
+import {
+  formatDateParam,
+  getUpdatedTimeRange,
+  parseDateParam,
+} from '../utils/playerSupportDateRange';
 import { getSelectedTicketIds, getTicketId, isTicketSelectable } from '../utils/ticketSelection';
 import PlayerSupportBulkActions from './PlayerSupportBulkActions';
 import PlayerSupportExportMenu, {
@@ -50,7 +57,17 @@ import PlayerSupportExportMenu, {
 import PlayerSupportTable from './PlayerSupportTable';
 import PlayerSupportToolbar from './PlayerSupportToolbar';
 
-const QUERY_PARAM_KEYS = ['pageToken', 'pageSize', 'status', 'query', 'view', 'category'] as const;
+const QUERY_PARAM_KEYS = [
+  'pageToken',
+  'pageSize',
+  'status',
+  'query',
+  'view',
+  'category',
+  'dateRange',
+  'startDate',
+  'endDate',
+] as const;
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -128,14 +145,34 @@ const PlayerSupportPage: React.FunctionComponent = () => {
   const readFilter = PLAYER_SUPPORT_VIEW_FILTER_VALUES[selectedView];
   const categoryFilter =
     selectedCategory === PlayerSupportCategoryFilter.All ? undefined : selectedCategory;
+  const customStartDate = parseDateParam(queryParams.startDate);
+  const customEndDate = parseDateParam(queryParams.endDate);
+  const requestedDateFilter =
+    isSearchAndFiltersEnabled && isPlayerSupportDateFilter(queryParams.dateRange)
+      ? queryParams.dateRange
+      : PlayerSupportDateFilter.AllTime;
+  // A Custom selection without a usable pair of dates in the URL would bound
+  // nothing, so fall back to the unbounded option rather than show an empty range.
+  const selectedDateFilter =
+    requestedDateFilter === PlayerSupportDateFilter.Custom && (!customStartDate || !customEndDate)
+      ? PlayerSupportDateFilter.AllTime
+      : requestedDateFilter;
+  // Rolling presets resolve against "now" but snap to day boundaries, so the
+  // bounds only change at local midnight rather than on every render.
+  const { startTime, endTime } = getUpdatedTimeRange(
+    selectedDateFilter,
+    customStartDate,
+    customEndDate,
+  );
   const hasActiveFilters =
     normalizedSearch.length > 0 ||
     selectedView !== PlayerSupportViewFilter.All ||
-    selectedCategory !== PlayerSupportCategoryFilter.All;
+    selectedCategory !== PlayerSupportCategoryFilter.All ||
+    selectedDateFilter !== PlayerSupportDateFilter.AllTime;
 
   // Scopes the selection and the card layout's selection mode to the rows they were made
   // on, so neither survives a new query, page, or layout.
-  const ticketPageKey = `${isMobile ? 'mobile' : 'desktop'}:${isSearchAndFiltersEnabled ? 'bulk' : 'basic'}:${selectedStatus}:${pageToken ?? ''}:${pageSize}:${debouncedQuery}:${selectedView}:${selectedCategory}`;
+  const ticketPageKey = `${isMobile ? 'mobile' : 'desktop'}:${isSearchAndFiltersEnabled ? 'bulk' : 'basic'}:${selectedStatus}:${pageToken ?? ''}:${pageSize}:${debouncedQuery}:${selectedView}:${selectedCategory}:${startTime ?? ''}:${endTime ?? ''}`;
   const [selectionModePageKey, setSelectionModePageKey] = useState<string | undefined>(undefined);
   const isMobileSelectionMode = selectionModePageKey === ticketPageKey;
 
@@ -195,6 +232,8 @@ const PlayerSupportPage: React.FunctionComponent = () => {
     query: debouncedQuery || undefined,
     readFilter,
     category: categoryFilter,
+    startTime,
+    endTime,
     pageToken,
     pageSize,
     shouldKeepPreviousData: true,
@@ -242,6 +281,8 @@ const PlayerSupportPage: React.FunctionComponent = () => {
     query: debouncedQuery || undefined,
     readFilter,
     category: categoryFilter,
+    startTime,
+    endTime,
     pageToken: nextPageToken,
     pageSize,
     enabled: !!nextPageToken && !isPlaceholderData,
@@ -292,6 +333,23 @@ const PlayerSupportPage: React.FunctionComponent = () => {
     [resetPagination, setQueryParams],
   );
 
+  const handleDateFilterChange = useCallback(
+    (value: PlayerSupportDateFilter, startDate?: Date, endDate?: Date) => {
+      const isCustom = value === PlayerSupportDateFilter.Custom;
+      resetPagination();
+      setQueryParams(
+        {
+          dateRange: value === PlayerSupportDateFilter.AllTime ? null : value,
+          startDate: isCustom && startDate ? formatDateParam(startDate) : null,
+          endDate: isCustom && endDate ? formatDateParam(endDate) : null,
+          pageToken: null,
+        },
+        { skipHistory: true },
+      );
+    },
+    [resetPagination, setQueryParams],
+  );
+
   const handleViewChange = useCallback(
     (value: typeof selectedView) => {
       resetPagination();
@@ -328,6 +386,9 @@ const PlayerSupportPage: React.FunctionComponent = () => {
         query: null,
         view: null,
         category: null,
+        dateRange: null,
+        startDate: null,
+        endDate: null,
         pageToken: null,
       },
       { skipHistory: true },
@@ -407,6 +468,8 @@ const PlayerSupportPage: React.FunctionComponent = () => {
         categories:
           exportsAllMatches && categoryFilter !== undefined ? [categoryFilter] : undefined,
         statuses: exportsAllMatches ? [selectedStatus] : undefined,
+        startTime: exportsAllMatches ? startTime : undefined,
+        endTime: exportsAllMatches ? endTime : undefined,
       });
       const csv = generatePlayerSupportCsv(response.rows ?? []);
       const exportBlob = new Blob([new TextEncoder().encode(csv)], {
@@ -420,10 +483,12 @@ const PlayerSupportPage: React.FunctionComponent = () => {
       categoryFilter,
       currentPageTicketIds,
       debouncedQuery,
+      endTime,
       exportTickets,
       readFilter,
       selectedStatus,
       selectedTicketIds,
+      startTime,
       universeId,
     ],
   );
@@ -517,10 +582,14 @@ const PlayerSupportPage: React.FunctionComponent = () => {
             {isSearchAndFiltersEnabled && (
               <PlayerSupportToolbar
                 search={search}
+                dateFilter={selectedDateFilter}
+                customStartDate={customStartDate}
+                customEndDate={customEndDate}
                 view={selectedView}
                 category={selectedCategory}
                 isSelectionMode={isSelectionMode}
                 onSearchChange={handleSearchChange}
+                onDateFilterChange={handleDateFilterChange}
                 onViewChange={handleViewChange}
                 onCategoryChange={handleCategoryChange}
                 onClearFilters={handleClearFilters}
@@ -623,4 +692,9 @@ const PlayerSupportPage: React.FunctionComponent = () => {
   );
 };
 
-export default withTranslation(PlayerSupportPage, [TranslationNamespace.PlayerFeedback]);
+export default withTranslation(PlayerSupportPage, [
+  TranslationNamespace.PlayerFeedback,
+  // The date range filter sources its preset and picker labels from these two.
+  TranslationNamespace.Analytics,
+  TranslationNamespace.Controls,
+]);
