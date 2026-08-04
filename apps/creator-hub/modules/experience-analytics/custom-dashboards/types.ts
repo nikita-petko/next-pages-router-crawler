@@ -159,7 +159,6 @@ export type ChartOverlays = {
         readonly customStartTimeMs?: number;
       };
   readonly quota?: boolean;
-  readonly trendLine?: boolean;
 };
 
 export type ChartTileSmoothing = 'none' | 'weekly';

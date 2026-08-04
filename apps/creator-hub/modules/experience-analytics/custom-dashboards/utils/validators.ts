@@ -769,10 +769,6 @@ function validateChartTile(tile: Record<string, unknown>, field: string): ChartT
           `${field}.chartSpec.overlays.previousPeriod`,
         ),
         quota: validateOptionalBoolean(overlaysRecord.quota, `${field}.chartSpec.overlays.quota`),
-        trendLine: validateOptionalBoolean(
-          overlaysRecord.trendLine,
-          `${field}.chartSpec.overlays.trendLine`,
-        ),
       }
     : undefined;
 
