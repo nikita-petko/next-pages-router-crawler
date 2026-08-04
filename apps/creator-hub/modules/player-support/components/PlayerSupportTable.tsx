@@ -3,7 +3,12 @@ import { useIsMutating } from '@tanstack/react-query';
 import { Badge, Button, clsx } from '@rbx/foundation-ui';
 import type { Locale } from '@rbx/intl';
 import { useTranslation } from '@rbx/intl';
-import { TicketStatus, type CreatorTicketSummary } from '@modules/clients/creatorCommunication';
+import { ArrowDownwardIcon, ArrowUpwardIcon } from '@rbx/ui';
+import {
+  CreatorTicketUpdateTimeSortOrder,
+  TicketStatus,
+  type CreatorTicketSummary,
+} from '@modules/clients/creatorCommunication';
 import { formatDate } from '@modules/miscellaneous/utils/dateUtils';
 import {
   hasTicketCategoryTranslationKey,
@@ -30,6 +35,8 @@ interface PlayerSupportTableProps {
   bulkActions?: ReactNode;
   /** Rendered trailing the `Select` button on the card layout. */
   trailingActions?: ReactNode;
+  updateTimeSortOrder: CreatorTicketUpdateTimeSortOrder;
+  onSortOrderChange: () => void;
 }
 
 interface TicketRowProps {
@@ -115,7 +122,7 @@ const TicketRow = ({
         <Badge label={categoryLabel} variant='Neutral' className='height-600' />
       </td>
       <td className='content-muted text-body-medium text-no-wrap padding-x-medium'>
-        {ticket.createTime ? formatDate(ticket.createTime, locale) : ''}
+        {ticket.updateTime ? formatDate(ticket.updateTime, locale) : ''}
       </td>
       <td className='width-[1%] padding-x-medium'>
         {ticket.creatorTicketId && ticket.status !== TicketStatus.Archived && (
@@ -248,10 +255,10 @@ const MobileTicketCard = ({
         </div>
         <div className='items-center justify-between flex'>
           <span className='content-emphasis text-body-medium'>
-            {translate('Title.Table.Created')}
+            {translate('Label.DetailsSidebar.LastUpdated')}
           </span>
           <span className='content-default text-body-medium'>
-            {ticket.createTime ? formatDate(ticket.createTime, locale) : ''}
+            {ticket.updateTime ? formatDate(ticket.updateTime, locale) : ''}
           </span>
         </div>
       </div>
@@ -270,6 +277,8 @@ const PlayerSupportTable = ({
   onEnterSelectionMode,
   bulkActions,
   trailingActions,
+  updateTimeSortOrder,
+  onSortOrderChange,
 }: PlayerSupportTableProps) => {
   const { translate } = useTranslation();
   // Selection freezes until a bulk action settles. The actions live outside this table,
@@ -335,8 +344,31 @@ const PlayerSupportTable = ({
             <th className='content-emphasis text-label-medium text-no-wrap text-align-x-left width-[176px] padding-x-medium'>
               {translate('Title.Table.Type')}
             </th>
-            <th className='content-emphasis text-label-medium text-no-wrap text-align-x-left width-[176px] padding-x-medium'>
-              {translate('Title.Table.Created')}
+            <th
+              className='content-emphasis text-label-medium text-no-wrap text-align-x-left width-[176px] padding-x-medium'
+              aria-sort={
+                updateTimeSortOrder === CreatorTicketUpdateTimeSortOrder.Asc
+                  ? 'ascending'
+                  : 'descending'
+              }>
+              <div className='items-center gap-xsmall flex flex-row no-wrap'>
+                {translate('Label.DetailsSidebar.LastUpdated')}
+                <button
+                  type='button'
+                  className='items-center bg-none stroke-none padding-none margin-none cursor-pointer content-inherit flex focus-visible:outline-focus'
+                  aria-label={translate('Label.DetailsSidebar.LastUpdated')}
+                  onClick={onSortOrderChange}>
+                  {updateTimeSortOrder === CreatorTicketUpdateTimeSortOrder.Asc ? (
+                    <ArrowUpwardIcon className='content-default' fontSize='small' color='action' />
+                  ) : (
+                    <ArrowDownwardIcon
+                      className='content-default'
+                      fontSize='small'
+                      color='action'
+                    />
+                  )}
+                </button>
+              </div>
             </th>
             <th className='width-[1%] padding-x-medium' aria-hidden='true' />
           </tr>

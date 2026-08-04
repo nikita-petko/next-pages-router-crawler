@@ -20,6 +20,7 @@ const usePlayerSupportTicketsQuery = ({
   endTime,
   pageToken,
   pageSize,
+  updateTimeSortOrder,
   enabled = true,
   shouldKeepPreviousData = false,
 }: UsePlayerSupportTicketsQueryParams) =>
@@ -34,6 +35,7 @@ const usePlayerSupportTicketsQuery = ({
       endTime,
       pageToken,
       pageSize,
+      updateTimeSortOrder,
     }),
     queryFn: () =>
       creatorCommunicationApi.v1beta1CreatorCommunicationApiUniversesUniverseIdCreatorTicketsSearchGet(
@@ -47,6 +49,7 @@ const usePlayerSupportTicketsQuery = ({
           endTime,
           pageToken,
           pageSize,
+          updateTimeSortOrder,
         },
       ),
     enabled: enabled && universeId > 0,

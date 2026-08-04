@@ -1,5 +1,6 @@
 import type {
   CreatorTicketReadFilter,
+  CreatorTicketUpdateTimeSortOrder,
   TicketCategory,
   TicketStatus,
 } from '@modules/clients/creatorCommunication';
@@ -15,6 +16,7 @@ export interface PlayerSupportTicketsQueryKeyParams {
   endTime?: string;
   pageToken?: string;
   pageSize: number;
+  updateTimeSortOrder: CreatorTicketUpdateTimeSortOrder;
 }
 
 const getPlayerSupportTicketsQueryKey = ({
@@ -27,6 +29,7 @@ const getPlayerSupportTicketsQueryKey = ({
   endTime,
   pageToken,
   pageSize,
+  updateTimeSortOrder,
 }: PlayerSupportTicketsQueryKeyParams) =>
   [
     'playerSupportTickets',
@@ -39,6 +42,7 @@ const getPlayerSupportTicketsQueryKey = ({
     endTime,
     pageToken,
     pageSize,
+    updateTimeSortOrder,
   ] as const;
 
 export const getPlayerSupportTicketDetailQueryKey = (creatorTicketId: string) =>

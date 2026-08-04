@@ -16,7 +16,11 @@ import { useMediaQuery, type TTheme } from '@rbx/ui';
 import { enablePlayerSupportSearchAndFilters } from '@generated/flags/creatorGameops';
 import useLocale from '@modules/charts-generic/context/useLocale';
 import GenericTablePagination from '@modules/charts-generic/tables/GenericTablePagination';
-import { TicketStatus, type CreatorTicketSummary } from '@modules/clients/creatorCommunication';
+import {
+  CreatorTicketUpdateTimeSortOrder,
+  TicketStatus,
+  type CreatorTicketSummary,
+} from '@modules/clients/creatorCommunication';
 import { getResponseFromError } from '@modules/clients/utils';
 import unifiedLoggerClient from '@modules/eventStream/unifiedLoggerClient';
 import LoadError from '@modules/miscellaneous/error/LoadError';
@@ -64,6 +68,7 @@ const QUERY_PARAM_KEYS = [
   'query',
   'view',
   'category',
+  'sortOrder',
   'dateRange',
   'startDate',
   'endDate',
@@ -131,6 +136,10 @@ const PlayerSupportPage: React.FunctionComponent = () => {
     isSearchAndFiltersEnabled && isPlayerSupportCategoryFilter(queryParams.category)
       ? queryParams.category
       : PlayerSupportCategoryFilter.All;
+  const updateTimeSortOrder =
+    queryParams.sortOrder === CreatorTicketUpdateTimeSortOrder.Asc
+      ? CreatorTicketUpdateTimeSortOrder.Asc
+      : CreatorTicketUpdateTimeSortOrder.Desc;
   const [searchState, setSearchState] = useState(() => ({
     externalValue: query,
     inputValue: query,
@@ -172,7 +181,7 @@ const PlayerSupportPage: React.FunctionComponent = () => {
 
   // Scopes the selection and the card layout's selection mode to the rows they were made
   // on, so neither survives a new query, page, or layout.
-  const ticketPageKey = `${isMobile ? 'mobile' : 'desktop'}:${isSearchAndFiltersEnabled ? 'bulk' : 'basic'}:${selectedStatus}:${pageToken ?? ''}:${pageSize}:${debouncedQuery}:${selectedView}:${selectedCategory}:${startTime ?? ''}:${endTime ?? ''}`;
+  const ticketPageKey = `${isMobile ? 'mobile' : 'desktop'}:${isSearchAndFiltersEnabled ? 'bulk' : 'basic'}:${selectedStatus}:${pageToken ?? ''}:${pageSize}:${debouncedQuery}:${selectedView}:${selectedCategory}:${startTime ?? ''}:${endTime ?? ''}:${updateTimeSortOrder}`;
   const [selectionModePageKey, setSelectionModePageKey] = useState<string | undefined>(undefined);
   const isMobileSelectionMode = selectionModePageKey === ticketPageKey;
 
@@ -236,6 +245,7 @@ const PlayerSupportPage: React.FunctionComponent = () => {
     endTime,
     pageToken,
     pageSize,
+    updateTimeSortOrder,
     shouldKeepPreviousData: true,
   });
 
@@ -285,6 +295,7 @@ const PlayerSupportPage: React.FunctionComponent = () => {
     endTime,
     pageToken: nextPageToken,
     pageSize,
+    updateTimeSortOrder,
     enabled: !!nextPageToken && !isPlaceholderData,
   });
 
@@ -294,6 +305,20 @@ const PlayerSupportPage: React.FunctionComponent = () => {
     writePrevTokens(universeId, selectedStatus, []);
     setPrevTokens([]);
   }, [selectedStatus, universeId]);
+
+  const handleSortOrderChange = useCallback(() => {
+    resetPagination();
+    setQueryParams(
+      {
+        sortOrder:
+          updateTimeSortOrder === CreatorTicketUpdateTimeSortOrder.Asc
+            ? CreatorTicketUpdateTimeSortOrder.Desc
+            : CreatorTicketUpdateTimeSortOrder.Asc,
+        pageToken: null,
+      },
+      { skipHistory: true },
+    );
+  }, [resetPagination, setQueryParams, updateTimeSortOrder]);
 
   const handleNextPage = useCallback(() => {
     if (!nextPageToken) {
@@ -627,6 +652,8 @@ const PlayerSupportPage: React.FunctionComponent = () => {
                   onEnterSelectionMode={handleEnterSelectionMode}
                   bulkActions={isMobile ? bulkActions : undefined}
                   trailingActions={isMobile ? exportMenu : undefined}
+                  updateTimeSortOrder={updateTimeSortOrder}
+                  onSortOrderChange={handleSortOrderChange}
                 />
                 <table className='width-full'>
                   <tfoot>
