@@ -1,5 +1,5 @@
 import type { FunctionComponent } from 'react';
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { IconButton, Tooltip, TooltipTrigger, VisuallyHidden } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
@@ -10,6 +10,7 @@ import getResponseFromError from '@modules/clients/utils/getResponseFromError';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { getLocalDateString } from '@modules/miscellaneous/utils/dateUtils';
 import { useSnackbar } from '@modules/monetization-shared/snackbar/actions';
+import { useCheckEmailEligibility } from '@modules/react-query/accountSettings/accountSettingsQueries';
 import { usePublishSalesReportDownload } from '@modules/react-query/transactionRecords/transactionRecordsQueries';
 import { useGetUserConfiguration } from '@modules/react-query/twoStepVerification';
 
@@ -17,6 +18,7 @@ import { useGetUserConfiguration } from '@modules/react-query/twoStepVerificatio
 // ranges longer than this many days, so block the request client-side and explain why.
 const MAX_EXPORT_RANGE_DAYS = 365;
 const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
+const EMAIL_ELIGIBILITY_COOLDOWN_MS = 5_000;
 
 // The API serializes TwoStepVerificationMediaType as its string label (e.g. "Authenticator"), even
 // though the generated client types mediaType as a numeric enum. Compare against the label (coerced
@@ -51,6 +53,22 @@ const VirtualTransactionsExportButton: FunctionComponent<
   const { translate, tPendingTranslation } = useTranslationWrapper(useTranslation());
   const { enqueue } = useSnackbar();
   const { mutate, isPending } = usePublishSalesReportDownload();
+  const { mutateAsync: checkEmailEligibility, isPending: isCheckingEmailEligibility } =
+    useCheckEmailEligibility();
+  const [isEmailEligibilityCoolingDown, setIsEmailEligibilityCoolingDown] = useState(false);
+  const isEmailEligibilityCheckLocked = useRef(false);
+  const emailEligibilityCooldownTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+
+  useEffect(
+    () => () => {
+      if (emailEligibilityCooldownTimeout.current !== undefined) {
+        clearTimeout(emailEligibilityCooldownTimeout.current);
+      }
+    },
+    [],
+  );
 
   // 2FA parity with the v1 web-frontend flow: the report may only be exported by a downloader who
   // has an authenticator app enabled. The check is against the authenticated user (the person doing
@@ -82,8 +100,21 @@ const VirtualTransactionsExportButton: FunctionComponent<
     [enqueue],
   );
 
-  const onExport = useCallback(() => {
-    if (targetId == null || exceedsMaxRange) {
+  const startEmailEligibilityCooldown = useCallback(() => {
+    setIsEmailEligibilityCoolingDown(true);
+    emailEligibilityCooldownTimeout.current = setTimeout(() => {
+      setIsEmailEligibilityCoolingDown(false);
+      emailEligibilityCooldownTimeout.current = undefined;
+    }, EMAIL_ELIGIBILITY_COOLDOWN_MS);
+  }, []);
+
+  const onExport = useCallback(async () => {
+    if (
+      targetId == null ||
+      exceedsMaxRange ||
+      isEmailEligibilityCoolingDown ||
+      isEmailEligibilityCheckLocked.current
+    ) {
       return;
     }
     if (!hasAuthenticatorEnabled) {
@@ -97,6 +128,30 @@ const VirtualTransactionsExportButton: FunctionComponent<
       );
       return;
     }
+
+    let email;
+    isEmailEligibilityCheckLocked.current = true;
+    try {
+      email = await checkEmailEligibility();
+    } catch {
+      startEmailEligibilityCooldown();
+      notify(translate(translationKey('Response.UnknownError', TranslationNamespace.Error)));
+      return;
+    } finally {
+      isEmailEligibilityCheckLocked.current = false;
+    }
+    if (email.verified !== true || !email.emailAddress?.trim()) {
+      startEmailEligibilityCooldown();
+      notify(
+        tPendingTranslation(
+          'Add and verify an email address in your account settings to receive this report.',
+          'Shown when a creator without a verified account email tries to export a sales report; directs them to add and verify an email address.',
+          translationKey('Error.Export.VerifiedEmailRequired', TranslationNamespace.Transactions),
+        ),
+      );
+      return;
+    }
+
     mutate(
       {
         targetId,
@@ -143,6 +198,8 @@ const VirtualTransactionsExportButton: FunctionComponent<
     );
   }, [
     mutate,
+    checkEmailEligibility,
+    startEmailEligibilityCooldown,
     notify,
     translate,
     tPendingTranslation,
@@ -152,6 +209,7 @@ const VirtualTransactionsExportButton: FunctionComponent<
     startTimeMillis,
     endTimeMillis,
     exceedsMaxRange,
+    isEmailEligibilityCoolingDown,
   ]);
 
   const label = translate(translationKey('Action.Export', TranslationNamespace.Transactions));
@@ -175,7 +233,12 @@ const VirtualTransactionsExportButton: FunctionComponent<
               variant='Utility'
               size='Medium'
               isDisabled={
-                isPending || isTwoStepConfigLoading || targetId == null || exceedsMaxRange
+                isPending ||
+                isCheckingEmailEligibility ||
+                isEmailEligibilityCoolingDown ||
+                isTwoStepConfigLoading ||
+                targetId == null ||
+                exceedsMaxRange
               }
               onClick={onExport}
             />
