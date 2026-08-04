@@ -1,9 +1,10 @@
 import type { FunctionComponent } from 'react';
-import React, { Fragment, useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import type { RobloxLocaleApiCountryRegion } from '@rbx/client-locale/v1';
 import { RobloxPaymentsSharedV1SellerStatus as SellerStatus } from '@rbx/client-marketplace-fiat-service/v1';
 import { Restriction } from '@rbx/client-marketplace-publishing-requirements-api/v1';
+import { useFlag } from '@rbx/flags';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import {
   Alert,
@@ -19,6 +20,7 @@ import {
   useDialog,
   useSnackbar,
 } from '@rbx/ui';
+import { isPricingEligibilityV2Enabled } from '@generated/flags/contentAccessAndInventory';
 import { useAuthentication } from '@modules/authentication/providers';
 import marketplaceFiatService from '@modules/clients/creatorStoreProduct/marketplaceFiatService';
 import OverviewInlineUrlTranslationLabel from '@modules/creations/common/components/OverviewInlineUrlTranslationLabel';
@@ -51,13 +53,12 @@ const SellerOnboarding: FunctionComponent<React.PropsWithChildren> = () => {
   const { enqueue } = useSnackbar();
   const { translate } = useTranslation();
   const { open, close: closeDialog, configure } = useDialog();
+  const { value: isPricingEligibilityV2 } = useFlag(isPricingEligibilityV2Enabled);
 
   const [currentCountryCode, setCurrentCountryCode] = useState<RobloxLocaleApiCountryRegion | null>(
     null,
   );
   const [isCountryValid, setIsCountryValid] = useState<boolean>();
-  const [isModerationEligible, setIsModerationEligible] = useState<boolean>(false);
-  const [isVerified, setIsVerified] = useState<boolean>(false);
   const [isDialogLoading, setIsDialogLoading] = useState<boolean>(false);
   const [legalAgreementsSigned, setLegalAgreementsSigned] = useState(false);
 
@@ -89,6 +90,7 @@ const SellerOnboarding: FunctionComponent<React.PropsWithChildren> = () => {
   const sellerStatus = sellerStatusResponse && sellerStatusResponse.sellerStatus;
   const createdDateTime = sellerStatusResponse && sellerStatusResponse.createdDateTime;
   const isBannerVisible =
+    // oxlint-disable-next-line typescript/prefer-nullish-coalescing -- intentional: isSetupCompleted is boolean (false, not null), || is correct here
     isSetupCompleted ||
     (!isSetupCompleted &&
       (sellerStatus === SellerStatus.Pending || sellerStatus === SellerStatus.Restricted));
@@ -116,8 +118,8 @@ const SellerOnboarding: FunctionComponent<React.PropsWithChildren> = () => {
       unifiedLoggerClient.logClickEvent({
         eventName: CreatorDashboardEventType.ClickMarketplaceOnboardingCountry,
         parameters: {
-          userId: user?.id?.toString() || '',
-          countryCode: targetCountry?.code || '',
+          userId: user?.id?.toString() ?? '',
+          countryCode: targetCountry?.code ?? '',
         },
       });
     },
@@ -130,6 +132,10 @@ const SellerOnboarding: FunctionComponent<React.PropsWithChildren> = () => {
 
   const onClickIdVerifyLink = useCallback(() => {
     window.open(www.getAccountSettingsUrl());
+  }, []);
+
+  const onClickTwoStepVerificationLink = useCallback(() => {
+    window.open(www.getAccountSecurityUrl());
   }, []);
 
   const showError = useCallback(
@@ -196,7 +202,7 @@ const SellerOnboarding: FunctionComponent<React.PropsWithChildren> = () => {
           loading={isDialogLoading}
           onCancel={closeDialog}
           onConfirm={() => {
-            handleOnboardingRedirect(countryCode);
+            void handleOnboardingRedirect(countryCode);
           }}
           title={translate('Heading.RedirectNotice')}
         />
@@ -230,25 +236,30 @@ const SellerOnboarding: FunctionComponent<React.PropsWithChildren> = () => {
     open();
   }, [configure, currentCountryCode?.code, open, redirectToOnboardingDialog, savedCountry]);
 
-  useEffect(() => {
-    setIsModerationEligible(
-      !!onboardingRestrictions &&
-        ![Restriction.Authorization, Restriction.Moderation, Restriction.ModerationHistory].some(
-          (restriction) => onboardingRestrictions.onboardingRestrictions.includes(restriction),
-        ),
+  const restrictionsToCheck = isPricingEligibilityV2
+    ? [Restriction.Authorization, Restriction.Moderation]
+    : [Restriction.Authorization, Restriction.Moderation, Restriction.ModerationHistory];
+  const isModerationEligible =
+    !!onboardingRestrictions &&
+    !restrictionsToCheck.some((restriction) =>
+      onboardingRestrictions.onboardingRestrictions.includes(restriction),
     );
-    setIsVerified(
-      !!onboardingRestrictions &&
-        !onboardingRestrictions.onboardingRestrictions.includes(Restriction.Verification),
-    );
-  }, [onboardingRestrictions, setIsModerationEligible, setIsVerified]);
+
+  const isVerified =
+    !!onboardingRestrictions &&
+    !onboardingRestrictions.onboardingRestrictions.includes(Restriction.Verification);
+
+  const isTwoStepVerificationEligible =
+    !isPricingEligibilityV2 ||
+    (!!onboardingRestrictions &&
+      !onboardingRestrictions.onboardingRestrictions.includes(Restriction.TwoStepVerification));
 
   useEffect(() => {
     if (
-      !!hasOnboardingRestrictionsError ||
-      !!hasCountryRegionsError ||
-      !!hasAuthorizedCountriesMapError ||
-      !!hasSellerStatusError
+      hasOnboardingRestrictionsError ||
+      hasCountryRegionsError ||
+      hasAuthorizedCountriesMapError ||
+      hasSellerStatusError
     ) {
       showError();
     }
@@ -345,7 +356,13 @@ const SellerOnboarding: FunctionComponent<React.PropsWithChildren> = () => {
                     descriptionText={
                       isModerationEligible ? undefined : (
                         <Typography variant='body2' color='inherit'>
-                          <Grid item>{translate('Message.ModerationHistoryDoesNotQualify')}</Grid>
+                          <Grid item>
+                            {translate(
+                              isPricingEligibilityV2
+                                ? 'Message.AccountStatusDoesNotQualify'
+                                : 'Message.ModerationHistoryDoesNotQualify',
+                            )}
+                          </Grid>
                           <Grid item>
                             <Link href={docs.getSellingOnCreatorStoreUrl()} target='_blank'>
                               {translate('Action.LearnMore')}
@@ -354,7 +371,9 @@ const SellerOnboarding: FunctionComponent<React.PropsWithChildren> = () => {
                         </Typography>
                       )
                     }
-                    headerText={translate('Label.ModerationHistory')}
+                    headerText={translate(
+                      isPricingEligibilityV2 ? 'Label.AccountStatus' : 'Label.ModerationHistory',
+                    )}
                     isLowerCaseLink
                     linkText={
                       isModerationEligible ? undefined : translate('Action.ViewModerationHistory')
@@ -370,6 +389,24 @@ const SellerOnboarding: FunctionComponent<React.PropsWithChildren> = () => {
                     onClickLink={isVerified ? undefined : onClickIdVerifyLink}
                     status={isVerified ? EligibilityStatus.Completed : EligibilityStatus.Warning}
                   />
+                  {isPricingEligibilityV2 && (
+                    <EligibilityRow
+                      headerText={translate('Label.TwoStepVerification')}
+                      linkText={
+                        isTwoStepVerificationEligible
+                          ? undefined
+                          : translate('Action.EnableTwoStepVerification')
+                      }
+                      onClickLink={
+                        isTwoStepVerificationEligible ? undefined : onClickTwoStepVerificationLink
+                      }
+                      status={
+                        isTwoStepVerificationEligible
+                          ? EligibilityStatus.Completed
+                          : EligibilityStatus.Warning
+                      }
+                    />
+                  )}
                 </Grid>
               </Grid>
             )}
@@ -415,7 +452,7 @@ const SellerOnboarding: FunctionComponent<React.PropsWithChildren> = () => {
                         InputProps={{
                           ...params.InputProps,
                           endAdornment: (
-                            <React.Fragment>
+                            <>
                               {isCountryRegionsLoading || isAuthorizedCountriesMapLoading ? (
                                 <CircularProgress
                                   color='inherit'
@@ -424,7 +461,7 @@ const SellerOnboarding: FunctionComponent<React.PropsWithChildren> = () => {
                                 />
                               ) : null}
                               {params.InputProps.endAdornment}
-                            </React.Fragment>
+                            </>
                           ),
                         }}
                       />
@@ -503,6 +540,7 @@ const SellerOnboarding: FunctionComponent<React.PropsWithChildren> = () => {
                   !isCountryValid ||
                   !isModerationEligible ||
                   !isVerified ||
+                  !isTwoStepVerificationEligible ||
                   !isAgreementFormValid
                 }
                 loading={isSellerStatusLoading}

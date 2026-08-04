@@ -105,6 +105,7 @@ const SettingsForm: FunctionComponent<React.PropsWithChildren<SettingsFormProps>
       case undefined:
       case DistributionErrorState.InvalidAssetType:
       case DistributionErrorState.PotentialPolicyViolation:
+      case DistributionErrorState.IneligiblePublisher:
       case DistributionErrorState.IneligibleFiatSeller:
       case DistributionErrorState.Other:
       case DistributionErrorState.Unauthorized:
@@ -200,6 +201,7 @@ const SettingsForm: FunctionComponent<React.PropsWithChildren<SettingsFormProps>
         DistributionErrorState.Unauthorized,
         DistributionErrorState.Other,
         DistributionErrorState.Approved,
+        DistributionErrorState.IneligiblePublisher,
         DistributionErrorState.IneligibleFiatSeller,
         DistributionErrorState.PackageIneligible,
         DistributionErrorState.RightsClaim,

@@ -40,8 +40,10 @@ export const getDeveloperItemDistributionQuota = async (assetType: string) => {
     typeof quota.duration !== 'undefined' &&
     quota.duration in QuotaDuration
   ) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- pre-existing: API client types don't narrow QuotaDuration
     return {
       capacity: quota.capacity,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- pre-existing: API client types don't narrow QuotaDuration
       duration: quota.duration as QuotaDuration,
       expirationTime: quota.expirationTime ? new Date(quota.expirationTime) : undefined,
       usage: quota.usage,
@@ -67,10 +69,7 @@ export const canAssetBePublic = async (
   assetId: number,
   assetPermissions?: AssetPermissionResponseModel[],
 ) => {
-  let permissions = assetPermissions;
-  if (permissions === undefined) {
-    permissions = await getAssetPermissions(assetId);
-  }
+  const permissions = assetPermissions ?? (await getAssetPermissions(assetId));
   return permissions?.some((permission) => permission.subjectType === SubjectType.All);
 };
 
@@ -78,10 +77,7 @@ export const getAssetPermissionIdsForUniverse = async (
   assetId: number,
   assetPermissions?: AssetPermissionResponseModel[],
 ) => {
-  let permissions = assetPermissions;
-  if (permissions === undefined) {
-    permissions = await getAssetPermissions(assetId);
-  }
+  const permissions = assetPermissions ?? (await getAssetPermissions(assetId));
   const subjectIds = permissions
     ?.filter((permission) => permission.subjectType === SubjectType.Universe)
     .map((permission) => Number(permission.subjectId));
@@ -132,6 +128,7 @@ export const getExperienceDetails = async (universeIds: number[]) => {
     return universeDetails.data
       .filter((item) => item && item.id && item.name && item.creator && item.creator.name)
       .map((universe) => {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- pre-existing: filter guarantees fields exist
         return {
           universeId: universe.id,
           experienceName: universe.name,
@@ -171,6 +168,7 @@ export enum DistributionErrorState {
   CompositeAssetIneligibleDependencies = 'CompositeAssetIneligibleDependencies',
   CompositeAssetDependenciesLimit = 'CompositeAssetDependenciesLimit',
   HiddenFromSearch = 'HiddenFromSearch',
+  IneligiblePublisher = 'IneligiblePublisher',
 }
 
 export const getDistributionErrorStateForRestrictions = (
@@ -196,6 +194,12 @@ export const getDistributionErrorStateForRestrictions = (
   if (publishingRestrictions.includes(Restriction.CompositeAssetBrokenDependenciesLimit)) {
     return DistributionErrorState.CompositeAssetDependenciesLimit;
   }
+  if (
+    publishingRestrictions.includes(Restriction.AgeVerification) ||
+    publishingRestrictions.includes(Restriction.Moderation)
+  ) {
+    return DistributionErrorState.IneligiblePublisher;
+  }
   if (publishingRestrictions.includes(Restriction.SafetyStatus)) {
     return DistributionErrorState.PotentialPolicyViolation;
   }
@@ -219,6 +223,7 @@ export const getDistributionErrorStateForRestrictions = (
     isBackendFiatProductPriced &&
     (pricingRestrictions.includes(Restriction.Moderation) ||
       pricingRestrictions.includes(Restriction.ModerationHistory) ||
+      pricingRestrictions.includes(Restriction.TwoStepVerification) ||
       pricingRestrictions.includes(Restriction.Verification))
   ) {
     return DistributionErrorState.IneligibleFiatSeller;

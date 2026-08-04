@@ -120,6 +120,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: contentAccessAndInventoryFlags.isPricingEligibilityV2Enabled,
+      metadata: {
+        namespace: 'content-access-and-inventory',
+        name: 'isPricingEligibilityV2Enabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: contentLicensingFlags.isExperiencePreviewEnabled,
       metadata: {
         namespace: 'content-licensing',

@@ -129,6 +129,22 @@ const DistributionAlert: FunctionComponent<React.PropsWithChildren<DistributionA
           severity: 'error',
           title: translate('Label.AssetCannotBeDistributed'),
         };
+      case DistributionErrorState.IneligiblePublisher:
+        return {
+          link: undefined,
+          message: undefined,
+          translationLabelProps: {
+            anchorTargetUrl: docs.getSellingOnCreatorStoreUrl(),
+            closing: 'reqLinkEnd',
+            typographyVariantOverride: messageTypographyVariant,
+            linkVariantOverride: 'inherit',
+            typographyColorOverride: 'inherit',
+            opening: 'reqLinkStart',
+            translationKey: 'Message.UserIneligibleForPublishing',
+          },
+          severity: 'error',
+          title: translate('Label.AssetCannotBeDistributed'),
+        };
       case DistributionErrorState.IneligibleFiatSeller:
         return {
           link: undefined,
@@ -228,6 +244,7 @@ const DistributionAlert: FunctionComponent<React.PropsWithChildren<DistributionA
       case DistributionErrorState.UserNotVerified:
       case DistributionErrorState.InvalidAssetType:
       case DistributionErrorState.PotentialPolicyViolation:
+      case DistributionErrorState.IneligiblePublisher:
       case DistributionErrorState.IneligibleFiatSeller:
       case DistributionErrorState.Other:
       case DistributionErrorState.Unauthorized:
