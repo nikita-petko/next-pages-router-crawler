@@ -3,7 +3,10 @@ import React, { useCallback, useState } from 'react';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import {
   CircularProgress,
+  FormControl,
   Grid,
+  MenuItem,
+  Select,
   Table,
   TableBody,
   TableCell,
@@ -15,11 +18,16 @@ import {
   Typography,
 } from '@rbx/ui';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import type { AssetDependenciesFilter } from '@modules/react-query/creatorAssetTooling/assetDependenciesQueries';
 import { useGetAssetDependencies } from '@modules/react-query/creatorAssetTooling/assetDependenciesQueries';
 import { useCurrentDeveloperItem } from '../common/DeveloperItemProvider';
-
-const DEFAULT_PAGE_SIZE = 25;
-const PAGE_SIZE_OPTIONS = [1, 10, 25, 50, 100];
+import {
+  ACCESS_REASON_OPTIONS,
+  ASSET_TYPE_OPTIONS,
+  DEFAULT_PAGE_SIZE,
+  FILTER_DROPDOWN_MIN_WIDTH,
+  PAGE_SIZE_OPTIONS,
+} from './constants';
 
 const DependenciesContainer: FunctionComponent = () => {
   const { translate } = useTranslation();
@@ -31,6 +39,7 @@ const DependenciesContainer: FunctionComponent = () => {
   const [pageTokens, setPageTokens] = useState<Map<number, string | undefined>>(
     () => new Map([[0, undefined]]),
   );
+  const [filter, setFilter] = useState<AssetDependenciesFilter | undefined>(undefined);
 
   const currentPageToken = pageTokens.get(page);
 
@@ -39,6 +48,7 @@ const DependenciesContainer: FunctionComponent = () => {
     undefined,
     rowsPerPage,
     currentPageToken,
+    filter,
     assetId > 0,
   );
 
@@ -62,6 +72,31 @@ const DependenciesContainer: FunctionComponent = () => {
     setPageTokens(new Map([[0, undefined]]));
   };
 
+  const resetPagination = () => {
+    setPage(0);
+    setPageTokens(new Map([[0, undefined]]));
+  };
+
+  const handleAssetTypeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const match = ASSET_TYPE_OPTIONS.find((opt) => opt.value === event.target.value);
+    if (match) {
+      setFilter({ childAssetType: match.value });
+    } else {
+      setFilter(undefined);
+    }
+    resetPagination();
+  };
+
+  const handleAccessReasonChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const match = ACCESS_REASON_OPTIONS.find((opt) => opt.value === event.target.value);
+    if (match) {
+      setFilter({ childAccessReason: match.value });
+    } else {
+      setFilter(undefined);
+    }
+    resetPagination();
+  };
+
   const labelDisplayedRows = useCallback(
     ({ from }: { from: number }) => `${from}–${from + results.length - 1}`,
     [results.length],
@@ -83,19 +118,6 @@ const DependenciesContainer: FunctionComponent = () => {
     );
   }
 
-  if (results.length === 0 && page === 0) {
-    return (
-      <Grid container direction='column'>
-        <Grid item style={{ marginBottom: '16px' }}>
-          <Typography color='secondary' variant='body1'>
-            {translate('Description.Dependencies')}
-          </Typography>
-        </Grid>
-        <Typography>{translate('Message.NoDependenciesFound')}</Typography>
-      </Grid>
-    );
-  }
-
   return (
     <Grid container direction='column'>
       <Grid item style={{ marginBottom: '16px' }}>
@@ -103,56 +125,94 @@ const DependenciesContainer: FunctionComponent = () => {
           {translate('Description.Dependencies')}
         </Typography>
       </Grid>
-      <TableContainer>
-        <Table size='medium' stickyHeader>
-          <TableHead>
-            <TableRow>
-              <TableCell>{translate('Heading.AssetId')}</TableCell>
-              <TableCell>{translate('Heading.AssetName')}</TableCell>
-              <TableCell>{translate('Heading.AssetType')}</TableCell>
-              <TableCell>{translate('Heading.AssetVersion')}</TableCell>
-              <TableCell>{translate('Heading.CreatorId')}</TableCell>
-              <TableCell>{translate('Heading.CreatorType')}</TableCell>
-              <TableCell>{translate('Heading.AccessStatus')}</TableCell>
-              <TableCell>{translate('Heading.AccessReason')}</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody style={{ opacity: isPlaceholderData ? 0.5 : 1 }}>
-            {results.map((result) => (
-              <TableRow key={`${result.assetId?.assetId}-${result.assetId?.versionNumber}`}>
-                <TableCell>{result.assetId?.assetId}</TableCell>
-                <TableCell>{result.assetId?.metadata?.assetName ?? '—'}</TableCell>
-                <TableCell>{result.assetId?.metadata?.assetType ?? '—'}</TableCell>
-                <TableCell>{result.assetId?.versionNumber ?? '—'}</TableCell>
-                <TableCell>{result.assetId?.metadata?.creator?.creatorId ?? '—'}</TableCell>
-                <TableCell>{result.assetId?.metadata?.creator?.creatorType ?? '—'}</TableCell>
-                <TableCell>{result.accessStatus ?? '—'}</TableCell>
-                <TableCell>{result.accessReason ?? '—'}</TableCell>
+      <Grid container item spacing={2} style={{ marginBottom: '16px' }}>
+        <Grid item>
+          <FormControl size='small' style={{ minWidth: FILTER_DROPDOWN_MIN_WIDTH }}>
+            <Select
+              label={translate('Heading.AssetType')}
+              value={filter?.childAssetType ?? ''}
+              onChange={handleAssetTypeChange}
+              disabled={filter?.childAccessReason != null}>
+              <MenuItem value=''>{translate('Label.All')}</MenuItem>
+              {ASSET_TYPE_OPTIONS.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {translate(opt.labelKey)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid item>
+          <FormControl size='small' style={{ minWidth: FILTER_DROPDOWN_MIN_WIDTH }}>
+            <Select
+              label={translate('Heading.AccessReason')}
+              value={filter?.childAccessReason ?? ''}
+              onChange={handleAccessReasonChange}
+              disabled={filter?.childAssetType != null}>
+              <MenuItem value=''>{translate('Label.All')}</MenuItem>
+              {ACCESS_REASON_OPTIONS.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {translate(opt.labelKey)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+      </Grid>
+      {results.length === 0 && page === 0 ? (
+        <Typography>{translate('Message.NoDependenciesFound')}</Typography>
+      ) : (
+        <TableContainer>
+          <Table size='medium' stickyHeader>
+            <TableHead>
+              <TableRow>
+                <TableCell>{translate('Heading.AssetId')}</TableCell>
+                <TableCell>{translate('Heading.AssetName')}</TableCell>
+                <TableCell>{translate('Heading.AssetType')}</TableCell>
+                <TableCell>{translate('Heading.AssetVersion')}</TableCell>
+                <TableCell>{translate('Heading.CreatorId')}</TableCell>
+                <TableCell>{translate('Heading.CreatorType')}</TableCell>
+                <TableCell>{translate('Heading.AccessStatus')}</TableCell>
+                <TableCell>{translate('Heading.AccessReason')}</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-          <TableFooter>
-            <TableRow>
-              <TablePagination
-                count={-1}
-                onPageChange={handlePageChange}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-                page={page}
-                rowsPerPage={rowsPerPage}
-                rowsPerPageOptions={PAGE_SIZE_OPTIONS}
-                labelDisplayedRows={labelDisplayedRows}
-                labelRowsPerPage={translate('Label.RowsPerPage')}
-                slotProps={{
-                  actions: {
-                    nextButton: { disabled: !hasNextPage || isPlaceholderData },
-                    previousButton: { disabled: page === 0 || isPlaceholderData },
-                  },
-                }}
-              />
-            </TableRow>
-          </TableFooter>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody style={{ opacity: isPlaceholderData ? 0.5 : 1 }}>
+              {results.map((result) => (
+                <TableRow key={`${result.assetId?.assetId}-${result.assetId?.versionNumber}`}>
+                  <TableCell>{result.assetId?.assetId}</TableCell>
+                  <TableCell>{result.assetId?.metadata?.assetName ?? '—'}</TableCell>
+                  <TableCell>{result.assetId?.metadata?.assetType ?? '—'}</TableCell>
+                  <TableCell>{result.assetId?.versionNumber ?? '—'}</TableCell>
+                  <TableCell>{result.assetId?.metadata?.creator?.creatorId ?? '—'}</TableCell>
+                  <TableCell>{result.assetId?.metadata?.creator?.creatorType ?? '—'}</TableCell>
+                  <TableCell>{result.accessStatus ?? '—'}</TableCell>
+                  <TableCell>{result.accessReason ?? '—'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+            <TableFooter>
+              <TableRow>
+                <TablePagination
+                  count={-1}
+                  onPageChange={handlePageChange}
+                  onRowsPerPageChange={handleChangeRowsPerPage}
+                  page={page}
+                  rowsPerPage={rowsPerPage}
+                  rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+                  labelDisplayedRows={labelDisplayedRows}
+                  labelRowsPerPage={translate('Label.RowsPerPage')}
+                  slotProps={{
+                    actions: {
+                      nextButton: { disabled: !hasNextPage || isPlaceholderData },
+                      previousButton: { disabled: page === 0 || isPlaceholderData },
+                    },
+                  }}
+                />
+              </TableRow>
+            </TableFooter>
+          </Table>
+        </TableContainer>
+      )}
     </Grid>
   );
 };

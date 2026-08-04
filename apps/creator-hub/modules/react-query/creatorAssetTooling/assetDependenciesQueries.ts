@@ -1,13 +1,17 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import type { AssetDependenciesChildFilter } from '@rbx/client-creator-asset-tooling-api/v1';
 import creatorAssetToolingClient from '@modules/clients/creatorAssetTooling';
 
 const KEY_PREFIX = 'creatorAssetTooling_';
+
+export type AssetDependenciesFilter = AssetDependenciesChildFilter;
 
 function getAssetDependenciesQueryKey(
   sourceAssetId: number,
   sourceAssetVersionNumber: number | undefined,
   pageSize: number,
   pageToken: string | undefined,
+  filter: AssetDependenciesFilter | undefined,
 ) {
   return [
     `${KEY_PREFIX}getAssetDependencies`,
@@ -15,15 +19,16 @@ function getAssetDependenciesQueryKey(
     sourceAssetVersionNumber,
     pageSize,
     pageToken,
+    filter,
   ] as const;
 }
 
-// TODO: This query is not currently in use. It will be used in STM-9203 to paginate through the asset dependencies.
 export function useGetAssetDependencies(
   sourceAssetId: number,
   sourceAssetVersionNumber: number | undefined,
   pageSize: number,
   pageToken: string | undefined,
+  filter: AssetDependenciesFilter | undefined,
   enabled = true,
 ) {
   return useQuery({
@@ -32,6 +37,7 @@ export function useGetAssetDependencies(
       sourceAssetVersionNumber,
       pageSize,
       pageToken,
+      filter,
     ),
     queryFn: () =>
       creatorAssetToolingClient.getAssetDependencies({
@@ -39,6 +45,7 @@ export function useGetAssetDependencies(
         sourceAssetVersionNumber,
         pageSize,
         pageToken,
+        filter,
       }),
     placeholderData: keepPreviousData,
     enabled,

@@ -3,6 +3,7 @@ import {
   DeepCopyApi,
   StatusApi,
   OperationType,
+  type AssetDependenciesChildFilter,
 } from '@rbx/client-creator-asset-tooling-api/v1';
 import { createClientConfiguration } from './utils/createClientConfiguration';
 
@@ -25,13 +26,15 @@ export class CreatorAssetToolingClient {
     sourceAssetVersionNumber?: number;
     pageSize: number;
     pageToken?: string;
+    filter?: AssetDependenciesChildFilter;
   }) {
-    const { sourceAssetId, sourceAssetVersionNumber, pageSize, pageToken } = params;
+    const { sourceAssetId, sourceAssetVersionNumber, pageSize, pageToken, filter } = params;
     return this.assetDependenciesApi.assetDependenciesGetAssetDependencies({
       assetDependenciesGetAssetDependenciesRequest: {
         sourceAssetIdentifier: { sourceAssetId, sourceAssetVersionNumber },
         pageSize,
         pageToken,
+        filter,
       },
     });
   }
