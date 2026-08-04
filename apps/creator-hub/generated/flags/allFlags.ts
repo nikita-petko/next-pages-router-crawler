@@ -180,6 +180,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: contentLicensingFlags.isIgnoreMatchEnabled,
+      metadata: {
+        namespace: 'content-licensing',
+        name: 'isIgnoreMatchEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: contentSuitabilityFlags.questionnaireV2Allowlist,
       metadata: {
         namespace: 'content-suitability',
@@ -297,6 +307,16 @@ export const generatedFlags = [
         defaultValue: true,
         valueType: 'boolean',
         contextType: 'universe',
+      },
+    },
+    {
+      flag: creatorAnalyticsFlags.isAceL7SmoothingEnabled,
+      metadata: {
+        namespace: 'creator-analytics',
+        name: 'isAceL7SmoothingEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
       },
     },
     {

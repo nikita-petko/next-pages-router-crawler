@@ -7,6 +7,7 @@ import {
   NodeType as AceNodeType,
   ResourceType as AceResourceType,
   WindowReducer,
+  WindowAvgMode,
   type ConstantNodeConfig,
   type MathNodeConfig,
   type OutputConfig,
@@ -545,6 +546,7 @@ const buildBranch = (args: BranchBuildArgs): void => {
         input: rawResultNodeId,
         windowSize: 7,
         reducer: WindowReducer.Avg,
+        avgMode: WindowAvgMode.WindowSize,
       },
     });
     outputInputNodeId = smoothingNodeId;

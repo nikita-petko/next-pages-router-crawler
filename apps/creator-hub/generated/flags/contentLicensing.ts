@@ -27,3 +27,8 @@ export const isShowcaseExperiencesEnabled = defineFlag({
     name: 'isShowcaseExperiencesEnabled',
     defaultValue: false,
   });
+export const isIgnoreMatchEnabled = defineFlag({
+    namespace: 'content-licensing',
+    name: 'isIgnoreMatchEnabled',
+    defaultValue: false,
+  });

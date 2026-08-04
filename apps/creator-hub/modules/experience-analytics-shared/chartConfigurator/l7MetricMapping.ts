@@ -22,6 +22,7 @@ const l7SmoothingMetricPairs = [
   [RAQIV2Metric.DailyActiveUsers, RAQIV2Metric.L7AverageDailyActiveUsers],
   [RAQIV2Metric.AveragePlayTimeMinutesPerDAU, RAQIV2Metric.L7AveragePlayTimeMinutesPerDAU],
   [RAQIV2Metric.UniqueUsersWithPlaySessions, RAQIV2Metric.L7AverageUniqueUsersWithPlaySessions],
+  [RAQIV2Metric.RFYPlayThroughRate, RAQIV2Metric.L7AverageRFYPlayThroughRate],
   [RAQIV2Metric.RFYQualifiedPTR, RAQIV2Metric.L7AverageRFYQualifiedPTR],
 ] as const satisfies ReadonlyArray<readonly [TRAQIV2NumericUIMetric, TRAQIV2NumericUIMetric]>;
 

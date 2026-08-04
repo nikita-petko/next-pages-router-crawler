@@ -46,6 +46,10 @@ import {
   type RAQIV2CombinedAPIQueryRequest,
 } from '@modules/clients/analytics/analyticsRAQIShared';
 import { isValidEnumValue, isValidArrayEnumValue } from '@modules/miscellaneous/utils/enumUtils';
+import {
+  buildL7SmoothingComputedMetric,
+  getBaseMetricFromL7,
+} from '../chartConfigurator/l7MetricMapping';
 import getAnalyticsMetricDisplayConfig from '../constants/AnalyticsMetricDisplayConfig';
 import type { TComparisonOffset } from '../constants/comparisonOffset';
 import type { TDurationBucketDimension } from '../constants/RAQIV2DurationBucketDimensions';
@@ -107,6 +111,7 @@ const catchRequestFail = async <T>(promise: Promise<T>): Promise<T | null> =>
 
 type CombinedAPIClientWrapper = {
   platformGatewayRAQIClient: AnalyticsQueryGatewayClientWrapper;
+  routePrecomputedL7ToAce?: boolean;
 };
 export type { CombinedAPIClientWrapper as RAQIV2CombinedAPIClientWrapper };
 
@@ -823,6 +828,11 @@ export type MakeRAQIV2RequestOptions = {
    * client-side N-query fanout.
    */
   enableAceVariantFanout?: boolean;
+  /**
+   * When true, known precomputed L7 metric identities are executed as ACE
+   * seven-day rolling-average DAGs over their base metrics.
+   */
+  routePrecomputedL7ToAce?: boolean;
 };
 
 export const SupportedGranularitiesForFillMissingDatapoints = [
@@ -1747,12 +1757,22 @@ type RequestMetricSelection =
 
 const resolveRequestMetricSelection = (
   metric: MetricLike<TRAQIV2UIMetric>,
+  routePrecomputedL7ToAce: boolean,
 ): RequestMetricSelection => {
   if (isComputedMetric(metric)) {
     return {
       kind: 'computed',
       metric,
     };
+  }
+  if (routePrecomputedL7ToAce && typeof metric === 'string') {
+    const baseMetric = getBaseMetricFromL7(metric);
+    if (baseMetric) {
+      return {
+        kind: 'computed',
+        metric: buildL7SmoothingComputedMetric(baseMetric, undefined),
+      };
+    }
   }
   return {
     kind: 'standard',
@@ -1813,7 +1833,10 @@ const makeRAQIV2Request = async (
   const { fillMissingDatapoints: fillMissingDatapointsForMetric } = resolvedOptions;
   const defaultSnapGranularity = givenTimeSpec.snapGranularity ?? granularity;
   let snappedTimeSpec = buildSnappedTimeSpec(givenTimeSpec, defaultSnapGranularity);
-  const metricSelection = resolveRequestMetricSelection(givenMetric);
+  const metricSelection = resolveRequestMetricSelection(
+    givenMetric,
+    resolvedOptions.routePrecomputedL7ToAce ?? clients.routePrecomputedL7ToAce ?? false,
+  );
 
   if (metricSelection.kind === 'computed') {
     return makeComputedMetricRequest({
