@@ -4,7 +4,6 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import { analyticsItemMonetizationDeveloperProductsNavigationItem } from '@modules/charts-generic/constants/analyticsNavigationItems';
 import DeveloperProductsTableContainer from '@modules/developer-products/containers/DeveloperProductsTableContainer';
 import { useIsAnyDeveloperProductManagedPricingEnabled } from '@modules/developer-products/hooks/useIsAnyDeveloperProductManagedPricingEnabled';
-import { useIsAnyDeveloperProductRegionalPricingEnabled } from '@modules/developer-products/hooks/useIsAnyDeveloperProductRegionalPricingEnabled';
 import CreatorAnalyticsLayout from '@modules/experience-analytics-shared/components/RAQIV2/layout/CreatorAnalyticsLayout';
 import useOwner from '@modules/experience-analytics-shared/context/useOwner';
 import { useAnalyticsExperiencePermissions } from '@modules/experience-analytics-shared/hooks/useAnalyticsPermissions';
@@ -23,7 +22,6 @@ import GenericTabbedPageLayout, {
   type TabConfig,
 } from '@modules/monetization-shared/tabs/GenericTabbedPageLayout';
 import { useUniversePermissions } from '@modules/react-query/organizations';
-import GiftingTradingWarningBanner from '@modules/regional-pricing/components/GiftingTradingWarningBanner';
 import ItemMonetizationTabs from '../../constants/ItemMonetizationTabs';
 import { useItemMonetizationClient } from '../../context/ItemMonetizationClientProvider';
 import getTransactionPageUrl from '../../utils/getTransactionPageUrl';
@@ -45,14 +43,6 @@ function DeveloperProductsPageContent({ universeId }: { universeId: number }) {
 
   const managedPricingOnboardingStatus = managedPricingStatus?.status;
   const hasRegionalPricingSource = managedPricingStatus?.sources?.includes('RegionalPricing');
-
-  // Note we make this dependent only on gifting trading status which should run against cache.
-  // The actual query is kicked off in the table container.
-  const { data: isAnyDeveloperProductRegionalPricingEnabled = false } =
-    useIsAnyDeveloperProductRegionalPricingEnabled(
-      { universeId },
-      { enabled: shouldShowGiftingTradingReminder(giftingTradingStatus) },
-    );
 
   const { data: isAnyDeveloperProductManagedPricingEnabled = false } =
     useIsAnyDeveloperProductManagedPricingEnabled(
@@ -154,21 +144,13 @@ function DeveloperProductsPageContent({ universeId }: { universeId: number }) {
         />
       )}
 
-      {isManagedPricingAvailable(managedPricingOnboardingStatus) ? (
+      {isManagedPricingAvailable(managedPricingOnboardingStatus) && (
         <GiftingTradingWarningBannerV2
           universeId={universeId}
           page='/developer-products'
           giftingTradingStatus={giftingTradingStatus}
           // Only show gifting trading warnings if any developer product loaded is managed pricing enabled
           enabled={isAnyDeveloperProductManagedPricingEnabled}
-        />
-      ) : (
-        <GiftingTradingWarningBanner
-          universeId={universeId}
-          page='/developer-products'
-          giftingTradingStatus={giftingTradingStatus}
-          // Only show gifting trading warnings if any developer product loaded is regional pricing enabled
-          enabled={isAnyDeveloperProductRegionalPricingEnabled}
         />
       )}
 

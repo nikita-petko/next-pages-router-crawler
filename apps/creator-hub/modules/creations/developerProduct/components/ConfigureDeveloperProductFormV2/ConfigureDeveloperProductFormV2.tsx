@@ -2,13 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import NextLink from 'next/link';
 import type { SubmitHandler } from 'react-hook-form';
 import { FormProvider, useForm, useFormContext } from 'react-hook-form';
-import type { GiftingTradingStatus } from '@rbx/client-developer-products-api/v1';
 import { clsx } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { ReturnPolicy, ThumbnailTypes } from '@rbx/thumbnails';
 import { Button, ErrorOutlineOutlinedIcon, FormHelperText } from '@rbx/ui';
 import { useUpdateDeveloperProduct } from '@modules/developer-products/queries/useUpdateDeveloperProduct';
-import { shouldShowGiftingTradingReminder } from '@modules/managed-pricing/gifting-trading/utils';
 import { DEVELOPER_PRODUCT_LEARN_MORE_URL } from '@modules/miscellaneous/common/constants/linkConstants';
 import ThumbnailImageUploader from '@modules/miscellaneous/components/uploaders/components/ThumbnailImageUploader';
 import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
@@ -19,7 +17,6 @@ import DisallowPriceChangeInExperimentBanner from '@modules/price-optimization/c
 import DeveloperProductRegionalPricingDisclaimerModal, {
   useDeveloperProductRegionalPricingDisclaimer,
 } from '@modules/regional-pricing/components/DeveloperProductRegionalPricingDisclaimerModal/DeveloperProductRegionalPricingDisclaimerModal';
-import GiftingTradingWarningBanner from '@modules/regional-pricing/components/GiftingTradingWarningBanner';
 import type { DeveloperProduct, ConfigureDeveloperProductFormV2Values } from '../../types';
 import {
   NameTextField,
@@ -32,7 +29,6 @@ type Props = {
   universeId: number;
   productId: number;
   developerProduct: DeveloperProduct;
-  giftingTradingStatus?: GiftingTradingStatus;
   isPending?: boolean;
   shopId?: number;
 };
@@ -44,7 +40,6 @@ function ConfigureDeveloperProductFormV2({
   universeId,
   productId,
   developerProduct,
-  giftingTradingStatus,
   isPending = false,
   shopId,
 }: Props) {
@@ -123,15 +118,8 @@ function ConfigureDeveloperProductFormV2({
 
   const isAllPending = isSubmitting || isPending || isUpdatePending;
 
-  // TODO: refactor to enforce single banner state at a time
-
   const isPricingConfigChangeAllowed =
     !developerProduct.isInActivePriceOptimizationExperiment && !developerProduct.isImmutable;
-
-  // Only show gifting trading warnings if regional pricing is already enabled
-  const shouldShowGiftingTradingWarningBanner =
-    developerProduct.isRegionalPricingEnabled &&
-    shouldShowGiftingTradingReminder(giftingTradingStatus);
 
   return (
     <form className='flex flex-col gap-[40px]' onSubmit={handleSubmit(saveChangesWithAck)}>
@@ -143,13 +131,6 @@ function ConfigureDeveloperProductFormV2({
           </Link>
         </span>
       </div>
-
-      <GiftingTradingWarningBanner
-        universeId={universeId}
-        page='/configure'
-        giftingTradingStatus={giftingTradingStatus}
-        enabled={shouldShowGiftingTradingWarningBanner}
-      />
 
       <DisallowPriceChangeInExperimentBanner
         enabled={developerProduct.isInActivePriceOptimizationExperiment}

@@ -95,7 +95,6 @@ function ConfigureDeveloperProductContainer({ universeId, productId }: Props) {
       universeId={universeId}
       productId={productId}
       developerProduct={developerProduct}
-      giftingTradingStatus={giftingTradingStatus}
       isPending={isDeveloperProductRefetching}
       shopId={shopId}
     />
