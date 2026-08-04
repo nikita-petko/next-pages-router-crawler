@@ -62,7 +62,7 @@ export const STEP_STATE_CONSTANTS = {
 };
 
 export const DOCUMENTATION_CONSTANTS = {
-  SERVER_RESTART_DOCS: '/docs/production/publishing/publish-experiences-and-places#release-updates',
+  SERVER_RESTART_DOCS: '/docs/projects/update-games#notifications-on-servers',
 } as const;
 
 export const PAGINATION_CONSTANTS = {
