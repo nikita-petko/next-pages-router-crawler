@@ -509,7 +509,7 @@ const buildBranch = (args: BranchBuildArgs): void => {
     nodeByVariable.set(source.key, queryNodeId);
     const queryConfig: RankQueryNodeConfig = {
       metric: queryMetric,
-      breakdown: branchBreakdown,
+      breakdown: rankBreakdownSpecs?.length ? undefined : branchBreakdown,
       filters: mergeSourceAndDagLevelFilters(queryFilters, globalFilters),
       topN: undefined,
       breakdownSpecs: rankBreakdownSpecs?.length ? rankBreakdownSpecs : undefined,
