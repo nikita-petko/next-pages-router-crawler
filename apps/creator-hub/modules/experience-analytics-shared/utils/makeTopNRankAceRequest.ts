@@ -9,7 +9,6 @@
  * TopN pre-query / stitch path.
  *
  * Eligibility (all must hold):
- * - `emitAceRankBreakdownSpec` is on (feature flag)
  * - at least one TopN pseudo-dimension breakdown is present
  * - no competing concerns: everything listed in `LegacyTopNOnlyFeatures`, or a
  *   comparison whose rank window cannot be pinned to the primary period
@@ -137,7 +136,6 @@ type MakeTopNRankAceRequestParams = {
   apiBreakdown: readonly RAQIV2Dimension[];
   /** TopN pseudo-dimension configs (e.g. TopCountries) from the UI breakdown. */
   topNBreakdownConfigs: readonly TUIPseudoDimensionTopNBreakdownConfig[];
-  emitAceRankBreakdownSpec?: boolean;
   fetchTotalSeries?: boolean;
   comparison?: ComparisonRangeSpec;
   legacyOnlyFeatures: LegacyTopNOnlyFeatures;
@@ -555,7 +553,6 @@ const makeTopNRankAceRequest = async ({
   metric,
   apiBreakdown,
   topNBreakdownConfigs,
-  emitAceRankBreakdownSpec,
   fetchTotalSeries,
   comparison,
   legacyOnlyFeatures,
@@ -563,13 +560,12 @@ const makeTopNRankAceRequest = async ({
   const aceTopNConfigs = topNBreakdownConfigs.map((config) =>
     topNPseudoDimensionToAceConfigForRequest(config, request.timeSpec, comparison),
   );
-  const canEmitAceRankBreakdownSpec =
-    emitAceRankBreakdownSpec &&
+  const canUseAceRankBreakdownSpec =
     aceTopNConfigs.length > 0 &&
     (comparison === undefined || canUsePrimaryWindowRankComparison(aceTopNConfigs)) &&
     !Object.values(legacyOnlyFeatures).some(Boolean);
 
-  if (!canEmitAceRankBreakdownSpec) {
+  if (!canUseAceRankBreakdownSpec) {
     return null;
   }
 

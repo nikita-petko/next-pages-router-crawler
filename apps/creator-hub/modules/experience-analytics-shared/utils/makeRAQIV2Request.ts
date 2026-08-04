@@ -818,13 +818,6 @@ export type MakeRAQIV2RequestOptions = {
   allowComparisonWithBreakdown?: boolean;
   fillMissingDatapoints?: boolean;
   /**
-   * DSA-5783: when true (and the request qualifies), standard TopN breakdowns
-   * are delegated to ACE/AFC via rank `BreakdownSpec`s instead of the legacy
-   * frontend TopN pre-query/stitching flow. Resolved centrally by
-   * `useRAQIV2Request` from the `isAceRankBreakdownSpecEnabled` flag.
-   */
-  emitAceRankBreakdownSpec?: boolean;
-  /**
    * DSA-5784: when true (and the request qualifies), metric variant fanout is
    * delegated to ACE/AFC via a single DAG request instead of the legacy
    * client-side N-query fanout.
@@ -1586,7 +1579,6 @@ const makeComputedMetricRequest = async ({
   metric,
   clients,
   fetchTotalSeries,
-  emitAceRankBreakdownSpec,
   comparison,
 }: {
   queryRequest: RAQIV2UIQueryRequest;
@@ -1594,7 +1586,6 @@ const makeComputedMetricRequest = async ({
   metric: ComputedMetric;
   clients: CombinedAPIClientWrapper;
   fetchTotalSeries: boolean | undefined;
-  emitAceRankBreakdownSpec: boolean | undefined;
   comparison?: FetchComparisonOptions;
 }): Promise<RAQIV2QueryResponses> => {
   const executeForTimeSpec = async (
@@ -1617,7 +1608,6 @@ const makeComputedMetricRequest = async ({
         // `RAQIV2QueryResponses.totalSeriesResponse`.
         {
           includeTotalBranch: Boolean(fetchTotalSeries),
-          emitRankBreakdownSpec: Boolean(emitAceRankBreakdownSpec),
         },
       );
     } catch (error) {
@@ -1832,7 +1822,6 @@ const makeRAQIV2Request = async (
       metric: metricSelection.metric,
       clients,
       fetchTotalSeries: resolvedOptions.fetchTotalSeries,
-      emitAceRankBreakdownSpec: resolvedOptions.emitAceRankBreakdownSpec,
       comparison: fetchComparison,
     });
   }
@@ -1894,7 +1883,6 @@ const makeRAQIV2Request = async (
     metric: metricForTotalSeries,
     apiBreakdown: apiBreakdownBase,
     topNBreakdownConfigs: topNPseudoBreakdown.map(({ config }) => config),
-    emitAceRankBreakdownSpec: resolvedOptions.emitAceRankBreakdownSpec,
     fetchTotalSeries: resolvedOptions.fetchTotalSeries,
     comparison: fetchComparison,
     legacyOnlyFeatures: {

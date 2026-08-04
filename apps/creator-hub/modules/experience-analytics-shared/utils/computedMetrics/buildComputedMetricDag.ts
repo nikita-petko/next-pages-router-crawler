@@ -14,7 +14,6 @@ import {
   type QueryBreakdown,
   type QueryNodeConfig,
   type RollingWindowConfig,
-  type TopNConfig,
 } from '@rbx/client-analytics-query-gateway/v1';
 import {
   RAQIV2Dimension,
@@ -461,7 +460,6 @@ type BranchBuildArgs = {
   ast: FormulaAstNode;
   globalFilters: readonly RAQIV2QueryFilter[] | undefined;
   branchBreakdown: QueryBreakdown[] | undefined;
-  topNConfig: TopNConfig | undefined;
   rankBreakdownSpecs: RankBreakdownSpec[] | undefined;
   outputNodeId: string;
   outputAlias: string;
@@ -488,7 +486,6 @@ const buildBranch = (args: BranchBuildArgs): void => {
     ast,
     globalFilters,
     branchBreakdown,
-    topNConfig,
     rankBreakdownSpecs,
     outputNodeId,
     outputAlias,
@@ -513,8 +510,8 @@ const buildBranch = (args: BranchBuildArgs): void => {
       metric: queryMetric,
       breakdown: branchBreakdown,
       filters: mergeSourceAndDagLevelFilters(queryFilters, globalFilters),
-      topN: rankBreakdownSpecs ? undefined : topNConfig,
-      breakdownSpecs: rankBreakdownSpecs,
+      topN: undefined,
+      breakdownSpecs: rankBreakdownSpecs?.length ? rankBreakdownSpecs : undefined,
       pseudoDimensionValues: acePseudoDimensionValue ? [acePseudoDimensionValue] : undefined,
     };
 
@@ -588,7 +585,6 @@ export type BuildComputedMetricDagOptions = {
    * except buckets the duration chart must keep).
    */
   includeTotalBranch?: boolean;
-  emitRankBreakdownSpec?: boolean;
 };
 
 export const buildComputedMetricDag = (
@@ -622,14 +618,6 @@ export const buildComputedMetricDag = (
   // set so they never leak onto ACE query nodes.
   const { topNBreakdowns, passthroughBreakdowns } = splitTopNBreakdownDimensions(request.breakdown);
   const topNConfigs = getSupportedTopNBreakdownConfigs(topNBreakdowns, sharedSupportedDimensions);
-  if (!options.emitRankBreakdownSpec && topNConfigs.length > 1) {
-    throw new RAQIV2ValidationError(
-      RAQIV2ValidationErrorType.UnsupportedBreakdown,
-      'Computed metrics support at most one TopN breakdown dimension.',
-      getUIMetricFromAtomicMetricLike(computedMetric.sources[0].metric),
-    );
-  }
-
   const realBreakdowns = getUniqueBreakdowns([
     ...passthroughBreakdowns.filter(
       (d) =>
@@ -639,19 +627,16 @@ export const buildComputedMetricDag = (
     ...topNConfigs.map((config) => config.dimension),
   ]);
   const rankedDimensions = new Set<TRAQIV2Dimension>(topNConfigs.map((config) => config.dimension));
-  const rankBreakdownSpecs = options.emitRankBreakdownSpec
-    ? [
-        // Pseudo-dimensions cannot carry a wire breakdown spec, so they are
-        // dropped here rather than widening `RankBreakdownSpec.dimension`.
-        ...realBreakdowns.flatMap((dimension) =>
-          !rankedDimensions.has(dimension) && isValidEnumValue(RAQIV2Dimension, dimension)
-            ? [dimensionToRankBreakdownSpec(dimension)]
-            : [],
-        ),
-        ...topNConfigs.map(topNConfigToRankBreakdownSpec),
-      ]
-    : undefined;
-  const topNConfig = options.emitRankBreakdownSpec ? undefined : topNConfigs[0];
+  const rankBreakdownSpecs = [
+    // Pseudo-dimensions cannot carry a wire breakdown spec, so they are
+    // dropped here rather than widening `RankBreakdownSpec.dimension`.
+    ...realBreakdowns.flatMap((dimension) =>
+      !rankedDimensions.has(dimension) && isValidEnumValue(RAQIV2Dimension, dimension)
+        ? [dimensionToRankBreakdownSpec(dimension)]
+        : [],
+    ),
+    ...topNConfigs.map(topNConfigToRankBreakdownSpec),
+  ];
   const queryBreakdowns = toQueryBreakdowns(realBreakdowns);
 
   const durationBucketBreakdowns = realBreakdowns.filter(isDurationBucketDimension);
@@ -674,7 +659,6 @@ export const buildComputedMetricDag = (
     ast: parseResult.ast,
     globalFilters,
     branchBreakdown: queryBreakdowns,
-    topNConfig,
     rankBreakdownSpecs,
     outputNodeId: MAIN_OUTPUT_NODE_ID,
     outputAlias: outputAliasBase,
@@ -704,7 +688,6 @@ export const buildComputedMetricDag = (
       ast: parseResult.ast,
       globalFilters,
       branchBreakdown: totalBranchBreakdown,
-      topNConfig: undefined,
       rankBreakdownSpecs: undefined,
       outputNodeId: TOTAL_OUTPUT_NODE_ID,
       outputAlias: `${outputAliasBase}_total`,

@@ -52,11 +52,6 @@ export const isFirstSeenColumnEnabled = defineFlag({
     name: 'isFirstSeenColumnEnabled',
     defaultValue: true,
   });
-export const isAceRankBreakdownSpecEnabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'isAceRankBreakdownSpecEnabled',
-    defaultValue: false,
-  });
 export const sentryChartTracingEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'sentryChartTracingEnabled',

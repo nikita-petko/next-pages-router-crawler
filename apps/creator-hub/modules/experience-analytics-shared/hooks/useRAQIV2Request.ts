@@ -10,7 +10,6 @@ import stripFetchComparisonForBreakdown from '../utils/stripFetchComparisonForBr
 import { validateRAQIV2Request } from '../utils/validateRAQIV2Request';
 import type { TUseApiRequestResponse } from './useApiRequest';
 import useApiRequest from './useApiRequest';
-import useRAQIV2RequestFlags from './useRAQIV2RequestFlags';
 
 // NOTE(shumingxu, 02/22/2024): This is the ideal entry point for RAQI V2 requests as this handles
 // processing utils and cache handling for consumers.
@@ -20,23 +19,13 @@ const useRAQIV2Request = (
   ignoreCache?: boolean,
 ): TUseApiRequestResponse<RAQIV2QueryResponses> => {
   const { client, clearCache } = useRAQIV2Client(ignoreCache ?? false);
-  const requestFlags = useRAQIV2RequestFlags();
 
   const resolvedOptions = useMemo((): MakeRAQIV2RequestOptions => {
     const callerOptions = stripFetchComparisonForBreakdown(request, makeRAQIV2RequestOptions) ?? {};
-    // An explicit caller value wins for both request options (Storybook and tests
-    // pin a path); otherwise ACE variant fanout stays enabled and the remaining
-    // rollout flag decides rank breakdown behavior. The request stays disabled
-    // until that flag resolves.
-    const effectiveOptions: MakeRAQIV2RequestOptions = requestFlags.ready
-      ? {
-          ...callerOptions,
-          enableAceVariantFanout: makeRAQIV2RequestOptions?.enableAceVariantFanout ?? true,
-          emitAceRankBreakdownSpec:
-            makeRAQIV2RequestOptions?.emitAceRankBreakdownSpec ??
-            requestFlags.emitAceRankBreakdownSpec,
-        }
-      : callerOptions;
+    const effectiveOptions: MakeRAQIV2RequestOptions = {
+      ...callerOptions,
+      enableAceVariantFanout: makeRAQIV2RequestOptions?.enableAceVariantFanout ?? true,
+    };
 
     if (!effectiveOptions.fetchComparison) {
       return effectiveOptions;
@@ -56,7 +45,7 @@ const useRAQIV2Request = (
       ...effectiveOptions,
       fetchComparison: undefined,
     };
-  }, [makeRAQIV2RequestOptions, request, requestFlags]);
+  }, [makeRAQIV2RequestOptions, request]);
 
   const makeRaqiRequest = useCallback(() => {
     const validationError = validateRAQIV2Request(request);
@@ -68,7 +57,6 @@ const useRAQIV2Request = (
   }, [client, resolvedOptions, request]);
 
   const response = useApiRequest(makeRaqiRequest, {
-    enabled: requestFlags.ready,
     refetchShouldSetLoading: true,
     invalidateCache: ignoreCache ? clearCache : undefined,
   });
