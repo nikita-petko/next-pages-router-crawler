@@ -1,13 +1,16 @@
-import { Fragment, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useTranslation, withTranslation } from '@rbx/intl';
-import { makeStyles, Tab, Tabs, Typography } from '@rbx/ui';
-import { useQueryParams } from '@modules/miscellaneous/hooks';
+import { Button, makeStyles, Tab, Tabs, Typography } from '@rbx/ui';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import useQueryParams from '@modules/miscellaneous/hooks/useQueryParams';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import IphAgreementsTable from '../agreements/components/IphAgreementsTable';
 import IpListings from '../ipListings/components/IpListings';
+import { IP_EARNINGS_ANALYTICS_HREF } from '../urls';
 import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../utils/logger';
 
-const useStyles = makeStyles()({
+const useStyles = makeStyles()((theme) => ({
   semanticGapLargerBottom: {
     marginBottom: 24,
   },
@@ -17,7 +20,20 @@ const useStyles = makeStyles()({
   tabsMargin: {
     marginBottom: 16,
   },
-});
+  descriptionContainer: {
+    display: 'flex',
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  button: {
+    marginLeft: theme.spacing(2),
+  },
+  viewEarningsButton: {
+    whiteSpace: 'nowrap',
+  },
+}));
 
 const licenseAgreementsTab = {
   key: 'license-agreements',
@@ -53,7 +69,12 @@ const LicensesContainer = () => {
     },
     [setQueryParams, logEvent],
   );
-  const { translate } = useTranslation();
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
+  const handleViewEarningsClick = useCallback(() => {
+    window.location.assign(IP_EARNINGS_ANALYTICS_HREF);
+  }, []);
 
   let content;
   if (activeTab === licenseAgreementsTab) {
@@ -63,14 +84,27 @@ const LicensesContainer = () => {
   }
   return (
     <>
-      <Typography
-        variant='body1'
-        component='p'
-        color='secondary'
-        className={classes.semanticGapLargerBottom}>
-        {translate('Description.IphLicensesLanding')}
-      </Typography>
-
+      <div className={classes.descriptionContainer}>
+        <Typography variant='body1' component='div' color='secondary' gutterBottom>
+          {translate('Description.IphLicensesLanding')}
+        </Typography>
+        <div className={classes.button}>
+          <div>
+            <Button
+              size='medium'
+              variant='contained'
+              color='secondary'
+              className={classes.viewEarningsButton}
+              onClick={handleViewEarningsClick}>
+              {tPendingTranslation(
+                'View earnings',
+                'Action linking from License Manager to IP earnings analytics.',
+                translationKey('Action.ViewEarnings', TranslationNamespace.AgreementsManager),
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
       <Tabs
         onChange={onTabChange}
         orientation='horizontal'

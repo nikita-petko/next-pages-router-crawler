@@ -3,6 +3,7 @@ import type MatchDetailsTabs from './agreements/enums/MatchDetailsTabs';
 
 export const LICENSE_MANAGER_BASE_HREF = '/dashboard/license-manager';
 
+export const IP_EARNINGS_ANALYTICS_HREF = '/dashboard/analytics/ip-earnings';
 export const IP_LISTINGS_HREF = '/dashboard/license-manager/licenses?tab=licenses';
 export const IP_LISTING_CREATE_HREF = '/dashboard/license-manager/license-listings/create';
 export const IP_LISTING_DETAILS_HREF = (id: string) =>
