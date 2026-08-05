@@ -1,4 +1,7 @@
-import type { GetUsersMomentsResponse, MomentItem } from '@rbx/client-content-captures-api/v1';
+import type {
+  ContentCapturesApiModelsResponseGetUsersMomentsResponse as GetUsersMomentsResponse,
+  ContentCapturesApiModelsResponseMomentItem as MomentItem,
+} from '@rbx/client-content-captures-api/v1';
 import type { MomentCreation } from '../types/MomentCreation';
 import { MomentCreationStatus } from '../types/MomentCreation';
 import { parseVideoContentLanguage } from './momentsUploadLocaleUtils';

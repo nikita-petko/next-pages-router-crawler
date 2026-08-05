@@ -74,7 +74,7 @@ export const generatedFlags = [
       metadata: {
         namespace: 'communities',
         name: 'AnnouncementAnalytics',
-        defaultValue: false,
+        defaultValue: true,
         valueType: 'boolean',
         contextType: 'group',
       },

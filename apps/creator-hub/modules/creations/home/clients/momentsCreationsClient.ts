@@ -1,4 +1,4 @@
-import type { GetUsersMomentsResponse } from '@rbx/client-content-captures-api/v1';
+import type { ContentCapturesApiModelsResponseGetUsersMomentsResponse as GetUsersMomentsResponse } from '@rbx/client-content-captures-api/v1';
 import type { Locale } from '@rbx/intl';
 import contentCapturesApiClient from '@modules/clients/contentCapturesApi';
 import developClient from '@modules/clients/develop';

@@ -1,4 +1,4 @@
-import type { MomentPublishData } from '@rbx/client-content-captures-api/v1';
+import type { ContentCapturesSharedModelsMomentPublishData as MomentPublishData } from '@rbx/client-content-captures-api/v1';
 import type { Locale } from '@rbx/intl';
 import contentCapturesApiClient from '@modules/clients/contentCapturesApi';
 import type { StoredMomentCreation } from '../types/StoredMomentCreation';
@@ -16,7 +16,6 @@ export type PublishMomentRequest = {
 
 export type PublishMomentResult = {
   operationId: string;
-  momentId?: string | null;
 };
 
 /** Content-captures expects cookie-style lowercase locale tags (e.g. `en-us`). */
@@ -80,6 +79,5 @@ export async function publishMoment({
 
   return {
     operationId,
-    momentId: response.momentId,
   };
 }

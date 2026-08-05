@@ -10,5 +10,5 @@ export const creatorAnalytics = defineFlag({
 export const announcementAnalytics = defineFlag({
     namespace: 'communities',
     name: 'AnnouncementAnalytics',
-    defaultValue: false,
+    defaultValue: true,
   });
