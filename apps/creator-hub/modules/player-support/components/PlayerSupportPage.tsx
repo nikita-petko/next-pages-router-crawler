@@ -13,7 +13,7 @@ import { Icon, ProgressCircle, Tabs, TabsList, TabsTrigger } from '@rbx/foundati
 import { withTranslation, useTranslation } from '@rbx/intl';
 import { useDebounce } from '@rbx/react-utilities';
 import { useMediaQuery, type TTheme } from '@rbx/ui';
-import { enablePlayerSupportSearchAndFilters } from '@generated/flags/creatorGameops';
+import { enablePlayerSupport } from '@generated/flags/creatorGameops';
 import useLocale from '@modules/charts-generic/context/useLocale';
 import GenericTablePagination from '@modules/charts-generic/tables/GenericTablePagination';
 import {
@@ -112,7 +112,7 @@ const PlayerSupportPage: React.FunctionComponent = () => {
   const { translate } = useTranslation();
   const { gameDetails } = useCurrentGame();
   const universeId = gameDetails?.id ?? 0;
-  const { value: isSearchAndFiltersEnabled } = useFlag(enablePlayerSupportSearchAndFilters);
+  const { value: isSearchAndFiltersEnabled } = useFlag(enablePlayerSupport, { universeId });
   const isMobile = useMediaQuery((theme: TTheme) => theme.breakpoints.down('Medium'));
   const locale = useLocale();
   const router = useRouter();

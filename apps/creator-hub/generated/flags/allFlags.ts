@@ -660,16 +660,6 @@ export const generatedFlags = [
       },
     },
     {
-      flag: creatorGameopsFlags.enablePlayerSupportSearchAndFilters,
-      metadata: {
-        namespace: 'creator-gameops',
-        name: 'enablePlayerSupportSearchAndFilters',
-        defaultValue: false,
-        valueType: 'boolean',
-        contextType: 'static',
-      },
-    },
-    {
       flag: creatorGameopsFlags.enableExpeditedReview,
       metadata: {
         namespace: 'creator-gameops',

@@ -7,11 +7,6 @@ export const enablePlayerSupport = defineFlag({
     name: 'enablePlayerSupport',
     defaultValue: false,
   });
-export const enablePlayerSupportSearchAndFilters = defineFlag({
-    namespace: 'creator-gameops',
-    name: 'enablePlayerSupportSearchAndFilters',
-    defaultValue: false,
-  });
 export const enableExpeditedReview = defineFlag({
     namespace: 'creator-gameops',
     name: 'enableExpeditedReview',
