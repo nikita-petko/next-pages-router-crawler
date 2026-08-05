@@ -232,7 +232,7 @@ const ActivitySection: React.FunctionComponent<{
                   {resolveAuthor(firstComment.author)}
                 </span>
               </div>
-              <p className='content-default text-body-medium margin-none'>
+              <p className='content-default text-body-medium margin-none [overflow-wrap:anywhere]'>
                 {firstComment.message ?? ''}
               </p>
             </div>
@@ -265,7 +265,7 @@ const ActivitySection: React.FunctionComponent<{
                     {resolveAuthor(comment.author)}
                   </span>
                 </div>
-                <p className='content-default text-body-medium margin-none'>
+                <p className='content-default text-body-medium margin-none [overflow-wrap:anywhere]'>
                   {isSharedUserId && comment.author
                     ? translate('Message.CannedResponse.UserSharedID', {
                         userId: comment.author,
