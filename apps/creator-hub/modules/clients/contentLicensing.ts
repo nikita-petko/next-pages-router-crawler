@@ -50,6 +50,9 @@ import type {
   AgreementCandidateIndexOfferStatusFilter,
   AgreementCandidateIndexSortBy,
   AgreementCandidateIndexSortDirection,
+  ListingShowcaseContentResponse,
+  ListShowcaseEligibleContentResponse,
+  ListingsReplaceListingShowcaseContentRequest,
 } from '@rbx/client-content-licensing-api/v1';
 import {
   AgreementCandidatesApi,
@@ -291,6 +294,53 @@ export class ContentLicensingApiClient {
   }
 
   /**
+   * Fetches the showcase content configured for an IP listing.
+   */
+  async getListingShowcaseContent(
+    accountId: string,
+    listingId: string,
+  ): Promise<ListingShowcaseContentResponse> {
+    return this.listingsApi.listingsGetListingShowcaseContent({
+      accountId,
+      listingId,
+    });
+  }
+
+  /**
+   * Fetches content eligible to be showcased on an IP listing.
+   */
+  async listShowcaseEligibleContentByListing(
+    accountId: string,
+    listingId: string,
+    pageSize?: number,
+    pageToken?: string,
+  ): Promise<ListShowcaseEligibleContentResponse> {
+    return this.listingsApi.listingsListShowcaseEligibleContentByListing({
+      accountId,
+      listingId,
+      pageSize: pageSize ?? DEFAULT_PAGE_SIZE,
+      pageToken,
+    });
+  }
+
+  /**
+   * Replaces the showcase content configured for an IP listing.
+   */
+  async replaceListingShowcaseContent(
+    accountId: string,
+    listingId: string,
+    request: ListingsReplaceListingShowcaseContentRequest,
+    ifMatch?: string,
+  ): Promise<ListingShowcaseContentResponse> {
+    return this.listingsApi.listingsReplaceListingShowcaseContent({
+      accountId,
+      listingId,
+      ifMatch,
+      listingsReplaceListingShowcaseContentRequest: request,
+    });
+  }
+
+  /**
    * Fetches licenses by IP listing
    */
   async listLicensesByIpListing(
@@ -337,6 +387,21 @@ export class ContentLicensingApiClient {
     }
 
     return this.listingsApi.listingsGetPublicListing({
+      listingId: listingId.trim(),
+    });
+  }
+
+  /**
+   * Fetches showcase content for a public IP listing.
+   */
+  async getPublicListingShowcaseContent(
+    listingId: string,
+  ): Promise<ListingShowcaseContentResponse> {
+    if (!listingId || listingId.trim().length === 0) {
+      throw new Error('Listing ID is required');
+    }
+
+    return this.listingsApi.listingsGetPublicListingShowcaseContent({
       listingId: listingId.trim(),
     });
   }
