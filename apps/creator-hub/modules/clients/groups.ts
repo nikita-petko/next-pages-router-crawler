@@ -277,6 +277,10 @@ const groupsClient: GroupsClient = {
     return groupApi.v1GroupsGroupIdGet(usersGroupRequest);
   },
   getGroupsInfo(groupIds: number[]) {
+    // Groups V2 returns 400 when `groupIds` is empty / unparseable.
+    if (groupIds.length === 0) {
+      return Promise.resolve({ data: [] });
+    }
     const getGroupsRequest = {
       groupIds,
     };
