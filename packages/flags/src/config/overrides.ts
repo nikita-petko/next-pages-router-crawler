@@ -1,3 +1,6 @@
+import type { z } from 'zod';
+import type { overrideResponseSchema } from '../schema';
+
 declare global {
   interface Window {
     rbxFlags: {
@@ -7,6 +10,8 @@ declare global {
     };
   }
 }
+
+export type TServerOverrides = z.infer<typeof overrideResponseSchema>['override'];
 
 const EVENT_NAME = 'flags-override';
 const STORAGE_PREFIX = 'flags';
@@ -60,7 +65,7 @@ export function getOverride(namespace: string, name: string): unknown {
   }
 }
 
-export function register(): void {
+export function register(serverOverrides?: TServerOverrides): void {
   if (typeof window === 'undefined') {
     return;
   }
@@ -99,6 +104,12 @@ export function register(): void {
       emit();
     },
   };
+
+  serverOverrides?.forEach(({ namespace, flags }) => {
+    Object.entries(flags).forEach(([name, value]) => {
+      localStorage.setItem(formatStorageKey(namespace, name), JSON.stringify(value));
+    });
+  });
 
   // Existing useFlag subscribers may have resolved server values before
   // asynchronous override authorization completed. Notify them to re-read

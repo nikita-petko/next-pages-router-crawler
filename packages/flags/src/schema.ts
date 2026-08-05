@@ -93,6 +93,14 @@ export const contextualNamespaceResponseSchema = namespaceResponseBaseSchema.ext
 
 export const overrideResponseSchema = z.object({
   isOverrideAllowed: z.boolean(),
+  override: z
+    .array(
+      z.object({
+        namespace: z.string(),
+        flags: z.record(z.string(), flagValueSchema),
+      }),
+    )
+    .optional(),
 });
 
 export type NamespaceFile = z.infer<typeof namespaceFileSchema>;

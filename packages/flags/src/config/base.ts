@@ -1,9 +1,13 @@
 import { overrideResponseSchema } from '../schema';
 import type { TInitFlagsConfig, TInitFlagsReturn, TOverrideOptions } from '../types';
 import { register } from './overrides';
+import type { TServerOverrides } from './overrides';
+
+export const FLAG_OVERRIDES_QUERY_PARAM = 'flag-overrides';
 
 let config: TInitFlagsConfig | null = null;
 let overridesEnabled = false;
+let pendingServerOverrides: TServerOverrides;
 
 function assertInitialized(
   flagsConfig: TInitFlagsConfig | null,
@@ -22,19 +26,31 @@ export function isOverridesEnabled(): boolean {
   return overridesEnabled;
 }
 
+function getFlagOverridesQueryValue(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  return new URLSearchParams(window.location.search).get(FLAG_OVERRIDES_QUERY_PARAM);
+}
+
 async function checkDefaultAuthorization(): Promise<boolean> {
+  pendingServerOverrides = undefined;
+
   try {
     const flagsConfig = getConfig();
+    const url = new URL('/barista-feature-flags/v1/override-status', flagsConfig.baseUrl);
+    const flagOverrides = getFlagOverridesQueryValue();
+    if (flagOverrides) {
+      url.searchParams.set(FLAG_OVERRIDES_QUERY_PARAM, flagOverrides);
+    }
 
-    const response = await fetch(
-      new URL('/barista-feature-flags/v1/override-status', flagsConfig.baseUrl),
-      {
-        credentials: 'include',
-      },
-    );
+    const response = await fetch(url, {
+      credentials: 'include',
+    });
 
     // The `override-status` endpoint always returns HTTP 200 with body
-    // `{ isOverrideAllowed: boolean }` when the controller runs (see
+    // `{ isOverrideAllowed: boolean, override?: [...] }` when the controller runs (see
     // barista-feature-flags tech-spec §9.5). The `isOverrideAllowed` field
     // -- not the status code -- is the sole authorization signal. A non-2xx
     // response (e.g. gateway 401, network 5xx) means the endpoint did not
@@ -45,6 +61,7 @@ async function checkDefaultAuthorization(): Promise<boolean> {
     }
 
     const body = await response.json().then((json) => overrideResponseSchema.parseAsync(json));
+    pendingServerOverrides = body.override;
     return body.isOverrideAllowed;
   } catch {
     return false;
@@ -54,11 +71,12 @@ async function checkDefaultAuthorization(): Promise<boolean> {
 async function resolveAuthorization(
   options: Extract<TOverrideOptions, { mode: 'authorized-only' }>,
 ): Promise<boolean> {
+  pendingServerOverrides = undefined;
   const authorized = 'authorize' in options ? await options.authorize().catch(() => false) : false;
 
   if (authorized || (options.useDefault && (await checkDefaultAuthorization()))) {
     overridesEnabled = true;
-    register();
+    register(pendingServerOverrides);
     return true;
   }
 
