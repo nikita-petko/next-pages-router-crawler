@@ -28,6 +28,8 @@ export enum LicenseManagerClickEvent {
   PublicLicensesTableDurationTypeFilterClickEvent = 'PublicLicensesTableDurationTypeFilterClickEvent',
   PublicLicensesTableLicenseTypeFilterClickEvent = 'PublicLicensesTableLicenseTypeFilterClickEvent',
   PublicLicensesTableClearFiltersClickEvent = 'publicLicensesTableClearFiltersClickEvent',
+  PublicListingDetailsPageShowcaseContentClickEvent = 'publicListingDetailsPageShowcaseContentClickEvent',
+  PublicListingDetailsPageShowcaseCarouselNavigationClickEvent = 'publicListingDetailsPageShowcaseCarouselNavigationClickEvent',
   IphAgreementsTableSelectTabClickEvent = 'iphAgreementsTableSelectTabClickEvent',
   IphAgreementsTableSelectFilterClickEvent = 'iphAgreementsTableSelectFilterClickEvent',
   IphAgreementsTableViewAgreementClickEvent = 'iphAgreementsTableViewAgreementClickEvent',

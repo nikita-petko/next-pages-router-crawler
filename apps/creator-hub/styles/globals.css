@@ -4390,6 +4390,9 @@
 .\[left\:16px\] {
   left: 16px;
 }
+.\[left\:6px\] {
+  left: 6px;
+}
 .\[left\:8px\] {
   left: 8px;
 }
@@ -4644,6 +4647,9 @@
 }
 .\[right\:4px\] {
   right: 4px;
+}
+.\[right\:6px\] {
+  right: 6px;
 }
 .\[row-gap\:12px\] {
   row-gap: 12px;
@@ -6058,10 +6064,28 @@ html.studio-webview.dark-theme,
   .\[\@media\(hover\:hover\)\]\:invisible {
     visibility: hidden;
   }
+  .\[\@media\(hover\:hover\)\]\:pointer-events-none {
+    pointer-events: none;
+  }
+  .\[\@media\(hover\:hover\)\]\:\[opacity\:0\] {
+    opacity: 0;
+  }
   .group:focus-within .\[\@media\(hover\:hover\)\]\:group-focus-within\:visible {
     visibility: visible;
   }
+  .group:focus-within .\[\@media\(hover\:hover\)\]\:group-focus-within\:pointer-events-auto {
+    pointer-events: auto;
+  }
+  .group:focus-within .\[\@media\(hover\:hover\)\]\:group-focus-within\:\[opacity\:1\] {
+    opacity: 1;
+  }
   .group:hover .\[\@media\(hover\:hover\)\]\:group-hover\:visible {
     visibility: visible;
+  }
+  .group:hover .\[\@media\(hover\:hover\)\]\:group-hover\:pointer-events-auto {
+    pointer-events: auto;
+  }
+  .group:hover .\[\@media\(hover\:hover\)\]\:group-hover\:\[opacity\:1\] {
+    opacity: 1;
   }
 }
