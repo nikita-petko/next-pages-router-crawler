@@ -1331,6 +1331,9 @@
 .relative {
   position: relative;
 }
+.\!static {
+  position: static !important;
+}
 .static {
   position: static;
 }
@@ -2641,6 +2644,9 @@
 }
 .width-\[176px\] {
   width: 176px;
+}
+.width-\[190px\] {
+  width: 190px;
 }
 .width-\[1em\] {
   width: 1em;
@@ -5000,6 +5006,10 @@ html.studio-webview.dark-theme,
 
 .disabled\:cursor-default:disabled {
   cursor: default;
+}
+
+.disabled\:cursor-not-allowed:disabled {
+  cursor: not-allowed;
 }
 
 .group\/timeline-item:first-child .group-first\/timeline-item\:invisible {
