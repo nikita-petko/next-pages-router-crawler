@@ -523,9 +523,16 @@ const ConfigureMediaFiatForm: FunctionComponent<
     !isDescriptionModerated;
   const shouldDisableDistribution = isNameModerated || isDescriptionModerated;
 
-  // First encountered pulishing restriction will override the error state
+  // First encountered publishing restriction will override the error state
   let distributionErrorState = DistributionErrorState.AssetNotPublic;
-  if (assetConfigurationRestrictions.publishingRestrictions.includes(Restriction.Verification)) {
+  if (
+    assetConfigurationRestrictions.publishingRestrictions.includes(Restriction.AgeVerification) ||
+    assetConfigurationRestrictions.publishingRestrictions.includes(Restriction.Moderation)
+  ) {
+    distributionErrorState = DistributionErrorState.IneligiblePublisher;
+  } else if (
+    assetConfigurationRestrictions.publishingRestrictions.includes(Restriction.Verification)
+  ) {
     distributionErrorState = DistributionErrorState.NotStartedAudioDistribution;
   } else if (
     assetConfigurationRestrictions.publishingRestrictions.includes(Restriction.RightsClaim)
