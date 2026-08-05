@@ -1,7 +1,7 @@
 import { useState, type FC } from 'react';
 import type { UniverseTransactionStatusResponse } from '@rbx/client-core-content-transaction-api/v1';
 import { TransactionVariantEnum } from '@rbx/client-core-content-transaction-api/v1';
-import { Button, FeedbackBanner } from '@rbx/foundation-ui';
+import { Alert } from '@rbx/foundation-ui';
 import { useLocalization, useTranslation } from '@rbx/intl';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import {
@@ -20,6 +20,7 @@ interface AudienceReachExpediteUpsellBannerProps {
   isAccountAllAgesTier: boolean;
   expeditedTransactionStatus: UniverseTransactionStatusResponse | null;
   openSuccessSnackbar?: (message: string) => void;
+  groupId?: number;
 }
 
 const AudienceReachExpediteUpsellBanner: FC<AudienceReachExpediteUpsellBannerProps> = ({
@@ -28,6 +29,7 @@ const AudienceReachExpediteUpsellBanner: FC<AudienceReachExpediteUpsellBannerPro
   expeditedTransactionStatus,
   isAccountAllAgesTier,
   openSuccessSnackbar,
+  groupId,
 }) => {
   const { locale } = useLocalization();
   const { translateWithNamespace } = useTranslation();
@@ -39,38 +41,10 @@ const AudienceReachExpediteUpsellBanner: FC<AudienceReachExpediteUpsellBannerPro
     return null;
   }
 
-  const buttonContainer = (
-    // The size prop on button has priority over padding-x-small, which is why I
-    // have the inner divs.  Pay in particular looks off without it since it's
-    // so short
-    <div className='flex flex-row gap-small'>
-      <Button size='Small' variant='Standard' onClick={() => setIsDialogOpen(true)}>
-        <div className='padding-x-small'>
-          {translateWithNamespace(TranslationNamespace.AudienceReach, 'Action.Pay')}
-        </div>
-      </Button>
-      <Button as='a' href={SelectReviewDocsLink} size='Small' variant='Utility'>
-        <div className='padding-x-small'>
-          {translateWithNamespace(TranslationNamespace.AudienceReach, 'Action.ViewDetails')}
-        </div>
-      </Button>
-    </div>
-  );
-
   const refundEligibleTime = expeditedTransactionStatus.createdTime
     ? new Date(Number(expeditedTransactionStatus.createdTime.seconds) * 1000 + RefundPeriodMs)
     : null;
-  const refundIsAvailable = refundEligibleTime && refundEligibleTime < new Date();
-
-  const requestRefundButton = (
-    <Button
-      size='Small'
-      variant='Standard'
-      onClick={() => setIsDialogOpen(true)}
-      isDisabled={!refundIsAvailable}>
-      {translateWithNamespace(TranslationNamespace.AudienceReach, 'Action.RequestRefund')}
-    </Button>
-  );
+  const refundIsAvailable = Boolean(refundEligibleTime && refundEligibleTime < new Date());
 
   let bannerDescription;
   if (expeditedTransactionStatus.hasDeposit && refundEligibleTime) {
@@ -143,6 +117,7 @@ const AudienceReachExpediteUpsellBanner: FC<AudienceReachExpediteUpsellBannerPro
         )}
         modalBody={expeditedDialogBody}
         fee={ExpeditedReviewFee}
+        groupId={groupId}
       />
     );
   } else {
@@ -159,24 +134,47 @@ const AudienceReachExpediteUpsellBanner: FC<AudienceReachExpediteUpsellBannerPro
 
   return (
     <>
-      <FeedbackBanner
-        title={
-          expeditedTransactionStatus.hasDeposit
-            ? translateWithNamespace(
-                TranslationNamespace.AudienceReach,
-                'Heading.EnrolledForExpeditedReview',
-              )
-            : translateWithNamespace(
-                TranslationNamespace.AudienceReach,
-                'Heading.ExpeditedReviewBanner',
-              )
-        }
-        description={bannerDescription}
-        layout='Inline'
-        variant='Emphasis'
+      <Alert
+        variant='Feedback'
         severity='Info'
-        actions={expeditedTransactionStatus.hasDeposit ? requestRefundButton : buttonContainer}
-      />
+        hasCloseAffordance={false}
+        primaryActionLabel={
+          expeditedTransactionStatus.hasDeposit
+            ? refundIsAvailable
+              ? translateWithNamespace(TranslationNamespace.AudienceReach, 'Action.RequestRefund')
+              : undefined
+            : translateWithNamespace(TranslationNamespace.AudienceReach, 'Action.Pay')
+        }
+        onPrimaryAction={
+          expeditedTransactionStatus.hasDeposit
+            ? refundIsAvailable
+              ? () => setIsDialogOpen(true)
+              : undefined
+            : () => setIsDialogOpen(true)
+        }
+        secondaryActionLabel={
+          expeditedTransactionStatus.hasDeposit
+            ? undefined
+            : translateWithNamespace(TranslationNamespace.AudienceReach, 'Action.ViewDetails')
+        }
+        secondaryActionHref={
+          expeditedTransactionStatus.hasDeposit ? undefined : SelectReviewDocsLink
+        }>
+        <div className='flex min-width-0 items-center gap-xsmall'>
+          <span className='text-label-medium'>
+            {expeditedTransactionStatus.hasDeposit
+              ? translateWithNamespace(
+                  TranslationNamespace.AudienceReach,
+                  'Heading.EnrolledForExpeditedReview',
+                )
+              : translateWithNamespace(
+                  TranslationNamespace.AudienceReach,
+                  'Heading.ExpeditedReviewBanner',
+                )}
+          </span>
+          <span>{bannerDescription}</span>
+        </div>
+      </Alert>
       {ctaDialog}
     </>
   );

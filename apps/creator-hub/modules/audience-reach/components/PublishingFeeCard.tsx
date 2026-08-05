@@ -2,13 +2,14 @@ import { useMemo, useState, type FC } from 'react';
 import { CreatorTierEnum } from '@rbx/client-core-content-api/v1';
 import { TransactionVariantEnum } from '@rbx/client-core-content-transaction-api/v1';
 import { useFlag } from '@rbx/flags';
-import { Button, FeedbackBanner, Snackbar } from '@rbx/foundation-ui';
+import { Alert, Button, Snackbar } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { Skeleton } from '@rbx/ui';
 import { enableExpeditedReview } from '@generated/flags/creatorGameops';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import useUniversePublishStatus from '@modules/creations-overview/hooks/useUniversePublishStatus';
+import CreatorType from '@modules/miscellaneous/common/enums/Creator';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import { useCreatorEligibility } from '@modules/publishing-permissions/hooks/useCreatorEligibility';
@@ -48,6 +49,10 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
   const { translate } = useTranslationWrapper(useTranslation());
   const { gameDetails } = useCurrentGame();
   const universeId = gameDetails?.id ?? 0;
+  const groupId =
+    gameDetails?.creator?.type === CreatorType.Group
+      ? (gameDetails.creator.id ?? undefined)
+      : undefined;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
   const { isPublished, isLoading: isUniversePublishStatusLoading } =
@@ -203,20 +208,23 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
           isAccountAllAgesTier={isAccountAllAgesTier}
           expeditedTransactionStatus={expeditedTransactionStatus ?? null}
           openSuccessSnackbar={setSnackbarMessage}
+          groupId={groupId}
         />
       )}
       {shouldShowPublishingFeeUpsell && (
-        <FeedbackBanner
-          title={translate(
-            translationKey('Heading.ExpandYourReach', TranslationNamespace.PublicPublish),
-          )}
-          description={translate(
-            translationKey('Description.ExpandYourReach', TranslationNamespace.PublicPublish),
-            { number: PublishingFee.toString() },
-          )}
-          variant='Emphasis'
-          severity='Warning'
-        />
+        <Alert variant='Feedback' severity='Warning' hasCloseAffordance={false}>
+          <div className='flex min-width-0 items-center gap-xsmall'>
+            <span className='text-label-medium'>
+              {translate(
+                translationKey('Heading.ExpandYourReach', TranslationNamespace.PublicPublish),
+              )}
+            </span>
+            {translate(
+              translationKey('Description.ExpandYourReach', TranslationNamespace.PublicPublish),
+              { number: PublishingFee.toString() },
+            )}
+          </div>
+        </Alert>
       )}
       <div>
         <div className='flex items-center'>
@@ -248,6 +256,7 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
         )}
         modalBody={paymentModalBody}
         fee={PublishingFee}
+        groupId={groupId}
       />
       {snackbarMessage !== null ? (
         <Snackbar
