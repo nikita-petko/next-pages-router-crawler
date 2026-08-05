@@ -65,12 +65,7 @@ async function hydrateSongArtists(artists: ArtistAttribution[]): Promise<SongArt
 
 const ConfigureMediaFiatContainer: FunctionComponent<
   React.PropsWithChildren<TConfigureDeveloperItemProps>
-> = ({
-  developerItemDetails,
-  enableAssetAccessForm,
-  isCreatorEligibleForAssetAccessBeta,
-  onDataFetchFailed,
-}) => {
+> = ({ developerItemDetails, enableAssetAccessForm, onDataFetchFailed }) => {
   const { type: assetType } = developerItemDetails;
   const { refreshDeveloperItemDetails } = useCurrentDeveloperItem();
   const { settings } = useSettings();
@@ -206,7 +201,6 @@ const ConfigureMediaFiatContainer: FunctionComponent<
         enableAssetAccessForm={enableAssetAccessForm}
         isAttested={isAttested}
         isChartsEligible={isChartsEligible}
-        isCreatorEligibleForAssetAccessBeta={isCreatorEligibleForAssetAccessBeta}
         initialSongArtists={initialSongArtists}
         isOnMarketplace={isOnMarketplace}
         refreshData={refreshData}

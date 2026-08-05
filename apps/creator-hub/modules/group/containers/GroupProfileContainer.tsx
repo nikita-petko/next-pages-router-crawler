@@ -15,7 +15,6 @@ import { useCurrentGroup } from '@modules/providers/groups/GroupsProvider';
 import {
   AssetPrivacyLevel,
   useGetGroupAssetPrivacyDefault,
-  useGetIsGroupEligibleForBeta,
 } from '@modules/react-query/assetPermissions';
 import { useGetGroupDetails, useGetGroupSocialLinks } from '@modules/react-query/groups';
 import useSocialLinksBehavior from '@modules/social-links/hooks/useSocialLinksBehavior';
@@ -35,9 +34,6 @@ const GroupProfileContainer: FunctionComponent<React.PropsWithChildren> = () => 
   const { data: assetPrivacyDefault, isFetching: assetPrivacyDefaultFetching } =
     useGetGroupAssetPrivacyDefault(currentGroup?.id ?? -1, !!currentGroup?.id);
   const { value: isUnifiedUIEnabled } = useFlag(isUnifiedUiEnabled);
-
-  const { data: isGroupEligibleForBeta, isFetching: isGroupEligibleForBetaFetching } =
-    useGetIsGroupEligibleForBeta(currentGroup?.id ?? -1, !!currentGroup?.id);
 
   const {
     data: groupDetails,
@@ -88,8 +84,7 @@ const GroupProfileContainer: FunctionComponent<React.PropsWithChildren> = () => 
     isLoadingAccess ||
     isGroupDetailsFetching ||
     isSocialLinksFetching ||
-    assetPrivacyDefaultFetching ||
-    isGroupEligibleForBetaFetching;
+    assetPrivacyDefaultFetching;
 
   if (isGroupDetailsError || isSocialLinksError) {
     return <ErrorPage errorCode={StatusCodes.BAD_REQUEST} />;
@@ -123,9 +118,7 @@ const GroupProfileContainer: FunctionComponent<React.PropsWithChildren> = () => 
           groupConfiguration={groupConfiguration}
           refreshGroupConfiguration={refreshGroupConfiguration}
           isGroupConfigurationReady
-          enableCreatorPrivacySettings={
-            isGroupEligibleForBeta === true && permissions?.isOwner === true
-          }
+          enableCreatorPrivacySettings={permissions?.isOwner === true}
           disabled={!permissions?.canConfigureOrganization}
         />
       ) : (

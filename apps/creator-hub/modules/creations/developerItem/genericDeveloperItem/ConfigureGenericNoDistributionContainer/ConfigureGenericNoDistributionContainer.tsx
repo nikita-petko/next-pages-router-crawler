@@ -6,14 +6,13 @@ import ConfigureGenericNoDistributionForm from '../ConfigureGenericNoDistributio
 
 const ConfigureGenericNoDistributionContainer: FunctionComponent<
   React.PropsWithChildren<TConfigureDeveloperItemProps>
-> = ({ developerItemDetails, enableAssetAccessForm, isCreatorEligibleForAssetAccessBeta }) => {
+> = ({ developerItemDetails, enableAssetAccessForm }) => {
   const { refreshDeveloperItemDetails } = useCurrentDeveloperItem();
 
   return (
     <ConfigureGenericNoDistributionForm
       developerItemDetails={developerItemDetails}
       enableAssetAccessForm={enableAssetAccessForm}
-      isCreatorEligibleForAssetAccessBeta={isCreatorEligibleForAssetAccessBeta}
       refreshData={refreshDeveloperItemDetails}
     />
   );

@@ -28,7 +28,6 @@ import {
   AssetPrivacyLevel,
   useGetUserAssetPrivacyDefault,
   useUpdateUserAssetPrivacyDefault,
-  useGetIsUserEligibleForBeta,
 } from '@modules/react-query/assetPermissions';
 import useSnackbarAdvancedResponse from '../components/ResponseSnackbarAlert';
 import useCreatorSettingsAdvancedContainerStyles from './CreatorSettingsAdvancedContainer.styles';
@@ -47,8 +46,6 @@ const CreatorSettingsAdvancedContainer: FunctionComponent<React.PropsWithChildre
     isError: assetPrivacyDefaultError,
     isPending: assetPrivacyDefaultLoading,
   } = useGetUserAssetPrivacyDefault(user?.id ?? -1, !!user?.id);
-  const { data: isUserEligibleForBeta, isPending: isUserEligibleForBetaLoading } =
-    useGetIsUserEligibleForBeta(user?.id ?? -1, !!user?.id);
   const { mutateAsync: updateAssetPrivacyDefault, isPending: updateAssetPrivacyDefaultLoading } =
     useUpdateUserAssetPrivacyDefault();
   const [isAssetPrivacyDialogOpen, setIsAssetPrivacyDialogOpen] = useState(false);
@@ -127,93 +124,89 @@ const CreatorSettingsAdvancedContainer: FunctionComponent<React.PropsWithChildre
     return <ErrorPage errorCode={StatusCodes.BAD_REQUEST} />;
   }
 
-  if (assetPrivacyDefaultLoading || isUserEligibleForBetaLoading) {
+  if (assetPrivacyDefaultLoading) {
     return <PageLoading />;
   }
 
   return (
     <div className={styles.container}>
       <Grid className={styles.grid} container direction='column'>
-        {isUserEligibleForBeta && (
-          <>
-            <Grid className={styles.statusLabelColumnGap} item container direction='column'>
-              <Grid item container direction='row' alignItems='center'>
-                <Typography variant='h4'>{translate('Heading.AssetPrivacy')}</Typography>
-              </Grid>
-              <Grid item container direction='row' alignItems='center'>
-                <Typography variant='body1' color='secondary'>
-                  {translate('Description.AssetPrivacy')}
-                </Typography>
-                <Button className={styles.dialogButton} onClick={handleSeeHowItWorksButtonClicked}>
-                  <Typography variant='subtitle2'>{translate('Label.SeeHowItWorks')}</Typography>
-                </Button>
-              </Grid>
-              <Grid item container direction='row' alignItems='center'>
-                <Switch
-                  aria-label={translate('Label.AllowRestrictedAssets')}
-                  checked={
-                    assetPrivacyDefaultRestricted === AssetPrivacyLevel.Restricted &&
-                    !isAssetPrivacyOpenUsePending
-                  }
-                  onChange={handleAssetPrivacyToggleClicked}
-                  loading={updateAssetPrivacyDefaultLoading}
-                />
-                <Typography variant='body1'>{translate('Label.AllowRestrictedAssets')}</Typography>
-              </Grid>
-            </Grid>
-            <Dialog open={isAssetPrivacyDialogOpen && assetPrivacyDialogStep === 'warning'}>
-              <DialogTitle>{translate('Heading.NewAssetsAsOpenUse')} </DialogTitle>
-              <DialogContent>
-                <Typography variant='body2' color='secondary'>
-                  {translate('Description.TurnOffAssetPrivacy')}{' '}
-                  {translateHTML('Label.LearnMoreAboutAssetPrivacy', [
-                    {
-                      opening: 'aStart',
-                      closing: 'aEnd',
-                      content(chunks: React.ReactNode) {
-                        return (
-                          <Link
-                            href={ASSET_ACCESS_PRIVACY}
-                            target='_blank'
-                            rel='noopener noreferrer'
-                            style={{ textDecoration: 'none' }}>
-                            {chunks}
-                          </Link>
-                        );
-                      },
-                    },
-                  ])}
-                </Typography>
-                <br />
-              </DialogContent>
-              <DialogActions>
-                <Button
-                  onClick={() => {
-                    setIsAssetPrivacyDialogOpen(false);
-                  }}>
-                  {translate('Action.Cancel')}
-                </Button>
-                <Button
-                  onClick={() => {
-                    void setAssetPrivacyToOpenUse();
-                    if (showAssetPrivacyOptOutSurvey) {
-                      setAssetPrivacyDialogStep('followUp');
-                    } else {
-                      setIsAssetPrivacyDialogOpen(false);
-                    }
-                  }}>
-                  {translate('Action.OK')}
-                </Button>
-              </DialogActions>
-            </Dialog>
-            <AssetPrivacyOpenUseFollowUpDialog
-              open={isAssetPrivacyDialogOpen && assetPrivacyDialogStep === 'followUp'}
-              surveyContext='user'
-              onClose={handleAssetPrivacyOptOutSurveyClose}
-              onSubmit={handleAssetPrivacyOptOutSurveySubmit}
+        <Grid className={styles.statusLabelColumnGap} item container direction='column'>
+          <Grid item container direction='row' alignItems='center'>
+            <Typography variant='h4'>{translate('Heading.AssetPrivacy')}</Typography>
+          </Grid>
+          <Grid item container direction='row' alignItems='center'>
+            <Typography variant='body1' color='secondary'>
+              {translate('Description.AssetPrivacy')}
+            </Typography>
+            <Button className={styles.dialogButton} onClick={handleSeeHowItWorksButtonClicked}>
+              <Typography variant='subtitle2'>{translate('Label.SeeHowItWorks')}</Typography>
+            </Button>
+          </Grid>
+          <Grid item container direction='row' alignItems='center'>
+            <Switch
+              aria-label={translate('Label.AllowRestrictedAssets')}
+              checked={
+                assetPrivacyDefaultRestricted === AssetPrivacyLevel.Restricted &&
+                !isAssetPrivacyOpenUsePending
+              }
+              onChange={handleAssetPrivacyToggleClicked}
+              loading={updateAssetPrivacyDefaultLoading}
             />
-          </>
-        )}
+            <Typography variant='body1'>{translate('Label.AllowRestrictedAssets')}</Typography>
+          </Grid>
+        </Grid>
+        <Dialog open={isAssetPrivacyDialogOpen && assetPrivacyDialogStep === 'warning'}>
+          <DialogTitle>{translate('Heading.NewAssetsAsOpenUse')} </DialogTitle>
+          <DialogContent>
+            <Typography variant='body2' color='secondary'>
+              {translate('Description.TurnOffAssetPrivacy')}{' '}
+              {translateHTML('Label.LearnMoreAboutAssetPrivacy', [
+                {
+                  opening: 'aStart',
+                  closing: 'aEnd',
+                  content(chunks: React.ReactNode) {
+                    return (
+                      <Link
+                        href={ASSET_ACCESS_PRIVACY}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        style={{ textDecoration: 'none' }}>
+                        {chunks}
+                      </Link>
+                    );
+                  },
+                },
+              ])}
+            </Typography>
+            <br />
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setIsAssetPrivacyDialogOpen(false);
+              }}>
+              {translate('Action.Cancel')}
+            </Button>
+            <Button
+              onClick={() => {
+                void setAssetPrivacyToOpenUse();
+                if (showAssetPrivacyOptOutSurvey) {
+                  setAssetPrivacyDialogStep('followUp');
+                } else {
+                  setIsAssetPrivacyDialogOpen(false);
+                }
+              }}>
+              {translate('Action.OK')}
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <AssetPrivacyOpenUseFollowUpDialog
+          open={isAssetPrivacyDialogOpen && assetPrivacyDialogStep === 'followUp'}
+          surveyContext='user'
+          onClose={handleAssetPrivacyOptOutSurveyClose}
+          onSubmit={handleAssetPrivacyOptOutSurveySubmit}
+        />
       </Grid>
     </div>
   );

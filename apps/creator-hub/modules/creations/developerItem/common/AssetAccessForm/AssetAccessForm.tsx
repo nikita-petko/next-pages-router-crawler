@@ -29,14 +29,12 @@ import OpenUseConfirmationDialog from './OpenUseConfirmationDialog';
 
 export type AssetAccessFormProps = {
   developerItemDetails: DeveloperItemDetails;
-  isCreatorEligibleForAssetAccessBeta: boolean;
   openUseRestrictions?: Restriction[];
   onSetAssetOpenUse?: () => void;
 };
 
 const AssetAccessForm: FunctionComponent<React.PropsWithChildren<AssetAccessFormProps>> = ({
   developerItemDetails,
-  isCreatorEligibleForAssetAccessBeta,
   openUseRestrictions,
   onSetAssetOpenUse,
 }) => {
@@ -50,12 +48,7 @@ const AssetAccessForm: FunctionComponent<React.PropsWithChildren<AssetAccessForm
   const {
     classes: { containerDescription, containerTitle, dependencyDisclaimer, formContainer },
   } = useAssetAccessFormStyles();
-  const { data: assetIsOpenUse } = useGetAssetIsOpenUse(
-    assetId,
-    isCreatorEligibleForAssetAccessBeta,
-    true,
-    developerItemDetails.type,
-  );
+  const { data: assetIsOpenUse } = useGetAssetIsOpenUse(assetId, true, developerItemDetails.type);
   const { mutateAsync: setAssetOpenUse, isPending: setAssetOpenUseLoading } =
     useSetAssetOpenUse(assetId);
   const { translate } = useTranslation();
@@ -94,7 +87,7 @@ const AssetAccessForm: FunctionComponent<React.PropsWithChildren<AssetAccessForm
    * When an asset is only temporarily restricted, we display both options, but in a disabled state.
    */
   const openUseTemporarilyDisabled =
-    hasPricedAssetRestriction ||
+    (hasPricedAssetRestriction ?? false) ||
     (!isDecalWithOpenUseRestrictions && openUseRestrictions && openUseRestrictions.length > 0); // Catch-all for all other open use restrictions
 
   useEffect(() => {
@@ -193,19 +186,16 @@ const AssetAccessForm: FunctionComponent<React.PropsWithChildren<AssetAccessForm
           {translate('Heading.AssetPrivacy')}
         </Typography>
       </Grid>
-      {/* This is being flagged separately to allow us to display the asset access form to creators who are not yet eligible for beta */}
-      {isCreatorEligibleForAssetAccessBeta && (
-        <div className={containerDescription}>
-          <OverviewInlineUrlTranslationLabel
-            anchorTargetUrl={ASSET_ACCESS_PRIVACY}
-            closing='reqLinkEnd'
-            linkVariantOverride='body1'
-            typographyColorOverride='secondary'
-            opening='reqLinkStart'
-            translationKey='Description.AssetPrivacy'
-          />
-        </div>
-      )}
+      <div className={containerDescription}>
+        <OverviewInlineUrlTranslationLabel
+          anchorTargetUrl={ASSET_ACCESS_PRIVACY}
+          closing='reqLinkEnd'
+          linkVariantOverride='body1'
+          typographyColorOverride='secondary'
+          opening='reqLinkStart'
+          translationKey='Description.AssetPrivacy'
+        />
+      </div>
       <AssetAccessCallToAction creator={creator} />
       {permanentAccessLevelLabel ?? (
         <FormControl disabled={openUseTemporarilyDisabled}>

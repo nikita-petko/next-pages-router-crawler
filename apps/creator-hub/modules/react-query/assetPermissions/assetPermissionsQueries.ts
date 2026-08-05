@@ -1,13 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   GetAssetAccessPropertiesRequest,
   GetAssetDependenciesResult,
   GetAssetDependenciesResultCreator,
+  CreatorType,
 } from '@rbx/client-asset-permissions-api/v1';
 import {
   AssetGrantableAction,
-  CreatorType,
   EligibilityStatus,
   MetadataState,
   SubjectType,
@@ -65,10 +65,10 @@ export type ExtendedGetAssetDependenciesResult = GetAssetDependenciesResult & {
 export function useGetAssetDependencies(
   assetId: number,
   assetDependencyFilter: AssetDependencyFilter = AssetDependencyFilter.All,
-  includeAccessStatus: boolean = false,
-  includeCreatorName: boolean = false,
+  includeAccessStatus = false,
+  includeCreatorName = false,
   parentCreator: { id: number; type: CreatorType } | null = null,
-  enabled: boolean = true,
+  enabled = true,
 ) {
   const shouldIncludeAccessStatus =
     includeAccessStatus || assetDependencyFilter !== AssetDependencyFilter.All;
@@ -153,7 +153,7 @@ export function useGetAssetDependencies(
 
   return {
     data: extendedDependenciesData,
-    error: allDependenciesQuery.error || creatorInfoQuery.error,
+    error: allDependenciesQuery.error ?? creatorInfoQuery.error,
     isError: allDependenciesQuery.isError || (includeCreatorName && creatorInfoQuery.isError),
     isPending: allDependenciesQuery.isPending || (includeCreatorName && creatorInfoQuery.isPending),
     isSuccess:
@@ -225,25 +225,12 @@ export function useGetAssetEligibilityStatus(assetId: number, assetType: Asset, 
   });
 }
 
-export function useGetAssetIsOpenUse(
-  assetId: number,
-  isCreatorEligibleForAssetAccessBeta: boolean,
-  enabled: boolean,
-  assetType?: Asset,
-) {
+export function useGetAssetIsOpenUse(assetId: number, enabled: boolean, assetType?: Asset) {
   return useQuery({
     queryKey: getAssetOpenUseKey(assetId),
     queryFn: async () => {
       if (!assetType || NON_AAC_ASSET_TYPES.includes(assetType)) {
         return false;
-      }
-
-      // All asset types that can be made open use by users are open use for non-eligible creators
-      if (
-        !isCreatorEligibleForAssetAccessBeta &&
-        USER_UPDATABLE_ACCESS_STATUS_ASSET_TYPES.includes(assetType)
-      ) {
-        return true;
       }
 
       const request: GetAssetAccessPropertiesRequest = { assetId };
@@ -294,21 +281,16 @@ export function useSetAssetOpenUse(assetId: number) {
 
 export function useGetUserAssetPrivacyDefault(
   userId: number,
-  refetchOnWindowFocus: boolean = false,
-  enabled: boolean = true,
+  refetchOnWindowFocus = false,
+  enabled = true,
 ) {
   return useQuery({
     queryKey: getUserAssetPrivacyDefaultKey(userId),
     queryFn: async () => {
       const response = await assetPermissionsApiClient.getUserPermissionSettings(userId);
-      switch (response.createAssetsAsRestricted) {
-        case true:
-          return AssetPrivacyLevel.Restricted;
-        case false:
-          return AssetPrivacyLevel.OpenUse;
-        default:
-          return AssetPrivacyLevel.Restricted;
-      }
+      return response.createAssetsAsRestricted === false
+        ? AssetPrivacyLevel.OpenUse
+        : AssetPrivacyLevel.Restricted;
     },
     enabled,
     refetchOnWindowFocus,
@@ -317,21 +299,16 @@ export function useGetUserAssetPrivacyDefault(
 
 export function useGetGroupAssetPrivacyDefault(
   groupId: number,
-  refetchOnWindowFocus: boolean = false,
-  enabled: boolean = true,
+  refetchOnWindowFocus = false,
+  enabled = true,
 ) {
   return useQuery({
     queryKey: getGroupAssetPrivacyDefaultKey(groupId),
     queryFn: async () => {
       const response = await assetPermissionsApiClient.getGroupPermissionSettings(groupId);
-      switch (response.createAssetsAsRestricted) {
-        case true:
-          return AssetPrivacyLevel.Restricted;
-        case false:
-          return AssetPrivacyLevel.OpenUse;
-        default:
-          return AssetPrivacyLevel.Restricted;
-      }
+      return response.createAssetsAsRestricted === false
+        ? AssetPrivacyLevel.OpenUse
+        : AssetPrivacyLevel.Restricted;
     },
     enabled,
     refetchOnWindowFocus,
@@ -378,51 +355,5 @@ export function useUpdateGroupAssetPrivacyDefault() {
         variables.isRestricted ? AssetPrivacyLevel.Restricted : AssetPrivacyLevel.OpenUse,
       );
     },
-  });
-}
-
-export function useGetIsUserEligibleForBeta(userId: number, enabled: boolean) {
-  return useQuery({
-    queryKey: [`${KEY_PREFIX}getIsUserEligibleForBeta`],
-    queryFn: async () => {
-      const isUserEligibleForBeta =
-        await assetPermissionsApiClient.getIsUserEligibleForBeta(userId);
-      return isUserEligibleForBeta;
-    },
-    enabled,
-  });
-}
-
-export function useGetIsGroupEligibleForBeta(groupId: number, enabled: boolean) {
-  return useQuery({
-    queryKey: [`${KEY_PREFIX}getIsGroupEligibleForBeta`],
-    queryFn: async () => {
-      const isGroupEligibleForBeta =
-        await assetPermissionsApiClient.getIsGroupEligibleForBeta(groupId);
-      return isGroupEligibleForBeta;
-    },
-    enabled,
-  });
-}
-
-// This is a combination of useGetIsUserEligibleForBeta and useGetIsGroupEligibleForBeta
-export function useGetIsCreatorEligibleForBeta(
-  creatorId: number,
-  creatorType: CreatorType,
-  enabled: boolean = true,
-) {
-  return useQuery({
-    queryKey: [`${KEY_PREFIX}getIsCreatorEligibleForBeta`, creatorId, creatorType],
-    queryFn: async () => {
-      if (creatorType === CreatorType.User) {
-        return assetPermissionsApiClient.getIsUserEligibleForBeta(creatorId);
-      }
-
-      if (creatorType === CreatorType.Group) {
-        return assetPermissionsApiClient.getIsGroupEligibleForBeta(creatorId);
-      }
-      return false;
-    },
-    enabled,
   });
 }

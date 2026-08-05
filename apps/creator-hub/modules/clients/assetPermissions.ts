@@ -210,18 +210,6 @@ const assetPermissionsApiClient = {
     return assetPermissionsApi.assetPermissionsUpdateGroupSettings(request);
   },
 
-  async getIsUserEligibleForBeta(userId: number) {
-    const response = await assetPermissionsApi.assetPermissionsGetIsUserEligibleForBeta({ userId });
-    return response?.isEligible ?? false;
-  },
-
-  async getIsGroupEligibleForBeta(groupId: number) {
-    const response = await assetPermissionsApi.assetPermissionsGetIsGroupEligibleForBeta({
-      groupId,
-    });
-    return response?.isEligible ?? false;
-  },
-
   async batchGetAssetAccessProperties(requests: GetAssetAccessPropertiesRequest[]) {
     const request: AssetPermissionsBatchGetAssetAccessPropertiesOperationRequest = {
       assetPermissionsBatchGetAssetAccessPropertiesRequest: { requests },

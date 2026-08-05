@@ -97,7 +97,6 @@ export type TConfigureMediaFiatFormProps = {
   enableAssetAccessForm: boolean;
   isAttested: boolean;
   isChartsEligible: boolean;
-  isCreatorEligibleForAssetAccessBeta: boolean;
   initialSongArtists: SongArtist[];
   isOnMarketplace: boolean;
   refreshData: () => Promise<void>;
@@ -116,7 +115,6 @@ const ConfigureMediaFiatForm: FunctionComponent<
   enableAssetAccessForm,
   isAttested,
   isChartsEligible,
-  isCreatorEligibleForAssetAccessBeta,
   initialSongArtists,
   isOnMarketplace,
   refreshData,
@@ -678,10 +676,7 @@ const ConfigureMediaFiatForm: FunctionComponent<
           )}
           {enableAssetAccessForm && !isAudioModerated && (
             <Grid item XSmall={12}>
-              <AssetAccessForm
-                developerItemDetails={developerItemDetails}
-                isCreatorEligibleForAssetAccessBeta={isCreatorEligibleForAssetAccessBeta}
-              />
+              <AssetAccessForm developerItemDetails={developerItemDetails} />
               <Divider classes={{ root: divider }} />
             </Grid>
           )}

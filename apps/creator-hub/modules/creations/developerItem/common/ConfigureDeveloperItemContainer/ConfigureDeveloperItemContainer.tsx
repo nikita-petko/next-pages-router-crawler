@@ -5,13 +5,12 @@ import { useTranslation, withTranslation } from '@rbx/intl';
 import { CircularProgress } from '@rbx/ui';
 import { assetToMprsAsset } from '@modules/marketplacePublishingRequirements/MarketplacePublishingRequirementsProvider';
 import { useFetchUserCanManageCreatorStoreAsset } from '@modules/marketplacePublishingRequirements/MarketplacePublishingRequirementsQueries';
-import { Asset, CreatorType } from '@modules/miscellaneous/common';
+import { Asset } from '@modules/miscellaneous/common';
 import { EmptyGrid } from '@modules/miscellaneous/components';
 import FailureViewWithTranslation from '@modules/miscellaneous/components/FailureView/FailureView';
 import { ErrorPage } from '@modules/miscellaneous/error';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useGetAssetIsOpenUse } from '@modules/react-query/assetPermissions';
-import { useGetIsCreatorEligibleForBeta } from '@modules/react-query/assetPermissions/assetPermissionsQueries';
 import { ASSET_ACCESS_FORM_ASSETS, EDIT_PERMISSION_ASSETS } from '../../constants';
 import CreatorStoreConfiguration from '../../creatorStore/components/CreatorStoreConfiguration/CreatorStoreConfiguration';
 import ConfigureGenericNoDistributionContainer from '../../genericDeveloperItem/ConfigureGenericNoDistributionContainer/ConfigureGenericNoDistributionContainer';
@@ -72,28 +71,9 @@ const ConfigureDeveloperItemContainer: FunctionComponent<React.PropsWithChildren
     userCanConfigureDeveloperItem &&
     ASSET_ACCESS_FORM_ASSETS.includes(developerItemDetails.type);
 
-  // Asset Access Beta Eligibility
-  const shouldCheckIfCreatorIsEligibleForBeta = userCanManageAsset && enableAssetAccessForm;
-  const { data: isCreatorEligibleForBeta, isPending: isCreatorEligibleForBetaPending } =
-    useGetIsCreatorEligibleForBeta(
-      developerItemDetails?.creator.id ?? -1,
-      developerItemDetails?.creator.type ?? CreatorType.User,
-      shouldCheckIfCreatorIsEligibleForBeta,
-    );
-  const isCreatorEligibleForAssetAccessBeta = isCreatorEligibleForBeta ?? false;
-
   // Asset Access Status
   const { isError: isAssetOpenUseFetchFailed, isPending: isAssetOpenUseLoading } =
-    useGetAssetIsOpenUse(
-      assetId,
-      isCreatorEligibleForAssetAccessBeta,
-      enableAssetAccessForm,
-      developerItemDetails?.type,
-    );
-
-  const isAssetAccessDataLoading =
-    isAssetOpenUseLoading ||
-    (shouldCheckIfCreatorIsEligibleForBeta && isCreatorEligibleForBetaPending);
+    useGetAssetIsOpenUse(assetId, enableAssetAccessForm, developerItemDetails?.type);
 
   const [isDeveloperItemInfoFetchFailed, setIsDeveloperItemInfoFetchFailed] =
     useState<boolean>(false);
@@ -110,7 +90,7 @@ const ConfigureDeveloperItemContainer: FunctionComponent<React.PropsWithChildren
   if (
     isLoadingDeveloperItem ||
     (shouldCheckIfUserCanManageAsset && isUserCanManageAssetLoading) ||
-    (enableAssetAccessForm && isAssetAccessDataLoading)
+    (enableAssetAccessForm && isAssetOpenUseLoading)
   ) {
     return (
       <EmptyGrid>
@@ -136,7 +116,6 @@ const ConfigureDeveloperItemContainer: FunctionComponent<React.PropsWithChildren
         <DeveloperItemContainer
           developerItemDetails={developerItemDetails}
           enableAssetAccessForm={enableAssetAccessForm}
-          isCreatorEligibleForAssetAccessBeta={isCreatorEligibleForAssetAccessBeta}
           onDataFetchFailed={handleDataFetchFailed}
         />
       );

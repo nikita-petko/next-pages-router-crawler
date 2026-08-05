@@ -1,6 +1,6 @@
-import { useRouter } from 'next/router';
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import type { SubmitHandler } from 'react-hook-form';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from '@rbx/intl';
@@ -25,18 +25,12 @@ export type ConfigureGenericFormType = BasicInfoDefaultFormType & DefaultSetting
 export type TConfigureGenericNoDistributionFormProps = {
   developerItemDetails: DeveloperItemDetails;
   enableAssetAccessForm: boolean;
-  isCreatorEligibleForAssetAccessBeta: boolean;
   refreshData: () => Promise<void>;
 };
 
 const ConfigureGenericNoDistributionForm: FunctionComponent<
   React.PropsWithChildren<TConfigureGenericNoDistributionFormProps>
-> = ({
-  developerItemDetails,
-  enableAssetAccessForm,
-  isCreatorEligibleForAssetAccessBeta,
-  refreshData,
-}) => {
+> = ({ developerItemDetails, enableAssetAccessForm, refreshData }) => {
   const assetId = parseInt(developerItemDetails.id, 10);
 
   const {
@@ -112,7 +106,7 @@ const ConfigureGenericNoDistributionForm: FunctionComponent<
   );
 
   const handleFormCancel = useCallback(() => {
-    router.push(getBackToCreationsPageLink(developerItemDetails));
+    void router.push(getBackToCreationsPageLink(developerItemDetails));
   }, [developerItemDetails, router]);
 
   useEffect(() => {
@@ -133,10 +127,7 @@ const ConfigureGenericNoDistributionForm: FunctionComponent<
             {enableAssetAccessForm && (
               <Grid item XSmall={12}>
                 <Divider classes={{ root: divider }} />
-                <AssetAccessForm
-                  developerItemDetails={developerItemDetails}
-                  isCreatorEligibleForAssetAccessBeta={isCreatorEligibleForAssetAccessBeta}
-                />
+                <AssetAccessForm developerItemDetails={developerItemDetails} />
               </Grid>
             )}
           </Grid>

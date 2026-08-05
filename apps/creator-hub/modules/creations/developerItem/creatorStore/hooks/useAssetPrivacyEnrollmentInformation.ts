@@ -5,7 +5,6 @@ import {
   AssetPrivacyLevel,
   useGetGroupAssetPrivacyDefault,
   useGetUserAssetPrivacyDefault,
-  useGetIsCreatorEligibleForBeta,
 } from '@modules/react-query/assetPermissions';
 
 export interface AssetPrivacyEnrollmentInformation {
@@ -26,12 +25,11 @@ export interface UseAssetPrivacyEnrollmentInformationParams {
  * This hook determines:
  * - Appropriate enrollment URLs based on creator type
  * - Current enrollment status for users and groups
- * - Whether to show enrollment links based on eligibility and permissions
+ * - Whether to show enrollment links based on permissions
  * - Loading states for async data
- * - Creator's beta eligibility
  *
  * @param creator - Creator object with id and type
- * @param enabled - Whether to check if creator is eligible for asset access beta
+ * @param enabled - Whether to fetch privacy enrollment information
  * @returns Object containing enrollment information and computed states
  */
 const useAssetPrivacyEnrollmentInformation = ({
@@ -44,19 +42,9 @@ const useAssetPrivacyEnrollmentInformation = ({
   const isCreatorGroup = creator.type === CreatorType.Group;
   const isCreatorGroupOwner = (isCreatorGroup && permissions?.isOwner) ?? false;
 
-  // Only users and group owners can enroll groups in the asset privacy beta
+  // Only users and group owners can enroll groups
   const shouldFetchPrivacyEnrollmentInformation =
     enabled && (!isCreatorGroup || isCreatorGroupOwner);
-
-  // Check if creator is eligible for asset access beta
-  const {
-    data: isCreatorEligibleForAssetAccessBeta,
-    isPending: isCreatorEligibleForAssetAccessBetaPending,
-  } = useGetIsCreatorEligibleForBeta(
-    creatorId,
-    creator.type,
-    shouldFetchPrivacyEnrollmentInformation,
-  );
 
   // Generate appropriate enrollment URL based on creator type
   const enrollUrl = useMemo(() => {
@@ -71,7 +59,7 @@ const useAssetPrivacyEnrollmentInformation = ({
     useGetUserAssetPrivacyDefault(
       creatorId,
       true, // Refetch on window focus
-      isCreatorEligibleForAssetAccessBeta === true && !isCreatorGroup && enabled,
+      shouldFetchPrivacyEnrollmentInformation && !isCreatorGroup,
     );
 
   // Group enrollment information
@@ -79,7 +67,7 @@ const useAssetPrivacyEnrollmentInformation = ({
     useGetGroupAssetPrivacyDefault(
       creatorId,
       true, // Refetch on window focus
-      isCreatorEligibleForAssetAccessBeta === true && isCreatorGroup && enabled,
+      shouldFetchPrivacyEnrollmentInformation && isCreatorGroup,
     );
 
   // Determine if creator is already enrolled
@@ -91,32 +79,12 @@ const useAssetPrivacyEnrollmentInformation = ({
   }, [isCreatorGroup, userAssetPrivacyDefault, groupAssetPrivacyDefault]);
 
   // Determine if creator is eligible for enrollment link
-  const eligibleForEnrollLink = useMemo(() => {
-    return (
-      shouldFetchPrivacyEnrollmentInformation &&
-      isCreatorEligibleForAssetAccessBeta === true &&
-      !creatorAlreadyEnrolled
-    );
-  }, [
-    shouldFetchPrivacyEnrollmentInformation,
-    isCreatorEligibleForAssetAccessBeta,
-    creatorAlreadyEnrolled,
-  ]);
+  const eligibleForEnrollLink = shouldFetchPrivacyEnrollmentInformation && !creatorAlreadyEnrolled;
 
-  const isPending = useMemo(() => {
-    return (
-      shouldFetchPrivacyEnrollmentInformation &&
-      (isCreatorEligibleForAssetAccessBetaPending ||
-        (isCreatorGroup && isGroupAssetPrivacyDefaultPending) ||
-        (!isCreatorGroup && isUserAssetPrivacyDefaultPending))
-    );
-  }, [
-    shouldFetchPrivacyEnrollmentInformation,
-    isCreatorEligibleForAssetAccessBetaPending,
-    isCreatorGroup,
-    isGroupAssetPrivacyDefaultPending,
-    isUserAssetPrivacyDefaultPending,
-  ]);
+  const isPending =
+    shouldFetchPrivacyEnrollmentInformation &&
+    ((isCreatorGroup && isGroupAssetPrivacyDefaultPending) ||
+      (!isCreatorGroup && isUserAssetPrivacyDefaultPending));
 
   return {
     enrollUrl,

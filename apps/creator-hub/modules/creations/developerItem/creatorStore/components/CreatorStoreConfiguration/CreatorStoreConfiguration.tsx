@@ -98,12 +98,7 @@ const VIDEO_PREVIEW_TYPE = AssetType.StorePreviewVideo;
 
 const CreatorStoreConfiguration: FunctionComponent<
   React.PropsWithChildren<TConfigureDeveloperItemProps>
-> = ({
-  developerItemDetails,
-  enableAssetAccessForm,
-  isCreatorEligibleForAssetAccessBeta,
-  onDataFetchFailed,
-}) => {
+> = ({ developerItemDetails, enableAssetAccessForm, onDataFetchFailed }) => {
   const { frontendFlags, loadingFrontendFlags } = useToolboxServiceApiProvider();
   // Simple data fetches and hooks go here
   const { creator, id: assetId, type: assetType } = developerItemDetails;
@@ -912,7 +907,6 @@ const CreatorStoreConfiguration: FunctionComponent<
               <Grid item XSmall={12}>
                 <AssetAccessForm
                   developerItemDetails={developerItemDetails}
-                  isCreatorEligibleForAssetAccessBeta={isCreatorEligibleForAssetAccessBeta}
                   openUseRestrictions={assetConfigurationRequirements?.openUse?.restrictions ?? []}
                   onSetAssetOpenUse={() => setIsOpenUseAsset(true)}
                 />
