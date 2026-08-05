@@ -7,6 +7,7 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import { useAuthentication } from '@modules/authentication/providers';
 import { CurrencyHolderType } from '@modules/clients/transactionRecords';
 import getResponseFromError from '@modules/clients/utils/getResponseFromError';
+import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { getLocalDateString } from '@modules/miscellaneous/utils/dateUtils';
 import { useSnackbar } from '@modules/monetization-shared/snackbar/actions';
@@ -18,7 +19,20 @@ import { useGetUserConfiguration } from '@modules/react-query/twoStepVerificatio
 // ranges longer than this many days, so block the request client-side and explain why.
 const MAX_EXPORT_RANGE_DAYS = 365;
 const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
+const EXPORT_EVENT_NAME = 'virtualTransactionsExport';
+const EXPORT_SURFACE = 'virtualTransactions';
+const EXPORT_ENDPOINT_VERSION = 'v2';
 const EMAIL_ELIGIBILITY_COOLDOWN_MS = 5_000;
+
+type ExportOutcome = 'attempted' | 'clientBlocked' | 'accepted' | 'rejected';
+type ExportFailureReason =
+  | 'twoStepVerificationRequired'
+  | 'emailEligibilityCheckFailed'
+  | 'verifiedEmailRequired'
+  | 'insufficientPermissions'
+  | 'alreadyInProgress'
+  | 'rateLimited'
+  | 'unknown';
 
 // The API serializes TwoStepVerificationMediaType as its string label (e.g. "Authenticator"), even
 // though the generated client types mediaType as a numeric enum. Compare against the label (coerced
@@ -52,6 +66,7 @@ const VirtualTransactionsExportButton: FunctionComponent<
 > = ({ userId, groupId, startTimeMillis, endTimeMillis }) => {
   const { translate, tPendingTranslation } = useTranslationWrapper(useTranslation());
   const { enqueue } = useSnackbar();
+  const { unifiedLogger } = useUnifiedLoggerProvider();
   const { mutate, isPending } = usePublishSalesReportDownload();
   const { mutateAsync: checkEmailEligibility, isPending: isCheckingEmailEligibility } =
     useCheckEmailEligibility();
@@ -89,7 +104,31 @@ const VirtualTransactionsExportButton: FunctionComponent<
   const targetType = groupId ? CurrencyHolderType.Group : CurrencyHolderType.User;
 
   const rangeDays = calendarDaysBetween(startTimeMillis, endTimeMillis);
+  // calendarDaysBetween counts date boundaries; export ranges include both boundary dates.
+  const inclusiveRangeDays = rangeDays + 1;
   const exceedsMaxRange = rangeDays > MAX_EXPORT_RANGE_DAYS;
+
+  const logExportEvent = useCallback(
+    (outcome: ExportOutcome, reason?: ExportFailureReason, httpStatus?: number) => {
+      if (targetId == null) {
+        return;
+      }
+      unifiedLogger.logClickEvent({
+        eventName: EXPORT_EVENT_NAME,
+        parameters: {
+          surface: EXPORT_SURFACE,
+          endpointVersion: EXPORT_ENDPOINT_VERSION,
+          targetId: String(targetId),
+          targetType: groupId ? 'group' : 'user',
+          dateWindowDays: String(inclusiveRangeDays),
+          outcome,
+          ...(reason !== undefined ? { reason } : {}),
+          ...(httpStatus !== undefined ? { httpStatus: String(httpStatus) } : {}),
+        },
+      });
+    },
+    [groupId, inclusiveRangeDays, targetId, unifiedLogger],
+  );
 
   // The Foundation snackbar is single-style (no severity); the message text conveys the outcome,
   // matching every other creator-hub caller of the shared snackbar.
@@ -117,7 +156,9 @@ const VirtualTransactionsExportButton: FunctionComponent<
     ) {
       return;
     }
+    logExportEvent('attempted');
     if (!hasAuthenticatorEnabled) {
+      logExportEvent('clientBlocked', 'twoStepVerificationRequired');
       // Mirror v1: block the export and direct the user to enable an authenticator first.
       notify(
         tPendingTranslation(
@@ -134,6 +175,7 @@ const VirtualTransactionsExportButton: FunctionComponent<
     try {
       email = await checkEmailEligibility();
     } catch {
+      logExportEvent('clientBlocked', 'emailEligibilityCheckFailed');
       startEmailEligibilityCooldown();
       notify(translate(translationKey('Response.UnknownError', TranslationNamespace.Error)));
       return;
@@ -141,6 +183,7 @@ const VirtualTransactionsExportButton: FunctionComponent<
       isEmailEligibilityCheckLocked.current = false;
     }
     if (email.verified !== true || !email.emailAddress?.trim()) {
+      logExportEvent('clientBlocked', 'verifiedEmailRequired');
       startEmailEligibilityCooldown();
       notify(
         tPendingTranslation(
@@ -162,12 +205,23 @@ const VirtualTransactionsExportButton: FunctionComponent<
         endDate: getLocalDateString(new Date(endTimeMillis)),
       },
       {
-        onSuccess: () =>
+        onSuccess: () => {
+          logExportEvent('accepted');
           notify(
             translate(translationKey('Message.ExportRequested', TranslationNamespace.Transactions)),
-          ),
+          );
+        },
         onError: (error) => {
           const status = getResponseFromError(error)?.status;
+          const reason: ExportFailureReason =
+            status === 403
+              ? 'insufficientPermissions'
+              : status === 409
+                ? 'alreadyInProgress'
+                : status === 429
+                  ? 'rateLimited'
+                  : 'unknown';
+          logExportEvent('rejected', reason, status);
           if (status === 403) {
             // The viewer lacks ViewGroupTransactions for this group.
             notify(
@@ -198,6 +252,7 @@ const VirtualTransactionsExportButton: FunctionComponent<
     );
   }, [
     mutate,
+    logExportEvent,
     checkEmailEligibility,
     startEmailEligibilityCooldown,
     notify,
