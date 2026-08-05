@@ -286,7 +286,11 @@ const GroupMembersTable: FunctionComponent<GroupMembersTableProps> = ({
                               }
                               leading={
                                 isAllRoles ? undefined : (
-                                  <RoleIcon roleId={role.id} color={role.color} />
+                                  <RoleIcon
+                                    roleId={role.id}
+                                    color={role.color}
+                                    isPrivate={role.isPrivate}
+                                  />
                                 )
                               }
                             />

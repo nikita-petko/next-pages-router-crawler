@@ -8,6 +8,7 @@ import {
   DialogFooter,
   DialogTitle,
   TextInput,
+  Toggle,
 } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import TranslationNamespace from '../../constants/TranslationNamespace';
@@ -17,8 +18,9 @@ import { DefaultRoleNameMaxLength } from '../../utils/constants';
 export type CreateRoleModalProps = {
   open: boolean;
   onClose: () => void;
-  onConfirm: (name: string) => Promise<void>;
+  onConfirm: (name: string, isPrivate: boolean) => Promise<void>;
   saving?: boolean;
+  canSetVisibility?: boolean;
 };
 
 const CreateRoleModal: FunctionComponent<CreateRoleModalProps> = ({
@@ -26,6 +28,7 @@ const CreateRoleModal: FunctionComponent<CreateRoleModalProps> = ({
   onClose,
   onConfirm,
   saving = false,
+  canSetVisibility = false,
 }) => {
   const { translateWithNamespace } = useTranslation();
   const { data: configMetadata } = useGetGroupConfigurationMetadata();
@@ -33,12 +36,14 @@ const CreateRoleModal: FunctionComponent<CreateRoleModalProps> = ({
   const nameMaxLength = roleConfig?.nameMaxLength ?? DefaultRoleNameMaxLength;
 
   const [name, setName] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
 
   const [prevOpen, setPrevOpen] = useState(open);
   if (prevOpen !== open) {
     setPrevOpen(open);
     if (open) {
       setName('');
+      setIsPrivate(false);
     }
   }
 
@@ -48,8 +53,8 @@ const CreateRoleModal: FunctionComponent<CreateRoleModalProps> = ({
     if (isCreateDisabled) {
       return;
     }
-    await onConfirm(name.trim());
-  }, [isCreateDisabled, onConfirm, name]);
+    await onConfirm(name.trim(), isPrivate);
+  }, [isCreateDisabled, onConfirm, name, isPrivate]);
 
   const onNameChanged = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
@@ -64,7 +69,7 @@ const CreateRoleModal: FunctionComponent<CreateRoleModalProps> = ({
         }
       }}
       isModal
-      size='Medium'
+      size='Small'
       hasCloseAffordance
       closeLabel={translateWithNamespace(TranslationNamespace.GroupManagement, 'Action.Close')}>
       <DialogContent>
@@ -88,6 +93,23 @@ const CreateRoleModal: FunctionComponent<CreateRoleModalProps> = ({
                 {name.length}/{nameMaxLength}
               </span>
             </div>
+            {canSetVisibility && (
+              <Toggle
+                size='Medium'
+                placement='Start'
+                label={translateWithNamespace(
+                  TranslationNamespace.GroupManagement,
+                  'Label.MarkRolePrivate',
+                )}
+                hint={translateWithNamespace(
+                  TranslationNamespace.GroupManagement,
+                  'Subtext.VisibilityPrivate',
+                )}
+                isChecked={isPrivate}
+                isDisabled={saving}
+                onCheckedChange={setIsPrivate}
+              />
+            )}
           </div>
         </DialogBody>
         <DialogFooter className='flex width-full gap-x-small'>

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import type { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd';
 import { Button, Icon } from '@rbx/foundation-ui';
-import { buttonClasses, Grid, makeStyles, useTheme } from '@rbx/ui';
+import { buttonClasses, Grid, makeStyles } from '@rbx/ui';
 import type { GroupRoleColorType } from '../../clients/groups';
 import useCurrentGroup from '../../hooks/useCurrentGroup';
+import RoleIcon from '../../members/components/common/RoleIcon';
 import { DefaultMemberRoleId, GuestRoleRank } from '../../utils/constants';
 import { canViewAnyRoleTab } from '../../utils/groupPermissions';
-import { getRoleStyle } from '../../utils/groupUtils';
 
 const useRolesSidebarStyles = makeStyles()((theme) => ({
   roleButtonContainer: {
@@ -65,6 +65,7 @@ type TRolesListRoleProps = {
   roleRank?: number;
   roleName: string;
   roleColor: GroupRoleColorType;
+  isPrivate?: boolean;
   isNewRole: boolean;
   disabled: boolean;
   isSelected: boolean;
@@ -80,6 +81,7 @@ const RolesListRole: React.FC<TRolesListRoleProps> = ({
   roleRank,
   roleName,
   roleColor,
+  isPrivate = false,
   isNewRole,
   disabled,
   isSelected,
@@ -99,7 +101,6 @@ const RolesListRole: React.FC<TRolesListRoleProps> = ({
     },
     cx,
   } = useRolesSidebarStyles();
-  const { palette } = useTheme();
   const { isOwner, permissions, rolePermissions } = useCurrentGroup();
   const [isHovered, setIsHovered] = useState(false);
 
@@ -138,19 +139,12 @@ const RolesListRole: React.FC<TRolesListRoleProps> = ({
       )}>
       <Grid container className={buttonContentContainer}>
         <div className='flex grow-1 flex-row items-center width-full'>
-          {isDefaultMemberRole ? (
-            <Icon
-              name='icon-filled-square-person'
-              size='Medium'
-              style={getRoleStyle(roleColor, palette.mode, 'color')}
-            />
-          ) : (
-            <Icon
-              name='icon-filled-person-rectangle-horizontal-line'
-              size='Medium'
-              style={getRoleStyle(roleColor, palette.mode, 'color')}
-            />
-          )}
+          <RoleIcon
+            roleId={roleId === '' ? null : Number(roleId)}
+            color={roleColor}
+            isPrivate={isPrivate}
+            size='Medium'
+          />
           <span className={textContainer}>{roleName}</span>
           {!!dragHandleProps && (
             <span

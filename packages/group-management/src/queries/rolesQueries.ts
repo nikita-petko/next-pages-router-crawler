@@ -72,6 +72,7 @@ export const useGetGroupUsersWithRoles = (
         ...(roleId !== null && { roleSetId: roleId }),
         userIds,
         limit,
+        includePrivate: true,
         cursor: cursor ?? undefined,
         ...(roleId === null && { sortOrder: V2GroupsGroupIdUsersGetSortOrderEnum.Desc }),
       });
@@ -235,6 +236,7 @@ type TUseUpdateRoleMetadataProps = {
   description: string;
   rank: number;
   color: number;
+  isPrivate?: boolean;
 };
 
 export function useUpdateRoleMetadata() {
@@ -247,12 +249,14 @@ export function useUpdateRoleMetadata() {
       description,
       rank,
       color,
+      isPrivate,
     }: TUseUpdateRoleMetadataProps) => {
       const request: RobloxGroupsApiModelsRequestUpdateRoleSetRequest = {
         name,
         description,
         rank,
         color,
+        isPrivate,
       };
       return groupsClient.updateRoleSet(groupId, rolesetId, request);
     },
@@ -320,6 +324,7 @@ type TUseCreateRoleProps = {
   description: string;
   rank: number;
   usingGroupFunds?: boolean;
+  isPrivate?: boolean;
 };
 
 export function useCreateRole() {
@@ -331,12 +336,14 @@ export function useCreateRole() {
       description,
       rank,
       usingGroupFunds,
+      isPrivate,
     }: TUseCreateRoleProps) => {
       const request: RobloxGroupsApiModelsRequestCreateRoleSetRequest = {
         name,
         description,
         rank,
         usingGroupFunds,
+        isPrivate,
       };
       return groupsClient.createRoleSet(groupId, request);
     },

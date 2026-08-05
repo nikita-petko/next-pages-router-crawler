@@ -80,7 +80,9 @@ const RolesList: FunctionComponent<RolesListProps> = ({
                       key={role.id}
                       value={`remove-${role.id ?? ''}`}
                       title={role.name ?? ''}
-                      leading={<RoleIcon roleId={role.id} color={role.color} />}
+                      leading={
+                        <RoleIcon roleId={role.id} color={role.color} isPrivate={role.isPrivate} />
+                      }
                       trailing={
                         isRemovable ? <Icon name='icon-regular-minus' size='Small' /> : null
                       }
@@ -116,7 +118,9 @@ const RolesList: FunctionComponent<RolesListProps> = ({
                       key={role.id}
                       value={`add-${role.id ?? ''}`}
                       title={role.name ?? ''}
-                      leading={<RoleIcon roleId={role.id} color={role.color} />}
+                      leading={
+                        <RoleIcon roleId={role.id} color={role.color} isPrivate={role.isPrivate} />
+                      }
                       trailing={<Icon name='icon-filled-plus-small' size='Small' />}
                       onSelect={() => onAddRole(role)}
                     />

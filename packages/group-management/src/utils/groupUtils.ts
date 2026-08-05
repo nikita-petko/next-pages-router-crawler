@@ -1,4 +1,5 @@
-import type { CSSProperties } from 'react';
+import type { ComponentProps, CSSProperties } from 'react';
+import type { Icon } from '@rbx/foundation-ui';
 import type { GroupRoleColorType } from '../clients/groups';
 import type { MemberRole } from './constants';
 import {
@@ -18,6 +19,19 @@ export const getRoleStyle = (
   const tokens = RoleColorTokenMap[resolvedColor];
   const token = themeMode === 'dark' ? tokens.dark : tokens.light;
   return { [property]: `var(--${token})` };
+};
+
+export const getRoleIconName = (
+  roleId?: number | null,
+  isPrivate?: boolean,
+): ComponentProps<typeof Icon>['name'] => {
+  if (roleId === DefaultMemberRoleIdNumber) {
+    return 'icon-filled-square-person';
+  }
+  if (isPrivate === true) {
+    return 'icon-filled-lock-closed';
+  }
+  return 'icon-filled-person-rectangle-horizontal-line';
 };
 
 /**

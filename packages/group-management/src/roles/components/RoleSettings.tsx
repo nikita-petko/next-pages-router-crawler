@@ -1,6 +1,6 @@
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useMemo, useState } from 'react';
-import { TextArea, TextInput, Button, Icon } from '@rbx/foundation-ui';
+import { TextArea, TextInput, Button, Icon, Radio, RadioGroup } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { Grid, FormHelperText, DialogTemplate, useDialog, useTheme } from '@rbx/ui';
 import type { GroupRoleColorType } from '../../clients/groups';
@@ -19,6 +19,7 @@ import {
   getColorDotTokens,
   PickableRoleColorsList,
   RoleColorTokenMap,
+  RoleVisibility,
 } from '../../utils/constants';
 import { OrganizationsEventName, logOrganizationsEvent } from '../../utils/eventUtils';
 
@@ -56,12 +57,14 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
   const [rank, setRank] = useState<number>(role?.rank ?? minRank);
   const [description, setDescription] = useState<string>(role?.description ?? '');
   const [color, setColor] = useState<GroupRoleColorType | null | undefined>(role?.color);
+  const [isPrivate, setIsPrivate] = useState<boolean>(role?.isPrivate ?? false);
 
   const hasUnsavedChanges =
     name !== (role?.name ?? '') ||
     rank !== (role?.rank ?? minRank) ||
     description !== (role?.description ?? '') ||
-    color !== role?.color;
+    color !== role?.color ||
+    isPrivate !== (role?.isPrivate ?? false);
 
   const rankErrorMessage = useMemo((): string | undefined => {
     if (isGuestRole || isBaseMemberRole) {
@@ -94,6 +97,7 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
     setColor(role?.color);
     setDescription(role?.description ?? '');
     setRank(role?.rank ?? DefaultRoleMinRank);
+    setIsPrivate(role?.isPrivate ?? false);
   }, [role]);
 
   const handleSave = useCallback(async () => {
@@ -107,6 +111,7 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
       color,
       description,
       rank,
+      isPrivate,
     };
 
     await onSave(newMetadata);
@@ -122,6 +127,7 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
     description,
     rank,
     onSave,
+    isPrivate,
     unifiedLogger,
     organization,
     hasUnsavedChanges,
@@ -150,6 +156,10 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
 
   const onDescriptionChanged = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setDescription(e.target.value);
+  }, []);
+
+  const onVisibilityChanged = useCallback((value: string) => {
+    setIsPrivate(value === RoleVisibility.Private);
   }, []);
 
   const handleCancelDialog = useCallback(() => {
@@ -187,6 +197,8 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
 
   const showDeleteRole =
     (isOwner === true || permissions?.canDeleteRoles === true) && !isBaseMemberRole && !isGuestRole;
+
+  const showVisibility = isOwner === true && !isGuestRole && !isBaseMemberRole;
 
   return (
     <Grid
@@ -289,6 +301,41 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
           }
         />
       </div>
+      {showVisibility && (
+        <div className='width-full'>
+          <div className='block text-title-large padding-bottom-small'>
+            {translateWithNamespace(TranslationNamespace.GroupManagement, 'Label.Visibility')}
+          </div>
+          <RadioGroup
+            size='Medium'
+            value={isPrivate ? RoleVisibility.Private : RoleVisibility.Public}
+            isDisabled={disabled || saving}
+            onValueChange={onVisibilityChanged}>
+            <Radio
+              value={RoleVisibility.Public}
+              label={translateWithNamespace(
+                TranslationNamespace.GroupManagement,
+                'Label.VisibilityPublic',
+              )}
+              hint={translateWithNamespace(
+                TranslationNamespace.GroupManagement,
+                'Subtext.VisibilityPublic',
+              )}
+            />
+            <Radio
+              value={RoleVisibility.Private}
+              label={translateWithNamespace(
+                TranslationNamespace.GroupManagement,
+                'Label.VisibilityPrivate',
+              )}
+              hint={translateWithNamespace(
+                TranslationNamespace.GroupManagement,
+                'Subtext.VisibilityPrivate',
+              )}
+            />
+          </RadioGroup>
+        </div>
+      )}
       {!disabled && (
         <Grid container item XSmall={12} className='flex-row' gap={1}>
           <Button

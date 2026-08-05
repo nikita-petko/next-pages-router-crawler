@@ -24,7 +24,7 @@ export interface RoleCreationMetadata {
 }
 export type RoleMetadataForNewRole = Pick<
   GroupRoleMetadata,
-  'color' | 'name' | 'rank' | 'description'
+  'color' | 'name' | 'rank' | 'description' | 'isPrivate'
 >;
 
 export enum GroupManagementSurface {

@@ -280,6 +280,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
           name: role.name,
           description: role.description ?? '',
           rank: role.rank ?? DefaultNewRoleRank,
+          isPrivate: role.isPrivate,
         });
 
         const roleCreationMetadata: RoleCreationMetadata = {
@@ -333,6 +334,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
           description: role.description ?? '',
           rank: role.rank ?? DefaultNewRoleRank,
           color: role.color,
+          isPrivate: role.isPrivate,
         });
 
         setLocalRoles((prevRoles): RoleCreationMetadata[] | undefined => {
@@ -342,6 +344,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
                 metadata: {
                   ...prevRole.metadata,
                   ...updateRoleMetadataResponse,
+                  isPrivate: updateRoleMetadataResponse.isPrivate ?? false,
                 },
                 isNewRole: prevRole.isNewRole,
               };
@@ -360,6 +363,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
           const roleMetadata = {
             ...prevSelectedRole.metadata,
             ...updateRoleMetadataResponse,
+            isPrivate: updateRoleMetadataResponse.isPrivate ?? false,
           };
           return {
             metadata: roleMetadata,
@@ -445,12 +449,13 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
   );
 
   const handleCreateRoleSubmit = useCallback(
-    async (name: string) => {
+    async (name: string, isPrivate: boolean) => {
       const roleMetadata: RoleMetadataForNewRole = {
         name,
         rank: DefaultNewRoleRank,
         description: '',
         color: getRandomRoleColorType(),
+        isPrivate,
       };
       await handleCreateRole(roleMetadata);
     },
@@ -618,6 +623,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
             onClose={() => setIsCreateModalOpen(false)}
             onConfirm={handleCreateRoleSubmit}
             saving={isRoleSaving}
+            canSetVisibility={isOwner === true}
           />
         </>
       );
@@ -807,6 +813,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
         onClose={() => setIsCreateModalOpen(false)}
         onConfirm={handleCreateRoleSubmit}
         saving={isRoleSaving}
+        canSetVisibility={isOwner === true}
       />
     </Grid>
   );

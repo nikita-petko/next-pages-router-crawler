@@ -170,6 +170,7 @@ const RolesSidebar: FunctionComponent<React.PropsWithChildren<RolesSidebarProps>
                       roleRank={roleMetadata.rank}
                       roleName={roleMetadata.name ?? ''}
                       roleColor={roleMetadata.color ?? DefaultRoleColor}
+                      isPrivate={roleMetadata.isPrivate}
                       isNewRole={isNewRole}
                       disabled={disabled}
                       isSelected={selectedRole?.metadata?.id === roleMetadata.id}
@@ -193,6 +194,7 @@ const RolesSidebar: FunctionComponent<React.PropsWithChildren<RolesSidebarProps>
                             roleRank={roleMetadata.rank}
                             roleName={roleMetadata.name ?? ''}
                             roleColor={roleMetadata.color ?? DefaultRoleColor}
+                            isPrivate={roleMetadata.isPrivate}
                             isNewRole={isNewRole}
                             disabled={disabled}
                             isSelected={selectedRole?.metadata?.id === roleMetadata.id}
@@ -222,6 +224,7 @@ const RolesSidebar: FunctionComponent<React.PropsWithChildren<RolesSidebarProps>
                   roleRank={role.rank}
                   roleName={role.name}
                   roleColor={role.color ?? DefaultRoleColor}
+                  isPrivate={role.isPrivate}
                   isNewRole={isNewRole}
                   disabled={disabled}
                   isSelected={selectedRole?.metadata?.id === role.id}

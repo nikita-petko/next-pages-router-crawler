@@ -165,6 +165,11 @@ export const DefaultRoleMinRank = 0;
 export const DefaultRoleMaxRank = 255;
 export const DefaultNewRoleRank = 1;
 
+export const RoleVisibility = {
+  Public: 'public',
+  Private: 'private',
+} as const;
+
 export const InviteQueryKey = 'invitationGroupId';
 
 export enum GroupMembersMenuState {

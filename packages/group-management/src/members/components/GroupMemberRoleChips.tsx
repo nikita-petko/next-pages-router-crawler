@@ -116,7 +116,7 @@ const GroupMemberRoleChips: FunctionComponent<GroupMemberRoleChipsProps> = ({
           isDisabled={!isRemovable}
           onClick={isRemovable ? () => removeRole(role) : undefined}>
           <span className='flex items-center gap-xsmall'>
-            <RoleIcon roleId={role.id} color={role.color} />
+            <RoleIcon roleId={role.id} color={role.color} isPrivate={role.isPrivate} />
             <span className='text-truncate-end'>{role.name}</span>
             {isRemovable && <Icon name='icon-regular-x-small' size='XSmall' />}
           </span>

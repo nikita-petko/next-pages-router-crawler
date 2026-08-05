@@ -139,7 +139,7 @@ const groupsClient: GroupsClient = {
     return groupApi.v1GroupsGroupIdGet({ groupId });
   },
   getGroupRolesSetsInfo(groupId: number) {
-    return membershipApi.v1GroupsGroupIdRolesGet({ groupId });
+    return membershipApi.v1GroupsGroupIdRolesGet({ groupId, includePrivate: true });
   },
   getGroupMembers(params: V1GroupsGroupIdUsersGetRequest) {
     return membershipApi.v1GroupsGroupIdUsersGet(params);
