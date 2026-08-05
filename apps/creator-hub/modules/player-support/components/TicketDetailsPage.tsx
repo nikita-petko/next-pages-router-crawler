@@ -380,11 +380,11 @@ const ReplySelector: React.FunctionComponent<{
   });
 
   // The final canned reply forwards ("reroutes") the ticket to Roblox Customer
-  // Service instead of sending a normal reply. It's flag-gated and guarded by a
+  // Support instead of sending a normal reply. It's flag-gated and guarded by a
   // confirmation dialog because the ticket then leaves the creator's inbox.
   const shouldRerouteOnSend =
     isRerouteEnabled === true &&
-    selectedReply === TicketResponse.ReportToCustomerService &&
+    selectedReply === TicketResponse.ReportToCustomerSupport &&
     universeId != null;
 
   const handleSend = useCallback(() => {
@@ -460,11 +460,11 @@ const ReplySelector: React.FunctionComponent<{
         <div className='gap-small flex flex-col'>
           {visibleReplies.map((reply) => {
             const isSelected = selectedReply === reply.value;
-            // With reroute enabled, the customer-service reply forwards the
+            // With reroute enabled, the customer-support reply forwards the
             // ticket rather than sending a canned response, so it reads
-            // "Forwarded to Customer Service" instead of "Report to...".
+            // "Forwarded to Customer Support" instead of "Report to...".
             const labelKey =
-              isRerouteEnabled === true && reply.value === TicketResponse.ReportToCustomerService
+              isRerouteEnabled === true && reply.value === TicketResponse.ReportToCustomerSupport
                 ? 'Message.CannedResponse.ForwardedToCustomerService'
                 : reply.labelKey;
             return (

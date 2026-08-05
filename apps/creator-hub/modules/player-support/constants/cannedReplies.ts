@@ -23,7 +23,7 @@ const CANNED_REPLIES = [
     labelKey: 'Message.CannedResponse.RequestMoreDetails',
   },
   {
-    value: TicketResponse.ReportToCustomerService,
+    value: TicketResponse.ReportToCustomerSupport,
     labelKey: 'Message.CannedResponse.ReportToCustomerService',
   },
   {
@@ -54,23 +54,23 @@ const REPLIES_BY_CATEGORY: Record<TicketCategory, readonly TicketResponse[]> = {
     TicketResponse.RequestUserInformation,
     TicketResponse.AwareNoActionTaken,
     TicketResponse.RequestMoreDetails,
-    TicketResponse.ReportToCustomerService,
+    TicketResponse.ReportToCustomerSupport,
   ],
   [TicketCategory.DataRestoreRequest]: [
     TicketResponse.UnableToRestoreData,
     TicketResponse.RequestMoreDetails,
     TicketResponse.DataRestored,
-    TicketResponse.ReportToCustomerService,
+    TicketResponse.ReportToCustomerSupport,
   ],
   [TicketCategory.PurchasingIssue]: [
     TicketResponse.MissingItemsAdded,
     TicketResponse.UnableToTakeActionOnPurchase,
     TicketResponse.RequestMoreDetails,
-    TicketResponse.ReportToCustomerService,
+    TicketResponse.ReportToCustomerSupport,
   ],
   [TicketCategory.Other]: [
     TicketResponse.RequestMoreDetails,
-    TicketResponse.ReportToCustomerService,
+    TicketResponse.ReportToCustomerSupport,
   ],
   [TicketCategory.Invalid]: [],
 };
