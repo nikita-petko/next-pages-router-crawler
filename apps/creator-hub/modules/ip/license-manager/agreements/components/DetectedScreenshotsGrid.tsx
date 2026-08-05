@@ -18,6 +18,8 @@ interface DetectedScreenshotsGridProps {
   /** Resolved screenshots (pending-moderation/unshared assets excluded upstream). */
   items: DetectedScreenshotItem[];
   isLoading?: boolean;
+  /** Number of skeleton placeholders to show while loading. Defaults to {@link MAX_SCREENSHOTS}. */
+  skeletonCount?: number;
   /** Called when a screenshot cell is clicked, passing the index within `items`. */
   onItemClick?: (index: number) => void;
 }
@@ -30,6 +32,7 @@ interface DetectedScreenshotsGridProps {
 const DetectedScreenshotsGrid: FunctionComponent<DetectedScreenshotsGridProps> = ({
   items,
   isLoading = false,
+  skeletonCount = MAX_SCREENSHOTS,
   onItemClick,
 }) => {
   const { translate } = useTranslation();
@@ -37,7 +40,7 @@ const DetectedScreenshotsGrid: FunctionComponent<DetectedScreenshotsGridProps> =
   if (isLoading) {
     return (
       <div className={screenshotsGridClassName}>
-        {Array.from({ length: MAX_SCREENSHOTS }, (_, index) => (
+        {Array.from({ length: skeletonCount }, (_, index) => (
           <div key={index} className={screenshotCellClassName}>
             <Skeleton animate variant='rectangular' className={screenshotFillClassName} />
           </div>

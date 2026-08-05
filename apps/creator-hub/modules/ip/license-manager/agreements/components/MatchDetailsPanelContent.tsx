@@ -45,7 +45,7 @@ import {
   serializeExperiencePreviewAnalyticsContext,
 } from '../utils/experiencePreviewAnalytics';
 import formatDate from '../utils/formatDate';
-import DetectedScreenshotsGrid from './DetectedScreenshotsGrid';
+import DetectedScreenshotsGrid, { MAX_SCREENSHOTS } from './DetectedScreenshotsGrid';
 import {
   AgreementStatusFromBatchMaps,
   type AgreementStatusesColumnProps,
@@ -193,9 +193,8 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
       return imageUrl ? { assetId, imageUrl } : null;
     })
     .filter((entry): entry is { assetId: number; imageUrl: string } => entry !== null);
-  const isScreenshotsLoading =
-    placefileImagesQuery.isLoading ||
-    (placefileAssetIds.length > 0 && placefileImageUrlsQuery.isLoading);
+  const isScreenshotsLoading = placefileAssetIds.length > 0 && placefileImageUrlsQuery.isLoading;
+  const skeletonCount = Math.min(placefileAssetIds.length, MAX_SCREENSHOTS);
 
   const agreementId = candidate.agreementId ?? undefined;
 
@@ -347,7 +346,9 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
 
   const resolvedScreenshotCount = resolvedScreenshotUrls.length;
   const showScreenshotsSection =
-    showPlacefileScreenshots && (isScreenshotsLoading || resolvedScreenshotCount > 0);
+    showPlacefileScreenshots &&
+    placefileImagesQuery.isFetched &&
+    (isScreenshotsLoading || resolvedScreenshotCount > 0);
   let screenshotsTitle: string;
   if (isScreenshotsLoading) {
     screenshotsTitle = translate('Label.DetectedScreenshots');
@@ -515,6 +516,7 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
                     assetId: item.assetId,
                   }))}
                   isLoading={isScreenshotsLoading}
+                  skeletonCount={skeletonCount}
                   onItemClick={handleScreenshotClick}
                 />
               </Flex>
