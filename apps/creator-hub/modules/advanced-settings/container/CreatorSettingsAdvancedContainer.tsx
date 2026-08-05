@@ -23,6 +23,7 @@ import { useEventTrackerProvider } from '@modules/eventStream/eventTrackerProvid
 import { ASSET_ACCESS_PRIVACY } from '@modules/miscellaneous/common/constants/linkConstants';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { ErrorPage } from '@modules/miscellaneous/error';
+import useFormSubmissionAnalytics from '@modules/miscellaneous/hooks/useFormSubmissionAnalytics';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import {
   AssetPrivacyLevel,
@@ -55,8 +56,10 @@ const CreatorSettingsAdvancedContainer: FunctionComponent<React.PropsWithChildre
   const [isAssetPrivacyOpenUsePending, setIsAssetPrivacyOpenUsePending] = useState(false);
   const showSnackbarMessage = useSnackbarAdvancedResponse();
   const { trackerClient } = useEventTrackerProvider();
+  const formSubmissionAnalytics = useFormSubmissionAnalytics('configure_asset_privacy');
 
   const setAssetPrivacyToRestricted = useCallback(async () => {
+    formSubmissionAnalytics.started();
     void updateAssetPrivacyDefault(
       {
         creatorId: user?.id ?? -1,
@@ -64,17 +67,26 @@ const CreatorSettingsAdvancedContainer: FunctionComponent<React.PropsWithChildre
       },
       {
         onError: () => {
+          formSubmissionAnalytics.failed();
           showSnackbarMessage('error', translate('Message.AssetPrivacySaveUnsuccessful'));
         },
         onSuccess: () => {
+          formSubmissionAnalytics.succeeded();
           showSnackbarMessage('success', translate('Message.AssetPrivacyRestrictedSuccess'));
         },
       },
     );
-  }, [showSnackbarMessage, translate, updateAssetPrivacyDefault, user?.id]);
+  }, [
+    formSubmissionAnalytics,
+    showSnackbarMessage,
+    translate,
+    updateAssetPrivacyDefault,
+    user?.id,
+  ]);
 
   const setAssetPrivacyToOpenUse = useCallback(async () => {
     setIsAssetPrivacyOpenUsePending(true);
+    formSubmissionAnalytics.started();
     void updateAssetPrivacyDefault(
       {
         creatorId: user?.id ?? -1,
@@ -82,16 +94,24 @@ const CreatorSettingsAdvancedContainer: FunctionComponent<React.PropsWithChildre
       },
       {
         onError: () => {
+          formSubmissionAnalytics.failed();
           setIsAssetPrivacyOpenUsePending(false);
           showSnackbarMessage('error', translate('Message.AssetPrivacySaveUnsuccessful'));
         },
         onSuccess: () => {
+          formSubmissionAnalytics.succeeded();
           setIsAssetPrivacyOpenUsePending(false);
           showSnackbarMessage('success', translate('Message.AssetPrivacyOpenUseSuccess'));
         },
       },
     );
-  }, [showSnackbarMessage, translate, updateAssetPrivacyDefault, user?.id]);
+  }, [
+    formSubmissionAnalytics,
+    showSnackbarMessage,
+    translate,
+    updateAssetPrivacyDefault,
+    user?.id,
+  ]);
 
   const handleAssetPrivacyOptOutSurveyClose = useCallback(() => {
     setIsAssetPrivacyDialogOpen(false);

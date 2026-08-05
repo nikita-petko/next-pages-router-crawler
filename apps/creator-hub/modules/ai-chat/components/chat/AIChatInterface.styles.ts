@@ -7,6 +7,15 @@ const useAIChatInterfaceStyles = makeStyles()((theme) => ({
     flexDirection: 'column',
     height: '100%',
     flex: 1,
+    // Below `Large`, GenericAssistantPageLayout's Grid item doesn't constrain height, so
+    // `height: 100%` above resolves to auto and this card can grow tall enough for the
+    // floating composer to overlap the page footer. Bound it explicitly to the viewport,
+    // staying shorter than the layout's fixed footer allowance (128px) so the composer's
+    // `bottom: 0` always clears the footer.
+    [theme.breakpoints.down('Large')]: {
+      height:
+        'calc(100vh - var(--app-header-height, 56px) - 128px - max(var(--padding-xxlarge, 32px), env(safe-area-inset-bottom)))',
+    },
   },
   alertWithSpacing: {
     marginBottom: theme.spacing(2),

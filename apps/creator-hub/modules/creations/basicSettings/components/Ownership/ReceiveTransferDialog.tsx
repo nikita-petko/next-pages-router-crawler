@@ -1,6 +1,6 @@
-import { useRouter } from 'next/router';
 import type { FunctionComponent } from 'react';
-import React, { Fragment, useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import { ResourceType } from '@rbx/client-ownership-transfer-api/v1';
 import { useTranslation } from '@rbx/intl';
 import {
@@ -17,6 +17,7 @@ import ownershipTransferClient from '@modules/clients/ownershipTransferApi';
 import tryParseResponseError from '@modules/clients/utils/tryParseResponseError';
 import { toastDurationTime } from '@modules/miscellaneous/common';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
+import useFormSubmissionAnalytics from '@modules/miscellaneous/hooks/useFormSubmissionAnalytics';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import OwnershipEvents from '../../constants/OwnershipEvents';
 import ReceiveTransferVerificationContent from './ReceiveTransferVerificationContent';
@@ -54,6 +55,8 @@ const ReceiveTransferDialog: FunctionComponent<
   const { translate, translateHTML } = useTranslation();
   const { enqueue, close } = useSnackbar();
   const { unifiedLogger } = useUnifiedLoggerProvider();
+  const acceptFormSubmissionAnalytics = useFormSubmissionAnalytics('accept_ownership_transfer');
+  const declineFormSubmissionAnalytics = useFormSubmissionAnalytics('decline_ownership_transfer');
   const router = useRouter();
 
   const [isUserEmailVerified, setIsUserEmailVerified] = useState<boolean>(false);
@@ -64,7 +67,7 @@ const ReceiveTransferDialog: FunctionComponent<
       const emailResponse = await AccountSettingsClient.emailApi.v1EmailGet();
       setIsUserEmailVerified(emailResponse?.verified ?? false);
     };
-    fetchEmailStatus();
+    void fetchEmailStatus();
   }, []);
 
   const showBottomToast = useCallback(
@@ -86,6 +89,7 @@ const ReceiveTransferDialog: FunctionComponent<
       setIsSubmitting(true);
       setDialogOpen(false);
       setIsBannerButtonLoading(true);
+      acceptFormSubmissionAnalytics.started();
 
       try {
         await ownershipTransferClient.acceptLatestTransfer({
@@ -100,7 +104,9 @@ const ReceiveTransferDialog: FunctionComponent<
             resourceId: gameDetails?.id.toString(),
           },
         });
+        acceptFormSubmissionAnalytics.succeeded();
       } catch (error) {
+        acceptFormSubmissionAnalytics.failed();
         const errorResponse = await tryParseResponseError(error);
         // assume 403 errors are more likely to be GCC response
         if (errorResponse?.status === 403) {
@@ -115,7 +121,9 @@ const ReceiveTransferDialog: FunctionComponent<
       }
     }
   }, [
-    gameDetails?.id,
+    acceptFormSubmissionAnalytics,
+    gameDetails,
+    // oxlint-disable-next-line react/react-compiler -- required by exhaustive-deps for the submission callback's finally block.
     onSubmit,
     setDialogOpen,
     showBottomToast,
@@ -127,6 +135,7 @@ const ReceiveTransferDialog: FunctionComponent<
   const submitRejectTransferRequest = useCallback(async () => {
     if (gameDetails?.id) {
       setIsSubmitting(true);
+      declineFormSubmissionAnalytics.started();
 
       try {
         await ownershipTransferClient.rejectLatestTransfer({
@@ -141,7 +150,9 @@ const ReceiveTransferDialog: FunctionComponent<
             resourceId: gameDetails?.id.toString(),
           },
         });
+        declineFormSubmissionAnalytics.succeeded();
       } catch {
+        declineFormSubmissionAnalytics.failed();
         showBottomToast(translate('Error.FailedToDeclineTransferRequest'));
       } finally {
         setIsSubmitting(false);
@@ -149,7 +160,16 @@ const ReceiveTransferDialog: FunctionComponent<
         router.reload();
       }
     }
-  }, [gameDetails?.id, setDialogOpen, showBottomToast, translate, router, unifiedLogger]);
+  }, [
+    declineFormSubmissionAnalytics,
+    gameDetails,
+    // oxlint-disable-next-line react/react-compiler -- required by exhaustive-deps for the submission callback's finally block.
+    router,
+    setDialogOpen,
+    showBottomToast,
+    translate,
+    unifiedLogger,
+  ]);
 
   const receiveTransferInformationDialog = useCallback(() => {
     return (
@@ -293,7 +313,7 @@ const ReceiveTransferDialog: FunctionComponent<
     );
   }, [
     translate,
-    gameDetails?.name,
+    gameDetails,
     nameVerificationText,
     submitAcceptTransferRequest,
     setNameVerificationText,

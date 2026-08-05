@@ -1,5 +1,5 @@
 import type { FunctionComponent } from 'react';
-import React, { Fragment, useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ResourceType } from '@rbx/client-ownership-transfer-api/v1';
 import { useTranslation } from '@rbx/intl';
 import {
@@ -15,6 +15,7 @@ import {
 import ownershipTransferClient from '@modules/clients/ownershipTransferApi';
 import { toastDurationTime } from '@modules/miscellaneous/common';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
+import useFormSubmissionAnalytics from '@modules/miscellaneous/hooks/useFormSubmissionAnalytics';
 import { creatorHub } from '@modules/miscellaneous/urls';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import OwnershipEvents from '../../constants/OwnershipEvents';
@@ -31,6 +32,7 @@ const CancelTransferButton: FunctionComponent<
   const { gameDetails } = useCurrentGame();
   const { enqueue, close } = useSnackbar();
   const { unifiedLogger } = useUnifiedLoggerProvider();
+  const formSubmissionAnalytics = useFormSubmissionAnalytics('cancel_ownership_transfer');
 
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
 
@@ -49,6 +51,7 @@ const CancelTransferButton: FunctionComponent<
 
   const cancelTransferRequest = useCallback(async () => {
     if (gameDetails?.id) {
+      formSubmissionAnalytics.started();
       try {
         await ownershipTransferClient.cancelLatestTransfer({
           resourceId: gameDetails?.id,
@@ -66,12 +69,14 @@ const CancelTransferButton: FunctionComponent<
         setDialogOpen(false);
         showBottomToast(translate('Label.OwnershipTransferRequestCancelled'));
         onSubmit();
+        formSubmissionAnalytics.succeeded();
       } catch {
+        formSubmissionAnalytics.failed();
         setDialogOpen(false);
         showBottomToast(translate('Error.FailedCancelRequest'));
       }
     }
-  }, [gameDetails?.id, showBottomToast, translate, onSubmit, unifiedLogger]);
+  }, [formSubmissionAnalytics, gameDetails, showBottomToast, translate, onSubmit, unifiedLogger]);
 
   return (
     <>

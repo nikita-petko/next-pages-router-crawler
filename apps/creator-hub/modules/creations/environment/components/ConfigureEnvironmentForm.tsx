@@ -1,6 +1,6 @@
-import { useRouter } from 'next/router';
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
 import ReactMarkdown from 'react-markdown';
 import { useTranslation, withTranslation } from '@rbx/intl';
@@ -18,6 +18,7 @@ import {
 import type { V2Protos } from '@modules/clients/openCloud';
 import openCloudV2Client from '@modules/clients/openCloud';
 import FormMode from '@modules/miscellaneous/common/enums/FormMode';
+import useFormSubmissionAnalytics from '@modules/miscellaneous/hooks/useFormSubmissionAnalytics';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { isSpecialEnvironment } from '../utils/environmentUtils';
 import useConfigureEnvironmentFormStyles from './ConfigureEnvironmentForm.styles';
@@ -39,13 +40,17 @@ const ConfigureEnvironmentForm: FunctionComponent<ConfigureEnvironmentFormProps>
   const { translate } = useTranslation();
   const { enqueue } = useSnackbar();
   const router = useRouter();
-  const { id: gameId, environmentId } = router.query;
+  const gameId = typeof router.query.id === 'string' ? router.query.id : undefined;
+  const environmentId =
+    typeof router.query.environmentId === 'string' ? router.query.environmentId : undefined;
+  const configureFormSubmissionAnalytics = useFormSubmissionAnalytics('configure_environment');
+  const archiveFormSubmissionAnalytics = useFormSubmissionAnalytics('archive_environment');
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
 
   useEffect(() => {
     if (isSpecialEnvironment(environment)) {
-      router.replace('/404');
+      void router.replace('/404');
     }
   }, [environment, router]);
 
@@ -63,8 +68,8 @@ const ConfigureEnvironmentForm: FunctionComponent<ConfigureEnvironmentFormProps>
   } = useForm<EnvironmentFormData>({
     mode: FormMode.OnTouched,
     defaultValues: {
-      displayName: environment.displayName || '',
-      slug: environment.slug || '',
+      displayName: environment.displayName ?? '',
+      slug: environment.slug ?? '',
     },
   });
 
@@ -87,6 +92,7 @@ const ConfigureEnvironmentForm: FunctionComponent<ConfigureEnvironmentFormProps>
       if (!gameId || !environmentId) {
         return;
       }
+      configureFormSubmissionAnalytics.started();
 
       await openCloudV2Client.updateEnvironment({
         environment: {
@@ -97,7 +103,9 @@ const ConfigureEnvironmentForm: FunctionComponent<ConfigureEnvironmentFormProps>
       });
       showSuccessToast();
       reset(data);
+      configureFormSubmissionAnalytics.succeeded();
     } catch (error) {
+      configureFormSubmissionAnalytics.failed();
       if (error instanceof Error) {
         enqueue({
           message: error.message,
@@ -127,13 +135,16 @@ const ConfigureEnvironmentForm: FunctionComponent<ConfigureEnvironmentFormProps>
       }
 
       setIsArchiving(true);
+      archiveFormSubmissionAnalytics.started();
       await openCloudV2Client.archiveEnvironment({
         path: `universes/${gameId}/environments/${environmentId}`,
       });
       showSuccessToast();
       setIsArchiveModalOpen(false);
-      backToEnvironmentsList();
+      await backToEnvironmentsList();
+      archiveFormSubmissionAnalytics.succeeded();
     } catch (error) {
+      archiveFormSubmissionAnalytics.failed();
       if (error instanceof Error) {
         enqueue({
           message: error.message,
@@ -170,7 +181,7 @@ const ConfigureEnvironmentForm: FunctionComponent<ConfigureEnvironmentFormProps>
           </Grid>
           <Grid item>
             <Typography variant='smallLabel1' color='secondary'>
-              {translate('Label.ID', { id: environment.id || '' })}
+              {translate('Label.ID', { id: environment.id ?? '' })}
             </Typography>
           </Grid>
         </Grid>
@@ -226,7 +237,7 @@ const ConfigureEnvironmentForm: FunctionComponent<ConfigureEnvironmentFormProps>
       {/* Archive Confirmation Modal */}
       <Dialog open={isArchiveModalOpen} onClose={handleArchiveCancel} fullWidth>
         <DialogTitle>
-          {translate('Heading.ArchiveEnvironment', { name: environment.displayName || '' })}
+          {translate('Heading.ArchiveEnvironment', { name: environment.displayName ?? '' })}
         </DialogTitle>
         <DialogContent>
           <Typography variant='body1' color='secondary' component='div'>

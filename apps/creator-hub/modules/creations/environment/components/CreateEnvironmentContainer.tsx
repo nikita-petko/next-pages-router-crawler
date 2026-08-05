@@ -1,9 +1,10 @@
-import { useRouter } from 'next/router';
 import type { FunctionComponent } from 'react';
+import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from '@rbx/intl';
 import { Grid, Button, Typography, Divider } from '@rbx/ui';
 import openCloudV2Client from '@modules/clients/openCloud';
+import useFormSubmissionAnalytics from '@modules/miscellaneous/hooks/useFormSubmissionAnalytics';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import useConfigureEnvironmentFormStyles from './ConfigureEnvironmentForm.styles';
 import EnvironmentFormInputs from './EnvironmentFormInputs';
@@ -16,8 +17,9 @@ interface EnvironmentFormData {
 const CreateEnvironmentContainer: FunctionComponent = () => {
   const { translate } = useTranslation();
   const router = useRouter();
-  const { id: gameId } = router.query;
+  const gameId = typeof router.query.id === 'string' ? router.query.id : undefined;
   const { gameDetails: game } = useCurrentGame();
+  const formSubmissionAnalytics = useFormSubmissionAnalytics('create_environment');
   const {
     classes: { formPadding, inputFormPadding },
   } = useConfigureEnvironmentFormStyles();
@@ -43,17 +45,22 @@ const CreateEnvironmentContainer: FunctionComponent = () => {
       return;
     }
 
+    formSubmissionAnalytics.started();
     try {
       await openCloudV2Client.createEnvironment({
         parent: openCloudV2Client.universePath(game.id.toString()),
         environment: {
-          displayName: data.displayName || '',
+          displayName: data.displayName ?? '',
           slug: data.slug,
         },
       });
 
-      router.push(`/dashboard/creations/experiences/${gameId}/environments/${data.slug}/configure`);
+      await router.push(
+        `/dashboard/creations/experiences/${gameId ?? ''}/environments/${data.slug}/configure`,
+      );
+      formSubmissionAnalytics.succeeded();
     } catch (err) {
+      formSubmissionAnalytics.failed();
       setError('slug', {
         message: err instanceof Error ? err.message : translate('Error.EnvironmentCreateFailed'),
       });
@@ -61,7 +68,7 @@ const CreateEnvironmentContainer: FunctionComponent = () => {
   };
 
   const handleCancel = () => {
-    router.push(`/dashboard/creations/experiences/${gameId}/environments`);
+    void router.push(`/dashboard/creations/experiences/${gameId ?? ''}/environments`);
   };
 
   if (!game?.id) {

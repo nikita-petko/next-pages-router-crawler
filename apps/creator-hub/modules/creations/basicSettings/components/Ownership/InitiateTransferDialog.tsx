@@ -20,6 +20,7 @@ import type { User } from '@modules/clients/users';
 import tryParseResponseError from '@modules/clients/utils/tryParseResponseError';
 import { toastDurationTime } from '@modules/miscellaneous/common';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
+import useFormSubmissionAnalytics from '@modules/miscellaneous/hooks/useFormSubmissionAnalytics';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import OwnershipEvents from '../../constants/OwnershipEvents';
 import InitiateTransferOwnerSelectionContent from './InitiateTransferOwnerSelectionContent';
@@ -61,6 +62,7 @@ const InitiateTransferDialog: FunctionComponent<
   const { translate } = useTranslation();
   const { enqueue, close } = useSnackbar();
   const { unifiedLogger } = useUnifiedLoggerProvider();
+  const formSubmissionAnalytics = useFormSubmissionAnalytics('initiate_ownership_transfer');
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -92,6 +94,7 @@ const InitiateTransferDialog: FunctionComponent<
         }
 
         const currentCreatorType = gameDetails.creator.type;
+        formSubmissionAnalytics.started();
 
         const transferDetails = await ownershipTransferClient.createTransfer(
           { creatorType: currentCreatorType, creatorId: experienceCreator?.id },
@@ -111,7 +114,9 @@ const InitiateTransferDialog: FunctionComponent<
             resourceId: transferDetails.resource.resourceId.toString(),
           },
         });
+        formSubmissionAnalytics.succeeded();
       } catch (error) {
+        formSubmissionAnalytics.failed();
         const errorResponse = await tryParseResponseError(error);
         // assume 403 errors are more likely to be GCC response
         if (errorResponse?.status === 403) {
@@ -125,10 +130,11 @@ const InitiateTransferDialog: FunctionComponent<
       }
     }
   }, [
-    experienceCreator?.id,
+    experienceCreator,
+    formSubmissionAnalytics,
     targetGroupId,
-    gameDetails?.id,
-    gameDetails?.creator?.type,
+    gameDetails,
+    // oxlint-disable-next-line react/react-compiler -- required by exhaustive-deps for the submission callback's finally block.
     onSubmit,
     setDialogOpen,
     showBottomToast,
@@ -175,7 +181,7 @@ const InitiateTransferDialog: FunctionComponent<
   }, [
     translate,
     isImplicationsAcknowledged,
-    gameDetails?.creator?.type,
+    gameDetails,
     setDialogOpen,
     setIsImplicationsAcknowledged,
     setNameVerificationText,
@@ -238,7 +244,7 @@ const InitiateTransferDialog: FunctionComponent<
     );
   }, [
     translate,
-    gameDetails?.name,
+    gameDetails,
     nameVerificationText,
     targetGroupId,
     submitInitiateTransferRequest,

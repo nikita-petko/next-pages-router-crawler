@@ -86,7 +86,7 @@ const InitiateTransferOwnerSelectionContent: FunctionComponent<
         );
       }
     };
-    getGroups();
+    void getGroups();
   }, [user, groups, gameDetails?.creator?.type, gameDetails?.creator?.id]);
 
   useEffect(() => {
@@ -102,7 +102,7 @@ const InitiateTransferOwnerSelectionContent: FunctionComponent<
         setInvalidGroups(invalidGroupSet);
       }
     };
-    getInvalidGroups();
+    void getInvalidGroups();
   }, [user, groups, gameDetails]);
 
   return (
@@ -123,7 +123,7 @@ const InitiateTransferOwnerSelectionContent: FunctionComponent<
             fullWidth
             size='small'
             label={translate('Action.SelectGroup')}
-            value={targetGroupId}
+            value={targetGroupId ?? ''}
             onChange={(e) => {
               setTargetGroupId(Number(e.target.value));
             }}
