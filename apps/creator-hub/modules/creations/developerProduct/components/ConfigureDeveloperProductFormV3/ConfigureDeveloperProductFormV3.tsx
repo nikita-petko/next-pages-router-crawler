@@ -6,8 +6,6 @@ import type { GiftingTradingStatus } from '@rbx/client-developer-products-api/v1
 import { Alert, Button, clsx, Toggle } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { ReturnPolicy, ThumbnailTypes } from '@rbx/thumbnails';
-import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
-import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { openDeveloperProductArchiveDialog } from '@modules/developer-products/components/DeveloperProductArchiveDialog';
 import { useUpdateDeveloperProduct } from '@modules/developer-products/queries/useUpdateDeveloperProduct';
 import { withManagedPricingSubmitGuard } from '@modules/managed-pricing/dialogs/withManagedPricingSubmitGuard';
@@ -53,9 +51,7 @@ function ConfigureDeveloperProductFormV3({
   shopId,
 }: Props) {
   const { push } = useRouter();
-  const translation = useTranslation();
-  const { translate } = translation;
-  const { tPendingTranslation } = useTranslationWrapper(translation);
+  const { translate, translateWithNamespace } = useTranslation();
 
   const {
     register,
@@ -227,13 +223,9 @@ function ConfigureDeveloperProductFormV3({
 
         {developerProduct.isArchived && (
           <Alert variant='Feedback' severity='Info' hasCloseAffordance={false}>
-            {tPendingTranslation(
-              'This product is archived. Unarchive it to make changes.',
-              'Shown on configure when the product is archived and fields are read-only.',
-              translationKey(
-                'Message.ArchivedProductReadOnly',
-                TranslationNamespace.DeveloperProducts,
-              ),
+            {translateWithNamespace(
+              TranslationNamespace.DeveloperProducts,
+              'Message.ArchivedProductReadOnly',
             )}
           </Alert>
         )}
@@ -355,15 +347,13 @@ function ConfigureDeveloperProductFormV3({
                 onClick={handleArchiveClick}
                 isDisabled={isArchiveActionDisabled}>
                 {developerProduct.isArchived
-                  ? tPendingTranslation(
-                      'Unarchive',
-                      'Label for the action to unarchive a developer product.',
-                      translationKey('Action.Unarchive', TranslationNamespace.DeveloperProducts),
+                  ? translateWithNamespace(
+                      TranslationNamespace.DeveloperProducts,
+                      'Action.Unarchive',
                     )
-                  : tPendingTranslation(
-                      'Archive',
-                      'Label for the action to archive a developer product.',
-                      translationKey('Action.Archive', TranslationNamespace.DeveloperProducts),
+                  : translateWithNamespace(
+                      TranslationNamespace.DeveloperProducts,
+                      'Action.Archive',
                     )}
               </Button>
             </div>

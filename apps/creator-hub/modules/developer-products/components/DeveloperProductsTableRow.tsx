@@ -12,11 +12,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@rbx/foundation-ui';
-import { Locale, useLocalization, useTranslation } from '@rbx/intl';
+import { Locale, useLocalization, useTranslation, useTranslationWithNamespace } from '@rbx/intl';
 import { ReturnPolicy, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
 import { Avatar, TableCell, TableRow } from '@rbx/ui';
-import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
-import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
 import { formatDate } from '@modules/miscellaneous/utils/dateUtils';
@@ -100,8 +98,7 @@ function ArchiveMenuItem({
   showArchived: boolean;
   onActionSelected: () => void;
 }) {
-  const unwrapped = useTranslation();
-  const { tPendingTranslation } = useTranslationWrapper(unwrapped);
+  const { translate } = useTranslationWithNamespace(TranslationNamespace.DeveloperProducts);
 
   const handleSelect = useCallback(() => {
     openDeveloperProductArchiveDialog({
@@ -113,25 +110,9 @@ function ArchiveMenuItem({
   }, [universeId, productId, showArchived, onActionSelected]);
 
   return showArchived ? (
-    <MenuItem
-      value='unarchive'
-      title={tPendingTranslation(
-        'Unarchive',
-        'Label for the action to unarchive a developer product.',
-        translationKey('Action.Unarchive', TranslationNamespace.DeveloperProducts),
-      )}
-      onSelect={handleSelect}
-    />
+    <MenuItem value='unarchive' title={translate('Action.Unarchive')} onSelect={handleSelect} />
   ) : (
-    <MenuItem
-      value='archive'
-      title={tPendingTranslation(
-        'Archive',
-        'Label for the action to archive a developer product.',
-        translationKey('Action.Archive', TranslationNamespace.DeveloperProducts),
-      )}
-      onSelect={handleSelect}
-    />
+    <MenuItem value='archive' title={translate('Action.Archive')} onSelect={handleSelect} />
   );
 }
 

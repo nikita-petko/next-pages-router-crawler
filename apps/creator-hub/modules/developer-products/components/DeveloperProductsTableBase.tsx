@@ -1,8 +1,6 @@
 import { memo } from 'react';
-import { useTranslation } from '@rbx/intl';
+import { useTranslationWithNamespace } from '@rbx/intl';
 import { TableBody, TableCell, TableHead, TableRow } from '@rbx/ui';
-import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
-import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import SortableTableHeader from '@modules/monetization-shared/table-sort/SortableTableHeader';
 import type { SortOrder } from '@modules/monetization-shared/table-sort/types';
@@ -42,9 +40,7 @@ function DeveloperProductsTableBase({
   onSort,
   children,
 }: React.PropsWithChildren<Props>) {
-  const translation = useTranslation();
-  const { translate } = translation;
-  const { tPendingTranslation } = useTranslationWrapper(translation);
+  const { translate } = useTranslationWithNamespace(TranslationNamespace.Creations);
 
   return (
     // NOTE: rbx/ui tables by default use table-layout: fixed
@@ -131,11 +127,7 @@ function DeveloperProductsTableBase({
           {showArchived && (
             <SortableTableHeader
               column='archivedDate'
-              label={tPendingTranslation(
-                'Archived Date',
-                'Table column header for the date a monetization item was archived (e.g. Developer Products, Game Passes).',
-                translationKey('Label.ArchivedDate', TranslationNamespace.Creations),
-              )}
+              label={translate('Label.ArchivedDate')}
               sx={{ minWidth: '160px' }}
               disabled={disableSort}
               onSort={onSort}
