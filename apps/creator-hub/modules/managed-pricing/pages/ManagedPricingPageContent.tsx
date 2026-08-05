@@ -1,7 +1,6 @@
 /* istanbul ignore file */
 import { useRouter } from 'next/router';
 import { useTranslation, withTranslation } from '@rbx/intl';
-import { useIsAnyDeveloperProductManagedPricingEnabled } from '@modules/developer-products/hooks/useIsAnyDeveloperProductManagedPricingEnabled';
 import { useGetHardCodedPricesSummary } from '@modules/hard-coded-prices/queries/useGetHardCodedPricesSummary';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import AccessDeniedPage from '@modules/miscellaneous/error/components/AccessDeniedPage';
@@ -18,8 +17,6 @@ import GenericTabbedPageLayout, {
 import { useUniversePermissions } from '@modules/react-query/organizations';
 import ManagedPricingPromotionBanner from '../banners/ManagedPricingPromotionBanner';
 import { useHasSeenManagedPricing } from '../common/useHasSeenManagedPricing';
-import { openGiftingTradingAcknowledgementDialogV2 } from '../dialogs/GiftingTradingAcknowledgementDialogV2';
-import { shouldShowGiftingTradingWarning } from '../gifting-trading/utils';
 import { isManagedPricingAvailable } from '../hooks/useIsManagedPricingAvailable';
 import ManageItemsTabContainer from '../manage-items/containers/ManageItemsTabContainer';
 import OnboardingLandingContent from '../onboarding/components/OnboardingLandingContent';
@@ -53,14 +50,6 @@ function ManagedPricingPageContent({ universeId }: { universeId: number }) {
     useGetGiftingTradingStatus(universeId, {
       select: (data) => data.giftingTradingStatus,
     });
-
-  const showGiftingTradingWarning = shouldShowGiftingTradingWarning(giftingTradingStatus);
-
-  const { data: isAnyDeveloperProductManagedPricingEnabled = false } =
-    useIsAnyDeveloperProductManagedPricingEnabled(
-      { universeId },
-      { enabled: showGiftingTradingWarning ?? false },
-    );
 
   const { data: isHardCodedPricesDetected, isLoading: isLoadingHardCodedPrices } =
     useGetHardCodedPricesSummary({ universeId }, { select: (data) => data.hasViolations });
@@ -133,20 +122,6 @@ function ManagedPricingPageContent({ universeId }: { universeId: number }) {
   ];
 
   const warningBannerItems: MultiFeedbackBannerItem[] = [];
-
-  if (showGiftingTradingWarning && isAnyDeveloperProductManagedPricingEnabled) {
-    warningBannerItems.push({
-      title: translate('Heading.VerifyTradingAndGifting' /* TranslationNamespace.ManagedPricing */),
-      description: translate(
-        'Description.VerifyTradingAndGifting' /* TranslationNamespace.ManagedPricing */,
-      ),
-      actionProps: {
-        children: translate('Action.Verify' /* TranslationNamespace.ManagedPricing */),
-        onClick: () =>
-          openGiftingTradingAcknowledgementDialogV2({ universeId, page: '/managed-pricing' }),
-      },
-    });
-  }
 
   if (isHardCodedPricesDetected) {
     warningBannerItems.push({

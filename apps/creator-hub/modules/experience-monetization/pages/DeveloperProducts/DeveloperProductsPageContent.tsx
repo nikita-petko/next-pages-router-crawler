@@ -3,14 +3,11 @@ import { withTranslation } from '@rbx/intl';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { analyticsItemMonetizationDeveloperProductsNavigationItem } from '@modules/charts-generic/constants/analyticsNavigationItems';
 import DeveloperProductsTableContainer from '@modules/developer-products/containers/DeveloperProductsTableContainer';
-import { useIsAnyDeveloperProductManagedPricingEnabled } from '@modules/developer-products/hooks/useIsAnyDeveloperProductManagedPricingEnabled';
 import CreatorAnalyticsLayout from '@modules/experience-analytics-shared/components/RAQIV2/layout/CreatorAnalyticsLayout';
 import useOwner from '@modules/experience-analytics-shared/context/useOwner';
 import { useAnalyticsExperiencePermissions } from '@modules/experience-analytics-shared/hooks/useAnalyticsPermissions';
 import useRAQIV2TranslationDependencies from '@modules/experience-analytics-shared/hooks/useRAQIV2TranslationDependencies';
 import ManagedPricingPromotionBanner from '@modules/managed-pricing/banners/ManagedPricingPromotionBanner';
-import GiftingTradingWarningBannerV2 from '@modules/managed-pricing/gifting-trading/GiftingTradingWarningBannerV2';
-import { shouldShowGiftingTradingReminder } from '@modules/managed-pricing/gifting-trading/utils';
 import { isManagedPricingAvailable } from '@modules/managed-pricing/hooks/useIsManagedPricingAvailable';
 import { useGetGiftingTradingStatus } from '@modules/managed-pricing/queries/useGetGiftingTradingStatus';
 import { useGetManagedPricingStatus } from '@modules/managed-pricing/queries/useGetManagedPricingStatus';
@@ -43,12 +40,6 @@ function DeveloperProductsPageContent({ universeId }: { universeId: number }) {
 
   const managedPricingOnboardingStatus = managedPricingStatus?.status;
   const hasRegionalPricingSource = managedPricingStatus?.sources?.includes('RegionalPricing');
-
-  const { data: isAnyDeveloperProductManagedPricingEnabled = false } =
-    useIsAnyDeveloperProductManagedPricingEnabled(
-      { universeId },
-      { enabled: shouldShowGiftingTradingReminder(giftingTradingStatus) },
-    );
 
   const { isProductArchiveEnabled } = useMonetizationFlags('isProductArchiveEnabled');
 
@@ -141,16 +132,6 @@ function DeveloperProductsPageContent({ universeId }: { universeId: number }) {
           universeId={universeId}
           page='monetization/developer-products'
           fromRegionalPricing={hasRegionalPricingSource}
-        />
-      )}
-
-      {isManagedPricingAvailable(managedPricingOnboardingStatus) && (
-        <GiftingTradingWarningBannerV2
-          universeId={universeId}
-          page='/developer-products'
-          giftingTradingStatus={giftingTradingStatus}
-          // Only show gifting trading warnings if any developer product loaded is managed pricing enabled
-          enabled={isAnyDeveloperProductManagedPricingEnabled}
         />
       )}
 

@@ -11,8 +11,6 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import { openDeveloperProductArchiveDialog } from '@modules/developer-products/components/DeveloperProductArchiveDialog';
 import { useUpdateDeveloperProduct } from '@modules/developer-products/queries/useUpdateDeveloperProduct';
 import { withManagedPricingSubmitGuard } from '@modules/managed-pricing/dialogs/withManagedPricingSubmitGuard';
-import GiftingTradingWarningBannerV2 from '@modules/managed-pricing/gifting-trading/GiftingTradingWarningBannerV2';
-import { shouldShowGiftingTradingReminder } from '@modules/managed-pricing/gifting-trading/utils';
 import type { ManagedPricingOnboardingStatus } from '@modules/managed-pricing/types';
 import { DEVELOPER_PRODUCT_LEARN_MORE_URL } from '@modules/miscellaneous/common/constants/linkConstants';
 import ThumbnailImageUploader from '@modules/miscellaneous/components/uploaders/components/ThumbnailImageUploader';
@@ -165,11 +163,6 @@ function ConfigureDeveloperProductFormV3({
   const isPricingConfigChangeAllowed =
     !developerProduct.isInActivePriceOptimizationExperiment && !isReadOnly;
 
-  // Only show gifting trading warnings if managed pricing is already enabled
-  const shouldShowGiftingTradingWarningBanner =
-    developerProduct.isRegionalPricingEnabled &&
-    shouldShowGiftingTradingReminder(giftingTradingStatus);
-
   // Use `useWatch` so that toggling `isForSale` re-renders dependent disabling/dimming logic.
   const currentIsForSale = useWatch({ control, name: 'isForSale' });
 
@@ -244,13 +237,6 @@ function ConfigureDeveloperProductFormV3({
             )}
           </Alert>
         )}
-
-        <GiftingTradingWarningBannerV2
-          universeId={universeId}
-          page='/configure'
-          giftingTradingStatus={giftingTradingStatus}
-          enabled={shouldShowGiftingTradingWarningBanner}
-        />
 
         <DisallowPriceChangeInExperimentBanner
           enabled={developerProduct.isInActivePriceOptimizationExperiment}
