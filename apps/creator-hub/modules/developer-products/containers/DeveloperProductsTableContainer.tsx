@@ -1,13 +1,11 @@
 import { useRouter } from 'next/router';
 import type { GiftingTradingStatus } from '@rbx/client-developer-products-api/v1';
 import { useTranslation, withTranslation } from '@rbx/intl';
-import { isManagedPricingAvailable } from '@modules/managed-pricing/hooks/useIsManagedPricingAvailable';
 import type { ManagedPricingOnboardingStatus } from '@modules/managed-pricing/types';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import AccessDeniedPage from '@modules/miscellaneous/error/components/AccessDeniedPage';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { ProgressCircleLoader } from '@modules/monetization-shared/loaders';
-import { useIsPriceOptimizationActive } from '@modules/price-optimization/queries/useIsPriceOptimizationActive';
 import { useUniversePermissions } from '@modules/react-query/organizations';
 import DeveloperProductsTable from '../components/DeveloperProductsTable';
 import DeveloperProductsTableEmptyState from '../components/DeveloperProductsTableEmptyState';
@@ -39,13 +37,10 @@ function DeveloperProductsTableContainer({
     isArchived,
   });
 
-  const { isPriceOptimizationActive, isLoading: isLoadingPriceOptimization } =
-    useIsPriceOptimizationActive();
-
   const router = useRouter();
 
   // TODO(jeminpark): add skeleton loading if dev products are initial loading
-  if (isLoadingPermissions || isInitialLoading || isLoadingPriceOptimization) {
+  if (isLoadingPermissions || isInitialLoading) {
     return <ProgressCircleLoader />;
   }
 
@@ -81,16 +76,11 @@ function DeveloperProductsTableContainer({
   return (
     <DeveloperProductsTable
       universeId={universeId}
-      showPriceOptimization={isPriceOptimizationActive}
       managedPricingOnboardingStatus={managedPricingOnboardingStatus}
       giftingTradingStatus={giftingTradingStatus}
       perFetchPageSize={perFetchPageSize}
       showArchived={isArchived}
-      initialRowsPerPage={
-        isManagedPricingAvailable(managedPricingOnboardingStatus)
-          ? INITIAL_ROWS_PER_PAGE_WITH_MANAGED_PRICING
-          : undefined
-      }
+      initialRowsPerPage={INITIAL_ROWS_PER_PAGE_WITH_MANAGED_PRICING}
     />
   );
 }

@@ -8,37 +8,27 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from '@rbx/foundation-ui';
-import { useTranslation, withTranslation } from '@rbx/intl';
-import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { useTranslationWithNamespace, withTranslation } from '@rbx/intl';
+import TranslationNamespace from '@modules/miscellaneous/localization/enums/TranslationNamespace';
 import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
-import { useGetPriceExperimentationEligibility } from '@modules/price-optimization/queries/useGetPriceExperimentationEligibility';
 
 type Props = {
   universeId: number;
-  variant: 'Utility' | 'Standard'; // Temporary until full page migration is complete
-  showManagedPricing?: boolean;
 };
 
-const getPriceOptimizationLink = dashboard.getMonetizationPriceOptimizationUrl;
-const getPriceCheckLink = dashboard.getMonetizationDynamicPriceCheckUrl;
 const getManagedPricingLink = dashboard.getManagedPricingUrl;
+const getPriceCheckLink = dashboard.getMonetizationDynamicPriceCheckUrl;
+const getPersonalizedShopLink = dashboard.getPersonalizedShopsUrl;
 
-function DeveloperProductsOptionsMenu({ universeId, variant, showManagedPricing }: Props) {
-  const { translate } = useTranslation();
-
-  const { isEligible: isEligibleForPriceOptimization } = useGetPriceExperimentationEligibility({
-    enabled: !showManagedPricing,
-  });
-  // Note: due to the layout also fetching price optimization, the above query will end up fetching regardless
-  // We need a separate flag to determine if we should show the price optimization menu item
-  const showPriceOptimization = isEligibleForPriceOptimization && !showManagedPricing;
+function DeveloperProductsOptionsMenu({ universeId }: Props) {
+  const { translate } = useTranslationWithNamespace(TranslationNamespace.Navigation);
 
   return (
     <Popover>
       <PopoverTrigger asChild>
         <IconButton
           icon='icon-filled-three-dots-horizontal'
-          variant={variant}
+          variant='Standard'
           size='Medium'
           ariaLabel={translate('Label.OpenOptions')}
           className='shrink-0'
@@ -51,14 +41,9 @@ function DeveloperProductsOptionsMenu({ universeId, variant, showManagedPricing 
         ariaLabel={translate('Label.OpenOptions')}>
         <Menu size='Medium'>
           <MenuSection>
-            {showPriceOptimization && (
-              <MenuItem
-                asChild
-                title={translate('Heading.PriceOptimization')}
-                value='price-optimization'>
-                <NextLink href={getPriceOptimizationLink(universeId)} className='no-underline' />
-              </MenuItem>
-            )}
+            <MenuItem asChild title={translate('Heading.ManagedPricing')} value='managed-pricing'>
+              <NextLink href={getManagedPricingLink(universeId)} className='no-underline' />
+            </MenuItem>
 
             <MenuItem
               asChild
@@ -67,11 +52,9 @@ function DeveloperProductsOptionsMenu({ universeId, variant, showManagedPricing 
               <NextLink href={getPriceCheckLink(universeId)} className='no-underline' />
             </MenuItem>
 
-            {showManagedPricing && (
-              <MenuItem asChild title={translate('Heading.ManagedPricing')} value='managed-pricing'>
-                <NextLink href={getManagedPricingLink(universeId)} className='no-underline' />
-              </MenuItem>
-            )}
+            <MenuItem asChild title={translate('Heading.PersonalizedShop')} value='shop'>
+              <NextLink href={getPersonalizedShopLink(universeId)} className='no-underline' />
+            </MenuItem>
           </MenuSection>
         </Menu>
       </PopoverContent>

@@ -7,7 +7,6 @@ import useOwner from '@modules/experience-analytics-shared/context/useOwner';
 import { useAnalyticsExperiencePermissions } from '@modules/experience-analytics-shared/hooks/useAnalyticsPermissions';
 import useRAQIV2TranslationDependencies from '@modules/experience-analytics-shared/hooks/useRAQIV2TranslationDependencies';
 import ManagedPricingPromotionBanner from '@modules/managed-pricing/banners/ManagedPricingPromotionBanner';
-import { isManagedPricingAvailable } from '@modules/managed-pricing/hooks/useIsManagedPricingAvailable';
 import { useGetManagedPricingStatus } from '@modules/managed-pricing/queries/useGetManagedPricingStatus';
 import AccessDeniedPage from '@modules/miscellaneous/error/components/AccessDeniedPage';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -92,13 +91,11 @@ function GamePassesPageContent({ universeId }: { universeId: number }) {
 
   return (
     <div className='flex flex-col gap-xxlarge margin-bottom-large'>
-      {isManagedPricingAvailable(managedPricingOnboardingStatus) && (
-        <ManagedPricingPromotionBanner
-          universeId={universeId}
-          page='monetization/passes'
-          fromRegionalPricing={hasRegionalPricingSource}
-        />
-      )}
+      <ManagedPricingPromotionBanner
+        universeId={universeId}
+        page='monetization/passes'
+        fromRegionalPricing={hasRegionalPricingSource}
+      />
 
       <GenericTabbedPageLayout
         tabs={orderedTabs}

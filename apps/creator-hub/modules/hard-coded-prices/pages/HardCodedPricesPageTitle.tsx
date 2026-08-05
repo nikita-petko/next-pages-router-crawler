@@ -2,7 +2,6 @@
 import { memo } from 'react';
 import type { Locale } from '@rbx/intl';
 import { useLocalization, useTranslation, withTranslation } from '@rbx/intl';
-import { useIsManagedPricingAvailable } from '@modules/managed-pricing/hooks/useIsManagedPricingAvailable';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useUniverseId } from '@modules/monetization-shared/route/useUniverseId';
 import PageTitle from '@modules/monetization-shared/title';
@@ -30,7 +29,6 @@ function HardCodedPricesPageTitle() {
   const { universeId } = useUniverseId();
 
   const { data: permissions } = useUniversePermissions(universeId);
-  const { data: isManagedPricingAvailable } = useIsManagedPricingAvailable(universeId);
   const { data: hardCodedPricesSummary } = useGetHardCodedPricesSummary(
     { universeId },
     { enabled: !!universeId },
@@ -40,7 +38,7 @@ function HardCodedPricesPageTitle() {
 
   const hasPermission =
     permissions?.monetizeExperience === true || permissions?.viewAnalytics === true;
-  if (!hasPermission || !isManagedPricingAvailable) {
+  if (!hasPermission) {
     // Note: this is the title component, which will not be rendered under certain conditions
     return null;
   }

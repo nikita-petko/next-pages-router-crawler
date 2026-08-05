@@ -1,12 +1,10 @@
 import { useRouter } from 'next/router';
 import { useTranslation, withTranslation } from '@rbx/intl';
-import { isManagedPricingAvailable } from '@modules/managed-pricing/hooks/useIsManagedPricingAvailable';
 import type { ManagedPricingOnboardingStatus } from '@modules/managed-pricing/types';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import AccessDeniedPage from '@modules/miscellaneous/error/components/AccessDeniedPage';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { ProgressCircleLoader } from '@modules/monetization-shared/loaders';
-import { useIsPriceOptimizationActive } from '@modules/price-optimization/queries/useIsPriceOptimizationActive';
 import { useUniversePermissions } from '@modules/react-query/organizations';
 import PassesTable from '../components/PassesTable';
 import PassesTableEmptyState from '../components/PassesTableEmptyState';
@@ -34,10 +32,7 @@ function GamePassesTableContainer({ universeId, managedPricingOnboardingStatus }
     select: transformGamePassesForTable,
   });
 
-  const { isPriceOptimizationActive, isLoading: isLoadingPriceOptimization } =
-    useIsPriceOptimizationActive();
-
-  if (isLoadingPermissions || isLoadingPasses || isLoadingPriceOptimization) {
+  if (isLoadingPermissions || isLoadingPasses) {
     return <ProgressCircleLoader />;
   }
 
@@ -64,13 +59,8 @@ function GamePassesTableContainer({ universeId, managedPricingOnboardingStatus }
     <PassesTable
       universeId={universeId}
       passes={passes}
-      showPriceOptimization={isPriceOptimizationActive}
       managedPricingOnboardingStatus={managedPricingOnboardingStatus}
-      initialRowsPerPage={
-        isManagedPricingAvailable(managedPricingOnboardingStatus)
-          ? INITIAL_ROWS_PER_PAGE_WITH_MANAGED_PRICING
-          : undefined
-      }
+      initialRowsPerPage={INITIAL_ROWS_PER_PAGE_WITH_MANAGED_PRICING}
     />
   );
 }

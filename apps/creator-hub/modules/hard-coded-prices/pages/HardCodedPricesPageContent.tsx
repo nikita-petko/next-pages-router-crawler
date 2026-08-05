@@ -1,11 +1,9 @@
 /* istanbul ignore file */
 import { useRouter } from 'next/router';
 import { useTranslation, withTranslation } from '@rbx/intl';
-import { useIsManagedPricingAvailable } from '@modules/managed-pricing/hooks/useIsManagedPricingAvailable';
 import EmptyState from '@modules/miscellaneous/components/EmptyState/EmptyState';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import AccessDeniedPage from '@modules/miscellaneous/error/components/AccessDeniedPage';
-import PageNotFound from '@modules/miscellaneous/error/components/PageNotFound';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { ProgressCircleLoader } from '@modules/monetization-shared/loaders';
 import useCurrentGame from '@modules/providers/game/hooks/useCurrentGame';
@@ -25,30 +23,17 @@ function HardCodedPricesPageContent({ universeId }: { universeId: number }) {
     isError: isErrorPermissions,
   } = useUniversePermissions(universeId);
   const {
-    data: isManagedPricingAvailable,
-    isLoading: isLoadingManagedPricingStatus,
-    isError: isErrorManagedPricingStatus,
-  } = useIsManagedPricingAvailable(universeId);
-  const {
     data: hardCodedPricesSummary,
     isLoading: isLoadingHardCodedPricesSummary,
     isError: isErrorHardCodedPricesSummary,
   } = useGetHardCodedPricesSummary({ universeId });
 
-  const isLoading =
-    isLoadingManagedPricingStatus ||
-    isLoadingPermissions ||
-    isLoadingGame ||
-    isLoadingHardCodedPricesSummary;
+  const isLoading = isLoadingPermissions || isLoadingGame || isLoadingHardCodedPricesSummary;
   if (isLoading) {
     return <ProgressCircleLoader />;
   }
 
-  const isError =
-    isErrorManagedPricingStatus ||
-    isErrorPermissions ||
-    isErrorHardCodedPricesSummary ||
-    isErrorLoadingGame;
+  const isError = isErrorPermissions || isErrorHardCodedPricesSummary || isErrorLoadingGame;
   if (isError) {
     return (
       <FailureView
@@ -64,11 +49,6 @@ function HardCodedPricesPageContent({ universeId }: { universeId: number }) {
     permissions?.monetizeExperience === true || permissions?.viewAnalytics === true;
   if (permissions !== undefined && !hasPermission) {
     return <AccessDeniedPage />;
-  }
-
-  // Feature flag gate - will eventually be removed once the MP is fully launched
-  if (!isManagedPricingAvailable) {
-    return <PageNotFound />;
   }
 
   // If no summary after load and error check, or if no violations found, show no hard-coded prices

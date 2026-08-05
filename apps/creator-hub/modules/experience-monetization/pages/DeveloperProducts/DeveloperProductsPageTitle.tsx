@@ -1,10 +1,10 @@
 import { memo } from 'react';
 import NextLink from 'next/link';
 import { Button } from '@rbx/foundation-ui';
-import { useTranslation } from '@rbx/intl';
+import { useTranslationWithNamespace } from '@rbx/intl';
 import { analyticsItemMonetizationDeveloperProductsNavigationItem } from '@modules/charts-generic/constants/analyticsNavigationItems';
 import DeveloperProductsOptionsMenu from '@modules/developer-products/components/DeveloperProductsOptionsMenu';
-import { useIsManagedPricingAvailable } from '@modules/managed-pricing/hooks/useIsManagedPricingAvailable';
+import TranslationNamespace from '@modules/miscellaneous/localization/enums/TranslationNamespace';
 import { dashboard, docs } from '@modules/miscellaneous/urls/creatorHub';
 import { useUniverseId } from '@modules/monetization-shared/route/useUniverseId';
 import PageTitle from '@modules/monetization-shared/title';
@@ -14,12 +14,9 @@ const developerProductsDocLink = docs.getDeveloperProductsMonetizationUrl();
 const getCreateDeveloperProductLink = dashboard.getCreateDeveloperProductUrl;
 
 function DeveloperProductsPageTitle() {
-  const { translate } = useTranslation();
+  const { translate } = useTranslationWithNamespace(TranslationNamespace.DeveloperProducts);
   const { universeId } = useUniverseId();
   const { data: permissions, isLoading: isLoadingPermissions } = useUniversePermissions(universeId);
-
-  // V2 flow with Managed Pricing
-  const { data: isManagedPricingAvailable } = useIsManagedPricingAvailable(universeId);
 
   if (!universeId) {
     return null;
@@ -32,29 +29,22 @@ function DeveloperProductsPageTitle() {
       subtitleLink={developerProductsDocLink}
       actions={
         <div className='flex items-center gap-small'>
-          {isManagedPricingAvailable && (
-            <Button
-              asChild
-              data-testid='createAssociatedItemsButton'
-              variant='Emphasis'
-              size='Medium'
-              isLoading={isLoadingPermissions}
-              isDisabled={!permissions?.monetizeExperience}>
-              <NextLink href={getCreateDeveloperProductLink(universeId)}>
-                {translate(
-                  'Action.CreateDeveloperProduct' /* TranslationNamespace.DeveloperProducts */,
-                )}
-              </NextLink>
-            </Button>
-          )}
-          <DeveloperProductsOptionsMenu
-            universeId={universeId}
-            variant={isManagedPricingAvailable ? 'Standard' : 'Utility'}
-            showManagedPricing={isManagedPricingAvailable}
-          />
+          <Button
+            asChild
+            data-testid='createAssociatedItemsButton'
+            variant='Emphasis'
+            size='Medium'
+            isLoading={isLoadingPermissions}
+            isDisabled={!permissions?.monetizeExperience}>
+            <NextLink href={getCreateDeveloperProductLink(universeId)}>
+              {translate('Action.CreateDeveloperProduct')}
+            </NextLink>
+          </Button>
+
+          <DeveloperProductsOptionsMenu universeId={universeId} />
         </div>
       }
-      className={isManagedPricingAvailable ? 'wrap' : undefined}
+      className='wrap'
     />
   );
 }

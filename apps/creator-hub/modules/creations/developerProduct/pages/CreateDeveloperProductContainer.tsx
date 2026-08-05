@@ -1,6 +1,5 @@
 /* istanbul ignore file */
 import { withTranslation } from '@rbx/intl';
-import { isManagedPricingAvailable } from '@modules/managed-pricing/hooks/useIsManagedPricingAvailable';
 import { useGetGiftingTradingStatus } from '@modules/managed-pricing/queries/useGetGiftingTradingStatus';
 import { useGetManagedPricingStatus } from '@modules/managed-pricing/queries/useGetManagedPricingStatus';
 import AccessDeniedPage from '@modules/miscellaneous/error/components/AccessDeniedPage';
@@ -9,7 +8,6 @@ import { ProgressCircleLoader } from '@modules/monetization-shared/loaders';
 import { useUniversePermissions } from '@modules/react-query/organizations';
 import { usePersonalizedShop } from '@modules/shops/hooks/usePersonalizedShop';
 import { useAvailableCategories } from '@modules/shops/item-catalog/hooks/useAvailableCategories';
-import CreateDeveloperProductFormV2 from '../components/CreateDeveloperProductFormV2/CreateDeveloperProductFormV2';
 import CreateDeveloperProductFormV3 from '../components/CreateDeveloperProductFormV3/CreateDeveloperProductFormV3';
 
 type Props = {
@@ -46,20 +44,15 @@ function CreateDeveloperProductContainer({ universeId }: Props) {
     return <AccessDeniedPage />;
   }
 
-  const showManagedPricing = isManagedPricingAvailable(managedPricingOnboardingStatus);
-  if (showManagedPricing) {
-    return (
-      <CreateDeveloperProductFormV3
-        universeId={universeId}
-        managedPricingOnboardingStatus={managedPricingOnboardingStatus}
-        giftingTradingStatus={giftingTradingStatus}
-        shopId={shopId}
-        availableCategories={availableCategories}
-      />
-    );
-  }
-
-  return <CreateDeveloperProductFormV2 universeId={universeId} shopId={shopId} />;
+  return (
+    <CreateDeveloperProductFormV3
+      universeId={universeId}
+      managedPricingOnboardingStatus={managedPricingOnboardingStatus}
+      giftingTradingStatus={giftingTradingStatus}
+      shopId={shopId}
+      availableCategories={availableCategories}
+    />
+  );
 }
 
 export default withTranslation(CreateDeveloperProductContainer, [

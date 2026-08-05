@@ -2,7 +2,6 @@
 import { useRouter } from 'next/router';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { useGetDeveloperProductConfig } from '@modules/developer-products/queries/useGetDeveloperProductConfig';
-import { isManagedPricingAvailable } from '@modules/managed-pricing/hooks/useIsManagedPricingAvailable';
 import { useGetGiftingTradingStatus } from '@modules/managed-pricing/queries/useGetGiftingTradingStatus';
 import { useGetManagedPricingStatus } from '@modules/managed-pricing/queries/useGetManagedPricingStatus';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
@@ -11,7 +10,6 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { ProgressCircleLoader } from '@modules/monetization-shared/loaders';
 import { useUniversePermissions } from '@modules/react-query/organizations';
 import { usePersonalizedShop } from '@modules/shops/hooks/usePersonalizedShop';
-import ConfigureDeveloperProductFormV2 from '../components/ConfigureDeveloperProductFormV2/ConfigureDeveloperProductFormV2';
 import ConfigureDeveloperProductFormV3 from '../components/ConfigureDeveloperProductFormV3/ConfigureDeveloperProductFormV3';
 import { parseDeveloperProductConfig } from '../utils/developerProductUtils';
 
@@ -74,27 +72,13 @@ function ConfigureDeveloperProductContainer({ universeId, productId }: Props) {
     );
   }
 
-  const showManagedPricing = isManagedPricingAvailable(managedPricingOnboardingStatus);
-
-  if (showManagedPricing) {
-    return (
-      <ConfigureDeveloperProductFormV3
-        universeId={universeId}
-        productId={productId}
-        developerProduct={developerProduct}
-        giftingTradingStatus={giftingTradingStatus}
-        managedPricingOnboardingStatus={managedPricingOnboardingStatus}
-        isPending={isDeveloperProductRefetching}
-        shopId={shopId}
-      />
-    );
-  }
-
   return (
-    <ConfigureDeveloperProductFormV2
+    <ConfigureDeveloperProductFormV3
       universeId={universeId}
       productId={productId}
       developerProduct={developerProduct}
+      giftingTradingStatus={giftingTradingStatus}
+      managedPricingOnboardingStatus={managedPricingOnboardingStatus}
       isPending={isDeveloperProductRefetching}
       shopId={shopId}
     />
