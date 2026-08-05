@@ -5,8 +5,12 @@ import { PointerActivationConstraints } from '@dnd-kit/dom';
 import type { DragEndEvent } from '@dnd-kit/react';
 import { DragDropProvider, KeyboardSensor, PointerSensor } from '@dnd-kit/react';
 import { isSortableOperation, useSortable } from '@dnd-kit/react/sortable';
+import { useTranslation } from '@rbx/intl';
 import { AssetThumbnailSize, ReturnPolicy, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
 import { IconButton, makeStyles, DeleteOutlinedIcon, DragHandleIcon } from '@rbx/ui';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import type { ImageAsset } from '../../utils/uploadImageAssetsIfNeeded';
 
 const useStyles = makeStyles<void, 'actions'>()((theme, _, classes) => ({
@@ -94,10 +98,16 @@ const IMAGE_LIST_SENSORS = [
  */
 const ImageBeforeUploadPreview = ({ file }: { file: File }) => {
   const { classes } = useStyles();
+  const { tPendingTranslation } = useTranslationWrapper(useTranslation());
 
   const clientOnlyAssetUrl = useMemo(() => URL.createObjectURL(file), [file]);
+  const previewAlt = tPendingTranslation(
+    'Image preview',
+    'Alternative text for an image selected for upload before it has been uploaded.',
+    translationKey('Label.ImagePreview', TranslationNamespace.AgreementsManager),
+  );
 
-  return <img className={classes.imagePreview} src={clientOnlyAssetUrl} alt='preview' />;
+  return <img className={classes.imagePreview} src={clientOnlyAssetUrl} alt={previewAlt} />;
 };
 
 type ThumbnailItem = ImageAsset & {
@@ -129,6 +139,7 @@ const SortableImageItem = ({
   showDragHandle?: boolean;
 }) => {
   const { classes } = useStyles();
+  const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const { handleRef, isDragging, ref } = useSortable({
     id: item.id,
     index,
@@ -140,6 +151,16 @@ const SortableImageItem = ({
   const style = {
     opacity: isDragging ? 0.5 : 1,
   };
+  const thumbnailAlt = tPendingTranslation(
+    'Thumbnail',
+    'Section heading used for inform the user that this section is about thumbnails (eg. experience thumbnails or listing thumbnails)',
+    translationKey('Label.Thumbnail', TranslationNamespace.AgreementsManager),
+  );
+  const deleteThumbnailLabel = tPendingTranslation(
+    'Delete thumbnail',
+    'ARIA label for the action that removes a license-listing thumbnail.',
+    translationKey('Action.DeleteThumbnail', TranslationNamespace.AgreementsManager),
+  );
 
   return (
     <div ref={ref} style={style} className={classes.listItem}>
@@ -148,7 +169,7 @@ const SortableImageItem = ({
           <Thumbnail2d
             targetId={item.assetId}
             type={ThumbnailTypes.assetThumbnail}
-            alt='Thumbnail'
+            alt={thumbnailAlt}
             returnPolicy={ReturnPolicy.PlaceHolder}
             includeBackground={false}
             // eslint-disable-next-line no-underscore-dangle -- external enum
@@ -163,7 +184,7 @@ const SortableImageItem = ({
       <div className={classes.actions}>
         <IconButton
           className={classes.deleteButton}
-          aria-label='Delete thumbnail'
+          aria-label={deleteThumbnailLabel}
           color='secondary'
           disabled={disabled}
           onClick={() => onRemove(index)}

@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '@rbx/intl';
 import { Thumbnail2d, ThumbnailTypes, ReturnPolicy, AssetThumbnailSize } from '@rbx/thumbnails';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import AmDivider from '@modules/ip/license-manager/components/AmDivider';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import LicenseCarouselArrowButton from './LicenseCarouselArrowButton';
 import useThumbnailCarouselStyles from './ThumbnailCarousel.styles';
 
@@ -29,12 +32,29 @@ const ThumbnailCarousel: React.FC<ThumbnailCarouselProps> = ({ assetIds, name })
     },
     cx,
   } = useThumbnailCarouselStyles();
-  const { translate } = useTranslation();
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const [isUserInteracting, setIsUserInteracting] = useState(false);
 
   const showDots = assetIds.length > 1;
+  const previousThumbnailLabel = tPendingTranslation(
+    'Previous thumbnail',
+    'ARIA label for the button that shows the previous listing thumbnail.',
+    translationKey('Action.PreviousThumbnail', TranslationNamespace.Licenses),
+  );
+  const nextThumbnailLabel = tPendingTranslation(
+    'Next thumbnail',
+    'ARIA label for the button that shows the next listing thumbnail.',
+    translationKey('Action.NextThumbnail', TranslationNamespace.Licenses),
+  );
+  const thumbnailPositionsLabel = tPendingTranslation(
+    'Thumbnail positions',
+    'ARIA label for the list of listing-thumbnail carousel positions.',
+    translationKey('Label.ThumbnailPositions', TranslationNamespace.Licenses),
+  );
 
   const handlePrevious = useCallback(() => {
     setActiveIndex((current) => (current === 0 ? assetIds.length - 1 : current - 1));
@@ -119,7 +139,7 @@ const ThumbnailCarousel: React.FC<ThumbnailCarouselProps> = ({ assetIds, name })
             testId='left-button'
             direction='previous'
             onClick={handlePrevious}
-            ariaLabel='Previous thumbnail'
+            ariaLabel={previousThumbnailLabel}
             visible={isHovered}
           />
         </div>
@@ -131,20 +151,28 @@ const ThumbnailCarousel: React.FC<ThumbnailCarouselProps> = ({ assetIds, name })
             testId='right-button'
             direction='next'
             onClick={handleNext}
-            ariaLabel='Next thumbnail'
+            ariaLabel={nextThumbnailLabel}
             visible={isHovered}
           />
         </div>
       )}
 
       {showDots && (
-        <ul className={dotBar} aria-label='Thumbnail positions'>
+        <ul className={dotBar} aria-label={thumbnailPositionsLabel}>
           {assetIds.map((assetId, index) => (
             <li
               data-testid={`dot-${index}`}
               key={assetId}
               className={index === activeIndex ? activeDot : dot}
-              aria-label={`Thumbnail ${index + 1} of ${assetIds.length}`}
+              aria-label={tPendingTranslation(
+                'Thumbnail {position} of {count}',
+                'ARIA label for a listing-thumbnail carousel position indicator.',
+                translationKey('Label.ThumbnailPosition', TranslationNamespace.Licenses),
+                {
+                  position: String(index + 1),
+                  count: String(assetIds.length),
+                },
+              )}
               aria-current={index === activeIndex ? 'true' : 'false'}
             />
           ))}

@@ -23,6 +23,7 @@ const UpdatesPage: FunctionComponent = () => {
 
   useEffect(() => {
     if (router.isReady) {
+      // oxlint-disable-next-line react/react-compiler -- pre-existing: activeTab is route-derived but also set optimistically in handleTabChange, so it can't collapse into a plain derivation
       setActiveTab(routeTab);
     }
   }, [router.isReady, routeTab]);
@@ -67,7 +68,7 @@ const UpdatesPage: FunctionComponent = () => {
                 type='button'
                 className={`${classes.tabButton} ${activeTab === 'roadmap' ? classes.tabButtonActive : ''}`}
                 onClick={() => handleTabChange('roadmap')}>
-                <Typography variant='smallLabel1'>Roadmap</Typography>
+                <Typography variant='smallLabel1'>{translate('Label.Roadmap')}</Typography>
               </button>
             </div>
             <div className={classes.tabActionsWrapper}>

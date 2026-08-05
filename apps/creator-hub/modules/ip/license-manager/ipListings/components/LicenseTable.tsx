@@ -248,6 +248,7 @@ const LicenseTable = ({ licenses, ipListingId }: LicenseTableProps) => {
   const { frontendFlags, loadingFrontendFlags } = useToolboxServiceApiProvider();
   const enableCollaborationLicensing =
     frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
+  const editLicenseLabel = translate('Action.Edit');
 
   const sortedLicenses = useMemo(() => {
     return licenses.slice().sort((a, b) => {
@@ -323,7 +324,7 @@ const LicenseTable = ({ licenses, ipListingId }: LicenseTableProps) => {
                       component={NextLink}
                       href={LICENSE_EDIT_HREF(licenseId)}
                       color='secondary'
-                      aria-label='Edit'
+                      aria-label={editLicenseLabel}
                       onClick={() => {
                         logEvent(
                           LicenseManagerClickEvent.IphListingsDetailsPageViewLicenseContentStandardsClickEvent,

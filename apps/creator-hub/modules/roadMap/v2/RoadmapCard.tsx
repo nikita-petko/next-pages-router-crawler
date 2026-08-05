@@ -4,7 +4,6 @@ import { Badge, IconButton, clsx as cx } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import useImpressionObserver from '@modules/charts-generic/charts/hooks/useImpressionObserver';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import type { RoadmapCategory } from './types';
 import styles from './RoadmapCard.module.css';
 
 export type RoadmapCardData = {
@@ -14,19 +13,14 @@ export type RoadmapCardData = {
 };
 
 type RoadmapCardProps = Omit<RoadmapCardData, 'id'> & {
-  category?: RoadmapCategory[];
+  categoryLabels?: string[];
   likeCount: number;
   isLiked?: boolean;
   className?: string;
   onClick?: () => void;
   onToggleLike?: (nextLiked: boolean) => void;
-  /** Fired once when the card has been ≥50% visible for a sustained moment (roadmap_item_impression). */
   onImpression?: () => void;
 };
-
-// StateLayer replicates Foundation's hover/press overlay (not exported from @rbx/foundation-ui). It
-// uses the group name `card`, not `interactable`: reusing `interactable` would nest the heart's own
-// StateLayer in the same group and tint the heart whenever the card is hovered.
 function StateLayer() {
   return (
     <div
@@ -39,7 +33,7 @@ function StateLayer() {
 function RoadmapCard({
   title,
   description,
-  category,
+  categoryLabels,
   likeCount,
   isLiked = false,
   className,
@@ -52,9 +46,6 @@ function RoadmapCard({
   const handleToggleLike = () => onToggleLike?.(!isLiked);
 
   const cardRef = useRef<HTMLDivElement>(null);
-  // The parent passes a fresh onImpression closure each render; keep the latest in a ref (updated in an
-  // effect, not during render) so the observer's callback identity stays stable and useImpressionObserver
-  // doesn't rebuild the observer on every parent re-render.
   const onImpressionRef = useRef(onImpression);
   useEffect(() => {
     onImpressionRef.current = onImpression;
@@ -63,8 +54,6 @@ function RoadmapCard({
   useImpressionObserver(cardRef, handleImpression);
 
   return (
-    // A plain div wrapper: the overlay click target and the heart are sibling buttons, since nesting
-    // one button inside another is invalid HTML.
     <div
       ref={cardRef}
       className={cx(
@@ -82,10 +71,10 @@ function RoadmapCard({
         className='absolute inset-[0] cursor-pointer [appearance:none] bg-[transparent] [border:none] padding-none focus-visible:outline-focus'
       />
       <div className='flex flex-col gap-small text-align-x-left pointer-events-none'>
-        {category && category.length > 0 && (
+        {categoryLabels && categoryLabels.length > 0 && (
           <div className='flex flex-row wrap gap-xsmall'>
-            {category.map((name) => (
-              <Badge key={name} label={name} variant='Neutral' />
+            {categoryLabels.map((label) => (
+              <Badge key={label} label={label} variant='Neutral' />
             ))}
           </div>
         )}

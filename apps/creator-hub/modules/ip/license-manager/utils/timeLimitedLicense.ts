@@ -38,6 +38,7 @@ export const getLabelForDurationBucket = (
       [key: string]: string;
     },
   ) => string,
+  unknownLabel: string,
 ) => {
   switch (bucket) {
     case LicenseDurationBucket.ThreeDays:
@@ -50,7 +51,7 @@ export const getLabelForDurationBucket = (
       // Bucket value is 90, not 3 but we want the label to resolve to '3 months'
       return translate('Label.LicenseDateRangeNumMonthsOther', { count: '3' });
     default:
-      return 'Unknown';
+      return unknownLabel;
   }
 };
 
@@ -66,7 +67,9 @@ export function matchDurationBucketSelectOption(
   bucket: LicenseDurationBucket,
   translate: (key: string, args?: { [key: string]: string }) => string = mockIntlTranslateForTests,
 ) {
-  const expected = getLabelForDurationBucket(bucket, translate).replaceAll(/\s+/g, ' ').trim();
+  const expected = getLabelForDurationBucket(bucket, translate, translate('Label.UnknownDuration'))
+    .replaceAll(/\s+/g, ' ')
+    .trim();
 
   return (accessibleName: string) => accessibleName.replaceAll(/\s+/g, ' ').trim() === expected;
 }
@@ -77,7 +80,7 @@ export function matchDurationBucketSelectOption(
  * whitespace and in how `\"` / `\n` appear vs real quotes and newlines.
  */
 export function normalizeDurationRangeCellText(s: string): string {
-  return s.replaceAll(/\\"/g, '"').replaceAll(/\\n/g, '\n').replaceAll(/\s+/g, ' ').trim();
+  return s.replaceAll('\\"', '"').replaceAll('\\n', '\n').replaceAll(/\s+/g, ' ').trim();
 }
 
 /** i18n keys returned by {@link validateDurationBuckets} when validation fails */
@@ -146,9 +149,13 @@ export const getDurationRangeLabel = (
     const minBucket = convertNumDaysToDurationBucket(minDays);
     const maxBucket = convertNumDaysToDurationBucket(maxDays);
     const minLabel =
-      minBucket !== undefined ? getLabelForDurationBucket(minBucket, translate) : 'Label.Unknown';
+      minBucket !== undefined
+        ? getLabelForDurationBucket(minBucket, translate, translate('Label.Unknown'))
+        : translate('Label.Unknown');
     const maxLabel =
-      maxBucket !== undefined ? getLabelForDurationBucket(maxBucket, translate) : 'Label.Unknown';
+      maxBucket !== undefined
+        ? getLabelForDurationBucket(maxBucket, translate, translate('Label.Unknown'))
+        : translate('Label.Unknown');
     return translate('Label.DurationRangeWithValues', {
       minValue: minLabel,
       maxValue: maxLabel,

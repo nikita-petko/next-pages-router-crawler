@@ -272,6 +272,7 @@ const LicenseForm = ({
   const { logEvent } = useLicenseManagerLogger();
   const { isFetched } = useSettings();
   const { frontendFlags, loadingFrontendFlags } = useToolboxServiceApiProvider();
+  const unknownDurationLabel = translate('Label.Unknown');
   const enableCollaborationLicensing =
     frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
   const enableMarketplaceSalesLicensing =
@@ -648,7 +649,7 @@ const LicenseForm = ({
                     }}>
                     {minimumDurationBuckets.map((value) => (
                       <MenuItem key={value} value={value}>
-                        {getLabelForDurationBucket(value, translate)}
+                        {getLabelForDurationBucket(value, translate, unknownDurationLabel)}
                       </MenuItem>
                     ))}
                   </Select>
@@ -680,7 +681,7 @@ const LicenseForm = ({
                     }}>
                     {maximumDurationBuckets.map((value) => (
                       <MenuItem key={value} value={value}>
-                        {getLabelForDurationBucket(value, translate)}
+                        {getLabelForDurationBucket(value, translate, unknownDurationLabel)}
                       </MenuItem>
                     ))}
                   </Select>

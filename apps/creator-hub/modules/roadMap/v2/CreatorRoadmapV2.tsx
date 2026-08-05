@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { clsx as cx, Icon, ProgressCircle } from '@rbx/foundation-ui';
-import { useLocalization, useTranslation, withTranslation } from '@rbx/intl';
+import { type TTranslationKey, useLocalization, useTranslation, withTranslation } from '@rbx/intl';
 import { useAuthentication } from '@modules/authentication/providers';
 import LoadError from '@modules/miscellaneous/error/LoadError';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
@@ -11,10 +11,12 @@ import {
   useToggleRoadmapLike,
 } from '@modules/react-query/roadmap/roadmapQueries';
 import {
+  ALL_FILTER,
   ALL_STAGES_FILTER,
   applyLikedState,
   buildTimelineRows,
   countVisibleItems,
+  FAVORITES_FILTER,
 } from '../utils/roadmapUtils';
 import HeroVideoBanner, { type HeroStat } from './HeroVideoBanner';
 import RoadmapCard from './RoadmapCard';
@@ -31,7 +33,10 @@ import { getRoadmapLocale } from './roadmapLocale';
 import type { RoadmapCategory, RoadmapItem } from './types';
 import styles from './CreatorRoadmapV2.module.css';
 
-const CATEGORY_LABEL_KEYS: Record<RoadmapCategory, string> = {
+const CATEGORY_LABEL_KEYS: Record<
+  RoadmapCategory,
+  TTranslationKey<typeof TranslationNamespace.RoadMap>
+> = {
   Featured: 'Label.Featured',
   Studio: 'Label.Studio',
   Engine: 'Label.Engine',
@@ -72,8 +77,8 @@ function CreatorRoadmapV2() {
 
   const categoryOptions = useMemo<RoadmapFilterOption[]>(
     () => [
-      { value: 'all', label: translate('Label.All') },
-      ...(userId != null ? [{ value: 'Favorites', label: translate('Label.Favorites') }] : []),
+      { value: ALL_FILTER, label: translate('Label.All') },
+      ...(userId != null ? [{ value: FAVORITES_FILTER, label: translate('Label.Favorites') }] : []),
       ...Object.entries(CATEGORY_LABEL_KEYS).map(([category, labelKey]) => ({
         value: category,
         label: translate(labelKey),
@@ -227,7 +232,9 @@ function CreatorRoadmapV2() {
                     key={item.id}
                     title={item.title}
                     description={item.summary}
-                    category={item.category}
+                    categoryLabels={item.category.map((name) =>
+                      translate(CATEGORY_LABEL_KEYS[name]),
+                    )}
                     likeCount={item.likeCount}
                     isLiked={item.isLiked}
                     onClick={() => openDetail(item)}

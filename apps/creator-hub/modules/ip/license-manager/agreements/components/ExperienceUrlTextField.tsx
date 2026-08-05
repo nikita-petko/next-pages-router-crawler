@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from '@rbx/intl';
 import { Thumbnail2d, ThumbnailTypes, AssetThumbnailSize } from '@rbx/thumbnails';
@@ -13,7 +13,10 @@ import {
   FormHelperText,
   Skeleton,
 } from '@rbx/ui';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import gamesClient from '@modules/clients/games';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useExperienceUrlInput, useExperiencePrivacyCheck } from '../../utils/experienceUrl';
 
 // eslint-disable-next-line no-underscore-dangle -- Swagger generated enum has underscore
@@ -161,7 +164,19 @@ const useStyles = makeStyles()((theme) => ({
  */
 export const ExperienceUrlTextField = React.forwardRef<HTMLDivElement, ExperienceUrlTextFieldProps>(
   function ExperienceUrlTextField(props, ref) {
-    const { translate } = useTranslation();
+    const translation = useTranslation();
+    const { translate } = translation;
+    const { tPendingTranslation } = useTranslationWrapper(translation);
+    const clearLabel = tPendingTranslation(
+      'Clear',
+      'ARIA label for clearing the experience URL field.',
+      translationKey('Action.ClearExperienceUrl', TranslationNamespace.AgreementsManager),
+    );
+    const loadingLabel = tPendingTranslation(
+      'Loading',
+      'ARIA label for the progress indicator shown while resolving an experience URL.',
+      translationKey('Label.LoadingExperienceUrl', TranslationNamespace.AgreementsManager),
+    );
 
     const {
       value = '',
@@ -185,8 +200,8 @@ export const ExperienceUrlTextField = React.forwardRef<HTMLDivElement, Experienc
     const { classes } = useStyles();
     const [validationError, setValidationError] = useState<string | undefined>(undefined);
     const [rawInputAtResolve, setRawInputAtResolve] = useState<string | undefined>(undefined);
-    const lastResolvedRef = useRef(false);
     const isResolved = isResolvedUniverseId(typeof value === 'string' ? value : '');
+    const [hasResolvedValue, setHasResolvedValue] = useState(isResolved);
     const universeId = isResolved ? Number(value) : undefined;
 
     const setValidationErrorAndNotify = useCallback(
@@ -230,6 +245,7 @@ export const ExperienceUrlTextField = React.forwardRef<HTMLDivElement, Experienc
     const { inputValue, handleChange, isLoading } = useExperienceUrlInput({
       value: typeof value === 'string' ? value : '',
       onResolved: (resolvedUniverseId, rawInput) => {
+        setHasResolvedValue(resolvedUniverseId > 0);
         setRawInputAtResolve(rawInput || undefined);
         onChange?.(resolvedUniverseId ? resolvedUniverseId.toString() : '');
         setValidationErrorAndNotify(undefined);
@@ -267,6 +283,7 @@ export const ExperienceUrlTextField = React.forwardRef<HTMLDivElement, Experienc
 
     const handleChangeWithClear = useCallback(
       (newValue: string) => {
+        setHasResolvedValue(false);
         setValidationErrorAndNotify(undefined);
         setRawInputAtResolve(undefined);
         handleChange(newValue);
@@ -279,7 +296,6 @@ export const ExperienceUrlTextField = React.forwardRef<HTMLDivElement, Experienc
 
     // Universe is not permitted (private, archived, or draft): show raw input + error + X input button
     if (isResolved && isNotPermittedExperience && !isNotPermittedPending) {
-      lastResolvedRef.current = true;
       return (
         <TextField
           {...rest}
@@ -306,7 +322,7 @@ export const ExperienceUrlTextField = React.forwardRef<HTMLDivElement, Experienc
                     fontSize='small'
                     onClick={() => handleChangeWithClear('')}
                     className={classes.clearIcon}
-                    aria-label='Clear'
+                    aria-label={clearLabel}
                   />
                 )}
               </InputAdornment>
@@ -318,7 +334,6 @@ export const ExperienceUrlTextField = React.forwardRef<HTMLDivElement, Experienc
 
     // Universe ID resolved but details unknown: show raw input + spinner + disabled
     if (isResolved && (isCheckingPrivacy || isNotPermittedPending)) {
-      lastResolvedRef.current = true;
       return (
         <TextField
           {...rest}
@@ -340,7 +355,7 @@ export const ExperienceUrlTextField = React.forwardRef<HTMLDivElement, Experienc
             classes: { root: foundationInputRootClass(false) },
             endAdornment: (
               <InputAdornment position='end'>
-                <CircularProgress color='secondary' size={20} aria-label='Loading' />
+                <CircularProgress color='secondary' size={20} aria-label={loadingLabel} />
               </InputAdornment>
             ),
           }}
@@ -350,7 +365,6 @@ export const ExperienceUrlTextField = React.forwardRef<HTMLDivElement, Experienc
 
     // Universe is public: show game icon and name
     if (isResolved && isPublicExperience && universeId != null) {
-      lastResolvedRef.current = true;
       const { data: game, isPending: isGameLoading } = gameDetailsQuery;
       const gameName = game?.name ?? '';
       const resolvedUniverseId = universeId;
@@ -392,9 +406,9 @@ export const ExperienceUrlTextField = React.forwardRef<HTMLDivElement, Experienc
             {!disabled && (
               <CancelIcon
                 fontSize='small'
-                onClick={() => onChange?.('')}
+                onClick={() => handleChangeWithClear('')}
                 className={classes.clearIcon}
-                aria-label='Clear'
+                aria-label={clearLabel}
               />
             )}
           </div>
@@ -404,8 +418,7 @@ export const ExperienceUrlTextField = React.forwardRef<HTMLDivElement, Experienc
     }
 
     let textFieldValue = inputValue;
-    if (value === '' && lastResolvedRef.current) {
-      lastResolvedRef.current = false;
+    if (value === '' && hasResolvedValue) {
       textFieldValue = '';
     }
     if (rawInputAtResolve && validationError) {
@@ -443,7 +456,7 @@ export const ExperienceUrlTextField = React.forwardRef<HTMLDivElement, Experienc
           endAdornment: (
             <InputAdornment position='end'>
               {showSpinner ? (
-                <CircularProgress color='secondary' size={20} aria-label='Loading' />
+                <CircularProgress color='secondary' size={20} aria-label={loadingLabel} />
               ) : null}
               {!showSpinner &&
                 (inputValue.length > 0 ||
@@ -454,7 +467,7 @@ export const ExperienceUrlTextField = React.forwardRef<HTMLDivElement, Experienc
                     fontSize='small'
                     onClick={() => handleChangeWithClear('')}
                     className={classes.clearIcon}
-                    aria-label='Clear'
+                    aria-label={clearLabel}
                   />
                 )}
             </InputAdornment>

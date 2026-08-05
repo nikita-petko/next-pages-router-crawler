@@ -1,9 +1,13 @@
 import type { FunctionComponent } from 'react';
+import { useTranslation } from '@rbx/intl';
 import type { ThumbnailTypes } from '@rbx/thumbnails';
 import { ReturnPolicy, Thumbnail2d } from '@rbx/thumbnails';
 import { Avatar, Typography } from '@rbx/ui';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { formatRoyaltyRate } from '@modules/licenses/utils/format';
 import Flex from '@modules/miscellaneous/components/Flex';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 
 interface RevSplitRowProps {
   /** The color of the split in the chart as a hex value */
@@ -26,15 +30,27 @@ const RevSplitRow: FunctionComponent<RevSplitRowProps> = ({
   splitName,
   percentage,
 }) => {
+  const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+  const avatarAlt = tPendingTranslation(
+    'avatar',
+    'Alternative text for an avatar in the revenue-share chart legend.',
+    translationKey('Label.RevenueShareAvatar', TranslationNamespace.AgreementsManager),
+  );
+  const thumbnailAlt = tPendingTranslation(
+    'thumbnail',
+    'Alternative text for a thumbnail in the revenue-share chart legend.',
+    translationKey('Label.RevenueShareThumbnail', TranslationNamespace.AgreementsManager),
+  );
+
   return (
     <Flex justifyContent='space-between'>
       <Flex gap={8} alignItems='center'>
         <div style={{ backgroundColor: color, width: '4px', height: '100%' }} />
-        <Avatar variant='rounded' alt='avatar'>
+        <Avatar variant='rounded' alt={avatarAlt}>
           <Thumbnail2d
             targetId={assetId}
             type={assetThumbnailType}
-            alt='thumbnail'
+            alt={thumbnailAlt}
             returnPolicy={ReturnPolicy.PlaceHolder}
             includeBackground={false}
           />

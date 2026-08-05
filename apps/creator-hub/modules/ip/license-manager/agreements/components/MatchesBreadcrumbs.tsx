@@ -3,6 +3,9 @@ import Link from 'next/link';
 import { useTranslation } from '@rbx/intl';
 import { AssetThumbnailSize, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
 import { Breadcrumbs, Link as UILink } from '@rbx/ui';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { IP_MATCHES_HREF } from '../../urls';
 
 // Shared crumb layout so every crumb (link + title) uses the exact same font/formatting. Without the
@@ -33,13 +36,20 @@ interface Props {
  * every other IP page — stays icon-free and unaffected.
  */
 const MatchesBreadcrumbs: React.FC<Props> = ({ experienceId, gameName }) => {
-  const { translate } = useTranslation();
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
 
   const showTitleCrumb = !!gameName;
   const showIcon = showTitleCrumb && experienceId != null && Number.isFinite(experienceId);
+  const breadcrumbsLabel = tPendingTranslation(
+    'breadcrumb',
+    'ARIA label for the breadcrumb navigation on match and experience-preview pages.',
+    translationKey('Label.BreadcrumbNavigation', TranslationNamespace.AgreementsManager),
+  );
 
   return (
-    <Breadcrumbs aria-label='breadcrumb' className={breadcrumbsClassName}>
+    <Breadcrumbs aria-label={breadcrumbsLabel} className={breadcrumbsClassName}>
       <UILink component={Link} className={crumbClassName} href={IP_MATCHES_HREF} color='inherit'>
         {translate('Heading.Matches')}
       </UILink>

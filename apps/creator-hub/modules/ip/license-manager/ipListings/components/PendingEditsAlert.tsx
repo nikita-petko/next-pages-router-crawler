@@ -14,9 +14,12 @@ import {
   Grid,
   Button,
 } from '@rbx/ui';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { CONTENT_STANDARDS_HREF } from '@modules/licenses/urls';
 import downloadPdf from '@modules/licenses/utils/downloadPdf';
 import Flex from '@modules/miscellaneous/components/Flex';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 
 const useStyles = makeStyles()((theme) => ({
   alert: {
@@ -118,8 +121,21 @@ const isValidDocumentId = (documentId: string | null | undefined): boolean => {
 };
 
 const PendingFieldDisplay: React.FC<PendingFieldDisplayProps> = ({ field, licenseName }) => {
-  const { translate } = useTranslation();
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
   const { classes } = useStyles();
+  const noValueLabel = tPendingTranslation(
+    '—',
+    'Placeholder shown in a table cell when it validly has no value to be shown (i.e. is irrelevant or not applicable)',
+    translationKey('Label.NoValue', TranslationNamespace.AgreementsManager),
+  );
+  const getCurrentValue = () => {
+    if (field.currentValue) {
+      return field.currentValue;
+    }
+    return noValueLabel;
+  };
 
   const handleDownloadPendingDocument = useCallback(async () => {
     if (!field.documentId) {
@@ -127,7 +143,7 @@ const PendingFieldDisplay: React.FC<PendingFieldDisplayProps> = ({ field, licens
     }
     await downloadPdf(
       CONTENT_STANDARDS_HREF(field.documentId),
-      translate('Label.ContentStandardsPdf', { licenseName: licenseName || '' }),
+      translate('Label.ContentStandardsPdf', { licenseName: licenseName ?? '' }),
     );
   }, [field.documentId, licenseName, translate]);
 
@@ -137,7 +153,7 @@ const PendingFieldDisplay: React.FC<PendingFieldDisplayProps> = ({ field, licens
     }
     await downloadPdf(
       CONTENT_STANDARDS_HREF(field.currentDocumentId),
-      translate('Label.ContentStandardsPdf', { licenseName: licenseName || '' }),
+      translate('Label.ContentStandardsPdf', { licenseName: licenseName ?? '' }),
     );
   }, [field.currentDocumentId, licenseName, translate]);
 
@@ -162,7 +178,7 @@ const PendingFieldDisplay: React.FC<PendingFieldDisplayProps> = ({ field, licens
               </Button>
             ) : (
               <Typography variant='body2' className={classes.beforeValue}>
-                —
+                {noValueLabel}
               </Typography>
             )}
           </Grid>
@@ -194,7 +210,7 @@ const PendingFieldDisplay: React.FC<PendingFieldDisplayProps> = ({ field, licens
             {translate('Label.Before')}
           </Typography>
           <Typography variant='body2' className={classes.beforeValue}>
-            {field.currentValue || '—'}
+            {getCurrentValue()}
           </Typography>
         </Grid>
         <Grid item XSmall={6}>

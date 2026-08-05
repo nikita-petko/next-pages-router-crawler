@@ -110,8 +110,9 @@ function RoadmapDetailModal({ item, onClose }: RoadmapDetailModalProps) {
                           target='_blank'
                           rel='noopener noreferrer'
                           size='Medium'
-                          underline='hover'
-                          isExternal={false}>
+                          underline='always'
+                          isExternal={false}
+                          className='content-link'>
                           {update.label}
                         </Link>
                       ))}

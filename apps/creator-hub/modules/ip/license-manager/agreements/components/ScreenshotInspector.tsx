@@ -3,6 +3,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import { Icon } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 
 export interface InspectorImage {
   key: string;
@@ -95,7 +98,9 @@ const ScreenshotInspector: FunctionComponent<ScreenshotInspectorProps> = ({
   onClose,
   initialIndex,
 }) => {
-  const { translate } = useTranslation();
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
 
   const [activeIndex, setActiveIndex] = useState(
     Math.max(0, Math.min(initialIndex ?? 0, images.length - 1)),
@@ -536,7 +541,15 @@ const ScreenshotInspector: FunctionComponent<ScreenshotInspectorProps> = ({
                 key={key}
                 type='button'
                 className={dotClass(page === activePage)}
-                aria-label={`${page + 1}`}
+                aria-label={tPendingTranslation(
+                  'Page {page}',
+                  'ARIA label for a page indicator in the screenshot thumbnail carousel.',
+                  translationKey(
+                    'Label.ScreenshotCarouselPage',
+                    TranslationNamespace.AgreementsManager,
+                  ),
+                  { page: String(page + 1) },
+                )}
                 onClick={() => scrollToPage(page)}
                 data-testid='inspector-page-dot'
               />
