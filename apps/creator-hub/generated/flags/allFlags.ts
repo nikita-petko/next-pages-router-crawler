@@ -120,6 +120,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: contentAccessAndInventoryFlags.isCreatorStoreVideoMultipartUploadEnabled,
+      metadata: {
+        namespace: 'content-access-and-inventory',
+        name: 'isCreatorStoreVideoMultipartUploadEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: contentAccessAndInventoryFlags.isPricingEligibilityV2Enabled,
       metadata: {
         namespace: 'content-access-and-inventory',

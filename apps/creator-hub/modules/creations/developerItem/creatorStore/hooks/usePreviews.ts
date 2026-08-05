@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import type { CreationContext, Creator, Preview } from '@rbx/client-assets-upload-api/v1';
 import { AssetType, ModerationState } from '@rbx/client-assets-upload-api/v1';
 import { useFlag } from '@rbx/flags';
 import { useTranslation } from '@rbx/intl';
-import { isModelCustomThumbnailUploadEnabled } from '@generated/flags/contentAccessAndInventory';
+import {
+  isCreatorStoreVideoMultipartUploadEnabled,
+  isModelCustomThumbnailUploadEnabled,
+} from '@generated/flags/contentAccessAndInventory';
 import { assetCreationFailureEventModel } from '@modules/asset-creation/constants/eventConstants';
 import assetsUploadApiClient, { FieldMask } from '@modules/clients/assetsupload';
 import publishClient from '@modules/clients/publish';
@@ -14,10 +17,28 @@ import { useEventTrackerProvider } from '@modules/eventStream/eventTrackerProvid
 import { Asset, PublishError, HttpStatusCodes } from '@modules/miscellaneous/common';
 import publishErrorDescription from '@modules/miscellaneous/common/constants/publishErrorDescription';
 import CreatorType from '@modules/miscellaneous/common/enums/Creator';
+import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
+import usePollOperationForAssetUploadMutation from '../../../placeThumbnails/hooks/usePollOperationForAssetUploadMutation';
 import { logCreatorStoreCustomThumbnailUpload } from '../analytics';
 import type { CreatorStoreConfigurationType } from '../components/CreatorStoreConfiguration/types';
+import {
+  createStorePreviewVideoUploadFailureEvent,
+  createStorePreviewVideoUploadStartEvent,
+  createStorePreviewVideoUploadSuccessEvent,
+} from '../storePreviewVideoEventConstants';
 import useAssetsUploadApiModerationPolling from './useAssetsUploadApiModerationPolling';
-import useAssetsUploadApiOperationPolling from './useAssetsUploadApiOperationPolling';
+import useUploadPreviewVideoMutation from './useUploadPreviewVideoMutation';
+import type { VideoUploadProgressCallbacks } from './useUploadPreviewVideoMutation';
+
+const hasStatus = (error: unknown): error is Error & { status: unknown } =>
+  error instanceof Error && 'status' in error;
+
+/** Throws if a completed operation has no response (backend-reported failure). */
+const assertOperationResponse = (operation: { response?: unknown } | null | undefined): void => {
+  if (!operation?.response) {
+    throw new Error('Operation completed without a successful response');
+  }
+};
 
 const PREVIEW_DETAILS_FIELD_MASK_ARRAY = [FieldMask.ASSET_TYPE, FieldMask.MODERATION_RESULT];
 const PREVIEWS_FIELD_MASK_ARRAY = [FieldMask.PREVIEWS];
@@ -60,7 +81,7 @@ export interface PreviewsContext {
   ) => Promise<void>;
 }
 
-const getPreviewsArray = async (assetId: number) => {
+const getPreviewsArray = async (assetId: number): Promise<Preview[]> => {
   const data = await assetsUploadApiClient.getAsset(assetId, PREVIEWS_FIELD_MASK_ARRAY);
   return data.previews ?? [];
 };
@@ -91,11 +112,63 @@ const usePreviews = (
   creatorType: CreatorType,
   refreshThumbnail: VoidFunction,
   videoPreviewType: AssetType,
+  progressCallbacks?: VideoUploadProgressCallbacks,
+  resetVideoUploadProgress?: () => void,
 ): PreviewsContext => {
   const { translate } = useTranslation();
-  const { pollForCompletedOperation } = useAssetsUploadApiOperationPolling(180); // 3 minutes max retries
   const { pollForAssetModerationApproval } = useAssetsUploadApiModerationPolling();
   const { trackerClient } = useEventTrackerProvider();
+  const { unifiedLogger } = useUnifiedLoggerProvider();
+
+  const { value: isMultipartUploadFlagValue } = useFlag(isCreatorStoreVideoMultipartUploadEnabled);
+  const isMultipartUpload = isMultipartUploadFlagValue ?? false;
+
+  const videoUploadStartTimeRef = useRef<number>(0);
+  const videoUploadFileSizeRef = useRef<number>(0);
+
+  // General non-video operations: delete, configure, thumbnail — no progress tracking
+  const { pollForCompletedOperationAsync: pollForOperationAsync } =
+    usePollOperationForAssetUploadMutation();
+
+  const onVideoUploadSuccess = useCallback(() => {
+    const duration = performance.now() - videoUploadStartTimeRef.current;
+    unifiedLogger.logImpressionEvent(
+      createStorePreviewVideoUploadSuccessEvent({
+        assetId,
+        fileSize: videoUploadFileSizeRef.current,
+        creatorId,
+        duration,
+      }),
+    );
+  }, [assetId, creatorId, unifiedLogger]);
+
+  const onVideoUploadError = useCallback(
+    (message: string) => {
+      resetVideoUploadProgress?.();
+      const duration = performance.now() - videoUploadStartTimeRef.current;
+      unifiedLogger.logImpressionEvent(
+        createStorePreviewVideoUploadFailureEvent({
+          assetId,
+          fileSize: videoUploadFileSizeRef.current,
+          creatorId,
+          duration,
+          error: message,
+        }),
+      );
+    },
+    [assetId, creatorId, resetVideoUploadProgress, unifiedLogger],
+  );
+
+  const { uploadPreviewVideoAsync } = useUploadPreviewVideoMutation(
+    assetId,
+    creatorId,
+    creatorType,
+    videoPreviewType,
+    onVideoUploadSuccess,
+    onVideoUploadError,
+    progressCallbacks,
+    isMultipartUpload,
+  );
 
   const arePreviewsEnabled = useMemo(() => {
     return SUPPORTED_PREVIEW_ASSET_TYPES.includes(assetType);
@@ -136,28 +209,41 @@ const usePreviews = (
 
   const fetchPreviewIds = useCallback(async () => {
     const previews = await getPreviewsArray(assetId);
-    const previewIds = previews.map((preview) => parsePreviewIdFromPreview(preview));
+    const previewIds = previews.map((preview: Preview) => parsePreviewIdFromPreview(preview));
 
-    // Check each preview's asset type and fetch moderation status for videos
+    // Fetch asset type and moderation state for each preview in parallel
     const previewAssetDetails = await Promise.all(
-      previewIds.map(async (previewId) => {
-        try {
-          const assetDetails = await assetsUploadApiClient.getAsset(
-            previewId,
-            PREVIEW_DETAILS_FIELD_MASK_ARRAY,
-          );
-          return { previewId, assetType: assetDetails.assetType, assetDetails };
-        } catch {
-          throw new Error(translate('Error.UnknownError'));
-        }
-      }),
+      previewIds.map(
+        async (
+          previewId: number,
+        ): Promise<{
+          previewId: number;
+          previewAssetType: AssetType | undefined;
+          moderationState: ModerationState;
+        }> => {
+          try {
+            const assetDetails = await assetsUploadApiClient.getAsset(
+              previewId,
+              PREVIEW_DETAILS_FIELD_MASK_ARRAY,
+            );
+            return {
+              previewId,
+              previewAssetType: assetDetails.assetType,
+              moderationState:
+                assetDetails.moderationResult?.moderationState ?? ModerationState.Unspecified,
+            };
+          } catch {
+            throw new Error(translate('Error.UnknownError'));
+          }
+        },
+      ),
     );
 
     const imagePreviewIds: number[] = [];
     let videoPreviewId: number | null = null;
     let videoModerationState: ModerationState = ModerationState.Unspecified;
 
-    previewAssetDetails.forEach(({ previewId, assetType: previewAssetType, assetDetails }) => {
+    previewAssetDetails.forEach(({ previewId, previewAssetType, moderationState }) => {
       if (previewAssetType === AssetType.Image) {
         imagePreviewIds.push(previewId);
         return;
@@ -166,8 +252,7 @@ const usePreviews = (
       // Only use the first video preview ID; backend validates there's only one attached.
       if (!videoPreviewId && previewAssetType === videoPreviewType) {
         videoPreviewId = previewId;
-        videoModerationState =
-          assetDetails?.moderationResult?.moderationState ?? ModerationState.Unspecified;
+        videoModerationState = moderationState;
       }
     });
 
@@ -181,93 +266,111 @@ const usePreviews = (
       existingImagePreviewIds: number[],
       existingVideoPreviewId: number | null,
     ) => {
-      let uploadedAssetId: number | null = null;
+      const isVideoUpload = previewAssetType === videoPreviewType;
+
+      if (isVideoUpload) {
+        videoUploadFileSizeRef.current = preview.size;
+        videoUploadStartTimeRef.current = performance.now();
+        resetVideoUploadProgress?.();
+        unifiedLogger.logClickEvent(
+          createStorePreviewVideoUploadStartEvent({
+            assetId,
+            fileSize: preview.size,
+            creatorId,
+          }),
+        );
+        await uploadPreviewVideoAsync({
+          file: preview,
+          existingImagePreviewIds,
+          existingVideoPreviewId,
+        });
+        return;
+      }
+
+      // Image upload: create → poll → associate
+      let imageCreator: Creator;
+      switch (creatorType) {
+        case CreatorType.Group:
+          imageCreator = { groupId: creatorId };
+          break;
+        case CreatorType.User:
+          imageCreator = { userId: creatorId };
+          break;
+        default:
+          throw new Error(`Unsupported creator type: ${String(creatorType)}`);
+      }
+      const creationContext: CreationContext = { creator: imageCreator };
+
+      let createOperationId: string;
       try {
-        // Create new preview asset (unconnected to parent asset)
-        const isGroupAsset = creatorType === CreatorType.Group;
-        const creator: Creator = isGroupAsset ? { groupId: creatorId } : { userId: creatorId };
-        const creationContext: CreationContext = { creator };
-        const uploadRequestInfo = {
-          assetType: previewAssetType,
-          displayName: `Preview for Asset: ${assetId}`, // Will not be displayed
-          creationContext,
-        };
-        const setAssetPrivacyToOpenUse = previewAssetType === AssetType.Image; // Images need open use label, videos don't
-        const createOperationId = await assetsUploadApiClient.createAssetAndGetOperationId(
-          uploadRequestInfo,
-          preview as Blob,
-          setAssetPrivacyToOpenUse,
+        createOperationId = await assetsUploadApiClient.createAssetAndGetOperationId(
+          {
+            assetType: previewAssetType,
+            displayName: `Preview for Asset: ${assetId}`,
+            creationContext,
+          },
+          preview,
+          true, // images need open-use label
         );
-        await pollForCompletedOperation(createOperationId);
-
-        // Get existing previews and new preview
-        const uploadOperation = await assetsUploadApiClient.getOperationStatus(createOperationId);
-        const uploadedAssetPath = uploadOperation?.response?.path;
-        if (uploadedAssetPath === undefined) {
-          throw new Error(translate('Error.UnknownError'));
-        }
-        const newPreview: Preview = { asset: uploadedAssetPath };
-        const newAssetId = parsePreviewIdFromPreview(newPreview);
-        uploadedAssetId = newAssetId;
-
-        let combinedPreviews: Preview[];
-        if (previewAssetType === videoPreviewType) {
-          // Video upload: new video first, then existing images
-          const combinedIds = combinePreviewIds(newAssetId, existingImagePreviewIds);
-          combinedPreviews = getPreviewsArrayFromPreviewIds(combinedIds);
-        } else {
-          // Image upload: existing video first (if any), then new image, then existing images
-          const combinedIds = combinePreviewIds(existingVideoPreviewId, [
-            newAssetId,
-            ...existingImagePreviewIds,
-          ]);
-          combinedPreviews = getPreviewsArrayFromPreviewIds(combinedIds);
-        }
-
-        const updateRequestInfo = {
-          assetId,
-          previews: combinedPreviews,
-        };
-
-        // Update asset with new previews list
-        const updateOperationId = await assetsUploadApiClient.updateAssetAndGetOperationId(
-          assetId,
-          PREVIEWS_FIELD_MASK_ARRAY,
-          updateRequestInfo,
-        );
-        await pollForCompletedOperation(updateOperationId);
-      } catch (e) {
-        let httpErrorCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
-        let message = 'AssetCreationFailed';
-
-        if (e instanceof Error) {
-          message = e.message;
-        } else {
-          const parsed = await tryParseResponseError(e);
-          if (parsed) {
-            httpErrorCode = parsed.status;
-            message = parsed.message;
-          }
-        }
-        const assetIdSuffix = uploadedAssetId !== null ? `,assetId:${uploadedAssetId}` : '';
+      } catch (error) {
+        const httpStatus =
+          hasStatus(error) && typeof error.status === 'number' ? error.status : undefined;
         trackerClient.sendEvent(
           assetCreationFailureEventModel(
             previewAssetType,
             creatorId,
-            `code:${httpErrorCode},message:${message}${assetIdSuffix}`,
+            `parentAssetId:${assetId},stage:UPLOAD_INITIATION,code:${httpStatus ?? HttpStatusCodes.INTERNAL_SERVER_ERROR},message:Failed to initiate image upload`,
           ),
         );
-        throw e;
+        throw error;
+      }
+
+      let imageUploadStage = 'UPLOAD_POLLING';
+      try {
+        const createOperation = await pollForOperationAsync(createOperationId);
+        imageUploadStage = 'UPLOAD_TRANSCODE';
+        assertOperationResponse(createOperation);
+        const newAssetId = parsePreviewIdFromPreview({
+          asset: createOperation?.response?.path ?? '',
+        });
+
+        const combinedIds = combinePreviewIds(existingVideoPreviewId, [
+          newAssetId,
+          ...existingImagePreviewIds,
+        ]);
+        imageUploadStage = 'ASSOCIATION_INITIATION';
+        const updateOperationId = await assetsUploadApiClient.updateAssetAndGetOperationId(
+          assetId,
+          PREVIEWS_FIELD_MASK_ARRAY,
+          { assetId, previews: getPreviewsArrayFromPreviewIds(combinedIds) },
+        );
+        imageUploadStage = 'ASSOCIATION_POLLING';
+        const updateOperation = await pollForOperationAsync(updateOperationId);
+        imageUploadStage = 'ASSOCIATION_COMPLETION';
+        assertOperationResponse(updateOperation);
+      } catch (error) {
+        const httpStatus =
+          hasStatus(error) && typeof error.status === 'number' ? error.status : undefined;
+        trackerClient.sendEvent(
+          assetCreationFailureEventModel(
+            previewAssetType,
+            creatorId,
+            `parentAssetId:${assetId},stage:${imageUploadStage},code:${httpStatus ?? HttpStatusCodes.INTERNAL_SERVER_ERROR},message:Image upload pipeline failed`,
+          ),
+        );
+        throw error;
       }
     },
     [
       assetId,
       creatorId,
       creatorType,
-      pollForCompletedOperation,
-      translate,
+      pollForOperationAsync,
+      resetVideoUploadProgress,
+      uploadPreviewVideoAsync,
       videoPreviewType,
       trackerClient,
+      unifiedLogger,
     ],
   );
 
@@ -281,20 +384,16 @@ const usePreviews = (
       const newPreviewIds = combinedPreviewIds.filter((id) => id !== previewId);
       const newPreviews = getPreviewsArrayFromPreviewIds(newPreviewIds);
 
-      const requestInfo = {
-        assetId,
-        previews: newPreviews,
-      };
-
       // Update asset with new previews list
       const operationId = await assetsUploadApiClient.updateAssetAndGetOperationId(
         assetId,
         PREVIEWS_FIELD_MASK_ARRAY,
-        requestInfo,
+        { assetId, previews: newPreviews },
       );
-      await pollForCompletedOperation(operationId);
+      const deleteOperation = await pollForOperationAsync(operationId);
+      assertOperationResponse(deleteOperation);
     },
-    [assetId, pollForCompletedOperation],
+    [assetId, pollForOperationAsync],
   );
 
   const configurePreviews = useCallback(
@@ -316,22 +415,19 @@ const usePreviews = (
         );
 
         const previews = getPreviewsArrayFromPreviewIds(combinedPreviewIds);
-        const requestInfo = {
-          assetId,
-          previews,
-        };
         const operationId = await assetsUploadApiClient.updateAssetAndGetOperationId(
           assetId,
           PREVIEWS_FIELD_MASK_ARRAY,
-          requestInfo,
+          { assetId, previews },
         );
-        await pollForCompletedOperation(operationId);
+        const configureOperation = await pollForOperationAsync(operationId);
+        assertOperationResponse(configureOperation);
 
         methods.resetField('imagePreviewIds', { defaultValue: data.imagePreviewIds });
         methods.resetField('videoPreviewId', { defaultValue: data.videoPreviewId });
       }
     },
-    [assetId, pollForCompletedOperation],
+    [assetId, pollForOperationAsync],
   );
 
   const configureThumbnail = useCallback(
@@ -357,9 +453,18 @@ const usePreviews = (
         if (assetType === Asset.Model) {
           let uploadedIconImageAssetId: number | null = null;
           try {
-            const isGroupAsset = creatorType === CreatorType.Group;
-            const creator: Creator = isGroupAsset ? { groupId: creatorId } : { userId: creatorId };
-            const creationContext: CreationContext = { creator };
+            let thumbnailCreator: Creator;
+            switch (creatorType) {
+              case CreatorType.Group:
+                thumbnailCreator = { groupId: creatorId };
+                break;
+              case CreatorType.User:
+                thumbnailCreator = { userId: creatorId };
+                break;
+              default:
+                throw new Error(`Unsupported creator type: ${String(creatorType)}`);
+            }
+            const creationContext: CreationContext = { creator: thumbnailCreator };
             const uploadRequestInfo = {
               assetType: AssetType.Image,
               displayName: `Icon for Asset: ${assetId}`,
@@ -370,10 +475,8 @@ const usePreviews = (
               thumbnailFile,
               true,
             );
-            await pollForCompletedOperation(createOperationId);
+            const uploadOperation = await pollForOperationAsync(createOperationId);
 
-            const uploadOperation =
-              await assetsUploadApiClient.getOperationStatus(createOperationId);
             const iconAssetIdFromResponse =
               uploadOperation?.response?.assetId ??
               parsePreviewIdFromPreview({ asset: uploadOperation?.response?.path ?? '' });
@@ -389,16 +492,13 @@ const usePreviews = (
               throw new Error(translate('Message.ImageModerated'));
             }
 
-            const updateRequestInfo = {
-              assetId,
-              icon: `assets/${iconAssetIdFromResponse}`,
-            };
             const updateOperationId = await assetsUploadApiClient.updateAssetAndGetOperationId(
               assetId,
               ICON_FIELD_MASK_ARRAY,
-              updateRequestInfo,
+              { assetId, icon: `assets/${iconAssetIdFromResponse}` },
             );
-            await pollForCompletedOperation(updateOperationId);
+            const iconUpdateOperation = await pollForOperationAsync(updateOperationId);
+            assertOperationResponse(iconUpdateOperation);
 
             // If the uploaded thumbnail icon was not approved already, poll until approval or max retries
             if (uploadModerationState !== ModerationState.Approved) {
@@ -461,16 +561,13 @@ const usePreviews = (
 
       // Reaching this block means that the thumbnail is being removed
       try {
-        const updateRequestInfo = {
-          assetId,
-          icon: '', // Empty string removes the icon
-        };
         const updateOperationId = await assetsUploadApiClient.updateAssetAndGetOperationId(
           assetId,
           ICON_FIELD_MASK_ARRAY,
-          updateRequestInfo,
+          { assetId, icon: '' }, // Empty string removes the icon
         );
-        await pollForCompletedOperation(updateOperationId);
+        const removeOperation = await pollForOperationAsync(updateOperationId);
+        assertOperationResponse(removeOperation);
 
         methods.resetField('removeCustomThumbnail', { defaultValue: false });
         setHasCustomThumbnail(false);
@@ -493,7 +590,7 @@ const usePreviews = (
       creatorType,
       isRemovingThumbnailEnabled,
       pollForAssetModerationApproval,
-      pollForCompletedOperation,
+      pollForOperationAsync,
       refreshThumbnail,
       translate,
       trackerClient,

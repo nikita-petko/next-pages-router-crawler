@@ -76,6 +76,7 @@ import type { FetchPreviewIdsResponse } from '../../hooks/usePreviews';
 import usePreviews from '../../hooks/usePreviews';
 import type { FetchSocialLinksResponse, SocialLinkWithType } from '../../hooks/useSocialLinks';
 import useSocialLinks from '../../hooks/useSocialLinks';
+import useVideoUploadProgress from '../../hooks/useVideoUploadProgress';
 import DistributionFormShard from '../DistributionFormShard/DistributionFormShard';
 import SocialLinksFormShard from '../SocialLinksFormShard/SocialLinksFormShard';
 import {
@@ -218,6 +219,8 @@ const CreatorStoreConfiguration: FunctionComponent<
     setVideoModerationState(ModerationState.Reviewing);
   }, []);
 
+  const { videoUploadProgress, progressCallbacks, resetProgress } = useVideoUploadProgress();
+
   const {
     arePreviewsEnabled,
     areVideoPreviewsEnabled,
@@ -236,6 +239,8 @@ const CreatorStoreConfiguration: FunctionComponent<
     creator.type,
     refreshThumbnail,
     VIDEO_PREVIEW_TYPE,
+    progressCallbacks,
+    resetProgress,
   );
 
   const previewsEnabledForUser = arePreviewsEnabled;
@@ -873,6 +878,8 @@ const CreatorStoreConfiguration: FunctionComponent<
                   onVideoUploadComplete={handleVideoUploadComplete}
                   refetchPreviewIds={refetchPreviewIds}
                   noticeMessage={verificationNotice}
+                  showProgress
+                  progress={videoUploadProgress}
                 />
                 <Divider classes={{ root: divider }} />
               </Grid>

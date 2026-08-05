@@ -22,6 +22,11 @@ export const isAssetDependenciesViewerEnabled = defineFlag({
     name: 'isAssetDependenciesViewerEnabled',
     defaultValue: false,
   });
+export const isCreatorStoreVideoMultipartUploadEnabled = defineFlag({
+    namespace: 'content-access-and-inventory',
+    name: 'isCreatorStoreVideoMultipartUploadEnabled',
+    defaultValue: false,
+  });
 export const isPricingEligibilityV2Enabled = defineFlag({
     namespace: 'content-access-and-inventory',
     name: 'isPricingEligibilityV2Enabled',
