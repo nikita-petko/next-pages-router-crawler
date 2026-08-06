@@ -12,10 +12,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@rbx/foundation-ui';
-import { useTranslation } from '@rbx/intl';
+import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import { Thumbnail2d, ThumbnailTypes, ReturnPolicy } from '@rbx/thumbnails';
 import { Avatar, TableRow, TableCell } from '@rbx/ui';
 import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
+import { formatDate } from '@modules/miscellaneous/utils/dateUtils';
 import { Tooltip } from '@modules/monetization-shared/tooltip';
 import { useIsHovered } from '@modules/monetization-shared/useIsHovered';
 import type { GamePass } from '../types';
@@ -26,6 +27,7 @@ type Props = GamePass & {
   universeId: number;
   showManagedPricing?: boolean;
   showPriceOptimization?: boolean;
+  showArchived?: boolean;
   onToggleRegionalPricing: (passId: number, enabled: boolean) => void;
   disableToggleRegionalPricing?: boolean;
 };
@@ -51,11 +53,13 @@ function PassIdCell({
     setIsPassIdCopied(true);
   }, [passId]);
 
+  /* oxlint-disable react/react-compiler -- resetting copy state on hover-out; setState is intentional here */
   useEffect(() => {
     if (!isPassIdHovered) {
       setIsPassIdCopied(false);
     }
   }, [isPassIdHovered]);
+  /* oxlint-enable react/react-compiler */
 
   return (
     <div className='flex items-center justify-start gap-xsmall'>
@@ -84,6 +88,7 @@ function PassIdCell({
 function MoreItemOptionsMenu({
   configureUrl,
   showManagedPricing,
+  showArchived,
   onToggleRegionalPricing,
   disableToggleRegionalPricing,
   ...pass
@@ -134,7 +139,7 @@ function MoreItemOptionsMenu({
               title={translate('Action.CopyThumbnailID')}
               onSelect={handleCopyThumbnailId}
             />
-            {!showManagedPricing && isPassEligibleForRegionalPricing(pass) && (
+            {!showManagedPricing && !showArchived && isPassEligibleForRegionalPricing(pass) && (
               <MenuItem
                 disabled={disableToggleRegionalPricing}
                 value='toggle-regional-pricing'
@@ -157,11 +162,13 @@ function PassesTableRow({
   universeId,
   showManagedPricing,
   showPriceOptimization,
+  showArchived,
   onToggleRegionalPricing,
   disableToggleRegionalPricing,
   ...item
 }: Props) {
   const { translate } = useTranslation();
+  const { locale } = useLocalization();
 
   const passIdCellRef = useRef<HTMLTableCellElement>(null);
 
@@ -196,34 +203,38 @@ function PassesTableRow({
         <PassIdCell passId={item.passId} cellRef={passIdCellRef} />
       </TableCell>
 
-      <TableCell>
-        {item.isForSale ? (
-          <span className='flex items-center justify-start gap-xsmall'>
-            <Icon name='icon-filled-robux' size='Small' aria-label='Robux' />
-            {item.defaultPriceInRobux}
-          </span>
-        ) : (
-          <span className='content-muted'>{translate('Label.Offsale')}</span>
-        )}
-      </TableCell>
-      <TableCell>
-        {item.isForSale && (
-          <Badge
-            label={
-              (showManagedPricing ? item.isManagedPricingEnabled : item.isRegionalPricingEnabled)
-                ? translate('Label.Enabled')
-                : translate('Label.Disabled')
-            }
-            variant={
-              (showManagedPricing ? item.isManagedPricingEnabled : item.isRegionalPricingEnabled)
-                ? 'Neutral'
-                : 'Warning'
-            }
-            className='flex justify-center min-width-1600'
-          />
-        )}
-      </TableCell>
-      {!showManagedPricing && showPriceOptimization && (
+      {!showArchived && (
+        <TableCell>
+          {item.isForSale ? (
+            <span className='flex items-center justify-start gap-xsmall'>
+              <Icon name='icon-filled-robux' size='Small' aria-label='Robux' />
+              {item.defaultPriceInRobux}
+            </span>
+          ) : (
+            <span className='content-muted'>{translate('Label.Offsale')}</span>
+          )}
+        </TableCell>
+      )}
+      {!showArchived && (
+        <TableCell>
+          {item.isForSale && (
+            <Badge
+              label={
+                (showManagedPricing ? item.isManagedPricingEnabled : item.isRegionalPricingEnabled)
+                  ? translate('Label.Enabled')
+                  : translate('Label.Disabled')
+              }
+              variant={
+                (showManagedPricing ? item.isManagedPricingEnabled : item.isRegionalPricingEnabled)
+                  ? 'Neutral'
+                  : 'Warning'
+              }
+              className='flex justify-center min-width-1600'
+            />
+          )}
+        </TableCell>
+      )}
+      {!showArchived && !showManagedPricing && showPriceOptimization && (
         <TableCell>
           {item.isForSale && (
             <Badge
@@ -237,10 +248,18 @@ function PassesTableRow({
           )}
         </TableCell>
       )}
+      {showArchived && (
+        <TableCell>
+          <span className='content-default'>
+            {formatDate(item.updatedTimestamp, locale ?? Locale.English)}
+          </span>
+        </TableCell>
+      )}
       <TableCell padding='checkbox' align='center'>
         <MoreItemOptionsMenu
           configureUrl={configureUrl}
           showManagedPricing={showManagedPricing}
+          showArchived={showArchived}
           onToggleRegionalPricing={onToggleRegionalPricing}
           disableToggleRegionalPricing={disableToggleRegionalPricing}
           {...item}

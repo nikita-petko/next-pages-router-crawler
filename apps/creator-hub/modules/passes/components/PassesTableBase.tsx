@@ -1,6 +1,7 @@
 import { memo } from 'react';
-import { useTranslation } from '@rbx/intl';
+import { useTranslationWithNamespace } from '@rbx/intl';
 import { TableBody, TableCell, TableHead, TableRow } from '@rbx/ui';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import SortableTableHeader from '@modules/monetization-shared/table-sort/SortableTableHeader';
 import type { SortOrder } from '@modules/monetization-shared/table-sort/types';
 import TableBase from '@modules/monetization-shared/table-v1/TableBase';
@@ -10,6 +11,7 @@ import { PassesTableHeaderCheckbox } from './PassesTableCheckbox';
 type Props = {
   showPriceOptimization: boolean;
   showManagedPricing?: boolean;
+  showArchived?: boolean;
   sortColumn: SortableColumn | undefined;
   sortOrder: SortOrder;
   onSort: (column: SortableColumn) => void;
@@ -18,12 +20,13 @@ type Props = {
 function PassesTableBase({
   showPriceOptimization,
   showManagedPricing,
+  showArchived,
   sortColumn,
   sortOrder,
   onSort,
   children,
 }: React.PropsWithChildren<Props>) {
-  const { translate } = useTranslation();
+  const { translate } = useTranslationWithNamespace(TranslationNamespace.Creations);
 
   return (
     <TableBase>
@@ -52,16 +55,18 @@ function PassesTableBase({
             onSort={onSort}
           />
 
-          <SortableTableHeader
-            column='price'
-            label={translate('Heading.CurrentPrice')}
-            sx={{ minWidth: '145px' }}
-            activeColumn={sortColumn}
-            sortOrder={sortOrder}
-            onSort={onSort}
-          />
+          {!showArchived && (
+            <SortableTableHeader
+              column='price'
+              label={translate('Heading.CurrentPrice')}
+              sx={{ minWidth: '145px' }}
+              activeColumn={sortColumn}
+              sortOrder={sortOrder}
+              onSort={onSort}
+            />
+          )}
 
-          {showManagedPricing ? (
+          {!showArchived && showManagedPricing && (
             <SortableTableHeader
               column='managedPricing'
               label={translate('Label.ManagedPricing')}
@@ -70,7 +75,9 @@ function PassesTableBase({
               sortOrder={sortOrder}
               onSort={onSort}
             />
-          ) : (
+          )}
+
+          {!showArchived && !showManagedPricing && (
             <SortableTableHeader
               column='regionalPricing'
               label={translate('Heading.RegionalPricing')}
@@ -82,7 +89,7 @@ function PassesTableBase({
             />
           )}
 
-          {!showManagedPricing && showPriceOptimization && (
+          {!showArchived && !showManagedPricing && showPriceOptimization && (
             <SortableTableHeader
               column='priceOptimization'
               label={translate('Heading.PriceOptimization')}
@@ -93,6 +100,18 @@ function PassesTableBase({
               onSort={onSort}
             />
           )}
+
+          {showArchived && (
+            <SortableTableHeader
+              column='archivedDate'
+              label={translate('Label.ArchivedDate')}
+              sx={{ minWidth: '160px' }}
+              activeColumn={sortColumn}
+              sortOrder={sortOrder}
+              onSort={onSort}
+            />
+          )}
+
           <TableCell padding='checkbox' sx={{ minWidth: '52px' }} align='center' />
         </TableRow>
       </TableHead>

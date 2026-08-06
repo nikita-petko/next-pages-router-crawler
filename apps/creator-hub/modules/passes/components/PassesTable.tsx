@@ -52,6 +52,7 @@ type Props = {
   universeId: number;
   passes: GamePass[];
   showPriceOptimization?: boolean;
+  showArchived?: boolean;
   managedPricingOnboardingStatus?: ManagedPricingOnboardingStatus;
   initialRowsPerPage?: number;
   rowsPerPageOptions?: number[];
@@ -85,6 +86,7 @@ function PassesTable({
   universeId,
   passes,
   showPriceOptimization = false,
+  showArchived,
   managedPricingOnboardingStatus,
   initialRowsPerPage = DEFAULT_ROWS_PER_PAGE,
   rowsPerPageOptions = ROWS_PER_PAGE_OPTIONS,
@@ -302,6 +304,7 @@ function PassesTable({
           universeId={universeId}
           showManagedPricing={showManagedPricing}
           showPriceOptimization={showPriceOptimization}
+          showArchived={showArchived}
           onToggleRegionalPricing={handleSingleToggleRegionalPricing}
           disableToggleRegionalPricing={isBulkUpdatePending}
           {...pass}
@@ -312,6 +315,7 @@ function PassesTable({
       universeId,
       showManagedPricing,
       showPriceOptimization,
+      showArchived,
       handleSingleToggleRegionalPricing,
       isBulkUpdatePending,
     ],
@@ -355,6 +359,7 @@ function PassesTable({
         <PassesTableBase
           showPriceOptimization={showPriceOptimization}
           showManagedPricing={showManagedPricing}
+          showArchived={showArchived}
           sortColumn={sortColumn}
           sortOrder={sortOrder}
           onSort={onSort}>

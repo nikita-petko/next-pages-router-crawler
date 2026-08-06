@@ -13,6 +13,10 @@ const compareByPrice: CompareFn = (a, b) => {
   return priceA - priceB;
 };
 
+// BE sets updatedTimestamp to archive time when a pass is archived.
+const compareByArchivedDate: CompareFn = (a, b) =>
+  a.updatedTimestamp.getTime() - b.updatedTimestamp.getTime();
+
 /**
  * Returns a sort value for a boolean toggle column (regional pricing, price optimization)
  * where offsale or null-priced products are grouped at the bottom.
@@ -56,6 +60,7 @@ const comparators = {
   name: compareByName,
   passId: compareByPassId,
   price: compareByPrice,
+  archivedDate: compareByArchivedDate,
 } as const satisfies Partial<Record<SortableColumn, CompareFn>>;
 
 export function sortPasses(
@@ -77,6 +82,7 @@ export function sortPasses(
     case 'name':
     case 'passId':
     case 'price':
+    case 'archivedDate':
       break;
   }
 
