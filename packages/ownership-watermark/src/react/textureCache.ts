@@ -54,19 +54,9 @@ import {
 } from '../core';
 
 export type CarrierKey = {
-  /** Server-issued opaque v3 token to embed. */
   payload: OwnershipPayloadV3;
-  /** Width in device pixels, exact (do not round up). */
   width: number;
-  /** Height in device pixels, exact (do not round up). */
   height: number;
-  /**
-   * Host luma (0-255) the carrier is baked around. Tune to the backdrop's
-   * actual luminance to cancel the constant-offset "tint" that otherwise
-   * shows through at very low composite opacity; leave unset to fall back
-   * to mid-gray (128). Quantised in the cache key to avoid thrashing on
-   * sub-pixel measurement jitter -- see `LUMA_BUCKET`.
-   */
   hostLuma?: number;
 };
 
@@ -98,6 +88,16 @@ export type CarrierImageData = {
 const CARRIER_STRENGTH = 1300;
 
 /**
+ * Strength for dark backdrops (hostLuma < DARK_HOST_LUMA_THRESHOLD). On dark
+ * backgrounds the same pixel excursion that is invisible on light mode (4
+ * levels on luma 250 = 1.6% contrast) is visibly above JND on dark mode (4
+ * levels on luma 30 = 13.3% contrast). Lowering to 1000 reduces peak
+ * excursion from 4 to 3 levels (~10% contrast) while still surviving
+ * JPEG Q=60.
+ */
+const DARK_CARRIER_STRENGTH = 1000;
+
+/**
  * Fallback "host" luminance for the carrier when the caller has not
  * measured the actual backdrop. The value uses the same 8-bit range as
  * `hostLuma` inputs: 0 is black, 255 is white. Mid-gray keeps the watermark
@@ -106,6 +106,39 @@ const CARRIER_STRENGTH = 1300;
  * in so the composited DC offset disappears.
  */
 export const DEFAULT_CARRIER_HOST_LUMA = 128;
+
+/**
+ * Below this backdrop luma, the carrier uses reduced strength and pixel
+ * clipping to lower the peak excursion and reduce visible "snow" on
+ * dark mode.
+ */
+const DARK_HOST_LUMA_THRESHOLD = 96;
+
+/**
+ * Pixel excursion clip for dark backdrops. After IDWT, each pixel's
+ * deviation from the original is clipped to ±this value. This reduces
+ * the visible peaks from 3 to 2 levels (10% → 6.7% contrast on luma 30)
+ * while keeping the DCT coefficient sign relationship intact for the
+ * decoder. Light mode is not clipped — the excursion is already below
+ * JND on light backdrops.
+ */
+const DARK_CLIP_EXCURSION = 80;
+
+/** Visible for tests and debug labels so the strength rule is not duplicated. */
+export function resolveWatermarkStrength(hostLuma: number | null | undefined): number {
+  const resolved = hostLuma ?? DEFAULT_CARRIER_HOST_LUMA;
+  return resolved < DARK_HOST_LUMA_THRESHOLD ? DARK_CARRIER_STRENGTH : CARRIER_STRENGTH;
+}
+
+/**
+ * Returns the pixel excursion clip for the given backdrop luma. Dark
+ * backdrops get clipped to reduce visible peaks; light backdrops are
+ * not clipped (excursion is already below JND).
+ */
+export function resolveWatermarkClip(hostLuma: number | null | undefined): number | null {
+  const resolved = hostLuma ?? DEFAULT_CARRIER_HOST_LUMA;
+  return resolved < DARK_HOST_LUMA_THRESHOLD ? DARK_CLIP_EXCURSION : null;
+}
 
 /**
  * Quantise hostLuma to the nearest multiple of 4 for cache keying. The
@@ -172,7 +205,9 @@ export async function getOrCreateCarrierImageData(
   const pending = (async () => {
     const bits = encodeChannelBits(encodePayload(key.payload));
     const host = buildNeutralHost(key.width, key.height, luma);
-    const marked = watermarkImage(host, bits, { strength: CARRIER_STRENGTH });
+    const strength = resolveWatermarkStrength(luma);
+    const clipExcursion = resolveWatermarkClip(luma);
+    const marked = watermarkImage(host, bits, { strength, clipExcursion });
     return {
       width: marked.width,
       height: marked.height,

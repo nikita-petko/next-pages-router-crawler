@@ -16,10 +16,7 @@ import {
 import useAvatarLooksGate from '../../home/hooks/useAvatarLooksGate';
 import useMomentsGate from '../../home/hooks/useMomentsGate';
 import useUGCFoldersGate from '../../home/hooks/useUGCFoldersGate';
-import {
-  getAllowedMarketplaceItemTypes,
-  type AllowedMarketplaceItemTypes,
-} from '../constants/MenuConstants';
+import { getAvatarItemsEntryPointAssetTypes } from '../constants/MenuConstants';
 import creationsMenuManager from '../implementations/CreationsMenuManager';
 import type MenuItem from '../interfaces/MenuItem';
 import type MenuState from '../interfaces/MenuState';
@@ -121,7 +118,7 @@ const CreationsSubmenu: FunctionComponent<React.PropsWithChildren<TCreationsSubm
    * items as well.
    */
   useEffect(() => {
-    void getAllowedMarketplaceItemTypes().then(({ assetTypes }: AllowedMarketplaceItemTypes) => {
+    void getAvatarItemsEntryPointAssetTypes().then((assetTypes: Set<Asset>) => {
       setAllowedAssetTypes(assetTypes);
     });
   }, []);

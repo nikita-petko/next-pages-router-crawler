@@ -59,7 +59,11 @@
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { OwnershipPayloadV3 } from '../core';
-import { DEFAULT_CARRIER_HOST_LUMA, getOrCreateCarrierImageData } from './textureCache';
+import {
+  DEFAULT_CARRIER_HOST_LUMA,
+  getOrCreateCarrierImageData,
+  resolveWatermarkStrength,
+} from './textureCache';
 import useOwnership from './useOwnership';
 
 /**
@@ -504,6 +508,7 @@ const OwnershipWatermark: React.FC<OwnershipWatermarkProps> = ({
   }
 
   const attributionDataHex = bytesToHex(ownership.payload.attributionData);
+  const strength = resolveWatermarkStrength(hostLuma);
 
   let overlayOpacity = 0;
   if (carrierReady) {
@@ -533,6 +538,7 @@ const OwnershipWatermark: React.FC<OwnershipWatermarkProps> = ({
         data-watermark-key-epoch={ownership.payload.keyEpoch}
         data-attribution-data={attributionDataHex}
         data-team-id={ownership.teamId}
+        data-watermark-strength={strength}
         style={style}
       />
       {debug ? (
@@ -551,7 +557,7 @@ const OwnershipWatermark: React.FC<OwnershipWatermarkProps> = ({
             zIndex: 1,
           }}>
           {/* oxlint-disable-next-line rbx/no-hardcoded-translation-string -- dev-only debug overlay, not user-facing UI */}
-          {`attr=${attributionDataHex.slice(0, 12)} · epoch=${ownership.payload.keyEpoch} · ${
+          {`attr=${attributionDataHex.slice(0, 12)} · epoch=${ownership.payload.keyEpoch} · str=${strength} · ${
             size?.cssWidth ? Math.round(size.cssWidth) : '?'
           }×${
             size?.cssHeight ? Math.round(size.cssHeight) : '?'

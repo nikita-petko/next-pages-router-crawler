@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import itemConfigurationApi, { CategoryDomain } from '@modules/clients/itemconfiguration';
 import { Asset } from '@modules/miscellaneous/common';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import { getAllowedMarketplaceItemTypes } from '../../menu/constants/MenuConstants';
+import { getAvatarItemsEntryPointAssetTypes } from '../../menu/constants/MenuConstants';
 import {
   buildTaxonomyL1Options,
   transformCreatorDashboardTree,
@@ -12,8 +12,8 @@ import {
 export const getTaxonomyCategoriesQueryKey = (categoryDomain: CategoryDomain) =>
   ['getTaxonomyCategories', categoryDomain] as const;
 
-export const getAllowedMarketplaceItemTypesQueryKey = () =>
-  ['getAllowedMarketplaceItemTypes'] as const;
+export const getAvatarItemsEntryPointAssetTypesQueryKey = () =>
+  ['getAvatarItemsEntryPointAssetTypes'] as const;
 
 /**
  * Fetches the taxonomy category tree for the Creator Dashboard domain and derives the normalized L1
@@ -30,21 +30,22 @@ const useTaxonomyCategories = (enabled = true) => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Backgrounds and Makeup are restricted to creators the marketplace allows to publish them, which
-  // is what limits them to the trusted creator program. The legacy sub-tabs require this on top of
-  // their setting, so the chip row has to as well or the categories leak to everyone.
+  // Backgrounds and Makeup are restricted to the creators the marketplace allows them for, which is
+  // what limits them to the trusted creator program. The legacy sub-tabs require this on top of
+  // their setting, so the chip row has to as well or the categories leak to everyone. Makeup follows
+  // publish access and Backgrounds follows upload access; see getAvatarItemsEntryPointAssetTypes.
   const allowedQuery = useQuery({
-    queryKey: getAllowedMarketplaceItemTypesQueryKey(),
-    queryFn: getAllowedMarketplaceItemTypes,
+    queryKey: getAvatarItemsEntryPointAssetTypesQueryKey(),
+    queryFn: getAvatarItemsEntryPointAssetTypes,
     enabled,
     staleTime: 5 * 60 * 1000,
   });
-  const allowedAssetTypes = allowedQuery.data?.assetTypes;
+  const allowedAssetTypes = allowedQuery.data;
 
   const transformOptions = useMemo(
     () => ({
       // A pending or failed lookup denies access: revealing the chip first and removing it once the
-      // answer arrives would briefly offer a category the creator cannot publish.
+      // answer arrives would briefly offer a category the creator cannot use.
       enableMakeupAssets:
         settings.enableMakeupAssets && (allowedAssetTypes?.has(Asset.EyeMakeup) ?? false),
       enableAvatarBackgrounds:

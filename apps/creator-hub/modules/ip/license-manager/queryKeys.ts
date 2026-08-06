@@ -1,6 +1,21 @@
 const rootIpListingsKey = 'am_ipListings';
 export const IP_LISTINGS_QUERY_KEY = [rootIpListingsKey];
 export const GET_IP_LISTING_QUERY_KEY = (id: string) => [rootIpListingsKey, id];
+export const GET_LISTING_SHOWCASE_CONTENT_QUERY_KEY = (
+  accountId: string | undefined,
+  listingId: string,
+) => [rootIpListingsKey, 'showcaseContent', accountId, listingId];
+export const LIST_SHOWCASE_ELIGIBLE_CONTENT_QUERY_KEY = (
+  accountId: string | undefined,
+  listingId: string,
+  pageSize?: number,
+  pageToken?: string,
+) => [rootIpListingsKey, 'showcaseEligibleContent', accountId, listingId, pageSize, pageToken];
+export const GET_SHOWCASE_UNIVERSE_DETAILS_QUERY_KEY = (universeIds: number[]) => [
+  'developClient/getUniversesDetails',
+  'iphShowcase',
+  universeIds,
+];
 
 const rootLicenses = 'am_licenses';
 export const LICENSES_QUERY_KEY = [rootLicenses];

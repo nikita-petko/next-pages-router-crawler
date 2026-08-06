@@ -1,9 +1,13 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NextLink from 'next/link';
 import { useRouter } from 'next/router';
 import { ListingStatus, ListingVisibility } from '@rbx/client-content-licensing-api/v1';
 import { useFlag } from '@rbx/flags';
-import { Button as FoundationButton } from '@rbx/foundation-ui';
+import {
+  Alert as FoundationAlert,
+  Button as FoundationButton,
+  ProgressCircle,
+} from '@rbx/foundation-ui';
 import { withTranslation, useTranslation } from '@rbx/intl';
 import { AssetThumbnailSize, ReturnPolicy, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
 import { Alert, Button, Grid, makeStyles, OpenInNewIcon, Typography } from '@rbx/ui';
@@ -18,13 +22,20 @@ import IpLoadError from '../../components/error/IpLoadError';
 import { useIpLayoutContext } from '../../IpAppNavigationLayout';
 import { useIpFamilyQuery } from '../../ipFamilies/hooks/ipFamily';
 import RejectReasonModal from '../../rights/components/common/RejectReasonModal';
-import { IP_LISTING_EDIT_HREF, LICENSE_CREATE_HREF } from '../urls';
-import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../utils/logger';
+import ShowcaseContentTile from '../components/ShowcaseContentTile';
+import { EXTERNAL_EXPERIENCE_HREF, IP_LISTING_EDIT_HREF, LICENSE_CREATE_HREF } from '../urls';
+import {
+  LicenseManagerClickEvent,
+  LicenseManagerImpressionEvent,
+  useLicenseManagerLogger,
+} from '../utils/logger';
 import IpListingsBreadcrumbs from './components/IpListingsBreadcrumbs';
 import IpListingStatusChip from './components/IpListingStatusChip';
 import LicenseTable from './components/LicenseTable';
 import ShowcasedExperiencesDialog from './components/ShowcasedExperiencesDialog';
 import { useIpListingQuery, useLicensesQuery } from './hooks/ipListings';
+import useGetListingShowcaseContent from './hooks/useGetListingShowcaseContent';
+import useGetShowcaseUniverseDetails from './hooks/useGetShowcaseUniverseDetails';
 
 // API returns a string, not an enum, so we create the enum here for more robust checking.
 enum ListingRejectionReason {
@@ -71,6 +82,52 @@ const IpListingDetailsContainer = () => {
   const { ready: isShowcaseExperiencesFlagReady, value: isShowcaseExperiencesEnabled } = useFlag(
     isShowcaseExperiencesEnabledFlag,
   );
+  const showcaseContentReq = useGetListingShowcaseContent({
+    listingId: ipListingId,
+    enabled: isShowcaseExperiencesFlagReady && isShowcaseExperiencesEnabled,
+  });
+  const showcasedContent = showcaseContentReq.data?.content;
+  const showcasedUniverseIds = useMemo(
+    () =>
+      (showcasedContent ?? []).flatMap((reference) => {
+        const universeId = Number(reference.contentId);
+        return reference.contentType === 'Universe' &&
+          Number.isSafeInteger(universeId) &&
+          universeId > 0
+          ? [universeId]
+          : [];
+      }),
+    [showcasedContent],
+  );
+  const showcaseUniverseDetailsReq = useGetShowcaseUniverseDetails({
+    universeIds: showcasedUniverseIds,
+    enabled: isShowcaseExperiencesFlagReady && isShowcaseExperiencesEnabled,
+  });
+  const showcaseDetailsByUniverseId = useMemo(
+    () =>
+      new Map(
+        (showcaseUniverseDetailsReq.data?.data ?? []).flatMap((details) =>
+          details.id == null ? [] : [[details.id, details] as const],
+        ),
+      ),
+    [showcaseUniverseDetailsReq.data?.data],
+  );
+  const isShowcaseContentError =
+    showcaseContentReq.isError ||
+    (showcasedUniverseIds.length > 0 && showcaseUniverseDetailsReq.isError);
+  const failedShowcaseRequest =
+    showcaseContentReq.isError && showcaseUniverseDetailsReq.isError
+      ? 'showcase_content_and_universe_details'
+      : showcaseContentReq.isError
+        ? 'showcase_content'
+        : 'universe_details';
+  const isShowcaseContentRetrying =
+    isShowcaseContentError &&
+    (showcaseContentReq.isFetching || showcaseUniverseDetailsReq.isFetching);
+  const isShowcaseContentLoading =
+    showcaseContentReq.isPending ||
+    (showcasedUniverseIds.length > 0 && showcaseUniverseDetailsReq.isPending) ||
+    isShowcaseContentRetrying;
   const showcasedExperiencesLabel = tPendingTranslation(
     'Showcased experiences',
     'Section heading for experiences showcased on an IP listing details page',
@@ -83,7 +140,7 @@ const IpListingDetailsContainer = () => {
       'Label.ShowcasedExperiencesSelectedCount',
       TranslationNamespace.AgreementsManager,
     ),
-    { selectedCount: '0' },
+    { selectedCount: showcasedUniverseIds.length.toString() },
   );
   const noShowcasedExperiencesDescription = tPendingTranslation(
     'No showcased experiences',
@@ -95,12 +152,29 @@ const IpListingDetailsContainer = () => {
     'Action to manage content, such as the experiences showcased on an IP listing',
     translationKey('Action.Manage', TranslationNamespace.AgreementsManager),
   );
+  const retryShowcasedExperiencesLabel = tPendingTranslation(
+    'Retry',
+    'Action to retry a failed request',
+    translationKey('Action.Retry', TranslationNamespace.AgreementsManager),
+  );
   const { setPageTitle } = useIpLayoutContext();
   useEffect(() => {
     if (ipListingReq?.data) {
       setPageTitle(<IpListingsBreadcrumbs pages={[{ title: ipListingReq.data.name ?? '' }]} />);
     }
   }, [ipListingReq.data, setPageTitle]);
+  useEffect(() => {
+    if (isShowcaseContentError) {
+      logEvent(
+        LicenseManagerImpressionEvent.IphListingsDetailsPageShowcasedExperiencesLoadFailureImpressionEvent,
+        {
+          listingId: ipListingId,
+          surface: 'details',
+          failedRequest: failedShowcaseRequest,
+        },
+      );
+    }
+  }, [failedShowcaseRequest, ipListingId, isShowcaseContentError, logEvent]);
 
   if (ipListingReq.isError || ipFamilyReq.isError || licensesReq.isError) {
     return <IpLoadError error={ipListingReq.error ?? ipFamilyReq.error ?? licensesReq.error} />;
@@ -126,6 +200,27 @@ const IpListingDetailsContainer = () => {
       listingId: ipListingId,
     });
     setShowcasedExperiencesDialogOpen(true);
+  };
+  const handleRetryShowcasedExperiences = () => {
+    logEvent(LicenseManagerClickEvent.IphListingsDetailsPageRetryShowcasedExperiencesClickEvent, {
+      listingId: ipListingId,
+      surface: 'details',
+      failedRequest: failedShowcaseRequest,
+    });
+    if (showcaseContentReq.isError) {
+      void showcaseContentReq.refetch();
+    }
+    if (showcaseUniverseDetailsReq.isError) {
+      void showcaseUniverseDetailsReq.refetch();
+    }
+  };
+  const handleShowcaseContentClick = (universeId: number, contentPosition: number) => {
+    logEvent(LicenseManagerClickEvent.IphListingsDetailsPageShowcaseContentClickEvent, {
+      listingId: ipListingId,
+      contentType: 'Universe',
+      contentId: universeId,
+      contentPosition,
+    });
   };
 
   let alertMessage;
@@ -261,16 +356,80 @@ const IpListingDetailsContainer = () => {
         <Grid item>
           <Flex gap={8} flexDirection='column'>
             <Typography variant='h6'>{showcasedExperiencesLabel}</Typography>
-            <Flex gap={8} alignItems='center'>
-              <Typography>{showcasedExperiencesSelectedCount}</Typography>
-              <FoundationButton
-                variant='Link'
-                size='Medium'
-                onClick={handleManageShowcasedExperiences}>
-                {manageShowcasedExperiencesLabel}
-              </FoundationButton>
-            </Flex>
-            <Typography>{noShowcasedExperiencesDescription}</Typography>
+            {isShowcaseContentLoading ? (
+              <div className='flex justify-center padding-large'>
+                <ProgressCircle
+                  variant='Indeterminate'
+                  ariaLabel={translate('Label.Loading')}
+                  size='Medium'
+                />
+              </div>
+            ) : isShowcaseContentError ? (
+              <FoundationAlert
+                variant='Feedback'
+                severity='Error'
+                hasCloseAffordance={false}
+                className='!width-fit !stroke-default [&>div[aria-hidden=true]]:!bg-shift-100'>
+                <span className='inline-flex items-center gap-small'>
+                  <span>{translate('Error.LoadingData')}</span>
+                  <FoundationButton
+                    variant='Link'
+                    size='Small'
+                    className='![height:auto] !padding-none !text-label-medium [&>div]:!bg-none [&>div]:!transition-none [&>span>span]:!padding-none'
+                    onClick={handleRetryShowcasedExperiences}>
+                    {retryShowcasedExperiencesLabel}
+                  </FoundationButton>
+                </span>
+              </FoundationAlert>
+            ) : (
+              <>
+                <Flex gap={8} alignItems='center'>
+                  <Typography>{showcasedExperiencesSelectedCount}</Typography>
+                  <FoundationButton
+                    variant='Link'
+                    size='Medium'
+                    className='![height:auto] !padding-none !text-label-medium [&>div]:!bg-none [&>div]:!transition-none [&>span>span]:!padding-none'
+                    onClick={handleManageShowcasedExperiences}>
+                    {manageShowcasedExperiencesLabel}
+                  </FoundationButton>
+                </Flex>
+                {showcasedUniverseIds.length === 0 ? (
+                  <Typography>{noShowcasedExperiencesDescription}</Typography>
+                ) : (
+                  <div className='flex [flex-wrap:wrap] gap-medium'>
+                    {showcasedUniverseIds.map((universeId, index) => {
+                      const details = showcaseDetailsByUniverseId.get(universeId);
+                      const name =
+                        details?.name ??
+                        tPendingTranslation(
+                          'Universe {universeId}',
+                          'Fallback name for a showcased experience when its name cannot be loaded',
+                          translationKey(
+                            'Label.ShowcasedExperienceUniverseWithId',
+                            TranslationNamespace.AgreementsManager,
+                          ),
+                          { universeId: universeId.toString() },
+                        );
+                      return (
+                        <div key={universeId} className='width-[144px]'>
+                          <ShowcaseContentTile
+                            universeId={universeId}
+                            name={name}
+                            showExternalIcon={false}
+                            link={
+                              details?.rootPlaceId != null
+                                ? EXTERNAL_EXPERIENCE_HREF(details.rootPlaceId)
+                                : undefined
+                            }
+                            onClick={() => handleShowcaseContentClick(universeId, index + 1)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
           </Flex>
         </Grid>
       )}
@@ -292,13 +451,17 @@ const IpListingDetailsContainer = () => {
         )}
       </Grid>
 
-      {isShowcaseExperiencesFlagReady && isShowcaseExperiencesEnabled && (
-        <ShowcasedExperiencesDialog
-          open={showcasedExperiencesDialogOpen}
-          listingId={ipListingId}
-          onClose={handleCloseShowcasedExperiences}
-        />
-      )}
+      {isShowcaseExperiencesFlagReady &&
+        isShowcaseExperiencesEnabled &&
+        showcasedExperiencesDialogOpen && (
+          <ShowcasedExperiencesDialog
+            open={showcasedExperiencesDialogOpen}
+            listingId={ipListingId}
+            selectedContent={showcasedContent ?? undefined}
+            ifMatch={showcaseContentReq.data?.eTag}
+            onClose={handleCloseShowcasedExperiences}
+          />
+        )}
     </Grid>
   );
 };

@@ -99,7 +99,7 @@ function isLeafPublishable(node: CategoryNode): boolean {
  *  - Non-publishable leaves are filtered out via `isPublishable` (this is what hides Gear).
  *  - Makeup leaves are additionally gated behind `enableMakeupAssets`.
  *  - Backgrounds is shown only when `enableAvatarBackgrounds` allows it (parity with the legacy tab,
- *    which also requires the creator to be allowed to publish backgrounds).
+ *    which also requires the creator to be allowed to upload backgrounds).
  *  - 2D Classics leaves are lifted out of Clothing into a dedicated, taxonomy-agnostic Classics L1.
  *  - L1s left with no visible leaves are dropped (leaf L1s such as Backgrounds are kept).
  */

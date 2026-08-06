@@ -85,6 +85,10 @@ export type LicenseRecommendationResponse = GeneratedLicenseRecommendationRespon
   sourceUniverseId?: number | null;
 };
 
+export type ListingShowcaseContentWithETag = ListingShowcaseContentResponse & {
+  eTag?: string;
+};
+
 /**
  * Client for the Content Licensing API service
  * Provides the backend endpoints for the IP Licensing Platform
@@ -299,11 +303,15 @@ export class ContentLicensingApiClient {
   async getListingShowcaseContent(
     accountId: string,
     listingId: string,
-  ): Promise<ListingShowcaseContentResponse> {
-    return this.listingsApi.listingsGetListingShowcaseContent({
+  ): Promise<ListingShowcaseContentWithETag> {
+    const response = await this.listingsApi.listingsGetListingShowcaseContentRaw({
       accountId,
       listingId,
     });
+    return {
+      ...(await response.value()),
+      eTag: response.raw.headers.get('ETag') ?? undefined,
+    };
   }
 
   /**

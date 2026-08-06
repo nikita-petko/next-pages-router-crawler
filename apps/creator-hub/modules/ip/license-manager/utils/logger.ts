@@ -40,8 +40,11 @@ export enum LicenseManagerClickEvent {
   IphListingsGridViewListingClickEvent = 'iphListingsGridViewListingClickEvent',
   IphListingsDetailsPageViewPublicListingClickEvent = 'iphListingsDetailsPageViewPublicListingClickEvent',
   IphListingsDetailsPageManageShowcasedExperiencesClickEvent = 'iphListingsDetailsPageManageShowcasedExperiencesClickEvent',
-  IphListingsDetailsPageCancelShowcasedExperiencesClickEvent = 'iphListingsDetailsPageCancelShowcasedExperiencesClickEvent',
+  IphListingsDetailsPageCloseShowcasedExperiencesClickEvent = 'iphListingsDetailsPageCloseShowcasedExperiencesClickEvent',
+  IphListingsDetailsPageToggleShowcasedExperienceClickEvent = 'iphListingsDetailsPageToggleShowcasedExperienceClickEvent',
+  IphListingsDetailsPageRetryShowcasedExperiencesClickEvent = 'iphListingsDetailsPageRetryShowcasedExperiencesClickEvent',
   IphListingsDetailsPageSaveShowcasedExperiencesClickEvent = 'iphListingsDetailsPageSaveShowcasedExperiencesClickEvent',
+  IphListingsDetailsPageShowcaseContentClickEvent = 'iphListingsDetailsPageShowcaseContentClickEvent',
   IphListingsDetailsPageEditListingClickEvent = 'iphListingsDetailsPageEditListingClickEvent',
   IphListingsDetailsPageEditLicenseClickEvent = 'iphListingsDetailsPageEditLicenseClickEvent',
   IphListingsDetailsPageAddLicenseClickEvent = 'iphListingsDetailsPageAddLicenseClickEvent',
@@ -114,6 +117,7 @@ export enum LicenseManagerImpressionEvent {
   RecommendationImpressionEvent = 'recommendationImpressionEvent',
   CatalogImpressionEvent = 'catalogImpressionEvent',
   MatchesTableResultsImpressionEvent = 'matchesTableResultsImpressionEvent',
+  IphListingsDetailsPageShowcasedExperiencesLoadFailureImpressionEvent = 'iphListingsDetailsPageShowcasedExperiencesLoadFailureImpressionEvent',
 
   // Empty states
   EmptyStateMatchesTableNoValidExperiencesForThisCreatorImpressionEvent = 'emptyStateMatchesTableNoValidExperiencesForThisCreatorImpressionEvent',

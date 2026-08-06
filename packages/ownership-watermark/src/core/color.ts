@@ -1,11 +1,15 @@
 /**
  * Color-space conversion helpers used by the watermark encoder/decoder.
  *
- * We watermark only the luminance (Y) channel of BT.601 YCbCr because:
+ * The watermark is embedded only in the luminance (Y) channel of BT.601
+ * YCbCr because:
  *  - Human vision is far more sensitive to chroma than luma changes, so
  *    modulating Y at ~1-3% is less perceptible than modulating RGB directly.
- *  - JPEG quantises chroma at 2x the rate of luma, so chroma-embedded signals
- *    get destroyed first under recompression.
+ *  - JPEG quantises chroma at 2x the rate of luma (4:2:0 subsampling),
+ *    so chroma-embedded signals get destroyed first under recompression.
+ *  - On dark backgrounds, Y embedding has limited headroom below the
+ *    backdrop luma, but this is mitigated by peak clipping (encode.ts)
+ *    and adaptive strength (textureCache.ts).
  *
  * All functions take/return Float64Array for numerical stability across the
  * DWT/DCT pipeline.
@@ -30,6 +34,23 @@ export type YCbCrPlanes = {
   cr: Float64Array;
   a: Uint8ClampedArray;
 };
+
+/**
+ * Color-space conversion helpers used by the watermark encoder/decoder.
+ *
+ * The watermark is embedded only in the luminance (Y) channel of BT.601
+ * YCbCr because:
+ *  - Human vision is far more sensitive to chroma than luma changes, so
+ *    modulating Y at ~1-3% is less perceptible than modulating RGB directly.
+ *  - JPEG quantises chroma at 2x the rate of luma (4:2:0 subsampling),
+ *    so chroma-embedded signals get destroyed first under recompression.
+ *  - On dark backgrounds, Y embedding has limited headroom below the
+ *    backdrop luma, but this is mitigated by peak clipping (encode.ts)
+ *    and adaptive strength (textureCache.ts).
+ *
+ * All functions take/return Float64Array for numerical stability across the
+ * DWT/DCT pipeline.
+ */
 
 /**
  * Structural alias for browser ImageData. Declared explicitly so this module

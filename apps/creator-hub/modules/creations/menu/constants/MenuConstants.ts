@@ -109,17 +109,26 @@ export function getDefaultAllowedMarketplaceItemTypes(): AllowedMarketplaceItemT
   };
 }
 
-let inflightAllowedMarketplaceItemTypes: Promise<AllowedMarketplaceItemTypes> | null = null;
+/**
+ * The item types the creator may upload, kept apart from the publish-permitted sets above because a
+ * type can open for upload before it opens for publishing.
+ */
+export const uploadableAvatarItemsAssetTypes: Set<Asset> = new Set<Asset>();
+export const uploadableAvatarItemsBundleTypes: Set<BundleType> = new Set<BundleType>();
 
-async function fetchAndCacheAllowedMarketplaceItemTypes(): Promise<AllowedMarketplaceItemTypes> {
+let inflightAllowedMarketplaceItemTypes: Promise<AllowedMarketplaceItemTypes> | null = null;
+let inflightUploadableMarketplaceItemTypes: Promise<AllowedMarketplaceItemTypes> | null = null;
+
+async function fetchAndCacheItemTypesForAction(
+  action: V1PermissionsItemTypesGetActionEnum,
+  assetTypes: Set<Asset>,
+  bundleTypes: Set<BundleType>,
+): Promise<AllowedMarketplaceItemTypes> {
   try {
-    const response = await itemconfigurationClient.getAllowedAssetTypes(
-      V1PermissionsItemTypesGetActionEnum.NUMBER_2, // Publish Marketplace Action
-      [
-        V1PermissionsItemTypesGetTargetTypesEnum.NUMBER_0, // Asset type
-        V1PermissionsItemTypesGetTargetTypesEnum.NUMBER_1, // Bundle type
-      ],
-    );
+    const response = await itemconfigurationClient.getAllowedAssetTypes(action, [
+      V1PermissionsItemTypesGetTargetTypesEnum.NUMBER_0, // Asset type
+      V1PermissionsItemTypesGetTargetTypesEnum.NUMBER_1, // Bundle type
+    ]);
 
     // Convert the response to a Set of Asset types and add to the allowed set
     response.allowedAssetTypes?.forEach((assetType) => {
@@ -133,21 +142,18 @@ async function fetchAndCacheAllowedMarketplaceItemTypes(): Promise<AllowedMarket
       }
 
       if (isValidEnumValue(Asset, assetTypeConverted)) {
-        dynamicAvatarItemsAssetTypes.add(assetTypeConverted);
+        assetTypes.add(assetTypeConverted);
       }
     });
 
     response.allowedBundleTypes?.forEach((bundleType) => {
       const bundleTypeEnum = getBundleTypeToBundleTypeString(bundleType);
       if (bundleTypeEnum !== BundleType.Unknown) {
-        dynamicAvatarItemsBundleTypes.add(bundleTypeEnum);
+        bundleTypes.add(bundleTypeEnum);
       }
     });
 
-    return {
-      assetTypes: dynamicAvatarItemsAssetTypes,
-      bundleTypes: dynamicAvatarItemsBundleTypes,
-    };
+    return { assetTypes, bundleTypes };
   } catch {
     // If the API call fails, return the default list
     return getDefaultAllowedMarketplaceItemTypes();
@@ -162,11 +168,57 @@ export async function getAllowedMarketplaceItemTypes(): Promise<AllowedMarketpla
     };
   }
 
-  inflightAllowedMarketplaceItemTypes ??= fetchAndCacheAllowedMarketplaceItemTypes().finally(() => {
+  inflightAllowedMarketplaceItemTypes ??= fetchAndCacheItemTypesForAction(
+    V1PermissionsItemTypesGetActionEnum.NUMBER_2, // Publish Marketplace Action
+    dynamicAvatarItemsAssetTypes,
+    dynamicAvatarItemsBundleTypes,
+  ).finally(() => {
     inflightAllowedMarketplaceItemTypes = null;
   });
 
   return inflightAllowedMarketplaceItemTypes;
+}
+
+/** The {@link getAllowedMarketplaceItemTypes} equivalent for the upload permission. */
+export async function getUploadableMarketplaceItemTypes(): Promise<AllowedMarketplaceItemTypes> {
+  if (uploadableAvatarItemsAssetTypes.size > 0) {
+    return {
+      assetTypes: uploadableAvatarItemsAssetTypes,
+      bundleTypes: uploadableAvatarItemsBundleTypes,
+    };
+  }
+
+  inflightUploadableMarketplaceItemTypes ??= fetchAndCacheItemTypesForAction(
+    V1PermissionsItemTypesGetActionEnum.NUMBER_1, // Upload Action
+    uploadableAvatarItemsAssetTypes,
+    uploadableAvatarItemsBundleTypes,
+  ).finally(() => {
+    inflightUploadableMarketplaceItemTypes = null;
+  });
+
+  return inflightUploadableMarketplaceItemTypes;
+}
+
+/**
+ * The asset types whose Avatar Items entry point the creator may see: the publish-permitted types,
+ * plus Avatar Background when they may upload one. Backgrounds open for upload ahead of publishing,
+ * so the entry point has to appear while publish access is still withheld; publishing itself stays
+ * gated on the publish permission, which the API enforces. All other types follow publish access.
+ */
+export async function getAvatarItemsEntryPointAssetTypes(): Promise<Set<Asset>> {
+  const [allowed, uploadable] = await Promise.all([
+    getAllowedMarketplaceItemTypes(),
+    getUploadableMarketplaceItemTypes(),
+  ]);
+
+  // Copied rather than added to: the publish-permitted set is shared with callers that have to keep
+  // publish semantics, such as the item cards and the avatar analytics header.
+  const entryPointAssetTypes = new Set(allowed.assetTypes);
+  if (uploadable.assetTypes.has(Asset.AvatarBackground)) {
+    entryPointAssetTypes.add(Asset.AvatarBackground);
+  }
+
+  return entryPointAssetTypes;
 }
 
 export const allowedItemTypesForUploading: Set<Item> = new Set<Item>([]);

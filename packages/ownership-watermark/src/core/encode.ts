@@ -19,6 +19,7 @@ import {
   rgbaToYCbCr,
   yCbCrToRgba,
   type ImageLike,
+  type YCbCrPlanes,
 } from './color';
 import { dct8x8, idct8x8, DCT_BLOCK_SIZE } from './dct';
 import { dwt2Haar, idwt2Haar } from './dwt';
@@ -33,23 +34,17 @@ export type SignalPair = {
 };
 
 export type EncodeOptions = {
-  /**
-   * Minimum magnitude of the modulated coefficient-pair difference. Typical
-   * values: 4-8 for direct embedding. The React runtime's carrier texture is
-   * generated at a much higher strength (currently 1300) because CSS opacity
-   * attenuates it to ~2.5% before the screenshot reaches the decoder.
-   */
   strength?: number;
-  /**
-   * Positions in the 8x8 DCT block to use as the signalling pair. Mid-frequency
-   * diagonals survive JPEG's default luma quantisation table well.
-   */
   pair?: SignalPair;
-  /**
-   * Multi-lane override. When omitted we use the default four-pair carrier that
-   * the channel-coded payload is tuned for.
-   */
   pairs?: SignalPair[];
+  /**
+   * Maximum pixel excursion from the original (pre-watermark) value after
+   * IDWT. When set, clips each pixel's deviation to ±clipExcursion,
+   * reducing the visible "peaks" that produce snow on flat backgrounds
+   * while keeping the coefficient sign relationship the decoder relies on.
+   * Set to `null` (default) for no clipping.
+   */
+  clipExcursion?: number | null;
 };
 
 /**
@@ -96,6 +91,7 @@ export function watermarkImage(
 
   const strength = options.strength ?? 8;
   const pairs = options.pairs ?? (options.pair ? [options.pair] : DEFAULT_PAIRS);
+  const clipExcursion = options.clipExcursion ?? null;
 
   const rgba = imageDataToPlanes(image);
   const ycc = rgbaToYCbCr(rgba);
@@ -103,16 +99,53 @@ export function watermarkImage(
   // DWT requires even dimensions; crop to even if necessary.
   const dw = ycc.width - (ycc.width % 2);
   const dh = ycc.height - (ycc.height % 2);
-  const yCropped = cropPlane(ycc.y, ycc.width, ycc.height, dw, dh);
 
-  const coeffs = dwt2Haar(yCropped, dw, dh);
+  embedInPlane(ycc, ycc.y, payloadBits, strength, pairs, dw, dh, clipExcursion);
+
+  const rebuiltRgba = yCbCrToRgba(ycc);
+  return planesToImageData(rebuiltRgba);
+}
+
+/**
+ * Embed `payloadBits` into the Y plane via DWT → DCT → Koch-Zhao
+ * modulation → IDCT → IDWT. Mutates `planeData` in place.
+ */
+function embedInPlane(
+  ycc: YCbCrPlanes,
+  planeData: Float64Array,
+  payloadBits: Uint8Array,
+  strength: number,
+  pairs: SignalPair[],
+  dw: number,
+  dh: number,
+  clipExcursion: number | null = null,
+): void {
+  const planeCropped = cropPlane(planeData, ycc.width, ycc.height, dw, dh);
+
+  const coeffs = dwt2Haar(planeCropped, dw, dh);
   const llW = dw >> 1;
   const llH = dh >> 1;
+  embedInLL(coeffs.ll, llW, llH, payloadBits, strength, pairs);
+  const planeRebuilt = idwt2Haar(coeffs);
+  clipPixelExcursion(planeRebuilt, planeCropped, clipExcursion);
+  pastePlane(planeData, ycc.width, ycc.height, planeRebuilt, dw, dh);
+}
 
+/**
+ * Embed payload bits into an LL subband via 8×8 DCT blocks with Koch-Zhao
+ * modulation. Shared by both single-level and two-level paths.
+ */
+function embedInLL(
+  ll: Float64Array,
+  llW: number,
+  llH: number,
+  payloadBits: Uint8Array,
+  strength: number,
+  pairs: SignalPair[],
+): void {
   const blocksX = Math.floor(llW / DCT_BLOCK_SIZE);
   const blocksY = Math.floor(llH / DCT_BLOCK_SIZE);
-  const totalBlocks = blocksX * blocksY;
-  const totalSlots = totalBlocks * pairs.length;
+  const totalSlots = blocksX * blocksY * pairs.length;
   if (totalSlots < CHANNEL_BIT_LENGTH) {
     throw new Error(
       `watermarkImage: image yields only ${totalSlots} channel slots, need >= ${CHANNEL_BIT_LENGTH}`,
@@ -125,22 +158,43 @@ export function watermarkImage(
 
   for (let by = 0; by < blocksY; by += 1) {
     for (let bx = 0; bx < blocksX; bx += 1) {
-      readBlock(coeffs.ll, llW, bx, by, block);
+      readBlock(ll, llW, bx, by, block);
       dct8x8(block, dctBlock);
       for (const [lane, pair] of pairs.entries()) {
         const bit = payloadBits[bitSlotForBlock(bx, by, lane)];
         modulatePair(dctBlock, pair, bit, strength * (pair.weight ?? 1));
       }
       idct8x8(dctBlock, idctBlock);
-      writeBlock(coeffs.ll, llW, bx, by, idctBlock);
+      writeBlock(ll, llW, bx, by, idctBlock);
     }
   }
+}
 
-  const yRebuilt = idwt2Haar(coeffs);
-  pastePlane(ycc.y, ycc.width, ycc.height, yRebuilt, dw, dh);
-
-  const rebuiltRgba = yCbCrToRgba(ycc);
-  return planesToImageData(rebuiltRgba);
+/**
+ * Clip pixel excursion from the original (pre-watermark) plane. After IDWT,
+ * each pixel's deviation from the original is the watermark signal. Clipping
+ * that deviation to ±clipExcursion reduces the visible peaks (the "snow"
+ * on flat backgrounds) while preserving the DCT coefficient sign
+ * relationship the decoder relies on (clipping is symmetric around the
+ * original value, so it doesn't flip coefficient diffs).
+ */
+function clipPixelExcursion(
+  rebuilt: Float64Array,
+  original: Float64Array,
+  clipExcursion: number | null,
+): void {
+  if (clipExcursion === null) {
+    return;
+  }
+  const len = Math.min(rebuilt.length, original.length);
+  for (let i = 0; i < len; i += 1) {
+    const excursion = rebuilt[i] - original[i];
+    if (excursion > clipExcursion) {
+      rebuilt[i] = original[i] + clipExcursion;
+    } else if (excursion < -clipExcursion) {
+      rebuilt[i] = original[i] - clipExcursion;
+    }
+  }
 }
 
 function cropPlane(
