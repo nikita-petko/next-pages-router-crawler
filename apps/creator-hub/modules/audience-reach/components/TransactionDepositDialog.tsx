@@ -36,6 +36,7 @@ interface TransactionDepositDialogProps {
   modalBody: ReactNode;
   fee: number | null;
   groupId?: number;
+  forceGroupFunds?: boolean;
 }
 
 const TransactionDepositDialog: FC<TransactionDepositDialogProps> = ({
@@ -48,6 +49,7 @@ const TransactionDepositDialog: FC<TransactionDepositDialogProps> = ({
   modalBody,
   fee,
   groupId,
+  forceGroupFunds = false,
 }) => {
   const { translateWithNamespace } = useTranslation();
   const { locale } = useLocalization();
@@ -58,9 +60,13 @@ const TransactionDepositDialog: FC<TransactionDepositDialogProps> = ({
   const { data: groupBalance } = useGetGroupBalanceQuery(groupId ?? 0);
   const [isDepositLoading, setIsDepositLoading] = useState(false);
   const [error, setError] = useState(PublishingFeeDialogErrorState.None);
-  const [useGroupFunds, setUseGroupFunds] = useState(false);
-  const activeBalance = useGroupFunds ? groupBalance : userBalance;
+  const [useGroupFunds, setUseGroupFunds] = useState(forceGroupFunds);
+  const effectiveUseGroupFunds = forceGroupFunds || useGroupFunds;
+  const activeBalance = effectiveUseGroupFunds ? groupBalance : userBalance;
   const insufficientFunds = activeBalance != null && fee != null && activeBalance < fee;
+  const showGroupFundsToggle = Boolean(groupId);
+  const groupFundsToggleDisabled =
+    forceGroupFunds || (fee != null && groupBalance != null && groupBalance < fee);
 
   const payDeposit = useCallback(async () => {
     setIsDepositLoading(true);
@@ -69,7 +75,7 @@ const TransactionDepositDialog: FC<TransactionDepositDialogProps> = ({
         universeId,
         coreContentTransactionDepositRequest: {
           variant,
-          useGroupFunds,
+          useGroupFunds: effectiveUseGroupFunds,
         },
       });
       openSuccessSnackbar?.(
@@ -92,7 +98,7 @@ const TransactionDepositDialog: FC<TransactionDepositDialogProps> = ({
   }, [
     universeId,
     variant,
-    useGroupFunds,
+    effectiveUseGroupFunds,
     queryClient,
     onOpenChange,
     openSuccessSnackbar,
@@ -103,11 +109,11 @@ const TransactionDepositDialog: FC<TransactionDepositDialogProps> = ({
     (newOpen: boolean) => {
       if (newOpen) {
         setError(PublishingFeeDialogErrorState.None);
-        setUseGroupFunds(false);
+        setUseGroupFunds(forceGroupFunds);
       }
       onOpenChange(newOpen);
     },
-    [onOpenChange],
+    [onOpenChange, forceGroupFunds],
   );
 
   return (
@@ -125,7 +131,7 @@ const TransactionDepositDialog: FC<TransactionDepositDialogProps> = ({
             error={insufficientFunds ? PublishingFeeDialogErrorState.InsufficientFunds : error}
           />
           {modalBody}
-          {groupId && (
+          {showGroupFundsToggle && (
             <div className='flex items-center gap-xsmall'>
               <Toggle
                 label={translateWithNamespace(
@@ -134,11 +140,11 @@ const TransactionDepositDialog: FC<TransactionDepositDialogProps> = ({
                 )}
                 placement='Start'
                 size='Medium'
-                isChecked={useGroupFunds}
+                isChecked={effectiveUseGroupFunds}
                 onCheckedChange={setUseGroupFunds}
-                isDisabled={fee != null && groupBalance != null && groupBalance < fee}
+                isDisabled={groupFundsToggleDisabled}
               />
-              {fee != null && groupBalance != null && groupBalance < fee && (
+              {!forceGroupFunds && fee != null && groupBalance != null && groupBalance < fee && (
                 <Tooltip
                   position='right-center'
                   title={translateWithNamespace(
@@ -195,21 +201,23 @@ const TransactionDepositDialog: FC<TransactionDepositDialogProps> = ({
             </Button>
           </div>
           {fee &&
-            (groupId != null ? (
+            (groupId ? (
               <div className='flex flex-col gap-xsmall'>
-                <div className='flex items-center gap-xsmall'>
-                  <span className='text-body-medium'>
-                    {translateWithNamespace(
-                      TranslationNamespace.AudienceReach,
-                      'Label.CurrentUserBalance',
-                    )}
-                    :
-                  </span>
-                  <Icon name='icon-regular-robux' size='Small' aria-label='Robux' />
-                  <span className='text-body-medium'>
-                    {numberFormatter.format(userBalance ?? 0)}
-                  </span>
-                </div>
+                {!forceGroupFunds && (
+                  <div className='flex items-center gap-xsmall'>
+                    <span className='text-body-medium'>
+                      {translateWithNamespace(
+                        TranslationNamespace.AudienceReach,
+                        'Label.CurrentUserBalance',
+                      )}
+                      :
+                    </span>
+                    <Icon name='icon-regular-robux' size='Small' aria-label='Robux' />
+                    <span className='text-body-medium'>
+                      {numberFormatter.format(userBalance ?? 0)}
+                    </span>
+                  </div>
+                )}
                 <div className='flex items-center gap-xsmall'>
                   <span className='text-body-medium'>
                     {translateWithNamespace(

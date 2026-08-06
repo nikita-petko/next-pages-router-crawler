@@ -13,6 +13,7 @@ import CreatorType from '@modules/miscellaneous/common/enums/Creator';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import { useCreatorEligibility } from '@modules/publishing-permissions/hooks/useCreatorEligibility';
+import { useGetOrganizationPermissionsByGroupId } from '@modules/react-query/organizations/organizationsQueries';
 import {
   PublishingFee,
   PublishingPermissionsRoute,
@@ -69,7 +70,16 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
       overrideUserId: creatorEligibilityOverrideUserId,
       isReady: isEligibilityContextReady,
     });
+  const { data: groupPermissions, isLoading: isGroupPermissionsLoading } =
+    useGetOrganizationPermissionsByGroupId(groupId);
   const { value: isExpeditedReviewEnabled } = useFlag(enableExpeditedReview);
+
+  const canConfigureGroupRevenue =
+    Boolean(groupId) &&
+    (groupPermissions?.isOwner === true || groupPermissions?.canConfigureRevenueDetails === true);
+  // Non-owner group revenue managers may pay, but only from group funds.
+  const canPay = isCreator || canConfigureGroupRevenue;
+  const forceGroupFunds = !isCreator && canConfigureGroupRevenue;
 
   const exemptDueToActiveSubscription =
     !creatorEligibilityResponse?.everyoneTierWithoutSubscription &&
@@ -79,7 +89,7 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
     isExpeditedReviewEnabled &&
     // Eligible to pay expedited fee:
     ((isBelowThreshold && // Creators above threshold can just pay the normal fee
-      isCreator &&
+      canPay &&
       audienceReach !== ReachLevel.AllAges &&
       !(isRated && is16Plus)) ||
       // Or already paid fee
@@ -87,8 +97,9 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
 
   const [feeStatusText, feeDescriptionText, ctaButton, shouldShowPublishingFeeUpsell] =
     useMemo(() => {
-      // Variant 1: The user is not the creator. They have no visibility and cannot take action
-      if (!isCreator) {
+      // Variant 1: The user cannot pay (not creator and no group-revenue
+      // permission). They have no visibility and cannot take action
+      if (!canPay) {
         return [
           translate(translationKey('Label.NotAvailable', TranslationNamespace.AudienceReach)),
           translate(
@@ -162,7 +173,7 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
         !isBelowThreshold && isPublished,
       ];
     }, [
-      isCreator,
+      canPay,
       publishingFeeTransactionStatus,
       exemptDueToActiveSubscription,
       translate,
@@ -177,6 +188,7 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
     isExpeditedTransactionStatusLoading ||
     isUniversePublishStatusLoading ||
     isCreatorEligibilityLoading ||
+    (Boolean(groupId) && isGroupPermissionsLoading) ||
     !isEligibilityContextReady
   ) {
     return (
@@ -209,6 +221,7 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
           expeditedTransactionStatus={expeditedTransactionStatus ?? null}
           openSuccessSnackbar={setSnackbarMessage}
           groupId={groupId}
+          forceGroupFunds={forceGroupFunds}
         />
       )}
       {shouldShowPublishingFeeUpsell && (
@@ -257,6 +270,7 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
         modalBody={paymentModalBody}
         fee={PublishingFee}
         groupId={groupId}
+        forceGroupFunds={forceGroupFunds}
       />
       {snackbarMessage !== null ? (
         <Snackbar

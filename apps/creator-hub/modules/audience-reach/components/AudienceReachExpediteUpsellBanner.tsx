@@ -21,6 +21,7 @@ interface AudienceReachExpediteUpsellBannerProps {
   expeditedTransactionStatus: UniverseTransactionStatusResponse | null;
   openSuccessSnackbar?: (message: string) => void;
   groupId?: number;
+  forceGroupFunds?: boolean;
 }
 
 const AudienceReachExpediteUpsellBanner: FC<AudienceReachExpediteUpsellBannerProps> = ({
@@ -30,6 +31,7 @@ const AudienceReachExpediteUpsellBanner: FC<AudienceReachExpediteUpsellBannerPro
   isAccountAllAgesTier,
   openSuccessSnackbar,
   groupId,
+  forceGroupFunds = false,
 }) => {
   const { locale } = useLocalization();
   const { translateWithNamespace } = useTranslation();
@@ -118,6 +120,7 @@ const AudienceReachExpediteUpsellBanner: FC<AudienceReachExpediteUpsellBannerPro
         modalBody={expeditedDialogBody}
         fee={ExpeditedReviewFee}
         groupId={groupId}
+        forceGroupFunds={forceGroupFunds}
       />
     );
   } else {
