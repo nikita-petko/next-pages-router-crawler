@@ -24,6 +24,7 @@ import { isOnItemTab } from '../../avatarItem/utils/avatarMenuMapUtils';
 import {
   AVATAR_ITEMS_ACTIVE_TAB,
   isAllAssetTypesActiveTab,
+  isAvatarLooksActiveTab,
   isTaxonomyActiveTab,
   shouldOpenTaxonomyView,
   TAXONOMY_HOST_ASSET,
@@ -265,6 +266,11 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
   const isMarketplaceAssetType = useMemo(() => {
     return allowedAssetTypes?.has(assetType);
   }, [assetType, allowedAssetTypes]);
+  // These banners are about uploading and publishing marketplace items. The category view has no
+  // asset type of its own and borrows the Avatar Items host tab, which is a marketplace type — so
+  // without this they would also appear over Avatars, where the item-type tab hides them.
+  const showMarketplaceItemBanners =
+    isMarketplaceAssetType && !isAvatarLooksActiveTab(query.activeTab);
   const showPublishingConsolidation =
     enablePublishingConsolidation && isDevelopmentItemAsset(assetType);
 
@@ -385,8 +391,8 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
             />
           )}
           {shouldRenderGrowthBannerOnTab && <AudienceReachGrowthOpportunitiesBanner />}
-          {isMarketplaceAssetType && <Unification2D3DBanner />}
-          {isMarketplaceAssetType && <UgcUploadPublishBlockBanner />}
+          {showMarketplaceItemBanners && <Unification2D3DBanner />}
+          {showMarketplaceItemBanners && <UgcUploadPublishBlockBanner />}
           {assetsGridContainer}
         </Grid>
       </section>

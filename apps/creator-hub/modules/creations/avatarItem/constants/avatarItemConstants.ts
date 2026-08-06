@@ -32,6 +32,15 @@ export interface AvatarItemDropdown {
    * entry point to surface; filtering still happens through `taxonomy`.
    */
   taxonomyAssetTypeIds?: number[];
+  /**
+   * List the creator's items across every type they may upload instead of filtering by one type or
+   * category. Like a taxonomy selection the results are mixed-type, so each item's concrete type is
+   * resolved from its own details.
+   *
+   * The recency ordering comes from AMPG, which merges the per-type listings on created time; this
+   * request carries no sort parameter of its own.
+   */
+  isRecents?: boolean;
 }
 
 export const MarketplaceItemsApiLimit = 25;
@@ -117,6 +126,15 @@ export const UnfolderedDropdownOption: AvatarItemDropdown = {
   nameKey: 'Label.Unfoldered',
   isFolder: true,
   skipTranslation: false,
+};
+
+/**
+ * Grid selection for the Recents tab. It carries no asset type, bundle type or taxonomy id, which is
+ * what makes the by-creator listing unfiltered.
+ */
+export const RecentsDropdownOption: AvatarItemDropdown = {
+  nameKey: 'Label.Recents',
+  isRecents: true,
 };
 
 /**

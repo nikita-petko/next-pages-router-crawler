@@ -62,6 +62,31 @@ export function isAllAssetTypesActiveTab(value: string | string[] | undefined | 
 }
 
 /**
+ * L1 key for the "Recents" tab, which lists the creator's most recently created items across every
+ * type they may upload. Like {@link ALL_ASSET_TYPES_L1_KEY} it is not a taxonomy category, but lives
+ * in the taxonomy `activeTab` namespace so selecting it keeps the category chips on screen.
+ */
+export const RECENTS_L1_KEY = 'recents';
+
+/** Whether the given `activeTab` selects the Recents tab. */
+export function isRecentsActiveTab(value: string | string[] | undefined | null): boolean {
+  return parseTaxonomyActiveTab(value) === RECENTS_L1_KEY;
+}
+
+/**
+ * L1 key for Avatars. Avatar looks are curated outfits rather than marketplace items, so the taxonomy
+ * tree has no category for them — but that is a reason for them to have no category, not a reason for
+ * the category view to make them unreachable. Keeping them in this namespace means selecting Avatars
+ * stays inside the category view rather than switching back to the item-type one.
+ */
+export const AVATAR_LOOKS_L1_KEY = 'looks';
+
+/** Whether the given `activeTab` selects the Avatars tab. */
+export function isAvatarLooksActiveTab(value: string | string[] | undefined | null): boolean {
+  return parseTaxonomyActiveTab(value) === AVATAR_LOOKS_L1_KEY;
+}
+
+/**
  * Every tab under Avatar Items, derived from the menu definition so the two cannot drift. The
  * taxonomy view is offered across all of them, including Backgrounds, Looks and All Asset Types.
  */

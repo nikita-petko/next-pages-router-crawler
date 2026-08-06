@@ -126,16 +126,17 @@ export async function loadCreationsByCreator(
   creationsParameters: AvatarItemsGridPagingParameters,
   userId: number,
 ): Promise<PageResponse<CreationData>> {
-  // Taxonomy-based filtering (Creator Dashboard taxonomy view): the selected taxonomy category
-  // is resolved server-side by AMPG and may span multiple asset/bundle types, so the concrete
-  // type of each returned item must be derived per-item from its marketplaceItemDetails rather
-  // than from a single selected filter.
-  const { taxonomy } = creationsParameters.avatarItem ?? {};
+  // Two listings return items of mixed types, so the concrete type of each item must be derived
+  // per-item from its marketplaceItemDetails rather than from a single selected filter:
+  //  - a taxonomy category, which AMPG resolves server-side and may span several asset/bundle types;
+  //  - Recents, which applies no type filter at all and merges every type the creator may upload.
+  const { taxonomy, isRecents = false } = creationsParameters.avatarItem ?? {};
   const isTaxonomy = taxonomy !== undefined;
+  const isMixedTypes = isTaxonomy || isRecents;
 
   const isBundle = creationsParameters.avatarItem?.bundleType !== undefined;
   const bundleType = translateBundleType(creationsParameters.avatarItem?.bundleType);
-  // eslint-disable-next-line typescript/no-unsafe-type-assertion -- selected tab always carries a valid asset type in the non-bundle path
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion -- an item-type tab always carries a valid asset type in the non-bundle path; the mixed-type listings carry none and resolve per item instead
   const assetTypeFound = creationsParameters.avatarItem.assetType as Asset;
   const itemType = isBundle ? Item.Bundle : assetTypeToItemType[assetTypeFound];
   const { isArchived: isDelisted } = creationsParameters;
@@ -147,8 +148,8 @@ export async function loadCreationsByCreator(
       GetItemsByCreatorApiLimit,
       creationsParameters.cursor,
       creationsParameters.groupId,
-      !isTaxonomy && isBundle ? creationsParameters.avatarItem?.bundleType : undefined,
-      !isTaxonomy && !isBundle ? translateAssetType(assetTypeFound) : undefined,
+      !isMixedTypes && isBundle ? creationsParameters.avatarItem?.bundleType : undefined,
+      !isMixedTypes && !isBundle ? translateAssetType(assetTypeFound) : undefined,
       taxonomy,
     );
     // The API returns an empty cursor on the last page; normalize it to undefined so the grid stops
@@ -167,25 +168,25 @@ export async function loadCreationsByCreator(
     formattedData = items
       .filter((item) => item.delistingStatus?.status === (isDelisted ? 1 : 2))
       .map((item) => {
-        // For taxonomy results, resolve the per-item type from item details (mixed types).
+        // For mixed-type results, resolve the per-item type from item details.
         const itemAssetTypeNum = item.marketplaceItemDetails?.assetDetails?.assetType;
         const itemBundleTypeNum = item.marketplaceItemDetails?.bundleDetails?.bundleType;
-        const itemIsBundle = isTaxonomy
+        const itemIsBundle = isMixedTypes
           ? itemBundleTypeNum !== undefined && itemAssetTypeNum === undefined
           : isBundle;
-        const itemAssetType = isTaxonomy
+        const itemAssetType = isMixedTypes
           ? mapNumericAssetTypeToAsset(itemAssetTypeNum)
           : assetTypeFound;
-        const resolvedBundleType = isTaxonomy
+        const resolvedBundleType = isMixedTypes
           ? translateBundleType(itemBundleTypeNum as BundleType | undefined)
           : bundleType;
-        const resolvedItemType = isTaxonomy
+        const resolvedItemType = isMixedTypes
           ? itemIsBundle
             ? Item.Bundle
             : ((itemAssetType ? assetTypeToItemType[itemAssetType] : undefined) ??
               Item.CatalogAsset)
           : itemType;
-        const resolvedIsDirectlyArchivable = isTaxonomy
+        const resolvedIsDirectlyArchivable = isMixedTypes
           ? !itemIsBundle && itemAssetType
             ? creationsMenuManager.isAssetTypeDirectlyArchivable(itemAssetType)
             : false

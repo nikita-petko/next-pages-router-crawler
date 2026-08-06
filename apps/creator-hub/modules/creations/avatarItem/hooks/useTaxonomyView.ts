@@ -3,6 +3,8 @@ import { useQueryParams } from '@modules/miscellaneous/hooks';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import {
   isAllAssetTypesActiveTab,
+  isAvatarLooksActiveTab,
+  isRecentsActiveTab,
   isTaxonomyActiveTab,
   isTaxonomyEligibleAssetTab,
 } from '../utils/taxonomyRoutingUtils';
@@ -18,6 +20,16 @@ export interface TaxonomyViewState {
   isTaxonomyMode: boolean;
   /** The grid should filter by taxonomy category. */
   isTaxonomyView: boolean;
+  /**
+   * The grid should list the creator's most recent items across every type they may upload. Mutually
+   * exclusive with {@link TaxonomyViewState.isTaxonomyView}: Recents applies no category filter.
+   */
+  isRecentsView: boolean;
+  /**
+   * The grid should list the creator's avatar looks. Also mutually exclusive with
+   * {@link TaxonomyViewState.isTaxonomyView}: looks are served by the look system, not by category.
+   */
+  isAvatarLooksView: boolean;
 }
 
 /**
@@ -33,11 +45,21 @@ const useTaxonomyView = (assetType: Asset): TaxonomyViewState => {
 
   const isFlagEnabled = settings.enableTaxonomyBasedCreatorDashboard ?? false;
   const isTaxonomyMode = isFlagEnabled && isTaxonomyActiveTab(activeTab);
+  const isRecentsView = isTaxonomyMode && isRecentsActiveTab(activeTab);
+  const isAvatarLooksView = isTaxonomyMode && isAvatarLooksActiveTab(activeTab);
 
   return {
     canUseTaxonomy: isFlagEnabled && (isTaxonomyMode || isTaxonomyEligibleAssetTab(assetType)),
     isTaxonomyMode,
-    isTaxonomyView: isTaxonomyMode && !isAllAssetTypesActiveTab(activeTab),
+    // The tabs that live in this namespace without being categories filter by something other than a
+    // taxonomy id, so none of them drive the category listing.
+    isTaxonomyView:
+      isTaxonomyMode &&
+      !isAllAssetTypesActiveTab(activeTab) &&
+      !isRecentsActiveTab(activeTab) &&
+      !isAvatarLooksActiveTab(activeTab),
+    isRecentsView,
+    isAvatarLooksView,
   };
 };
 

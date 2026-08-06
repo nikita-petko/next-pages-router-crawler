@@ -8,13 +8,18 @@ import {
   categoryToDropdown,
   findL1Category,
 } from '../utils/taxonomyCategoriesUtils';
-import { isAllAssetTypesActiveTab, parseTaxonomyActiveTab } from '../utils/taxonomyRoutingUtils';
+import {
+  isAllAssetTypesActiveTab,
+  isAvatarLooksActiveTab,
+  isRecentsActiveTab,
+  parseTaxonomyActiveTab,
+} from '../utils/taxonomyRoutingUtils';
 import useTaxonomyCategories from './useTaxonomyCategories';
 
 export interface TaxonomySelectionState {
   /** Top-level categories, in the order the chip row renders them. */
   l1Options: AvatarItemDropdown[];
-  /** Key of the active L1, or undefined on the folder-backed All Asset Types tab. */
+  /** Key of the active L1, or undefined on the tabs that are not categories (All Asset Types, Recents). */
   activeL1Key?: string;
   activeL1Node?: ProcessedCategory;
   /** Sub-categories of the active L1; empty when it is a leaf. */
@@ -41,10 +46,14 @@ const useTaxonomySelection = (enabled: boolean): TaxonomySelectionState => {
   const [{ activeTab, filterIndex }] = useQueryParams(['activeTab', 'filterIndex']);
   const { l1Options, categories, isLoading } = useTaxonomyCategories(enabled);
 
-  // All Asset Types sits in the taxonomy namespace but is not a category, so it has no active L1.
-  const activeL1Key = isAllAssetTypesActiveTab(activeTab)
-    ? undefined
-    : (parseTaxonomyActiveTab(activeTab) ?? l1Options[0]?.taxonomyKey);
+  // All Asset Types, Recents and Avatars sit in the taxonomy namespace but are not categories, so
+  // none of them has an active L1.
+  const activeL1Key =
+    isAllAssetTypesActiveTab(activeTab) ||
+    isRecentsActiveTab(activeTab) ||
+    isAvatarLooksActiveTab(activeTab)
+      ? undefined
+      : (parseTaxonomyActiveTab(activeTab) ?? l1Options[0]?.taxonomyKey);
 
   const activeL1Node = useMemo(
     () => findL1Category(categories, activeL1Key),
