@@ -79,6 +79,7 @@ function parseAuthorId(author?: string): number | null {
 
 const COMMUNITY_POST_METADATA_KEY = 'community_post';
 const COMMUNITY_POST_EXPECTED_PARTS = 3;
+const SNACKBAR_ANCHOR = { vertical: 'bottom', horizontal: 'center' } as const;
 
 // `community_post` is the underscore-joined `{groupId}_{categoryId}_{postId}`; `c-`/`p-` prefix the short ids and `g` is a community-slug placeholder.
 function buildCommunityPostUrl(rawValue?: string): string | null {
@@ -300,6 +301,7 @@ const ReplySelector: React.FunctionComponent<{
   onSendSuccess?: (response: UpdateTicketAsCreatorResponse) => void;
 }> = ({ ticketId, ticket, onSendSuccess }) => {
   const { translate } = useTranslation();
+  const router = useRouter();
   const [selectedReply, setSelectedReply] = useState<TicketResponse | undefined>();
   const [isRerouteConfirmOpen, setIsRerouteConfirmOpen] = useState(false);
   const { enqueue, close } = useSnackbar();
@@ -371,7 +373,20 @@ const ReplySelector: React.FunctionComponent<{
     onSuccess: () => {
       setIsRerouteConfirmOpen(false);
       setSelectedReply(undefined);
-      showToast('success', translate('Message.PlayerSupport.RerouteSuccess'));
+      enqueue({
+        children: (
+          <div className='bg-inverse-surface-0 content-inverse-default radius-medium padding-x-medium padding-y-small text-body-medium'>
+            {translate('Message.PlayerSupport.RerouteSuccess')}
+          </div>
+        ),
+        anchorOrigin: SNACKBAR_ANCHOR,
+        autoHideDuration: toastDurationTime,
+        autoHide: true,
+        onClose: close,
+        className: 'margin-bottom-large',
+      });
+      const pathUniverseId = typeof router.query.id === 'string' ? router.query.id : '';
+      void router.push(`/dashboard/creations/experiences/${pathUniverseId}/player-support`);
     },
     onError: () => {
       setIsRerouteConfirmOpen(false);

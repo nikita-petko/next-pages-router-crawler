@@ -30,6 +30,8 @@ const conditionDimensions: ReadonlyArray<RAQIV2Dimension> = [
   RAQIV2Dimension.UserSegmentationActivationStatus,
   RAQIV2Dimension.UserSegmentationEngagementLevel,
   RAQIV2Dimension.UserSegmentationPlatformActivationStatus,
+  RAQIV2Dimension.UserSegmentationReturnStatus,
+  RAQIV2Dimension.UserSegmentationAcquisitionSource,
 ];
 
 type DimensionOption = { value: RAQIV2Dimension; label: string };

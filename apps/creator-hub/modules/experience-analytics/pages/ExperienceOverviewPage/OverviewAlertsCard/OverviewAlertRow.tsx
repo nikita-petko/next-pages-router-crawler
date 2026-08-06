@@ -26,7 +26,7 @@ export type OverviewAlertRowProps = {
 
 const OverviewAlertRow: FC<OverviewAlertRowProps> = ({ icon, text, action, timeAgo, testId }) => {
   return (
-    <li className='flex items-start text-body-medium content-action-emphasis' data-testid={testId}>
+    <li className='flex items-start text-body-medium content-emphasis' data-testid={testId}>
       <span className='shrink-0 [margin-top:2px] padding-right-small'>{icon}</span>
       <div className='[flex:1] min-width-0 [overflow-wrap:break-word] padding-right-medium'>
         {text}
