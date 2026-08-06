@@ -18,7 +18,6 @@ import { useFormatters } from '../../helpers/useFormatters';
 import { PricingErrorProvider, usePricingError } from '../../providers/PricingErrorProvider';
 import { useGetLatestExperiment } from '../../queries/useGetLatestExperiment';
 import { useGetPriceExperimentationEligibility } from '../../queries/useGetPriceExperimentationEligibility';
-import { useInvalidateProducts } from '../../queries/useGetProducts';
 import usePriceOptimizationPageContentStyles from './PriceOptimizationPage.styles';
 
 // For MVP "Current" will be the only tab.
@@ -43,9 +42,6 @@ function PriceOptimizationPageContent({ universeId }: { universeId: number }) {
       void router.replace(dashboard.getManagedPricingUrl(universeId));
     }
   }, [isManagedPricingAvailable, router, universeId]);
-
-  // Refresh data on page load
-  useInvalidateProducts(universeId);
 
   const { dateFormatter } = useFormatters();
 
@@ -110,6 +106,7 @@ function PriceOptimizationPageContent({ universeId }: { universeId: number }) {
 
       {!isActiveExperiment && (
         // Maintenance freeze banner for Managed Pricing transition
+        // oxlint-disable-next-line typescript/no-deprecated -- later
         <SystemBanner
           title={translate('Heading.PriceOptimizationMaintenanceTitle')}
           description={translate('Description.PriceOptimizationMaintenance')}

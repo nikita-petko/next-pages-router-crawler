@@ -4,21 +4,14 @@ import {
 } from '@rbx/client-price-experimentation-api/v1';
 import type {
   PriceExperimentationApiAcceptProductRecommendationsOperationRequest,
-  PriceExperimentationApiAddProductsToExperimentOperationRequest,
   PriceExperimentationApiCancelExperimentRequest,
   PriceExperimentationApiCompleteExperimentRequest,
-  PriceExperimentationApiCreateExperimentRequest,
   PriceExperimentationApiGetExperimentEligibilityRequest,
   PriceExperimentationApiGetExperimentResultsRequest,
-  PriceExperimentationApiGetProductTransactionVolumesOperationRequest,
-  PriceExperimentationApiListExperimentMetricsRequest,
-  PriceExperimentationApiListExperimentProductRecommendationsRequest,
-  PriceExperimentationApiListExperimentProductsRequest,
   PriceExperimentationApiListExperimentsRequest,
   PriceExperimentationApiListHoldoutMetricsRequest,
   PriceExperimentationApiRejectProductRecommendationsOperationRequest,
   PriceExperimentationApiRestorePricesRequest,
-  PriceExperimentationApiStartExperimentRequest,
   PriceExperimentationApiStartHoldoutRequest,
   PriceExperimentationApiStopHoldoutOperationRequest,
   PriceExperimentationApiV2GetExperimentSummaryRequest,
@@ -49,13 +42,6 @@ export class PriceExperimentationApiClient {
     return this.api.priceExperimentationApiAcceptProductRecommendations(request, options);
   }
 
-  addProductsToExperiment(
-    request: PriceExperimentationApiAddProductsToExperimentOperationRequest,
-    options: RequestInit = {},
-  ) {
-    return this.api.priceExperimentationApiAddProductsToExperiment(request, options);
-  }
-
   cancelExperiment(
     request: PriceExperimentationApiCancelExperimentRequest,
     options: RequestInit = {},
@@ -68,13 +54,6 @@ export class PriceExperimentationApiClient {
     options: RequestInit = {},
   ) {
     return this.api.priceExperimentationApiCompleteExperiment(request, options);
-  }
-
-  createExperiment(
-    request: PriceExperimentationApiCreateExperimentRequest,
-    options: RequestInit = {},
-  ) {
-    return this.api.priceExperimentationApiCreateExperiment(request, options);
   }
 
   getExperimentationMetadata(options: RequestInit = {}) {
@@ -93,34 +72,6 @@ export class PriceExperimentationApiClient {
     options: RequestInit = {},
   ) {
     return this.api.priceExperimentationApiGetExperimentResults(request, options);
-  }
-
-  getProductTransactionVolumes(
-    request: PriceExperimentationApiGetProductTransactionVolumesOperationRequest,
-    options: RequestInit = {},
-  ) {
-    return this.api.priceExperimentationApiGetProductTransactionVolumes(request, options);
-  }
-
-  listExperimentMetrics(
-    request: PriceExperimentationApiListExperimentMetricsRequest,
-    options: RequestInit = {},
-  ) {
-    return this.api.priceExperimentationApiListExperimentMetrics(request, options);
-  }
-
-  listExperimentProductRecommendations(
-    request: PriceExperimentationApiListExperimentProductRecommendationsRequest,
-    options: RequestInit = {},
-  ) {
-    return this.api.priceExperimentationApiListExperimentProductRecommendations(request, options);
-  }
-
-  listExperimentProducts(
-    request: PriceExperimentationApiListExperimentProductsRequest,
-    options: RequestInit = {},
-  ) {
-    return this.api.priceExperimentationApiListExperimentProducts(request, options);
   }
 
   listExperiments(
@@ -146,13 +97,6 @@ export class PriceExperimentationApiClient {
 
   restorePrices(request: PriceExperimentationApiRestorePricesRequest, options: RequestInit = {}) {
     return this.api.priceExperimentationApiRestorePrices(request, options);
-  }
-
-  startExperiment(
-    request: PriceExperimentationApiStartExperimentRequest,
-    options: RequestInit = {},
-  ) {
-    return this.api.priceExperimentationApiStartExperiment(request, options);
   }
 
   startHoldout(request: PriceExperimentationApiStartHoldoutRequest, options: RequestInit = {}) {

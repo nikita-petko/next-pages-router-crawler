@@ -55,7 +55,7 @@ export const isFirstSeenColumnEnabled = defineFlag({
 export const isAceL7SmoothingEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isAceL7SmoothingEnabled',
-    defaultValue: false,
+    defaultValue: true,
   });
 export const sentryChartTracingEnabled = defineFlag({
     namespace: 'creator-analytics',

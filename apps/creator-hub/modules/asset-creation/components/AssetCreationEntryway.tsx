@@ -1,5 +1,5 @@
 import type { FunctionComponent } from 'react';
-import React, { useState, useMemo, useContext } from 'react';
+import React, { useContext, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { getProductionCreatorHubUrl } from '@rbx/env-utils';
@@ -24,6 +24,7 @@ import createAssetFormContext from './providers/CreateAssetFormContext';
 export interface AssetCreationEntrywayProps {
   assetType: Asset;
   containerHasData: () => boolean;
+  preserveUploadAssetCta?: boolean;
 }
 
 enum DraggedFileValidationError {
@@ -55,7 +56,7 @@ const AssetCreationEntryway: FunctionComponent<
     cx,
   } = useAssetCreationEntrywayStyles();
 
-  const { assetType, containerHasData } = props;
+  const { assetType, containerHasData, preserveUploadAssetCta = false } = props;
 
   const { updateDroppedFile } = useContext(createAssetFormContext);
   const [isUserDraggingFile, setIsUserDraggingFile] = useState<boolean>(false);
@@ -67,6 +68,7 @@ const AssetCreationEntryway: FunctionComponent<
   // Gated (Backgrounds-eligible) creators see the entry CTA relabeled to "Create asset" and styled
   // like the avatar background "Create background" button.
   const showCtaEnhancements = useAvatarBackgroundAccess();
+  const showEnhancedCta = showCtaEnhancements && !preserveUploadAssetCta;
   const createAssetTitle = tPendingTranslation(
     'Create asset',
     'Asset upload page title and entry CTA shown to creators with Backgrounds access (replaces "Upload Asset").',
@@ -183,6 +185,7 @@ const AssetCreationEntryway: FunctionComponent<
     return '';
   };
 
+  /* oxlint-disable react/react-compiler -- preserve the legacy memoization behavior for existing callers */
   const areaContent = useMemo(() => {
     if (isUserDraggingFile) {
       return <Typography variant='body2'>{translate('Message.ReleaseAsset')}</Typography>;
@@ -190,12 +193,12 @@ const AssetCreationEntryway: FunctionComponent<
     return [
       <Button
         key='createAssetZoneButton'
-        size={showCtaEnhancements ? 'large' : 'medium'}
+        size={showEnhancedCta ? 'large' : 'medium'}
         variant='contained'
-        color={showCtaEnhancements ? undefined : 'primary'}
+        color={showEnhancedCta ? undefined : 'primary'}
         onClick={() => redirectToCreateAssetForm(assetType)}>
         <span>
-          {showCtaEnhancements
+          {showEnhancedCta
             ? createAssetTitle
             : translate(createAssetButtonLabelByAsset[assetType] ?? 'Label.CreateAsset')}
         </span>
@@ -280,9 +283,10 @@ const AssetCreationEntryway: FunctionComponent<
     translate,
     assetType,
     draggedFileValidationStatus,
-    showCtaEnhancements,
+    showEnhancedCta,
     createAssetTitle,
   ]);
+  /* oxlint-enable react/react-compiler */
 
   if (assetType === Asset.AvatarBackground) {
     return (

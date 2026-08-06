@@ -12,6 +12,11 @@ export type DevelopmentItemsLegacyEntryPointsProps = {
   hasItems: boolean;
 };
 
+const shouldPreserveUploadAssetCta = (assetType: CreatorInventoryAssetType): boolean =>
+  assetType === CreatorInventoryAssetType.Audio ||
+  assetType === CreatorInventoryAssetType.Decal ||
+  assetType === CreatorInventoryAssetType.Video;
+
 const getEmptyStateAction = (assetType: CreatorInventoryAssetType): ReactNode => {
   switch (assetType) {
     case CreatorInventoryAssetType.Animation:
@@ -37,7 +42,9 @@ const DevelopmentItemsLegacyEntryPoints: FunctionComponent<
 > = ({ assetType, hasItems }) => {
   if (!hasItems) {
     return (
-      <CreationsGridEmptyState assetType={getLegacyDevelopmentItemsAssetType(assetType)}>
+      <CreationsGridEmptyState
+        assetType={getLegacyDevelopmentItemsAssetType(assetType)}
+        preserveUploadAssetCta={shouldPreserveUploadAssetCta(assetType)}>
         {getEmptyStateAction(assetType)}
       </CreationsGridEmptyState>
     );
@@ -45,11 +52,11 @@ const DevelopmentItemsLegacyEntryPoints: FunctionComponent<
 
   switch (assetType) {
     case CreatorInventoryAssetType.Audio:
-      return <UploadAssetButton assetType={Asset.Audio} />;
+      return <UploadAssetButton assetType={Asset.Audio} preserveUploadAssetCta />;
     case CreatorInventoryAssetType.Decal:
-      return <UploadAssetButton assetType={Asset.Decal} />;
+      return <UploadAssetButton assetType={Asset.Decal} preserveUploadAssetCta />;
     case CreatorInventoryAssetType.Video:
-      return <UploadAssetButton assetType={Asset.Video} />;
+      return <UploadAssetButton assetType={Asset.Video} preserveUploadAssetCta />;
     case CreatorInventoryAssetType.Image:
       return (
         <DevelopmentItemsPrimitiveNavigation

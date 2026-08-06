@@ -2,8 +2,6 @@ import type {
   DeveloperProductsApiListDeveloperProductsCursoredRequest,
   ListDeveloperProductsResponse,
   ErrorResponse,
-  DeveloperProductsApiListDeveloperProductsByUniverseIdForCreatorCursoredRequest,
-  ListDeveloperProductsWithCreatorDetailsResponse,
   DeveloperProductsApiBulkUpdateDeveloperProductsRequest,
   DeveloperProductsApiBulkUpdateDeveloperProductsOperationRequest,
   DeveloperProductsApiSetGiftingTradingStatusOperationRequest,
@@ -65,20 +63,6 @@ export class DeveloperProductsApiClient {
     options: RequestInit = {},
   ) {
     return this.developerProductsV2Api.developerProductsUpdateDeveloperProductV2(request, options);
-  }
-
-  /**
-   * TODO(jeminpark, 20260302): Deprecating this endpoint in favor of using listDeveloperProductConfigsByUniverse.
-   * This should be removed after deprecating the price optimization page.
-   */
-  listDeveloperProductsWithCreatorDetails(
-    request: DeveloperProductsApiListDeveloperProductsByUniverseIdForCreatorCursoredRequest,
-    options: RequestInit = {},
-  ): Promise<ListDeveloperProductsWithCreatorDetailsResponse> {
-    return this.developerProductsApi.developerProductsApiListDeveloperProductsByUniverseIdForCreatorCursored(
-      request,
-      options,
-    );
   }
 
   batchUpdateDeveloperProducts(

@@ -16,6 +16,7 @@ type TCreationsGridEmptyStateProps = {
   assetType: Asset;
   lookType?: Look;
   children?: React.ReactNode;
+  preserveUploadAssetCta?: boolean;
 };
 
 const useStyles = makeStyles()((theme) => ({
@@ -30,7 +31,7 @@ const useStyles = makeStyles()((theme) => ({
 
 const CreationsGridEmptyState: FunctionComponent<
   React.PropsWithChildren<TCreationsGridEmptyStateProps>
-> = ({ assetType, lookType, children }) => {
+> = ({ assetType, lookType, children, preserveUploadAssetCta = false }) => {
   const { translate, translateHTML } = useTranslation();
   const { organization, permissions } = useCurrentOrganization();
 
@@ -85,7 +86,11 @@ const CreationsGridEmptyState: FunctionComponent<
         {children}
       </EmptyState>
       {canCreateAsset && (
-        <AssetCreationEntryway containerHasData={() => false} assetType={assetType} />
+        <AssetCreationEntryway
+          containerHasData={() => false}
+          assetType={assetType}
+          preserveUploadAssetCta={preserveUploadAssetCta}
+        />
       )}
     </Flex>
   );

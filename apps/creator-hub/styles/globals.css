@@ -2615,9 +2615,6 @@
 .width-\[110px\] {
   width: 110px;
 }
-.width-\[120px\] {
-  width: 120px;
-}
 .width-\[124px\] {
   width: 124px;
 }
@@ -5939,10 +5936,6 @@ html.studio-webview.dark-theme,
   border-color: white !important;
 }
 
-.\[\&_a\]\:cursor-pointer a {
-  cursor: pointer;
-}
-
 .\[\&_h2\]\:margin-none h2 {
   margin: var(--margin-none);
 }
@@ -6044,12 +6037,6 @@ html.studio-webview.dark-theme,
 
 .\[\&_tr\:last-child\>td\]\:\[vertical-align\:top\] tr:last-child>td {
   vertical-align: top;
-}
-
-@container(min-width:500px) {
-  .\[\@container\(min-width\:500px\)\]\:block {
-    display: block;
-  }
 }
 
 @container(min-width:900px) {

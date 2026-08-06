@@ -13,12 +13,13 @@ const { dashboard } = creatorHub;
 export type TUploadAssetButtonProps = {
   assetType: Asset.TShirt | Asset.Shirt | Asset.Pants | Asset.Decal | Asset.Audio | Asset.Video;
   hasIcon?: boolean;
+  preserveUploadAssetCta?: boolean;
 };
 
 const UploadAssetButton: FunctionComponent<React.PropsWithChildren<TUploadAssetButtonProps>> = (
   props,
 ) => {
-  const { assetType, hasIcon = true } = props;
+  const { assetType, hasIcon = true, preserveUploadAssetCta = false } = props;
   const { translate } = useTranslation();
 
   const { organization, permissions } = useCurrentOrganization();
@@ -30,7 +31,11 @@ const UploadAssetButton: FunctionComponent<React.PropsWithChildren<TUploadAssetB
 
   const assetUploadLink = dashboard.getUploadUrl(assetType);
   return isCreateAssetAvailable(assetType) ? (
-    <AssetCreationEntryway assetType={assetType} containerHasData={() => true} />
+    <AssetCreationEntryway
+      assetType={assetType}
+      containerHasData={() => true}
+      preserveUploadAssetCta={preserveUploadAssetCta}
+    />
   ) : (
     <Button
       color='primaryBrand'
