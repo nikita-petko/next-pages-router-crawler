@@ -1,5 +1,5 @@
 import type { FunctionComponent } from 'react';
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { RoleMetadata } from '@rbx/client-organizations-service-api/v1';
 import { useTranslation } from '@rbx/intl';
 import {
@@ -89,6 +89,16 @@ const GroupMembersTable: FunctionComponent<GroupMembersTableProps> = ({
   const [page, setPage] = useState<number>(0);
   const [nextPageDisabled, setNextPageDisabled] = useState<boolean>(false);
 
+  const pagingKey = `${menuState}:${roleFilter?.id ?? ''}`;
+  const [renderedPagingKey, setRenderedPagingKey] = useState<string>(pagingKey);
+  if (renderedPagingKey !== pagingKey) {
+    setRenderedPagingKey(pagingKey);
+    setPage(0);
+    setMembersPageTokens([]);
+    setInvitationsPageTokens([]);
+    setNextPageDisabled(false);
+  }
+
   const { data: { usersWithRole, userMap } = {}, isFetching: isUsersFetching } =
     useGetUsersWithRole(
       organization?.id,
@@ -113,44 +123,46 @@ const GroupMembersTable: FunctionComponent<GroupMembersTableProps> = ({
       roles:
         roles?.filter(
           (role) =>
+            // oxlint-disable-next-line typescript/prefer-nullish-coalescing -- intentional boolean OR, not nullish coalescing
             (role.id && invitation?.roleIds?.includes(role.id)) || role.id === DefaultMemberRoleId,
         ) ?? [],
       invitationId: invitation?.invitationId,
     }));
   }, [invitationRoles, roles]);
 
-  useEffect(() => {
-    if (menuState === GroupMembersMenuState.Members) {
-      setMembersPageTokens((prevPageTokens) => {
-        const updatedPageTokens = [...prevPageTokens];
-        updatedPageTokens[page + 1] = usersWithRole?.pageToken;
-        return updatedPageTokens;
-      });
-      if (page > 0 && usersWithRole?.users.length === 0) {
-        setPage((prevPage) => prevPage - 1);
-        setNextPageDisabled(true);
-      }
-    }
-  }, [page, usersWithRole, menuState]);
+  const isInvited = menuState === GroupMembersMenuState.Invited;
 
-  useEffect(() => {
-    if (menuState === GroupMembersMenuState.Invited) {
+  const isPageSettled = isInvited ? !isInvitationsFetching : !isUsersFetching;
+  const currentPageCount = isInvited ? invitationRoles?.length : usersWithRole?.users.length;
+  if (page > 0 && currentPageCount === 0 && isPageSettled && !nextPageDisabled) {
+    setPage(page - 1);
+    setNextPageDisabled(true);
+  }
+
+  const goToNextPage = useCallback(() => {
+    const nextPage = page + 1;
+
+    if (isInvited) {
       setInvitationsPageTokens((prevPageTokens) => {
         const updatedPageTokens = [...prevPageTokens];
-        updatedPageTokens[page + 1] = invitationsPageToken;
+        updatedPageTokens[nextPage] = invitationsPageToken;
         return updatedPageTokens;
       });
-      if (page > 0 && invitationRoles?.length === 0) {
-        setPage((prevPage) => prevPage - 1);
-        setNextPageDisabled(true);
-      }
+    } else {
+      setMembersPageTokens((prevPageTokens) => {
+        const updatedPageTokens = [...prevPageTokens];
+        updatedPageTokens[nextPage] = usersWithRole?.pageToken;
+        return updatedPageTokens;
+      });
     }
-  }, [page, invitationRoles, invitationsPageToken, menuState]);
 
-  useEffect(() => {
-    setPage(0);
+    setPage(nextPage);
+  }, [invitationsPageToken, isInvited, page, usersWithRole?.pageToken]);
+
+  const goToPreviousPage = useCallback(() => {
+    setPage((prevPage) => prevPage - 1);
     setNextPageDisabled(false);
-  }, [menuState, roleFilter]);
+  }, []);
 
   return (
     <Grid container direction='row' wrap='wrap'>
@@ -190,7 +202,7 @@ const GroupMembersTable: FunctionComponent<GroupMembersTableProps> = ({
             )}
             <TableBody className={tableBody}>
               {menuState === GroupMembersMenuState.Members && usersWithRole?.users && (
-                <Fragment>
+                <>
                   {usersWithRole.users.map((member) => (
                     <TableRow key={member.userId} className={tableRow}>
                       {isRoleMembersPage ? (
@@ -209,10 +221,10 @@ const GroupMembersTable: FunctionComponent<GroupMembersTableProps> = ({
                       )}
                     </TableRow>
                   ))}
-                </Fragment>
+                </>
               )}
               {menuState === GroupMembersMenuState.Invited && mappedInvitations && (
-                <Fragment>
+                <>
                   {mappedInvitations.map((member) => (
                     <TableRow key={member.userId} className={tableRow}>
                       {isRoleMembersPage ? (
@@ -231,7 +243,7 @@ const GroupMembersTable: FunctionComponent<GroupMembersTableProps> = ({
                       )}
                     </TableRow>
                   ))}
-                </Fragment>
+                </>
               )}
             </TableBody>
           </Table>
@@ -255,17 +267,12 @@ const GroupMembersTable: FunctionComponent<GroupMembersTableProps> = ({
                       (usersWithRole?.users?.length ?? 0) < MembersPageSize)) ||
                   (menuState === GroupMembersMenuState.Invited &&
                     (!invitationsPageToken || (invitationRoles?.length ?? 0) < MembersPageSize)),
-                onClick: () => {
-                  setPage((prevPage) => prevPage + 1);
-                },
+                onClick: goToNextPage,
               }}
               page={page + 1}
               previousProps={{
                 disabled: page === 0,
-                onClick: () => {
-                  setPage((prevPage) => prevPage - 1);
-                  setNextPageDisabled(false);
-                },
+                onClick: goToPreviousPage,
               }}
               shape='rounded'
               size='medium'
