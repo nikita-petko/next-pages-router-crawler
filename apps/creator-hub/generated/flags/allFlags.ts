@@ -50,6 +50,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: avatarMarketplaceFlags.enableTaxonomyBasedCreatorDashboard,
+      metadata: {
+        namespace: 'avatar-marketplace',
+        name: 'enableTaxonomyBasedCreatorDashboard',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: avatarMarketplaceFlags.isAutoPublishPreferencesEnabled,
       metadata: {
         namespace: 'avatar-marketplace',

@@ -1,9 +1,10 @@
 import type { FunctionComponent } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
-import { clsx, FeedbackBanner, ProgressCircle, SegmentedControl } from '@rbx/foundation-ui';
+import { Alert, clsx, ProgressCircle, SegmentedControl } from '@rbx/foundation-ui';
 import type { TSegmentedControlIconItem } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
+import { useLocalStorage } from '@rbx/react-utilities';
 import {
   CreatorInventoryAssetType,
   CreatorInventorySourceType,
@@ -11,6 +12,7 @@ import {
 import { useQueryParams } from '@modules/miscellaneous/hooks';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { creatorHub } from '@modules/miscellaneous/urls';
+import useCreationsFilters from '../../common/hooks/useCreationsFilters';
 import { addPublishingConsolidationReturnTo } from '../../common/utils/publishingConsolidationNavigation';
 import DevelopmentItemsActiveFiltersRow from './components/DevelopmentItemsActiveFiltersRow';
 import type { DevelopmentItemsActiveFilterChip } from './components/DevelopmentItemsActiveFiltersRow';
@@ -18,6 +20,7 @@ import DevelopmentItemsEmptyState from './components/DevelopmentItemsEmptyState'
 import DevelopmentItemsFilterSheet from './components/DevelopmentItemsFilterSheet';
 import type { DevelopmentItemsSheetFilters } from './components/DevelopmentItemsFilterSheet';
 import DevelopmentItemsGrid from './components/DevelopmentItemsGrid';
+import DevelopmentItemsLegacyEntryPoints from './components/DevelopmentItemsLegacyEntryPoints';
 import DevelopmentItemsList from './components/DevelopmentItemsList';
 import DevelopmentItemsPagination from './components/DevelopmentItemsPagination';
 import type { DevelopmentItemsPaginationProps } from './components/DevelopmentItemsPagination';
@@ -29,20 +32,29 @@ import {
   buildCreatorInventoryScope,
   DevelopmentItemsSourceFilter,
   developmentItemsAssetTypes,
+  filterDevelopmentItemsByArchivedState,
+  hasActiveDevelopmentItemsInventoryFilters,
+  isDevelopmentItemDirectlyArchivable,
   isDevelopmentItemsAssetTypeSelection,
   isDevelopmentItemsSourceSelection,
   isDevelopmentItemsView,
+  mergeOptimisticArchivedDevelopmentItems,
   type DevelopmentItemsAssetTypeSelection,
   type DevelopmentItemsInventoryItem,
   type DevelopmentItemsSourceSelection,
   type DevelopmentItemsView,
 } from './developmentItemsInventoryUtils';
+import useDevelopmentItemArchivableAssetIds from './useDevelopmentItemArchivableAssetIds';
 import useDevelopmentItemsInventory, {
   DEFAULT_PAGE_SIZE,
   PAGE_SIZE_OPTIONS,
 } from './useDevelopmentItemsInventory';
 import useDevelopmentItemsInventoryTranslations from './useDevelopmentItemsInventoryTranslations';
 import useDevelopmentItemThumbnailUrls from './useDevelopmentItemThumbnailUrls';
+import useLegacyArchivedDevelopmentItemsInventory, {
+  LEGACY_ARCHIVED_DEFAULT_PAGE_SIZE,
+  LEGACY_ARCHIVED_PAGE_SIZE_OPTIONS,
+} from './useLegacyArchivedDevelopmentItemsInventory';
 
 const INVENTORY_QUERY_KEYS = [
   'activeTab',
@@ -53,6 +65,9 @@ const INVENTORY_QUERY_KEYS = [
   'inventorySource',
   'inventoryView',
 ] as const;
+
+const DEFAULT_INVENTORY_VIEW: DevelopmentItemsView = 'list';
+const INVENTORY_VIEW_STORAGE_KEY = 'developmentItemsInventoryView';
 
 const assetTypeLabelKeys: Record<CreatorInventoryAssetType, string> = {
   [CreatorInventoryAssetType.Animation]: 'Label.Animations',
@@ -67,10 +82,13 @@ const assetTypeLabelKeys: Record<CreatorInventoryAssetType, string> = {
 };
 
 const FILTER_DROPDOWN_CLASS = '[width:192px]';
+const EMPTY_ARCHIVABLE_ASSET_IDS: ReadonlySet<number> = new Set();
 const EMPTY_THUMBNAIL_URLS: ReadonlyMap<number, string> = new Map();
 const PAGE_SIZE_OPTION_SET = new Set<number>(PAGE_SIZE_OPTIONS);
+const LEGACY_ARCHIVED_PAGE_SIZE_OPTION_SET = new Set<number>(LEGACY_ARCHIVED_PAGE_SIZE_OPTIONS);
 
 const DEFAULT_SHEET_FILTERS: DevelopmentItemsSheetFilters = {
+  showArchived: false,
   source: CreatorInventorySourceType.Created,
 };
 
@@ -102,6 +120,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
 }) => {
   const router = useRouter();
   const { translate } = useTranslation();
+  const { isArchived, setIsArchived } = useCreationsFilters();
   const translations = useDevelopmentItemsInventoryTranslations();
   const { inventorySourceFilter, searchSuggestion } = translations;
   const [queryParams, setQueryParams] = useQueryParams(INVENTORY_QUERY_KEYS);
@@ -148,16 +167,40 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
     : CreatorInventorySourceType.Created;
 
   const queryView = getQueryValue(queryParams.inventoryView);
-  const view: DevelopmentItemsView = isDevelopmentItemsView(queryView) ? queryView : 'grid';
+  const [storedView, setStoredView] = useLocalStorage<DevelopmentItemsView>(
+    INVENTORY_VIEW_STORAGE_KEY,
+    DEFAULT_INVENTORY_VIEW,
+  );
+  const view: DevelopmentItemsView = isDevelopmentItemsView(queryView)
+    ? queryView
+    : isDevelopmentItemsView(storedView)
+      ? storedView
+      : DEFAULT_INVENTORY_VIEW;
   const query = getQueryValue(queryParams.inventoryQuery) ?? '';
   const page = getPage(getQueryValue(queryParams.inventoryPage));
   const pageSize = getPageSize(getQueryValue(queryParams.inventoryPageSize));
+  const effectivePageSize =
+    isArchived && !LEGACY_ARCHIVED_PAGE_SIZE_OPTION_SET.has(pageSize)
+      ? LEGACY_ARCHIVED_DEFAULT_PAGE_SIZE
+      : pageSize;
   const pageToken = getQueryValue(queryParams.inventoryPageToken);
   const scope = useMemo(() => buildCreatorInventoryScope(userId, groupId), [groupId, userId]);
   const [searchInput, setSearchInput] = useState(query);
   const [pageTokens, setPageTokens] = useState<ReadonlyMap<number, string | undefined>>(
-    () => new Map([[0, undefined]]),
+    () =>
+      new Map<number, string | undefined>([
+        [0, undefined],
+        [page, pageToken],
+      ]),
   );
+  const currentPage = pageTokens.has(page) ? page : 0;
+  const currentPageToken = pageTokens.has(page) ? pageToken : undefined;
+  const [archiveStateOverrides, setArchiveStateOverrides] = useState<
+    ReadonlyMap<number, NonNullable<DevelopmentItemsInventoryItem['state']>>
+  >(() => new Map());
+  const [optimisticArchivedItems, setOptimisticArchivedItems] = useState<
+    ReadonlyMap<number, DevelopmentItemsInventoryItem>
+  >(() => new Map());
 
   const resetPagination = useCallback(() => {
     setPageTokens(new Map([[0, undefined]]));
@@ -184,34 +227,129 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
 
   const commitSearch = useCallback(
     (value: string) => {
+      if (isArchived && value.trim().length > 0) {
+        setIsArchived(false);
+      }
       updateQuery({ inventoryQuery: value.trim() || null });
     },
-    [updateQuery],
+    [isArchived, setIsArchived, updateQuery],
   );
 
-  const inventoryQuery = useDevelopmentItemsInventory({
+  const activeInventoryQuery = useDevelopmentItemsInventory({
     assetType,
     pageSize,
-    pageToken,
+    pageToken: currentPageToken,
     query,
-    scope,
+    scope: isArchived ? undefined : scope,
     source,
   });
+  const archivedInventoryQuery = useLegacyArchivedDevelopmentItemsInventory({
+    assetType,
+    enabled: isArchived && scope != null,
+    groupId,
+    pageSize: effectivePageSize,
+    pageToken: currentPageToken,
+  });
+  const inventoryQuery = isArchived ? archivedInventoryQuery : activeInventoryQuery;
   const { refetch: refetchInventory } = inventoryQuery;
   const handleRetry = useCallback(() => {
     void refetchInventory();
   }, [refetchInventory]);
+  const handleArchiveStateChange = useCallback(
+    (
+      item: DevelopmentItemsInventoryItem,
+      state: NonNullable<DevelopmentItemsInventoryItem['state']>,
+    ) => {
+      setArchiveStateOverrides((currentOverrides) => {
+        const nextOverrides = new Map(currentOverrides);
+        nextOverrides.set(item.assetId, state);
+        return nextOverrides;
+      });
+      setOptimisticArchivedItems((currentItems) => {
+        const nextItems = new Map(currentItems);
+        if (state === 'Archived') {
+          nextItems.set(item.assetId, { ...item, state });
+        } else {
+          nextItems.delete(item.assetId);
+        }
+        return nextItems;
+      });
+      void refetchInventory();
+    },
+    [refetchInventory],
+  );
   const availablePageTokens = useMemo(() => {
     const nextTokens = new Map(pageTokens);
     const nextPageToken = inventoryQuery.data?.nextPageToken;
     if (nextPageToken != null) {
-      nextTokens.set(page + 1, nextPageToken);
+      nextTokens.set(currentPage + 1, nextPageToken);
     }
     return nextTokens;
-  }, [inventoryQuery.data?.nextPageToken, page, pageTokens]);
+  }, [currentPage, inventoryQuery.data?.nextPageToken, pageTokens]);
 
-  const items = useMemo(() => inventoryQuery.data?.items ?? [], [inventoryQuery.data?.items]);
+  /* oxlint-disable react/react-compiler -- server responses intentionally reconcile the local optimistic archive state */
+  useEffect(() => {
+    const queriedItems = inventoryQuery.data?.items;
+    if (queriedItems == null) {
+      return;
+    }
+
+    setArchiveStateOverrides((currentOverrides) => {
+      let nextOverrides: Map<number, NonNullable<DevelopmentItemsInventoryItem['state']>> | null =
+        null;
+      queriedItems.forEach((item) => {
+        if (currentOverrides.get(item.assetId) === item.state) {
+          nextOverrides ??= new Map(currentOverrides);
+          nextOverrides.delete(item.assetId);
+        }
+      });
+      return nextOverrides ?? currentOverrides;
+    });
+
+    if (isArchived) {
+      const indexedAssetIds = new Set(queriedItems.map((item) => item.assetId));
+      setOptimisticArchivedItems((currentItems) => {
+        const nextItems = new Map(currentItems);
+        indexedAssetIds.forEach((assetId) => nextItems.delete(assetId));
+        return nextItems.size === currentItems.size ? currentItems : nextItems;
+      });
+    }
+  }, [inventoryQuery.data?.items, isArchived]);
+  /* oxlint-enable react/react-compiler */
+
+  const items = useMemo(() => {
+    const queriedItems = inventoryQuery.data?.items ?? [];
+    const mergedItems = isArchived
+      ? mergeOptimisticArchivedDevelopmentItems(queriedItems, optimisticArchivedItems, assetType)
+      : queriedItems;
+    const inventoryItems = mergedItems.map((item) => {
+      const overriddenState = archiveStateOverrides.get(item.assetId);
+      return overriddenState == null || overriddenState === item.state
+        ? item
+        : { ...item, state: overriddenState };
+    });
+    return filterDevelopmentItemsByArchivedState(inventoryItems, isArchived);
+  }, [
+    archiveStateOverrides,
+    assetType,
+    inventoryQuery.data?.items,
+    isArchived,
+    optimisticArchivedItems,
+  ]);
   const assetIds = useMemo(() => items.map((item) => item.assetId), [items]);
+  const archiveCandidateAssetIds = useMemo(
+    () =>
+      items
+        .filter((item) => isDevelopmentItemDirectlyArchivable(item.assetType))
+        .map((item) => item.assetId),
+    [items],
+  );
+  const { data: activeArchivableAssetIds } = useDevelopmentItemArchivableAssetIds(
+    isArchived ? [] : archiveCandidateAssetIds,
+  );
+  const archivableAssetIds = isArchived
+    ? (archivedInventoryQuery.data?.archivableAssetIds ?? EMPTY_ARCHIVABLE_ASSET_IDS)
+    : (activeArchivableAssetIds ?? EMPTY_ARCHIVABLE_ASSET_IDS);
   const { data: thumbnailUrls = EMPTY_THUMBNAIL_URLS } = useDevelopmentItemThumbnailUrls(assetIds);
 
   const getAssetTypeLabel = useCallback(
@@ -288,12 +426,15 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
         return;
       }
       setSearchInput(value);
+      if (isArchived) {
+        setIsArchived(false);
+      }
       updateQuery({
         activeTab: selectedScope.value,
         inventoryQuery: value,
       });
     },
-    [updateQuery],
+    [isArchived, setIsArchived, updateQuery],
   );
   const handleAssetTypeChange = useCallback(
     (value: string) => {
@@ -303,47 +444,92 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
     },
     [updateQuery],
   );
-  const handleSourceChange = useCallback(
-    (value: string) => {
-      if (isDevelopmentItemsSourceSelection(value)) {
-        updateQuery({
-          inventorySource: value === CreatorInventorySourceType.Created ? null : value,
-        });
-      }
-    },
-    [updateQuery],
+  const sheetFilters = useMemo<DevelopmentItemsSheetFilters>(
+    () => ({ showArchived: isArchived, source }),
+    [isArchived, source],
   );
-  const sheetFilters = useMemo<DevelopmentItemsSheetFilters>(() => ({ source }), [source]);
   const applySheetFilters = useCallback(
     (filters: DevelopmentItemsSheetFilters) => {
-      handleSourceChange(filters.source);
+      const sourceChanged = filters.source !== source;
+      const archiveStatusChanged = filters.showArchived !== isArchived;
+      if (!sourceChanged && !archiveStatusChanged) {
+        return;
+      }
+
+      const queryUpdates: Partial<
+        Record<(typeof INVENTORY_QUERY_KEYS)[number], string | number | null>
+      > = {};
+      if (sourceChanged) {
+        queryUpdates.inventorySource =
+          filters.source === CreatorInventorySourceType.Created ? null : filters.source;
+      }
+      if (archiveStatusChanged && filters.showArchived) {
+        setSearchInput('');
+        queryUpdates.inventoryQuery = null;
+      }
+
+      updateQuery(queryUpdates);
+      if (archiveStatusChanged) {
+        setIsArchived(filters.showArchived);
+      }
     },
-    [handleSourceChange],
+    [isArchived, setIsArchived, source, updateQuery],
   );
   const resetSheetFilters = useCallback(() => {
     applySheetFilters(DEFAULT_SHEET_FILTERS);
   }, [applySheetFilters]);
-  const activeSheetFilterChips = useMemo<DevelopmentItemsActiveFilterChip[]>(
-    () =>
-      source === DEFAULT_SHEET_FILTERS.source
-        ? []
-        : [
-            {
-              id: 'inventory-source',
-              label: inventorySourceFilter(sourceLabels[source]),
-              onClear: resetSheetFilters,
-            },
-          ],
-    [inventorySourceFilter, resetSheetFilters, source, sourceLabels],
-  );
+  const clearSourceFilter = useCallback(() => {
+    applySheetFilters({
+      ...sheetFilters,
+      source: DEFAULT_SHEET_FILTERS.source,
+    });
+  }, [applySheetFilters, sheetFilters]);
+  const clearArchivedFilter = useCallback(() => {
+    applySheetFilters({
+      ...sheetFilters,
+      showArchived: false,
+    });
+  }, [applySheetFilters, sheetFilters]);
+  const activeSheetFilterChips = useMemo<DevelopmentItemsActiveFilterChip[]>(() => {
+    const chips: DevelopmentItemsActiveFilterChip[] = [];
+    if (!isArchived && source !== DEFAULT_SHEET_FILTERS.source) {
+      chips.push({
+        id: 'inventory-source',
+        label: inventorySourceFilter(sourceLabels[source]),
+        onClear: clearSourceFilter,
+      });
+    }
+    if (isArchived) {
+      chips.push({
+        id: 'inventory-archived',
+        label: translate('Label.Archived'),
+        onClear: clearArchivedFilter,
+      });
+    }
+    return chips;
+  }, [
+    clearArchivedFilter,
+    clearSourceFilter,
+    inventorySourceFilter,
+    isArchived,
+    source,
+    sourceLabels,
+    translate,
+  ]);
   const handleViewChange = useCallback(
     (value: string) => {
       if (isDevelopmentItemsView(value)) {
+        setStoredView(value);
         updateQuery({ inventoryView: value }, false);
       }
     },
-    [updateQuery],
+    [setStoredView, updateQuery],
   );
+  const hasActiveFilters = hasActiveDevelopmentItemsInventoryFilters({
+    query,
+    showArchived: isArchived,
+    source,
+  });
 
   const inventoryPagination = useMemo<DevelopmentItemsPaginationProps>(
     () => ({
@@ -375,20 +561,24 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
       },
       onRowsPerPageChange: (nextPageSize: number) => {
         updateQuery({
-          inventoryPageSize: nextPageSize === DEFAULT_PAGE_SIZE ? null : nextPageSize,
+          inventoryPageSize:
+            nextPageSize === (isArchived ? LEGACY_ARCHIVED_DEFAULT_PAGE_SIZE : DEFAULT_PAGE_SIZE)
+              ? null
+              : nextPageSize,
         });
       },
-      page,
-      pageSize,
+      page: currentPage,
+      pageSize: effectivePageSize,
       pageTokens: availablePageTokens,
-      rowsPerPageOptions: PAGE_SIZE_OPTIONS,
+      rowsPerPageOptions: isArchived ? LEGACY_ARCHIVED_PAGE_SIZE_OPTIONS : PAGE_SIZE_OPTIONS,
     }),
     [
       availablePageTokens,
+      currentPage,
+      effectivePageSize,
       inventoryQuery.data?.nextPageToken,
+      isArchived,
       items.length,
-      page,
-      pageSize,
       translate,
       translations.firstPage,
       translations.lastPage,
@@ -418,6 +608,11 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
         filterControl={
           <DevelopmentItemsFilterSheet
             applyLabel={translate('Action.Apply')}
+            archiveFilter={{
+              activeLabel: translate('Label.Active'),
+              archivedLabel: translate('Label.Archived'),
+              sectionLabel: translate('Label.Status'),
+            }}
             closeLabel={translate('Action.Close')}
             defaultFilters={DEFAULT_SHEET_FILTERS}
             filters={sheetFilters}
@@ -425,8 +620,8 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
             resetLabel={translate('Action.ResetAll')}
             sourceLabel={translations.inventorySource}
             sourceOptions={sourceOptions}
-            title={translations.filters}
-            triggerLabel={translations.filter}
+            title={translations.filterBy}
+            triggerLabel={translations.filterBy}
           />
         }
         searchControl={
@@ -467,12 +662,9 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
       />
 
       {scope == null && (
-        <FeedbackBanner
-          description={translations.unavailableDescription}
-          severity='Error'
-          showIcon
-          title={translations.unavailable}
-        />
+        <Alert hasCloseAffordance={false} severity='Error' variant='Feedback'>
+          <strong>{translations.unavailable}</strong> {translations.unavailableDescription}
+        </Alert>
       )}
 
       {scope != null && inventoryQuery.isPending && (
@@ -482,19 +674,23 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
       )}
 
       {scope != null && inventoryQuery.isError && (
-        <FeedbackBanner
-          description={translations.unavailableDescription}
+        <Alert
+          hasCloseAffordance={false}
           onPrimaryAction={handleRetry}
           primaryActionLabel={translations.retry}
           severity='Error'
-          showIcon
-          title={translations.unavailable}
-        />
+          variant='Feedback'>
+          <strong>{translations.unavailable}</strong> {translations.unavailableDescription}
+        </Alert>
       )}
 
-      {scope != null && inventoryQuery.isSuccess && items.length === 0 && (
+      {scope != null && inventoryQuery.isSuccess && items.length === 0 && !hasActiveFilters && (
+        <DevelopmentItemsLegacyEntryPoints assetType={assetType} hasItems={false} />
+      )}
+
+      {scope != null && inventoryQuery.isSuccess && items.length === 0 && hasActiveFilters && (
         <DevelopmentItemsEmptyState
-          {...(query.length > 0
+          {...(!isArchived && query.length > 0
             ? {
                 actionLabel: translations.clearSearch,
                 onAction: handleClearSearch,
@@ -505,9 +701,15 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
         />
       )}
 
+      {!isArchived && scope != null && inventoryQuery.isSuccess && items.length > 0 && (
+        <DevelopmentItemsLegacyEntryPoints assetType={assetType} hasItems />
+      )}
+
       {scope != null && inventoryQuery.isSuccess && items.length > 0 && view === 'grid' && (
         <DevelopmentItemsGrid
+          archivableAssetIds={archivableAssetIds}
           items={items}
+          onArchiveStateChange={handleArchiveStateChange}
           onSelectItem={handleSelectItem}
           thumbnailUrls={thumbnailUrls}
         />
@@ -515,6 +717,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
 
       {scope != null && inventoryQuery.isSuccess && items.length > 0 && view === 'list' && (
         <DevelopmentItemsList
+          archivableAssetIds={archivableAssetIds}
           getAssetTypeLabel={getAssetTypeLabel}
           getSourceLabel={getSourceLabel}
           items={items}
@@ -526,13 +729,14 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
             name: translations.name,
             source: translations.inventorySource,
           }}
+          onArchiveStateChange={handleArchiveStateChange}
           onSelectItem={handleSelectItem}
           pagination={inventoryPagination}
           thumbnailUrls={thumbnailUrls}
         />
       )}
 
-      {scope != null && inventoryQuery.isSuccess && view === 'grid' && (
+      {scope != null && inventoryQuery.isSuccess && (view === 'grid' || items.length === 0) && (
         <DevelopmentItemsPagination {...inventoryPagination} />
       )}
     </div>

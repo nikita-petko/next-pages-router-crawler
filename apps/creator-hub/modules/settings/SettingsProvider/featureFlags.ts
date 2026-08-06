@@ -99,7 +99,6 @@ export enum FeatureFlagName {
   enableDataStoreRequestSourceAnalytics = 'enableDataStoreRequestSourceAnalytics',
   enableIpPlatformMatchesTableEsIndexImprovements = 'enableIpPlatformMatchesTableEsIndexImprovements',
   enableEmissive = 'enableEmissive',
-  enableTaxonomyBasedCreatorDashboard = 'enableTaxonomyBasedCreatorDashboard',
   enableCustomPresetChat = 'enableCustomPresetChat',
 }
 
@@ -215,6 +214,5 @@ export const featureFlagDefaults = defineFeatureFlagDefaults({
   [FeatureFlagName.enableDataStoreRequestSourceAnalytics]: false,
   [FeatureFlagName.enableIpPlatformMatchesTableEsIndexImprovements]: false,
   [FeatureFlagName.enableEmissive]: false,
-  [FeatureFlagName.enableTaxonomyBasedCreatorDashboard]: false,
   [FeatureFlagName.enableCustomPresetChat]: false,
 } as const);

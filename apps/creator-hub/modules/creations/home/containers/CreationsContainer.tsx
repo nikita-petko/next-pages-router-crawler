@@ -44,6 +44,7 @@ import useCreationsStyles from '../components/Creations.styles';
 import MomentsCreationsPanel from '../components/MomentsCreationsPanel';
 import useAvatarLooksGate from '../hooks/useAvatarLooksGate';
 import useMomentsGate from '../hooks/useMomentsGate';
+import useTaxonomyDashboardGate from '../hooks/useTaxonomyDashboardGate';
 import useUGCFoldersGate from '../hooks/useUGCFoldersGate';
 
 const AvatarItemsGridContainer = dynamic(
@@ -123,7 +124,7 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
   const isUGCFoldersEnabled = useUGCFoldersGate();
   const isAvatarLooksEnabled = useAvatarLooksGate();
   const { translate } = useTranslation();
-  const isTaxonomyEnabled = settings.enableTaxonomyBasedCreatorDashboard ?? false;
+  const isTaxonomyEnabled = useTaxonomyDashboardGate();
   const enableCreationsNavLayout = useEnableCreationsNavLayout();
   const enablePublishingConsolidation = useEnablePublishingConsolidation();
   const previousAssetTypeRef = useRef<Asset | undefined>(undefined);
@@ -254,11 +255,18 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
       return;
     }
 
-    if (previousAssetTypeRef.current !== assetType) {
+    const previousAssetType = previousAssetTypeRef.current;
+    if (previousAssetType !== assetType) {
       previousAssetTypeRef.current = assetType;
-      resetAllFilters();
+      const isConsolidatedDevelopmentItemChange =
+        enablePublishingConsolidation &&
+        isDevelopmentItemAsset(previousAssetType) &&
+        isDevelopmentItemAsset(assetType);
+      if (!isConsolidatedDevelopmentItemChange) {
+        resetAllFilters();
+      }
     }
-  }, [assetType, resetAllFilters]);
+  }, [assetType, enablePublishingConsolidation, resetAllFilters]);
 
   const shouldRenderGrowthBannerOnTab =
     assetType === Asset.MyExperiences || assetType === Asset.SharedExperiences;

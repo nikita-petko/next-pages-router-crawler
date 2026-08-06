@@ -17,6 +17,11 @@ export const enableUgcFolders = defineFlag({
     name: 'enableUGCFolders',
     defaultValue: false,
   });
+export const enableTaxonomyBasedCreatorDashboard = defineFlag({
+    namespace: 'avatar-marketplace',
+    name: 'enableTaxonomyBasedCreatorDashboard',
+    defaultValue: false,
+  });
 export const isAutoPublishPreferencesEnabled = defineFlag({
     namespace: 'avatar-marketplace',
     name: 'isAutoPublishPreferencesEnabled',

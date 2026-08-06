@@ -15,17 +15,29 @@ import {
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import developClient from '@modules/clients/develop';
+import tryParseResponseError from '@modules/clients/utils/tryParseResponseError';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { toast } from '@modules/monetization-shared/snackbar/actions';
 import type { DevelopmentItemsInventoryItem } from '../developmentItemsInventoryUtils';
 
+export type DevelopmentItemArchiveStateChangeHandler = (
+  item: DevelopmentItemsInventoryItem,
+  state: NonNullable<DevelopmentItemsInventoryItem['state']>,
+) => void;
+
 export type DevelopmentItemActionsMenuProps = {
+  isArchivable: boolean;
   item: DevelopmentItemsInventoryItem;
+  onArchiveStateChange: DevelopmentItemArchiveStateChangeHandler;
   onOpenDetails: (item: DevelopmentItemsInventoryItem) => void;
   variant?: TIconButtonVariant;
 };
 
 const DevelopmentItemActionsMenu: FunctionComponent<DevelopmentItemActionsMenuProps> = ({
+  isArchivable,
   item,
+  onArchiveStateChange,
   onOpenDetails,
   variant = 'Utility',
 }) => {
@@ -33,6 +45,7 @@ const DevelopmentItemActionsMenu: FunctionComponent<DevelopmentItemActionsMenuPr
   const { translate } = intl;
   const { tPendingTranslation } = useTranslationWrapper(intl);
   const [isOpen, setIsOpen] = useState(false);
+  const [isUpdatingArchiveState, setIsUpdatingArchiveState] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const assetActionsLabel = tPendingTranslation(
     'Asset actions',
@@ -41,6 +54,8 @@ const DevelopmentItemActionsMenu: FunctionComponent<DevelopmentItemActionsMenuPr
   );
   const copyAssetIdLabel = translate('Action.CopyAssetID');
   const openAssetDetailsLabel = translate('Action.OpenAssetDetails');
+  const isArchived = item.state === 'Archived';
+  const archiveActionLabel = translate(isArchived ? 'Action.Restore' : 'Action.Archive');
   const stopPropagation = useCallback((event: SyntheticEvent) => {
     event.stopPropagation();
   }, []);
@@ -62,6 +77,34 @@ const DevelopmentItemActionsMenu: FunctionComponent<DevelopmentItemActionsMenuPr
     handleOpenChange(false);
     void navigator.clipboard.writeText(item.assetId.toString());
   }, [handleOpenChange, item.assetId]);
+  const handleToggleArchiveState = useCallback(async () => {
+    setIsUpdatingArchiveState(true);
+    try {
+      if (isArchived) {
+        await developClient.restoreAsset(item.assetId);
+      } else {
+        await developClient.archiveAsset(item.assetId);
+      }
+      handleOpenChange(false);
+      onArchiveStateChange(item, isArchived ? 'Active' : 'Archived');
+      toast({
+        icon: 'icon-regular-circle-check',
+        title: translate(isArchived ? 'Message.RestoreSuccess' : 'Message.ArchiveSuccess'),
+      });
+    } catch (error) {
+      const responseError = await tryParseResponseError(error);
+      toast({
+        icon: 'icon-regular-circle-x',
+        title: translate(
+          !isArchived && responseError?.code === 21
+            ? 'Response.ArchivingPreventedForWearableAsset'
+            : 'Response.UnknownError',
+        ),
+      });
+    } finally {
+      setIsUpdatingArchiveState(false);
+    }
+  }, [handleOpenChange, isArchived, item, onArchiveStateChange, translate]);
 
   return (
     <div
@@ -104,6 +147,16 @@ const DevelopmentItemActionsMenu: FunctionComponent<DevelopmentItemActionsMenuPr
                 title={copyAssetIdLabel}
                 value='copy-asset-id'
               />
+              {isArchivable && (
+                <MenuItem
+                  disabled={isUpdatingArchiveState}
+                  onSelect={() => {
+                    void handleToggleArchiveState();
+                  }}
+                  title={archiveActionLabel}
+                  value={isArchived ? 'restore-asset' : 'archive-asset'}
+                />
+              )}
             </MenuSection>
           </Menu>
         </PopoverContent>

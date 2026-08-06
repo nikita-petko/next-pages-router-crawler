@@ -11,7 +11,9 @@ import {
   VisuallyHidden,
 } from '@rbx/foundation-ui';
 import type { DevelopmentItemsInventoryItem } from '../developmentItemsInventoryUtils';
-import DevelopmentItemActionsMenu from './DevelopmentItemActionsMenu';
+import DevelopmentItemActionsMenu, {
+  type DevelopmentItemArchiveStateChangeHandler,
+} from './DevelopmentItemActionsMenu';
 import DevelopmentItemsPagination from './DevelopmentItemsPagination';
 import type { DevelopmentItemsPaginationProps } from './DevelopmentItemsPagination';
 
@@ -25,10 +27,12 @@ export type DevelopmentItemsListLabels = {
 };
 
 export type DevelopmentItemsListProps = {
+  archivableAssetIds: ReadonlySet<number>;
   getAssetTypeLabel: (item: DevelopmentItemsInventoryItem) => string;
   getSourceLabel: (item: DevelopmentItemsInventoryItem) => string;
   items: readonly DevelopmentItemsInventoryItem[];
   labels: DevelopmentItemsListLabels;
+  onArchiveStateChange: DevelopmentItemArchiveStateChangeHandler;
   onSelectItem: (item: DevelopmentItemsInventoryItem) => void;
   pagination: DevelopmentItemsPaginationProps;
   thumbnailUrls: ReadonlyMap<number, string>;
@@ -42,13 +46,23 @@ const STICKY_ACTIONS_CELL_CLASS =
 type DevelopmentItemsListRowProps = {
   getAssetTypeLabel: (item: DevelopmentItemsInventoryItem) => string;
   getSourceLabel: (item: DevelopmentItemsInventoryItem) => string;
+  isArchivable: boolean;
   item: DevelopmentItemsInventoryItem;
+  onArchiveStateChange: DevelopmentItemArchiveStateChangeHandler;
   onSelectItem: (item: DevelopmentItemsInventoryItem) => void;
   thumbnailUrl?: string;
 };
 
 const DevelopmentItemsListRow: FunctionComponent<DevelopmentItemsListRowProps> = memo(
-  ({ getAssetTypeLabel, getSourceLabel, item, onSelectItem, thumbnailUrl }) => {
+  ({
+    getAssetTypeLabel,
+    getSourceLabel,
+    isArchivable,
+    item,
+    onArchiveStateChange,
+    onSelectItem,
+    thumbnailUrl,
+  }) => {
     const updated = item.updated ?? item.created;
     const handleSelect = useCallback(() => {
       onSelectItem(item);
@@ -79,7 +93,9 @@ const DevelopmentItemsListRow: FunctionComponent<DevelopmentItemsListRowProps> =
         <TableCell align='end' className={STICKY_ACTIONS_CELL_CLASS}>
           <div className='flex justify-end'>
             <DevelopmentItemActionsMenu
+              isArchivable={isArchivable}
               item={item}
+              onArchiveStateChange={onArchiveStateChange}
               onOpenDetails={onSelectItem}
               variant='OverMedia'
             />
@@ -91,10 +107,12 @@ const DevelopmentItemsListRow: FunctionComponent<DevelopmentItemsListRowProps> =
 );
 
 const DevelopmentItemsList: FunctionComponent<DevelopmentItemsListProps> = ({
+  archivableAssetIds,
   getAssetTypeLabel,
   getSourceLabel,
   items,
   labels,
+  onArchiveStateChange,
   onSelectItem,
   pagination,
   thumbnailUrls,
@@ -122,8 +140,10 @@ const DevelopmentItemsList: FunctionComponent<DevelopmentItemsListProps> = ({
             <DevelopmentItemsListRow
               getAssetTypeLabel={getAssetTypeLabel}
               getSourceLabel={getSourceLabel}
+              isArchivable={archivableAssetIds.has(item.assetId)}
               item={item}
               key={item.id}
+              onArchiveStateChange={onArchiveStateChange}
               onSelectItem={onSelectItem}
               thumbnailUrl={thumbnailUrls.get(item.assetId)}
             />

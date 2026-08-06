@@ -18,6 +18,7 @@ import {
   TAXONOMY_HOST_ASSET,
 } from '../../avatarItem/utils/taxonomyRoutingUtils';
 import useMomentsGate from '../../home/hooks/useMomentsGate';
+import useTaxonomyDashboardGate from '../../home/hooks/useTaxonomyDashboardGate';
 import menuItems from '../../menu/constants/MenuConstants';
 import creationsMenuManager from '../../menu/implementations/CreationsMenuManager';
 
@@ -43,7 +44,7 @@ const CreationsIALeftNav: FunctionComponent = () => {
   const currentGroup = useCurrentGroup();
   const isMomentsTabEnabled = useMomentsGate();
   const { value: isAAREnabled } = useFlag(isAssetAccessRequestsEnabled);
-  const isTaxonomyEnabled = settings.enableTaxonomyBasedCreatorDashboard ?? false;
+  const isTaxonomyEnabled = useTaxonomyDashboardGate();
 
   const creationHref = useMemo(
     () =>

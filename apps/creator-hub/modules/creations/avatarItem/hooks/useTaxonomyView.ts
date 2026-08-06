@@ -1,6 +1,6 @@
 import type { Asset } from '@modules/miscellaneous/common';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
+import useTaxonomyDashboardGate from '../../home/hooks/useTaxonomyDashboardGate';
 import {
   isAllAssetTypesActiveTab,
   isAvatarLooksActiveTab,
@@ -40,10 +40,9 @@ export interface TaxonomyViewState {
  * them — and there is no second writer that can disagree with the first.
  */
 const useTaxonomyView = (assetType: Asset): TaxonomyViewState => {
-  const { settings } = useSettings();
   const [{ activeTab }] = useQueryParams(['activeTab']);
 
-  const isFlagEnabled = settings.enableTaxonomyBasedCreatorDashboard ?? false;
+  const isFlagEnabled = useTaxonomyDashboardGate();
   const isTaxonomyMode = isFlagEnabled && isTaxonomyActiveTab(activeTab);
   const isRecentsView = isTaxonomyMode && isRecentsActiveTab(activeTab);
   const isAvatarLooksView = isTaxonomyMode && isAvatarLooksActiveTab(activeTab);

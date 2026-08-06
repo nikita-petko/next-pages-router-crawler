@@ -61,6 +61,25 @@ export const developmentItemsAssetTypes = [
   CreatorInventoryAssetType.Animation,
 ] as const;
 
+const directlyArchivableDevelopmentItemsAssetTypes = new Set<CreatorInventoryAssetType>([
+  CreatorInventoryAssetType.Audio,
+  CreatorInventoryAssetType.Decal,
+  CreatorInventoryAssetType.MeshPart,
+  CreatorInventoryAssetType.Video,
+]);
+
+const developmentItemsAssetTypeToAsset: Record<CreatorInventoryAssetType, Asset> = {
+  [CreatorInventoryAssetType.Animation]: Asset.Animation,
+  [CreatorInventoryAssetType.Audio]: Asset.Audio,
+  [CreatorInventoryAssetType.Decal]: Asset.Decal,
+  [CreatorInventoryAssetType.Image]: Asset.Image,
+  [CreatorInventoryAssetType.Mesh]: Asset.Mesh,
+  [CreatorInventoryAssetType.MeshPart]: Asset.MeshPart,
+  [CreatorInventoryAssetType.Model]: Asset.Model,
+  [CreatorInventoryAssetType.Plugin]: Asset.Plugin,
+  [CreatorInventoryAssetType.Video]: Asset.Video,
+};
+
 const developmentItemsAssetTypeSet = new Set<string>(developmentItemsAssetTypes);
 const developmentItemsSourceSet = new Set<string>([
   DevelopmentItemsSourceFilter.All,
@@ -140,6 +159,10 @@ const apiAssetStateToInventoryState: Partial<
 export const isDevelopmentItemAsset = (assetType: Asset): boolean =>
   developmentItemAssets.has(assetType);
 
+export const isDevelopmentItemDirectlyArchivable = (
+  assetType: CreatorInventoryAssetType | undefined,
+): boolean => assetType != null && directlyArchivableDevelopmentItemsAssetTypes.has(assetType);
+
 export const isDevelopmentItemsAssetType = (
   value: string | undefined,
 ): value is CreatorInventoryAssetType => value != null && developmentItemsAssetTypeSet.has(value);
@@ -155,6 +178,41 @@ export const isDevelopmentItemsSourceSelection = (
 
 export const isDevelopmentItemsView = (value: string | undefined): value is DevelopmentItemsView =>
   value === 'grid' || value === 'list';
+
+export const getLegacyDevelopmentItemsAssetType = (
+  assetType: DevelopmentItemsAssetTypeSelection,
+): Asset => developmentItemsAssetTypeToAsset[assetType];
+
+export const hasActiveDevelopmentItemsInventoryFilters = ({
+  query,
+  showArchived,
+  source,
+}: {
+  query: string;
+  showArchived: boolean;
+  source: DevelopmentItemsSourceSelection;
+}): boolean =>
+  query.trim().length > 0 || showArchived || source !== CreatorInventorySourceType.Created;
+
+export const filterDevelopmentItemsByArchivedState = (
+  items: DevelopmentItemsInventoryItem[],
+  showArchived: boolean,
+): DevelopmentItemsInventoryItem[] =>
+  items.filter((item) => (showArchived ? item.state === 'Archived' : item.state !== 'Archived'));
+
+export const mergeOptimisticArchivedDevelopmentItems = (
+  items: DevelopmentItemsInventoryItem[],
+  optimisticItems: ReadonlyMap<number, DevelopmentItemsInventoryItem>,
+  assetType: DevelopmentItemsAssetTypeSelection,
+): DevelopmentItemsInventoryItem[] => {
+  const existingAssetIds = new Set(items.map((item) => item.assetId));
+  return [
+    ...items,
+    ...[...optimisticItems.values()].filter(
+      (item) => item.assetType === assetType && !existingAssetIds.has(item.assetId),
+    ),
+  ];
+};
 
 export const buildCreatorInventoryScope = (
   userId: number | undefined,

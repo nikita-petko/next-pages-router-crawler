@@ -2,22 +2,28 @@ import type { FunctionComponent } from 'react';
 import { memo, useCallback } from 'react';
 import { getFormattedDateTime } from '@rbx/core';
 import type { DevelopmentItemsInventoryItem } from '../developmentItemsInventoryUtils';
-import DevelopmentItemActionsMenu from './DevelopmentItemActionsMenu';
+import DevelopmentItemActionsMenu, {
+  type DevelopmentItemArchiveStateChangeHandler,
+} from './DevelopmentItemActionsMenu';
 
 export type DevelopmentItemsGridProps = {
+  archivableAssetIds: ReadonlySet<number>;
   items: readonly DevelopmentItemsInventoryItem[];
+  onArchiveStateChange: DevelopmentItemArchiveStateChangeHandler;
   onSelectItem: (item: DevelopmentItemsInventoryItem) => void;
   thumbnailUrls: ReadonlyMap<number, string>;
 };
 
 type DevelopmentItemsGridItemProps = {
+  isArchivable: boolean;
   item: DevelopmentItemsInventoryItem;
+  onArchiveStateChange: DevelopmentItemArchiveStateChangeHandler;
   onSelectItem: (item: DevelopmentItemsInventoryItem) => void;
   thumbnailUrl?: string;
 };
 
 const DevelopmentItemsGridItem: FunctionComponent<DevelopmentItemsGridItemProps> = memo(
-  ({ item, onSelectItem, thumbnailUrl }) => {
+  ({ isArchivable, item, onArchiveStateChange, onSelectItem, thumbnailUrl }) => {
     const timestamp = item.updated ?? item.created;
     const handleSelect = useCallback(() => {
       onSelectItem(item);
@@ -53,7 +59,9 @@ const DevelopmentItemsGridItem: FunctionComponent<DevelopmentItemsGridItemProps>
         <div className='absolute inset-[0] [z-index:1] flex items-start justify-end padding-small pointer-events-none'>
           <div className='pointer-events-auto'>
             <DevelopmentItemActionsMenu
+              isArchivable={isArchivable}
               item={item}
+              onArchiveStateChange={onArchiveStateChange}
               onOpenDetails={onSelectItem}
               variant='OverMedia'
             />
@@ -65,15 +73,19 @@ const DevelopmentItemsGridItem: FunctionComponent<DevelopmentItemsGridItemProps>
 );
 
 const DevelopmentItemsGrid: FunctionComponent<DevelopmentItemsGridProps> = ({
+  archivableAssetIds,
   items,
+  onArchiveStateChange,
   onSelectItem,
   thumbnailUrls,
 }) => (
   <div className='grid gap-large width-full min-width-0 [grid-template-columns:repeat(auto-fill,minmax(min(150px,100%),1fr))]'>
     {items.map((item) => (
       <DevelopmentItemsGridItem
+        isArchivable={archivableAssetIds.has(item.assetId)}
         item={item}
         key={item.id}
+        onArchiveStateChange={onArchiveStateChange}
         onSelectItem={onSelectItem}
         thumbnailUrl={thumbnailUrls.get(item.assetId)}
       />

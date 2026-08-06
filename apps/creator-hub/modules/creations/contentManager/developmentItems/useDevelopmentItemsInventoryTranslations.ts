@@ -67,16 +67,7 @@ const useDevelopmentItemsInventoryTranslations = () => {
       'Accessible label and action for clearing the Development Items search query.',
       translationKey('Action.DevelopmentItems.ClearSearch', TranslationNamespace.Creations),
     ),
-    filter: tPendingTranslation(
-      'Filter',
-      'Button that opens the Development Items filter side sheet.',
-      translationKey('Action.DevelopmentItems.Filter', TranslationNamespace.Creations),
-    ),
-    filters: tPendingTranslation(
-      'Filters',
-      'Heading for the Development Items filter side sheet.',
-      translationKey('Heading.DevelopmentItems.Filters', TranslationNamespace.Creations),
-    ),
+    filterBy: translate('Label.FilterBy'),
     firstPage: tPendingTranslation(
       'First page',
       'Accessible label for the Development Items pagination first-page button.',
