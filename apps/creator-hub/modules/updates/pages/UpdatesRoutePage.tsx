@@ -2,20 +2,22 @@ import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { withTranslation } from '@rbx/intl';
-import { Translate } from '@rbx/intl';
+import { withTranslation, useTranslation, Translate } from '@rbx/intl';
 import CreatorHubLayout from '@modules/creator-hub-layout/CreatorHubLayout';
 import LandingHead from '@modules/landing/sections/components/LandingHead';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { captureUpdatesPageView, EUpdatesPageSection } from '../eventUtils';
 import { metadataTitle, metadataDescription, updatesOGImg } from '../metadata';
 import UpdatesPage from '../Updates';
+import UpdatesLeftRail from '../UpdatesLeftRail';
 
 export const getUpdatesLayout = (page: ReactNode) => (
   <CreatorHubLayout
     product='Home'
     title={<Translate namespace='CreatorDashboard.Navigation' translationKey='Heading.Updates' />}
-    noBreadCrumbs>
+    noBreadCrumbs
+    secondaryRail={<UpdatesLeftRail />}
+    secondarySize='small'>
     <LandingHead />
     {page}
   </CreatorHubLayout>
@@ -25,6 +27,7 @@ const UPDATES_PAGE_VIEW_EVENT = 'updatesPageLayoutNewWithAlert';
 
 const UpdatesRoutePage = () => {
   const router = useRouter();
+  const { translateWithNamespace } = useTranslation();
 
   useEffect(() => {
     captureUpdatesPageView(UPDATES_PAGE_VIEW_EVENT, EUpdatesPageSection.UpdatesPageView);
@@ -35,10 +38,18 @@ const UpdatesRoutePage = () => {
   return (
     <>
       <Head>
-        <title>{isRoadmap ? `Roadmap - ${metadataTitle}` : metadataTitle}</title>
+        <title>
+          {isRoadmap
+            ? translateWithNamespace(TranslationNamespace.RoadMap, 'Heading.RoadmapDocumentTitle')
+            : metadataTitle}
+        </title>
         <meta
           property='og:title'
-          content={isRoadmap ? 'Roblox Creator Roadmap' : metadataTitle}
+          content={
+            isRoadmap
+              ? translateWithNamespace(TranslationNamespace.RoadMap, 'Heading.RoadmapOgTitle')
+              : metadataTitle
+          }
           key='og:title'
         />
         <meta property='og:description' content={metadataDescription} key='og:description' />

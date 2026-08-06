@@ -69,7 +69,7 @@ const CreationsIALeftNav: FunctionComponent = () => {
   );
 
   const creationMenuItems = useMemo<TMenuItem[]>(() => {
-    return menuItems
+    const items = menuItems
       .filter((menuItem) => menuItem.type !== Asset.AssetPermissionRequests || isAAREnabled)
       .filter((menuItem) =>
         creationsMenuManager.isMenuItemEnabled(
@@ -102,6 +102,7 @@ const CreationsIALeftNav: FunctionComponent = () => {
                 ),
         };
       });
+    return items;
   }, [
     creationHref,
     currentGroup,

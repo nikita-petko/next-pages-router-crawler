@@ -13,6 +13,7 @@ import {
   clickNavSwitchAccountsEventModel,
 } from '../../../event/eventConstants';
 import useNavigationConfigs from '../../../hooks/useNavigationConfigs';
+import { RAIL_ICON_ONLY_STORAGE_KEY } from '../../../layout/constants';
 import type { TBuildTarget, TProductKey, TRobloxEnvironment } from '../../../types';
 import { getCreatorHubBasePathV2 as getCreatorHubBasePath } from '../../../utils/getBasePaths';
 import isDashboard from '../../../utils/isDashboard';
@@ -69,7 +70,7 @@ const AuthenticationStatusMenu: FunctionComponent<TAuthenticationStatusMenuProps
     }
     setSnackbarConfig({ title: translate('Message.UserIdCopied'), isError: false });
     setIsPopoverOpen(false); // there's a bug where the popover doesn't close if there's no href, so we have to close it manually here
-  }, [sendEvent, setIsPopoverOpen, setSnackbarConfig, translate, user?.id]);
+  }, [sendEvent, setIsPopoverOpen, setSnackbarConfig, translate, user]);
 
   const onClickSwitchAccounts = useCallback(() => {
     sendEvent(clickNavSwitchAccountsEventModel);
@@ -79,6 +80,7 @@ const AuthenticationStatusMenu: FunctionComponent<TAuthenticationStatusMenuProps
   const onClickLogout = useCallback(async () => {
     sendEvent(clickNavLogOutEventModel);
     setIsLogoutInProgress(true);
+    localStorage.removeItem(RAIL_ICON_ONLY_STORAGE_KEY);
     try {
       await logout();
     } catch {

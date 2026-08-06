@@ -26,7 +26,7 @@ export type TCreatorHubLayoutInnerProps = {
   secondaryRail?: React.ReactNode;
   pageBanner?: React.ReactNode;
   useBreadcrumbs?: boolean;
-  secondarySize?: 'large' | 'small';
+  secondarySize?: 'large' | 'small' | 'experience';
   omitPageTitle?: boolean;
 };
 

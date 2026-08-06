@@ -84,7 +84,7 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
   const { translate } = useTranslation();
   const { locale } = useLocalization();
   const { open, dialog, isCompatible } = useStudio();
-  const { gameDetails, canConfigure } = useCurrentGame();
+  const { gameDetails, canConfigure, isLoadingGame } = useCurrentGame();
   const { data: permissions } = useUniversePermissions(gameDetails?.id);
   const { user } = useAuthentication();
   const currentGroup = useCurrentGroup();
@@ -334,30 +334,38 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
     [setExpandedItemsBySection],
   );
 
+  // Wait for settings/permissions before painting the feature tree so ungated
+  // items (Overview, Activity, Safety) don't flash before gated sections appear.
+  const isNavLoading =
+    !isFetched || isPendingAnalyticsExperiencePermissions || isLoadingGame || canConfigure === null;
+
   return (
     <>
       <Grid item container direction='column'>
         <GameStatus />
         <Divider className='margin-y-[16px]' />
       </Grid>
-      {GameLeftNavigationSectionTitleKeys.map((titleKey) => {
-        const sectionKey = titleKey ?? 'default';
-        return (
-          enabledFeatures.some((feature) => feature.sectionTitleKey === titleKey) && (
-            <Grid key={`navigation-section-${sectionKey}`} item container direction='column'>
-              <Features
-                key={`feature-${sectionKey}`}
-                features={enabledFeatures.filter((feature) => feature.sectionTitleKey === titleKey)}
-                activeFeature={activeFeature}
-                title={titleKey && translate(titleKey)}
-                name='game'
-                defaultExpanded={expandedItemsBySection[sectionKey]}
-                onExpandedItemsChange={handleExpandedItemsChange(sectionKey)}
-              />
-            </Grid>
-          )
-        );
-      })}
+      {!isNavLoading &&
+        GameLeftNavigationSectionTitleKeys.map((titleKey) => {
+          const sectionKey = titleKey ?? 'default';
+          return (
+            enabledFeatures.some((feature) => feature.sectionTitleKey === titleKey) && (
+              <Grid key={`navigation-section-${sectionKey}`} item container direction='column'>
+                <Features
+                  key={`feature-${sectionKey}`}
+                  features={enabledFeatures.filter(
+                    (feature) => feature.sectionTitleKey === titleKey,
+                  )}
+                  activeFeature={activeFeature}
+                  title={titleKey && translate(titleKey)}
+                  name='game'
+                  defaultExpanded={expandedItemsBySection[sectionKey]}
+                  onExpandedItemsChange={handleExpandedItemsChange(sectionKey)}
+                />
+              </Grid>
+            )
+          );
+        })}
       {dialog}
     </>
   );

@@ -30,6 +30,7 @@ export enum LicenseManagerClickEvent {
   PublicLicensesTableClearFiltersClickEvent = 'publicLicensesTableClearFiltersClickEvent',
   PublicListingDetailsPageShowcaseContentClickEvent = 'publicListingDetailsPageShowcaseContentClickEvent',
   PublicListingDetailsPageShowcaseCarouselNavigationClickEvent = 'publicListingDetailsPageShowcaseCarouselNavigationClickEvent',
+  PublicListingDetailsPageRetryShowcasedExperiencesClickEvent = 'publicListingDetailsPageRetryShowcasedExperiencesClickEvent',
   IphAgreementsTableSelectTabClickEvent = 'iphAgreementsTableSelectTabClickEvent',
   IphAgreementsTableSelectFilterClickEvent = 'iphAgreementsTableSelectFilterClickEvent',
   IphAgreementsTableViewAgreementClickEvent = 'iphAgreementsTableViewAgreementClickEvent',
@@ -117,6 +118,8 @@ export enum LicenseManagerImpressionEvent {
   RecommendationImpressionEvent = 'recommendationImpressionEvent',
   CatalogImpressionEvent = 'catalogImpressionEvent',
   MatchesTableResultsImpressionEvent = 'matchesTableResultsImpressionEvent',
+  PublicListingDetailsPageShowcasedExperiencesImpressionEvent = 'publicListingDetailsPageShowcasedExperiencesImpressionEvent',
+  PublicListingDetailsPageShowcasedExperiencesLoadFailureImpressionEvent = 'publicListingDetailsPageShowcasedExperiencesLoadFailureImpressionEvent',
   IphListingsDetailsPageShowcasedExperiencesLoadFailureImpressionEvent = 'iphListingsDetailsPageShowcasedExperiencesLoadFailureImpressionEvent',
 
   // Empty states

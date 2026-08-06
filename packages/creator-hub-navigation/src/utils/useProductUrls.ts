@@ -25,12 +25,18 @@ const useProductUrls = () => {
     const baseUrl = getCreatorHubBasePath(target, environment);
     const adsPath = enableAdsManager ? `${baseUrl}advertise` : getAdsPath(environment);
 
-    const urlLocale = pathname?.split('/')[1];
-    const docSiteLocal = LOCALE_SLUG_REGEXP.test(urlLocale) ? `${urlLocale}/` : '';
+    const pathSegments = pathname?.split('/').filter(Boolean) ?? [];
+    // doc-site-ssr may expose paths with or without the `/docs` basePath segment.
+    const localeCandidate = pathSegments[0] === 'docs' ? pathSegments[1] : pathSegments[0];
+    const docSiteLocal =
+      localeCandidate && LOCALE_SLUG_REGEXP.test(localeCandidate) ? `${localeCandidate}/` : '';
     const creatorHubBasePath = isDashboard(currentProduct) ? '/' : baseUrl;
     const storeBasePath = currentProduct === 'Store' ? '/' : `${baseUrl}store/`;
     const talentBasePath = currentProduct === 'Talent' ? '/' : `${baseUrl}talent/`;
     const documentationBasePath = isDocumentation ? `/${docSiteLocal}` : `${baseUrl}docs/`;
+    // Always absolute so cross-app / Learn re-select can hard-navigate (RailItem uses
+    // window.open for http URLs) and is not subject to doc-site basePath Router.push quirks.
+    const documentationAbsoluteHome = `${baseUrl}docs/${docSiteLocal}`;
     const forumBasePath = getDevForumBasePath(environment);
     const adsBasePath = currentProduct === 'Advertise' ? '/' : adsPath;
     const robloxBasePath = `https://${getRobloxSiteDomainV2(target, environment)}/`;
@@ -58,7 +64,8 @@ const useProductUrls = () => {
         transactions: `${creatorHubBasePath}dashboard/transactions`,
         intellectualProperty: `${creatorHubBasePath}dashboard/ip`,
         translations: `${creatorHubBasePath}dashboard/translator-portal`,
-        roadmap: `${creatorHubBasePath}roadmap`,
+        // Roadmap lives under Updates; legacy `/roadmap` only redirects here.
+        roadmap: `${creatorHubBasePath}updates/roadmap`,
         groupProfile: `${creatorHubBasePath}dashboard/group/profile`,
         licenses: `${creatorHubBasePath}explore/licenses`,
         build: `${creatorHubBasePath}build`,
@@ -67,15 +74,17 @@ const useProductUrls = () => {
       Store: {
         home: storeBasePath,
         models: `${storeBasePath}models`,
-        plugins: `${storeBasePath}plugins`,
+        // Plugins/Decals use taxonomy browse paths; legacy /plugins and /decals 301 here.
+        plugins: `${storeBasePath}category/plugins`,
         audio: `${storeBasePath}audio`,
-        decals: `${storeBasePath}decals`,
+        decals: `${storeBasePath}category/2d/decals`,
       },
       Talent: {
         home: talentBasePath,
       },
       Documentation: {
         home: documentationBasePath,
+        absoluteHome: documentationAbsoluteHome,
         // Assistant does not use locale path
         assistant: `${!isDocumentation ? `${baseUrl}docs` : ''}/assistant`,
         studio: `${documentationBasePath}studio`,

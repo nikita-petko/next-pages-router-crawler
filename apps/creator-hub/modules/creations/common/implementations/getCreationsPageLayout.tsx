@@ -27,7 +27,7 @@ export default function getCreationsPageLayout(
             <ExperienceCreatorHubLayout
               {...context}
               leftNavigationContents={<GameLeftNavigation />}
-              secondarySize='small'>
+              secondarySize='experience'>
               {page}
             </ExperienceCreatorHubLayout>
           </GameProvider>

@@ -49,15 +49,19 @@ const useLeftNavigationStyles = makeStyles<Props>()(
     },
 
     sidebarHeaderText: {
-      color: theme.palette.content.disabled,
+      color: 'var(--color-content-default)',
       marginBottom: 12,
       display: hideSidebarHeaderText ? 'none' : '',
     },
 
+    // Title/TitleLarge — section title
     sidebarSubHeaderText: {
       color: theme.palette.content.standard,
       marginBottom: 12,
       marginTop: newTreeViewStyle ? 12 : 32,
+      fontSize: 16,
+      fontWeight: 700,
+      lineHeight: '140%',
     },
 
     treeViewRoot: {
@@ -75,6 +79,23 @@ const useLeftNavigationStyles = makeStyles<Props>()(
         flexDirection: 'column',
         gap: '4px',
       },
+      // Focus alone must not look like the current page — expand/collapse categories
+      // (Configure, Analytics, …) keep focus for a11y but without the selected fill.
+      [`&& .${treeItemClasses.content}[data-focused]:not([data-selected])`]: {
+        backgroundColor: 'transparent !important',
+      },
+      // Hover / active page: bg/shift-200. Include focused+hover so it beats the
+      // focused-only reset above (higher specificity than :hover alone).
+      [`&& .${treeItemClasses.content}:hover, && .${treeItemClasses.content}[data-focused]:not([data-selected]):hover, && .${treeItemClasses.content}[data-selected], && .${treeItemClasses.content}[data-selected][data-focused]`]:
+        {
+          backgroundColor: 'var(--color-shift-200) !important',
+        },
+      // Pressed + selected+hover: bg/shift-300. Use :active:hover (not bare :active)
+      // so the press fill can't stick after expand/nav remounts until the next click.
+      [`&& .${treeItemClasses.content}:active:hover, && .${treeItemClasses.content}[data-selected]:hover, && .${treeItemClasses.content}[data-selected][data-focused]:hover`]:
+        {
+          backgroundColor: 'var(--color-shift-300) !important',
+        },
     },
 
     backButton: {
@@ -121,18 +142,19 @@ const useLeftNavigationStyles = makeStyles<Props>()(
           flexDirection: 'row-reverse',
           [`.${treeItemClasses.groupTransition} & .${treeItemClasses.label}`]: {
             ...theme.typography.body2,
-            color: theme.palette.content.standard,
+            color: 'var(--color-content-default)',
           },
-          [`&[data-selected], .${treeItemClasses.groupTransition} &[data-selected] .${treeItemClasses.label}`]:
-            {
-              color: theme.palette.content.standard,
-              fontWeight: theme.typography.fontWeightMedium,
-            },
-          '&:hover': {
-            backgroundColor: theme.palette.states.focus,
+          [`.${treeItemClasses.groupTransition} &[data-selected] .${treeItemClasses.label}`]: {
+            color: 'var(--color-content-default)',
           },
           [`& .${treeItemClasses.iconContainer}`]: {
             width: 0,
+            color: 'var(--color-content-default)',
+          },
+          [`& .${treeItemClasses.label}`]: {
+            width: '100%',
+            flex: 1,
+            minWidth: 0,
           },
         }
       : {
@@ -154,10 +176,13 @@ const useLeftNavigationStyles = makeStyles<Props>()(
           minHeight: '40px',
           alignItems: 'center',
           flexDirection: 'row-reverse',
-          '&[data-selected]': {
-            color: theme.palette.content.standard,
-            fontWeight: theme.typography.fontWeightMedium,
+          // Label/LabelMedium — categories
+          [`& .${treeItemClasses.label} .${typographyClasses.root}`]: {
+            fontSize: 14,
+            fontWeight: 600,
+            lineHeight: '14px',
           },
+          // Body/BodyMedium — subcategories nested under a category
           [`.${treeItemClasses.groupTransition} & .${treeItemClasses.label} .${typographyClasses.root}`]:
             {
               ...theme.typography.body2,
@@ -165,9 +190,10 @@ const useLeftNavigationStyles = makeStyles<Props>()(
           [`& .${treeItemClasses.iconContainer} svg`]: {
             fontSize: '1.5rem',
           },
-          '&[data-focused]': { backgroundColor: 'transparent' },
-          '&:hover': {
-            backgroundColor: theme.palette.states.focus,
+          [`& .${treeItemClasses.label}`]: {
+            width: '100%',
+            flex: 1,
+            minWidth: 0,
           },
         }
       : {

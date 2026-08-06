@@ -53,12 +53,12 @@ const useUpdatesPageStyles = makeStyles()((theme) => ({
   },
   tabActionsWrapper: {
     display: 'flex',
-    paddingLeft: 12,
+    padding: '4px 12px 12px 12px',
     flexDirection: 'column',
     alignItems: 'flex-start',
     gap: 10,
     marginLeft: 'auto',
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-end',
   },
   tabActions: {
     display: 'flex',

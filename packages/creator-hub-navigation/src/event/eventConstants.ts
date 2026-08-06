@@ -77,15 +77,14 @@ const NOTIFICATION_PRODUCT_TEAM = 'knowledge';
 const convertNotificationCommonEventParametersToParameters = (
   parameters: NotificationCommonEventParameters,
 ): Record<string, string> => {
-  const result: Record<string, string> = {};
-  if (parameters.hasUnSeenNotifications !== undefined) {
-    result.hasUnSeenNotifications = parameters.hasUnSeenNotifications.toString();
-  }
+  const result: Record<string, string> = {
+    hasUnSeenNotifications: String(parameters.hasUnSeenNotifications),
+  };
   if (parameters.unreadNotificationCount !== undefined) {
-    result.unreadNotificationCount = parameters.unreadNotificationCount.toString();
+    result.unreadNotificationCount = String(parameters.unreadNotificationCount);
   }
   if (parameters.notificationsCount !== undefined) {
-    result.notificationsCount = parameters.notificationsCount.toString();
+    result.notificationsCount = String(parameters.notificationsCount);
   }
   return result;
 };
@@ -123,10 +122,13 @@ export const clickToolsEventModel = (
   };
 };
 
-export const ClickNavPrimaryRailCollapse: TrackerClientRequest = {
+export const clickNavPrimaryRailCollapseEventModel = (
+  action: 'collapse' | 'expand',
+): TrackerClientRequest => ({
   eventType: EventName.ClickNavPrimaryRailCollapse,
   context: EventContext.Click,
-};
+  eventValue: action,
+});
 
 export const clickListEventModel = (productName: string): TrackerClientRequest => ({
   eventType: EventName.ClickNavList,

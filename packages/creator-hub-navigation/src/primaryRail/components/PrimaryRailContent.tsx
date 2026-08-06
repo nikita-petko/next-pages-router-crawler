@@ -1,25 +1,12 @@
 import React, { useCallback, useMemo } from 'react';
-import { Icon } from '@rbx/foundation-ui';
+import { Divider, Icon } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import {
   BuilderChatSideFillIcon,
   BuilderChatSideIcon,
-  BuilderExperiencesFill,
-  BuilderExperiencesIcon,
   BuilderHomeFillIcon,
   BuilderHomeIcon,
-  BuilderInsightsIcon,
-  BuilderInternFillIcon,
-  BuilderInternIcon,
-  BuilderMegaphoneFillIcon,
-  BuilderMegaphoneIcon,
-  BuilderNineDotGrid,
-  BuilderStoreFillIcon,
-  BuilderStoreIcon,
-  BuilderWalletFillIcon,
-  BuilderWalletIcon,
   Button,
-  Divider,
   Grid,
   RobloxIcon,
   StudioIcon,
@@ -27,18 +14,31 @@ import {
   useMediaQuery,
 } from '@rbx/ui';
 import WorkplaceSelector from '../../components/WorkplaceSelector';
-import { clickRailEventModel } from '../../event/eventConstants';
+import {
+  clickNavPrimaryRailCollapseEventModel,
+  clickRailEventModel,
+} from '../../event/eventConstants';
 import useNavigationConfigs from '../../hooks/useNavigationConfigs';
 import useScrollStyles from '../../hooks/useScrollStyles';
+import { RAIL_ICON_ONLY_STORAGE_KEY } from '../../layout/constants';
 import { useRailContext } from '../../layout/providers/RailProvider';
 import type { TSendEvent } from '../../providers/EventProvider';
 import { useWorkspaces, CreatorType } from '../../providers/WorkspaceProvider';
 import type { TProductKey } from '../../types';
 import { ProductKey } from '../../types';
 import useProductUrls from '../../utils/useProductUrls';
+import {
+  TempAdsFillIcon,
+  TempAdsIcon,
+  TempFinanceFillIcon,
+  TempFinanceIcon,
+  TempUpdatesFillIcon,
+  TempUpdatesIcon,
+} from '../icons/TempNavIcons';
 import useRailStyles from './Rail.styles';
 import RailHeader from './RailHeader';
 import RailItem from './RailItem';
+import SidebarToggleTooltip from './SidebarToggleTooltip';
 
 const FINANCES_PATHS = [
   '/dashboard/devex',
@@ -70,23 +70,34 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
 }) => {
   const {
     cx,
-    classes: { railContainer, railContainerCompact, railContainerTransition, labelsRailContainer },
+    classes: {
+      railContainer,
+      railContainerCompact,
+      railContainerIconOnly,
+      railContainerTransition,
+      labelsRailContainer,
+    },
   } = useRailStyles();
   const {
     classes: { scroll },
   } = useScrollStyles();
 
   const {
+    iconOnly,
     primaryRailCompact,
     drawerVariant,
     allToolsOpen,
     learnOpen,
     isReady,
     shouldAnimate,
+    setIconOnly,
+    setPrimaryRailCompact,
     setLearnOpen,
     setAllToolsOpen,
     setPrimaryRailOpen,
   } = useRailContext();
+
+  const compact = primaryRailCompact || iconOnly;
 
   const { currentProduct, enableAdsManager } = useNavigationConfigs();
   const {
@@ -109,13 +120,13 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
 
       if (event === 'Learn') {
         if (isOnDocsite) {
-          setLearnOpen(!learnOpen);
+          setLearnOpen(true);
         }
       } else {
         setLearnOpen(false);
       }
     },
-    [drawerVariant, learnOpen, sendEvent, setLearnOpen, setPrimaryRailOpen, isOnDocsite],
+    [drawerVariant, sendEvent, setLearnOpen, setPrimaryRailOpen, isOnDocsite],
   );
 
   const active = useMemo(() => {
@@ -181,12 +192,13 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
         classes={{
           root: cx(scroll, railContainer, {
             [railContainerTransition]: isReady,
-            [railContainerCompact]: primaryRailCompact,
-            [labelsRailContainer]: primaryRailCompact,
+            [railContainerCompact]: compact && !iconOnly,
+            [railContainerIconOnly]: iconOnly,
+            [labelsRailContainer]: compact,
           }),
         }}>
         <RailHeader
-          compact={primaryRailCompact}
+          compact={compact}
           icon={<RobloxIcon />}
           label={translate('Label.Creator')}
           onClick={() => selectItem('Header')}
@@ -196,26 +208,38 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
     );
   }
 
+  const onSidebarToggleClick = () => {
+    const next = !iconOnly;
+    sendEvent(clickNavPrimaryRailCollapseEventModel(next ? 'collapse' : 'expand'));
+    if (!next) {
+      setPrimaryRailCompact(false);
+    }
+    setIconOnly(next);
+    localStorage.setItem(RAIL_ICON_ONLY_STORAGE_KEY, String(next));
+  };
+
   return (
     <Grid
       classes={{
         root: cx(scroll, railContainer, {
           [railContainerTransition]: isReady,
-          [railContainerCompact]: primaryRailCompact,
-          [labelsRailContainer]: primaryRailCompact,
+          [railContainerCompact]: compact && !iconOnly,
+          [railContainerIconOnly]: iconOnly,
+          [labelsRailContainer]: compact,
         }),
       }}>
       <RailHeader
-        compact={primaryRailCompact}
+        compact={compact}
+        enableAnimation={isReady}
         icon={<RobloxIcon />}
         label={translate('Label.Creator')}
         onClick={() => selectItem('Header')}
         href={Dashboard.home}
       />
-      {isAuth && <WorkplaceSelector collapsed={primaryRailCompact} />}
+      {isAuth && <WorkplaceSelector collapsed={compact} />}
       <RailItem
         enableAnimation={isReady && shouldAnimate}
-        compact={primaryRailCompact}
+        compact={compact}
         icon={<BuilderHomeIcon />}
         active={active === 'Home'}
         activeIcon={<BuilderHomeFillIcon />}
@@ -226,9 +250,9 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
       {isAuth && (
         <RailItem
           enableAnimation={isReady && shouldAnimate}
-          compact={primaryRailCompact}
-          icon={<BuilderExperiencesIcon />}
-          activeIcon={<BuilderExperiencesFill />}
+          compact={compact}
+          icon={<Icon name='icon-regular-folder' size='Medium' />}
+          activeIcon={<Icon name='icon-filled-folder' size='Medium' />}
           active={active === 'Creations'}
           label={translate('Heading.Creations')}
           onClick={() => selectItem('Creations')}
@@ -237,25 +261,24 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
       )}
       <RailItem
         enableAnimation={isReady && shouldAnimate}
-        compact={primaryRailCompact}
-        icon={<BuilderInternIcon />}
-        activeIcon={<BuilderInternFillIcon />}
+        compact={compact}
+        icon={<Icon name='icon-regular-book-open' size='Medium' />}
+        activeIcon={<Icon name='icon-filled-book-open' size='Medium' />}
         active={active === 'Documentation'}
         label={translate('Heading.Learn')}
-        onClick={() => {
-          selectItem('Learn');
-        }}
+        onClick={() => selectItem('Learn')}
         href={
-          !isOnDocsite
-            ? `${Documentation.home.replace(/\/$/, '')}?navFromCreatorHub=true`
-            : undefined
-        } // if we're on docsite, use the menu to navigate (href is undefined)
+          // Same pattern as Creations/Store: in-product relative home, otherwise absolute entry URL.
+          isOnDocsite
+            ? Documentation.home
+            : `${Documentation.home.replace(/\/$/, '')}?navFromCreatorHub=true`
+        }
       />
       <RailItem
         enableAnimation={isReady && shouldAnimate}
-        compact={primaryRailCompact}
-        icon={<BuilderStoreIcon />}
-        activeIcon={<BuilderStoreFillIcon />}
+        compact={compact}
+        icon={<Icon name='icon-regular-shopping-basket' size='Medium' />}
+        activeIcon={<Icon name='icon-filled-shopping-basket' size='Medium' />}
         active={active === 'Store'}
         label={translate('Heading.Store')}
         onClick={() => selectItem('Store')}
@@ -263,7 +286,7 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
       />
       <RailItem
         enableAnimation={isReady && shouldAnimate}
-        compact={primaryRailCompact}
+        compact={compact}
         icon={<BuilderChatSideIcon />}
         activeIcon={<BuilderChatSideFillIcon />}
         active={active === 'Forum'}
@@ -273,9 +296,9 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
       />
       <RailItem
         enableAnimation={isReady && shouldAnimate}
-        compact={primaryRailCompact}
-        icon={<Icon name='icon-regular-curved-rectangle-megaphone' size='Medium' />}
-        activeIcon={<Icon name='icon-filled-curved-rectangle-megaphone' size='Medium' />}
+        compact={compact}
+        icon={<TempUpdatesIcon />}
+        activeIcon={<TempUpdatesFillIcon />}
         active={active === ProductKey.Updates}
         label={translate('Heading.Updates')}
         onClick={() => selectItem(ProductKey.Updates)}
@@ -283,12 +306,16 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
       />
       {isAuth && (
         <>
-          {!primaryRailCompact && <Divider flexItem />}
+          {(!compact || iconOnly) && (
+            <div className='padding-y-small width-full'>
+              <Divider />
+            </div>
+          )}
           <RailItem
             enableAnimation={isReady && shouldAnimate}
-            compact={primaryRailCompact}
-            icon={<BuilderWalletIcon />}
-            activeIcon={<BuilderWalletFillIcon />}
+            compact={compact}
+            icon={<TempFinanceIcon />}
+            activeIcon={<TempFinanceFillIcon />}
             active={active === 'Finances'}
             label={translate('Heading.Finances')}
             onClick={() => selectItem('Finances')}
@@ -296,8 +323,9 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
           />
           <RailItem
             enableAnimation={isReady && shouldAnimate}
-            compact={primaryRailCompact}
-            icon={<BuilderInsightsIcon />}
+            compact={compact}
+            icon={<Icon name='icon-regular-chart-three-vertical-bars' size='Medium' />}
+            activeIcon={<Icon name='icon-filled-chart-three-vertical-bars' size='Medium' />}
             active={active === 'Analytics'}
             label={translate('Title.Analytics')}
             onClick={() => selectItem('Analytics')}
@@ -306,9 +334,9 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
           {creatorType === CreatorType.Group && (
             <RailItem
               enableAnimation={isReady && shouldAnimate}
-              compact={primaryRailCompact}
-              icon={<Icon name='icon-regular-two-people' />}
-              activeIcon={<Icon name='icon-filled-two-people' />}
+              compact={compact}
+              icon={<Icon name='icon-regular-two-people' size='Medium' />}
+              activeIcon={<Icon name='icon-filled-two-people' size='Medium' />}
               active={active === 'Collaboration'}
               label={translate('Heading.Collaboration')}
               onClick={() => selectItem('Collaboration')}
@@ -317,22 +345,26 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
           )}
           <RailItem
             enableAnimation={isReady && shouldAnimate}
-            compact={primaryRailCompact}
+            compact={compact}
             active={active === ProductKey.Advertise}
-            icon={<BuilderMegaphoneIcon />}
-            activeIcon={<BuilderMegaphoneFillIcon />}
+            icon={<TempAdsIcon />}
+            activeIcon={<TempAdsFillIcon />}
             label={translate('Heading.Ads')}
             onClick={() => selectItem('Ads')}
             href={Ads.home}
           />
-          {!primaryRailCompact && <Divider flexItem />}
+          {(!compact || iconOnly) && (
+            <div className='padding-y-small width-full'>
+              <Divider />
+            </div>
+          )}
         </>
       )}
-      {isAuth || primaryRailCompact ? (
+      {isAuth || compact ? (
         <RailItem
           enableAnimation={isReady && shouldAnimate}
-          compact={primaryRailCompact}
-          icon={<BuilderNineDotGrid />}
+          compact={compact}
+          icon={<Icon name='icon-regular-three-dots-horizontal' size='Medium' />}
           label={translate('Heading.AllTools')}
           onClick={() => {
             if (isAuth) {
@@ -360,7 +392,7 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
       <RailItem
         enableAnimation={isReady && shouldAnimate}
         bottom
-        compact={primaryRailCompact}
+        compact={compact}
         icon={<RobloxIcon />}
         label={translate('Label.RobloxWebsite')}
         onClick={() => selectItem('RobloxWebsite')}
@@ -369,7 +401,7 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
       {!hideStudio && (
         <RailItem
           enableAnimation={isReady && shouldAnimate}
-          compact={primaryRailCompact}
+          compact={compact}
           icon={<StudioIcon />}
           label={translate('Heading.Studio')}
           onClick={() => {
@@ -377,6 +409,24 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
             openStudio();
           }}
         />
+      )}
+      {drawerVariant === 'persistent' && (
+        <SidebarToggleTooltip enabled collapsed={iconOnly}>
+          <RailItem
+            enableAnimation={isReady && shouldAnimate}
+            compact={compact}
+            icon={
+              <Icon
+                name={iconOnly ? 'icon-regular-sidebar' : 'icon-filled-sidebar'}
+                size='Medium'
+              />
+            }
+            label={translate(
+              iconOnly && !shouldAnimate ? 'Label.ShowSidebar' : 'Label.HideSidebar',
+            )}
+            onClick={onSidebarToggleClick}
+          />
+        </SidebarToggleTooltip>
       )}
     </Grid>
   );

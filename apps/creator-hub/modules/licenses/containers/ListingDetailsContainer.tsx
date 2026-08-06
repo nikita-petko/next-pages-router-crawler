@@ -4,6 +4,11 @@ import { useRobloxAuthentication } from '@rbx/auth';
 import { HubMeta, SiteName, buildTitle } from '@rbx/creator-hub-history';
 import { getProductionCreatorHubUrl } from '@rbx/env-utils';
 import { useFlag } from '@rbx/flags';
+import {
+  Alert as FoundationAlert,
+  Button as FoundationButton,
+  ProgressCircle,
+} from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { Grid, Typography } from '@rbx/ui';
 import { isShowcaseExperiencesEnabled as isShowcaseExperiencesEnabledFlag } from '@generated/flags/contentLicensing';
@@ -37,6 +42,37 @@ interface ListingDetailsContainerProps {
 const BASE_URL = getProductionCreatorHubUrl(process.env.buildTarget);
 
 const EMPTY_THUMBNAIL_ASSET_IDS: number[] = [];
+const MAX_SHOWCASED_EXPERIENCES = 10;
+const CANONICAL_POSITIVE_INTEGER_PATTERN = /^[1-9]\d*$/;
+const SHOWCASED_EXPERIENCES_HEADING_ID = 'showcased-experiences-heading';
+
+const getValidShowcasedUniverseIds = (
+  content: Array<{ contentType?: string; contentId?: string | null }> | null | undefined,
+) => {
+  const universeIds: number[] = [];
+  const seenUniverseIds = new Set<number>();
+
+  for (const contentReference of content ?? []) {
+    if (
+      contentReference.contentType !== 'Universe' ||
+      contentReference.contentId == null ||
+      !CANONICAL_POSITIVE_INTEGER_PATTERN.test(contentReference.contentId)
+    ) {
+      continue;
+    }
+    const universeId = Number(contentReference.contentId);
+    if (!Number.isSafeInteger(universeId) || seenUniverseIds.has(universeId)) {
+      continue;
+    }
+    universeIds.push(universeId);
+    seenUniverseIds.add(universeId);
+    if (universeIds.length === MAX_SHOWCASED_EXPERIENCES) {
+      break;
+    }
+  }
+
+  return universeIds;
+};
 
 /** A component that displays a full screen page of details of an IP listing. */
 const ListingDetailsContainer: FunctionComponent<ListingDetailsContainerProps> = ({
@@ -63,6 +99,11 @@ const ListingDetailsContainer: FunctionComponent<ListingDetailsContainerProps> =
     'Next showcased content',
     'Accessible label for the next button in the showcased content carousel',
     translationKey('Action.NextShowcasedContent', TranslationNamespace.Licenses),
+  );
+  const retryShowcasedExperiencesLabel = tPendingTranslation(
+    'Retry',
+    'Action to retry a failed request',
+    translationKey('Action.Retry', TranslationNamespace.AgreementsManager),
   );
 
   const { logEvent } = useLicenseManagerLogger();
@@ -91,24 +132,12 @@ const ListingDetailsContainer: FunctionComponent<ListingDetailsContainerProps> =
     listingId,
     enabled: showcaseContentEnabled,
   });
-  const showcasedUniverseIds = useMemo(() => {
-    return (
-      showcaseContentRequest.data.content?.flatMap((contentReference) => {
-        const universeId = Number(contentReference.contentId);
-        return contentReference.contentType === 'Universe' &&
-          Number.isSafeInteger(universeId) &&
-          universeId > 0
-          ? [universeId]
-          : [];
-      }) ?? []
-    );
-  }, [showcaseContentRequest.data.content]);
-  const uniqueShowcasedUniverseIds = useMemo(
-    () => [...new Set(showcasedUniverseIds)],
-    [showcasedUniverseIds],
+  const showcasedUniverseIds = useMemo(
+    () => getValidShowcasedUniverseIds(showcaseContentRequest.data?.content),
+    [showcaseContentRequest.data?.content],
   );
   const showcaseExperienceDetailsRequest = useGetShowcaseExperienceDetails({
-    universeIds: uniqueShowcasedUniverseIds,
+    universeIds: showcasedUniverseIds,
     enabled:
       showcaseContentEnabled &&
       !showcaseContentRequest.isPending &&
@@ -133,7 +162,14 @@ const ListingDetailsContainer: FunctionComponent<ListingDetailsContainerProps> =
     );
     return showcasedUniverseIds.flatMap((universeId, index) => {
       const details = detailsByUniverseId.get(universeId);
-      if (details == null) {
+      const name = details?.name?.trim();
+      const rootPlaceId = details?.rootPlaceId;
+      if (
+        !name ||
+        typeof rootPlaceId !== 'number' ||
+        !Number.isSafeInteger(rootPlaceId) ||
+        rootPlaceId <= 0
+      ) {
         return [];
       }
       return [
@@ -142,12 +178,9 @@ const ListingDetailsContainer: FunctionComponent<ListingDetailsContainerProps> =
           content: (
             <ShowcaseContentTile
               universeId={universeId}
-              name={details.name ?? ''}
-              link={
-                details.rootPlaceId != null
-                  ? EXTERNAL_EXPERIENCE_HREF(details.rootPlaceId)
-                  : undefined
-              }
+              name={name}
+              link={EXTERNAL_EXPERIENCE_HREF(rootPlaceId)}
+              showExternalIcon={false}
               onClick={() => handleShowcaseContentClick(universeId, index + 1)}
             />
           ),
@@ -178,12 +211,64 @@ const ListingDetailsContainer: FunctionComponent<ListingDetailsContainerProps> =
   const handleNextShowcaseContentClick = useCallback(() => {
     handleShowcaseCarouselNavigationClick('next');
   }, [handleShowcaseCarouselNavigationClick]);
+  const isShowcaseContentError =
+    showcaseContentRequest.isError ||
+    (showcasedUniverseIds.length > 0 && showcaseExperienceDetailsRequest.isError);
+  const failedShowcaseRequest =
+    showcaseContentRequest.isError && showcaseExperienceDetailsRequest.isError
+      ? 'showcase_content_and_universe_details'
+      : showcaseContentRequest.isError
+        ? 'showcase_content'
+        : 'universe_details';
+  const isShowcaseContentRetrying =
+    isShowcaseContentError &&
+    (showcaseContentRequest.isFetching || showcaseExperienceDetailsRequest.isFetching);
+  const isShowcaseContentLoading =
+    showcaseContentRequest.isPending ||
+    (showcasedUniverseIds.length > 0 && showcaseExperienceDetailsRequest.isPending) ||
+    isShowcaseContentRetrying;
   const hasShowcasedExperiences =
-    !showcaseContentRequest.isPending &&
-    !showcaseContentRequest.isError &&
-    !showcaseExperienceDetailsRequest.isPending &&
-    !showcaseExperienceDetailsRequest.isError &&
-    showcasedCarouselItems.length > 0;
+    !isShowcaseContentLoading && !isShowcaseContentError && showcasedCarouselItems.length > 0;
+  const handleRetryShowcasedExperiences = useCallback(() => {
+    logEvent(LicenseManagerClickEvent.PublicListingDetailsPageRetryShowcasedExperiencesClickEvent, {
+      listingId,
+      failedRequest: failedShowcaseRequest,
+    });
+    if (showcaseContentRequest.isError) {
+      void showcaseContentRequest.refetch();
+    }
+    if (showcaseExperienceDetailsRequest.isError) {
+      void showcaseExperienceDetailsRequest.refetch();
+    }
+  }, [
+    failedShowcaseRequest,
+    listingId,
+    logEvent,
+    showcaseContentRequest,
+    showcaseExperienceDetailsRequest,
+  ]);
+  useEffect(() => {
+    if (isShowcaseContentError) {
+      logEvent(
+        LicenseManagerImpressionEvent.PublicListingDetailsPageShowcasedExperiencesLoadFailureImpressionEvent,
+        {
+          listingId,
+          failedRequest: failedShowcaseRequest,
+        },
+      );
+    }
+  }, [failedShowcaseRequest, isShowcaseContentError, listingId, logEvent]);
+  useEffect(() => {
+    if (hasShowcasedExperiences) {
+      logOnce(
+        LicenseManagerImpressionEvent.PublicListingDetailsPageShowcasedExperiencesImpressionEvent,
+        {
+          listingId,
+          contentCount: showcasedCarouselItems.length,
+        },
+      );
+    }
+  }, [hasShowcasedExperiences, listingId, logOnce, showcasedCarouselItems.length]);
 
   const thumbnailAssetIds = useMemo(() => {
     if (!listing) {
@@ -282,8 +367,9 @@ const ListingDetailsContainer: FunctionComponent<ListingDetailsContainerProps> =
         </Grid>
         {isShowcaseExperiencesFlagReady &&
           isShowcaseExperiencesEnabled &&
-          hasShowcasedExperiences && (
+          (isShowcaseContentLoading || isShowcaseContentError || hasShowcasedExperiences) && (
             <Grid
+              component='section'
               item
               container
               flexDirection='column'
@@ -293,16 +379,48 @@ const ListingDetailsContainer: FunctionComponent<ListingDetailsContainerProps> =
               width='100%'
               maxWidth='100%'>
               <Grid item>
-                <Typography variant='h5'>{showcasedExperiencesLabel}</Typography>
+                <Typography id={SHOWCASED_EXPERIENCES_HEADING_ID} variant='h5'>
+                  {showcasedExperiencesLabel}
+                </Typography>
               </Grid>
               <Grid item minWidth={0} width='100%' maxWidth='100%'>
-                <ShowcaseContentCarousel
-                  items={showcasedCarouselItems}
-                  previousAriaLabel={previousShowcasedContentAriaLabel}
-                  nextAriaLabel={nextShowcasedContentAriaLabel}
-                  onPreviousClick={handlePreviousShowcaseContentClick}
-                  onNextClick={handleNextShowcaseContentClick}
-                />
+                {isShowcaseContentLoading ? (
+                  <div
+                    aria-busy='true'
+                    className='flex justify-center items-center min-height-[174px]'>
+                    <ProgressCircle
+                      variant='Indeterminate'
+                      ariaLabel={translate('Label.Loading')}
+                      size='Medium'
+                    />
+                  </div>
+                ) : isShowcaseContentError ? (
+                  <FoundationAlert
+                    variant='Feedback'
+                    severity='Error'
+                    hasCloseAffordance={false}
+                    className='!width-fit !stroke-default [&>div[aria-hidden=true]]:!bg-shift-100'>
+                    <span className='inline-flex items-center gap-small'>
+                      <span>{translate('Error.LoadingData')}</span>
+                      <FoundationButton
+                        variant='Link'
+                        size='Small'
+                        className='![height:auto] !padding-none !text-label-medium [&>div]:!bg-none [&>div]:!transition-none [&>span>span]:!padding-none'
+                        onClick={handleRetryShowcasedExperiences}>
+                        {retryShowcasedExperiencesLabel}
+                      </FoundationButton>
+                    </span>
+                  </FoundationAlert>
+                ) : (
+                  <ShowcaseContentCarousel
+                    items={showcasedCarouselItems}
+                    previousAriaLabel={previousShowcasedContentAriaLabel}
+                    nextAriaLabel={nextShowcasedContentAriaLabel}
+                    ariaLabelledBy={SHOWCASED_EXPERIENCES_HEADING_ID}
+                    onPreviousClick={handlePreviousShowcaseContentClick}
+                    onNextClick={handleNextShowcaseContentClick}
+                  />
+                )}
               </Grid>
             </Grid>
           )}

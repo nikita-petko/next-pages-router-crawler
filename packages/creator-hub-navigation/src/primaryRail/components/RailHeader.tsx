@@ -7,13 +7,30 @@ type TRailHeaderProps = {
   href: string;
   label: string;
   compact: boolean;
+  enableAnimation?: boolean;
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
 };
 
-const RailHeader: React.FC<TRailHeaderProps> = ({ icon, href, label, compact, onClick }) => {
+const RailHeader: React.FC<TRailHeaderProps> = ({
+  icon,
+  href,
+  label,
+  compact,
+  enableAnimation = false,
+  onClick,
+}) => {
   const {
     cx,
-    classes: { header, headerCompact, headerContainer, startIcon, headerLabel, label: labelClass },
+    classes: {
+      header,
+      headerCompact,
+      headerContainer,
+      startIcon,
+      headerLabel,
+      labelTransition,
+      labelHidden,
+      label: labelClass,
+    },
   } = useRailStyles();
 
   return (
@@ -30,15 +47,16 @@ const RailHeader: React.FC<TRailHeaderProps> = ({ icon, href, label, compact, on
         color='primary'
         startIcon={icon}
         fullWidth={compact}>
-        {!compact && (
-          <Typography
-            variant='hero'
-            classes={{
-              root: cx(labelClass, headerLabel),
-            }}>
-            {label}
-          </Typography>
-        )}
+        <Typography
+          variant='hero'
+          classes={{
+            root: cx(labelClass, headerLabel, {
+              [labelTransition]: enableAnimation,
+              [labelHidden]: compact,
+            }),
+          }}>
+          {label}
+        </Typography>
       </Button>
     </div>
   );

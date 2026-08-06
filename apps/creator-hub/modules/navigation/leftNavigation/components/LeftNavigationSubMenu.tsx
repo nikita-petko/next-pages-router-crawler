@@ -53,6 +53,9 @@ const LeftNavigationSubMenu = <T,>({
     <TreeItem
       nodeId={nodeId}
       label={labelContent}
+      // Category rows only expand/collapse (or route via label onClick when
+      // parentItem is set) — never treat them as the selected page.
+      disableSelection
       slots={{
         collapseIcon: CollapseIcon,
         expandIcon: ExpandIcon,

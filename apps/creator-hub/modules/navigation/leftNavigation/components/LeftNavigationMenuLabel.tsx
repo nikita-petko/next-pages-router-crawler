@@ -11,6 +11,28 @@ const useStyles = makeStyles()((theme) => ({
   root: {
     fontWeight: 'inherit',
     color: theme.palette.content.standard,
+    width: '100%',
+  },
+  labelRow: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    flexWrap: 'nowrap',
+  },
+  labelText: {
+    flexGrow: 1,
+    minWidth: 0,
+    overflowWrap: 'break-word',
+  },
+  trailing: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    height: 24,
+    paddingLeft: 8,
+    whiteSpace: 'nowrap',
   },
 }));
 
@@ -23,15 +45,15 @@ const LeftNavigationMenuLabel: FunctionComponent<
   const router = useRouter();
   const { title, adornment } = item;
   const {
-    classes: { root },
+    classes: { root, labelRow, labelText, trailing },
   } = useStyles();
 
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- MenuItem.content is typed unknown by the shared nav contract; left-nav items always carry a Feature
   const currentItem = item.content as Feature;
   const labelInfoNode = adornment ? (
-    <div className='flex flex-row items-center no-wrap'>
-      <span className='grow-1 min-width-0 [overflow-wrap:break-word]'>{title}</span>
-      <span className='flex shrink-0 items-center text-no-wrap margin-left-[4px]'>{adornment}</span>
+    <div className={labelRow}>
+      <span className={labelText}>{title}</span>
+      <span className={trailing}>{adornment}</span>
     </div>
   ) : (
     title

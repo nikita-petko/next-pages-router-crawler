@@ -6,7 +6,6 @@ import AffiliateProgramProvider from '@modules/affiliate-program/providers/Affil
 import CreateAssetFormProvider from '@modules/asset-creation/components/providers/CreateAssetFormProvider';
 import Authenticated from '@modules/authentication/Authenticated';
 import CreationsIALeftNav from '@modules/creations/common/components/CreationsIALeftNav';
-import useEnableCreationsNavLayout from '@modules/creations/common/hooks/useEnableCreationsNavLayout';
 import useEnablePublishingConsolidation from '@modules/creations/common/hooks/useEnablePublishingConsolidation';
 import DevelopmentItemsBreadcrumbs from '@modules/creations/contentManager/developmentItems/components/DevelopmentItemsBreadcrumbs';
 import { isDevelopmentItemAsset } from '@modules/creations/contentManager/developmentItems/developmentItemsInventoryUtils';
@@ -23,7 +22,6 @@ const getActiveTab = (value: string | string[] | undefined): Asset => {
 
 const CreationsPageLayout = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
-  const shouldUseCreationsNavLayout = useEnableCreationsNavLayout();
   const enablePublishingConsolidation = useEnablePublishingConsolidation();
   const showPublishingConsolidation =
     enablePublishingConsolidation && isDevelopmentItemAsset(getActiveTab(router.query.activeTab));
@@ -37,8 +35,8 @@ const CreationsPageLayout = ({ children }: { children: ReactNode }) => {
           <Translate namespace='CreatorDashboard.Navigation' translationKey='Heading.Creations' />
         )
       }
-      secondaryRail={shouldUseCreationsNavLayout ? <CreationsIALeftNav /> : undefined}
-      secondarySize={shouldUseCreationsNavLayout ? 'small' : undefined}
+      secondaryRail={<CreationsIALeftNav />}
+      secondarySize='small'
       noBreadCrumbs>
       <CreateAssetFormProvider>{children}</CreateAssetFormProvider>
     </CreatorHubLayout>

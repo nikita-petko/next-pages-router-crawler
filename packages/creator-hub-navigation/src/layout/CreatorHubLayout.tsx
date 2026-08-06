@@ -1,5 +1,5 @@
-import { usePathname } from 'next/navigation';
 import React, { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import {
   NavigationSearchProvider,
   SearchContainer,
@@ -8,7 +8,7 @@ import {
 } from '@rbx/creator-hub-search';
 import { Grid, makeStyles } from '@rbx/ui';
 import useNavigationConfigs from '../hooks/useNavigationConfigs';
-import PrimaryRail from '../primaryRail/PrimaryRail';
+import PrimaryRailContainer from '../primaryRail/PrimaryRail';
 import EventProvider from '../providers/EventProvider';
 import WorkspaceProvider from '../providers/WorkspaceProvider';
 import getRobloxSiteDomain from '../utils/getRobloxSiteDomain';
@@ -22,6 +22,7 @@ const useStyles = makeStyles()(() => ({
     display: 'grid',
     height: '100vh',
     width: '100vw',
+    overflow: 'hidden',
     gridTemplateAreas: `
       "${PRIMARY_RAIL_GRID_AREA} ${HEADER_GRID_AREA}"
       "${PRIMARY_RAIL_GRID_AREA} ${CONTENT_GRID_AREA}"
@@ -34,7 +35,7 @@ const useStyles = makeStyles()(() => ({
 type LayoutComponents = {
   Header: typeof Header;
   PageContent: typeof PageContent;
-  Rail: typeof PrimaryRail;
+  Rail: typeof PrimaryRailContainer;
 };
 
 export const CreatorHubLayout: React.FC<React.PropsWithChildren> = ({ children }) => {
@@ -97,6 +98,6 @@ const CreatorHubLayoutContainer: React.FC<React.PropsWithChildren> & LayoutCompo
 
 CreatorHubLayoutContainer.Header = Header;
 CreatorHubLayoutContainer.PageContent = PageContent;
-CreatorHubLayoutContainer.Rail = PrimaryRail;
+CreatorHubLayoutContainer.Rail = PrimaryRailContainer;
 
 export default CreatorHubLayoutContainer;

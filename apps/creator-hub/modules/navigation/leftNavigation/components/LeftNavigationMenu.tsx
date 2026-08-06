@@ -38,7 +38,9 @@ const LeftNavigationMenu = <T,>({
         </Typography>
       )}
       <TreeView
-        classes={{ root: styles.treeViewRoot }}
+        classes={{
+          root: styles.treeViewRoot,
+        }}
         selectedItems={activeKey ?? ''}
         key={header}
         defaultExpandedItems={defaultExpanded ?? []}
@@ -73,7 +75,7 @@ const LeftNavigationMenu = <T,>({
                 }
               }}
               label={
-                <Typography variant='smallLabel2' color='primary'>
+                <Typography variant='smallLabel2' color='primary' className='width-full'>
                   <LeftNavigationMenuLabel item={item} />
                 </Typography>
               }

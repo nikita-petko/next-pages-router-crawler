@@ -8,7 +8,7 @@ import { getPrettifiedNumber } from '@rbx/core';
 import { Badge, Button, Icon, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
 import { withTranslation, useTranslation } from '@rbx/intl';
 import { Thumbnail2d, ThumbnailTypes, ReturnPolicy } from '@rbx/thumbnails';
-import { IconButton, MoreVertIcon, useTheme } from '@rbx/ui';
+import { IconButton, MoreVertIcon } from '@rbx/ui';
 import {
   analyticsExploreNavigationItem,
   analyticsAssistantNavigationItem,
@@ -41,6 +41,8 @@ const { dashboard } = creatorHub;
 
 const ANALYTICS_WINDOW_DAYS = 7;
 
+const EXPERIENCE_TILE_HOVER_Z_INDEX = 1048;
+
 export type TExperienceDataTileV2Props = {
   data: TExperience;
   insight?: TExperienceInsight | null;
@@ -67,7 +69,6 @@ const ExperienceDataTileV2: FunctionComponent<
   const { id, name, isActive, isArchived, rootPlaceId, isFriendsOnly, audiences, creatorType } =
     data;
   const { translate, translateWithNamespace } = useTranslation();
-  const theme = useTheme();
   const [menu, setMenu] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isInsightHovered, setIsInsightHovered] = useState(false);
@@ -502,9 +503,7 @@ const ExperienceDataTileV2: FunctionComponent<
           backgroundColor: 'var(--color-surface-0)',
           backgroundImage: `linear-gradient(var(--color-shift-${isHovered ? '200' : '100'}), var(--color-shift-${isHovered ? '200' : '100'}))`,
           ...(isHovered && {
-            // Above primary nav (appBar) so privacy badge tooltips aren't covered.
-            // Also keeps hover actions above neighboring tiles.
-            zIndex: theme.zIndex.tooltip,
+            zIndex: EXPERIENCE_TILE_HOVER_Z_INDEX,
             borderTopLeftRadius: 12,
             borderTopRightRadius: 12,
           }),

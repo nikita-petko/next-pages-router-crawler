@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Translate } from '@rbx/intl';
 import CreatorHubLayout from '@modules/creator-hub-layout/CreatorHubLayout';
 import AnalyticsHomePageWrapper from '@modules/experience-analytics-shared/pages/AnalyticsHomePageWrapper';
+import AnalyticsLeftRail from './AnalyticsLeftRail';
 
 export default function getAnalyticsHomePageLayout(page: NonNullable<ReactNode>) {
   return (
@@ -9,7 +10,9 @@ export default function getAnalyticsHomePageLayout(page: NonNullable<ReactNode>)
       title={
         <Translate namespace='CreatorDashboard.Navigation' translationKey='Heading.Analytics' />
       }
-      noBreadCrumbs>
+      noBreadCrumbs
+      secondaryRail={<AnalyticsLeftRail />}
+      secondarySize='small'>
       <AnalyticsHomePageWrapper>{page}</AnalyticsHomePageWrapper>
     </CreatorHubLayout>
   );

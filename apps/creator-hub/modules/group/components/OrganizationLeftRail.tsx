@@ -1,5 +1,5 @@
-import { useRouter } from 'next/router';
 import React, { useMemo } from 'react';
+import { useRouter } from 'next/router';
 import { useTranslation } from '@rbx/intl';
 import { Thumbnail2d, ThumbnailTypes, GroupIconSize } from '@rbx/thumbnails';
 import { makeStyles } from '@rbx/ui';
@@ -10,6 +10,10 @@ import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider
 const useStyles = makeStyles()(() => ({
   avatar: {
     display: 'block',
+    width: '100%',
+    height: '100%',
+    maxWidth: 32,
+    maxHeight: 32,
   },
 }));
 const OrganizationLeftRail: React.FC = () => {
@@ -71,8 +75,8 @@ const OrganizationLeftRail: React.FC = () => {
           type={ThumbnailTypes.groupIcon}
           // eslint-disable-next-line no-underscore-dangle -- imported for package
           size={GroupIconSize._150x150}
-          targetId={group?.id || 0}
-          alt={group?.name || ''}
+          targetId={group?.id ?? 0}
+          alt={group?.name ?? ''}
         />
       }
       header={group?.name}

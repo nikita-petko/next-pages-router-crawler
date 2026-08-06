@@ -1,6 +1,7 @@
 import type { FunctionComponent, ReactElement } from 'react';
 import React, { useMemo } from 'react';
 import { buildBreadcrumb, buildTitle, HubMeta } from '@rbx/creator-hub-history';
+import { useRailContext } from '@rbx/creator-hub-navigation';
 import { AppBar, Grid, useMediaQuery } from '@rbx/ui';
 import type { FormattedText } from '@modules/analytics-translations/types';
 import withNamespaceSwitchedTranslation from '@modules/analytics-translations/withNamespaceSwitchedTranslation';
@@ -62,6 +63,7 @@ const AnalyticsHomePageLayout: FunctionComponent<AnalyticsHomePageLayoutProps> =
   navigationItem,
 }) => {
   const { translate } = useRAQIV2TranslationDependencies();
+  const { hasSecondaryRail } = useRailContext();
   const {
     classes: { appBarStyles },
   } = useAnalyticsPageStyles();
@@ -71,10 +73,10 @@ const AnalyticsHomePageLayout: FunctionComponent<AnalyticsHomePageLayoutProps> =
     return tabs?.map((tab) => ({ label: tab.label, key: tab.key }));
   }, [tabs]);
   const tabChildrenByKey = useMemo(() => {
-    if (tabs) {
-      return new Map(tabs.map((tab) => [tab.key, tab.content]));
+    if (!tabs) {
+      return undefined;
     }
-    return;
+    return new Map(tabs.map((tab) => [tab.key, tab.content]));
   }, [tabs]);
 
   const { seoTitle, hubMetaTitle, breadcrumb } = useMemo(() => {
@@ -109,10 +111,12 @@ const AnalyticsHomePageLayout: FunctionComponent<AnalyticsHomePageLayoutProps> =
           <HubMeta title={hubMetaTitle} seoTitle={seoTitle} breadcrumb={breadcrumb} />
         )}
         <AnalyticsPageLayout {...{ title, description, heroElement, addHeroDivider }}>
-          <Grid container direction='column' spacing={2} paddingTop={2}>
-            <Grid item>
-              <AnalyticsTabs tabs={tabConfigs} />
-            </Grid>
+          <Grid container direction='column' spacing={2} paddingTop={hasSecondaryRail ? 0 : 2}>
+            {!hasSecondaryRail && (
+              <Grid item>
+                <AnalyticsTabs tabs={tabConfigs} />
+              </Grid>
+            )}
             <Grid item>{tabChildrenByKey.get(tabKey)}</Grid>
           </Grid>
         </AnalyticsPageLayout>

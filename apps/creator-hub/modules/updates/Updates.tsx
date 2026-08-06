@@ -2,6 +2,7 @@ import type { FunctionComponent } from 'react';
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { buildTitle, HubMeta } from '@rbx/creator-hub-history';
+import { useRailContext } from '@rbx/creator-hub-navigation';
 import { Button } from '@rbx/foundation-ui';
 import { withTranslation, useTranslation } from '@rbx/intl';
 import { Grid, Typography, useMediaQuery } from '@rbx/ui';
@@ -16,17 +17,16 @@ type TabType = 'changelog' | 'roadmap';
 const UpdatesPage: FunctionComponent = () => {
   const { classes } = useUpdatesPageStyles();
   const router = useRouter();
+  const { hasSecondaryRail } = useRailContext();
   const { translate } = useTranslation();
   const isSmallScreen = useMediaQuery((theme) => theme.breakpoints.down('Medium'));
   const routeTab: TabType = router.pathname.includes('/roadmap') ? 'roadmap' : 'changelog';
-  const [activeTab, setActiveTab] = useState<TabType>(routeTab);
+  const [pendingTab, setPendingTab] = useState<TabType | null>(null);
+  const activeTab = pendingTab ?? routeTab;
 
-  useEffect(() => {
-    if (router.isReady) {
-      // oxlint-disable-next-line react/react-compiler -- pre-existing: activeTab is route-derived but also set optimistically in handleTabChange, so it can't collapse into a plain derivation
-      setActiveTab(routeTab);
-    }
-  }, [router.isReady, routeTab]);
+  if (pendingTab !== null && pendingTab === routeTab) {
+    setPendingTab(null);
+  }
 
   useEffect(() => {
     router.prefetch('/updates').catch(() => {});
@@ -42,12 +42,12 @@ const UpdatesPage: FunctionComponent = () => {
       EUpdatesPageSection.TabNavigation,
       { tab },
     );
-    setActiveTab(tab);
+    setPendingTab(tab);
 
     // Use normal route transition so page-level wrappers/translations load correctly.
     const newPath = tab === 'roadmap' ? '/updates/roadmap' : '/updates';
     router.push(newPath, undefined, { scroll: false }).catch(() => {
-      setActiveTab(routeTab);
+      setPendingTab(null);
     });
   };
 
@@ -57,20 +57,22 @@ const UpdatesPage: FunctionComponent = () => {
         <div className={classes.tabHeaderStack}>
           {/* Tab Navigation */}
           <div className={classes.tabNavigation}>
-            <div className={classes.tabButtons}>
-              <button
-                type='button'
-                className={`${classes.tabButton} ${activeTab === 'changelog' ? classes.tabButtonActive : ''}`}
-                onClick={() => handleTabChange('changelog')}>
-                <Typography variant='smallLabel1'>{translate('Heading.Changelog')}</Typography>
-              </button>
-              <button
-                type='button'
-                className={`${classes.tabButton} ${activeTab === 'roadmap' ? classes.tabButtonActive : ''}`}
-                onClick={() => handleTabChange('roadmap')}>
-                <Typography variant='smallLabel1'>{translate('Label.Roadmap')}</Typography>
-              </button>
-            </div>
+            {!hasSecondaryRail && (
+              <div className={classes.tabButtons}>
+                <button
+                  type='button'
+                  className={`${classes.tabButton} ${activeTab === 'changelog' ? classes.tabButtonActive : ''}`}
+                  onClick={() => handleTabChange('changelog')}>
+                  <Typography variant='smallLabel1'>{translate('Heading.Changelog')}</Typography>
+                </button>
+                <button
+                  type='button'
+                  className={`${classes.tabButton} ${activeTab === 'roadmap' ? classes.tabButtonActive : ''}`}
+                  onClick={() => handleTabChange('roadmap')}>
+                  <Typography variant='smallLabel1'>{translate('Label.Roadmap')}</Typography>
+                </button>
+              </div>
+            )}
             <div className={classes.tabActionsWrapper}>
               <div className={classes.tabActions}>
                 {!isSmallScreen && (

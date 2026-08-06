@@ -30,13 +30,11 @@ import {
   TAXONOMY_HOST_ASSET,
 } from '../../avatarItem/utils/taxonomyRoutingUtils';
 import useCreationsFilters from '../../common/hooks/useCreationsFilters';
-import useEnableCreationsNavLayout from '../../common/hooks/useEnableCreationsNavLayout';
 import useEnablePublishingConsolidation from '../../common/hooks/useEnablePublishingConsolidation';
 import { isDevelopmentItemAsset } from '../../contentManager/developmentItems/developmentItemsInventoryUtils';
 import { isPrimitiveAssetType } from '../../developerItem/primitives/types';
 import menuItems from '../../menu/constants/MenuConstants';
 import CreationsIANavigationControls from '../../menu/containers/CreationsIANavigationControls';
-import CreationsMenuContainer from '../../menu/containers/CreationsMenuContainer';
 import creationsMenuManager from '../../menu/implementations/CreationsMenuManager';
 import type MenuState from '../../menu/interfaces/MenuState';
 import type { VerificationMetadataContextValue } from '../../verification/hooks/VerificationMetadataContext';
@@ -125,7 +123,6 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
   const isAvatarLooksEnabled = useAvatarLooksGate();
   const { translate } = useTranslation();
   const isTaxonomyEnabled = useTaxonomyDashboardGate();
-  const enableCreationsNavLayout = useEnableCreationsNavLayout();
   const enablePublishingConsolidation = useEnablePublishingConsolidation();
   const previousAssetTypeRef = useRef<Asset | undefined>(undefined);
 
@@ -287,7 +284,7 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
       return (
         <DevelopmentItemsInventory
           groupId={currentGroup?.id}
-          useTabNavigationSpacing={!enableCreationsNavLayout}
+          useTabNavigationSpacing={false}
           userId={currentUser?.id}
         />
       );
@@ -345,7 +342,6 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
     assetType,
     currentGroup?.id,
     currentUser?.id,
-    enableCreationsNavLayout,
     isMarketplaceAssetType,
     showPublishingConsolidation,
   ]);
@@ -369,33 +365,12 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
       <section className={section}>
         <Grid container direction='column' className={container}>
           <AgeVerificationUpsellBanner trackingPage={AgeVerificationUpsellPage.Creations} />
-          {showPublishingConsolidation ? (
-            !enableCreationsNavLayout && (
-              <CreationsMenuContainer
-                menuItems={filteredMenuItems}
-                menuState={validatedMenuState}
-                onMenuStateChange={onMenuStateChange}
-                verificationMetadata={verificationMetadata}
-                group={currentGroup}
-                isMarketplaceAssetType={isMarketplaceAssetType}
-                hideContextualControls
-              />
-            )
-          ) : enableCreationsNavLayout ? (
+          {!showPublishingConsolidation && (
             <CreationsIANavigationControls
               menuState={validatedMenuState}
               onMenuStateChange={onMenuStateChange}
               verificationMetadata={verificationMetadata}
               group={currentGroup}
-            />
-          ) : (
-            <CreationsMenuContainer
-              menuItems={filteredMenuItems}
-              menuState={validatedMenuState}
-              onMenuStateChange={onMenuStateChange}
-              verificationMetadata={verificationMetadata}
-              group={currentGroup}
-              isMarketplaceAssetType={isMarketplaceAssetType}
             />
           )}
           {shouldRenderGrowthBannerOnTab && <AudienceReachGrowthOpportunitiesBanner />}

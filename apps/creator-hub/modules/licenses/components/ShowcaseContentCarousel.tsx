@@ -13,6 +13,7 @@ type ShowcaseContentCarouselProps = {
   items: readonly ShowcaseContentCarouselItem[];
   previousAriaLabel: string;
   nextAriaLabel: string;
+  ariaLabelledBy: string;
   onPreviousClick?: () => void;
   onNextClick?: () => void;
 };
@@ -26,6 +27,7 @@ const ShowcaseContentCarousel: FunctionComponent<ShowcaseContentCarouselProps> =
   items,
   previousAriaLabel,
   nextAriaLabel,
+  ariaLabelledBy,
   onPreviousClick,
   onNextClick,
 }) => {
@@ -95,8 +97,9 @@ const ShowcaseContentCarousel: FunctionComponent<ShowcaseContentCarouselProps> =
 
   return (
     <div className='group relative min-width-0 width-full'>
-      <div
+      <section
         ref={trackRef}
+        aria-labelledby={ariaLabelledBy}
         data-testid='showcase-content-carousel-track'
         className='flex gap-medium min-width-0 width-full [overflow-x:auto] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
         {items.map((item) => (
@@ -107,7 +110,7 @@ const ShowcaseContentCarousel: FunctionComponent<ShowcaseContentCarouselProps> =
             {item.content}
           </div>
         ))}
-      </div>
+      </section>
 
       {canScrollPrevious && (
         <IconButton

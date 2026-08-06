@@ -17,6 +17,7 @@ import railReducer, { createInitialState } from './RailReducer';
 type TRailProviderContext = {
   primaryRailOpen: boolean;
   primaryRailCompact: boolean;
+  iconOnly: boolean;
   drawerVariant: 'temporary' | 'persistent';
   hasSecondaryRail: boolean;
   allToolsOpen: boolean;
@@ -25,6 +26,7 @@ type TRailProviderContext = {
   shouldAnimate: boolean;
   setHasSecondaryRail: (collapsed: boolean) => void;
   setPrimaryRailCompact: (compact: boolean) => void;
+  setIconOnly: (value: boolean) => void;
   setPrimaryRailOpen: (open: boolean) => void;
   setAllToolsOpen: (open: boolean) => void;
   setLearnOpen: (open: boolean) => void;
@@ -34,6 +36,7 @@ type TRailProviderContext = {
 export const RailProviderContext = createContext<TRailProviderContext>({
   primaryRailOpen: false,
   primaryRailCompact: false,
+  iconOnly: false,
   hasSecondaryRail: false,
   drawerVariant: 'persistent',
   learnOpen: false,
@@ -42,6 +45,7 @@ export const RailProviderContext = createContext<TRailProviderContext>({
   shouldAnimate: false,
   setHasSecondaryRail: () => {},
   setPrimaryRailCompact: () => {},
+  setIconOnly: () => {},
   setPrimaryRailOpen: () => {},
   setAllToolsOpen: () => {},
   setLearnOpen: () => {},
@@ -147,6 +151,14 @@ export const RailProvider: React.FC<PropsWithChildren> = ({ children }) => {
     [animateTransition],
   );
 
+  const setIconOnly = useCallback(
+    (value: boolean) => {
+      animateTransition();
+      dispatch({ type: 'setIconOnly', payload: value });
+    },
+    [animateTransition],
+  );
+
   const setLearnNavigatedFromCreatorHub = useCallback(() => {
     dispatch({ type: 'setLearnNavigatedFromCreatorHub' });
   }, []);
@@ -154,10 +166,12 @@ export const RailProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const value = useMemo(
     () => ({
       ...state,
+      iconOnly: state.drawerVariant === 'persistent' && state.iconOnly,
       isReady,
       shouldAnimate,
       setHasSecondaryRail,
       setPrimaryRailCompact,
+      setIconOnly,
       setPrimaryRailOpen,
       setLearnOpen,
       setLearnNavigatedFromCreatorHub,
@@ -168,6 +182,7 @@ export const RailProvider: React.FC<PropsWithChildren> = ({ children }) => {
       shouldAnimate,
       setAllToolsOpen,
       setHasSecondaryRail,
+      setIconOnly,
       setLearnOpen,
       setLearnNavigatedFromCreatorHub,
       setPrimaryRailCompact,
