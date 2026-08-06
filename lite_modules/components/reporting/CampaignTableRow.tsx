@@ -1,10 +1,10 @@
 import { Avatar, TableCell, TableRow } from '@rbx/foundation-ui';
-import { Tooltip } from '@rbx/ui';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { cloneElement, ReactNode } from 'react';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
+import AppTooltip from '@components/common/AppTooltip';
 import DismissibleTooltip from '@components/common/DismissibleTooltip';
 import useGenericTableRowStyles from '@components/reporting/GenericTableRow.styles';
 import SharedTableCells from '@components/reporting/SharedTableCells';
@@ -276,7 +276,11 @@ const CampaignTableRow = ({
   }
 
   return (
-    <Tooltip title={translate('Description.RetentionCampaignViewRestriction')}>{tableRow}</Tooltip>
+    <AppTooltip
+      position='bottom-center'
+      title={translate('Description.RetentionCampaignViewRestriction')}>
+      {tableRow}
+    </AppTooltip>
   );
 };
 

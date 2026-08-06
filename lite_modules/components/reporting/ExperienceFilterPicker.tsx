@@ -1,9 +1,9 @@
 import { Autocomplete, AutocompleteOption } from '@rbx/foundation-ui';
-import { Tooltip } from '@rbx/ui';
 import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
+import AppTooltip from '@components/common/AppTooltip';
 import UniverseFilterAvatar from '@components/common/UniverseFilterAvatar';
 import useExperienceFilterPickerStyles from '@components/reporting/ExperienceFilterPicker.styles';
 import { TranslationNamespace } from '@constants/localization';
@@ -143,8 +143,8 @@ const ExperienceFilterPicker = () => {
   };
 
   return (
-    <Tooltip
-      placement='top'
+    <AppTooltip
+      position='top-center'
       title={advertisedUniversesIsError ? translateCampaign('Description.TryReloading') : ''}>
       <div className={experiencePicker}>
         <Autocomplete
@@ -179,7 +179,7 @@ const ExperienceFilterPicker = () => {
           </p>
         )}
       </div>
-    </Tooltip>
+    </AppTooltip>
   );
 };
 

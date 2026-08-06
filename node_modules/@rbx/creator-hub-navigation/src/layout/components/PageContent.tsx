@@ -23,6 +23,7 @@ const useStyles = makeStyles()((theme) => ({
     gridArea: CONTENT_GRID_AREA,
     padding: '0px 32px',
     alignItems: 'center',
+    overscrollBehavior: 'contain',
     [theme.breakpoints.down('Medium')]: {
       padding: '0px 20px',
     },

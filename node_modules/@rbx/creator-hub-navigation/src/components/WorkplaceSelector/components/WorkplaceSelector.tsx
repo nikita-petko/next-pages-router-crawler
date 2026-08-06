@@ -1,5 +1,5 @@
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from '@rbx/intl';
 import {
   Divider,
@@ -44,16 +44,52 @@ const useStyles = makeStyles()((theme) => ({
     backgroundColor: theme.palette.surface[300],
   },
   selectContainer: {
-    width: SELECT_MENU_WIDTH,
+    // Full rail width so the closed chevron tip lines up with primary-rail New badges.
+    // Lock to 40px so the larger chevron can't grow the control and nudge All Tools down.
+    width: '100%',
+    height: 40,
+    minHeight: 40,
+    maxHeight: 40,
     padding: 0,
+    boxSizing: 'border-box',
     [`.${outlinedInputClasses.notchedOutline}`]: {
       border: 0,
     },
     [`.${selectClasses.select}`]: {
-      padding: '0px 0px 2px 12px',
+      // Leave room for 24×24 chevron + 4px right inset.
+      padding: '0 28px 0 8px',
       height: 40,
       display: 'flex',
       alignItems: 'center',
+      boxSizing: 'border-box',
+    },
+    // Keep ExpandMore orientation (down when closed / up when open) but pin it
+    // at the rail edge so the tip still lines up with primary-rail New badges.
+    // Absolutely positioned so it never contributes to layout height.
+    [`.${selectClasses.icon}`]: {
+      position: 'absolute',
+      fontSize: 24,
+      width: 24,
+      height: 24,
+      right: 4,
+      top: '50%',
+      transform: 'translateY(-50%)',
+    },
+    // Open → point up (MUI Select default 180° flip, keep vertical centering).
+    [`.${selectClasses.iconOpen}`]: {
+      transform: 'translateY(-50%) rotate(180deg)',
+    },
+  },
+  selectContainerCollapsed: {
+    width: '100%',
+    height: 40,
+    minHeight: 40,
+    maxHeight: 40,
+    [`.${selectClasses.select}`]: {
+      padding: '0 28px 0 8px',
+    },
+    [`.${selectClasses.icon}`]: {
+      display: 'none',
     },
   },
   selectMenu: {
@@ -125,6 +161,7 @@ const WorkplaceSelector: React.FunctionComponent<TWorkplaceSelectorProps> = ({
       paper,
       selectMenu,
       selectContainer,
+      selectContainerCollapsed,
       menuList,
       menuItem,
       sortMenu,
@@ -138,7 +175,7 @@ const WorkplaceSelector: React.FunctionComponent<TWorkplaceSelectorProps> = ({
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
-  const sortButtonRef = useRef<HTMLButtonElement>(null);
+  const [sortButtonEl, setSortButtonEl] = useState<HTMLButtonElement | null>(null);
 
   const { Dashboard } = useProductUrls();
   const { enableGroupModeration } = useNavigationConfigs();
@@ -237,7 +274,7 @@ const WorkplaceSelector: React.FunctionComponent<TWorkplaceSelectorProps> = ({
     <Divider key='diver' />,
     <WorkplaceControls
       key='controls'
-      sortButtonRef={sortButtonRef}
+      sortButtonRef={setSortButtonEl}
       onCreate={onCreateWrapper}
       setIsSortMenuOpen={setIsSortMenuOpen}
     />,
@@ -279,7 +316,7 @@ const WorkplaceSelector: React.FunctionComponent<TWorkplaceSelectorProps> = ({
           paper: cx(paper, sortMenu),
         }}
         open={isMenuSortOpen}
-        anchorEl={sortButtonRef?.current}
+        anchorEl={sortButtonEl}
         onClose={onClose}
         onClick={onClose}
         anchorOrigin={{
@@ -296,7 +333,7 @@ const WorkplaceSelector: React.FunctionComponent<TWorkplaceSelectorProps> = ({
         <SortMenu sortBy={sortBy} onSortUpdate={onSortUpdate} />
       </Menu>
       <Select
-        classes={{ root: selectContainer }}
+        classes={{ root: cx(selectContainer, { [selectContainerCollapsed]: collapsed }) }}
         margin='none'
         size='medium'
         value={currentWorkspace.creatorId}

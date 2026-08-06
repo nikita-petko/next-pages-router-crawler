@@ -1,5 +1,5 @@
 import { Badge, Icon, Link, OptionSelector } from '@rbx/foundation-ui';
-import { Alert, AlertTitle, Tooltip } from '@rbx/ui';
+import { Alert, AlertTitle } from '@rbx/ui';
 import { Fragment, useCallback, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
@@ -9,6 +9,7 @@ import FormAccordion from '@components/campaignBuilder/common/FormAccordion';
 import { applyObjectiveChange } from '@components/campaignBuilder/common/objectiveHelpers';
 import useObjectiveSectionStyles from '@components/campaignBuilder/common/ObjectiveSection.styles';
 import SpendObjectivePlatformToggle from '@components/campaignBuilder/common/SpendObjectivePlatformToggle';
+import AppTooltip from '@components/common/AppTooltip';
 import { AdAccountType } from '@constants/app';
 import { ServerCampaignObjectiveType } from '@constants/campaign';
 import { FlowTypes, FormField } from '@constants/campaignBuilder';
@@ -346,7 +347,7 @@ const ObjectiveSection = () => {
             )
           }
           title={translate('Heading.Goal')}>
-          <Tooltip placement='top-start' title={getObjectiveCardsTooltipText()}>
+          <AppTooltip title={getObjectiveCardsTooltipText()}>
             {/* Need to wrap the option selectors in a div for the tooltip to appear */}
             <div className='flex flex-col gap-medium width-full'>
               {objectives.map((option, index) => {
@@ -388,11 +389,9 @@ const ObjectiveSection = () => {
                     <div
                       data-testid={`campaign-objective-option-${option.toString().toLowerCase()}-${index}`}>
                       {showEngagedPlaysDisabledTooltip ? (
-                        <Tooltip
-                          placement='top-start'
-                          title={getEngagedPlaysDisabledTooltipContent()}>
+                        <AppTooltip title={getEngagedPlaysDisabledTooltipContent()}>
                           <span>{optionSelector}</span>
-                        </Tooltip>
+                        </AppTooltip>
                       ) : (
                         optionSelector
                       )}
@@ -423,7 +422,7 @@ const ObjectiveSection = () => {
                 );
               })}
             </div>
-          </Tooltip>
+          </AppTooltip>
         </FormAccordion>
       )}
     />

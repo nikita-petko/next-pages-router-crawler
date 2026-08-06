@@ -1,4 +1,4 @@
-import { makeStyles, tooltipClasses } from '@rbx/ui';
+import { makeStyles } from '@rbx/ui';
 
 import { textEllipsisTypographyStyles } from '@constants/genericManagementTableStyles';
 import { paddingUnit } from '@constants/styleConstants';
@@ -54,10 +54,7 @@ const useTableNameCellStyles = makeStyles<{ minWidthPx?: number }>()((theme, { m
   },
 
   tooltipPopper: {
-    [`& .${tooltipClasses.tooltip}`]: {
-      margin: 0,
-      minWidth: 'fit-content',
-    },
+    minWidth: 'fit-content',
   },
 
   tooltipText: {

@@ -8,8 +8,6 @@ import {
   TableHeader,
   TableHeaderCell,
   TableRow,
-  Tooltip,
-  TooltipTrigger,
 } from '@rbx/foundation-ui';
 import moment from 'moment-timezone';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -17,6 +15,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import useAdCreditTransactionHistoryStyles from '@components/billing/payment_activity/AdCreditTransactionHistory.styles';
 import useTransactionHistoryStyles from '@components/billing/payment_activity/TransactionHistory.styles';
 import headerStyles from '@components/billing/payment_activity/TransactionHistoryTable.module.css';
+import AppTooltip from '@components/common/AppTooltip';
 import useCampaignManagementTableStyles from '@components/reporting/CampaignManagementTable.styles';
 import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
 import { TranslationNamespace } from '@constants/localization';
@@ -168,11 +167,9 @@ const AdCreditTransactionHistoryRow = ({
       </TableCell>
       <TableCell align='start' data-testid='paymentMethodCell'>
         {campaignName ? (
-          <Tooltip position='left-center' title={adCreditActivityHoverContent}>
-            <TooltipTrigger asChild>
-              <span className='inline-block'>{activityCellContent}</span>
-            </TooltipTrigger>
-          </Tooltip>
+          <AppTooltip position='left-center' title={adCreditActivityHoverContent}>
+            <span className='inline-block'>{activityCellContent}</span>
+          </AppTooltip>
         ) : (
           activityCellContent
         )}

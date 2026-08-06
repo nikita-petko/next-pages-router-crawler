@@ -3,7 +3,7 @@ import {
   AdCreativeAssetSource,
   type ContentModerationStatus,
 } from '@rbx/client-ads-management-api/v1';
-import { Button, Divider, ProgressCircle, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
+import { Button, Divider, ProgressCircle } from '@rbx/foundation-ui';
 import { ThumbnailResponseState } from '@rbx/thumbnails';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -13,6 +13,7 @@ import { EventName, logNativeClickEvent, logNativeImpressionEvent } from '@clien
 import AssetTileImage from '@components/campaignBuilder/common/creative/AssetTileImage';
 import tileStyles from '@components/campaignBuilder/common/creative/CreativeImportTab.module.css';
 import CreativeLockBadge from '@components/campaignBuilder/common/creative/CreativeLockBadge';
+import AppTooltip from '@components/common/AppTooltip';
 import { FOUNDATION_TOOLTIP_BODY_SMALL_CLASS } from '@components/common/creative/tooltipStyles';
 import { AssetSource, FormField } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
@@ -693,12 +694,12 @@ const CreativeImportTab = ({
             return (
               <div key={assetId}>
                 {tooltipTitle != null ? (
-                  <Tooltip
+                  <AppTooltip
                     contentClassName={FOUNDATION_TOOLTIP_BODY_SMALL_CLASS}
                     position='top-center'
                     title={tooltipTitle}>
-                    <TooltipTrigger asChild>{tile}</TooltipTrigger>
-                  </Tooltip>
+                    {tile}
+                  </AppTooltip>
                 ) : (
                   tile
                 )}

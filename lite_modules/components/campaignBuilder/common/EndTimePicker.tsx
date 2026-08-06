@@ -1,11 +1,12 @@
 import { useLocalization } from '@rbx/intl';
-import { DatePicker, MenuItem, PickersUtilsProvider, Select, TextField, Tooltip } from '@rbx/ui';
+import { DatePicker, MenuItem, PickersUtilsProvider, Select, TextField } from '@rbx/ui';
 import moment from 'moment-timezone';
 import { ChangeEvent, ReactNode, useMemo, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
 import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
+import AppTooltip from '@components/common/AppTooltip';
 import { defaultTimeZone } from '@constants/app';
 import {
   DateFormat,
@@ -178,7 +179,7 @@ const EndTimePicker = () => {
                 onClose={() => setIsOpen(false)}
                 open={isOpen}
                 renderInput={(params) => (
-                  <Tooltip placement='top-start' title={GetTooltipText()}>
+                  <AppTooltip title={GetTooltipText()}>
                     <div>
                       <TextField
                         {...params}
@@ -194,7 +195,7 @@ const EndTimePicker = () => {
                         variant='outlined'
                       />
                     </div>
-                  </Tooltip>
+                  </AppTooltip>
                 )}
                 value={moment(endDate).toDate()}
               />
@@ -207,7 +208,7 @@ const EndTimePicker = () => {
           name={FormField.END_TIME}
           render={({ field, fieldState: { error } }) => (
             <div className={halfWidth}>
-              <Tooltip placement='top-start' title={GetTooltipText()}>
+              <AppTooltip title={GetTooltipText()}>
                 <Select
                   className={fullWidth}
                   disabled={isEditDisabled || !endDate}
@@ -255,7 +256,7 @@ const EndTimePicker = () => {
                     </MenuItem>
                   ))}
                 </Select>
-              </Tooltip>
+              </AppTooltip>
               {error && endTimeConversionText && (
                 <span className='text-body-medium content-default'>{endTimeConversionText}</span>
               )}

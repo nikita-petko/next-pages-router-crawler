@@ -12,6 +12,15 @@ export type NavigationConfigsContextValue = NavigationDrawerState & {
   target: TBuildTarget;
   currentProduct: TProductKey;
   enableAssistant: boolean;
+  /**
+   * Destination for the top-nav nebula analytics assistant chat entrypoint (experience-scoped).
+   * When set, the nebula links here instead of the docs assistant. The app sets it on experience
+   * pages when the analytics assistant chat flag + analytics-view permission are satisfied, so its
+   * presence alone signals the entrypoint is enabled.
+   */
+  analyticsAssistantChatHref?: string;
+  /** Universe id backing the analytics assistant chat entrypoint, used for click telemetry. */
+  analyticsAssistantChatUniverseId?: number;
   disableProducts: string[] | null;
   creatorEventsVariant: string | null;
   drawerVariant: 'fullScreen' | 'belowAppBar';

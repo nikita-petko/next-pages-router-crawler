@@ -14,6 +14,7 @@ import { useAuthenticatedUser } from '@hooks/useAuthenticatedUser';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import useShouldUseWorkspaceUniverseFiltering from '@hooks/useShouldUseWorkspaceUniverseFiltering';
 import { addPlacementToAdIntegration } from '@services/ads/adIntegrationCampaignService';
+import { useAppStore } from '@stores/appStoreProvider';
 import { AdIntegrationCampaignDetailsFormValues } from '@type/adIntegrations';
 
 const CreateAdIntegrationCampaignDetails = () => {
@@ -44,6 +45,10 @@ const CreateAdIntegrationCampaignDetails = () => {
     [currentWorkspace.creatorId, currentWorkspace.creatorType],
   );
 
+  const isMultiExperienceEnabled = useAppStore(
+    (state) => state.appMetadataState?.data?.isMultiUniverseAdIntegrationsEnabled ?? false,
+  );
+
   const eligibleUniverses = useMemo(() => {
     const eligibleIdSet = new Set(publisherEligibleUniverseIds);
     return universesCanAdvertise.filter((universe) => eligibleIdSet.has(universe.universe_id));
@@ -56,13 +61,17 @@ const CreateAdIntegrationCampaignDetails = () => {
       campaignName: '',
       endDate: '',
       endTime: '',
-      experience: eligibleUniverses[0]?.universe_id ?? 0,
+      // The multi-experience picker starts with nothing selected, so leave the
+      // singular form value empty (schema requires a positive id, blocking
+      // submission until the user picks a game). The original single-select
+      // flow keeps pre-selecting the first eligible experience.
+      experience: isMultiExperienceEnabled ? 0 : (eligibleUniverses[0]?.universe_id ?? 0),
       hasRewardedPlacements: false,
       startDate: '',
       startTime: '',
       termsAndAdsStandardsAcknowledgement: false,
     }),
-    [eligibleUniverses],
+    [eligibleUniverses, isMultiExperienceEnabled],
   );
 
   useEffect(() => {

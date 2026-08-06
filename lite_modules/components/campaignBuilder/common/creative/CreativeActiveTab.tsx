@@ -1,10 +1,11 @@
-import { Divider, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
+import { Divider } from '@rbx/foundation-ui';
 import { useMemo } from 'react';
 import { useWatch } from 'react-hook-form';
 
 import AssetTileImage from '@components/campaignBuilder/common/creative/AssetTileImage';
 import tileStyles from '@components/campaignBuilder/common/creative/CreativeImportTab.module.css';
 import CreativeLockBadge from '@components/campaignBuilder/common/creative/CreativeLockBadge';
+import AppTooltip from '@components/common/AppTooltip';
 import { FOUNDATION_TOOLTIP_BODY_SMALL_CLASS } from '@components/common/creative/tooltipStyles';
 import { FormField } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
@@ -67,14 +68,12 @@ const CreativeActiveTab = ({ maxAllowedSelections }: CreativeActiveTabProps) => 
 
           return (
             <div key={assetId}>
-              <Tooltip
+              <AppTooltip
                 contentClassName={FOUNDATION_TOOLTIP_BODY_SMALL_CLASS}
                 position='top-center'
                 title={tooltipTitle}>
-                <TooltipTrigger asChild>
-                  <span className='flex width-full'>{tile}</span>
-                </TooltipTrigger>
-              </Tooltip>
+                <span className='flex width-full'>{tile}</span>
+              </AppTooltip>
             </div>
           );
         })}

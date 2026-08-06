@@ -1,7 +1,7 @@
 import { Button, Icon, ProgressBar } from '@rbx/foundation-ui';
-import { Tooltip } from '@rbx/ui';
 import { useRouter } from 'next/router';
 
+import AppTooltip from '@components/common/AppTooltip';
 import { PaymentMethodActionEnum } from '@constants/billing';
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
@@ -105,13 +105,16 @@ const CardOutstandingBalance = ({
                 amount: paymentThreshold.toString(),
               })}
             </span>
-            <Tooltip
-              arrow
-              data-testid='balanceChargeReminderTooltip'
-              placement='bottom'
+            <AppTooltip
+              position='bottom-center'
               title={translate('Description.BalanceChargeReminderTooltip')}>
-              <Icon className='content-default' name='icon-regular-circle-i' size='Small' />
-            </Tooltip>
+              <Icon
+                className='content-default'
+                data-testid='balanceChargeReminderTooltip'
+                name='icon-regular-circle-i'
+                size='Small'
+              />
+            </AppTooltip>
           </div>
         </div>
         {showReplaceCardButton ? (

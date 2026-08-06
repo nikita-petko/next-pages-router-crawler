@@ -6,14 +6,13 @@ import {
   PopoverContent,
   PopoverTrigger,
   TableCell,
-  Tooltip,
-  TooltipTrigger,
 } from '@rbx/foundation-ui';
 import { AxiosError } from 'axios';
 import { useRouter } from 'next/router';
 import { ReactElement, ReactNode, useState } from 'react';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
+import AppTooltip from '@components/common/AppTooltip';
 import { openErrorDialog } from '@components/common/dialog/errorDialog';
 import { openImpersonationErrorDialog } from '@components/common/dialog/impersonationErrorDialog';
 import {
@@ -95,11 +94,9 @@ const TableActionMenuCell = ({
   // wrap the item in a hoverable element to still surface the disabled reason.
   const withDisabledTooltip = (item: ReactElement, tooltipText?: string): ReactNode =>
     tooltipText ? (
-      <Tooltip delayDurationMs={0} position='right-center' title={tooltipText}>
-        <TooltipTrigger asChild>
-          <span className='block width-full'>{item}</span>
-        </TooltipTrigger>
-      </Tooltip>
+      <AppTooltip delayDurationMs={0} position='right-center' title={tooltipText}>
+        <span className='block width-full'>{item}</span>
+      </AppTooltip>
     ) : (
       item
     );

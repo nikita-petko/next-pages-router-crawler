@@ -1,8 +1,8 @@
 import { Checkbox, Icon } from '@rbx/foundation-ui';
-import { Tooltip } from '@rbx/ui';
 import React, { useId, useState } from 'react';
 
 import useAdvancedTargetingLocationAutocompleteStyles from '@components/campaignBuilder/targeting/AdvancedTargetingLocationAutocomplete.styles';
+import AppTooltip from '@components/common/AppTooltip';
 import { TranslationNamespace } from '@constants/localization';
 import { CheckboxState, RowType } from '@constants/locationAutocomplete';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -68,10 +68,9 @@ const ExpandingSelectionRow = ({
       <div>
         <div
           className={`flex items-center gap-small ${isRegion || isSuperGroup ? regularRow : countryRow}`}>
-          <Tooltip
-            arrow
+          <AppTooltip
             open={tooltipOpen && showTooltipOnhover}
-            placement='top'
+            position='top-center'
             title={translate('Description.MaxLocationsAllowed')}>
             <Checkbox
               aria-labelledby={rowLabelId}
@@ -83,7 +82,7 @@ const ExpandingSelectionRow = ({
               placement='Start'
               size='XSmall'
             />
-          </Tooltip>
+          </AppTooltip>
           <div>
             <span className='text-body-large content-emphasis' id={rowLabelId}>
               {locationInfo.title}

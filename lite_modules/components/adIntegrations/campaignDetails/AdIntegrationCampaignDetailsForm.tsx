@@ -118,6 +118,9 @@ const AdIntegrationCampaignDetailsForm = ({
   const isRevenueShareEstimateEnabled = useAppStore(
     (state) => state.appMetadataState?.data?.isAdIntegrationRevenueShareEstimateEnabled ?? false,
   );
+  const isMultiExperienceEnabled = useAppStore(
+    (state) => state.appMetadataState?.data?.isMultiUniverseAdIntegrationsEnabled ?? false,
+  );
   const adIntegrationCampaignMinimumStartTimestampMsUtc = useAppStore(
     (state) => state.appMetadataState.data?.adIntegrationCampaignMinimumStartTimestampMsUtc ?? 0,
   );
@@ -438,6 +441,7 @@ const AdIntegrationCampaignDetailsForm = ({
               <AdIntegrationExperienceSection
                 control={control}
                 errorMessage={errors.experience?.message}
+                isMultiExperienceEnabled={isMultiExperienceEnabled}
                 mode={mode}
                 universes={universes}
               />

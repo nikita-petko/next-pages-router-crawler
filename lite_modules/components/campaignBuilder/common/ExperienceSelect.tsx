@@ -1,10 +1,11 @@
 import { ProgressCircle } from '@rbx/foundation-ui';
-import { Autocomplete, FormControl, TextField, Tooltip } from '@rbx/ui';
+import { Autocomplete, FormControl, TextField } from '@rbx/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useFormContext, UseFormReturn } from 'react-hook-form';
 
 import { EventName, logNativeClickEvent, logNativeImpressionEvent } from '@clients/unifiedLogger';
+import AppTooltip from '@components/common/AppTooltip';
 import UniverseFilterAvatar from '@components/common/UniverseFilterAvatar';
 import { FormField as AdvancedTargetingFormField } from '@constants/advancedTargeting';
 import {
@@ -256,7 +257,7 @@ const ExperienceSelect = ({ advancedTargetingFormMethods }: ExperienceSelectProp
       control={control}
       name={FormField.EXPERIENCE}
       render={({ field: { onChange, value, ...rest } }) => (
-        <Tooltip placement='top-start' title={GetTooltipText()}>
+        <AppTooltip title={GetTooltipText()}>
           <Autocomplete
             {...rest}
             {...(isUniverseOwnershipBypassEnabled && {
@@ -410,7 +411,7 @@ const ExperienceSelect = ({ advancedTargetingFormMethods }: ExperienceSelectProp
             }}
             value={hasEligibleUniverses ? value : noEligibleUniverseOption}
           />
-        </Tooltip>
+        </AppTooltip>
       )}
     />
   );

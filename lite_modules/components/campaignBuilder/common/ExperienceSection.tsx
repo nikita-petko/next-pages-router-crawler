@@ -1,5 +1,5 @@
 import { Button } from '@rbx/foundation-ui';
-import { Alert, TextField, Tooltip } from '@rbx/ui';
+import { Alert, TextField } from '@rbx/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useFormContext, UseFormReturn, useWatch } from 'react-hook-form';
@@ -11,6 +11,7 @@ import ExperienceSelect from '@components/campaignBuilder/common/ExperienceSelec
 import FormAccordion from '@components/campaignBuilder/common/FormAccordion';
 import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
 import { applyObjectiveChange } from '@components/campaignBuilder/common/objectiveHelpers';
+import AppTooltip from '@components/common/AppTooltip';
 import { defaultTimeZone } from '@constants/app';
 import {
   DefaultServerCampaignObjectiveType,
@@ -525,7 +526,7 @@ const ExperienceSection = ({ advancedTargetingFormMethods }: ExperienceSectionPr
         control={control}
         name={FormField.CAMPAIGN_NAME}
         render={({ field, fieldState: { error } }) => (
-          <Tooltip placement='top-start' title={getCampaignNameTooltipText()}>
+          <AppTooltip title={getCampaignNameTooltipText()}>
             <div className={`text-body-large ${inlineRow}`}>
               <TextField
                 data-testid='campaign-name-input'
@@ -541,7 +542,7 @@ const ExperienceSection = ({ advancedTargetingFormMethods }: ExperienceSectionPr
                 size='medium'
               />
             </div>
-          </Tooltip>
+          </AppTooltip>
         )}
       />
       <AdvancedJoinOptionsDrawer />

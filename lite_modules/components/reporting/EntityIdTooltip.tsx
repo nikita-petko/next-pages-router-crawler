@@ -1,8 +1,8 @@
 import { IconButton } from '@rbx/foundation-ui';
-import { Tooltip } from '@rbx/ui';
 import { ReactElement } from 'react';
 import CopyToClipboard from 'react-copy-to-clipboard';
 
+import AppTooltip from '@components/common/AppTooltip';
 import useTableNameCellStyles from '@components/reporting/TableNameCell.styles';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -20,21 +20,9 @@ const EntityIdTooltip = ({
   } = useTableNameCellStyles({});
 
   return (
-    <Tooltip
-      placement='top-start'
-      slotProps={{
-        popper: {
-          className: tooltipPopper,
-          modifiers: [
-            {
-              name: 'offset',
-              options: {
-                offset: [0, -6], // to achieve 8px marginBottom vs. default 14px
-              },
-            },
-          ],
-        },
-      }}
+    <AppTooltip
+      contentClassName={tooltipPopper}
+      position='top-start'
       title={
         <div className={tooltipContent}>
           <span className={tooltipText}>{copyToClipboardContent}</span>
@@ -50,7 +38,7 @@ const EntityIdTooltip = ({
         </div>
       }>
       {children}
-    </Tooltip>
+    </AppTooltip>
   );
 };
 

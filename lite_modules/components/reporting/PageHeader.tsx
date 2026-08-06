@@ -1,9 +1,9 @@
 import { Button, Divider, Icon, IconButton, Link } from '@rbx/foundation-ui';
-import { Tooltip } from '@rbx/ui';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect } from 'react';
 
 import { EventName, logNativeClickEvent, logNativeImpressionEvent } from '@clients/unifiedLogger';
+import AppTooltip from '@components/common/AppTooltip';
 import DateQuickPick from '@components/reporting/DateQuickPick';
 import { openReportDownloadDialog } from '@components/reporting/dialogs/ReportDownloadDialog';
 import ExperienceFilterPicker from '@components/reporting/ExperienceFilterPicker';
@@ -57,7 +57,9 @@ const PageHeader = () => {
           <h1 className='margin-[0px] text-heading-large content-emphasis min-width-[300px] grow'>
             {translateCampaign('Heading.ManageAds')}
           </h1>
-          <Tooltip arrow placement='left' title={disabledTooltip ? translate(disabledTooltip) : ''}>
+          <AppTooltip
+            position='left-center'
+            title={disabledTooltip ? translate(disabledTooltip) : ''}>
             <div>
               <Button
                 data-testid='newflow-create-button'
@@ -68,7 +70,7 @@ const PageHeader = () => {
                 {translate('Action.Create')}
               </Button>
             </div>
-          </Tooltip>
+          </AppTooltip>
         </div>
 
         <PageHeaderBanners />

@@ -1,8 +1,9 @@
-import Link from 'next/link';
 import React from 'react';
+import Link from 'next/link';
 import { useTranslation } from '@rbx/intl';
 import type { TTypographyProps } from '@rbx/ui';
 import { Grid, Typography, makeStyles } from '@rbx/ui';
+import { COMPACT_TRANSITION_DURATION } from '../../../layout/constants';
 import type { TWorkspace } from '../../../providers/WorkspaceProvider/constants';
 import useProductUrls from '../../../utils/useProductUrls';
 import WorkspaceThumbnailContainer from './WorkplaceThumbnailContainer';
@@ -16,18 +17,24 @@ type TWorkplaceItemProps = {
   variant?: TTypographyProps['variant'];
 };
 
-const useStyles = makeStyles()(() => ({
+const AVATAR_SIZE = 24;
+
+const useStyles = makeStyles()((theme) => ({
   root: {
     width: '100%',
     height: '100%',
     display: 'grid',
     gridTemplateColumns: 'auto 1fr auto',
     alignItems: 'center',
-    gap: 12,
+    gap: 18,
   },
   avatar: {
-    height: 24,
-    width: 24,
+    height: AVATAR_SIZE,
+    width: AVATAR_SIZE,
+    minHeight: AVATAR_SIZE,
+    minWidth: AVATAR_SIZE,
+    maxHeight: AVATAR_SIZE,
+    maxWidth: AVATAR_SIZE,
   },
   largeAvatar: {
     height: 32,
@@ -38,10 +45,10 @@ const useStyles = makeStyles()(() => ({
     textOverflow: 'ellipsis',
     // lineHeight 100% is casing the bottoms of letters like y and g to be clipped
     lineHeight: 'unset',
-    transition: 'opacity 200ms ease-out',
-  },
-  labelCollapsingLabelsVariant: {
-    transition: 'none',
+    transition: `opacity ${COMPACT_TRANSITION_DURATION}ms ease-out`,
+    [theme.breakpoints.up('Large')]: {
+      fontSize: 14,
+    },
   },
   hiddenLabel: {
     opacity: 0,
@@ -58,7 +65,7 @@ const WorkplaceItem: React.FunctionComponent<TWorkplaceItemProps> = ({
 }) => {
   const {
     cx,
-    classes: { root, label, labelCollapsingLabelsVariant, hiddenLabel, largeAvatar, avatar },
+    classes: { root, label, hiddenLabel, largeAvatar, avatar },
   } = useStyles();
   const { translate } = useTranslation();
   const { Roblox } = useProductUrls();
@@ -74,7 +81,7 @@ const WorkplaceItem: React.FunctionComponent<TWorkplaceItemProps> = ({
           variant={variant}
           title={workspace.creatorName}
           classes={{
-            root: cx(label, labelCollapsingLabelsVariant, {
+            root: cx(label, {
               [hiddenLabel]: collapsed,
             }),
           }}

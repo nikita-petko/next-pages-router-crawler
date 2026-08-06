@@ -1,1 +1,1 @@
-export const contentStaticDark = '#111216'; // theme.palette.content.static.dark
+export const contentStaticDark = '#121215'; // theme.palette.navigation.default / Surface_0

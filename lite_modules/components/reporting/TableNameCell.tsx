@@ -1,7 +1,8 @@
 import { Icon, TableCell, type TTableCellAlign } from '@rbx/foundation-ui';
-import { Grid, Tooltip } from '@rbx/ui';
+import { Grid } from '@rbx/ui';
 import { forwardRef } from 'react';
 
+import AppTooltip from '@components/common/AppTooltip';
 import EntityIdTooltip from '@components/reporting/EntityIdTooltip';
 import useTableNameCellStyles from '@components/reporting/TableNameCell.styles';
 import { defaultAlign } from '@constants/genericManagementTableStyles';
@@ -56,34 +57,24 @@ const TableNameCell = forwardRef<HTMLTableCellElement, TableNameCellProps>(
     const textToRender = (
       <Grid alignItems='center' container wrap='nowrap'>
         {isAutoReload && (
-          <Tooltip
-            arrow
-            componentsProps={{
-              tooltip: {
-                className: autoReloadIconTooltip,
-              },
-            }}
-            placement='top'
+          <AppTooltip
+            contentClassName={autoReloadIconTooltip}
+            position='top-center'
             title={translate('Description.AutoReloadEnabledForCampaign')}>
             <Grid className={autoReloadIcon} item>
               <Icon name='icon-regular-two-arrows-spin-clockwise' size='Medium' />
             </Grid>
-          </Tooltip>
+          </AppTooltip>
         )}
         {isOffPlatformRequest && !isReportingEnabled && (
-          <Tooltip
-            arrow
-            componentsProps={{
-              tooltip: {
-                className: autoReloadIconTooltip,
-              },
-            }}
-            placement='top'
+          <AppTooltip
+            contentClassName={autoReloadIconTooltip}
+            position='top-center'
             title={translate('Description.ReportingDisabledOffPlatform')}>
             <Grid className={autoReloadIcon} item>
               <Icon name='icon-regular-eye-slash' size='Medium' />
             </Grid>
-          </Tooltip>
+          </AppTooltip>
         )}
         <Grid className={nameTextGridItem} item>
           <EntityIdTooltip copyToClipboardContent={copyToClipboardContent}>

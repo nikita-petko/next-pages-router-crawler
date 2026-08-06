@@ -5,7 +5,7 @@ import {
   useWorkspaces,
 } from '@rbx/creator-hub-navigation';
 import { Badge, Divider } from '@rbx/foundation-ui';
-import { Label, makeStyles } from '@rbx/ui';
+import { makeStyles } from '@rbx/ui';
 import { useRouter } from 'next/router';
 import { useCallback, useMemo } from 'react';
 
@@ -22,42 +22,49 @@ import { getSelectedGroupId } from '@utils/groupScopedAccount';
 const useStyles = makeStyles()(() => ({
   // Pinned to the bottom of the rail via `marginTop: auto`. The flex
   // column + gap matches the parent `container` spacing so the Divider
-  // above Resources sits with the same 16px breathing room as the other
+  // above Resources sits with the same breathing room as the other
   // section dividers.
   additionalLinks: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 16,
+    gap: 8,
     marginTop: 'auto',
-  },
-  button: {
-    justifyContent: 'left',
   },
   container: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 16,
+    gap: 8,
     height: '100%',
   },
-  // Lets the "New" badge sit flush against the right edge of the Creative
-  // Library row while the label text stays left-aligned with its siblings.
-  creativeLibraryLabel: {
-    alignItems: 'center',
-    display: 'flex',
-    gap: 8,
-    justifyContent: 'space-between',
-    width: '100%',
-  },
+  // Matches creator-hub-navigation All Tools / NavigationTreeItem row chrome:
+  // full-width 40px row, label grows, trailing adornment pinned right.
   header: {
     alignItems: 'center',
+    boxSizing: 'border-box',
     display: 'flex',
-    gap: '8px',
-    height: '48px',
-    padding: '0px 12px',
+    height: 40,
+    minHeight: 40,
+    // Right inset matches creator-hub itemBox (`padding: 0 12px 0 0`); left
+    // inset keeps the heading aligned with tree item labels below.
+    paddingLeft: 12,
+    paddingRight: 12,
+    width: '100%',
   },
-  resources: {
-    display: 'block',
-    padding: '10px 16px',
+  headerLabel: {
+    color: 'var(--color-content-emphasis)',
+    flex: '1 1 0',
+    minWidth: 0,
+  },
+  // Same trailing slot as creator-hub-navigation (`trailing` on nav rows /
+  // All Tools items): 24px tall, 8px gap from the label, right-aligned.
+  headerTrailing: {
+    alignItems: 'center',
+    display: 'flex',
+    flexShrink: 0,
+    gap: 4,
+    height: 24,
+    justifyContent: 'flex-end',
+    paddingLeft: 8,
   },
 }));
 
@@ -69,7 +76,7 @@ const PATHNAME_TO_NODE_ID: ReadonlyArray<readonly [string, string]> = [
   [Routes.MANAGE, 'campaigns.ads'],
   [Routes.CLASSIC, 'campaigns.adsClassic'],
   [Routes.AD_INTEGRATIONS, 'adIntegrations'],
-  [Routes.CREATIVE_LIBRARY, 'creativeLibrary'],
+  [Routes.CREATIVE_LIBRARY, 'assetLibrary'],
   [Routes.PAYMENT_SETTINGS, 'billing.paymentSettings'],
   // Add Payment Method is launched from Payment Settings; keep that item
   // highlighted so the rail reflects the in-flight billing workflow.
@@ -102,11 +109,16 @@ const NavigationRail = () => {
   const { translate: translateNavigation } = useNamespacedTranslation(
     TranslationNamespace.Navigation,
   );
-  const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const { translate: translateAccount } = useNamespacedTranslation(TranslationNamespace.Account);
+  // `Label.Beta` lives in Campaign (same key used by objective / AI Create badges).
+  const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
+  const { translate: translateCreatorNav } = useNamespacedTranslation(
+    TranslationNamespace.CreatorDashboardNavigation,
+  );
   const { translate: translateForecast } = useNamespacedTranslation(TranslationNamespace.Forecast);
   const {
-    classes: { additionalLinks, container, creativeLibraryLabel, header },
+    classes: { additionalLinks, container, header, headerLabel, headerTrailing },
+    cx,
   } = useStyles();
 
   const isAdIntegrationsEnabled = useAppStore(
@@ -177,67 +189,63 @@ const NavigationRail = () => {
     }
   }, [drawerVariant, openForecastEstimator, setPrimaryRailOpen]);
 
-  const campaignNavigationTree = (
-    <NavigationTree defaultExpanded={['campaigns']} selected={selectedNodeId}>
-      <NavigationTreeItem
-        label={translateNavigation('Label.Campaigns')}
-        nodeId='campaigns'
-        variant='smallLabel2'>
-        <NavigationTreeItem
-          href={Routes.MANAGE}
-          label={translateNavigation('Label.ManageAds')}
-          nodeId='campaigns.ads'
-        />
-        {!hideForAutoCreate && (
-          <NavigationTreeItem
-            href={Routes.CLASSIC}
-            label={translateNavigation('Label.ManageAdsClassic')}
-            nodeId='campaigns.adsClassic'
-          />
-        )}
-      </NavigationTreeItem>
-      <DismissibleTooltip
-        anchorElement={
-          <NavigationTreeItem
-            href={Routes.CREATIVE_LIBRARY}
-            label={
-              <span className={creativeLibraryLabel}>
-                {translateNavigation('Label.CreativeLibrary')}
-                <Badge label={translateNavigation('Label.New')} />
-              </span>
-            }
-            nodeId='creativeLibrary'
-            variant='smallLabel2'
-          />
-        }
-        // Clicking through to the Asset Library means the user has found it,
-        // so retire the coachmark instead of waiting for the OK button.
-        dismissOnAnchorClick
-        // Suppress while the rail is collapsed so the beak doesn't point at a
-        // hidden anchor (mirrors the forecaster coachmark below), and while
-        // the user is already on the Creative Library page.
-        enabled={drawerVariant === 'persistent' && !isOnCreativeLibrary}
-        tooltip={Tooltips.CREATIVE_LIBRARY_NAV}
-      />
-      {isAdIntegrationsEnabled && (
-        <NavigationTreeItem
-          href={Routes.AD_INTEGRATIONS}
-          label={translateAccount('Label.AdIntegrations')}
-          nodeId='adIntegrations'
-          variant='smallLabel2'
-        />
-      )}
-    </NavigationTree>
-  );
-
   return (
     <div className={container}>
       <div className={header}>
-        <span className='text-label-large'>{translateNavigation('Label.AdsManager')}</span>
-        <Label labelText={translateCampaign('Label.Beta')} />
+        <span className={cx(headerLabel, 'text-label-large')}>
+          {translateCreatorNav('Heading.AdsManager')}
+        </span>
+        <span className={headerTrailing}>
+          <Badge label={translateCampaign('Label.Beta')} size='XSmall' />
+        </span>
       </div>
       <Divider />
-      {campaignNavigationTree}
+      <NavigationTree defaultExpanded={['campaigns']} selected={selectedNodeId}>
+        <NavigationTreeItem
+          label={translateNavigation('Label.Campaigns')}
+          nodeId='campaigns'
+          variant='smallLabel2'>
+          <NavigationTreeItem
+            href={Routes.MANAGE}
+            label={translateNavigation('Label.ManageAds')}
+            nodeId='campaigns.ads'
+          />
+          {!hideForAutoCreate && (
+            <NavigationTreeItem
+              href={Routes.CLASSIC}
+              label={translateNavigation('Label.ManageAdsClassic')}
+              nodeId='campaigns.adsClassic'
+            />
+          )}
+        </NavigationTreeItem>
+        <DismissibleTooltip
+          anchorElement={
+            <NavigationTreeItem
+              adornment={<Badge label={translateNavigation('Label.New')} />}
+              href={Routes.CREATIVE_LIBRARY}
+              label={translateNavigation('Label.CreativeLibrary')}
+              nodeId='assetLibrary'
+              variant='smallLabel2'
+            />
+          }
+          // Clicking through to the Asset Library means the user has found it,
+          // so retire the coachmark instead of waiting for the OK button.
+          dismissOnAnchorClick
+          // Suppress while the rail is collapsed so the beak doesn't point at a
+          // hidden anchor (mirrors the forecaster coachmark below), and while
+          // the user is already on the Creative Library page.
+          enabled={drawerVariant === 'persistent' && !isOnCreativeLibrary}
+          tooltip={Tooltips.CREATIVE_LIBRARY_NAV}
+        />
+        {isAdIntegrationsEnabled && (
+          <NavigationTreeItem
+            href={Routes.AD_INTEGRATIONS}
+            label={translateAccount('Label.AdIntegrations')}
+            nodeId='adIntegrations'
+            variant='smallLabel2'
+          />
+        )}
+      </NavigationTree>
       {showBillingAndAccountNavigation ? (
         <>
           {(showPaymentsOptions || !hideForAutoCreate) && <Divider />}

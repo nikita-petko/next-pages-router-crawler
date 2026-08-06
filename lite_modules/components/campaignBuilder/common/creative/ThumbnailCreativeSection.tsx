@@ -1,4 +1,4 @@
-import { IconButton, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
+import { IconButton } from '@rbx/foundation-ui';
 import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 
@@ -8,6 +8,7 @@ import useCreativesStyles from '@components/campaignBuilder/common/creative/Crea
 import ThumbnailAiCreateDrawer from '@components/campaignBuilder/common/creative/thumbnailSection/ThumbnailAiCreateDrawer';
 import ThumbnailCreativeAddButton from '@components/campaignBuilder/common/creative/thumbnailSection/ThumbnailCreativeAddButton';
 import ThumbnailUploadDrawer from '@components/campaignBuilder/common/creative/thumbnailSection/ThumbnailUploadDrawer';
+import AppTooltip from '@components/common/AppTooltip';
 import { FOUNDATION_TOOLTIP_BODY_SMALL_CLASS } from '@components/common/creative/tooltipStyles';
 import Skeleton from '@components/common/Skeleton';
 import { AssetSource, FlowTypes, FormField } from '@constants/campaignBuilder';
@@ -245,14 +246,12 @@ const ThumbnailSection = ({
               data-testid={`form-thumbnail-${assetId}`}
               key={assetId}>
               {tooltipTitle != null ? (
-                <Tooltip
+                <AppTooltip
                   contentClassName={FOUNDATION_TOOLTIP_BODY_SMALL_CLASS}
                   position='top-center'
                   title={tooltipTitle}>
-                  <TooltipTrigger asChild>
-                    <span className='flex width-full'>{tile}</span>
-                  </TooltipTrigger>
-                </Tooltip>
+                  <span className='flex width-full'>{tile}</span>
+                </AppTooltip>
               ) : (
                 tile
               )}

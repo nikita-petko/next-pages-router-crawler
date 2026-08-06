@@ -8,10 +8,11 @@ import {
   SheetRoot,
   SheetTitle,
 } from '@rbx/foundation-ui';
-import { Alert, Autocomplete, TextField, Tooltip } from '@rbx/ui';
+import { Alert, Autocomplete, TextField } from '@rbx/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
+import AppTooltip from '@components/common/AppTooltip';
 import useDrawerStyles from '@components/common/Drawer.styles';
 import GenericSnackBar from '@components/common/GenericSnackBar';
 import {
@@ -288,7 +289,7 @@ const AdvancedJoinOptionsDrawer = () => {
                 value={launchUrl}
                 variant='outlined'
               />
-              <Tooltip placement='top' title={translate('Action.CopyUrlToClipboard')}>
+              <AppTooltip position='top-center' title={translate('Action.CopyUrlToClipboard')}>
                 <IconButton
                   ariaLabel={translate('Action.CopyUrlToClipboard')}
                   className='grow-0 shrink-0 margin-top-small'
@@ -297,7 +298,7 @@ const AdvancedJoinOptionsDrawer = () => {
                   onClick={handleCopyUrl}
                   variant='Utility'
                 />
-              </Tooltip>
+              </AppTooltip>
             </div>
           </div>
         </SheetBody>

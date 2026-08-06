@@ -2,6 +2,7 @@ import {
   type AdAssetType,
   type AdCreativeAssetSource,
   AdCreativesApi,
+  type BatchUpdateAdCreativeAssetsRequest,
   type CreateAdCreativeAssetRequest,
   type EnrichedAdCreativeAsset,
   type UpdateAdCreativeAssetRequest,
@@ -297,6 +298,67 @@ export const updateAdCreative = async (
   } catch (err) {
     CaptureException(err, {
       context: `updateAdCreative: failed to update ad creative ${adCreativeId}`,
+    });
+    throw err;
+  }
+};
+
+/**
+ * Unarchives (restores) a single ad creative entry
+ * (PATCH /v1/adCreatives/{id} with is_archived=false in the update mask).
+ *
+ * Failures are captured to Sentry and re-thrown so callers can
+ * surface user-facing errors.
+ */
+export const unarchiveAdCreative = async (
+  adCreativeId: string,
+  options: AdCreativeRequestOptions = {},
+): Promise<void> => {
+  const request: UpdateAdCreativeAssetRequest = {
+    isArchived: false,
+    updateMask: ['is_archived'],
+  };
+
+  try {
+    await adCreativesClient.updateAdCreativeAsset({
+      ...(options.groupId !== undefined && { groupId: options.groupId }),
+      id: adCreativeId,
+      request,
+    });
+  } catch (err) {
+    CaptureException(err, {
+      context: `unarchiveAdCreative: failed to unarchive ad creative ${adCreativeId}`,
+    });
+    throw err;
+  }
+};
+
+/**
+ * Batch-unarchives (restores) multiple ad creative entries
+ * (POST /v1/adCreatives/batchUpdate with is_archived=false in the update mask).
+ *
+ * Failures are captured to Sentry and re-thrown so callers can
+ * surface user-facing errors.
+ */
+// eslint-disable-next-line import/no-unused-modules
+export const batchUnarchiveAdCreatives = async (
+  ids: string[],
+  options: AdCreativeRequestOptions = {},
+): Promise<void> => {
+  const request: BatchUpdateAdCreativeAssetsRequest = {
+    ids,
+    isArchived: false,
+    updateMask: ['is_archived'],
+  };
+
+  try {
+    await adCreativesClient.batchUpdateAdCreativeAssets({
+      ...(options.groupId !== undefined && { groupId: options.groupId }),
+      request,
+    });
+  } catch (err) {
+    CaptureException(err, {
+      context: `batchUnarchiveAdCreatives: failed to unarchive ${ids.length} ad creative(s)`,
     });
     throw err;
   }

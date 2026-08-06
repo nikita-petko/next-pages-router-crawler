@@ -9,9 +9,10 @@ const useStyles = makeStyles()((theme) => ({
     padding: '4px 12px',
     gap: 4,
   },
+  // Label next to the workplace menu divider — Content.Default
   caption: {
     flex: 1,
-    color: theme.palette.content.muted,
+    color: 'var(--color-content-default)',
   },
   square: {
     borderRadius: theme.border.radius.medium.borderRadius,
@@ -19,7 +20,7 @@ const useStyles = makeStyles()((theme) => ({
 }));
 
 type TWorkplaceControlProps = {
-  sortButtonRef: React.RefObject<HTMLButtonElement | null>;
+  sortButtonRef: React.Ref<HTMLButtonElement>;
   onCreate: VoidFunction;
   setIsSortMenuOpen: (open: boolean) => void;
 };

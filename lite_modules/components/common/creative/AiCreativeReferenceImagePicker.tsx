@@ -16,13 +16,12 @@ import {
   PopoverTrigger,
   ProgressCircle,
   TextInput,
-  Tooltip,
-  TooltipTrigger,
 } from '@rbx/foundation-ui';
 import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
 import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import AppTooltip from '@components/common/AppTooltip';
 import styles from '@components/common/creative/AiCreativeReferenceImagePicker.module.css';
 import { FOUNDATION_TOOLTIP_BODY_SMALL_CLASS } from '@components/common/creative/tooltipStyles';
 import {
@@ -564,14 +563,12 @@ export const AiCreativeReferenceAddControl: FC<AiCreativeReferenceAddControlProp
 
     if (isAtLimit) {
       return (
-        <Tooltip
+        <AppTooltip
           contentClassName={FOUNDATION_TOOLTIP_BODY_SMALL_CLASS}
           position='top-center'
           title={translate('Description.ReferenceLimitReached')}>
-          <TooltipTrigger asChild>
-            <span className='inline-flex shrink-0'>{addReferenceButton}</span>
-          </TooltipTrigger>
-        </Tooltip>
+          <span className='inline-flex shrink-0'>{addReferenceButton}</span>
+        </AppTooltip>
       );
     }
 

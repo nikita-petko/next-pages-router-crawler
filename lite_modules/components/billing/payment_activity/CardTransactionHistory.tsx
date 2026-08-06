@@ -7,8 +7,6 @@ import {
   TableHeader,
   TableHeaderCell,
   TableRow,
-  Tooltip,
-  TooltipTrigger,
 } from '@rbx/foundation-ui';
 import moment from 'moment-timezone';
 import { useCallback, useState } from 'react';
@@ -16,6 +14,7 @@ import { useCallback, useState } from 'react';
 import useCardTransactionHistoryStyles from '@components/billing/payment_activity/CardTransactionHistory.styles';
 import useTransactionHistoryStyles from '@components/billing/payment_activity/TransactionHistory.styles';
 import headerStyles from '@components/billing/payment_activity/TransactionHistoryTable.module.css';
+import AppTooltip from '@components/common/AppTooltip';
 import useCampaignManagementTableStyles from '@components/reporting/CampaignManagementTable.styles';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -91,11 +90,9 @@ const CardTransactionHistoryRow = ({ paymentActivity }: CardTransactionHistoryRo
       currency: String(paymentActivity.currency_code),
     });
     amountChargedCellContent = (
-      <Tooltip position='left-center' title={hoverRequestAmountText}>
-        <TooltipTrigger asChild>
-          <span className='inline-block'>{amountChargedCellContent}</span>
-        </TooltipTrigger>
-      </Tooltip>
+      <AppTooltip position='left-center' title={hoverRequestAmountText}>
+        <span className='inline-block'>{amountChargedCellContent}</span>
+      </AppTooltip>
     );
   }
 

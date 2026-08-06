@@ -1,6 +1,7 @@
-import { Label, Tooltip } from '@rbx/ui';
+import { Label } from '@rbx/ui';
 import { ReactNode } from 'react';
 
+import AppTooltip from '@components/common/AppTooltip';
 import useTableStatusCellStyles from '@components/reporting/TableStatusCell.styles';
 import { StatusText } from '@constants/campaignStatus';
 import { TranslationNamespace } from '@constants/localization';
@@ -22,7 +23,7 @@ const StatusLabel = ({
 
   return (
     // For tooltip to show on StatusLabel, must wrap in a div
-    <Tooltip placement='top' title={tooltipContent}>
+    <AppTooltip position='top-center' title={tooltipContent}>
       <div data-testid='status-label'>
         <Label
           classes={{ root: labelClasses }}
@@ -32,7 +33,7 @@ const StatusLabel = ({
           variant='contained'
         />
       </div>
-    </Tooltip>
+    </AppTooltip>
   );
 };
 

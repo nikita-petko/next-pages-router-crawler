@@ -1,9 +1,10 @@
 import { Button, Link } from '@rbx/foundation-ui';
-import { Grid, Tooltip } from '@rbx/ui';
+import { Grid } from '@rbx/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
+import AppTooltip from '@components/common/AppTooltip';
 import useCampaignDetailsStyles from '@components/reporting/CampaignDetails.styles';
 import StatusLabel from '@components/reporting/StatusLabel';
 import { defaultTimeZone } from '@constants/app';
@@ -225,23 +226,27 @@ const CampaignDetails = () => {
     </Grid>
   );
 
+  const editButton = (
+    <div>
+      <Button
+        data-testid='campaign-details-edit-button'
+        isDisabled={editDisabledTooltipKey !== undefined}
+        onClick={onEditClick}
+        size='Medium'
+        variant='Standard'>
+        {translateMisc('Action.Edit')}
+      </Button>
+    </div>
+  );
+
   return (
     <Grid className={container} container data-testid='campaign-details'>
       {campaignInfoGrid}
       <Grid className={editRow} container>
         <Grid item>
-          <Tooltip placement='right' title={editDisabledTooltip ?? ''}>
-            <div>
-              <Button
-                data-testid='campaign-details-edit-button'
-                isDisabled={editDisabledTooltipKey !== undefined}
-                onClick={onEditClick}
-                size='Medium'
-                variant='Standard'>
-                {translateMisc('Action.Edit')}
-              </Button>
-            </div>
-          </Tooltip>
+          <AppTooltip position='right-center' title={editDisabledTooltip ?? ''}>
+            {editButton}
+          </AppTooltip>
         </Grid>
       </Grid>
     </Grid>

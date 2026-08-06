@@ -1,6 +1,6 @@
 import { Checkbox, Icon, IconButton, Radio, RadioGroup } from '@rbx/foundation-ui';
-import { Alert, InputAdornment, MenuItem, Select, TextField, Tooltip } from '@rbx/ui';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { Alert, InputAdornment, MenuItem, Select, TextField } from '@rbx/ui';
+import { Fragment, ReactNode, useEffect, useMemo, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { NumericFormat } from 'react-number-format';
 
@@ -14,6 +14,7 @@ import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.s
 import PaymentMethodDrawer from '@components/campaignBuilder/common/PaymentMethodDrawer';
 import PaymentSelect from '@components/campaignBuilder/common/PaymentSelect';
 import StartTimePicker from '@components/campaignBuilder/common/StartTimePicker';
+import AppTooltip from '@components/common/AppTooltip';
 import Collapse from '@components/common/Collapse';
 import {
   isAdCreditPaymentType,
@@ -263,9 +264,6 @@ const BudgetSection = () => {
   };
 
   const getRadioButtonsTooltipTitle = () => {
-    if (doubleTooltip) {
-      return '';
-    }
     if (!editMode) {
       return '';
     }
@@ -368,7 +366,7 @@ const BudgetSection = () => {
       return <DurationSelect />;
     }
     return (
-      <Tooltip placement='top-start' title={getCustomInputTooltipTitle()}>
+      <AppTooltip title={getCustomInputTooltipTitle()}>
         <div className={`text-body-large ${halfWidth}`}>
           <Controller
             control={control}
@@ -411,7 +409,7 @@ const BudgetSection = () => {
             )}
           />
         </div>
-      </Tooltip>
+      </AppTooltip>
     );
   };
 
@@ -524,11 +522,8 @@ const BudgetSection = () => {
             size='Small'
             value={String(value)}>
             <div className='flex flex-row gap-large'>
-              {BudgetTypeRadioList.map(({ tooltipKey, value: radioValue }) => (
-                <Tooltip
-                  key={radioValue}
-                  placement='top-start'
-                  title={getRadioButtonsTooltipTitle()}>
+              {BudgetTypeRadioList.map(({ tooltipKey, value: radioValue }) => {
+                const radioRow = (
                   <div
                     className='flex flex-row items-center gap-small'
                     data-testid={`budget-radio-button-${radioValue}`}>
@@ -542,25 +537,36 @@ const BudgetSection = () => {
                       label={translate(BudgetNameKey[radioValue])}
                       value={String(radioValue)}
                     />
-                    <Tooltip
-                      arrow
-                      onMouseEnter={() => {
-                        if (editMode) {
-                          setDoubleTooltip(true);
-                        }
-                      }}
-                      onMouseLeave={() => {
-                        if (editMode) {
-                          setDoubleTooltip(false);
-                        }
-                      }}
-                      placement='bottom'
-                      title={translate(tooltipKey)}>
-                      <Icon className='content-muted' name='icon-regular-circle-i' size='Small' />
-                    </Tooltip>
+                    <AppTooltip position='bottom-center' title={translate(tooltipKey)}>
+                      <span
+                        onMouseEnter={() => {
+                          if (editMode) {
+                            setDoubleTooltip(true);
+                          }
+                        }}
+                        onMouseLeave={() => {
+                          if (editMode) {
+                            setDoubleTooltip(false);
+                          }
+                        }}>
+                        <Icon className='content-muted' name='icon-regular-circle-i' size='Small' />
+                      </span>
+                    </AppTooltip>
                   </div>
-                </Tooltip>
-              ))}
+                );
+                const radioRowTooltipTitle = getRadioButtonsTooltipTitle();
+                return radioRowTooltipTitle ? (
+                  <AppTooltip
+                    key={radioValue}
+                    position='top-start'
+                    suppressed={doubleTooltip}
+                    title={radioRowTooltipTitle}>
+                    {radioRow}
+                  </AppTooltip>
+                ) : (
+                  <Fragment key={radioValue}>{radioRow}</Fragment>
+                );
+              })}
             </div>
           </RadioGroup>
         )}
@@ -569,7 +575,7 @@ const BudgetSection = () => {
         {budgetType === ServerBudgetType.BUDGET_TYPE_DAILY && !isExtendToOffPlatformEnabled ? (
           <BudgetSelect selectedLabel={translate(BudgetNameKey[budgetType])} unit={unit} />
         ) : (
-          <Tooltip placement='top-start' title={getCustomInputTooltipTitle()}>
+          <AppTooltip title={getCustomInputTooltipTitle()}>
             <div className={`text-body-large ${fullWidth}`}>
               <Controller
                 control={control}
@@ -611,7 +617,7 @@ const BudgetSection = () => {
                 )}
               />
             </div>
-          </Tooltip>
+          </AppTooltip>
         )}
         <PaymentSelect />
       </div>
@@ -738,7 +744,7 @@ const BudgetSection = () => {
             control={control}
             name={FormField.IS_AUTO_RELOAD_ENABLED}
             render={({ field: { onChange, value } }) => (
-              <Tooltip placement='top-start' title={getCustomInputTooltipTitle()}>
+              <AppTooltip title={getCustomInputTooltipTitle()}>
                 <div className='flex items-center gap-small padding-top-medium'>
                   <Checkbox
                     data-testid='auto-reload-checkbox'
@@ -754,22 +760,21 @@ const BudgetSection = () => {
                   {isAccordionOpen && (
                     <CueMigrationWrapper
                       anchorElement={
-                        <Tooltip
-                          arrow
-                          placement='bottom'
+                        <AppTooltip
+                          position='bottom-center'
                           title={translate('Description.AutoReloadEnabled')}>
                           <Icon
                             className='content-muted'
                             name='icon-regular-circle-i'
                             size='Small'
                           />
-                        </Tooltip>
+                        </AppTooltip>
                       }
                       migration={AUTO_RELOAD_AD_CREDIT_CUE_MIGRATION}
                     />
                   )}
                 </div>
-              </Tooltip>
+              </AppTooltip>
             )}
           />
         </div>

@@ -1,9 +1,10 @@
-import { Autocomplete, FormControl, TextField, Tooltip } from '@rbx/ui';
+import { Autocomplete, FormControl, TextField } from '@rbx/ui';
 import { uniqBy } from 'lodash';
 import { Controller, useFormContext } from 'react-hook-form';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
 import useAdvancedTargetingDrawerStyles from '@components/campaignBuilder/targeting/AdvancedTargetingDrawer.styles';
+import AppTooltip from '@components/common/AppTooltip';
 import { FormField } from '@constants/advancedTargeting';
 import { FlowTypes, FORM_HELPER_TEXT_PROPS, INPUT_LABEL_PROPS } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
@@ -46,8 +47,7 @@ const AdvancedTargetingGenericAutocomplete = ({
       control={control}
       name={formField}
       render={({ field: { onChange, value, ...rest }, fieldState: { error } }) => (
-        <Tooltip
-          placement='top-start'
+        <AppTooltip
           title={translate(GetEditTooltipTitle({ campaignStatus, editable: false, flowType }))}>
           <Autocomplete
             {...rest}
@@ -110,7 +110,7 @@ const AdvancedTargetingGenericAutocomplete = ({
             }}
             value={value as GenericAutocompleteOption[]}
           />
-        </Tooltip>
+        </AppTooltip>
       )}
     />
   );

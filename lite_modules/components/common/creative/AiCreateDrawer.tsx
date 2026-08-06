@@ -6,13 +6,12 @@ import {
   SheetContent,
   SheetRoot,
   SheetTitle,
-  Tooltip,
-  TooltipTrigger,
 } from '@rbx/foundation-ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { type FC, type ReactNode, useCallback, useEffect, useState } from 'react';
 
 import { EventName, logNativeImpressionEvent } from '@clients/unifiedLogger';
+import AppTooltip from '@components/common/AppTooltip';
 import AiCreateContent, {
   type AiCreateFooterState,
 } from '@components/common/creative/AiCreateContent';
@@ -148,14 +147,12 @@ const AiCreateDrawer: FC<AiCreateDrawerProps> = ({
     // trigger to keep the "limit reached" tooltip hoverable while disabled.
     addToCampaignAction =
       addToCampaign.tooltip != null ? (
-        <Tooltip
+        <AppTooltip
           contentClassName={FOUNDATION_TOOLTIP_BODY_SMALL_CLASS}
           position='top-center'
           title={addToCampaign.tooltip}>
-          <TooltipTrigger asChild>
-            <span className='flex'>{addToCampaignButton}</span>
-          </TooltipTrigger>
-        </Tooltip>
+          <span className='flex'>{addToCampaignButton}</span>
+        </AppTooltip>
       ) : (
         addToCampaignButton
       );

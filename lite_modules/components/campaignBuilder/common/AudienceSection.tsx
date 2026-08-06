@@ -1,5 +1,5 @@
 import { Badge, Button, Link, OptionSelector } from '@rbx/foundation-ui';
-import { Alert, Tooltip } from '@rbx/ui';
+import { Alert } from '@rbx/ui';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Controller,
@@ -14,6 +14,7 @@ import useCampaignBuilderCommonStyles from '@components/campaignBuilder/common/C
 import FormAccordion from '@components/campaignBuilder/common/FormAccordion';
 import AdvancedTargetingAudienceEstimate from '@components/campaignBuilder/targeting/AdvancedTargetingAudienceEstimate';
 import AdvancedTargetingDrawer from '@components/campaignBuilder/targeting/AdvancedTargetingDrawer';
+import AppTooltip from '@components/common/AppTooltip';
 import { FormField as AdvancedTargetingFormField } from '@constants/advancedTargeting';
 import { ServerCampaignObjectiveType, ServerDetailedTargetingMatchType } from '@constants/campaign';
 import { FlowTypes, FormField } from '@constants/campaignBuilder';
@@ -500,9 +501,9 @@ const AudienceSection = ({ advancedTargetingFormMethods }: AudienceSectionProps)
               return (
                 <div data-testid={`audience-option-${option}`} key={option}>
                   {isAudienceDisabled(option) && tooltipText ? (
-                    <Tooltip placement='top-start' title={tooltipText}>
+                    <AppTooltip title={tooltipText}>
                       <span>{optionSelector}</span>
-                    </Tooltip>
+                    </AppTooltip>
                   ) : (
                     optionSelector
                   )}

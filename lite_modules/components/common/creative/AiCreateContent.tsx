@@ -5,8 +5,6 @@ import {
   IconButton,
   Link,
   ProgressCircle,
-  Tooltip,
-  TooltipTrigger,
 } from '@rbx/foundation-ui';
 import { useMutation } from '@tanstack/react-query';
 import {
@@ -23,6 +21,7 @@ import {
 } from 'react';
 
 import { EventName, logNativeClickEvent, logNativeImpressionEvent } from '@clients/unifiedLogger';
+import AppTooltip from '@components/common/AppTooltip';
 import contentStyles from '@components/common/creative/AiCreateContent.module.css';
 import {
   type AiCreativeFeedbackSubmitPayload,
@@ -182,10 +181,6 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
   const isGenAiCreativesEnabled = useAppStore(
     (state: AppStoreStateType) => state.appMetadataState?.data?.isGenAiCreativesEnabled ?? false,
   );
-  const isGenAiCreativesUserReferenceEnabled = useAppStore(
-    (state: AppStoreStateType) =>
-      state.appMetadataState?.data?.isGenAiCreativesUserReferenceEnabled ?? false,
-  );
   const maxPromptLength = useAppStore(
     (state: AppStoreStateType) =>
       state.appMetadataState?.data?.maxGenAiCreativesUserPromptLength ??
@@ -329,8 +324,7 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
       return generateAdCreative({
         universeId: effectiveUniverseId,
         userPrompt: userPrompt.trim(),
-        ...(isGenAiCreativesUserReferenceEnabled &&
-          referenceAssetIds.length > 0 && { referenceAssetIds }),
+        ...(referenceAssetIds.length > 0 && { referenceAssetIds }),
       });
     },
     // A 429 (rate limit) and any transient 5xx/network/timeout failure must stay
@@ -1322,18 +1316,16 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
               className={`${contentStyles.promptInputSection} ${
                 isGenerating || isQuotaExhausted ? contentStyles.promptInputSectionDisabled : ''
               } flex flex-col gap-xsmall`}>
-              {isGenAiCreativesUserReferenceEnabled ? (
-                <AiCreativeReferenceThumbnailsRow
-                  disabled={isBusy || isQuotaExhausted}
-                  onChange={(nextIds) => {
-                    setReferenceAssetIds(nextIds);
-                    if (generateMutation.isError) {
-                      generateMutation.reset();
-                    }
-                  }}
-                  selectedAssetIds={referenceAssetIds}
-                />
-              ) : null}
+              <AiCreativeReferenceThumbnailsRow
+                disabled={isBusy || isQuotaExhausted}
+                onChange={(nextIds) => {
+                  setReferenceAssetIds(nextIds);
+                  if (generateMutation.isError) {
+                    generateMutation.reset();
+                  }
+                }}
+                selectedAssetIds={referenceAssetIds}
+              />
               <div className={contentStyles.promptInputContainer}>
                 <textarea
                   aria-label={translate('Label.DescribeImagePrompt')}
@@ -1371,51 +1363,43 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
             </div>
 
             <div className='flex items-center justify-between gap-large width-full'>
-              {isGenAiCreativesUserReferenceEnabled ? (
-                <AiCreativeReferenceAddControl
-                  disabled={isBusy || isQuotaExhausted}
-                  error={
-                    isReferenceAssetError ? translate(referenceAssetErrorMessageKey) : undefined
+              <AiCreativeReferenceAddControl
+                disabled={isBusy || isQuotaExhausted}
+                error={isReferenceAssetError ? translate(referenceAssetErrorMessageKey) : undefined}
+                groupId={creativeLibraryGroupId}
+                onChange={(nextIds) => {
+                  setReferenceAssetIds(nextIds);
+                  if (generateMutation.isError) {
+                    generateMutation.reset();
                   }
-                  groupId={creativeLibraryGroupId}
-                  onChange={(nextIds) => {
-                    setReferenceAssetIds(nextIds);
-                    if (generateMutation.isError) {
-                      generateMutation.reset();
-                    }
-                  }}
-                  selectedAssetIds={referenceAssetIds}
-                />
-              ) : (
-                <span />
-              )}
+                }}
+                selectedAssetIds={referenceAssetIds}
+              />
               <div className='flex items-center gap-large shrink-0'>
                 {showRequestsQuota ? (
-                  <Tooltip
+                  <AppTooltip
                     contentClassName={FOUNDATION_TOOLTIP_BODY_SMALL_CLASS}
                     position='top-center'
                     title={translate('Label.GenAiTokensLeftToday')}>
-                    <TooltipTrigger asChild>
-                      <div
-                        className={`${contentStyles.requestsQuotaIndicator} flex items-center gap-small shrink-0`}
-                        data-testid='gen-ai-requests-quota'>
-                        <ProgressCircle
-                          ariaLabel={translate(
-                            remainingRequests === 1
-                              ? 'Label.GenAiRequestsRemainingOne'
-                              : 'Label.GenAiRequestsRemainingOther',
-                            { remaining: String(remainingRequests ?? 0) },
-                          )}
-                          size='Small'
-                          value={quotaRemainingPercent}
-                          variant='Determinate'
-                        />
-                        <span className='text-body-small content-muted whitespace-nowrap'>
-                          {`${remainingRequests ?? 0}/${quotaLimit ?? 0}`}
-                        </span>
-                      </div>
-                    </TooltipTrigger>
-                  </Tooltip>
+                    <div
+                      className={`${contentStyles.requestsQuotaIndicator} flex items-center gap-small shrink-0`}
+                      data-testid='gen-ai-requests-quota'>
+                      <ProgressCircle
+                        ariaLabel={translate(
+                          remainingRequests === 1
+                            ? 'Label.GenAiRequestsRemainingOne'
+                            : 'Label.GenAiRequestsRemainingOther',
+                          { remaining: String(remainingRequests ?? 0) },
+                        )}
+                        size='Small'
+                        value={quotaRemainingPercent}
+                        variant='Determinate'
+                      />
+                      <span className='text-body-small content-muted whitespace-nowrap'>
+                        {`${remainingRequests ?? 0}/${quotaLimit ?? 0}`}
+                      </span>
+                    </div>
+                  </AppTooltip>
                 ) : null}
                 {isGenerating ? (
                   <IconButton
@@ -1430,29 +1414,27 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
                 ) : (
                   <>
                     {shouldShowGenerateRequirementsTooltip ? (
-                      <Tooltip
+                      <AppTooltip
                         contentClassName={FOUNDATION_TOOLTIP_BODY_SMALL_CLASS}
                         position='left-center'
                         title={translate(
                           'Description.GenerateCreativeDisabledRequirementsTooltip',
                         )}>
-                        <TooltipTrigger asChild>
-                          <span className='inline-flex shrink-0'>
-                            <IconButton
-                              ariaLabel={translate(
-                                hasCurrentGeneratedImages ? 'Action.Regenerate' : 'Action.Generate',
-                              )}
-                              icon='icon-regular-arrow-medium-up'
-                              isCircular
-                              isDisabled={!canGenerate}
-                              onClick={handleGenerateOrRegenerate}
-                              ref={actionButtonRef}
-                              size='Medium'
-                              variant='Standard'
-                            />
-                          </span>
-                        </TooltipTrigger>
-                      </Tooltip>
+                        <span className='inline-flex shrink-0'>
+                          <IconButton
+                            ariaLabel={translate(
+                              hasCurrentGeneratedImages ? 'Action.Regenerate' : 'Action.Generate',
+                            )}
+                            icon='icon-regular-arrow-medium-up'
+                            isCircular
+                            isDisabled={!canGenerate}
+                            onClick={handleGenerateOrRegenerate}
+                            ref={actionButtonRef}
+                            size='Medium'
+                            variant='Standard'
+                          />
+                        </span>
+                      </AppTooltip>
                     ) : (
                       <IconButton
                         ariaLabel={translate(

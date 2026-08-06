@@ -1,8 +1,8 @@
 import { Button, Icon, Toggle } from '@rbx/foundation-ui';
-import { Tooltip } from '@rbx/ui';
 import { useRouter } from 'next/router';
 
 import { openDisableAutoReloadConfirmDialog } from '@components/billing/dialogs/DisableAutoReloadConfirmDialog';
+import AppTooltip from '@components/common/AppTooltip';
 import Skeleton from '@components/common/Skeleton';
 import { AdCreditBalanceScope, PaymentMethodActionEnum } from '@constants/billing';
 import { TranslationNamespace } from '@constants/localization';
@@ -185,13 +185,16 @@ const AdCreditBalance = ({
               <span className='text-body-medium content-emphasis'>
                 {translate('Heading.AutoReloadBalance')}
               </span>
-              <Tooltip
-                arrow
-                data-testid='balanceChargeReminderTooltip'
-                placement='bottom'
+              <AppTooltip
+                position='bottom-center'
                 title={translate('Description.AutoReloadBalanceTooltip')}>
-                <Icon className='content-default' name='icon-regular-circle-i' size='Small' />
-              </Tooltip>
+                <Icon
+                  className='content-default'
+                  data-testid='balanceChargeReminderTooltip'
+                  name='icon-regular-circle-i'
+                  size='Small'
+                />
+              </AppTooltip>
             </div>
             <p className='text-body-medium content-default'>{autoReloadDescriptionContent}</p>
           </div>

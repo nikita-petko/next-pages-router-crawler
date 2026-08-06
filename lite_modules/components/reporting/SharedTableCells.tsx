@@ -1,7 +1,8 @@
 import { Icon, TableCell } from '@rbx/foundation-ui';
-import { Grid, Tooltip } from '@rbx/ui';
+import { Grid } from '@rbx/ui';
 import { cloneElement, ReactNode } from 'react';
 
+import AppTooltip from '@components/common/AppTooltip';
 import Skeleton from '@components/common/Skeleton';
 import useGenericTableRowStyles from '@components/reporting/GenericTableRow.styles';
 import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
@@ -48,11 +49,11 @@ const SharedTableCells = ({ headCells, row, unsortableData }: SharedTableCellsPr
       return value;
     }
     return (
-      <Tooltip arrow placement='top' title={translate('Tooltip.MetricsPending')}>
+      <AppTooltip position='top-center' title={translate('Tooltip.MetricsPending')}>
         <span data-testid='metrics-pending-icon'>
           <Icon name='icon-regular-clock' size='Small' />
         </span>
-      </Tooltip>
+      </AppTooltip>
     );
   };
 

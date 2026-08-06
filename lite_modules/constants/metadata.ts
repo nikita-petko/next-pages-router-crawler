@@ -58,7 +58,6 @@ export const appMetadataDefaults: GetAdsMetadataResponseType = {
   isFullDaysEnabled: false,
   isGaasEnabled: false,
   isGenAiCreativesEnabled: false,
-  isGenAiCreativesUserReferenceEnabled: false,
   isMaxReachEnabled: false,
   isMultiUniverseAdIntegrationsEnabled: false,
   isOneByTwoTileCreationEnabled: false,

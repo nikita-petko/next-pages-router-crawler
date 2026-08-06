@@ -1,6 +1,6 @@
 import { useWorkspaces } from '@rbx/creator-hub-navigation';
 import { Icon } from '@rbx/foundation-ui';
-import { Divider, ListSubheader, MenuItem, Select, Tooltip } from '@rbx/ui';
+import { Divider, ListSubheader, MenuItem, Select } from '@rbx/ui';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
@@ -11,6 +11,7 @@ import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
 import { openGroupAdAccountSetupDialog } from '@components/billing/dialogs/GroupAdAccountSetupDialog';
 import useCampaignBuilderCommonStyles from '@components/campaignBuilder/common/CampaignBuilderCommon.styles';
 import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
+import AppTooltip from '@components/common/AppTooltip';
 import PaymentMethodIcon from '@components/common/PaymentMethodIcon';
 import Skeleton from '@components/common/Skeleton';
 import { AdAccountType } from '@constants/app';
@@ -421,7 +422,7 @@ const PaymentSelect = () => {
       control={control}
       name={FormField.PAYMENT_TYPE}
       render={({ field: { onChange, value, ...rest }, fieldState: { error } }) => (
-        <Tooltip placement='top-start' title={getTooltipTitle()}>
+        <AppTooltip title={getTooltipTitle()}>
           <div className={halfWidth}>
             <Select
               {...rest}
@@ -538,7 +539,7 @@ const PaymentSelect = () => {
             </Select>
             {getErrorHelperEl(error as ZodFormIssue)}
           </div>
-        </Tooltip>
+        </AppTooltip>
       )}
     />
   );

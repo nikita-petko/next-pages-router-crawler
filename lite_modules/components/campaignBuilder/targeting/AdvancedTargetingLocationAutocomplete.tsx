@@ -1,10 +1,11 @@
-import { Autocomplete, FormControl, TextField, Tooltip } from '@rbx/ui';
+import { Autocomplete, FormControl, TextField } from '@rbx/ui';
 import { useMemo, useState } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
 import useAdvancedTargetingLocationAutocompleteStyles from '@components/campaignBuilder/targeting/AdvancedTargetingLocationAutocomplete.styles';
 import LocationAutocompleteExpandingSelectionRow from '@components/campaignBuilder/targeting/LocationAutocompleteExpandingSelectionRow';
+import AppTooltip from '@components/common/AppTooltip';
 import { FormField } from '@constants/advancedTargeting';
 import { FlowTypes, FORM_HELPER_TEXT_PROPS, INPUT_LABEL_PROPS } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
@@ -126,8 +127,7 @@ const LocationAutocomplete = () => {
         };
 
         return (
-          <Tooltip
-            placement='top-start'
+          <AppTooltip
             title={translate(GetEditTooltipTitle({ campaignStatus, editable: false, flowType }))}>
             <Autocomplete
               {...rest}
@@ -226,7 +226,7 @@ const LocationAutocomplete = () => {
               )}
               value={GetFlattenedLocationOptions(value)}
             />
-          </Tooltip>
+          </AppTooltip>
         );
       }}
     />

@@ -1,12 +1,4 @@
-import {
-  Button,
-  Divider,
-  Icon,
-  IconButton,
-  ProgressCircle,
-  Tooltip,
-  TooltipTrigger,
-} from '@rbx/foundation-ui';
+import { Button, Divider, Icon, IconButton, ProgressCircle } from '@rbx/foundation-ui';
 import {
   type ChangeEvent,
   type FC,
@@ -20,6 +12,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
+import AppTooltip from '@components/common/AppTooltip';
 import styles from '@components/common/creative/CreativeUploadTab.module.css';
 import { FOUNDATION_TOOLTIP_BODY_SMALL_CLASS } from '@components/common/creative/tooltipStyles';
 import { IMAGE_ACCEPT_FORMATS, MAX_IMAGE_SIZE } from '@constants/fileUpload';
@@ -159,14 +152,12 @@ const SelectMediaButton: FC<SelectMediaButtonProps> = ({
   );
   if (isAtCap) {
     return (
-      <Tooltip
+      <AppTooltip
         contentClassName={FOUNDATION_TOOLTIP_BODY_SMALL_CLASS}
         position='top-center'
         title={translate('Description.CreativeLimitReachedTooltip')}>
-        <TooltipTrigger asChild>
-          <span className='flex'>{button}</span>
-        </TooltipTrigger>
-      </Tooltip>
+        <span className='flex'>{button}</span>
+      </AppTooltip>
     );
   }
   return button;

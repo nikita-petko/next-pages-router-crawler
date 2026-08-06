@@ -1,11 +1,12 @@
 import { Badge } from '@rbx/foundation-ui';
-import { InputAdornment, MenuItem, Select, TextField, Tooltip } from '@rbx/ui';
+import { InputAdornment, MenuItem, Select, TextField } from '@rbx/ui';
 import { useMemo } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { NumericFormat } from 'react-number-format';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
 import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
+import AppTooltip from '@components/common/AppTooltip';
 import { ServerBudgetType } from '@constants/campaign';
 import {
   FlowTypes,
@@ -128,7 +129,7 @@ const BudgetSelect = ({ selectedLabel, unit }: BudgetSelectProps) => {
       key={ServerBudgetType.BUDGET_TYPE_DAILY}
       name={FormField.BUDGET}
       render={({ field: { onBlur, onChange, value }, fieldState: { error } }) => (
-        <Tooltip placement='top-start' title={getTooltipTitle()}>
+        <AppTooltip title={getTooltipTitle()}>
           <div className={`text-body-large ${cx(formRow, fullWidth)}`}>
             {editMode ? null : (
               <Select
@@ -202,7 +203,7 @@ const BudgetSelect = ({ selectedLabel, unit }: BudgetSelectProps) => {
               />
             )}
           </div>
-        </Tooltip>
+        </AppTooltip>
       )}
     />
   );

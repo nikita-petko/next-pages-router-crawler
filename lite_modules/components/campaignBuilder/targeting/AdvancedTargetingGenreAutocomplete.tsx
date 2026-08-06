@@ -1,10 +1,11 @@
-import { Autocomplete, FormControl, TextField, Tooltip } from '@rbx/ui';
+import { Autocomplete, FormControl, TextField } from '@rbx/ui';
 import { HTMLAttributes } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
 import useAdvancedTargetingDrawerStyles from '@components/campaignBuilder/targeting/AdvancedTargetingDrawer.styles';
 import GenreSelectionAutocompleteRow from '@components/campaignBuilder/targeting/GenreSelectionAutocompleteRow';
+import AppTooltip from '@components/common/AppTooltip';
 import { FormField } from '@constants/advancedTargeting';
 import { FlowTypes, FORM_HELPER_TEXT_PROPS, INPUT_LABEL_PROPS } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
@@ -36,8 +37,7 @@ const GenreTargetingAutocomplete = () => {
         control={control}
         name={FormField.GENRES}
         render={({ field: { onChange, value, ...rest }, fieldState: { error } }) => (
-          <Tooltip
-            placement='top-start'
+          <AppTooltip
             title={translate(GetEditTooltipTitle({ campaignStatus, editable: false, flowType }))}>
             <Autocomplete
               {...rest}
@@ -101,7 +101,7 @@ const GenreTargetingAutocomplete = () => {
               )}
               value={value}
             />
-          </Tooltip>
+          </AppTooltip>
         )}
       />
     </div>

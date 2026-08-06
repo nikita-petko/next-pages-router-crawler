@@ -1,9 +1,9 @@
 import { TableCell, Toggle, type TTableCellAlign } from '@rbx/foundation-ui';
-import { Tooltip } from '@rbx/ui';
 import { AxiosError } from 'axios';
 import { ReactNode } from 'react';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
+import AppTooltip from '@components/common/AppTooltip';
 import { openErrorDialog } from '@components/common/dialog/errorDialog';
 import { openImpersonationErrorDialog } from '@components/common/dialog/impersonationErrorDialog';
 import { ServerAdStatusType } from '@constants/ad';
@@ -64,32 +64,29 @@ const TableToggleCell = ({
     });
   };
 
+  const toggle = (
+    <span>
+      <Toggle
+        aria-label={translate('Description.ToggleEntity')}
+        data-testid='toggle-entity'
+        isChecked={entityOn}
+        isDisabled={toggleDisabled}
+        onCheckedChange={onToggle}
+        placement='Start'
+        size='Small'
+      />
+    </span>
+  );
+
   return (
     <TableCell align={align} className={className}>
-      <Tooltip
-        arrow
-        placement='right'
-        title={
-          toggleDisabled && toggleDisabledTooltip ? (
-            <div>
-              <span>{toggleDisabledTooltip}</span>
-            </div>
-          ) : (
-            ''
-          )
-        }>
-        <span>
-          <Toggle
-            aria-label={translate('Description.ToggleEntity')}
-            data-testid='toggle-entity'
-            isChecked={entityOn}
-            isDisabled={toggleDisabled}
-            onCheckedChange={onToggle}
-            placement='Start'
-            size='Small'
-          />
-        </span>
-      </Tooltip>
+      {toggleDisabled && toggleDisabledTooltip ? (
+        <AppTooltip position='right-center' title={toggleDisabledTooltip}>
+          {toggle}
+        </AppTooltip>
+      ) : (
+        toggle
+      )}
     </TableCell>
   );
 };

@@ -1,11 +1,12 @@
 import { useLocalization } from '@rbx/intl';
-import { DatePicker, MenuItem, PickersUtilsProvider, Select, TextField, Tooltip } from '@rbx/ui';
+import { DatePicker, MenuItem, PickersUtilsProvider, Select, TextField } from '@rbx/ui';
 import moment from 'moment-timezone';
 import { ChangeEvent, ReactNode, useMemo, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
 import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
+import AppTooltip from '@components/common/AppTooltip';
 import { defaultTimeZone } from '@constants/app';
 import {
   DateFormat,
@@ -196,7 +197,7 @@ const StartTimePicker = () => {
                 onClose={() => setIsOpen(false)}
                 open={isOpen}
                 renderInput={(params) => (
-                  <Tooltip placement='top-start' title={GetTooltipText()}>
+                  <AppTooltip title={GetTooltipText()}>
                     <div>
                       <TextField
                         {...params}
@@ -212,7 +213,7 @@ const StartTimePicker = () => {
                         variant='outlined'
                       />
                     </div>
-                  </Tooltip>
+                  </AppTooltip>
                 )}
                 value={moment(startDate).toDate()}
               />
@@ -225,7 +226,7 @@ const StartTimePicker = () => {
           name={FormField.START_TIME}
           render={({ field, fieldState: { error } }) => (
             <div className={halfWidth}>
-              <Tooltip placement='top-start' title={GetTooltipText()}>
+              <AppTooltip title={GetTooltipText()}>
                 <Select
                   className={fullWidth}
                   disabled={isDisabled || !startDate}
@@ -273,7 +274,7 @@ const StartTimePicker = () => {
                     </MenuItem>
                   ))}
                 </Select>
-              </Tooltip>
+              </AppTooltip>
               {error && startTimeConversionText && (
                 <span className='text-body-medium content-default'>{startTimeConversionText}</span>
               )}

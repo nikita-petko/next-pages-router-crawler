@@ -83,6 +83,7 @@ import useUniverseOptionsForAdCreation from '@hooks/useUniverseOptionsForAdCreat
 import {
   deleteAdCreative,
   getAdCreatives,
+  unarchiveAdCreative,
   updateAdCreative,
 } from '@services/ads/adCreativeAssetService';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
@@ -477,6 +478,7 @@ const CreativeLibrary = () => {
   );
   const [bulkAssignPending, setBulkAssignPending] = useState<boolean>(false);
   const [bulkArchivePending, setBulkArchivePending] = useState<boolean>(false);
+  const [bulkUnarchivePending, setBulkUnarchivePending] = useState<boolean>(false);
   const [bulkAssignHasError, setBulkAssignHasError] = useState<boolean>(false);
   const [bulkArchiveHasError, setBulkArchiveHasError] = useState<boolean>(false);
   const [bulkAssignFailedAssets, setBulkAssignFailedAssets] = useState<BulkFlowFailedAsset[]>([]);
@@ -528,6 +530,10 @@ const CreativeLibrary = () => {
     creativeLibraryGroupId === undefined
       ? deleteAdCreative(id)
       : deleteAdCreative(id, { groupId: creativeLibraryGroupId });
+  const unarchiveAdCreativeForCurrentWorkspace = (id: string) =>
+    creativeLibraryGroupId === undefined
+      ? unarchiveAdCreative(id)
+      : unarchiveAdCreative(id, { groupId: creativeLibraryGroupId });
   // Opt out of the global staleTime: Infinity (set in _app.tsx) so
   // pending_review creatives don't get pinned to the cache for the
   // whole session — each page mount re-fetches and gets the latest
@@ -651,6 +657,19 @@ const CreativeLibrary = () => {
       }
       await refetchAdCreatives();
       setToast({ message: translate('Description.DeleteCreativeSuccess'), severity: 'success' });
+    },
+  });
+
+  const unarchiveMutation = useMutation({
+    mutationFn: (id: string) => unarchiveAdCreativeForCurrentWorkspace(id),
+    onError: () => {
+      setToast({ message: translate('Message.UnarchiveFailed'), severity: 'error' });
+    },
+    onSuccess: async () => {
+      setDetailSheetOpen(false);
+      setSelectedAsset(null);
+      await refetchAdCreatives();
+      setToast({ message: translate('Message.UnarchiveSuccess'), severity: 'success' });
     },
   });
 
@@ -804,6 +823,10 @@ const CreativeLibrary = () => {
   /** Bulk assign + bulk archive both skip archived rows; single derived count keeps CTA predicates in sync. */
   const nonArchivedSelectedCount = useMemo(
     () => selectedAssets.filter((asset) => !asset.isArchived).length,
+    [selectedAssets],
+  );
+  const archivedSelectedCount = useMemo(
+    () => selectedAssets.filter((asset) => asset.isArchived).length,
     [selectedAssets],
   );
   const selectedCountOnCurrentPage = useMemo(
@@ -960,6 +983,51 @@ const CreativeLibrary = () => {
       );
     } finally {
       setBulkArchivePending(false);
+    }
+  };
+
+  const handleBulkUnarchive = async () => {
+    const toUnarchive = selectedAssets.filter((asset) => asset.isArchived);
+    if (toUnarchive.length === 0) {
+      return;
+    }
+    setBulkUnarchivePending(true);
+    try {
+      await runBulkFlow(
+        {
+          invalidateQueries: refetchAdCreatives,
+          onAllSucceeded: () => {
+            setToast({
+              message: translate('Message.UnarchiveSuccess'),
+              severity: 'success',
+            });
+            clearSelectedAssets();
+          },
+          partialSuccessToast: (succeededCount, totalCount) => {
+            setToast({
+              message: translate('Message.BulkOperationsPartialSuccess', {
+                succeededCount: String(succeededCount),
+                totalCount: String(totalCount),
+              }),
+              severity: 'success',
+            });
+          },
+          performAction: (asset) => unarchiveAdCreativeForCurrentWorkspace(asset.adAssetId),
+          setFailedAssets: () => {},
+          setHasError: () => {
+            setToast({ message: translate('Message.UnarchiveFailed'), severity: 'error' });
+          },
+          targets: toUnarchive,
+          toFailedAsset: (asset) => ({
+            adAssetId: asset.adAssetId,
+            assetId: String(asset.assetId),
+            assetName: asset.assetName,
+          }),
+        },
+        setSelectedAssetIds,
+      );
+    } finally {
+      setBulkUnarchivePending(false);
     }
   };
 
@@ -1138,7 +1206,13 @@ const CreativeLibrary = () => {
             value: 'archive',
           },
         ]
-      : []),
+      : [
+          {
+            onSelect: () => unarchiveMutation.mutate(asset.adAssetId),
+            title: translate('Action.Unarchive'),
+            value: 'unarchive',
+          },
+        ]),
   ];
 
   // Tile metadata under the asset name. Two layouts by moderation urgency:
@@ -1465,7 +1539,8 @@ const CreativeLibrary = () => {
       saveDetailsMutation.isPending ||
       deleteMutation.isPending ||
       bulkAssignPending ||
-      bulkArchivePending;
+      bulkArchivePending ||
+      bulkUnarchivePending;
     return (
       <div className='flex items-center gap-medium padding-bottom-medium'>
         <span className='text-label-medium content-emphasis'>{translate('Label.BulkActions')}</span>
@@ -1486,6 +1561,14 @@ const CreativeLibrary = () => {
           size='Small'
           variant='Standard'>
           {translate('Action.Archive')}
+        </Button>
+        <Button
+          isDisabled={disableBulkActions || archivedSelectedCount === 0}
+          isLoading={bulkUnarchivePending}
+          onClick={handleBulkUnarchive}
+          size='Small'
+          variant='Standard'>
+          {translate('Action.Unarchive')}
         </Button>
         <Button
           isDisabled={disableBulkActions}
@@ -1685,7 +1768,7 @@ const CreativeLibrary = () => {
                   ])}
                 </div>
 
-                {!selectedAsset.isArchived && (
+                {!selectedAsset.isArchived ? (
                   <div className='padding-bottom-large'>
                     <Button
                       isDisabled={!selectedAsset || isSaving || isDeleting}
@@ -1693,6 +1776,19 @@ const CreativeLibrary = () => {
                       size='Medium'
                       variant='Alert'>
                       {translate('Action.Archive')}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className='padding-bottom-large'>
+                    <Button
+                      isDisabled={!selectedAsset || isSaving || unarchiveMutation.isPending}
+                      isLoading={unarchiveMutation.isPending}
+                      onClick={() =>
+                        selectedAsset && unarchiveMutation.mutate(selectedAsset.adAssetId)
+                      }
+                      size='Medium'
+                      variant='Emphasis'>
+                      {translate('Action.Unarchive')}
                     </Button>
                   </div>
                 )}
@@ -1710,7 +1806,7 @@ const CreativeLibrary = () => {
               {translateMisc('Action.Save')}
             </Button>
             <Button
-              isDisabled={isSaving || isDeleting}
+              isDisabled={isSaving || isDeleting || unarchiveMutation.isPending}
               onClick={() => handleDetailSheetClose(false)}
               size='Medium'
               variant='Standard'>

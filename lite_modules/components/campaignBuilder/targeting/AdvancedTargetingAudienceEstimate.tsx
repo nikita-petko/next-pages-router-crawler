@@ -1,8 +1,8 @@
 import { Icon, ProgressCircle } from '@rbx/foundation-ui';
-import { Tooltip } from '@rbx/ui';
 import { useFormContext } from 'react-hook-form';
 
 import useAdvancedTargetingDrawerStyles from '@components/campaignBuilder/targeting/AdvancedTargetingDrawer.styles';
+import AppTooltip from '@components/common/AppTooltip';
 import { FlowTypes } from '@constants/campaignBuilder';
 import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
 import { TranslationNamespace } from '@constants/localization';
@@ -114,9 +114,11 @@ const AdvancedTargetingAudienceEstimate = ({
       <span className='text-body-medium content-default'>
         {translateCampaign('Heading.AudienceSizeEstimate')}
       </span>
-      <Tooltip title={translateCampaign('Description.AudienceSizeEstimateTooltip')}>
+      <AppTooltip
+        position='bottom-center'
+        title={translateCampaign('Description.AudienceSizeEstimateTooltip')}>
         <Icon className={audienceEstimateInfoIcon} name='icon-regular-circle-i' size='Small' />
-      </Tooltip>
+      </AppTooltip>
       {renderEstimateOrLoading()}
       {maybeRenderWarning()}
     </div>
