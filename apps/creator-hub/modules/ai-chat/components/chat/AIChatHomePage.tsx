@@ -51,11 +51,11 @@ const StarterQuestionCard: FC<StarterQuestionCardProps> = ({
     [onSelect, question, category],
   );
   return (
-    <Card className='medium:basis-0 medium:grow-1 medium:shrink-1'>
+    <Card className='bg-shift-100 medium:basis-0 medium:grow-1 medium:shrink-1'>
       <CardActionArea onClick={handleClick} className='height-full'>
         <CardContent sx={CARD_CONTENT_SX}>
           <div className='flex flex-col gap-medium'>
-            <div className='flex items-center gap-small content-action-emphasis'>
+            <div className='flex items-center gap-small content-emphasis'>
               <Icon fontSize='small' />
               <Typography variant='h6'>{title}</Typography>
             </div>
