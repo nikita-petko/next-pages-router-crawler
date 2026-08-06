@@ -1,8 +1,7 @@
 import type { FC } from 'react';
 import { useCallback, useMemo } from 'react';
-import { Button } from '@rbx/foundation-ui';
+import { Button, Card } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { Card } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import useAnalyticsAlertsListQuery from '@modules/experience-alerts/hooks/useAnalyticsAlertsListQuery';
@@ -116,12 +115,12 @@ const OverviewAlertsCard: FC = () => {
       action={viewAllAction}
       alwaysInlineAction>
       <Card
-        className='bg-surface-100 width-full'
+        variant='Standard'
+        density='Compact'
+        className='bg-surface-100 width-full padding-small'
         style={{ minWidth: CARD_MIN_WIDTH_PX }}
         data-testid='overview-alerts-card'>
-        <ul
-          className='margin-none padding-xlarge flex flex-col gap-xlarge'
-          style={{ listStyle: 'none' }}>
+        <ul className='margin-none flex flex-col gap-xlarge padding-left-none'>
           {visibleRows.map((row) => (
             <OverviewAlertRow
               key={row.testId ?? `overview-alert-row-${row.timeAgo ?? ''}`}

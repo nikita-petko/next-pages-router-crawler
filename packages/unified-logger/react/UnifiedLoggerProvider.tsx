@@ -1,7 +1,8 @@
 import type { FC } from 'react';
-import React, { createContext, useMemo, useContext, useLayoutEffect } from 'react';
+import React, { createContext, useMemo, useContext, useLayoutEffect, useRef } from 'react';
 import type { TTag } from '../core/types';
 import type UnifiedLogger from '../core/UnifiedLogger';
+import type TaggableEvent from '../event/TaggableEvent';
 
 // PageLoggerConfig is exposed to the client. Do not add sensitive internal business info.
 export type PageLoggerConfig = {
@@ -29,6 +30,28 @@ type Props = React.PropsWithChildren<{
 const UnifiedLoggerProviderContext = createContext<UnifiedLoggerProviderState | null>(null);
 
 const emptyTags: TTag[] = [];
+const eventTypes = [
+  'pageload',
+  'click',
+  'impression',
+  'hover',
+  'webvitals',
+  'apivitals',
+  'formvitals',
+  'error',
+  'session',
+] as const;
+// These document-load metrics may be emitted after navigation but still belong to the initial page.
+const coreWebVitalsMetricNames = new Set(['TTFB', 'FCP', 'LCP', 'FID', 'CLS', 'INP']);
+
+const isCoreWebVitalsEvent = (event: TaggableEvent): boolean => {
+  const metricName = event.parameters?.metricName;
+  return (
+    event.eventType === 'webvitals' &&
+    metricName !== undefined &&
+    coreWebVitalsMetricNames.has(metricName)
+  );
+};
 
 export const UnifiedLoggerProvider: FC<Props> = ({
   children,
@@ -38,22 +61,43 @@ export const UnifiedLoggerProvider: FC<Props> = ({
 }) => {
   const tags = pageLoggerConfig?.tags ?? emptyTags;
   const rosId = pageLoggerConfig?.rosId;
+  const pageContext = useMemo<PageContext>(() => ({ tags, rosId, path }), [tags, rosId, path]);
+  const initialPageContextRef = useRef(pageContext);
+  const pageContextRef = useRef(pageContext);
 
   useLayoutEffect(() => {
-    unifiedLogger.setOwnerId?.(rosId);
-    unifiedLogger.setPageTags?.(tags);
-    unifiedLogger.setPath?.(path);
-    return () => {
-      unifiedLogger.setOwnerId?.(undefined);
-      unifiedLogger.setPageTags?.([]);
-      unifiedLogger.setPath?.(undefined);
-    };
-  }, [unifiedLogger, rosId, tags, path]);
+    pageContextRef.current = pageContext;
+  }, [pageContext]);
 
-  const state = useMemo<UnifiedLoggerProviderState>(() => {
-    const pageContext: PageContext = { tags, rosId, path };
-    return { unifiedLogger, pageContext };
-  }, [unifiedLogger, tags, rosId, path]);
+  useLayoutEffect(() => {
+    const addPageContext = (event: TaggableEvent) => {
+      const eventPageContext = isCoreWebVitalsEvent(event)
+        ? initialPageContextRef.current
+        : pageContextRef.current;
+      if (eventPageContext.path !== undefined) {
+        event.parameters = { ...event.parameters, path: eventPageContext.path };
+      }
+      eventPageContext.tags.forEach((tag) => event.addTag(tag));
+      if (eventPageContext.rosId !== undefined) {
+        event.addTag(`owner: ${eventPageContext.rosId}`);
+      }
+    };
+
+    eventTypes.forEach((eventType) => {
+      unifiedLogger.events.on(eventType, addPageContext);
+    });
+
+    return () => {
+      eventTypes.forEach((eventType) => {
+        unifiedLogger.events.off(eventType, addPageContext);
+      });
+    };
+  }, [unifiedLogger]);
+
+  const state = useMemo<UnifiedLoggerProviderState>(
+    () => ({ unifiedLogger, pageContext }),
+    [unifiedLogger, pageContext],
+  );
 
   return (
     <UnifiedLoggerProviderContext.Provider value={state}>

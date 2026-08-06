@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useRef } from 'react';
+import { Card } from '@rbx/foundation-ui';
 import { withTranslation } from '@rbx/intl';
 import {
-  Card,
   CardHeader,
   CardContent,
   Grid,
@@ -185,6 +185,7 @@ const AssistantReportInsightCardV2: React.FC<{
       />
       <CardContent className={cardContent}>
         <Typography variant='body1' component='p' className={fadeTextContainer}>
+          {/* oxlint-disable-next-line react/jsx-pascal-case -- component created before PascalCase is enforced */}
           <MDX content={reportSummary} />
         </Typography>
         <Flex

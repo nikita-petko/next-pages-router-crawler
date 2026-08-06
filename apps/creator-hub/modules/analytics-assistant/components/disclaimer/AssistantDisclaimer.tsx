@@ -1,6 +1,5 @@
 import type { FC } from 'react';
 import { useMemo } from 'react';
-import { resolveUrl } from '@rbx/env-utils';
 import { withTranslation } from '@rbx/intl';
 import { Link, Typography, makeStyles } from '@rbx/ui';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
@@ -27,7 +26,7 @@ const AssistantDisclaimer: FC = () => {
   const content = useMemo(
     () =>
       translateHTML(
-        translationKey('Label.Assistant.Disclaimer', TranslationNamespace.AnalyticsAssistant),
+        translationKey('Label.Assistant.DisclaimerV2', TranslationNamespace.AnalyticsAssistant),
         [
           {
             opening: 'learnMoreLinkStart',
@@ -35,25 +34,6 @@ const AssistantDisclaimer: FC = () => {
             content(chunks) {
               return (
                 <Link href={assistantDocLink} target='_blank' underline='always' color='inherit'>
-                  {chunks}
-                </Link>
-              );
-            },
-          },
-          {
-            opening: 'termsLinkStart',
-            closing: 'termsLinkEnd',
-            content(chunks) {
-              return (
-                <Link
-                  href={resolveUrl(
-                    'aiBasedToolsSupplementalTermsAndDisclaimer',
-                    process.env.targetEnvironment,
-                    process.env.buildTarget,
-                  )}
-                  target='_blank'
-                  underline='always'
-                  color='inherit'>
                   {chunks}
                 </Link>
               );

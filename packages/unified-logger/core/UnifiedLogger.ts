@@ -12,7 +12,6 @@ import {
 import ApiVitalsEvent from '../event/ApiVitalsEvent';
 import FormVitalsEvent from '../event/FormVitalsEvent';
 import type { TSessionEventName } from '../event/SessionEvent';
-import TaggableEvent from '../event/TaggableEvent';
 import type { EventLogger } from '../eventLogger';
 import { CreatorWebEventLogger } from '../eventLogger';
 import ConsoleEventLogger from '../eventLogger/ConsoleEventLogger';
@@ -112,12 +111,6 @@ export default class UnifiedLogger {
 
   private isAutoCollectEnabled = false;
 
-  private ownerId: number | undefined;
-
-  private pageTags: TTag[] = [];
-
-  private path: string | undefined;
-
   events = emitter<EventsMap>();
 
   // /**
@@ -161,30 +154,6 @@ export default class UnifiedLogger {
     return this.eventLoggers;
   }
 
-  setOwnerId(ownerId: number | undefined) {
-    this.ownerId = ownerId;
-  }
-
-  getOwnerId(): number | undefined {
-    return this.ownerId;
-  }
-
-  setPageTags(tags: TTag[]) {
-    this.pageTags = tags;
-  }
-
-  getPageTags(): TTag[] {
-    return this.pageTags;
-  }
-
-  setPath(path: string | undefined) {
-    this.path = path;
-  }
-
-  getPath(): string | undefined {
-    return this.path;
-  }
-
   // auto collect pageload events
   trackPageLoad() {
     if (this.isAutoCollectEnabled) {
@@ -212,15 +181,6 @@ export default class UnifiedLogger {
   }
 
   private logEventToLogger(event: BaseEvent) {
-    if (this.path != null) {
-      event.parameters = { ...event.parameters, path: this.path };
-    }
-    if (event instanceof TaggableEvent) {
-      this.pageTags.forEach((tag) => event.addTag(tag));
-      if (this.ownerId != null) {
-        event.addTag(`owner: ${this.ownerId}`);
-      }
-    }
     this.eventLoggers.forEach((eventLogger) => {
       eventLogger.logEvent(event);
     });
