@@ -25,38 +25,10 @@ export const configurePassMetadataSchema = {
 export const MIN_PASS_PRICE = 1;
 export const MAX_PASS_PRICE = 999_999_999;
 
-export const configurePassSalesSchema = {
-  // Note: this workaround with setValueAs and validation is needed due to underlying MUI TextField implementation
-  price: {
-    // Manually transform to a valid numeric input
-    setValueAs: (value: string | null): number | null => {
-      if (value === '' || value === null) {
-        return null;
-      }
-
-      return Number(value);
-    },
-    min: { value: MIN_PASS_PRICE, message: 'InputError.PriceTooLow' },
-    max: { value: MAX_PASS_PRICE, message: 'InputError.PriceTooHigh' },
-    validate: (value, { isForSale, isRegionalPricingEnabled }) => {
-      if (value !== null && (Number.isNaN(value) || Math.trunc(value) !== value)) {
-        return 'InputError.InvalidPrice';
-      }
-
-      // Price must be set to enable regional pricing
-      if (value === null && isForSale && isRegionalPricingEnabled) {
-        return false; // No error message as required in form
-      }
-
-      return true;
-    },
-  },
-} as const satisfies NativeValidationSchema<ConfigureSalesFormValues>;
-
 // NOTE(@jeminpark): we are temporarily using isRegionalPricingEnabled to match the old form such
 // that components are reused. This should be changed to isManagedPricingEnabled in the future.
 // NOTE(@jeminpark): note this is distinct from the old schema as this handles for native input validation rather than MUI TextField
-export const configurePassSalesFormV2Schema = {
+export const configurePassSalesSchema = {
   price: {
     min: { value: MIN_PASS_PRICE, message: 'InputError.PriceTooLow' },
     max: { value: MAX_PASS_PRICE, message: 'InputError.PriceTooHigh' },

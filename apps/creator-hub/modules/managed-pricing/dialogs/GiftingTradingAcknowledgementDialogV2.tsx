@@ -17,7 +17,6 @@ import {
   TradingGiftingAckOptions,
   useGiftingTradingAcknowledgementFunnelEventsV2,
   useGiftingTradingAcknowledgementSelection,
-  useGiftingTradingWarningBanner,
 } from '../gifting-trading/hooks';
 
 const priceLevelApiDocumentationUrl = docs.getPriceLevelsApiMonetizationUrl();
@@ -47,8 +46,6 @@ function GiftingTradingAcknowledgementDialogContentV2({
   const { tradingGiftingAck, setTradingGiftingAck, accept } =
     useGiftingTradingAcknowledgementSelection(universeId);
 
-  const { close: closeGiftingTradingWarningBanner } = useGiftingTradingWarningBanner(universeId);
-
   const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
 
   useEffect(() => {
@@ -67,7 +64,6 @@ function GiftingTradingAcknowledgementDialogContentV2({
     await accept();
 
     trackAcceptEvent(tradingGiftingAck);
-    closeGiftingTradingWarningBanner();
 
     onClose();
 

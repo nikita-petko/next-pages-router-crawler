@@ -1,21 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
-import { useLocalStorage } from '@rbx/react-utilities';
+import { useCallback, useState } from 'react';
 import { useAuthentication } from '@modules/authentication/providers';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
-import { lastDismissedGiftingTradingWarningBannerKey } from '@modules/regional-pricing/localStorageKeys';
 import { useGetGiftingTradingStatus } from '../queries/useGetGiftingTradingStatus';
 import { useSetGiftingTradingStatus } from '../queries/useSetGiftingTradingStatus';
-
-const oneDayInMilliseconds = 24 * 60 * 60 * 1000; // One day in milliseconds
-
-// Periodically we want to show this banner if it's dismissed
-const isGiftingTradingWarningBannerDismissed = (lastDismissedTime: number | null) => {
-  if (lastDismissedTime === null) {
-    return false; // Banner has never been dismissed
-  }
-
-  return Date.now() - lastDismissedTime < oneDayInMilliseconds;
-};
 
 /**
  * Options for trading gifting acknowledgement.
@@ -129,22 +116,4 @@ export function useGiftingTradingAcknowledgementFunnelEventsV2(universeId: numbe
     trackDocumentationClickEvent,
     trackAcceptEvent,
   } as const;
-}
-
-/**
- * Hook for managing the dismissal of the gifting trading warning banner.
- */
-export function useGiftingTradingWarningBanner(universeId: number) {
-  const [lastDismissedBannerTime, setLastDismissedBannerTime] = useLocalStorage<number | null>(
-    lastDismissedGiftingTradingWarningBannerKey(universeId),
-    null,
-  );
-
-  const close = useCallback(() => {
-    setLastDismissedBannerTime(Date.now());
-  }, [setLastDismissedBannerTime]);
-
-  const isDismissed = isGiftingTradingWarningBannerDismissed(lastDismissedBannerTime);
-
-  return useMemo(() => ({ isDismissed, close }), [isDismissed, close]);
 }

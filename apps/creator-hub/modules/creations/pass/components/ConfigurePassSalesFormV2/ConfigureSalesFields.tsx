@@ -5,7 +5,7 @@ import { useFormState, useWatch } from 'react-hook-form';
 import { Icon, ProgressCircle, TextInput } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { getRegionalPricingPreviewKey } from '@modules/regional-pricing/queries/useGetRegionalPricingPreview';
-import { configurePassSalesFormV2Schema } from '../form-shared/schemas';
+import { configurePassSalesSchema } from '../form-shared/schemas';
 import type { ConfigureSalesFormValues } from '../form-shared/types';
 
 type PriceTextInputProps = {
@@ -36,7 +36,7 @@ export const PriceTextInput = memo(
     const errorText =
       error ?? (errors.price?.message ? translate(errors.price.message) : undefined);
 
-    const field = register('price', configurePassSalesFormV2Schema.price);
+    const field = register('price', configurePassSalesSchema.price);
 
     return (
       <TextInput

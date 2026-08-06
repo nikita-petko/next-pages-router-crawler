@@ -10,10 +10,7 @@ import {
   Typography,
   useMediaQuery,
 } from '@rbx/ui';
-import {
-  useGiftingTradingAcknowledgementSelection,
-  useGiftingTradingWarningBanner,
-} from '@modules/managed-pricing/gifting-trading/hooks';
+import { useGiftingTradingAcknowledgementSelection } from '@modules/managed-pricing/gifting-trading/hooks';
 import { useGetGiftingTradingStatus } from '@modules/managed-pricing/queries/useGetGiftingTradingStatus';
 import { ROBLOX_TERMS_OF_USE } from '@modules/miscellaneous/common/constants/linkConstants';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -62,13 +59,10 @@ function DeveloperProductRegionalPricingDisclaimerModal({ universeId, page }: Pr
   const { trackImpressionEvent, trackDocumentationClickEvent, trackAcceptEvent } =
     useGiftingTradingAcknowledgementFunnelEvents(universeId, page);
 
-  const { close: closeGiftingTradingWarningBanner } = useGiftingTradingWarningBanner(universeId);
-
   const handleAccept = useCallback(() => {
     // Note: tradingGiftingAck is guaranteed to be set by the time this callback is called
     trackAcceptEvent(tradingGiftingAck ?? '');
-    closeGiftingTradingWarningBanner();
-  }, [tradingGiftingAck, trackAcceptEvent, closeGiftingTradingWarningBanner]);
+  }, [tradingGiftingAck, trackAcceptEvent]);
 
   const disclaimer = useOneTimeDisclaimerState(
     hasAcceptedDevProductRegionalPricingDisclaimerKey(universeId),

@@ -9,7 +9,3 @@ export const hasAcceptedDevProductRegionalPricingDisclaimerKey = (universeId: nu
 /** Global key for whether user has seen the reacknowledgement modal for developer product gifting trading */
 export const hasAcceptedGiftingTradingWarningDisclaimerKey = (universeId: number) =>
   `hasAcceptedGiftingTradingWarningDisclaimerKey.${universeId}` as const;
-
-/** Global key for when the gifting trading warning banner was last dismissed */
-export const lastDismissedGiftingTradingWarningBannerKey = (universeId: number) =>
-  `lastDismissedGiftingTradingWarningBanner.${universeId}` as const;
