@@ -29,7 +29,6 @@ import DevExO18PromotionBanner from '@modules/experience-monetization/components
 import useDevExO18EligibilityState from '@modules/experience-monetization/hooks/useDevExO18EligibilityState';
 import ManagedPricingPromotionBanner from '@modules/managed-pricing/banners/ManagedPricingPromotionBanner';
 import { useManagedPricingPromotionBanner } from '@modules/managed-pricing/banners/useManagedPricingPromotionBanner';
-import { useIsManagedPricingAvailable } from '@modules/managed-pricing/hooks/useIsManagedPricingAvailable';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useUniverseId } from '@modules/monetization-shared/route/useUniverseId';
 import PersonalizedShopPromotionBanner from '@modules/shops/banners/PersonalizedShopPromotionBanner';
@@ -187,25 +186,16 @@ export const arbitraryComponentConfigMonetizationFeaturePromotionBanner = {
     type: 'isolated',
     render: function MonetizationFeaturePromotionBanner() {
       const { universeId = 0 } = useUniverseId();
-      const { data: isManagedPricingAvailable } = useIsManagedPricingAvailable(universeId);
       const isPersonalizedShopBannerShown = useIsPersonalizedShopPromotionBannerShown(universeId);
 
-      if (isManagedPricingAvailable === undefined) {
-        return null;
-      }
-
-      if (isManagedPricingAvailable) {
-        return (
-          <ManagedPricingPromotionBanner
-            universeId={universeId}
-            page='monetization/overview'
-            emphasizePrimaryButton={!isPersonalizedShopBannerShown}
-            className='margin-bottom-medium'
-          />
-        );
-      }
-
-      return null;
+      return (
+        <ManagedPricingPromotionBanner
+          universeId={universeId}
+          page='monetization/overview'
+          emphasizePrimaryButton={!isPersonalizedShopBannerShown}
+          className='margin-bottom-medium'
+        />
+      );
     },
   },
 } as const satisfies ArbitraryComponentConfig;
@@ -223,18 +213,16 @@ export const arbitraryComponentConfigDevExO18PromotionBanner = {
       });
       const isPersonalizedShopBannerShown = useIsPersonalizedShopPromotionBannerShown(universeId);
 
-      const { data: isManagedPricingAvailable } = useIsManagedPricingAvailable(universeId);
-      const { isOpen } = useManagedPricingPromotionBanner({
+      const { isOpen: isManagedPricingBannerShown } = useManagedPricingPromotionBanner({
         universeId,
         page: 'monetization/overview',
       });
-      const isManagedPricingBannerShown = isManagedPricingAvailable && isOpen;
 
       // Only surface this banner if the shop or the managed-pricing banner is no longer taking the slot
       if (
         !showDevExO18 ||
         !Number.isFinite(universeId) ||
-        (isPersonalizedShopBannerShown && isManagedPricingBannerShown !== false)
+        (isPersonalizedShopBannerShown && isManagedPricingBannerShown)
       ) {
         return null;
       }

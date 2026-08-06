@@ -16,38 +16,6 @@ export const configureDeveloperProductSchema = {
     maxLength: MAX_DESCRIPTION_LENGTH,
   },
   price: {
-    // Manually transform to a valid numeric input
-    setValueAs: (value: string | null): number | null => {
-      if (value === '' || value === null) {
-        return null;
-      }
-
-      return Number(value);
-    },
-    min: { value: MIN_PRICE, message: 'Error.InvalidPriceInRobux' },
-    max: { value: MAX_PRICE, message: 'Error.InvalidPriceInRobux' },
-    validate: (value, { isRegionalPricingEnabled }) => {
-      if (value !== null && (Number.isNaN(value) || Math.trunc(value) !== value)) {
-        return 'Error.InvalidNumber';
-      }
-
-      // Price must be set to enable regional pricing
-      if (value === null && isRegionalPricingEnabled) {
-        return false; // No error message as required in form
-      }
-
-      return true;
-    },
-  },
-  file: {},
-} satisfies NativeValidationSchema<ConfigureDeveloperProductFormV2Values>;
-
-// NOTE(@jeminpark): we are temporarily using isRegionalPricingEnabled to match the old form such
-// that components are reused. This should be changed to isManagedPricingEnabled in the future.
-// NOTE(@jeminpark): note this is distinct from the old schema as this handles for native input
-// validation rather than MUI TextField (no setValueAs workaround needed).
-export const configureDeveloperProductV3Schema = {
-  price: {
     min: { value: MIN_PRICE, message: 'Error.InvalidPriceInRobux' },
     max: { value: MAX_PRICE, message: 'Error.InvalidPriceInRobux' },
     valueAsNumber: true,
@@ -65,4 +33,5 @@ export const configureDeveloperProductV3Schema = {
       return true;
     },
   },
-} as const satisfies NativeValidationSchema<ConfigureDeveloperProductFormV2Values>;
+  file: {},
+} satisfies NativeValidationSchema<ConfigureDeveloperProductFormV2Values>;

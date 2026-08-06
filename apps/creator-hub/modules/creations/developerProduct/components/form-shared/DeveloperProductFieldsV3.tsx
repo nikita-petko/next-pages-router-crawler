@@ -14,7 +14,6 @@ import { isNewCategoryOverLimit } from '@modules/shops/utils/categorySelection';
 import type { ConfigureDeveloperProductFormV2Values } from '../../types';
 import {
   configureDeveloperProductSchema,
-  configureDeveloperProductV3Schema,
   MAX_DESCRIPTION_LENGTH,
   MAX_NAME_LENGTH,
 } from './schemas';
@@ -126,7 +125,7 @@ export const PriceTextInput = memo(
     const errorText =
       error ?? (errors.price?.message ? translate(errors.price.message) : undefined);
 
-    const field = register('price', configureDeveloperProductV3Schema.price);
+    const field = register('price', configureDeveloperProductSchema.price);
 
     return (
       <TextInput

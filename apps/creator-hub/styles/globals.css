@@ -1526,9 +1526,6 @@
 .margin-right-small {
   margin-right: var(--margin-small);
 }
-.margin-top-\[-14px\] {
-  margin-top: -14px;
-}
 .margin-top-\[16px\] {
   margin-top: 16px;
 }
@@ -1657,9 +1654,6 @@
 }
 .gap-\[10px\] {
   gap: 10px;
-}
-.gap-\[11px\] {
-  gap: 11px;
 }
 .gap-\[24px\] {
   gap: 24px;
