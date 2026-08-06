@@ -63,7 +63,9 @@ const TicketRow = ({
       : undefined;
   const categoryLabel = categoryKey ? translate(categoryKey) : (ticket.category ?? '');
   const isReportedToRoblox = ticket.reportedToRoblox === true;
-  const displayTitle = isReportedToRoblox
+  const isForwardedToRoblox = ticket.forwardedToRoblox === true;
+  const isContentHidden = isReportedToRoblox || isForwardedToRoblox;
+  const displayTitle = isContentHidden
     ? translate('Label.PlayerSupport.ContentHidden')
     : (ticket.title ?? '');
 
@@ -114,6 +116,13 @@ const TicketRow = ({
                 icon='icon-filled-flag'
               />
             )}
+            {isForwardedToRoblox && !isReportedToRoblox && (
+              <Badge
+                label={translate('Label.PlayerSupport.ForwardedToRoblox')}
+                variant='Alert'
+                icon='icon-filled-flag'
+              />
+            )}
             <span className='text-no-wrap text-truncate-end min-width-0'>{displayTitle}</span>
           </div>
         </div>
@@ -125,13 +134,15 @@ const TicketRow = ({
         {ticket.updateTime ? formatDate(ticket.updateTime, locale) : ''}
       </td>
       <td className='width-[1%] padding-x-medium'>
-        {ticket.creatorTicketId && ticket.status !== TicketStatus.Archived && (
-          <TicketActionsMenu
-            universeId={universeId}
-            ticketId={ticket.creatorTicketId}
-            surface='list'
-          />
-        )}
+        {ticket.creatorTicketId &&
+          ticket.status !== TicketStatus.Archived &&
+          !isForwardedToRoblox && (
+            <TicketActionsMenu
+              universeId={universeId}
+              ticketId={ticket.creatorTicketId}
+              surface='list'
+            />
+          )}
       </td>
     </tr>
   );
@@ -161,7 +172,9 @@ const MobileTicketCard = ({
       : undefined;
   const categoryLabel = categoryKey ? translate(categoryKey) : (ticket.category ?? '');
   const isReportedToRoblox = ticket.reportedToRoblox === true;
-  const displayTitle = isReportedToRoblox
+  const isForwardedToRoblox = ticket.forwardedToRoblox === true;
+  const isContentHidden = isReportedToRoblox || isForwardedToRoblox;
+  const displayTitle = isContentHidden
     ? translate('Label.PlayerSupport.ContentHidden')
     : (ticket.title ?? '');
 
@@ -221,6 +234,13 @@ const MobileTicketCard = ({
                   icon='icon-filled-flag'
                 />
               )}
+              {isForwardedToRoblox && !isReportedToRoblox && (
+                <Badge
+                  label={translate('Label.PlayerSupport.ForwardedToRoblox')}
+                  variant='Alert'
+                  icon='icon-filled-flag'
+                />
+              )}
               <span className='items-center min-width-0 max-width-full gap-xsmall flex'>
                 <span className='content-emphasis text-body-medium min-width-0 clip [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]'>
                   {displayTitle}
@@ -234,7 +254,9 @@ const MobileTicketCard = ({
               </span>
             </div>
           </div>
-          {ticket.creatorTicketId && ticket.status !== TicketStatus.Archived ? (
+          {ticket.creatorTicketId &&
+          ticket.status !== TicketStatus.Archived &&
+          !isForwardedToRoblox ? (
             <TicketActionsMenu
               universeId={universeId}
               ticketId={ticket.creatorTicketId}
@@ -242,8 +264,6 @@ const MobileTicketCard = ({
               surface='list'
             />
           ) : (
-            // Reserve the kebab's 32px footprint so archived cards keep the same
-            // spacing (and title wrap width) as support-request cards.
             <span className='size-800 shrink-0' aria-hidden />
           )}
         </div>

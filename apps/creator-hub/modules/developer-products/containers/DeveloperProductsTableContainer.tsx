@@ -5,10 +5,10 @@ import type { ManagedPricingOnboardingStatus } from '@modules/managed-pricing/ty
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import AccessDeniedPage from '@modules/miscellaneous/error/components/AccessDeniedPage';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { ProgressCircleLoader } from '@modules/monetization-shared/loaders';
 import { useUniversePermissions } from '@modules/react-query/organizations';
 import DeveloperProductsTable from '../components/DeveloperProductsTable';
 import DeveloperProductsTableEmptyState from '../components/DeveloperProductsTableEmptyState';
+import DeveloperProductsTableLoading from '../components/DeveloperProductsTableLoading';
 import { useLoadInitialDeveloperProducts } from '../hooks/useLoadInitialDeveloperProducts';
 import { DEFAULT_PAGE_SIZE } from '../queries/constants';
 
@@ -39,24 +39,27 @@ function DeveloperProductsTableContainer({
 
   const router = useRouter();
 
-  // TODO(jeminpark): add skeleton loading if dev products are initial loading
+  // Both are withheld until permissions resolve: the list query can fail fast for a universe
+  // the creator cannot monetize, which would otherwise strand them on the failure view.
+  if (!isLoadingPermissions) {
+    if (isInitialError) {
+      return (
+        <FailureView
+          message={translate('Message.LoadItemsError', {
+            itemType: translate('Label.DeveloperProducts'),
+          })}
+          onReload={router.reload}
+        />
+      );
+    }
+
+    if (permissions?.monetizeExperience === false) {
+      return <AccessDeniedPage />;
+    }
+  }
+
   if (isLoadingPermissions || isInitialLoading) {
-    return <ProgressCircleLoader />;
-  }
-
-  if (isInitialError) {
-    return (
-      <FailureView
-        message={translate('Message.LoadItemsError', {
-          itemType: translate('Label.DeveloperProducts'),
-        })}
-        onReload={router.reload}
-      />
-    );
-  }
-
-  if (permissions?.monetizeExperience === false) {
-    return <AccessDeniedPage />;
+    return <DeveloperProductsTableLoading />;
   }
 
   if (isEmpty) {

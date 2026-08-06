@@ -36,6 +36,11 @@ type BulkActionProps =
 
 type Props = SearchProps &
   BulkActionProps & {
+    /**
+     * Picks the archive-era single-row layout. The chips themselves live in
+     * DeveloperProductsViewLayout.
+     */
+    isArchiveEnabled?: boolean;
     className?: string;
   };
 
@@ -79,9 +84,43 @@ function DeveloperProductsActionBarV2({
   isBulkActionPending,
   isBulkActionDisabled,
   hideBulkAction,
+  isArchiveEnabled,
   className,
 }: Props) {
   const { translate } = useTranslation();
+
+  const bulkActionButton = !hideBulkAction ? (
+    <ToggleManagedPricingButton
+      onBulkAction={onBulkAction}
+      isBulkActionPending={isBulkActionPending}
+      isBulkActionDisabled={isBulkActionDisabled}
+    />
+  ) : null;
+
+  if (!isArchiveEnabled) {
+    return (
+      <div
+        className={clsx(
+          'flex flex-col gap-medium medium:flex-row medium:justify-between medium:items-center',
+          className,
+        )}>
+        <div className='flex items-center gap-medium medium:flex-row medium:width-[70%]'>
+          <DebouncedTextInput
+            className='medium:min-width-[180px] medium:grow-1 medium:max-width-[280px]'
+            value={searchQuery}
+            type='search'
+            onDebouncedChange={onSearchChange}
+            placeholder={translate('Label.Search')}
+            leadingIconName='icon-regular-magnifying-glass'
+            isDisabled={disableSearch}
+            aria-label={translate('Label.SearchItems')}
+            size='Medium'
+          />
+        </div>
+        {bulkActionButton}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -89,27 +128,18 @@ function DeveloperProductsActionBarV2({
         'flex flex-col gap-medium medium:flex-row medium:justify-between medium:items-center',
         className,
       )}>
-      <div className='flex items-center gap-medium medium:flex-row medium:width-[70%]'>
-        <DebouncedTextInput
-          className='medium:min-width-[180px] medium:grow-1 medium:max-width-[280px]'
-          value={searchQuery}
-          type='search'
-          onDebouncedChange={onSearchChange}
-          placeholder={translate('Label.Search')}
-          leadingIconName='icon-regular-magnifying-glass'
-          isDisabled={disableSearch}
-          aria-label={translate('Label.SearchItems')}
-          size='Medium'
-        />
-      </div>
-
-      {!hideBulkAction && (
-        <ToggleManagedPricingButton
-          onBulkAction={onBulkAction}
-          isBulkActionPending={isBulkActionPending}
-          isBulkActionDisabled={isBulkActionDisabled}
-        />
-      )}
+      <DebouncedTextInput
+        className='width-full medium:max-width-[280px]'
+        value={searchQuery}
+        type='search'
+        onDebouncedChange={onSearchChange}
+        placeholder={translate('Label.Search')}
+        leadingIconName='icon-regular-magnifying-glass'
+        isDisabled={disableSearch}
+        aria-label={translate('Label.SearchItems')}
+        size='Medium'
+      />
+      {bulkActionButton}
     </div>
   );
 }

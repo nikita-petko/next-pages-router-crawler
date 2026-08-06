@@ -20,12 +20,16 @@ import Flex from '@modules/miscellaneous/components/Flex';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import SelectedExperienceContext from '../context/SelectedExperienceContext';
 import useApplyToPublicLicenseMutation from '../hooks/useApplyToLicenseMutation';
+import type { CreatorPitchAttachment } from '../utils/creatorPitchAttachmentTypes';
 import { getApplyFlowRevShareOnActivation } from '../utils/getApplyFlowRevShareOnActivation';
 import type { CollaborationSalesAvenues } from '../utils/salesAvenue';
 import ApplicationSubmissionModal from './ApplicationSubmissionModal';
 import ExperienceSummaryCardContainer from './ExperienceSummaryCardContainer';
 import LicenseSummaryCardContainer from './LicenseSummaryCardContainer';
 import SalesAvenueResolvedGrid from './SalesAvenueResolvedGrid';
+import ViewPitchAttachments from './ViewPitchAttachments';
+
+const EMPTY_CREATOR_PITCH_ATTACHMENTS: CreatorPitchAttachment[] = [];
 
 interface SubmitApplicationStepProps {
   onPrev: () => void;
@@ -33,6 +37,7 @@ interface SubmitApplicationStepProps {
   license: LicenseResponse;
   listingId: string;
   creatorPitch: string;
+  creatorPitchAttachments?: CreatorPitchAttachment[];
   dateRange?: { startDate: Date | null; endDate: Date | null } | undefined;
   enableMonetization?: boolean;
   enableCollaborationLicensing?: boolean;
@@ -48,6 +53,7 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
   license,
   listingId,
   creatorPitch,
+  creatorPitchAttachments = EMPTY_CREATOR_PITCH_ATTACHMENTS,
   dateRange,
   enableMonetization,
   enableCollaborationLicensing = false,
@@ -95,6 +101,7 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
     }
     if (selectedExperienceId) {
       const pitch = creatorPitch.trim();
+      // TODO - aathreya - Include pitch attachment asset IDs when applyToLicense supports pitch media.
       await applyToLicenseMutation.mutateAsync({
         universeId: selectedExperienceId,
         pitch,
@@ -180,7 +187,12 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
             <KeyValuePairContainer>
               <KeyValuePair
                 label={translate('Label.CreatorIntentOfUse')}
-                value={<Typography whiteSpace='pre-wrap'>{creatorPitch}</Typography>}
+                value={
+                  <Flex flexDirection='column' gap={12}>
+                    <Typography whiteSpace='pre-wrap'>{creatorPitch}</Typography>
+                    <ViewPitchAttachments attachments={creatorPitchAttachments} />
+                  </Flex>
+                }
               />
               {license.licenseDuration?.durationType === LicenseDurationType.TimeLimited &&
                 dateRange && (

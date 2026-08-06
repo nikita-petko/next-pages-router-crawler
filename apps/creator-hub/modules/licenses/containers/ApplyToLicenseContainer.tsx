@@ -29,6 +29,7 @@ import {
   LICENSE_REQUEST_RETURN_TO_QUERY,
   LicenseRequestCancelReturnTo,
 } from '../urls';
+import type { CreatorPitchAttachment } from '../utils/creatorPitchAttachmentTypes';
 import type { CollaborationSalesAvenues } from '../utils/salesAvenue';
 import { EMPTY_COLLABORATION_SALES_AVENUES } from '../utils/salesAvenue';
 
@@ -143,6 +144,12 @@ const ApplyToLicenseContainer: FunctionComponent<ApplyToLicenseContainerProps> =
     boolean | undefined
   >(undefined);
   const [creatorPitch, setCreatorPitch] = useState<string>('');
+  // TODO - aathreya - Pass uploaded pitch attachment asset IDs to applyToLicense once the API
+  // supports pitch media attachments. Attachments are already passed to SubmitApplicationStep
+  // for review display.
+  const [creatorPitchAttachments, setCreatorPitchAttachments] = useState<CreatorPitchAttachment[]>(
+    [],
+  );
   const [dateRange, setDateRange] = useState<
     | {
         startDate: Date | null;
@@ -292,6 +299,8 @@ const ApplyToLicenseContainer: FunctionComponent<ApplyToLicenseContainerProps> =
             setRevShareNowTimingPreference={setRevShareNowTimingPreference}
             creatorPitch={creatorPitch}
             setCreatorPitch={setCreatorPitch}
+            creatorPitchAttachments={creatorPitchAttachments}
+            setCreatorPitchAttachments={setCreatorPitchAttachments}
             licenseDuration={license.licenseDuration ?? undefined}
             licenseType={license.licenseType}
             enableCollaborationLicensing={enableCollaborationLicensing}
@@ -343,6 +352,7 @@ const ApplyToLicenseContainer: FunctionComponent<ApplyToLicenseContainerProps> =
             license={license}
             listingId={listingId}
             creatorPitch={creatorPitch}
+            creatorPitchAttachments={creatorPitchAttachments}
             dateRange={dateRange}
             enableCollaborationLicensing={enableCollaborationLicensing}
             enableMarketplaceSalesLicensing={enableMarketplaceSalesLicensing}

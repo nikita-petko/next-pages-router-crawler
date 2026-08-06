@@ -659,14 +659,18 @@ const DetailsSidebar: React.FunctionComponent<{
         <h3 className='content-emphasis text-title-large margin-none'>
           {translate('Heading.Details')}
         </h3>
-        {ticketId && universeId != null && !isArchived && summary?.reportedToRoblox !== true && (
-          <TicketActionsMenu
-            universeId={universeId}
-            ticketId={ticketId}
-            alwaysVisible
-            surface='detail'
-          />
-        )}
+        {ticketId &&
+          universeId != null &&
+          !isArchived &&
+          summary?.reportedToRoblox !== true &&
+          summary?.forwardedToRoblox !== true && (
+            <TicketActionsMenu
+              universeId={universeId}
+              ticketId={ticketId}
+              alwaysVisible
+              surface='detail'
+            />
+          )}
       </div>
       <div className='padding-x-xlarge'>
         <Divider variant='Standard' />
@@ -840,13 +844,17 @@ const TicketDetailsPage: React.FunctionComponent = () => {
     );
   }
 
-  if (ticket.summary?.reportedToRoblox === true) {
+  const isReportedToRoblox = ticket.summary?.reportedToRoblox === true;
+  const isForwardedToRoblox = ticket.summary?.forwardedToRoblox === true;
+  if (isReportedToRoblox || isForwardedToRoblox) {
     return (
       <div className='items-center padding-xlarge margin-top-large gap-medium flex flex-col'>
         <Icon name='icon-regular-triangle-exclamation' className='content-emphasis !size-1800' />
         <div className='items-center text-align-x-center gap-xsmall flex flex-col'>
           <span className='content-emphasis text-heading-small'>
-            {translate('Heading.PlayerSupport.ReportedRequest')}
+            {isForwardedToRoblox
+              ? translate('Heading.PlayerSupport.ForwardedRequest')
+              : translate('Heading.PlayerSupport.ReportedRequest')}
           </span>
           <span className='content-default text-body-medium'>
             {translate('Description.PlayerSupport.ReportedRequestHidden')}

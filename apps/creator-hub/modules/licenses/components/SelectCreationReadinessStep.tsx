@@ -1,5 +1,5 @@
-import type { FunctionComponent } from 'react';
-import { useState, useCallback, useContext } from 'react';
+import type { Dispatch, FunctionComponent, SetStateAction } from 'react';
+import { useState, useCallback, useContext, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import type { LicenseDurationResponse } from '@rbx/client-content-licensing-api/v1';
 import {
@@ -24,6 +24,7 @@ import SelectedExperienceContext from '../context/SelectedExperienceContext';
 import useContentModerationMutation from '../hooks/useContentModerationMutation';
 import { CREATOR_PITCH_HREF } from '../urls';
 import { MIN_CREATOR_PITCH_LENGTH, MAX_CREATOR_PITCH_LENGTH } from '../utils/constants';
+import type { CreatorPitchAttachment } from '../utils/creatorPitchAttachmentTypes';
 import { getApplyFlowRevShareOnActivation } from '../utils/getApplyFlowRevShareOnActivation';
 import {
   getRevShareTimingPreference,
@@ -34,6 +35,9 @@ import getKeyFromModerationReason from '../utils/moderationReason';
 import { getIsNonZeroRevShareFromValue } from '../utils/revShare';
 import type { CollaborationSalesAvenues } from '../utils/salesAvenue';
 import { hasResolvedSalesAvenue } from '../utils/salesAvenue';
+import CreatorPitchAttachmentsField, {
+  type CreatorPitchAttachmentsFieldHandle,
+} from './CreatorPitchAttachmentsField';
 import type { LicenseApplicationRequirementsFormValues } from './LicenseApplicationRequirementsFields';
 import LicenseApplicationRequirementsFields from './LicenseApplicationRequirementsFields';
 
@@ -49,6 +53,8 @@ interface SelectCreationReadinessStepProps {
   licenseRevShareTiming?: boolean;
   creatorPitch: string | undefined;
   setCreatorPitch: (newPitch: string) => void;
+  creatorPitchAttachments: CreatorPitchAttachment[];
+  setCreatorPitchAttachments: Dispatch<SetStateAction<CreatorPitchAttachment[]>>;
   licenseDuration: LicenseDurationResponse | undefined;
   dateRange?: { startDate: Date | null; endDate: Date | null } | undefined;
   setDateRange: (range: { startDate: Date | null; endDate: Date | null } | undefined) => void;
@@ -75,6 +81,8 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
   setRevShareNowTimingPreference,
   creatorPitch,
   setCreatorPitch,
+  creatorPitchAttachments,
+  setCreatorPitchAttachments,
   licenseDuration,
   dateRange,
   setDateRange,
@@ -101,6 +109,7 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
     isComplete: false,
   });
   const [showSalesAvenueRequiredErrors, setShowSalesAvenueRequiredErrors] = useState(false);
+  const creatorPitchAttachmentsFieldRef = useRef<CreatorPitchAttachmentsFieldHandle>(null);
 
   const revShareOnActivation = getApplyFlowRevShareOnActivation({
     durationType: licenseDuration?.durationType,
@@ -161,6 +170,12 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
       if (!formValid) {
         return;
       }
+    }
+
+    const attachmentsValid =
+      (await creatorPitchAttachmentsFieldRef.current?.validateForNext()) ?? true;
+    if (!attachmentsValid) {
+      return;
     }
 
     const formValues = getValues();
@@ -301,6 +316,11 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
             }}
           />
         </Grid>
+        <CreatorPitchAttachmentsField
+          ref={creatorPitchAttachmentsFieldRef}
+          attachments={creatorPitchAttachments}
+          onAttachmentsChange={setCreatorPitchAttachments}
+        />
       </Grid>
 
       {!isPitchOnly && (
