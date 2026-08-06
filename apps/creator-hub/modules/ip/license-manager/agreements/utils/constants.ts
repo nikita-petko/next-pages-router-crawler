@@ -3,6 +3,9 @@ const RevShareColorHexes: string[] = [
   '#26FF9C', // Light Green
 ];
 
+/** Diameter (px) of the loading spinner shown inside large CTA buttons on the match panels. */
+export const BUTTON_SPINNER_SIZE = 22;
+
 export enum AgreementFilterKeys {
   Offers = 'offers',
   Requests = 'requests',

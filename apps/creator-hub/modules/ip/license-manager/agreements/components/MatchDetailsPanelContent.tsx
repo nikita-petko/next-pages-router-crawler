@@ -9,7 +9,10 @@ import { useFlag } from '@rbx/flags';
 import { Icon, IconButton, Link as FoundationLink } from '@rbx/foundation-ui';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import { Typography, Button, Alert, CircularProgress } from '@rbx/ui';
-import { isExperiencePreviewEnabled as isExperiencePreviewEnabledFlag } from '@generated/flags/contentLicensing';
+import {
+  isExperiencePreviewEnabled as isExperiencePreviewEnabledFlag,
+  isIgnoreMatchEnabled as isIgnoreMatchEnabledFlag,
+} from '@generated/flags/contentLicensing';
 import Flex from '@modules/miscellaneous/components/Flex';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import useIpSnackbar from '../../../hooks/useIpSnackbar';
@@ -39,6 +42,7 @@ import { NO_GAME_FOUND_FOR_ID, useDebouncedGameDetails } from '../hooks/games';
 import type { AgreementStatusBatchItemError } from '../hooks/useAgreementStatusesByIdsQuery';
 import { useGetPlacefileImagesQuery } from '../hooks/useGetPlacefileImagesQuery';
 import { usePlacefileImageUrlsQuery } from '../hooks/usePlacefileImageUrlsQuery';
+import { BUTTON_SPINNER_SIZE } from '../utils/constants';
 import {
   getExperiencePreviewAnalyticsContext,
   logExperiencePreviewEvent,
@@ -46,6 +50,7 @@ import {
 } from '../utils/experiencePreviewAnalytics';
 import formatDate from '../utils/formatDate';
 import DetectedScreenshotsGrid, { MAX_SCREENSHOTS } from './DetectedScreenshotsGrid';
+import IgnoreMatchPanelContent from './IgnoreMatchPanelContent';
 import {
   AgreementStatusFromBatchMaps,
   type AgreementStatusesColumnProps,
@@ -85,6 +90,8 @@ interface MatchDetailsPanelContentProps {
   /** From {@link Matches} agreement status batch query when the candidate has an agreement id. */
   agreementStatusFromList?: MatchPanelAgreementStatus;
   navigation?: MatchDetailsPanelNavigation;
+  /** Called after a match is successfully ignored (post-200) so the parent can prune + advance. */
+  onIgnored?: () => void;
 }
 
 /**
@@ -96,6 +103,7 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
   onOfferLicense,
   agreementStatusFromList,
   navigation,
+  onIgnored,
 }) => {
   const { translate } = useTranslation();
   const { locale } = useLocalization();
@@ -103,6 +111,8 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
   const { isFetched } = useSettings();
   const { enqueueWithDefaults } = useIpSnackbar();
   const { logEvent } = useLicenseManagerLogger();
+
+  const [isIgnoreReasonViewOpen, setIsIgnoreReasonViewOpen] = useState(false);
   const { logOnce } = useLicenseManagerLoggerLogOnce();
 
   const analyticsContext = useMemo(
@@ -134,6 +144,31 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
       { ...analyticsContext, destination: MatchDetailsTabs.Details },
     );
   }, [logEvent, analyticsContext]);
+
+  const { ready: isIgnoreMatchFlagReady, value: isIgnoreMatchEnabled } =
+    useFlag(isIgnoreMatchEnabledFlag);
+  const isIgnoreMatchAllowed = isIgnoreMatchFlagReady && isIgnoreMatchEnabled;
+
+  const handleIgnoreClick = useCallback(() => {
+    if (!isIgnoreMatchAllowed) {
+      return;
+    }
+    setIsIgnoreReasonViewOpen(true);
+  }, [isIgnoreMatchAllowed]);
+
+  const handleIgnoreBack = useCallback(() => {
+    setIsIgnoreReasonViewOpen(false);
+  }, []);
+
+  const candidateId = candidate.id;
+
+  const handlePanelIgnored = useCallback(() => {
+    if (!isIgnoreMatchAllowed) {
+      return;
+    }
+    setIsIgnoreReasonViewOpen(false);
+    onIgnored?.();
+  }, [isIgnoreMatchAllowed, onIgnored]);
 
   const handleViewGalleryClick = useCallback(() => {
     logExperiencePreviewEvent(
@@ -279,7 +314,7 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
     </>
   );
 
-  if (isPending || !isFetched) {
+  if (isPending || !isFetched || !isExperiencePreviewFlagReady || !isIgnoreMatchFlagReady) {
     return (
       <MatchPanelLayout title={title} onClose={onClose} headerControls={headerControls} loading />
     );
@@ -339,6 +374,7 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
 
   const viewDetailsButtonLabel = translate('Action.ViewDetails');
   const viewGalleryLinkLabel = translate('Action.ViewGallery');
+  const ignoreButtonLabel = translate('Action.Ignore');
 
   const imagesAsOfDate = candidate.discoveredAt
     ? formatDate(candidate.discoveredAt, resolvedLocale)
@@ -360,6 +396,13 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
     });
   }
 
+  const isOfferLicenseCta = !waitingOnAgreementStatus && !showViewAgreement;
+  const showIgnoreButton = isIgnoreMatchAllowed && isOfferLicenseCta;
+  const useFillFooter = showPlacefileScreenshots || showIgnoreButton;
+  const ctaClassName = useFillFooter
+    ? 'fill [white-space:nowrap] text-align-x-center'
+    : '[white-space:nowrap] text-align-x-center';
+
   let primaryCta: ReactNode;
   if (waitingOnAgreementStatus) {
     primaryCta = (
@@ -367,10 +410,10 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
         variant='contained'
         color='primaryBrand'
         size='large'
-        fullWidth={!showPlacefileScreenshots}
-        className={showPlacefileScreenshots ? 'fill' : undefined}
+        fullWidth={!useFillFooter}
+        className={ctaClassName}
         disabled>
-        <CircularProgress color='inherit' size={22} />
+        <CircularProgress color='inherit' size={BUTTON_SPINNER_SIZE} />
       </Button>
     );
   } else if (showViewAgreement) {
@@ -379,8 +422,8 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
         variant='contained'
         color='primaryBrand'
         size='large'
-        fullWidth={!showPlacefileScreenshots}
-        className={showPlacefileScreenshots ? 'fill' : undefined}
+        fullWidth={!useFillFooter}
+        className={ctaClassName}
         component={Link}
         href={IPH_AGREEMENT_DETAILS_HREF(agreementId)}>
         {translate('Action.ViewAgreement')}
@@ -392,13 +435,19 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
         variant='contained'
         color='primaryBrand'
         size='large'
-        fullWidth={!showPlacefileScreenshots}
-        className={showPlacefileScreenshots ? 'fill' : undefined}
+        fullWidth={!useFillFooter}
+        className={ctaClassName}
         onClick={onOfferLicense}>
         {translate('Action.OfferLicense')}
       </Button>
     );
   }
+
+  const ignoreButton = showIgnoreButton ? (
+    <Button variant='text' color='secondary' size='large' onClick={handleIgnoreClick}>
+      {ignoreButtonLabel}
+    </Button>
+  ) : null;
 
   const footerButtons =
     showPlacefileScreenshots && matchDetailsPageHref != null ? (
@@ -410,13 +459,17 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
           size='large'
           component={Link}
           href={matchDetailsPageHref}
-          className='fill'
+          className={ctaClassName}
           onClick={handleViewDetailsClick}>
           {viewDetailsButtonLabel}
         </Button>
+        {ignoreButton}
       </>
     ) : (
-      primaryCta
+      <>
+        {primaryCta}
+        {ignoreButton}
+      </>
     );
 
   const inspectorImages: InspectorImage[] = screenshotItems.map((item) => ({
@@ -424,6 +477,17 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
     src: item.imageUrl,
     assetId: item.assetId,
   }));
+
+  if (isIgnoreReasonViewOpen) {
+    return (
+      <IgnoreMatchPanelContent
+        candidateId={candidateId}
+        onBack={handleIgnoreBack}
+        onClose={onClose}
+        onIgnored={handlePanelIgnored}
+      />
+    );
+  }
 
   return (
     <>

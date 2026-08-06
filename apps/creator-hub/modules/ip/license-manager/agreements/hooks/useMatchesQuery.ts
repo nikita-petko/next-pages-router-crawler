@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import {
   keepPreviousData,
   useInfiniteQuery,
+  useQuery,
+  type QueryClient,
   type UseInfiniteQueryResult,
   type InfiniteData,
 } from '@tanstack/react-query';
@@ -195,6 +197,25 @@ type MatchesQueryResult = UseInfiniteQueryResult<
   agreementStatusesColumn: AgreementStatusesColumnProps | undefined;
 };
 
+// Cached ignored ids (survive navigation); filtered out below so a just-ignored row stays hidden even when the lagging index refetches it back.
+export const IGNORED_MATCH_CANDIDATE_IDS_QUERY_KEY = [...MATCHES_QUERY_KEY, 'ignoredCandidateIds'];
+
+export const markMatchCandidateIgnored = (queryClient: QueryClient, candidateId: string): void => {
+  queryClient.setQueryData<string[]>(IGNORED_MATCH_CANDIDATE_IDS_QUERY_KEY, (old) => {
+    const existing = old ?? [];
+    return existing.includes(candidateId) ? existing : [...existing, candidateId];
+  });
+};
+
+const useIgnoredMatchCandidateIds = (): string[] =>
+  useQuery<string[]>({
+    queryKey: IGNORED_MATCH_CANDIDATE_IDS_QUERY_KEY,
+    queryFn: () => [],
+    initialData: [],
+    staleTime: Infinity,
+    gcTime: Infinity,
+  }).data;
+
 /**
  * Fetches the list of deepscan candidates (aka Agreement Candidates) for a specific account.
  *
@@ -333,10 +354,19 @@ export const useMatchesQuery = (options: MatchesQueryOptions): MatchesQueryResul
     placeholderData: keepPreviousData,
   });
 
+  const ignoredCandidateIds = useIgnoredMatchCandidateIds();
+  const ignoredCandidateIdSet = useMemo(() => new Set(ignoredCandidateIds), [ignoredCandidateIds]);
+
   const rawAgreementCandidates: AgreementCandidateResponse[] = useMemo(() => {
     const pages = request.data?.pages ?? [];
-    return pages.flatMap((page) => page.agreementCandidates ?? []);
-  }, [request.data]);
+    const flattened = pages.flatMap((page) => page.agreementCandidates ?? []);
+    if (ignoredCandidateIdSet.size === 0) {
+      return flattened;
+    }
+    return flattened.filter(
+      (candidate) => !candidate.id || !ignoredCandidateIdSet.has(candidate.id),
+    );
+  }, [request.data, ignoredCandidateIdSet]);
 
   const agreementIdsForStatuses = useMemo(
     () =>

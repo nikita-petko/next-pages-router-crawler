@@ -155,12 +155,8 @@ export interface IgnoreAgreementCandidateParams {
   reason: IgnoreReason;
 }
 
-/**
- * IPH dismisses a specific agreement candidate so it no longer surfaces as a match. On success the
- * matches list is invalidated so the ignored candidate drops out of the table.
- */
+/** IPH dismisses an agreement candidate; callers mark it ignored (markMatchCandidateIgnored) on success. */
 export const useIgnoreAgreementCandidateMutation = () => {
-  const queryClient = useQueryClient();
   const { account } = useCurrentAccountContext();
   const accountId = account?.id;
 
@@ -174,9 +170,6 @@ export const useIgnoreAgreementCandidateMutation = () => {
         agreementCandidateId,
         reason,
       );
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
     },
     onError: (error, { agreementCandidateId }) => {
       captureException(error, {

@@ -1,6 +1,8 @@
 import type { FunctionComponent, ReactNode } from 'react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NextLink from 'next/link';
+import { useRouter } from 'next/router';
+import { useQueryClient } from '@tanstack/react-query';
 import { AgreementStatus } from '@rbx/client-content-licensing-api/v1';
 import { useFlag } from '@rbx/flags';
 import { useTranslation, withTranslation } from '@rbx/intl';
@@ -13,7 +15,10 @@ import {
   Tabs,
   Typography,
 } from '@rbx/ui';
-import { isExperiencePreviewEnabled as isExperiencePreviewEnabledFlag } from '@generated/flags/contentLicensing';
+import {
+  isExperiencePreviewEnabled as isExperiencePreviewEnabledFlag,
+  isIgnoreMatchEnabled as isIgnoreMatchEnabledFlag,
+} from '@generated/flags/contentLicensing';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { PageNotFound } from '@modules/miscellaneous/error';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
@@ -22,9 +27,10 @@ import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider
 import IpLoadError from '../../components/error/IpLoadError';
 import { useIpLayoutContext } from '../../IpAppNavigationLayout';
 import AmDivider from '../components/AmDivider';
-import { EXTERNAL_EXPERIENCE_HREF, IPH_AGREEMENT_DETAILS_HREF } from '../urls';
+import { EXTERNAL_EXPERIENCE_HREF, IP_MATCHES_HREF, IPH_AGREEMENT_DETAILS_HREF } from '../urls';
 import { LicenseManagerImpressionEvent, useLicenseManagerLoggerLogOnce } from '../utils/logger';
 import GalleryTabContent from './components/GalleryTabContent';
+import IgnoreMatchPanelContent from './components/IgnoreMatchPanelContent';
 import {
   AgreementStatusFromBatchMaps,
   type AgreementStatusesColumnProps,
@@ -36,7 +42,9 @@ import MatchOfferPanelContent from './components/MatchOfferPanelContent';
 import MatchDetailsTabs, { isMatchDetailsTab } from './enums/MatchDetailsTabs';
 import { useAgreementStatusesByIdsQuery } from './hooks/useAgreementStatusesByIdsQuery';
 import { useGetAgreementCandidateByIdQuery } from './hooks/useGetAgreementCandidateByIdQuery';
+import { markMatchCandidateIgnored } from './hooks/useMatchesQuery';
 import { useUniverseDetailsQuery } from './hooks/useUniverseDetailsQuery';
+import { BUTTON_SPINNER_SIZE } from './utils/constants';
 import { logExperiencePreviewEvent } from './utils/experiencePreviewAnalytics';
 import { getExperiencePreviewAnalyticsContext } from './utils/experiencePreviewAnalytics';
 
@@ -67,8 +75,11 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
   const { isFetched } = useSettings();
   const { setPageTitle } = useIpLayoutContext();
   const { logOnce } = useLicenseManagerLoggerLogOnce();
+  const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [isOfferPanelOpen, setIsOfferPanelOpen] = useState(false);
+  const [isIgnorePanelOpen, setIsIgnorePanelOpen] = useState(false);
 
   const candidateQuery = useGetAgreementCandidateByIdQuery({ agreementCandidateId });
   const candidate = candidateQuery.data;
@@ -79,6 +90,8 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
     isExperiencePreviewEnabledFlag,
     { universeId: experienceId ?? 0 },
   );
+  const { ready: isIgnoreMatchFlagReady, value: isIgnoreMatchEnabled } =
+    useFlag(isIgnoreMatchEnabledFlag);
 
   const universeQuery = useUniverseDetailsQuery(experienceId);
   const universe = universeQuery.data;
@@ -146,6 +159,29 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
     setIsOfferPanelOpen(false);
     void refetchAgreementStatuses();
   }, [refetchAgreementStatuses]);
+
+  const isIgnoreMatchAllowed = isIgnoreMatchFlagReady && isIgnoreMatchEnabled;
+
+  const handleIgnoreClick = useCallback(() => {
+    if (!isIgnoreMatchAllowed) {
+      return;
+    }
+    setIsIgnorePanelOpen(true);
+  }, [isIgnoreMatchAllowed]);
+
+  const handleCloseIgnorePanel = useCallback(() => {
+    setIsIgnorePanelOpen(false);
+  }, []);
+
+  const handleMatchIgnored = useCallback(() => {
+    if (!isIgnoreMatchAllowed) {
+      return;
+    }
+    setIsIgnorePanelOpen(false);
+    // Mark ignored before navigating so the matches table stays hidden through its remount refetch.
+    markMatchCandidateIgnored(queryClient, agreementCandidateId);
+    void router.push(IP_MATCHES_HREF);
+  }, [agreementCandidateId, isIgnoreMatchAllowed, queryClient, router]);
 
   const hasValidExperienceId = experienceId != null && Number.isFinite(experienceId);
 
@@ -239,7 +275,7 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
   if (waitingOnAgreementStatus) {
     primaryCta = (
       <Button variant='contained' color='primaryBrand' size='large' disabled>
-        <CircularProgress color='inherit' size={22} />
+        <CircularProgress color='inherit' size={BUTTON_SPINNER_SIZE} />
       </Button>
     );
   } else if (showViewAgreement && agreementId) {
@@ -260,6 +296,9 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
       </Button>
     );
   }
+
+  const isOfferLicenseCta = !waitingOnAgreementStatus && !showViewAgreement;
+  const showIgnoreButton = isIgnoreMatchAllowed && isOfferLicenseCta;
 
   const galleryTabLabel = translate('Label.Gallery');
 
@@ -317,7 +356,18 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
               />
             </div>
           </div>
-          {primaryCta}
+          <div className='flex items-center gap-small'>
+            {primaryCta}
+            {showIgnoreButton && (
+              <Button
+                variant='contained'
+                color='secondary'
+                size='large'
+                onClick={handleIgnoreClick}>
+                {translate('Action.Ignore')}
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className='flex flex-col'>
@@ -351,6 +401,22 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
             onSuccess={handleAgreementSuccess}
             onClose={handleCloseOfferPanel}
             source={currentTab === MatchDetailsTabs.Gallery ? 'galleryView' : 'detailsView'}
+          />
+        )}
+      </MatchesSidePanel>
+
+      <MatchesSidePanel
+        open={isIgnorePanelOpen}
+        onDismiss={handleCloseIgnorePanel}
+        testId='match-details-ignore-side-panel'
+        ariaLabel={translate('Heading.IgnoreMatch')}
+        dismissMode='match'>
+        {isIgnorePanelOpen && (
+          <IgnoreMatchPanelContent
+            candidateId={candidate.id}
+            onBack={handleCloseIgnorePanel}
+            onClose={handleCloseIgnorePanel}
+            onIgnored={handleMatchIgnored}
           />
         )}
       </MatchesSidePanel>

@@ -663,7 +663,9 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
 
       {scope == null && (
         <Alert hasCloseAffordance={false} severity='Error' variant='Feedback'>
-          <strong>{translations.unavailable}</strong> {translations.unavailableDescription}
+          <span>
+            <strong>{translations.unavailable}</strong> {translations.unavailableDescription}
+          </span>
         </Alert>
       )}
 
@@ -680,7 +682,9 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
           primaryActionLabel={translations.retry}
           severity='Error'
           variant='Feedback'>
-          <strong>{translations.unavailable}</strong> {translations.unavailableDescription}
+          <span>
+            <strong>{translations.unavailable}</strong> {translations.unavailableDescription}
+          </span>
         </Alert>
       )}
 

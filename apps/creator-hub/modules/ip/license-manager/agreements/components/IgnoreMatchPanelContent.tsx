@@ -1,0 +1,144 @@
+import type { FunctionComponent } from 'react';
+import React, { useCallback, useState } from 'react';
+import { useTranslation } from '@rbx/intl';
+import { Typography, Button, CircularProgress, Radio, RadioGroup, FormControlLabel } from '@rbx/ui';
+import useIpSnackbar from '../../../hooks/useIpSnackbar';
+import IgnoreReason, { isIgnoreReason } from '../enums/IgnoreReason';
+import { useIgnoreAgreementCandidateMutation } from '../hooks/agreements';
+import { BUTTON_SPINNER_SIZE } from '../utils/constants';
+import MatchPanelLayout from './MatchPanelLayout';
+
+interface IgnoreMatchPanelContentProps {
+  /** Agreement candidate id to ignore. */
+  candidateId: string | null | undefined;
+  /** Return to the previous view (e.g. the match details) without ignoring. */
+  onBack: () => void;
+  /** Dismiss the whole side panel (the header close button). */
+  onClose: () => void;
+  /** Called after the candidate is successfully ignored (post-200), before the snackbar clears. */
+  onIgnored: () => void;
+}
+
+/** Shared reason-selection view for dismissing a match (matches-table side panel + preview page). */
+const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> = ({
+  candidateId,
+  onBack,
+  onClose,
+  onIgnored,
+}) => {
+  const { translate } = useTranslation();
+  const { enqueueWithDefaults, enqueueErrorSnackbar } = useIpSnackbar();
+  const ignoreMatchMutation = useIgnoreAgreementCandidateMutation();
+  const [selectedIgnoreReason, setSelectedIgnoreReason] = useState<IgnoreReason | null>(null);
+
+  const handleReasonChange = useCallback(
+    (_event: React.ChangeEvent<HTMLInputElement>, value: string) => {
+      if (isIgnoreReason(value)) {
+        setSelectedIgnoreReason(value);
+      }
+    },
+    [],
+  );
+
+  const notifyMatchIgnored = useCallback(() => {
+    enqueueWithDefaults({
+      anchorOrigin: { vertical: 'bottom', horizontal: 'center' },
+      children: (
+        <div
+          role='alert'
+          className='[background-color:#fff] [color:#1b1b1f] radius-medium padding-y-medium padding-x-large text-body-medium text-align-x-center [box-shadow:0px_6px_16px_rgba(0,0,0,0.24)]'>
+          {translate('Label.MatchSuccessfullyIgnored')}
+        </div>
+      ),
+    });
+  }, [enqueueWithDefaults, translate]);
+
+  const handleConfirmIgnore = useCallback(() => {
+    if (candidateId == null || selectedIgnoreReason == null) {
+      return;
+    }
+    ignoreMatchMutation.mutate(
+      { agreementCandidateId: candidateId, reason: selectedIgnoreReason },
+      {
+        onSuccess: () => {
+          notifyMatchIgnored();
+          onIgnored();
+        },
+        onError: () => {
+          enqueueErrorSnackbar();
+        },
+      },
+    );
+  }, [
+    candidateId,
+    selectedIgnoreReason,
+    ignoreMatchMutation,
+    notifyMatchIgnored,
+    enqueueErrorSnackbar,
+    onIgnored,
+  ]);
+
+  const ignoreButtonLabel = translate('Action.Ignore');
+
+  // Each option maps 1:1 to an IgnoreReason enum value; the enum name is what gets sent to the API.
+  const ignoreReasonOptions: Array<{ reason: IgnoreReason; label: string }> = [
+    {
+      reason: IgnoreReason.IgnoredNotInterested,
+      label: translate('Label.IgnoreReasonNotInterested'),
+    },
+    {
+      reason: IgnoreReason.IgnoredDoesNotUseMyIp,
+      label: translate('Label.IgnoreReasonDoesNotUseMyIp'),
+    },
+  ];
+
+  const ignoreReasonFooter = (
+    <>
+      <Button
+        variant='contained'
+        color='primaryBrand'
+        size='large'
+        className='fill [white-space:nowrap] text-align-x-center'
+        disabled={selectedIgnoreReason == null || ignoreMatchMutation.isPending}
+        onClick={handleConfirmIgnore}>
+        {ignoreMatchMutation.isPending ? (
+          <CircularProgress color='inherit' size={BUTTON_SPINNER_SIZE} />
+        ) : (
+          ignoreButtonLabel
+        )}
+      </Button>
+      <Button
+        variant='contained'
+        color='secondary'
+        size='large'
+        className='fill [white-space:nowrap] text-align-x-center'
+        disabled={ignoreMatchMutation.isPending}
+        onClick={onBack}>
+        {translate('Action.Back')}
+      </Button>
+    </>
+  );
+
+  return (
+    <MatchPanelLayout
+      title={translate('Heading.IgnoreMatch')}
+      onClose={onClose}
+      buttons={ignoreReasonFooter}>
+      <div className='flex flex-col gap-medium'>
+        <Typography variant='h6'>{translate('Label.IgnoreMatchReasonPrompt')}</Typography>
+        <RadioGroup value={selectedIgnoreReason ?? ''} onChange={handleReasonChange}>
+          {ignoreReasonOptions.map((option) => (
+            <FormControlLabel
+              key={option.reason}
+              value={option.reason}
+              control={<Radio color='secondary' aria-label={option.label} />}
+              label={option.label}
+            />
+          ))}
+        </RadioGroup>
+      </div>
+    </MatchPanelLayout>
+  );
+};
+
+export default IgnoreMatchPanelContent;

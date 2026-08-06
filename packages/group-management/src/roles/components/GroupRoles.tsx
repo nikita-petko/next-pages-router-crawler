@@ -193,9 +193,12 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
     }
   }
 
-  if (isErrorFetchingRoles) {
-    showToast(translate('Error.GroupRoles'), true);
-  }
+  useEffect(() => {
+    if (isErrorFetchingRoles) {
+      showToast(translate('Error.GroupRoles'), true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isErrorFetchingRoles]);
 
   const [prevLocalRolesForAutoSelect, setPrevLocalRolesForAutoSelect] = useState(localRoles);
   const accessibleRoleIds = useMemo(

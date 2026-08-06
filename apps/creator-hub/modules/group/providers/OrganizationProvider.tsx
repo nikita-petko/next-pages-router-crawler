@@ -1,6 +1,6 @@
 import type { FunctionComponent } from 'react';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/router';
+import Router, { useRouter } from 'next/router';
 import { withTranslation } from '@rbx/intl';
 import { useAuthentication } from '@modules/authentication/providers';
 import type {
@@ -32,18 +32,20 @@ const OrganizationProvider: FunctionComponent<React.PropsWithChildren> = ({ chil
   const [invitationAccepted, setInvitationAccepted] = useState<boolean>();
   const [isActionDialogOpen, setIsActionDialogOpen] = useState<boolean>(false);
 
+  const userId = user?.id;
   const currentGroupId = useMemo(() => {
     return currentGroup?.id ?? currentItemGroupId;
   }, [currentGroup, currentItemGroupId]);
   const invitationOrganizationId = router.query[InviteQueryKey];
+  const isRouterReady = router.isReady;
 
   const redirectToDashboard = useCallback(() => {
-    void router.push(`https://create.${process.env.robloxSiteDomain}/dashboard/creations`);
-  }, [router]);
+    void Router.push(`https://create.${process.env.robloxSiteDomain}/dashboard/creations`);
+  }, []);
 
   const getInvitation = useCallback(
     async (organizationId: string) => {
-      if (!user?.id) {
+      if (!userId) {
         setInvitation(null);
         return;
       }
@@ -52,7 +54,7 @@ const OrganizationProvider: FunctionComponent<React.PropsWithChildren> = ({ chil
         const invitationResponse =
           await organizationApiClient.userClient.getUserInvitationByOrganization(
             organizationId,
-            user.id.toString(),
+            userId.toString(),
           );
 
         setInvitation(invitationResponse);
@@ -61,12 +63,12 @@ const OrganizationProvider: FunctionComponent<React.PropsWithChildren> = ({ chil
         redirectToDashboard();
       }
     },
-    [user, redirectToDashboard],
+    [userId, redirectToDashboard],
   );
 
   const getPermissions = useCallback(
     async (organizationId: string) => {
-      if (!user?.id) {
+      if (!userId) {
         setPermissions(null);
         return;
       }
@@ -74,7 +76,7 @@ const OrganizationProvider: FunctionComponent<React.PropsWithChildren> = ({ chil
       try {
         const permissionsResponse = await organizationApiClient.userClient.getUserPermissions(
           organizationId,
-          user.id.toString(),
+          userId.toString(),
         );
 
         setPermissions(permissionsResponse);
@@ -82,11 +84,11 @@ const OrganizationProvider: FunctionComponent<React.PropsWithChildren> = ({ chil
         setPermissions(null);
       }
     },
-    [user],
+    [userId],
   );
 
   const getOrganization = useCallback(async () => {
-    if (!router.isReady) {
+    if (!isRouterReady) {
       return;
     }
 
@@ -127,7 +129,7 @@ const OrganizationProvider: FunctionComponent<React.PropsWithChildren> = ({ chil
     } finally {
       setIsOrganizationLoading(false);
     }
-  }, [currentGroupId, getInvitation, getPermissions, invitationOrganizationId, router.isReady]);
+  }, [currentGroupId, getInvitation, getPermissions, invitationOrganizationId, isRouterReady]);
 
   const refreshOrganization = useCallback(() => {
     setIsOrganizationRefreshRequired(true);

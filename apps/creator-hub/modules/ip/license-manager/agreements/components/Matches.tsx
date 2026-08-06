@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
 import type {
   AgreementCandidateResponse,
   AgreementCandidateIndexSortBy,
@@ -21,7 +22,7 @@ import {
   useLicenseManagerLogger,
   useLicenseManagerLoggerLogOnce,
 } from '../../utils/logger';
-import { useMatchesQuery } from '../hooks/useMatchesQuery';
+import { markMatchCandidateIgnored, useMatchesQuery } from '../hooks/useMatchesQuery';
 import ContentMaturityFilterChip from './ContentMaturityFilterChip';
 import DauRangeFilterChip, { DauRange } from './DauRangeFilterChip';
 import IpFamilyFilterChip from './IpFamilyFilterChip';
@@ -269,6 +270,7 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
   const { translate } = useTranslation();
   const { logEvent } = useLicenseManagerLogger();
   const { logOnce } = useLicenseManagerLoggerLogOnce();
+  const queryClient = useQueryClient();
   const { settings, isFetched: isSettingsFetched } = useSettings();
   const isIndexedMatchesEnabled = settings.enableIpPlatformMatchesTableEsIndexImprovements;
   const filterButtonRef = useRef<HTMLButtonElement>(null);
@@ -497,6 +499,23 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
     setCurrentMatchPanelView(MatchPanelView.None);
   }, []);
 
+  const handleMatchIgnored = useCallback(() => {
+    const ignoredId = selectedCandidate?.id;
+    // Advance to the match after this one; fall back to the previous when it was the last row.
+    const ignoredIndex = allAgreementCandidates.findIndex((match) => match.id === ignoredId);
+    const nextCandidate =
+      allAgreementCandidates[ignoredIndex + 1] ?? allAgreementCandidates[ignoredIndex - 1];
+    if (ignoredId) {
+      markMatchCandidateIgnored(queryClient, ignoredId);
+    }
+    if (nextCandidate) {
+      setSelectedCandidate(nextCandidate);
+      setCurrentMatchPanelView(MatchPanelView.Details);
+    } else {
+      handleCloseMatchPanel();
+    }
+  }, [allAgreementCandidates, handleCloseMatchPanel, queryClient, selectedCandidate?.id]);
+
   const openFilterDrawer = useCallback(() => {
     setCurrentMatchPanelView(MatchPanelView.None);
     setFilterDrawerOpen(true);
@@ -703,6 +722,7 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
             onOfferLicense={handleOfferLicense}
             agreementStatusFromList={matchPanelAgreementStatus}
             navigation={matchDetailsNavigation}
+            onIgnored={handleMatchIgnored}
           />
         )}
         {selectedCandidate && currentMatchPanelView === MatchPanelView.Offer && (
