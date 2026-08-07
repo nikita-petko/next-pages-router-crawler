@@ -1,6 +1,7 @@
 import type { FunctionComponent } from 'react';
 import { useCallback, useState } from 'react';
 import { StatusCodes } from '@rbx/core';
+import { Divider, StatusBadge } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { CircularProgress, Link } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
@@ -12,6 +13,7 @@ import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import ChatTabOptions from '../enums/ChatTabOptions';
 import ChatNavigation from './ChatNavigation';
+import QuickWordsContent from './QuickWordsContent';
 
 const PresetChatPageContent: FunctionComponent = () => {
   const { gameDetails } = useCurrentGame();
@@ -48,7 +50,7 @@ const PresetChatPageContent: FunctionComponent = () => {
         <ChatNavigation onSelectTab={handleSelectTab} currentTab={currentTab} />
       </div>
       {currentTab === ChatTabOptions.QuickWords && (
-        <div className='flex flex-col gap-xlarge'>
+        <div className='flex flex-col'>
           <div className='flex items-center gap-xlarge width-full justify-between'>
             <div className='flex flex-col gap-xsmall'>
               <h2 className='text-heading-medium margin-none'>
@@ -74,10 +76,30 @@ const PresetChatPageContent: FunctionComponent = () => {
                   )}
                 </Link>
               </span>
+              <div className='flex items-center gap-small padding-y-small'>
+                <span className='text-caption-large content-emphasis'>
+                  {tPendingTranslation(
+                    'System status:',
+                    'Label for the system-wide status of Quick Words',
+                    translationKey('Label.SystemStatus', TranslationNamespace.PresetChat),
+                  )}
+                </span>
+                <StatusBadge
+                  size='Small'
+                  variant='Standard'
+                  label={tPendingTranslation(
+                    'Draft',
+                    'Badge label for draft status',
+                    translationKey('Status.Draft', TranslationNamespace.PresetChat),
+                  )}
+                />
+              </div>
             </div>
             {/* TODO (EXPR-4049): Publish/Save action buttons */}
           </div>
+          <Divider className='margin-top-medium margin-bottom-small' />
           {/* TODO (EXPR-4047): Wire up API integration and render categories */}
+          <QuickWordsContent />
         </div>
       )}
     </section>

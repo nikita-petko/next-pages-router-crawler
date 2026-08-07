@@ -5922,6 +5922,15 @@ html.studio-webview.dark-theme,
   max-width: 100%;
 }
 
+.\[\&\>div\]\:\!text-caption-large>div {
+  font: var(--typography-caption-large-font) !important;
+  letter-spacing: var(--typography-caption-large-letter-spacing) !important;
+}
+
+.\[\&\>div\]\:\!content-emphasis>div {
+  color: var(--color-content-emphasis) !important;
+}
+
 .\[\&\>div\]\:\!bg-none>div {
   background-color: var(--color-none) !important;
 }
