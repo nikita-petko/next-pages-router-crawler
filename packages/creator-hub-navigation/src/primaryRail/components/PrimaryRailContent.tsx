@@ -267,12 +267,7 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
         active={active === 'Documentation'}
         label={translate('Heading.Learn')}
         onClick={() => selectItem('Learn')}
-        href={
-          // Same pattern as Creations/Store: in-product relative home, otherwise absolute entry URL.
-          isOnDocsite
-            ? Documentation.home
-            : `${Documentation.home.replace(/\/$/, '')}?navFromCreatorHub=true`
-        }
+        href={Documentation.home}
       />
       <RailItem
         enableAnimation={isReady && shouldAnimate}

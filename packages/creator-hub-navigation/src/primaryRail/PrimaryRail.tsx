@@ -5,7 +5,6 @@ import { useRobloxAuthentication } from '@rbx/auth';
 import { Drawer, Grid, makeStyles, paperClasses } from '@rbx/ui';
 import AllTools from '../components/AllTools/AllTools';
 import { clickToolsEventModel } from '../event/eventConstants';
-import useNavigationConfigs from '../hooks/useNavigationConfigs';
 import useScrollStyles from '../hooks/useScrollStyles';
 import {
   COMPACT_TRANSITION_DURATION,
@@ -105,7 +104,6 @@ export const PrimaryRail: React.FC<PropsWithChildren<TPrimaryRailProps>> = ({
     allToolsOpen,
     drawerVariant,
     setHasSecondaryRail,
-    setLearnNavigatedFromCreatorHub,
     setPrimaryRailOpen,
     setAllToolsOpen,
   } = useRailContext();
@@ -114,8 +112,6 @@ export const PrimaryRail: React.FC<PropsWithChildren<TPrimaryRailProps>> = ({
 
   const hasChildren = Boolean(children);
   const { login, isFetched, user } = useRobloxAuthentication();
-  const router = useRouter();
-  const { currentProduct } = useNavigationConfigs();
 
   const slideProps = useMemo(() => {
     const onTransition = (node: HTMLElement) => {
@@ -137,20 +133,6 @@ export const PrimaryRail: React.FC<PropsWithChildren<TPrimaryRailProps>> = ({
       },
     };
   }, []);
-
-  useEffect(() => {
-    const {
-      pathname: routerPathname,
-      query: { navFromCreatorHub, ...query },
-    } = router;
-    if (router.isReady && navFromCreatorHub !== undefined) {
-      if (navFromCreatorHub === 'true' && ['Documentation', 'Assistant'].includes(currentProduct)) {
-        setLearnNavigatedFromCreatorHub();
-      }
-      void router.replace({ pathname: routerPathname, query }, undefined, { shallow: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only run once when router is ready
-  }, [router.isReady]);
 
   const {
     cx,
