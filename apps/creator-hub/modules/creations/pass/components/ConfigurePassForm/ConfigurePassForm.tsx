@@ -11,6 +11,8 @@ import {
   useUpdateGamePass,
   type UpdateGamePassRequest,
 } from '@modules/passes/queries/useUpdateGamePass';
+import { ArchivedGamePassReadOnlyBanner } from '../form-shared/ArchivedGamePassReadOnlyBanner';
+import { GamePassArchiveButton } from '../form-shared/GamePassArchiveButton';
 import { DescriptionTextArea, NameTextInput } from '../form-shared/GamePassFields';
 import { PassImageUploader } from '../form-shared/PassImageUploader';
 import type { ConfigurePassMetadataFormValues } from '../form-shared/types';
@@ -21,6 +23,9 @@ type FormProps = {
   imageAssetId: number;
   lastUpdated: Date;
   shopId?: number;
+  isArchived: boolean;
+  isArchiveEnabled: boolean;
+  isInActivePriceOptimizationExperiment: boolean;
 };
 
 type ContainerProps = {
@@ -30,7 +35,16 @@ type ContainerProps = {
 
 const getPassesUrl = dashboard.getMonetizationPassesUrl;
 
-function ConfigurePassForm({ universeId, passId, imageAssetId, lastUpdated, shopId }: FormProps) {
+function ConfigurePassForm({
+  universeId,
+  passId,
+  imageAssetId,
+  lastUpdated,
+  shopId,
+  isArchived,
+  isArchiveEnabled,
+  isInActivePriceOptimizationExperiment,
+}: FormProps) {
   const { translate } = useTranslation();
 
   const {
@@ -61,6 +75,10 @@ function ConfigurePassForm({ universeId, passId, imageAssetId, lastUpdated, shop
 
   const handleSaveChanges: SubmitHandler<ConfigurePassMetadataFormValues> = useCallback(
     async (data) => {
+      if (isArchived) {
+        return;
+      }
+
       setErrorMessage('');
       const request: UpdateGamePassRequest = {};
 
@@ -85,14 +103,42 @@ function ConfigurePassForm({ universeId, passId, imageAssetId, lastUpdated, shop
         setErrorMessage(translate(errorKey ?? 'Error.PassConfigureGeneralError'));
       }
     },
-    [getFieldState, updatePass, reset, getValues, translate],
+    [getFieldState, updatePass, reset, getValues, translate, isArchived],
   );
 
   const passesLink = getPassesUrl(universeId);
   const isAllPending = isSubmitting || isUpdateGamePassPending;
 
+  // Archiving and unarchiving are the same write, and the API refuses both while a price
+  // experiment is live. Those experiments end, so the action is disabled rather than hidden.
+  const isArchiveActionDisabled = isAllPending || isInActivePriceOptimizationExperiment;
+
+  const formActions = (
+    <>
+      <ButtonLink
+        variant='Standard'
+        size='Large'
+        className='padding-x-xlarge'
+        href={passesLink}
+        isDisabled={isSubmitting}>
+        {translate('Action.Cancel')}
+      </ButtonLink>
+      <Button
+        type='submit'
+        variant='Emphasis'
+        size='Large'
+        className='padding-x-xlarge'
+        isDisabled={isArchived || !isDirty || !isValid || isAllPending}
+        isLoading={isAllPending}>
+        {translate('Action.ConfigurePass')}
+      </Button>
+    </>
+  );
+
   return (
     <form className='flex flex-col margin-bottom-medium' onSubmit={handleSubmit(handleSaveChanges)}>
+      {isArchived && <ArchivedGamePassReadOnlyBanner className='margin-bottom-medium' />}
+
       <div className='flex flex-col margin-bottom-medium'>
         <span className='text-body-large'>
           {translate('Message.LastUpdated', {
@@ -106,41 +152,40 @@ function ConfigurePassForm({ universeId, passId, imageAssetId, lastUpdated, shop
         onChange={handleFileChange}
         imageAssetId={imageAssetId}
         className='margin-bottom-large'
+        disabled={isArchived}
       />
 
       <NameTextInput
         control={control}
         label={translate('Label.Name')}
         className='margin-bottom-medium'
+        disabled={isArchived}
       />
 
       <DescriptionTextArea
         control={control}
         label={translate('Label.Description')}
         className='margin-bottom-large'
+        disabled={isArchived}
       />
 
       <Divider className='margin-bottom-medium' />
 
-      <div className='flex flex-col-reverse gap-medium padding-top-small medium:flex-row'>
-        <ButtonLink
-          variant='Standard'
-          size='Large'
-          className='padding-x-xlarge'
-          href={passesLink}
-          isDisabled={isSubmitting}>
-          {translate('Action.Cancel')}
-        </ButtonLink>
-        <Button
-          type='submit'
-          variant='Emphasis'
-          size='Large'
-          className='padding-x-xlarge'
-          isDisabled={!isDirty || !isValid || isAllPending}
-          isLoading={isAllPending}>
-          {translate('Action.ConfigurePass')}
-        </Button>
-      </div>
+      {isArchiveEnabled ? (
+        <div className='flex flex-col gap-medium medium:flex-row medium:items-center medium:justify-between padding-top-small'>
+          <div className='flex flex-col-reverse gap-medium medium:flex-row'>{formActions}</div>
+          <GamePassArchiveButton
+            universeId={universeId}
+            passId={passId}
+            isArchived={isArchived}
+            isDisabled={isArchiveActionDisabled}
+          />
+        </div>
+      ) : (
+        <div className='flex flex-col-reverse gap-medium padding-top-small medium:flex-row'>
+          {formActions}
+        </div>
+      )}
 
       {errorMessage && (
         <span

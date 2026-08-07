@@ -1,10 +1,10 @@
-/* istanbul ignore file */
 import { useRouter } from 'next/router';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { useGetManagedPricingStatus } from '@modules/managed-pricing/queries/useGetManagedPricingStatus';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import AccessDeniedPage from '@modules/miscellaneous/error/components/AccessDeniedPage';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { useMonetizationFlags } from '@modules/monetization-shared/flags/useMonetizationFlags';
 import { ProgressCircleLoader } from '@modules/monetization-shared/loaders';
 import { useUniversePermissions } from '@modules/react-query/organizations';
 import { usePersonalizedShop } from '@modules/shops/hooks/usePersonalizedShop';
@@ -39,8 +39,15 @@ const ConfigurePassContainer = ({ universeId, passId, pageType }: Props) => {
   const { data: shop, isLoading: isLoadingShop } = usePersonalizedShop(universeId);
   const shopId = shop?.shopId;
 
+  const { isProductArchiveEnabled, ready: isArchiveFlagReady } =
+    useMonetizationFlags('isProductArchiveEnabled');
+
   const isLoading =
-    isLoadingPermissions || isPassLoading || isLoadingManagedPricingStatus || isLoadingShop;
+    isLoadingPermissions ||
+    isPassLoading ||
+    isLoadingManagedPricingStatus ||
+    isLoadingShop ||
+    !isArchiveFlagReady;
   if (isLoading) {
     return <ProgressCircleLoader />;
   }
@@ -60,6 +67,9 @@ const ConfigurePassContainer = ({ universeId, passId, pageType }: Props) => {
     return <AccessDeniedPage />;
   }
 
+  const isInActivePriceOptimizationExperiment =
+    pass.priceInformation?.enabledFeatures.includes('PriceOptimization') ?? false;
+
   if (pageType === EConfigurePassPageType.GeneralInfo) {
     return (
       <ConfigurePassForm
@@ -69,19 +79,21 @@ const ConfigurePassContainer = ({ universeId, passId, pageType }: Props) => {
         description={pass.description}
         imageAssetId={pass.iconAssetId}
         lastUpdated={pass.updatedTimestamp}
+        isArchived={pass.isArchived ?? false}
+        isArchiveEnabled={!!isProductArchiveEnabled}
+        isInActivePriceOptimizationExperiment={isInActivePriceOptimizationExperiment}
         shopId={shopId}
       />
     );
   }
-
-  const isInActivePriceOptimizationExperiment =
-    pass.priceInformation?.enabledFeatures.includes('PriceOptimization') ?? false;
 
   return (
     <ConfigurePassSalesFormV2
       universeId={universeId}
       passId={passId}
       isForSale={pass.isForSale ?? false}
+      isArchived={pass.isArchived ?? false}
+      isArchiveEnabled={!!isProductArchiveEnabled}
       price={pass.priceInformation?.defaultPriceInRobux}
       // TODO: handle "default managed pricing enabled" scenario since it's no longer dependent on price information
       isManagedPricingEnabled={

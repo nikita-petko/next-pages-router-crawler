@@ -13,16 +13,25 @@ export type PassImageUploaderProps = {
   imageAssetId?: number;
   onChange: (file: File | null) => void;
   changeLabel?: string;
+  disabled?: boolean;
   className?: string;
 };
 
 export const PassImageUploader = memo(
-  ({ control, imageAssetId, onChange, changeLabel, className }: PassImageUploaderProps) => {
+  ({
+    control,
+    imageAssetId,
+    onChange,
+    changeLabel,
+    disabled,
+    className,
+  }: PassImageUploaderProps) => {
     const { translate } = useTranslation();
     const { field } = useController({
       control,
       name: 'file',
       rules: configurePassMetadataSchema.file,
+      disabled,
     });
 
     const file = field.value;
@@ -39,6 +48,7 @@ export const PassImageUploader = memo(
           onChange={onChange}
           imageType={['jpg', 'png', 'bmp']}
           removeButtonEnabled={false}
+          disabled={field.disabled}
         />
         <VisuallyHidden id='thumbnail-aria-description' aria-live='polite'>
           {file?.name

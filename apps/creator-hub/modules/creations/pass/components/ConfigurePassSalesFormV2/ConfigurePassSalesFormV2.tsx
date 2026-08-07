@@ -11,6 +11,8 @@ import { toast } from '@modules/monetization-shared/snackbar/actions';
 import { useUpdateGamePass } from '@modules/passes/queries/useUpdateGamePass';
 import DisallowPriceChangeInExperimentBanner from '@modules/price-optimization/components/DisallowPriceChangeInExperimentBanner';
 import { withSalesLimitReachedDialog } from '../../dialogs/SalesLimitReachedDialog';
+import { ArchivedGamePassReadOnlyBanner } from '../form-shared/ArchivedGamePassReadOnlyBanner';
+import { GamePassArchiveButton } from '../form-shared/GamePassArchiveButton';
 import RegionalPricesDisplay from '../form-shared/RegionalPricesDisplay';
 import type { ConfigureSalesFormValues } from '../form-shared/types';
 import { PriceTextInput } from './ConfigureSalesFields';
@@ -25,6 +27,8 @@ type Props = {
   managedPricingOnboardingStatus: ManagedPricingOnboardingStatus | undefined;
   isPending?: boolean;
   shopId?: number;
+  isArchived: boolean;
+  isArchiveEnabled: boolean;
 };
 
 const getPassesUrl = dashboard.getMonetizationPassesUrl;
@@ -38,6 +42,8 @@ const ConfigureSalesForm = ({
   managedPricingOnboardingStatus,
   isPending,
   shopId,
+  isArchived,
+  isArchiveEnabled,
 }: Props) => {
   const { translate } = useTranslation();
 
@@ -92,6 +98,10 @@ const ConfigureSalesForm = ({
 
   const initiateSaveChanges: SubmitHandler<ConfigureSalesFormValues> = useCallback(
     async (data) => {
+      if (isArchived) {
+        return;
+      }
+
       await withManagedPricingSubmitGuard({
         universeId,
         currentStatus: isManagedPricingEnabled,
@@ -99,10 +109,12 @@ const ConfigureSalesForm = ({
         // that components are reused. This should be changed to isManagedPricingEnabled in the future.
         targetStatus: data.isRegionalPricingEnabled ?? undefined,
         onboardingStatus: managedPricingOnboardingStatus,
-        onConfirm: () => void saveChanges(data),
+        onConfirm: () => {
+          void saveChanges(data);
+        },
       });
     },
-    [saveChanges, isManagedPricingEnabled, universeId, managedPricingOnboardingStatus],
+    [isArchived, saveChanges, isManagedPricingEnabled, universeId, managedPricingOnboardingStatus],
   );
 
   // Note: we only need to revalidate price, as the other fields don't have cross-field validation
@@ -130,13 +142,42 @@ const ConfigureSalesForm = ({
     [setValue, universeId, isForSale, translate, resetField, revalidatePrice],
   );
 
-  const isSubmitDisabled = isInActivePriceOptimizationExperiment || !isDirty || !isValid;
+  const isSubmitDisabled =
+    isArchived || isInActivePriceOptimizationExperiment || !isDirty || !isValid;
   const isAllPending = isSubmitting || !!isPending || isUpdateGamePassPending;
+
+  // Archiving and unarchiving are the same write, and the API refuses both while a price
+  // experiment is live. Those experiments end, so the action is disabled rather than hidden.
+  const isArchiveActionDisabled = isAllPending || isInActivePriceOptimizationExperiment;
+
+  const formActions = (
+    <>
+      <ButtonLink
+        variant='Standard'
+        size='Large'
+        className='padding-x-xlarge'
+        href={passesLink}
+        isDisabled={isAllPending}>
+        {translate('Action.Cancel')}
+      </ButtonLink>
+      <Button
+        type='submit'
+        variant='Emphasis'
+        size='Large'
+        className='padding-x-xlarge'
+        isDisabled={isSubmitDisabled || isAllPending}
+        isLoading={isAllPending}>
+        {translate('Action.ConfigurePass')}
+      </Button>
+    </>
+  );
 
   return (
     <form
       className='flex flex-col padding-top-small gap-xxlarge'
       onSubmit={handleSubmit(initiateSaveChanges)}>
+      {isArchived && <ArchivedGamePassReadOnlyBanner />}
+
       <DisallowPriceChangeInExperimentBanner enabled={isInActivePriceOptimizationExperiment} />
 
       <div className='flex flex-col gap-large max-width-[678px]'>
@@ -160,7 +201,9 @@ const ConfigureSalesForm = ({
                 // Intentionally overriding default checked behavior to handle sales limit status
                 onCheckedChange={handleToggleForSale}
                 onBlur={field.onBlur}
-                isDisabled={(field.disabled ?? false) || isInActivePriceOptimizationExperiment}
+                isDisabled={
+                  (field.disabled ?? false) || isArchived || isInActivePriceOptimizationExperiment
+                }
               />
             )}
           />
@@ -176,7 +219,7 @@ const ConfigureSalesForm = ({
           }
           register={register}
           universeId={universeId}
-          disabled={!currentIsForSale || isInActivePriceOptimizationExperiment}
+          disabled={isArchived || !currentIsForSale || isInActivePriceOptimizationExperiment}
         />
       </div>
 
@@ -201,6 +244,7 @@ const ConfigureSalesForm = ({
                 onBlur={field.onBlur}
                 isDisabled={
                   (field.disabled ?? false) ||
+                  isArchived ||
                   !currentIsForSale ||
                   isInActivePriceOptimizationExperiment
                 }
@@ -211,25 +255,19 @@ const ConfigureSalesForm = ({
         <RegionalPricesDisplay universeId={universeId} control={control} shouldUnmount={false} />
       </div>
 
-      <div className='flex flex-col-reverse gap-medium medium:flex-row'>
-        <ButtonLink
-          variant='Standard'
-          size='Large'
-          className='padding-x-xlarge'
-          href={passesLink}
-          isDisabled={isSubmitting}>
-          {translate('Action.Cancel')}
-        </ButtonLink>
-        <Button
-          type='submit'
-          variant='Emphasis'
-          size='Large'
-          className='padding-x-xlarge'
-          isDisabled={isSubmitDisabled || isAllPending}
-          isLoading={isAllPending}>
-          {translate('Action.ConfigurePass')}
-        </Button>
-      </div>
+      {isArchiveEnabled ? (
+        <div className='flex flex-col gap-medium medium:flex-row medium:items-center medium:justify-between'>
+          <div className='flex flex-col-reverse gap-medium medium:flex-row'>{formActions}</div>
+          <GamePassArchiveButton
+            universeId={universeId}
+            passId={passId}
+            isArchived={isArchived}
+            isDisabled={isArchiveActionDisabled}
+          />
+        </div>
+      ) : (
+        <div className='flex flex-col-reverse gap-medium medium:flex-row'>{formActions}</div>
+      )}
 
       {errorMessage && (
         <span
