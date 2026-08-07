@@ -1,22 +1,18 @@
 import type { FunctionComponent } from 'react';
-import React, { useMemo, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useEffect, useRef, useState } from 'react';
 import { useTranslation } from '@rbx/intl';
 import { Chip, IconButton, NavigateBeforeIcon, NavigateNextIcon, makeStyles } from '@rbx/ui';
 import type { TGroup } from '@modules/authentication/types';
 import { Asset } from '@modules/miscellaneous/common';
 import { Flex } from '@modules/miscellaneous/components';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import TaxonomyL1Chips from '../../avatarItem/components/TaxonomyL1Chips';
 import useTaxonomyView from '../../avatarItem/hooks/useTaxonomyView';
 import {
-  buildTaxonomyActiveTab,
-  RECENTS_L1_KEY,
+  buildRecentsActiveTab,
+  isRecentsActiveTab,
 } from '../../avatarItem/utils/taxonomyRoutingUtils';
-import useAvatarLooksGate from '../../home/hooks/useAvatarLooksGate';
-import useMomentsGate from '../../home/hooks/useMomentsGate';
-import useUGCFoldersGate from '../../home/hooks/useUGCFoldersGate';
-import { getAvatarItemsEntryPointAssetTypes } from '../constants/MenuConstants';
+import useEnabledSubmenuItems from '../hooks/useEnabledSubmenuItems';
 import creationsMenuManager from '../implementations/CreationsMenuManager';
 import type MenuItem from '../interfaces/MenuItem';
 import type MenuState from '../interfaces/MenuState';
@@ -70,16 +66,10 @@ const CreationsSubmenu: FunctionComponent<React.PropsWithChildren<TCreationsSubm
     classes: { subMenuContainer, subMenu, backButton, nextButton, chip },
   } = useStyles();
   const subMenuRef = useRef<HTMLDivElement>(null);
-  const { settings } = useSettings();
-  const isMomentsTabEnabled = useMomentsGate();
-  const isUGCFoldersEnabled = useUGCFoldersGate();
-  const isAvatarLooksEnabled = useAvatarLooksGate();
   const { translate } = useTranslation();
   const [scrollLeft, setScrollLeft] = useState<number>(0);
   const [scrollWidth, setScrollWidth] = useState<number>(0);
   const [offsetWidth, setOffsetWidth] = useState<number>(0);
-
-  const [allowedAssetTypes, setAllowedAssetTypes] = useState<Set<Asset> | undefined>(undefined);
 
   // The taxonomy chip row replaces this item-type submenu, so only one of them is ever shown.
   // Guarded here rather than in the callers so both menu layouts stay in sync. `canUseTaxonomy` is
@@ -88,71 +78,38 @@ const CreationsSubmenu: FunctionComponent<React.PropsWithChildren<TCreationsSubm
   const { isTaxonomyMode, canUseTaxonomy } = useTaxonomyView(
     creationsMenuManager.getAssetType(menuState),
   );
-  const [, setRecentsTabParams] = useQueryParams(['activeTab', 'filterIndex']);
+  const [{ activeTab }, setRecentsTabParams] = useQueryParams(['activeTab', 'filterIndex']);
   const recentsLabel = translate('Label.Recents');
 
   // Recents is a top-level tab rather than part of either view, so it is offered here as well as in
   // the taxonomy chip row — the feature flag decides whether it exists, not the Taxonomy/Item-Type
-  // toggle. Selecting it always leaves this row, which is why it is never the selected chip.
+  // toggle.
+  const isOnRecents = isRecentsActiveTab(activeTab);
+  const handleSelectRecents = useCallback(() => {
+    setRecentsTabParams({
+      activeTab: buildRecentsActiveTab(isTaxonomyMode),
+      filterIndex: 0,
+    });
+  }, [isTaxonomyMode, setRecentsTabParams]);
   const recentsChip = (
     <Chip
       key='recents'
       classes={{ root: chip }}
-      color='secondary'
-      onClick={() =>
-        setRecentsTabParams({
-          activeTab: buildTaxonomyActiveTab(RECENTS_L1_KEY),
-          filterIndex: 0,
-        })
-      }
+      color={isOnRecents ? 'primary' : 'secondary'}
+      onClick={isOnRecents ? undefined : handleSelectRecents}
       label={recentsLabel}
       clickable
       tabIndex={0}
-      aria-selected={false}
+      aria-selected={isOnRecents}
       role='tab'
     />
   );
-
-  /** Used to fetch allowed asset types for the creator. This allows us to block
-   * TIC/non-TIC users depending on a BE setting. This can be used for future new UGC menu
-   * items as well.
-   */
-  useEffect(() => {
-    void getAvatarItemsEntryPointAssetTypes().then((assetTypes: Set<Asset>) => {
-      setAllowedAssetTypes(assetTypes);
-    });
-  }, []);
 
   const onSubmenuChange = (value: MenuItem) => {
     onMenuStateChange({ menuItem: menuState.menuItem, submenuItem: value });
   };
 
-  const filteredSubmenuItems = useMemo(() => {
-    // Only set isMarketplaceAssetType if on the Avatar Items menu
-    return menuState.menuItem.submenuItems?.filter((submenuItem) =>
-      creationsMenuManager.isMenuItemEnabled(
-        submenuItem,
-        settings,
-        group,
-        menuState.menuItem.nameKey === 'Label.AvatarItems'
-          ? allowedAssetTypes?.has(submenuItem.type)
-          : undefined,
-        allowedAssetTypes,
-        isMomentsTabEnabled,
-        isUGCFoldersEnabled,
-        isAvatarLooksEnabled,
-      ),
-    );
-  }, [
-    menuState.menuItem.submenuItems,
-    settings,
-    group,
-    menuState.menuItem.nameKey,
-    allowedAssetTypes,
-    isMomentsTabEnabled,
-    isUGCFoldersEnabled,
-    isAvatarLooksEnabled,
-  ]);
+  const filteredSubmenuItems = useEnabledSubmenuItems(menuState, group);
 
   const showRecentsBeforeAllAssetTypes =
     canUseTaxonomy &&
@@ -209,20 +166,19 @@ const CreationsSubmenu: FunctionComponent<React.PropsWithChildren<TCreationsSubm
       )}
       <Flex ref={subMenuRef} classes={{ root: subMenu }}>
         {filteredSubmenuItems?.flatMap((submenuItem) => {
+          const isSelectedSubmenuItem = !isOnRecents && menuState.submenuItem === submenuItem;
           const submenuChip = (
             <Chip
               key={submenuItem.type}
               classes={{ root: chip }}
-              color={menuState.submenuItem === submenuItem ? 'primary' : 'secondary'}
-              onClick={
-                menuState.submenuItem === submenuItem
-                  ? undefined
-                  : () => onSubmenuChange(submenuItem)
-              }
+              // Recents carries no asset type, so it resolves through the host tab and would
+              // otherwise light up whichever item type hosts it.
+              color={isSelectedSubmenuItem ? 'primary' : 'secondary'}
+              onClick={isSelectedSubmenuItem ? undefined : () => onSubmenuChange(submenuItem)}
               label={translate(submenuItem.nameKey)}
               clickable
               tabIndex={0}
-              aria-selected={menuState.submenuItem === submenuItem}
+              aria-selected={isSelectedSubmenuItem}
               role='tab'
             />
           );

@@ -68,9 +68,26 @@ export function isAllAssetTypesActiveTab(value: string | string[] | undefined | 
  */
 export const RECENTS_L1_KEY = 'recents';
 
-/** Whether the given `activeTab` selects the Recents tab. */
+/**
+ * `activeTab` value for Recents outside the taxonomy namespace. Recents is reachable from both
+ * views, so it needs a representation in each: selecting it from the item-type view must not put
+ * the URL into the taxonomy namespace, because that is what the toggle reads.
+ */
+export const RECENTS_ACTIVE_TAB = 'Recents';
+
+/** Whether the given `activeTab` selects the Recents tab, in either view. */
 export function isRecentsActiveTab(value: string | string[] | undefined | null): boolean {
-  return parseTaxonomyActiveTab(value) === RECENTS_L1_KEY;
+  return (
+    readQueryValue(value) === RECENTS_ACTIVE_TAB || parseTaxonomyActiveTab(value) === RECENTS_L1_KEY
+  );
+}
+
+/**
+ * Builds the `activeTab` for Recents in whichever view the user is currently in. Selecting Recents
+ * is not a choice about the view, so it must leave the toggle where the user set it.
+ */
+export function buildRecentsActiveTab(isTaxonomyMode: boolean): string {
+  return isTaxonomyMode ? buildTaxonomyActiveTab(RECENTS_L1_KEY) : RECENTS_ACTIVE_TAB;
 }
 
 /**

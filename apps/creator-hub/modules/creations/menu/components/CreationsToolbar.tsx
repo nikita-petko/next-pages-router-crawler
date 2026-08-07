@@ -25,6 +25,7 @@ import { Asset } from '@modules/miscellaneous/common';
 import { Flex } from '@modules/miscellaneous/components/Flex';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
+import { useCurrentGroup } from '@modules/providers/groups/GroupsProvider';
 import { AvatarMenuMap } from '../../avatarItem/constants/avatarItemConstants';
 import useTaxonomyView from '../../avatarItem/hooks/useTaxonomyView';
 import { buildTaxonomyActiveTab } from '../../avatarItem/utils/taxonomyRoutingUtils';
@@ -33,6 +34,7 @@ import { getSortForAssetType } from '../../common/interfaces/CreationsFilters';
 import { getValidTimedOptionsTypes } from '../../unifiedFeeSystem/helper/UnifiedFeeSystemConstants';
 import { getIsRentableType } from '../../unifiedFeeSystem/helper/UnifiedFeeSystemHelper';
 import { eventSortTranslationKeys, universeSortTranslationKeys } from '../constants/MenuConstants';
+import useEnabledSubmenuItems from '../hooks/useEnabledSubmenuItems';
 import creationsMenuManager from '../implementations/CreationsMenuManager';
 import type MenuState from '../interfaces/MenuState';
 import useCreationsToolbarStyles from './CreationsToolbar.styles';
@@ -98,6 +100,8 @@ const CreationsToolbar: FunctionComponent<React.PropsWithChildren<CreationsToolb
   // filtering by a category: All Asset Types keeps the chips on screen while filtering by folder, and
   // the switch must still read as on there.
   const { canUseTaxonomy: showTaxonomyToggle, isTaxonomyMode } = useTaxonomyView(assetType);
+  const currentGroup = useCurrentGroup();
+  const enabledSubmenuItems = useEnabledSubmenuItems(menuState, currentGroup);
 
   const { isSortable, isArchivable } = useMemo(() => {
     // In the category view `filterIndex` addresses taxonomy sub-categories, not entries in
@@ -123,14 +127,25 @@ const CreationsToolbar: FunctionComponent<React.PropsWithChildren<CreationsToolb
     // The view follows activeTab, so switching is just a move between the two namespaces. Replace
     // the current entry rather than pushing: toggling back and forth should not have to be undone
     // one step at a time.
+    //
+    // Either direction lands on the first tab of the row being switched to, because the two rows
+    // list different things and there is no honest mapping between them. Turning the view on uses
+    // the keyless taxonomy tab, which resolves to the first L1; turning it off uses the first item
+    // type, rather than the asset that happens to host the taxonomy tab.
+    // The first tab the user can actually see, not the first in the menu definition: Avatars, Moments
+    // and the marketplace types are each gated, so the definition's first entry may not be on screen.
+    const firstVisibleAssetType = enabledSubmenuItems[0]?.type;
+    const nextActiveTab = isTaxonomyMode
+      ? (firstVisibleAssetType ?? assetType)
+      : buildTaxonomyActiveTab();
     setViewParams(
       {
-        activeTab: isTaxonomyMode ? assetType : buildTaxonomyActiveTab(),
+        activeTab: nextActiveTab,
         filterIndex: 0,
       },
       { skipHistory: true },
     );
-  }, [isTaxonomyMode, assetType, setViewParams]);
+  }, [isTaxonomyMode, assetType, enabledSubmenuItems, setViewParams]);
 
   const isToolbarHidden = useMemo(
     () =>

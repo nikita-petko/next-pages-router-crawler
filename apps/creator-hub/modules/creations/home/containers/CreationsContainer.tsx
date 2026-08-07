@@ -25,6 +25,7 @@ import {
   AVATAR_ITEMS_ACTIVE_TAB,
   isAllAssetTypesActiveTab,
   isAvatarLooksActiveTab,
+  isRecentsActiveTab,
   isTaxonomyActiveTab,
   shouldOpenTaxonomyView,
   TAXONOMY_HOST_ASSET,
@@ -139,6 +140,10 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
   // are pending this must still recognise a taxonomy activeTab. Otherwise the menu treats it as an
   // unknown tab and rewrites the URL, discarding the selected category.
   const isTaxonomyTab = isTaxonomyActiveTab(query.activeTab);
+  // Recents carries no asset type in either view, so it resolves through the host tab like a
+  // taxonomy tab does. Without this its item-type form parses as an unknown tab and the menu
+  // rewrites the URL back to My Experiences.
+  const isHostedTab = isTaxonomyTab || isRecentsActiveTab(query.activeTab);
 
   const menuState = useMemo(() => {
     // A taxonomy activeTab carries no asset type, so it resolves through the Avatar Items host tab
@@ -148,10 +153,10 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
       ? Asset.AllCatalogAsset
       : TAXONOMY_HOST_ASSET;
     return creationsMenuManager.getMenuState(
-      isTaxonomyTab ? taxonomyAsset : parseActiveTabQueryParam(query.activeTab),
+      isHostedTab ? taxonomyAsset : parseActiveTabQueryParam(query.activeTab),
       filteredTypes,
     );
-  }, [query.activeTab, filteredTypes, isTaxonomyTab]);
+  }, [query.activeTab, filteredTypes, isHostedTab]);
 
   const filteredMenuItems = useMemo(
     () => menuItems.filter((item) => !filteredTypes.includes(item.type)),

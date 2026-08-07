@@ -44,8 +44,10 @@ const useTaxonomyView = (assetType: Asset): TaxonomyViewState => {
 
   const isFlagEnabled = useTaxonomyDashboardGate();
   const isTaxonomyMode = isFlagEnabled && isTaxonomyActiveTab(activeTab);
-  const isRecentsView = isTaxonomyMode && isRecentsActiveTab(activeTab);
-  const isAvatarLooksView = isTaxonomyMode && isAvatarLooksActiveTab(activeTab);
+  // Recents and Avatars exist in both views, so they follow the flag rather than the toggle. Reading
+  // them off isTaxonomyMode would make selecting Recents from the item-type view turn the toggle on.
+  const isRecentsView = isFlagEnabled && isRecentsActiveTab(activeTab);
+  const isAvatarLooksView = isFlagEnabled && isAvatarLooksActiveTab(activeTab);
 
   return {
     canUseTaxonomy: isFlagEnabled && (isTaxonomyMode || isTaxonomyEligibleAssetTab(assetType)),
