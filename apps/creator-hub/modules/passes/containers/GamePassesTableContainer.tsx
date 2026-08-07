@@ -4,7 +4,9 @@ import type { ManagedPricingOnboardingStatus } from '@modules/managed-pricing/ty
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import AccessDeniedPage from '@modules/miscellaneous/error/components/AccessDeniedPage';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { ARCHIVE_VIEWS, useView } from '@modules/monetization-shared/views/useView';
 import { useUniversePermissions } from '@modules/react-query/organizations';
+import GamePassesViewLayout from '../components/GamePassesViewLayout';
 import PassesTable from '../components/PassesTable';
 import PassesTableEmptyState from '../components/PassesTableEmptyState';
 import PassesTableLoading from '../components/PassesTableLoading';
@@ -14,12 +16,25 @@ import { transformGamePassesForTable } from '../utils/passesUtils';
 type Props = {
   universeId: number;
   managedPricingOnboardingStatus?: ManagedPricingOnboardingStatus;
+  /**
+   * When true, renders Current/Archived chips and filters between active and archived
+   * passes. When false/undefined, the archive flag is off.
+   */
+  isArchiveEnabled?: boolean;
 };
 
 const INITIAL_ROWS_PER_PAGE_WITH_MANAGED_PRICING = 10;
 
-function GamePassesTableContainer({ universeId, managedPricingOnboardingStatus }: Props) {
+function GamePassesTableContainer({
+  universeId,
+  managedPricingOnboardingStatus,
+  isArchiveEnabled,
+}: Props) {
   const { translate } = useTranslation();
+  const { view } = useView(ARCHIVE_VIEWS);
+
+  const isArchived = isArchiveEnabled ? view === 'archived' : undefined;
+
   const { data: permissions, isLoading: isLoadingPermissions } = useUniversePermissions(universeId);
 
   const router = useRouter();
@@ -30,6 +45,7 @@ function GamePassesTableContainer({ universeId, managedPricingOnboardingStatus }
     isLoading: isLoadingPasses,
   } = useListAllPassesForUniverse(universeId, {
     select: transformGamePassesForTable,
+    isArchived,
   });
 
   // Both are withheld until permissions resolve: the list query can fail fast for a universe
@@ -51,21 +67,42 @@ function GamePassesTableContainer({ universeId, managedPricingOnboardingStatus }
     }
   }
 
-  if (isLoadingPermissions || isLoadingPasses) {
-    return <PassesTableLoading />;
+  const isLoading = isLoadingPermissions || isLoadingPasses;
+
+  if (isLoading) {
+    return (
+      <GamePassesViewLayout universeId={universeId} isArchiveEnabled={isArchiveEnabled}>
+        <PassesTableLoading isArchiveEnabled={isArchiveEnabled} />
+      </GamePassesViewLayout>
+    );
   }
 
   if (passes.length === 0) {
-    return <PassesTableEmptyState universeId={universeId} />;
+    return (
+      <GamePassesViewLayout universeId={universeId} isArchiveEnabled={isArchiveEnabled}>
+        <PassesTableEmptyState
+          universeId={universeId}
+          isArchiveEnabled={isArchiveEnabled}
+          showArchived={isArchived}
+        />
+      </GamePassesViewLayout>
+    );
   }
 
   return (
-    <PassesTable
-      universeId={universeId}
-      passes={passes}
-      managedPricingOnboardingStatus={managedPricingOnboardingStatus}
-      initialRowsPerPage={INITIAL_ROWS_PER_PAGE_WITH_MANAGED_PRICING}
-    />
+    <GamePassesViewLayout universeId={universeId} isArchiveEnabled={isArchiveEnabled}>
+      <PassesTable
+        // Remount on view change so table state (search, sort, pagination, selection)
+        // does not carry over between the current and archived lists.
+        key={view}
+        universeId={universeId}
+        passes={passes}
+        managedPricingOnboardingStatus={managedPricingOnboardingStatus}
+        isArchiveEnabled={isArchiveEnabled}
+        showArchived={isArchived}
+        initialRowsPerPage={INITIAL_ROWS_PER_PAGE_WITH_MANAGED_PRICING}
+      />
+    </GamePassesViewLayout>
   );
 }
 

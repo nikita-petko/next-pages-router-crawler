@@ -56,6 +56,8 @@ type Props = {
   managedPricingOnboardingStatus?: ManagedPricingOnboardingStatus;
   initialRowsPerPage?: number;
   rowsPerPageOptions?: number[];
+  /** Renders the Current/Archived chips and switches the table to the archived layout. */
+  isArchiveEnabled?: boolean;
 };
 
 function PassesTableControls(props: Omit<TTableControlsProps, 'numSelected' | 'maxSelectable'>) {
@@ -90,6 +92,7 @@ function PassesTable({
   managedPricingOnboardingStatus,
   initialRowsPerPage = DEFAULT_ROWS_PER_PAGE,
   rowsPerPageOptions = ROWS_PER_PAGE_OPTIONS,
+  isArchiveEnabled,
 }: Props) {
   const { translate } = useTranslation();
 
@@ -324,17 +327,32 @@ function PassesTable({
   return (
     <TableSelectionProvider store={selectionStore}>
       <section>
-        {showManagedPricing ? (
+        {showArchived && (
           <PassesActionBarV2
-            // Note: padding top is to offset analytics layout - remove after migrating
-            className='margin-bottom-medium padding-top-small'
+            className='margin-bottom-medium'
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
+            isArchiveEnabled={isArchiveEnabled}
+            hideBulkAction
+          />
+        )}
+
+        {!showArchived && showManagedPricing && (
+          <PassesActionBarV2
+            // The chips row above supplies the gap once archiving is on.
+            className={
+              isArchiveEnabled ? 'margin-bottom-medium' : 'margin-bottom-medium padding-top-small'
+            }
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            isArchiveEnabled={isArchiveEnabled}
             onBulkAction={handleBulkToggleManagedPricing}
             isBulkActionDisabled={isBatchUpdateManagedPricingPending}
             isBulkActionPending={isBulkUpdatePending}
           />
-        ) : (
+        )}
+
+        {!showArchived && !showManagedPricing && (
           <PassesActionBar
             className='margin-top-[8px]'
             universeId={universeId}
@@ -344,7 +362,7 @@ function PassesTable({
           />
         )}
 
-        {!showManagedPricing && (
+        {!showManagedPricing && !showArchived && (
           <PassesTableControls
             rowsPerPageOptions={rowsPerPageOptions}
             count={searchedPasses.length}
@@ -377,9 +395,11 @@ function PassesTable({
         />
       </section>
 
-      {!showManagedPricing && <RegionalPricingDisclaimerModal universeId={universeId} />}
+      {!showManagedPricing && !showArchived && (
+        <RegionalPricingDisclaimerModal universeId={universeId} />
+      )}
 
-      {!showManagedPricing && (
+      {!showManagedPricing && !showArchived && (
         <BulkEnableRegionalPricingDialog
           isOpen={bulkEnableRegionalPricingDialog.isOpen}
           onClose={bulkEnableRegionalPricingDialog.close}
@@ -390,7 +410,7 @@ function PassesTable({
         </BulkEnableRegionalPricingDialog>
       )}
 
-      {!showManagedPricing && (
+      {!showManagedPricing && !showArchived && (
         <BulkDisableRegionalPricingDialog
           isOpen={bulkDisableRegionalPricingDialog.isOpen}
           onClose={bulkDisableRegionalPricingDialog.close}

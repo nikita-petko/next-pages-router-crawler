@@ -10,6 +10,7 @@ import ManagedPricingPromotionBanner from '@modules/managed-pricing/banners/Mana
 import { useGetManagedPricingStatus } from '@modules/managed-pricing/queries/useGetManagedPricingStatus';
 import AccessDeniedPage from '@modules/miscellaneous/error/components/AccessDeniedPage';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { useMonetizationFlags } from '@modules/monetization-shared/flags/useMonetizationFlags';
 import { ProgressCircleLoader } from '@modules/monetization-shared/loaders';
 import GenericTabbedPageLayout, {
   type TabConfig,
@@ -35,6 +36,9 @@ function GamePassesPageContent({ universeId }: { universeId: number }) {
   const managedPricingOnboardingStatus = managedPricingStatus?.status;
   const hasRegionalPricingSource = managedPricingStatus?.sources?.includes('RegionalPricing');
 
+  const { isProductArchiveEnabled, ready: isArchiveFlagReady } =
+    useMonetizationFlags('isProductArchiveEnabled');
+
   const creationsTab = useMemo<TabConfig<ItemMonetizationTabs>>(
     () => ({
       key: ItemMonetizationTabs.Creations,
@@ -43,10 +47,11 @@ function GamePassesPageContent({ universeId }: { universeId: number }) {
         <GamePassesTableContainer
           universeId={universeId}
           managedPricingOnboardingStatus={managedPricingOnboardingStatus}
+          isArchiveEnabled={!!isProductArchiveEnabled}
         />
       ),
     }),
-    [translate, universeId, managedPricingOnboardingStatus],
+    [translate, universeId, managedPricingOnboardingStatus, isProductArchiveEnabled],
   );
 
   const owner = useOwner();
@@ -80,7 +85,8 @@ function GamePassesPageContent({ universeId }: { universeId: number }) {
   if (
     isPendingAnalyticsExperiencePermissions ||
     isLoadingPermissions ||
-    isLoadingManagedPricingStatus
+    isLoadingManagedPricingStatus ||
+    !isArchiveFlagReady
   ) {
     return <ProgressCircleLoader />;
   }
