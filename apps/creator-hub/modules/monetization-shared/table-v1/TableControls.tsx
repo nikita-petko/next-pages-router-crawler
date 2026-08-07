@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { clsx } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { TablePagination, type TTablePaginationProps } from '@rbx/ui';
+import { displayTotalCount, MAX_DISPLAYED_COUNT } from '../display-count';
 
 export type TTableControlsProps = Pick<
   TTablePaginationProps,
@@ -17,11 +18,6 @@ export type TTableControlsProps = Pick<
   maxSelectable?: number;
   maxDisplayedCount?: number;
 };
-
-const MAX_DISPLAYED_COUNT = 999;
-
-const displayTotalCount = (count: number, maxDisplayedCount: number) =>
-  count > maxDisplayedCount ? `${maxDisplayedCount}+` : count.toString();
 
 const MemoizedTablePagination = memo(
   ({
@@ -40,7 +36,7 @@ const MemoizedTablePagination = memo(
         labelDisplayedRows={({ from, to }) =>
           translate('Label.PageRange', {
             pageRange: `${from}–${to}`,
-            totalPageCount: displayTotalCount(count, maxDisplayedCount ?? MAX_DISPLAYED_COUNT),
+            totalPageCount: displayTotalCount(count, maxDisplayedCount),
           })
         }
       />

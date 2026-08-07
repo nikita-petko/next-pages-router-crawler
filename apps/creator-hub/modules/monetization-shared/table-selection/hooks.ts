@@ -171,6 +171,33 @@ export function useHasMatchingViewableSelection<K extends string | number, T>(
 }
 
 /**
+ * Subscribes to how many viewable-selected items satisfy the given predicate.
+ * Re-renders only when the count changes.
+ *
+ * Prefer {@link useHasMatchingViewableSelection} when a boolean will do — it stops at the first
+ * match. Reach for this when the number itself is the UI, as in a bulk action that reports how
+ * much of the selection it applies to.
+ *
+ * @example
+ * const numEnableable = useMatchingViewableSelectionCount<number, DeveloperProductConfig>(
+ *   canEnableManagedPricing,
+ * );
+ */
+export function useMatchingViewableSelectionCount<K extends string | number, T>(
+  predicate: (item: T) => boolean,
+): number {
+  return useSelectionStore<K, T, number>((state) => {
+    let count = 0;
+    for (const [id, item] of state.selectedMap) {
+      if (state.viewableIds.has(id) && predicate(item)) {
+        count += 1;
+      }
+    }
+    return count;
+  });
+}
+
+/**
  * Subscribes to the selection limit to determine if it has been reached.
  * Optimized: Subscriber will ONLY re-render if this specific boolean flips.
  *
