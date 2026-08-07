@@ -12,6 +12,7 @@ import {
   Typography,
   useMediaQuery,
 } from '@rbx/ui';
+import ErrorState from '../../components/ErrorState';
 import TranslationNamespace from '../../constants/TranslationNamespace';
 import useCurrentGroup from '../../hooks/useCurrentGroup';
 import { useGetGroupInfo } from '../../queries';
@@ -46,21 +47,6 @@ const usePermissionsContainerStyles = makeStyles()((theme) => ({
   },
 }));
 
-const reloadWindow = () => {
-  if (typeof window !== 'undefined') {
-    window.location.reload();
-  }
-};
-
-const DefaultLoadError: FunctionComponent = () => {
-  const { translate } = usePermissionsTranslation();
-  return (
-    <Typography variant='h4'>
-      {translate('Organization.Messages.ErrorLoadingPermissions')}
-    </Typography>
-  );
-};
-
 const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ creator, entity }) => {
   const {
     classes: { rootClass, footerButton },
@@ -69,7 +55,7 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('Medium'));
   const { translate, displayMessage } = usePermissionsTranslation();
   const { translateWithNamespace } = useTranslation();
-  const { organization, errorComponents, surface, isOrganizationLoading } = useCurrentGroup();
+  const { organization, surface, isOrganizationLoading } = useCurrentGroup();
 
   const {
     isPending,
@@ -78,6 +64,7 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
     metadata,
     permissionData: initialPermissions,
     savePermissions,
+    refetch: refetchPermissions,
   } = usePermissions(creator, entity);
 
   const showMemberCount =
@@ -203,11 +190,7 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
   ]);
 
   if (isError) {
-    return errorComponents?.loadErrorComponent ? (
-      <>{errorComponents.loadErrorComponent({ onReload: reloadWindow })}</>
-    ) : (
-      <DefaultLoadError />
-    );
+    return <ErrorState onRetry={refetchPermissions} />;
   }
 
   if (

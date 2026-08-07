@@ -11,7 +11,6 @@ import type {
   AuthenticatedUser,
   GroupManagementNavigation,
   GroupManagementStudio,
-  GroupManagementErrorComponents,
   GroupManagementLogger,
 } from '../utils/types';
 import GroupManagementContext from './GroupManagementContext';
@@ -23,7 +22,6 @@ type GroupManagementProviderProps = PropsWithChildren<{
   navigation: GroupManagementNavigation;
   showToast: (message: string, isError?: boolean) => void;
   studio?: GroupManagementStudio;
-  errorComponents?: GroupManagementErrorComponents;
   unifiedLogger?: GroupManagementLogger;
 }>;
 
@@ -34,7 +32,6 @@ const GroupManagementProvider: FunctionComponent<GroupManagementProviderProps> =
   navigation,
   showToast,
   studio,
-  errorComponents,
   unifiedLogger,
   children,
 }) => {
@@ -117,7 +114,6 @@ const GroupManagementProvider: FunctionComponent<GroupManagementProviderProps> =
       navigation,
       showToast,
       studio,
-      errorComponents,
       unifiedLogger,
       organization,
       permissions,
@@ -135,7 +131,6 @@ const GroupManagementProvider: FunctionComponent<GroupManagementProviderProps> =
       navigation,
       showToast,
       studio,
-      errorComponents,
       unifiedLogger,
       organization,
       permissions,

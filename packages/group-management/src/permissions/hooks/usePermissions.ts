@@ -25,6 +25,7 @@ export type UsePermissionsResult = {
   isSaving: boolean;
   permissionData?: Record<string, PermissionResponse> | null;
   savePermissions: (permissionsData: Record<string, PermissionRequest>) => void;
+  refetch: () => void;
 };
 
 export default function usePermissions(
@@ -38,6 +39,7 @@ export default function usePermissions(
     isError,
     isPending,
     isFetching,
+    refetch,
   } = useGetAllPermissions(creator, entity, organization ?? undefined);
   const { mutate, isPending: isMutationPending } = useUpdateAllPermissions();
   const { translate, displayMessage } = usePermissionsTranslation();
@@ -90,5 +92,6 @@ export default function usePermissions(
     isSaving: isMutationPending || isPostSaveFetch,
     permissionData: permissionsData,
     savePermissions,
+    refetch,
   };
 }

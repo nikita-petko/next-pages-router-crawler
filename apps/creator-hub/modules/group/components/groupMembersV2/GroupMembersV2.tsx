@@ -77,7 +77,7 @@ const GroupMembers: FunctionComponent = () => {
   const userProp = useMemo(() => ({ id: user?.id ?? 0 }), [user?.id]);
   const getUserProfileUrl = useCallback((userId: number) => www.getUserUrl(userId), []);
   const navigateToRole = useCallback(
-    (roleId: string) => void Router.replace(creatorHub.getGroupRoleUrl(roleId)),
+    (roleId: string) => Router.replace(creatorHub.getGroupRoleUrl(roleId)),
     [],
   );
   const getInvitationLinkUrl = useCallback(
@@ -123,6 +123,7 @@ const GroupMembers: FunctionComponent = () => {
           <UnifiedGroupMembersTable
             menuState={menuState}
             toolbarStart={<UnifiedGroupInviteButton />}
+            emptyStateAction={<UnifiedGroupInviteButton />}
           />
         </GroupManagementProvider>
       ) : (

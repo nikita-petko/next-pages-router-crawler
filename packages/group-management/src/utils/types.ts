@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import type { UnifiedLogger } from '@rbx/unified-logger';
 import type { GroupRoleMetadata } from '../clients/groups';
-import type { CreatorTypes } from '../permissions/utils/types';
 
 export enum CreatorType {
   User = 'User',
@@ -53,11 +52,6 @@ export interface GroupManagementNavigation {
 export interface GroupManagementStudio {
   open: () => void;
   dialog?: ReactNode;
-}
-
-export interface GroupManagementErrorComponents {
-  emptyStateComponent?: (args: { creatorType?: CreatorTypes }) => ReactNode;
-  loadErrorComponent?: (args: { onReload: () => void }) => ReactNode;
 }
 
 export type GroupManagementLogger = UnifiedLogger;

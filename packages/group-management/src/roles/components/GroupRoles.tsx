@@ -21,6 +21,7 @@ import type {
   GroupRoleMetadata,
   GroupRolePermissions,
 } from '../../clients/groups';
+import ErrorState from '../../components/ErrorState';
 import TranslationNamespace from '../../constants/TranslationNamespace';
 import useCurrentGroup from '../../hooks/useCurrentGroup';
 import { PermissionsContainer } from '../../permissions/containers/PermissionsContainer';
@@ -179,6 +180,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
     data: fetchedRoles,
     isLoading,
     isError: isErrorFetchingRoles,
+    refetch: refetchRoles,
   } = useGetGroupsRoles(organization?.groupId);
 
   const { mutateAsync: updateRoleMetadataAsync } = useUpdateRoleMetadata();
@@ -603,6 +605,10 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
       selectedRole?.metadata?.rank,
     ],
   );
+
+  if (isErrorFetchingRoles) {
+    return <ErrorState onRetry={refetchRoles} />;
+  }
 
   if (isMobile) {
     if (selectedRole === undefined) {

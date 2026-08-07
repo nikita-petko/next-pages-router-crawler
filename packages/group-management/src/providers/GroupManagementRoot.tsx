@@ -9,7 +9,6 @@ import { DialogProvider, UIThemeProvider } from '@rbx/ui';
 import type {
   AuthenticatedUser,
   GroupData,
-  GroupManagementErrorComponents,
   GroupManagementLogger,
   GroupManagementNavigation,
   GroupManagementStudio,
@@ -41,7 +40,6 @@ export type GroupManagementRootProvidersProps = PropsWithChildren<{
   theme?: ThemeMode;
   queryClient?: QueryClient;
   studio?: GroupManagementStudio;
-  errorComponents?: GroupManagementErrorComponents;
   unifiedLogger?: GroupManagementLogger;
 }>;
 
@@ -61,7 +59,6 @@ const GroupManagementRootProviders: FunctionComponent<GroupManagementRootProvide
   theme,
   queryClient,
   studio,
-  errorComponents,
   unifiedLogger,
   children,
 }) => {
@@ -80,7 +77,6 @@ const GroupManagementRootProviders: FunctionComponent<GroupManagementRootProvide
               user={user}
               showToast={showToast}
               studio={studio}
-              errorComponents={errorComponents}
               unifiedLogger={unifiedLogger}>
               {children}
             </GroupManagementProvider>

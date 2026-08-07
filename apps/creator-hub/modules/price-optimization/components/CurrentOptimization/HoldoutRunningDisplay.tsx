@@ -1,11 +1,12 @@
+// oxlint-disable react/react-compiler
 import { useEffect, useState } from 'react';
 import { ExperimentState } from '@rbx/client-price-experimentation-api/v1';
 import { useTranslation } from '@rbx/intl';
 import { useLocalStorage } from '@rbx/react-utilities';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@rbx/ui';
+import { noop } from '@modules/monetization-shared/noop';
 import { lastViewedHoldoutFinishedKey } from '../../constants/experimentConstants';
 import { isExperimentPolling } from '../../helpers/experimentUtils';
-import { useCompleteExperiment } from '../../queries/useCompleteExperiment';
 import { useGetLatestExperiment } from '../../queries/useGetLatestExperiment';
 import HoldoutResults from '../PriceOptimizationResults/HoldoutResults';
 import useCurrentOptimizationStyles from './CurrentOptimization.styles';
@@ -14,8 +15,7 @@ const HoldoutRunningDisplay = () => {
   const { translate } = useTranslation();
   const { classes } = useCurrentOptimizationStyles();
 
-  const { universeId, latestExperiment: currentExperiment } = useGetLatestExperiment();
-  const { refetchData } = useCompleteExperiment();
+  const { latestExperiment: currentExperiment } = useGetLatestExperiment();
 
   const [isPollingModalOpen, setIsPollingModalOpen] = useState(false);
   const [isHoldoutCompletedModalOpen, setIsHoldoutCompletedModalOpen] = useState(false);
@@ -44,8 +44,7 @@ const HoldoutRunningDisplay = () => {
 
   const closeFinishPriceOptimization = () => {
     setIsHoldoutCompletedModalOpen(false);
-    // oxlint-disable-next-line typescript/no-non-null-assertion
-    refetchData(universeId!);
+    noop();
     setLastViewedHoldoutFinished(null);
   };
 

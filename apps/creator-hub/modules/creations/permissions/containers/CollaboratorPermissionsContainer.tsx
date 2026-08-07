@@ -8,7 +8,6 @@ import {
   GroupManagementProvider,
   GroupManagementSurface,
   PermissionsContainer as UnifiedPermissionsContainer,
-  type GroupManagementErrorComponents,
 } from '@rbx/group-management';
 import { withTranslation } from '@rbx/intl';
 import { useMediaQuery } from '@rbx/ui';
@@ -81,11 +80,6 @@ const CollaboratorPermissionsContainer: FunctionComponent = () => {
     [showBottomToast],
   );
 
-  const errorComponents = useMemo<GroupManagementErrorComponents>(
-    () => ({ loadErrorComponent: () => <LoadError onReload={reload} /> }),
-    [reload],
-  );
-
   if (
     isLoadingGame ||
     isOrganizationLoading ||
@@ -139,8 +133,7 @@ const CollaboratorPermissionsContainer: FunctionComponent = () => {
         navigation={navigation}
         user={groupUser}
         showToast={showToast}
-        studio={studio}
-        errorComponents={errorComponents}>
+        studio={studio}>
         <UnifiedPermissionsContainer
           entity={unifiedEntity}
           creatorFilter={creatorFilter}

@@ -38,6 +38,10 @@ const RoleMembers: FunctionComponent<RoleMembersProps> = ({ role }) => {
   const effectiveMenuState =
     invitationRoles?.length === 0 ? GroupMembersMenuState.Members : menuState;
 
+  const canAddToRole =
+    role.id !== undefined &&
+    (isOwner === true || canAssignRole(rolePermissions?.[role.id.toString()]));
+
   return (
     <Grid container gap={2} paddingTop={2}>
       <Grid container item alignItems='center' justifyContent='space-between'>
@@ -61,12 +65,18 @@ const RoleMembers: FunctionComponent<RoleMembersProps> = ({ role }) => {
             </>
           )}
         </Grid>
-        {role.id !== undefined &&
-          (isOwner === true || canAssignRole(rolePermissions?.[role.id.toString()])) && (
-            <AddUserToRoleButton role={role} />
-          )}
+        {canAddToRole && <AddUserToRoleButton role={role} />}
       </Grid>
-      <GroupMembersTable menuState={effectiveMenuState} roleFilter={role} isRoleMembersPage />
+      <GroupMembersTable
+        menuState={effectiveMenuState}
+        roleFilter={role}
+        isRoleMembersPage
+        emptyStateAction={
+          canAddToRole ? (
+            <AddUserToRoleButton role={role} variant='Emphasis' size='Medium' />
+          ) : undefined
+        }
+      />
     </Grid>
   );
 };

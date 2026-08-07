@@ -1,6 +1,3 @@
-import type { QueryClient } from '@tanstack/react-query';
-import { developerProductKeys } from '@modules/developer-products/queries/constants';
-import { gamePassKeys } from '@modules/passes/queries/constants';
 import type { Product } from '../types/product';
 
 type UseGetProductsResult = {
@@ -8,15 +5,6 @@ type UseGetProductsResult = {
   isLoading: boolean;
   isError: boolean;
 };
-
-export function invalidateProductQueries(queryClient: QueryClient, universeId: number) {
-  void queryClient.invalidateQueries({
-    queryKey: gamePassKeys.all(universeId),
-  });
-  void queryClient.invalidateQueries({
-    queryKey: developerProductKeys.all(universeId),
-  });
-}
 
 const EMPTY_PRODUCTS: Product[] = [];
 

@@ -4,9 +4,8 @@ import { ExperimentState } from '@rbx/client-price-experimentation-api/v1';
 import { useTranslation } from '@rbx/intl';
 import { useLocalStorage } from '@rbx/react-utilities';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@rbx/ui';
+import { noop } from '@modules/monetization-shared/noop';
 import { lastViewedHoldoutFinishedKey } from '../../constants/experimentConstants';
-import { usePricingErrorContext } from '../../providers/PricingErrorProvider';
-import { useCompleteExperiment } from '../../queries/useCompleteExperiment';
 import { useGetLatestExperiment } from '../../queries/useGetLatestExperiment';
 import HoldoutResults from '../PriceOptimizationResults/HoldoutResults';
 import useCurrentOptimizationStyles from './CurrentOptimization.styles';
@@ -24,11 +23,7 @@ const HoldoutResultsDisplay = () => {
   const { translate } = useTranslation();
   const { classes } = useCurrentOptimizationStyles();
 
-  const { setHasError } = usePricingErrorContext();
-
-  const { universeId, latestExperiment: currentExperiment } = useGetLatestExperiment();
-
-  const { markExperimentComplete, restorePricesAndComplete, refetchData } = useCompleteExperiment();
+  const { latestExperiment: currentExperiment } = useGetLatestExperiment();
 
   const [pageState, setPageState] = useState<PageState>(PageState.START);
   const [isPollingModalOpen, setIsPollingModalOpen] = useState(false);
@@ -63,35 +58,25 @@ const HoldoutResultsDisplay = () => {
   };
 
   // Triggered after clicking restore original prices, then confirming that you are restoring on the modal
-  const restorePrices = async () => {
-    try {
-      await restorePricesAndComplete(universeId!, currentExperiment!.id);
-      setLastViewedHoldoutFinished(currentExperiment!.id);
-      // The polling also triggers a useEffect which will update the state, but keeping the logic here to be explicit
-      setPageState(PageState.RESTORE_PRICES_POLLING);
-      setIsPollingModalOpen(true);
-    } catch {
-      setHasError(true);
-      setPageState(PageState.START);
-    }
+  const restorePrices = () => {
+    noop();
+    setLastViewedHoldoutFinished(currentExperiment!.id);
+    // The polling also triggers a useEffect which will update the state, but keeping the logic here to be explicit
+    setPageState(PageState.RESTORE_PRICES_POLLING);
+    setIsPollingModalOpen(true);
   };
 
-  const confirmExperimentFinished = async (experimentSucceeded: boolean) => {
-    try {
-      await markExperimentComplete(universeId!, currentExperiment!.id);
-      setPageState(
-        experimentSucceeded ? PageState.FINISH_HOLDOUT_SUCCEEDED : PageState.FINISH_HOLDOUT_FAILED,
-      );
-    } catch {
-      setHasError(true);
-      setPageState(PageState.START);
-    }
+  const confirmExperimentFinished = (experimentSucceeded: boolean) => {
+    noop();
+    setPageState(
+      experimentSucceeded ? PageState.FINISH_HOLDOUT_SUCCEEDED : PageState.FINISH_HOLDOUT_FAILED,
+    );
   };
 
   // Triggered after taking an action, then clicking finish on the confirmation modal
   const closeFinishPriceOptimization = () => {
-    // Don't need to reset back to PageState.START since we're changing the page after refetching the data
-    refetchData(universeId!);
+    noop();
+    setPageState(PageState.START);
     // Clear out local storage to mark user as having seen the finish confirmation modal
     // in case the modal was shown after polling
     setLastViewedHoldoutFinished(null);

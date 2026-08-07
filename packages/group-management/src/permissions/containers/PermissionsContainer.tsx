@@ -1,7 +1,9 @@
 import type { FunctionComponent } from 'react';
-import React, { useCallback, useEffect, useState } from 'react';
-import { NavigateBeforeIcon, Button, Grid, makeStyles, Typography } from '@rbx/ui';
-import useCurrentGroup from '../../hooks/useCurrentGroup';
+import React, { useCallback, useState } from 'react';
+import creatorsDark from '@rbx/foundation-images/pictograms/two_people_dark.svg';
+import creatorsLight from '@rbx/foundation-images/pictograms/two_people_light.svg';
+import { NavigateBeforeIcon, Button, Grid, makeStyles } from '@rbx/ui';
+import EmptyState from '../../components/EmptyState';
 import { CreatorGroupList } from '../components/CreatorGroupList';
 import { PermissionGroupList } from '../components/PermissionGroupList';
 import {
@@ -55,7 +57,12 @@ const DefaultEmptyState: FunctionComponent<{ creatorType?: CreatorTypes }> = ({ 
     ? `Universe.Messages.${creatorType}.NoCreatorsToShow`
     : 'Messages.NoCreators';
 
-  return <Typography variant='h4'>{translate(titleKey)}</Typography>;
+  return (
+    <EmptyState
+      illustration={{ light: creatorsLight, dark: creatorsDark }}
+      title={translate(titleKey)}
+    />
+  );
 };
 
 const PermissionsContainerInternal: FunctionComponent<PermissionsContainerInternalProps> = ({
@@ -64,7 +71,6 @@ const PermissionsContainerInternal: FunctionComponent<PermissionsContainerIntern
   setSelectedCreator,
   selectedCreator,
 }) => {
-  const { errorComponents } = useCurrentGroup();
   const { translate } = usePermissionsTranslation();
   const { showMobileView, singleCreatorExperience } = usePermissionsUiConfig();
   const [mobileStep, setMobileStep] = useState<number>(1);
@@ -84,15 +90,7 @@ const PermissionsContainerInternal: FunctionComponent<PermissionsContainerIntern
 
   if (selectedCreator === null) {
     const creatorType = entity.owner?.type;
-    return (
-      <>
-        {errorComponents?.emptyStateComponent ? (
-          errorComponents.emptyStateComponent({ creatorType })
-        ) : (
-          <DefaultEmptyState creatorType={creatorType} />
-        )}
-      </>
-    );
+    return <DefaultEmptyState creatorType={creatorType} />;
   }
 
   return (
@@ -146,16 +144,17 @@ const PermissionsContainer: FunctionComponent<PermissionsContainerProps> = ({
   creatorFilter,
   uiConfig,
 }) => {
-  const [selectedCreator, setSelectedCreator] = useState<CreatorDetails | null | undefined>();
+  const [userSelectedCreator, setUserSelectedCreator] = useState<
+    CreatorDetails | null | undefined
+  >();
 
-  useEffect(() => {
-    if (uiConfig?.singleCreatorExperience) {
-      const first = creatorFilter[0];
-      if (first && typeof first !== 'string') {
-        setSelectedCreator(first);
-      }
-    }
-  }, [uiConfig, creatorFilter]);
+  // In single-creator mode the creator list is hidden, so the sole creator is always
+  // selected — derive it during render instead of syncing state via an effect.
+  const firstCreator = creatorFilter[0];
+  const selectedCreator =
+    uiConfig?.singleCreatorExperience && firstCreator && typeof firstCreator !== 'string'
+      ? firstCreator
+      : userSelectedCreator;
 
   return (
     <PermissionsTranslationProvider entity={entity} selectedCreator={selectedCreator ?? undefined}>
@@ -163,7 +162,7 @@ const PermissionsContainer: FunctionComponent<PermissionsContainerProps> = ({
         <PermissionsContainerInternal
           entity={entity}
           creatorFilter={creatorFilter}
-          setSelectedCreator={setSelectedCreator}
+          setSelectedCreator={setUserSelectedCreator}
           selectedCreator={selectedCreator}
         />
       </PermissionsUIConfigProvider>

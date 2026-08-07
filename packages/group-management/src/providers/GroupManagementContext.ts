@@ -7,7 +7,6 @@ import type {
   GroupManagementSurface,
   GroupManagementNavigation,
   GroupManagementStudio,
-  GroupManagementErrorComponents,
   GroupManagementLogger,
 } from '../utils/types';
 
@@ -26,7 +25,6 @@ export interface GroupManagementContextValue {
   isOrganizationRefreshRequired: boolean;
   isOrganizationLoading: boolean;
   studio?: GroupManagementStudio;
-  errorComponents?: GroupManagementErrorComponents;
   unifiedLogger?: GroupManagementLogger;
 }
 

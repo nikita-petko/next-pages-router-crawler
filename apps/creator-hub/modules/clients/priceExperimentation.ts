@@ -3,17 +3,10 @@ import {
   PriceExperimentationApiV2Api,
 } from '@rbx/client-price-experimentation-api/v1';
 import type {
-  PriceExperimentationApiAcceptProductRecommendationsOperationRequest,
-  PriceExperimentationApiCancelExperimentRequest,
-  PriceExperimentationApiCompleteExperimentRequest,
   PriceExperimentationApiGetExperimentEligibilityRequest,
   PriceExperimentationApiGetExperimentResultsRequest,
   PriceExperimentationApiListExperimentsRequest,
   PriceExperimentationApiListHoldoutMetricsRequest,
-  PriceExperimentationApiRejectProductRecommendationsOperationRequest,
-  PriceExperimentationApiRestorePricesRequest,
-  PriceExperimentationApiStartHoldoutRequest,
-  PriceExperimentationApiStopHoldoutOperationRequest,
   PriceExperimentationApiV2GetExperimentSummaryRequest,
   PriceExperimentationApiV2ListExperimentProductDetailsRequest,
 } from '@rbx/client-price-experimentation-api/v1';
@@ -33,27 +26,6 @@ export class PriceExperimentationApiClient {
     const configuration = createClientConfiguration('price-experimentation-api', 'bedev2');
     this.api = new PriceExperimentationApiApi(configuration);
     this.apiV2 = new PriceExperimentationApiV2Api(configuration);
-  }
-
-  acceptProductRecommendations(
-    request: PriceExperimentationApiAcceptProductRecommendationsOperationRequest,
-    options: RequestInit = {},
-  ) {
-    return this.api.priceExperimentationApiAcceptProductRecommendations(request, options);
-  }
-
-  cancelExperiment(
-    request: PriceExperimentationApiCancelExperimentRequest,
-    options: RequestInit = {},
-  ) {
-    return this.api.priceExperimentationApiCancelExperiment(request, options);
-  }
-
-  completeExperiment(
-    request: PriceExperimentationApiCompleteExperimentRequest,
-    options: RequestInit = {},
-  ) {
-    return this.api.priceExperimentationApiCompleteExperiment(request, options);
   }
 
   getExperimentationMetadata(options: RequestInit = {}) {
@@ -86,28 +58,6 @@ export class PriceExperimentationApiClient {
     options: RequestInit = {},
   ) {
     return this.api.priceExperimentationApiListHoldoutMetrics(request, options);
-  }
-
-  rejectProductRecommendations(
-    request: PriceExperimentationApiRejectProductRecommendationsOperationRequest,
-    options: RequestInit = {},
-  ) {
-    return this.api.priceExperimentationApiRejectProductRecommendations(request, options);
-  }
-
-  restorePrices(request: PriceExperimentationApiRestorePricesRequest, options: RequestInit = {}) {
-    return this.api.priceExperimentationApiRestorePrices(request, options);
-  }
-
-  startHoldout(request: PriceExperimentationApiStartHoldoutRequest, options: RequestInit = {}) {
-    return this.api.priceExperimentationApiStartHoldout(request, options);
-  }
-
-  stopHoldout(
-    request: PriceExperimentationApiStopHoldoutOperationRequest,
-    options: RequestInit = {},
-  ) {
-    return this.api.priceExperimentationApiStopHoldout(request, options);
   }
 
   listExperimentProductDetails(

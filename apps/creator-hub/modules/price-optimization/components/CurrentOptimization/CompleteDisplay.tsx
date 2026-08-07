@@ -1,4 +1,3 @@
-// oxlint-disable typescript/no-non-null-assertion -- to be revisited
 import { useState } from 'react';
 import { useTranslation } from '@rbx/intl';
 import {
@@ -10,12 +9,11 @@ import {
   DialogTitle,
   Typography,
 } from '@rbx/ui';
+import { noop } from '@modules/monetization-shared/noop';
 import { convertTimeSpanToWeeks } from '../../helpers/experimentUtils';
-import { usePricingError, usePricingErrorContext } from '../../providers/PricingErrorProvider';
-import { useCompleteExperiment } from '../../queries/useCompleteExperiment';
+import { usePricingError } from '../../providers/PricingErrorProvider';
 import { useGetExperimentationMetadata } from '../../queries/useGetExperimentationMetadata';
 import { useGetExperimentResults } from '../../queries/useGetExperimentResults';
-import { useGetLatestExperiment } from '../../queries/useGetLatestExperiment';
 import { useGetProducts } from '../../queries/useGetProducts';
 import ItemLevelExperimentResults from '../PriceOptimizationResults/ItemLevelExperimentResults';
 import useCurrentOptimizationStyles from './CurrentOptimization.styles';
@@ -31,24 +29,12 @@ enum UserAction {
 const CompleteDisplay = () => {
   const { translate } = useTranslation();
   const { classes } = useCurrentOptimizationStyles();
-  // Don't need to check loading states for useGetLatestExperiment
-  // since this component is only rendered when fully loaded
-  const { universeId, latestExperiment: currentExperiment } = useGetLatestExperiment();
-  // However we do need to check loading states for products and results since it's possible they haven't finished loading yet
-  const { products, isLoading: isLoadingProducts, isError: isErrorProducts } = useGetProducts();
+  const { isLoading: isLoadingProducts, isError: isErrorProducts } = useGetProducts();
   const {
     experimentResults,
     isLoading: isLoadingResults,
     isError: isErrorResults,
   } = useGetExperimentResults();
-  const {
-    completeExperiment,
-    completeExperimentAndStartHoldout,
-    markExperimentComplete,
-    refetchData,
-  } = useCompleteExperiment();
-
-  const { setHasError } = usePricingErrorContext();
 
   const [isRejectConfirmationOpen, setIsRejectConfirmationOpen] = useState<boolean>(false);
   const [isHoldoutConfirmationOpen, setIsHoldoutConfirmationOpen] = useState<boolean>(false);
@@ -88,69 +74,40 @@ const CompleteDisplay = () => {
     setIsHoldoutConfirmationOpen(false);
   };
 
-  const dealWithError = () => {
-    setHasError(true);
-    setIsCompletingExperiment(false);
-  };
-
   // Triggered after clicking reject, then confirming that you are rejecting on the modal
-  const rejectRecommendations = async () => {
+  const rejectRecommendations = () => {
     setIsCompletingExperiment(true); // This should already be set
     setIsRejectConfirmationOpen(false);
-    try {
-      // oxlint-disable-next-line typescript/no-non-null-assertion -- guarded by enabled
-      await completeExperiment(universeId!, currentExperiment!.id, [], products);
-      setUserAction(UserAction.REJECT);
-    } catch {
-      dealWithError();
-    }
+    noop();
+    setUserAction(UserAction.REJECT);
   };
 
   // Triggered after applying
-  const applyRecommendations = async () => {
+  const applyRecommendations = () => {
     setIsCompletingExperiment(true); // This should already be set
     setIsHoldoutConfirmationOpen(false);
-    try {
-      // oxlint-disable-next-line typescript/no-non-null-assertion -- guarded by enabled
-      await completeExperiment(universeId!, currentExperiment!.id, products, []);
-      setUserAction(UserAction.ACCEPT_IMMEDIATE);
-    } catch {
-      dealWithError();
-    }
+    noop();
+    setUserAction(UserAction.ACCEPT_IMMEDIATE);
   };
 
-  const startHoldout = async () => {
+  const startHoldout = () => {
     setIsCompletingExperiment(true); // This should already be set
     setIsHoldoutConfirmationOpen(false);
-    try {
-      // oxlint-disable-next-line typescript/no-non-null-assertion -- guarded by enabled
-      await completeExperimentAndStartHoldout(universeId!, currentExperiment!.id, products);
-      setUserAction(UserAction.ACCEPT_HOLDOUT);
-    } catch {
-      dealWithError();
-    }
+    noop();
+    setUserAction(UserAction.ACCEPT_HOLDOUT);
   };
 
   // Triggered after no recommendation finish
-  const finishNoRecommendations = async () => {
+  const finishNoRecommendations = () => {
     setIsCompletingExperiment(true);
-    try {
-      // Mark it is a reject recommendations
-      // Should be no-op since there are no recommendations
-      // oxlint-disable-next-line typescript/no-non-null-assertion -- guarded by enabled
-      await markExperimentComplete(universeId!, currentExperiment!.id);
-      setUserAction(UserAction.FINISH_NO_CHANGE);
-    } catch {
-      dealWithError();
-    }
+    noop();
+    setUserAction(UserAction.FINISH_NO_CHANGE);
   };
 
   // Triggered after taking an action, then clicking finish on the confirmation modal
   const confirmFinish = () => {
     setUserAction(UserAction.NONE);
-    // oxlint-disable-next-line typescript/no-non-null-assertion -- guarded by enabled
-    refetchData(universeId!);
-    // We don't set isCompletingExperiment to false here since after the data refetch this component should no longer be displayed
+    noop();
   };
 
   const isLoading = isLoadingProducts || isLoadingResults || isCompletingExperiment;

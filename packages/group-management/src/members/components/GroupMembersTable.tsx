@@ -3,6 +3,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Dropdown, Menu, MenuItem, MenuSection, ProgressCircle } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import type { GroupRoleMetadata } from '../../clients/groups';
+import EmptyState from '../../components/EmptyState';
 import TranslationNamespace from '../../constants/TranslationNamespace';
 import useCurrentGroup from '../../hooks/useCurrentGroup';
 import {
@@ -23,6 +24,7 @@ import RemoveFromRoleButton from './actions/RemoveFromRoleButton';
 import PaginatedMemberList from './common/PaginatedMemberList';
 import RoleIcon from './common/RoleIcon';
 import SearchInput from './common/SearchInput';
+import emptyStateIllustrations from './emptyStateIllustrations';
 import GroupMemberRoleChips from './GroupMemberRoleChips';
 import GroupMembersRow from './GroupMembersRow';
 
@@ -31,6 +33,7 @@ export type GroupMembersTableProps = {
   roleFilter?: GroupRoleMetadata | null;
   isRoleMembersPage?: boolean;
   toolbarStart?: ReactNode;
+  emptyStateAction?: ReactNode;
 };
 
 /**
@@ -42,6 +45,7 @@ const GroupMembersTable: FunctionComponent<GroupMembersTableProps> = ({
   roleFilter = null,
   isRoleMembersPage = false,
   toolbarStart,
+  emptyStateAction,
 }) => {
   const { translate, translateWithNamespace } = useTranslation();
   const { organization, permissions } = useCurrentGroup();
@@ -101,6 +105,7 @@ const GroupMembersTable: FunctionComponent<GroupMembersTableProps> = ({
     isLoading: isMembersLoading,
     isFetching: isMembersFetching,
     isError: isMembersError,
+    refetch: refetchMembers,
   } = useGetGroupUsersWithRoles(
     organization?.groupId ?? '',
     searchRoleId,
@@ -114,6 +119,7 @@ const GroupMembersTable: FunctionComponent<GroupMembersTableProps> = ({
     isLoading: isInvitationsLoading,
     isFetching: isInvitationsFetching,
     isError: isInvitationsError,
+    refetch: refetchInvitations,
   } = useGetInvitationsWithRole(
     canFetchInvitations ? organization?.id : undefined,
     canFetchInvitations ? (activeRole?.id?.toString() ?? DefaultMemberRoleId) : undefined,
@@ -184,12 +190,28 @@ const GroupMembersTable: FunctionComponent<GroupMembersTableProps> = ({
     [menuState, isRoleMembersPage, activeRole],
   );
 
-  const emptyMessage = useMemo(() => {
-    if (hasUnmatchedSearch) {
-      return translate('Label.NoResults');
+  // The searched-but-empty case keeps the plain "No results" text; the genuinely
+  // empty list gets the designed empty state (icon + copy + invite CTA).
+  const emptyState = hasUnmatchedSearch ? (
+    <div className='padding-large text-align-x-center text-body-medium content-muted'>
+      {translate('Label.NoResults')}
+    </div>
+  ) : (
+    <EmptyState
+      illustration={isInvited ? emptyStateIllustrations.invites : emptyStateIllustrations.members}
+      title={translate(isInvited ? 'Label.NoPendingInvitations' : 'Label.NoMembers')}
+      description={translate('Description.NoMembers')}
+      action={emptyStateAction}
+    />
+  );
+
+  const onRetry = useCallback(() => {
+    if (isInvited) {
+      void refetchInvitations();
+    } else {
+      void refetchMembers();
     }
-    return isInvited ? translate('Label.NoInvitedMembers') : translate('Label.NoMembers');
-  }, [hasUnmatchedSearch, isInvited, translate]);
+  }, [isInvited, refetchInvitations, refetchMembers]);
 
   const isNextDisabled = useMemo(() => {
     if (isInvited) {
@@ -312,7 +334,8 @@ const GroupMembersTable: FunctionComponent<GroupMembersTableProps> = ({
         isFetching={isInvited ? isInvitationsFetching : isMembersFetching}
         isError={isInvited ? isInvitationsError : isMembersError}
         renderItem={renderMember}
-        emptyMessage={emptyMessage}
+        emptyState={emptyState}
+        onRetry={onRetry}
         hideResults={hasUnmatchedSearch && !isInvited}
         page={page}
         onPreviousPage={goToPreviousPage}

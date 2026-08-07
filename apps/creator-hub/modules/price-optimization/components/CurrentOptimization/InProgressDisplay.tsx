@@ -1,12 +1,10 @@
-// oxlint-disable typescript/no-non-null-assertion
 import { useState } from 'react';
 import { ExperimentState } from '@rbx/client-price-experimentation-api/v1';
 import { useTranslation } from '@rbx/intl';
 import { Button, Dialog, DialogTemplate, Typography } from '@rbx/ui';
 import { Link } from '@modules/monetization-shared/link';
+import { noop } from '@modules/monetization-shared/noop';
 import { rootDocumentationLink } from '../../constants/links';
-import { usePricingErrorContext } from '../../providers/PricingErrorProvider';
-import { useCancelExperiment } from '../../queries/useCancelExperiment';
 import { useGetLatestExperiment } from '../../queries/useGetLatestExperiment';
 import useCurrentOptimizationStyles from './CurrentOptimization.styles';
 
@@ -16,10 +14,6 @@ const InProgressDisplay = () => {
   // Don't need to check loading states for useGetLatestExperiment
   // since this component is only rendered when fully loaded
   const { universeId, latestExperiment: currentExperiment } = useGetLatestExperiment();
-
-  const { cancelExperiment } = useCancelExperiment();
-
-  const { setHasError } = usePricingErrorContext();
 
   // If we are modifying the experiment then cancel experiment button should be disabled
   const [isModifyingExperiment, setIsModifyingExperiment] = useState<boolean>(false);
@@ -31,13 +25,9 @@ const InProgressDisplay = () => {
     currentExperiment.state !== ExperimentState.Running ||
     isModifyingExperiment;
 
-  const handleStopOptimizationConfirm = async () => {
+  const handleStopOptimizationConfirm = () => {
     setIsModifyingExperiment(true);
-    try {
-      await cancelExperiment({ universeId: universeId!, experimentId: currentExperiment!.id });
-    } catch {
-      setHasError(true);
-    }
+    noop();
     setIsModifyingExperiment(false);
   };
 

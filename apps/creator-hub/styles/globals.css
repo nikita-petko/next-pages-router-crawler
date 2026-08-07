@@ -2408,6 +2408,9 @@
 .min-height-\[60px\] {
   min-height: 60px;
 }
+.min-height-\[60vh\] {
+  min-height: 60vh;
+}
 .min-height-\[640px\] {
   min-height: 640px;
 }
@@ -2627,6 +2630,9 @@
 }
 .width-\[110px\] {
   width: 110px;
+}
+.width-\[115px\] {
+  width: 115px;
 }
 .width-\[124px\] {
   width: 124px;

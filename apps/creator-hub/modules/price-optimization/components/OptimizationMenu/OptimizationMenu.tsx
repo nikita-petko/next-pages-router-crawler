@@ -18,15 +18,14 @@ import {
   Typography,
   useDialog,
 } from '@rbx/ui';
+import { noop } from '@modules/monetization-shared/noop';
 import { lastViewedHoldoutFinishedKey } from '../../constants/experimentConstants';
 import {
   rootDocumentationLink,
   getPriceCheckLinkFromPriceOptimization,
 } from '../../constants/links';
 import { isInHoldoutState } from '../../helpers/experimentUtils';
-import { usePricingErrorContext } from '../../providers/PricingErrorProvider';
 import { useGetLatestExperiment } from '../../queries/useGetLatestExperiment';
-import { useStopHoldout } from '../../queries/useStopHoldout';
 import IntroductionModal from '../IntroductionModal/IntroductionModal';
 import useOptimizationMenuStyles from './OptimizationMenu.styles';
 
@@ -121,8 +120,6 @@ const StopHoldoutDialog = ({
 const OptimizationMenu = () => {
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const { setHasError } = usePricingErrorContext();
-
   const { translate, translateHTML } = useTranslation();
 
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
@@ -138,28 +135,19 @@ const OptimizationMenu = () => {
 
   const { open: openDialog, close: closeDialog, configure: configureDialog } = useDialog();
 
-  const { stopHoldout } = useStopHoldout();
   const setLastViewedHoldoutFinished = useLocalStorage<null | string>(
     lastViewedHoldoutFinishedKey,
     null,
   )[1];
 
-  const handleStopHoldoutConfirm = async (restorePrices: boolean) => {
+  const handleStopHoldoutConfirm = (restorePrices: boolean) => {
     closeDialog();
     setIsModifyingExperiment(true);
-    try {
-      await stopHoldout({
-        universeId: universeId!,
-        experimentId: currentExperiment!.id,
-        restorePrices,
-      });
-      // If we're restoring prices, there will be a confirmation modal which should pop up
-      // We use local storage to tell if user saw it as the state is reloading and in case the user reloads the page
-      if (restorePrices) {
-        setLastViewedHoldoutFinished(currentExperiment!.id);
-      }
-    } catch {
-      setHasError(true);
+    noop();
+    // If we're restoring prices, there will be a confirmation modal which should pop up
+    // We use local storage to tell if user saw it as the state is reloading and in case the user reloads the page
+    if (restorePrices) {
+      setLastViewedHoldoutFinished(currentExperiment!.id);
     }
     setIsModifyingExperiment(false);
   };

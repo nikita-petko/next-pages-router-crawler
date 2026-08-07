@@ -3,13 +3,15 @@ import React from 'react';
 import { ProgressCircle } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { Pagination } from '@rbx/ui';
+import ErrorState from '../../../components/ErrorState';
 
 export type PaginatedMemberListProps<TItem> = {
   items: TItem[];
   isLoading: boolean;
   isFetching: boolean;
   isError: boolean;
-  emptyMessage?: string;
+  emptyState?: ReactNode;
+  onRetry?: () => void;
   hideResults?: boolean;
   renderItem: (item: TItem) => ReactNode;
   page: number;
@@ -27,7 +29,8 @@ const PaginatedMemberList = <TItem,>({
   isLoading,
   isFetching,
   isError,
-  emptyMessage,
+  emptyState,
+  onRetry,
   hideResults = false,
   renderItem,
   page,
@@ -53,21 +56,13 @@ const PaginatedMemberList = <TItem,>({
   }
 
   if (isError) {
-    return (
-      <div className='padding-large text-align-x-center text-body-medium content-muted'>
-        {translate('Error.GroupMembers')}
-      </div>
-    );
+    return <ErrorState onRetry={onRetry} />;
   }
 
   const hasItems = !hideResults && items.length > 0;
 
   if (!hasItems) {
-    return (
-      <div className='padding-large text-align-x-center text-body-medium content-muted'>
-        {emptyMessage ?? translate('Label.NoMembers')}
-      </div>
-    );
+    return <>{emptyState}</>;
   }
 
   return (
