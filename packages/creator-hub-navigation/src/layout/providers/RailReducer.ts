@@ -62,10 +62,7 @@ function railReducer(state: Readonly<RailState>, action: RailAction): RailState 
     case 'setScreenSize': {
       const drawerVariant = action.payload === 'large' ? 'persistent' : 'temporary';
       const primaryRailOpen = drawerVariant !== 'temporary';
-      let { primaryRailCompact } = state;
-      if (!state.learnNavigatedFromCreatorHub) {
-        primaryRailCompact = action.payload === 'large' ? false : state.hasSecondaryRail;
-      }
+      const primaryRailCompact = action.payload !== 'large' && state.hasSecondaryRail;
 
       return {
         ...state,
@@ -82,7 +79,7 @@ function railReducer(state: Readonly<RailState>, action: RailAction): RailState 
         hasSecondaryRail: action.payload,
       } as Partial<RailState>;
 
-      if (!state.learnNavigatedFromCreatorHub && state.screenSize !== 'large') {
+      if (state.screenSize !== 'large') {
         nextState.primaryRailCompact = action.payload;
       }
 
@@ -97,10 +94,8 @@ function railReducer(state: Readonly<RailState>, action: RailAction): RailState 
         nextState.learnOpen = false;
       }
 
-      if (!state.learnNavigatedFromCreatorHub) {
-        if (state.screenSize === 'small') {
-          nextState.primaryRailCompact = action.payload || state.hasSecondaryRail;
-        }
+      if (state.screenSize === 'small') {
+        nextState.primaryRailCompact = action.payload || state.hasSecondaryRail;
       }
 
       return { ...state, ...nextState };
@@ -121,7 +116,6 @@ function railReducer(state: Readonly<RailState>, action: RailAction): RailState 
         ...state,
         learnNavigatedFromCreatorHub: true,
         learnOpen: true,
-        primaryRailCompact: true,
       };
     }
     default:
