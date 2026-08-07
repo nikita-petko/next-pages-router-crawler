@@ -22,7 +22,7 @@ import formatDate from '../utils/formatDate';
 // Details tab: 75% of the content area on normal layouts; compresses with the page, whitespace grows wider.
 const DETAILS_COLUMN_CLASS = 'width-full max-width-[75%] min-width-0';
 const DISCLAIMER_BODY_CLASS = 'text-body-medium content-muted margin-none';
-const DISCLAIMER_LABEL_CLASS = 'text-body-large content-emphasis !font-weight-bold';
+const DISCLAIMER_LABEL_CLASS = 'text-body-medium content-muted';
 // Same shimmer placeholder pattern as DetectedScreenshotsGrid (modal placefile screenshots).
 const THUMBNAIL_FILL_CLASS = 'absolute inset-0 width-full height-full';
 const THUMBNAIL_WRAPPER_CLASS = 'relative overflow-hidden radius-none aspect-16-9 [width:480px]';

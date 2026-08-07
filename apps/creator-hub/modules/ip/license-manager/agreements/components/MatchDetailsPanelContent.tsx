@@ -444,7 +444,7 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
   }
 
   const ignoreButton = showIgnoreButton ? (
-    <Button variant='text' color='secondary' size='large' onClick={handleIgnoreClick}>
+    <Button variant='contained' color='secondary' size='large' onClick={handleIgnoreClick}>
       {ignoreButtonLabel}
     </Button>
   ) : null;
