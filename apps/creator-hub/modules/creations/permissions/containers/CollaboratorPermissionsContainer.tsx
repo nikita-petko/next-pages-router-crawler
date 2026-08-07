@@ -2,7 +2,6 @@ import type { FunctionComponent } from 'react';
 import { useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { StatusCodes } from '@rbx/core';
-import { useFlag } from '@rbx/flags';
 import {
   EntityTypes as GroupManagementEntityTypes,
   GroupManagementProvider,
@@ -11,7 +10,6 @@ import {
 } from '@rbx/group-management';
 import { withTranslation } from '@rbx/intl';
 import { useMediaQuery } from '@rbx/ui';
-import { isUnifiedUiEnabled } from '@generated/flags/groups';
 import { useAuthentication } from '@modules/authentication/providers';
 import useBottomToast from '@modules/group/hooks/useBottomToast';
 import useCurrentOrganization from '@modules/group/hooks/useCurrentOrganization';
@@ -25,7 +23,10 @@ import { creatorHub } from '@modules/miscellaneous/urls';
 import { PermissionsContainer } from '@modules/permissions/containers/PermissionsContainer';
 import { CreatorTypes, EntityTypes } from '@modules/permissions/utils/enums';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
-import { useGetGroupMigrationStatus } from '@modules/react-query/groups/groupQueries';
+import {
+  useGetGroupMigrationStatus,
+  useGetGroupProductFeatures,
+} from '@modules/react-query/groups/groupQueries';
 
 const MIGRATED_STATUS = 'Migrated';
 
@@ -38,10 +39,15 @@ const CollaboratorPermissionsContainer: FunctionComponent = () => {
   const { open: openStudio, dialog } = useStudio();
   const { showBottomToast } = useBottomToast();
   const groupId = organization?.groupId ? Number.parseInt(organization.groupId, 10) : undefined;
-  const { data: migrationStatus, isLoading: isMigrationStatusLoading } =
-    useGetGroupMigrationStatus(groupId);
-  // oxlint-disable-next-line react/react-compiler
-  const { value: isUnifiedUIEnabled } = useFlag(isUnifiedUiEnabled);
+  const { data: productFeatures, isLoading: isProductFeaturesLoading } =
+    useGetGroupProductFeatures(groupId);
+
+  const isUnifiedUIEnabled = productFeatures?.isUnifiedUIEnabled === true;
+
+  const { data: migrationStatus, isLoading: isMigrationStatusLoading } = useGetGroupMigrationStatus(
+    groupId,
+    isUnifiedUIEnabled,
+  );
 
   const uiConfig = useMemo(() => {
     return {
@@ -84,7 +90,8 @@ const CollaboratorPermissionsContainer: FunctionComponent = () => {
     isLoadingGame ||
     isOrganizationLoading ||
     (gameDetails?.creator?.type === CreatorType.Group && !permissions) ||
-    isMigrationStatusLoading
+    isMigrationStatusLoading ||
+    isProductFeaturesLoading
   ) {
     return <PageLoading />;
   }

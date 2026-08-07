@@ -41,6 +41,7 @@ import type {
   RobloxGroupsApiSetFeaturesRequestModelFeatures,
   RobloxGroupsApiGroupMigrationStatusResponse,
   V1GroupsGroupIdMigrationGetRequest,
+  RobloxGroupsApiPropertiesCommunityProductFeatures,
 } from '@rbx/client-groups/v1';
 import {
   GroupSearchApi,
@@ -179,6 +180,7 @@ export type GetGroupFeaturesStatusResponse = RobloxGroupsApiHasGroupFeaturesBloc
 export type SetGroupFeaturesRequest = RobloxGroupsApiSetFeaturesRequestModel;
 export type SetGroupFeaturesResponse = RobloxGroupsApiSetFeaturesResponseModel;
 export type SetGroupFeaturesRequestFeatures = RobloxGroupsApiSetFeaturesRequestModelFeatures;
+export type GroupProductFeaturesResponse = RobloxGroupsApiPropertiesCommunityProductFeatures;
 
 export const SetGroupFeaturesEnum = {
   On: RobloxGroupsApiSetFeaturesRequestModelFeaturesPayoutsEnum.On,
@@ -258,6 +260,7 @@ export interface GroupsClient {
     request: SetGroupFeaturesRequest,
   ): Promise<SetGroupFeaturesResponse>;
   getGroupMigrationStatus(groupId: number): Promise<RobloxGroupsApiGroupMigrationStatusResponse>;
+  getGroupProductFeatures(groupId: number): Promise<GroupProductFeaturesResponse>;
   getAnnouncementNames(groupId: number, announcementIds: string[]): Promise<Map<string, string>>;
 }
 
@@ -411,6 +414,9 @@ const groupsClient: GroupsClient = {
       groupId,
     };
     return migrationApi.v1GroupsGroupIdMigrationGet(request);
+  },
+  getGroupProductFeatures(groupId: number) {
+    return groupApi.v1GroupsGroupIdProductFeaturesGet({ groupId });
   },
   getAnnouncementNames(groupId: number, announcementIds: string[]) {
     return announcementsApi.getAnnouncementNames(groupId, announcementIds);

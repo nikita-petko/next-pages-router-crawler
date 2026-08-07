@@ -83,15 +83,28 @@ export function useGetGroupSocialLinks(groupId: number | undefined, enabled = tr
   });
 }
 
-export function useGetGroupMigrationStatus(groupId: number | undefined) {
+export function useGetGroupMigrationStatus(groupId: number | undefined, enabled = true) {
   return useQuery({
-    enabled: !!groupId,
+    enabled: enabled && !!groupId,
     queryKey: [`${GROUPS_KEY_PREFIX}migrationStatus`, groupId],
     queryFn: async () => {
       if (!groupId) {
         throw new Error('Group ID is required');
       }
       return groupsClient.getGroupMigrationStatus(groupId);
+    },
+  });
+}
+
+export function useGetGroupProductFeatures(groupId: number | undefined) {
+  return useQuery({
+    enabled: !!groupId,
+    queryKey: [`${GROUPS_KEY_PREFIX}productFeatures`, groupId],
+    queryFn: async () => {
+      if (!groupId) {
+        throw new Error('Group ID is required');
+      }
+      return groupsClient.getGroupProductFeatures(groupId);
     },
   });
 }

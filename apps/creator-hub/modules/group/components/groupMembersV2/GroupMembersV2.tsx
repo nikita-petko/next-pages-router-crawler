@@ -3,7 +3,6 @@ import { useCallback, useMemo, useState } from 'react';
 import Router from 'next/router';
 import type { RoleMetadata } from '@rbx/client-organizations-service-api/v1';
 import { buildBreadcrumb, buildTitle, HubMeta } from '@rbx/creator-hub-history';
-import { useFlag } from '@rbx/flags';
 import { ProgressCircle } from '@rbx/foundation-ui';
 import {
   GroupInviteButton as UnifiedGroupInviteButton,
@@ -14,12 +13,14 @@ import {
 } from '@rbx/group-management';
 import { useTranslation } from '@rbx/intl';
 import { Grid, makeStyles } from '@rbx/ui';
-import { isUnifiedUiEnabled } from '@generated/flags/groups';
 import { useAuthentication } from '@modules/authentication/providers';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 import { creatorHub, www } from '@modules/miscellaneous/urls';
 import { useGetOrganizationRoles } from '@modules/react-query/groupMembers';
-import { useGetGroupMigrationStatus } from '@modules/react-query/groups/groupQueries';
+import {
+  useGetGroupMigrationStatus,
+  useGetGroupProductFeatures,
+} from '@modules/react-query/groups/groupQueries';
 import {
   DefaultMemberRoleId,
   GroupMembersMenuState,
@@ -55,15 +56,21 @@ const GroupMembers: FunctionComponent = () => {
     classes: { container, inviteRowContainer },
   } = useStyles();
 
-  const { value: isUnifiedUIEnabled } = useFlag(isUnifiedUiEnabled);
   const { organization, permissions } = useCurrentOrganization();
   const { user } = useAuthentication();
   const { unifiedLogger } = useUnifiedLoggerProvider();
   const { showBottomToast } = useBottomToast();
   const { data: roles } = useGetOrganizationRoles(organization?.id);
   const groupId = organization?.groupId ? Number.parseInt(organization.groupId, 10) : undefined;
-  const { data: migrationStatus, isLoading: isMigrationStatusLoading } =
-    useGetGroupMigrationStatus(groupId);
+  const { data: productFeatures, isLoading: isProductFeaturesLoading } =
+    useGetGroupProductFeatures(groupId);
+
+  const isUnifiedUIEnabled = productFeatures?.isUnifiedUIEnabled === true;
+
+  const { data: migrationStatus, isLoading: isMigrationStatusLoading } = useGetGroupMigrationStatus(
+    groupId,
+    isUnifiedUIEnabled,
+  );
 
   const [menuState, setMenuState] = useState(GroupMembersMenuState.Members);
   const [roleFilter, setRoleFilter] = useState<RoleMetadata | null>(null);
@@ -96,7 +103,7 @@ const GroupMembers: FunctionComponent = () => {
     [showBottomToast],
   );
 
-  if (!organization || isMigrationStatusLoading) {
+  if (!organization || isMigrationStatusLoading || isProductFeaturesLoading) {
     return (
       <Grid container justifyContent='center'>
         <ProgressCircle ariaLabel={translate('Label.Loading')} />
