@@ -28,7 +28,7 @@ export const AssignSameRolePermission = 'Organization.AssignSameRole';
 // TODO: Swap for unification devforum post
 export const DEVFORUM_URL = 'https://devforum.roblox.com';
 
-export const SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
+export const SNOOZE_DURATION_MS = 5 * 60 * 1000;
 
 export function isUnificationModalSuppressed(): boolean {
   if (typeof window === 'undefined') {
