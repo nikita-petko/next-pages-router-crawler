@@ -20,6 +20,7 @@ import {
   type CustomDashboardMutationOptions,
   EMPTY_DASHBOARD_CONFIG,
   MAX_DASHBOARDS_PER_UNIVERSE,
+  MAX_PINNED_DASHBOARDS,
   type UpdateCustomDashboardInput,
 } from '../types';
 import { addChartTileToConfig } from '../utils/addChartTileToConfig';
@@ -122,6 +123,21 @@ class InMemoryCustomDashboardService implements CustomDashboardService {
     if (count >= MAX_DASHBOARDS_PER_UNIVERSE) {
       throw new CustomDashboardQuotaExceededError(
         `Universe ${universeId} is at the per-universe cap of ${MAX_DASHBOARDS_PER_UNIVERSE} dashboards. Delete one to create another.`,
+      );
+    }
+  }
+
+  private assertUnderPinnedCap(universeId: number, exceptId?: string): void {
+    const universeMap = this.peekUniverseMap(universeId);
+    if (!universeMap) {
+      return;
+    }
+    const pinnedCount = Array.from(universeMap.values()).filter(
+      (record) => record.document.isPinned && record.document.id !== exceptId,
+    ).length;
+    if (pinnedCount >= MAX_PINNED_DASHBOARDS) {
+      throw new CustomDashboardQuotaExceededError(
+        `Universe ${universeId} is at the pinned-dashboard cap of ${MAX_PINNED_DASHBOARDS}. Unpin one to pin another.`,
       );
     }
   }
@@ -417,6 +433,7 @@ class InMemoryCustomDashboardService implements CustomDashboardService {
   }
 
   async pin(universeId: number, dashboardId: string): Promise<CustomDashboardDocument> {
+    this.assertUnderPinnedCap(universeId, dashboardId);
     return this.applyMutation(universeId, dashboardId, 'pin', (now) => ({
       isPinned: true,
       pinnedAt: now,

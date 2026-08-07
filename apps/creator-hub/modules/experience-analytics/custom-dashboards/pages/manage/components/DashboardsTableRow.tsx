@@ -20,12 +20,16 @@ type DashboardsTableRowProps = {
   readonly dashboard: CustomDashboardListItem;
   readonly canMutateDashboards: boolean;
   readonly userDisplayNamesById: UserDisplayNamesById;
+  readonly pinnedCount: number;
+  readonly maxPinnedDashboards: number;
 } & DashboardActionHandlers;
 
 const DashboardsTableRow: FC<DashboardsTableRowProps> = ({
   dashboard,
   canMutateDashboards,
   userDisplayNamesById,
+  pinnedCount,
+  maxPinnedDashboards,
   onOpen,
   onEdit,
   onRename,
@@ -61,13 +65,22 @@ const DashboardsTableRow: FC<DashboardsTableRowProps> = ({
   const isHybridLocalCopy = dashboard.hybridOrigin === 'localCopy';
   // Sidebar nav only consumes server list items; hybrid local pins never appear there.
   const isPinDisabled = !canMutateDashboards || isHybridServerRow || isHybridLocalCopy;
+  // Cap-reached disables pinning an *unpinned* row. Already-pinned rows stay
+  // enabled so the user can unpin to make room. This is computed separately
+  // from `isPinDisabled` because it has its own tooltip copy.
+  const isPinCapReached = !dashboard.isPinned && pinnedCount >= maxPinnedDashboards;
+  const pinDisabledTooltip = isHybridLocalCopy
+    ? t.pinToggleLocalCopyDisabledTooltip
+    : isPinCapReached
+      ? t.pinToggleCapReachedTooltip
+      : null;
   const pinToggle = (
     <Toggle
       size='Medium'
       placement='Start'
       isChecked={dashboard.isPinned}
       onCheckedChange={handlePinChange}
-      isDisabled={isPinDisabled}
+      isDisabled={isPinDisabled || isPinCapReached}
       aria-label={t.pinToggleAriaLabel({ name: dashboard.name })}
     />
   );
@@ -89,8 +102,8 @@ const DashboardsTableRow: FC<DashboardsTableRowProps> = ({
     lastModified: (
       <span className='text-body-medium content-muted text-no-wrap'>{lastModified}</span>
     ),
-    pinToSidebar: isHybridLocalCopy ? (
-      <Tooltip title={t.pinToggleLocalCopyDisabledTooltip} position='top-center'>
+    pinToSidebar: pinDisabledTooltip ? (
+      <Tooltip title={pinDisabledTooltip} position='top-center'>
         <TooltipTrigger asChild>
           <span className='inline-flex'>{pinToggle}</span>
         </TooltipTrigger>

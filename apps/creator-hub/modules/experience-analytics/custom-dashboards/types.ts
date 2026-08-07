@@ -47,6 +47,15 @@ export const MAX_TILE_TITLE_LENGTH = 80;
  */
 export const MAX_DASHBOARDS_PER_UNIVERSE = 16;
 
+/**
+ * Per-universe pinned-dashboard cap. Authoritative on the backend once the
+ * server-backed service enforces it; the frontend enforces the same number so
+ * the UX disables pinning locally without a roundtrip. When the cap moves,
+ * both sides must change together — keep this constant the single source of
+ * truth on the client and mirror it server-side.
+ */
+export const MAX_PINNED_DASHBOARDS = 5;
+
 /** Length-1 row = full-width; length-2 row = two half-width tiles. */
 export const MAX_TILES_PER_ROW = 2 as const;
 

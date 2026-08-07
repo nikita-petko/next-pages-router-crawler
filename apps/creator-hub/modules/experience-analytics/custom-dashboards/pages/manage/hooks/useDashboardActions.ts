@@ -4,6 +4,7 @@ import { useAuthentication } from '@modules/authentication/providers';
 import { customDashboardQueryKeys } from '../../../hooks/customDashboardsQueryConfig';
 import { useCustomDashboardService } from '../../../service/CustomDashboardServiceProvider';
 import type { CustomDashboardListItem, CustomDashboardListResult } from '../../../types';
+import { MAX_PINNED_DASHBOARDS } from '../../../types';
 import { sortDashboardsForList } from '../../../utils/sortDashboards';
 import {
   createNewEditorWorkingCopy,
@@ -48,6 +49,8 @@ type UseDashboardActionsArgs = {
   readonly onEditDashboard: (dashboard: CustomDashboardListItem) => void;
   /** Fires after an unsaved editor working copy is created; the route component navigates from here. */
   readonly onDashboardCreated: (workingCopy: EditorWorkingCopy) => void;
+  /** Current pinned-dashboard count, for the optimistic pin cap guard. */
+  readonly pinnedCount: number;
 };
 
 type UseDashboardActionsResult = {
@@ -68,6 +71,7 @@ export function useDashboardActions({
   onOpenDashboard,
   onEditDashboard,
   onDashboardCreated,
+  pinnedCount,
 }: UseDashboardActionsArgs): UseDashboardActionsResult {
   const service = useCustomDashboardService();
   const queryClient = useQueryClient();
@@ -148,6 +152,13 @@ export function useDashboardActions({
 
   const handlePinToggle = useCallback(
     (dashboard: CustomDashboardListItem, nextPinned: boolean) => {
+      // Belt-and-suspenders: the UI disables the toggle at the cap, but a
+      // stale cache or race could still fire a doomed pin. The service also
+      // enforces the cap, but blocking here avoids a wasted optimistic flip
+      // + rollback. Already-pinned rows stay pinnable (idempotent at the cap).
+      if (nextPinned && pinnedCount >= MAX_PINNED_DASHBOARDS) {
+        return;
+      }
       // Don't synthesize `pinnedAt` here — we'd need the service's clock,
       // not wall-clock time, and the cache invalidates on success so the
       // canonical timestamp wins on the next refetch. The visual change
@@ -162,7 +173,7 @@ export function useDashboardActions({
             : service.unpin(universeId, dashboard.id),
       ).catch(() => undefined);
     },
-    [optimisticUpdate, service, universeId],
+    [optimisticUpdate, pinnedCount, service, universeId],
   );
 
   const handleDuplicate = useCallback(

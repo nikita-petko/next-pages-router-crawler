@@ -18,6 +18,8 @@ type DashboardsTableMode =
       readonly handlers: DashboardActionHandlers;
       readonly canMutateDashboards: boolean;
       readonly userDisplayNamesById: UserDisplayNamesById;
+      readonly pinnedCount: number;
+      readonly maxPinnedDashboards: number;
     }
   | { readonly kind: 'custom'; readonly content: ReactNode };
 
@@ -42,6 +44,8 @@ const DashboardsTable: FC<DashboardsTableProps> = ({ mode }) => {
                 dashboard={item}
                 canMutateDashboards={mode.canMutateDashboards}
                 userDisplayNamesById={mode.userDisplayNamesById}
+                pinnedCount={mode.pinnedCount}
+                maxPinnedDashboards={mode.maxPinnedDashboards}
                 onOpen={mode.handlers.onOpen}
                 onEdit={mode.handlers.onEdit}
                 onRename={mode.handlers.onRename}

@@ -14,6 +14,7 @@ import {
   useCustomDashboardsBackendState,
 } from '../../service/CustomDashboardServiceProvider';
 import { filterCustomDashboardText } from '../../textFilter';
+import { MAX_PINNED_DASHBOARDS } from '../../types';
 import type { CustomDashboardListItem } from '../../types';
 import type { EditorWorkingCopy } from '../../workingCopy/editorWorkingCopy';
 import DashboardsEmptyState from './components/DashboardsEmptyState';
@@ -63,6 +64,14 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
         }
       : undefined,
   );
+  // Root (un-paged) list for the global pinned count. API-backed paging only
+  // loads one page into `listQuery`; the pinned cap spans all dashboards, so
+  // we read the full list here. This shares the side nav's cache (same root
+  // query key), so when the side nav has already loaded it there's no extra
+  // fetch. The hook is always called (Rules of Hooks); `enabled` gates it to
+  // API-backed so non-API-backed reuses `listQuery` (already the root key)
+  // without a redundant observer.
+  const rootListQuery = useDashboardsListQuery(universeId, { enabled: isApiBacked });
 
   const serverItems = listQuery.data?.items;
   const localItems = listQuery.data?.localItems;
@@ -84,6 +93,16 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
     () => [...localPagedItems, ...serverPagedItems],
     [localPagedItems, serverPagedItems],
   );
+  // Pinned count for the cap. Non-API-backed: `listQuery` already holds the
+  // full list (root key) — `rootListQuery` is disabled and has no data, so we
+  // fall back to `serverItems`. API-backed: `rootListQuery` holds the full
+  // list. Hybrid local copies are never pinnable (their pin toggle is
+  // disabled), so excluding them from the count keeps the cap accurate to
+  // what the side nav actually surfaces.
+  const pinnedCount = useMemo(() => {
+    const fullList = isApiBacked ? rootListQuery.data?.items : serverItems;
+    return (fullList ?? []).filter((d) => d.isPinned && d.hybridOrigin !== 'localCopy').length;
+  }, [isApiBacked, rootListQuery.data?.items, serverItems]);
   const attributionUserIds = useMemo(
     () =>
       displayedItems.flatMap((dashboard) => [
@@ -131,6 +150,7 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
     onOpenDashboard,
     onEditDashboard,
     onDashboardCreated,
+    pinnedCount,
   });
 
   const onCreateClick = useCallback(() => {
@@ -220,6 +240,8 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
           handlers,
           canMutateDashboards,
           userDisplayNamesById,
+          pinnedCount,
+          maxPinnedDashboards: MAX_PINNED_DASHBOARDS,
         }}
       />
     );

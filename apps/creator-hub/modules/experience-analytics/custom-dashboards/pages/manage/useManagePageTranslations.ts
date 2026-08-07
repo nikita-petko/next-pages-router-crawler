@@ -99,6 +99,14 @@ export function useManagePageTranslations() {
         TranslationNamespace.Analytics,
       ),
     ),
+    pinToggleCapReachedTooltip: tPendingTranslation(
+      'You can pin up to 5 dashboards. Unpin one to pin another.',
+      'Tooltip shown on the disabled pin toggle for an unpinned dashboard row when the pinned-dashboard cap has been reached.',
+      translationKey(
+        'Description.CustomDashboards.PinCapReachedTooltip',
+        TranslationNamespace.Analytics,
+      ),
+    ),
 
     rowViewButton: tPendingTranslation(
       'View',

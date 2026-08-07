@@ -25,6 +25,7 @@ import {
   type CustomDashboardMutationOptions,
   EMPTY_DASHBOARD_CONFIG,
   MAX_DASHBOARDS_PER_UNIVERSE,
+  MAX_PINNED_DASHBOARDS,
   type UpdateCustomDashboardInput,
 } from '../types';
 import { addChartTileToConfig } from '../utils/addChartTileToConfig';
@@ -345,6 +346,30 @@ function assertRecordsUnderUniverseCap(
   if (Object.keys(records).length >= MAX_DASHBOARDS_PER_UNIVERSE) {
     throw new CustomDashboardQuotaExceededError(
       `Universe ${universeId} is at the per-universe cap of ${MAX_DASHBOARDS_PER_UNIVERSE} dashboards. Delete one to create another.`,
+    );
+  }
+}
+
+/**
+ * Throw if the pinned-dashboard cap would be exceeded. Called inside the
+ * `commit` closure so the check runs against the freshly re-read snapshot —
+ * a pre-check on a separate read could let two concurrent tabs both pass
+ * and exceed the cap. `exceptId` excludes the record being pinned (it's not
+ * pinned yet in the snapshot, so it wouldn't double-count, but the explicit
+ * exclusion documents intent and keeps the helper robust if the caller
+ * already optimistically flipped `isPinned`).
+ */
+function assertRecordsUnderPinnedCap(
+  universeId: number,
+  records: Record<string, { document: CustomDashboardDocument; version: number }>,
+  exceptId: string,
+): void {
+  const pinnedCount = Object.values(records).filter(
+    (record) => record.document.isPinned && record.document.id !== exceptId,
+  ).length;
+  if (pinnedCount >= MAX_PINNED_DASHBOARDS) {
+    throw new CustomDashboardQuotaExceededError(
+      `Universe ${universeId} is at the pinned-dashboard cap of ${MAX_PINNED_DASHBOARDS}. Unpin one to pin another.`,
     );
   }
 }
@@ -823,10 +848,29 @@ class LocalStorageCustomDashboardService implements CustomDashboardService {
   }
 
   async pin(universeId: number, dashboardId: string): Promise<CustomDashboardDocument> {
-    return this.applyMutation(universeId, dashboardId, 'pin', (now) => ({
-      isPinned: true,
-      pinnedAt: now,
-    }));
+    const updated = this.commit(universeId, (records) => {
+      const record = records[dashboardId];
+      if (!record) {
+        throw new CustomDashboardNotFoundError(dashboardId);
+      }
+      // Re-check the pinned cap against the just-read snapshot so two
+      // concurrent tabs can't both pass and exceed the cap.
+      assertRecordsUnderPinnedCap(universeId, records, dashboardId);
+      const now = this.clock.isoNow();
+      const nextDoc: CustomDashboardDocument = {
+        ...record.document,
+        isPinned: true,
+        pinnedAt: now,
+        updatedAt: now,
+      };
+      const next = {
+        ...records,
+        [dashboardId]: { document: nextDoc, version: record.version + 1 },
+      };
+      return { next, result: nextDoc };
+    });
+    this.emit({ universeId, dashboardId, eventType: 'pin' });
+    return updated;
   }
 
   async unpin(universeId: number, dashboardId: string): Promise<CustomDashboardDocument> {
