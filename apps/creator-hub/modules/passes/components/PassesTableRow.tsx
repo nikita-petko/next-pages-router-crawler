@@ -12,21 +12,25 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@rbx/foundation-ui';
-import { Locale, useLocalization, useTranslation } from '@rbx/intl';
+import { Locale, useLocalization, useTranslation, useTranslationWithNamespace } from '@rbx/intl';
 import { Thumbnail2d, ThumbnailTypes, ReturnPolicy } from '@rbx/thumbnails';
 import { Avatar, TableRow, TableCell } from '@rbx/ui';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
 import { formatDate } from '@modules/miscellaneous/utils/dateUtils';
+import { logProductArchiveClick } from '@modules/monetization-shared/archive-dialog/logging';
 import { Tooltip } from '@modules/monetization-shared/tooltip';
 import { useIsHovered } from '@modules/monetization-shared/useIsHovered';
 import type { GamePass } from '../types';
 import { isPassEligibleForRegionalPricing } from '../utils/passesUtils';
+import { openGamePassArchiveDialog } from './GamePassArchiveDialog';
 import { PassesTableRowCheckbox } from './PassesTableCheckbox';
 
 type Props = GamePass & {
   universeId: number;
   showManagedPricing?: boolean;
   showPriceOptimization?: boolean;
+  /** `undefined` = archive feature off; `false` = active tab; `true` = archived tab. */
   showArchived?: boolean;
   onToggleRegionalPricing: (passId: number, enabled: boolean) => void;
   disableToggleRegionalPricing?: boolean;
@@ -85,14 +89,52 @@ function PassIdCell({
   );
 }
 
+function ArchiveMenuItem({
+  universeId,
+  passId,
+  isArchived,
+  onActionSelected,
+}: {
+  universeId: number;
+  passId: number;
+  isArchived: boolean;
+  onActionSelected: () => void;
+}) {
+  const { translate } = useTranslationWithNamespace(TranslationNamespace.Creations);
+
+  const handleSelect = useCallback(() => {
+    logProductArchiveClick({
+      productType: 'gamePass',
+      itemId: passId,
+      universeId,
+      isArchived,
+    });
+    openGamePassArchiveDialog({
+      universeId,
+      gamePassId: passId,
+      isArchived,
+    });
+    onActionSelected();
+  }, [universeId, passId, isArchived, onActionSelected]);
+
+  return (
+    <MenuItem
+      value={isArchived ? 'unarchive' : 'archive'}
+      title={isArchived ? translate('Action.Unarchive') : translate('Action.Archive')}
+      onSelect={handleSelect}
+    />
+  );
+}
+
 function MoreItemOptionsMenu({
   configureUrl,
+  universeId,
   showManagedPricing,
   showArchived,
   onToggleRegionalPricing,
   disableToggleRegionalPricing,
   ...pass
-}: Omit<Props, 'universeId' | 'showPriceOptimization'> & { configureUrl: string }) {
+}: Omit<Props, 'showPriceOptimization'> & { configureUrl: string }) {
   const { translate } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -110,6 +152,8 @@ function MoreItemOptionsMenu({
     onToggleRegionalPricing(pass.passId, !pass.isRegionalPricingEnabled);
     setIsOpen(false);
   }, [onToggleRegionalPricing, pass.isRegionalPricingEnabled, pass.passId]);
+
+  const handleCloseMenu = useCallback(() => setIsOpen(false), []);
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -149,6 +193,14 @@ function MoreItemOptionsMenu({
                     ? translate('Action.DisableRegionalPricing')
                     : translate('Action.EnableRegionalPricing')
                 }
+              />
+            )}
+            {showArchived !== undefined && (
+              <ArchiveMenuItem
+                universeId={universeId}
+                passId={pass.passId}
+                isArchived={showArchived}
+                onActionSelected={handleCloseMenu}
               />
             )}
           </MenuSection>
@@ -258,6 +310,7 @@ function PassesTableRow({
       <TableCell padding='checkbox' align='center'>
         <MoreItemOptionsMenu
           configureUrl={configureUrl}
+          universeId={universeId}
           showManagedPricing={showManagedPricing}
           showArchived={showArchived}
           onToggleRegionalPricing={onToggleRegionalPricing}

@@ -33,6 +33,8 @@ function GamePassesTableContainer({
   const { translate } = useTranslation();
   const { view } = useView(ARCHIVE_VIEWS);
 
+  // Stays undefined rather than false when the flag is off: PassesTableRow keys the
+  // archive menu item off that distinction.
   const isArchived = isArchiveEnabled ? view === 'archived' : undefined;
 
   const { data: permissions, isLoading: isLoadingPermissions } = useUniversePermissions(universeId);
