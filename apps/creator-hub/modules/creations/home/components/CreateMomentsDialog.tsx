@@ -19,8 +19,8 @@ import {
   logMomentsCreationsSuccess,
   MomentsCreationsOperation,
 } from '../logging/momentsCreationsEventLogging';
+import type { DraftMomentCreation } from '../types/MomentCreation';
 import { MomentCreationStatus } from '../types/MomentCreation';
-import type { StoredMomentCreation } from '../types/StoredMomentCreation';
 import { getDefaultMomentsUploadLocale } from '../utils/momentsUploadLocaleUtils';
 import MomentsExperiencePreview from './MomentsExperiencePreview';
 import MomentsExperienceUrlInput from './MomentsExperienceUrlInput';
@@ -30,7 +30,7 @@ import MomentsVideoUploadZone from './MomentsVideoUploadZone';
 type CreateMomentsDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onMomentUploaded?: (moment: StoredMomentCreation) => void;
+  onMomentUploaded?: (moment: DraftMomentCreation) => void;
 };
 
 const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
@@ -126,7 +126,7 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
       });
 
       try {
-        const { moments: uploadedMoments, storageEvictedMediaMomentIds } = await uploadVideos({
+        const { moments: uploadedMoments, storageEvictedMediaDraftIds } = await uploadVideos({
           experience: selectedExperience,
           files,
           ...(isLanguageSelectEnabled ? { locale: selectedLocale } : {}),
@@ -140,7 +140,7 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
             onMomentUploaded(moment);
           });
         } else {
-          addMoments(uploadedMoments, { storageEvictedMediaMomentIds });
+          addMoments(uploadedMoments, { storageEvictedMediaDraftIds });
         }
         logMomentsCreationsSuccess(MomentsCreationsOperation.UploadVideo, {
           experienceId: selectedExperience.id,
@@ -201,6 +201,7 @@ const CreateMomentsDialog: FC<CreateMomentsDialogProps> = ({
 
           {primaryValidationError != null ? (
             <div className='width-full margin-top-small padding-bottom-small'>
+              {/* oxlint-disable-next-line typescript/no-deprecated -- SHARE-2999 to migrate to Alert */}
               <FeedbackBanner
                 className='width-full'
                 layout='Stacked'

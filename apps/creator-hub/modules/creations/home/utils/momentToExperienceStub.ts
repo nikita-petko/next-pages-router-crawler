@@ -9,6 +9,8 @@ export function getMomentExperienceId(moment: MomentCreation): number | undefine
     return moment.universeId;
   }
 
+  // Structural check rather than a status narrow: only drafts carry `experienceId`, and this reads
+  // the same either way.
   if ('experienceId' in moment && typeof moment.experienceId === 'number') {
     return moment.experienceId;
   }

@@ -25,7 +25,9 @@ import {
 } from '../logging/momentsCreationsEventLogging';
 import type { MomentCreation } from '../types/MomentCreation';
 import { MomentCreationStatus } from '../types/MomentCreation';
-import { applyMomentMetadataOverrides, mergeMoments } from '../utils/momentsCreationsMergeUtils';
+import type { MomentMetadataOverride } from '../utils/momentsCreationsMergeUtils';
+import { applyMomentMetadataOverrides } from '../utils/momentsCreationsMergeUtils';
+import { getMomentRowKey } from '../utils/momentsIdentityUtils';
 import type { MomentMetadataUpdate } from '../utils/momentsLocalDraftStorage';
 import { getMomentExperienceId } from '../utils/momentToExperienceStub';
 import { openCreateMomentsDialog } from './CreateMomentsDialog';
@@ -59,17 +61,12 @@ const MomentsCreationsPanel = () => {
   const [isEditMomentDrawerOpen, setIsEditMomentDrawerOpen] = useState(false);
   const [editingMoment, setEditingMoment] = useState<MomentCreation | null>(null);
   const [serverMomentOverrides, setServerMomentOverrides] = useState<
-    Record<string, Partial<MomentCreation>>
+    Record<string, MomentMetadataOverride>
   >({});
-  const {
-    moments: localMoments,
-    updateMoment,
-    removeMoment,
-    syncWithServerMoments,
-  } = useMomentsLocalMoments();
-  const { publishMoment, publishingMomentId, isPublishing } = useMomentsPublish();
+  const { moments: localMoments, updateMoment, removeMoment } = useMomentsLocalMoments();
+  const { publishMoment, publishingDraftId, isPublishing } = useMomentsPublish();
   const publishLockRef = useRef(false);
-  const { deleteMoment, deletingMomentId } = useMomentsDelete();
+  const { deleteMoment, deletingMomentKey } = useMomentsDelete();
   const { statusTab } = useMomentsStatusFilter();
   const {
     serverMoments,
@@ -87,28 +84,8 @@ const MomentsCreationsPanel = () => {
   } = useMomentsCreationsList();
   const isDraftTab = statusTab === MomentCreationStatus.DRAFT;
 
-  const supersededLocalMomentIdsKey = useMemo(() => {
-    if (serverMoments.length === 0) {
-      return '';
-    }
-
-    return serverMoments
-      .map((moment) => moment.id)
-      .filter((momentId) => localMoments.some((localMoment) => localMoment.id === momentId))
-      .sort()
-      .join(',');
-  }, [localMoments, serverMoments]);
-
-  useEffect(() => {
-    if (supersededLocalMomentIdsKey.length === 0) {
-      return;
-    }
-
-    syncWithServerMoments(serverMoments);
-  }, [serverMoments, supersededLocalMomentIdsKey, syncWithServerMoments]);
-
   const moments = useMemo(() => {
-    const mergedMoments = mergeMoments(serverMoments, localMoments);
+    const mergedMoments: MomentCreation[] = [...serverMoments, ...localMoments];
     return applyMomentMetadataOverrides(mergedMoments, serverMomentOverrides);
   }, [localMoments, serverMomentOverrides, serverMoments]);
 
@@ -158,7 +135,8 @@ const MomentsCreationsPanel = () => {
       return null;
     }
 
-    return moments.find((moment) => moment.id === editingMoment.id) ?? editingMoment;
+    const editingMomentKey = getMomentRowKey(editingMoment);
+    return moments.find((moment) => getMomentRowKey(moment) === editingMomentKey) ?? editingMoment;
   }, [editingMoment, moments]);
 
   const handleEditMoment = useCallback((moment: MomentCreation) => {
@@ -176,11 +154,6 @@ const MomentsCreationsPanel = () => {
   const handleReload = useCallback(() => {
     void refetch();
   }, [refetch]);
-
-  const isLocalMoment = useCallback(
-    (momentId: string) => localMoments.some((moment) => moment.id === momentId),
-    [localMoments],
-  );
 
   const showPublishError = useCallback(() => {
     toast({
@@ -203,28 +176,32 @@ const MomentsCreationsPanel = () => {
 
   const handleDeleteMoment = useCallback(
     async (moment: MomentCreation) => {
+      const isDraft = moment.status === MomentCreationStatus.DRAFT;
+      const momentKey = getMomentRowKey(moment);
       const deleteContext = {
-        momentId: moment.id,
+        ...(isDraft
+          ? { draftId: moment.draftId }
+          : { momentId: moment.momentId, feedItemId: moment.feedItemId }),
         experienceId: getMomentExperienceId(moment),
-        isLocalMoment: isLocalMoment(moment.id),
+        isLocalMoment: isDraft,
         userId,
       };
 
       logMomentsCreationsAttempt(MomentsCreationsOperation.DeleteMoment, deleteContext);
 
       try {
-        if (isLocalMoment(moment.id)) {
-          removeMoment(moment.id);
+        if (moment.status === MomentCreationStatus.DRAFT) {
+          removeMoment(moment.draftId);
         } else {
-          await deleteMoment(moment.id);
+          await deleteMoment(moment);
         }
 
         setServerMomentOverrides((previousOverrides) => {
-          if (!(moment.id in previousOverrides)) {
+          if (!(momentKey in previousOverrides)) {
             return previousOverrides;
           }
 
-          const { [moment.id]: _removed, ...rest } = previousOverrides;
+          const { [momentKey]: _removed, ...rest } = previousOverrides;
           return rest;
         });
         setIsEditMomentDrawerOpen(false);
@@ -239,37 +216,42 @@ const MomentsCreationsPanel = () => {
         showDeleteError();
       }
     },
-    [deleteMoment, isLocalMoment, removeMoment, showDeleteError, userId],
+    [deleteMoment, removeMoment, showDeleteError, userId],
   );
 
   const handleMomentMetadataChange = useCallback(
-    (momentId: string, updates: MomentMetadataUpdate) => {
-      const modifiedAt = new Date().toISOString();
-
-      if (isLocalMoment(momentId)) {
-        updateMoment(momentId, updates);
+    (moment: MomentCreation, updates: MomentMetadataUpdate) => {
+      if (moment.status === MomentCreationStatus.DRAFT) {
+        updateMoment(moment.draftId, updates);
         return;
       }
 
+      const momentKey = getMomentRowKey(moment);
+      const modifiedAt = new Date().toISOString();
+
+      // Only base-applicable keys: `experienceId`/`rootPlaceId` are draft-only, and the edit drawer
+      // already gates those edits behind `isEditable = isDraft`.
       setServerMomentOverrides((previousOverrides) => ({
         ...previousOverrides,
-        [momentId]: {
-          ...previousOverrides[momentId],
-          ...updates,
+        [momentKey]: {
+          ...previousOverrides[momentKey],
+          ...(updates.description != null ? { description: updates.description } : {}),
+          ...(updates.experienceName != null ? { experienceName: updates.experienceName } : {}),
+          ...(updates.locale != null ? { locale: updates.locale } : {}),
           modifiedAt,
         },
       }));
     },
-    [isLocalMoment, updateMoment],
+    [updateMoment],
   );
 
   const handlePublishMoment = useCallback(
-    async (momentId: string) => {
+    async (draftId: string) => {
       if (publishLockRef.current || isPublishing || isPublishDisabled) {
         return;
       }
 
-      const moment = localMoments.find((entry) => entry.id === momentId);
+      const moment = localMoments.find((entry) => entry.draftId === draftId);
       if (!moment) {
         return;
       }
@@ -277,7 +259,7 @@ const MomentsCreationsPanel = () => {
       publishLockRef.current = true;
 
       const publishContext = {
-        momentId,
+        draftId,
         experienceId: getMomentExperienceId(moment),
         isLocalMoment: true,
         userId,
@@ -287,7 +269,7 @@ const MomentsCreationsPanel = () => {
 
       try {
         await publishMoment(moment);
-        removeMoment(momentId);
+        removeMoment(draftId);
         setIsEditMomentDrawerOpen(false);
         setEditingMoment(null);
         logMomentsCreationsSuccess(MomentsCreationsOperation.PublishMoment, publishContext);
@@ -317,7 +299,11 @@ const MomentsCreationsPanel = () => {
 
   const handlePublishMomentFromDrawer = useCallback(
     (moment: MomentCreation) => {
-      void handlePublishMoment(moment.id);
+      if (moment.status !== MomentCreationStatus.DRAFT) {
+        return;
+      }
+
+      void handlePublishMoment(moment.draftId);
     },
     [handlePublishMoment],
   );
@@ -365,7 +351,7 @@ const MomentsCreationsPanel = () => {
           onEditMoment={handleEditMoment}
           onMomentMetadataChange={handleMomentMetadataChange}
           onPublishMoment={handlePublishMoment}
-          publishingMomentId={publishingMomentId}
+          publishingDraftId={publishingDraftId}
           isPublishDisabled={isPublishDisabled}
         />
       ) : (
@@ -374,7 +360,7 @@ const MomentsCreationsPanel = () => {
         </div>
       )}
       <EditMomentDrawer
-        key={editingMomentForDrawer?.id}
+        key={editingMomentForDrawer ? getMomentRowKey(editingMomentForDrawer) : undefined}
         moment={editingMomentForDrawer}
         open={isEditMomentDrawerOpen}
         onOpenChange={handleEditMomentDrawerOpenChange}
@@ -385,8 +371,8 @@ const MomentsCreationsPanel = () => {
             ? handlePublishMomentFromDrawer
             : undefined
         }
-        publishingMomentId={publishingMomentId}
-        deletingMomentId={deletingMomentId}
+        publishingDraftId={publishingDraftId}
+        deletingMomentKey={deletingMomentKey}
         isPublishDisabled={isPublishDisabled}
       />
     </div>

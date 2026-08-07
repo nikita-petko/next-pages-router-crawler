@@ -22,3 +22,8 @@ export const isMomentsUploadLanguageSelectEnabled = defineFlag({
     name: 'isMomentsUploadLanguageSelectEnabled',
     defaultValue: false,
   });
+export const isMomentsFeedIdEnabled = defineFlag({
+    namespace: 'creator-creations',
+    name: 'isMomentsFeedIdEnabled',
+    defaultValue: false,
+  });

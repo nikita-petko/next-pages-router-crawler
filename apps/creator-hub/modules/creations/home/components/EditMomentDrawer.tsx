@@ -18,6 +18,7 @@ import useMomentsUploadLanguageSelectEnabled from '../hooks/useMomentsUploadLang
 import { useMomentVideoMedia } from '../hooks/useMomentVideoMedia';
 import type { MomentCreation } from '../types/MomentCreation';
 import { MomentCreationStatus } from '../types/MomentCreation';
+import { getMomentRowKey } from '../utils/momentsIdentityUtils';
 import type { MomentMetadataUpdate } from '../utils/momentsLocalDraftStorage';
 import {
   formatMomentContentLanguage,
@@ -33,11 +34,11 @@ type EditMomentDrawerProps = {
   moment: MomentCreation | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onMomentMetadataChange?: (momentId: string, updates: MomentMetadataUpdate) => void;
+  onMomentMetadataChange?: (moment: MomentCreation, updates: MomentMetadataUpdate) => void;
   onPublish?: (moment: MomentCreation) => void;
   onDelete?: (moment: MomentCreation) => void;
-  publishingMomentId?: string | null;
-  deletingMomentId?: string | null;
+  publishingDraftId?: string | null;
+  deletingMomentKey?: string | null;
   isPublishDisabled?: boolean;
 };
 
@@ -55,8 +56,8 @@ const EditMomentDrawer: FC<EditMomentDrawerProps> = ({
   onMomentMetadataChange,
   onPublish,
   onDelete,
-  publishingMomentId = null,
-  deletingMomentId = null,
+  publishingDraftId = null,
+  deletingMomentKey = null,
   isPublishDisabled = false,
 }) => {
   const { translate } = useTranslation();
@@ -71,26 +72,29 @@ const EditMomentDrawer: FC<EditMomentDrawerProps> = ({
   const selectedLocale = localeOverride ?? moment?.locale ?? defaultLocale;
 
   const hasLocalVideo =
-    moment != null && 'hasLocalVideo' in moment && moment.hasLocalVideo === true;
-  const mediaUrls = useMomentVideoMedia(moment?.id ?? '', {
-    enabled: open && hasLocalVideo,
-    thumbnailUrl: moment?.thumbnailUrl,
-    videoUrl: moment?.videoUrl,
-  });
+    moment?.status === MomentCreationStatus.DRAFT && moment.hasLocalVideo === true;
+  const mediaUrls = useMomentVideoMedia(
+    moment?.status === MomentCreationStatus.DRAFT ? moment.draftId : null,
+    {
+      enabled: open && hasLocalVideo,
+      thumbnailUrl: moment?.thumbnailUrl,
+      videoUrl: moment?.videoUrl,
+    },
+  );
 
   const handlePublish = useCallback(() => {
-    if (!moment || isPublishDisabled || publishingMomentId != null) {
+    if (!moment || isPublishDisabled || publishingDraftId != null) {
       return;
     }
     onPublish?.(moment);
-  }, [isPublishDisabled, moment, onPublish, publishingMomentId]);
+  }, [isPublishDisabled, moment, onPublish, publishingDraftId]);
 
   const handleDelete = useCallback(() => {
-    if (!moment || deletingMomentId === moment.id) {
+    if (!moment || deletingMomentKey === getMomentRowKey(moment)) {
       return;
     }
     onDelete?.(moment);
-  }, [deletingMomentId, moment, onDelete]);
+  }, [deletingMomentKey, moment, onDelete]);
 
   const handleExperienceChange = useCallback(
     (experience: TExperience) => {
@@ -99,7 +103,7 @@ const EditMomentDrawer: FC<EditMomentDrawerProps> = ({
       }
 
       setSelectedExperience(experience);
-      onMomentMetadataChange?.(moment.id, {
+      onMomentMetadataChange?.(moment, {
         experienceId: experience.id,
         rootPlaceId: experience.rootPlaceId,
         experienceName: experience.name,
@@ -119,7 +123,7 @@ const EditMomentDrawer: FC<EditMomentDrawerProps> = ({
         return;
       }
 
-      onMomentMetadataChange?.(moment.id, { locale });
+      onMomentMetadataChange?.(moment, { locale });
     },
     [moment, onMomentMetadataChange],
   );
@@ -129,7 +133,7 @@ const EditMomentDrawer: FC<EditMomentDrawerProps> = ({
       return;
     }
 
-    onMomentMetadataChange?.(moment.id, { description });
+    onMomentMetadataChange?.(moment, { description });
   }, [description, moment, onMomentMetadataChange]);
 
   const handleDescriptionBlur = useCallback(() => {
@@ -151,9 +155,10 @@ const EditMomentDrawer: FC<EditMomentDrawerProps> = ({
     return null;
   }
 
-  const isPublishingThisMoment = publishingMomentId === moment.id;
-  const isPublishing = publishingMomentId != null;
-  const isDeleting = deletingMomentId === moment.id;
+  const momentKey = getMomentRowKey(moment);
+  const isPublishingThisMoment = publishingDraftId != null && publishingDraftId === momentKey;
+  const isPublishing = publishingDraftId != null;
+  const isDeleting = deletingMomentKey != null && deletingMomentKey === momentKey;
   const isActive = moment.status === MomentCreationStatus.ACTIVE;
   const isDraft = moment.status === MomentCreationStatus.DRAFT;
   const isEditable = isDraft && !isPublishingThisMoment;
@@ -221,7 +226,7 @@ const EditMomentDrawer: FC<EditMomentDrawerProps> = ({
             {isEditable ? (
               <>
                 <TextArea
-                  id={`edit-moment-description-${moment.id}`}
+                  id={`edit-moment-description-${momentKey}`}
                   label={translate(
                     'MomentsTable.Header.Description' /* TranslationNamespace.Creations */,
                   )}

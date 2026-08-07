@@ -2,13 +2,13 @@ import { useCallback, useMemo } from 'react';
 import { useBackgroundPageLoader } from '@modules/monetization-shared/useBackgroundPageLoader';
 import { useMomentsCreations } from '@modules/react-query/momentsCreations/momentsCreationsQueries';
 import { MOMENTS_LIST_PAGE_SIZE } from '../constants/momentsCreationsConstants';
-import type { MomentCreation } from '../types/MomentCreation';
+import type { ServerMomentCreation } from '../types/MomentCreation';
 import { flattenServerMomentsFromPages } from '../utils/momentsCreationsMergeUtils';
 
-const EMPTY_SERVER_MOMENTS: MomentCreation[] = [];
+const EMPTY_SERVER_MOMENTS: ServerMomentCreation[] = [];
 
 export type UseMomentsCreationsListReturn = {
-  serverMoments: MomentCreation[];
+  serverMoments: ServerMomentCreation[];
   isAllServerMomentsLoaded: boolean;
   hasNextPage: boolean;
   fetchNextPage: () => void;

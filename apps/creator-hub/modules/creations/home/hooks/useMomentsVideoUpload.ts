@@ -13,8 +13,7 @@ import {
   logMomentsCreationsSuccess,
   MomentsCreationsOperation,
 } from '../logging/momentsCreationsEventLogging';
-import { MomentCreationStatus } from '../types/MomentCreation';
-import type { StoredMomentCreation } from '../types/StoredMomentCreation';
+import type { DraftMomentCreation } from '../types/MomentCreation';
 import { parseMomentsLocalStorageRaw } from '../utils/momentsLocalDraftStorage';
 import { saveMomentVideoMediaWithEviction } from '../utils/momentsVideoMediaStorage';
 
@@ -31,30 +30,31 @@ type UploadMomentsVideosParams = {
 };
 
 export type UploadMomentsVideosResult = {
-  moments: StoredMomentCreation[];
-  storageEvictedMediaMomentIds: string[];
+  moments: DraftMomentCreation[];
+  storageEvictedMediaDraftIds: string[];
 };
 
+// `parseMomentsLocalStorageRaw` already yields drafts only, so no status filter is needed.
 const getDraftMomentsForStorageEviction = (
   userId: number,
-  batchDrafts: readonly StoredMomentCreation[],
-): StoredMomentCreation[] => {
+  batchDrafts: readonly DraftMomentCreation[],
+): DraftMomentCreation[] => {
   const storedDrafts = parseMomentsLocalStorageRaw(
     window.localStorage.getItem(getMomentsLocalStorageKey(userId)),
-  ).filter((moment) => moment.status === MomentCreationStatus.DRAFT);
-  const batchIds = new Set(batchDrafts.map((moment) => moment.id));
+  );
+  const batchIds = new Set(batchDrafts.map((moment) => moment.draftId));
 
-  return [...batchDrafts, ...storedDrafts.filter((moment) => !batchIds.has(moment.id))];
+  return [...batchDrafts, ...storedDrafts.filter((moment) => !batchIds.has(moment.draftId))];
 };
 
 const persistUploadedVideo = async (
   userId: number,
-  momentId: string,
+  draftId: string,
   file: File,
-  batchDrafts: readonly StoredMomentCreation[],
-): Promise<{ hasLocalVideo: boolean; storageEvictedMediaMomentIds: string[] }> => {
+  batchDrafts: readonly DraftMomentCreation[],
+): Promise<{ hasLocalVideo: boolean; storageEvictedMediaDraftIds: string[] }> => {
   const persistContext = {
-    momentId,
+    draftId,
     fileSize: file.size,
     fileType: file.type,
   };
@@ -62,9 +62,9 @@ const persistUploadedVideo = async (
   logMomentsCreationsAttempt(MomentsCreationsOperation.PersistLocalVideo, persistContext);
 
   try {
-    const { evictedMediaMomentIds } = await saveMomentVideoMediaWithEviction(
+    const { evictedMediaDraftIds } = await saveMomentVideoMediaWithEviction(
       userId,
-      momentId,
+      draftId,
       file,
       getDraftMomentsForStorageEviction(userId, batchDrafts),
     );
@@ -73,17 +73,17 @@ const persistUploadedVideo = async (
 
     return {
       hasLocalVideo: true,
-      storageEvictedMediaMomentIds: evictedMediaMomentIds,
+      storageEvictedMediaDraftIds: evictedMediaDraftIds,
     };
   } catch (storageError) {
     logMomentsCreationsError(MomentsCreationsErrorOperation.PersistLocalVideo, storageError, {
-      momentId,
+      draftId,
       fileSize: file.size,
       fileType: file.type,
     });
     return {
       hasLocalVideo: false,
-      storageEvictedMediaMomentIds: [],
+      storageEvictedMediaDraftIds: [],
     };
   }
 };
@@ -98,7 +98,7 @@ export const useMomentsVideoUpload = () => {
       experience,
       locale,
       file,
-    }: UploadMomentsVideoParams): Promise<StoredMomentCreation> => {
+    }: UploadMomentsVideoParams): Promise<DraftMomentCreation> => {
       const userId = user?.id;
       if (userId == null) {
         throw new Error('Cannot upload Moments video without a signed-in user');
@@ -116,7 +116,7 @@ export const useMomentsVideoUpload = () => {
           file,
           onProgress: setUploadProgress,
         });
-        const { hasLocalVideo } = await persistUploadedVideo(userId, moment.id, file, []);
+        const { hasLocalVideo } = await persistUploadedVideo(userId, moment.draftId, file, []);
 
         return {
           ...moment,
@@ -142,15 +142,15 @@ export const useMomentsVideoUpload = () => {
       }
 
       if (files.length === 0) {
-        return { moments: [], storageEvictedMediaMomentIds: [] };
+        return { moments: [], storageEvictedMediaDraftIds: [] };
       }
 
       setIsUploading(true);
       setUploadProgress(0);
 
       try {
-        const uploadedMoments: StoredMomentCreation[] = [];
-        const storageEvictedMediaMomentIds: string[] = [];
+        const uploadedMoments: DraftMomentCreation[] = [];
+        const storageEvictedMediaDraftIds: string[] = [];
 
         for (const file of files) {
           const moment = await momentsCreationsClient.uploadMomentVideo({
@@ -161,10 +161,10 @@ export const useMomentsVideoUpload = () => {
             file,
             onProgress: setUploadProgress,
           });
-          const { hasLocalVideo, storageEvictedMediaMomentIds: evictedForFile } =
-            await persistUploadedVideo(userId, moment.id, file, uploadedMoments);
+          const { hasLocalVideo, storageEvictedMediaDraftIds: evictedForFile } =
+            await persistUploadedVideo(userId, moment.draftId, file, uploadedMoments);
 
-          storageEvictedMediaMomentIds.push(...evictedForFile);
+          storageEvictedMediaDraftIds.push(...evictedForFile);
           uploadedMoments.push({
             ...moment,
             hasLocalVideo,
@@ -173,7 +173,7 @@ export const useMomentsVideoUpload = () => {
 
         return {
           moments: uploadedMoments,
-          storageEvictedMediaMomentIds: [...new Set(storageEvictedMediaMomentIds)],
+          storageEvictedMediaDraftIds: [...new Set(storageEvictedMediaDraftIds)],
         };
       } finally {
         setIsUploading(false);

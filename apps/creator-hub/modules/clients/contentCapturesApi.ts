@@ -11,6 +11,9 @@ const contentCapturesApiClient = Object.assign(contentCapturesApi, {
     momentsApi.momentsGetUsersMoments(request),
   momentsDeleteMoment: (request: Parameters<MomentsApi['momentsDeleteMoment']>[0]) =>
     momentsApi.momentsDeleteMoment(request),
+  momentsDeleteMomentByFeedItem: (
+    request: Parameters<MomentsApi['momentsDeleteMomentByFeedItem']>[0],
+  ) => momentsApi.momentsDeleteMomentByFeedItem(request),
 });
 
 export default contentCapturesApiClient;

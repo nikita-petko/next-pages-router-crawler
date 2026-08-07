@@ -29,7 +29,16 @@ const toPropMediaUrls = (thumbnailUrl?: string, videoUrl?: string): MomentVideoM
   };
 };
 
-export const useMomentVideoMedia = (momentId: string, options: UseMomentVideoMediaOptions) => {
+/**
+ * Loads a local draft's video/thumbnail blob URLs from IndexedDB.
+ *
+ * `draftId` is nullable so callers holding a `MomentCreation` union can pass `null` for a
+ * server-backed moment without inventing a placeholder id; the hook then skips the read entirely.
+ */
+export const useMomentVideoMedia = (
+  draftId: string | null,
+  options: UseMomentVideoMediaOptions,
+) => {
   const { user } = useAuthentication();
   const { enabled, thumbnailUrl, videoUrl } = options;
   const userId = user?.id;
@@ -42,18 +51,18 @@ export const useMomentVideoMedia = (momentId: string, options: UseMomentVideoMed
   const [fetchedMediaUrls, setFetchedMediaUrls] = useState<MomentVideoMediaUrls | null>(null);
 
   useEffect(() => {
-    if (propMediaUrls || userId == null || !enabled) {
+    if (propMediaUrls || userId == null || !enabled || draftId == null || draftId === '') {
       return undefined;
     }
 
     let cancelled = false;
 
     const loadMediaUrls = async () => {
-      const loadContext = { momentId, userId };
+      const loadContext = { draftId, userId };
       logMomentsCreationsAttempt(MomentsCreationsOperation.LoadLocalVideoMedia, loadContext);
 
       try {
-        const localMediaUrls = await getMomentVideoMediaUrls(userId, momentId);
+        const localMediaUrls = await getMomentVideoMediaUrls(userId, draftId);
         if (!cancelled) {
           setFetchedMediaUrls(localMediaUrls);
           if (localMediaUrls != null) {
@@ -65,7 +74,7 @@ export const useMomentVideoMedia = (momentId: string, options: UseMomentVideoMed
           MomentsCreationsErrorOperation.LoadLocalVideoMedia,
           mediaLoadError,
           {
-            momentId,
+            draftId,
           },
         );
         if (!cancelled) {
@@ -79,7 +88,7 @@ export const useMomentVideoMedia = (momentId: string, options: UseMomentVideoMed
     return () => {
       cancelled = true;
     };
-  }, [enabled, momentId, propMediaUrls, userId]);
+  }, [draftId, enabled, propMediaUrls, userId]);
 
   if (propMediaUrls) {
     return propMediaUrls;

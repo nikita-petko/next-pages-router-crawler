@@ -13,12 +13,12 @@ import {
   MomentsCreationsOperation,
 } from '../logging/momentsCreationsEventLogging';
 import type {
+  DraftMomentCreation,
   ListMomentsPageParams,
   ListMomentsPageResponse,
-  MomentCreation,
+  ServerMomentCreation,
 } from '../types/MomentCreation';
 import { MomentCreationStatus } from '../types/MomentCreation';
-import type { StoredMomentCreation } from '../types/StoredMomentCreation';
 import { parseUsersMomentsResponse } from '../utils/parseUsersMomentsResponse';
 
 export type UploadMomentVideoRequest = {
@@ -33,7 +33,8 @@ export type UploadMomentVideoRequest = {
 const UPLOAD_PROGRESS_STEPS = 10;
 const UPLOAD_PROGRESS_STEP_MS = 100;
 
-const createMomentId = (): string => {
+/** Mints the client-only identifier for a local draft. Never a server id. */
+const createDraftId = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
@@ -52,8 +53,8 @@ const fetchUserMomentsPage = async (
   });
 
 const enrichMomentsWithExperienceNames = async (
-  moments: MomentCreation[],
-): Promise<MomentCreation[]> => {
+  moments: ServerMomentCreation[],
+): Promise<ServerMomentCreation[]> => {
   const universeIds = [
     ...new Set(
       moments
@@ -110,6 +111,7 @@ const enrichMomentsWithExperienceNames = async (
 const listMomentsPage = async (
   userId: number,
   pageParams?: ListMomentsPageParams,
+  useFeedItemId = false,
 ): Promise<ListMomentsPageResponse> => {
   const operation =
     pageParams?.paginationContext != null
@@ -119,7 +121,8 @@ const listMomentsPage = async (
   logMomentsCreationsAttempt(operation, { userId });
 
   const response = await fetchUserMomentsPage(userId, pageParams);
-  const moments = await enrichMomentsWithExperienceNames(parseUsersMomentsResponse(response));
+  const parsedMoments = parseUsersMomentsResponse(response, useFeedItemId);
+  const moments = await enrichMomentsWithExperienceNames(parsedMoments);
 
   logMomentsCreationsSuccess(operation, {
     userId,
@@ -130,8 +133,6 @@ const listMomentsPage = async (
   return {
     moments,
     paginationContext: response.paginationContext ?? undefined,
-    moderatedMomentIds: response.moderatedMomentIds ?? [],
-    failedMomentIds: response.failedMomentIds ?? [],
   };
 };
 
@@ -145,7 +146,7 @@ const uploadMomentVideo = async ({
   rootPlaceId,
   locale,
   onProgress,
-}: UploadMomentVideoRequest): Promise<StoredMomentCreation> => {
+}: UploadMomentVideoRequest): Promise<DraftMomentCreation> => {
   for (let step = 1; step <= UPLOAD_PROGRESS_STEPS; step += 1) {
     await new Promise((resolve) => {
       setTimeout(resolve, UPLOAD_PROGRESS_STEP_MS);
@@ -154,7 +155,7 @@ const uploadMomentVideo = async ({
   }
 
   return {
-    id: createMomentId(),
+    draftId: createDraftId(),
     experienceId,
     rootPlaceId,
     experienceName,

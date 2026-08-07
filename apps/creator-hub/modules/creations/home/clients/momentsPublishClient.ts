@@ -1,12 +1,12 @@
 import type { ContentCapturesSharedModelsMomentPublishData as MomentPublishData } from '@rbx/client-content-captures-api/v1';
 import type { Locale } from '@rbx/intl';
 import contentCapturesApiClient from '@modules/clients/contentCapturesApi';
-import type { StoredMomentCreation } from '../types/StoredMomentCreation';
+import type { DraftMomentCreation } from '../types/MomentCreation';
 import { resolveMomentPublishLocale } from '../utils/momentsUploadLocaleUtils';
 import { getVideoDurationSeconds } from '../utils/momentsVideoDurationUtils';
 
 export type PublishMomentRequest = {
-  moment: StoredMomentCreation;
+  moment: DraftMomentCreation;
   file: File;
   userId: number;
   displayName: string;
@@ -22,7 +22,7 @@ export type PublishMomentResult = {
 export const toVideoContentLanguage = (locale: Locale): string => locale.toLowerCase();
 
 function buildMomentPublishData(
-  moment: StoredMomentCreation,
+  moment: DraftMomentCreation,
   durationSeconds: number,
 ): MomentPublishData {
   return {
@@ -50,7 +50,9 @@ export async function publishMoment({
   uiLocale,
   sendVideoContentLanguage = true,
 }: PublishMomentRequest): Promise<PublishMomentResult> {
-  if (moment.experienceId == null) {
+  // Typed as a required number, but drafts normalized from older localStorage records default it
+  // to 0 when the stored value was unreadable, and the API rejects a falsy universeId.
+  if (!moment.experienceId) {
     throw new Error('Moment experience is required before publishing');
   }
 

@@ -5,7 +5,7 @@ import {
   MOMENTS_VIDEO_MEDIA_DB_VERSION,
   MOMENTS_VIDEO_MEDIA_STORE_NAME,
 } from '../constants/momentsVideoMediaConstants';
-import type { StoredMomentCreation } from '../types/StoredMomentCreation';
+import type { DraftMomentCreation } from '../types/MomentCreation';
 import { sortDraftsOldestFirst } from './momentsLocalDraftEvictionUtils';
 import { generateVideoThumbnailBlob } from './momentsVideoPreviewUtils';
 
@@ -21,6 +21,12 @@ import { generateVideoThumbnailBlob } from './momentsVideoPreviewUtils';
  * - Draft metadata in localStorage is unaffected; only local video/thumbnail blobs are missing.
  */
 
+/**
+ * Records are keyed by the local draft UUID. The on-disk keyPath is historically named `momentId`;
+ * it has never held a server datastore ID — only a `crypto.randomUUID()` minted for a draft. It is
+ * not renamed because IndexedDB cannot rename a keyPath without copying every video blob, and
+ * `draftId` inherits the old value verbatim, so existing blobs stay reachable with no migration.
+ */
 export type MomentVideoMediaRecord = {
   momentId: string;
   videoBlob: Blob;
@@ -36,7 +42,7 @@ export type MomentVideoMediaUrls = {
 
 const mediaUrlCache = new Map<string, MomentVideoMediaUrls>();
 
-const getMediaCacheKey = (userId: number, momentId: string): string => `${userId}:${momentId}`;
+const getMediaCacheKey = (userId: number, draftId: string): string => `${userId}:${draftId}`;
 
 const openDatabase = (userId: number): Promise<IDBDatabase> =>
   new Promise((resolve, reject) => {
@@ -111,8 +117,8 @@ const getMomentVideoFileName = (record: MomentVideoMediaRecord): string => {
   return getDefaultMomentVideoFileName(record.videoBlob);
 };
 
-const revokeCachedMediaUrls = (userId: number, momentId: string): void => {
-  const cacheKey = getMediaCacheKey(userId, momentId);
+const revokeCachedMediaUrls = (userId: number, draftId: string): void => {
+  const cacheKey = getMediaCacheKey(userId, draftId);
   const cachedUrls = mediaUrlCache.get(cacheKey);
   if (!cachedUrls) {
     return;
@@ -126,19 +132,19 @@ const revokeCachedMediaUrls = (userId: number, momentId: string): void => {
 /** Persists a Moment video file and generated thumbnail frame in IndexedDB. */
 export const saveMomentVideoMedia = async (
   userId: number,
-  momentId: string,
+  draftId: string,
   file: File,
 ): Promise<void> => {
   const thumbnailBlob = await generateVideoThumbnailBlob(file);
   const record: MomentVideoMediaRecord = {
-    momentId,
+    momentId: draftId,
     videoBlob: file,
     thumbnailBlob,
     fileName: file.name,
     updatedAt: new Date().toISOString(),
   };
 
-  revokeCachedMediaUrls(userId, momentId);
+  revokeCachedMediaUrls(userId, draftId);
   await runTransaction(userId, 'readwrite', (store) => store.put(record));
 };
 
@@ -154,7 +160,7 @@ export const isQuotaExceededError = (error: unknown): boolean => {
 };
 
 export type SaveMomentVideoMediaWithEvictionResult = {
-  evictedMediaMomentIds: string[];
+  evictedMediaDraftIds: string[];
 };
 
 /**
@@ -163,19 +169,19 @@ export type SaveMomentVideoMediaWithEvictionResult = {
  */
 export const saveMomentVideoMediaWithEviction = async (
   userId: number,
-  momentId: string,
+  draftId: string,
   file: File,
-  draftMoments: readonly StoredMomentCreation[],
+  draftMoments: readonly DraftMomentCreation[],
 ): Promise<SaveMomentVideoMediaWithEvictionResult> => {
-  const evictedMediaMomentIds: string[] = [];
+  const evictedMediaDraftIds: string[] = [];
 
   const trySave = async (): Promise<void> => {
-    await saveMomentVideoMedia(userId, momentId, file);
+    await saveMomentVideoMedia(userId, draftId, file);
   };
 
   try {
     await trySave();
-    return { evictedMediaMomentIds };
+    return { evictedMediaDraftIds };
   } catch (error) {
     if (!isQuotaExceededError(error)) {
       throw error;
@@ -183,18 +189,18 @@ export const saveMomentVideoMediaWithEviction = async (
   }
 
   const evictionCandidates = sortDraftsOldestFirst(
-    draftMoments.filter((moment) => moment.id !== momentId && moment.hasLocalVideo !== false),
+    draftMoments.filter((moment) => moment.draftId !== draftId && moment.hasLocalVideo !== false),
   );
 
   for (const candidate of evictionCandidates) {
-    await deleteMomentVideoMedia(userId, [candidate.id]);
-    if (!evictedMediaMomentIds.includes(candidate.id)) {
-      evictedMediaMomentIds.push(candidate.id);
+    await deleteMomentVideoMedia(userId, [candidate.draftId]);
+    if (!evictedMediaDraftIds.includes(candidate.draftId)) {
+      evictedMediaDraftIds.push(candidate.draftId);
     }
 
     try {
       await trySave();
-      return { evictedMediaMomentIds };
+      return { evictedMediaDraftIds };
     } catch (error) {
       if (!isQuotaExceededError(error)) {
         throw error;
@@ -206,8 +212,8 @@ export const saveMomentVideoMediaWithEviction = async (
 };
 
 /** Loads the locally stored video file for a Moment. */
-export async function getMomentVideoFile(userId: number, momentId: string): Promise<File | null> {
-  const result = await runTransaction(userId, 'readonly', (store) => store.get(momentId));
+export async function getMomentVideoFile(userId: number, draftId: string): Promise<File | null> {
+  const result = await runTransaction(userId, 'readonly', (store) => store.get(draftId));
 
   if (!isMomentVideoMediaRecord(result)) {
     return null;
@@ -223,15 +229,15 @@ export async function getMomentVideoFile(userId: number, momentId: string): Prom
 /** Loads object URLs for a locally stored Moment video + thumbnail. */
 export const getMomentVideoMediaUrls = async (
   userId: number,
-  momentId: string,
+  draftId: string,
 ): Promise<MomentVideoMediaUrls | null> => {
-  const cacheKey = getMediaCacheKey(userId, momentId);
+  const cacheKey = getMediaCacheKey(userId, draftId);
   const cachedUrls = mediaUrlCache.get(cacheKey);
   if (cachedUrls) {
     return cachedUrls;
   }
 
-  const result = await runTransaction(userId, 'readonly', (store) => store.get(momentId));
+  const result = await runTransaction(userId, 'readonly', (store) => store.get(draftId));
 
   if (!isMomentVideoMediaRecord(result)) {
     return null;
@@ -246,18 +252,15 @@ export const getMomentVideoMediaUrls = async (
 };
 
 /** Deletes locally stored media for one or more Moments. */
-export const deleteMomentVideoMedia = async (
-  userId: number,
-  momentIds: string[],
-): Promise<void> => {
-  if (momentIds.length === 0) {
+export const deleteMomentVideoMedia = async (userId: number, draftIds: string[]): Promise<void> => {
+  if (draftIds.length === 0) {
     return;
   }
 
   await Promise.all(
-    momentIds.map(async (momentId) => {
-      revokeCachedMediaUrls(userId, momentId);
-      await runTransaction(userId, 'readwrite', (store) => store.delete(momentId));
+    draftIds.map(async (draftId) => {
+      revokeCachedMediaUrls(userId, draftId);
+      await runTransaction(userId, 'readwrite', (store) => store.delete(draftId));
     }),
   );
 };

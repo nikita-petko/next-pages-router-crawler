@@ -5,10 +5,12 @@ import type { ManagedPricingOnboardingStatus } from '@modules/managed-pricing/ty
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import AccessDeniedPage from '@modules/miscellaneous/error/components/AccessDeniedPage';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { ARCHIVE_VIEWS, useView } from '@modules/monetization-shared/views/useView';
 import { useUniversePermissions } from '@modules/react-query/organizations';
 import DeveloperProductsTable from '../components/DeveloperProductsTable';
 import DeveloperProductsTableEmptyState from '../components/DeveloperProductsTableEmptyState';
 import DeveloperProductsTableLoading from '../components/DeveloperProductsTableLoading';
+import DeveloperProductsViewLayout from '../components/DeveloperProductsViewLayout';
 import { useLoadInitialDeveloperProducts } from '../hooks/useLoadInitialDeveloperProducts';
 import { DEFAULT_PAGE_SIZE } from '../queries/constants';
 
@@ -17,7 +19,11 @@ type Props = {
   managedPricingOnboardingStatus?: ManagedPricingOnboardingStatus;
   giftingTradingStatus?: GiftingTradingStatus;
   perFetchPageSize?: number;
-  isArchived?: boolean;
+  /**
+   * When true, renders Current/Archived chips and filters between active and archived
+   * products. When false/undefined, the archive flag is off.
+   */
+  isArchiveEnabled?: boolean;
 };
 
 const INITIAL_ROWS_PER_PAGE_WITH_MANAGED_PRICING = 10;
@@ -27,9 +33,13 @@ function DeveloperProductsTableContainer({
   managedPricingOnboardingStatus,
   giftingTradingStatus,
   perFetchPageSize = DEFAULT_PAGE_SIZE,
-  isArchived,
+  isArchiveEnabled,
 }: Props) {
   const { translate } = useTranslation();
+  const { view } = useView(ARCHIVE_VIEWS);
+
+  const isArchived = isArchiveEnabled ? view === 'archived' : undefined;
+
   const { data: permissions, isLoading: isLoadingPermissions } = useUniversePermissions(universeId);
   const { isInitialLoading, isInitialError, isEmpty } = useLoadInitialDeveloperProducts({
     universeId,
@@ -58,33 +68,43 @@ function DeveloperProductsTableContainer({
     }
   }
 
-  if (isLoadingPermissions || isInitialLoading) {
-    return <DeveloperProductsTableLoading />;
+  const isLoading = isLoadingPermissions || isInitialLoading;
+
+  if (isLoading) {
+    return (
+      <DeveloperProductsViewLayout universeId={universeId} isArchiveEnabled={isArchiveEnabled}>
+        <DeveloperProductsTableLoading isArchiveEnabled={isArchiveEnabled} />
+      </DeveloperProductsViewLayout>
+    );
   }
 
   if (isEmpty) {
-    if (isArchived) {
-      return (
-        <div className='flex flex-col items-center justify-center padding-xxlarge'>
-          <p className='text-body-medium content-muted'>
-            {/* TODO(DMP-2775): replace with shared empty-state once unarchive action lands */}
-            {translate('Message.NoArchivedProducts')}
-          </p>
-        </div>
-      );
-    }
-    return <DeveloperProductsTableEmptyState universeId={universeId} />;
+    return (
+      <DeveloperProductsViewLayout universeId={universeId} isArchiveEnabled={isArchiveEnabled}>
+        <DeveloperProductsTableEmptyState
+          universeId={universeId}
+          isArchiveEnabled={isArchiveEnabled}
+          showArchived={isArchived}
+        />
+      </DeveloperProductsViewLayout>
+    );
   }
 
   return (
-    <DeveloperProductsTable
-      universeId={universeId}
-      managedPricingOnboardingStatus={managedPricingOnboardingStatus}
-      giftingTradingStatus={giftingTradingStatus}
-      perFetchPageSize={perFetchPageSize}
-      showArchived={isArchived}
-      initialRowsPerPage={INITIAL_ROWS_PER_PAGE_WITH_MANAGED_PRICING}
-    />
+    <DeveloperProductsViewLayout universeId={universeId} isArchiveEnabled={isArchiveEnabled}>
+      <DeveloperProductsTable
+        // Remount on view change so useInfiniteReducer refs in useDeveloperProducts
+        // don't treat a cached multi-page query as an append of the previous view.
+        key={view}
+        universeId={universeId}
+        managedPricingOnboardingStatus={managedPricingOnboardingStatus}
+        giftingTradingStatus={giftingTradingStatus}
+        perFetchPageSize={perFetchPageSize}
+        isArchiveEnabled={isArchiveEnabled}
+        showArchived={isArchived}
+        initialRowsPerPage={INITIAL_ROWS_PER_PAGE_WITH_MANAGED_PRICING}
+      />
+    </DeveloperProductsViewLayout>
   );
 }
 

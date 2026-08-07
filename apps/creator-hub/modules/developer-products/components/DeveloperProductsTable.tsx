@@ -61,6 +61,9 @@ type Props = {
   rowsPerPageOptions?: number[];
   selectionLimit?: number;
   perFetchPageSize?: number;
+  /** Selects the archive-aware action bar layout and spacing. */
+  isArchiveEnabled?: boolean;
+  /** `undefined` when the archive flag is off; otherwise the resolved view. */
   showArchived?: boolean;
 };
 
@@ -103,6 +106,7 @@ function DeveloperProductsTable({
   rowsPerPageOptions = ROWS_PER_PAGE_OPTIONS,
   selectionLimit = MAX_SELECTABLE_LIMIT,
   perFetchPageSize,
+  isArchiveEnabled,
   showArchived,
 }: Props) {
   const { translate } = useTranslation();
@@ -376,20 +380,25 @@ function DeveloperProductsTable({
       <section>
         {showArchived && (
           <DeveloperProductsActionBarV2
-            className='margin-bottom-medium padding-top-small'
+            className='margin-bottom-medium'
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             disableSearch={!isAllLoaded}
+            isArchiveEnabled={isArchiveEnabled}
             hideBulkAction
           />
         )}
 
         {!showArchived && showManagedPricing && (
           <DeveloperProductsActionBarV2
-            className='margin-bottom-medium padding-top-small'
+            // The chips row above supplies the gap once archiving is on.
+            className={
+              isArchiveEnabled ? 'margin-bottom-medium' : 'margin-bottom-medium padding-top-small'
+            }
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             disableSearch={!isAllLoaded}
+            isArchiveEnabled={isArchiveEnabled}
             onBulkAction={handleBulkToggleManagedPricing}
             isBulkActionDisabled={isBatchUpdateManagedPricingPending}
             isBulkActionPending={isBulkUpdatePending}

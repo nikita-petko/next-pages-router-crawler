@@ -8,19 +8,20 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { MOMENT_VIDEO_THUMBNAIL_SIZE_PX } from '../constants/momentsVideoMediaConstants';
 import { useMomentVideoMedia } from '../hooks/useMomentVideoMedia';
 import type { MomentCreation } from '../types/MomentCreation';
-import type { StoredMomentCreation } from '../types/StoredMomentCreation';
+import { MomentCreationStatus } from '../types/MomentCreation';
 
 const VIDEO_PLAYER_ENVIRONMENT =
   process.env.targetEnvironment === 'production' ? 'production' : 'sitetest1';
 
 type MomentVideoThumbnailProps = {
-  moment: MomentCreation | StoredMomentCreation;
+  moment: MomentCreation;
 };
 
 const MomentVideoThumbnail: FC<MomentVideoThumbnailProps> = ({ moment }) => {
   const { translate } = useTranslation();
-  const hasLocalVideo = 'hasLocalVideo' in moment && moment.hasLocalVideo === true;
-  const mediaUrls = useMomentVideoMedia(moment.id, {
+  const isDraft = moment.status === MomentCreationStatus.DRAFT;
+  const hasLocalVideo = isDraft && moment.hasLocalVideo === true;
+  const mediaUrls = useMomentVideoMedia(isDraft ? moment.draftId : null, {
     enabled: hasLocalVideo,
     thumbnailUrl: moment.thumbnailUrl,
     videoUrl: moment.videoUrl,

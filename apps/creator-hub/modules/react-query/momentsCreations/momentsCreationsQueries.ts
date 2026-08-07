@@ -6,24 +6,40 @@ import { useAuthentication } from '@modules/authentication/providers';
 import momentsCreationsClient from '@modules/creations/home/clients/momentsCreationsClient';
 import { deleteMoment as deleteMomentRequest } from '@modules/creations/home/clients/momentsDeleteClient';
 import { publishMoment as publishMomentRequest } from '@modules/creations/home/clients/momentsPublishClient';
+import useMomentsFeedIdEnabled from '@modules/creations/home/hooks/useMomentsFeedIdEnabled';
 import useMomentsUploadLanguageSelectEnabled from '@modules/creations/home/hooks/useMomentsUploadLanguageSelectEnabled';
 import type {
+  DraftMomentCreation,
   ListMomentsPageParams,
   ListMomentsPageResponse,
+  ServerMomentCreation,
 } from '@modules/creations/home/types/MomentCreation';
-import type { StoredMomentCreation } from '@modules/creations/home/types/StoredMomentCreation';
+import { getMomentRowKey } from '@modules/creations/home/utils/momentsIdentityUtils';
 import { getMomentVideoFile } from '@modules/creations/home/utils/momentsVideoMediaStorage';
 
-export const getMomentsCreationsQueryKey = (userId?: number) =>
+/** Invalidate with this prefix to match both `useFeedItemId` variants, not just one. */
+export const getMomentsCreationsQueryKeyPrefix = (userId?: number) =>
   ['momentsCreations', userId] as const;
+
+/**
+ * `useFeedItemId` is part of the key on purpose.
+ *
+ * It is a per-user runtime flag that resolves after first paint, so without it a cache populated on
+ * the legacy moment-id path could be read by feed-id-mode code (and vice versa) — the two modes drop
+ * different rows and delete through different endpoints. Including it makes a mid-session flip
+ * refetch instead of reusing the other mode's data.
+ */
+export const getMomentsCreationsQueryKey = (userId?: number, useFeedItemId = false) =>
+  [...getMomentsCreationsQueryKeyPrefix(userId), useFeedItemId] as const;
 
 export function removeMomentFromMomentsCreationsCache(
   queryClient: QueryClient,
   userId: number,
-  momentId: string,
+  momentKey: string,
+  useFeedItemId = false,
 ): void {
   queryClient.setQueryData<InfiniteData<ListMomentsPageResponse>>(
-    getMomentsCreationsQueryKey(userId),
+    getMomentsCreationsQueryKey(userId, useFeedItemId),
     (previous) => {
       if (!previous?.pages.length) {
         return previous;
@@ -33,9 +49,7 @@ export function removeMomentFromMomentsCreationsCache(
         ...previous,
         pages: previous.pages.map((page) => ({
           ...page,
-          moments: page.moments.filter((moment) => moment.id !== momentId),
-          moderatedMomentIds: page.moderatedMomentIds.filter((id) => id !== momentId),
-          failedMomentIds: page.failedMomentIds.filter((id) => id !== momentId),
+          moments: page.moments.filter((moment) => getMomentRowKey(moment) !== momentKey),
         })),
       };
     },
@@ -45,12 +59,14 @@ export function removeMomentFromMomentsCreationsCache(
 export function useMomentsCreations() {
   const { user } = useAuthentication();
   const userId = user?.id;
+  const useFeedItemId = useMomentsFeedIdEnabled();
 
   return useInfiniteQuery({
-    queryKey: getMomentsCreationsQueryKey(userId),
+    queryKey: getMomentsCreationsQueryKey(userId, useFeedItemId),
     queryFn:
       userId != null
-        ? ({ pageParam }) => momentsCreationsClient.listMomentsPage(userId, pageParam)
+        ? ({ pageParam }) =>
+            momentsCreationsClient.listMomentsPage(userId, pageParam, useFeedItemId)
         : skipToken,
     initialPageParam: { pageNumber: 1 } satisfies ListMomentsPageParams,
     getNextPageParam: (lastPage, allPages) =>
@@ -65,34 +81,48 @@ export function useMomentsCreations() {
 }
 
 type DeleteMomentVariables = {
-  momentId: string;
+  moment: ServerMomentCreation;
 };
 
 export function useMomentsDelete() {
   const { user } = useAuthentication();
   const queryClient = useQueryClient();
   const userId = user?.id;
+  const useFeedItemId = useMomentsFeedIdEnabled();
 
   const { mutateAsync, isPending, variables } = useMutation({
-    mutationFn: ({ momentId }: DeleteMomentVariables) => deleteMomentRequest({ momentId }),
-    onSuccess: (_, { momentId }) => {
+    mutationFn: ({ moment }: DeleteMomentVariables) =>
+      deleteMomentRequest({
+        momentId: moment.momentId,
+        feedItemId: moment.feedItemId,
+        useFeedItemId,
+      }),
+    onSuccess: (_, { moment }) => {
       if (userId != null) {
-        removeMomentFromMomentsCreationsCache(queryClient, userId, momentId);
+        removeMomentFromMomentsCreationsCache(
+          queryClient,
+          userId,
+          getMomentRowKey(moment),
+          useFeedItemId,
+        );
       }
     },
   });
 
-  const deleteMoment = useCallback((momentId: string) => mutateAsync({ momentId }), [mutateAsync]);
+  const deleteMoment = useCallback(
+    (moment: ServerMomentCreation) => mutateAsync({ moment }),
+    [mutateAsync],
+  );
 
   return {
     deleteMoment,
-    deletingMomentId: isPending ? (variables?.momentId ?? null) : null,
+    deletingMomentKey: isPending && variables != null ? getMomentRowKey(variables.moment) : null,
     isDeleting: isPending,
   };
 }
 
 type PublishMomentVariables = {
-  moment: StoredMomentCreation;
+  moment: DraftMomentCreation;
 };
 
 export function useMomentsPublish() {
@@ -108,7 +138,7 @@ export function useMomentsPublish() {
         throw new Error('Authenticated user is required to publish a moment');
       }
 
-      const file = await getMomentVideoFile(userId, moment.id);
+      const file = await getMomentVideoFile(userId, moment.draftId);
       if (!file) {
         throw new Error('Local moment video is required before publishing');
       }
@@ -129,13 +159,13 @@ export function useMomentsPublish() {
   });
 
   const publishMoment = useCallback(
-    (moment: StoredMomentCreation) => mutateAsync({ moment }),
+    (moment: DraftMomentCreation) => mutateAsync({ moment }),
     [mutateAsync],
   );
 
   return {
     publishMoment,
-    publishingMomentId: isPending ? (variables?.moment.id ?? null) : null,
+    publishingDraftId: isPending ? (variables?.moment.draftId ?? null) : null,
     isPublishing: isPending,
   };
 }

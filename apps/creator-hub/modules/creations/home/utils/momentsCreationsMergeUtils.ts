@@ -1,55 +1,44 @@
-import type { MomentCreation } from '../types/MomentCreation';
-import { MomentCreationStatus } from '../types/MomentCreation';
-import type { StoredMomentCreation } from '../types/StoredMomentCreation';
+import type {
+  MomentCreation,
+  MomentCreationBase,
+  ServerMomentCreation,
+} from '../types/MomentCreation';
+import { getMomentRowKey } from './momentsIdentityUtils';
 
-/** Merges server moments with local drafts that are not yet on the server. */
-export function mergeMoments(
-  serverMoments: MomentCreation[],
-  localMoments: StoredMomentCreation[],
-): MomentCreation[] {
-  const serverIds = new Set(serverMoments.map((moment) => moment.id));
-  const localOnlyMoments = localMoments.filter((moment) => !serverIds.has(moment.id));
+/**
+ * In-session edits to a server-backed moment, applied on top of the fetched list until the next
+ * refetch.
+ *
+ * Restricted to base fields plus `modifiedAt`: `Partial<MomentCreation>` distributes badly over the
+ * union, and draft-only keys such as `draftId` or `experienceId` must never be applied to a server
+ * moment.
+ */
+export type MomentMetadataOverride = Partial<
+  Pick<MomentCreationBase, 'description' | 'experienceName' | 'locale'>
+> & { modifiedAt?: string };
 
-  return [...serverMoments, ...localOnlyMoments];
-}
-
-/** Returns local moment ids that are now represented on the server (any status). */
-export function getSupersededLocalMomentIds(
-  serverMoments: readonly MomentCreation[],
-  localMoments: readonly StoredMomentCreation[],
-): string[] {
-  const serverIds = new Set(serverMoments.map((moment) => moment.id));
-
-  return localMoments.filter((moment) => serverIds.has(moment.id)).map((moment) => moment.id);
-}
-
-/** Flattens paginated server responses and applies moderated status across all loaded pages. */
+/** Flattens paginated server responses, keeping the last-seen copy of each moment. */
 export function flattenServerMomentsFromPages(
-  pages: readonly { moments: MomentCreation[]; moderatedMomentIds: readonly string[] }[],
-): MomentCreation[] {
-  const moderatedMomentIds = new Set(pages.flatMap((page) => page.moderatedMomentIds));
-  const momentsById = new Map<string, MomentCreation>();
+  pages: readonly { moments: ServerMomentCreation[] }[],
+): ServerMomentCreation[] {
+  const momentsByKey = new Map<string, ServerMomentCreation>();
 
   for (const page of pages) {
     for (const moment of page.moments) {
-      momentsById.set(moment.id, moment);
+      momentsByKey.set(getMomentRowKey(moment), moment);
     }
   }
 
-  return [...momentsById.values()].map((moment) =>
-    moderatedMomentIds.has(moment.id)
-      ? { ...moment, status: MomentCreationStatus.MODERATED }
-      : moment,
-  );
+  return [...momentsByKey.values()];
 }
 
-/** Applies in-memory metadata overrides for server-backed moments. */
+/** Applies in-memory metadata overrides, keyed by `getMomentRowKey`. */
 export function applyMomentMetadataOverrides(
   moments: MomentCreation[],
-  overrides: Record<string, Partial<MomentCreation>>,
+  overrides: Record<string, MomentMetadataOverride>,
 ): MomentCreation[] {
   return moments.map((moment) => {
-    const override = overrides[moment.id];
+    const override = overrides[getMomentRowKey(moment)];
     return override ? { ...moment, ...override } : moment;
   });
 }

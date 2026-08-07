@@ -660,6 +660,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: creatorCreationsFlags.isMomentsFeedIdEnabled,
+      metadata: {
+        namespace: 'creator-creations',
+        name: 'isMomentsFeedIdEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: creatorGameopsFlags.enablePlayerSupport,
       metadata: {
         namespace: 'creator-gameops',

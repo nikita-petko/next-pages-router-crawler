@@ -41,7 +41,8 @@ function DeveloperProductsPageContent({ universeId }: { universeId: number }) {
   const managedPricingOnboardingStatus = managedPricingStatus?.status;
   const hasRegionalPricingSource = managedPricingStatus?.sources?.includes('RegionalPricing');
 
-  const { isProductArchiveEnabled } = useMonetizationFlags('isProductArchiveEnabled');
+  const { isProductArchiveEnabled, ready: isArchiveFlagReady } =
+    useMonetizationFlags('isProductArchiveEnabled');
 
   const owner = useOwner();
   const transactionPageUrl = useMemo(() => getTransactionPageUrl(owner), [owner]);
@@ -55,8 +56,8 @@ function DeveloperProductsPageContent({ universeId }: { universeId: number }) {
           universeId={universeId}
           managedPricingOnboardingStatus={managedPricingOnboardingStatus}
           giftingTradingStatus={giftingTradingStatus}
-          // false = show only active products; undefined = feature flag off, no filtering
-          isArchived={isProductArchiveEnabled ? false : undefined}
+          // When enabled the container renders a Current/Archived chip toggle in the toolbar.
+          isArchiveEnabled={!!isProductArchiveEnabled}
         />
       ),
     }),
@@ -83,15 +84,6 @@ function DeveloperProductsPageContent({ universeId }: { universeId: number }) {
     [itemMonetizationPageConfig, translate],
   );
 
-  const archivedTab = useMemo<TabConfig<ItemMonetizationTabs>>(
-    () => ({
-      key: ItemMonetizationTabs.Archived,
-      label: translate(translationKey('Heading.Archived', TranslationNamespace.Navigation)),
-      content: <DeveloperProductsTableContainer universeId={universeId} isArchived />,
-    }),
-    [translate, universeId],
-  );
-
   const orderedTabs = useMemo(() => {
     const tabs: TabConfig<ItemMonetizationTabs>[] = [];
     if (permissions?.monetizeExperience) {
@@ -100,23 +92,14 @@ function DeveloperProductsPageContent({ universeId }: { universeId: number }) {
     if (userCanViewAnalyticsForUniverse) {
       tabs.push(analyticsTab);
     }
-    if (isProductArchiveEnabled && permissions?.monetizeExperience) {
-      tabs.push(archivedTab);
-    }
     return tabs;
-  }, [
-    permissions,
-    userCanViewAnalyticsForUniverse,
-    isProductArchiveEnabled,
-    creationsTab,
-    analyticsTab,
-    archivedTab,
-  ]);
+  }, [permissions, userCanViewAnalyticsForUniverse, creationsTab, analyticsTab]);
 
   if (
     isPendingAnalyticsExperiencePermissions ||
     isLoadingPermissions ||
-    isLoadingManagedPricingStatus
+    isLoadingManagedPricingStatus ||
+    !isArchiveFlagReady
   ) {
     return <ProgressCircleLoader />;
   }

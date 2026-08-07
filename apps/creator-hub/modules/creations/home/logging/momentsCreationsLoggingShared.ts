@@ -12,7 +12,12 @@ export enum MomentsCreationsOperation {
 }
 
 export type MomentsCreationsContext = {
+  /** Server datastore moment id (`items[].id`). Absent for local drafts. */
   momentId?: string;
+  /** Server feed item id (`items[].feedItemId`). Absent for local drafts. */
+  feedItemId?: string;
+  /** Client-generated UUID for a local draft. Absent for server-backed moments. */
+  draftId?: string;
   experienceId?: number;
   placeId?: number;
   fileCount?: number;
@@ -42,6 +47,14 @@ export const appendMomentsCreationsContextParameters = (
 ): Record<string, string> => {
   if (context.momentId != null) {
     parameters.momentId = context.momentId;
+  }
+
+  if (context.feedItemId != null) {
+    parameters.feedItemId = context.feedItemId;
+  }
+
+  if (context.draftId != null) {
+    parameters.draftId = context.draftId;
   }
 
   if (context.experienceId != null) {

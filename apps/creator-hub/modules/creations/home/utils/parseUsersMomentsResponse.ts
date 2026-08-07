@@ -2,11 +2,14 @@ import type {
   ContentCapturesApiModelsResponseGetUsersMomentsResponse as GetUsersMomentsResponse,
   ContentCapturesApiModelsResponseMomentItem as MomentItem,
 } from '@rbx/client-content-captures-api/v1';
-import type { MomentCreation } from '../types/MomentCreation';
+import type { ServerMomentCreation } from '../types/MomentCreation';
 import { MomentCreationStatus } from '../types/MomentCreation';
 import { parseVideoContentLanguage } from './momentsUploadLocaleUtils';
 
-const MOMENT_TYPE_STATUS_MAP: Record<string, MomentCreationStatus> = {
+/** Server moments are never drafts: `DRAFT` is a local-only status. */
+type ServerMomentCreationStatus = ServerMomentCreation['status'];
+
+const MOMENT_TYPE_STATUS_MAP: Record<string, ServerMomentCreationStatus> = {
   active: MomentCreationStatus.ACTIVE,
   captionedassetmoment: MomentCreationStatus.ACTIVE,
   live: MomentCreationStatus.ACTIVE,
@@ -19,14 +22,8 @@ const UNKNOWN_MODIFIED_AT = new Date(0).toISOString();
 
 /** Maps a content-captures moment type string to a table filter status. Draft is local-only. */
 export const parseMomentCreationStatus = (
-  momentId: string,
   momentType: string | null | undefined,
-  moderatedMomentIds: readonly string[],
-): MomentCreationStatus => {
-  if (moderatedMomentIds.includes(momentId)) {
-    return MomentCreationStatus.MODERATED;
-  }
-
+): ServerMomentCreationStatus => {
   if (!momentType) {
     return MomentCreationStatus.ACTIVE;
   }
@@ -51,12 +48,21 @@ export const parseMomentCreationStatus = (
   return MomentCreationStatus.ACTIVE;
 };
 
+/**
+ * Captures both raw identifiers so analytics can report either without consulting the flag, and
+ * returns null when the identifier `useFeedItemId` selects is absent.
+ *
+ * Dropping a row is the deliberate choice over rendering one that cannot be deleted: without its
+ * delete key the row's action would fail.
+ */
 export const parseMomentItemToCreation = (
   item: MomentItem,
-  moderatedMomentIds: readonly string[],
-): MomentCreation | null => {
-  const momentId = item.id;
-  if (!momentId) {
+  useFeedItemId = false,
+): ServerMomentCreation | null => {
+  const momentId = item.id ?? undefined;
+  const feedItemId = item.feedItemId ?? undefined;
+  const requiredId = useFeedItemId ? feedItemId : momentId;
+  if (requiredId == null || requiredId === '') {
     return null;
   }
 
@@ -70,21 +76,27 @@ export const parseMomentItemToCreation = (
   const locale = parseVideoContentLanguage(captionedAssetMoment?.videoContentLanguage);
 
   return {
-    id: momentId,
+    momentId,
+    feedItemId,
     assetId: captionedAssetMoment?.assetId,
     description: captionedAssetMoment?.caption ?? '',
     experienceName: '',
     modifiedAt: UNKNOWN_MODIFIED_AT,
-    status: parseMomentCreationStatus(momentId, item.type, moderatedMomentIds),
+    status: parseMomentCreationStatus(item.type),
     universeId,
     ...(locale != null ? { locale } : {}),
   };
 };
 
-export const parseUsersMomentsResponse = (response: GetUsersMomentsResponse): MomentCreation[] => {
-  const moderatedMomentIds = response.moderatedMomentIds ?? [];
-
-  return (response.items ?? [])
-    .map((item) => parseMomentItemToCreation(item, moderatedMomentIds))
-    .filter((moment): moment is MomentCreation => moment != null);
-};
+/**
+ * `response.moderatedMomentIds` and `response.failedMomentIds` are deliberately ignored: a moment
+ * listed there is never also present in `items`, so cross-referencing them could never match.
+ * Moderated moments still reach the table through `item.type` -> `MOMENT_TYPE_STATUS_MAP`.
+ */
+export const parseUsersMomentsResponse = (
+  response: GetUsersMomentsResponse,
+  useFeedItemId = false,
+): ServerMomentCreation[] =>
+  (response.items ?? [])
+    .map((item) => parseMomentItemToCreation(item, useFeedItemId))
+    .filter((moment): moment is ServerMomentCreation => moment != null);

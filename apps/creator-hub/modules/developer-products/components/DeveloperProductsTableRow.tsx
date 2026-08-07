@@ -28,7 +28,7 @@ type Props = DeveloperProductConfig & {
   universeId: number;
   showManagedPricing?: boolean;
   showPriceOptimization?: boolean;
-  /** `undefined` = archive feature off; `false` = active tab; `true` = archived tab. */
+  /** `undefined` = archive feature off; `false` = current view; `true` = archived view. */
   showArchived?: boolean;
   onToggleRegionalPricing: (productId: number, enabled: boolean) => void;
   disableToggleRegionalPricing?: boolean;

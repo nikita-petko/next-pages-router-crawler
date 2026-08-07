@@ -30,6 +30,7 @@ import { useMomentsStatusFilter } from '../hooks/useMomentsStatusFilter';
 import useMomentsUploadLanguageSelectEnabled from '../hooks/useMomentsUploadLanguageSelectEnabled';
 import type { MomentCreation, MomentCreationStatusFilterTab } from '../types/MomentCreation';
 import { MomentCreationStatus } from '../types/MomentCreation';
+import { getMomentRowKey } from '../utils/momentsIdentityUtils';
 import type { MomentMetadataUpdate } from '../utils/momentsLocalDraftStorage';
 import { formatMomentContentLanguage } from '../utils/momentsUploadLocaleUtils';
 import MomentStatusIndicator from './MomentStatusIndicator';
@@ -50,6 +51,7 @@ type MomentDescriptionFieldProps = {
 
 const MomentDescriptionField: FC<MomentDescriptionFieldProps> = ({ moment, disabled, onBlur }) => {
   const { translate } = useTranslation();
+  const momentKey = getMomentRowKey(moment);
   const [description, setDescription] = useState(moment.description);
   const isDescriptionAtMaxLength = description.length >= MAX_MOMENT_DESCRIPTION_LENGTH;
 
@@ -67,7 +69,7 @@ const MomentDescriptionField: FC<MomentDescriptionFieldProps> = ({ moment, disab
   return (
     <div className='flex flex-col gap-y-xsmall width-full'>
       <TextInput
-        id={`moment-description-${moment.id}`}
+        id={`moment-description-${momentKey}`}
         label={translate('MomentsTable.Header.Description' /* TranslationNamespace.Creations */)}
         value={description}
         isDisabled={disabled}
@@ -86,7 +88,7 @@ const MomentDescriptionField: FC<MomentDescriptionFieldProps> = ({ moment, disab
             ? 'text-body-small content-system-alert text-align-x-right'
             : 'text-body-small content-muted text-align-x-right'
         }
-        data-testid={`moment-description-char-count-${moment.id}`}>
+        data-testid={`moment-description-char-count-${momentKey}`}>
         {`${description.length}/${MAX_MOMENT_DESCRIPTION_LENGTH}`}
       </span>
     </div>
@@ -96,19 +98,19 @@ const MomentDescriptionField: FC<MomentDescriptionFieldProps> = ({ moment, disab
 type MomentTableRowProps = {
   moment: MomentCreation;
   editLabel: string;
-  publishingMomentId: string | null;
+  publishingDraftId: string | null;
   isPublishDisabled: boolean;
   showContentLanguageColumn: boolean;
   statusLabel: string;
   onEditMoment: (moment: MomentCreation) => void;
   onDescriptionBlur: (moment: MomentCreation, event: FocusEvent<HTMLInputElement>) => void;
-  onPublishMoment?: (momentId: string) => void;
+  onPublishMoment?: (draftId: string) => void;
 };
 
 const MomentTableRow: FC<MomentTableRowProps> = ({
   moment,
   editLabel,
-  publishingMomentId,
+  publishingDraftId,
   isPublishDisabled,
   showContentLanguageColumn,
   statusLabel,
@@ -117,28 +119,34 @@ const MomentTableRow: FC<MomentTableRowProps> = ({
   onPublishMoment,
 }) => {
   const { translate } = useTranslation();
-  const isPublishing = publishingMomentId === moment.id;
+  const momentKey = getMomentRowKey(moment);
+  const isDraft = moment.status === MomentCreationStatus.DRAFT;
+  const isPublishing = publishingDraftId != null && publishingDraftId === momentKey;
 
   const handleEdit = useCallback(() => {
     onEditMoment(moment);
   }, [moment, onEditMoment]);
 
   const handlePublish = useCallback(() => {
-    onPublishMoment?.(moment.id);
-  }, [moment.id, onPublishMoment]);
+    if (moment.status !== MomentCreationStatus.DRAFT) {
+      return;
+    }
+
+    onPublishMoment?.(moment.draftId);
+  }, [moment, onPublishMoment]);
 
   return (
-    <TableRow isHoverable data-testid={`moment-row-${moment.id}`}>
+    <TableRow isHoverable data-testid={`moment-row-${momentKey}`}>
       <TableCell>
         <MomentVideoThumbnail moment={moment} />
       </TableCell>
       <TableCell>{moment.experienceName}</TableCell>
       <TableCell>
         {moment.status === MomentCreationStatus.ACTIVE ? (
-          <span data-testid={`moment-description-${moment.id}`}>{moment.description || '-'}</span>
+          <span data-testid={`moment-description-${momentKey}`}>{moment.description || '-'}</span>
         ) : (
           <MomentDescriptionField
-            key={`moment-description-${moment.id}-${moment.modifiedAt}`}
+            key={`moment-description-${momentKey}-${moment.modifiedAt}`}
             moment={moment}
             disabled={isPublishing}
             onBlur={onDescriptionBlur}
@@ -147,7 +155,7 @@ const MomentTableRow: FC<MomentTableRowProps> = ({
       </TableCell>
       {showContentLanguageColumn ? (
         <TableCell>
-          <span data-testid={`moment-content-language-${moment.id}`}>
+          <span data-testid={`moment-content-language-${momentKey}`}>
             {formatMomentContentLanguage(moment.locale)}
           </span>
         </TableCell>
@@ -169,15 +177,12 @@ const MomentTableRow: FC<MomentTableRowProps> = ({
               />
             </TooltipTrigger>
           </Tooltip>
-          {moment.status === MomentCreationStatus.DRAFT &&
-          'hasLocalVideo' in moment &&
-          moment.hasLocalVideo === true &&
-          onPublishMoment ? (
+          {isDraft && moment.hasLocalVideo === true && onPublishMoment ? (
             <Button
               size='Small'
               type='button'
               variant='Standard'
-              isDisabled={isPublishDisabled || publishingMomentId != null}
+              isDisabled={isPublishDisabled || publishingDraftId != null}
               onClick={handlePublish}>
               {translate('Action.Publish' /* TranslationNamespace.Creations */)}
             </Button>
@@ -191,9 +196,9 @@ const MomentTableRow: FC<MomentTableRowProps> = ({
 type MomentsCreationsTableProps = {
   moments: MomentCreation[];
   onEditMoment: (moment: MomentCreation) => void;
-  onMomentMetadataChange: (momentId: string, updates: MomentMetadataUpdate) => void;
-  onPublishMoment?: (momentId: string) => void;
-  publishingMomentId?: string | null;
+  onMomentMetadataChange: (moment: MomentCreation, updates: MomentMetadataUpdate) => void;
+  onPublishMoment?: (draftId: string) => void;
+  publishingDraftId?: string | null;
   isPublishDisabled?: boolean;
   hasNextPage?: boolean;
   fetchNextPage?: () => void;
@@ -205,7 +210,7 @@ const MomentsCreationsTable: FC<MomentsCreationsTableProps> = ({
   onEditMoment,
   onMomentMetadataChange,
   onPublishMoment,
-  publishingMomentId = null,
+  publishingDraftId = null,
   isPublishDisabled = false,
   hasNextPage = false,
   fetchNextPage,
@@ -273,7 +278,7 @@ const MomentsCreationsTable: FC<MomentsCreationsTableProps> = ({
         return;
       }
 
-      onMomentMetadataChange(moment.id, { description });
+      onMomentMetadataChange(moment, { description });
     },
     [onMomentMetadataChange],
   );
@@ -341,10 +346,10 @@ const MomentsCreationsTable: FC<MomentsCreationsTableProps> = ({
               ) : (
                 paginatedMoments.map((moment) => (
                   <MomentTableRow
-                    key={moment.id}
+                    key={getMomentRowKey(moment)}
                     moment={moment}
                     editLabel={editLabel}
-                    publishingMomentId={publishingMomentId}
+                    publishingDraftId={publishingDraftId}
                     isPublishDisabled={isPublishDisabled}
                     showContentLanguageColumn={showContentLanguageColumn}
                     statusLabel={getStatusLabel(moment.status)}

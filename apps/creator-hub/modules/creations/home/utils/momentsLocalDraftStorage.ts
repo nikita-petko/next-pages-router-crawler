@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react';
+import { Locale } from '@rbx/intl';
 import { useLocalStorage } from '@rbx/react-utilities';
 import { useAuthentication } from '@modules/authentication/providers';
 import {
@@ -8,10 +9,8 @@ import {
   MOMENTS_LOCAL_STORAGE_VERSION,
   LEGACY_MOMENTS_LOCAL_STORAGE_KEY,
 } from '../constants/momentsLocalDraftConstants';
-import type { MomentCreation } from '../types/MomentCreation';
+import type { DraftMomentCreation } from '../types/MomentCreation';
 import { MomentCreationStatus } from '../types/MomentCreation';
-import type { StoredMomentCreation } from '../types/StoredMomentCreation';
-import { getSupersededLocalMomentIds } from './momentsCreationsMergeUtils';
 import {
   applyLocalDraftStoragePolicy,
   markMomentsLocalVideoRemoved,
@@ -24,7 +23,7 @@ import {
 
 export type MomentsLocalStoragePayload = {
   version: string;
-  moments: StoredMomentCreation[];
+  moments: DraftMomentCreation[];
 };
 
 export const EMPTY_MOMENTS_LOCAL_STORAGE_PAYLOAD: MomentsLocalStoragePayload = {
@@ -35,22 +34,92 @@ export const EMPTY_MOMENTS_LOCAL_STORAGE_PAYLOAD: MomentsLocalStoragePayload = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const isMomentsLocalStoragePayload = (value: unknown): value is MomentsLocalStoragePayload =>
+const isVersionedPayload = (
+  value: unknown,
+): value is { version: string; moments: readonly unknown[] } =>
   isRecord(value) &&
   value.version === MOMENTS_LOCAL_STORAGE_VERSION &&
   Array.isArray(value.moments);
 
-/** Validates a parsed localStorage payload and returns its moments, or an empty list. */
-export const parseMomentsLocalStoragePayload = (value: unknown): StoredMomentCreation[] => {
-  if (!isMomentsLocalStoragePayload(value)) {
-    return [];
+/**
+ * Returns the stored records without validating them.
+ *
+ * Callers that need typed drafts should use `parseMomentsLocalStoragePayload`. This exists for the
+ * non-draft purge, which has to see records the normalizer rejects in order to clean them up.
+ */
+export const readRawMomentsLocalStorageRecords = (value: unknown): readonly unknown[] =>
+  isVersionedPayload(value) ? value.moments : [];
+
+const asOptionalString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
+
+const asOptionalNumber = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+const LOCALE_VALUES = new Set<string>(Object.values(Locale));
+
+const isLocale = (value: unknown): value is Locale =>
+  typeof value === 'string' && LOCALE_VALUES.has(value);
+
+const asOptionalLocale = (value: unknown): Locale | undefined =>
+  isLocale(value) ? value : undefined;
+
+/**
+ * Validates one stored record, tolerating the pre-`draftId` shape.
+ *
+ * Records written before the feed-id migration stored the local UUID as `id`, so `draftId ?? id`
+ * keeps them readable — and because the value is inherited verbatim, each draft's IndexedDB video
+ * blob (keyed by that same UUID) stays reachable.
+ *
+ * Only `draftId` and a `draft` status are required. Secondary fields fall back to defaults rather
+ * than rejecting the record, because losing a creator's draft is worse than rendering it with an
+ * empty experience name; a draft that lost its `experienceId` still recovers through the edit
+ * drawer's experience picker. Non-draft records are rejected so they cannot violate the union's
+ * `status` discriminant, and the purge effect deletes them from storage.
+ */
+const normalizeStoredDraft = (value: unknown): DraftMomentCreation | null => {
+  if (!isRecord(value)) {
+    return null;
   }
 
-  return value.moments;
+  const draftId = asOptionalString(value.draftId) ?? asOptionalString(value.id);
+  if (draftId == null || draftId === '') {
+    return null;
+  }
+
+  if (value.status !== MomentCreationStatus.DRAFT) {
+    return null;
+  }
+
+  return {
+    draftId,
+    status: MomentCreationStatus.DRAFT,
+    experienceId: asOptionalNumber(value.experienceId) ?? 0,
+    rootPlaceId: asOptionalNumber(value.rootPlaceId),
+    experienceName: asOptionalString(value.experienceName) ?? '',
+    description: asOptionalString(value.description) ?? '',
+    modifiedAt: asOptionalString(value.modifiedAt) ?? new Date(0).toISOString(),
+    assetId: asOptionalNumber(value.assetId),
+    thumbnailUrl: asOptionalString(value.thumbnailUrl),
+    videoUrl: asOptionalString(value.videoUrl),
+    universeId: asOptionalNumber(value.universeId),
+    locale: asOptionalLocale(value.locale),
+    ...(typeof value.hasLocalVideo === 'boolean' ? { hasLocalVideo: value.hasLocalVideo } : {}),
+  };
 };
 
-/** Parses a raw localStorage string into validated moments. */
-export const parseMomentsLocalStorageRaw = (raw: string | null): StoredMomentCreation[] => {
+/**
+ * Validates a parsed localStorage payload and returns its drafts.
+ *
+ * Normalizes per record, so one corrupt entry no longer discards the whole list.
+ */
+export const parseMomentsLocalStoragePayload = (value: unknown): DraftMomentCreation[] =>
+  readRawMomentsLocalStorageRecords(value)
+    .map((record) => normalizeStoredDraft(record))
+    .filter((moment): moment is DraftMomentCreation => moment != null);
+
+/** Parses a raw localStorage string into validated drafts. */
+export const parseMomentsLocalStorageRaw = (raw: string | null): DraftMomentCreation[] => {
   if (!raw) {
     return [];
   }
@@ -64,65 +133,77 @@ export const parseMomentsLocalStorageRaw = (raw: string | null): StoredMomentCre
 };
 
 export const createMomentsLocalStoragePayload = (
-  moments: StoredMomentCreation[],
+  moments: DraftMomentCreation[],
 ): MomentsLocalStoragePayload => ({
   version: MOMENTS_LOCAL_STORAGE_VERSION,
   moments,
 });
 
 export type AddMomentResult = {
-  moments: StoredMomentCreation[];
-  evictedMediaMomentIds: string[];
+  moments: DraftMomentCreation[];
+  evictedMediaDraftIds: string[];
 };
 
 /** Prepends draft moments and sorts newest-first. */
 export const addMomentsToMoments = (
-  moments: StoredMomentCreation[],
-  newMoments: readonly StoredMomentCreation[],
+  moments: DraftMomentCreation[],
+  newMoments: readonly DraftMomentCreation[],
 ): AddMomentResult => {
-  const existingDrafts = moments.filter(
-    (storedMoment) => storedMoment.status === MomentCreationStatus.DRAFT,
-  );
+  // Forcing `status` on write is what lets `status` discriminate the `MomentCreation` union:
+  // a record in local storage can only ever be a draft.
   const incomingDrafts = newMoments.map((moment) => ({
     ...moment,
     status: MomentCreationStatus.DRAFT,
     hasLocalVideo: moment.hasLocalVideo ?? true,
   }));
 
-  return applyLocalDraftStoragePolicy([...incomingDrafts, ...existingDrafts]);
+  return applyLocalDraftStoragePolicy([...incomingDrafts, ...moments]);
 };
 
 /** Prepends one draft moment and sorts newest-first. */
 export const addMomentToMoments = (
-  moments: StoredMomentCreation[],
-  moment: StoredMomentCreation,
+  moments: DraftMomentCreation[],
+  moment: DraftMomentCreation,
 ): AddMomentResult => addMomentsToMoments(moments, [moment]);
 
 export { applyLocalDraftStoragePolicy, markMomentsLocalVideoRemoved };
 
-export const getNonDraftMomentIds = (moments: StoredMomentCreation[]): string[] =>
-  moments
-    .filter((moment) => moment.status !== MomentCreationStatus.DRAFT)
-    .map((moment) => moment.id);
+/**
+ * Returns the ids of stored records that are not drafts, reading raw records so it can still see
+ * legacy non-draft entries that `normalizeStoredDraft` filters out.
+ */
+export const getNonDraftStoredIds = (records: readonly unknown[]): string[] =>
+  records
+    .filter((record) => isRecord(record) && record.status !== MomentCreationStatus.DRAFT)
+    .map((record) =>
+      isRecord(record)
+        ? (asOptionalString(record.draftId) ?? asOptionalString(record.id) ?? '')
+        : '',
+    )
+    .filter((draftId) => draftId !== '');
 
+/**
+ * `status` is deliberately absent: mutating it would produce a structurally invalid record under the
+ * union, and no call site ever passed it.
+ */
 export type MomentMetadataUpdate = Partial<
   Pick<
-    StoredMomentCreation,
-    'description' | 'status' | 'experienceName' | 'experienceId' | 'rootPlaceId' | 'locale'
+    DraftMomentCreation,
+    'description' | 'experienceName' | 'experienceId' | 'rootPlaceId' | 'locale'
   >
 >;
 
-/** Removes multiple locally stored Moments by id. */
+/** Removes multiple locally stored drafts by draft id. */
 export const removeMomentsFromMoments = (
-  moments: StoredMomentCreation[],
-  momentIds: readonly string[],
-): StoredMomentCreation[] | null => {
-  const idsToRemove = new Set(momentIds);
+  moments: DraftMomentCreation[],
+  draftIds: readonly string[],
+): DraftMomentCreation[] | null => {
+  const idsToRemove = new Set(draftIds);
   if (idsToRemove.size === 0) {
     return null;
   }
 
-  const updatedMoments = moments.filter((moment) => !idsToRemove.has(moment.id));
+  const updatedMoments = moments.filter((moment) => !idsToRemove.has(moment.draftId));
   if (updatedMoments.length === moments.length) {
     return null;
   }
@@ -130,26 +211,26 @@ export const removeMomentsFromMoments = (
   return updatedMoments;
 };
 
-/** Removes one locally stored Moment by id. */
+/** Removes one locally stored draft by draft id. */
 export const removeMomentFromMoments = (
-  moments: StoredMomentCreation[],
-  momentId: string,
-): StoredMomentCreation[] | null => {
-  const index = moments.findIndex((moment) => moment.id === momentId);
+  moments: DraftMomentCreation[],
+  draftId: string,
+): DraftMomentCreation[] | null => {
+  const index = moments.findIndex((moment) => moment.draftId === draftId);
   if (index === -1) {
     return null;
   }
 
-  return moments.filter((moment) => moment.id !== momentId);
+  return moments.filter((moment) => moment.draftId !== draftId);
 };
 
-/** Updates metadata for one locally stored Moment and refreshes `modifiedAt`. */
+/** Updates metadata for one locally stored draft and refreshes `modifiedAt`. */
 export const updateMomentInMoments = (
-  moments: StoredMomentCreation[],
-  momentId: string,
+  moments: DraftMomentCreation[],
+  draftId: string,
   updates: MomentMetadataUpdate,
-): StoredMomentCreation[] | null => {
-  const index = moments.findIndex((moment) => moment.id === momentId);
+): DraftMomentCreation[] | null => {
+  const index = moments.findIndex((moment) => moment.draftId === draftId);
   if (index === -1) {
     return null;
   }
@@ -241,9 +322,7 @@ export const useMomentsLocalMoments = () => {
       return [];
     }
 
-    return parseMomentsLocalStoragePayload(payload).filter(
-      (moment) => moment.status === MomentCreationStatus.DRAFT,
-    );
+    return parseMomentsLocalStoragePayload(payload);
   }, [isStorageEnabled, payload]);
 
   useEffect(() => {
@@ -251,68 +330,63 @@ export const useMomentsLocalMoments = () => {
       return;
     }
 
-    const storedMoments = parseMomentsLocalStoragePayload(payload);
-    const removedNonDraftMomentIds = getNonDraftMomentIds(storedMoments);
-
-    if (removedNonDraftMomentIds.length === 0) {
+    const removedNonDraftIds = getNonDraftStoredIds(readRawMomentsLocalStorageRecords(payload));
+    if (removedNonDraftIds.length === 0) {
       return;
     }
 
-    const draftMoments = storedMoments.filter(
-      (moment) => moment.status === MomentCreationStatus.DRAFT,
-    );
-    setPayload(createMomentsLocalStoragePayload(draftMoments));
-    void deleteMomentVideoMedia(userId, removedNonDraftMomentIds);
-  }, [isStorageEnabled, payload, setPayload, userId]);
+    setPayload(createMomentsLocalStoragePayload(moments));
+    void deleteMomentVideoMedia(userId, removedNonDraftIds);
+  }, [isStorageEnabled, moments, payload, setPayload, userId]);
 
   const addMoments = useCallback(
     (
-      newMoments: readonly StoredMomentCreation[],
-      options?: { storageEvictedMediaMomentIds?: readonly string[] },
+      newMoments: readonly DraftMomentCreation[],
+      options?: { storageEvictedMediaDraftIds?: readonly string[] },
     ): AddMomentResult => {
       if (!isStorageEnabled || userId == null || newMoments.length === 0) {
-        return { moments: [], evictedMediaMomentIds: [] };
+        return { moments: [], evictedMediaDraftIds: [] };
       }
 
       const currentMoments = parseMomentsLocalStorageRaw(window.localStorage.getItem(storageKey));
-      const { moments: mergedMoments, evictedMediaMomentIds } = addMomentsToMoments(
+      const { moments: mergedMoments, evictedMediaDraftIds } = addMomentsToMoments(
         currentMoments,
         newMoments,
       );
       const updatedMoments = markMomentsLocalVideoRemoved(
         mergedMoments,
-        options?.storageEvictedMediaMomentIds ?? [],
+        options?.storageEvictedMediaDraftIds ?? [],
       );
-      const allEvictedMediaMomentIds = [
-        ...new Set([...(options?.storageEvictedMediaMomentIds ?? []), ...evictedMediaMomentIds]),
+      const allEvictedMediaDraftIds = [
+        ...new Set([...(options?.storageEvictedMediaDraftIds ?? []), ...evictedMediaDraftIds]),
       ];
 
       setPayload(createMomentsLocalStoragePayload(updatedMoments));
 
-      if (allEvictedMediaMomentIds.length > 0) {
-        void deleteMomentVideoMedia(userId, allEvictedMediaMomentIds);
+      if (allEvictedMediaDraftIds.length > 0) {
+        void deleteMomentVideoMedia(userId, allEvictedMediaDraftIds);
       }
 
-      return { moments: updatedMoments, evictedMediaMomentIds: allEvictedMediaMomentIds };
+      return { moments: updatedMoments, evictedMediaDraftIds: allEvictedMediaDraftIds };
     },
     [isStorageEnabled, setPayload, storageKey, userId],
   );
 
   const addMoment = useCallback(
     (
-      moment: StoredMomentCreation,
-      options?: { storageEvictedMediaMomentIds?: readonly string[] },
+      moment: DraftMomentCreation,
+      options?: { storageEvictedMediaDraftIds?: readonly string[] },
     ): AddMomentResult => addMoments([moment], options),
     [addMoments],
   );
 
   const updateMoment = useCallback(
-    (momentId: string, updates: MomentMetadataUpdate) => {
+    (draftId: string, updates: MomentMetadataUpdate) => {
       if (!isStorageEnabled || userId == null) {
         return null;
       }
 
-      const updatedMoments = updateMomentInMoments(moments, momentId, updates);
+      const updatedMoments = updateMomentInMoments(moments, draftId, updates);
       if (!updatedMoments) {
         return null;
       }
@@ -324,60 +398,44 @@ export const useMomentsLocalMoments = () => {
   );
 
   const removeMoment = useCallback(
-    (momentId: string) => {
+    (draftId: string) => {
       if (!isStorageEnabled || userId == null) {
         return null;
       }
 
-      const updatedMoments = removeMomentFromMoments(moments, momentId);
+      const updatedMoments = removeMomentFromMoments(moments, draftId);
       if (!updatedMoments) {
         return null;
       }
 
       setPayload(createMomentsLocalStoragePayload(updatedMoments));
-      void deleteMomentVideoMedia(userId, [momentId]);
+      void deleteMomentVideoMedia(userId, [draftId]);
       return updatedMoments;
     },
     [isStorageEnabled, moments, setPayload, userId],
   );
 
   const removeMoments = useCallback(
-    (momentIds: readonly string[]) => {
+    (draftIds: readonly string[]) => {
       if (!isStorageEnabled || userId == null) {
         return null;
       }
 
-      const updatedMoments = removeMomentsFromMoments(moments, momentIds);
+      const updatedMoments = removeMomentsFromMoments(moments, draftIds);
       if (!updatedMoments) {
         return null;
       }
 
-      const idsToRemove = new Set(momentIds);
-      const removedMomentIds = moments
-        .filter((moment) => idsToRemove.has(moment.id))
-        .map((moment) => moment.id);
+      const idsToRemove = new Set(draftIds);
+      const removedDraftIds = moments
+        .filter((moment) => idsToRemove.has(moment.draftId))
+        .map((moment) => moment.draftId);
 
       setPayload(createMomentsLocalStoragePayload(updatedMoments));
-      void deleteMomentVideoMedia(userId, removedMomentIds);
+      void deleteMomentVideoMedia(userId, removedDraftIds);
       return updatedMoments;
     },
     [isStorageEnabled, moments, setPayload, userId],
-  );
-
-  const syncWithServerMoments = useCallback(
-    (serverMoments: readonly MomentCreation[]) => {
-      if (!isStorageEnabled || userId == null) {
-        return null;
-      }
-
-      const supersededLocalMomentIds = getSupersededLocalMomentIds(serverMoments, moments);
-      if (supersededLocalMomentIds.length === 0) {
-        return null;
-      }
-
-      return removeMoments(supersededLocalMomentIds);
-    },
-    [isStorageEnabled, moments, removeMoments, userId],
   );
 
   return {
@@ -387,6 +445,5 @@ export const useMomentsLocalMoments = () => {
     updateMoment,
     removeMoment,
     removeMoments,
-    syncWithServerMoments,
   };
 };
