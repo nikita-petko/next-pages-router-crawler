@@ -72,7 +72,7 @@ const useProductUrls = () => {
         groupModeration: `${creatorHubBasePath}dashboard/group/moderation`,
       },
       Store: {
-        home: storeBasePath,
+        home: currentProduct === 'Store' ? '/models' : storeBasePath,
         models: `${storeBasePath}models`,
         // Plugins/Decals use taxonomy browse paths; legacy /plugins and /decals 301 here.
         plugins: `${storeBasePath}category/plugins`,
