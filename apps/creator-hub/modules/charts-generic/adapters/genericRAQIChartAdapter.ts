@@ -2,7 +2,7 @@ import type { RAQIV2MetricGranularity } from '@rbx/creator-hub-analytics-config'
 import type { Locale } from '@rbx/intl';
 import type { FormattedText } from '@modules/analytics-translations/types';
 import type { RAQIBreakdownValue, RAQIMetricValue } from '@modules/clients/analytics';
-import type { ChartSummaryItemSpec } from '../charts/ChartSummaryItem';
+import type { ChartSummaryItemSpec, NumericChartSummaryItemSpec } from '../charts/ChartSummaryItem';
 import { SummaryValueType } from '../charts/ChartSummaryItem';
 import type {
   SplineChartTimeseriesData,
@@ -136,7 +136,7 @@ export const getTotalFromPointsSeries = <RAQIDimension>(
 export const summarizeSeriesDataPoints = (
   series: SeriesDataPoints | undefined,
   config: Array<{
-    unit: Omit<ChartSummaryItemSpec, 'value'>;
+    unit: Omit<NumericChartSummaryItemSpec, 'summaryType' | 'value'>;
     type: 'total' | 'average';
   }>,
 ): Array<ChartSummaryItemSpec> => {

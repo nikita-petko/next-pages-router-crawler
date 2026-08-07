@@ -1,10 +1,13 @@
 import { RAQIV2Dimension, RAQIV2IsNewUser, RAQIV2Metric } from '@rbx/creator-hub-analytics-config';
 import type { TranslationKey } from '@modules/analytics-translations/types';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import type { TFormattingSpec } from '@modules/charts-generic/charts/numberFormatters';
 import {
-  ChartUnit,
-  ChartUnitAggregationType,
-} from '@modules/charts-generic/charts/types/ChartTypes';
+  integerFormattingSpec,
+  oneDecimalFormattingSpec,
+  legacyPercentageFormattingSpec,
+  robuxFormattingSpec,
+} from '@modules/charts-generic/constants/analyticsNumberFormattingSpec';
 import type { TRAQIV2NumericUIMetric } from '@modules/experience-analytics-shared/constants/AnalyticsMetricDisplayConfig';
 import type { SpecOverride } from '@modules/experience-analytics-shared/utils/computeRAQIV2SpecOverride';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -48,23 +51,15 @@ export const ExperiencesTableMetricsTranslationKeys: Record<
   ),
 };
 
-export const ExperiencesTableMetricToChartUnit: Record<ExperiencesTableMetricKeys, ChartUnit> = {
-  [ExperiencesTableMetricKeys.averageSessionTime]: ChartUnit.Minutes,
-  [ExperiencesTableMetricKeys.d1Retention]: ChartUnit.LegacyPercentage,
-  [ExperiencesTableMetricKeys.dailyRevenue]: ChartUnit.Robux,
-  [ExperiencesTableMetricKeys.dau]: ChartUnit.Players,
-  [ExperiencesTableMetricKeys.newUsers]: ChartUnit.Players,
-};
-
-export const ExperiencesTableMetricToChartUnitAggregationType: Record<
+export const ExperiencesTableMetricToFormattingSpec: Record<
   ExperiencesTableMetricKeys,
-  ChartUnitAggregationType
+  TFormattingSpec
 > = {
-  [ExperiencesTableMetricKeys.averageSessionTime]: ChartUnitAggregationType.Average,
-  [ExperiencesTableMetricKeys.d1Retention]: ChartUnitAggregationType.Ratio,
-  [ExperiencesTableMetricKeys.dailyRevenue]: ChartUnitAggregationType.Sum,
-  [ExperiencesTableMetricKeys.dau]: ChartUnitAggregationType.Sum,
-  [ExperiencesTableMetricKeys.newUsers]: ChartUnitAggregationType.Sum,
+  [ExperiencesTableMetricKeys.averageSessionTime]: oneDecimalFormattingSpec,
+  [ExperiencesTableMetricKeys.d1Retention]: legacyPercentageFormattingSpec,
+  [ExperiencesTableMetricKeys.dailyRevenue]: robuxFormattingSpec,
+  [ExperiencesTableMetricKeys.dau]: integerFormattingSpec,
+  [ExperiencesTableMetricKeys.newUsers]: integerFormattingSpec,
 };
 
 type ColumnConfig = {

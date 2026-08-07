@@ -6,8 +6,7 @@ import { RobuxIcon, useTheme } from '@rbx/ui';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import SingleDateChartExporter from '@modules/charts-generic/charts/exporters/SingleDateChartExporter';
 import useChartSummarySpecs from '@modules/charts-generic/charts/hooks/useChartSummarySpecs';
-import { NumberContext, NumberIcon } from '@modules/charts-generic/charts/numberFormatters';
-import { ChartUnit } from '@modules/charts-generic/charts/types/ChartTypes';
+import { NumberContext } from '@modules/charts-generic/charts/numberFormatters';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import {
   buildBreakdownColumnNames,
@@ -280,9 +279,7 @@ const GenericRAQIV2PieChartV2: FC<GenericRAQIV2ChartProps & Omit<PieChartConfig,
         tooltipFormatters={tooltipFormatters}
         formatDataLabel={formatDataLabel}
         DataLabelLeadingIcon={
-          !labelDataAsPercent &&
-          // eslint-disable-next-line deprecation/deprecation, @typescript-eslint/no-deprecated -- migration in progress. Will be removed in DSA-4660.
-          (unit.unit === ChartUnit.Robux || unit.formattingSpec?.icon === NumberIcon.Robux)
+          !labelDataAsPercent && String(unit.formattingSpec?.icon) === 'Robux'
             ? RobuxIcon
             : undefined
         }

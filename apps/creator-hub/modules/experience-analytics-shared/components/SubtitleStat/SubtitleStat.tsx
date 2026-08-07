@@ -1,7 +1,8 @@
 import type { FC } from 'react';
-import type { PeopleIcon, ThumbUpIcon } from '@rbx/ui';
+import React from 'react';
+import type { ThumbUpIcon } from '@rbx/ui';
 import { Grid } from '@rbx/ui';
-import type { FormattingSpec } from '@modules/charts-generic/components/MetricValue/MetricValue';
+import type { TFormattingSpec } from '@modules/charts-generic/charts/numberFormatters';
 import MetricValue from '@modules/charts-generic/components/MetricValue/MetricValue';
 import useSubtitleStatStyles from './SubtitleStat.styles';
 
@@ -10,7 +11,7 @@ type StatIcons = typeof ThumbUpIcon;
 type SubtitleStatSpec = {
   Icon?: StatIcons;
   value: number | null;
-  formattingSpec: FormattingSpec;
+  formattingSpec: TFormattingSpec;
 };
 
 const SubtitleStat: FC<SubtitleStatSpec> = ({ Icon, value, formattingSpec }) => {
@@ -25,7 +26,7 @@ const SubtitleStat: FC<SubtitleStatSpec> = ({ Icon, value, formattingSpec }) => 
       <Grid item>
         <MetricValue
           value={value}
-          formattingSpec={formattingSpec}
+          analyticsFormattingSpec={formattingSpec}
           typographySpec={{ variant: 'captionHeader', color: 'secondary' }}
         />
       </Grid>

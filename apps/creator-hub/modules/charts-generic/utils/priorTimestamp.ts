@@ -29,4 +29,14 @@ const priorTimestamp = (cur: Timestamp, granularity: RAQIV2MetricGranularity): T
     }
   }
 };
+
+export const priorDate = (cur: Date, granularity: RAQIV2MetricGranularity): Date => {
+  if (granularity === RAQIV2MetricGranularity.OneMonth) {
+    const result = new Date(cur);
+    result.setUTCMonth(result.getUTCMonth() - 1);
+    return result;
+  }
+  return new Date(cur.getTime() - millisecondsInInterval(granularity));
+};
+
 export default priorTimestamp;

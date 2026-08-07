@@ -5,7 +5,8 @@ import { AreaChart, AreaSeriesDataTypes, ChartStyleMode, SeriesDataTypes } from 
 import { numberFormatter } from '@rbx/core';
 import buildAxisFormattingSpec from '@modules/charts-generic/charts/buildAxisFormattingSpec';
 import formatChartUnit from '@modules/charts-generic/charts/formatChartUnit';
-import { ChartType, ChartUnit } from '@modules/charts-generic/charts/types/ChartTypes';
+import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
+import { integerFormattingSpec } from '@modules/charts-generic/constants/analyticsNumberFormattingSpec';
 import { isValidArrayEnumValue } from '@modules/miscellaneous/utils/enumUtils';
 import useDurationChartData from '../../hooks/useDurationChartData';
 import useMetricAwareYAxisFormatterEnabled from '../../hooks/useMetricAwareYAxisFormatterEnabled';
@@ -53,10 +54,7 @@ const GenericRAQIV2DurationAreaChartV2: FC<GenericRAQIV2ChartProps> = (props) =>
     // gated behind `isAnalyticsMetricAwareYAxisFormatterEnabled`. When the
     // flag is off (or the unit lacks a `formattingSpec`), we omit the
     // formatter so axes use Highcharts' default formatter.
-    const isPercentUnit =
-      // eslint-disable-next-line deprecation/deprecation, @typescript-eslint/no-deprecated -- migration in progress. Will be removed in DSA-4660.
-      chart.unit.unit === ChartUnit.Percentage ||
-      chart.unit.formattingSpec?.numberFormatOptions.style === 'percent';
+    const isPercentUnit = chart.unit.formattingSpec?.numberFormatOptions.style === 'percent';
     if (isPercentUnit) {
       return {
         yAxisFormatter: ({ value }: { value: string | number }) => {
@@ -68,17 +66,14 @@ const GenericRAQIV2DurationAreaChartV2: FC<GenericRAQIV2ChartProps> = (props) =>
     if (!enableMetricAwareYAxisFormatter || !chart.unit.formattingSpec) {
       return {};
     }
-    const axisUnit = {
-      ...chart.unit,
-      formattingSpec: buildAxisFormattingSpec(chart.unit.formattingSpec),
-    };
+    const axisFormattingSpec = buildAxisFormattingSpec(chart.unit.formattingSpec);
     return {
       yAxisFormatter: ({ value }: { value: string | number }) => {
         const num = typeof value === 'string' ? parseFloat(value) : value;
         if (!Number.isFinite(num)) {
           return '';
         }
-        return formatChartUnit(num, axisUnit, translationDependencies);
+        return formatChartUnit(num, axisFormattingSpec, translationDependencies);
       },
     };
   }, [chart.unit, enableMetricAwareYAxisFormatter, translationDependencies]);
@@ -87,7 +82,11 @@ const GenericRAQIV2DurationAreaChartV2: FC<GenericRAQIV2ChartProps> = (props) =>
     () => ({
       formatSeriesKeyForPoint: ({ seriesName }: { seriesName: string }) => seriesName,
       formatSeriesValueForPoint: ({ y }: { y: number }) =>
-        formatChartUnit(y, chart.unit, translationDependencies),
+        formatChartUnit(
+          y,
+          chart.unit.formattingSpec ?? integerFormattingSpec,
+          translationDependencies,
+        ),
       formatXForPoint: (x: string | number) => xAxisFormatter({ value: x }),
     }),
     [chart.unit, translationDependencies, xAxisFormatter],

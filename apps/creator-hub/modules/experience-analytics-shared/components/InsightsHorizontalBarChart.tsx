@@ -1,9 +1,10 @@
 import type { FC } from 'react';
-import { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { BarChart, ChartColor, ChartStyleMode } from '@rbx/analytics-ui';
 import { Grid } from '@rbx/ui';
-import formatChartUnit from '@modules/charts-generic/charts/formatChartUnit';
+import { formatNumberWithSpec } from '@modules/charts-generic/charts/numberFormatters';
 import type { BarSeriesEntry } from '@modules/charts-generic/charts/types/HorizontalBarChartTypes';
+import { integerFormattingSpec } from '@modules/charts-generic/constants/analyticsNumberFormattingSpec';
 import type { RAQIV2QueryFilter } from '@modules/clients/analytics';
 import { buildChartUnitOptions } from '../adapters/genericRAQIV2ChartAdapter';
 import type { TRAQIV2NumericUIMetric } from '../constants/AnalyticsMetricDisplayConfig';
@@ -75,14 +76,22 @@ const InsightsHorizontalBarChart: FC<{
         return x;
       },
       formatSeriesValueForPoint({ y }: { y: number }): string {
-        return formatChartUnit(y, unit, translationDependencies);
+        return formatNumberWithSpec(
+          y,
+          unit.formattingSpec ?? integerFormattingSpec,
+          translationDependencies,
+        );
       },
     };
   }, [unit, translationDependencies]);
 
   const dataLabelsFormatter = useCallback(
     ({ y }: { y: number }) => {
-      return formatChartUnit(y, unit, translationDependencies);
+      return formatNumberWithSpec(
+        y,
+        unit.formattingSpec ?? integerFormattingSpec,
+        translationDependencies,
+      );
     },
     [unit, translationDependencies],
   );

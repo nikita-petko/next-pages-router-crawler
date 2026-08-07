@@ -7,8 +7,7 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import type { ChartSummaryItemSpec } from '@modules/charts-generic/charts/ChartSummaryItem';
 import SingleDateChartExporter from '@modules/charts-generic/charts/exporters/SingleDateChartExporter';
 import useChartSummarySpecs from '@modules/charts-generic/charts/hooks/useChartSummarySpecs';
-import { NumberContext, NumberIcon } from '@modules/charts-generic/charts/numberFormatters';
-import { ChartUnit } from '@modules/charts-generic/charts/types/ChartTypes';
+import { NumberContext } from '@modules/charts-generic/charts/numberFormatters';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import {
   buildBreakdownColumnNames,
@@ -292,12 +291,7 @@ const GenericRAQIV2HorizontalBarChartV2: FC<
         tooltipFormatters={tooltipFormatters}
         dataLabelsFormatter={dataLabelsFormatter}
         forceHideLegends
-        DataLabelLeadingIcon={
-          // eslint-disable-next-line deprecation/deprecation, @typescript-eslint/no-deprecated -- migration in progress. Will be removed in DSA-4660.
-          unit.unit === ChartUnit.Robux || unit.formattingSpec?.icon === NumberIcon.Robux
-            ? RobuxIcon
-            : undefined
-        }
+        DataLabelLeadingIcon={String(unit.formattingSpec?.icon) === 'Robux' ? RobuxIcon : undefined}
       />
     ),
     [chartHeight, chartStyleMode, data, dataLabelsFormatter, tooltipFormatters, unit],

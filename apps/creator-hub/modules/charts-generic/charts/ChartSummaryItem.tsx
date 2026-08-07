@@ -1,5 +1,5 @@
 import type { FunctionComponent } from 'react';
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from '@rbx/intl';
 import {
   Grid,
@@ -25,32 +25,43 @@ import {
 import type { RAQIV2BreakdownValue } from '@modules/clients/analytics';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import useLocale from '../context/useLocale';
-import type ChartSummaryType from '../enums/ChartSummaryType';
+import ChartSummaryType from '../enums/ChartSummaryType';
 import useChartSummaryStyles from './ChartSummary.styles';
 import type { ComparisonChipSpec } from './ComparisonChip';
 import ComparisonChip from './ComparisonChip';
 import type { TFormattingSpec, TNumberContextMetadata } from './numberFormatters';
-import { formatNumber, formatNumberWithSpec, NumberContext, NumberIcon } from './numberFormatters';
-import { ChartUnit, ChartUnitAggregationType } from './types/ChartTypes';
+import { formatNumberWithSpec, NumberIcon } from './numberFormatters';
 
 export enum SummaryValueType {
   Numeric = 'numeric',
   String = 'string',
 }
 
+export const getLabelKeyForSummaryType = (summaryType: ChartSummaryType): TranslationKey | null => {
+  switch (summaryType) {
+    case ChartSummaryType.Average:
+      return translationKey('Label.Average', TranslationNamespace.Analytics);
+    case ChartSummaryType.Total:
+    case ChartSummaryType.TotalAbsoluteValue:
+      return translationKey('Label.TotalSummaryItem', TranslationNamespace.Analytics);
+    case ChartSummaryType.QuotaPercentageUsage:
+      return translationKey('Label.AverageQuotaUsage', TranslationNamespace.Analytics);
+    case ChartSummaryType.LastValue:
+      return translationKey('Label.LastValue', TranslationNamespace.Analytics);
+    case ChartSummaryType.GrowthRate:
+    case ChartSummaryType.SinglePoint:
+    case ChartSummaryType.TopBreakdown:
+    default:
+      return null;
+  }
+};
+
 type BaseChartSummaryItemSpec = {
   summaryValueType: SummaryValueType;
 
-  // Label shown above
-  // @deprecated Use formattingSpec instead. Will be removed in DSA-4660.
-  unit?: ChartUnit;
-  // @deprecated Use formattingSpec instead. Will be removed in DSA-4660.
-  type?: ChartUnitAggregationType;
+  summaryType: ChartSummaryType;
 
-  formattingSpec?: TFormattingSpec;
-  summaryType?: ChartSummaryType;
-
-  specificLabel?: FormattedText; // required if not 'average' or 'total'
+  specificLabel?: FormattedText;
   correspondingBreakdowns: readonly RAQIV2BreakdownValue[];
   tooltipKey?: TranslationKey;
 
@@ -61,7 +72,8 @@ type BaseChartSummaryItemSpec = {
 export type NumericChartSummaryItemSpec = BaseChartSummaryItemSpec & {
   summaryValueType: SummaryValueType.Numeric;
   value: number;
-  summaryType?: Exclude<ChartSummaryType, ChartSummaryType.TopBreakdown>;
+  formattingSpec: TFormattingSpec;
+  summaryType: Exclude<ChartSummaryType, ChartSummaryType.TopBreakdown>;
 };
 
 export type StringChartSummaryItemSpec = BaseChartSummaryItemSpec & {
@@ -69,7 +81,6 @@ export type StringChartSummaryItemSpec = BaseChartSummaryItemSpec & {
   summaryType: ChartSummaryType.TopBreakdown;
   value: FormattedText;
 
-  // Used for the description
   specificLabel: FormattedText;
 };
 
@@ -87,45 +98,23 @@ export const filterNumericChartSummaryItemSpecs = (
   return items.filter(isNumericChartSummaryItemSpec);
 };
 
-const getLabelKey = (type: ChartUnitAggregationType): TranslationKey | null => {
-  switch (type) {
-    case ChartUnitAggregationType.Average:
-    case ChartUnitAggregationType.AverageRatio:
-      return translationKey('Label.Average', TranslationNamespace.Analytics);
-    case ChartUnitAggregationType.SummaryTotal:
-    case ChartUnitAggregationType.Sum:
-      return translationKey('Label.TotalSummaryItem', TranslationNamespace.Analytics);
-    case ChartUnitAggregationType.Ratio:
-    case ChartUnitAggregationType.Unknown:
-      return null;
-    case ChartUnitAggregationType.AverageQuotaUsage:
-      return translationKey('Label.AverageQuotaUsage', TranslationNamespace.Analytics);
-    case ChartUnitAggregationType.LastValue:
-      return translationKey('Label.LastValue', TranslationNamespace.Analytics);
-    default: {
-      const exhaustiveCheck: never = type;
-      throw new Error(`Unhandled summary item type ${exhaustiveCheck as string}`);
-    }
-  }
-};
-
 const getLabel = (
   item: ChartSummaryItemSpec,
   translate: TranslationKeyToFormattedText,
 ): FormattedText | null => {
-  const { type, specificLabel } = item;
-  const labelKey = getLabelKey(type ?? ChartUnitAggregationType.Unknown);
+  const { summaryType, specificLabel } = item;
+  const labelKey = getLabelKeyForSummaryType(summaryType);
   return (
-    specificLabel ||
-    (labelKey ? translate(labelKey) : null) ||
+    specificLabel ??
+    (labelKey ? translate(labelKey) : null) ??
     translate(translationKeyWithoutNamespace('Label.Unknown'))
   );
 };
+
 const ChartSummaryItem: FunctionComponent<ChartSummaryItemSpec> = (item) => {
   const { tooltipKey, summaryValueType } = item;
   const { translate } = useTranslationWrapper(useTranslation());
   const locale = useLocale();
-  const isInLuobuEnvironment = useMemo(() => process.env.buildTarget === 'luobu', []);
 
   const { formattedValue, label, tooltip } = useMemo(() => {
     switch (summaryValueType) {
@@ -138,32 +127,16 @@ const ChartSummaryItem: FunctionComponent<ChartSummaryItemSpec> = (item) => {
         };
       }
       case SummaryValueType.Numeric: {
-        const { value, unit, type, formattingSpec, numberContextMetadata } = item;
-        if (formattingSpec) {
-          return {
-            formattedValue: formatNumberWithSpec(value, formattingSpec, { translate, locale }),
-            label: getLabel(item, translate),
-            tooltip: tooltipKey ? translate(tooltipKey) : null,
-          };
-        }
+        const { value, formattingSpec } = item;
         return {
-          // oxlint-disable-next-line @typescript-eslint/no-deprecated -- migration in progress. Will be removed in DSA-4660.
-          formattedValue: formatNumber({
-            value,
-            unit: unit ?? ChartUnit.Unknown,
-            type: type ?? ChartUnitAggregationType.Unknown,
-            context: NumberContext.ChartSummary,
-            translate,
-            locale,
-            numberContextMetadata,
-          }),
+          formattedValue: formatNumberWithSpec(value, formattingSpec, { translate, locale }),
           label: getLabel(item, translate),
           tooltip: tooltipKey ? translate(tooltipKey) : null,
         };
       }
       default: {
         const exhaustiveCheck: never = summaryValueType;
-        throw new Error(`Unhandled summary value type ${exhaustiveCheck as string}`);
+        throw new Error(`Unhandled summary value type ${String(exhaustiveCheck)}`);
       }
     }
   }, [item, translate, locale, tooltipKey, summaryValueType]);
@@ -196,15 +169,13 @@ const ChartSummaryItem: FunctionComponent<ChartSummaryItemSpec> = (item) => {
     if (summaryValueType !== SummaryValueType.Numeric) {
       return null;
     }
-    const { unit, formattingSpec } = item;
-    // oxlint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
-    return (!isInLuobuEnvironment && unit === 'robux') ||
-      formattingSpec?.icon === NumberIcon.Robux ? (
+    const { formattingSpec } = item;
+    return formattingSpec?.icon === NumberIcon.Robux ? (
       <ListItemIcon className={listItemIcon}>
         <RobuxIcon />
       </ListItemIcon>
     ) : null;
-  }, [item, summaryValueType, isInLuobuEnvironment, listItemIcon]);
+  }, [item, summaryValueType, listItemIcon]);
 
   return (
     <Grid item>

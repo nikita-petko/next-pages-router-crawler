@@ -1,6 +1,6 @@
 import { RAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
-import type { FormattedText } from '@modules/analytics-translations/types';
 import {
+  brandUntranslatableText,
   translationKey,
   translationKeyWithoutNamespace,
 } from '@modules/analytics-translations/wrapperFunctions';
@@ -12,10 +12,6 @@ import type {
 import { SummaryValueType } from '@modules/charts-generic/charts/ChartSummaryItem';
 import type { TNumberContextMetadata } from '@modules/charts-generic/charts/numberFormatters';
 import { NumberContext } from '@modules/charts-generic/charts/numberFormatters';
-import {
-  ChartUnit,
-  ChartUnitAggregationType,
-} from '@modules/charts-generic/charts/types/ChartTypes';
 import type { GenericSeriesInfo } from '@modules/charts-generic/charts/types/SeriesTypes';
 import ChartSummaryType from '@modules/charts-generic/enums/ChartSummaryType';
 import {
@@ -26,7 +22,6 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
 import getDimensionRenderer from '../components/getDimensionRenderer';
 import getAnalyticsMetricDisplayConfig from '../constants/AnalyticsMetricDisplayConfig';
-import chartUnitToAverageSummaryAggregationType from '../constants/ChartUnitToAverageSummaryAggregationType';
 import type {
   RAQIV2CompoundSingleMetricSummaryType,
   RAQIV2CompoundSummaryType,
@@ -86,65 +81,11 @@ export const getSummarizeValueForSingleSeries = <T, V extends number>(
       const lastValue = series.dataPoints[series.dataPoints.length - 1][1] ?? 0;
       return firstValue === 0 ? 0 : (lastValue - firstValue) / firstValue;
     }
-    case ChartSummaryType.LastValue: {
-      if (series.dataPoints.length === 0) {
-        return 0;
-      }
-      const lastPoint = series.dataPoints[series.dataPoints.length - 1];
-      return lastPoint[1] ?? 0;
-    }
-    default: {
-      const exhaustiveCheck: never = type;
-      throw new Error(`Unsupported summary type ${exhaustiveCheck as string}`);
-    }
-  }
-};
-
-export const getSummaryAggregationType = (
-  unit: ChartUnit,
-  type: ChartSummaryType,
-): ChartUnitAggregationType => {
-  switch (type) {
-    case ChartSummaryType.Total:
-    case ChartSummaryType.TotalAbsoluteValue:
-      return ChartUnitAggregationType.SummaryTotal;
-    case ChartSummaryType.QuotaPercentageUsage:
-      return ChartUnitAggregationType.AverageQuotaUsage;
-    case ChartSummaryType.Average:
-      return chartUnitToAverageSummaryAggregationType[unit];
-    case ChartSummaryType.SinglePoint:
-      return ChartUnitAggregationType.Unknown;
-    case ChartSummaryType.GrowthRate:
-      return ChartUnitAggregationType.Ratio;
-    case ChartSummaryType.TopBreakdown:
-      // TopBreakdown is handled by aggregated breakdown functions, not single series functions
-      throw new Error('TopBreakdown should only be used in aggregated breakdown summary types');
     case ChartSummaryType.LastValue:
-      return ChartUnitAggregationType.LastValue;
+      return series.dataPoints.at(-1)?.[1] ?? 0;
     default: {
       const exhaustiveCheck: never = type;
-      throw new Error(`Unsupported summary type ${exhaustiveCheck as string}`);
-    }
-  }
-};
-
-export const getSummaryChartUnitOverride = (unit: ChartUnit, type: ChartSummaryType): ChartUnit => {
-  switch (type) {
-    case ChartSummaryType.Total:
-    case ChartSummaryType.TotalAbsoluteValue:
-    case ChartSummaryType.Average:
-    case ChartSummaryType.SinglePoint:
-    case ChartSummaryType.LastValue:
-      return unit;
-    case ChartSummaryType.QuotaPercentageUsage:
-    case ChartSummaryType.GrowthRate:
-      return ChartUnit.Percentage;
-    case ChartSummaryType.TopBreakdown:
-      // TopBreakdown is handled by aggregated breakdown functions, not single series functions
-      throw new Error('TopBreakdown should only be used in aggregated breakdown summary types');
-    default: {
-      const exhaustiveCheck: never = type;
-      throw new Error(`Unsupported summary type ${exhaustiveCheck as string}`);
+      throw new Error(`Unsupported summary type ${String(exhaustiveCheck)}`);
     }
   }
 };
@@ -289,7 +230,7 @@ const summarizeAggregatedBreakdownSeries = <T, V extends number>(
       const breakdown = topSummary.correspondingBreakdowns[0]; // Using first breakdown for TopBreakdown display
 
       if (breakdown?.dimension && isValidEnumValue(RAQIV2Dimension, breakdown.dimension)) {
-        const view = getDimensionRenderer(breakdown.dimension as RAQIV2Dimension);
+        const view = getDimensionRenderer(breakdown.dimension);
 
         if (view && breakdown.value !== undefined) {
           const dimensionName = translationDependencies.translate(view.name);
@@ -316,8 +257,7 @@ const summarizeAggregatedBreakdownSeries = <T, V extends number>(
 
       const description =
         topSummary?.specificLabel ??
-        // oxlint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-        (breakdown?.value ? (breakdown.value as FormattedText) : undefined) ??
+        (breakdown?.value ? brandUntranslatableText(breakdown.value) : undefined) ??
         translate(translationKeyWithoutNamespace('Label.Unknown'));
 
       return {
@@ -333,7 +273,7 @@ const summarizeAggregatedBreakdownSeries = <T, V extends number>(
     }
     default: {
       const exhaustiveCheck: never = type;
-      throw new Error(`Unsupported aggregated breakdown summary type ${exhaustiveCheck as string}`);
+      throw new Error(`Unsupported aggregated breakdown summary type ${String(exhaustiveCheck)}`);
     }
   }
 };
@@ -387,8 +327,9 @@ export const summarizeSeriesInfo = <T, V extends number>(
           if (!dimension) {
             return true;
           }
-          // oxlint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-          const allowedBreakdownValues = breakdownSummaryFilter[dimension as RAQIV2Dimension];
+          const allowedBreakdownValues = isValidEnumValue(RAQIV2Dimension, dimension)
+            ? breakdownSummaryFilter[dimension]
+            : undefined;
           if (!allowedBreakdownValues) {
             return true;
           }
@@ -482,25 +423,14 @@ export const shouldShowComparison = (summarySpec: RAQIV2SummarySpec | undefined)
   ]);
 };
 
-/**
- * Whether any summary item will render a period-over-period comparison chip.
- *
- * Comparison chips attach to the first single-metric summary of the total series
- * and to per-breakdown summaries (see `summarizeSeriesInfo`). Aggregated-breakdown
- * summaries (e.g. TopBreakdown) never render a chip. This is the strict counterpart
- * to `shouldShowComparison` (which returns `true` for empty/aggregated-only specs):
- * it is used to decide whether a *breakdown* chart still needs to fetch comparison
- * data when the in-chart comparison overlay is off. The growth-rate-only case is
- * handled upstream by `shouldShowComparison`, which suppresses the chip entirely.
- */
 export const summaryRendersComparisonChip = (
   summarySpec: RAQIV2SummarySpec | undefined,
 ): boolean => {
   if (!summarySpec) {
     return false;
   }
-  return (
-    summarySpec.totalSummaryTypes.some(isRAQIV2SingleMetricSummaryType) ||
-    summarySpec.perBreakdownSummaryTypes.length > 0
+
+  return [...summarySpec.totalSummaryTypes, ...summarySpec.perBreakdownSummaryTypes].some(
+    isRAQIV2SingleMetricSummaryType,
   );
 };

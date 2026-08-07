@@ -2,7 +2,6 @@ import type { TTableCellProps } from '@rbx/ui';
 import type { FormattedText, TranslationKey } from '@modules/analytics-translations/types';
 import { brandUntranslatableText } from '@modules/analytics-translations/wrapperFunctions';
 import type { TFormattingSpec } from '../../charts/numberFormatters';
-import type { FormattingSpec } from '../../components/MetricValue/MetricValue';
 import type { TableCellBackgroundColor } from './TableCellBackgroundColor';
 import type { TableSort } from './TableSort';
 
@@ -83,10 +82,6 @@ export type TableColumnConfig<TColumnKey> = {
   sort?: TableSort<TColumnKey>;
   selection?: TableRowSelection;
   widthWeight?: number;
-  /**
-   * @deprecated Use analyticsNumberFormattingSpec instead. Will be removed in DSA-4660.
-   */
-  numericFormattingSpec?: FormattingSpec;
   analyticsNumberFormattingSpec?: TFormattingSpec;
   cellBackground?: CellBackground;
   headerBackground?: {

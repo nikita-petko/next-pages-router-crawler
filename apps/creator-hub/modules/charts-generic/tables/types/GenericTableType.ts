@@ -1,12 +1,10 @@
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import React from 'react';
-import type { TTailwindIconClass } from '@rbx/foundation-tailwind/classes';
-import type { TBadgeVariant } from '@rbx/foundation-ui';
+import type { Badge, TBadgeVariant } from '@rbx/foundation-ui';
 import type { TIconProps, TTypographyProps } from '@rbx/ui';
 import type { ComparisonChipSpec } from '../../charts/ComparisonChip';
 import type { TFormattingSpec } from '../../charts/numberFormatters';
 import type CodeEditorSupportedLanguages from '../../components/CodeEditors/CodeEditorSupportedLanguages';
-import type { FormattingSpec } from '../../components/MetricValue/MetricValue';
 import type { Action } from '../../types/Action';
 import type { GenericTablePaginationSpec } from '../GenericTablePagination';
 import type {
@@ -52,21 +50,18 @@ export type TBadgeStatus = {
   chipType: 'badge';
   variant: TBadgeVariant;
   label: string;
-  icon?: TTailwindIconClass;
+  icon?: ComponentProps<typeof Badge>['icon'];
 };
 
 export type TStatus = TIconStatus | TDotStatus | TBadgeStatus;
 
 type BaseCellType = {
   type: ColumnType;
-  /** Span this cell across multiple columns in non-compact table layouts. */
-  colSpan?: number;
-  /** Skip rendering this cell when another cell spans over its column. */
+  /** Skip rendering this cell, usually because an adjacent cell spans across it. */
   skipCell?: boolean;
-  /** Inline styles applied to the cell element, overriding the computed background/text styles. */
-  cellOverrideStyle?: React.CSSProperties;
-  /** Class names applied to the cell element, overriding the computed background/text styles. */
+  colSpan?: number;
   cellOverrideClassName?: string;
+  cellOverrideStyle?: React.CSSProperties;
 };
 
 type TextCellType = BaseCellType & {
@@ -86,10 +81,6 @@ type NumberCellType = BaseCellType & {
   type: ColumnType.Number;
   value: number;
   // if provided, it overrides formatting spec from column config
-  /**
-   * @deprecated Use analyticsFormattingSpec instead. Will be removed in DSA-4660.
-   */
-  formattingSpec?: FormattingSpec;
   analyticsFormattingSpec?: TFormattingSpec;
   // if provided, it overrides cell background from column config
   cellBackground?: CellBackground;
@@ -336,13 +327,7 @@ export type GenericTableV2RowExpansionConfig<
   expandOnRowClick?: boolean;
   /** Defaults to true. Prepends an expander toggle in the first visible cell */
   showToggleInFirstCell?: boolean;
-  /**
-   * Column key whose visible body cell hosts the expand/collapse control. The
-   * toggle is rendered at the trailing edge of that column's cell, falling back
-   * to the last visible cell if the column is hidden. When omitted, the toggle
-   * is rendered at the leading edge of the first visible cell. Ignored when
-   * {@link showToggleInFirstCell} is false.
-   */
+  /** Defaults to the first visible cell. When set, places the toggle in this column. */
   expandTogglePlacement?: TColumnKey;
 };
 export type GenericTableV2Config<

@@ -12,12 +12,11 @@ import {
 } from '@rbx/ui';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import type { ComparisonChipSpec } from '@modules/charts-generic/charts/ComparisonChip';
-import { NumberContext } from '@modules/charts-generic/charts/numberFormatters';
-import {
-  ChartUnit,
-  ChartUnitAggregationType,
-} from '@modules/charts-generic/charts/types/ChartTypes';
 import MetricValue from '@modules/charts-generic/components/MetricValue/MetricValue';
+import {
+  wholePercentageFormattingSpec,
+  integerFormattingSpec,
+} from '@modules/charts-generic/constants/analyticsNumberFormattingSpec';
 import SubtitleStat from '@modules/experience-analytics-shared/components/SubtitleStat/SubtitleStat';
 import { useAnalyticsWatchlist } from '@modules/experience-analytics-shared/context/AnalyticsWatchlistProvider';
 import useRAQIV2TranslationDependencies from '@modules/experience-analytics-shared/hooks/useRAQIV2TranslationDependencies';
@@ -27,8 +26,7 @@ import { creatorHub } from '@modules/miscellaneous/urls';
 import type { ExperiencesTableMetricKeys } from './ExperiencesTableMetrics';
 import {
   ExperiencesTableMetricColumnsOrder,
-  ExperiencesTableMetricToChartUnit,
-  ExperiencesTableMetricToChartUnitAggregationType,
+  ExperiencesTableMetricToFormattingSpec,
 } from './ExperiencesTableMetrics';
 import useExperiencesTableRowStyles from './ExperiencesTableRow.styles';
 
@@ -78,21 +76,13 @@ const ExperiencesTableRow = ({
       key: 'ratio',
       Icon: ThumbUpIcon,
       value: likeRatio != null ? likeRatio / 100 : null,
-      formatting: {
-        unit: ChartUnit.WholePercentage,
-        type: ChartUnitAggregationType.Ratio,
-        context: NumberContext.DataPoint,
-      },
+      formatting: wholePercentageFormattingSpec,
     },
     {
       key: 'playing',
       Icon: PeopleIcon,
       value: playing,
-      formatting: {
-        unit: ChartUnit.Players,
-        type: ChartUnitAggregationType.Sum,
-        context: NumberContext.DataPoint,
-      },
+      formatting: integerFormattingSpec,
     },
   ].map(({ key, Icon, value, formatting }) => (
     <Grid key={key} item className={statsItemMargin}>
@@ -102,18 +92,13 @@ const ExperiencesTableRow = ({
 
   const metricsCells = ExperiencesTableMetricColumnsOrder.map((metric) => {
     const metricsValue = metrics[metric];
-    const chartUnit = ExperiencesTableMetricToChartUnit[metric];
-    const chartUnitAggregationType = ExperiencesTableMetricToChartUnitAggregationType[metric];
+    const formattingSpec = ExperiencesTableMetricToFormattingSpec[metric];
 
     return (
       <TableCell key={metric}>
         <MetricValue
           value={metricsValue.value}
-          formattingSpec={{
-            unit: chartUnit,
-            type: chartUnitAggregationType,
-            context: NumberContext.DataPoint,
-          }}
+          analyticsFormattingSpec={formattingSpec}
           comparisonChipSpec={metricsValue.comparisonChipSpec ?? undefined}
           justifyContent='flex-end'
         />

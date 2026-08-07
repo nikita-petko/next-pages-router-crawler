@@ -3,12 +3,11 @@ import React, { useMemo } from 'react';
 import { ReturnPolicy, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
 import { Grid, PeopleIcon, ThumbUpIcon, Typography } from '@rbx/ui';
 import type { ComparisonChipSpec } from '@modules/charts-generic/charts/ComparisonChip';
-import { NumberContext } from '@modules/charts-generic/charts/numberFormatters';
 import type { GenericChartState } from '@modules/charts-generic/charts/types/ChartTypes';
 import {
-  ChartUnit,
-  ChartUnitAggregationType,
-} from '@modules/charts-generic/charts/types/ChartTypes';
+  wholePercentageFormattingSpec,
+  abbreviatedIntegerFormattingSpec,
+} from '@modules/charts-generic/constants/analyticsNumberFormattingSpec';
 import { formatDateFromNow } from '@modules/charts-generic/utils/dateUtils';
 import { Link } from '@modules/miscellaneous/components';
 import { creatorHub } from '@modules/miscellaneous/urls';
@@ -90,22 +89,14 @@ const AnalyticsExperienceTile: FC<React.PropsWithChildren<AnalyticsExperienceTil
               <SubtitleStat
                 Icon={ThumbUpIcon}
                 value={likeRatio != null ? likeRatio / 100 : null}
-                formattingSpec={{
-                  unit: ChartUnit.WholePercentage,
-                  type: ChartUnitAggregationType.Ratio,
-                  context: NumberContext.CardSummary,
-                }}
+                formattingSpec={wholePercentageFormattingSpec}
               />
             </Grid>
             <Grid item>
               <SubtitleStat
                 Icon={PeopleIcon}
                 value={playing}
-                formattingSpec={{
-                  unit: ChartUnit.Players,
-                  type: ChartUnitAggregationType.Sum,
-                  context: NumberContext.CardSummary,
-                }}
+                formattingSpec={abbreviatedIntegerFormattingSpec}
               />
             </Grid>
             {updatedDate && (

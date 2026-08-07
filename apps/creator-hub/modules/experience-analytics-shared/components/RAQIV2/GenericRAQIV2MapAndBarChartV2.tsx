@@ -10,13 +10,12 @@ import useChartSummarySpecs from '@modules/charts-generic/charts/hooks/useChartS
 import {
   formatNumberWithSpec,
   NumberContext,
-  NumberIcon,
-  type TFormattingSpec,
 } from '@modules/charts-generic/charts/numberFormatters';
 import type {
   BarSeriesEntry,
   BarSeriesNamedDatapoint,
 } from '@modules/charts-generic/charts/types/HorizontalBarChartTypes';
+import { wholePercentageFormattingSpec } from '@modules/charts-generic/constants/analyticsNumberFormattingSpec';
 import useLocale from '@modules/charts-generic/context/useLocale';
 import topoJSON from '../../../../public/assets/analytics/world-highres.topo.json';
 import {
@@ -37,15 +36,6 @@ import getDimensionRenderer from '../getDimensionRenderer';
 import genericChartStateToChartAbnormalState from './genericChartStateToChartAbnormalState';
 import RAQIV2SingleChartCard, { downloadOnlyChartActionLayout } from './RAQIV2SingleChartCard';
 import useMetricOwnershipWatermarkSlots from './useMetricOwnershipWatermarkSlots';
-
-const wholePercentageFormattingSpec = {
-  abbreviate: false,
-  numberFormatOptions: {
-    style: 'percent',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  },
-} satisfies TFormattingSpec;
 
 const adaptBarSeriesForWebbloxChart = (genericSeries: BarSeriesEntry[]) => {
   const categories = new Set<string>();
@@ -405,7 +395,7 @@ const GenericRAQIV2MapAndBarChartV2: FC<
           tooltipFormatters={tooltipFormatters}
           dataLabelsFormatter={dataLabelsFormatter}
           DataLabelLeadingIcon={
-            unit.formattingSpec?.icon === NumberIcon.Robux ? RobuxIcon : undefined
+            String(unit.formattingSpec?.icon) === 'Robux' ? RobuxIcon : undefined
           }
           chartStyleMode={chartStyleMode}
           height={chartHeight}

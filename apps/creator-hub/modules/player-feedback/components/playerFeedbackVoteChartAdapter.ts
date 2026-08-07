@@ -1,20 +1,27 @@
-import type { RAQIV2MetricGranularity } from '@rbx/creator-hub-analytics-config';
-import type { FormattedText } from '@modules/analytics-translations/types';
-import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { RAQIV2MetricGranularity } from '@rbx/creator-hub-analytics-config';
 import type { NumericChartSummaryItemSpec } from '@modules/charts-generic/charts/ChartSummaryItem';
 import { SummaryValueType } from '@modules/charts-generic/charts/ChartSummaryItem';
-import type { TNumberContextMetadata } from '@modules/charts-generic/charts/numberFormatters';
-import {
-  ChartUnit,
-  ChartUnitAggregationType,
-} from '@modules/charts-generic/charts/types/ChartTypes';
+import type {
+  TFormattingSpec,
+  TNumberContextMetadata,
+} from '@modules/charts-generic/charts/numberFormatters';
 import type { TimeSeriesStackedColumnChartSpec } from '@modules/charts-generic/charts/types/TimeSeriesStackedColumnChartTypes';
 import type { TimeSeriesInfo } from '@modules/charts-generic/charts/types/TimeSeriesTypes';
+import {
+  integerFormattingSpec,
+  percentageFormattingSpec,
+} from '@modules/charts-generic/constants/analyticsNumberFormattingSpec';
+import ChartSummaryType from '@modules/charts-generic/enums/ChartSummaryType';
+import type { SeriesIntervalMeaning } from '@modules/charts-generic/enums/SeriesIntervalMeaning';
 import {
   getComparisonTimeRange,
   getComparisonChipSpec,
   getComparisonChipTooltip,
 } from '@modules/charts-generic/utils/comparisonChipUtils';
+
+type NumericChartSummaryType = NumericChartSummaryItemSpec['summaryType'];
+import type { FormattedText } from '@modules/analytics-translations/types';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { ingestAllRaqiV2Series } from '@modules/experience-analytics-shared/adapters/genericRAQIV2ChartAdapter';
 import type RAQIV2ChartSpec from '@modules/experience-analytics-shared/types/RAQIV2ChartSpec';
 import type { RAQIV2TranslationDependencies } from '@modules/experience-analytics-shared/types/RAQIV2DimensionRenderer';
@@ -26,7 +33,8 @@ type PlaterFeedbackVoteChartAdapterProps = {
   responses: RAQIV2QueryResponses;
   spec: RAQIV2ChartSpec;
   translationDependencies: RAQIV2TranslationDependencies;
-  granularity: RAQIV2MetricGranularity;
+  seriesIntervalMeaning?: SeriesIntervalMeaning;
+  granularity?: SeriesIntervalMeaning;
   numberContextMetadata?: TNumberContextMetadata;
 };
 
@@ -47,8 +55,8 @@ const getSumforAllBreakdown = (votesCountbyBreakdown: { [k: string]: number }): 
 const getVotesCountChartSummaryItem = (
   value: number,
   previousValue: number,
-  unit: ChartUnit,
-  type: ChartUnitAggregationType,
+  formattingSpec: TFormattingSpec,
+  summaryType: NumericChartSummaryType,
   specificLabel: FormattedText | undefined,
   tooltip: FormattedText,
   numberContextMetadata?: TNumberContextMetadata,
@@ -57,8 +65,8 @@ const getVotesCountChartSummaryItem = (
 ): NumericChartSummaryItemSpec => {
   return {
     summaryValueType: SummaryValueType.Numeric,
-    unit,
-    type,
+    formattingSpec,
+    summaryType,
     value,
     specificLabel,
     correspondingBreakdowns: [],
@@ -77,6 +85,7 @@ const playerFeedbackVoteChartAdapter = ({
   responses,
   spec,
   translationDependencies,
+  seriesIntervalMeaning,
   granularity,
   numberContextMetadata,
 }: PlaterFeedbackVoteChartAdapterProps): {
@@ -85,31 +94,31 @@ const playerFeedbackVoteChartAdapter = ({
 } => {
   const { response, comparisonResponse } = combineRAQIV2QueryResponses(responses);
   const { translate } = translationDependencies;
+  const effectiveGranularity = granularity ?? seriesIntervalMeaning ?? RAQIV2MetricGranularity.None;
   const { series, timestamps } = ingestAllRaqiV2Series({
     response,
     translationDependencies,
-    granularity,
+    granularity: effectiveGranularity,
     spec,
   });
   const rawComparisonSeries = comparisonResponse
     ? ingestAllRaqiV2Series({
         response: comparisonResponse,
         translationDependencies,
-        granularity,
+        granularity: effectiveGranularity,
         spec,
       }).series
     : undefined;
   const { comparisonStartDate, comparisonEndDate } = getComparisonTimeRange(
     spec.timeSpec.startTime,
     spec.timeSpec.endTime,
-    granularity,
+    effectiveGranularity,
   );
 
   const chart: TimeSeriesStackedColumnChartSpec = {
     unit: {
-      unit: ChartUnit.Results,
       display: translate(translationKey('', TranslationNamespace.Analytics)),
-      type: ChartUnitAggregationType.SummaryTotal,
+      formattingSpec: integerFormattingSpec,
     },
     timestamps,
     series: series
@@ -139,8 +148,8 @@ const playerFeedbackVoteChartAdapter = ({
     getVotesCountChartSummaryItem(
       votesCountSum,
       preVotesCountSum,
-      ChartUnit.Items,
-      ChartUnitAggregationType.Sum,
+      integerFormattingSpec,
+      ChartSummaryType.Total,
       translate(translationKey('Label.Metric.TotalFeedback', TranslationNamespace.Analytics)),
       tooltip,
       numberContextMetadata,
@@ -149,8 +158,8 @@ const playerFeedbackVoteChartAdapter = ({
     getVotesCountChartSummaryItem(
       votesCountbyBreakdown.Upvotes / votesCountSum,
       preVotesCountByBreakdown.Upvotes / preVotesCountSum,
-      ChartUnit.Percentage,
-      ChartUnitAggregationType.Ratio,
+      percentageFormattingSpec,
+      ChartSummaryType.Total,
       translate(translationKey('Label.Metric.PercentUpvotes', TranslationNamespace.Analytics)),
       tooltip,
       numberContextMetadata,

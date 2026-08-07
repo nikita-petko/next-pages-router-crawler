@@ -8,11 +8,7 @@ import TimeSeriesChartExporter from '@modules/charts-generic/charts/exporters/Ti
 import { getSummarySpec } from '@modules/charts-generic/charts/hooks/useChartSummarySpecs';
 import { NumberContext } from '@modules/charts-generic/charts/numberFormatters';
 import type { GenericChartState } from '@modules/charts-generic/charts/types/ChartTypes';
-import {
-  ChartType,
-  ChartUnit,
-  ChartUnitAggregationType,
-} from '@modules/charts-generic/charts/types/ChartTypes';
+import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import useLocale from '@modules/charts-generic/context/useLocale';
 import type { NonEmptyArray } from '@modules/charts-generic/types/NonEmptyArray';
 import type { RAQIV2SummarySpec } from '../../adapters/genericRAQIV2ChartSummaryAdapter';
@@ -234,8 +230,6 @@ const GenericRAQIV2TabbedChartsV2 = <TTabKey extends string | number>({
       {
         unit: {
           display: brandUserSuppliedText(''),
-          unit: ChartUnit.Unknown,
-          type: ChartUnitAggregationType.Unknown,
         },
         series: [],
         timestamps: [],

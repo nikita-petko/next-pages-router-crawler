@@ -13,11 +13,11 @@ import {
   LimitedIcon,
 } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
-import { NumberContext, formatNumber } from '@modules/charts-generic/charts/numberFormatters';
+import { formatNumberWithSpec } from '@modules/charts-generic/charts/numberFormatters';
 import {
-  ChartUnit,
-  ChartUnitAggregationType,
-} from '@modules/charts-generic/charts/types/ChartTypes';
+  abbreviatedRobuxFormattingSpec,
+  abbreviatedIntegerFormattingSpec,
+} from '@modules/charts-generic/constants/analyticsNumberFormattingSpec';
 import useLocale from '@modules/charts-generic/context/useLocale';
 import { getComparisonChipSpec } from '@modules/charts-generic/utils/comparisonChipUtils';
 import type { AvatarItemDetail } from '@modules/clients/analytics';
@@ -143,12 +143,7 @@ const AvatarItemWithAnalyticsDataTile: FunctionComponent<
     <>
       <RobuxIcon classes={{ root: robuxIcon }} fontSize='small' />
       <Typography color='secondary' classes={{ root: textEllipsis }} variant='footer'>
-        {/* eslint-disable-next-line deprecation/deprecation, @typescript-eslint/no-deprecated -- migration in progress. Will be removed in DSA-4660. */}
-        {formatNumber({
-          value: item.price,
-          unit: ChartUnit.Robux,
-          type: ChartUnitAggregationType.Unknown,
-          context: NumberContext.CardSummary,
+        {formatNumberWithSpec(item.price, abbreviatedRobuxFormattingSpec, {
           locale,
           translate: translateFn,
         })}
@@ -236,11 +231,7 @@ const AvatarItemWithAnalyticsDataTile: FunctionComponent<
                 metricTitle: translate('Label.Sales'),
                 value: {
                   value: item.salesCount ?? null,
-                  formattingSpec: {
-                    unit: ChartUnit.Sales,
-                    type: ChartUnitAggregationType.Sum,
-                    context: NumberContext.CardSummary,
-                  },
+                  analyticsFormattingSpec: abbreviatedIntegerFormattingSpec,
                   comparisonChipSpec: getComparisonChipSpec({
                     isPositiveGood: true,
                     current: item.salesCount ?? null,
@@ -253,11 +244,7 @@ const AvatarItemWithAnalyticsDataTile: FunctionComponent<
                 metricTitle: translate('Label.Revenue'),
                 value: {
                   value: item.revenue ?? null,
-                  formattingSpec: {
-                    unit: ChartUnit.Robux,
-                    type: ChartUnitAggregationType.Sum,
-                    context: NumberContext.CardSummary,
-                  },
+                  analyticsFormattingSpec: abbreviatedRobuxFormattingSpec,
                   comparisonChipSpec: getComparisonChipSpec({
                     isPositiveGood: true,
                     current: item.revenue ?? null,

@@ -1,6 +1,5 @@
 import type { TTheme } from '@rbx/ui';
 import { getTableCellBackgroundRgbTuple } from '../charts/options';
-import { ChartUnit } from '../charts/types/ChartTypes';
 import formatProgressionLinearGradient from '../utils/formatProgressionLinearGradient';
 import type { TableColumnConfig } from './types/GenericColumnType';
 import { CellBackgroundType, ColumnType } from './types/GenericColumnType';
@@ -33,8 +32,7 @@ export const formatCellBackgroundStyle = <
   config: TableColumnConfig<TColumnKey>,
   theme: TTheme,
 ): React.CSSProperties | undefined => {
-  // oxlint-disable-next-line @typescript-eslint/no-deprecated -- migration in progress. Will be removed in DSA-4660.
-  const { numericFormattingSpec, analyticsNumberFormattingSpec, columnType } = config;
+  const { analyticsNumberFormattingSpec, columnType } = config;
   const cellBackground =
     (cellValue.type === ColumnType.Number ? cellValue.cellBackground : config.cellBackground) ??
     config.cellBackground;
@@ -51,14 +49,6 @@ export const formatCellBackgroundStyle = <
       if (
         analyticsNumberFormattingSpec &&
         analyticsNumberFormattingSpec.numberFormatOptions.style !== 'percent'
-      ) {
-        return undefined;
-      }
-
-      if (
-        numericFormattingSpec &&
-        numericFormattingSpec.unit !== ChartUnit.Percentage &&
-        numericFormattingSpec.unit !== ChartUnit.LegacyPercentage
       ) {
         return undefined;
       }

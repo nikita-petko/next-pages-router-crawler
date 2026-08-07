@@ -43,7 +43,7 @@ export const brandUserSuppliedText = (value: string): FormattedText =>
  */
 export const getMetricLabelFromMetricLike = (
   metricLike: MetricLike<TRAQIV2UIMetric>,
-  { translate }: RAQIV2TranslationDependencies,
+  translationDependencies?: RAQIV2TranslationDependencies,
 ): FormattedText => {
   if (!isComputedMetric(metricLike)) {
     if (isCustomEventsAtomicMetricLike(metricLike)) {
@@ -52,12 +52,16 @@ export const getMetricLabelFromMetricLike = (
     const { localizedName } = getAnalyticsMetricDisplayConfig(
       getUIMetricFromAtomicMetricLike(metricLike),
     );
-    return translate(localizedName);
+    return translationDependencies
+      ? translationDependencies.translate(localizedName)
+      : brandUserSuppliedText(localizedName.key);
   }
   return brandUserSuppliedText(
     isNonEmptyString(metricLike.name) ? metricLike.name : metricLike.formula,
   );
 };
+
+export const getExportLabelFromMetricLike = getMetricLabelFromMetricLike;
 
 /**
  * The TranslationKey used everywhere in explore mode for an unnamed

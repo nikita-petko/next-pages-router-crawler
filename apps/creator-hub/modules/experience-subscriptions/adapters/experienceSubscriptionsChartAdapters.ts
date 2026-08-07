@@ -1,13 +1,15 @@
 import { SeriesDataTypes } from '@rbx/analytics-ui';
 import { DeveloperSubscriptionsAnalyticsDimension } from '@rbx/client-developer-subscriptions-api/v1';
-import { RAQIV2MetricGranularity } from '@rbx/creator-hub-analytics-config';
 import type { Locale } from '@rbx/intl';
 import type {
   TranslationKey,
   FormattedText,
   TranslationKeyToFormattedText,
 } from '@modules/analytics-translations/types';
-import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import {
+  brandUntranslatableText,
+  translationKey,
+} from '@modules/analytics-translations/wrapperFunctions';
 import type { SortedSeriesInfo } from '@modules/charts-generic/adapters/genericRAQIChartAdapter';
 import {
   ingestRAQIMetricValues,
@@ -19,19 +21,27 @@ import {
 } from '@modules/charts-generic/adapters/genericRAQIChartAdapter';
 import type { NumericChartSummaryItemSpec } from '@modules/charts-generic/charts/ChartSummaryItem';
 import { SummaryValueType } from '@modules/charts-generic/charts/ChartSummaryItem';
-import {
-  ChartUnit,
-  ChartUnitAggregationType,
-} from '@modules/charts-generic/charts/types/ChartTypes';
+import type { TFormattingSpec } from '@modules/charts-generic/charts/numberFormatters';
 import type { TimeSeriesSplineChartSpec } from '@modules/charts-generic/charts/types/TimeSeriesSplineChartTypes';
 import type { Timestamp } from '@modules/charts-generic/charts/types/TimeSeriesTypes';
+import {
+  integerFormattingSpec,
+  robuxFormattingSpec,
+} from '@modules/charts-generic/constants/analyticsNumberFormattingSpec';
+import ChartSummaryType from '@modules/charts-generic/enums/ChartSummaryType';
+import { DailyTimeSeriesAlignedToUTCMidnight } from '@modules/charts-generic/enums/SeriesIntervalMeaning';
 import logAnalyticsError from '@modules/charts-generic/utils/logAnalyticsError';
 import type { RAQIBreakdownValue, RAQIMetricValue, RAQIResponse } from '@modules/clients/analytics';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import type { PurchasePlatform } from '../enums/PurchasePlatformOption';
-import { PurchasePlatformLabelTranslationKeys } from '../enums/PurchasePlatformOption';
-import type { SubscriptionType } from '../enums/SubscriptionTypeOption';
-import { SubscriptionTypeLabelTranslationKeys } from '../enums/SubscriptionTypeOption';
+import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
+import {
+  PurchasePlatform,
+  PurchasePlatformLabelTranslationKeys,
+} from '../enums/PurchasePlatformOption';
+import {
+  SubscriptionType,
+  SubscriptionTypeLabelTranslationKeys,
+} from '../enums/SubscriptionTypeOption';
 import type { ExperienceSubscriptionsChartSpec } from '../types/ExperienceSubscriptionsChartSpec';
 import { ExperienceSubscriptionsChartKey } from '../types/ExperienceSubscriptionsChartSpec';
 
@@ -65,8 +75,7 @@ const getMetricNameFromChartKey = (
       );
     default: {
       const exhaustiveCheck: never = chartKey;
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- ADHOC-cleanup - pre-existing tech debt surfaced by PR #13823 (proxy-module cleanup)
-      throw new Error(`Unrecognized chartKey ${exhaustiveCheck}.`);
+      throw new Error(`Unrecognized chartKey ${String(exhaustiveCheck)}.`);
     }
   }
 };
@@ -90,24 +99,25 @@ const getFormattedTextFromBreakdown = (
   const [{ dimension, value }] = breakdownSpec;
   switch (dimension) {
     case DeveloperSubscriptionsAnalyticsDimension.SubscriptionType: {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- ADHOC-cleanup - pre-existing tech debt surfaced by PR #13823 (proxy-module cleanup)
-      const definedKey = SubscriptionTypeLabelTranslationKeys[value as SubscriptionType];
+      const definedKey = isValidEnumValue(SubscriptionType, value)
+        ? SubscriptionTypeLabelTranslationKeys[value]
+        : undefined;
       return translate(
-        definedKey ||
+        definedKey ??
           translationKey(BreakdownUnknown, TranslationNamespace.ExperienceSubscriptions),
       );
     }
     case DeveloperSubscriptionsAnalyticsDimension.PurchasePlatform: {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- ADHOC-cleanup - pre-existing tech debt surfaced by PR #13823 (proxy-module cleanup)
-      const definedKey = PurchasePlatformLabelTranslationKeys[value as PurchasePlatform];
+      const definedKey = isValidEnumValue(PurchasePlatform, value)
+        ? PurchasePlatformLabelTranslationKeys[value]
+        : undefined;
       return translate(
-        definedKey ||
+        definedKey ??
           translationKey(BreakdownUnknown, TranslationNamespace.ExperienceSubscriptions),
       );
     }
     case DeveloperSubscriptionsAnalyticsDimension.DeveloperSubscriptionProduct: {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- ADHOC-cleanup - pre-existing tech debt surfaced by PR #13823 (proxy-module cleanup)
-      return value as FormattedText;
+      return brandUntranslatableText(value);
     }
     case DeveloperSubscriptionsAnalyticsDimension.Invalid: {
       return translate(
@@ -116,8 +126,7 @@ const getFormattedTextFromBreakdown = (
     }
     default: {
       const exhaustiveCheck: never = dimension;
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- ADHOC-cleanup - pre-existing tech debt surfaced by PR #13823 (proxy-module cleanup)
-      throw new Error(`Unrecognized dimension ${exhaustiveCheck}.`);
+      throw new Error(`Unrecognized dimension ${String(exhaustiveCheck)}.`);
     }
   }
 };
@@ -209,19 +218,21 @@ const getSeriesTooltipKey = (
 
   switch (chartKey) {
     case ExperienceSubscriptionsChartKey.SalesBySubscriptionType:
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- ADHOC-cleanup - pre-existing tech debt surfaced by PR #13823 (proxy-module cleanup)
-      return SalesBySubscriptionTypeChartLegendTooltipTranslationKeys[value as SubscriptionType];
+      return isValidEnumValue(SubscriptionType, value)
+        ? SalesBySubscriptionTypeChartLegendTooltipTranslationKeys[value]
+        : undefined;
     case ExperienceSubscriptionsChartKey.CancellationsBySubscriptionType:
-      return CancellationsBySubscriptionTypeChartLegendTooltipTranslationKeys[
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- ADHOC-cleanup - pre-existing tech debt surfaced by PR #13823 (proxy-module cleanup)
-        value as SubscriptionType
-      ];
+      return isValidEnumValue(SubscriptionType, value)
+        ? CancellationsBySubscriptionTypeChartLegendTooltipTranslationKeys[value]
+        : undefined;
     case ExperienceSubscriptionsChartKey.SalesByPlatform:
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- ADHOC-cleanup - pre-existing tech debt surfaced by PR #13823 (proxy-module cleanup)
-      return SalesByPlatformChartLegendTooltipTranslationKeys[value as PurchasePlatform];
+      return isValidEnumValue(PurchasePlatform, value)
+        ? SalesByPlatformChartLegendTooltipTranslationKeys[value]
+        : undefined;
     case ExperienceSubscriptionsChartKey.RevenueByPlatform:
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- ADHOC-cleanup - pre-existing tech debt surfaced by PR #13823 (proxy-module cleanup)
-      return RevenueByPlatformChartLegendTooltipTranslationKeys[value as PurchasePlatform];
+      return isValidEnumValue(PurchasePlatform, value)
+        ? RevenueByPlatformChartLegendTooltipTranslationKeys[value]
+        : undefined;
     case ExperienceSubscriptionsChartKey.Sales:
     case ExperienceSubscriptionsChartKey.Revenue:
     case ExperienceSubscriptionsChartKey.SalesByProduct:
@@ -229,24 +240,21 @@ const getSeriesTooltipKey = (
       return undefined;
     default: {
       const exhaustiveCheck: never = chartKey;
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- ADHOC-cleanup - pre-existing tech debt surfaced by PR #13823 (proxy-module cleanup)
-      throw new Error(`Unrecognized chartKey ${exhaustiveCheck}.`);
+      throw new Error(`Unrecognized chartKey ${String(exhaustiveCheck)}.`);
     }
   }
 };
 
-const chartKeyToChartUnit: Record<ExperienceSubscriptionsChartKey, ChartUnit> = {
-  [ExperienceSubscriptionsChartKey.Sales]: ChartUnit.Sales,
-  [ExperienceSubscriptionsChartKey.SalesByProduct]: ChartUnit.Sales,
-  [ExperienceSubscriptionsChartKey.SalesByPlatform]: ChartUnit.Sales,
-  [ExperienceSubscriptionsChartKey.SalesBySubscriptionType]: ChartUnit.Sales,
-  [ExperienceSubscriptionsChartKey.Revenue]: ChartUnit.Robux,
-  [ExperienceSubscriptionsChartKey.RevenueByProduct]: ChartUnit.Robux,
-  [ExperienceSubscriptionsChartKey.RevenueByPlatform]: ChartUnit.Robux,
-  [ExperienceSubscriptionsChartKey.CancellationsBySubscriptionType]: ChartUnit.Cancellations,
+const chartKeyToFormattingSpec: Record<ExperienceSubscriptionsChartKey, TFormattingSpec> = {
+  [ExperienceSubscriptionsChartKey.Sales]: integerFormattingSpec,
+  [ExperienceSubscriptionsChartKey.SalesByProduct]: integerFormattingSpec,
+  [ExperienceSubscriptionsChartKey.SalesByPlatform]: integerFormattingSpec,
+  [ExperienceSubscriptionsChartKey.SalesBySubscriptionType]: integerFormattingSpec,
+  [ExperienceSubscriptionsChartKey.Revenue]: robuxFormattingSpec,
+  [ExperienceSubscriptionsChartKey.RevenueByProduct]: robuxFormattingSpec,
+  [ExperienceSubscriptionsChartKey.RevenueByPlatform]: robuxFormattingSpec,
+  [ExperienceSubscriptionsChartKey.CancellationsBySubscriptionType]: integerFormattingSpec,
 };
-
-const chartUnitAggregationType = ChartUnitAggregationType.SummaryTotal;
 
 const formatSummary = (
   seriesInfo: SortedSeriesInfo<BreakdownSpec<DeveloperSubscriptionsAnalyticsDimension>>,
@@ -265,17 +273,17 @@ const formatSummary = (
       return [
         {
           summaryValueType: SummaryValueType.Numeric,
-          unit: chartKeyToChartUnit[chartKey],
-          type: chartUnitAggregationType,
+          summaryType: ChartSummaryType.Total,
+          formattingSpec: chartKeyToFormattingSpec[chartKey],
           value: totalDatapointsAcrossSeries(seriesInfo),
           correspondingBreakdowns: [],
         },
       ];
     case ExperienceSubscriptionsChartKey.SalesByPlatform:
       return seriesInfo.map((singleSeriesInfo) => ({
-        summaryValueType: SummaryValueType.Numeric,
-        unit: chartKeyToChartUnit[chartKey],
-        type: chartUnitAggregationType,
+        summaryValueType: SummaryValueType.Numeric as const,
+        summaryType: ChartSummaryType.Total as const,
+        formattingSpec: chartKeyToFormattingSpec[chartKey],
         value: totalDatapointsAcrossSeries([singleSeriesInfo]),
         specificLabel: singleSeriesInfo.summaryLabel,
         tooltipKey: getSeriesTooltipKey(
@@ -286,9 +294,9 @@ const formatSummary = (
       }));
     case ExperienceSubscriptionsChartKey.RevenueByPlatform:
       return seriesInfo.map((singleSeriesInfo) => ({
-        summaryValueType: SummaryValueType.Numeric,
-        unit: chartKeyToChartUnit[chartKey],
-        type: chartUnitAggregationType,
+        summaryValueType: SummaryValueType.Numeric as const,
+        summaryType: ChartSummaryType.Total as const,
+        formattingSpec: chartKeyToFormattingSpec[chartKey],
         value: totalDatapointsAcrossSeries([singleSeriesInfo]),
         specificLabel: singleSeriesInfo.summaryLabel,
         tooltipKey: getSeriesTooltipKey(
@@ -299,9 +307,9 @@ const formatSummary = (
       }));
     case ExperienceSubscriptionsChartKey.SalesBySubscriptionType:
       return seriesInfo.map((singleSeriesInfo) => ({
-        summaryValueType: SummaryValueType.Numeric,
-        unit: chartKeyToChartUnit[chartKey],
-        type: chartUnitAggregationType,
+        summaryValueType: SummaryValueType.Numeric as const,
+        summaryType: ChartSummaryType.Total as const,
+        formattingSpec: chartKeyToFormattingSpec[chartKey],
         value: totalDatapointsAcrossSeries([singleSeriesInfo]),
         specificLabel: singleSeriesInfo.summaryLabel,
         tooltipKey: getSeriesTooltipKey(
@@ -312,9 +320,9 @@ const formatSummary = (
       }));
     case ExperienceSubscriptionsChartKey.CancellationsBySubscriptionType:
       return seriesInfo.map((singleSeriesInfo) => ({
-        summaryValueType: SummaryValueType.Numeric,
-        unit: chartKeyToChartUnit[chartKey],
-        type: chartUnitAggregationType,
+        summaryValueType: SummaryValueType.Numeric as const,
+        summaryType: ChartSummaryType.Total as const,
+        formattingSpec: chartKeyToFormattingSpec[chartKey],
         value: totalDatapointsAcrossSeries([singleSeriesInfo]),
         specificLabel: singleSeriesInfo.summaryLabel,
         tooltipKey: getSeriesTooltipKey(
@@ -325,8 +333,7 @@ const formatSummary = (
       }));
     default: {
       const exhaustiveCheck: never = chartKey;
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- ADHOC-cleanup - pre-existing tech debt surfaced by PR #13823 (proxy-module cleanup)
-      throw new Error(`Unrecognized chartKey ${exhaustiveCheck}.`);
+      throw new Error(`Unrecognized chartKey ${String(exhaustiveCheck)}.`);
     }
   }
 };
@@ -341,20 +348,20 @@ const experienceSubscriptionsChartAdapters = (
   summary: Array<NumericChartSummaryItemSpec>;
 } => {
   const { endDate, chartKey } = spec;
-  const granularity = RAQIV2MetricGranularity.OneDay;
+  const seriesIntervalMeaning = DailyTimeSeriesAlignedToUTCMidnight;
 
   const allSeries: Array<RAQIMetricValue<DeveloperSubscriptionsAnalyticsDimension>> =
     response?.values ?? [];
   const { allTimestamps, pointsBySeries } = ingestRAQIMetricValues(allSeries);
-  const sortedTimestamps = processTimestamps(allTimestamps, granularity, endDate);
+  const sortedTimestamps = processTimestamps(allTimestamps, seriesIntervalMeaning, endDate);
 
   const nameFn = (breakdownSpec: BreakdownSpec<DeveloperSubscriptionsAnalyticsDimension>) =>
     getFormattedTextFromBreakdown(breakdownSpec, translate);
 
-  const seriesInfo = buildSeriesInfo({
+  const seriesInfo = buildSeriesInfo<BreakdownSpec<DeveloperSubscriptionsAnalyticsDimension>>({
     pointsBySeries,
     sortedTimestamps,
-    granularity,
+    granularity: seriesIntervalMeaning,
     locale,
     translateNameFn: nameFn,
     summaryLabelFn: nameFn,
@@ -371,9 +378,8 @@ const experienceSubscriptionsChartAdapters = (
   return {
     chart: {
       unit: {
-        unit: chartKeyToChartUnit[chartKey],
         display: getMetricNameFromChartKey(chartKey, translate),
-        type: chartUnitAggregationType,
+        formattingSpec: chartKeyToFormattingSpec[chartKey],
       },
       timestamps: sortedTimestamps,
       series: seriesInfo.map(({ data, legendName }) => ({

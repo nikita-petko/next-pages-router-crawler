@@ -13,10 +13,6 @@ import type {
   GenericChartState,
   TLabeledExplicitTimeRangeSpec,
 } from '@modules/charts-generic/charts/types/ChartTypes';
-import {
-  ChartUnit,
-  ChartUnitAggregationType,
-} from '@modules/charts-generic/charts/types/ChartTypes';
 import type { NonEmptyArray } from '@modules/charts-generic/types/NonEmptyArray';
 import useRAQIV2TranslationDependencies from '../../hooks/useRAQIV2TranslationDependencies';
 import type { GenericRAQIV2TimeComparatorChartProps } from '../../types/GenericRAQIV2ChartProps';
@@ -174,8 +170,6 @@ const GenericRAQIV2TabbedTimeComparatorCharts = <TTabKey extends string | number
       {
         unit: {
           display: brandUntranslatableText(''),
-          unit: ChartUnit.Unknown,
-          type: ChartUnitAggregationType.Unknown,
         },
         series: [],
         timestamps: [],

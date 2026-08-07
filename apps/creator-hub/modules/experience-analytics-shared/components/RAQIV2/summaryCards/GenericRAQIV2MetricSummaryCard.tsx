@@ -118,12 +118,14 @@ const GenericRAQIV2MetricSummaryCard: FC<GenericRAQIV2SummaryCardProps> = ({
 
   const translatedTooltip = useMemo(
     () => (label?.tooltip ? translationDependencies.translate(label.tooltip) : undefined),
-    [label?.tooltip, translationDependencies],
+    [label, translationDependencies],
   );
 
   const formattedValue = useMemo(
     () =>
-      summary ? formatChartUnit(summary.value, summary, translationDependencies) : noDataSymbol,
+      summary
+        ? formatChartUnit(summary.value, summary.formattingSpec, translationDependencies)
+        : noDataSymbol,
     [summary, translationDependencies],
   );
 
@@ -161,7 +163,7 @@ const GenericRAQIV2MetricSummaryCard: FC<GenericRAQIV2SummaryCardProps> = ({
           numberContextMetadata={summary.numberContextMetadata}
         />
       ) : undefined,
-    [showComparisonChip, summary?.comparisonChipSpec, summary?.numberContextMetadata],
+    [showComparisonChip, summary],
   );
 
   return (

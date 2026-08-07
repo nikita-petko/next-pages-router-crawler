@@ -13,12 +13,11 @@ import {
 } from '@rbx/ui';
 import type { TranslationKeyToFormattedText } from '@modules/analytics-translations/types';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
-import Flex from '@modules/miscellaneous/components/Flex';
+import { Flex } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import ComparisonChip from '../charts/ComparisonChip';
 import { formatMediumDate, formatMediumDateTime } from '../charts/formatters/timeFormatters';
-import { formatNumber, formatNumberWithSpec, NumberIcon } from '../charts/numberFormatters';
-import { ChartUnit } from '../charts/types/ChartTypes';
+import { formatNumberWithSpec, NumberIcon } from '../charts/numberFormatters';
 import CodeEditor from '../components/CodeEditors/CodeEditor';
 import CodeEditorSupportedLanguages from '../components/CodeEditors/CodeEditorSupportedLanguages';
 import DiffCodeEditor from '../components/CodeEditors/DiffCodeEditor';
@@ -29,7 +28,6 @@ import logAnalyticsError from '../utils/logAnalyticsError';
 import ActionColumnCell from './cells/ActionColumnCell';
 import cellAlignmentToJustifyContent from './cells/cellAlignmentToJustifyContent';
 import CodeColumnCell from './cells/CodeColumnCell';
-import HighlightedTagText, { containsHighlightTags } from './cells/HighlightedTagText';
 import CopyRawJSONButton from './CopyRawJSONButton';
 import GenericCellContentWithTooltip from './GenericCellContentWithTooltip';
 import InlinePriceWithRobuxIcon from './InlinePriceWithRobuxIcon';
@@ -75,11 +73,7 @@ const formatCellContent = <
         </Typography>
       );
     case ColumnType.Text: {
-      const { value } = cellValue;
-      if (containsHighlightTags(value)) {
-        return <HighlightedTagText text={value} />;
-      }
-      return value;
+      return cellValue.value;
     }
     case ColumnType.Number: {
       const { value, comparisonChipSpec } = cellValue;
@@ -89,34 +83,16 @@ const formatCellContent = <
 
       let formattedNode: ReactNode = value;
 
-      const newFormattingSpec =
+      const formattingSpec =
         cellValue.analyticsFormattingSpec ?? config.analyticsNumberFormattingSpec;
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration in progress. Will be removed in DSA-4660.
-      const legacyFormattingSpec = cellValue.formattingSpec ?? config.numericFormattingSpec;
 
-      if (newFormattingSpec) {
-        const formattedCellValue = formatNumberWithSpec(value, newFormattingSpec, {
+      if (formattingSpec) {
+        const formattedCellValue = formatNumberWithSpec(value, formattingSpec, {
           locale,
           translate,
         });
         formattedNode =
-          newFormattingSpec.icon === NumberIcon.Robux ? (
-            <InlinePriceWithRobuxIcon price={formattedCellValue} />
-          ) : (
-            formattedCellValue
-          );
-      } else if (legacyFormattingSpec) {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const formattedCellValue = formatNumber({
-          value,
-          unit: legacyFormattingSpec.unit,
-          type: legacyFormattingSpec.type,
-          context: legacyFormattingSpec.context,
-          locale,
-          translate,
-        });
-        formattedNode =
-          legacyFormattingSpec.unit === ChartUnit.Robux ? (
+          formattingSpec.icon === NumberIcon.Robux ? (
             <InlinePriceWithRobuxIcon price={formattedCellValue} />
           ) : (
             formattedCellValue
@@ -152,8 +128,8 @@ const formatCellContent = <
     }
     case ColumnType.RawJSONString: {
       const parsedJSON: unknown = JSON.parse(cellValue.value);
-      const fullCode = JSON.stringify(parsedJSON, null, 2);
-      const codeSnippet = JSON.stringify(parsedJSON);
+      const fullCode = JSON.stringify(parsedJSON, null, 2) ?? '';
+      const codeSnippet = JSON.stringify(parsedJSON) ?? '';
       return (
         <HighlightingCodeBlock
           code={fullCode}
@@ -262,8 +238,18 @@ const formatCellContent = <
           disableRipple
           onClick={onClick}
           disabled={!onClick}
+          aria-label={
+            typeof text === 'string'
+              ? text
+              : typeof description === 'string'
+                ? description
+                : translate(translationKey('Label.Image', TranslationNamespace.Analytics))
+          }
           style={{
-            position: 'relative',
+            backgroundImage: `url(${src})`,
+            backgroundRepeat: 'no-repeat',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
             backgroundColor: 'transparent',
             padding: 0,
             borderRadius: '4px',
@@ -272,23 +258,9 @@ const formatCellContent = <
             minWidth: 'unset',
             maxWidth: '100%',
             aspectRatio: width && height ? `${width}/${height}` : undefined,
-            overflow: 'hidden',
           }}
-          data-id={dataId}>
-          <img
-            src={src}
-            alt={description ?? text ?? ''}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              objectPosition: 'center',
-              borderRadius: 'inherit',
-            }}
-          />
-        </Button>
+          data-id={dataId}
+        />
       );
 
       // If we have text, render image and text together
@@ -333,16 +305,12 @@ const formatCellContent = <
         }
       }
 
-      const trimmed = value.trim();
-      const textNode = trimmed.length > 0 ? value : null;
-      const iconNode = <span className='inline-flex items-center leading-[0]'>{icon}</span>;
-
       return (
         <Flex alignItems='center' gap={8}>
-          <Tooltip title={message ?? ''} placement='bottom' arrow>
-            {iconNode}
+          <Typography>{value}</Typography>
+          <Tooltip title={message} placement='bottom' arrow>
+            {icon}
           </Tooltip>
-          {textNode}
         </Flex>
       );
     }

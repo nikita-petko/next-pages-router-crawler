@@ -6,16 +6,13 @@ import { Button } from '@rbx/foundation-ui';
 import { Card, CardContent, CardHeader, Container, Typography } from '@rbx/ui';
 import { formatSingleDate } from '@modules/charts-generic/charts/formatters/timeFormatters';
 import useImpressionObserver from '@modules/charts-generic/charts/hooks/useImpressionObserver';
-import { formatNumber, NumberContext } from '@modules/charts-generic/charts/numberFormatters';
-import {
-  ChartUnit,
-  ChartUnitAggregationType,
-} from '@modules/charts-generic/charts/types/ChartTypes';
+import { formatNumberWithSpec } from '@modules/charts-generic/charts/numberFormatters';
 import useComponentSize from '@modules/charts-generic/components/useComponentSize';
 import {
   analyticsAssistantNavigationItem,
   analyticsExploreNavigationItem,
 } from '@modules/charts-generic/constants/analyticsNavigationItems';
+import { percentageFormattingSpec } from '@modules/charts-generic/constants/analyticsNumberFormattingSpec';
 import useLocale from '@modules/charts-generic/context/useLocale';
 import AnalyticsQueryParams from '@modules/charts-generic/enums/AnalyticsQueryParams';
 import buildExperienceAnalyticsUrlWithParams from '@modules/charts-generic/utils/analyticsUrlBuilder';
@@ -128,13 +125,7 @@ const InsightCardV2: FC<InsightCardV2Props> = ({ spec }) => {
 
   const { title: titleDescription, displayValue } = useMemo(() => {
     const insightType = spec.type;
-    // TODO(DSA-4609): Move to the new number formatter.
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- ADHOC-cleanup - pre-existing tech debt surfaced by PR #13823 (proxy-module cleanup)
-    const formattedValue = formatNumber({
-      value: spec.summaryValue,
-      unit: ChartUnit.Percentage,
-      type: ChartUnitAggregationType.Ratio,
-      context: NumberContext.ChartSummary,
+    const formattedValue = formatNumberWithSpec(spec.summaryValue, percentageFormattingSpec, {
       translate,
       locale,
     });

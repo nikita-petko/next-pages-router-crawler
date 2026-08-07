@@ -55,6 +55,18 @@ export const brandUntranslatableText = (str: string): FormattedText => {
 };
 
 /**
+ * Brand text that has already passed through a translation function as
+ * {@link FormattedText}.
+ *
+ * Prefer {@link translationFn} when possible. This helper is for legacy
+ * translation APIs whose return type does not preserve the formatted-text
+ * brand.
+ */
+export const brandPretranslatedText = (str: string): FormattedText => {
+  return brandUntranslatableText(str);
+};
+
+/**
  * It is sometimes necessary, in a test, to be able to pass a FormattedText type into some component or function.
  * This allows us to do that. For ergonomics, suggest importing this like
  * ```

@@ -74,7 +74,7 @@ const build = (
   switch (valueType) {
     case RAQIV2MetricValueType.Numeric: {
       const fallback = getFallbackNoDataSeriesValue(noDataFallback ?? FallbackValue.Zero);
-      const defaultValue = fallback === 'N/A' ? Number.NaN : fallback;
+      const defaultValue = typeof fallback === 'number' ? fallback : Number.NaN;
       return {
         type: valueType,
         getDisplayValue: (value: number | undefined) => {

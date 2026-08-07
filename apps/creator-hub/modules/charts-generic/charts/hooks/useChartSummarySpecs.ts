@@ -2,74 +2,26 @@ import { useMemo } from 'react';
 import type { Locale } from '@rbx/intl';
 import { useTranslation } from '@rbx/intl';
 import { RobuxIcon } from '@rbx/ui';
-import type {
-  TranslationKey,
-  TranslationKeyToFormattedText,
-} from '@modules/analytics-translations/types';
+import type { TranslationKeyToFormattedText } from '@modules/analytics-translations/types';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKeyWithoutNamespace } from '@modules/analytics-translations/wrapperFunctions';
 import {
-  translationKey,
-  translationKeyWithoutNamespace,
-} from '@modules/analytics-translations/wrapperFunctions';
-import { TranslationNamespace } from '@modules/miscellaneous/localization';
+  roughPercentageFormattingSpec,
+  wholePercentageFormattingSpec,
+} from '../../constants/analyticsNumberFormattingSpec';
 import useLocale from '../../context/useLocale';
-import ChartSummaryType from '../../enums/ChartSummaryType';
 import type { ChartSummaryItemSpec } from '../ChartSummaryItem';
-import { SummaryValueType } from '../ChartSummaryItem';
-import formatChartUnit from '../formatChartUnit';
-import type { TNumberContextMetadata } from '../numberFormatters';
-import { formatNumber, NumberContext, NumberIcon } from '../numberFormatters';
-import { ChartUnit, ChartUnitAggregationType } from '../types/ChartTypes';
+import { SummaryValueType, getLabelKeyForSummaryType } from '../ChartSummaryItem';
+import type { NumberContext, TNumberContextMetadata } from '../numberFormatters';
+import { formatNumberWithSpec, NumberIcon } from '../numberFormatters';
 
 const comparisonChipMaxPercentage = 10; // = 1000%
 
-const getDescriptionKey = (type: ChartUnitAggregationType): TranslationKey | null => {
-  switch (type) {
-    case ChartUnitAggregationType.Average:
-    case ChartUnitAggregationType.AverageRatio:
-      return translationKey('Label.Average', TranslationNamespace.Analytics);
-    case ChartUnitAggregationType.SummaryTotal:
-    case ChartUnitAggregationType.Sum:
-      return translationKey('Label.TotalSummaryItem', TranslationNamespace.Analytics);
-    case ChartUnitAggregationType.Ratio:
-    case ChartUnitAggregationType.Unknown:
-      return null;
-    case ChartUnitAggregationType.AverageQuotaUsage:
-      return translationKey('Label.AverageQuotaUsage', TranslationNamespace.Analytics);
-    case ChartUnitAggregationType.LastValue:
-      return translationKey('Label.LastValue', TranslationNamespace.Analytics);
-    default: {
-      const exhaustiveCheck: never = type;
-      throw new Error(`Unhandled summary item type ${exhaustiveCheck as string}`);
-    }
-  }
-};
-
-const getDescriptionForChartSummaryType = (type: ChartSummaryType): TranslationKey | null => {
-  switch (type) {
-    case ChartSummaryType.Average:
-      return translationKey('Label.Average', TranslationNamespace.Analytics);
-    case ChartSummaryType.Total:
-    case ChartSummaryType.TotalAbsoluteValue:
-      return translationKey('Label.TotalSummaryItem', TranslationNamespace.Analytics);
-    case ChartSummaryType.QuotaPercentageUsage:
-      return translationKey('Label.AverageQuotaUsage', TranslationNamespace.Analytics);
-    case ChartSummaryType.LastValue:
-      return translationKey('Label.LastValue', TranslationNamespace.Analytics);
-    case ChartSummaryType.GrowthRate:
-    case ChartSummaryType.SinglePoint:
-    case ChartSummaryType.TopBreakdown:
-    default:
-      return null;
-  }
-};
-
-const getComparisonChipUnitOverride = (numberContextMetadata?: TNumberContextMetadata) => {
+const getComparisonChipFormattingSpec = (numberContextMetadata?: TNumberContextMetadata) => {
   if (numberContextMetadata?.inRoundedComparisonChipContext) {
-    return ChartUnit.WholePercentage;
+    return wholePercentageFormattingSpec;
   }
-
-  return ChartUnit.RoughPercentage;
+  return roughPercentageFormattingSpec;
 };
 
 const getSummaryDescription = (
@@ -80,14 +32,12 @@ const getSummaryDescription = (
     return item.specificLabel;
   }
 
-  const { summaryType, specificLabel, type } = item;
-  const descriptionTranslationKey = summaryType
-    ? getDescriptionForChartSummaryType(summaryType)
-    : getDescriptionKey(type ?? ChartUnitAggregationType.Unknown);
+  const { summaryType, specificLabel } = item;
+  const descriptionTranslationKey = getLabelKeyForSummaryType(summaryType);
 
   return (
-    specificLabel ||
-    (descriptionTranslationKey ? translate(descriptionTranslationKey) : null) ||
+    specificLabel ??
+    (descriptionTranslationKey ? translate(descriptionTranslationKey) : null) ??
     translate(translationKeyWithoutNamespace('Label.Unknown'))
   );
 };
@@ -96,30 +46,22 @@ const getSummaryValue = (
   item: ChartSummaryItemSpec,
   translate: TranslationKeyToFormattedText,
   locale: Locale,
-  summaryValueContext: NumberContext,
 ): string => {
   if (item.summaryValueType === SummaryValueType.String) {
     return item.value;
   }
 
-  const { value, unit, type, formattingSpec, numberContextMetadata } = item;
-  return formatChartUnit(
-    value,
-    { unit, type, formattingSpec, context: summaryValueContext, numberContextMetadata },
-    { locale, translate },
-  );
+  const { value, formattingSpec } = item;
+  return formatNumberWithSpec(value, formattingSpec, { locale, translate });
 };
 
 const getSummaryStartIcon = (item: ChartSummaryItemSpec) => {
   if (item.summaryValueType === SummaryValueType.String) {
-    return;
+    return undefined;
   }
 
-  const { unit, formattingSpec } = item;
-  // oxlint-disable-next-line @typescript-eslint/consistent-return
-  return unit === ChartUnit.Robux || formattingSpec?.icon === NumberIcon.Robux
-    ? RobuxIcon
-    : undefined;
+  const { formattingSpec } = item;
+  return formattingSpec?.icon === NumberIcon.Robux ? RobuxIcon : undefined;
 };
 
 const getSummaryTooltip = (
@@ -151,20 +93,15 @@ const getSummaryComparisonChip = (
   const prefixIfOverflow = numberToShow > 0 ? '>' : '<';
   const prefix = isOverflow ? prefixIfOverflow : '';
 
+  const chipFormattingSpec = getComparisonChipFormattingSpec(numberContextMetadata);
+
   return {
     isGood,
     isUp,
     tooltip,
-    // TODO(DSA-4660): Migrate this formatted label to the new number formatter.
-    // oxlint-disable-next-line @typescript-eslint/no-deprecated
-    formattedLabel: `${prefix}${formatNumber({
-      value: numberToShow,
-      unit: getComparisonChipUnitOverride(numberContextMetadata),
-      type: ChartUnitAggregationType.Ratio,
-      context: NumberContext.DataPoint,
+    formattedLabel: `${prefix}${formatNumberWithSpec(numberToShow, chipFormattingSpec, {
       locale,
       translate,
-      numberContextMetadata,
     })}`,
   };
 };
@@ -173,21 +110,20 @@ export const getSummarySpec = ({
   item,
   locale,
   translate,
-  summaryValueContext,
 }: {
   item: ChartSummaryItemSpec;
   locale: Locale;
   translate: TranslationKeyToFormattedText;
-  summaryValueContext: NumberContext;
+  summaryValueContext?: NumberContext;
 }) => {
   const key =
     item.summaryValueType === SummaryValueType.String
       ? `string.${item.specificLabel}.${item.value}`
-      : `${item.type}.${item.specificLabel}.${item.unit}.${item.value}`;
+      : `${item.summaryType}.${item.specificLabel}.${item.value}`;
 
   return {
     key,
-    summaryValue: getSummaryValue(item, translate, locale, summaryValueContext),
+    summaryValue: getSummaryValue(item, translate, locale),
     description: getSummaryDescription(item, translate),
     StartSummaryIcon: getSummaryStartIcon(item),
     comparisonChipSpec: getSummaryComparisonChip(item, translate, locale),
@@ -209,7 +145,6 @@ const useChartSummarySpecs = (summaryItems: ChartSummaryItemSpec[]) => {
           item,
           locale,
           translate,
-          summaryValueContext: NumberContext.ChartSummary,
         }),
       ),
     [locale, summaryItems, translate],

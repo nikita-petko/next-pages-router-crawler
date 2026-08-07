@@ -1,9 +1,8 @@
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
-import { NumberContext } from '@modules/charts-generic/charts/numberFormatters';
 import {
-  ChartUnit,
-  ChartUnitAggregationType,
-} from '@modules/charts-generic/charts/types/ChartTypes';
+  currencyFormattingSpec,
+  robuxFormattingSpec,
+} from '@modules/charts-generic/constants/analyticsNumberFormattingSpec';
 import type { TableColumnConfig } from '@modules/charts-generic/tables/types/GenericColumnType';
 import { ColumnType } from '@modules/charts-generic/tables/types/GenericColumnType';
 import type { TableConfig } from '@modules/charts-generic/tables/types/GenericTableType';
@@ -126,11 +125,7 @@ export const SettingsAssetTableColumnConfigs: TableColumnConfig<AssetTableColumn
     columnKey: AssetTableColumnKey.Price,
     columnType: ColumnType.Number,
     widthWeight: 20,
-    numericFormattingSpec: {
-      unit: ChartUnit.Currency,
-      type: ChartUnitAggregationType.SummaryTotal,
-      context: NumberContext.DataPoint,
-    },
+    analyticsNumberFormattingSpec: currencyFormattingSpec,
   },
 ];
 
@@ -158,10 +153,6 @@ export const SettingsAvatarTableColumnConfigs: TableColumnConfig<AvatarTableColu
     columnKey: AvatarTableColumnKey.Price,
     columnType: ColumnType.Number,
     widthWeight: 20,
-    numericFormattingSpec: {
-      unit: ChartUnit.Robux,
-      type: ChartUnitAggregationType.SummaryTotal,
-      context: NumberContext.DataPoint,
-    },
+    analyticsNumberFormattingSpec: robuxFormattingSpec,
   },
 ];

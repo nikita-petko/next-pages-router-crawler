@@ -4,20 +4,18 @@ import { useQuery } from '@tanstack/react-query';
 import { useMediaQuery } from '@rbx/ui';
 import type { FormattedText } from '@modules/analytics-translations/types';
 import { NumberContext } from '@modules/charts-generic/charts/numberFormatters';
-import {
-  ChartUnit,
-  ChartUnitAggregationType,
-} from '@modules/charts-generic/charts/types/ChartTypes';
 import MetricValue, {
   noDataSymbol,
 } from '@modules/charts-generic/components/MetricValue/MetricValue';
+import { DailyTimeSeriesAlignedToUTCMidnight } from '@modules/charts-generic/enums/SeriesIntervalMeaning';
 import type { RAQIV2BreakdownValue } from '@modules/clients/analytics';
 import { Item } from '@modules/miscellaneous/common';
 import genericRAQIV2TopBreakdownSummaryCardAdapter from '../../../adapters/genericRAQIV2TopBreakdownSummaryCardAdapter';
 import { HeroItemCardStyles } from '../../../constants/cardConstants';
+import raqiV2MetricGranularityToSeriesIntervalMeaning from '../../../constants/RAQIV2MetricGranularityToSeriesIntervalMeaning';
 import useRAQIV2Request from '../../../hooks/useRAQIV2Request';
 import useRAQIV2TranslationDependencies from '../../../hooks/useRAQIV2TranslationDependencies';
-import type { ItemMetadata } from '../../../types/RAQIV2SummaryCardShared';
+import { generateAnalyticsNumberFormattingSpec } from '../../../utils/analyticsNumberFormattingSpec';
 import type { MakeRAQIV2RequestOptions } from '../../../utils/makeRAQIV2Request';
 import {
   brandUserSuppliedText,
@@ -56,6 +54,20 @@ const useItemMetadata = (
   };
 };
 
+export type ItemMetadata = {
+  itemId: number;
+  url?: string;
+  itemType: Item;
+  name?: string;
+
+  // Some product types (e.g. Developer Products) may need to have their image thumbnails
+  // retrieved from the thumbnail asset id directly instead of the item id.
+  // (for developer products this is because of the target ID -> product ID migration)
+  // The optional iconImageAssetId should be used to populate the thumbnail image if it exists,
+  // and fallback to the item id if not.
+  iconImageAssetId?: number;
+};
+
 export type GenericRAQIV2ItemSummaryCardProps = GenericRAQIV2SummaryCardProps & {
   getItemMetadata: (breakdowns: RAQIV2BreakdownValue[]) => Promise<ItemMetadata>;
 };
@@ -67,9 +79,10 @@ const GenericRAQIV2ItemSummaryCard: FC<GenericRAQIV2ItemSummaryCardProps> = ({
   ignoreCache,
   getItemMetadata,
 }) => {
-  const labelKey = label?.key;
   const translationDependencies = useRAQIV2TranslationDependencies();
-  const granularity = spec.granularity;
+  const seriesIntervalMeaning = spec.granularity
+    ? raqiV2MetricGranularityToSeriesIntervalMeaning(spec.granularity)
+    : DailyTimeSeriesAlignedToUTCMidnight;
 
   const RAQIV2RequestOptions: MakeRAQIV2RequestOptions = useMemo(
     () => ({ fetchTotalSeries: false, fetchComparison: undefined }),
@@ -87,15 +100,16 @@ const GenericRAQIV2ItemSummaryCard: FC<GenericRAQIV2ItemSummaryCardProps> = ({
         spec,
         responses: raqiData ?? { response: null },
         summaryType,
-        granularity,
+        granularity: seriesIntervalMeaning,
         translationDependencies,
       }),
-    [raqiData, granularity, spec, summaryType, translationDependencies],
+    [raqiData, seriesIntervalMeaning, spec, summaryType, translationDependencies],
   );
 
   const translatedLabelKey = useMemo(() => {
+    const labelKey = label?.key;
     return labelKey ? translationDependencies.translate(labelKey) : undefined;
-  }, [labelKey, translationDependencies]);
+  }, [label?.key, translationDependencies]);
   const metricLabel: FormattedText = useMemo(
     () => translatedLabelKey ?? getMetricLabelFromMetricLike(spec.metric, translationDependencies),
     [spec.metric, translatedLabelKey, translationDependencies],
@@ -122,7 +136,15 @@ const GenericRAQIV2ItemSummaryCard: FC<GenericRAQIV2ItemSummaryCardProps> = ({
   } = useItemMetadata(getItemMetadata, [...breakdowns]);
 
   // Use name from metadata if available, otherwise fall back to the RAQI breakdown value
-  const displayName = name ?? formattedValue;
+  const displayName = name ? brandUserSuppliedText(name) : formattedValue;
+  const analyticsFormattingSpec = useMemo(
+    () =>
+      generateAnalyticsNumberFormattingSpec({
+        metric: spec.metric,
+        context: NumberContext.DataPoint,
+      }),
+    [spec.metric],
+  );
 
   return (
     <AnalyticsItemCard
@@ -130,7 +152,7 @@ const GenericRAQIV2ItemSummaryCard: FC<GenericRAQIV2ItemSummaryCardProps> = ({
       itemType={itemType}
       href={url}
       label={metricLabel}
-      itemName={brandUserSuppliedText(displayName)}
+      itemName={displayName}
       iconImageAssetId={iconImageAssetId}
       styleConfig={styleConfig}
       isDataLoading={chartState.isDataLoading || isMetadataLoading}
@@ -144,12 +166,7 @@ const GenericRAQIV2ItemSummaryCard: FC<GenericRAQIV2ItemSummaryCardProps> = ({
             <MetricValue
               comparisonChipSpec={summary?.comparisonChipSpec}
               value={summary?.value ?? 0}
-              formattingSpec={{
-                unit: summary?.unit ?? ChartUnit.Sales,
-                type: ChartUnitAggregationType.Sum,
-                context: NumberContext.DataPoint,
-              }}
-              analyticsFormattingSpec={summary?.formattingSpec}
+              analyticsFormattingSpec={summary?.formattingSpec ?? analyticsFormattingSpec}
               typographySpec={{
                 variant: styleConfig.valueTypographyVariant,
               }}

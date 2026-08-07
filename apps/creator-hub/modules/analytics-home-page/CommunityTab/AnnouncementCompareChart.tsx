@@ -19,11 +19,11 @@ import {
 } from '@modules/analytics-translations/wrapperFunctions';
 import { formatDurationInDay } from '@modules/charts-generic/charts/formatters/timeFormatters';
 import { useDownloadAction } from '@modules/charts-generic/charts/GenericChartExportButton';
-import {
-  ChartUnit,
-  ChartUnitAggregationType,
-} from '@modules/charts-generic/charts/types/ChartTypes';
 import type { Timestamp, Value } from '@modules/charts-generic/charts/types/TimeSeriesTypes';
+import {
+  integerFormattingSpec,
+  percentageFormattingSpec,
+} from '@modules/charts-generic/constants/analyticsNumberFormattingSpec';
 import type { ArbitraryComponentConfig } from '@modules/experience-analytics-shared/components/RAQIV2/layout/AnalyticsArbitraryComponent';
 import { useAnnouncementNameMapFromContext } from '@modules/experience-analytics-shared/context/AnnouncementNameMapProvider';
 import { useRAQIV2Client } from '@modules/experience-analytics-shared/context/RAQIV2ClientProvider';
@@ -201,13 +201,11 @@ const AnnouncementCompareChartInner: React.FC<{
       activeTab === 'pushCtr' || activeTab === 'streamCtr'
         ? {
             display: brandUntranslatableText('%'),
-            unit: ChartUnit.Percentage,
-            type: ChartUnitAggregationType.Sum,
+            formattingSpec: percentageFormattingSpec,
           }
         : {
             display: brandUntranslatableText(''),
-            unit: ChartUnit.Unknown,
-            type: ChartUnitAggregationType.Sum,
+            formattingSpec: integerFormattingSpec,
           };
 
     const labeledSeries = lineSeries.map((s) => ({

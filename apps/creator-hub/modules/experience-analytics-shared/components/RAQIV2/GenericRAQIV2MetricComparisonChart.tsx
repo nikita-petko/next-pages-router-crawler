@@ -8,8 +8,8 @@ import ChartFooter from '@modules/charts-generic/charts/ChartFooter';
 import formatChartUnit from '@modules/charts-generic/charts/formatChartUnit';
 import { useXAxisFormatter } from '@modules/charts-generic/charts/formatters/axisFormatters';
 import { formatTimestampForChartTooltip } from '@modules/charts-generic/charts/formatters/timeFormatters';
-import { ChartUnit } from '@modules/charts-generic/charts/types/ChartTypes';
 import type { Timestamp, Value } from '@modules/charts-generic/charts/types/TimeSeriesTypes';
+import { integerFormattingSpec } from '@modules/charts-generic/constants/analyticsNumberFormattingSpec';
 import useLocale from '@modules/charts-generic/context/useLocale';
 import { isNonEmptyArray } from '@modules/charts-generic/types/NonEmptyArray';
 import { AnnotationType } from '@modules/clients/analytics';
@@ -211,10 +211,7 @@ const GenericRAQIV2MetricComparisonChart: FC<GenericRAQIV2MultiMetricChartProps>
       // is gated behind `isAnalyticsMetricAwareYAxisFormatterEnabled`. When
       // the flag is off (or the unit lacks a `formattingSpec`), we leave
       // `yAxisFormatter` undefined so axes use Highcharts' default formatter.
-      const isPercentUnit =
-        // eslint-disable-next-line deprecation/deprecation, @typescript-eslint/no-deprecated -- migration in progress. Will be removed in DSA-4660.
-        unit.unit === ChartUnit.Percentage ||
-        unit.formattingSpec?.numberFormatOptions.style === 'percent';
+      const isPercentUnit = unit.formattingSpec?.numberFormatOptions.style === 'percent';
       let yAxisFormatter: ((args: { value: string | number }) => string) | undefined;
       if (isPercentUnit) {
         yAxisFormatter = ({ value }) => {
@@ -222,16 +219,13 @@ const GenericRAQIV2MetricComparisonChart: FC<GenericRAQIV2MultiMetricChartProps>
           return `${numberFormatter(num, 'percent')}`;
         };
       } else if (enableMetricAwareYAxisFormatter && unit.formattingSpec) {
-        const axisUnit = {
-          ...unit,
-          formattingSpec: buildAxisFormattingSpec(unit.formattingSpec),
-        };
+        const axisFormattingSpec = buildAxisFormattingSpec(unit.formattingSpec);
         yAxisFormatter = ({ value }) => {
           const num = typeof value === 'string' ? parseFloat(value) : value;
           if (!Number.isFinite(num)) {
             return '';
           }
-          return formatChartUnit(num, axisUnit, translationDependencies);
+          return formatChartUnit(num, axisFormattingSpec, translationDependencies);
         };
       }
 
@@ -240,7 +234,9 @@ const GenericRAQIV2MetricComparisonChart: FC<GenericRAQIV2MultiMetricChartProps>
 
       givenSeriesData.forEach(({ name, dataPoints, type, zones, custom }, idx) => {
         const seriesId = `${specIndex}-${idx}`;
-        valueFormatters.set(seriesId, ({ y }) => formatChartUnit(y, unit, translationDependencies));
+        valueFormatters.set(seriesId, ({ y }) =>
+          formatChartUnit(y, unit.formattingSpec ?? integerFormattingSpec, translationDependencies),
+        );
 
         const result: SingleLineSeries<Timestamp, Value> = {
           id: seriesId,

@@ -4,7 +4,6 @@ import type { Locale } from '@rbx/intl';
 import type { TranslationKeyToFormattedText } from '@modules/analytics-translations/types';
 import buildAxisFormattingSpec from '../buildAxisFormattingSpec';
 import formatChartUnit from '../formatChartUnit';
-import { ChartUnit } from '../types/ChartTypes';
 import type { TimeSeriesChartUnitSpec } from '../types/TimeSeriesTypes';
 
 const useTimeSeriesChartYAxisConfig = ({
@@ -57,9 +56,9 @@ const useTimeSeriesChartYAxisConfig = ({
       if (!Number.isFinite(num)) {
         return '';
       }
-      return `${formatChartUnit(num, { ...unitSpec, formattingSpec: yAxisFormattingSpec }, translationDependencies)}`;
+      return formatChartUnit(num, yAxisFormattingSpec, translationDependencies);
     },
-    [unitSpec, yAxisFormattingSpec, translationDependencies],
+    [yAxisFormattingSpec, translationDependencies],
   );
 
   return useMemo(() => {
@@ -67,10 +66,7 @@ const useTimeSeriesChartYAxisConfig = ({
       yAxisTitle: showUnitDisplayOnYAxisTitle ? unitSpec.display : undefined,
       decimalPrecision: unitSpec.formattingSpec?.numberFormatOptions.maximumFractionDigits,
     };
-    const isPercentUnit =
-      unitSpec.formattingSpec?.numberFormatOptions.style === 'percent' ||
-      // TODO(DSA-4660): Remove legacy unit fallback after formatter migration.
-      unitSpec.unit === ChartUnit.Percentage;
+    const isPercentUnit = unitSpec.formattingSpec?.numberFormatOptions.style === 'percent';
     if (isPercentUnit) {
       return { ...config, yAxisFormatter: percentFormatter };
     }
@@ -90,8 +86,6 @@ const useTimeSeriesChartYAxisConfig = ({
     unitSpec.display,
     unitSpec.formattingSpec?.numberFormatOptions.maximumFractionDigits,
     unitSpec.formattingSpec?.numberFormatOptions.style,
-    // TODO(DSA-4660): Remove legacy unit dependency after formatter migration.
-    unitSpec.unit,
     yAxisFormattingSpec,
   ]);
 };

@@ -1,6 +1,5 @@
 import type { FunctionComponent } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { VirtualEventResponse } from '@rbx/client-virtual-events-api/v1';
 import {
   RAQIV2MetricGranularity,
   RAQIV2Dimension,
@@ -9,10 +8,9 @@ import {
 } from '@rbx/creator-hub-analytics-config';
 import { useTranslation } from '@rbx/intl';
 import { Grid, RobuxIcon, Typography } from '@rbx/ui';
-import type { FormattedText } from '@modules/analytics-translations/types';
+import { brandPretranslatedText } from '@modules/analytics-translations/wrapperFunctions';
 import type { TLabeledExplicitTimeRangeSpec } from '@modules/charts-generic/charts/types/ChartTypes';
-import { ChartUnit } from '@modules/charts-generic/charts/types/ChartTypes';
-import type { NonEmptyArray } from '@modules/charts-generic/types/NonEmptyArray';
+import { mapNonEmptyArray, type NonEmptyArray } from '@modules/charts-generic/types/NonEmptyArray';
 import type { RAQIV2ChartResourceType } from '@modules/clients/analytics';
 import virtualEventsClient from '@modules/clients/virtualEvents';
 import GenericRAQIV2TabbedTimeComparatorCharts, {
@@ -20,7 +18,9 @@ import GenericRAQIV2TabbedTimeComparatorCharts, {
 } from '@modules/experience-analytics-shared/components/RAQIV2/GenericRAQIV2TabbedTimeComparatorCharts';
 import type { TRAQIV2NumericUIMetric } from '@modules/experience-analytics-shared/constants/AnalyticsMetricDisplayConfig';
 import type { UIFilters } from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/filterUtils';
+import type { RAQIV2TimeComparatorChartSpec } from '@modules/experience-analytics-shared/types/RAQIV2ChartSpec';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
+import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 
 type LabeledTimeRange = {
@@ -28,6 +28,16 @@ type LabeledTimeRange = {
   startTime: Date;
   endTime: Date;
 };
+
+type EventCompareTabKey =
+  | 'DailyActiveUsers'
+  | 'NewUsers'
+  | 'ReturningUsers'
+  | 'DailyRevenue'
+  | 'AveragePlayMinutesPerDau'
+  | 'AverageRevenuePerUser';
+
+type EventCompareTab = GenericRAQIV2TabbedTimeComparatorChartSpec<EventCompareTabKey>;
 
 type EventCompareChartContainerProps = {
   resource: {
@@ -59,12 +69,6 @@ const EventCompareChartContainer: FunctionComponent<EventCompareChartContainerPr
           cursor,
           universeId: Number(gameDetails?.id),
           limit: 100,
-        });
-
-        const parsedResponse: VirtualEventResponse[] = [];
-        result.data?.forEach((event) => {
-          const parsedEvent = event;
-          parsedResponse.push(parsedEvent);
         });
 
         if (!result.data) {
@@ -99,7 +103,8 @@ const EventCompareChartContainer: FunctionComponent<EventCompareChartContainerPr
 
   // For now, only grab the first page
   useEffect(() => {
-    loadEventList('');
+    // oxlint-disable-next-line react/react-compiler -- Legacy initial-load effect; refactoring the request lifecycle is outside this migration.
+    void loadEventList('');
   }, [loadEventList]);
 
   // The parts of the RAQIV2 spec that do not change
@@ -113,92 +118,97 @@ const EventCompareChartContainer: FunctionComponent<EventCompareChartContainerPr
     };
   }, [resource]);
 
-  const tabs: NonEmptyArray<GenericRAQIV2TabbedTimeComparatorChartSpec<TRAQIV2NumericUIMetric>> =
-    useMemo(() => {
-      const metrics = [
-        {
-          key: 'DailyActiveUsers',
-          metric: RAQIV2Metric.DailyActiveUsers as TRAQIV2NumericUIMetric,
-          unit: ChartUnit.Robux,
-          filter: [],
-          label: translate('Label.Metric.DailyActiveUsers') as FormattedText,
-        },
-        {
-          key: 'NewUsers',
-          metric: RAQIV2Metric.DailyActiveUsers as TRAQIV2NumericUIMetric,
-          unit: ChartUnit.Robux,
-          filter: [
-            {
-              dimension: RAQIV2Dimension.IsNewUser,
-              values: [RAQIV2IsNewUser.New],
-            },
-          ],
-          label: translate('Title.NewUsers') as FormattedText,
-        },
-        {
-          key: 'ReturningUsers',
-          metric: RAQIV2Metric.DailyActiveUsers as TRAQIV2NumericUIMetric,
-          unit: ChartUnit.Robux,
-          filter: [
-            {
-              dimension: RAQIV2Dimension.IsNewUser,
-              values: [RAQIV2IsNewUser.Returning],
-            },
-          ],
-          label: translate('Title.ReturningUsers') as FormattedText,
-        },
-        {
-          key: 'DailyRevenue',
-          metric: RAQIV2Metric.DailyRevenue,
-          filter: [],
-          label: {
-            arbitrary: (
-              <Grid direction='row' display='flex' alignItems='center'>
-                <Typography>{`${translate('Title.Robux')} (`}</Typography>
-                <RobuxIcon />
-                <Typography>)</Typography>
-              </Grid>
-            ),
+  const tabs: NonEmptyArray<EventCompareTab> = useMemo(() => {
+    const metrics: NonEmptyArray<{
+      key: EventCompareTabKey;
+      metric: TRAQIV2NumericUIMetric;
+      filter: NonNullable<RAQIV2TimeComparatorChartSpec['filter']>;
+      label: EventCompareTab['label'];
+    }> = [
+      {
+        key: 'DailyActiveUsers',
+        metric: RAQIV2Metric.DailyActiveUsers,
+        filter: [],
+        label: brandPretranslatedText(translate('Label.Metric.DailyActiveUsers')),
+      },
+      {
+        key: 'NewUsers',
+        metric: RAQIV2Metric.DailyActiveUsers,
+        filter: [
+          {
+            dimension: RAQIV2Dimension.IsNewUser,
+            values: [RAQIV2IsNewUser.New],
           },
-        },
-        {
-          key: 'AveragePlayMinutesPerDau',
-          metric: RAQIV2Metric.AveragePlayTimeMinutesPerDAU as TRAQIV2NumericUIMetric,
-          filter: [],
-          label:
-            `${translate('Label.Metric.AveragePlayMinutesPerDAU')} (${translate('Label.MinsSuffix')})` as FormattedText,
-        },
-        {
-          key: 'AverageRevenuePerUser',
-          metric: RAQIV2Metric.AverageRevenuePerUser as TRAQIV2NumericUIMetric,
-          filter: [],
-          label: {
-            arbitrary: (
-              <Grid direction='row' display='flex' alignItems='center'>
-                <Typography>{`${translate('Title.AvgRevenuePerDau')} (`}</Typography>
-                <RobuxIcon />
-                <Typography>)</Typography>
-              </Grid>
-            ),
+        ],
+        label: brandPretranslatedText(translate('Title.NewUsers')),
+      },
+      {
+        key: 'ReturningUsers',
+        metric: RAQIV2Metric.DailyActiveUsers,
+        filter: [
+          {
+            dimension: RAQIV2Dimension.IsNewUser,
+            values: [RAQIV2IsNewUser.Returning],
           },
+        ],
+        label: brandPretranslatedText(translate('Title.ReturningUsers')),
+      },
+      {
+        key: 'DailyRevenue',
+        metric: RAQIV2Metric.DailyRevenue,
+        filter: [],
+        label: {
+          arbitrary: (
+            <Grid direction='row' display='flex' alignItems='center'>
+              <Typography>{`${translate('Title.Robux')} (`}</Typography>
+              <RobuxIcon />
+              <Typography>)</Typography>
+            </Grid>
+          ),
         },
-      ];
-      return metrics.map((metric) => {
-        const tabSpec = {
-          metric: metric.metric as TRAQIV2NumericUIMetric,
-          filter: [...(filters ?? []), ...metric.filter],
-          labeledTimeSpecs: timeSpec,
-          ...specBase,
-        };
-        return {
-          key: metric.key,
-          label: metric.label,
-          spec: tabSpec,
-          chartKeyOrConfig: null,
-          onSelectChartRegion: () => 0,
-        } as GenericRAQIV2TabbedTimeComparatorChartSpec<TRAQIV2NumericUIMetric>;
-      }) as NonEmptyArray<GenericRAQIV2TabbedTimeComparatorChartSpec<TRAQIV2NumericUIMetric>>;
-    }, [filters, specBase, timeSpec, translate]);
+      },
+      {
+        key: 'AveragePlayMinutesPerDau',
+        metric: RAQIV2Metric.AveragePlayTimeMinutesPerDAU,
+        filter: [],
+        label: brandPretranslatedText(
+          `${translate('Label.Metric.AveragePlayMinutesPerDAU')} (${translate('Label.MinsSuffix')})`,
+        ),
+      },
+      {
+        key: 'AverageRevenuePerUser',
+        metric: RAQIV2Metric.AverageRevenuePerUser,
+        filter: [],
+        label: {
+          arbitrary: (
+            <Grid direction='row' display='flex' alignItems='center'>
+              <Typography>{`${translate('Title.AvgRevenuePerDau')} (`}</Typography>
+              <RobuxIcon />
+              <Typography>)</Typography>
+            </Grid>
+          ),
+        },
+      },
+    ];
+    const raqiFilters = (filters ?? []).flatMap(({ dimension, values }) =>
+      isValidEnumValue(RAQIV2Dimension, dimension) ? [{ dimension, values }] : [],
+    );
+    return mapNonEmptyArray(metrics, (metric) => {
+      const tabSpec = {
+        metric: metric.metric,
+        filter: [...raqiFilters, ...metric.filter],
+        labeledTimeSpecs: timeSpec,
+        ...specBase,
+      };
+      return {
+        key: metric.key,
+        label: metric.label,
+        spec: tabSpec,
+        chartKeyOrConfig: null,
+        onSelectChartRegion: () => 0,
+      } satisfies EventCompareTab;
+    });
+  }, [filters, specBase, timeSpec, translate]);
 
   if (errorState) {
     return <FailureView message={translate('Error.Unknown')} />;
@@ -210,7 +220,7 @@ const EventCompareChartContainer: FunctionComponent<EventCompareChartContainerPr
         <GenericRAQIV2TabbedTimeComparatorCharts
           tabs={tabs}
           dateRangeOptions={eventsList}
-          title={translate('Heading.Compare') as FormattedText}
+          title={brandPretranslatedText(translate('Heading.Compare'))}
           onDateRangeConfirm={setTimeSpec}
           ignoreCache
         />
