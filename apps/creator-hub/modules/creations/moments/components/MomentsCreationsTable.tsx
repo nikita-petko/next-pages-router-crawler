@@ -19,13 +19,13 @@ import { useTranslation, withTranslation } from '@rbx/intl';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentPage } from '@modules/monetization-shared/table-v1/useCurrentPage';
 import { useTablePagination } from '@modules/monetization-shared/table-v1/useTablePagination';
+import useCreationsGridContainerStyles from '../../home/containers/CreationsGridContainer.styles';
 import { MAX_MOMENT_DESCRIPTION_LENGTH } from '../constants/momentConstants';
 import {
   DEFAULT_MOMENTS_TABLE_ROWS_PER_PAGE,
   MOMENTS_LIST_PAGE_SIZE,
   MOMENTS_TABLE_ROWS_PER_PAGE_OPTIONS,
 } from '../constants/momentsCreationsConstants';
-import useCreationsGridContainerStyles from '../containers/CreationsGridContainer.styles';
 import { useMomentsStatusFilter } from '../hooks/useMomentsStatusFilter';
 import useMomentsUploadLanguageSelectEnabled from '../hooks/useMomentsUploadLanguageSelectEnabled';
 import type { MomentCreation, MomentCreationStatusFilterTab } from '../types/MomentCreation';

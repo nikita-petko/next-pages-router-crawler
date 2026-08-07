@@ -181,7 +181,9 @@ const MomentsExperienceUrlInput: FC<MomentsExperienceUrlInputProps> = ({
         className={errorMessage ? 'margin-bottom-[22px]' : undefined}
         isDisabled={!isValidInput || isLoading}
         isLoading={isLoading}
-        onClick={() => void resolveExperience()}>
+        onClick={() => {
+          void resolveExperience();
+        }}>
         {translate('Action.Add')}
       </Button>
     </div>

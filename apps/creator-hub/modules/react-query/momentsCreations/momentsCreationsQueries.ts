@@ -3,19 +3,19 @@ import { skipToken, useInfiniteQuery, useMutation, useQueryClient } from '@tanst
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
 import { useLocalization, useTranslation } from '@rbx/intl';
 import { useAuthentication } from '@modules/authentication/providers';
-import momentsCreationsClient from '@modules/creations/home/clients/momentsCreationsClient';
-import { deleteMoment as deleteMomentRequest } from '@modules/creations/home/clients/momentsDeleteClient';
-import { publishMoment as publishMomentRequest } from '@modules/creations/home/clients/momentsPublishClient';
-import useMomentsFeedIdEnabled from '@modules/creations/home/hooks/useMomentsFeedIdEnabled';
-import useMomentsUploadLanguageSelectEnabled from '@modules/creations/home/hooks/useMomentsUploadLanguageSelectEnabled';
+import momentsCreationsClient from '@modules/creations/moments/clients/momentsCreationsClient';
+import { deleteMoment as deleteMomentRequest } from '@modules/creations/moments/clients/momentsDeleteClient';
+import { publishMoment as publishMomentRequest } from '@modules/creations/moments/clients/momentsPublishClient';
+import useMomentsFeedIdEnabled from '@modules/creations/moments/hooks/useMomentsFeedIdEnabled';
+import useMomentsUploadLanguageSelectEnabled from '@modules/creations/moments/hooks/useMomentsUploadLanguageSelectEnabled';
 import type {
   DraftMomentCreation,
   ListMomentsPageParams,
   ListMomentsPageResponse,
   ServerMomentCreation,
-} from '@modules/creations/home/types/MomentCreation';
-import { getMomentRowKey } from '@modules/creations/home/utils/momentsIdentityUtils';
-import { getMomentVideoFile } from '@modules/creations/home/utils/momentsVideoMediaStorage';
+} from '@modules/creations/moments/types/MomentCreation';
+import { getMomentRowKey } from '@modules/creations/moments/utils/momentsIdentityUtils';
+import { getMomentVideoFile } from '@modules/creations/moments/utils/momentsVideoMediaStorage';
 
 /** Invalidate with this prefix to match both `useFeedItemId` variants, not just one. */
 export const getMomentsCreationsQueryKeyPrefix = (userId?: number) =>

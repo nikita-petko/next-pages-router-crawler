@@ -17,10 +17,10 @@ import {
   isTaxonomyActiveTab,
   TAXONOMY_HOST_ASSET,
 } from '../../avatarItem/utils/taxonomyRoutingUtils';
-import useMomentsGate from '../../home/hooks/useMomentsGate';
 import useTaxonomyDashboardGate from '../../home/hooks/useTaxonomyDashboardGate';
 import menuItems from '../../menu/constants/MenuConstants';
 import creationsMenuManager from '../../menu/implementations/CreationsMenuManager';
+import useMomentsGate from '../../moments/hooks/useMomentsGate';
 
 const CREATION_MENU_ITEM_PREFIX = 'creation-';
 

@@ -12,6 +12,7 @@ const MomentsIdVerificationBanner: FC = () => {
   const { translate } = useTranslation();
 
   return (
+    // oxlint-disable-next-line typescript/no-deprecated -- pre-existing FeedbackBanner usage relocated in the Moments module move; migration tracked separately
     <FeedbackBanner
       className='width-full'
       layout='Inline'

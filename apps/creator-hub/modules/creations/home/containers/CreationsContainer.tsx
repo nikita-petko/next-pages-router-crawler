@@ -38,11 +38,11 @@ import menuItems from '../../menu/constants/MenuConstants';
 import CreationsIANavigationControls from '../../menu/containers/CreationsIANavigationControls';
 import creationsMenuManager from '../../menu/implementations/CreationsMenuManager';
 import type MenuState from '../../menu/interfaces/MenuState';
+import MomentsCreationsPanel from '../../moments/components/MomentsCreationsPanel';
+import useMomentsGate from '../../moments/hooks/useMomentsGate';
 import type { VerificationMetadataContextValue } from '../../verification/hooks/VerificationMetadataContext';
 import useCreationsStyles from '../components/Creations.styles';
-import MomentsCreationsPanel from '../components/MomentsCreationsPanel';
 import useAvatarLooksGate from '../hooks/useAvatarLooksGate';
-import useMomentsGate from '../hooks/useMomentsGate';
 import useTaxonomyDashboardGate from '../hooks/useTaxonomyDashboardGate';
 import useUGCFoldersGate from '../hooks/useUGCFoldersGate';
 
@@ -88,7 +88,7 @@ const DevelopmentItemsInventory = dynamic(
   { ssr: false },
 );
 const UniversalAccessRequestsView = dynamic(
-  () => import('@modules/creations/assetAccessRequests/components/UniversalAccessRequestsView'),
+  () => import('../../assetAccessRequests/components/UniversalAccessRequestsView'),
   { ssr: false },
 );
 
