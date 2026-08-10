@@ -12,6 +12,7 @@ import * as creatorRoadmapFlags from './creatorRoadmap';
 import * as creatorServicesInsightsFlags from './creatorServicesInsights';
 import * as devexFlags from './devex';
 import * as gameDiscoveryServingFlags from './gameDiscoveryServing';
+import * as groupsFlags from './groups';
 import * as immersiveAdsFlags from './immersiveAds';
 import * as leaderboardsFlags from './leaderboards';
 import * as monetizationFlags from './monetization';
@@ -756,6 +757,16 @@ export const generatedFlags = [
         defaultValue: true,
         valueType: 'boolean',
         contextType: 'universe',
+      },
+    },
+    {
+      flag: groupsFlags.isUnifiedUiEnabled,
+      metadata: {
+        namespace: 'groups',
+        name: 'isUnifiedUiEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
       },
     },
     {
