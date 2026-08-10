@@ -69,7 +69,9 @@ export type ComboboxTypeaheadProps = {
 };
 
 const getOptions = (container: HTMLElement): HTMLElement[] =>
-  Array.from(container.querySelectorAll<HTMLElement>('[role="option"]'));
+  Array.from(
+    container.querySelectorAll<HTMLElement>('[role="option"]:not([aria-disabled="true"])'),
+  );
 
 const ACTIVE_OPTION_CLASS = 'bg-shift-200';
 
@@ -383,26 +385,42 @@ export type ComboboxTypeaheadOptionProps = {
   label: string;
   isSelected: boolean;
   onClick: () => void;
+  /**
+   * When true, the option is shown greyed out and is not selectable: it stays a
+   * `role="option"` marked `aria-disabled` (so it remains in the listbox's
+   * accessibility tree) but drops its click/keydown handlers, and keyboard
+   * navigation skips it (see `getOptions`, which excludes `aria-disabled`).
+   */
+  disabled?: boolean;
 };
+
+const DISABLED_OPTION_CLASS_NAME =
+  'flex items-center justify-between padding-x-medium height-1000 cursor-default text-body-medium content-muted radius-small';
 
 export const ComboboxTypeaheadOption: FC<ComboboxTypeaheadOptionProps> = ({
   label: optionLabel,
   isSelected,
   onClick,
+  disabled = false,
 }) => (
   <div
     // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a listbox option with rich content (label + check icon) cannot use a native <option>; this is the standard WAI-ARIA listbox option pattern paired with the role="listbox" container above.
     role='option'
     aria-selected={isSelected}
+    aria-disabled={disabled || undefined}
     tabIndex={-1}
-    className={OPTION_CLASS_NAME}
-    onClick={onClick}
-    onKeyDown={(e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        onClick();
-      }
-    }}>
+    className={disabled ? DISABLED_OPTION_CLASS_NAME : OPTION_CLASS_NAME}
+    onClick={disabled ? undefined : onClick}
+    onKeyDown={
+      disabled
+        ? undefined
+        : (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onClick();
+            }
+          }
+    }>
     <span className='text-truncate-split'>{optionLabel}</span>
     {isSelected && <Icon name='icon-filled-check' size='Medium' />}
   </div>

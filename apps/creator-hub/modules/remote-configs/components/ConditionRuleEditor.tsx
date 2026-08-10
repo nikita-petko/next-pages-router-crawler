@@ -14,6 +14,9 @@ import {
   Menu as MultiSelectMenu,
   MenuItem as MultiSelectMenuItem,
 } from '@modules/charts-generic/components/FoundationLikeMultiSelect/FoundationLikeMultiSelectMenu';
+import GroupedComboboxSelect, {
+  type GroupedComboboxGroup,
+} from '@modules/charts-generic/components/GroupedComboboxSelect';
 import { getSingleDimensionBreakdownLabel } from '@modules/experience-analytics-shared/adapters/genericRAQIV2ChartAdapter';
 import getDimensionRenderer from '@modules/experience-analytics-shared/components/getDimensionRenderer';
 import useRAQIV2TranslationDependencies from '@modules/experience-analytics-shared/hooks/useRAQIV2TranslationDependencies';
@@ -21,22 +24,35 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { RpnOperator } from '../api/universeConfigsClientEnums';
 import type { TargetingClauseFormData } from '../types/FormData';
 
+// Ordered to control the grouped dropdown: dimensions are bucketed by their
+// codegen filterGroup (User / In-experience activity / Platform activity), and
+// both section order and within-section order follow this array (first-seen
+// group wins). See the `dimensionGroups` memo below.
 const conditionDimensions: ReadonlyArray<RAQIV2Dimension> = [
-  RAQIV2Dimension.Country,
-  RAQIV2Dimension.Locale,
-  RAQIV2Dimension.UserSegmentationAccountAge,
-  RAQIV2Dimension.UserSegmentationPayerStatus,
-  RAQIV2Dimension.UserSegmentationPlatformSpenderStatus,
-  RAQIV2Dimension.UserSegmentationActivationStatus,
-  RAQIV2Dimension.UserSegmentationEngagementLevel,
-  RAQIV2Dimension.UserSegmentationPlatformActivationStatus,
+  // User (filterGroup: Label.User)
   RAQIV2Dimension.UserSegmentationReturnStatus,
   RAQIV2Dimension.UserSegmentationAcquisitionSource,
+  RAQIV2Dimension.Country,
+  RAQIV2Dimension.Locale,
+  // In-experience activity (filterGroup: Label.UserSeg.InExperienceActivity)
+  RAQIV2Dimension.UserSegmentationAccountAge,
+  RAQIV2Dimension.UserSegmentationPayerStatus,
+  RAQIV2Dimension.UserSegmentationActivationStatus,
+  RAQIV2Dimension.UserSegmentationEngagementLevel,
+  // Platform activity (filterGroup: Label.UserSeg.PlatformActivity)
+  RAQIV2Dimension.UserSegmentationPlatformSpenderStatus,
+  RAQIV2Dimension.UserSegmentationPlatformActivationStatus,
 ];
 
 type DimensionOption = { value: RAQIV2Dimension; label: string };
 type DimensionValueOption = { value: string; label: string };
 type ClauseOperator = TargetingClauseFormData['operator'];
+
+// Fallback section for any dimension that lacks a codegen filterGroup. Mirrors
+// codegenFilterBarDimensionToGroup's default so such a dimension degrades to a
+// labeled "Label.Metric" section instead of a blank header. (No current
+// conditionDimensions entry hits this — it's a guard for future additions.)
+const defaultFilterGroup = translationKey('Label.Metric', TranslationNamespace.Analytics);
 
 const clauseOperators: ReadonlyArray<ClauseOperator> = [RpnOperator.Eq, RpnOperator.Ne];
 const conditionDimensionByValue = new Map<string, RAQIV2Dimension>(
@@ -137,14 +153,44 @@ const ConditionRuleEditor: FC<ConditionRuleEditorProps> = ({
   const { tPendingTranslation, translate } = useTranslationWrapper(useTranslation());
   const translationDependencies = useRAQIV2TranslationDependencies();
 
+  // Preserve conditionDimensions order (do NOT alphabetize) so the grouped
+  // dropdown renders in the intended section + within-section order.
   const dimensionOptions = useMemo<ReadonlyArray<DimensionOption>>(() => {
-    return [...conditionDimensions]
-      .map((dim) => ({
-        value: dim,
-        label: String(translationDependencies.translate(getDimensionRenderer(dim).name)),
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
+    return conditionDimensions.map((dim) => ({
+      value: dim,
+      label: String(translationDependencies.translate(getDimensionRenderer(dim).name)),
+    }));
   }, [translationDependencies]);
+
+  // Bucket dimensions into sections by their codegen filterGroup, preserving
+  // insertion order for both sections and items (mirrors the analytics filter
+  // grouping). Rendered as sections by GroupedComboboxSelect.
+  const dimensionGroups = useMemo(() => {
+    const optionByDimension = new Map(dimensionOptions.map((opt) => [opt.value, opt]));
+    const groups: Array<{ key: string; header: string; options: DimensionOption[] }> = [];
+    const indexByKey = new Map<string, number>();
+
+    conditionDimensions.forEach((dim) => {
+      const filterGroup = RAQIV2DimensionDisplayConfig[dim]?.filterGroup ?? defaultFilterGroup;
+      const key = `${filterGroup.key}::${filterGroup.namespace}`;
+      let index = indexByKey.get(key);
+      if (index === undefined) {
+        index = groups.length;
+        indexByKey.set(key, index);
+        groups.push({
+          key,
+          header: String(translationDependencies.translate(filterGroup)),
+          options: [],
+        });
+      }
+      const option = optionByDimension.get(dim);
+      if (option) {
+        groups[index].options.push(option);
+      }
+    });
+
+    return groups;
+  }, [dimensionOptions, translationDependencies]);
 
   const valueOptionsByDimension = useMemo(() => {
     const optionsByDimension = new Map<RAQIV2Dimension, DimensionValueOption[]>();
@@ -247,14 +293,15 @@ const ConditionRuleEditor: FC<ConditionRuleEditorProps> = ({
             (selectedDimensionCounts.get(dimension) ?? 0) > (dimension === clause.dimension ? 1 : 0)
           );
         };
-        const sortedDimensionOptions = [...dimensionOptions].sort((left, right) => {
-          const leftDisabled = isDimensionDisabled(left.value);
-          const rightDisabled = isDimensionDisabled(right.value);
-          if (leftDisabled === rightDisabled) {
-            return 0;
-          }
-          return leftDisabled ? 1 : -1;
-        });
+        const clauseDimensionGroups: GroupedComboboxGroup[] = dimensionGroups.map((group) => ({
+          id: group.key,
+          label: group.header,
+          options: group.options.map((opt) => ({
+            value: opt.value,
+            label: opt.label,
+            disabled: isDimensionDisabled(opt.value),
+          })),
+        }));
         const rowHasInput = !!clause.dimension || clause.values.length > 0;
         const dimensionHasError = shouldShowIncompleteErrors && rowHasInput && !clause.dimension;
         const valuesHasError =
@@ -263,13 +310,14 @@ const ConditionRuleEditor: FC<ConditionRuleEditorProps> = ({
         return (
           <div key={clause.id} className='flex flex-col gap-xxsmall'>
             <div className='grid gap-xsmall items-end' style={{ gridTemplateColumns }}>
-              <Dropdown
+              <GroupedComboboxSelect
                 size='Large'
-                value={clause.dimension}
+                groups={clauseDimensionGroups}
+                value={clause.dimension ?? null}
                 placeholder={dimensionPlaceholder}
-                isDisabled={isDisabled}
+                disabled={isDisabled}
                 hasError={dimensionHasError}
-                onValueChange={(value: string) => {
+                onChange={(value: string) => {
                   const dimension = getConditionDimension(value);
                   if (!dimension) {
                     return;
@@ -280,18 +328,8 @@ const ConditionRuleEditor: FC<ConditionRuleEditorProps> = ({
                     dimension,
                     values: [],
                   }));
-                }}>
-                <Menu>
-                  {sortedDimensionOptions.map((opt) => (
-                    <MenuItem
-                      key={opt.value}
-                      value={opt.value}
-                      title={opt.label}
-                      disabled={isDimensionDisabled(opt.value)}
-                    />
-                  ))}
-                </Menu>
-              </Dropdown>
+                }}
+              />
 
               <Dropdown
                 size='Large'

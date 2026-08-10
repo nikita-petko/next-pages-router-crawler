@@ -5,6 +5,7 @@ import { Button, Dialog, DialogContent, Snackbar, TextInput } from '@rbx/foundat
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { isComboboxTypeaheadListboxTarget } from '@modules/charts-generic/components/ComboboxTypeahead';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { RpnOperator } from '../api/universeConfigsClientEnums';
 import type { ValidConditionRule } from '../api/validTypes';
@@ -197,6 +198,18 @@ const EditConditionDialog: FC<EditConditionDialogProps> = ({
 
   const titleLabel = isEditing ? editTitleLabel : createTitleLabel;
 
+  // The dimension ComboboxTypeahead portals its listbox to `document.body`.
+  // The modal Dialog treats that as an outside interaction and would dismiss
+  // before the option click lands — keep the dialog open for those targets.
+  const preventDismissForPortaledCombobox = useCallback(
+    (event: { readonly preventDefault: () => void; readonly target: EventTarget | null }) => {
+      if (isComboboxTypeaheadListboxTarget(event.target)) {
+        event.preventDefault();
+      }
+    },
+    [],
+  );
+
   return (
     <Dialog
       open={open}
@@ -209,7 +222,13 @@ const EditConditionDialog: FC<EditConditionDialogProps> = ({
       isModal
       hasCloseAffordance
       closeLabel={closeLabel}>
-      <DialogContent style={{ width: 'min(960px, 95vw)', maxWidth: '95vw' }}>
+      <DialogContent
+        style={{ width: 'min(960px, 95vw)', maxWidth: '95vw' }}
+        {...({
+          onPointerDownOutside: preventDismissForPortaledCombobox,
+          onFocusOutside: preventDismissForPortaledCombobox,
+          onInteractOutside: preventDismissForPortaledCombobox,
+        } as Record<string, unknown>)}>
         <form onSubmit={handleSubmit(onSubmit)}>
           <div
             className='padding-medium flex flex-col gap-medium scroll-y'
