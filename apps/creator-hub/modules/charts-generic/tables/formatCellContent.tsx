@@ -127,9 +127,16 @@ const formatCellContent = <
       return formatMediumDate(cellValue.value, locale);
     }
     case ColumnType.RawJSONString: {
-      const parsedJSON: unknown = JSON.parse(cellValue.value);
-      const fullCode = JSON.stringify(parsedJSON, null, 2) ?? '';
-      const codeSnippet = JSON.stringify(parsedJSON) ?? '';
+      const rawValue = cellValue.value;
+      let fullCode = rawValue;
+      let codeSnippet = rawValue;
+      try {
+        const parsedJSON: unknown = JSON.parse(rawValue);
+        fullCode = JSON.stringify(parsedJSON, null, 2) ?? '';
+        codeSnippet = JSON.stringify(parsedJSON) ?? '';
+      } catch {
+        // Malformed JSON — fall back to rendering the raw string as-is
+      }
       return (
         <HighlightingCodeBlock
           code={fullCode}

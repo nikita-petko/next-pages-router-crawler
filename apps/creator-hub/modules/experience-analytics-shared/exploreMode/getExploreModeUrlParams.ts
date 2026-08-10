@@ -219,9 +219,13 @@ const getExploreModeUrlParams = ({
   };
 
   if (routerForReferrerParam) {
-    const currentUri = routerForReferrerParam.asPath;
-    const analyticsReferrer = btoa(currentUri);
-    result[AnalyticsQueryParams.Referrer] = analyticsReferrer;
+    try {
+      const currentUri = routerForReferrerParam.asPath;
+      const analyticsReferrer = btoa(currentUri);
+      result[AnalyticsQueryParams.Referrer] = analyticsReferrer;
+    } catch {
+      // btoa throws on non-Latin1 characters — skip referrer rather than crash navigation
+    }
   }
 
   // De-dupe but preserve the caller-supplied order so the Explore-Mode

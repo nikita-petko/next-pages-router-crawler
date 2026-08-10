@@ -504,11 +504,19 @@ const GenericRAQIV2SplineChartV2: FC<GenericRAQIV2SplineChartV2Props> = ({
     [translationDependencies.translate],
   );
 
+  const latestDataTimestamp = useMemo(() => {
+    if (chart.timestamps.length === 0) {
+      return undefined;
+    }
+    const ts = new Date(chart.timestamps[chart.timestamps.length - 1]);
+    return Number.isFinite(ts.getTime()) ? ts : undefined;
+  }, [chart.timestamps]);
+
   const annotations = useTimeSeriesWebbloxAnnotations({
     timeSeriesAnnotations: timeSeriesAnnotations ?? getEmptyArray(),
     metric: metricForPerMetricTweaks,
     timeAxisSpec,
-    latestDataTimestamp: new Date(chart.timestamps[chart.timestamps.length - 1]),
+    latestDataTimestamp,
   });
 
   const enableMetricAwareYAxisFormatter = useMetricAwareYAxisFormatterEnabled();

@@ -8,17 +8,10 @@ const useOnSelectChartRegion = (): SelectionCallback<number> => {
 
   return useCallback(
     ({ minX, maxX }: { minX: number; maxX: number }) => {
-      let min;
-      let max;
-      try {
-        min = new Date(minX);
-        max = new Date(maxX);
-      } catch {
-        // NOTE(gperkins@20241031): highcharts very rarely fails to provide the x-axis (see DSA-3739)
-        //  unknown what case causes this; we probably don't need to do anything.
-      }
+      const min = new Date(minX);
+      const max = new Date(maxX);
 
-      if (min && max) {
+      if (Number.isFinite(min.getTime()) && Number.isFinite(max.getTime())) {
         onChangeDateRangeParams(min, max, RAQIV2DateRangeType.Custom);
       }
     },

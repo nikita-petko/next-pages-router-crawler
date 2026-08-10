@@ -55,7 +55,22 @@ const RecommendedEventsLiveEventsTable = () => {
   const tableRowData = useMemo(
     () =>
       filteredData.map((event) => {
-        const parsedUserId = event.eventDataJson ? JSON.parse(event.eventDataJson).user_id : {};
+        let parsedUserId = NaN;
+        if (event.eventDataJson) {
+          try {
+            const parsed: unknown = JSON.parse(event.eventDataJson);
+            if (
+              parsed !== null &&
+              typeof parsed === 'object' &&
+              'user_id' in parsed &&
+              (typeof parsed.user_id === 'string' || typeof parsed.user_id === 'number')
+            ) {
+              parsedUserId = Number(parsed.user_id);
+            }
+          } catch {
+            // Malformed JSON — render the row with NaN userId (displayed as "No Data")
+          }
+        }
         const rowData: Map<LiveEventsTableColumnKey, CellDataType> = new Map();
         rowData.set(LiveEventsTableColumnKey.EventType, {
           type: ColumnType.Text,

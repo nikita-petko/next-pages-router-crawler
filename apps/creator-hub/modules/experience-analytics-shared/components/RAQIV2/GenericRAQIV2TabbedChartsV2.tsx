@@ -91,6 +91,9 @@ const GenericRAQIV2TabbedChartsV2 = <TTabKey extends string | number>({
   const locale = useLocale();
   const translationDependencies = useRAQIV2TranslationDependencies();
   const [activeTabKey, setActiveTabKey] = useState<TTabKey>(tabs[0].key);
+  // If the active tab is no longer present after the tabs prop changes, fall back to the first tab.
+  const currentTabKey = tabs.some((tab) => tab.key === activeTabKey) ? activeTabKey : tabs[0].key;
+
   const onActiveTabChanged = useCallback((tabKey: string | number) => {
     // oxlint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Tab callbacks only receive keys from this component's TTabKey-backed tab list.
     setActiveTabKey(tabKey as TTabKey);
@@ -150,13 +153,10 @@ const GenericRAQIV2TabbedChartsV2 = <TTabKey extends string | number>({
     locale,
   ]);
 
-  const activeTab = useMemo(() => {
-    const result = tabs.find((t) => t.key === activeTabKey);
-    if (!result) {
-      throw new Error(`No tab found for key: ${activeTabKey}`);
-    }
-    return result;
-  }, [activeTabKey, tabs]);
+  const activeTab = useMemo(
+    () => tabs.find((t) => t.key === currentTabKey) ?? tabs[0],
+    [currentTabKey, tabs],
+  );
   const activeTabMetric = activeTab.spec.metric;
   const activeTabMetricLabel = useMemo(
     () => getMetricLabelFromMetricLike(activeTabMetric, translationDependencies),
@@ -204,7 +204,7 @@ const GenericRAQIV2TabbedChartsV2 = <TTabKey extends string | number>({
       const Chart = chartTypeToGenericRAQIV2Chart(tab.chartType);
 
       return (
-        <div key={key} className={key === activeTabKey ? undefined : nonActiveChartContainer}>
+        <div key={key} className={key === currentTabKey ? undefined : nonActiveChartContainer}>
           <Chart
             {...tab}
             titleKey={undefined}
@@ -216,7 +216,7 @@ const GenericRAQIV2TabbedChartsV2 = <TTabKey extends string | number>({
         </div>
       );
     });
-  }, [activeTabKey, nonActiveChartContainer, onChartDataUpdatedCallbacks, tabs]);
+  }, [currentTabKey, nonActiveChartContainer, onChartDataUpdatedCallbacks, tabs]);
 
   const exporter = useMemo(() => {
     const activeTabChartData = tabChartData.get(activeTab.key);
@@ -255,7 +255,7 @@ const GenericRAQIV2TabbedChartsV2 = <TTabKey extends string | number>({
               titleTooltipLabel={definitionTooltip}
               titleSuffix={titleSuffix}
               tabSpecs={tabSpecs}
-              activeTabKey={activeTabKey}
+              activeTabKey={currentTabKey}
               onActiveTabChanged={onActiveTabChanged}
               headerActionItems={headerActionItems}
               chartControl={chartControl}

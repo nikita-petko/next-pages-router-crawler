@@ -1,3 +1,4 @@
+/* oxlint-disable react/react-compiler -- pre-existing on master: EffectSetState pattern syncing URL query params to state; out of scope for the DSA-5638 crash fix. */
 import type { FC, PropsWithChildren } from 'react';
 import {
   createContext,
@@ -131,6 +132,15 @@ const getIdentityMetricFromComputedMetric = (
   return uiMetric && isChartConfiguratorMetric(uiMetric) ? uiMetric : null;
 };
 
+const decodeReferrerBase64 = (encoded: string): string | null => {
+  try {
+    return atob(encoded);
+  } catch {
+    // Invalid base64 — treat as no referrer
+    return null;
+  }
+};
+
 const usePreviousUriIfValidAndRemoveQueryParams = (
   queryReferrer: string | string[] | null | undefined,
   queryPreset: string | string[] | null | undefined,
@@ -145,7 +155,7 @@ const usePreviousUriIfValidAndRemoveQueryParams = (
     let needsClear = false;
     if (typeof queryReferrer === 'string') {
       needsClear = true;
-      const decodedUri = atob(queryReferrer);
+      const decodedUri = decodeReferrerBase64(queryReferrer);
       const navItem = decodedUri ? getAnalyticsNavigationItemFromPath(decodedUri) : undefined;
       if (navItem) {
         setValidUri(decodedUri);
