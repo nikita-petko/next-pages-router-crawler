@@ -12,9 +12,10 @@ import {
 import ApiVitalsEvent from '../event/ApiVitalsEvent';
 import FormVitalsEvent from '../event/FormVitalsEvent';
 import type { TSessionEventName } from '../event/SessionEvent';
-import type { EventLogger } from '../eventLogger';
-import { CreatorWebEventLogger } from '../eventLogger';
+import { CreatorWebEventLogger, HostRoutedEventStreamLogger } from '../eventLogger';
 import ConsoleEventLogger from '../eventLogger/ConsoleEventLogger';
+import type EventLogger from '../eventLogger/EventLogger';
+import type { HostRoutedEventProperties } from '../eventLogger/HostRoutedEventStreamLogger';
 import NotApprovedPageEventLogger from '../eventLogger/NotApprovedPageEventLogger';
 import emitter from '../utils/emitter';
 import getCurrentUrl from '../utils/getCurrentUrl';
@@ -61,6 +62,12 @@ export type TRawSessionEvent = TRawTaggableEvent & {
   eventName: TSessionEventName;
   sessionId: string;
 };
+export type TRawHostRoutedEvent = {
+  eventType: string;
+  context: string;
+  properties: HostRoutedEventProperties;
+  hostProperties?: HostRoutedEventProperties;
+};
 export type TRawEvent =
   | { eventType: 'pageload' }
   | ({ eventType: 'click' } & TRawClickEvent)
@@ -97,8 +104,13 @@ export default class UnifiedLogger {
 
   private sessionService: ISessionService;
 
+  // EventStream sender for host-routed, feature-owned event envelopes.
+  private hostRoutedEventStreamLogger: HostRoutedEventStreamLogger;
+
+  // (DEPRECATED) - Will be removed once the external NAP consumer migrates to logHostRoutedEvent.
   // dedicated logger for NotApprovedPageEvent — not added to eventLoggers[] because
   // that list is fan-out and this logger targets a single, purpose-built event shape.
+  // oxlint-disable-next-line typescript/no-deprecated -- intentional backwards-compatibility wiring
   private notApprovedPageEventLogger: NotApprovedPageEventLogger;
 
   private disableSession: boolean;
@@ -138,6 +150,10 @@ export default class UnifiedLogger {
     if (this.debugMode) {
       this.eventLoggers.push(new ConsoleEventLogger());
     }
+    this.hostRoutedEventStreamLogger = new HostRoutedEventStreamLogger({
+      eventBaseUrl,
+    });
+    // oxlint-disable-next-line typescript/no-deprecated -- intentional backwards-compatibility wiring
     this.notApprovedPageEventLogger = new NotApprovedPageEventLogger({
       eventBaseUrl,
     });
@@ -374,6 +390,33 @@ export default class UnifiedLogger {
     this.logEventToLogger(event);
   }
 
+  /**
+   * Dispatches a complete, feature-owned event envelope to any EventStream table with the CreatorDashboard
+   * target. The emitting package owns event semantics (name, context, property schema); the host owns
+   * ambient identity (`hostProperties`, e.g. `user_id`).
+   */
+  logHostRoutedEvent({
+    eventType,
+    context,
+    properties,
+    hostProperties = {},
+  }: TRawHostRoutedEvent): void {
+    const currentUrl = getCurrentUrl();
+    const sessionId = this.sessionService.getOrCreateSessionId();
+    this.hostRoutedEventStreamLogger.log({
+      eventType,
+      context,
+      properties: { ...hostProperties, ...properties },
+      sessionId,
+      currentUrl,
+    });
+  }
+
+  /**
+   * @deprecated Superseded by {@link UnifiedLogger.logHostRoutedEvent}, which routes a
+   * host-supplied envelope to CreatorDashboard without importing feature semantics.
+   * Will be removed once the external NAP consumer migrates to logHostRoutedEvent.
+   */
   logNotApprovedPageEvent(properties: NotApprovedPageEventProperties): void {
     const currentUrl = getCurrentUrl();
     const sessionId = this.sessionService.getOrCreateSessionId();

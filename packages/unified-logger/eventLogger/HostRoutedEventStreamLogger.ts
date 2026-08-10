@@ -1,11 +1,13 @@
 import { getCookieValueByKey } from '@rbx/core';
 import type { TrackerRequest } from '@rbx/event-stream';
 import { Configuration, Tracker } from '@rbx/event-stream';
-import type { NotApprovedPageEventProperties } from '@rbx/not-approved-page-events';
-import { EVENT_NAME, EventContext } from '@rbx/not-approved-page-events';
 
-type LogInput = {
-  properties: NotApprovedPageEventProperties;
+export type HostRoutedEventProperties = Record<string, string | number | boolean | undefined>;
+
+export type HostRoutedEventInput = {
+  eventType: string;
+  context: string;
+  properties: HostRoutedEventProperties;
   sessionId: string | undefined;
   currentUrl: string;
 };
@@ -13,17 +15,15 @@ type LogInput = {
 const TARGET = 'CreatorDashboard';
 
 /**
- * @deprecated Superseded by {@link HostRoutedEventStreamLogger} +
- * `UnifiedLogger.logHostRoutedEvent`. Retained only for backwards compatibility
- * because an external repo still calls `UnifiedLogger.logNotApprovedPageEvent`.
+ * Forwards a fully-formed, host-routed event envelope to any EventStream table with the CreatorDashboard
+ * target.
  *
- * Dedicated logger for `NotApprovedPageEvent` (T&S not-approved-page telemetry).
+ * It owns transport, undefined-field filtering, and guest-id enrichment, but never event semantics
+ * (event name, context, or property schema). Callers supply the complete event information.
  *
- * Intentionally does NOT implement the shared `EventLogger` interface — this logger
- * is purpose-built for a single event shape and is called directly by
- * `UnifiedLogger.logNotApprovedPageEvent`, not fanned out through `eventLoggers[]`.
+ * This logger should only be used for external packages that need special event logging logic.
  */
-export default class NotApprovedPageEventLogger {
+export default class HostRoutedEventStreamLogger {
   private eventStreamTracker: Tracker;
 
   constructor({ eventBaseUrl }: { eventBaseUrl: string }) {
@@ -32,14 +32,14 @@ export default class NotApprovedPageEventLogger {
     );
   }
 
-  logNotApprovedPageEvent({ properties, sessionId, currentUrl }: LogInput): void {
+  log({ eventType, context, properties, sessionId, currentUrl }: HostRoutedEventInput): void {
     const additionalProperties = sanitizeProperties(properties);
     const guestId = readGuestIdFromCookie();
 
     const request: TrackerRequest = {
       target: TARGET,
-      eventType: EVENT_NAME,
-      context: EventContext.NotApprovedPage,
+      eventType,
+      context,
       currentUrl,
       localTime: new Date(),
       // conditionally include sessionId/guestId so they are absent (not `undefined`)
@@ -53,9 +53,10 @@ export default class NotApprovedPageEventLogger {
 }
 
 function sanitizeProperties(
-  properties: NotApprovedPageEventProperties,
+  properties: HostRoutedEventProperties,
 ): Record<string, string | number | boolean> {
   const result: Record<string, string | number | boolean> = {};
+
   for (const [key, value] of Object.entries(properties)) {
     if (value === undefined) {
       continue;
@@ -67,10 +68,12 @@ function sanitizeProperties(
   return result;
 }
 
+/**
+ * GuestData cookie format is `GuestData=UserID=<number>`; getCookieValueByKey
+ * strips the `GuestData=` prefix, leaving `UserID=<number>` — the user id is
+ * the value after the remaining `=`.
+ */
 function readGuestIdFromCookie(): string | undefined {
-  // GuestData cookie format is `GuestData=UserID=<number>`; getCookieValueByKey
-  // strips the `GuestData=` prefix, leaving `UserID=<number>` — the user id is
-  // the value after the remaining `=`.
   const cookieValue = getCookieValueByKey('GuestData');
   return cookieValue?.split('=')[1];
 }
