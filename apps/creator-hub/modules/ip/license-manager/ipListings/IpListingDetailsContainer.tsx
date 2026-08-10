@@ -14,6 +14,7 @@ import { Alert, Button, Grid, makeStyles, OpenInNewIcon, Typography } from '@rbx
 import { isShowcaseExperiencesEnabled as isShowcaseExperiencesEnabledFlag } from '@generated/flags/contentLicensing';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import ShowcaseContentCarousel from '@modules/licenses/components/ShowcaseContentCarousel';
 import { EXPLORE_LISTING_DETAILS } from '@modules/licenses/urls';
 import { Link, PageLoading } from '@modules/miscellaneous/components';
 import Flex from '@modules/miscellaneous/components/Flex';
@@ -47,6 +48,8 @@ const reasonToLabelKey: Partial<Record<string, string>> = {
   [ListingRejectionReason.UnconfirmedOwnership]: 'Label.RejectReasonIpOwnership',
   [ListingRejectionReason.InappropriateContent]: 'Label.RejectReasonInappropriateContent',
 };
+
+const SHOWCASED_EXPERIENCES_HEADING_ID = 'iph-showcased-experiences-heading';
 
 const useStyles = makeStyles()(() => ({
   thumbnailContainer: {
@@ -156,6 +159,16 @@ const IpListingDetailsContainer = () => {
     'Retry',
     'Action to retry a failed request',
     translationKey('Action.Retry', TranslationNamespace.AgreementsManager),
+  );
+  const previousShowcasedContentAriaLabel = tPendingTranslation(
+    'Previous showcased content',
+    'Accessible label for the previous button in the showcased content carousel',
+    translationKey('Action.PreviousShowcasedContent', TranslationNamespace.Licenses),
+  );
+  const nextShowcasedContentAriaLabel = tPendingTranslation(
+    'Next showcased content',
+    'Accessible label for the next button in the showcased content carousel',
+    translationKey('Action.NextShowcasedContent', TranslationNamespace.Licenses),
   );
   const { setPageTitle } = useIpLayoutContext();
   useEffect(() => {
@@ -355,7 +368,9 @@ const IpListingDetailsContainer = () => {
       {isShowcaseExperiencesFlagReady && isShowcaseExperiencesEnabled && (
         <Grid item>
           <Flex gap={8} flexDirection='column'>
-            <Typography variant='h6'>{showcasedExperiencesLabel}</Typography>
+            <Typography id={SHOWCASED_EXPERIENCES_HEADING_ID} variant='h6'>
+              {showcasedExperiencesLabel}
+            </Typography>
             {isShowcaseContentLoading ? (
               <div className='flex justify-center padding-large'>
                 <ProgressCircle
@@ -396,8 +411,11 @@ const IpListingDetailsContainer = () => {
                 {showcasedUniverseIds.length === 0 ? (
                   <Typography>{noShowcasedExperiencesDescription}</Typography>
                 ) : (
-                  <div className='flex [flex-wrap:wrap] gap-medium'>
-                    {showcasedUniverseIds.map((universeId, index) => {
+                  <ShowcaseContentCarousel
+                    ariaLabelledBy={SHOWCASED_EXPERIENCES_HEADING_ID}
+                    previousAriaLabel={previousShowcasedContentAriaLabel}
+                    nextAriaLabel={nextShowcasedContentAriaLabel}
+                    items={showcasedUniverseIds.map((universeId, index) => {
                       const details = showcaseDetailsByUniverseId.get(universeId);
                       const name =
                         details?.name ??
@@ -410,8 +428,9 @@ const IpListingDetailsContainer = () => {
                           ),
                           { universeId: universeId.toString() },
                         );
-                      return (
-                        <div key={universeId} className='width-[144px]'>
+                      return {
+                        id: `Universe:${universeId}:${index}`,
+                        content: (
                           <ShowcaseContentTile
                             universeId={universeId}
                             name={name}
@@ -423,10 +442,10 @@ const IpListingDetailsContainer = () => {
                             }
                             onClick={() => handleShowcaseContentClick(universeId, index + 1)}
                           />
-                        </div>
-                      );
+                        ),
+                      };
                     })}
-                  </div>
+                  />
                 )}
               </>
             )}
@@ -469,4 +488,5 @@ const IpListingDetailsContainer = () => {
 export default withTranslation(IpListingDetailsContainer, [
   TranslationNamespace.Navigation,
   TranslationNamespace.AgreementsManager,
+  TranslationNamespace.Licenses,
 ]);
