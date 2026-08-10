@@ -165,8 +165,13 @@ const PermissionsPanel = ({
 
   const onScopeAdd = useCallback(
     (option: ScopeOption) => {
+      // Clone into a fresh Set rather than mutating in place. The scope-type key may be absent
+      // (e.g. after saving and re-entering edit without a refresh, since SetAppDetails rebuilds
+      // allowedScopes from the saved response and drops empty operation sets), so default to a new Set.
       const updatedScopes = { ...allowedScopes };
-      updatedScopes[option.scopeType].add(option.operation);
+      updatedScopes[option.scopeType] = new Set(updatedScopes[option.scopeType]).add(
+        option.operation,
+      );
 
       verifyIdentityScopes(updatedScopes);
       setAllowedScopesHandler(updatedScopes, false);
@@ -177,7 +182,9 @@ const PermissionsPanel = ({
   const onScopeDelete = useCallback(
     (option: ScopeOption) => {
       const updatedScopes = { ...allowedScopes };
-      updatedScopes[option.scopeType].delete(option.operation);
+      const updatedOperations = new Set(updatedScopes[option.scopeType]);
+      updatedOperations.delete(option.operation);
+      updatedScopes[option.scopeType] = updatedOperations;
 
       verifyIdentityScopes(updatedScopes);
       setAllowedScopesHandler(updatedScopes, false);
