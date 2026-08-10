@@ -1,6 +1,14 @@
 import type { FC, ReactNode } from 'react';
-import { useMemo } from 'react';
-import { Card } from '@rbx/foundation-ui';
+import { Fragment, useMemo } from 'react';
+import {
+  Button,
+  Divider,
+  SheetBody,
+  SheetContent,
+  SheetRoot,
+  SheetTitle,
+  SheetTrigger,
+} from '@rbx/foundation-ui';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import withNamespaceSwitchedTranslation from '@modules/analytics-translations/withNamespaceSwitchedTranslation';
@@ -8,13 +16,7 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import useClientSessionMetadata from '../hooks/useClientSessionMetadata';
 import { ClientSessionDataAvailability } from '../types/ClientSession';
-import ClientSessionMetadataStat, {
-  CLIENT_SESSION_METADATA_STAT_CONTAINER_CLASS_NAME,
-} from './ClientSessionMetadataStat';
 
-const SKELETON_STAT_COUNT = 8;
-const STATS_ROW_CLASS_NAME = 'flex wrap gap-xxlarge';
-const SKELETON_STAT_CONTAINER_CLASS_NAME = `${CLIENT_SESSION_METADATA_STAT_CONTAINER_CLASS_NAME} min-width-[180px]`;
 // Session timestamps are stored in UTC; render them in UTC with a "UTC" suffix
 // (via timeZoneName) so the value is unambiguous regardless of the viewer's zone.
 const START_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
@@ -31,13 +33,15 @@ type MetadataEntry = {
   readonly value: ReactNode;
 };
 
+type ClientSessionMetadataData = NonNullable<ReturnType<typeof useClientSessionMetadata>['data']>;
+
 type ClientSessionMetadataProps = {
   readonly sessionId: string | undefined;
 };
 
 const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ sessionId }) => {
   const { locale } = useLocalization();
-  const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+  const { translate, tPendingTranslation } = useTranslationWrapper(useTranslation());
   const { data, isError, isLoading } = useClientSessionMetadata({ sessionId });
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat(locale ?? Locale.English), [locale]);
@@ -50,11 +54,23 @@ const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ sessionId }) =>
     [locale],
   );
 
-  const errorMessage = tPendingTranslation(
-    'Session metadata could not be loaded.',
-    'Error shown when client session metadata fails to load.',
-    translationKey('Message.ClientSessionMetadataLoadError', TranslationNamespace.ServerManagement),
+  const viewDetailsLabel = tPendingTranslation(
+    'View details',
+    'Button label that opens a drawer with detailed metadata for a client session.',
+    translationKey(
+      'Action.ClientSessionMetadataViewDetails',
+      TranslationNamespace.ServerManagement,
+    ),
   );
+  const drawerTitle = tPendingTranslation(
+    'Session details',
+    'Heading for the drawer showing detailed metadata for a client session.',
+    translationKey(
+      'Heading.ClientSessionMetadataDrawerTitle',
+      TranslationNamespace.ServerManagement,
+    ),
+  );
+  const closeDrawerLabel = translate(translationKey('Action.Close', TranslationNamespace.Controls));
 
   const labels = useMemo(
     () => ({
@@ -172,78 +188,88 @@ const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ sessionId }) =>
     [tPendingTranslation],
   );
 
-  if (isLoading) {
-    return (
-      <div className={STATS_ROW_CLASS_NAME}>
-        {Array.from({ length: SKELETON_STAT_COUNT }, (_unused, index) => (
-          <div key={index} className={SKELETON_STAT_CONTAINER_CLASS_NAME}>
-            <Card
-              variant='Emphasis'
-              className='height-full'
-              eyebrow={
-                <span className='block height-100 width-[40%] radius-small bg-surface-300' />
-              }
-              title={<span className='block height-200 width-[70%] radius-small bg-surface-300' />}
-            />
-          </div>
-        ))}
-      </div>
+  const buildEntries = (
+    metadata: ClientSessionMetadataData | undefined,
+  ): readonly MetadataEntry[] => {
+    if (!metadata) {
+      return [];
+    }
+
+    const { session } = metadata;
+    const durationValue = tPendingTranslation(
+      '{duration} min',
+      'Client session duration in minutes; {duration} is the number of minutes.',
+      translationKey('Value.ClientSessionMetadataDuration', TranslationNamespace.ServerManagement),
+      { duration: numberFormatter.format(session.durationMinute) },
     );
+    const memoryUsageValue = tPendingTranslation(
+      '{memory} MB',
+      'Memory amount in megabytes; {memory} is the number of megabytes.',
+      translationKey('Value.ClientSessionMetadataMemoryMB', TranslationNamespace.ServerManagement),
+      { memory: numberFormatter.format(session.memoryUsageMB) },
+    );
+    const deviceMemoryValue = tPendingTranslation(
+      '{memory} MB',
+      'Memory amount in megabytes; {memory} is the number of megabytes.',
+      translationKey('Value.ClientSessionMetadataMemoryMB', TranslationNamespace.ServerManagement),
+      { memory: numberFormatter.format(session.device.memoryMB) },
+    );
+
+    return [
+      { label: labels.placeName, value: session.placeName },
+      { label: labels.placeVersion, value: session.placeVersion },
+      { label: labels.startTime, value: startTimeFormatter.format(session.startTime) },
+      { label: labels.duration, value: durationValue },
+      { label: labels.averageFps, value: numberFormatter.format(session.averageFps) },
+      { label: labels.memoryUsage, value: memoryUsageValue },
+      { label: labels.platform, value: session.device.platform },
+      { label: labels.operatingSystem, value: session.device.operatingSystem },
+      { label: labels.deviceMemory, value: deviceMemoryValue },
+      {
+        label: labels.dataAvailability,
+        value: listFormatter.format(
+          session.dataAvailability.map((availability) => dataAvailabilityLabels[availability]),
+        ),
+      },
+    ];
+  };
+
+  if (!sessionId || isError) {
+    return null;
   }
 
-  if (isError || !data) {
-    return <p className='text-body-medium content-muted margin-none'>{errorMessage}</p>;
-  }
-
-  const { session } = data;
-  const durationValue = tPendingTranslation(
-    '{duration} min',
-    'Client session duration in minutes; {duration} is the number of minutes.',
-    translationKey('Value.ClientSessionMetadataDuration', TranslationNamespace.ServerManagement),
-    { duration: numberFormatter.format(session.durationMinute) },
-  );
-  const memoryUsageValue = tPendingTranslation(
-    '{memory} MB',
-    'Memory amount in megabytes; {memory} is the number of megabytes.',
-    translationKey('Value.ClientSessionMetadataMemoryMB', TranslationNamespace.ServerManagement),
-    { memory: numberFormatter.format(session.memoryUsageMB) },
-  );
-  const deviceMemoryValue = tPendingTranslation(
-    '{memory} MB',
-    'Memory amount in megabytes; {memory} is the number of megabytes.',
-    translationKey('Value.ClientSessionMetadataMemoryMB', TranslationNamespace.ServerManagement),
-    { memory: numberFormatter.format(session.device.memoryMB) },
-  );
-
-  const entries: readonly MetadataEntry[] = [
-    { label: labels.placeName, value: session.placeName },
-    { label: labels.placeVersion, value: session.placeVersion },
-    { label: labels.startTime, value: startTimeFormatter.format(session.startTime) },
-    { label: labels.duration, value: durationValue },
-    { label: labels.averageFps, value: numberFormatter.format(session.averageFps) },
-    { label: labels.memoryUsage, value: memoryUsageValue },
-    { label: labels.platform, value: session.device.platform },
-    { label: labels.operatingSystem, value: session.device.operatingSystem },
-    { label: labels.deviceMemory, value: deviceMemoryValue },
-    {
-      label: labels.dataAvailability,
-      value: listFormatter.format(
-        session.dataAvailability.map((availability) => dataAvailabilityLabels[availability]),
-      ),
-    },
-  ];
+  const entries = buildEntries(data);
 
   return (
-    <div className={STATS_ROW_CLASS_NAME}>
-      {entries.map(({ label, value }) => (
-        <ClientSessionMetadataStat key={label} label={label}>
-          {value}
-        </ClientSessionMetadataStat>
-      ))}
-    </div>
+    <SheetRoot>
+      <SheetTrigger>
+        <Button variant='Standard' size='Medium' isDisabled={isLoading} isLoading={isLoading}>
+          {viewDetailsLabel}
+        </Button>
+      </SheetTrigger>
+      <SheetContent largeScreenVariant='side' closeLabel={closeDrawerLabel}>
+        <SheetTitle>{drawerTitle}</SheetTitle>
+        <SheetBody>
+          <div className='flex flex-col gap-large padding-large'>
+            {entries.map(({ label, value }, index) => (
+              <Fragment key={label}>
+                {index > 0 && <Divider orientation='horizontal' />}
+                <div className='flex items-start justify-between gap-medium'>
+                  <span className='text-body-medium content-muted'>{label}</span>
+                  <span className='text-label-medium content-emphasis text-align-x-right'>
+                    {value}
+                  </span>
+                </div>
+              </Fragment>
+            ))}
+          </div>
+        </SheetBody>
+      </SheetContent>
+    </SheetRoot>
   );
 };
 
 export default withNamespaceSwitchedTranslation(ClientSessionMetadata, [
   TranslationNamespace.ServerManagement,
+  TranslationNamespace.Controls,
 ]);

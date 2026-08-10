@@ -2023,9 +2023,6 @@
 .height-200 {
   height: var(--size-200);
 }
-.height-2300 {
-  height: var(--size-2300);
-}
 .height-250 {
   height: var(--size-250);
 }
@@ -2711,9 +2708,6 @@
 }
 .width-\[36px\] {
   width: 36px;
-}
-.width-\[40\%\] {
-  width: 40%;
 }
 .width-\[480px\] {
   width: 480px;

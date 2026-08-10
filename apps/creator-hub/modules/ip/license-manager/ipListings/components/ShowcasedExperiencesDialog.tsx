@@ -232,24 +232,24 @@ const ShowcasedExperiencesDialog = ({
   };
 
   const title = tPendingTranslation(
-    'Select showcased experiences',
-    'Title of the dialog for selecting experiences to showcase on an IP listing',
-    translationKey('Heading.SelectShowcasedExperiences', TranslationNamespace.AgreementsManager),
+    'Add spotlighted creations',
+    'Title of the dialog for adding spotlighted creations to an IP listing',
+    translationKey('Heading.AddSpotlightedCreations', TranslationNamespace.AgreementsManager),
   );
   const description = tPendingTranslation(
-    'Select up to 10 games to feature on this license listing. These will be highlighted to Creators browsing your IP.',
-    'Description explaining how to select experiences for an IP listing showcase',
-    translationKey('Description.ShowcasedExperiences', TranslationNamespace.AgreementsManager),
+    'Add up to 10 creations to highlight to Creators browsing your IP. Only creations in active license agreement with a license of this listing are eligible to be spotlighted.',
+    'Description explaining which creations can be spotlighted on an IP listing',
+    translationKey('Description.AddSpotlightedCreations', TranslationNamespace.AgreementsManager),
   );
   const emptyStateTitle = tPendingTranslation(
-    'No licensed experiences yet',
-    'Empty-state heading when an IP listing has no experiences with active license agreements',
-    translationKey('Heading.NoLicensedExperiencesYet', TranslationNamespace.AgreementsManager),
+    'No licensed creations yet',
+    'Empty-state heading when an IP listing has no creations with active license agreements',
+    translationKey('Heading.NoLicensedCreationsYet', TranslationNamespace.AgreementsManager),
   );
   const emptyStateDescription = tPendingTranslation(
-    'No experiences are in active agreement with the licenses for this listing yet.',
-    'Empty-state description when an IP listing has no experiences with active license agreements',
-    translationKey('Description.NoLicensedExperiencesYet', TranslationNamespace.AgreementsManager),
+    'No creations are in active license agreement with the licenses for this listing yet',
+    'Empty-state description when an IP listing has no creations with active license agreements',
+    translationKey('Description.NoLicensedCreationsYet', TranslationNamespace.AgreementsManager),
   );
   const illustrationAlt = tPendingTranslation(
     'Game controller illustration',
@@ -260,11 +260,7 @@ const ShowcasedExperiencesDialog = ({
     ),
   );
   const cancelLabel = translate(translationKey('Action.Cancel', TranslationNamespace.Controls));
-  const saveLabel = tPendingTranslation(
-    'Save selections',
-    'Action to save selected experiences for an IP listing showcase',
-    translationKey('Action.SaveSelections', TranslationNamespace.AgreementsManager),
-  );
+  const addLabel = translate(translationKey('Action.Add', TranslationNamespace.Controls));
   const saveErrorMessage = tPendingTranslation(
     "We couldn't save your selections. Try again.",
     'Error shown when showcased experience selections could not be saved',
@@ -276,14 +272,20 @@ const ShowcasedExperiencesDialog = ({
     translationKey('Action.Retry', TranslationNamespace.AgreementsManager),
   );
   const loadErrorTitle = translate(
-    translationKey('Heading.FailedToLoadPage', TranslationNamespace.Error),
+    translationKey('Heading.GenericError', TranslationNamespace.Error),
   );
-  const loadErrorDescription = translate(
-    translationKey('Error.LoadingData', TranslationNamespace.AgreementsManager),
+  const loadErrorDescription = tPendingTranslation(
+    'Creations failed to load',
+    'Description shown when creations fail to load',
+    translationKey('Description.CreationsFailedToLoad', TranslationNamespace.AgreementsManager),
   );
-  const loadErrorAction = translate(
-    translationKey('Action.FailedToLoadPage', TranslationNamespace.Error),
+  const hasRemovedSelections = selectedContentUniverseIds.some(
+    (universeId) => !selectedUniverseIds.includes(universeId),
   );
+  const isAddDisabled =
+    isContentError ||
+    replaceShowcaseContent.isPending ||
+    (selectableUniverseIds.length === 0 && !hasRemovedSelections);
 
   useEffect(() => {
     if (
@@ -338,7 +340,7 @@ const ShowcasedExperiencesDialog = ({
               className={`${CONTENT_VIEWPORT_CLASS} flex radius-medium stroke-standard stroke-default items-center justify-center`}>
               <CircularProgress />
             </div>
-          ) : showcaseEligibleContentReq.isError ? (
+          ) : isContentError ? (
             <div
               className={`${CONTENT_VIEWPORT_CLASS} flex radius-medium stroke-standard stroke-default flex-col items-center justify-center padding-y-xxlarge padding-x-large`}>
               <ThemedImage lightSrc={loadErrorLight} darkSrc={loadErrorDark} alt='' />
@@ -347,34 +349,10 @@ const ShowcasedExperiencesDialog = ({
                   {loadErrorTitle}
                 </h2>
                 <p className='text-body-medium content-muted margin-none'>{loadErrorDescription}</p>
-                <Button variant='Standard' size='Medium' onClick={handleRetry}>
-                  {loadErrorAction}
+                <Button variant='Emphasis' size='Medium' onClick={handleRetry}>
+                  {retryLabel}
                 </Button>
               </div>
-            </div>
-          ) : isContentError ? (
-            <div
-              className={`${CONTENT_VIEWPORT_CLASS} radius-medium stroke-standard stroke-default padding-medium`}>
-              <Alert
-                variant='Feedback'
-                severity='Error'
-                hasCloseAffordance={false}
-                className='!width-fit !stroke-default [&>div[aria-hidden=true]]:!bg-shift-100'>
-                <span className='inline-flex items-center gap-small'>
-                  <span>
-                    {translate(
-                      translationKey('Error.LoadingData', TranslationNamespace.AgreementsManager),
-                    )}
-                  </span>
-                  <Button
-                    variant='Link'
-                    size='Small'
-                    className='![height:auto] !padding-none !text-label-medium [&>div]:!bg-none [&>div]:!transition-none [&>span>span]:!padding-none'
-                    onClick={handleRetry}>
-                    {retryLabel}
-                  </Button>
-                </span>
-              </Alert>
             </div>
           ) : selectableUniverseIds.length > 0 ? (
             <div
@@ -461,15 +439,11 @@ const ShowcasedExperiencesDialog = ({
           ) : null}
         </DialogBody>
         <DialogFooter className='flex gap-small justify-end'>
+          <Button variant='Emphasis' size='Medium' onClick={handleSave} isDisabled={isAddDisabled}>
+            {addLabel}
+          </Button>
           <Button variant='Standard' size='Medium' onClick={handleCancel}>
             {cancelLabel}
-          </Button>
-          <Button
-            variant='Emphasis'
-            size='Medium'
-            onClick={handleSave}
-            isDisabled={isContentError || replaceShowcaseContent.isPending}>
-            {saveLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

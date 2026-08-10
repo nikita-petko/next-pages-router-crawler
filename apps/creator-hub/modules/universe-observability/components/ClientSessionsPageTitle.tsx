@@ -12,6 +12,7 @@ import useBreadcrumbRegistration from '@modules/navigation/layout/hooks/useBread
 import useClientSessionMetadata from '../hooks/useClientSessionMetadata';
 import useUniverseRelatedSession from '../hooks/useUniverseRelatedSession';
 import { ClientSessionStatus } from '../types/ClientSession';
+import ClientSessionMetadata from './ClientSessionMetadata';
 
 const STATUS_BADGE_VARIANTS = {
   [ClientSessionStatus.Unspecified]: 'Standard',
@@ -98,16 +99,19 @@ const ClientSessionsPageTitle = () => {
   }
 
   return (
-    <div className='flex flex-col gap-xsmall'>
-      <div className='flex items-center wrap gap-small'>
-        <h1 className='text-heading-large margin-none'>{title}</h1>
-        {status != null && (
-          <StatusBadge label={status.label} variant={status.variant} size='Small' shape='Box' />
+    <div className='flex gap-medium justify-between width-full'>
+      <div className='flex flex-col gap-xsmall'>
+        <div className='flex items-center wrap gap-small'>
+          <h1 className='text-heading-large margin-none'>{title}</h1>
+          {status != null && (
+            <StatusBadge label={status.label} variant={status.variant} size='Small' shape='Box' />
+          )}
+        </div>
+        {description != null && (
+          <span className='text-body-large content-default padding-top-xsmall'>{description}</span>
         )}
       </div>
-      {description != null && (
-        <span className='text-body-large content-default padding-top-xsmall'>{description}</span>
-      )}
+      <ClientSessionMetadata sessionId={sessionId} />
     </div>
   );
 };
