@@ -154,6 +154,8 @@ const JourneysHomeBody: FC = () => {
           'Column header: row action menu',
           translationKey('Label.Actions', TranslationNamespace.Analytics),
         ),
+        // Blank the "Actions" header — the row buttons are self-explanatory.
+        titleOverride: '',
         widthWeight: 15,
       },
     ],
@@ -186,7 +188,7 @@ const JourneysHomeBody: FC = () => {
               actionType: 'view',
               actionOn: entry.journeyName,
               onActionInvoked: (name) => handleAction('view', name),
-              renderedAsInNonCompactTable: 'menu-item',
+              renderedAsInNonCompactTable: 'dedicated-button',
               displayLabel: viewLabel,
             },
             {

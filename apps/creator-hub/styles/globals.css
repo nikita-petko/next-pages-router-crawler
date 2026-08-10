@@ -4532,6 +4532,9 @@
 .\[max-height\:320px\] {
   max-height: 320px;
 }
+.\[max-height\:400px\] {
+  max-height: 400px;
+}
 .\[max-height\:90vh\] {
   max-height: 90vh;
 }
@@ -4549,6 +4552,9 @@
 }
 .\!\[max-width\:480px\] {
   max-width: 480px !important;
+}
+.\[max-width\:720px\] {
+  max-width: 720px;
 }
 .\[max-width\:calc\(var\(--size-3000\)\*2\)\] {
   max-width: calc(var(--size-3000) * 2);

@@ -495,6 +495,13 @@ export const tableConfigJourneyByStageChurnUsers = {
   tableConfig: { tableBorder: false, defaultActiveSort: RAQIV2Dimension.FromStage },
   dataColumns: [tableColumnConfigJourneyStageUserCount, tableColumnConfigJourneyStageChurnRate],
   breakdowns: [RAQIV2Dimension.FromStage],
+  breakdownColumnTitleKeyOverrides: {
+    [RAQIV2Dimension.FromNode]: translationKey('Label.JourneyNode', TranslationNamespace.Analytics),
+    [RAQIV2Dimension.FromStage]: translationKey(
+      'Label.JourneyStage',
+      TranslationNamespace.Analytics,
+    ),
+  },
   isTotalRowIncluded: false,
   pagination: null,
 } as const satisfies TAnalyticsSerializableTableConfig;
@@ -508,6 +515,13 @@ export const tableConfigJourneyByStageChurnSessions = {
     tableColumnConfigJourneyStageTransitionChurnRate,
   ],
   breakdowns: [RAQIV2Dimension.FromStage],
+  breakdownColumnTitleKeyOverrides: {
+    [RAQIV2Dimension.FromNode]: translationKey('Label.JourneyNode', TranslationNamespace.Analytics),
+    [RAQIV2Dimension.FromStage]: translationKey(
+      'Label.JourneyStage',
+      TranslationNamespace.Analytics,
+    ),
+  },
   isTotalRowIncluded: false,
   pagination: null,
 } as const satisfies TAnalyticsSerializableTableConfig;
@@ -518,6 +532,13 @@ export const tableConfigJourneyByNodeChurnUsers = {
   tableConfig: { tableBorder: false, defaultActiveSort: RAQIV2Dimension.FromStage },
   dataColumns: [tableColumnConfigJourneyNodeUserCount, tableColumnConfigJourneyNodeUserChurnRate],
   breakdowns: [RAQIV2Dimension.FromNode, RAQIV2Dimension.FromStage],
+  breakdownColumnTitleKeyOverrides: {
+    [RAQIV2Dimension.FromNode]: translationKey('Label.JourneyNode', TranslationNamespace.Analytics),
+    [RAQIV2Dimension.FromStage]: translationKey(
+      'Label.JourneyStage',
+      TranslationNamespace.Analytics,
+    ),
+  },
   isTotalRowIncluded: false,
   pagination: null,
 } as const satisfies TAnalyticsSerializableTableConfig;
@@ -531,6 +552,13 @@ export const tableConfigJourneyByNodeChurnSessions = {
     tableColumnConfigJourneyNodeTransitionChurnRate,
   ],
   breakdowns: [RAQIV2Dimension.FromNode, RAQIV2Dimension.FromStage],
+  breakdownColumnTitleKeyOverrides: {
+    [RAQIV2Dimension.FromNode]: translationKey('Label.JourneyNode', TranslationNamespace.Analytics),
+    [RAQIV2Dimension.FromStage]: translationKey(
+      'Label.JourneyStage',
+      TranslationNamespace.Analytics,
+    ),
+  },
   isTotalRowIncluded: false,
   pagination: null,
 } as const satisfies TAnalyticsSerializableTableConfig;

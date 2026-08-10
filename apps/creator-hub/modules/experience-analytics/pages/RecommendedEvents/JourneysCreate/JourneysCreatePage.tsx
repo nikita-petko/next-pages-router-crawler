@@ -2,7 +2,7 @@ import type { FC, ReactNode } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/router';
-import type { Control, FieldPath, UseFormGetValues, UseFormTrigger } from 'react-hook-form';
+import type { Control, UseFormGetValues, UseFormTrigger } from 'react-hook-form';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import type { TStepperStep } from '@rbx/foundation-ui';
 import {
@@ -166,10 +166,7 @@ const StageFields: FC<StageFieldsProps> = ({
                       // Re-validate siblings so stale 'duplicate' errors clear immediately
                       void trigger(
                         nodes
-                          .map(
-                            (_, i) =>
-                              `stages.${stageIdx}.nodes.${i}.eventName` as FieldPath<JourneyFormValues>,
-                          )
+                          .map((_, i) => `stages.${stageIdx}.nodes.${i}.eventName` as const)
                           .filter((_, i) => i !== nodeIdx),
                       );
                     }}
@@ -251,6 +248,10 @@ const JourneyForm: FC<JourneyFormProps> = ({
     append: appendStage,
     remove: removeStage,
   } = useFieldArray({ control, name: 'stages' });
+
+  // Single-expand: only one stage's fields are open at a time, so editing a
+  // stage/node collapses the others. -1 means all collapsed.
+  const [expandedStageIdx, setExpandedStageIdx] = useState<number>(0);
 
   // ── validation error messages ─────────────────────────────────────────────
 
@@ -457,7 +458,10 @@ const JourneyForm: FC<JourneyFormProps> = ({
         <div className='[border:var(--stroke-thin)_solid_var(--color-stroke-default)] radius-medium [overflow:hidden]'>
           <Accordion hasDivider isContained>
             {stages.map((stage, stageIdx) => (
-              <AccordionItem key={stage.id} defaultOpen={stageIdx === 0}>
+              <AccordionItem
+                key={stage.id}
+                isOpen={expandedStageIdx === stageIdx}
+                onOpenChange={(open) => setExpandedStageIdx(open ? stageIdx : -1)}>
                 <AccordionItemTrigger>
                   <span className='text-title-medium content-default'>
                     {tPendingTranslation(
@@ -477,7 +481,16 @@ const JourneyForm: FC<JourneyFormProps> = ({
                     getValues={getValues}
                     trigger={trigger}
                     stageCount={stages.length}
-                    onRemove={() => removeStage(stageIdx)}
+                    onRemove={() => {
+                      // Keep the expanded index pointing at the same visual slot
+                      // after a stage is removed.
+                      if (expandedStageIdx === stageIdx) {
+                        setExpandedStageIdx(-1);
+                      } else if (expandedStageIdx > stageIdx) {
+                        setExpandedStageIdx(expandedStageIdx - 1);
+                      }
+                      removeStage(stageIdx);
+                    }}
                     eventNameLabel={eventNameLabel}
                     addNodeLabel={addNodeLabel}
                     removeNodeLabel={removeNodeLabel}
@@ -498,7 +511,10 @@ const JourneyForm: FC<JourneyFormProps> = ({
             size='Small'
             icon='icon-filled-plus-small'
             isDisabled={stages.length >= STAGES_PER_JOURNEY_MAX}
-            onClick={() => appendStage({ nodes: [{ eventName: '' }] })}>
+            onClick={() => {
+              appendStage({ nodes: [{ eventName: '' }] });
+              setExpandedStageIdx(stages.length);
+            }}>
             {addStageLabel}
           </Button>
         </div>
@@ -699,7 +715,7 @@ const JourneysCreatePage: FC = () => {
         />
       )}
 
-      <div className='width-full'>
+      <div className='width-full [max-width:720px]'>
         {description}
 
         <div className='margin-bottom-large'>
@@ -727,7 +743,7 @@ const JourneysCreatePage: FC = () => {
               )}
             </p>
 
-            <div className='stroke-standard stroke-default padding-medium radius-medium'>
+            <div className='stroke-standard stroke-default padding-medium radius-medium [max-height:400px] [overflow:auto]'>
               <HighlightingCodeBlock
                 code={snippetText ?? ''}
                 codePreviewSnippet={snippetText ?? ''}

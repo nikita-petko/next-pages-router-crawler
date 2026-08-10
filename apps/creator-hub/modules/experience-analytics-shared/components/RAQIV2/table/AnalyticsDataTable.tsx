@@ -143,6 +143,13 @@ export type AnalyticsDataTableProps<TColumnKey extends string = string> = {
    */
   breakdownColumnsSortable?: boolean;
   /**
+   * Optional per-dimension header label override for auto-generated breakdown
+   * columns. The value is a {@link TranslationKey} resolved through the table's
+   * translator (like {@link TableColumnConfig.titleKey}); use it to relabel a
+   * dimension column for a single table without renaming the dimension globally.
+   */
+  breakdownColumnTitleKeyOverrides?: Partial<Record<TRAQIV2Dimension, TranslationKey>>;
+  /**
    * Called whenever the rendered table data changes with a getter for the
    * CSV exporter that the parent can wire into a custom download-CSV
    * control. Receives `null` when the table has no data to export.
@@ -183,6 +190,7 @@ const AnalyticsDataTable = <TColumnKey extends string>({
   chartWarnings,
   breakdownColumnTypeOverride,
   breakdownColumnsSortable,
+  breakdownColumnTitleKeyOverrides,
   onExporterReady,
   mergeMetricBreakdownRows,
   chartControl,
@@ -314,12 +322,14 @@ const AnalyticsDataTable = <TColumnKey extends string>({
 
     const realBreakdownSpecs = breakdowns.map((dimension) => {
       const dimConfig = getDimensionColumnDisplayConfig(dimension);
+      const titleKeyOverride = breakdownColumnTitleKeyOverrides?.[dimension];
 
       const spec: CustomTableColumnSpec<ColumnKeyWithTimestamp> = {
         ...dimConfig,
         ...(breakdownColumnTypeOverride !== undefined
           ? { columnType: breakdownColumnTypeOverride }
           : {}),
+        ...(titleKeyOverride !== undefined ? { titleKey: titleKeyOverride } : {}),
         columnKey: dimension,
         resource: context.resource,
         getData: makeDimensionGetData(dimension),
@@ -359,6 +369,7 @@ const AnalyticsDataTable = <TColumnKey extends string>({
     makeDimensionGetData,
     breakdownColumnTypeOverride,
     breakdownColumnsSortable,
+    breakdownColumnTitleKeyOverrides,
     isTimeBucketed,
   ]);
 

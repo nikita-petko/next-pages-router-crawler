@@ -171,7 +171,12 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
   // `isInitialEmpty` and render the Create CTA.
   const isError = !isLoading && listQuery.isError;
   const isCreateEnabled = isUniverseReady && !isLoading && !isError && canMutateDashboards;
-  const isInitialEmpty = !isLoading && !isError && totalLoaded === 0;
+  // Only page 1 (no page token) can be "initial empty" — i.e. the universe
+  // genuinely has no dashboards. An empty page 2+ means the user paginated
+  // past the last page (spurious token or items deleted between loads);
+  // that must render an empty table + Previous button, not the Create CTA.
+  const isInitialEmpty =
+    !isLoading && !isError && totalLoaded === 0 && pageState.page === 1 && !pageState.pageToken;
   const isNoMatches =
     !isLoading &&
     !isError &&
@@ -249,7 +254,8 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
 
   const showSearchSlot = isLoading || isPopulated || isNoMatches;
   const showPagination =
-    isLoading || (isPopulated && ((serverItems?.length ?? 0) > 0 || hasNextPage));
+    isLoading ||
+    (isPopulated && ((serverItems?.length ?? 0) > 0 || hasNextPage || pageState.page > 1));
 
   const deletingDashboard = confirmDelete.status === 'idle' ? null : confirmDelete.dashboard;
   const isDeleteSubmitting = confirmDelete.status === 'submitting';
