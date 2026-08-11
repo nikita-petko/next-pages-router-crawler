@@ -14,12 +14,7 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import { useCreatorEligibility } from '@modules/publishing-permissions/hooks/useCreatorEligibility';
 import { useGetOrganizationPermissionsByGroupId } from '@modules/react-query/organizations/organizationsQueries';
-import {
-  PublishingFee,
-  PublishingPermissionsRoute,
-  RefundPeriodDays,
-  RequiredEngagedPlayers,
-} from '../constants/audienceReachConstants';
+import { PublishingFee, PublishingPermissionsRoute } from '../constants/audienceReachConstants';
 import { useCoreContentTransactionStatus } from '../hooks/useCoreContentTransactionStatus';
 import { ReachLevel } from '../types/audienceReach';
 import AudienceReachExpediteUpsellBanner from './AudienceReachExpediteUpsellBanner';
@@ -115,10 +110,6 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
           translate(translationKey('Label.Paid', TranslationNamespace.AudienceReach)),
           translate(
             translationKey('Description.PublishingFeeReturnV2', TranslationNamespace.AudienceReach),
-            {
-              days: RefundPeriodDays.toString(),
-              players: RequiredEngagedPlayers.toString(),
-            },
           ),
           null,
           false,
@@ -201,10 +192,6 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
     <p className='text-body-medium margin-none'>
       {translate(
         translationKey('Description.PublishingFeeDialogV2', TranslationNamespace.AudienceReach),
-        {
-          days: RefundPeriodDays.toString(),
-          players: RequiredEngagedPlayers.toString(),
-        },
       )}
     </p>
   );

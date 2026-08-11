@@ -1,6 +1,3 @@
-export const ContentThresholdValue = 25;
-export const ContentThresholdMaxScore = 500;
-
 /**
  * Maximum number of days a universe can remain below the eligibility threshold
  * before losing Select status. The API's `reasonsMetadata.Threshold` value is
@@ -20,7 +17,6 @@ export const ExperienceQuestionnaireRoute = '/experience-questionnaire';
 export const SelectReviewDocsLink =
   '/docs/production/publishing/publish-games-and-places#expedited-review-fee';
 
-export const RequiredEngagedPlayers = ContentThresholdValue; // aliasing for clarity
 export const RefundPeriodDays = 90;
 export const RefundPeriodMs = RefundPeriodDays * 24 * 60 * 60 * 1000;
 export const PublishingFee = 1_000;

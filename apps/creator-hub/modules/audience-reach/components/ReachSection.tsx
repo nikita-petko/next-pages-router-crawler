@@ -7,7 +7,7 @@ interface ReachSectionProps {
 
 const ReachSection: FC<ReachSectionProps> = ({ heading, children }) => (
   <div className='flex flex-col gap-large'>
-    <h3 className='label-large margin-none'>{heading}</h3>
+    <h3 className='text-label-large margin-none'>{heading}</h3>
     {children}
   </div>
 );

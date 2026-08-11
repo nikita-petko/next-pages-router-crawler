@@ -7,10 +7,7 @@ import {
 import placeSafetyStatusApi from '@modules/clients/placeSafetyStatus';
 import useIXPParameters from '@modules/miscellaneous/hooks/useIXPParameters';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
-import {
-  ContentThresholdMaxScore,
-  ThresholdEligibilityWindowDays,
-} from '../constants/audienceReachConstants';
+import { ThresholdEligibilityWindowDays } from '../constants/audienceReachConstants';
 import type { AudienceReachState } from '../types/audienceReach';
 import { calculateReachState } from '../utils/reachCalculation';
 import { useContentRatingDetails } from './useContentRatingDetails';
@@ -111,13 +108,15 @@ export const useAudienceReachData = (universeId: number) => {
       creatorEveryoneWithoutSubscription: universeEligibility.ownerEveryoneTierWithoutSubscription,
       contentRating,
       isPrivate,
-      selectIndicator: (universeEligibility.indicator ?? 0) * ContentThresholdMaxScore,
+      selectIndicator: (universeEligibility.indicator ?? 0) * universeEligibility.thresholdTrigger,
       indicatorLastUpdated: universeEligibility.engagedPlayersUpdatedAt ?? null,
       selectReasons,
       selectStatus: universeEligibility.selectStatus,
       thresholdDaysRemaining,
       underReview: universeEligibility.underReview ?? null,
       isPublishedToGatedAudience,
+      thresholdTrigger: universeEligibility.thresholdTrigger,
+      thresholdReset: universeEligibility.thresholdReset,
     };
   }, [creatorTierData, contentRating, universeEligibility, isPrivate, shouldHonorReasons]);
 

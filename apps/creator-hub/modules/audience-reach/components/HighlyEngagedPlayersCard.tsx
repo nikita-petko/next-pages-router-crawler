@@ -1,12 +1,11 @@
 import { useMemo, type FC } from 'react';
 import { ReasonEnum, SelectStatusEnum } from '@rbx/client-core-content-api/v1';
 import { getProductionCreatorHubUrl } from '@rbx/env-utils';
-import { FeedbackBanner } from '@rbx/foundation-ui';
+import { Alert } from '@rbx/foundation-ui';
 import { useLocalization, useTranslation } from '@rbx/intl';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { Ages16PlusThreshold, ContentThresholdValue } from '../constants/audienceReachConstants';
+import { Ages16PlusThreshold } from '../constants/audienceReachConstants';
 import type { ThresholdBarColor } from '../types/audienceReach';
-import type { CardMessage } from './AudienceReachCard';
 import ContentThresholdBar from './ContentThresholdBar';
 
 interface HighlyEngagedPlayersCardProps {
@@ -20,6 +19,8 @@ interface HighlyEngagedPlayersCardProps {
   lastUpdated: Date | null;
   barColor: ThresholdBarColor;
   daysRemaining: number;
+  thresholdTrigger: number;
+  thresholdReset: number;
 }
 
 const KIDS_AND_SELECT_DOCS_URL = `${getProductionCreatorHubUrl(
@@ -37,6 +38,8 @@ const HighlyEngagedPlayersCard: FC<HighlyEngagedPlayersCardProps> = ({
   lastUpdated,
   barColor,
   daysRemaining,
+  thresholdTrigger,
+  thresholdReset,
 }) => {
   const { locale } = useLocalization();
   const { translateWithNamespace } = useTranslation();
@@ -76,46 +79,39 @@ const HighlyEngagedPlayersCard: FC<HighlyEngagedPlayersCardProps> = ({
     return translateWithNamespace(TranslationNamespace.AudienceReach, 'Label.Eligible');
   }, [translateWithNamespace, hasThresholdReason, isExempt, isNotApplicable]);
 
-  const message: CardMessage | undefined = showAtRiskCallout
-    ? {
-        severity: 'Warning',
-        layout: 'Stacked',
-        title: translateWithNamespace(
-          TranslationNamespace.AudienceReach,
-          'Heading.ThresholdAtRisk',
-        ),
-        description: translateWithNamespace(
-          TranslationNamespace.AudienceReach,
-          'Description.ThresholdAtRisk',
-          {
-            targetUsers: String(ContentThresholdValue),
-            deadline: thresholdDeadline,
-          },
-        ),
-        action: {
-          label: translateWithNamespace(
-            TranslationNamespace.AudienceReach,
-            'Action.IncreaseEngagement',
-          ),
-          onClick: () => {
-            window.open(KIDS_AND_SELECT_DOCS_URL, '_blank', 'noopener,noreferrer');
-          },
-        },
-      }
-    : undefined;
-
   return (
     <div className='flex flex-col gap-medium padding-large radius-medium stroke-standard stroke-emphasis'>
-      {message ? (
-        <FeedbackBanner
-          title={message.title}
-          description={message.description}
-          primaryActionLabel={message.action?.label}
-          onPrimaryAction={message.action?.onClick}
-          layout={message.layout ?? 'Inline'}
-          variant='Emphasis'
-          severity={message.severity}
-        />
+      {showAtRiskCallout ? (
+        <Alert
+          variant='Feedback'
+          severity='Warning'
+          hasCloseAffordance={false}
+          primaryActionLabel={translateWithNamespace(
+            TranslationNamespace.AudienceReach,
+            'Action.IncreaseEngagement',
+          )}
+          onPrimaryAction={() => {
+            window.open(KIDS_AND_SELECT_DOCS_URL, '_blank', 'noopener,noreferrer');
+          }}>
+          <div className='flex flex-col min-width-0 gap-xsmall'>
+            <span className='text-label-medium'>
+              {translateWithNamespace(
+                TranslationNamespace.AudienceReach,
+                'Heading.ThresholdAtRisk',
+              )}
+            </span>
+            <span>
+              {translateWithNamespace(
+                TranslationNamespace.AudienceReach,
+                'Description.ThresholdAtRisk',
+                {
+                  targetUsers: String(thresholdReset),
+                  deadline: thresholdDeadline,
+                },
+              )}
+            </span>
+          </div>
+        </Alert>
       ) : null}
       <div className='flex items-center wrap gap-medium'>
         <div className='flex flex-col gap-xsmall grow-1 shrink-1'>
@@ -133,7 +129,7 @@ const HighlyEngagedPlayersCard: FC<HighlyEngagedPlayersCardProps> = ({
       <div className='text-body-medium content-muted'>
         {translateWithNamespace(TranslationNamespace.AudienceReach, 'Description.ContentThreshold')}
       </div>
-      <ContentThresholdBar score={score} barColor={barColor} />
+      <ContentThresholdBar score={score} thresholdTrigger={thresholdTrigger} barColor={barColor} />
       {lastUpdated && (
         <div className='text-body-medium content-muted'>
           {translateWithNamespace(TranslationNamespace.AudienceReach, 'Label.LastUpdated', {

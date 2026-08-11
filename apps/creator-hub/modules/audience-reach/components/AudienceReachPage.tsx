@@ -14,7 +14,6 @@ import { PageLoading } from '@modules/miscellaneous/components';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
-import { ContentThresholdMaxScore } from '../constants/audienceReachConstants';
 import { useAudienceReachData } from '../hooks/useAudienceReachData';
 import { useCoreContentTransactionStatus } from '../hooks/useCoreContentTransactionStatus';
 import AudienceReachExpediteConfirmationBanner from './AudienceReachExpediteConfirmationBanner';
@@ -135,7 +134,7 @@ const AudienceReachPage: FC = () => {
 
   // Hopefully temporary, we'd like to add a more solid check than 'is progress bar at 100%' but do
   // not have an API alternative at the moment
-  const isBelowThreshold = state.selectIndicator < ContentThresholdMaxScore;
+  const isBelowThreshold = state.selectIndicator < state.thresholdTrigger;
 
   return (
     <div className='flex flex-col gap-xxlarge'>
@@ -189,6 +188,8 @@ const AudienceReachPage: FC = () => {
           barColor={state.thresholdBarColor}
           daysRemaining={state.thresholdDaysRemaining}
           isExempt={expeditedIsPaid}
+          thresholdTrigger={state.thresholdTrigger}
+          thresholdReset={state.thresholdReset}
         />
       </ReachSection>
     </div>

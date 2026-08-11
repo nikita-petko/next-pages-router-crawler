@@ -1,10 +1,10 @@
 import { useEffect, useState, type FC } from 'react';
 import { Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
-import { ContentThresholdMaxScore } from '../constants/audienceReachConstants';
 import { ThresholdBarColor } from '../types/audienceReach';
 
 interface ContentThresholdBarProps {
   score: number;
+  thresholdTrigger: number;
   barColor: ThresholdBarColor;
 }
 
@@ -19,8 +19,12 @@ const BarColorClasses: Record<ThresholdBarColor, string> = {
 // bar (and any surrounding layout) has fully settled on first paint.
 const TooltipLayoutSettleDelayMs = 1000;
 
-const ContentThresholdBar: FC<ContentThresholdBarProps> = ({ score, barColor }) => {
-  const percentage = Math.min((score / ContentThresholdMaxScore) * 100, 100);
+const ContentThresholdBar: FC<ContentThresholdBarProps> = ({
+  score,
+  thresholdTrigger,
+  barColor,
+}) => {
+  const percentage = Math.min((score / thresholdTrigger) * 100, 100);
 
   const [isTooltipOpen, setIsTooltipOpen] = useState(false);
   useEffect(() => {
@@ -30,7 +34,7 @@ const ContentThresholdBar: FC<ContentThresholdBarProps> = ({ score, barColor }) 
 
   return (
     <div className='gap-xsmall margin-top-medium'>
-      <div className='bg-surface-200 radius-small flex items-left w-full' style={{ height: '4px' }}>
+      <div className='bg-surface-200 radius-small flex width-full' style={{ height: '4px' }}>
         <div
           data-testid='threshold-bar-fill'
           data-color={barColor}
@@ -40,9 +44,7 @@ const ContentThresholdBar: FC<ContentThresholdBarProps> = ({ score, barColor }) 
         <Tooltip
           open={isTooltipOpen}
           position='top-center'
-          title={
-            score >= ContentThresholdMaxScore ? `${ContentThresholdMaxScore}+` : String(score)
-          }>
+          title={score >= thresholdTrigger ? `${thresholdTrigger}+` : String(score)}>
           <TooltipTrigger className='margin-none padding-none size-0 stroke-none'>
             <span />
           </TooltipTrigger>
@@ -50,7 +52,7 @@ const ContentThresholdBar: FC<ContentThresholdBarProps> = ({ score, barColor }) 
       </div>
       <div className='flex justify-between grow-0 shrink-0 padding-top-small'>
         <span className='text-body-medium'>0</span>
-        <span className='text-body-medium'>{ContentThresholdMaxScore}</span>
+        <span className='text-body-medium'>{thresholdTrigger}</span>
       </div>
     </div>
   );

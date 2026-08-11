@@ -52,4 +52,6 @@ export interface AudienceReachState {
   thresholdDaysRemaining: number;
   underReview: boolean | null;
   isPublishedToGatedAudience: boolean;
+  thresholdTrigger: number;
+  thresholdReset: number;
 }
