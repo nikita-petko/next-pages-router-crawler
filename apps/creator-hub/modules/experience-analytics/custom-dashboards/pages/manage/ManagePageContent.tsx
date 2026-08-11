@@ -264,7 +264,7 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
 
   return (
     <TextFilterProvider filterText={filterCustomDashboardText}>
-      <div className='flex grow flex-col gap-large medium:gap-xxlarge padding-x-medium medium:padding-x-large padding-y-medium medium:padding-y-large min-height-0 min-width-0'>
+      <main className='flex grow flex-col gap-large medium:gap-xxlarge padding-x-medium medium:padding-x-large padding-y-medium medium:padding-y-large min-height-0 min-width-0 bg-surface-0'>
         <StorageFailureToastSlot
           universeId={universeId}
           migrationFailedCount={migrationFailedCount}
@@ -313,7 +313,7 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
             ) : null}
           </>
         )}
-      </div>
+      </main>
 
       <DeleteDashboardConfirmDialog
         dashboard={deletingDashboard}

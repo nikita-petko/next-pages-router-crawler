@@ -11,16 +11,12 @@ import useTranslationWrapper from '@modules/analytics-translations/useTranslatio
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import type { RAQIV2QueryFilter } from '@modules/clients/analytics';
 import { getChartConfiguratorDimensions } from '@modules/experience-analytics-shared/chartConfigurator/ChartConfiguratorDimensions';
-import getGranularityOptionsForMetric from '@modules/experience-analytics-shared/chartConfigurator/getGranularityOptionsForMetric';
 import {
   isNumericUIMetric,
   type TRAQIV2NumericUIMetric,
 } from '@modules/experience-analytics-shared/constants/AnalyticsMetricDisplayConfig';
 import type RAQIV2ChartContext from '@modules/experience-analytics-shared/types/RAQIV2ChartContext';
-import type {
-  AnalyticsComponentConfig,
-  CreatorAnalyticsUntabbedPageConfig,
-} from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
+import type { AnalyticsComponentConfig } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
 import { getPageSurfaceMetrics } from '@modules/experience-analytics-shared/utils/getPredefinedComponentMetrics';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
@@ -41,9 +37,6 @@ export type DashboardControlIssue =
   | {
       readonly kind: 'unsupported-filter';
       readonly dimensions: readonly TRAQIV2Dimension[];
-    }
-  | {
-      readonly kind: 'unsupported-granularity';
     };
 
 function toRAQIV2Dimension(dimension: string): TRAQIV2Dimension | null {
@@ -96,27 +89,6 @@ function getUnsupportedFilterDimensions(
   );
 }
 
-function getUnsupportedGranularityIssue(
-  chartContext: RAQIV2ChartContext,
-  metrics: readonly TRAQIV2NumericUIMetric[],
-): DashboardControlIssue | null {
-  if (metrics.length === 0) {
-    return null;
-  }
-  const hasUnsupportedMetric = metrics.some((metric) => {
-    const options = getGranularityOptionsForMetric({
-      metric,
-      startDate: chartContext.timeSpec.startTime,
-      endDate: chartContext.timeSpec.endTime,
-      breakdown: chartContext.breakdown,
-    });
-    return !options.some(
-      (option) => option.isAllowed && option.granularity === chartContext.granularity,
-    );
-  });
-  return hasUnsupportedMetric ? { kind: 'unsupported-granularity' } : null;
-}
-
 /**
  * Whether each dashboard-level control is an explicit OVERRIDE (set at the
  * dashboard level) versus the inherit/unset state where each tile uses its own
@@ -125,23 +97,19 @@ function getUnsupportedGranularityIssue(
  * never surface an error (see Finding #4).
  */
 export type DashboardControlOverrideState = {
-  readonly granularity: boolean;
   readonly breakdown: boolean;
   readonly filter: boolean;
 };
 
 /**
- * Derive the dashboard-level override state from synthesis output. Granularity
- * is overridden when the dashboard persisted a `defaultGranularity`; breakdown
+ * Derive the dashboard-level override state from synthesis output. Breakdown
  * and filter are overridden when the resolved dashboard control carries a
  * value (an empty page-level breakdown/filter is the inherit state).
  */
 export function getDashboardControlOverrideState(
-  pageConfig: Pick<CreatorAnalyticsUntabbedPageConfig, 'defaultGranularity'>,
   chartContext: RAQIV2ChartContext,
 ): DashboardControlOverrideState {
   return {
-    granularity: pageConfig.defaultGranularity !== undefined,
     breakdown: (chartContext.breakdown?.length ?? 0) > 0,
     filter: (chartContext.filter?.length ?? 0) > 0,
   };
@@ -177,13 +145,6 @@ export function getDashboardControlIssuesForComponent(
     const unsupportedFilters = getUnsupportedFilterDimensions(chartContext.filter, metrics);
     if (unsupportedFilters.length > 0) {
       issues.push({ kind: 'unsupported-filter', dimensions: unsupportedFilters });
-    }
-  }
-
-  if (!isSummaryCard && controlOverrides.granularity) {
-    const granularityIssue = getUnsupportedGranularityIssue(chartContext, metrics);
-    if (granularityIssue) {
-      issues.push(granularityIssue);
     }
   }
 

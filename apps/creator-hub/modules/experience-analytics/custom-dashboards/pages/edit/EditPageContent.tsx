@@ -15,6 +15,8 @@ import {
   filterBarDimensionToQueryKey,
   type UIFilterDimension,
 } from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/filterUtils';
+import { useDiscardChangesPrompt } from '@modules/monetization-shared/discard-dialog/useDiscardChangesPrompt';
+import CustomDashboardBreadcrumbRegistration from '../../components/CustomDashboardBreadcrumbRegistration';
 import InternalSandboxBanner from '../../components/InternalSandboxBanner';
 import {
   CustomDashboardNotAvailableError,
@@ -380,10 +382,6 @@ const EditPageContent: FC<EditPageContentProps> = ({
     },
     [renderedActiveSession, commitDraft, draftConfig],
   );
-  const handleCancel = useCallback(() => {
-    deleteEditorWorkingCopy(activeSessionDraftId);
-    onBackToManage();
-  }, [activeSessionDraftId, onBackToManage]);
   const handleOpenPreview = useCallback(() => {
     if (!renderedActiveSession) {
       return;
@@ -523,68 +521,79 @@ const EditPageContent: FC<EditPageContentProps> = ({
     ],
   );
 
-  const handlePublish = useCallback(() => {
-    const draft = currentDraft;
-    if (
-      !canMutateDashboards ||
-      !renderedActiveSession ||
-      !draft ||
-      isSaving ||
-      publishInFlightRef.current
-    ) {
-      return;
-    }
-    publishInFlightRef.current = true;
-    setIsSaving(true);
-    setSaveError(null);
-    const { draftId: sessionDraftId } = renderedActiveSession;
-    void (async () => {
-      try {
-        if (renderedActiveSession.dashboardId === null) {
-          // Atomic create+publish so a failure can't strand a draft, and a
-          // retry can't create a second dashboard.
-          const savedDocument = await service.createAndPublish({
-            universeId,
-            name: draft.name,
-            config: draft.config,
-            createdByUserId: renderedActiveSession.createdByUserId,
-            createdByUsername: renderedActiveSession.createdByUsername,
-          });
-          // Bind the new id to the live session right away: if anything after
-          // this throws, a retry takes the update path below instead of
-          // creating a duplicate.
-          attachDashboardIdToWorkingCopy(sessionDraftId, savedDocument.id);
-          setActiveSession((current) =>
-            current && current.draftId === sessionDraftId
-              ? { ...current, dashboardId: savedDocument.id }
-              : current,
+  const handlePublish = useCallback(
+    (titleOverride?: string) => {
+      const draft = currentDraft;
+      if (
+        !canMutateDashboards ||
+        !renderedActiveSession ||
+        !draft ||
+        isSaving ||
+        publishInFlightRef.current
+      ) {
+        return;
+      }
+      // The primary action follows the input blur in the same browser event, so
+      // use the confirmed title before the parent draft state has re-rendered.
+      const draftToPublish =
+        titleOverride === undefined ? draft : { ...draft, name: titleOverride };
+      publishInFlightRef.current = true;
+      setIsSaving(true);
+      setSaveError(null);
+      const { draftId: sessionDraftId } = renderedActiveSession;
+      void (async () => {
+        try {
+          if (renderedActiveSession.dashboardId === null) {
+            // Atomic create+publish so a failure can't strand a draft, and a
+            // retry can't create a second dashboard.
+            const savedDocument = await service.createAndPublish({
+              universeId,
+              name: draftToPublish.name,
+              config: draftToPublish.config,
+              createdByUserId: renderedActiveSession.createdByUserId,
+              createdByUsername: renderedActiveSession.createdByUsername,
+            });
+            // Bind the new id to the live session right away: if anything after
+            // this throws, a retry takes the update path below instead of
+            // creating a duplicate.
+            attachDashboardIdToWorkingCopy(sessionDraftId, savedDocument.id);
+            setActiveSession((current) =>
+              current && current.draftId === sessionDraftId
+                ? { ...current, dashboardId: savedDocument.id }
+                : current,
+            );
+            await finishSuccessfulSave(savedDocument, sessionDraftId);
+            return;
+          }
+          const savedDocument = await persistExistingDraft(
+            draftToPublish,
+            renderedActiveSession,
+            'default',
           );
           await finishSuccessfulSave(savedDocument, sessionDraftId);
-          return;
+        } catch (error) {
+          if (error instanceof CustomDashboardVersionConflictError) {
+            setIsConflictDialogOpen(true);
+            return;
+          }
+          setSaveError(error);
+        } finally {
+          publishInFlightRef.current = false;
+          setIsSaving(false);
         }
-        const savedDocument = await persistExistingDraft(draft, renderedActiveSession, 'default');
-        await finishSuccessfulSave(savedDocument, sessionDraftId);
-      } catch (error) {
-        if (error instanceof CustomDashboardVersionConflictError) {
-          setIsConflictDialogOpen(true);
-          return;
-        }
-        setSaveError(error);
-      } finally {
-        publishInFlightRef.current = false;
-        setIsSaving(false);
-      }
-    })();
-  }, [
-    canMutateDashboards,
-    currentDraft,
-    finishSuccessfulSave,
-    isSaving,
-    persistExistingDraft,
-    renderedActiveSession,
-    service,
-    universeId,
-  ]);
+      })();
+    },
+    [
+      canMutateDashboards,
+      currentDraft,
+      finishSuccessfulSave,
+      isSaving,
+      persistExistingDraft,
+      renderedActiveSession,
+      service,
+      universeId,
+    ],
+  );
 
   const renderConfig =
     draftConfig ?? renderedActiveSession?.config ?? persistedDocument?.config ?? null;
@@ -649,23 +658,27 @@ const EditPageContent: FC<EditPageContentProps> = ({
     );
   }, [currentDraft, isNewDashboard, persistedDocument]);
 
-  // Warn before a full unload (reload / tab close / external link) drops the
-  // in-memory working copy. In-app editor navigation (preview, chart editor)
-  // keeps the session alive via the module-level store, so it's intentionally
-  // not guarded here; Cancel discards by design.
-  useEffect(() => {
-    if (!hasUnsavedChanges) {
-      return undefined;
-    }
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      // Returning a string is the cross-browser way to trigger the native
-      // confirm prompt (the text itself is ignored by modern browsers).
-      return t.unsavedChangesLabel;
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasUnsavedChanges, t.unsavedChangesLabel]);
+  const shouldPromptBeforeLeavingEditor = useCallback(
+    (url: string) => {
+      if (!dashboardId) {
+        return true;
+      }
+      const editorPath = `/analytics/dashboards/${dashboardId}/`;
+      return !(url.includes(`${editorPath}preview`) || url.includes(`${editorPath}tile/`));
+    },
+    [dashboardId],
+  );
+  const bypassUnsavedChangesPrompt = useDiscardChangesPrompt(
+    hasUnsavedChanges,
+    shouldPromptBeforeLeavingEditor,
+  );
+  const handleCancel = useCallback(() => {
+    // Cancel intentionally destroys the working copy, so bypass the route guard
+    // for this one navigation instead of prompting about edits we just discarded.
+    bypassUnsavedChangesPrompt();
+    deleteEditorWorkingCopy(activeSessionDraftId);
+    onBackToManage();
+  }, [activeSessionDraftId, bypassUnsavedChangesPrompt, onBackToManage]);
 
   // Disabled queries report `isLoading: false` in RQ v5; `isPending` stays
   // true until the query is enabled. Treat unresolved route ids and pending
@@ -792,6 +805,7 @@ const EditPageContent: FC<EditPageContentProps> = ({
   return (
     <>
       <div className='flex flex-col gap-medium'>
+        <CustomDashboardBreadcrumbRegistration dashboardName={draftDashboardName ?? undefined} />
         <InternalSandboxBanner />
         <EditPageHeaderStack
           dashboardName={draftDashboardName}

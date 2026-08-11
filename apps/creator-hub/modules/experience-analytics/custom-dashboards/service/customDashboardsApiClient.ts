@@ -10,6 +10,16 @@ export type ApiDashboard =
 export type ApiDashboardDocument =
   components['schemas']['Roblox.DeveloperAnalytics.CustomDashboards.V1Beta1.CustomDashboardDocument'];
 
+export type ApiDashboardCapabilities = {
+  readonly canEdit?: boolean;
+};
+
+export type ApiListDashboardsResponse = {
+  readonly dashboards?: ReadonlyArray<ApiDashboardMetadata> | null;
+  readonly nextPageToken?: string | null;
+  readonly capabilities?: ApiDashboardCapabilities;
+};
+
 export type ApiErrorBody = {
   readonly code?: string | number;
   readonly message?: string;
@@ -38,10 +48,7 @@ export type CustomDashboardsApiClient = {
   listDashboards(
     universeId: number,
     options?: { readonly pageSize?: number; readonly pageToken?: string },
-  ): Promise<{
-    readonly dashboards?: ReadonlyArray<ApiDashboardMetadata> | null;
-    readonly nextPageToken?: string | null;
-  }>;
+  ): Promise<ApiListDashboardsResponse>;
   getDashboard(input: {
     readonly universeId: number;
     readonly dashboardId: string;
@@ -138,7 +145,11 @@ export function createDefaultCustomDashboardsApiClient(
       if (error || !data) {
         throwRequestError(response, error);
       }
-      return data;
+      // `capabilities` was added to the list response after the currently
+      // published generated client. The wire response remains structurally
+      // compatible, so retain the optional field until the client is regenerated.
+      const dashboardListResponse: ApiListDashboardsResponse = data;
+      return dashboardListResponse;
     },
 
     async getDashboard({ universeId, dashboardId }) {

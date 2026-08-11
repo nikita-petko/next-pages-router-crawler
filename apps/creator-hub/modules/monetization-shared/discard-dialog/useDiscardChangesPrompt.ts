@@ -14,15 +14,22 @@ import { openDiscardChangesDialog } from './DiscardChangesDialog';
  *
  * NOTE: this relies on navigations being route changes — if something switches
  * views without a route change, this guard will miss it.
+ *
+ * @returns A one-navigation bypass for callers that have already deliberately
+ * discarded their edits. Call it immediately before that navigation so the
+ * route-change listener does not prompt a second time for data that is gone.
  */
-export function useDiscardChangesPrompt(hasPendingEdits: boolean): void {
+export function useDiscardChangesPrompt(
+  hasPendingEdits: boolean,
+  shouldPromptForRoute?: (url: string) => boolean,
+): () => void {
   const router = useRouter();
   // Lets the post-confirm re-navigation through the routeChangeStart guard.
   const bypassRef = useRef(false);
 
   const handleRouteChangeStart = useCallback(
     (stopRouteChange: () => never) => (url: string) => {
-      if (!hasPendingEdits || bypassRef.current) {
+      if (!hasPendingEdits || bypassRef.current || shouldPromptForRoute?.(url) === false) {
         return;
       }
       openDiscardChangesDialog({
@@ -33,7 +40,7 @@ export function useDiscardChangesPrompt(hasPendingEdits: boolean): void {
       });
       stopRouteChange();
     },
-    [hasPendingEdits, router],
+    [hasPendingEdits, router, shouldPromptForRoute],
   );
 
   // Re-arm the guard once a (bypassed) navigation settles, in case the
@@ -56,4 +63,8 @@ export function useDiscardChangesPrompt(hasPendingEdits: boolean): void {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [hasPendingEdits]);
+
+  return useCallback(() => {
+    bypassRef.current = true;
+  }, []);
 }

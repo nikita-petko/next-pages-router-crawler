@@ -2,6 +2,12 @@
   overflow-x: auto;
 }
 
+/* Foundation Table supplies its own surface fill; keep only its framing so the
+ * manage table uses the page background at every breakpoint. */
+.tableScroller > div {
+  background: transparent;
+}
+
 .desktopActionsColumn,
 .actionsCell {
   width: 120px;
@@ -23,7 +29,6 @@
     overflow: visible;
     border: 0;
     border-radius: 0;
-    background: transparent;
   }
 
   .table,
@@ -65,7 +70,6 @@
     display: flex;
     align-items: center;
     min-height: var(--size-1200);
-    background: var(--color-surface-100);
     border-radius: var(--radius-medium) 0 0 var(--radius-medium);
   }
 
@@ -92,7 +96,6 @@
     width: auto;
     min-height: var(--size-1200);
     padding-left: 0;
-    background: var(--color-surface-100);
     border-radius: 0 var(--radius-medium) var(--radius-medium) 0;
   }
 

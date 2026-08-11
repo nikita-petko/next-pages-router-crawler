@@ -1,8 +1,14 @@
-import Router from 'next/router';
 import { useEffect } from 'react';
+import Router from 'next/router';
 
 const stopRouteChange = () => {
-  throw new Error('Blocking route change for unsaved changes');
+  const cancellationError = new Error('Blocking route change for unsaved changes');
+  // Next.js only treats thrown route-change errors as intentional navigation
+  // cancellations when this marker is present. Without it, the router handles
+  // the guard as a failed navigation and can tear down the page showing the
+  // dialog instead of leaving the user in place.
+  Object.assign(cancellationError, { cancelled: true });
+  throw cancellationError;
 };
 
 const useRouteChange = (

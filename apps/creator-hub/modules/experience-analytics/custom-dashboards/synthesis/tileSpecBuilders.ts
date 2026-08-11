@@ -1,6 +1,7 @@
 import {
   RAQIV2AggregationType,
   RAQIV2Dimension,
+  RAQIV2Metric,
   RAQIV2PercentileType,
   RAQIV2UIPseudoDimension,
   type TRAQIV2Dimension,
@@ -34,6 +35,34 @@ const PERCENTILE_TYPE_PSEUDO_DIMENSION_KEY: string = RAQIV2UIPseudoDimension.Per
 const AGGREGATION_TYPE_PSEUDO_DIMENSION_KEY: string = RAQIV2UIPseudoDimension.AggregationType;
 const RAQIV2_PERCENTILE_TYPE_VALUES: readonly string[] = Object.values(RAQIV2PercentileType);
 const RAQIV2_AGGREGATION_TYPE_VALUES: readonly string[] = Object.values(RAQIV2AggregationType);
+const DATA_STORE_METRICS: ReadonlySet<string> = new Set([
+  RAQIV2Metric.DataStoreConsumedListRequests,
+  RAQIV2Metric.DataStoreConsumedReadRequests,
+  RAQIV2Metric.DataStoreConsumedRemoveRequests,
+  RAQIV2Metric.DataStoreConsumedWriteRequests,
+  RAQIV2Metric.DataStoreListRequests,
+  RAQIV2Metric.DataStoreListRequestsByEndpoint,
+  RAQIV2Metric.DataStoreListRequestsQuota,
+  RAQIV2Metric.DataStoreListRequestsQuotaOrdered,
+  RAQIV2Metric.DataStoreListRequestsQuotaStandard,
+  RAQIV2Metric.DataStoreReadRequests,
+  RAQIV2Metric.DataStoreReadRequestsByEndpoint,
+  RAQIV2Metric.DataStoreReadRequestsQuotaOrdered,
+  RAQIV2Metric.DataStoreReadRequestsQuotaStandard,
+  RAQIV2Metric.DataStoreRemoveRequests,
+  RAQIV2Metric.DataStoreRemoveRequestsByEndpoint,
+  RAQIV2Metric.DataStoreRemoveRequestsQuotaOrdered,
+  RAQIV2Metric.DataStoreRemoveRequestsQuotaStandard,
+  RAQIV2Metric.DataStoreRequests,
+  RAQIV2Metric.DataStoreRequestsByEndpoint,
+  RAQIV2Metric.DataStoreRequestsByStatus,
+  RAQIV2Metric.DataStoreStorageQuotaBytes,
+  RAQIV2Metric.DataStoreStorageUsageBytes,
+  RAQIV2Metric.DataStoreWriteRequests,
+  RAQIV2Metric.DataStoreWriteRequestsByEndpoint,
+  RAQIV2Metric.DataStoreWriteRequestsQuotaOrdered,
+  RAQIV2Metric.DataStoreWriteRequestsQuotaStandard,
+]);
 
 function isRAQIV2PercentileType(value: string): value is RAQIV2PercentileType {
   return RAQIV2_PERCENTILE_TYPE_VALUES.includes(value);
@@ -92,6 +121,42 @@ export function buildTileQueryFilters(filters: ReadonlyArray<TileFilter>): TQuer
   return queryFilters;
 }
 
+export function isMetricSpecificTileFilter(
+  metric: string,
+  filter: Pick<TileFilter, 'dimension'>,
+): boolean {
+  return DATA_STORE_METRICS.has(metric) && isMetricScopedDimension(filter.dimension);
+}
+
+export function isMetricScopedDimension(dimension: string): boolean {
+  // The generated and app dimension enums share values but come from separate declarations.
+  // oxlint-disable-next-line typescript/no-unsafe-enum-comparison
+  return dimension === RAQIV2Dimension.DataStoreTypeV2;
+}
+
+export function buildEffectiveTileFilters(
+  tile: ChartTileConfig,
+  inheritedFilters: ReadonlyArray<TileFilter> = [],
+): TQueryFilter[] {
+  const primaryMetric = getPrimaryChartMetric(tile);
+  const primaryMetricKey = primaryMetric?.metric.metricKey;
+  const inheritedMetricFilters = primaryMetricKey
+    ? inheritedFilters.filter((filter) =>
+        isMetricSpecificTileFilter(primaryMetricKey, {
+          dimension: filter.dimension,
+        }),
+      )
+    : [];
+  const tileFilters = buildRenderableTileFilters(tile.dataSpec.filters);
+  const tileFilterDimensions = new Set(tileFilters.map((filter) => filter.dimension));
+  return [
+    ...buildRenderableTileFilters(inheritedMetricFilters).filter(
+      (filter) => !tileFilterDimensions.has(filter.dimension),
+    ),
+    ...tileFilters,
+  ];
+}
+
 function getCustomEventNameFilter(filters: readonly TQueryFilter[]): string | undefined {
   const value = filters.find((filter) => filter.dimension === RAQIV2Dimension.CustomEventName)
     ?.values[0];
@@ -138,11 +203,14 @@ export function buildTileBreakdownDimensions(
   return dimensions;
 }
 
-export function buildSpecOverride(tile: ChartTileConfig): SpecOverride {
+export function buildSpecOverride(
+  tile: ChartTileConfig,
+  inheritedFilters: ReadonlyArray<TileFilter> = [],
+): SpecOverride {
   const override: { -readonly [K in keyof SpecOverride]: SpecOverride[K] } = {};
   const primaryMetric = getPrimaryChartMetric(tile);
   const metricVariantFilters = primaryMetric ? buildMetricVariantFilters(primaryMetric.metric) : [];
-  const tileFilters = buildRenderableTileFilters(tile.dataSpec.filters);
+  const tileFilters = buildEffectiveTileFilters(tile, inheritedFilters);
   const filters = [...tileFilters, ...metricVariantFilters];
   if (filters.length > 0) {
     override.filter = { intersect: filters };

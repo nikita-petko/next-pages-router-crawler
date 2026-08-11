@@ -22,6 +22,7 @@ import ChartConfiguratorDateRangeControl from '../../chartConfigurator/component
 type UseRAQIV2PredefinedSurfaceControlsBundleOptions = {
   readonly useFoundationDateRangeControl?: boolean;
   readonly hidePartialGranularitySupportDescription?: boolean;
+  readonly hideGranularityControl?: boolean;
 };
 
 const useRAQIV2PredefinedSurfaceControlsBundle = (
@@ -156,7 +157,10 @@ const useRAQIV2PredefinedSurfaceControlsBundle = (
   ]);
 
   const granularityControls = useMemo(() => {
-    if (pageGranularityConfig && 'fixed' in pageGranularityConfig) {
+    if (
+      options.hideGranularityControl ||
+      (pageGranularityConfig && 'fixed' in pageGranularityConfig)
+    ) {
       return [];
     }
     if (granularityOptions.length) {
@@ -174,6 +178,7 @@ const useRAQIV2PredefinedSurfaceControlsBundle = (
     chartContext,
     granularityOptions,
     options.hidePartialGranularitySupportDescription,
+    options.hideGranularityControl,
     pageGranularityConfig,
   ]);
 

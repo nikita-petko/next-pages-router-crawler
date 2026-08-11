@@ -5,6 +5,7 @@ import useTranslationWrapper from '@modules/analytics-translations/useTranslatio
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { useAuthentication } from '@modules/authentication/providers';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import CustomDashboardBreadcrumbRegistration from '../../components/CustomDashboardBreadcrumbRegistration';
 import InternalSandboxBanner from '../../components/InternalSandboxBanner';
 import LocalCopyBadge from '../../components/LocalCopyBadge';
 import ReadOnlyDashboardSurface from '../../components/ReadOnlyDashboardSurface';
@@ -27,23 +28,15 @@ function useDashboardViewTranslations() {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   return {
     editDashboardLabel: tPendingTranslation(
-      'Edit dashboard',
-      'Button label on the custom dashboard view page that opens the editor.',
-      translationKey('Action.CustomDashboards.View.EditDashboard', TranslationNamespace.Analytics),
+      'Edit',
+      'Action label that opens the dashboard editor.',
+      translationKey('Action.Edit', TranslationNamespace.Analytics),
     ),
     editAsLocalCopyLabel: tPendingTranslation(
       'Edit as local copy',
       'Button label on the custom dashboard view page shown to internal users for server dashboards; it creates a browser-local copy before opening the editor.',
       translationKey(
         'Action.CustomDashboards.View.EditAsLocalCopy',
-        TranslationNamespace.Analytics,
-      ),
-    ),
-    backToDashboardsLabel: tPendingTranslation(
-      'Back to dashboards',
-      'Button label on the custom dashboard view page that returns to the manage page.',
-      translationKey(
-        'Action.CustomDashboards.View.BackToDashboards',
         TranslationNamespace.Analytics,
       ),
     ),
@@ -56,6 +49,14 @@ function useDashboardViewTranslations() {
       "Couldn't create a local copy.",
       'Inline error shown when an internal user tries to edit a server dashboard as a local copy and the copy fails.',
       translationKey('Error.CustomDashboards.View.LocalCopyFailed', TranslationNamespace.Analytics),
+    ),
+    loadErrorCtaLabel: tPendingTranslation(
+      'Manage dashboards',
+      'Button label on a failed custom dashboard view that returns to the dashboard list.',
+      translationKey(
+        'Action.CustomDashboards.View.BackToDashboards',
+        TranslationNamespace.Analytics,
+      ),
     ),
   };
 }
@@ -110,7 +111,7 @@ const DashboardViewPage: FC<DashboardViewPageProps> = ({
       <div role='alert' className='flex flex-col gap-small'>
         <p className='text-body-medium content-muted margin-none'>{t.loadError}</p>
         <Button variant='Standard' size='Medium' onClick={onBackToManage}>
-          {t.backToDashboardsLabel}
+          {t.loadErrorCtaLabel}
         </Button>
       </div>
     );
@@ -122,21 +123,19 @@ const DashboardViewPage: FC<DashboardViewPageProps> = ({
       synthesis={synthesis}
       header={
         <header className='flex flex-col gap-medium width-full'>
+          <CustomDashboardBreadcrumbRegistration dashboardName={document.name} />
           <InternalSandboxBanner />
-          <div className='flex flex-col small:flex-row small:items-center small:justify-between gap-medium width-full'>
-            <div className='flex items-center gap-small min-width-0'>
+          <div className='flex flex-col medium:flex-row medium:items-center medium:justify-between gap-small width-full'>
+            <div className='flex items-center gap-small min-width-0 grow'>
               <h1 className='text-heading-large content-emphasis margin-none text-truncate-end'>
                 {document.name}
               </h1>
               {document.hybridOrigin === 'localCopy' ? <LocalCopyBadge /> : null}
             </div>
-            <div className='flex flex-col items-stretch gap-small min-width-0'>
-              <div className='flex wrap items-center justify-end gap-small'>
-                <Button variant='Standard' size='Medium' onClick={onBackToManage}>
-                  {t.backToDashboardsLabel}
-                </Button>
+            <div className='flex flex-col items-start medium:items-end gap-small min-width-0 shrink-0'>
+              <div className='flex wrap items-center gap-small'>
                 {canMutateDashboards ? (
-                  <Button variant='Standard' size='Medium' onClick={handleEditDashboard}>
+                  <Button variant='Emphasis' size='Medium' onClick={handleEditDashboard}>
                     {document.hybridOrigin === 'server' && service.forkApiDashboardToLocal
                       ? t.editAsLocalCopyLabel
                       : t.editDashboardLabel}
@@ -144,9 +143,7 @@ const DashboardViewPage: FC<DashboardViewPageProps> = ({
                 ) : null}
               </div>
               {editError ? (
-                <p
-                  role='alert'
-                  className='text-body-small content-system-alert margin-none text-align-x-right'>
+                <p role='alert' className='text-body-small content-system-alert margin-none'>
                   {t.localCopyError}
                 </p>
               ) : null}

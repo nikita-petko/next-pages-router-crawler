@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { RAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
+import { RAQIV2Dimension, RAQIV2UIPseudoDimension } from '@rbx/creator-hub-analytics-config';
 import {
   Button,
   Dialog,
@@ -15,6 +15,7 @@ import {
   DialogContent,
   DialogFooter,
   DialogTitle,
+  Divider,
   Dropdown,
   Menu,
   MenuItem,
@@ -32,6 +33,7 @@ import {
   customEventsMetric,
   isCustomEventsQueryReady,
 } from '@modules/experience-analytics-shared/components/chartConfigurator/useChartConfiguratorSourceSelection';
+import getDimensionRenderer from '@modules/experience-analytics-shared/components/getDimensionRenderer';
 import { useUniverseResource } from '@modules/experience-analytics-shared/hooks/useChartResourceProvider';
 import useRAQIV2TranslationDependencies from '@modules/experience-analytics-shared/hooks/useRAQIV2TranslationDependencies';
 import {
@@ -60,14 +62,13 @@ type SummaryAggregationLabelKey =
   | 'aggregationMostRecentDataPoint'
   | 'aggregationCumulative';
 
+type SummaryCardEditorAggregation = (typeof SUPPORTED_SUMMARY_CARD_EDITOR_AGGREGATIONS)[number];
+
 const SUMMARY_AGGREGATION_LABEL_KEYS: Readonly<
-  Record<CustomDashboardSummaryCardAggregationValue, SummaryAggregationLabelKey>
+  Record<SummaryCardEditorAggregation, SummaryAggregationLabelKey>
 > = {
   AverageOverTimePeriod: 'aggregationAverageOverTimePeriod',
-  AveragePerUniqueUser: 'aggregationAverageOverTimePeriod',
   MostRecentDataPoint: 'aggregationMostRecentDataPoint',
-  Total: 'aggregationAverageOverTimePeriod',
-  Median: 'aggregationAverageOverTimePeriod',
   Cumulative: 'aggregationCumulative',
 };
 
@@ -75,9 +76,14 @@ const SUMMARY_AGGREGATION_OPTIONS = SUPPORTED_SUMMARY_CARD_EDITOR_AGGREGATIONS.m
   value,
   labelKey: SUMMARY_AGGREGATION_LABEL_KEYS[value],
 })) satisfies ReadonlyArray<{
-  readonly value: CustomDashboardSummaryCardAggregationValue;
+  readonly value: SummaryCardEditorAggregation;
   readonly labelKey: SummaryAggregationLabelKey;
 }>;
+
+const SummaryTimeInterval = {
+  Daily: 'Daily',
+  Cumulative: 'Cumulative',
+} as const;
 
 export type AddSummaryCardDialogValue = {
   readonly title: string;
@@ -106,12 +112,12 @@ const aggregationOptionValues: ReadonlySet<string> = new Set(
   SUMMARY_AGGREGATION_OPTIONS.map((option) => option.value),
 );
 
-function isAggregationOption(value: string): value is CustomDashboardSummaryCardAggregationValue {
+function isAggregationOption(value: string): value is SummaryCardEditorAggregation {
   return aggregationOptionValues.has(value);
 }
 
 function useSummaryCardDialogTranslations() {
-  const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+  const { tPendingTranslation, translate } = useTranslationWrapper(useTranslation());
   return {
     metricLabel: tPendingTranslation(
       'Metric',
@@ -119,12 +125,21 @@ function useSummaryCardDialogTranslations() {
       translationKey('Label.CustomDashboards.SummaryEditor.Metric', TranslationNamespace.Analytics),
     ),
     aggregationLabel: tPendingTranslation(
-      'Aggregate by',
+      'Summarize by',
       'Section label for the aggregation selector inside the summary-card dialog.',
       translationKey(
         'Label.CustomDashboards.SummaryEditor.Aggregation',
         TranslationNamespace.Analytics,
       ),
+    ),
+    timeIntervalLabel: translate(
+      translationKey('Label.ExploreMode.TimeInterval', TranslationNamespace.Analytics),
+    ),
+    dailyIntervalLabel: translate(
+      translationKey('Label.Granularity.Daily', TranslationNamespace.Analytics),
+    ),
+    cumulativeIntervalLabel: translate(
+      translationKey('Label.Granularity.Cumulative', TranslationNamespace.Analytics),
     ),
     selectAggregationPlaceholder: tPendingTranslation(
       'Select an aggregation',
@@ -158,57 +173,47 @@ function useSummaryCardDialogTranslations() {
         TranslationNamespace.Analytics,
       ),
     ),
-    autoTitleAverage: (metric: string) =>
+    formatAutoTitle: (metric: string, summarizeBy: string) =>
       tPendingTranslation(
-        'Average {metric}',
-        'Auto-generated summary-card title for an averaged metric. {metric} is the selected metric name.',
+        '{metric} ({summarizeBy})',
+        'Auto-generated summary-card title. {metric} is the selected metric name and {summarizeBy} is the localized aggregation label.',
         translationKey(
-          'Title.CustomDashboards.SummaryCard.AutoAverage',
+          'Title.CustomDashboards.SummaryCard.AutoWithAggregation',
           TranslationNamespace.Analytics,
         ),
-        { metric },
+        { metric, summarizeBy },
       ),
-    autoTitleCumulative: (metric: string) =>
+    formatAutoCustomEventTitle: (metric: string, eventAggregation: string, summarizeBy: string) =>
       tPendingTranslation(
-        'Cumulative {metric}',
-        'Auto-generated summary-card title for a cumulative metric. {metric} is the selected metric name.',
+        '{metric} ({eventAggregation}) ({summarizeBy})',
+        'Auto-generated custom-event summary-card title. {metric} is the event name, {eventAggregation} is the event aggregation label, and {summarizeBy} is the localized summary aggregation label.',
         translationKey(
-          'Title.CustomDashboards.SummaryCard.AutoCumulative',
+          'Title.CustomDashboards.SummaryCard.AutoCustomEvent',
           TranslationNamespace.Analytics,
         ),
-        { metric },
-      ),
-    autoTitleLatestValue: (metric: string) =>
-      tPendingTranslation(
-        'Latest {metric}',
-        'Auto-generated summary-card title for the latest metric value. {metric} is the selected metric name.',
-        translationKey(
-          'Title.CustomDashboards.SummaryCard.AutoLatestValue',
-          TranslationNamespace.Analytics,
-        ),
-        { metric },
+        { eventAggregation, metric, summarizeBy },
       ),
   } as const;
 }
 
-function buildAutoSummaryCardTitle(
+export type SummaryCardTitleTranslations = Pick<
+  ReturnType<typeof useSummaryCardDialogTranslations>,
+  SummaryAggregationLabelKey | 'formatAutoTitle' | 'formatAutoCustomEventTitle'
+>;
+
+export function buildAutoSummaryCardTitle(
   metricLabel: string | null,
-  aggregation: CustomDashboardSummaryCardAggregationValue | null,
-  t: ReturnType<typeof useSummaryCardDialogTranslations>,
+  aggregation: SummaryCardEditorAggregation | null,
+  customEventAggregationLabel: string | null,
+  t: SummaryCardTitleTranslations,
 ): string {
-  if (!metricLabel) {
+  if (!metricLabel || !aggregation) {
     return '';
   }
-  if (aggregation === 'AverageOverTimePeriod') {
-    return t.autoTitleAverage(metricLabel);
-  }
-  if (aggregation === 'Cumulative') {
-    return t.autoTitleCumulative(metricLabel);
-  }
-  if (aggregation === 'MostRecentDataPoint') {
-    return t.autoTitleLatestValue(metricLabel);
-  }
-  return metricLabel;
+  const summarizeBy = t[SUMMARY_AGGREGATION_LABEL_KEYS[aggregation]];
+  return customEventAggregationLabel
+    ? t.formatAutoCustomEventTitle(metricLabel, customEventAggregationLabel, summarizeBy)
+    : t.formatAutoTitle(metricLabel, summarizeBy);
 }
 
 const AddSummaryCardDialog: FC<AddSummaryCardDialogProps> = ({
@@ -231,22 +236,16 @@ const AddSummaryCardDialog: FC<AddSummaryCardDialogProps> = ({
   const [metric, setMetric] = useState<TChartConfiguratorMetrics | null>(
     initialValue?.metric ?? null,
   );
-  const [aggregation, setAggregation] = useState<CustomDashboardSummaryCardAggregationValue | null>(
-    () => {
-      const initialAggregation =
-        initialValue?.aggregation ?? CustomDashboardSummaryCardAggregation.AverageOverTimePeriod;
-      if (!initialValue?.metric) {
-        return initialAggregation;
-      }
-      const resolvedAggregation = resolveSupportedSummaryCardAggregation(
-        initialValue.metric,
-        initialAggregation,
-      );
-      return resolvedAggregation && isAggregationOption(resolvedAggregation)
-        ? resolvedAggregation
-        : null;
-    },
-  );
+  const [aggregation, setAggregation] = useState<SummaryCardEditorAggregation | null>(() => {
+    const initialAggregation =
+      initialValue?.aggregation ?? CustomDashboardSummaryCardAggregation.AverageOverTimePeriod;
+    const resolvedAggregation = initialValue?.metric
+      ? resolveSupportedSummaryCardAggregation(initialValue.metric, initialAggregation)
+      : initialAggregation;
+    return resolvedAggregation && isAggregationOption(resolvedAggregation)
+      ? resolvedAggregation
+      : null;
+  });
   const [customEventFilters, setCustomEventFilters] = useState<UIFilters>(
     () => initialValue?.filters ?? [],
   );
@@ -274,6 +273,10 @@ const AddSummaryCardDialog: FC<AddSummaryCardDialogProps> = ({
         : SUMMARY_AGGREGATION_OPTIONS,
     [metric],
   );
+  const timeInterval =
+    aggregation === CustomDashboardSummaryCardAggregation.Cumulative
+      ? SummaryTimeInterval.Cumulative
+      : SummaryTimeInterval.Daily;
   const isCustomEventsMetric = metric === customEventsMetric;
   const isCustomEventSelectionReady = isCustomEventsQueryReady(
     isCustomEventsMetric,
@@ -289,6 +292,20 @@ const AddSummaryCardDialog: FC<AddSummaryCardDialogProps> = ({
     () => getFilterValueForDimension(customEventFilters, RAQIV2Dimension.CustomEventName, null),
     [customEventFilters],
   );
+  const selectedCustomEventAggregation = useMemo(
+    () =>
+      getFilterValueForDimension(customEventFilters, RAQIV2UIPseudoDimension.AggregationType, null),
+    [customEventFilters],
+  );
+  const selectedCustomEventAggregationLabel = useMemo(() => {
+    if (!isCustomEventsMetric || !selectedCustomEventAggregation) {
+      return null;
+    }
+    return getDimensionRenderer(RAQIV2UIPseudoDimension.AggregationType).getBreakdownValueName(
+      { value: selectedCustomEventAggregation },
+      translationDependencies,
+    );
+  }, [isCustomEventsMetric, selectedCustomEventAggregation, translationDependencies]);
   const metricLabel = useMemo(() => {
     if (!metric) {
       return null;
@@ -299,8 +316,14 @@ const AddSummaryCardDialog: FC<AddSummaryCardDialogProps> = ({
     return getMetricLabelFromMetricLike(metric, translationDependencies);
   }, [isCustomEventsMetric, metric, selectedCustomEventName, translationDependencies]);
   const autoTitle = useMemo(
-    () => buildAutoSummaryCardTitle(metricLabel, aggregation, summaryT),
-    [aggregation, metricLabel, summaryT],
+    () =>
+      buildAutoSummaryCardTitle(
+        metricLabel,
+        aggregation,
+        selectedCustomEventAggregationLabel,
+        summaryT,
+      ),
+    [aggregation, metricLabel, selectedCustomEventAggregationLabel, summaryT],
   );
   const displayTitle = titleSource === SummaryCardTitleSource.Auto ? autoTitle : title;
   const customTitleForValidation = titleSource === SummaryCardTitleSource.Custom ? title : '';
@@ -320,6 +343,33 @@ const AddSummaryCardDialog: FC<AddSummaryCardDialogProps> = ({
       setAggregation(nextValue);
     }
   }, []);
+
+  const handleTimeIntervalChange = useCallback(
+    (nextValue: string) => {
+      if (nextValue === SummaryTimeInterval.Cumulative) {
+        if (
+          metric &&
+          isSummaryCardAggregationSupported(
+            metric,
+            CustomDashboardSummaryCardAggregation.Cumulative,
+          )
+        ) {
+          setAggregation(CustomDashboardSummaryCardAggregation.Cumulative);
+        }
+        return;
+      }
+      if (nextValue === SummaryTimeInterval.Daily && metric) {
+        const nextAggregation = [
+          CustomDashboardSummaryCardAggregation.AverageOverTimePeriod,
+          CustomDashboardSummaryCardAggregation.MostRecentDataPoint,
+        ].find((candidate) => isSummaryCardAggregationSupported(metric, candidate));
+        if (nextAggregation) {
+          setAggregation(nextAggregation);
+        }
+      }
+    },
+    [metric],
+  );
 
   const handleMetricChange = useCallback((nextMetric: TChartConfiguratorMetrics | null) => {
     setMetric(nextMetric);
@@ -460,6 +510,45 @@ const AddSummaryCardDialog: FC<AddSummaryCardDialogProps> = ({
                 hasEventTypeError={!isCustomEventSelectionReady}
               />
             ) : null}
+            <Divider variant='Standard' />
+            <Dropdown
+              className='width-full'
+              label={summaryT.timeIntervalLabel}
+              size='Medium'
+              value={timeInterval}
+              placeholder={summaryT.timeIntervalLabel}
+              onValueChange={handleTimeIntervalChange}>
+              <Menu>
+                <MenuSection>
+                  <MenuItem
+                    value={SummaryTimeInterval.Daily}
+                    title={summaryT.dailyIntervalLabel}
+                    disabled={
+                      !!metric &&
+                      !isSummaryCardAggregationSupported(
+                        metric,
+                        CustomDashboardSummaryCardAggregation.AverageOverTimePeriod,
+                      ) &&
+                      !isSummaryCardAggregationSupported(
+                        metric,
+                        CustomDashboardSummaryCardAggregation.MostRecentDataPoint,
+                      )
+                    }
+                  />
+                  <MenuItem
+                    value={SummaryTimeInterval.Cumulative}
+                    title={summaryT.cumulativeIntervalLabel}
+                    disabled={
+                      !!metric &&
+                      !isSummaryCardAggregationSupported(
+                        metric,
+                        CustomDashboardSummaryCardAggregation.Cumulative,
+                      )
+                    }
+                  />
+                </MenuSection>
+              </Menu>
+            </Dropdown>
             <Dropdown
               className='width-full'
               label={summaryT.aggregationLabel}

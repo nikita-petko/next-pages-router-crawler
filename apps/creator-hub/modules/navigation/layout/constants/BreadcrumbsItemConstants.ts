@@ -527,6 +527,11 @@ export const RouterParseItemToBreadcrumbItemDetails: { [key: string]: Breadcrumb
     displayName: ({ translate }) => createNameWithTranslate({ key: 'Action.Edit' }, translate),
     breadcrumbType: BreadcrumbItemType.Create,
   },
+  preview: {
+    displayName: ({ translate }) =>
+      createNameWithTranslate({ key: 'Action.CustomDashboards.Preview' }, translate),
+    breadcrumbType: BreadcrumbItemType.Create,
+  },
   errors: {
     displayName: ({ translate }) => {
       return createNameWithTranslate(
@@ -637,6 +642,13 @@ export const RouterParseItemToBreadcrumbItemDetails: { [key: string]: Breadcrumb
       );
     },
     breadcrumbType: BreadcrumbItemType.AnalyticsCustomDashboards,
+    // The same URL segment represents both the dashboards collection and the
+    // dynamic dashboard detail parent, so detail breadcrumbs intentionally
+    // expand this entry into the collection label plus the registered name.
+    parentItemTypeName: 'dashboards',
+    withId: true,
+    getLinkPath: (getLinkPathParams) =>
+      `/dashboard/creations/experiences/${getLinkPathParams.baseId}/analytics/dashboards`,
   },
   'managed-pricing': {
     displayName: ({ translate }) => {

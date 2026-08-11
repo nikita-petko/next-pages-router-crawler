@@ -334,6 +334,10 @@ export function useCustomDashboardService(): CustomDashboardService {
   return ctx.service;
 }
 
+export function useOptionalCustomDashboardService(): CustomDashboardService | null {
+  return useContext(CustomDashboardServiceContext)?.service ?? null;
+}
+
 export function useCustomDashboardsBackendState(): {
   readonly isReady: boolean;
   readonly isApiBacked: boolean;
@@ -347,6 +351,14 @@ export function useCustomDashboardsBackendState(): {
   return { isReady: ctx.isReady, isApiBacked: ctx.isApiBacked };
 }
 
+export function useOptionalCustomDashboardsBackendState(): {
+  readonly isReady: boolean;
+  readonly isApiBacked: boolean;
+} {
+  const ctx = useContext(CustomDashboardServiceContext);
+  return { isReady: ctx?.isReady ?? false, isApiBacked: ctx?.isApiBacked ?? false };
+}
+
 export function useCanMutateCustomDashboards(): boolean {
   const ctx = useContext(CustomDashboardServiceContext);
   if (!ctx) {
@@ -355,4 +367,8 @@ export function useCanMutateCustomDashboards(): boolean {
     );
   }
   return ctx.canMutateDashboards;
+}
+
+export function useOptionalCanMutateCustomDashboards(): boolean {
+  return useContext(CustomDashboardServiceContext)?.canMutateDashboards ?? false;
 }

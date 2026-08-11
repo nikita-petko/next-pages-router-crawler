@@ -120,7 +120,7 @@ export function useManagePageTranslations() {
     ),
     rowMenuEdit: tPendingTranslation(
       'Edit',
-      'Per-row action menu item that navigates to the dashboard editor.',
+      'Action label that opens the dashboard editor.',
       translationKey('Action.Edit', TranslationNamespace.Analytics),
     ),
     rowMenuEditAsLocalCopy: tPendingTranslation(

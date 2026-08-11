@@ -67,6 +67,12 @@ export const UnifiedLoggerProvider: FC<Props> = ({
 
   useLayoutEffect(() => {
     pageContextRef.current = pageContext;
+    if (initialPageContextRef.current.path === undefined && pageContext.path !== undefined) {
+      initialPageContextRef.current = {
+        ...initialPageContextRef.current,
+        path: pageContext.path,
+      };
+    }
   }, [pageContext]);
 
   useLayoutEffect(() => {

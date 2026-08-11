@@ -1,10 +1,15 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useMemo } from 'react';
 import type { ChartCardHeaderAction } from '@rbx/analytics-ui';
 import type GenericCsvExporter from '@modules/charts-generic/charts/exporters/GenericCsvExporter';
 import type { TimeSeriesAnnotation } from '@modules/charts-generic/charts/types/Annotations';
 import type { ChartLocation } from '@modules/charts-generic/context/ChartLocation';
-import type { ChartConfigOrPredefinedKey } from '../../constants/RAQIV2PredefinedChartConfig';
+import {
+  getChartConfigFromPredefinedChart,
+  type ChartConfigOrPredefinedKey,
+} from '../../constants/RAQIV2PredefinedChartConfig';
+import useChartOverflowMenu from '../../hooks/useChartOverflowMenu';
 import type RAQIV2ChartSpec from '../../types/RAQIV2ChartSpec';
+import { useAddChartToDashboardAction } from './AddChartToDashboardAction';
 import {
   type ChartActionsCompositionPolicy,
   type ChartHeaderActionLayout,
@@ -87,5 +92,33 @@ function DefaultChartActionsSlot({
     disabled: downloadDisabled,
   });
 
-  return children({ headerActionItems: defaults });
+  const chartConfig = useMemo(
+    () => (chartKeyOrConfig ? getChartConfigFromPredefinedChart(chartKeyOrConfig) : null),
+    [chartKeyOrConfig],
+  );
+  const addToDashboardAction = useAddChartToDashboardAction({ config: chartConfig, spec });
+  const standaloneOverflowAction = useChartOverflowMenu({
+    actions: addToDashboardAction ? [addToDashboardAction] : [],
+    chartLocation,
+  });
+  const actions = useMemo(() => {
+    if (!addToDashboardAction) {
+      return defaults;
+    }
+    const overflowMenuIndex = defaults.findIndex((action) => action.kind === 'menu');
+    if (overflowMenuIndex < 0) {
+      return standaloneOverflowAction ? [...defaults, standaloneOverflowAction] : defaults;
+    }
+    const overflowMenu = defaults[overflowMenuIndex];
+    if (!overflowMenu || overflowMenu.kind !== 'menu') {
+      return defaults;
+    }
+    return [
+      ...defaults.slice(0, overflowMenuIndex),
+      { ...overflowMenu, items: [...overflowMenu.items, addToDashboardAction] },
+      ...defaults.slice(overflowMenuIndex + 1),
+    ];
+  }, [addToDashboardAction, defaults, standaloneOverflowAction]);
+
+  return children({ headerActionItems: actions });
 }

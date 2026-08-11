@@ -30,6 +30,7 @@ export type AnalyticsSummaryCardConfig = {
   label?: GenericRAQIV2SummaryLabel;
   labelText?: FormattedText;
   fullWidth?: boolean;
+  truncateLabelWithTooltip?: boolean;
   /**
    * When true, the summary card renders a comparison chip (e.g. ↑ 2.4%) next
    * to the value, similar to chart summaries. Opt-in to avoid issuing extra

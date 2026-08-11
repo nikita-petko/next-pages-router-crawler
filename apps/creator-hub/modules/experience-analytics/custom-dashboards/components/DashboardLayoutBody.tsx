@@ -1,4 +1,5 @@
 import { type FC, useMemo } from 'react';
+import getGranularityOptionsForMetric from '@modules/experience-analytics-shared/chartConfigurator/getGranularityOptionsForMetric';
 import AnalyticsComponent from '@modules/experience-analytics-shared/components/RAQIV2/layout/AnalyticsComponent';
 import useRAQIV2PredefinedSurfaceControlsBundle from '@modules/experience-analytics-shared/components/RAQIV2/layout/useRAQIV2PredefinedSurfaceControlsBundle';
 import type RAQIV2ChartContext from '@modules/experience-analytics-shared/types/RAQIV2ChartContext';
@@ -6,6 +7,8 @@ import type {
   AnalyticsComponentConfig,
   CreatorAnalyticsUntabbedPageConfig,
 } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
+import computeRAQIV2SpecOverride from '@modules/experience-analytics-shared/utils/computeRAQIV2SpecOverride';
+import { getClosestAllowedGranularity } from '@modules/experience-analytics-shared/utils/seriesGranularities';
 import type { SynthesizeResult } from '../synthesis/synthesize';
 import type { CustomDashboardConfig, DashboardLayoutNode, TileId } from '../types';
 import { isSummaryCardLayoutNode } from '../utils/dashboardLayoutNodes';
@@ -25,6 +28,49 @@ import DashboardTileControlError, {
   getDashboardControlOverrideState,
   type DashboardControlOverrideState,
 } from './DashboardTileControlError';
+
+function getRenderableComponent(
+  component: AnalyticsComponentConfig,
+  chartContext: RAQIV2ChartContext,
+): AnalyticsComponentConfig {
+  // The config package and app enum are structurally compatible but come from separate declarations.
+  // oxlint-disable-next-line typescript/no-unsafe-enum-comparison
+  if (typeof component === 'string' || component.type !== 'Chart' || !('overrides' in component)) {
+    return component;
+  }
+  const requestedGranularity = component.overrides.granularity?.override;
+  if (!requestedGranularity) {
+    return component;
+  }
+  const metric = computeRAQIV2SpecOverride(
+    { ...chartContext, metric: component.metric },
+    component.overrides,
+  ).metric;
+  const options = getGranularityOptionsForMetric({
+    metric,
+    startDate: chartContext.timeSpec.startTime,
+    endDate: chartContext.timeSpec.endTime,
+    breakdown: chartContext.breakdown,
+  });
+  const granularity = getClosestAllowedGranularity({
+    startDate: chartContext.timeSpec.startTime,
+    endDate: chartContext.timeSpec.endTime,
+    granularity: requestedGranularity,
+    supportedGranularities: options
+      .filter((option) => option.isAllowed)
+      .map((option) => option.granularity),
+  });
+  if (granularity === requestedGranularity) {
+    return component;
+  }
+  return {
+    ...component,
+    overrides: {
+      ...component.overrides,
+      granularity: { override: granularity },
+    },
+  };
+}
 
 function buildComponentByTileId(
   synthesis: SynthesizeResult,
@@ -80,7 +126,12 @@ const DashboardLayoutNodeView: FC<DashboardLayoutNodeViewProps> = ({
         </div>
       );
     }
-    const issues = getDashboardControlIssuesForComponent(component, chartContext, controlOverrides);
+    const renderableComponent = getRenderableComponent(component, chartContext);
+    const issues = getDashboardControlIssuesForComponent(
+      renderableComponent,
+      chartContext,
+      controlOverrides,
+    );
     // Charts keep their card chrome and surface Figma empty states via
     // genericChartStateToChartAbnormalState. Summary cards that can't honor
     // dashboard controls show `--` instead of an alert card.
@@ -93,7 +144,7 @@ const DashboardLayoutNodeView: FC<DashboardLayoutNodeViewProps> = ({
           <DashboardTileControlError />
         ) : (
           <AnalyticsComponent
-            config={component}
+            config={renderableComponent}
             chartContext={chartContext}
             onSelectChartRegion={null}
           />
@@ -188,8 +239,8 @@ const DashboardLayoutBody: FC<DashboardLayoutBodyProps> = ({ config, pageConfig,
   const { chartContext } = useRAQIV2PredefinedSurfaceControlsBundle(pageConfig);
   const componentByTileId = useMemo(() => buildComponentByTileId(synthesis), [synthesis]);
   const controlOverrides = useMemo(
-    () => getDashboardControlOverrideState(pageConfig, chartContext),
-    [pageConfig, chartContext],
+    () => getDashboardControlOverrideState(chartContext),
+    [chartContext],
   );
   return (
     <div className={DASHBOARD_BODY_STACK_CLASSES}>

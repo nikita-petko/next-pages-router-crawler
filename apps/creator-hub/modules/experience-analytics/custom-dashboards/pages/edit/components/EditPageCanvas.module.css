@@ -91,6 +91,32 @@
   max-height: 100%;
 }
 
+/*
+ * Keep the live resize preview above its old/new grid slot. The content layer
+ * clips the chart at the pointer edge while Highcharts retains its last
+ * rendered width; a later chart render can then size it naturally.
+ */
+.chartTileMountResizing {
+  z-index: 6;
+  overflow: visible;
+}
+
+.chartTileMountResizing > *:not(.chartTableFrame):not(.chartTableChrome) {
+  overflow: visible;
+}
+
+.chartTileMountResizing
+  > *:not(.chartTableFrame):not(.chartTableChrome)
+  :global([data-chart-container-item-id])
+  > :last-child {
+  overflow: hidden;
+}
+
+.chartTileMountResizing :global(.highcharts-container),
+.chartTileMountResizing :global(.highcharts-root) {
+  max-width: none;
+}
+
 .chartTileMount::after {
   position: absolute;
   top: -3px;
@@ -113,6 +139,17 @@
   box-shadow:
     0 0 0 1px rgba(59, 130, 246, 0.35),
     0 0 0 4px rgba(59, 130, 246, 0.16);
+}
+
+.chartTileMountDragging::after {
+  border-color: var(--color-stroke-emphasis);
+  box-shadow: 0 0 0 var(--stroke-thick) var(--color-action-emphasis-background);
+}
+
+.chartTileMountDragTarget::after {
+  border-color: var(--color-stroke-emphasis);
+  border-style: dashed;
+  background: color-mix(in srgb, var(--color-action-emphasis-background) 5%, transparent);
 }
 
 .summaryTileMount {
@@ -188,11 +225,11 @@
   position: relative;
 }
 
-/* Keep 900px aligned with narrowViewport.ts/Tailwind and 190px with SUMMARY_TILE_MIN_WIDTH_PX. */
-/* Figma node 2384-62450: summary cards use 24px gaps; desktop auto-fills 190–217px tiles. */
+/* Keep 900px aligned with narrowViewport.ts/Tailwind and 280px with SUMMARY_TILE_MIN_WIDTH_PX. */
+/* Figma node 2384-62450: summary cards use 24px gaps and a 320px desktop width. */
 .summaryRow {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 217px));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 320px));
   gap: var(--size-600, 24px);
   align-items: stretch;
   justify-content: start;

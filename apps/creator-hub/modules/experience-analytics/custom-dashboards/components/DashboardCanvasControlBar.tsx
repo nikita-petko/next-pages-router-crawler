@@ -17,7 +17,7 @@ type DashboardCanvasControlBarProps = {
 const NO_LEGACY_FILTER_DIMENSIONS: ReadonlyArray<NonRAQIUIFilterDimension> = [];
 const PREDEFINED_SURFACE_CONTROL_OPTIONS = {
   useFoundationDateRangeControl: true,
-  hidePartialGranularitySupportDescription: true,
+  hideGranularityControl: true,
 } as const;
 const DASHBOARD_CONTROL_GROUP_CLASSES = 'flex flex-row wrap gap-medium';
 const DASHBOARD_CONTROL_SLOT_CLASSES = 'flex flex-col justify-end shrink-0';

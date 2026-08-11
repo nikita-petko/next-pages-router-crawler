@@ -2253,6 +2253,9 @@
 .max-width-\[340px\] {
   max-width: 340px;
 }
+.max-width-\[360px\] {
+  max-width: 360px;
+}
 .max-width-\[420px\] {
   max-width: 420px;
 }
@@ -3131,6 +3134,9 @@
 }
 .padding-left-\[5px\] {
   padding-left: 5px;
+}
+.padding-left-\[calc\(var\(--size-600\)\+var\(--gap-medium\)\)\] {
+  padding-left: calc(var(--size-600) + var(--gap-medium));
 }
 .padding-left-\[var\(--size-150\)\] {
   padding-left: var(--size-150);
@@ -4381,17 +4387,29 @@
 .\[gap\:6px\] {
   gap: 6px;
 }
+.\[grid-column\:1\/-1\] {
+  grid-column: 1/-1;
+}
+.\[grid-column\:1\] {
+  grid-column: 1;
+}
 .\[grid-column\:2\] {
   grid-column: 2;
 }
 .\[grid-row\:1\] {
   grid-row: 1;
 }
+.\[grid-row\:2\] {
+  grid-row: 2;
+}
 .\[grid-template-columns\:175px_1fr\] {
   grid-template-columns: 175px 1fr;
 }
 .\[grid-template-columns\:7fr_5fr\] {
   grid-template-columns: 7fr 5fr;
+}
+.\[grid-template-columns\:auto_minmax\(0\2c 1fr\)\] {
+  grid-template-columns: auto minmax(0,1fr);
 }
 .\[grid-template-columns\:minmax\(0\2c 1fr\)\] {
   grid-template-columns: minmax(0,1fr);
@@ -4872,14 +4890,14 @@
 .\[width\:200px\] {
   width: 200px;
 }
-.\[width\:217px\] {
-  width: 217px;
-}
 .\[width\:22\%\] {
   width: 22%;
 }
 .\[width\:240px\] {
   width: 240px;
+}
+.\[width\:320px\] {
+  width: 320px;
 }
 .\[width\:480px\] {
   width: 480px;
@@ -5319,6 +5337,12 @@ html.studio-webview.dark-theme,
 }
 
 @media (max-width: 900px) {
+  .max-\[900px\]\:max-width-full {
+    max-width: 100%;
+  }
+  .max-\[900px\]\:min-width-0 {
+    min-width: var(--size-0);
+  }
   .max-\[900px\]\:width-full {
     width: 100%;
   }
@@ -5530,6 +5554,9 @@ html.studio-webview.dark-theme,
   .small\:items-start {
     align-items: flex-start;
   }
+  .small\:items-end {
+    align-items: flex-end;
+  }
   .small\:gap-large {
     gap: var(--gap-large);
   }
@@ -5572,6 +5599,18 @@ html.studio-webview.dark-theme,
   .small\:text-heading-medium {
     font: var(--typography-heading-medium-font);
     letter-spacing: var(--typography-heading-medium-letter-spacing);
+  }
+  .small\:\[grid-column\:2\] {
+    grid-column: 2;
+  }
+  .small\:\[grid-column\:3\] {
+    grid-column: 3;
+  }
+  .small\:\[grid-row\:1\] {
+    grid-row: 1;
+  }
+  .small\:\[grid-template-columns\:auto_minmax\(0\2c 1fr\)_auto\] {
+    grid-template-columns: auto minmax(0,1fr) auto;
   }
 }
 

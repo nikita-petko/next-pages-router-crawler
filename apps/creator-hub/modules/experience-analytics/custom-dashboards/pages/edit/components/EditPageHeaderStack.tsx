@@ -27,7 +27,7 @@ type EditPageHeaderStackProps = {
   readonly canRename?: boolean;
   readonly onCancel: () => void;
   readonly onPreview: () => void;
-  readonly onPublish: () => void;
+  readonly onPublish: (titleOverride?: string) => void;
   readonly primaryActionLabel: string;
   readonly onRenameDashboard: (nextName: string) => void;
 };
@@ -79,6 +79,7 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
   const pendingTitleCommitRef = useRef(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState(dashboardName ?? '');
+  const [pendingPublishTitle, setPendingPublishTitle] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!isEditingTitle) {
@@ -108,6 +109,13 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
   const isTitleFilterPending = isEditingTitle && titleFilterStatus === 'pending';
   const titleError = isEditingTitle && isTitleBlocked ? t.tileTitleBlockedError : null;
   const saveErrorLabel = getSaveErrorLabel(saveError, t);
+  const trimmedDraftTitle = confirmedDraftTitle.trim();
+  const hasValidTitleChange =
+    isEditingTitle &&
+    titleFilterStatus === 'ok' &&
+    trimmedDraftTitle.length > 0 &&
+    trimmedDraftTitle !== (dashboardName?.trim() ?? '');
+  const hasPendingTitleChange = pendingPublishTitle !== undefined;
 
   useEffect(() => {
     if (!pendingTitleCommitRef.current || titleFilterStatus === 'pending') {
@@ -123,7 +131,15 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
   }, [confirmedDraftTitle, dashboardName, onRenameDashboard, titleFilterStatus]);
 
   const finishTitleEdit = useCallback(
-    (shouldCommit: boolean, shouldCloseOnPendingOrBlocked = false) => {
+    ({
+      shouldCommit,
+      shouldCloseOnPendingOrBlocked = false,
+      shouldKeepOpenWhenBlocked = false,
+    }: {
+      shouldCommit: boolean;
+      shouldCloseOnPendingOrBlocked?: boolean;
+      shouldKeepOpenWhenBlocked?: boolean;
+    }) => {
       if (isFinishingEditRef.current) {
         return;
       }
@@ -133,6 +149,8 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
         if (shouldCloseOnPendingOrBlocked) {
           if (isTitleFilterPending) {
             pendingTitleCommitRef.current = true;
+          } else if (shouldKeepOpenWhenBlocked) {
+            return;
           } else {
             setDraftTitle(dashboardName ?? '');
           }
@@ -142,8 +160,11 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
       }
       isFinishingEditRef.current = true;
       if (shouldCommit && nextName.length > 0 && nextName !== currentName) {
-        onRenameDashboard(confirmedDraftTitle.trim());
+        const confirmedNextName = confirmedDraftTitle.trim();
+        setPendingPublishTitle(confirmedNextName);
+        onRenameDashboard(confirmedNextName);
       } else {
+        setPendingPublishTitle(undefined);
         setDraftTitle(dashboardName ?? '');
       }
       setIsEditingTitle(false);
@@ -164,27 +185,33 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
   const startTitleEdit = useCallback(() => {
     isFinishingEditRef.current = false;
     pendingTitleCommitRef.current = false;
+    setPendingPublishTitle(undefined);
     setDraftTitle(dashboardName ?? '');
     setIsEditingTitle(true);
   }, [dashboardName]);
+
+  const handlePublish = useCallback(() => {
+    setPendingPublishTitle(undefined);
+    onPublish(pendingPublishTitle);
+  }, [onPublish, pendingPublishTitle]);
 
   const handleTitleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (event.key === 'Enter') {
         event.preventDefault();
-        finishTitleEdit(true);
+        finishTitleEdit({ shouldCommit: true });
       }
       if (event.key === 'Escape') {
         event.preventDefault();
-        finishTitleEdit(false);
+        finishTitleEdit({ shouldCommit: false });
       }
     },
     [finishTitleEdit],
   );
 
   return (
-    <header className='flex flex-col gap-small'>
-      <div className='flex flex-row items-start width-full gap-medium'>
+    <header className='grid [grid-template-columns:auto_minmax(0,1fr)] gap-small small:[grid-template-columns:auto_minmax(0,1fr)_auto] small:gap-medium'>
+      <div className='[grid-column:1] [grid-row:2] small:[grid-row:1]'>
         <IconButton
           icon='icon-regular-chevron-large-left'
           variant='Utility'
@@ -192,102 +219,99 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
           ariaLabel={t.notFoundCtaLabel}
           onClick={onCancel}
         />
-        <div className='flex flex-col small:flex-row small:items-start small:justify-between gap-medium grow-1 min-width-0'>
-          <div className='flex flex-col gap-xxsmall min-width-0'>
-            <div className='flex items-center gap-small min-width-0'>
-              {isEditingTitle ? (
-                <input
-                  ref={inputRef}
-                  type='text'
-                  aria-label={t.renameDashboardLabel}
-                  className='text-heading-large content-emphasis margin-none padding-none max-width-full bg-none stroke-none outline-none'
-                  // Auto-size the field to its content so the pencil stays next to
-                  // the text (matching the static title) instead of the input
-                  // stretching to fill the row. `ch`-based sizing is approximate
-                  // for proportional fonts but tracks closely enough; max-width
-                  // keeps long titles from overflowing.
-                  size={Math.max(draftTitle.length, 1)}
-                  value={draftTitle}
-                  maxLength={MAX_DASHBOARD_NAME_LENGTH}
-                  onChange={(event) => setDraftTitle(event.target.value)}
-                  onKeyDown={handleTitleKeyDown}
-                  onBlur={() => finishTitleEdit(true, true)}
-                />
-              ) : (
-                <h1 className='text-heading-large content-emphasis margin-none text-truncate-end'>
-                  {dashboardName ?? '\u00A0'}
-                </h1>
-              )}
-              {dashboardName !== null && canRename ? (
-                <IconButton
-                  variant='Utility'
-                  size='Small'
-                  icon='icon-regular-pencil'
-                  ariaLabel={t.renameDashboardLabel}
-                  className='content-emphasis'
-                  isDisabled={isEditingTitle}
-                  onClick={startTitleEdit}
-                />
-              ) : null}
-              {dashboardName !== null ? (
-                <div className='flex items-center gap-xsmall shrink-0'>
-                  {hasUnsavedChanges ? (
-                    <span className='text-label-small content-muted' aria-live='polite'>
-                      {t.unsavedChangesLabel}
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-            {subtitle !== null ? (
-              <span className='text-body-medium content-muted text-truncate-end'>{subtitle}</span>
-            ) : null}
-            {titleError ? (
-              <p role='alert' className='text-body-small content-system-alert margin-none'>
-                {titleError}
-              </p>
-            ) : null}
-          </div>
+      </div>
 
-          <div className='flex flex-col items-end gap-xxsmall shrink-0'>
-            <div className='flex items-center gap-small'>
-              <Button
-                variant='Standard'
-                size='Medium'
-                isDisabled={!isDashboardLoaded}
-                onClick={onPreview}>
-                {t.previewButtonLabel}
-              </Button>
-              <Button
-                variant='Standard'
-                size='Medium'
-                isDisabled={!isDashboardLoaded || isSaving}
-                onClick={onCancel}>
-                {t.cancelButtonLabel}
-              </Button>
-              <Button
-                variant='Emphasis'
-                size='Medium'
-                // Nothing to persist when there are no unsaved changes; also
-                // blocks a second submit while a save is in flight.
-                isDisabled={
-                  !isDashboardLoaded ||
-                  isSaving ||
-                  !hasUnsavedChanges ||
-                  isTitleFilterPending ||
-                  isTitleBlocked
-                }
-                onClick={onPublish}>
-                {primaryActionLabel}
-              </Button>
-            </div>
-            {saveErrorLabel ? (
-              <p role='alert' className='text-body-small content-system-alert margin-none'>
-                {saveErrorLabel}
-              </p>
-            ) : null}
-          </div>
+      <div className='flex flex-col gap-xxsmall min-width-0 [grid-column:1/-1] [grid-row:1] small:[grid-column:2]'>
+        <div className='flex items-center gap-small min-width-0'>
+          {isEditingTitle ? (
+            <input
+              ref={inputRef}
+              type='text'
+              aria-label={t.renameDashboardLabel}
+              className='text-heading-large content-emphasis margin-none padding-none max-width-full bg-none stroke-none outline-none'
+              // Auto-size the field to its content so the pencil stays next to
+              // the text (matching the static title) instead of the input
+              // stretching to fill the row. `ch`-based sizing is approximate
+              // for proportional fonts but tracks closely enough; max-width
+              // keeps long titles from overflowing.
+              size={Math.max(draftTitle.length, 1)}
+              value={draftTitle}
+              maxLength={MAX_DASHBOARD_NAME_LENGTH}
+              onChange={(event) => setDraftTitle(event.target.value)}
+              onKeyDown={handleTitleKeyDown}
+              onBlur={() =>
+                finishTitleEdit({ shouldCommit: true, shouldCloseOnPendingOrBlocked: true })
+              }
+            />
+          ) : (
+            <h1 className='text-heading-large content-emphasis margin-none text-truncate-end'>
+              {dashboardName ?? '\u00A0'}
+            </h1>
+          )}
+          {dashboardName !== null && canRename ? (
+            <IconButton
+              variant='Utility'
+              size='Small'
+              icon='icon-regular-pencil'
+              ariaLabel={t.renameDashboardLabel}
+              className='content-emphasis'
+              isDisabled={isEditingTitle}
+              onClick={startTitleEdit}
+            />
+          ) : null}
         </div>
+        {subtitle !== null ? (
+          <span className='text-body-medium content-muted text-truncate-end'>{subtitle}</span>
+        ) : null}
+        {dashboardName !== null && hasUnsavedChanges ? (
+          <span className='text-label-small content-muted' aria-live='polite'>
+            {t.unsavedChangesLabel}
+          </span>
+        ) : null}
+        {titleError ? (
+          <p role='alert' className='text-body-small content-system-alert margin-none'>
+            {titleError}
+          </p>
+        ) : null}
+      </div>
+
+      <div className='flex flex-col items-start small:items-end gap-xxsmall min-width-0 [grid-column:2] [grid-row:2] small:[grid-column:3] small:[grid-row:1]'>
+        <div className='flex wrap items-center gap-small'>
+          <Button
+            variant='Standard'
+            size='Medium'
+            isDisabled={!isDashboardLoaded}
+            onClick={onPreview}>
+            {t.previewButtonLabel}
+          </Button>
+          <Button
+            variant='Standard'
+            size='Medium'
+            isDisabled={!isDashboardLoaded || isSaving}
+            onClick={onCancel}>
+            {t.cancelButtonLabel}
+          </Button>
+          <Button
+            variant='Emphasis'
+            size='Medium'
+            // Nothing to persist when there are no unsaved changes; also
+            // blocks a second submit while a save is in flight.
+            isDisabled={
+              !isDashboardLoaded ||
+              isSaving ||
+              (!hasUnsavedChanges && !hasValidTitleChange && !hasPendingTitleChange) ||
+              isTitleFilterPending ||
+              isTitleBlocked
+            }
+            onClick={handlePublish}>
+            {primaryActionLabel}
+          </Button>
+        </div>
+        {saveErrorLabel ? (
+          <p role='alert' className='text-body-small content-system-alert margin-none'>
+            {saveErrorLabel}
+          </p>
+        ) : null}
       </div>
     </header>
   );

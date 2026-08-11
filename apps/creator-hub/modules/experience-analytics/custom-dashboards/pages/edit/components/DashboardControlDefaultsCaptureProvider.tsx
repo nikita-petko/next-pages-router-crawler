@@ -10,8 +10,15 @@ import { AnalyticsCurrentFilterBundleContext } from '@modules/experience-analyti
 import { AnalyticsCurrentGranularityBundleContext } from '@modules/experience-analytics-shared/context/AnalyticsCurrentGranularityProvider';
 import { ExperienceAnalyticsCurrentAnnotationsBundleContext } from '@modules/experience-analytics-shared/context/ExperienceAnalyticsCurrentAnnotationsBundleProvider';
 import type { CreatorAnalyticsUntabbedPageConfig } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
-import { getDashboardSurface, withDashboardSurface } from '../../../layout/dashboardLayout';
+import {
+  getChartRows,
+  getDashboardSurface,
+  withChartRows,
+  withDashboardSurface,
+} from '../../../layout/dashboardLayout';
+import { isMetricSpecificTileFilter } from '../../../synthesis/tileSpecBuilders';
 import type {
+  ChartTileConfig,
   CustomDashboardConfig,
   DashboardDateRangeDefault,
   DashboardSurfaceControls,
@@ -81,6 +88,43 @@ const areTileFiltersEqual = (
   );
 };
 
+export function syncMetricScopedFiltersToTiles(
+  config: CustomDashboardConfig,
+  filters: ReadonlyArray<TileFilter>,
+): CustomDashboardConfig {
+  const rows = getChartRows(config);
+  let didChange = false;
+  const nextRows = rows.map((row) => ({
+    ...row,
+    tiles: row.tiles.map((tile): ChartTileConfig => {
+      const metricKey = tile.dataSpec.metrics[0]?.metric.metricKey;
+      if (!metricKey) {
+        return tile;
+      }
+      const metricScopedFilters = filters.filter((filter) =>
+        isMetricSpecificTileFilter(metricKey, filter),
+      );
+      const preservedFilters = tile.dataSpec.filters.filter(
+        (filter) => !isMetricSpecificTileFilter(metricKey, filter),
+      );
+      const nextFilters = [...preservedFilters, ...metricScopedFilters];
+      if (areTileFiltersEqual(tile.dataSpec.filters, nextFilters)) {
+        return tile;
+      }
+      didChange = true;
+      return {
+        ...tile,
+        dataSpec: {
+          ...tile.dataSpec,
+          filters: nextFilters,
+        },
+      };
+    }),
+  }));
+
+  return didChange ? withChartRows(config, nextRows) : config;
+}
+
 const DashboardControlDefaultsCaptureProvider: FC<DashboardControlDefaultsCaptureProviderProps> = ({
   config,
   pageConfig,
@@ -99,10 +143,10 @@ const DashboardControlDefaultsCaptureProvider: FC<DashboardControlDefaultsCaptur
   const annotationBundle = useContext(ExperienceAnalyticsCurrentAnnotationsBundleContext);
 
   const persistConfigDefaults = useCallback(
-    (defaults: Partial<DashboardSurfaceControls>) => {
-      const surface = getDashboardSurface(config);
+    (defaults: Partial<DashboardSurfaceControls>, nextConfig = config) => {
+      const surface = getDashboardSurface(nextConfig);
       onConfigChange(
-        withDashboardSurface(config, {
+        withDashboardSurface(nextConfig, {
           ...surface,
           controls: {
             ...surface.controls,
@@ -182,20 +226,42 @@ const DashboardControlDefaultsCaptureProvider: FC<DashboardControlDefaultsCaptur
         filters: Parameters<typeof filterBundle.onKnownFiltersChange>[0],
         knownDimensions: Parameters<typeof filterBundle.onKnownFiltersChange>[1],
       ) => {
-        filterBundle.onKnownFiltersChange(filters, knownDimensions);
         const nextDefaultFilters = filters
           .filter((filter) => knownDimensions.includes(filter.dimension))
+          .filter(
+            (filter) =>
+              !pageConfig.body.some((component) => {
+                if (
+                  typeof component !== 'object' ||
+                  component === null ||
+                  // The page config's component enum and app enum are separate declarations.
+                  // oxlint-disable-next-line typescript/no-unsafe-enum-comparison
+                  component.type !== 'Chart' ||
+                  !('metric' in component)
+                ) {
+                  return false;
+                }
+                return isMetricSpecificTileFilter(component.metric, filter);
+              }),
+          )
           .map((filter) => ({
             dimension: filter.dimension,
             values: [...filter.values],
           }));
-        if (areTileFiltersEqual(controls.defaultFilters, nextDefaultFilters)) {
+        // Preserve the live bundle exactly as emitted. Only the persisted
+        // dashboard defaults are normalized to supported shared dimensions.
+        filterBundle.onKnownFiltersChange(filters, knownDimensions);
+        const configWithMetricFilters = syncMetricScopedFiltersToTiles(config, filters);
+        if (
+          areTileFiltersEqual(controls.defaultFilters, nextDefaultFilters) &&
+          configWithMetricFilters === config
+        ) {
           return;
         }
-        persistConfigDefaults({ defaultFilters: nextDefaultFilters });
+        persistConfigDefaults({ defaultFilters: nextDefaultFilters }, configWithMetricFilters);
       },
     }),
-    [controls.defaultFilters, filterBundle, persistConfigDefaults],
+    [config, controls.defaultFilters, filterBundle, pageConfig.body, persistConfigDefaults],
   );
 
   const breakdownContextValue = useMemo(
@@ -218,22 +284,6 @@ const DashboardControlDefaultsCaptureProvider: FC<DashboardControlDefaultsCaptur
       pageConfig.breakdownDimensions,
       persistConfigDefaults,
     ],
-  );
-
-  const granularityContextValue = useMemo(
-    () => ({
-      ...granularityBundle,
-      onChangeGranularity: (
-        granularity: Parameters<typeof granularityBundle.onChangeGranularity>[0],
-      ) => {
-        granularityBundle.onChangeGranularity(granularity);
-        if (controls.defaultGranularity === granularity) {
-          return;
-        }
-        persistConfigDefaults({ defaultGranularity: granularity });
-      },
-    }),
-    [controls.defaultGranularity, granularityBundle, persistConfigDefaults],
   );
 
   const annotationContextValue = useMemo(
@@ -277,7 +327,7 @@ const DashboardControlDefaultsCaptureProvider: FC<DashboardControlDefaultsCaptur
 
   return (
     <AnalyticsQueryDateRangeBundleContext.Provider value={dateRangeContextValue}>
-      <AnalyticsCurrentGranularityBundleContext.Provider value={granularityContextValue}>
+      <AnalyticsCurrentGranularityBundleContext.Provider value={granularityBundle}>
         <AnalyticsCurrentBreakdownContext.Provider value={breakdownContextValue}>
           <AnalyticsCurrentFilterBundleContext.Provider value={filterContextValue}>
             <ExperienceAnalyticsCurrentAnnotationsBundleContext.Provider

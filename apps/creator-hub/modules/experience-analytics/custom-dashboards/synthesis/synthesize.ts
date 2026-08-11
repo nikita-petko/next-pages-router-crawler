@@ -9,6 +9,7 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import ChartSummaryType from '@modules/charts-generic/enums/ChartSummaryType';
 import { RAQIV2ChartResourceType } from '@modules/clients/analytics';
+import type { TQueryFilter } from '@modules/clients/analytics/analyticsRAQIShared';
 import { AnnotationType } from '@modules/clients/analytics/annotations/annotations';
 import buildChartConfiguratorTableConfig, {
   type ExploreModeTableMetricColumnInput,
@@ -75,12 +76,15 @@ import {
 } from '../utils/summaryCardAggregation';
 import { TIME_INTERVAL_TO_GRANULARITY } from './granularityMapping';
 import {
+  buildEffectiveTileFilters,
   buildMetricVariantFilters,
   buildSpecOverride,
   buildTileBreakdownDimensions,
   buildTileQueryFilters,
   getMetricMappingOptions,
   getPrimaryChartMetric,
+  isMetricScopedDimension,
+  isMetricSpecificTileFilter,
   isRAQIV2Dimension,
 } from './tileSpecBuilders';
 
@@ -435,11 +439,12 @@ type ChartSynthesisOutcome =
 function resolveTablePrimaryMetric(
   tile: ChartTileConfig,
   metric: TRAQIV2NumericUIMetric,
+  filters: readonly TQueryFilter[],
 ): MetricLike {
   const primaryMetric = getPrimaryChartMetric(tile);
   const computedMetric = primaryMetric?.metric.computedMetric;
   const shouldApplySmoothing = tile.chartSpec.smoothing === 'weekly';
-  const mappingOptions = getMetricMappingOptions(buildTileQueryFilters(tile.dataSpec.filters));
+  const mappingOptions = getMetricMappingOptions(filters);
   if (computedMetric) {
     if (shouldApplySmoothing) {
       return {
@@ -457,6 +462,7 @@ function buildTableMetricColumnInput(
   tile: ChartTileConfig,
   metricColumn: ChartTileConfig['dataSpec']['metrics'][number],
   index: number,
+  filters: readonly TQueryFilter[],
 ): ExploreModeTableMetricColumnInput | null {
   const primaryMetricKey = getPrimaryMetricKey(metricColumn.metric);
   const metric = primaryMetricKey ? tryResolveMetric(primaryMetricKey) : null;
@@ -470,16 +476,16 @@ function buildTableMetricColumnInput(
       getMetricForL7Smoothing(
         metric,
         tile.chartSpec.smoothing === 'weekly',
-        getMetricMappingOptions([
-          ...buildTileQueryFilters(tile.dataSpec.filters),
-          ...buildMetricVariantFilters(metricColumn.metric),
-        ]),
+        getMetricMappingOptions([...filters, ...buildMetricVariantFilters(metricColumn.metric)]),
       ),
     filter: buildMetricVariantFilters(metricColumn.metric),
   };
 }
 
-function synthesizeTableTile(tile: ChartTileConfig): ChartSynthesisOutcome {
+function synthesizeTableTile(
+  tile: ChartTileConfig,
+  inheritedFilters: ReadonlyArray<TileFilter>,
+): ChartSynthesisOutcome {
   const primaryMetric = getPrimaryChartMetric(tile);
   const primaryMetricKey = primaryMetric ? getPrimaryMetricKey(primaryMetric.metric) : null;
   const metric = primaryMetricKey ? tryResolveMetric(primaryMetricKey) : null;
@@ -497,18 +503,21 @@ function synthesizeTableTile(tile: ChartTileConfig): ChartSynthesisOutcome {
     tile.dataSpec.granularity !== undefined
       ? (TIME_INTERVAL_TO_GRANULARITY[tile.dataSpec.granularity] ?? RAQIV2MetricGranularity.OneDay)
       : RAQIV2MetricGranularity.OneDay;
+  const effectiveFilters = buildEffectiveTileFilters(tile, inheritedFilters);
   const tableConfig = buildChartConfiguratorTableConfig({
     breakdown: buildTileBreakdownDimensions(tile.dataSpec.breakdownDimensions),
     primaryMetric: {
       key: tile.tileId,
-      metric: resolveTablePrimaryMetric(tile, metric),
+      metric: resolveTablePrimaryMetric(tile, metric, effectiveFilters),
       filter: buildMetricVariantFilters(primaryMetric?.metric ?? { metricKey: metric }),
     },
     additionalMetricColumns: tile.dataSpec.metrics
       .slice(1)
-      .map((metricColumn, index) => buildTableMetricColumnInput(tile, metricColumn, index + 1))
+      .map((metricColumn, index) =>
+        buildTableMetricColumnInput(tile, metricColumn, index + 1, effectiveFilters),
+      )
       .filter((column): column is ExploreModeTableMetricColumnInput => column !== null),
-    pageLevelFilter: buildTileQueryFilters(tile.dataSpec.filters),
+    pageLevelFilter: effectiveFilters,
     granularity,
   });
   if (!tableConfig) {
@@ -530,9 +539,12 @@ function synthesizeTableTile(tile: ChartTileConfig): ChartSynthesisOutcome {
   };
 }
 
-function synthesizeChartTile(tile: ChartTileConfig): ChartSynthesisOutcome {
+function synthesizeChartTile(
+  tile: ChartTileConfig,
+  inheritedFilters: ReadonlyArray<TileFilter>,
+): ChartSynthesisOutcome {
   if (tile.chartSpec.chartType === ChartType.Table) {
-    return synthesizeTableTile(tile);
+    return synthesizeTableTile(tile, inheritedFilters);
   }
   const primaryMetric = getPrimaryChartMetric(tile);
   const primaryMetricKey = primaryMetric ? getPrimaryMetricKey(primaryMetric.metric) : null;
@@ -558,7 +570,8 @@ function synthesizeChartTile(tile: ChartTileConfig): ChartSynthesisOutcome {
       },
     };
   }
-  const overrides = buildSpecOverride(tile);
+  const effectiveFilters = buildEffectiveTileFilters(tile, inheritedFilters);
+  const overrides = buildSpecOverride(tile, inheritedFilters);
   const titleMetric = getBaseMetricFromL7(metric) ?? metric;
   const { localizedName } = getAnalyticsMetricDisplayConfig(titleMetric);
   const customTitle = tile.title?.trim();
@@ -569,7 +582,7 @@ function synthesizeChartTile(tile: ChartTileConfig): ChartSynthesisOutcome {
     : undefined;
   const shouldApplySmoothing = tile.chartSpec.smoothing === 'weekly';
   const metricMappingOptions = getMetricMappingOptions([
-    ...buildTileQueryFilters(tile.dataSpec.filters),
+    ...effectiveFilters,
     ...(primaryMetric ? buildMetricVariantFilters(primaryMetric.metric) : []),
   ]);
   const smoothedMetric = getMetricForL7Smoothing(
@@ -661,6 +674,7 @@ function synthesizeSummaryTile(tile: SummaryCardTileConfig):
     metric,
     summaryType,
     ...(title ? { labelText: brandUserSuppliedText(title) } : {}),
+    truncateLabelWithTooltip: true,
     overrides: {
       breakdown: { override: [] },
       granularity: { override: granularity },
@@ -705,7 +719,17 @@ function synthesizeChartRow(
   const tiles = row.tiles;
   const columnCount = row.columnCount;
   tiles.forEach((tile) => {
-    const outcome = synthesizeWithCache(tile, ctx.tileCache?.chartTiles, synthesizeChartTile);
+    const metricKey = getPrimaryChartMetric(tile)?.metric.metricKey;
+    const hasApplicableMetricDefault =
+      metricKey !== undefined &&
+      ctx.metricScopedDefaultFilters.some((filter) =>
+        isMetricSpecificTileFilter(metricKey, filter),
+      );
+    const outcome = synthesizeWithCache(
+      tile,
+      hasApplicableMetricDefault ? undefined : ctx.tileCache?.chartTiles,
+      (nextTile) => synthesizeChartTile(nextTile, ctx.metricScopedDefaultFilters),
+    );
     if (outcome.kind === 'unsupported') {
       ctx.unsupported.push(outcome.reason);
       return;
@@ -763,9 +787,13 @@ type SynthesisContext = {
   readonly summaries: SynthesizedSummaryEntry[];
   readonly chartRows: SynthesizedChartEntry[][];
   readonly tileCache?: SynthesisTileCache;
+  readonly metricScopedDefaultFilters: ReadonlyArray<TileFilter>;
 };
 
-function makeContext(tileCache: SynthesisTileCache | undefined): SynthesisContext {
+function makeContext(
+  tileCache: SynthesisTileCache | undefined,
+  metricScopedDefaultFilters: ReadonlyArray<TileFilter>,
+): SynthesisContext {
   const unsupported: SynthesisUnsupportedItem[] = [];
   const summaries: SynthesizedSummaryEntry[] = [];
   const chartRows: SynthesizedChartEntry[][] = [];
@@ -774,6 +802,7 @@ function makeContext(tileCache: SynthesisTileCache | undefined): SynthesisContex
     summaries,
     chartRows,
     tileCache,
+    metricScopedDefaultFilters,
   };
 }
 
@@ -781,10 +810,14 @@ export function synthesize(
   config: CustomDashboardConfig,
   options?: SynthesizeOptions,
 ): SynthesizeResult {
-  const ctx = makeContext(options?.tileCache);
-  const body: RAQIV2UIComponent[] = [];
   const surface = getDashboardSurface(config);
   const controls = surface.controls;
+  const metricScopedDefaultFilters = (controls.defaultFilters ?? []).filter(
+    (filter): filter is TileFilter & { readonly dimension: RAQIV2Dimension } =>
+      isRAQIV2Dimension(filter.dimension) && isMetricScopedDimension(filter.dimension),
+  );
+  const ctx = makeContext(options?.tileCache, metricScopedDefaultFilters);
+  const body: RAQIV2UIComponent[] = [];
 
   const summaryRow = synthesizeSummaryRow(getSummaryCards(config), ctx);
   if (summaryRow) {
@@ -805,7 +838,7 @@ export function synthesize(
   const filterDimensions = unionPersistedDimensions(
     getUnionChartConfiguratorDimensions(surfaceMetrics),
     controls.filterDimensions,
-  );
+  ).filter((dimension) => !isMetricScopedDimension(dimension));
   const chartBreakdownDimensions = getCustomDashboardBreakdownDimensions(
     unionPersistedDimensions(
       getUnionChartConfiguratorDimensions(chartSurfaceMetrics),
@@ -836,7 +869,6 @@ export function synthesize(
     defaultFilters,
     breakdownDimensions: chartBreakdownDimensions,
     defaultBreakdown,
-    defaultGranularity: controls.defaultGranularity,
     body,
   };
 

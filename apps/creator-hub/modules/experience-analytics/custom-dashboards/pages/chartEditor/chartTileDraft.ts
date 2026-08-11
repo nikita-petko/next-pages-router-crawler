@@ -58,12 +58,11 @@ import { isSummaryCardAggregationSupported } from '../../utils/summaryCardAggreg
 
 export const NEW_CHART_TILE_ROUTE_ID = 'new' as const;
 
-export const SUPPORTED_SUMMARY_CARD_EDITOR_AGGREGATIONS: readonly CustomDashboardSummaryCardAggregation[] =
-  [
-    SummaryAggregation.AverageOverTimePeriod,
-    SummaryAggregation.Cumulative,
-    SummaryAggregation.MostRecentDataPoint,
-  ];
+export const SUPPORTED_SUMMARY_CARD_EDITOR_AGGREGATIONS = [
+  SummaryAggregation.AverageOverTimePeriod,
+  SummaryAggregation.Cumulative,
+  SummaryAggregation.MostRecentDataPoint,
+] as const satisfies readonly CustomDashboardSummaryCardAggregation[];
 
 const SUPPORTED_SUMMARY_CARD_EDITOR_AGGREGATION_SET: ReadonlySet<string> = new Set(
   SUPPORTED_SUMMARY_CARD_EDITOR_AGGREGATIONS,

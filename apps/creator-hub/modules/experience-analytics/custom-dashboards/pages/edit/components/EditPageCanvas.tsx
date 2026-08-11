@@ -34,6 +34,7 @@ import {
 } from '@rbx/foundation-ui';
 import AnalyticsComponentType from '@modules/analytics-configurations/AnalyticsComponentType';
 import { SummaryCardHeaderActionsProvider } from '@modules/charts-generic/cards/summaryCards/SummaryCardHeaderActionsContext';
+import getGranularityOptionsForMetric from '@modules/experience-analytics-shared/chartConfigurator/getGranularityOptionsForMetric';
 import {
   ChartActionsProvider,
   type ChartActionsPolicy,
@@ -46,6 +47,8 @@ import useRAQIV2PredefinedSurfaceControlsBundle from '@modules/experience-analyt
 import type RAQIV2ChartContext from '@modules/experience-analytics-shared/types/RAQIV2ChartContext';
 import type { CreatorAnalyticsUntabbedPageConfig } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
 import { RAQIV2SpecialLayoutType } from '@modules/experience-analytics-shared/types/RAQIV2SpecialLayoutConfig';
+import computeRAQIV2SpecOverride from '@modules/experience-analytics-shared/utils/computeRAQIV2SpecOverride';
+import { getClosestAllowedGranularity } from '@modules/experience-analytics-shared/utils/seriesGranularities';
 import DashboardCanvasControlBar from '../../../components/DashboardCanvasControlBar';
 import DashboardFilterChips from '../../../components/DashboardFilterChips';
 import DashboardsEmptyStateIllustration from '../../../components/DashboardsEmptyStateIllustration';
@@ -138,6 +141,7 @@ import {
   summaryTileErrorChromeStyle,
   tileChromeHostStyle,
 } from './editPageCanvasStyles';
+import getResizeDragDeltaX from './getResizeDragDeltaX';
 import { getSummaryTrailerCounts } from './summaryAddTrailer';
 import styles from './EditPageCanvas.module.css';
 
@@ -172,6 +176,12 @@ type ActiveResizePreviewBounds = {
   readonly widthPx: number;
   readonly rowWidthPx: number;
   readonly minWidthPx: number;
+};
+
+type ActiveResizeInteraction = {
+  readonly handle: ActiveResizeHandle;
+  readonly deltaX: number;
+  readonly previewBounds: ActiveResizePreviewBounds;
 };
 
 const RESIZE_THRESHOLD_PX = 80;
@@ -888,6 +898,54 @@ const SelectableSummaryCardMount: FC<Omit<SummaryCardMountProps, 'isSelected'>> 
   return <SummaryCardMount {...props} isSelected={isSelected} />;
 };
 
+function getRenderableChartEntry(
+  entry: SynthesizedChartEntry,
+  chartContext: RAQIV2ChartContext,
+): SynthesizedChartEntry {
+  if (
+    entry.component.type !== AnalyticsComponentType.Chart ||
+    !('metric' in entry.component) ||
+    !('overrides' in entry.component)
+  ) {
+    return entry;
+  }
+  const requestedGranularity = entry.component.overrides.granularity?.override;
+  if (!requestedGranularity) {
+    return entry;
+  }
+  const chartSpec = computeRAQIV2SpecOverride(
+    { ...chartContext, metric: entry.component.metric },
+    entry.component.overrides,
+  );
+  const supportedGranularities = getGranularityOptionsForMetric({
+    metric: chartSpec.metric,
+    startDate: chartContext.timeSpec.startTime,
+    endDate: chartContext.timeSpec.endTime,
+    breakdown: chartSpec.breakdown,
+  })
+    .filter((option) => option.isAllowed)
+    .map((option) => option.granularity);
+  const granularity = getClosestAllowedGranularity({
+    startDate: chartContext.timeSpec.startTime,
+    endDate: chartContext.timeSpec.endTime,
+    granularity: requestedGranularity,
+    supportedGranularities,
+  });
+  if (granularity === requestedGranularity) {
+    return entry;
+  }
+  return {
+    ...entry,
+    component: {
+      ...entry.component,
+      overrides: {
+        ...entry.component.overrides,
+        granularity: { override: granularity },
+      },
+    },
+  };
+}
+
 type ChartTileMountProps = {
   readonly entry: SynthesizedChartEntry;
   readonly title?: string;
@@ -897,6 +955,8 @@ type ChartTileMountProps = {
   readonly layoutStyle?: CSSProperties;
   readonly isSelected: boolean;
   readonly isActiveDragTile: boolean;
+  readonly isActiveResizeTile: boolean;
+  readonly isDragCandidate: boolean;
   readonly overflowMenuLabel: string;
   readonly selectLabel: string;
   readonly editLabel: string;
@@ -916,6 +976,8 @@ const ChartTileMountInner: FC<ChartTileMountProps> = ({
   layoutStyle,
   isSelected,
   isActiveDragTile,
+  isActiveResizeTile,
+  isDragCandidate,
   overflowMenuLabel,
   selectLabel,
   editLabel,
@@ -927,6 +989,10 @@ const ChartTileMountInner: FC<ChartTileMountProps> = ({
   onDuplicate,
   onRemove,
 }) => {
+  const renderableEntry = useMemo(
+    () => getRenderableChartEntry(entry, chartContext),
+    [chartContext, entry],
+  );
   const tileActions = useMemo<ChartActionsPolicy>(
     () => ({
       actions: [
@@ -962,7 +1028,7 @@ const ChartTileMountInner: FC<ChartTileMountProps> = ({
     ],
   );
   const trimmedTitle = title?.trim();
-  const isTableTile = entry.component.type === AnalyticsComponentType.Table;
+  const isTableTile = renderableEntry.component.type === AnalyticsComponentType.Table;
   const tableTileChrome = (
     <div className={styles.chartTableChrome}>
       <TileEditMenu
@@ -985,7 +1051,7 @@ const ChartTileMountInner: FC<ChartTileMountProps> = ({
     // content so rows navigate via paging instead of an inner scrollbar.
     <div className={styles.chartTableFrame} data-testid='custom-dashboard-chart-table-frame'>
       <AnalyticsComponent
-        config={entry.component}
+        config={renderableEntry.component}
         chartContext={chartContext}
         onSelectChartRegion={null}
         chartUpdatePolicy='non-animated'
@@ -993,7 +1059,7 @@ const ChartTileMountInner: FC<ChartTileMountProps> = ({
     </div>
   ) : (
     <AnalyticsConfigurableComponent
-      component={entry.component}
+      component={renderableEntry.component}
       chartContext={chartContext}
       onSelectChartRegion={null}
       chartUpdatePolicy='non-animated'
@@ -1004,8 +1070,20 @@ const ChartTileMountInner: FC<ChartTileMountProps> = ({
   return (
     <ChartActionsProvider value={tileActions}>
       <div
-        className={`${styles.chartTileMount} ${isSelected ? styles.chartTileMountSelected : ''}`}
+        className={[
+          styles.chartTileMount,
+          isSelected ? styles.chartTileMountSelected : '',
+          isActiveDragTile ? styles.chartTileMountDragging : '',
+          isActiveResizeTile ? styles.chartTileMountResizing : '',
+          isDragCandidate ? styles.chartTileMountDragTarget : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         data-custom-dashboard-tile-id={entry.tileId}
+        data-custom-dashboard-drag-state={
+          isActiveDragTile ? 'source' : isDragCandidate ? 'target' : undefined
+        }
+        data-custom-dashboard-resize-state={isActiveResizeTile ? 'active' : undefined}
         // eslint-disable-next-line jsx-a11y/prefer-tag-over-role -- chart cards already render nested action buttons, so the selectable wrapper cannot be a native button
         role='button'
         tabIndex={0}
@@ -1115,6 +1193,7 @@ type DashboardCanvasBodyProps = {
   readonly chartPlacements: ReadonlyArray<ChartPlacement>;
   readonly chartDragPreviewRows: ReadonlyArray<CustomDashboardChartRow> | null;
   readonly activeChartDragId: TileId | null;
+  readonly activeResizeTileId: TileId | null;
   readonly summaryCardCount: number;
   readonly activeEmptySlotId: string | null;
   readonly isNarrowViewport: boolean;
@@ -1137,6 +1216,7 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
   chartPlacements,
   chartDragPreviewRows,
   activeChartDragId,
+  activeResizeTileId,
   summaryCardCount,
   activeEmptySlotId,
   isNarrowViewport,
@@ -1155,8 +1235,8 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
   const { chartContext: rawChartContext } = useRAQIV2PredefinedSurfaceControlsBundle(pageConfig);
   const chartContext = useStableChartContext(rawChartContext);
   const controlOverrides = useMemo(
-    () => getDashboardControlOverrideState(pageConfig, chartContext),
-    [pageConfig, chartContext],
+    () => getDashboardControlOverrideState(chartContext),
+    [chartContext],
   );
   const chartEntriesByTileId = useMemo(
     () => new Map(chartRows.flat().map((entry) => [entry.tileId, entry])),
@@ -1171,6 +1251,7 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
   const canAddSummaryCard = summaryCardCount < MAX_SUMMARY_CARDS_PER_DASHBOARD;
   const canAddChart = chartTileCount < MAX_CHART_TILES_PER_DASHBOARD;
   const canDuplicateChart = chartTileCount < MAX_CHART_TILES_PER_DASHBOARD;
+  const isChartDragActive = !isNarrowViewport && activeChartDragId !== null;
   const { ref: summaryRowRef, columnCapacity: summaryRowColumnCapacity } =
     useSummaryRowColumnCapacity();
   const handleAddSummaryCard = useCallback(() => {
@@ -1219,7 +1300,7 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
         <section
           aria-label={t.chartCanvasLabel}
           data-raqi-layout='row'
-          className={`${styles.chartCanvasSection} grid [grid-template-columns:repeat(2,minmax(0,1fr))] gap-xxlarge width-full max-[900px]:[grid-template-columns:minmax(0,1fr)]`}>
+          className={`${styles.chartCanvasSection} grid [grid-template-columns:repeat(2,minmax(0,1fr))] ${isNarrowViewport ? 'gap-medium' : 'gap-xxlarge'} width-full max-[900px]:[grid-template-columns:minmax(0,1fr)]`}>
           {chartPlacements.map((placement) => {
             if (placement.kind === 'empty-slot') {
               // Narrow viewports stack every chart full-width and disable DnD, so
@@ -1278,6 +1359,8 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
                 chartContext={chartContext}
                 layoutStyle={tileLayoutStyle}
                 isActiveDragTile={!isNarrowViewport && placement.tileId === activeChartDragId}
+                isActiveResizeTile={!isNarrowViewport && placement.tileId === activeResizeTileId}
+                isDragCandidate={isChartDragActive && placement.tileId !== activeChartDragId}
                 overflowMenuLabel={t.tileOverflowMenuLabel}
                 selectLabel={t.chartTileSelectLabel}
                 editLabel={t.tileMenuEdit}
@@ -1339,6 +1422,7 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
   const t = useEditPageTranslations();
   const isNarrowViewport = useIsCustomDashboardNarrowViewport();
   const canvasRef = useRef<HTMLElement | null>(null);
+  const activeResizeInteractionRef = useRef<ActiveResizeInteraction | null>(null);
   const [activeId, setActiveId] = useState<TileId | null>(null);
   const [overId, setOverId] = useState<TileId | null>(null);
   const [activeResizeHandle, setActiveResizeHandle] = useState<ActiveResizeHandle | null>(null);
@@ -1436,6 +1520,15 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
       onConfigChangeRef.current(
         withChartRows(configRef.current, collapseAdjacentHalfWidthRows(nextRows)),
       );
+    },
+    [configRef, onConfigChangeRef],
+  );
+
+  const commitResizedRows = useCallback(
+    (nextRows: ReadonlyArray<CustomDashboardChartRow>) => {
+      // A resize explicitly chooses each row's width. Unlike a move, it must
+      // not normalize adjacent half-width rows back together before persisting.
+      onConfigChangeRef.current(withChartRows(configRef.current, nextRows));
     },
     [configRef, onConfigChangeRef],
   );
@@ -1652,6 +1745,7 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
   );
 
   const resetDragState = useCallback(() => {
+    activeResizeInteractionRef.current = null;
     setActiveId(null);
     setOverId(null);
     setActiveResizeHandle(null);
@@ -1688,13 +1782,19 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
           }
           return getCalculatedRowItemMinWidthPx(rowWidthPx, previewMinItemCount, rowGapPx);
         })();
-        setActiveResizeHandle(nextResizeHandle);
-        setActiveResizeDeltaX(0);
-        setActiveResizePreviewBounds({
+        const nextResizePreviewBounds = {
           widthPx: chartWidthPx,
           rowWidthPx,
           minWidthPx,
-        });
+        };
+        activeResizeInteractionRef.current = {
+          handle: nextResizeHandle,
+          deltaX: 0,
+          previewBounds: nextResizePreviewBounds,
+        };
+        setActiveResizeHandle(nextResizeHandle);
+        setActiveResizeDeltaX(0);
+        setActiveResizePreviewBounds(nextResizePreviewBounds);
         setActiveId((current) => (current === null ? current : null));
         setOverId((current) => (current === null ? current : null));
         return;
@@ -1703,6 +1803,7 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
       if (!source) {
         return;
       }
+      activeResizeInteractionRef.current = null;
       const nextActiveId = String(source.id);
       setActiveId((current) => (current === nextActiveId ? current : nextActiveId));
     },
@@ -1727,16 +1828,15 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
     [activeId, activeResizeHandle, chartRows],
   );
 
-  const handleDragMove = useCallback(
-    (event: DragMoveEvent) => {
-      if (!activeResizeHandle) {
-        return;
-      }
-      const deltaX = event.operation.position.delta.x;
-      setActiveResizeDeltaX((current) => (current === deltaX ? current : deltaX));
-    },
-    [activeResizeHandle],
-  );
+  const handleDragMove = useCallback((event: DragMoveEvent) => {
+    const activeResizeInteraction = activeResizeInteractionRef.current;
+    if (!activeResizeInteraction) {
+      return;
+    }
+    const deltaX = getResizeDragDeltaX(event.operation);
+    activeResizeInteractionRef.current = { ...activeResizeInteraction, deltaX };
+    setActiveResizeDeltaX((current) => (current === deltaX ? current : deltaX));
+  }, []);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -1744,17 +1844,18 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
         resetDragState();
         return;
       }
-      if (activeResizeHandle) {
+      const activeResizeInteraction = activeResizeInteractionRef.current;
+      if (activeResizeInteraction) {
         const resizeAction = getResizeActionForDrag(
           chartRows,
-          activeResizeHandle,
-          activeResizeDeltaX,
-          activeResizePreviewBounds,
+          activeResizeInteraction.handle,
+          activeResizeInteraction.deltaX,
+          activeResizeInteraction.previewBounds,
         );
         if (resizeAction) {
           const nextRows = applyResizeAction(chartRows, resizeAction);
           if (nextRows !== chartRows) {
-            commitRows(nextRows);
+            commitResizedRows(nextRows);
           }
         }
         resetDragState();
@@ -1777,14 +1878,7 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
         commitRows(nextRows);
       }
     },
-    [
-      activeResizeDeltaX,
-      activeResizeHandle,
-      activeResizePreviewBounds,
-      commitRows,
-      chartRows,
-      resetDragState,
-    ],
+    [commitResizedRows, commitRows, chartRows, resetDragState],
   );
 
   const getDropIndicator = useCallback(
@@ -1982,6 +2076,7 @@ const EditPageCanvas: FC<EditPageCanvasProps> = ({
                     chartPlacements={chartPlacements}
                     chartDragPreviewRows={chartDragPreviewRows}
                     activeChartDragId={activeId}
+                    activeResizeTileId={activeResizeHandle?.itemId ?? null}
                     summaryCardCount={summaryCards.length}
                     activeEmptySlotId={getEmptyChartSlotTarget(overId) ? overId : null}
                     isNarrowViewport={isNarrowViewport}

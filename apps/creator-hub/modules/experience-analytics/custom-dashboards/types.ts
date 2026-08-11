@@ -388,6 +388,12 @@ export type CustomDashboardMutationOptions = {
 
 export type CustomDashboardListResult = {
   readonly items: ReadonlyArray<CustomDashboardListItem>;
+  /**
+   * Server-authoritative edit capability returned with API-backed dashboard
+   * lists. Local-only services omit it because their mutation capability is
+   * determined by the active service provider instead.
+   */
+  readonly canEditCustomDashboards?: boolean;
   /** Hybrid mode: local-only copies shown in a separate manage-page section. */
   readonly localItems?: ReadonlyArray<CustomDashboardListItem>;
   /** Opaque cursor for the next server page; absent when there is no next page. */

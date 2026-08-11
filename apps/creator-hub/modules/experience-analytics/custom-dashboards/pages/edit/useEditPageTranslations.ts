@@ -218,7 +218,7 @@ function useEditPageTranslations() {
     ),
     tileMenuEdit: tPendingTranslation(
       'Edit',
-      'Per-row action menu item that navigates to the dashboard editor.',
+      'Action label that opens the dashboard editor.',
       translationKey('Action.Edit', TranslationNamespace.Analytics),
     ),
     tileMenuDuplicate: tPendingTranslation(

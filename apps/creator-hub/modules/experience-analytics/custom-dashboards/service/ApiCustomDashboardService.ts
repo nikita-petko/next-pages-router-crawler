@@ -84,6 +84,7 @@ class ApiCustomDashboardService implements CustomDashboardService {
       });
       return {
         items: sortDashboardsForList(items),
+        canEditCustomDashboards: response.capabilities?.canEdit === true,
         migrationFailedCount: 0,
         nextPageToken: options ? (response.nextPageToken ?? undefined) : undefined,
       };
@@ -442,9 +443,11 @@ class ApiCustomDashboardService implements CustomDashboardService {
     universeId: number,
     pageToken?: string,
     accumulated: ReadonlyArray<ApiDashboardMetadata> = [],
+    canEditCustomDashboards?: boolean,
   ): Promise<{
     readonly dashboards: ReadonlyArray<ApiDashboardMetadata>;
     readonly nextPageToken?: string;
+    readonly capabilities?: { readonly canEdit?: boolean };
   }> {
     const response = await this.client.listDashboards(
       universeId,
@@ -452,9 +455,21 @@ class ApiCustomDashboardService implements CustomDashboardService {
     );
     const dashboards = [...accumulated, ...(response.dashboards ?? [])];
     const nextPageToken = response.nextPageToken ?? undefined;
+    const resolvedCanEditCustomDashboards =
+      canEditCustomDashboards ?? response.capabilities?.canEdit;
     return nextPageToken
-      ? this.listAllDashboards(universeId, nextPageToken, dashboards)
-      : { dashboards };
+      ? this.listAllDashboards(
+          universeId,
+          nextPageToken,
+          dashboards,
+          resolvedCanEditCustomDashboards,
+        )
+      : {
+          dashboards,
+          ...(resolvedCanEditCustomDashboards === undefined
+            ? {}
+            : { capabilities: { canEdit: resolvedCanEditCustomDashboards } }),
+        };
   }
 
   private emit(event: CustomDashboardServiceChangeEvent): void {

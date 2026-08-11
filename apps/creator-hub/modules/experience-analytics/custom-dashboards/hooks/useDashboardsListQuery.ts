@@ -2,14 +2,15 @@ import { useQuery } from '@tanstack/react-query';
 import { useFlag } from '@rbx/flags';
 import { isCustomDashboardsEnabled as isCustomDashboardsEnabledFlag } from '@generated/flags/creatorAnalytics';
 import {
-  useCustomDashboardService,
-  useCustomDashboardsBackendState,
+  useOptionalCustomDashboardService,
+  useOptionalCustomDashboardsBackendState,
 } from '../service/CustomDashboardServiceProvider';
 import type { CustomDashboardListOptions, CustomDashboardListResult } from '../types';
 import { LIST_STALE_TIME_MS, customDashboardQueryKeys } from './customDashboardsQueryConfig';
 
 type UseDashboardsListQueryOptions = CustomDashboardListOptions & {
   readonly enabled?: boolean;
+  readonly allowMissingProvider?: boolean;
 };
 
 /**
@@ -21,8 +22,8 @@ export function useDashboardsListQuery(
   universeId: number,
   options?: UseDashboardsListQueryOptions,
 ) {
-  const service = useCustomDashboardService();
-  const { isReady: isBackendReady } = useCustomDashboardsBackendState();
+  const service = useOptionalCustomDashboardService();
+  const { isReady: isBackendReady } = useOptionalCustomDashboardsBackendState();
   const { ready: isCustomDashboardsReady, value: isCustomDashboardsEnabled } = useFlag(
     isCustomDashboardsEnabledFlag,
     { universeId },
@@ -32,16 +33,28 @@ export function useDashboardsListQuery(
       ? { pageSize: options.pageSize, pageToken: options.pageToken }
       : undefined;
 
-  return useQuery<CustomDashboardListResult>({
+  const query = useQuery<CustomDashboardListResult>({
     queryKey: customDashboardQueryKeys.list(universeId, listOptions),
-    queryFn: () => service.list(universeId, listOptions),
+    queryFn: () => {
+      if (!service) {
+        throw new Error('Custom dashboard service is unavailable.');
+      }
+      return service.list(universeId, listOptions);
+    },
     staleTime: LIST_STALE_TIME_MS,
     enabled:
       isCustomDashboardsReady &&
       isCustomDashboardsEnabled &&
       isBackendReady &&
+      service !== null &&
       (options?.enabled ?? true) &&
       Number.isFinite(universeId) &&
       universeId > 0,
   });
+  if (!service && options?.allowMissingProvider !== true) {
+    throw new Error(
+      'useDashboardsListQuery() must be used within a CustomDashboardServiceProvider.',
+    );
+  }
+  return query;
 }

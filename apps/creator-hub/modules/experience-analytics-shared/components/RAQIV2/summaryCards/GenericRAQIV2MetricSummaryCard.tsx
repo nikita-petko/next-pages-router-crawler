@@ -28,6 +28,7 @@ export type GenericRAQIV2SummaryCardProps = {
   summaryType: RAQIV2CompoundSingleMetricSummaryType;
   label?: GenericRAQIV2SummaryLabel;
   labelText?: FormattedText;
+  truncateLabelWithTooltip?: boolean;
   ignoreCache?: boolean;
   fullWidth?: boolean;
   /**
@@ -45,6 +46,7 @@ const GenericRAQIV2MetricSummaryCard: FC<GenericRAQIV2SummaryCardProps> = ({
   summaryType,
   label,
   labelText,
+  truncateLabelWithTooltip,
   ignoreCache,
   fullWidth,
   showComparisonChip,
@@ -174,6 +176,7 @@ const GenericRAQIV2MetricSummaryCard: FC<GenericRAQIV2SummaryCardProps> = ({
       comparisonChip={comparisonChip}
       {...chartState}
       fullWidth={fullWidth}
+      truncateLabelWithTooltip={truncateLabelWithTooltip}
       styleConfig={RAQIV2SummaryCardStyle[RAQIV2SummaryCardType.TopBreakdown]}
     />
   );

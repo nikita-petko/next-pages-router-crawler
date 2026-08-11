@@ -1,6 +1,7 @@
 import type { FC, ReactNode } from 'react';
-import { useMemo } from 'react';
-import { Card, Grid, InfoOutlinedIcon, Tooltip, Typography } from '@rbx/ui';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
+import { Card, Grid, InfoOutlinedIcon, Tooltip as LegacyTooltip, Typography } from '@rbx/ui';
 import type { FormattedText } from '@modules/analytics-translations/types';
 import type { GenericChartState } from '../../charts/types/ChartTypes';
 import { noDataSymbol } from '../../components/MetricValue/MetricValue';
@@ -29,8 +30,69 @@ type GenericSummaryCardProps = {
   headerActions?: ReactNode;
   fullWidth?: boolean;
   fitContentWidth?: boolean;
+  truncateLabelWithTooltip?: boolean;
   styleConfig?: TCardStyleConfig;
 } & GenericChartState;
+
+const TruncatedSummaryCardLabel: FC<{ readonly label: FormattedText }> = ({ label }) => {
+  const labelRef = useRef<HTMLElement | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  const measureOverflow = useCallback((element: HTMLElement) => {
+    const nextIsOverflowing = element.scrollWidth > element.clientWidth;
+    setIsOverflowing((current) => (current === nextIsOverflowing ? current : nextIsOverflowing));
+  }, []);
+
+  const setLabelRef = useCallback(
+    (element: HTMLElement | null) => {
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
+      labelRef.current = element;
+      if (!element) {
+        return;
+      }
+
+      measureOverflow(element);
+      if (typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver(() => measureOverflow(element));
+        observer.observe(element);
+        resizeObserverRef.current = observer;
+      }
+    },
+    [measureOverflow],
+  );
+
+  useEffect(() => {
+    const element = labelRef.current;
+    if (element) {
+      measureOverflow(element);
+    }
+  }, [label, measureOverflow]);
+
+  useEffect(() => () => resizeObserverRef.current?.disconnect(), []);
+
+  const labelElement = (
+    <Typography
+      ref={setLabelRef}
+      component='span'
+      variant='body1'
+      className='grow-1 min-width-0 text-no-wrap text-truncate-end'
+      tabIndex={isOverflowing ? 0 : undefined}>
+      {label}
+    </Typography>
+  );
+
+  if (!isOverflowing) {
+    return labelElement;
+  }
+
+  return (
+    <Tooltip title={label} position='top-center'>
+      <TooltipTrigger asChild>{labelElement}</TooltipTrigger>
+    </Tooltip>
+  );
+};
 
 const GenericSummaryCard: FC<GenericSummaryCardProps> = ({
   label: { labelText: label, tooltip },
@@ -40,6 +102,7 @@ const GenericSummaryCard: FC<GenericSummaryCardProps> = ({
   headerActions,
   fullWidth,
   fitContentWidth,
+  truncateLabelWithTooltip,
   isDataLoading,
   isResponseFailed,
   isUserForbidden,
@@ -70,16 +133,20 @@ const GenericSummaryCard: FC<GenericSummaryCardProps> = ({
     () => (
       <div className={titleRow} data-testid='summary-card-title-row'>
         <div className={titleLabel}>
-          <Typography variant='body1'>{label}</Typography>
+          {truncateLabelWithTooltip ? (
+            <TruncatedSummaryCardLabel label={label} />
+          ) : (
+            <Typography variant='body1'>{label}</Typography>
+          )}
           {tooltip && (
-            <Tooltip
+            <LegacyTooltip
               title={tooltip}
               placement='top'
               arrow
               enterTouchDelay={0}
               leaveTouchDelay={3000}>
               <InfoOutlinedIcon fontSize='small' style={{ paddingLeft: 4 }} />
-            </Tooltip>
+            </LegacyTooltip>
           )}
         </div>
         {resolvedHeaderActions ? (
@@ -89,7 +156,15 @@ const GenericSummaryCard: FC<GenericSummaryCardProps> = ({
         ) : null}
       </div>
     ),
-    [headerActionsClass, label, resolvedHeaderActions, titleLabel, titleRow, tooltip],
+    [
+      headerActionsClass,
+      label,
+      resolvedHeaderActions,
+      titleLabel,
+      titleRow,
+      tooltip,
+      truncateLabelWithTooltip,
+    ],
   );
   const innerValueComponent =
     typeof value === 'string' ? (

@@ -17,7 +17,16 @@ const AnalyticsConfigSummaryCard: FC<RAQIV2PredefinedSummaryCardProps> = ({
   config,
   chartContext,
 }) => {
-  const { cardType, metric, summaryType, label, labelText, overrides, fullWidth } = config;
+  const {
+    cardType,
+    metric,
+    summaryType,
+    label,
+    labelText,
+    overrides,
+    fullWidth,
+    truncateLabelWithTooltip,
+  } = config;
 
   const chartSpec = useMemo(() => {
     return computeRAQIV2SpecOverride({ ...chartContext, metric }, overrides);
@@ -43,6 +52,7 @@ const AnalyticsConfigSummaryCard: FC<RAQIV2PredefinedSummaryCardProps> = ({
           summaryType={summaryType}
           label={label}
           labelText={labelText}
+          truncateLabelWithTooltip={truncateLabelWithTooltip}
           fullWidth={fullWidth}
           showComparisonChip={config.showComparisonChip}
         />

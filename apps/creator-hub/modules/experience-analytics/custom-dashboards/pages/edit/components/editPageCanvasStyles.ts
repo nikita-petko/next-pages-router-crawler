@@ -38,7 +38,7 @@ const emptySkeletonBorderStyle: CSSProperties = {
 // Figma node 2384-62450: summary cards use 24px gaps in the workspace.
 const SUMMARY_TILE_MIN_HEIGHT_PX = 95;
 export const SUMMARY_ROW_GAP_PX = WORKSPACE_GAP_PX;
-export const SUMMARY_TILE_MIN_WIDTH_PX = 190;
+export const SUMMARY_TILE_MIN_WIDTH_PX = 280;
 export const summaryTileConfiguredSizeStyle: CSSProperties = {
   minWidth: 0,
   width: '100%',

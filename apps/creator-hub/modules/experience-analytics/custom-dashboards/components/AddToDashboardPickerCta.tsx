@@ -1,4 +1,5 @@
-import { type ChangeEvent, type FC, useCallback, useState } from 'react';
+import { type ChangeEvent, type FC, type ReactNode, useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Button,
@@ -24,9 +25,14 @@ import { useDashboardsListQuery } from '../hooks/useDashboardsListQuery';
 import {
   useCanMutateCustomDashboards,
   useCustomDashboardService,
+  useCustomDashboardsBackendState,
 } from '../service/CustomDashboardServiceProvider';
 import CustomDashboardsShell from '../shell/CustomDashboardsShell';
-import { EMPTY_DASHBOARD_CONFIG, type ChartTileConfig } from '../types';
+import {
+  EMPTY_DASHBOARD_CONFIG,
+  type ChartTileConfig,
+  type CustomDashboardListItem,
+} from '../types';
 import { addChartTileToConfig } from '../utils/addChartTileToConfig';
 import { createTileId } from '../utils/createTileId';
 import LocalCopyBadge from './LocalCopyBadge';
@@ -41,13 +47,31 @@ const dialogContentStyle = { width: 'min(92vw, 34rem)', maxWidth: 'min(92vw, 34r
 const dashboardListScrollClassName =
   'flex flex-col gap-medium scroll-y max-height-[calc((var(--size-600)+var(--gap-medium))*15-var(--gap-medium))]';
 
-type AddToDashboardPickerCtaProps = {
+type AddToDashboardPickerCtaCommonProps = {
   readonly universeId: number;
   readonly capturedTile: ChartTileConfig | null;
   readonly isDisabled?: boolean;
   readonly disabledReason?: string;
   readonly onNavigateToDashboard?: (href: string) => void;
+  readonly onRequestOpenChange?: (requestOpen: (() => void) | null) => void;
+  readonly renderTrigger?: (props: {
+    readonly isDisabled: boolean;
+    readonly label: string;
+    readonly onClick: () => void;
+  }) => ReactNode;
 };
+
+type AddToDashboardPickerCtaProps = AddToDashboardPickerCtaCommonProps &
+  (
+    | {
+        readonly open: boolean;
+        readonly onOpenChange: (open: boolean) => void;
+      }
+    | {
+        readonly open?: never;
+        readonly onOpenChange?: never;
+      }
+  );
 
 type AddDashboardToast =
   | {
@@ -74,30 +98,34 @@ function getDashboardsManageHref(universeId: number): string {
   return `/dashboard/creations/experiences/${universeId}/analytics/dashboards`;
 }
 
-function defaultNavigateToDashboard(href: string): void {
-  window.location.href = href;
-}
-
 export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
   universeId,
   capturedTile,
   isDisabled = false,
   disabledReason,
-  onNavigateToDashboard = defaultNavigateToDashboard,
+  onNavigateToDashboard,
+  open,
+  onOpenChange,
+  onRequestOpenChange,
+  renderTrigger,
 }) => {
+  const router = useRouter();
   const { tPendingTranslation, translate } = useTranslationWrapper(useTranslation());
   const service = useCustomDashboardService();
   const canMutateDashboards = useCanMutateCustomDashboards();
+  const { isApiBacked } = useCustomDashboardsBackendState();
   const queryClient = useQueryClient();
   const { user } = useAuthentication();
   const listQuery = useDashboardsListQuery(universeId);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpenState, setIsOpenState] = useState(false);
   const [selectedDashboardIds, setSelectedDashboardIds] = useState<readonly string[]>([]);
   const [createNewDashboard, setCreateNewDashboard] = useState(false);
   const [newDashboardName, setNewDashboardName] = useState('');
   const [isSubmittingDestinationId, setIsSubmittingDestinationId] = useState<string | null>(null);
   const [writeError, setWriteError] = useState<unknown>(null);
   const [toast, setToast] = useState<AddDashboardToast | null>(null);
+  const isOpen = open ?? isOpenState;
+  const setIsOpen = onOpenChange ?? setIsOpenState;
 
   const addLabel = tPendingTranslation(
     'Add to dashboard',
@@ -178,15 +206,29 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
     'Snackbar action label after adding a chart to multiple dashboards.',
     translationKey('Action.OpenDashboardsAfterAdd', TranslationNamespace.Analytics),
   );
+  const noDashboardEditAccessLabel = tPendingTranslation(
+    "You don't have permission to change custom dashboards for this experience.",
+    'Write-failure notice shown on the manage page when the current user lacks permission for custom dashboard mutations.',
+    translationKey('Message.CustomDashboards.PermissionDenied', TranslationNamespace.Analytics),
+  );
 
   const serverDashboards = listQuery.data?.items ?? [];
   const dashboards = listQuery.data?.localItems
     ? [...listQuery.data.localItems, ...serverDashboards]
     : serverDashboards;
+  // API-backed lists carry the server's `canEdit` capability. In hybrid mode,
+  // browser-local copies remain writable even when server dashboards are not.
+  const canEditDashboard = (dashboard: CustomDashboardListItem): boolean =>
+    !isApiBacked ||
+    dashboard.hybridOrigin === 'localCopy' ||
+    listQuery.data?.canEditCustomDashboards === true;
   const canSubmit = !!capturedTile && !!user && !isDisabled && canMutateDashboards;
   const trimmedNewDashboardName = newDashboardName.trim();
   const willCreateNewDashboard = createNewDashboard || trimmedNewDashboardName.length > 0;
-  const hasSelection = selectedDashboardIds.length > 0 || willCreateNewDashboard;
+  const editableSelectedDashboardIds = selectedDashboardIds.filter((dashboardId) =>
+    dashboards.some((dashboard) => dashboard.id === dashboardId && canEditDashboard(dashboard)),
+  );
+  const hasSelection = editableSelectedDashboardIds.length > 0 || willCreateNewDashboard;
   const isSubmitting = isSubmittingDestinationId !== null;
   const canAddSelection = canSubmit && hasSelection && !isSubmitting;
 
@@ -213,8 +255,9 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
       return;
     }
 
-    const selectedDashboards = dashboards.filter((dashboard) =>
-      selectedDashboardIds.includes(dashboard.id),
+    const selectedDashboards = dashboards.filter(
+      (dashboard) =>
+        editableSelectedDashboardIds.includes(dashboard.id) && canEditDashboard(dashboard),
     );
     if (selectedDashboards.length === 0 && !willCreateNewDashboard) {
       return;
@@ -292,7 +335,7 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
     }
   };
 
-  const handleButtonClick = (): void => {
+  const handleButtonClick = useCallback((): void => {
     if (!canSubmit) {
       return;
     }
@@ -301,7 +344,12 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
     setNewDashboardName('');
     setWriteError(null);
     setIsOpen(true);
-  };
+  }, [canSubmit, setIsOpen]);
+
+  useEffect(() => {
+    onRequestOpenChange?.(handleButtonClick);
+    return () => onRequestOpenChange?.(null);
+  }, [handleButtonClick, onRequestOpenChange]);
 
   const toggleDashboardSelection = (dashboardId: string, isChecked: boolean): void => {
     setSelectedDashboardIds((currentIds) =>
@@ -325,7 +373,7 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
 
   const handleCancelClick = useCallback(() => {
     setIsOpen(false);
-  }, []);
+  }, [setIsOpen]);
 
   const handleToastClose = useCallback(() => {
     setToast(null);
@@ -333,9 +381,13 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
 
   const handleToastAction = useCallback(() => {
     if (toast?.kind === 'success') {
-      onNavigateToDashboard(toast.href);
+      if (onNavigateToDashboard) {
+        onNavigateToDashboard(toast.href);
+      } else {
+        void router.push(toast.href);
+      }
     }
-  }, [onNavigateToDashboard, toast]);
+  }, [onNavigateToDashboard, router, toast]);
 
   const button = (
     <Button
@@ -347,17 +399,22 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
       {addLabel}
     </Button>
   );
+  const trigger = renderTrigger
+    ? renderTrigger({ isDisabled: !canSubmit, label: addLabel, onClick: handleButtonClick })
+    : button;
 
   return (
     <>
-      {!canSubmit ? (
+      {renderTrigger ? (
+        trigger
+      ) : !canSubmit ? (
         <Tooltip title={disabledLabel} position='top-center'>
           <TooltipTrigger asChild>
-            <span>{button}</span>
+            <span>{trigger}</span>
           </TooltipTrigger>
         </Tooltip>
       ) : (
-        button
+        trigger
       )}
       <Dialog
         open={isOpen}
@@ -397,21 +454,36 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
               <div className='flex flex-col gap-medium'>
                 {dashboards.length > 0 ? (
                   <div className={dashboardListScrollClassName}>
-                    {dashboards.map((dashboard) => (
-                      <div key={dashboard.id} className='flex items-center gap-small min-width-0'>
+                    {dashboards.map((dashboard) => {
+                      const hasEditAccess = canEditDashboard(dashboard);
+                      const checkbox = (
                         <Checkbox
                           size='Medium'
                           placement='Start'
                           label={dashboard.name}
-                          isChecked={selectedDashboardIds.includes(dashboard.id)}
-                          isDisabled={!canSubmit || isSubmitting}
+                          isChecked={editableSelectedDashboardIds.includes(dashboard.id)}
+                          isDisabled={!canSubmit || isSubmitting || !hasEditAccess}
                           onCheckedChange={(nextChecked) => {
                             toggleDashboardSelection(dashboard.id, nextChecked === true);
                           }}
                         />
-                        {dashboard.hybridOrigin === 'localCopy' ? <LocalCopyBadge /> : null}
-                      </div>
-                    ))}
+                      );
+
+                      return (
+                        <div key={dashboard.id} className='flex items-center gap-small min-width-0'>
+                          {hasEditAccess ? (
+                            checkbox
+                          ) : (
+                            <Tooltip title={noDashboardEditAccessLabel} position='top-center'>
+                              <TooltipTrigger asChild>
+                                <div className='inline-flex'>{checkbox}</div>
+                              </TooltipTrigger>
+                            </Tooltip>
+                          )}
+                          {dashboard.hybridOrigin === 'localCopy' ? <LocalCopyBadge /> : null}
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : null}
                 <div className='flex flex-col gap-small shrink-0'>
@@ -423,7 +495,10 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
                     isDisabled={!canSubmit || isSubmitting}
                     onCheckedChange={handleCreateNewDashboardChange}
                   />
-                  <div className='padding-left-xlarge'>
+                  {/* A Medium Checkbox is `size-600` plus its `gap-medium` label offset. */}
+                  <div
+                    className='padding-left-[calc(var(--size-600)+var(--gap-medium))]'
+                    data-testid='new-dashboard-name-input'>
                     <TextInput
                       size='Medium'
                       placeholder={newDashboardNamePlaceholder}

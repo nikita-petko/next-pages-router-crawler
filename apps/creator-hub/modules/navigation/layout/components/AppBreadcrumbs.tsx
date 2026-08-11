@@ -10,6 +10,7 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import type { BreadcrumbItemDetails } from '../constants/BreadcrumbsItemConstants';
 import { RouterParseItemToBreadcrumbItemDetails } from '../constants/BreadcrumbsItemConstants';
+import BreadcrumbItemType from '../enums/BreadcrumbsItemType';
 import useAppBreadcrumbsData from '../hooks/useAppBreadcrumbsData';
 import useTopNavigationSidebarDrawer from '../hooks/useTopNavigationSidebarDrawer';
 import {
@@ -34,7 +35,7 @@ const itemPathCheck = (pathName: string, itemPath?: string) => {
 const AppBreadcrumbs: FunctionComponent<{ inLayoutHeader?: boolean }> = ({
   inLayoutHeader = false,
 }) => {
-  const { pathname } = useRouter();
+  const { pathname, query } = useRouter();
   const {
     classes: {
       linkStyle,
@@ -48,12 +49,24 @@ const AppBreadcrumbs: FunctionComponent<{ inLayoutHeader?: boolean }> = ({
   const isMobileView = useMediaQuery((theme) => theme.breakpoints.down('Medium'));
   const { gameDetails } = useCurrentGame();
 
-  const path = useMemo(() => pathname.split('/').filter((part) => !!part), [pathname]);
+  const path = useMemo(() => {
+    const isDashboardDetailRoute = pathname.includes('/analytics/dashboards/');
+    return pathname
+      .split('/')
+      .filter((part) => !!part)
+      .filter((part) => part !== 'analytics' || !isDashboardDetailRoute);
+  }, [pathname]);
 
   // NOTE (@mbae, 01/22/24): The translate function on displayNameParam is stale on startup
   // You should properly handle the case where the translate function doesn't return
   // a non-empty string.
   const { itemNameMapping, pathLinkParams, displayNameParam } = useAppBreadcrumbsData();
+  const dashboardId = typeof query.dashboardId === 'string' ? query.dashboardId : undefined;
+  const experienceId = typeof query.id === 'string' ? query.id : undefined;
+  const dashboardViewPath =
+    pathname.endsWith('/analytics/dashboards/[dashboardId]/edit') && experienceId && dashboardId
+      ? `/dashboard/creations/experiences/${experienceId}/analytics/dashboards/${dashboardId}`
+      : undefined;
 
   const createBreadcrumbContent = useCallback(
     (name: string, link?: string) => {
@@ -101,9 +114,15 @@ const AppBreadcrumbs: FunctionComponent<{ inLayoutHeader?: boolean }> = ({
         ? RouterParseItemToBreadcrumbItemDetails[currentItemDetail.parentItemTypeName]
         : null;
       const itemName = itemNameMapping[currentItemDetail.breadcrumbType];
-      const itemPath = currentItemDetail.getLinkPath?.(pathLinkParams);
+      const dashboardItemPath =
+        currentItemDetail.breadcrumbType === BreadcrumbItemType.AnalyticsCustomDashboards &&
+        dashboardViewPath
+          ? dashboardViewPath
+          : undefined;
+      const itemPath = dashboardItemPath ?? currentItemDetail.getLinkPath?.(pathLinkParams);
       const shouldHasItemPath =
-        itemType !== null ? currentItemDetail.breadcrumbType !== itemType.breadcrumbType : true;
+        dashboardItemPath !== undefined ||
+        (itemType !== null ? currentItemDetail.breadcrumbType !== itemType.breadcrumbType : true);
 
       return [
         itemType
@@ -120,7 +139,14 @@ const AppBreadcrumbs: FunctionComponent<{ inLayoutHeader?: boolean }> = ({
           : null,
       ];
     },
-    [itemNameMapping, pathLinkParams, createBreadcrumbContent, displayNameParam, pathname],
+    [
+      itemNameMapping,
+      pathLinkParams,
+      createBreadcrumbContent,
+      displayNameParam,
+      pathname,
+      dashboardViewPath,
+    ],
   );
 
   const breadcrumbItems = useMemo(
@@ -198,6 +224,29 @@ const AppBreadcrumbs: FunctionComponent<{ inLayoutHeader?: boolean }> = ({
           if (!name) {
             return acc;
           }
+          const parentItem = currentItem.parentItemTypeName
+            ? RouterParseItemToBreadcrumbItemDetails[currentItem.parentItemTypeName]
+            : null;
+          const itemName = itemNameMapping[currentItem.breadcrumbType];
+          const isDashboardItem =
+            currentItem.withId &&
+            currentItem.breadcrumbType === BreadcrumbItemType.AnalyticsCustomDashboards &&
+            parentItem !== null &&
+            itemName !== undefined;
+          if (isDashboardItem) {
+            const parentName = parentItem.displayName(displayNameParam);
+            return {
+              contents: [
+                ...acc.contents,
+                createBreadcrumbContent(
+                  parentName,
+                  itemPathCheck(pathname, parentItem.getLinkPath?.(pathLinkParams)),
+                ),
+                createBreadcrumbContent(itemName, dashboardViewPath),
+              ],
+              names: [...acc.names, parentName, itemName],
+            };
+          }
           return {
             contents: [
               ...acc.contents,
@@ -255,7 +304,9 @@ const AppBreadcrumbs: FunctionComponent<{ inLayoutHeader?: boolean }> = ({
     pathLinkParams,
     compactBreadCrumbLinkStyle,
     createBreadcrumbContent,
+    dashboardViewPath,
     handleItemWithId,
+    pathname,
   ]);
 
   const hubTitle = useMemo(() => breadcrumbNames[breadcrumbNames.length - 1], [breadcrumbNames]);

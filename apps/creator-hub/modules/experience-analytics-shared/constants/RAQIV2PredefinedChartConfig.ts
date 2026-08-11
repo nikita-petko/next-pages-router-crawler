@@ -316,6 +316,10 @@ const getConfigFromKeyOrConfig = (chartKeyOrConfig: ChartConfigOrPredefinedKey):
     : chartKeyOrConfig;
 };
 
+export const getChartConfigFromPredefinedChart = (
+  chartKeyOrConfig: ChartConfigOrPredefinedKey,
+): ChartConfig => getConfigFromKeyOrConfig(chartKeyOrConfig);
+
 /** We don't expose the entire config,
  * but we need to know which metrics are showing
  * so that we can implement explore mode based on the client config. */

@@ -94,6 +94,7 @@ class HybridCustomDashboardService implements CustomDashboardService {
     ]);
     return {
       items: apiResult.items.map(asServerItem),
+      canEditCustomDashboards: apiResult.canEditCustomDashboards,
       localItems: localResult.items.map(asLocalCopyItem),
       nextPageToken: apiResult.nextPageToken,
       migrationFailedCount: apiResult.migrationFailedCount + localResult.migrationFailedCount,

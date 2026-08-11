@@ -44,6 +44,7 @@ import type {
 } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
 import { getAPIMetricFromUIMetric } from '@modules/experience-analytics-shared/utils/getAPIMetricFromUIMetric';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
+import CustomDashboardBreadcrumbRegistration from '../../components/CustomDashboardBreadcrumbRegistration';
 import { CustomDashboardNotFoundError } from '../../errors';
 import { getChartRows, withChartRows } from '../../layout/dashboardLayout';
 import { appendTileAsRow, flattenRows, replaceTile } from '../../layout/rowLayout';
@@ -272,6 +273,9 @@ const ChartEditorPageContent: FC<ChartEditorPageContentProps> = ({
   return (
     <UniversePerformanceRaqiClientProvider>
       <AnalyticsContextLayerInnerProvider config={pageConfig}>
+        <CustomDashboardBreadcrumbRegistration
+          dashboardName={activeSession?.name ?? document?.name}
+        />
         <ChartEditorSurface
           dashboardId={dashboardId}
           document={document}
