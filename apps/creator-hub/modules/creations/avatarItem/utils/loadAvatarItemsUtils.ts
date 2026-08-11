@@ -10,7 +10,6 @@ import itemConfigurationApi, {
   BundleModerationStatus,
   ItemStatus,
 } from '@modules/clients/itemconfiguration';
-import type { LookType } from '@modules/clients/look';
 import lookClient from '@modules/clients/look';
 import { Asset, assetTypeToItemType, Item } from '@modules/miscellaneous/common';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
@@ -24,6 +23,7 @@ import { translateAssetType } from '../../unifiedFeeSystem/helper/UnifiedFeeSyst
 import type { AvatarItemDropdown } from '../constants/avatarItemConstants';
 import {
   BundleType,
+  FolderItemsApiLimit,
   GetItemsByCreatorApiLimit,
   UnfolderedDropdownOption,
 } from '../constants/avatarItemConstants';
@@ -178,7 +178,7 @@ export async function loadCreationsByCreator(
           ? mapNumericAssetTypeToAsset(itemAssetTypeNum)
           : assetTypeFound;
         const resolvedBundleType = isMixedTypes
-          ? translateBundleType(itemBundleTypeNum as BundleType | undefined)
+          ? translateBundleType(itemBundleTypeNum)
           : bundleType;
         const resolvedItemType = isMixedTypes
           ? itemIsBundle
@@ -246,7 +246,7 @@ export async function loadLooksByCreator(
   try {
     const { data, nextCursor } = await lookClient.getLooksByCuratorAndType(
       creatorId.toString(),
-      lookType as LookType,
+      lookType,
       GetItemsByCreatorApiLimit,
       cursor,
     );
@@ -295,7 +295,7 @@ export async function loadLooksByGroup(
   try {
     const { data, nextCursor } = await lookClient.getLooksByGroupAndType(
       groupId.toString(),
-      lookType as LookType,
+      lookType,
       GetItemsByCreatorApiLimit,
       cursor,
     );
@@ -352,10 +352,19 @@ export async function loadCreationsByFolder(
   const { avatarItem } = creationsParameters;
 
   let formattedData: CreationData[] = [];
+  let nextCursorResponse: string | undefined;
 
   try {
     if (avatarItem.folderId) {
-      const response = await itemConfigurationApi.getFolderItems(avatarItem.folderId);
+      const response = await itemConfigurationApi.getFolderItems(
+        avatarItem.folderId,
+        creationsParameters.cursor,
+        FolderItemsApiLimit,
+      );
+
+      // The API returns an empty cursor on the last page; normalize it to undefined so the grid
+      // stops paginating instead of re-requesting the same empty page forever.
+      nextCursorResponse = response.nextCursor === '' ? undefined : response.nextCursor;
 
       if (!response.items) {
         return { items: [], nextPageCursor: undefined };
@@ -410,5 +419,5 @@ export async function loadCreationsByFolder(
     formattedData = [];
   }
 
-  return { nextPageCursor: undefined, items: formattedData };
+  return { nextPageCursor: nextCursorResponse, items: formattedData };
 }

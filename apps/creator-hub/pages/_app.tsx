@@ -58,6 +58,7 @@ import {
 import { MetricsMonitoringProvider } from '@modules/miscellaneous/metricsMonitoring';
 import { PageHead } from '@modules/miscellaneous/pageMetadata';
 import ModerationOverlay from '@modules/moderation/components/ModerationOverlay';
+import UniversalFeatureRestrictionsProvider from '@modules/moderation/providers/UniversalFeatureRestrictionsProvider';
 import { DialogOutlet as MonetizationDialogOutlet } from '@modules/monetization-shared/dialog/outlet';
 import { SnackbarOutlet as MonetizationSnackbarOutlet } from '@modules/monetization-shared/snackbar/outlet';
 import { BreadcrumbItemNameProvider } from '@modules/navigation/layout/contexts/BreadcrumbItemNameContext';
@@ -118,7 +119,9 @@ const PageEventsTracker: React.FC = () => {
   return null;
 };
 
-const NavigationConfigsWithSettings: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
+const NavigationConfigsWithSettings: React.FC<{
+  children?: React.ReactNode;
+}> = ({ children }) => {
   const { settings, isFetched } = useSettings();
   return (
     <NavigationConfigsProvider
@@ -210,6 +213,7 @@ not change */
             <LeftNavigationStateProvider />,
             <CookieConsentProvider robloxSiteDomain={process.env.robloxSiteDomain} />,
             <AgeVerificationUpsellProvider />,
+            <UniversalFeatureRestrictionsProvider />,
             /* eslint-enable react/jsx-key -- NOTE(jcountryman, 05/06/24): This is manually managed and does
 not change */
           ]}>

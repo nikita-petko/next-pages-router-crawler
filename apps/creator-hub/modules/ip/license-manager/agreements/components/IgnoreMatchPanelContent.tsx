@@ -80,6 +80,8 @@ const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> =
 
   const ignoreButtonLabel = translate('Action.Ignore');
 
+  const ignoreMatchDescription = translate('Label.IgnoreMatchInfo');
+
   // Each option maps 1:1 to an IgnoreReason enum value; the enum name is what gets sent to the API.
   const ignoreReasonOptions: Array<{ reason: IgnoreReason; label: string }> = [
     {
@@ -125,6 +127,7 @@ const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> =
       onClose={onClose}
       buttons={ignoreReasonFooter}>
       <div className='flex flex-col gap-medium'>
+        <Typography variant='body1'>{ignoreMatchDescription}</Typography>
         <Typography variant='h6'>{translate('Label.IgnoreMatchReasonPrompt')}</Typography>
         <RadioGroup value={selectedIgnoreReason ?? ''} onChange={handleReasonChange}>
           {ignoreReasonOptions.map((option) => (

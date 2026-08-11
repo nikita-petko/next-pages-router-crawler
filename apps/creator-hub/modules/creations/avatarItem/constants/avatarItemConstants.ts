@@ -47,6 +47,8 @@ export const MarketplaceItemsApiLimit = 25;
 
 export const GetItemsByCreatorApiLimit = 30;
 
+export const FolderItemsApiLimit = 30;
+
 export enum BundleType {
   Unknown = 0,
   Body = 1,

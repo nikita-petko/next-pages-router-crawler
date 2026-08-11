@@ -408,15 +408,20 @@ const buildStandardRankDagRequest = ({
     (dimension) => !isDurationBucketDimension(dimension),
   );
   if (fetchTotalSeries && nonDurationBreakdowns.length > 0) {
+    const totalBreakdownSpecs =
+      durationBucketBreakdowns.length > 0
+        ? durationBucketBreakdowns.map(dimensionToRankBreakdownSpec)
+        : undefined;
+    const totalQueryConfig: RankQueryNodeConfig = {
+      metric,
+      breakdownSpecs: totalBreakdownSpecs,
+      filters,
+    };
     nodes.push(
       {
         id: RankQueryNodeId.Total,
         type: AceNodeType.Query,
-        queryConfig: {
-          metric,
-          breakdown: toAceQueryBreakdowns(durationBucketBreakdowns),
-          filters,
-        },
+        queryConfig: totalQueryConfig,
       },
       buildOutputNode(TOTAL_OUTPUT_NODE_ID, RankQueryNodeId.Total),
     );

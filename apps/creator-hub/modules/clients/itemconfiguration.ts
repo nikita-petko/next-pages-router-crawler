@@ -670,9 +670,15 @@ export class ItemConfigurationClient {
     return this.foldersApi.v1FoldersGet(request);
   }
 
-  getFolderItems(folderId: string): Promise<GetFolderItemsResponse> {
+  getFolderItems(
+    folderId: string,
+    cursor?: string,
+    limit?: number,
+  ): Promise<GetFolderItemsResponse> {
     const request: V1FoldersFolderIdItemsGetRequest = {
       folderId,
+      cursor,
+      limit,
     };
     return this.foldersApi.v1FoldersFolderIdItemsGet(request);
   }

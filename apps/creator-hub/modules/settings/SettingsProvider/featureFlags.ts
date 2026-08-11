@@ -9,7 +9,6 @@ import { resolveUrl } from '@rbx/env-utils';
 export enum FeatureFlagName {
   enableExample = 'enableExample',
   enableActivityFeedLocation = 'enableActivityFeedLocation',
-  enableUENSocialMentions = 'enableUENSocialMentions',
   enableShowOnlyPublishedPlaceVersions = 'enableShowOnlyPublishedPlaceVersions',
   isOldAutomaticTextCaptureDisabled = 'isOldAutomaticTextCaptureDisabled',
   enableMeshTextureApisToggle = 'enableMeshTextureApisToggle',
@@ -108,7 +107,6 @@ const defineFeatureFlagDefaults = <T extends { readonly [K in FeatureFlagName]: 
 export const featureFlagDefaults = defineFeatureFlagDefaults({
   [FeatureFlagName.enableExample]: false,
   [FeatureFlagName.enableActivityFeedLocation]: false,
-  [FeatureFlagName.enableUENSocialMentions]: false,
   [FeatureFlagName.enableShowOnlyPublishedPlaceVersions]: false,
   [FeatureFlagName.isOldAutomaticTextCaptureDisabled]: false,
   [FeatureFlagName.enableMeshTextureApisToggle]: false,

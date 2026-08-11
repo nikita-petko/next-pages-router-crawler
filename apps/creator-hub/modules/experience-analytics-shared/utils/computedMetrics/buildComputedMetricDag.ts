@@ -12,7 +12,6 @@ import {
   type MathNodeConfig,
   type OutputConfig,
   type QueryFilter,
-  type QueryBreakdown,
   type QueryNodeConfig,
   type RollingWindowConfig,
 } from '@rbx/client-analytics-query-gateway/v1';
@@ -294,15 +293,6 @@ const validateSourceLevelFilters = (source: PreparedComputedMetricSource) => {
   });
 };
 
-const toQueryBreakdowns = (
-  breakdown: RAQIV2UIQueryRequest['breakdown'],
-): QueryBreakdown[] | undefined => {
-  if (!breakdown || breakdown.length === 0) {
-    return undefined;
-  }
-  return breakdown.map((dimension) => ({ dimensions: [dimension] }));
-};
-
 const splitTopNBreakdownDimensions = (
   breakdown: readonly TRAQIV2Dimension[] | undefined,
 ): {
@@ -449,7 +439,7 @@ const mergeSourceAndDagLevelFilters = (
       deduped.push({
         ...filter,
         values: [...filter.values],
-      } as QueryFilter);
+      });
     }
   });
   return deduped;
@@ -460,8 +450,7 @@ type BranchBuildArgs = {
   preparedSources: readonly PreparedComputedMetricSource[];
   ast: FormulaAstNode;
   globalFilters: readonly RAQIV2QueryFilter[] | undefined;
-  branchBreakdown: QueryBreakdown[] | undefined;
-  rankBreakdownSpecs: RankBreakdownSpec[] | undefined;
+  breakdownSpecs: RankBreakdownSpec[] | undefined;
   outputNodeId: string;
   outputAlias: string;
   // Suffix to append to every generated node id so two branches can coexist in
@@ -486,8 +475,7 @@ const buildBranch = (args: BranchBuildArgs): void => {
     preparedSources,
     ast,
     globalFilters,
-    branchBreakdown,
-    rankBreakdownSpecs,
+    breakdownSpecs,
     outputNodeId,
     outputAlias,
     nodeIdSuffix,
@@ -509,10 +497,10 @@ const buildBranch = (args: BranchBuildArgs): void => {
     nodeByVariable.set(source.key, queryNodeId);
     const queryConfig: RankQueryNodeConfig = {
       metric: queryMetric,
-      breakdown: rankBreakdownSpecs?.length ? undefined : branchBreakdown,
+      breakdown: undefined,
       filters: mergeSourceAndDagLevelFilters(queryFilters, globalFilters),
       topN: undefined,
-      breakdownSpecs: rankBreakdownSpecs?.length ? rankBreakdownSpecs : undefined,
+      breakdownSpecs: breakdownSpecs?.length ? breakdownSpecs : undefined,
       pseudoDimensionValues: acePseudoDimensionValue ? [acePseudoDimensionValue] : undefined,
     };
 
@@ -639,12 +627,13 @@ export const buildComputedMetricDag = (
     ),
     ...topNConfigs.map(topNConfigToRankBreakdownSpec),
   ];
-  const queryBreakdowns = toQueryBreakdowns(realBreakdowns);
 
   const durationBucketBreakdowns = realBreakdowns.filter(isDurationBucketDimension);
   const nonDurationBreakdowns = realBreakdowns.filter((d) => !isDurationBucketDimension(d));
-  const totalBranchBreakdown =
-    durationBucketBreakdowns.length > 0 ? toQueryBreakdowns(durationBucketBreakdowns) : undefined;
+  const totalBreakdownSpecs =
+    durationBucketBreakdowns.length > 0
+      ? durationBucketBreakdowns.map(dimensionToRankBreakdownSpec)
+      : undefined;
 
   const globalFilters = request.filter?.filter(
     (f) =>
@@ -660,8 +649,7 @@ export const buildComputedMetricDag = (
     preparedSources,
     ast: parseResult.ast,
     globalFilters,
-    branchBreakdown: queryBreakdowns,
-    rankBreakdownSpecs,
+    breakdownSpecs: rankBreakdownSpecs,
     outputNodeId: MAIN_OUTPUT_NODE_ID,
     outputAlias: outputAliasBase,
     nodeIdSuffix: '',
@@ -673,13 +661,13 @@ export const buildComputedMetricDag = (
   // keep duration bucket dimensions so duration adapters still receive bucketed
   // rows. Gates:
   //   - Caller opt-in (`includeTotalBranch`).
-  //   - Real ACE breakdown present (`queryBreakdowns`).
+  //   - Real ACE breakdown present (`rankBreakdownSpecs`).
   //   - Non-duration segmentation exists to strip (`nonDurationBreakdowns`), or
   //     we would only duplicate the duration axes (standard flow skips total).
   //   - No metric-fanout pseudo-dimension in the UI breakdown (see above).
   const shouldEmitTotalBranch =
     options.includeTotalBranch &&
-    queryBreakdowns !== undefined &&
+    rankBreakdownSpecs.length > 0 &&
     nonDurationBreakdowns.length > 0 &&
     !hasMetricFanoutBreakdown(request.breakdown);
 
@@ -689,8 +677,7 @@ export const buildComputedMetricDag = (
       preparedSources,
       ast: parseResult.ast,
       globalFilters,
-      branchBreakdown: totalBranchBreakdown,
-      rankBreakdownSpecs: undefined,
+      breakdownSpecs: totalBreakdownSpecs,
       outputNodeId: TOTAL_OUTPUT_NODE_ID,
       outputAlias: `${outputAliasBase}_total`,
       nodeIdSuffix: TOTAL_BRANCH_SUFFIX,
