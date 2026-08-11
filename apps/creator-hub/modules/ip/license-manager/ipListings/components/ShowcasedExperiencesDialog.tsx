@@ -224,6 +224,17 @@ const ShowcasedExperiencesDialog = ({
     closeDialog('cancel');
   };
 
+  const handleDeselectAll = () => {
+    logEvent(
+      LicenseManagerClickEvent.IphListingsDetailsPageDeselectAllShowcasedExperiencesClickEvent,
+      {
+        listingId,
+        selectedCount: selectedUniverseIds.length,
+      },
+    );
+    setSelectedUniverseIds([]);
+  };
+
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
       closeDialog('dismiss');
@@ -318,6 +329,23 @@ const ShowcasedExperiencesDialog = ({
   );
   const cancelLabel = translate(translationKey('Action.Cancel', TranslationNamespace.Controls));
   const addLabel = translate(translationKey('Action.Add', TranslationNamespace.Controls));
+  const deselectAllLabel = tPendingTranslation(
+    'Deselect all',
+    'Action to deselect all spotlighted creations in the selection dialog',
+    translationKey('Action.DeselectAll', TranslationNamespace.AgreementsManager),
+  );
+  const selectedCountLabel = tPendingTranslation(
+    '{selectedCount}/{maxSelections} selected.',
+    'Count of experiences selected for an IP listing showcase',
+    translationKey(
+      'Label.ShowcasedExperiencesSelectedCount',
+      TranslationNamespace.AgreementsManager,
+    ),
+    {
+      selectedCount: selectedUniverseIds.length.toString(),
+      maxSelections: MAX_SHOWCASE_SELECTIONS.toString(),
+    },
+  );
   const saveErrorMessage = tPendingTranslation(
     "We couldn't save your selections. Try again.",
     'Error shown when showcased experience selections could not be saved',
@@ -379,6 +407,17 @@ const ShowcasedExperiencesDialog = ({
       );
     }
   }, [failedShowcaseRequest, isContentError, listingId, logEvent]);
+  useEffect(() => {
+    if (open && hasSelectedInvalidUniverse) {
+      logEvent(
+        LicenseManagerImpressionEvent.IphListingsDetailsPageInvalidShowcasedExperiencesWarningImpressionEvent,
+        {
+          listingId,
+          surface: 'dialog',
+        },
+      );
+    }
+  }, [hasSelectedInvalidUniverse, listingId, logEvent, open]);
 
   return (
     <Dialog
@@ -394,6 +433,7 @@ const ShowcasedExperiencesDialog = ({
               {title}
             </DialogTitle>
             <p className='text-body-medium content-default margin-none'>{description}</p>
+            <p className='text-body-medium content-default margin-none'>{selectedCountLabel}</p>
           </div>
           {isContentLoading ? (
             <div
@@ -552,6 +592,11 @@ const ShowcasedExperiencesDialog = ({
             </p>
           </div>
           <div className='flex gap-small justify-end width-full'>
+            {selectedUniverseIds.length > 0 ? (
+              <Button variant='Link' size='Medium' onClick={handleDeselectAll}>
+                {deselectAllLabel}
+              </Button>
+            ) : null}
             <Button
               variant='Emphasis'
               size='Medium'

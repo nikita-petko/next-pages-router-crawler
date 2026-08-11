@@ -22,18 +22,13 @@ import { logProductArchiveClick } from '@modules/monetization-shared/archive-dia
 import { Tooltip } from '@modules/monetization-shared/tooltip';
 import { useIsHovered } from '@modules/monetization-shared/useIsHovered';
 import type { GamePass } from '../types';
-import { isPassEligibleForRegionalPricing } from '../utils/passesUtils';
 import { openGamePassArchiveDialog } from './GamePassArchiveDialog';
 import { PassesTableRowCheckbox } from './PassesTableCheckbox';
 
 type Props = GamePass & {
   universeId: number;
-  showManagedPricing?: boolean;
-  showPriceOptimization?: boolean;
   /** `undefined` = archive feature off; `false` = active tab; `true` = archived tab. */
   showArchived?: boolean;
-  onToggleRegionalPricing: (passId: number, enabled: boolean) => void;
-  disableToggleRegionalPricing?: boolean;
 };
 
 const getConfigurePassLink = dashboard.getConfigurePassUrl;
@@ -129,12 +124,9 @@ function ArchiveMenuItem({
 function MoreItemOptionsMenu({
   configureUrl,
   universeId,
-  showManagedPricing,
   showArchived,
-  onToggleRegionalPricing,
-  disableToggleRegionalPricing,
   ...pass
-}: Omit<Props, 'showPriceOptimization'> & { configureUrl: string }) {
+}: Props & { configureUrl: string }) {
   const { translate } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -147,11 +139,6 @@ function MoreItemOptionsMenu({
     void navigator.clipboard.writeText(pass.thumbnailId.toString());
     setIsOpen(false);
   }, [pass.thumbnailId]);
-
-  const handleToggleRegionalPricing = useCallback(() => {
-    onToggleRegionalPricing(pass.passId, !pass.isRegionalPricingEnabled);
-    setIsOpen(false);
-  }, [onToggleRegionalPricing, pass.isRegionalPricingEnabled, pass.passId]);
 
   const handleCloseMenu = useCallback(() => setIsOpen(false), []);
 
@@ -183,18 +170,6 @@ function MoreItemOptionsMenu({
               title={translate('Action.CopyThumbnailID')}
               onSelect={handleCopyThumbnailId}
             />
-            {!showManagedPricing && !showArchived && isPassEligibleForRegionalPricing(pass) && (
-              <MenuItem
-                disabled={disableToggleRegionalPricing}
-                value='toggle-regional-pricing'
-                onSelect={handleToggleRegionalPricing}
-                title={
-                  pass.isRegionalPricingEnabled
-                    ? translate('Action.DisableRegionalPricing')
-                    : translate('Action.EnableRegionalPricing')
-                }
-              />
-            )}
             {showArchived !== undefined && (
               <ArchiveMenuItem
                 universeId={universeId}
@@ -210,15 +185,7 @@ function MoreItemOptionsMenu({
   );
 }
 
-function PassesTableRow({
-  universeId,
-  showManagedPricing,
-  showPriceOptimization,
-  showArchived,
-  onToggleRegionalPricing,
-  disableToggleRegionalPricing,
-  ...item
-}: Props) {
+function PassesTableRow({ universeId, showArchived, ...item }: Props) {
   const { translate } = useTranslation();
   const { locale } = useLocalization();
 
@@ -272,30 +239,12 @@ function PassesTableRow({
           {item.isForSale && (
             <Badge
               label={
-                (showManagedPricing ? item.isManagedPricingEnabled : item.isRegionalPricingEnabled)
+                item.isManagedPricingEnabled
                   ? translate('Label.Enabled')
                   : translate('Label.Disabled')
               }
-              variant={
-                (showManagedPricing ? item.isManagedPricingEnabled : item.isRegionalPricingEnabled)
-                  ? 'Neutral'
-                  : 'Warning'
-              }
+              variant={item.isManagedPricingEnabled ? 'Neutral' : 'Warning'}
               className='flex justify-center min-width-1600'
-            />
-          )}
-        </TableCell>
-      )}
-      {!showArchived && !showManagedPricing && showPriceOptimization && (
-        <TableCell>
-          {item.isForSale && (
-            <Badge
-              label={
-                item.isInActivePriceOptimizationExperiment
-                  ? translate('Label.Active')
-                  : translate('Label.Inactive')
-              }
-              variant={item.isInActivePriceOptimizationExperiment ? 'Contrast' : 'Neutral'}
             />
           )}
         </TableCell>
@@ -311,10 +260,7 @@ function PassesTableRow({
         <MoreItemOptionsMenu
           configureUrl={configureUrl}
           universeId={universeId}
-          showManagedPricing={showManagedPricing}
           showArchived={showArchived}
-          onToggleRegionalPricing={onToggleRegionalPricing}
-          disableToggleRegionalPricing={disableToggleRegionalPricing}
           {...item}
         />
       </TableCell>

@@ -2,7 +2,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useTranslation } from '@rbx/intl';
 import { withManagedPricingSubmitGuard } from '@modules/managed-pricing/dialogs/withManagedPricingSubmitGuard';
-import { isManagedPricingAvailable } from '@modules/managed-pricing/hooks/useIsManagedPricingAvailable';
 import type { ManagedPricingOnboardingStatus } from '@modules/managed-pricing/types';
 import {
   openRequestErrorDialog,
@@ -23,19 +22,10 @@ import TableControls from '@modules/monetization-shared/table-v1/TableControls';
 import type { TTableControlsProps } from '@modules/monetization-shared/table-v1/TableControls';
 import { useCurrentPage } from '@modules/monetization-shared/table-v1/useCurrentPage';
 import { useTablePagination } from '@modules/monetization-shared/table-v1/useTablePagination';
-import { useSimpleDialog } from '@modules/monetization-shared/useSimpleDialog';
 import { useTokenizedSearch } from '@modules/monetization-shared/useTokenizedSearch';
-import RegionalPricingDisclaimerModal, {
-  useRegionalPricingDisclaimer,
-} from '@modules/regional-pricing/components/RegionalPricingDisclaimerModal/RegionalPricingDisclaimerModal';
-import BulkDisableRegionalPricingDialog from '@modules/regional-pricing/dialogs/BulkDisableRegionalPricingDialog';
-import BulkEnableRegionalPricingDialog from '@modules/regional-pricing/dialogs/BulkEnableRegionalPricingDialog';
 import { useBatchUpdateGamePassesManagedPricing } from '../queries/useBatchUpdateGamePassesManagedPricing';
-import { useBulkUpdateRegionalPricingForPasses } from '../queries/useBulkUpdateRegionalPricingForPasses';
 import type { GamePass } from '../types';
-import { isPassEligibleForRegionalPricing } from '../utils/passesUtils';
 import { sortPasses } from '../utils/sortPasses';
-import PassesActionBar from './PassesActionBar';
 import PassesActionBarV2 from './PassesActionBarV2';
 import PassesTableBase from './PassesTableBase';
 import PassesTableRow from './PassesTableRow';
@@ -46,12 +36,11 @@ const SEARCH_FIELDS = ['name', 'passId'] as const satisfies readonly (keyof Game
 
 const getPassId = (pass: GamePass) => pass.passId;
 const isPassSelectable = (pass: GamePass): boolean | string =>
-  isPassEligibleForRegionalPricing(pass) || pass.isSelectableForManagedPricing || 'NotEligible';
+  pass.isSelectableForManagedPricing || 'NotEligible';
 
 type Props = {
   universeId: number;
   passes: GamePass[];
-  showPriceOptimization?: boolean;
   showArchived?: boolean;
   managedPricingOnboardingStatus?: ManagedPricingOnboardingStatus;
   initialRowsPerPage?: number;
@@ -65,29 +54,9 @@ function PassesTableControls(props: Omit<TTableControlsProps, 'numSelected' | 'm
   return <TableControls numSelected={numSelected} {...props} />;
 }
 
-// TODO(jeminpark): this is a minor optimization to subscribe bulk dialogs to the selection store,
-// should migrate to action-based dialog with foundation when we integrate managed pricing.
-function BulkEnableDialogMessage() {
-  const { translate } = useTranslation();
-  const { numSelected } = useSelectionStats();
-
-  return (
-    <>
-      {pluralize(
-        numSelected,
-        translate('Message.EnableSinglePassForRegionalPricing'),
-        translate('Message.EnableMultiplePassesForRegionalPricing', {
-          number: numSelected.toString(),
-        }),
-      )}
-    </>
-  );
-}
-
 function PassesTable({
   universeId,
   passes,
-  showPriceOptimization = false,
   showArchived,
   managedPricingOnboardingStatus,
   initialRowsPerPage = DEFAULT_ROWS_PER_PAGE,
@@ -95,8 +64,6 @@ function PassesTable({
   isArchiveEnabled,
 }: Props) {
   const { translate } = useTranslation();
-
-  const showManagedPricing = isManagedPricingAvailable(managedPricingOnboardingStatus);
 
   const {
     searchQuery,
@@ -130,28 +97,6 @@ function PassesTable({
     },
   );
 
-  const bulkEnableRegionalPricingDialog = useSimpleDialog();
-  const bulkDisableRegionalPricingDialog = useSimpleDialog();
-
-  const { mutateAsync: bulkUpdateRegionalPricing, isPending: isBulkUpdateRegionalPricingPending } =
-    useBulkUpdateRegionalPricingForPasses(
-      { universeId },
-      {
-        onSettled: () => {
-          bulkEnableRegionalPricingDialog.close();
-          bulkDisableRegionalPricingDialog.close();
-        },
-        onPartialFailure: (errors, { passIds }) => {
-          if (passIds.length > 1) {
-            openPartialFailuresDialog({ count: errors.length });
-          } else {
-            openRequestErrorDialog();
-          }
-        },
-        onError: () => openRequestErrorDialog(),
-      },
-    );
-
   const { mutateAsync: batchUpdateManagedPricing, isPending: isBatchUpdateManagedPricingPending } =
     useBatchUpdateGamePassesManagedPricing(
       { universeId },
@@ -166,89 +111,6 @@ function PassesTable({
         onError: () => openRequestErrorDialog(),
       },
     );
-
-  const { withDisclaimer: withRegionalPricingDisclaimer } =
-    useRegionalPricingDisclaimer(universeId);
-
-  const handleSingleToggleRegionalPricing = useCallback(
-    async (passId: number, enabled: boolean) => {
-      await withRegionalPricingDisclaimer(
-        () =>
-          bulkUpdateRegionalPricing(
-            { passIds: [passId], enabled },
-            {
-              onSuccess: ({ errors }) => {
-                if (!errors?.length) {
-                  toast({ title: translate('Message.SuccessfullyUpdatedGamePass') });
-                }
-              },
-            },
-          ).catch(() => {}),
-        { enabled },
-      );
-    },
-    [withRegionalPricingDisclaimer, bulkUpdateRegionalPricing, translate],
-  );
-
-  const handleBulkToggleRegionalPricing = useCallback(
-    async (enabled: boolean) => {
-      const selectedPasses = selectionStore.getSelectedViewableItems();
-      const passIds = selectedPasses.map(getPassId);
-      /* istanbul ignore if -- guarding for completeness */
-      if (selectedPasses.length === 0) {
-        return;
-      }
-
-      setIsBulkUpdatePending(true);
-      try {
-        const { errors } = await bulkUpdateRegionalPricing(
-          { passIds, enabled },
-          { onSuccess: selectionStore.reset },
-        );
-
-        const successCount = passIds.length - (errors?.length ?? 0);
-        if (successCount > 0) {
-          const message = pluralize(
-            successCount,
-            translate('Message.SuccessfullyUpdatedSingleGamePass'),
-            translate('Message.SuccessfullyUpdatedMultipleGamePasses', {
-              count: successCount.toString(),
-            }),
-          );
-          toast({ title: message });
-        }
-      } finally {
-        setIsBulkUpdatePending(false);
-      }
-    },
-    [selectionStore, bulkUpdateRegionalPricing, translate],
-  );
-
-  const handleBulkEnableRegionalPricing = useCallback(
-    () => handleBulkToggleRegionalPricing(true),
-    [handleBulkToggleRegionalPricing],
-  );
-
-  const handleBulkDisableRegionalPricing = useCallback(
-    () => handleBulkToggleRegionalPricing(false),
-    [handleBulkToggleRegionalPricing],
-  );
-
-  const handleClickRegionalPricingBulkEnable = useCallback(() => {
-    void withRegionalPricingDisclaimer(bulkEnableRegionalPricingDialog.open);
-  }, [withRegionalPricingDisclaimer, bulkEnableRegionalPricingDialog.open]);
-
-  const handleBulkAction = useCallback(
-    (action: Exclude<BulkToggleAction, 'none'>) => {
-      const callback =
-        action === 'enabling'
-          ? handleClickRegionalPricingBulkEnable
-          : bulkDisableRegionalPricingDialog.open;
-
-      callback();
-    },
-    [handleClickRegionalPricingBulkEnable, bulkDisableRegionalPricingDialog.open],
-  );
 
   const performBulkUpdateManagedPricing = useCallback(
     async (passIds: number[], enabled: boolean) => {
@@ -305,23 +167,11 @@ function PassesTable({
         <PassesTableRow
           key={pass.passId}
           universeId={universeId}
-          showManagedPricing={showManagedPricing}
-          showPriceOptimization={showPriceOptimization}
           showArchived={showArchived}
-          onToggleRegionalPricing={handleSingleToggleRegionalPricing}
-          disableToggleRegionalPricing={isBulkUpdatePending}
           {...pass}
         />
       )),
-    [
-      currentPage,
-      universeId,
-      showManagedPricing,
-      showPriceOptimization,
-      showArchived,
-      handleSingleToggleRegionalPricing,
-      isBulkUpdatePending,
-    ],
+    [currentPage, universeId, showArchived],
   );
 
   return (
@@ -337,7 +187,7 @@ function PassesTable({
           />
         )}
 
-        {!showArchived && showManagedPricing && (
+        {!showArchived && (
           <PassesActionBarV2
             // The chips row above supplies the gap once archiving is on.
             className={
@@ -352,31 +202,7 @@ function PassesTable({
           />
         )}
 
-        {!showArchived && !showManagedPricing && (
-          <PassesActionBar
-            className='margin-top-[8px]'
-            universeId={universeId}
-            onBulkAction={handleBulkAction}
-            isBulkActionDisabled={isBulkUpdateRegionalPricingPending}
-            isBulkActionPending={isBulkUpdatePending}
-          />
-        )}
-
-        {!showManagedPricing && !showArchived && (
-          <PassesTableControls
-            rowsPerPageOptions={rowsPerPageOptions}
-            count={searchedPasses.length}
-            page={page}
-            rowsPerPage={rowsPerPage}
-            onPageChange={onPageChange}
-            onRowsPerPageChange={onRowsPerPageChange}
-            className='padding-y-small'
-          />
-        )}
-
         <PassesTableBase
-          showPriceOptimization={showPriceOptimization}
-          showManagedPricing={showManagedPricing}
           showArchived={showArchived}
           sortColumn={sortColumn}
           sortOrder={sortOrder}
@@ -394,31 +220,6 @@ function PassesTable({
           className='padding-y-small'
         />
       </section>
-
-      {!showManagedPricing && !showArchived && (
-        <RegionalPricingDisclaimerModal universeId={universeId} />
-      )}
-
-      {!showManagedPricing && !showArchived && (
-        <BulkEnableRegionalPricingDialog
-          isOpen={bulkEnableRegionalPricingDialog.isOpen}
-          onClose={bulkEnableRegionalPricingDialog.close}
-          onConfirm={handleBulkEnableRegionalPricing}
-          disabled={isBulkUpdateRegionalPricingPending}
-          loading={isBulkUpdatePending}>
-          <BulkEnableDialogMessage />
-        </BulkEnableRegionalPricingDialog>
-      )}
-
-      {!showManagedPricing && !showArchived && (
-        <BulkDisableRegionalPricingDialog
-          isOpen={bulkDisableRegionalPricingDialog.isOpen}
-          onClose={bulkDisableRegionalPricingDialog.close}
-          onConfirm={handleBulkDisableRegionalPricing}
-          disabled={isBulkUpdateRegionalPricingPending}
-          loading={isBulkUpdatePending}
-        />
-      )}
     </TableSelectionProvider>
   );
 }

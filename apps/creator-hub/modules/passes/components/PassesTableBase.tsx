@@ -9,8 +9,6 @@ import type { SortableColumn } from '../types';
 import { PassesTableHeaderCheckbox } from './PassesTableCheckbox';
 
 type Props = {
-  showPriceOptimization: boolean;
-  showManagedPricing?: boolean;
   showArchived?: boolean;
   sortColumn: SortableColumn | undefined;
   sortOrder: SortOrder;
@@ -18,8 +16,6 @@ type Props = {
 };
 
 function PassesTableBase({
-  showPriceOptimization,
-  showManagedPricing,
   showArchived,
   sortColumn,
   sortOrder,
@@ -66,35 +62,11 @@ function PassesTableBase({
             />
           )}
 
-          {!showArchived && showManagedPricing && (
+          {!showArchived && (
             <SortableTableHeader
               column='managedPricing'
               label={translate('Label.ManagedPricing')}
               sx={{ minWidth: '170px' }}
-              activeColumn={sortColumn}
-              sortOrder={sortOrder}
-              onSort={onSort}
-            />
-          )}
-
-          {!showArchived && !showManagedPricing && (
-            <SortableTableHeader
-              column='regionalPricing'
-              label={translate('Heading.RegionalPricing')}
-              tooltipDescription={translate('Tooltip.RegionalPricingForPasses')}
-              sx={{ minWidth: '190px' }}
-              activeColumn={sortColumn}
-              sortOrder={sortOrder}
-              onSort={onSort}
-            />
-          )}
-
-          {!showArchived && !showManagedPricing && showPriceOptimization && (
-            <SortableTableHeader
-              column='priceOptimization'
-              label={translate('Heading.PriceOptimization')}
-              tooltipDescription={translate('Tooltip.PriceOptimizationForPasses')}
-              sx={{ minWidth: '200px' }}
               activeColumn={sortColumn}
               sortOrder={sortOrder}
               onSort={onSort}

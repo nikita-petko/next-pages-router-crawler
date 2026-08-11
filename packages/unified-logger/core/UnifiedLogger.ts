@@ -1,4 +1,3 @@
-import type { NotApprovedPageEventProperties } from '@rbx/not-approved-page-events';
 import type { BaseEvent } from '../event';
 import {
   PageLoadEvent,
@@ -16,7 +15,6 @@ import { CreatorWebEventLogger, HostRoutedEventStreamLogger } from '../eventLogg
 import ConsoleEventLogger from '../eventLogger/ConsoleEventLogger';
 import type EventLogger from '../eventLogger/EventLogger';
 import type { HostRoutedEventProperties } from '../eventLogger/HostRoutedEventStreamLogger';
-import NotApprovedPageEventLogger from '../eventLogger/NotApprovedPageEventLogger';
 import emitter from '../utils/emitter';
 import getCurrentUrl from '../utils/getCurrentUrl';
 import type { ISessionService } from '../utils/SessionService';
@@ -107,12 +105,6 @@ export default class UnifiedLogger {
   // EventStream sender for host-routed, feature-owned event envelopes.
   private hostRoutedEventStreamLogger: HostRoutedEventStreamLogger;
 
-  // (DEPRECATED) - Will be removed once the external NAP consumer migrates to logHostRoutedEvent.
-  // dedicated logger for NotApprovedPageEvent — not added to eventLoggers[] because
-  // that list is fan-out and this logger targets a single, purpose-built event shape.
-  // oxlint-disable-next-line typescript/no-deprecated -- intentional backwards-compatibility wiring
-  private notApprovedPageEventLogger: NotApprovedPageEventLogger;
-
   private disableSession: boolean;
 
   // used to skip accidental duplicated pageload event
@@ -151,10 +143,6 @@ export default class UnifiedLogger {
       this.eventLoggers.push(new ConsoleEventLogger());
     }
     this.hostRoutedEventStreamLogger = new HostRoutedEventStreamLogger({
-      eventBaseUrl,
-    });
-    // oxlint-disable-next-line typescript/no-deprecated -- intentional backwards-compatibility wiring
-    this.notApprovedPageEventLogger = new NotApprovedPageEventLogger({
       eventBaseUrl,
     });
     this.disableSession = disableSession;
@@ -407,21 +395,6 @@ export default class UnifiedLogger {
       eventType,
       context,
       properties: { ...hostProperties, ...properties },
-      sessionId,
-      currentUrl,
-    });
-  }
-
-  /**
-   * @deprecated Superseded by {@link UnifiedLogger.logHostRoutedEvent}, which routes a
-   * host-supplied envelope to CreatorDashboard without importing feature semantics.
-   * Will be removed once the external NAP consumer migrates to logHostRoutedEvent.
-   */
-  logNotApprovedPageEvent(properties: NotApprovedPageEventProperties): void {
-    const currentUrl = getCurrentUrl();
-    const sessionId = this.sessionService.getOrCreateSessionId();
-    this.notApprovedPageEventLogger.logNotApprovedPageEvent({
-      properties,
       sessionId,
       currentUrl,
     });
