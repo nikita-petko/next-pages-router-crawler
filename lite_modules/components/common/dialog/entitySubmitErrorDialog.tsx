@@ -36,6 +36,7 @@ const EntitySubmitErrorDialog = ({
 }: EntitySubmitErrorDialogProps): ReactElement => {
   const { translate: translateError } = useNamespacedTranslation(TranslationNamespace.Error);
   const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
+  const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const errorCode = errorResponse?.error?.code;
   const errorMessage = errorResponse?.error?.message;
 
@@ -93,6 +94,9 @@ const EntitySubmitErrorDialog = ({
       break;
     case ErrorCodes.FORBIDDEN_ACTION:
       body = translateError('Description.ForbiddenImpersonation');
+      break;
+    case ErrorCodes.UNIVERSE_NOT_ELIGIBLE:
+      body = translateCampaign('Description.UniverseNotEligible');
       break;
     case ErrorCodes.MULTIPLE_UNIVERSES:
       body = (

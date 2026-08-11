@@ -54,7 +54,10 @@ import {
   ResetFormRecommendations,
 } from '@utils/campaignBuilder';
 import { MicroUsdToUsd } from '@utils/currency';
-import { SelectObjectiveEligibilityForUniverse } from '@utils/eligibility';
+import {
+  SelectIsUniverseIneligible,
+  SelectObjectiveEligibilityForUniverse,
+} from '@utils/eligibility';
 import { GetTimezoneObjFromEnum, GetValidatedTimezoneDbName } from '@utils/timezone';
 
 interface ExperienceSectionProps {
@@ -198,6 +201,10 @@ const ExperienceSection = ({ advancedTargetingFormMethods }: ExperienceSectionPr
     name: FormField.EXPERIENCE,
   });
   const { universe_name: universeName } = universeFilter;
+  const isUniverseIneligible = SelectIsUniverseIneligible(
+    eligibilityContext,
+    universeFilter?.universe_id,
+  );
   const campaignName = useWatch<FormType, typeof FormField.CAMPAIGN_NAME>({
     name: FormField.CAMPAIGN_NAME,
   });
@@ -505,7 +512,7 @@ const ExperienceSection = ({ advancedTargetingFormMethods }: ExperienceSectionPr
           ? `${universeFilter.universe_name} | ${campaignName}`
           : universeFilter.universe_name
       }
-      hasError={universeFilter.universe_id === warningUniverseId}
+      hasError={universeFilter.universe_id === warningUniverseId || isUniverseIneligible}
       isOpen={isAccordionOpen}
       onChange={setIsAccordionOpen}
       title={translate('Heading.Experience')}>
@@ -558,6 +565,13 @@ const ExperienceSection = ({ advancedTargetingFormMethods }: ExperienceSectionPr
             {translate('Description.ExperienceNoLongerEligible')}
           </span>
         )}
+      {isUniverseIneligible && (
+        <span
+          className={`text-body-medium content-system-warning ${spacedWarning}`}
+          data-testid='universe-ineligible-warning'>
+          {translate('Description.UniverseNotEligible')}
+        </span>
+      )}
     </FormAccordion>
   );
 };

@@ -24,3 +24,20 @@ export const SelectObjectiveEligibilityForUniverse = (
   }
   return request.data?.campaignEligibility.objectiveEligibility;
 };
+
+// True only when we have a settled, matching response that reports the given universe
+// as ineligible. Loading, error, and stale (different-universe) responses all return
+// false so we never block on unknown state.
+export const SelectIsUniverseIneligible = (
+  eligibilityContext: EligibilityContext | undefined,
+  universeId: number | undefined,
+): boolean => {
+  if (!universeId || universeId <= 0 || eligibilityContext?.universeId !== universeId) {
+    return false;
+  }
+  const request = eligibilityContext.response;
+  if (!request || request.isLoading || request.isError) {
+    return false;
+  }
+  return request.data?.universeEligibility?.eligible === false;
+};

@@ -14,9 +14,13 @@ export const UsdToString = (usdAmt: number) =>
 export const MicroUsdToUsdString = (microUsdAmt: number) => UsdToString(MicroUsdToUsd(microUsdAmt));
 
 export const MicroUsdToUsdStringRoundedDown = (microUsdAmt: number) => {
-  const usdAmt = MicroUsdToUsd(microUsdAmt);
-  const roundedUsdAmt = Math.floor(usdAmt * 100) / 100;
-  return UsdToString(roundedUsdAmt);
+  const roundedCents = Math.floor(microUsdAmt / (MICRO_USD_IN_USD / 100));
+  const sign = roundedCents < 0 ? '-' : '';
+  const absoluteCents = Math.abs(roundedCents);
+  const dollars = Math.floor(absoluteCents / 100).toLocaleString('en-US');
+  const cents = String(absoluteCents % 100).padStart(2, '0');
+
+  return `${sign}${dollars}.${cents}`;
 };
 
 export const MicroUsdToUsdStringRoundedDownNoDecimals = (microUsdAmt: number) => {

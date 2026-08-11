@@ -113,35 +113,39 @@ export const WatermarkedBuyAdCredit = ({
       buyButton,
       buyButtonRow,
       cancelButton,
-      disclaimerHeader,
       disclaimerHeaderContainer,
       disclaimerRow,
+      disclaimerText,
       divider,
       fullWidth,
       robuxBalanceContainer,
       smallRobuxIcon,
       subtitleContainer,
       watermarkedAdCreditBalanceSegment,
+      watermarkedBalanceAmount,
       watermarkedBalanceBand,
       watermarkedBalanceOr,
       watermarkedBalanceScopeSelector,
       watermarkedBalanceScopeSelectorContainer,
       watermarkedBalanceSegment,
+      watermarkedBreakdownRobuxIcon,
+      watermarkedDisclaimerContent,
+      watermarkedDisclaimerHeader,
       watermarkedDualInputRow,
       watermarkedInfoAlert,
       watermarkedInfoAlertClose,
       watermarkedInfoAlertContent,
+      watermarkedInfoAlertIcon,
+      watermarkedInput,
       watermarkedInputOr,
       watermarkedInputRobuxAdornment,
       watermarkedStrikethroughRobux,
       watermarkedTierCard,
-      watermarkedTierLabel,
       watermarkedTierLabelGroup,
       watermarkedTierRow,
       watermarkedTierRowValues,
-      watermarkedTierSubtext,
+      watermarkedTierValues,
       watermarkedTooltipIcon,
-      watermarkedTotalLabel,
       watermarkedTotalRow,
     },
   } = useAddPaymentMethodStyles();
@@ -154,6 +158,7 @@ export const WatermarkedBuyAdCredit = ({
   );
   const [robuxAmount, setRobuxAmount] = useState<number | undefined>(undefined);
   const [adCreditAmount, setAdCreditAmount] = useState<number | undefined>(undefined);
+  const [adCreditInputValue, setAdCreditInputValue] = useState<string>('');
   const [debouncedInput, setDebouncedInput] = useState<
     { sourceField: AdCreditQuoteSourceField; value: number } | undefined
   >(undefined);
@@ -185,16 +190,25 @@ export const WatermarkedBuyAdCredit = ({
     robuxAmount !== undefined &&
     robuxAmount > selectedRobuxBalance;
 
+  const exceedsMaximumAdCredit =
+    sourceField === AdCreditQuoteSourceFieldValues.AD_CREDIT_AMOUNT &&
+    adCreditAmount !== undefined &&
+    adCreditAmount > adCreditMaximumPurchaseAmount;
+
   useEffect(() => {
     const timeout = setTimeout(() => {
       setDebouncedInput(
-        sourceValue !== undefined && sourceValue > 0 && !isBelowMinAdCredit && !exceedsRobuxBalance
+        sourceValue !== undefined &&
+          sourceValue > 0 &&
+          !isBelowMinAdCredit &&
+          !exceedsMaximumAdCredit &&
+          !exceedsRobuxBalance
           ? { sourceField, value: sourceValue }
           : undefined,
       );
     }, QUOTE_DEBOUNCE_MS);
     return () => clearTimeout(timeout);
-  }, [sourceField, sourceValue, isBelowMinAdCredit, exceedsRobuxBalance]);
+  }, [sourceField, sourceValue, isBelowMinAdCredit, exceedsMaximumAdCredit, exceedsRobuxBalance]);
 
   const quoteQuery = useQuery<AdCreditPurchaseQuoteResponse>({
     enabled: debouncedInput !== undefined,
@@ -238,15 +252,29 @@ export const WatermarkedBuyAdCredit = ({
   }, [quote, quoteErrorBounds]);
 
   const clientSideErrorDisplay = useMemo<AdCreditQuoteErrorDisplay | undefined>(() => {
+    if (exceedsMaximumAdCredit) {
+      const maximumError: AdCreditQuoteErrorDisplay = {
+        args: { maxAmount: quoteErrorBounds.maxAmount },
+        translationKey: 'Validation.MaximumAdCredit',
+        type: 'message',
+      };
+      return maximumError;
+    }
     if (!isBelowMinAdCredit) {
       return undefined;
     }
-    return {
+    const minimumError: AdCreditQuoteErrorDisplay = {
       args: { minAmount: quoteErrorBounds.minAmount },
       translationKey: 'Description.MinimumAdCreditHint',
       type: 'message',
     };
-  }, [isBelowMinAdCredit, quoteErrorBounds.minAmount]);
+    return minimumError;
+  }, [
+    exceedsMaximumAdCredit,
+    isBelowMinAdCredit,
+    quoteErrorBounds.maxAmount,
+    quoteErrorBounds.minAmount,
+  ]);
 
   const activeErrorDisplay = clientSideErrorDisplay ?? quoteErrorDisplay;
 
@@ -271,7 +299,7 @@ export const WatermarkedBuyAdCredit = ({
   const robuxFieldValue =
     sourceField === AdCreditQuoteSourceFieldValues.ROBUX_AMOUNT ? robuxAmount : undefined;
   const adCreditFieldValue =
-    sourceField === AdCreditQuoteSourceFieldValues.AD_CREDIT_AMOUNT ? adCreditAmount : undefined;
+    sourceField === AdCreditQuoteSourceFieldValues.AD_CREDIT_AMOUNT ? adCreditInputValue : '';
 
   const isRobuxAdjustedDown =
     quote !== undefined &&
@@ -303,7 +331,9 @@ export const WatermarkedBuyAdCredit = ({
       : undefined;
 
   let inputErrorMessage: string | undefined;
-  if (quoteQuery.isError) {
+  if (activeErrorDisplay?.type === 'message') {
+    inputErrorMessage = errorPanelMessage;
+  } else if (quoteQuery.isError) {
     inputErrorMessage = translateMisc('Message.GenericError');
   } else if (showInsufficientRobuxPanel && maxConvertibleAdCreditAmount !== undefined) {
     inputErrorMessage = translateBilling('Message.MaximumConvertibleAdCredit', {
@@ -422,6 +452,7 @@ export const WatermarkedBuyAdCredit = ({
     setSourceField(AdCreditQuoteSourceFieldValues.AD_CREDIT_AMOUNT);
     setRobuxAmount(undefined);
     setAdCreditAmount(undefined);
+    setAdCreditInputValue('');
     setDebouncedInput(undefined);
   };
 
@@ -455,16 +486,28 @@ export const WatermarkedBuyAdCredit = ({
     <div className={watermarkedBalanceBand} data-testid='watermarkedBalanceBand'>
       <span className={`text-body-medium content-default ${watermarkedBalanceSegment}`}>
         {translateBillingHTML('Label.RobuxBalanceWithAmount', null, {
-          amount: selectedRobuxBalance.toLocaleString(),
-          robuxIcon: <Icon className={smallRobuxIcon} name='icon-filled-robux' size='Small' />,
+          amount: (
+            <span className={watermarkedBalanceAmount}>
+              {selectedRobuxBalance.toLocaleString()}
+            </span>
+          ),
+          robuxIcon: (
+            <span className={watermarkedBalanceAmount}>
+              <Icon className={smallRobuxIcon} name='icon-filled-robux' size='Small' />
+            </span>
+          ),
         })}
       </span>
       <span aria-hidden='true' className={`text-body-large ${watermarkedBalanceOr}`}>
         {translateMisc('Label.Or')}
       </span>
       <span className={`text-body-medium content-default ${watermarkedAdCreditBalanceSegment}`}>
-        {translateBilling('Label.AdCreditBalanceWithAmount', {
-          amount: MicroUsdToUsdStringRoundedDown(selectedAdCreditBalance),
+        {translateBillingHTML('Label.AdCreditBalanceWithAmount', null, {
+          amount: (
+            <span className={watermarkedBalanceAmount}>
+              {MicroUsdToUsdStringRoundedDown(selectedAdCreditBalance)}
+            </span>
+          ),
         })}
       </span>
     </div>
@@ -474,7 +517,7 @@ export const WatermarkedBuyAdCredit = ({
     <div className={watermarkedDualInputRow} data-testid='watermarkedDualInputRow'>
       <NumericFormat
         allowNegative={false}
-        className={fullWidth}
+        className={`${fullWidth} ${watermarkedInput}`}
         color='primary'
         customInput={TextField}
         decimalScale={0}
@@ -510,7 +553,7 @@ export const WatermarkedBuyAdCredit = ({
       </span>
       <NumericFormat
         allowNegative={false}
-        className={fullWidth}
+        className={`${fullWidth} ${watermarkedInput}`}
         color='primary'
         customInput={TextField}
         decimalScale={2}
@@ -520,12 +563,13 @@ export const WatermarkedBuyAdCredit = ({
         inputProps={{ 'data-testid': 'adCreditAmountInput' }}
         label={translateBilling('Title.AdCreditAmount')}
         margin='none'
-        onValueChange={({ floatValue }, sourceInfo) => {
+        onValueChange={({ floatValue, value }, sourceInfo) => {
           if (sourceInfo.source !== 'event') {
             return;
           }
           setSourceField(AdCreditQuoteSourceFieldValues.AD_CREDIT_AMOUNT);
           setAdCreditAmount(floatValue);
+          setAdCreditInputValue(value);
         }}
         thousandSeparator
         value={adCreditFieldValue ?? ''}
@@ -536,18 +580,19 @@ export const WatermarkedBuyAdCredit = ({
 
   const infoAlert = isInfoAlertDismissed ? null : (
     <div className={watermarkedInfoAlert} data-testid='watermarkedInfoAlert'>
-      <Icon className='content-emphasis' name='icon-filled-circle-i' size='Small' />
+      <Icon className={watermarkedInfoAlertIcon} name='icon-filled-circle-i' size='Small' />
       <div className={watermarkedInfoAlertContent}>
         <span className='text-body-medium'>
-          {translateBilling('Message.WatermarkedConversionInfo')}{' '}
-          <Link
-            href={AdCreditConversionLearnMoreUrl}
-            size='Small'
-            target='_blank'
-            underline='always'>
-            {translateReport('Action.LearnMoreManage')}
-          </Link>
+          {translateBilling('Message.WatermarkedConversionInfo')}
         </span>
+        <Link
+          className='shrink-0'
+          href={AdCreditConversionLearnMoreUrl}
+          size='Small'
+          target='_blank'
+          underline='always'>
+          {translateReport('Action.LearnMoreManage')}
+        </Link>
       </div>
       <span
         className={watermarkedInfoAlertClose}
@@ -588,7 +633,7 @@ export const WatermarkedBuyAdCredit = ({
                 variant='rectangular'
               />
             </div>
-            <div className={watermarkedTierRowValues}>
+            <div className={watermarkedTierValues}>
               <Skeleton
                 animate
                 className='height-[20px] width-[96px]'
@@ -612,7 +657,7 @@ export const WatermarkedBuyAdCredit = ({
             data-testid='quoteLoadingSkeletonBlock'
             variant='rectangular'
           />
-          <div className={watermarkedTierRowValues}>
+          <div className={watermarkedTierValues}>
             <Skeleton
               animate
               className='height-[20px] width-[104px]'
@@ -636,10 +681,10 @@ export const WatermarkedBuyAdCredit = ({
       {displayedTierBreakdown.map((tier: AdCreditPurchaseQuoteTier) => (
         <div className={watermarkedTierRow} key={tier.tier}>
           <div className={watermarkedTierLabelGroup}>
-            <span className={`text-body-large ${watermarkedTierLabel}`}>
+            <span className='text-title-large content-emphasis'>
               {translateBilling(tierLabelKey(tier.tier))}
             </span>
-            <span className={`text-body-medium content-default ${watermarkedTierSubtext}`}>
+            <span className='text-body-medium content-default'>
               {translateBilling('Description.EarnedAtRate', {
                 rate: hasQuoteValues
                   ? String(tier.ad_credit_per_robux)
@@ -651,8 +696,8 @@ export const WatermarkedBuyAdCredit = ({
               })}
             </span>
           </div>
-          <div className={watermarkedTierRowValues}>
-            <span className='text-body-large'>
+          <div className={watermarkedTierValues}>
+            <span className='text-body-medium content-default'>
               {translateBilling('Label.AdCreditWithAmount', {
                 amount: hasQuoteValues
                   ? MicroUsdToUsdString(tier.ad_credit_micros)
@@ -660,8 +705,14 @@ export const WatermarkedBuyAdCredit = ({
               })}
             </span>
             <div className={robuxBalanceContainer}>
-              <Icon className={smallRobuxIcon} name='icon-filled-robux' size='Small' />
-              <span className='text-body-medium content-default'>
+              <Icon
+                className={watermarkedBreakdownRobuxIcon}
+                name='icon-filled-robux'
+                size='Small'
+              />
+              <span
+                className='text-body-medium content-default'
+                data-testid='watermarkedBreakdownRobuxValue'>
                 {hasQuoteValues ? tier.robux_amount.toLocaleString() : INITIAL_QUOTE_VALUE}
               </span>
             </div>
@@ -670,11 +721,24 @@ export const WatermarkedBuyAdCredit = ({
       ))}
       <Divider className={divider} />
       <div className={watermarkedTotalRow}>
-        <span className={`text-body-large ${watermarkedTotalLabel}`}>
-          {translateForecast('Label.PeriodTotal')}
-        </span>
+        <div className='flex items-center gap-xsmall'>
+          <span className='text-title-large content-emphasis'>
+            {translateForecast('Label.PeriodTotal')}
+          </span>
+          {isRobuxAdjustedDown && hasQuoteValues && (
+            <Tooltip
+              position='right-center'
+              title={translateBilling('Description.AdjustedForConversion')}>
+              <TooltipTrigger asChild>
+                <span className={watermarkedTooltipIcon} data-testid='adjustedForConversionTooltip'>
+                  <Icon name='icon-regular-circle-i' size='Small' />
+                </span>
+              </TooltipTrigger>
+            </Tooltip>
+          )}
+        </div>
         <div className={watermarkedTierRowValues}>
-          <span className='text-body-large'>
+          <span className='text-title-large content-emphasis'>
             {translateBilling('Label.AdCreditWithAmount', {
               amount: hasQuoteValues
                 ? MicroUsdToUsdString(quote?.ad_credit_quantity_micros ?? 0)
@@ -683,19 +747,12 @@ export const WatermarkedBuyAdCredit = ({
           </span>
           <div className={robuxBalanceContainer}>
             {isRobuxAdjustedDown && hasQuoteValues && (
-              <Tooltip
-                position='left-center'
-                title={translateBilling('Description.AdjustedForConversion')}>
-                <TooltipTrigger asChild>
-                  <span
-                    className={watermarkedTooltipIcon}
-                    data-testid='adjustedForConversionTooltip'>
-                    <Icon name='icon-regular-circle-i' size='Small' />
-                  </span>
-                </TooltipTrigger>
-              </Tooltip>
+              <Icon
+                className={`${watermarkedBreakdownRobuxIcon} content-default`}
+                name='icon-filled-robux'
+                size='Small'
+              />
             )}
-            <Icon className={smallRobuxIcon} name='icon-filled-robux' size='Small' />
             {isRobuxAdjustedDown && hasQuoteValues && (
               <span
                 className={`text-body-medium content-default ${watermarkedStrikethroughRobux}`}
@@ -703,7 +760,10 @@ export const WatermarkedBuyAdCredit = ({
                 {robuxAmount.toLocaleString()}
               </span>
             )}
-            <span className='text-body-medium content-default'>
+            <Icon className={smallRobuxIcon} name='icon-filled-robux' size='Small' />
+            <span
+              className='text-title-large content-emphasis'
+              data-testid='watermarkedTotalRobuxValue'>
               {hasQuoteValues ? (quote?.robux_charge ?? 0).toLocaleString() : INITIAL_QUOTE_VALUE}
             </span>
           </div>
@@ -718,12 +778,12 @@ export const WatermarkedBuyAdCredit = ({
       <Divider className={divider} />
       <div className={disclaimerRow}>
         <div className={disclaimerHeaderContainer}>
-          <span className={`text-body-large ${disclaimerHeader}`}>
+          <span className={`${disclaimerText} ${watermarkedDisclaimerHeader}`}>
             {translateBilling('Description.PurchaseAdCreditDisclaimerHeader')}
           </span>
         </div>
         <div>
-          <span className='text-body-large content-default'>
+          <span className={`${disclaimerText} ${watermarkedDisclaimerContent}`}>
             {translateBilling('Description.PurchaseAdCreditDisclaimerContent')}
           </span>
         </div>

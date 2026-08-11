@@ -31,6 +31,12 @@ export const resolveAdCreditQuoteErrorDisplay = (
   switch (errorCode) {
     case ErrorCodes.AD_CREDIT_QUOTE_INSUFFICIENT_ROBUX:
       return { type: 'insufficient_robux' };
+    case ErrorCodes.AD_CREDIT_QUOTE_INSUFFICIENT_ROBUX_FOR_MINIMUM_PURCHASE:
+      return {
+        args: { minAdCreditAmount: bounds.minAmount },
+        translationKey: 'Message.InsufficientRobuxForMinimumAdCredit',
+        type: 'message',
+      };
     case ErrorCodes.AD_CREDIT_QUOTE_BELOW_MINIMUM:
       if (minimumQuoteAmounts !== undefined) {
         return {

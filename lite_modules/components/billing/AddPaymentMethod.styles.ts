@@ -146,6 +146,9 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     marginBottom: 8,
     marginTop: 32,
   },
+  disclaimerText: {
+    fontSize: 12,
+  },
   divider: {
     marginBottom: marginUnit * 4,
     marginTop: marginUnit * 4,
@@ -229,6 +232,12 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
       gridColumn: 'auto',
     },
   },
+  watermarkedBalanceAmount: {
+    alignItems: 'center',
+    color: 'var(--Content-Standard, #FFF)',
+    display: 'inline-flex',
+    verticalAlign: 'middle',
+  },
   watermarkedBalanceBand: {
     alignItems: 'center',
     backgroundColor: theme.palette.action.hover,
@@ -262,6 +271,27 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     display: 'flex',
     gap: '6px',
   },
+  watermarkedBreakdownRobuxIcon: {
+    height: 16,
+    width: 16,
+  },
+  watermarkedDisclaimerContent: {
+    color: 'var(--content-default, #D5D7DD)',
+    fontFamily: 'var(--ALPHA-Text-BodySmall-FontFamily, "Builder Sans")',
+    fontSize: 'var(--ALPHA-Text-BodySmall-FontSize, 12px)',
+    fontStyle: 'normal',
+    fontWeight: 400,
+    letterSpacing: 'var(--ALPHA-Text-BodySmall-LetterSpacing, 0)',
+    lineHeight: 'var(--ALPHA-Text-BodySmall-LineHeight, 18px)',
+  },
+  watermarkedDisclaimerHeader: {
+    color: 'var(--content-default, #D5D7DD)',
+    fontFamily: 'var(--Config-Text-Font, "Builder Sans")',
+    fontSize: 'var(--FontSize-FontSize_300, 12px)',
+    fontStyle: 'normal',
+    fontWeight: 700,
+    lineHeight: '140%',
+  },
   watermarkedDualInputRow: {
     alignItems: 'start',
     display: 'grid',
@@ -286,7 +316,19 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     flexShrink: 0,
   },
   watermarkedInfoAlertContent: {
+    alignItems: 'center',
+    display: 'flex',
     flex: 1,
+    gap: 16,
+    justifyContent: 'space-between',
+  },
+  watermarkedInfoAlertIcon: {
+    color: '#335FFF',
+  },
+  watermarkedInput: {
+    '& .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline': {
+      borderColor: '#335FFF !important',
+    },
   },
   watermarkedInputOr: {
     alignSelf: 'start',
@@ -297,7 +339,10 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     marginRight: 8,
   },
   watermarkedStrikethroughRobux: {
+    overflow: 'hidden',
+    textAlign: 'center',
     textDecoration: 'line-through',
+    textOverflow: 'ellipsis',
   },
   watermarkedTierCard: {
     border: '1px solid',
@@ -308,9 +353,6 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     gap: '16px',
     marginTop: 16,
     padding: '16px 20px',
-  },
-  watermarkedTierLabel: {
-    fontWeight: 500,
   },
   watermarkedTierLabelGroup: {
     display: 'flex',
@@ -327,18 +369,18 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     display: 'flex',
     flexDirection: 'column',
   },
-  watermarkedTierSubtext: {
-    fontSize: 12,
+  watermarkedTierValues: {
+    alignItems: 'flex-end',
+    display: 'flex',
+    flexDirection: 'column',
+    paddingTop: 26,
+    textAlign: 'right',
   },
   watermarkedTooltipIcon: {
     alignItems: 'center',
     cursor: 'help',
     display: 'inline-flex',
     marginLeft: 4,
-  },
-  watermarkedTotalLabel: {
-    fontWeight: 500,
-    textTransform: 'capitalize',
   },
   watermarkedTotalRow: {
     alignItems: 'center',

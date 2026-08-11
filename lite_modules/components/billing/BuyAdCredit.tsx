@@ -157,6 +157,7 @@ export const BuyAdCredit = ({
       disclaimerHeader,
       disclaimerHeaderContainer,
       disclaimerRow,
+      disclaimerText,
       divider,
       fullWidth,
       needMoreRobuxDescription,
@@ -390,12 +391,12 @@ export const BuyAdCredit = ({
       {maybeRenderDivider()}
       <div className={disclaimerRow}>
         <div className={disclaimerHeaderContainer}>
-          <span className={`text-body-large ${disclaimerHeader}`}>
+          <span className={`text-body-large ${disclaimerHeader} ${disclaimerText}`}>
             {translateBilling('Description.PurchaseAdCreditDisclaimerHeader')}
           </span>
         </div>
         <div>
-          <span className='text-body-large content-default'>
+          <span className={`text-body-large content-default ${disclaimerText}`}>
             {translateBilling('Description.PurchaseAdCreditDisclaimerContent')}
           </span>
         </div>

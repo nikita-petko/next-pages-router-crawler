@@ -8,7 +8,12 @@ interface CampaignEligibility {
   objectiveEligibility: Record<number, EligibilityStatus>;
 }
 
+interface UniverseEligibility {
+  eligible: boolean;
+}
+
 export interface GetEligibilityResponse {
   campaignEligibility: CampaignEligibility;
+  universeEligibility?: UniverseEligibility;
   universeId: number;
 }

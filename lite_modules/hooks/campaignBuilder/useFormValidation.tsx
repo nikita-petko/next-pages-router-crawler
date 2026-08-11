@@ -45,6 +45,7 @@ import {
   UsdToMicroUsd,
   UsdToString,
 } from '@utils/currency';
+import { SelectIsUniverseIneligible } from '@utils/eligibility';
 import { getSelectedGroupId } from '@utils/groupScopedAccount';
 import { GetTimezoneObjFromEnum, GetValidatedTimezoneDbName } from '@utils/timezone';
 
@@ -109,6 +110,7 @@ export const useFormValidation = (): Resolver<FormType> => {
     (state) => state.simplifiedCampaign?.data?.start_timestamp_ms,
   );
   const editMode = useCampaignBuilderStore((state) => state.flowType === FlowTypes.EDIT);
+  const eligibilityContext = useCampaignBuilderStore((state) => state.eligibilityContext);
   const campaignSpendMicroUsd = useCampaignBuilderStore((state) => state.campaignSpendMicroUsd);
   const campaignTodaySpendMicroUsd = useCampaignBuilderStore(
     (state) => state.campaignTodaySpendMicroUsd,
@@ -665,6 +667,22 @@ export const useFormValidation = (): Resolver<FormType> => {
           message: translate('Validation.LaunchDataMaxLength'),
           origin: 'string',
           path: [FormField.LAUNCH_DATA],
+        });
+      }
+    })
+    .superRefine((data, { addIssue }) => {
+      // Destination eligibility preflight (Sponsored Ads). Blocks submit on create/clone
+      // when the destination universe fails the games-filter check. Edit is advisory-only
+      // (target universe is immutable), so skip there.
+      if (editMode) {
+        return;
+      }
+      const experience = data[FormField.EXPERIENCE];
+      if (SelectIsUniverseIneligible(eligibilityContext, experience?.universe_id)) {
+        addIssue({
+          code: 'custom',
+          message: translate('Description.UniverseNotEligible'),
+          path: [FormField.EXPERIENCE, 'universe_id'],
         });
       }
     })

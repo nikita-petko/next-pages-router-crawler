@@ -125,8 +125,8 @@ const DateQuickPick = () => {
   );
 
   const customLabel = useMemo(
-    () => (isCustomDateRangeEnabled ? translateMisc('Label.Custom') : undefined),
-    [isCustomDateRangeEnabled, translateMisc],
+    () => (isCustomDateRangeEnabled ? translateReport('Label.Custom') : undefined),
+    [isCustomDateRangeEnabled, translateReport],
   );
 
   const handleChange = (next: DateRangePreset) => {
