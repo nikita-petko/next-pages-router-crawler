@@ -478,7 +478,11 @@ const ServerListTable: FunctionComponent<ServerListTableProps> = ({
           });
         case 'create_time':
           return (
-            <Tooltip title={formatUtcTimestamp(server.createTime)} position='top-center'>
+            <Tooltip
+              title={translate('ServerListTable.Tooltip.UtcTimestamp', {
+                timestamp: formatUtcTimestamp(server.createTime),
+              })}
+              position='top-center'>
               <TooltipTrigger asChild>
                 <span>{formatStartTime(server.createTime, translate)}</span>
               </TooltipTrigger>
@@ -486,7 +490,11 @@ const ServerListTable: FunctionComponent<ServerListTableProps> = ({
           );
         case 'termination_time':
           return server.terminateTime ? (
-            <Tooltip title={formatUtcTimestamp(server.terminateTime)} position='top-center'>
+            <Tooltip
+              title={translate('ServerListTable.Tooltip.UtcTimestamp', {
+                timestamp: formatUtcTimestamp(server.terminateTime),
+              })}
+              position='top-center'>
               <TooltipTrigger asChild>
                 <span>{formatStartTime(server.terminateTime, translate)}</span>
               </TooltipTrigger>

@@ -35,11 +35,15 @@ type EventListeners = {
 
 type EventNameToListenersMap = Map<string, EventListeners>;
 
+type WindowMessageBus = NonNullable<Window['rbx']>['messageBus'];
+
 declare global {
   interface Window {
     rbx?: {
       messageBus: {
-        events: EventNameToListenersMap;
+        // Studio preinitializes window.rbx.messageBus before the web app mounts; `events` is
+        // created lazily by loadWebView()/setListener(), so it may be undefined until then.
+        events?: EventNameToListenersMap;
         dispatchEvent: (
           eventName: string,
           eventMetadata: MessageBusEventMetadata,
@@ -94,6 +98,22 @@ export default class BaseMessageBus<
     return studioConfiguration;
   }
 
+  // Studio preinitializes window.rbx.messageBus, but the `events` map is created here in
+  // loadWebView(). React flushes passive effects child-first, so a child component's
+  // setListener() effect can run before the connector's loadWebView() effect. This helper
+  // lazily creates the map so listeners registered before loadWebView() aren't dropped (and
+  // so setListener() doesn't crash dereferencing an undefined `events`).
+  private getOrCreateEventListenersMap(messageBus: WindowMessageBus): EventNameToListenersMap {
+    const existing = messageBus.events;
+    if (existing) {
+      return existing;
+    }
+
+    const events: EventNameToListenersMap = new Map();
+    messageBus.events = events;
+    return events;
+  }
+
   public loadWebView(): void {
     if (!isWebViewAvailable() || !window.rbx?.messageBus) {
       throw new MessageBusError(MessageBusErrorCode.WEBVIEW_NOT_INITIALIZED);
@@ -107,7 +127,11 @@ export default class BaseMessageBus<
       };
     }
 
-    const events: EventNameToListenersMap = new Map();
+    // Reuse any map that setListener() already created (see getOrCreateEventListenersMap) so
+    // listeners registered before loadWebView() ran are preserved instead of discarded.
+    const events: EventNameToListenersMap = this.getOrCreateEventListenersMap(
+      window.rbx.messageBus,
+    );
     const dispatchEvent = (
       eventName: string,
       eventMetadata: MessageBusEventMetadata,
@@ -190,7 +214,7 @@ export default class BaseMessageBus<
 
     const fullEventName = this.getFullEventName(eventName);
 
-    const eventNameToListenersMap = messageBus.events;
+    const eventNameToListenersMap = this.getOrCreateEventListenersMap(messageBus);
     let uuidSpecificListeners: Map<
       string,
       TMessageBusCallback<TParams[TName]['requestParams']>
@@ -262,7 +286,7 @@ export default class BaseMessageBus<
       }
     };
 
-    const eventNameToListenersMap = messageBus.events;
+    const eventNameToListenersMap = this.getOrCreateEventListenersMap(messageBus);
     let generalListeners: TMessageBusCallback<unknown>[] = [];
     const allListeners = eventNameToListenersMap.get(fullEventName);
     if (allListeners) {
