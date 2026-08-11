@@ -26,12 +26,8 @@ import { DeveloperProductsTableRowCheckbox } from './DeveloperProductsTableCheck
 
 type Props = DeveloperProductConfig & {
   universeId: number;
-  showManagedPricing?: boolean;
-  showPriceOptimization?: boolean;
   /** `undefined` = archive feature off; `false` = current view; `true` = archived view. */
   showArchived?: boolean;
-  onToggleRegionalPricing: (productId: number, enabled: boolean) => void;
-  disableToggleRegionalPricing?: boolean;
 };
 
 const getConfigureDeveloperProductLink = dashboard.getConfigureDeveloperProductUrl;
@@ -119,12 +115,9 @@ function ArchiveMenuItem({
 function MoreItemOptionsMenu({
   configureUrl,
   universeId,
-  showManagedPricing,
   showArchived,
-  onToggleRegionalPricing,
-  disableToggleRegionalPricing,
   ...product
-}: Omit<Props, 'showPriceOptimization'> & { configureUrl: string }) {
+}: Props & { configureUrl: string }) {
   const { translate } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -132,11 +125,6 @@ function MoreItemOptionsMenu({
     void navigator.clipboard.writeText(product.productId.toString());
     setIsOpen(false);
   }, [product.productId]);
-
-  const handleToggleRegionalPricing = useCallback(() => {
-    onToggleRegionalPricing(product.productId, !product.isRegionalPricingEnabled);
-    setIsOpen(false);
-  }, [onToggleRegionalPricing, product.isRegionalPricingEnabled, product.productId]);
 
   const handleCloseMenu = useCallback(() => setIsOpen(false), []);
 
@@ -163,18 +151,6 @@ function MoreItemOptionsMenu({
               title={translate('Action.CopyProductID')}
               onSelect={handleCopyProductId}
             />
-            {!showManagedPricing && !showArchived && product.isSelectableForRegionalPricing && (
-              <MenuItem
-                disabled={disableToggleRegionalPricing}
-                value='toggle-regional-pricing'
-                onSelect={handleToggleRegionalPricing}
-                title={
-                  product.isRegionalPricingEnabled
-                    ? translate('Action.DisableRegionalPricing')
-                    : translate('Action.EnableRegionalPricing')
-                }
-              />
-            )}
             {showArchived !== undefined && (
               <ArchiveMenuItem
                 universeId={universeId}
@@ -190,15 +166,7 @@ function MoreItemOptionsMenu({
   );
 }
 
-function DeveloperProductsTableRow({
-  universeId,
-  showManagedPricing,
-  showPriceOptimization,
-  showArchived,
-  onToggleRegionalPricing,
-  disableToggleRegionalPricing,
-  ...product
-}: Props) {
+function DeveloperProductsTableRow({ universeId, showArchived, ...product }: Props) {
   const { translate } = useTranslation();
   const { locale } = useLocalization();
 
@@ -208,10 +176,6 @@ function DeveloperProductsTableRow({
     universeId,
     product.productId,
   );
-
-  const isManagedPricingEnabled = showManagedPricing
-    ? product.isManagedPricingEnabled
-    : product.isRegionalPricingEnabled;
 
   return (
     <TableRow hover>
@@ -261,26 +225,12 @@ function DeveloperProductsTableRow({
           {product.isForSale && !product.isImmutable && (
             <Badge
               label={
-                isManagedPricingEnabled ? translate('Label.Enabled') : translate('Label.Disabled')
+                product.isManagedPricingEnabled
+                  ? translate('Label.Enabled')
+                  : translate('Label.Disabled')
               }
-              variant={isManagedPricingEnabled ? 'Neutral' : 'Warning'}
+              variant={product.isManagedPricingEnabled ? 'Neutral' : 'Warning'}
               className='flex justify-center min-width-1600'
-            />
-          )}
-        </TableCell>
-      )}
-
-      {!showArchived && !showManagedPricing && showPriceOptimization && (
-        <TableCell>
-          {/* For now, assume immutability will disallow other features */}
-          {product.isForSale && !product.isImmutable && (
-            <Badge
-              label={
-                product.isInActivePriceOptimizationExperiment
-                  ? translate('Label.Active')
-                  : translate('Label.Inactive')
-              }
-              variant={product.isInActivePriceOptimizationExperiment ? 'Contrast' : 'Neutral'}
             />
           )}
         </TableCell>
@@ -298,10 +248,7 @@ function DeveloperProductsTableRow({
         <MoreItemOptionsMenu
           configureUrl={configureDeveloperProductLink}
           universeId={universeId}
-          showManagedPricing={showManagedPricing}
           showArchived={showArchived}
-          onToggleRegionalPricing={onToggleRegionalPricing}
-          disableToggleRegionalPricing={disableToggleRegionalPricing}
           {...product}
         />
       </TableCell>

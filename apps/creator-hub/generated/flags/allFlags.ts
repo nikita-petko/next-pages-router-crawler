@@ -284,7 +284,7 @@ export const generatedFlags = [
       metadata: {
         namespace: 'creator-analytics',
         name: 'isExperimentTargetingEnabled',
-        defaultValue: false,
+        defaultValue: true,
         valueType: 'boolean',
         contextType: 'universe',
       },
@@ -374,7 +374,7 @@ export const generatedFlags = [
       metadata: {
         namespace: 'creator-analytics',
         name: 'isExperimentNullControlValueEnabled',
-        defaultValue: false,
+        defaultValue: true,
         valueType: 'boolean',
         contextType: 'universe',
       },
@@ -384,7 +384,7 @@ export const generatedFlags = [
       metadata: {
         namespace: 'creator-analytics',
         name: 'isExperimentRolloutEnabled',
-        defaultValue: false,
+        defaultValue: true,
         valueType: 'boolean',
         contextType: 'universe',
       },

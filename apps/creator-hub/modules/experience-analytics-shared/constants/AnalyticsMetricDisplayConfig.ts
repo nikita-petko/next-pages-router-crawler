@@ -1259,6 +1259,18 @@ const RAQIV2NumericMetricDisplayConfig: Partial<Record<TRAQIV2Metric, NumericMet
         ),
       },
     },
+    [RAQIV2UIMetric.MatchmakingSignalsDeltaPing]: {
+      columnDisplayConfigOverrides: {
+        titleKey: translationKey(
+          'Label.Metric.MatchmakingSignalsDeltaPing',
+          TranslationNamespace.Matchmaking,
+        ),
+        tooltipKey: translationKey(
+          'Description.MatchmakingSignalsDeltaPing',
+          TranslationNamespace.Matchmaking,
+        ),
+      },
+    },
     [RAQIV2UIMetric.MatchmakingSignalsEstimatePing]: {
       columnDisplayConfigOverrides: {
         titleKey: translationKey(

@@ -155,6 +155,22 @@ export const chartConfigMatchmakingSignalsEstimatePing = {
   overlays: [],
 } as const satisfies ChartConfig;
 
+export const chartConfigMatchmakingSignalsDeltaPing = {
+  type: AnalyticsComponentType.Chart,
+  titleKey: translationKey(
+    'Label.Metric.MatchmakingSignalsDeltaPing',
+    TranslationNamespace.Matchmaking,
+  ),
+  definitionTooltipKey: translationKey(
+    'Description.MatchmakingSignalsDeltaPing',
+    TranslationNamespace.Matchmaking,
+  ),
+  metric: RAQIV2UIMetric.MatchmakingSignalsDeltaPing,
+  overrides: {},
+  chartType: ChartType.Spline,
+  overlays: [],
+} as const satisfies ChartConfig;
+
 export const chartConfigMatchmakingSignalsOccupancyRatio = {
   type: AnalyticsComponentType.Chart,
   // previously RAQIV2PredefinedChartKey.MatchmakingSignalsOccupancyRatio,

@@ -9,8 +9,6 @@ import type { SortableColumn } from '../types';
 import { DeveloperProductsTableHeaderCheckbox } from './DeveloperProductsTableCheckbox';
 
 type BaseProps = {
-  showPriceOptimization?: boolean;
-  showManagedPricing?: boolean;
   showArchived?: boolean;
 };
 
@@ -31,8 +29,6 @@ type PropsWithoutSort = BaseProps & {
 type Props = PropsWithSort | PropsWithoutSort;
 
 function DeveloperProductsTableBase({
-  showPriceOptimization,
-  showManagedPricing,
   showArchived,
   sortColumn,
   sortOrder,
@@ -86,37 +82,11 @@ function DeveloperProductsTableBase({
             />
           )}
 
-          {!showArchived && showManagedPricing && (
+          {!showArchived && (
             <SortableTableHeader
               column='managedPricing'
               label={translate('Label.ManagedPricing')}
               sx={{ minWidth: '170px' }}
-              disabled={disableSort}
-              onSort={onSort}
-              activeColumn={sortColumn}
-              sortOrder={sortOrder}
-            />
-          )}
-
-          {!showArchived && !showManagedPricing && (
-            <SortableTableHeader
-              column='regionalPricing'
-              label={translate('Label.RegionalPricing')}
-              tooltipDescription={translate('Tooltip.RegionalPricingForProducts')}
-              sx={{ minWidth: '190px' }}
-              disabled={disableSort}
-              onSort={onSort}
-              activeColumn={sortColumn}
-              sortOrder={sortOrder}
-            />
-          )}
-
-          {!showArchived && !showManagedPricing && showPriceOptimization && (
-            <SortableTableHeader
-              column='priceOptimization'
-              label={translate('Label.PriceOptimization')}
-              tooltipDescription={translate('Tooltip.PriceOptimizationForProducts')}
-              sx={{ minWidth: '200px' }}
               disabled={disableSort}
               onSort={onSort}
               activeColumn={sortColumn}

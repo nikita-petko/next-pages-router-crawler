@@ -14,8 +14,8 @@ const compareByPrice: CompareFn = (a, b) => {
 };
 
 /**
- * Returns a sort value for a boolean toggle column (regional pricing, price optimization)
- * where offsale or null-priced products are grouped at the bottom.
+ * Returns a sort value for toggle columns where offsale or null-priced products are grouped at
+ * the bottom.
  *
  * Ascending:  enabled (2) → disabled (1) → offsale (0)
  * Descending: disabled (2) → enabled (1) → offsale (0)
@@ -46,10 +46,6 @@ const makeToggleCompareFn =
     return valueB - valueA;
   };
 
-const compareByRegionalPricing = makeToggleCompareFn((p) => p.isRegionalPricingEnabled);
-const compareByPriceOptimization = makeToggleCompareFn(
-  (p) => p.isInActivePriceOptimizationExperiment,
-);
 const compareByManagedPricing = makeToggleCompareFn((p) => p.isManagedPricingEnabled);
 
 const comparators = {
@@ -76,10 +72,6 @@ export function sortDeveloperProducts(
       );
       return order === 'desc' ? sorted.toReversed() : sorted;
     }
-    case 'regionalPricing':
-      return [...products].sort(compareByRegionalPricing(order));
-    case 'priceOptimization':
-      return [...products].sort(compareByPriceOptimization(order));
     case 'managedPricing':
       return [...products].sort(compareByManagedPricing(order));
     case 'name':

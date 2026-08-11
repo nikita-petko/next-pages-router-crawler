@@ -30,7 +30,7 @@ export const isExperimentationTemplatesEnabled = defineFlag({
 export const isExperimentTargetingEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isExperimentTargetingEnabled',
-    defaultValue: false,
+    defaultValue: true,
   });
 export const isErrorReportV2Enabled = defineFlag({
     namespace: 'creator-analytics',
@@ -75,12 +75,12 @@ export const isTargetingConfigsEnabled = defineFlag({
 export const isExperimentNullControlValueEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isExperimentNullControlValueEnabled',
-    defaultValue: false,
+    defaultValue: true,
   });
 export const isExperimentRolloutEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isExperimentRolloutEnabled',
-    defaultValue: false,
+    defaultValue: true,
   });
 export const isGeneralBreakGlassBannerEnabled = defineFlag({
     namespace: 'creator-analytics',
