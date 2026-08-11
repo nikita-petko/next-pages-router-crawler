@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getConfigRepositoryFull,
@@ -58,6 +59,32 @@ export function useJourneyConfigs(universeIdOverride?: number) {
     },
     enabled: Number.isFinite(universeId) && universeId > 0,
   });
+}
+
+export type UseCurrentJourneyConfigResult = {
+  data: JourneyEntry | undefined;
+  isLoading: boolean;
+  isFetched: boolean;
+  isError: boolean;
+};
+
+/**
+ * Fetches a single journey config by name via the shared list query. There's
+ * no by-name API, so this fetches the full list and filters client-side, but
+ * centralizes found/not-found/error state in one place.
+ */
+export function useCurrentJourneyConfig(
+  universeId: number,
+  journeyName: string | undefined,
+): UseCurrentJourneyConfigResult {
+  const { data: configs, isLoading, isFetched, isError } = useJourneyConfigs(universeId);
+
+  const data = useMemo(
+    () => (journeyName ? configs?.find((entry) => entry.journeyName === journeyName) : undefined),
+    [configs, journeyName],
+  );
+
+  return { data, isLoading, isFetched, isError };
 }
 
 type SaveJourneyConfigVariables = JourneyEntry & { originalName?: string };

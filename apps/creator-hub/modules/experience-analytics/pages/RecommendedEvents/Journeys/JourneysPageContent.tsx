@@ -10,6 +10,7 @@ import { getFilterValueForDimension } from '@modules/experience-analytics-shared
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import BreadcrumbItemType from '@modules/navigation/layout/enums/BreadcrumbsItemType';
 import useBreadcrumbRegistration from '@modules/navigation/layout/hooks/useBreadcrumbRegistration';
+import JourneysFlagGate from './components/JourneysFlagGate';
 import getJourneysPageConfig from './config/journeysPageConfig';
 
 const JourneysPageContent: FC = () => {
@@ -22,9 +23,13 @@ const JourneysPageContent: FC = () => {
   const config = useMemo(() => getJourneysPageConfig(), []);
 
   return (
-    <LiveEventsDialogProvider defaultEventType={RecommendedEventType.JourneyEvents}>
-      <CreatorAnalyticsLayout config={config} />
-    </LiveEventsDialogProvider>
+    <JourneysFlagGate>
+      {() => (
+        <LiveEventsDialogProvider defaultEventType={RecommendedEventType.JourneyEvents}>
+          <CreatorAnalyticsLayout config={config} />
+        </LiveEventsDialogProvider>
+      )}
+    </JourneysFlagGate>
   );
 };
 
