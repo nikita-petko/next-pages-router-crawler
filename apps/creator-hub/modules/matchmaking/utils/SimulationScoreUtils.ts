@@ -31,7 +31,7 @@ export function calculateAgeScore(playerAge: number, avgAge: number, weight: num
 }
 
 export function calculateLatencyScore(latency: number, weight: number) {
-  const unweightedScore = 1 - Math.min(1, latency / 250);
+  const unweightedScore = 1 - Math.min(1, latency / 100);
   return roundToDecimalPlaces(unweightedScore * weight);
 }
 
@@ -285,7 +285,8 @@ export function getCustomSignalsScoresMap(
         );
         signalToScoresMap.set(signalName, score);
         break;
-      default:
+      case CustomSignalType.Invalid:
+      case undefined:
         break;
     }
   });
