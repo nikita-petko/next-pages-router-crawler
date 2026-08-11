@@ -5,7 +5,6 @@ import { DeleteOutlinedIcon, Divider, Grid, IconButton } from '@rbx/ui';
 import localizationTableClient, { ChangeAgentType } from '@modules/clients/localizationTables';
 import { extractStringValueFromError } from '@modules/clients/utils/errorHelpers';
 import { useMetricsMonitoring } from '@modules/miscellaneous/metricsMonitoring';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import SaveTranslationChangeAgent from '../../common/components/SaveTranslationChangeAgent';
 import useShowToastMessage from '../../common/hooks/useShowToastMessage';
 import useEntryManagementMetadata from '../../translation/hooks/useEntryManagementMetadata';
@@ -39,7 +38,6 @@ const GameStringsEntryUpdater: FunctionComponent<
   } = useTranslationHistory();
   const { translate } = useTranslation();
   const { error } = useMetricsMonitoring();
-  const { settings } = useSettings();
   const { showSuccessToast, showFailureToast } = useShowToastMessage();
   const {
     classes: { deleteIconGrid, deleteIconButton },
@@ -175,13 +173,11 @@ const GameStringsEntryUpdater: FunctionComponent<
           />
         </Grid>
       )}
-      {settings.enableAutomaticTranslationUpdates && (
-        <SaveTranslationChangeAgent
-          entryInfo={entryInfo}
-          isLoading={isFullTableLoading || isSaving}
-          onSave={handleSaveGameStringTranslation}
-        />
-      )}
+      <SaveTranslationChangeAgent
+        entryInfo={entryInfo}
+        isLoading={isFullTableLoading || isSaving}
+        onSave={handleSaveGameStringTranslation}
+      />
       <Divider />
       <MoreInformation
         translationContext={entryInfo.context}

@@ -9,7 +9,6 @@ import { resolveUrl } from '@rbx/env-utils';
 export enum FeatureFlagName {
   enableExample = 'enableExample',
   enableActivityFeedLocation = 'enableActivityFeedLocation',
-  enableAutomaticTranslationUpdates = 'enableAutomaticTranslationUpdates',
   enableUENSocialMentions = 'enableUENSocialMentions',
   useNewShutdownAllInstancesEndpoint = 'useNewShutdownAllInstancesEndpoint',
   enableShowOnlyPublishedPlaceVersions = 'enableShowOnlyPublishedPlaceVersions',
@@ -110,7 +109,6 @@ const defineFeatureFlagDefaults = <T extends { readonly [K in FeatureFlagName]: 
 export const featureFlagDefaults = defineFeatureFlagDefaults({
   [FeatureFlagName.enableExample]: false,
   [FeatureFlagName.enableActivityFeedLocation]: false,
-  [FeatureFlagName.enableAutomaticTranslationUpdates]: false,
   [FeatureFlagName.enableUENSocialMentions]: false,
   [FeatureFlagName.useNewShutdownAllInstancesEndpoint]: false,
   [FeatureFlagName.enableShowOnlyPublishedPlaceVersions]: false,
