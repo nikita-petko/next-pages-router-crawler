@@ -1,0 +1,158 @@
+import type { FunctionComponent } from 'react';
+import { useCallback, useState } from 'react';
+import { Icon, Menu, MenuItem, MenuSection } from '@rbx/foundation-ui';
+import { useTranslation } from '@rbx/intl';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { CreatorInventoryAssetType } from '@modules/clients/creatorInventory';
+import developClient from '@modules/clients/develop';
+import tryParseResponseError from '@modules/clients/utils/tryParseResponseError';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { toast } from '@modules/monetization-shared/snackbar/actions';
+import type { DevelopmentItemsInventoryItem } from '../developmentItemsInventoryUtils';
+import type { DevelopmentItemToolboxIds } from '../useDevelopmentItemToolboxIds';
+
+const ARCHIVING_PREVENTED_FOR_WEARABLE_ERROR_CODE = 21;
+
+export type DevelopmentItemArchiveStateChangeHandler = (
+  item: DevelopmentItemsInventoryItem,
+  state: NonNullable<DevelopmentItemsInventoryItem['state']>,
+) => void;
+
+export type DevelopmentItemActionsProps = {
+  isArchivable: boolean;
+  item: DevelopmentItemsInventoryItem;
+  onArchiveStateChange: DevelopmentItemArchiveStateChangeHandler;
+  onOpenDetails: (item: DevelopmentItemsInventoryItem) => void;
+  toolboxIds?: DevelopmentItemToolboxIds;
+};
+
+export type DevelopmentItemActionsMenuContentProps = DevelopmentItemActionsProps & {
+  onClose: () => void;
+};
+
+const DevelopmentItemActionsMenuContent: FunctionComponent<
+  DevelopmentItemActionsMenuContentProps
+> = ({ isArchivable, item, onArchiveStateChange, onClose, onOpenDetails, toolboxIds }) => {
+  const intl = useTranslation();
+  const { translate } = intl;
+  const { tPendingTranslation } = useTranslationWrapper(intl);
+  const [isUpdatingArchiveState, setIsUpdatingArchiveState] = useState(false);
+  const copyAssetIdLabel = translate('Action.CopyAssetID');
+  const assetIdItemName = translate('Label.AssetID');
+  const copyMeshIdLabel = tPendingTranslation(
+    'Copy Mesh ID',
+    'Kebab menu action to copy a MeshPart mesh ID',
+    translationKey('Action.CopyMeshID', TranslationNamespace.Creations),
+  );
+  const meshIdItemName = tPendingTranslation(
+    'Mesh ID',
+    'Item name shown in the "Copied {item}" snackbar after copying a mesh ID',
+    translationKey('Label.MeshID', TranslationNamespace.Creations),
+  );
+  const copyTextureIdLabel = tPendingTranslation(
+    'Copy Texture ID',
+    'Kebab menu action to copy a Decal or MeshPart texture ID',
+    translationKey('Action.CopyTextureID', TranslationNamespace.Creations),
+  );
+  const textureIdItemName = tPendingTranslation(
+    'Texture ID',
+    'Item name shown in the "Copied {item}" snackbar after copying a texture ID',
+    translationKey('Label.TextureID', TranslationNamespace.Creations),
+  );
+  const openAssetDetailsLabel = translate('Action.OpenAssetDetails');
+  const isArchived = item.state === 'Archived';
+  const archiveActionLabel = translate(isArchived ? 'Action.Restore' : 'Action.Archive');
+  const meshId =
+    item.assetType === CreatorInventoryAssetType.MeshPart ? toolboxIds?.meshId : undefined;
+  const textureId =
+    item.assetType === CreatorInventoryAssetType.Decal ||
+    item.assetType === CreatorInventoryAssetType.MeshPart
+      ? toolboxIds?.textureId
+      : undefined;
+
+  const handleOpenDetails = useCallback(() => {
+    onClose();
+    onOpenDetails(item);
+  }, [item, onClose, onOpenDetails]);
+  const copyId = useCallback(
+    (value: number, itemName: string) => {
+      onClose();
+      void navigator.clipboard.writeText(value.toString()).then(() => {
+        toast({ title: translate('Message.CopySuccess', { item: itemName }) });
+      });
+    },
+    [onClose, translate],
+  );
+  const handleCopyAssetId = useCallback(() => {
+    copyId(item.assetId, assetIdItemName);
+  }, [assetIdItemName, copyId, item.assetId]);
+  const handleToggleArchiveState = useCallback(async () => {
+    setIsUpdatingArchiveState(true);
+    try {
+      if (isArchived) {
+        await developClient.restoreAsset(item.assetId);
+      } else {
+        await developClient.archiveAsset(item.assetId);
+      }
+      onClose();
+      onArchiveStateChange(item, isArchived ? 'Active' : 'Archived');
+      toast({
+        icon: 'icon-regular-circle-check',
+        title: translate(isArchived ? 'Message.RestoreSuccess' : 'Message.ArchiveSuccess'),
+      });
+    } catch (error) {
+      const responseError = await tryParseResponseError(error);
+      toast({
+        icon: 'icon-regular-circle-x',
+        title: translate(
+          !isArchived && responseError?.code === ARCHIVING_PREVENTED_FOR_WEARABLE_ERROR_CODE
+            ? 'Response.ArchivingPreventedForWearableAsset'
+            : 'Response.UnknownError',
+        ),
+      });
+    } finally {
+      setIsUpdatingArchiveState(false);
+    }
+  }, [isArchived, item, onArchiveStateChange, onClose, translate]);
+
+  return (
+    <Menu className='padding-small' size='Medium'>
+      <MenuSection>
+        <MenuItem
+          leading={<Icon name='icon-regular-arrow-up-right-from-square' size='Medium' />}
+          onSelect={handleOpenDetails}
+          title={openAssetDetailsLabel}
+          value='open-asset-details'
+        />
+        <MenuItem onSelect={handleCopyAssetId} title={copyAssetIdLabel} value='copy-asset-id' />
+        {meshId != null && meshId > 0 && (
+          <MenuItem
+            onSelect={() => copyId(meshId, meshIdItemName)}
+            title={copyMeshIdLabel}
+            value='copy-mesh-id'
+          />
+        )}
+        {textureId != null && textureId > 0 && (
+          <MenuItem
+            onSelect={() => copyId(textureId, textureIdItemName)}
+            title={copyTextureIdLabel}
+            value='copy-texture-id'
+          />
+        )}
+        {isArchivable && (
+          <MenuItem
+            disabled={isUpdatingArchiveState}
+            onSelect={() => {
+              void handleToggleArchiveState();
+            }}
+            title={archiveActionLabel}
+            value={isArchived ? 'restore-asset' : 'archive-asset'}
+          />
+        )}
+      </MenuSection>
+    </Menu>
+  );
+};
+
+export default DevelopmentItemActionsMenuContent;

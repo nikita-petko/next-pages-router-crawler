@@ -61,6 +61,13 @@ export const developmentItemsAssetTypes = [
   CreatorInventoryAssetType.Animation,
 ] as const;
 
+export const getDevelopmentItemsSearchAssetTypes = (
+  activeAssetType: DevelopmentItemsAssetTypeSelection,
+): DevelopmentItemsAssetTypeSelection[] => [
+  activeAssetType,
+  ...developmentItemsAssetTypes.filter((assetType) => assetType !== activeAssetType),
+];
+
 const directlyArchivableDevelopmentItemsAssetTypes = new Set<CreatorInventoryAssetType>([
   CreatorInventoryAssetType.Audio,
   CreatorInventoryAssetType.Decal,
@@ -162,6 +169,13 @@ export const isDevelopmentItemAsset = (assetType: Asset): boolean =>
 export const isDevelopmentItemDirectlyArchivable = (
   assetType: CreatorInventoryAssetType | undefined,
 ): boolean => assetType != null && directlyArchivableDevelopmentItemsAssetTypes.has(assetType);
+
+export const shouldOpenDevelopmentItemInCreatorStore = (
+  item: DevelopmentItemsInventoryItem,
+): boolean =>
+  !item.sources.includes(CreatorInventorySourceType.Created) &&
+  (item.sources.includes(CreatorInventorySourceType.Purchased) ||
+    item.sources.includes(CreatorInventorySourceType.Shared));
 
 export const isDevelopmentItemsAssetType = (
   value: string | undefined,

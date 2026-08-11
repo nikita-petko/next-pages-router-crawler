@@ -6,11 +6,11 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import type { PresetStatus } from '../types';
 
-type CategoryStatusBadgeProps = {
+type QuickWordsStatusBadgeProps = {
   status: PresetStatus;
 };
 
-const CategoryStatusBadge: FunctionComponent<CategoryStatusBadgeProps> = ({ status }) => {
+const QuickWordsStatusBadge: FunctionComponent<QuickWordsStatusBadgeProps> = ({ status }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
 
   switch (status) {
@@ -68,4 +68,4 @@ const CategoryStatusBadge: FunctionComponent<CategoryStatusBadgeProps> = ({ stat
   }
 };
 
-export default CategoryStatusBadge;
+export default QuickWordsStatusBadge;

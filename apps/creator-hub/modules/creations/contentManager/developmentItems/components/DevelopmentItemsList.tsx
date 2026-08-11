@@ -1,5 +1,5 @@
-import type { FunctionComponent } from 'react';
-import { memo, useCallback } from 'react';
+import type { FunctionComponent, MouseEvent } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { getFormattedDateTime } from '@rbx/core';
 import {
   Table,
@@ -10,16 +10,22 @@ import {
   TableRow,
   VisuallyHidden,
 } from '@rbx/foundation-ui';
+import { toast } from '@modules/monetization-shared/snackbar/actions';
 import type { DevelopmentItemsInventoryItem } from '../developmentItemsInventoryUtils';
+import type { DevelopmentItemToolboxIds } from '../useDevelopmentItemToolboxIds';
 import DevelopmentItemActionsMenu, {
   type DevelopmentItemArchiveStateChangeHandler,
 } from './DevelopmentItemActionsMenu';
+import DevelopmentItemContextMenu from './DevelopmentItemContextMenu';
+import type { DevelopmentItemContextMenuPosition } from './DevelopmentItemContextMenu';
 import DevelopmentItemsPagination from './DevelopmentItemsPagination';
 import type { DevelopmentItemsPaginationProps } from './DevelopmentItemsPagination';
 
 export type DevelopmentItemsListLabels = {
   actions: string;
   assetId: string;
+  assetIdCopied: string;
+  assetIdWithValue: (assetId: number) => string;
   assetType: string;
   lastUpdated: string;
   name: string;
@@ -36,6 +42,7 @@ export type DevelopmentItemsListProps = {
   onSelectItem: (item: DevelopmentItemsInventoryItem) => void;
   pagination: DevelopmentItemsPaginationProps;
   thumbnailUrls: ReadonlyMap<number, string>;
+  toolboxIdsByAssetId: ReadonlyMap<number, DevelopmentItemToolboxIds>;
 };
 
 const STICKY_ACTIONS_HEADER_CLASS =
@@ -48,9 +55,11 @@ type DevelopmentItemsListRowProps = {
   getSourceLabel: (item: DevelopmentItemsInventoryItem) => string;
   isArchivable: boolean;
   item: DevelopmentItemsInventoryItem;
+  labels: Pick<DevelopmentItemsListLabels, 'assetIdCopied' | 'assetIdWithValue'>;
   onArchiveStateChange: DevelopmentItemArchiveStateChangeHandler;
   onSelectItem: (item: DevelopmentItemsInventoryItem) => void;
   thumbnailUrl?: string;
+  toolboxIds?: DevelopmentItemToolboxIds;
 };
 
 const DevelopmentItemsListRow: FunctionComponent<DevelopmentItemsListRowProps> = memo(
@@ -59,17 +68,48 @@ const DevelopmentItemsListRow: FunctionComponent<DevelopmentItemsListRowProps> =
     getSourceLabel,
     isArchivable,
     item,
+    labels,
     onArchiveStateChange,
     onSelectItem,
     thumbnailUrl,
+    toolboxIds,
   }) => {
     const updated = item.updated ?? item.created;
+    const [contextMenuPosition, setContextMenuPosition] =
+      useState<DevelopmentItemContextMenuPosition>();
     const handleSelect = useCallback(() => {
+      if (window.getSelection()?.isCollapsed === false) {
+        return;
+      }
       onSelectItem(item);
     }, [item, onSelectItem]);
+    const handleCopyAssetId = useCallback(
+      (event: MouseEvent<HTMLButtonElement>) => {
+        event.stopPropagation();
+        if (window.getSelection()?.isCollapsed === false) {
+          return;
+        }
+        void navigator.clipboard.writeText(item.assetId.toString()).then(() => {
+          toast({ title: labels.assetIdCopied });
+        });
+      },
+      [item.assetId, labels.assetIdCopied],
+    );
+    const handleContextMenu = useCallback((event: MouseEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setContextMenuPosition({ x: event.clientX, y: event.clientY });
+    }, []);
+    const handleCloseContextMenu = useCallback(() => {
+      setContextMenuPosition(undefined);
+    }, []);
 
     return (
-      <TableRow className='group' isInteractive onClick={handleSelect}>
+      <TableRow
+        className='group'
+        isInteractive
+        onClick={handleSelect}
+        onContextMenu={handleContextMenu}>
         <TableCell>
           <div className='flex items-center gap-medium min-width-0'>
             <div className='relative size-1000 shrink-0 clip radius-medium bg-surface-200'>
@@ -87,7 +127,15 @@ const DevelopmentItemsListRow: FunctionComponent<DevelopmentItemsListRowProps> =
           </div>
         </TableCell>
         <TableCell>{getAssetTypeLabel(item)}</TableCell>
-        <TableCell>{item.assetId}</TableCell>
+        <TableCell>
+          <button
+            aria-label={labels.assetIdWithValue(item.assetId)}
+            className='text-body-medium content-inherit bg-none stroke-none padding-none margin-none cursor-pointer [user-select:text] radius-small focus-visible:outline-focus'
+            onClick={handleCopyAssetId}
+            type='button'>
+            {item.assetId}
+          </button>
+        </TableCell>
         <TableCell>{getSourceLabel(item)}</TableCell>
         <TableCell>{updated == null ? undefined : getFormattedDateTime(updated)}</TableCell>
         <TableCell align='end' className={STICKY_ACTIONS_CELL_CLASS}>
@@ -97,9 +145,19 @@ const DevelopmentItemsListRow: FunctionComponent<DevelopmentItemsListRowProps> =
               item={item}
               onArchiveStateChange={onArchiveStateChange}
               onOpenDetails={onSelectItem}
+              toolboxIds={toolboxIds}
               variant='OverMedia'
             />
           </div>
+          <DevelopmentItemContextMenu
+            isArchivable={isArchivable}
+            item={item}
+            onArchiveStateChange={onArchiveStateChange}
+            onClose={handleCloseContextMenu}
+            onOpenDetails={onSelectItem}
+            position={contextMenuPosition}
+            toolboxIds={toolboxIds}
+          />
         </TableCell>
       </TableRow>
     );
@@ -116,6 +174,7 @@ const DevelopmentItemsList: FunctionComponent<DevelopmentItemsListProps> = ({
   onSelectItem,
   pagination,
   thumbnailUrls,
+  toolboxIdsByAssetId,
 }) => (
   <div className='flex flex-col width-full min-width-0'>
     <div className='width-full min-width-0 [&>div]:bg-none [&>div]:max-width-full [&>div]:!scroll-x'>
@@ -143,9 +202,11 @@ const DevelopmentItemsList: FunctionComponent<DevelopmentItemsListProps> = ({
               isArchivable={archivableAssetIds.has(item.assetId)}
               item={item}
               key={item.id}
+              labels={labels}
               onArchiveStateChange={onArchiveStateChange}
               onSelectItem={onSelectItem}
               thumbnailUrl={thumbnailUrls.get(item.assetId)}
+              toolboxIds={toolboxIdsByAssetId.get(item.assetId)}
             />
           ))}
         </TableBody>

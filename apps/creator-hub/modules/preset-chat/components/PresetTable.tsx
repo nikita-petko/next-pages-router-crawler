@@ -1,4 +1,9 @@
-import type { FunctionComponent, ReactNode } from 'react';
+import type { FunctionComponent } from 'react';
+import { useCallback, useRef } from 'react';
+import { PointerActivationConstraints } from '@dnd-kit/dom';
+import { move } from '@dnd-kit/helpers';
+import type { DragEndEvent } from '@dnd-kit/react';
+import { DragDropProvider, KeyboardSensor, PointerSensor } from '@dnd-kit/react';
 import {
   Button,
   Table,
@@ -11,59 +16,102 @@ import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
+import type { Preset } from '../types';
+import PresetRow from './PresetRow';
+
+const DRAG_ACTIVATION_DISTANCE_PX = 5;
+const PRESET_LIST_SENSORS = [
+  PointerSensor.configure({
+    activationConstraints: [
+      new PointerActivationConstraints.Distance({ value: DRAG_ACTIVATION_DISTANCE_PX }),
+    ],
+  }),
+  KeyboardSensor,
+];
 
 type PresetTableProps = {
+  presets: Preset[];
+  minPresetsPerCategory: number;
+  maxPresetsPerCategory: number;
   onAddPreset: () => void;
+  onDeletePreset: (presetId: string) => void;
+  onUpdatePresetText: (presetId: string, text: string) => void;
+  onReorderPresets: (presetIds: string[]) => void;
   onDeleteCategory: () => void;
   canAddPreset: boolean;
-  children?: ReactNode;
 };
 
-const DEFAULT_MIN_PRESETS = 3;
-const DEFAULT_MAX_PRESETS = 10;
-
 const PresetTable: FunctionComponent<PresetTableProps> = ({
+  presets,
+  minPresetsPerCategory,
+  maxPresetsPerCategory,
   onAddPreset,
+  onDeletePreset,
+  onUpdatePresetText,
+  onReorderPresets,
   onDeleteCategory,
   canAddPreset,
-  children,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
-  const { settings } = useSettings();
-  const minPresetsPerCategory =
-    settings.presetChatMinPresetsPerCategory > 0
-      ? settings.presetChatMinPresetsPerCategory
-      : DEFAULT_MIN_PRESETS;
-  const maxPresetsPerCategory =
-    settings.presetChatMaxPresetsPerCategory > 0
-      ? settings.presetChatMaxPresetsPerCategory
-      : DEFAULT_MAX_PRESETS;
+  const containerRef = useRef<HTMLTableSectionElement>(null);
+  const getContainerElement = useCallback(() => containerRef.current, []);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { source } = event.operation;
+      if (event.canceled || !source) {
+        return;
+      }
+      const presetIds = presets.map((p) => p.id);
+      const nextPresetIds = move(presetIds, event);
+      if (nextPresetIds !== presetIds) {
+        onReorderPresets(nextPresetIds);
+      }
+    },
+    [presets, onReorderPresets],
+  );
+
+  const canDelete = presets.length > minPresetsPerCategory;
 
   return (
     <div className='flex flex-col gap-medium'>
       <div className='stroke-standard stroke-default radius-medium clip [&>div]:bg-none'>
-        <Table size='Medium' variant='Divided'>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell className='[width:240px] ![border-bottom:none] [&>div]:!content-emphasis [&>div]:!text-caption-large height-1200'>
-                {tPendingTranslation(
-                  'Quick Words',
-                  'The current working title for Preset Chat.',
-                  translationKey('Label.QuickWords', TranslationNamespace.PresetChat),
-                )}
-              </TableHeaderCell>
-              <TableHeaderCell className='![border-bottom:none] [&>div]:!content-emphasis [&>div]:!text-caption-large height-1200'>
-                {tPendingTranslation(
-                  'Status',
-                  'Column header for preset approval status',
-                  translationKey('Label.Status', TranslationNamespace.PresetChat),
-                )}
-              </TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>{children}</TableBody>
-        </Table>
+        <DragDropProvider sensors={PRESET_LIST_SENSORS} onDragEnd={handleDragEnd}>
+          <Table size='Medium' variant='Divided'>
+            <TableHeader>
+              <TableRow>
+                <TableHeaderCell className='[width:200px] [&>div]:!content-emphasis [&>div]:!text-caption-large height-1200'>
+                  {tPendingTranslation(
+                    'Quick Words',
+                    'The current working title for Preset Chat.',
+                    translationKey('Label.QuickWords', TranslationNamespace.PresetChat),
+                  )}
+                </TableHeaderCell>
+                <TableHeaderCell className='[&>div]:!content-emphasis [&>div]:!text-caption-large height-1200'>
+                  {tPendingTranslation(
+                    'Status',
+                    'Column header for preset approval status',
+                    translationKey('Label.Status', TranslationNamespace.PresetChat),
+                  )}
+                </TableHeaderCell>
+                <TableHeaderCell>{null}</TableHeaderCell>
+              </TableRow>
+            </TableHeader>
+            <TableBody ref={containerRef}>
+              {presets.map((preset, index) => (
+                <PresetRow
+                  key={preset.id}
+                  preset={preset}
+                  index={index}
+                  canDelete={canDelete}
+                  getContainerElement={getContainerElement}
+                  onTextChange={onUpdatePresetText}
+                  onDelete={onDeletePreset}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        </DragDropProvider>
       </div>
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-medium'>

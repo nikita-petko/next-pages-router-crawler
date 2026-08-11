@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import type { SubmitHandler } from 'react-hook-form';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
+import { RobloxApiDevelopAssetModelReviewStatusEnum } from '@rbx/client-develop/v1';
 import { Restriction } from '@rbx/client-marketplace-publishing-requirements-api/v1';
 import { useTranslation } from '@rbx/intl';
 import {
@@ -92,6 +93,8 @@ export type ConfigureMediaFiatFormType = BasicInfoDefaultFormType & DefaultSetti
 export type TConfigureMediaFiatFormProps = {
   assetConfigurationRestrictions: AssetConfigurationRestrictions;
   assetType: Asset;
+  audioIsModerated?: boolean;
+  audioReviewStatus?: RobloxApiDevelopAssetModelReviewStatusEnum;
   creatorName?: string;
   developerItemDetails: DeveloperItemDetails;
   enableAssetAccessForm: boolean;
@@ -110,6 +113,8 @@ const ConfigureMediaFiatForm: FunctionComponent<
 > = ({
   assetConfigurationRestrictions,
   assetType,
+  audioIsModerated,
+  audioReviewStatus,
   creatorName,
   developerItemDetails,
   enableAssetAccessForm,
@@ -516,6 +521,8 @@ const ConfigureMediaFiatForm: FunctionComponent<
   const shouldDisableToggleForPublicSurfacing = isNameModerated || isDescriptionModerated;
   const isAudioModerated =
     isAudioRevampEnabled &&
+    audioReviewStatus === RobloxApiDevelopAssetModelReviewStatusEnum.Finished &&
+    audioIsModerated === true &&
     assetConfigurationRestrictions.publishingRestrictions.includes(Restriction.AssetModeration) &&
     !isNameModerated &&
     !isDescriptionModerated;

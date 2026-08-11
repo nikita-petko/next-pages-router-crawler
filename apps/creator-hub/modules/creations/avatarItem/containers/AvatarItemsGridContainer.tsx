@@ -75,7 +75,6 @@ export interface AvatarItemsGridPagingParameters extends PagingParameters {
   sortOrder: SortOrder;
   isClickable: boolean;
   fromUtc?: Date;
-  enableBundlePaginationOffset?: boolean;
 }
 
 export interface AvatarItemsGridContainerProps {
@@ -233,7 +232,6 @@ const AvatarItemsGridContainer: FunctionComponent<
       sortOrder,
       isClickable: true,
       fromUtc,
-      enableBundlePaginationOffset: settings.enableBundlePaginationOffset ?? false,
       lastModified,
     };
   }, [
@@ -248,7 +246,6 @@ const AvatarItemsGridContainer: FunctionComponent<
     sort,
     sortOrder,
     fromUtc,
-    settings.enableBundlePaginationOffset,
     lastModified,
   ]);
 

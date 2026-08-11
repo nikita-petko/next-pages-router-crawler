@@ -2,6 +2,7 @@ import type { FunctionComponent } from 'react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { SearchAudioTypeModel } from '@rbx/client-toolbox-service/v1';
 import { CircularProgress } from '@rbx/ui';
+import developClient, { type DevelopAssetDetailsResponse } from '@modules/clients/develop';
 import {
   getAudioDiscoverability,
   type AudioDiscoverabilityItem,
@@ -34,6 +35,8 @@ type ArtistAttribution = {
   userId: number;
   displayName?: string;
 };
+
+type AudioModerationDetails = Pick<DevelopAssetDetailsResponse, 'isModerated' | 'reviewStatus'>;
 
 function getArtistAttributions(
   discoverability: AudioDiscoverabilityItem | null,
@@ -77,6 +80,7 @@ const ConfigureMediaFiatContainer: FunctionComponent<
   const [isPublicSurfacingEnabled, setIsPublicSurfacingEnabled] = useState<boolean>(true);
   const [isDiscoverabilityAvailable, setIsDiscoverabilityAvailable] = useState<boolean>(false);
   const [initialSongArtists, setInitialSongArtists] = useState<SongArtist[]>([]);
+  const [audioModerationDetails, setAudioModerationDetails] = useState<AudioModerationDetails>();
   const [assetConfigurationRestrictions, setAssetConfigurationRestrictions] =
     useState<AssetConfigurationRestrictions>();
   const { data: itemDetails, isLoading: isItemDetailsLoading } = useFetchItemDetails(
@@ -120,10 +124,14 @@ const ConfigureMediaFiatContainer: FunctionComponent<
   const fetchData = useCallback(async () => {
     try {
       if (developerItemDetails) {
-        const [assetConfigurationRestrictionsResponse, fiatProduct] = await Promise.all([
-          loadVerificationAndFiatStatus(developerItemDetails.id),
-          loadFiatProduct(developerItemDetails.id),
-        ]);
+        const [assetConfigurationRestrictionsResponse, fiatProduct, assetDetailsResponse] =
+          await Promise.all([
+            loadVerificationAndFiatStatus(developerItemDetails.id),
+            loadFiatProduct(developerItemDetails.id),
+            isAudioRevampEnabled
+              ? developClient.getAssetDetails([parseInt(developerItemDetails.id, 10)])
+              : Promise.resolve(undefined),
+          ]);
         if (!assetConfigurationRestrictionsResponse) {
           throw new Error(
             `Something went wrong fetching asset configuration restrictions for ${developerItemDetails.id}`,
@@ -142,6 +150,16 @@ const ConfigureMediaFiatContainer: FunctionComponent<
         setIsOnMarketplace(fiatProduct.purchasable);
 
         if (isAudioRevampEnabled) {
+          const assetDetails = assetDetailsResponse?.data?.[0];
+          if (!assetDetails) {
+            throw new Error(
+              `Something went wrong fetching moderation status for ${developerItemDetails.id}`,
+            );
+          }
+          setAudioModerationDetails({
+            isModerated: assetDetails.isModerated,
+            reviewStatus: assetDetails.reviewStatus,
+          });
           try {
             const discoverability = await getAudioDiscoverability(
               parseInt(developerItemDetails.id, 10),
@@ -196,6 +214,8 @@ const ConfigureMediaFiatContainer: FunctionComponent<
       <ConfigureMediaFiatForm
         assetConfigurationRestrictions={assetConfigurationRestrictions}
         assetType={assetType}
+        audioIsModerated={audioModerationDetails?.isModerated}
+        audioReviewStatus={audioModerationDetails?.reviewStatus}
         creatorName={itemDetails?.creator?.name ?? undefined}
         developerItemDetails={developerItemDetails}
         enableAssetAccessForm={enableAssetAccessForm}

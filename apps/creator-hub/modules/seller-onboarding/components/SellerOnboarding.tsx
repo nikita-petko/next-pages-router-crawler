@@ -1,6 +1,7 @@
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
+import { AgeBracketEnum } from '@rbx/client-core-content-api/v1';
 import type { RobloxLocaleApiCountryRegion } from '@rbx/client-locale/v1';
 import { RobloxPaymentsSharedV1SellerStatus as SellerStatus } from '@rbx/client-marketplace-fiat-service/v1';
 import { Restriction } from '@rbx/client-marketplace-publishing-requirements-api/v1';
@@ -37,9 +38,19 @@ import { FormMode } from '@modules/miscellaneous/common';
 import { Link } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { creatorHub, terms, www } from '@modules/miscellaneous/urls';
+import IdVerificationDialog from '@modules/publishing-permissions/components/IdVerificationDialog';
+import {
+  idVerificationActionUrl,
+  parentLinkActionUrl,
+} from '@modules/publishing-permissions/constants/tiers';
+import { useCreatorEligibility } from '@modules/publishing-permissions/hooks/useCreatorEligibility';
 import useCountryRegions from '../context/useCountryRegions';
 import OnboardingStatusAlert from './OnboardingStatusAlert';
 import useSellerOnboardingStyles from './SellerOnboarding.styles';
+
+const TranslatedIdVerificationDialog = withTranslation(IdVerificationDialog, [
+  TranslationNamespace.PublicPublish,
+]);
 
 export type OnboardingFormType = {
   termsOfService: boolean;
@@ -61,6 +72,7 @@ const SellerOnboarding: FunctionComponent<React.PropsWithChildren> = () => {
   const [isCountryValid, setIsCountryValid] = useState<boolean>();
   const [isDialogLoading, setIsDialogLoading] = useState<boolean>(false);
   const [legalAgreementsSigned, setLegalAgreementsSigned] = useState(false);
+  const [isIdVerificationDialogOpen, setIsIdVerificationDialogOpen] = useState(false);
 
   const {
     data: countryRegionsList,
@@ -85,6 +97,18 @@ const SellerOnboarding: FunctionComponent<React.PropsWithChildren> = () => {
     error: hasSellerStatusError,
     isPending: isSellerStatusLoading,
   } = useFetchSellerStatus();
+
+  const {
+    data: creatorEligibilityResponse,
+    isLoading: isCreatorEligibilityLoading,
+    isError: isCreatorEligibilityError,
+  } = useCreatorEligibility({
+    isReady: isPricingEligibilityV2 ?? false,
+  });
+  const ageBracket = creatorEligibilityResponse?.ageBracket ?? AgeBracketEnum.Unknown;
+  const isAgeBracketResolved =
+    !isPricingEligibilityV2 ||
+    (!isCreatorEligibilityLoading && (!!creatorEligibilityResponse || isCreatorEligibilityError));
 
   const isSetupCompleted = sellerStatusResponse && sellerStatusResponse.setupCompleted;
   const sellerStatus = sellerStatusResponse && sellerStatusResponse.sellerStatus;
@@ -131,7 +155,30 @@ const SellerOnboarding: FunctionComponent<React.PropsWithChildren> = () => {
   }, []);
 
   const onClickIdVerifyLink = useCallback(() => {
-    window.open(www.getAccountSettingsUrl());
+    if (!isPricingEligibilityV2) {
+      window.open(www.getAccountSettingsUrl());
+      return;
+    }
+    if (!isAgeBracketResolved) {
+      return;
+    }
+    if (ageBracket === AgeBracketEnum.Between13And18) {
+      setIsIdVerificationDialogOpen(true);
+    } else if (ageBracket === AgeBracketEnum.Under13) {
+      window.open(parentLinkActionUrl, '_blank');
+    } else {
+      window.open(idVerificationActionUrl, '_blank');
+    }
+  }, [isPricingEligibilityV2, isAgeBracketResolved, ageBracket]);
+
+  const onContinueWithId = useCallback(() => {
+    window.open(idVerificationActionUrl, '_blank');
+    setIsIdVerificationDialogOpen(false);
+  }, []);
+
+  const onAddParent = useCallback(() => {
+    window.open(parentLinkActionUrl, '_blank');
+    setIsIdVerificationDialogOpen(false);
   }, []);
 
   const onClickTwoStepVerificationLink = useCallback(() => {
@@ -345,7 +392,9 @@ const SellerOnboarding: FunctionComponent<React.PropsWithChildren> = () => {
             <Grid item XSmall>
               <Typography variant='h4'>{translate('Label.Prerequisites')}</Typography>
             </Grid>
-            {isOnboardingRestrictionsLoading || hasOnboardingRestrictionsError ? (
+            {isOnboardingRestrictionsLoading ||
+            hasOnboardingRestrictionsError ||
+            (isPricingEligibilityV2 && isCreatorEligibilityLoading) ? (
               <Grid container item data-testid='eligibility-loading-id'>
                 <CircularProgress />
               </Grid>
@@ -384,11 +433,23 @@ const SellerOnboarding: FunctionComponent<React.PropsWithChildren> = () => {
                     }
                   />
                   <EligibilityRow
-                    headerText={translate('Label.IdAndAgeVerification')}
+                    headerText={translate(
+                      isPricingEligibilityV2 && ageBracket === AgeBracketEnum.Under13
+                        ? 'Label.ParentVerification'
+                        : 'Label.IdAndAgeVerification',
+                    )}
                     linkText={isVerified ? undefined : translate('Action.Verify')}
                     onClickLink={isVerified ? undefined : onClickIdVerifyLink}
                     status={isVerified ? EligibilityStatus.Completed : EligibilityStatus.Warning}
                   />
+                  {isPricingEligibilityV2 && (
+                    <TranslatedIdVerificationDialog
+                      open={isIdVerificationDialogOpen}
+                      onOpenChange={setIsIdVerificationDialogOpen}
+                      onContinueWithId={onContinueWithId}
+                      onAddParent={onAddParent}
+                    />
+                  )}
                   {isPricingEligibilityV2 && (
                     <EligibilityRow
                       headerText={translate('Label.TwoStepVerification')}

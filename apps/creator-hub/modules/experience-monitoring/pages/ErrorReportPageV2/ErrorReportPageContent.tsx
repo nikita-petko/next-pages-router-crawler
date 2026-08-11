@@ -12,6 +12,7 @@ import { PageLoading } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { getErrorReportPageV2Config } from './errorReportPageV2Config';
 import { useNewPlaceVersionLiveBannerElement } from './NewPlaceVersionLiveBanner';
+import { useRobloxOwnedScriptErrorsRemovedBannerElement } from './RobloxOwnedScriptErrorsRemovedBanner';
 
 const ErrorReportPageContent: FC = () => {
   const { id: universeId, isLoading: isResourceLoading } = useUniverseResource();
@@ -41,15 +42,26 @@ const ErrorReportPageContent: FC = () => {
   const newPlaceVersionLiveBannerElement = useNewPlaceVersionLiveBannerElement(
     shouldEnableNewPlaceVersionLiveBanner,
   );
+  const robloxOwnedScriptErrorsRemovedBannerElement =
+    useRobloxOwnedScriptErrorsRemovedBannerElement();
+  const bannerElements = useMemo(
+    () => [
+      ...(robloxOwnedScriptErrorsRemovedBannerElement
+        ? [robloxOwnedScriptErrorsRemovedBannerElement]
+        : []),
+      ...(newPlaceVersionLiveBannerElement ? [newPlaceVersionLiveBannerElement] : []),
+    ],
+    [newPlaceVersionLiveBannerElement, robloxOwnedScriptErrorsRemovedBannerElement],
+  );
 
   const config = useMemo(
     () =>
       getErrorReportPageV2Config(
         Boolean(isErrorReportV2EnabledFlag),
         Boolean(isFirstSeenColumnEnabledFlag),
-        newPlaceVersionLiveBannerElement,
+        bannerElements,
       ),
-    [isErrorReportV2EnabledFlag, isFirstSeenColumnEnabledFlag, newPlaceVersionLiveBannerElement],
+    [bannerElements, isErrorReportV2EnabledFlag, isFirstSeenColumnEnabledFlag],
   );
 
   if (isResourceLoading || !isFlagReady || !isFirstSeenColumnFlagReady) {

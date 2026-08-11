@@ -18,20 +18,18 @@ import useSettingsFormStyles from './SettingsForm.styles';
 
 const { docs } = creatorHub;
 
-const HiddenFromSearchBannerImpressionTracker: FunctionComponent<{
+const BannerImpressionTracker: FunctionComponent<{
+  eventName: string;
   assetId: number;
   creatorId: number;
   children: React.ReactNode;
-}> = ({ assetId, creatorId, children }) => {
-  const { ref } = useConversionTracker<HTMLDivElement>(
-    'CreatorStoreHiddenFromSearchBannerImpression',
-    {
-      additionalParams: {
-        assetId: String(assetId),
-        creatorId: String(creatorId),
-      },
+}> = ({ eventName, assetId, creatorId, children }) => {
+  const { ref } = useConversionTracker<HTMLDivElement>(eventName, {
+    additionalParams: {
+      assetId: String(assetId),
+      creatorId: String(creatorId),
     },
-  );
+  });
   return <div ref={ref}>{children}</div>;
 };
 
@@ -169,7 +167,10 @@ const SettingsForm: FunctionComponent<React.PropsWithChildren<SettingsFormProps>
       enableHiddenFromSearchVisibilityAlert
     ) {
       return (
-        <HiddenFromSearchBannerImpressionTracker assetId={assetId} creatorId={creator?.id ?? 0}>
+        <BannerImpressionTracker
+          eventName='CreatorStoreHiddenFromSearchBannerImpression'
+          assetId={assetId}
+          creatorId={creator?.id ?? 0}>
           <DistributionAlert
             key={`${assetId}_${String(!!isDistributed)}`}
             distributionState={distributionErrorState}
@@ -177,7 +178,7 @@ const SettingsForm: FunctionComponent<React.PropsWithChildren<SettingsFormProps>
             isSfx={isSfx}
             isDistributed={isDistributed}
           />
-        </HiddenFromSearchBannerImpressionTracker>
+        </BannerImpressionTracker>
       );
     }
     if (distributionErrorState && creator) {
@@ -192,17 +193,32 @@ const SettingsForm: FunctionComponent<React.PropsWithChildren<SettingsFormProps>
         );
       }
     }
+    if (distributionErrorState === DistributionErrorState.IneligiblePublisher) {
+      return (
+        <BannerImpressionTracker
+          eventName='CreatorStorePublishingRestrictionBannerImpression'
+          assetId={assetId}
+          creatorId={creator?.id ?? 0}>
+          <DistributionAlert
+            key={`${assetId}_${String(!!isDistributed)}`}
+            distributionState={distributionErrorState}
+            assetId={assetId}
+            isSfx={isSfx}
+            isDistributed={isDistributed}
+          />
+        </BannerImpressionTracker>
+      );
+    }
     if (
       distributionErrorState !== undefined &&
       [
         DistributionErrorState.NotStartedAudioDistribution,
         DistributionErrorState.InvalidAssetType,
         DistributionErrorState.PotentialPolicyViolation,
+        DistributionErrorState.IneligibleFiatSeller,
         DistributionErrorState.Unauthorized,
         DistributionErrorState.Other,
         DistributionErrorState.Approved,
-        DistributionErrorState.IneligiblePublisher,
-        DistributionErrorState.IneligibleFiatSeller,
         DistributionErrorState.PackageIneligible,
         DistributionErrorState.RightsClaim,
       ].includes(distributionErrorState)

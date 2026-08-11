@@ -49,7 +49,7 @@ const reasonToLabelKey: Partial<Record<string, string>> = {
   [ListingRejectionReason.InappropriateContent]: 'Label.RejectReasonInappropriateContent',
 };
 
-const SHOWCASED_EXPERIENCES_HEADING_ID = 'iph-showcased-experiences-heading';
+const SPOTLIGHTED_CREATIONS_HEADING_ID = 'iph-spotlighted-creations-heading';
 
 const useStyles = makeStyles()(() => ({
   thumbnailContainer: {
@@ -131,29 +131,20 @@ const IpListingDetailsContainer = () => {
     showcaseContentReq.isPending ||
     (showcasedUniverseIds.length > 0 && showcaseUniverseDetailsReq.isPending) ||
     isShowcaseContentRetrying;
-  const showcasedExperiencesLabel = tPendingTranslation(
-    'Showcased experiences',
-    'Section heading for experiences showcased on an IP listing details page',
-    translationKey('Label.ShowcasedExperiences', TranslationNamespace.AgreementsManager),
+  const spotlightedCreationsLabel = tPendingTranslation(
+    'Spotlighted creations',
+    'Section heading for creations spotlighted on an IP listing details page',
+    translationKey('Label.SpotlightedCreations', TranslationNamespace.AgreementsManager),
   );
-  const showcasedExperiencesSelectedCount = tPendingTranslation(
-    '{selectedCount}/10 selected.',
-    'Count of experiences selected for an IP listing showcase',
-    translationKey(
-      'Label.ShowcasedExperiencesSelectedCount',
-      TranslationNamespace.AgreementsManager,
-    ),
-    { selectedCount: showcasedUniverseIds.length.toString() },
+  const spotlightedCreationsDescription = tPendingTranslation(
+    'Add creations to feature and highlight to Creators browsing your license listing.',
+    'Description of the spotlighted creations section on an IP listing details page',
+    translationKey('Description.SpotlightedCreations', TranslationNamespace.AgreementsManager),
   );
-  const noShowcasedExperiencesDescription = tPendingTranslation(
-    'No showcased experiences',
-    'Empty state shown when an IP listing has no showcased experiences',
-    translationKey('Description.NoShowcasedExperiences', TranslationNamespace.AgreementsManager),
-  );
-  const manageShowcasedExperiencesLabel = tPendingTranslation(
-    'Manage',
-    'Action to manage content, such as the experiences showcased on an IP listing',
-    translationKey('Action.Manage', TranslationNamespace.AgreementsManager),
+  const addCreationsLabel = tPendingTranslation(
+    'Add creations',
+    'Action to add creations to an IP listing showcase',
+    translationKey('Action.AddCreations', TranslationNamespace.AgreementsManager),
   );
   const retryShowcasedExperiencesLabel = tPendingTranslation(
     'Retry',
@@ -169,6 +160,47 @@ const IpListingDetailsContainer = () => {
     'Next showcased content',
     'Accessible label for the next button in the showcased content carousel',
     translationKey('Action.NextShowcasedContent', TranslationNamespace.Licenses),
+  );
+  const showcasedCarouselItems = useMemo(
+    () =>
+      showcasedUniverseIds.map((universeId, index) => {
+        const details = showcaseDetailsByUniverseId.get(universeId);
+        const name =
+          details?.name ??
+          tPendingTranslation(
+            'Universe {universeId}',
+            'Fallback name for a showcased experience when its name cannot be loaded',
+            translationKey(
+              'Label.ShowcasedExperienceUniverseWithId',
+              TranslationNamespace.AgreementsManager,
+            ),
+            { universeId: universeId.toString() },
+          );
+        return {
+          id: `Universe:${universeId}:${index}`,
+          content: (
+            <ShowcaseContentTile
+              universeId={universeId}
+              name={name}
+              showExternalIcon={false}
+              link={
+                details?.rootPlaceId != null
+                  ? EXTERNAL_EXPERIENCE_HREF(details.rootPlaceId)
+                  : undefined
+              }
+              onClick={() =>
+                logEvent(LicenseManagerClickEvent.IphListingsDetailsPageShowcaseContentClickEvent, {
+                  listingId: ipListingId,
+                  contentType: 'Universe',
+                  contentId: universeId,
+                  contentPosition: index + 1,
+                })
+              }
+            />
+          ),
+        };
+      }),
+    [ipListingId, logEvent, showcaseDetailsByUniverseId, showcasedUniverseIds, tPendingTranslation],
   );
   const { setPageTitle } = useIpLayoutContext();
   useEffect(() => {
@@ -208,7 +240,7 @@ const IpListingDetailsContainer = () => {
   const isPublic = listing.visibility === ListingVisibility.Public;
   const showPublicLink = isPublic && listing.status === ListingStatus.Approved;
 
-  const handleManageShowcasedExperiences = () => {
+  const handleAddCreations = () => {
     logEvent(LicenseManagerClickEvent.IphListingsDetailsPageManageShowcasedExperiencesClickEvent, {
       listingId: ipListingId,
     });
@@ -227,15 +259,6 @@ const IpListingDetailsContainer = () => {
       void showcaseUniverseDetailsReq.refetch();
     }
   };
-  const handleShowcaseContentClick = (universeId: number, contentPosition: number) => {
-    logEvent(LicenseManagerClickEvent.IphListingsDetailsPageShowcaseContentClickEvent, {
-      listingId: ipListingId,
-      contentType: 'Universe',
-      contentId: universeId,
-      contentPosition,
-    });
-  };
-
   let alertMessage;
   if (listing.status === ListingStatus.Pending) {
     alertMessage = 'Description.ListingPrivateWhileUnderReview';
@@ -368,9 +391,10 @@ const IpListingDetailsContainer = () => {
       {isShowcaseExperiencesFlagReady && isShowcaseExperiencesEnabled && (
         <Grid item>
           <Flex gap={8} flexDirection='column'>
-            <Typography id={SHOWCASED_EXPERIENCES_HEADING_ID} variant='h6'>
-              {showcasedExperiencesLabel}
+            <Typography id={SPOTLIGHTED_CREATIONS_HEADING_ID} variant='h6'>
+              {spotlightedCreationsLabel}
             </Typography>
+            <Typography>{spotlightedCreationsDescription}</Typography>
             {isShowcaseContentLoading ? (
               <div className='flex justify-center padding-large'>
                 <ProgressCircle
@@ -398,53 +422,15 @@ const IpListingDetailsContainer = () => {
               </FoundationAlert>
             ) : (
               <>
-                <Flex gap={8} alignItems='center'>
-                  <Typography>{showcasedExperiencesSelectedCount}</Typography>
-                  <FoundationButton
-                    variant='Link'
-                    size='Medium'
-                    className='![height:auto] !padding-none !text-label-medium [&>div]:!bg-none [&>div]:!transition-none [&>span>span]:!padding-none'
-                    onClick={handleManageShowcasedExperiences}>
-                    {manageShowcasedExperiencesLabel}
-                  </FoundationButton>
-                </Flex>
-                {showcasedUniverseIds.length === 0 ? (
-                  <Typography>{noShowcasedExperiencesDescription}</Typography>
-                ) : (
+                <FoundationButton variant='Standard' size='Medium' onClick={handleAddCreations}>
+                  {addCreationsLabel}
+                </FoundationButton>
+                {showcasedUniverseIds.length > 0 && (
                   <ShowcaseContentCarousel
-                    ariaLabelledBy={SHOWCASED_EXPERIENCES_HEADING_ID}
+                    ariaLabelledBy={SPOTLIGHTED_CREATIONS_HEADING_ID}
                     previousAriaLabel={previousShowcasedContentAriaLabel}
                     nextAriaLabel={nextShowcasedContentAriaLabel}
-                    items={showcasedUniverseIds.map((universeId, index) => {
-                      const details = showcaseDetailsByUniverseId.get(universeId);
-                      const name =
-                        details?.name ??
-                        tPendingTranslation(
-                          'Universe {universeId}',
-                          'Fallback name for a showcased experience when its name cannot be loaded',
-                          translationKey(
-                            'Label.ShowcasedExperienceUniverseWithId',
-                            TranslationNamespace.AgreementsManager,
-                          ),
-                          { universeId: universeId.toString() },
-                        );
-                      return {
-                        id: `Universe:${universeId}:${index}`,
-                        content: (
-                          <ShowcaseContentTile
-                            universeId={universeId}
-                            name={name}
-                            showExternalIcon={false}
-                            link={
-                              details?.rootPlaceId != null
-                                ? EXTERNAL_EXPERIENCE_HREF(details.rootPlaceId)
-                                : undefined
-                            }
-                            onClick={() => handleShowcaseContentClick(universeId, index + 1)}
-                          />
-                        ),
-                      };
-                    })}
+                    items={showcasedCarouselItems}
                   />
                 )}
               </>

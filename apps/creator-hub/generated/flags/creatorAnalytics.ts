@@ -70,7 +70,7 @@ export const acquisitionMigrationMetricsEnabled = defineFlag({
 export const isTargetingConfigsEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isTargetingConfigsEnabled',
-    defaultValue: false,
+    defaultValue: true,
   });
 export const isExperimentNullControlValueEnabled = defineFlag({
     namespace: 'creator-analytics',

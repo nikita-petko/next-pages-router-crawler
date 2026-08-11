@@ -63,7 +63,7 @@ const pageHeader = {
 const getReportsSurfaceConfig = (
   isErrorReportV2Enabled: boolean,
   isFirstSeenColumnEnabled: boolean,
-  newPlaceVersionLiveBannerElement?: React.ReactElement,
+  bannerElements: readonly React.ReactElement[],
 ): CreatorAnalyticsPageSurfaceConfig => ({
   resourceTypes: [RAQIV2ChartResourceType.Universe],
   timeRangeOptions: {
@@ -111,22 +111,20 @@ const getReportsSurfaceConfig = (
     : undefined,
   breakdownDimensions: [],
   preControlCharts:
-    isErrorReportV2Enabled && newPlaceVersionLiveBannerElement
-      ? [
-          {
-            type: RAQIV2SpecialLayoutType.FullWidthLayout,
-            items: [
-              {
-                type: AnalyticsComponentType.NonGeneric,
-                metrics: [],
-                renderer: {
-                  type: 'isolated',
-                  render: () => newPlaceVersionLiveBannerElement,
-                },
+    bannerElements.length > 0
+      ? bannerElements.map((bannerElement) => ({
+          type: RAQIV2SpecialLayoutType.FullWidthLayout,
+          items: [
+            {
+              type: AnalyticsComponentType.NonGeneric,
+              metrics: [],
+              renderer: {
+                type: 'isolated',
+                render: () => bannerElement,
               },
-            ],
-          },
-        ]
+            },
+          ],
+        }))
       : undefined,
   body: [
     {
@@ -217,12 +215,12 @@ const rulesTabConfig: TabbedRAQIV2PageTabConfig<TErrorReportTabKey> = {
 export const getErrorReportPageV2Config = (
   isErrorReportV2Enabled: boolean,
   isFirstSeenColumnEnabled: boolean,
-  newPlaceVersionLiveBannerElement?: React.ReactElement,
+  bannerElements: readonly React.ReactElement[] = [],
 ): CreatorAnalyticsFixedTabPageConfig<TErrorReportTabKey> | CreatorAnalyticsUntabbedPageConfig => {
   const reportsSurface = getReportsSurfaceConfig(
     isErrorReportV2Enabled,
     isFirstSeenColumnEnabled,
-    newPlaceVersionLiveBannerElement,
+    bannerElements,
   );
 
   // Only render the tabbed (Reports + Rules) layout when Error Report V2 is on.

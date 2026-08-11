@@ -359,8 +359,17 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
         <RailItem
           enableAnimation={isReady && shouldAnimate}
           compact={compact}
-          icon={<Icon name='icon-regular-three-dots-horizontal' size='Medium' />}
-          label={translate('Heading.AllTools')}
+          icon={
+            <Icon
+              name={
+                isAuth
+                  ? 'icon-regular-three-dots-horizontal'
+                  : 'icon-regular-arrow-right-to-portrait-rectangle'
+              }
+              size='Medium'
+            />
+          }
+          label={translate(isAuth ? 'Heading.AllTools' : 'Action.LogIn')}
           onClick={() => {
             if (isAuth) {
               sendEvent(clickRailEventModel('AllTools'));

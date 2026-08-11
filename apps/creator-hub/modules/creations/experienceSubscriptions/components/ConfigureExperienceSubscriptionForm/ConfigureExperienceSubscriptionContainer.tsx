@@ -1,13 +1,11 @@
-import { useRouter } from 'next/router';
 import { useCallback, useState } from 'react';
+import { useRouter } from 'next/router';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { CircularProgress, Grid } from '@rbx/ui';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import useOverviewStyles from '../../../common/components/Overview.styles';
 import useCurrentDeveloperProduct from '../../hooks/useCurrentExperienceSubscription';
-import ConfigureExperienceSubscriptionForm from './ConfigureExperienceSubscriptionForm';
 import ConfigureExperienceSubscriptionFormV2 from './ConfigureExperienceSubscriptionFormV2';
 
 function ConfigureExperienceSubscriptionContainer() {
@@ -23,7 +21,6 @@ function ConfigureExperienceSubscriptionContainer() {
     refreshExperienceSubscriptionDetails,
   } = useCurrentDeveloperProduct();
   const { translate } = useTranslation();
-  const { settings, isFetched } = useSettings();
   const router = useRouter();
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
 
@@ -57,21 +54,13 @@ function ConfigureExperienceSubscriptionContainer() {
 
   return (
     <Grid container justifyContent='space-between' alignItems='center'>
-      {isFetched && settings.enableDeveloperSubscriptionUpdateRevShareDemo ? (
-        <ConfigureExperienceSubscriptionFormV2
-          experienceSubscriptionDetailsInfo={experienceSubscriptionDetails}
-          priceTierMap={priceTierMap}
-          revshareStatModelMap={revshareStatModelMap}
-          refreshData={refreshData}
-          canAccessExperienceSubscription={canAccessExperienceSubscription}
-        />
-      ) : (
-        <ConfigureExperienceSubscriptionForm
-          experienceSubscriptionDetailsInfo={experienceSubscriptionDetails}
-          priceTierMap={priceTierMap}
-          refreshData={refreshData}
-        />
-      )}
+      <ConfigureExperienceSubscriptionFormV2
+        experienceSubscriptionDetailsInfo={experienceSubscriptionDetails}
+        priceTierMap={priceTierMap}
+        revshareStatModelMap={revshareStatModelMap}
+        refreshData={refreshData}
+        canAccessExperienceSubscription={canAccessExperienceSubscription}
+      />
     </Grid>
   );
 }

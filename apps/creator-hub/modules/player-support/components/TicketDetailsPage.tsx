@@ -20,7 +20,13 @@ import {
 } from '@rbx/foundation-ui';
 import type { Locale } from '@rbx/intl';
 import { useTranslation, withTranslation } from '@rbx/intl';
-import { ReturnPolicy, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
+import {
+  AssetThumbnailSize,
+  ReturnPolicy,
+  Thumbnail2d,
+  ThumbnailResponseState,
+  ThumbnailTypes,
+} from '@rbx/thumbnails';
 import { Alert, Avatar, useMediaQuery, useSnackbar, type TTheme } from '@rbx/ui';
 import { enablePlayerSupportCreatorTicketReroute } from '@generated/flags/creatorGameops';
 import useLocale from '@modules/charts-generic/context/useLocale';
@@ -34,6 +40,8 @@ import {
 } from '@modules/clients/creatorCommunication';
 import { getResponseFromError } from '@modules/clients/utils';
 import unifiedLoggerClient from '@modules/eventStream/unifiedLoggerClient';
+import type { InspectorImage } from '@modules/ip/license-manager/agreements/components/ScreenshotInspector';
+import ScreenshotInspector from '@modules/ip/license-manager/agreements/components/ScreenshotInspector';
 import { toastDurationTime } from '@modules/miscellaneous/common';
 import LoadError from '@modules/miscellaneous/error/LoadError';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -48,6 +56,8 @@ import { SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_MINUTE } from '../consta
 import useMarkTicketViewedMutation from '../hooks/useMarkTicketViewedMutation';
 import useRerouteTicketMutation from '../hooks/useRerouteTicketMutation';
 import useSendTicketReplyMutation from '../hooks/useSendTicketReplyMutation';
+import useTicketCaptureTimesQuery from '../hooks/useTicketCaptureTimesQuery';
+import useTicketCaptureUrlsQuery from '../hooks/useTicketCaptureUrlsQuery';
 import useTicketDetailQuery from '../hooks/useTicketDetailQuery';
 import useTicketUsernamesQuery, { type UsernameMap } from '../hooks/useTicketUsernamesQuery';
 import { getPlayerSupportTicketDetailQueryKey } from '../queryKeys';
@@ -151,6 +161,112 @@ const CommentIcon: React.FunctionComponent<{
   return <UserIcon userId={authorId} />;
 };
 
+// ── Image Inspector ──────────────────────────────────────
+
+const EMPTY_ASSET_IDS: number[] = [];
+
+const TicketCaptures: React.FunctionComponent<{
+  assetIds?: Array<number>;
+  inspectorTitle?: string;
+  locale: Locale;
+}> = ({ assetIds, inspectorTitle, locale }) => {
+  const { translate } = useTranslation();
+  const [inspectedIndex, setInspectedIndex] = useState<number | null>(null);
+  const [captureStatuses, setCaptureStatuses] = useState<
+    ReadonlyMap<number, ThumbnailResponseState>
+  >(() => new Map());
+  const handleCloseInspector = useCallback(() => setInspectedIndex(null), []);
+  const handleCaptureStatus = useCallback(
+    (assetId: number, status: ThumbnailResponseState) =>
+      setCaptureStatuses((previousStatuses) => {
+        if (previousStatuses.get(assetId) === status) {
+          return previousStatuses;
+        }
+        const nextStatuses = new Map(previousStatuses);
+        nextStatuses.set(assetId, status);
+        return nextStatuses;
+      }),
+    [],
+  );
+
+  const { data: captureUrls } = useTicketCaptureUrlsQuery(assetIds ?? EMPTY_ASSET_IDS);
+  const { data: captureTimes } = useTicketCaptureTimesQuery(assetIds ?? EMPTY_ASSET_IDS);
+
+  const captureAltText = (index: number) =>
+    translate('Label.PlayerSupport.CaptureAlt', { index: String(index + 1) });
+
+  const inspectorImages = useMemo<InspectorImage[]>(
+    () =>
+      (assetIds ?? [])
+        .map((assetId) => ({ assetId, src: captureUrls?.get(assetId) }))
+        .filter((entry): entry is { assetId: number; src: string } => Boolean(entry.src))
+        .map(({ assetId, src }) => ({ key: String(assetId), assetId, src })),
+    [assetIds, captureUrls],
+  );
+
+  if (!assetIds?.length) {
+    return null;
+  }
+
+  return (
+    <div className='padding-top-medium gap-small flex flex-col'>
+      <span className='content-emphasis text-label-medium'>
+        {translate('Label.PlayerSupport.Captures')}
+      </span>
+      <div className='gap-small flex wrap'>
+        {assetIds.map((assetId, index) => {
+          const inspectorIndex = inspectorImages.findIndex((image) => image.assetId === assetId);
+          const capturedAt = captureTimes?.get(assetId);
+          const captureCaption =
+            captureStatuses.get(assetId) === ThumbnailResponseState.Error
+              ? translate('Label.PlayerSupport.CaptureModerated')
+              : capturedAt
+                ? formatDate(capturedAt, locale)
+                : null;
+          return (
+            <div key={assetId} className='gap-xxsmall width-3000 flex flex-col'>
+              <button
+                type='button'
+                aria-label={captureAltText(index)}
+                disabled={inspectorIndex === -1}
+                onClick={() => setInspectedIndex(inspectorIndex)}
+                className='shrink-0 radius-medium clip size-3000 padding-none stroke-none [background:transparent] enabled:cursor-pointer'>
+                <Thumbnail2d
+                  targetId={assetId}
+                  type={ThumbnailTypes.assetThumbnail}
+                  alt={captureAltText(index)}
+                  returnPolicy={ReturnPolicy.PlaceHolder}
+                  containerClass='block'
+                  // eslint-disable-next-line no-underscore-dangle -- external enum
+                  size={AssetThumbnailSize._420x420}
+                  onLoadThumbnailStatus={(status: ThumbnailResponseState) =>
+                    handleCaptureStatus(assetId, status)
+                  }
+                />
+              </button>
+              {captureCaption && (
+                <span className='content-muted text-body-small'>{captureCaption}</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {/*
+        TODO: https://roblox.atlassian.net/browse/CSGO-2412 + https://roblox.atlassian.net/browse/UIBLOX-5179
+        Replace `ScreenshotInspector` with an approved Foundation component.
+      */}
+      {inspectedIndex !== null && (
+        <ScreenshotInspector
+          images={inspectorImages}
+          title={inspectorTitle ?? ''}
+          initialIndex={inspectedIndex}
+          onClose={handleCloseInspector}
+        />
+      )}
+    </div>
+  );
+};
+
 // ── Activity Section (left column) ──────────────────────────────────────
 
 const ActivitySection: React.FunctionComponent<{
@@ -161,7 +277,7 @@ const ActivitySection: React.FunctionComponent<{
   onReplySuccess?: (response: UpdateTicketAsCreatorResponse) => void;
 }> = ({ ticket, locale, usernameMap, ticketId, onReplySuccess }) => {
   const { translate } = useTranslation();
-  const { summary, comments } = ticket;
+  const { summary, comments, assetIds } = ticket;
   const firstComment = comments?.[0];
   const subsequentComments = comments?.slice(1) ?? [];
   const { gameDetails } = useCurrentGame();
@@ -238,6 +354,7 @@ const ActivitySection: React.FunctionComponent<{
               </p>
             </div>
           )}
+          <TicketCaptures assetIds={assetIds} inspectorTitle={universeName} locale={locale} />
         </TimelineItem>
         {subsequentComments.map((comment, index) => {
           const isFromCurrentCreator =
@@ -722,7 +839,7 @@ const DetailsSidebar: React.FunctionComponent<{
           </DetailRow>
         )}
         {metadata &&
-          TICKET_METADATA_ENTRIES.map(({ key, translationKey }) => {
+          TICKET_METADATA_ENTRIES.map(({ key, translationKey: metadataTranslationKey }) => {
             // Case-insensitive lookup against backend-provided keys so minor
             // casing drift (e.g. `Platform_Type`) still resolves.
             const matchedEntry = Object.entries(metadata).find(([k]) => k.toLowerCase() === key);
@@ -731,7 +848,7 @@ const DetailsSidebar: React.FunctionComponent<{
               return null;
             }
             return (
-              <DetailRow key={key} label={translate(translationKey)}>
+              <DetailRow key={key} label={translate(metadataTranslationKey)}>
                 {value}
               </DetailRow>
             );
@@ -889,4 +1006,9 @@ const TicketDetailsPage: React.FunctionComponent = () => {
   );
 };
 
-export default withTranslation(TicketDetailsPage, [TranslationNamespace.PlayerFeedback]);
+// `ScreenshotInspector` is borrowed from agreements-manager and calls bare `translate()` for its own
+// keys, so its namespace is registered too. Will be removed when the ScreenshotInspector is replaced.
+export default withTranslation(TicketDetailsPage, [
+  TranslationNamespace.PlayerFeedback,
+  TranslationNamespace.AgreementsManager,
+]);

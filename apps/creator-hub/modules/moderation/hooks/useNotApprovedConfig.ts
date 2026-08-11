@@ -7,6 +7,10 @@ import type { NotApprovedUIConfig, TPunishment } from '@rbx/not-approved-page-ui
 import { useAuthentication } from '@modules/authentication/providers';
 import unifiedLoggerClient from '@modules/eventStream/unifiedLoggerClient';
 import { getAuthorizationEndpoint } from '@modules/navigation/applicationAuthorization/services/appAuthDataService';
+import {
+  authenticatedHttpGet as httpGet,
+  authenticatedHttpPost as httpPost,
+} from '../services/authenticatedHttp';
 
 /**
  * Builds the complete NotApprovedUIConfig object for the NotApprovedUIProvider.
@@ -37,62 +41,6 @@ function useNotApprovedConfig(): NotApprovedUIConfig {
     [translate],
   );
 
-  const httpGet = useCallback(async <T>(url: string): Promise<T> => {
-    const response = await fetch(url, { credentials: 'include' });
-
-    if (!response.ok) {
-      throw new Error(`HTTP GET ${url} failed with status ${response.status}`);
-    }
-
-    // Response.json() is typed as Promise<any> by lib.dom; T is supplied by the caller and
-    // represents the contractually-expected response shape, so we widen via typed assignment
-    // rather than `as`.
-    // oxlint-disable-next-line typescript/no-unsafe-assignment, typescript/no-unsafe-return -- response.json() returns any; T is the caller-asserted shape
-    const data: T = await response.json();
-    return data;
-  }, []);
-
-  const httpPost = useCallback(async <T>(url: string, body?: object): Promise<T> => {
-    const makeRequest = async (csrfToken?: string): Promise<Response> => {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-
-      if (csrfToken) {
-        headers['x-csrf-token'] = csrfToken;
-      }
-
-      return fetch(url, {
-        method: 'POST',
-        credentials: 'include',
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-      });
-    };
-
-    let response = await makeRequest();
-
-    // On 403, check for CSRF token in response header and retry
-    if (response.status === 403) {
-      const csrfToken = response.headers.get('x-csrf-token');
-
-      if (csrfToken) {
-        response = await makeRequest(csrfToken);
-      }
-    }
-
-    if (!response.ok) {
-      throw new Error(`HTTP POST ${url} failed with status ${response.status}`);
-    }
-
-    // Response.json() is typed as Promise<any> by lib.dom; T is supplied by the caller and
-    // represents the contractually-expected response shape, so we widen via typed assignment
-    // rather than `as`.
-    // oxlint-disable-next-line typescript/no-unsafe-assignment, typescript/no-unsafe-return -- response.json() returns any; T is the caller-asserted shape
-    const data: T = await response.json();
-    return data;
-  }, []);
-
   const userModerationApiUrl = `https://usermoderation.${process.env.bedev1BaseDomain}`;
   const apiGatewayUrl = process.env.bedev2BaseUrl;
   const websiteUrl = `https://${process.env.robloxSiteDomain}`;
@@ -100,7 +48,11 @@ function useNotApprovedConfig(): NotApprovedUIConfig {
   const platform = 'CreatorHub';
 
   const sendAnalyticsEvent = useCallback((event: NotApprovedAnalyticsEvent) => {
-    unifiedLoggerClient.logNotApprovedPageEvent(event.properties);
+    unifiedLoggerClient.logHostRoutedEvent({
+      eventType: event.eventName,
+      context: event.context,
+      properties: event.properties,
+    });
   }, []);
 
   const shouldShowGenericFallback = useCallback(
@@ -138,8 +90,6 @@ function useNotApprovedConfig(): NotApprovedUIConfig {
     }),
     [
       translateAdapter,
-      httpGet,
-      httpPost,
       userModerationApiUrl,
       apiGatewayUrl,
       websiteUrl,

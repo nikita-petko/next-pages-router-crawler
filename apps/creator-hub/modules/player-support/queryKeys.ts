@@ -51,4 +51,10 @@ export const getPlayerSupportTicketDetailQueryKey = (creatorTicketId: string) =>
 export const getPlayerSupportTicketUsernamesQueryKey = (userIds: readonly number[]) =>
   ['playerSupportTicketUsernames', [...userIds].toSorted((a, b) => a - b)] as const;
 
+export const getPlayerSupportCaptureUrlsQueryKey = (assetIds: readonly number[]) =>
+  ['playerSupportCaptureUrls', assetIds] as const;
+
+export const getPlayerSupportCaptureTimesQueryKey = (assetIds: readonly number[]) =>
+  ['playerSupportCaptureTimes', assetIds] as const;
+
 export default getPlayerSupportTicketsQueryKey;

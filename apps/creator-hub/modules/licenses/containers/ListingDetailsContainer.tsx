@@ -44,7 +44,7 @@ const BASE_URL = getProductionCreatorHubUrl(process.env.buildTarget);
 const EMPTY_THUMBNAIL_ASSET_IDS: number[] = [];
 const MAX_SHOWCASED_EXPERIENCES = 10;
 const CANONICAL_POSITIVE_INTEGER_PATTERN = /^[1-9]\d*$/;
-const SHOWCASED_EXPERIENCES_HEADING_ID = 'showcased-experiences-heading';
+const SPOTLIGHTED_CREATIONS_HEADING_ID = 'spotlighted-creations-heading';
 
 const getValidShowcasedUniverseIds = (
   content: Array<{ contentType?: string; contentId?: string | null }> | null | undefined,
@@ -85,10 +85,10 @@ const ListingDetailsContainer: FunctionComponent<ListingDetailsContainerProps> =
   const { ready: isShowcaseExperiencesFlagReady, value: isShowcaseExperiencesEnabled } = useFlag(
     isShowcaseExperiencesEnabledFlag,
   );
-  const showcasedExperiencesLabel = tPendingTranslation(
-    'Showcased experiences',
-    'Section heading for experiences showcased on an IP listing details page',
-    translationKey('Label.ShowcasedExperiences', TranslationNamespace.AgreementsManager),
+  const spotlightedCreationsLabel = tPendingTranslation(
+    'Spotlighted creations',
+    'Section heading for creations spotlighted on an IP listing details page',
+    translationKey('Label.SpotlightedCreations', TranslationNamespace.AgreementsManager),
   );
   const previousShowcasedContentAriaLabel = tPendingTranslation(
     'Previous showcased content',
@@ -229,6 +229,11 @@ const ListingDetailsContainer: FunctionComponent<ListingDetailsContainerProps> =
     isShowcaseContentRetrying;
   const hasShowcasedExperiences =
     !isShowcaseContentLoading && !isShowcaseContentError && showcasedCarouselItems.length > 0;
+  const hasEmptyShowcasedExperiences =
+    showcaseContentEnabled &&
+    !isShowcaseContentLoading &&
+    !isShowcaseContentError &&
+    showcasedCarouselItems.length === 0;
   const handleRetryShowcasedExperiences = useCallback(() => {
     logEvent(LicenseManagerClickEvent.PublicListingDetailsPageRetryShowcasedExperiencesClickEvent, {
       listingId,
@@ -269,6 +274,14 @@ const ListingDetailsContainer: FunctionComponent<ListingDetailsContainerProps> =
       );
     }
   }, [hasShowcasedExperiences, listingId, logOnce, showcasedCarouselItems.length]);
+  useEffect(() => {
+    if (hasEmptyShowcasedExperiences) {
+      logOnce(
+        LicenseManagerImpressionEvent.PublicListingDetailsPageEmptyShowcasedExperiencesImpressionEvent,
+        { listingId },
+      );
+    }
+  }, [hasEmptyShowcasedExperiences, listingId, logOnce]);
 
   const thumbnailAssetIds = useMemo(() => {
     if (!listing) {
@@ -378,9 +391,9 @@ const ListingDetailsContainer: FunctionComponent<ListingDetailsContainerProps> =
               minWidth={0}
               width='100%'
               maxWidth='100%'>
-              <Grid item>
-                <Typography id={SHOWCASED_EXPERIENCES_HEADING_ID} variant='h5'>
-                  {showcasedExperiencesLabel}
+              <Grid item padding={0.5}>
+                <Typography id={SPOTLIGHTED_CREATIONS_HEADING_ID} variant='h5'>
+                  {spotlightedCreationsLabel}
                 </Typography>
               </Grid>
               <Grid item minWidth={0} width='100%' maxWidth='100%'>
@@ -416,7 +429,7 @@ const ListingDetailsContainer: FunctionComponent<ListingDetailsContainerProps> =
                     items={showcasedCarouselItems}
                     previousAriaLabel={previousShowcasedContentAriaLabel}
                     nextAriaLabel={nextShowcasedContentAriaLabel}
-                    ariaLabelledBy={SHOWCASED_EXPERIENCES_HEADING_ID}
+                    ariaLabelledBy={SPOTLIGHTED_CREATIONS_HEADING_ID}
                     onPreviousClick={handlePreviousShowcaseContentClick}
                     onNextClick={handleNextShowcaseContentClick}
                   />

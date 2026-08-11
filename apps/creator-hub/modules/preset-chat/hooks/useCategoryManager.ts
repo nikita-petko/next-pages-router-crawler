@@ -1,12 +1,23 @@
 import { useCallback, useState } from 'react';
-import { MaxCustomCategories } from '../constants/presetChatConstants';
-import type { CategoryFormState } from '../types';
+import { DefaultPresetsPerCategory, MaxCustomCategories } from '../constants/presetChatConstants';
+import type { CategoryFormState, Preset } from '../types';
+
+const createEmptyPresets = (count: number): Preset[] =>
+  Array.from({ length: count }, () => ({
+    id: crypto.randomUUID(),
+    text: '',
+    status: 'DRAFT' as const,
+  }));
 
 export type UseCategoryManagerReturn = {
   categories: CategoryFormState[];
   addCategory: () => void;
   removeCategory: (id: string) => void;
   updateCategoryName: (id: string, name: string) => void;
+  addPreset: (categoryId: string) => void;
+  removePreset: (categoryId: string, presetId: string) => void;
+  updatePresetText: (categoryId: string, presetId: string, text: string) => void;
+  reorderPresets: (categoryId: string, presetIds: string[]) => void;
   canAddCategory: boolean;
 };
 
@@ -21,7 +32,7 @@ const useCategoryManager = (): UseCategoryManagerReturn => {
       const newCategory: CategoryFormState = {
         id: crypto.randomUUID(),
         name: '',
-        presets: [],
+        presets: createEmptyPresets(DefaultPresetsPerCategory),
         status: 'DRAFT',
         isNew: true,
       };
@@ -39,9 +50,75 @@ const useCategoryManager = (): UseCategoryManagerReturn => {
     );
   }, []);
 
+  const addPreset = useCallback((categoryId: string) => {
+    setCategories((prev) =>
+      prev.map((category) => {
+        if (category.id !== categoryId) {
+          return category;
+        }
+        const newPreset: Preset = {
+          id: crypto.randomUUID(),
+          text: '',
+          status: 'DRAFT',
+        };
+        return { ...category, presets: [...category.presets, newPreset] };
+      }),
+    );
+  }, []);
+
+  const removePreset = useCallback((categoryId: string, presetId: string) => {
+    setCategories((prev) =>
+      prev.map((category) => {
+        if (category.id !== categoryId) {
+          return category;
+        }
+        return { ...category, presets: category.presets.filter((p) => p.id !== presetId) };
+      }),
+    );
+  }, []);
+
+  const updatePresetText = useCallback((categoryId: string, presetId: string, text: string) => {
+    setCategories((prev) =>
+      prev.map((category) => {
+        if (category.id !== categoryId) {
+          return category;
+        }
+        return {
+          ...category,
+          presets: category.presets.map((p) => (p.id === presetId ? { ...p, text } : p)),
+        };
+      }),
+    );
+  }, []);
+
+  const reorderPresets = useCallback((categoryId: string, presetIds: string[]) => {
+    setCategories((prev) =>
+      prev.map((category) => {
+        if (category.id !== categoryId) {
+          return category;
+        }
+        const presetMap = new Map(category.presets.map((p) => [p.id, p]));
+        const reordered = presetIds
+          .map((id) => presetMap.get(id))
+          .filter((p): p is Preset => p !== undefined);
+        return { ...category, presets: reordered };
+      }),
+    );
+  }, []);
+
   const canAddCategory = categories.length < MaxCustomCategories;
 
-  return { categories, addCategory, removeCategory, updateCategoryName, canAddCategory };
+  return {
+    categories,
+    addCategory,
+    removeCategory,
+    updateCategoryName,
+    addPreset,
+    removePreset,
+    updatePresetText,
+    reorderPresets,
+    canAddCategory,
+  };
 };
 
 export default useCategoryManager;

@@ -6,7 +6,7 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { MaxCategoryNameLength } from '../constants/presetChatConstants';
 import type { PresetStatus } from '../types';
-import CategoryStatusBadge from './CategoryStatusBadge';
+import QuickWordsStatusBadge from './QuickWordsStatusBadge';
 
 type CategoryNameFieldProps = {
   value: string;
@@ -45,7 +45,7 @@ const CategoryNameField: FunctionComponent<CategoryNameFieldProps> = ({
         />
       </div>
       <div className='height-1000 flex items-center'>
-        <CategoryStatusBadge status={status} />
+        <QuickWordsStatusBadge status={status} />
       </div>
     </div>
   );

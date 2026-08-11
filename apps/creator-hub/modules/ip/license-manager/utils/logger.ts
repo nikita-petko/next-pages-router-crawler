@@ -119,6 +119,7 @@ export enum LicenseManagerImpressionEvent {
   CatalogImpressionEvent = 'catalogImpressionEvent',
   MatchesTableResultsImpressionEvent = 'matchesTableResultsImpressionEvent',
   PublicListingDetailsPageShowcasedExperiencesImpressionEvent = 'publicListingDetailsPageShowcasedExperiencesImpressionEvent',
+  PublicListingDetailsPageEmptyShowcasedExperiencesImpressionEvent = 'publicListingDetailsPageEmptyShowcasedExperiencesImpressionEvent',
   PublicListingDetailsPageShowcasedExperiencesLoadFailureImpressionEvent = 'publicListingDetailsPageShowcasedExperiencesLoadFailureImpressionEvent',
   IphListingsDetailsPageShowcasedExperiencesLoadFailureImpressionEvent = 'iphListingsDetailsPageShowcasedExperiencesLoadFailureImpressionEvent',
 

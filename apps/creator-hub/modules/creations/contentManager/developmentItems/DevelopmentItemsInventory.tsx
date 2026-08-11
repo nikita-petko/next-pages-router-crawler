@@ -22,6 +22,7 @@ import type { DevelopmentItemsSheetFilters } from './components/DevelopmentItems
 import DevelopmentItemsGrid from './components/DevelopmentItemsGrid';
 import DevelopmentItemsLegacyEntryPoints from './components/DevelopmentItemsLegacyEntryPoints';
 import DevelopmentItemsList from './components/DevelopmentItemsList';
+import type { DevelopmentItemsListLabels } from './components/DevelopmentItemsList';
 import DevelopmentItemsPagination from './components/DevelopmentItemsPagination';
 import type { DevelopmentItemsPaginationProps } from './components/DevelopmentItemsPagination';
 import DevelopmentItemsScopedSearch from './components/DevelopmentItemsScopedSearch';
@@ -33,12 +34,14 @@ import {
   DevelopmentItemsSourceFilter,
   developmentItemsAssetTypes,
   filterDevelopmentItemsByArchivedState,
+  getDevelopmentItemsSearchAssetTypes,
   hasActiveDevelopmentItemsInventoryFilters,
   isDevelopmentItemDirectlyArchivable,
   isDevelopmentItemsAssetTypeSelection,
   isDevelopmentItemsSourceSelection,
   isDevelopmentItemsView,
   mergeOptimisticArchivedDevelopmentItems,
+  shouldOpenDevelopmentItemInCreatorStore,
   type DevelopmentItemsAssetTypeSelection,
   type DevelopmentItemsInventoryItem,
   type DevelopmentItemsSourceSelection,
@@ -51,6 +54,7 @@ import useDevelopmentItemsInventory, {
 } from './useDevelopmentItemsInventory';
 import useDevelopmentItemsInventoryTranslations from './useDevelopmentItemsInventoryTranslations';
 import useDevelopmentItemThumbnailUrls from './useDevelopmentItemThumbnailUrls';
+import useDevelopmentItemToolboxIds, { EMPTY_TOOLBOX_IDS } from './useDevelopmentItemToolboxIds';
 import useLegacyArchivedDevelopmentItemsInventory, {
   LEGACY_ARCHIVED_DEFAULT_PAGE_SIZE,
   LEGACY_ARCHIVED_PAGE_SIZE_OPTIONS,
@@ -123,6 +127,30 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
   const { isArchived, setIsArchived } = useCreationsFilters();
   const translations = useDevelopmentItemsInventoryTranslations();
   const { inventorySourceFilter, searchSuggestion } = translations;
+  const listLabels = useMemo<DevelopmentItemsListLabels>(
+    () => ({
+      actions: translations.actions,
+      assetId: translations.assetId,
+      assetIdCopied: translate('Message.CopySuccess', {
+        item: translate('Label.AssetID'),
+      }),
+      assetIdWithValue: translations.assetIdWithValue,
+      assetType: translations.assetType,
+      lastUpdated: translations.lastUpdated,
+      name: translations.name,
+      source: translations.inventorySource,
+    }),
+    [
+      translate,
+      translations.actions,
+      translations.assetId,
+      translations.assetIdWithValue,
+      translations.assetType,
+      translations.inventorySource,
+      translations.lastUpdated,
+      translations.name,
+    ],
+  );
   const [queryParams, setQueryParams] = useQueryParams(INVENTORY_QUERY_KEYS);
   const sourceLabels = useMemo<Record<DevelopmentItemsSourceSelection, string>>(
     () => ({
@@ -160,6 +188,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
   )
     ? queryAssetType
     : CreatorInventoryAssetType.Model;
+  const isArchiveFilterAvailable = isDevelopmentItemDirectlyArchivable(assetType);
 
   const querySource = getQueryValue(queryParams.inventorySource);
   const source: DevelopmentItemsSourceSelection = isDevelopmentItemsSourceSelection(querySource)
@@ -351,6 +380,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
     ? (archivedInventoryQuery.data?.archivableAssetIds ?? EMPTY_ARCHIVABLE_ASSET_IDS)
     : (activeArchivableAssetIds ?? EMPTY_ARCHIVABLE_ASSET_IDS);
   const { data: thumbnailUrls = EMPTY_THUMBNAIL_URLS } = useDevelopmentItemThumbnailUrls(assetIds);
+  const { data: toolboxIdsByAssetId = EMPTY_TOOLBOX_IDS } = useDevelopmentItemToolboxIds(items);
 
   const getAssetTypeLabel = useCallback(
     (item: DevelopmentItemsInventoryItem) => {
@@ -372,6 +402,10 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
 
   const handleSelectItem = useCallback(
     (item: DevelopmentItemsInventoryItem) => {
+      if (shouldOpenDevelopmentItemInCreatorStore(item)) {
+        void router.push(creatorHub.creatorStore.getAssetUrl(item.assetId));
+        return;
+      }
       const configureUrl = creatorHub.dashboard.getConfigureCreatorStoreItemUrl(item.assetId);
       void router.push(addPublishingConsolidationReturnTo(configureUrl, router.asPath));
     },
@@ -388,11 +422,11 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
   );
   const scopedSearchOptions = useMemo<DevelopmentItemsSearchScope[]>(
     () =>
-      developmentItemsAssetTypes.map((option) => ({
+      getDevelopmentItemsSearchAssetTypes(assetType).map((option) => ({
         label: translate(assetTypeLabelKeys[option]),
         value: option,
       })),
-    [translate],
+    [assetType, translate],
   );
   const sourceOptions = useMemo(
     () =>
@@ -439,10 +473,13 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
   const handleAssetTypeChange = useCallback(
     (value: string) => {
       if (isDevelopmentItemsAssetTypeSelection(value)) {
+        if (value !== assetType && isArchived) {
+          setIsArchived(false);
+        }
         updateQuery({ activeTab: value });
       }
     },
-    [updateQuery],
+    [assetType, isArchived, setIsArchived, updateQuery],
   );
   const sheetFilters = useMemo<DevelopmentItemsSheetFilters>(
     () => ({ showArchived: isArchived, source }),
@@ -461,7 +498,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
       > = {};
       if (sourceChanged) {
         queryUpdates.inventorySource =
-          filters.source === CreatorInventorySourceType.Created ? null : filters.source;
+          filters.source === DEFAULT_SHEET_FILTERS.source ? null : filters.source;
       }
       if (archiveStatusChanged && filters.showArchived) {
         setSearchInput('');
@@ -608,11 +645,15 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
         filterControl={
           <DevelopmentItemsFilterSheet
             applyLabel={translate('Action.Apply')}
-            archiveFilter={{
-              activeLabel: translate('Label.Active'),
-              archivedLabel: translate('Label.Archived'),
-              sectionLabel: translate('Label.Status'),
-            }}
+            archiveFilter={
+              isArchiveFilterAvailable
+                ? {
+                    activeLabel: translate('Label.Active'),
+                    archivedLabel: translate('Label.Archived'),
+                    sectionLabel: translate('Label.Status'),
+                  }
+                : undefined
+            }
             closeLabel={translate('Action.Close')}
             defaultFilters={DEFAULT_SHEET_FILTERS}
             filters={sheetFilters}
@@ -716,6 +757,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
           onArchiveStateChange={handleArchiveStateChange}
           onSelectItem={handleSelectItem}
           thumbnailUrls={thumbnailUrls}
+          toolboxIdsByAssetId={toolboxIdsByAssetId}
         />
       )}
 
@@ -725,18 +767,12 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
           getAssetTypeLabel={getAssetTypeLabel}
           getSourceLabel={getSourceLabel}
           items={items}
-          labels={{
-            actions: translations.actions,
-            assetId: translations.assetId,
-            assetType: translations.assetType,
-            lastUpdated: translations.lastUpdated,
-            name: translations.name,
-            source: translations.inventorySource,
-          }}
+          labels={listLabels}
           onArchiveStateChange={handleArchiveStateChange}
           onSelectItem={handleSelectItem}
           pagination={inventoryPagination}
           thumbnailUrls={thumbnailUrls}
+          toolboxIdsByAssetId={toolboxIdsByAssetId}
         />
       )}
 

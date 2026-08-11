@@ -364,7 +364,7 @@ export const generatedFlags = [
       metadata: {
         namespace: 'creator-analytics',
         name: 'isTargetingConfigsEnabled',
-        defaultValue: false,
+        defaultValue: true,
         valueType: 'boolean',
         contextType: 'universe',
       },

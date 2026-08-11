@@ -93,6 +93,12 @@ function resolveCreatorHubSearchResults(response: SearchCreatorHubResponse): Doc
 
 // CreatorHub results are client-side ranked so we fetch a larger batch upfront.
 const CREATOR_HUB_SEARCH_LIMIT = 200;
+// The unfiltered Learn view renders one independently-capped section per content
+// type. Engine API (`LuaApi`) dominates the ranked head of the single flat result
+// list, so we fetch a larger batch to ensure lower-ranked types (Articles/tutorials,
+// Videos, Forum, Cloud) are represented and their sections actually render. See
+// DevForum bug: searching "animation" in unfiltered Learn returned only Engine API.
+const LEARN_SEARCH_LIMIT = 100;
 // Defensive fallback for the backend `limit` field when building the request
 // and `pageSize` is still missing (today the public API default below always
 // fills it in, so this only protects future callers of `makeRequest`).
@@ -150,14 +156,21 @@ export function createSearchClient(searchApi: SearchApi): SearchClient {
           contentType = [docContentType];
         }
 
+        const isCreatorHubOnly = contentType?.length === 1 && contentType[0] === 'CreatorHub';
+        let limit: number;
+        if (isCreatorHubOnly) {
+          limit = CREATOR_HUB_SEARCH_LIMIT;
+        } else if (docContentType === 'Learn') {
+          limit = LEARN_SEARCH_LIMIT;
+        } else {
+          limit = requestParams.pageSize ?? DEFAULT_SEARCH_PAGE_SIZE;
+        }
+
         const searchCreatorHubRequest: SearchCreatorHubRequest = {
           query: requestParams.keyword ?? '',
           locale: requestParams.locale ?? '',
           searchSessionId: requestParams.searchSessionId ?? '',
-          limit:
-            contentType?.length === 1 && contentType[0] === 'CreatorHub'
-              ? CREATOR_HUB_SEARCH_LIMIT
-              : (requestParams.pageSize ?? DEFAULT_SEARCH_PAGE_SIZE),
+          limit,
           isFuzzyMatch: requestParams.isFuzzyMatch ?? false,
           contentType,
           subType: requestParams.documentationSubType

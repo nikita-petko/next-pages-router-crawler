@@ -99,6 +99,7 @@ export enum AnnotationKey {
   AgeCheck20260415 = 'AgeCheck20260415',
   AgeGroupUpdate20251020 = 'AgeGroupUpdate20251020',
   AgeGroupUpdate20260116 = 'AgeGroupUpdate20260116',
+  ErrorReportClean20260810 = 'ErrorReportClean20260810',
 }
 
 export const annotationConfig: Record<
@@ -143,6 +144,13 @@ export const annotationConfig: Record<
     // using the same label as AgeGroupUpdate20251020
     translationKey: translationKey(
       'Label.Annotation.MetricChange.AgeGroupUpdate20251020',
+      TranslationNamespace.Analytics,
+    ),
+    links: [],
+  },
+  [AnnotationKey.ErrorReportClean20260810]: {
+    translationKey: translationKey(
+      'Label.Annotation.MetricChange.ErrorReportClean20260810',
       TranslationNamespace.Analytics,
     ),
     links: [],

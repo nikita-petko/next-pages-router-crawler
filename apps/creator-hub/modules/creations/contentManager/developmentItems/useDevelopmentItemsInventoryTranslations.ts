@@ -9,6 +9,13 @@ const useDevelopmentItemsInventoryTranslations = () => {
   const { translate } = intl;
   const { tPendingTranslation } = useTranslationWrapper(intl);
 
+  const assetIdWithValue = useCallback(
+    (assetId: number) =>
+      translate('Label.AssetIDWithValue', {
+        assetId: assetId.toString(),
+      }),
+    [translate],
+  );
   const clearFilter = useCallback(
     (filterLabel: string) =>
       tPendingTranslation(
@@ -56,6 +63,7 @@ const useDevelopmentItemsInventoryTranslations = () => {
       translationKey('Label.DevelopmentItems.AllSources', TranslationNamespace.Creations),
     ),
     assetId: translate('Label.AssetID'),
+    assetIdWithValue,
     assetType: tPendingTranslation(
       'Asset type',
       'Label for the Development Items asset type filter and table column.',
