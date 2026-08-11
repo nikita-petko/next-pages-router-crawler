@@ -120,9 +120,9 @@ const IpListingDetailsContainer = () => {
     (showcasedUniverseIds.length > 0 && showcaseUniverseDetailsReq.isError);
   const failedShowcaseRequest =
     showcaseContentReq.isError && showcaseUniverseDetailsReq.isError
-      ? 'featured_creations_and_universe_details'
+      ? 'showcase_content_and_universe_details'
       : showcaseContentReq.isError
-        ? 'featured_creations'
+        ? 'showcase_content'
         : 'universe_details';
   const isShowcaseContentRetrying =
     isShowcaseContentError &&
@@ -132,7 +132,7 @@ const IpListingDetailsContainer = () => {
     (showcasedUniverseIds.length > 0 && showcaseUniverseDetailsReq.isPending) ||
     isShowcaseContentRetrying;
   const spotlightedCreationsLabel = tPendingTranslation(
-    'Featured creations',
+    'Spotlighted creations',
     'Section heading for creations spotlighted on an IP listing details page',
     translationKey('Label.SpotlightedCreations', TranslationNamespace.AgreementsManager),
   );
@@ -142,9 +142,9 @@ const IpListingDetailsContainer = () => {
     translationKey('Description.SpotlightedCreations', TranslationNamespace.AgreementsManager),
   );
   const addCreationsLabel = tPendingTranslation(
-    'Manage creations',
+    'Add creations',
     'Action to add creations to an IP listing showcase',
-    translationKey('Action.ManageCreations', TranslationNamespace.AgreementsManager),
+    translationKey('Action.AddCreations', TranslationNamespace.AgreementsManager),
   );
   const retryShowcasedExperiencesLabel = tPendingTranslation(
     'Retry',
@@ -152,12 +152,12 @@ const IpListingDetailsContainer = () => {
     translationKey('Action.Retry', TranslationNamespace.AgreementsManager),
   );
   const previousShowcasedContentAriaLabel = tPendingTranslation(
-    'Previous featured creation',
+    'Previous showcased content',
     'Accessible label for the previous button in the showcased content carousel',
     translationKey('Action.PreviousShowcasedContent', TranslationNamespace.Licenses),
   );
   const nextShowcasedContentAriaLabel = tPendingTranslation(
-    'Next featured creation',
+    'Next showcased content',
     'Accessible label for the next button in the showcased content carousel',
     translationKey('Action.NextShowcasedContent', TranslationNamespace.Licenses),
   );
@@ -422,11 +422,7 @@ const IpListingDetailsContainer = () => {
               </FoundationAlert>
             ) : (
               <>
-                <FoundationButton
-                  variant='Standard'
-                  size='Medium'
-                  className='width-fit'
-                  onClick={handleAddCreations}>
+                <FoundationButton variant='Standard' size='Medium' onClick={handleAddCreations}>
                   {addCreationsLabel}
                 </FoundationButton>
                 {showcasedUniverseIds.length > 0 && (

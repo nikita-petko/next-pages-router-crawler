@@ -86,17 +86,17 @@ const ListingDetailsContainer: FunctionComponent<ListingDetailsContainerProps> =
     isShowcaseExperiencesEnabledFlag,
   );
   const spotlightedCreationsLabel = tPendingTranslation(
-    'Featured creations',
+    'Spotlighted creations',
     'Section heading for creations spotlighted on an IP listing details page',
     translationKey('Label.SpotlightedCreations', TranslationNamespace.AgreementsManager),
   );
   const previousShowcasedContentAriaLabel = tPendingTranslation(
-    'Previous featured creation',
+    'Previous showcased content',
     'Accessible label for the previous button in the showcased content carousel',
     translationKey('Action.PreviousShowcasedContent', TranslationNamespace.Licenses),
   );
   const nextShowcasedContentAriaLabel = tPendingTranslation(
-    'Next featured creation',
+    'Next showcased content',
     'Accessible label for the next button in the showcased content carousel',
     translationKey('Action.NextShowcasedContent', TranslationNamespace.Licenses),
   );

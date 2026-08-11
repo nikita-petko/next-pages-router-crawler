@@ -1,6 +1,6 @@
+import { useRouter } from 'next/router';
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/router';
 import { StatusCodes } from '@rbx/core';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { CircularProgress, Grid } from '@rbx/ui';
@@ -12,6 +12,7 @@ import FailureView from '@modules/miscellaneous/components/FailureView/FailureVi
 import { ErrorPage } from '@modules/miscellaneous/error';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
+import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import NotificationsTitle from '../../components/NotificationsTitle';
 import { NotificationContentFormTypes } from '../../constants/notificationContentForm';
 import {
@@ -33,22 +34,25 @@ const NotificationContentFormContainer: FunctionComponent<
   const { trackerClient } = useEventTrackerProvider();
   const { gameDetails, isLoadingGame, canConfigure, refreshGameDetails } = useCurrentGame();
   const { translate } = useTranslation();
+  const { settings } = useSettings();
   const contentId = useContentId();
   const { user } = useAuthentication();
   const [isLoadingNotificationContent, setIsLoadingNotificationContent] = useState(true);
   const [isGetNotificationContentFailed, setIsGetNotificationContentFailed] = useState(false);
-  const contentDefaultValue = translate(
-    'Placeholder.NotificationStringContentExperienceNotificationSocialMention',
-    {
-      userIdHighScore: '{userId-highScorer}',
-    },
-  );
+  const translatedContentDefaultValue = settings.enableUENSocialMentions
+    ? translate('Placeholder.NotificationStringContentExperienceNotificationSocialMention', {
+        userIdHighScore: '{userId-highScorer}',
+      })
+    : translate('Placeholder.NotificationStringContentExperienceNotification');
+  const englishContentDefaultValue = settings.enableUENSocialMentions
+    ? '{userId-highScorer} beat your high score by {points} points!'
+    : "You're {questsLeft} quests away from completing the daily challenge!";
   const initialFormValue = useMemo(
     () => ({
       name: '',
-      content: contentDefaultValue,
+      content: translatedContentDefaultValue || englishContentDefaultValue,
     }),
-    [contentDefaultValue],
+    [translatedContentDefaultValue, englishContentDefaultValue],
   );
   const [defaultFormValue, setDefaultFormValue] = useState(initialFormValue);
   const titleText =
@@ -60,7 +64,6 @@ const NotificationContentFormContainer: FunctionComponent<
   const universeId = useUniverseId();
 
   const getNotificationContent = useCallback(
-    // oxlint-disable-next-line react/react-compiler -- pre-existing: inferred dep is `user` but only `user?.id` is used
     async (content: string) => {
       trackerClient.sendEvent(getNotificationString(user?.id, universeId, contentId));
       try {
@@ -95,10 +98,10 @@ const NotificationContentFormContainer: FunctionComponent<
   const handlePageReload = useCallback(() => {
     if (universeId) {
       if (!gameDetails) {
-        void refreshGameDetails();
+        refreshGameDetails();
       }
       if (isGetNotificationContentFailed) {
-        void initializeNotificationContent();
+        initializeNotificationContent();
       }
     }
   }, [
@@ -109,15 +112,13 @@ const NotificationContentFormContainer: FunctionComponent<
     gameDetails,
   ]);
 
-  useEffect(() => {
-    // oxlint-disable-next-line react/react-compiler -- pre-existing: effect calls async setState initializer
-    void initializeNotificationContent();
-  }, [initializeNotificationContent, universeId, contentId, initialFormValue]);
-
   if (!universeId) {
-    void router.push('/dashboard/creations');
-    return null;
+    router.push('/dashboard/creations');
   }
+
+  useEffect(() => {
+    initializeNotificationContent();
+  }, [initializeNotificationContent, universeId, contentId, initialFormValue]);
 
   if (isLoadingGame || isLoadingNotificationContent) {
     return (
@@ -147,7 +148,7 @@ const NotificationContentFormContainer: FunctionComponent<
       <NotificationsTitle titleText={titleText} />
       <NotificationContentForm
         type={type}
-        universeId={universeId}
+        universeId={universeId as number}
         contentId={contentId}
         defaultFormValue={defaultFormValue}
       />

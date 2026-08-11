@@ -1,4 +1,4 @@
-import { useCallback, type FunctionComponent } from 'react';
+import { useCallback, useEffect, useRef, type FunctionComponent } from 'react';
 import Link from 'next/link';
 import type { ListingResponse } from '@rbx/client-content-licensing-api/v1';
 import { ReturnPolicy, Thumbnail2d, ThumbnailTypes, AssetThumbnailSize } from '@rbx/thumbnails';
@@ -8,7 +8,6 @@ import {
   LicenseManagerImpressionEvent,
   useLicenseManagerLogger,
 } from '@modules/ip/license-manager/utils/logger';
-import { useVisibleImpression } from '../hooks/useVisibleImpression';
 import { EXPLORE_LISTING_DETAILS } from '../urls';
 import { getFirstListingThumbnailAssetId } from '../utils/listingThumbnails';
 import useListingItemStyles from './ListingItem.styles';
@@ -89,8 +88,15 @@ const ListingItem: FunctionComponent<ListingItemProps> = ({
   } = useListingItemStyles();
   const thumbnailAssetId = getFirstListingThumbnailAssetId(listing.thumbnailAssetIds);
   const listingId = listing.id ?? '';
+  const itemRef = useRef<HTMLAnchorElement>(null);
+  const hasLoggedImpressionRef = useRef(false);
 
   const logCatalogImpression = useCallback(() => {
+    if (hasLoggedImpressionRef.current) {
+      return;
+    }
+
+    hasLoggedImpressionRef.current = true;
     logEvent(LicenseManagerImpressionEvent.CatalogImpressionEvent, {
       requestId: '',
       universeId: '',
@@ -101,7 +107,27 @@ const ListingItem: FunctionComponent<ListingItemProps> = ({
       filterTab,
     });
   }, [filterTab, listingId, logEvent, pageNumber, tilePosition]);
-  const itemRef = useVisibleImpression<HTMLAnchorElement>(logCatalogImpression);
+
+  useEffect(() => {
+    const item = itemRef.current;
+    if (!item || typeof IntersectionObserver === 'undefined') {
+      logCatalogImpression();
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        logCatalogImpression();
+        observer.disconnect();
+      }
+    });
+
+    observer.observe(item);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [logCatalogImpression]);
 
   const handleClickListing = useCallback(() => {
     logEvent(LicenseManagerClickEvent.ViewListingDetailsClickEvent, {

@@ -279,17 +279,17 @@ const ShowcasedExperiencesDialog = ({
   };
 
   const title = tPendingTranslation(
-    'Manage featured creations',
+    'Add spotlighted creations',
     'Title of the dialog for adding spotlighted creations to an IP listing',
     translationKey('Heading.AddSpotlightedCreations', TranslationNamespace.AgreementsManager),
   );
   const description = tPendingTranslation(
-    'Save up to 10 creations to highlight to Creators browsing your IP. Only creations in active license agreement with a license of this listing are eligible to be featured.',
+    'Add up to 10 creations to highlight to Creators browsing your IP. Only creations in active license agreement with a license of this listing are eligible to be spotlighted.',
     'Description explaining which creations can be spotlighted on an IP listing',
     translationKey('Description.AddSpotlightedCreations', TranslationNamespace.AgreementsManager),
   );
   const invalidSelectionDescription = tPendingTranslation(
-    'One or more of your featured creations is no longer in active license agreement. Please deselect them.',
+    'One or more of your spotlighted creations is no longer in active license agreement. Please deselect them.',
     'Warning shown when a spotlighted creation is no longer eligible',
     translationKey(
       'Description.IneligibleSpotlightedCreations',
@@ -328,7 +328,7 @@ const ShowcasedExperiencesDialog = ({
     ),
   );
   const cancelLabel = translate(translationKey('Action.Cancel', TranslationNamespace.Controls));
-  const addLabel = translate(translationKey('Action.Save', TranslationNamespace.Controls));
+  const addLabel = translate(translationKey('Action.Add', TranslationNamespace.Controls));
   const deselectAllLabel = tPendingTranslation(
     'Deselect all',
     'Action to deselect all spotlighted creations in the selection dialog',

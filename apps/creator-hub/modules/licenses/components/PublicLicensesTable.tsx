@@ -1,5 +1,5 @@
 import type { FunctionComponent, ReactNode } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { LicenseResponse } from '@rbx/client-content-licensing-api/v1';
 import { LicenseDurationType, LicenseType } from '@rbx/client-content-licensing-api/v1';
 import { useTranslation, withTranslation } from '@rbx/intl';
@@ -30,7 +30,6 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
 import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
 import { useListPublicLicenses, type PublicCatalogLicense } from '../hooks/useListPublicLicenses';
-import { useVisibleImpression } from '../hooks/useVisibleImpression';
 import { LicenseRequestCancelReturnTo } from '../urls';
 import { EXPLORE_LICENSES_ACTION_TOOLBAR_HEIGHT_PX } from '../utils/constants';
 import { formatRoyaltyRate } from '../utils/format';
@@ -162,15 +161,18 @@ const PublicLicensesTableDataRow: FunctionComponent<PublicLicensesTableDataRowPr
   children,
 }) => {
   const { logEvent } = useLicenseManagerLogger();
+  const rowRef = useRef<HTMLTableRowElement>(null);
+  const hasLoggedImpressionRef = useRef(false);
   const licenseId = license.id ?? '';
   const listingId =
     'listingId' in license && typeof license.listingId === 'string' ? license.listingId : '';
 
   const logCatalogImpression = useCallback(() => {
-    if (licenseId === '') {
+    if (hasLoggedImpressionRef.current || licenseId === '') {
       return;
     }
 
+    hasLoggedImpressionRef.current = true;
     logEvent(LicenseManagerImpressionEvent.CatalogImpressionEvent, {
       requestId: '',
       universeId: '',
@@ -181,7 +183,27 @@ const PublicLicensesTableDataRow: FunctionComponent<PublicLicensesTableDataRowPr
       filterTab,
     });
   }, [filterTab, licenseId, listingId, logEvent, rowPosition]);
-  const rowRef = useVisibleImpression<HTMLTableRowElement>(logCatalogImpression);
+
+  useEffect(() => {
+    const row = rowRef.current;
+    if (!row || typeof IntersectionObserver === 'undefined') {
+      logCatalogImpression();
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        logCatalogImpression();
+        observer.disconnect();
+      }
+    });
+
+    observer.observe(row);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [logCatalogImpression]);
 
   const handleClick = useCallback(() => {
     onClick();
@@ -341,7 +363,7 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
     }
     const listingId =
       'listingId' in license && typeof license.listingId === 'string' ? license.listingId : '';
-    setSelectedLicense(license);
+    setSelectedLicense(license as LicenseResponse);
     setIsLicenseDetailsModalOpen(true);
     logEvent(LicenseManagerClickEvent.ViewLicenseDetailsClickEvent, {
       licenseId,

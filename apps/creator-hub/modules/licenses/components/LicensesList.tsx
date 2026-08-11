@@ -1,6 +1,6 @@
+import Head from 'next/head';
 import type { FunctionComponent } from 'react';
 import React, { useState, useCallback, useMemo } from 'react';
-import Head from 'next/head';
 import type { LicenseResponse } from '@rbx/client-content-licensing-api/v1';
 import { useTranslation } from '@rbx/intl';
 import { Grid } from '@rbx/ui';
@@ -64,24 +64,16 @@ const LicensesAccordionsGrid: FunctionComponent<LicensesAccordionsGridProps> = (
 
   return (
     <Grid container flexDirection='column' spacing={2}>
-      {licenses.map((license, index) => {
-        const licenseId = license.id;
-        if (!licenseId) {
-          return null;
-        }
-
-        return (
-          <Grid item key={licenseId}>
-            <LicenseAccordion
-              license={license}
-              licensePosition={index + 1}
-              isExpanded={!collapsedLicenseIds.has(licenseId)}
-              onAccordionChange={handleAccordionChange}
-              onViewDetails={onClickViewDetails}
-            />
-          </Grid>
-        );
-      })}
+      {licenses.map((license) => (
+        <Grid item key={license.id}>
+          <LicenseAccordion
+            license={license}
+            isExpanded={!collapsedLicenseIds.has(license.id!)}
+            onAccordionChange={handleAccordionChange}
+            onViewDetails={onClickViewDetails}
+          />
+        </Grid>
+      ))}
     </Grid>
   );
 };
@@ -97,15 +89,10 @@ const LicensesList: FunctionComponent<LicensesListProps> = ({ listingId }) => {
   const [selectedLicense, setSelectedLicense] = useState<LicenseResponse | null>(null);
 
   const onClickViewDetails = (license: LicenseResponse) => () => {
-    const licenseId = license.id;
-    if (!licenseId) {
-      return;
-    }
-
     setSelectedLicense(license);
     setIsLicenseDetailsModalOpen(true);
     logEvent(LicenseManagerClickEvent.ViewLicenseDetailsClickEvent, {
-      licenseId,
+      licenseId: license.id!,
       source: 'listing_details_page',
     });
   };
@@ -120,13 +107,12 @@ const LicensesList: FunctionComponent<LicensesListProps> = ({ listingId }) => {
     setIsGuidelinesAndRestrictionsModalOpen(true);
   }, []);
 
-  const licenses = data?.licenses;
   const licensesNewestFirst = useMemo(() => {
-    if (!licenses?.length) {
+    if (!data?.licenses?.length) {
       return [];
     }
-    return sortLicensesByUpdatedAtDesc(licenses);
-  }, [licenses]);
+    return sortLicensesByUpdatedAtDesc(data.licenses);
+  }, [data?.licenses]);
 
   if (isPending) {
     return <PageLoading />;
