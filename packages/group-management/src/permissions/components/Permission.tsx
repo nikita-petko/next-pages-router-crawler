@@ -68,20 +68,18 @@ const Permission: FunctionComponent<PermissionProps> = ({
     />
   );
 
-  if (tooltipText) {
-    return (
-      <Tooltip
-        arrow
-        title={tooltipText}
-        placement='left'
-        enterTouchDelay={0}
-        leaveTouchDelay={TOOLTIP_LEAVE_TOUCH_DELAY_MS}>
-        <span>{toggle}</span>
-      </Tooltip>
-    );
-  }
-
-  return toggle;
+  // Keep the tooltip wrapper mounted always (empty title = no tooltip); swapping between a bare
+  // and wrapped toggle remounts it and skips the on/off animation when it flips to inherited.
+  return (
+    <Tooltip
+      arrow
+      title={tooltipText ?? ''}
+      placement='left'
+      enterTouchDelay={0}
+      leaveTouchDelay={TOOLTIP_LEAVE_TOUCH_DELAY_MS}>
+      <span>{toggle}</span>
+    </Tooltip>
+  );
 };
 
 export { Permission };

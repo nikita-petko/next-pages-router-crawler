@@ -1,5 +1,5 @@
 import type { FunctionComponent } from 'react';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Chip } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import {
@@ -20,7 +20,12 @@ import { GroupManagementSurface } from '../../utils/types';
 import usePermissions from '../hooks/usePermissions';
 import { usePermissionsTranslation } from '../providers/TranslationProvider';
 import { usePermissionsUiConfig } from '../providers/UIConfigProvider';
-import { canPermissionChange, findUpdatedPermissions } from '../utils/permission';
+import {
+  canPermissionChange,
+  computeEffectiveGrants,
+  deriveExplicitGrants,
+  findUpdatedPermissions,
+} from '../utils/permission';
 import {
   ORDERED_PERMISSION_TABS_COMMUNITY,
   ORDERED_PERMISSION_TABS_CREATION,
@@ -72,9 +77,12 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
   const groupInfoQuery = useGetGroupInfo(showMemberCount ? organization?.groupId : undefined);
   const memberCount = showMemberCount ? (groupInfoQuery.data?.memberCount ?? 0) : undefined;
 
-  const [permissionData, setPermissionData] = useState<
-    Record<string, PermissionRequest> | undefined
-  >(initialPermissions ?? undefined);
+  // The user's explicit grant intent is the source of truth; the effective grant map is derived
+  // from it. Tracking intent directly (rather than inferring it from the effective map on each
+  // toggle) keeps an explicitly-granted child intact when a parent is toggled on then back off.
+  const [explicitGrants, setExplicitGrants] = useState<Set<string>>(() =>
+    initialPermissions ? deriveExplicitGrants(initialPermissions, metadata) : new Set(),
+  );
   const [trackedInitialPermissions, setTrackedInitialPermissions] = useState(initialPermissions);
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [selectedTab, setSelectedTab] = useState<PermissionTab>(PermissionTab.GENERAL);
@@ -83,37 +91,28 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
 
   if (trackedInitialPermissions !== initialPermissions && initialPermissions != null) {
     setTrackedInitialPermissions(initialPermissions);
-    setPermissionData(initialPermissions);
+    setExplicitGrants(deriveExplicitGrants(initialPermissions, metadata));
   }
 
-  const onPermissionChange = useCallback(
-    (permissionId: string, isGranted: boolean) => {
-      setPermissionData((prevPermissionData) => {
-        const newPermissions: Record<string, PermissionRequest> = {};
-        metadata?.forEach((permissionGroup) => {
-          permissionGroup.permissions.forEach((permission) => {
-            if (!prevPermissionData?.[permission.permissionId]) {
-              return;
-            }
-            if (permission.permissionId === permissionId) {
-              newPermissions[permission.permissionId] = { isGranted };
-            } else if (
-              isGranted &&
-              permission.inheritsFrom &&
-              initialPermissions?.[permissionId]?.canEdit &&
-              permission.inheritsFrom.includes(permissionId)
-            ) {
-              newPermissions[permission.permissionId] = { isGranted };
-            } else {
-              newPermissions[permission.permissionId] = prevPermissionData[permission.permissionId];
-            }
-          });
-        });
-        return newPermissions;
-      });
-    },
-    [setPermissionData, initialPermissions, metadata],
+  const permissionData = useMemo(
+    () =>
+      initialPermissions
+        ? computeEffectiveGrants(explicitGrants, metadata, Object.keys(initialPermissions))
+        : undefined,
+    [explicitGrants, metadata, initialPermissions],
   );
+
+  const onPermissionChange = useCallback((permissionId: string, isGranted: boolean) => {
+    setExplicitGrants((prev) => {
+      const next = new Set(prev);
+      if (isGranted) {
+        next.add(permissionId);
+      } else {
+        next.delete(permissionId);
+      }
+      return next;
+    });
+  }, []);
 
   const persistPermissions = useCallback(
     (permissionRequest: Record<string, PermissionRequest>) => {
@@ -146,8 +145,10 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
   ]);
 
   const discardUnsavedChanges = useCallback(() => {
-    setPermissionData(initialPermissions ?? undefined);
-  }, [initialPermissions, setPermissionData]);
+    setExplicitGrants(
+      initialPermissions ? deriveExplicitGrants(initialPermissions, metadata) : new Set(),
+    );
+  }, [initialPermissions, metadata]);
 
   const closeDialogAndDiscardUnsavedChanges = useCallback(() => {
     setShowSaveConfirmation(false);
@@ -178,16 +179,9 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
         newPermissionsData[permissionId] = permissionData[permissionId];
       }
     });
-    setPermissionData(newPermissionsData);
+    setExplicitGrants(deriveExplicitGrants(newPermissionsData, metadata));
     persistPermissions(newPermissionsData);
-  }, [
-    permissionData,
-    initialPermissions,
-    setPermissionData,
-    persistPermissions,
-    displayMessage,
-    translate,
-  ]);
+  }, [permissionData, initialPermissions, metadata, persistPermissions, displayMessage, translate]);
 
   if (isError) {
     return <ErrorState onRetry={refetchPermissions} />;
