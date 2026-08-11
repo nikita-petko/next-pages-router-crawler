@@ -1,7 +1,7 @@
-import { useMutation } from '@tanstack/react-query';
 import type { FunctionComponent } from 'react';
 import React, { useCallback } from 'react';
-import { RobloxItemConfigurationApiModelsRequestFolderDeleteItemRequestItemTypeEnum } from '@rbx/client-itemconfiguration/v1';
+import { useMutation } from '@tanstack/react-query';
+import { RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum } from '@rbx/client-itemconfiguration/v1';
 import { useTranslation } from '@rbx/intl';
 import { useSnackbar } from '@rbx/ui';
 import itemconfigurationClient from '@modules/clients/itemconfiguration';
@@ -22,17 +22,14 @@ const ItemCardRemoveFromFolderButton: FunctionComponent<
   const { enqueue, close: closeSnackbar } = useSnackbar();
 
   const mapItemToFolderItemType = useCallback(
-    (
-      itemType: Item,
-    ): RobloxItemConfigurationApiModelsRequestFolderDeleteItemRequestItemTypeEnum => {
-      switch (itemType) {
-        case Item.CatalogAsset:
-          return RobloxItemConfigurationApiModelsRequestFolderDeleteItemRequestItemTypeEnum.Asset;
-        case Item.Bundle:
-          return RobloxItemConfigurationApiModelsRequestFolderDeleteItemRequestItemTypeEnum.Bundle;
-        default:
-          return RobloxItemConfigurationApiModelsRequestFolderDeleteItemRequestItemTypeEnum.Unknown;
+    (itemType: Item): RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum => {
+      if (itemType === Item.CatalogAsset) {
+        return RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum.Asset;
       }
+      if (itemType === Item.Bundle) {
+        return RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum.Bundle;
+      }
+      return RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum.Unknown;
     },
     [],
   );
@@ -50,7 +47,7 @@ const ItemCardRemoveFromFolderButton: FunctionComponent<
     [enqueue, closeSnackbar],
   );
 
-  const removeFromFolderMutation = useMutation({
+  const { mutate: removeFromFolder, isPending } = useMutation({
     mutationFn: async ({
       itemId,
       itemType,
@@ -82,18 +79,18 @@ const ItemCardRemoveFromFolderButton: FunctionComponent<
     const itemId = itemType === Item.CatalogAsset ? (assetId ?? 0) : (bundleId ?? 0);
 
     if (containingFolderId) {
-      removeFromFolderMutation.mutate({
+      removeFromFolder({
         itemId,
         itemType,
-        containingFolderId: containingFolderId.toString(),
+        containingFolderId,
       });
     }
-  }, [creation, removeFromFolderMutation]);
+  }, [creation, removeFromFolder]);
 
   return (
     <TrackedMenuItem
       onClick={handleRemoveFromFolder}
-      disabled={removeFromFolderMutation.isPending}
+      disabled={isPending}
       itemKey='Action.RemoveItemFromFolder'>
       {translate('Action.RemoveItemFromFolder')}
     </TrackedMenuItem>

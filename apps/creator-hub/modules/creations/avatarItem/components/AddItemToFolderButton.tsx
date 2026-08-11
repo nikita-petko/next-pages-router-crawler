@@ -3,7 +3,7 @@
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { RobloxItemConfigurationApiModelsRequestFolderAddItemRequestItemTypeEnum } from '@rbx/client-itemconfiguration/v1';
+import { RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum } from '@rbx/client-itemconfiguration/v1';
 import { useTranslation } from '@rbx/intl';
 import {
   Grid,
@@ -22,9 +22,15 @@ import tryParseResponseError from '@modules/clients/utils/tryParseResponseError'
 
 interface AddItemToFolderParams {
   itemId: string;
-  itemType: RobloxItemConfigurationApiModelsRequestFolderAddItemRequestItemTypeEnum;
+  itemType: RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum;
   folderId: string;
 }
+
+const isFolderItemType = (
+  value: string,
+): value is RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum =>
+  value === RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum.Asset ||
+  value === RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum.Bundle;
 
 export interface AddItemToFolderButtonProps {
   selectedFolderId: string;
@@ -38,8 +44,8 @@ const AddItemToFolderButton: FunctionComponent<AddItemToFolderButtonProps> = ({
   const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState<boolean>(false);
   const [itemId, setItemId] = useState<string>('');
   const [itemType, setItemType] =
-    useState<RobloxItemConfigurationApiModelsRequestFolderAddItemRequestItemTypeEnum>(
-      RobloxItemConfigurationApiModelsRequestFolderAddItemRequestItemTypeEnum.Asset,
+    useState<RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum>(
+      RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum.Asset,
     );
   const { translate } = useTranslation();
   const { enqueue, close: closeSnackbar } = useSnackbar();
@@ -57,7 +63,7 @@ const AddItemToFolderButton: FunctionComponent<AddItemToFolderButtonProps> = ({
     [enqueue, closeSnackbar],
   );
 
-  const addItemToFolderMutation = useMutation({
+  const { mutate: addItemToFolder, isPending } = useMutation({
     mutationFn: async (params: AddItemToFolderParams) => {
       return itemconfigurationClient.addItemToFolder(
         params.itemId,
@@ -68,13 +74,13 @@ const AddItemToFolderButton: FunctionComponent<AddItemToFolderButtonProps> = ({
     onSuccess: () => {
       showBottomMsg(translate('Message.AddItemToFolderSuccess'));
       setItemId('');
-      setItemType(RobloxItemConfigurationApiModelsRequestFolderAddItemRequestItemTypeEnum.Asset);
+      setItemType(RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum.Asset);
       setIsAddItemDialogOpen(false);
       onFolderContentsUpdated();
     },
     onError: async (error) => {
       const errorResponse = await tryParseResponseError(error);
-      switch (errorResponse?.code) {
+      switch (errorResponse?.code ?? -1) {
         case 3:
           showBottomMsg(translate('Error.ItemIdInvalid'));
           break;
@@ -92,7 +98,7 @@ const AddItemToFolderButton: FunctionComponent<AddItemToFolderButtonProps> = ({
   });
 
   const handleAddItemToFolder = useCallback(
-    (event?: React.FormEvent<HTMLFormElement>) => {
+    (event?: React.SyntheticEvent<HTMLFormElement>) => {
       if (event) {
         event.preventDefault();
       }
@@ -102,13 +108,13 @@ const AddItemToFolderButton: FunctionComponent<AddItemToFolderButtonProps> = ({
         return;
       }
 
-      addItemToFolderMutation.mutate({
+      addItemToFolder({
         itemId: itemId.trim(),
         itemType,
         folderId: selectedFolderId,
       });
     },
-    [itemId, itemType, selectedFolderId, showBottomMsg, addItemToFolderMutation, translate],
+    [itemId, itemType, selectedFolderId, showBottomMsg, addItemToFolder, translate],
   );
 
   const addItemDialog = useMemo(() => {
@@ -125,7 +131,6 @@ const AddItemToFolderButton: FunctionComponent<AddItemToFolderButtonProps> = ({
                   value={itemId}
                   onChange={(e) => setItemId(e.target.value)}
                   fullWidth
-                  autoFocus
                   placeholder={translate('Label.ItemId')}
                   margin='dense'
                 />
@@ -135,25 +140,21 @@ const AddItemToFolderButton: FunctionComponent<AddItemToFolderButtonProps> = ({
                   id='itemType'
                   label={translate('Label.ItemType')}
                   value={itemType}
-                  onChange={(e) =>
-                    setItemType(
-                      e.target
-                        .value as RobloxItemConfigurationApiModelsRequestFolderAddItemRequestItemTypeEnum,
-                    )
-                  }
+                  onChange={(e) => {
+                    const { value } = e.target;
+                    if (isFolderItemType(value)) {
+                      setItemType(value);
+                    }
+                  }}
                   fullWidth
                   size='medium'
                   variant='outlined'>
                   <MenuItem
-                    value={
-                      RobloxItemConfigurationApiModelsRequestFolderAddItemRequestItemTypeEnum.Asset
-                    }>
+                    value={RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum.Asset}>
                     {translate('Label.Asset')}
                   </MenuItem>
                   <MenuItem
-                    value={
-                      RobloxItemConfigurationApiModelsRequestFolderAddItemRequestItemTypeEnum.Bundle
-                    }>
+                    value={RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum.Bundle}>
                     {translate('Label.Bundle')}
                   </MenuItem>
                 </Select>
@@ -172,27 +173,20 @@ const AddItemToFolderButton: FunctionComponent<AddItemToFolderButtonProps> = ({
           <Button
             type='submit'
             form='add-item-form'
-            disabled={addItemToFolderMutation.isPending}
+            disabled={isPending}
             variant='contained'
             size='large'
-            loading={addItemToFolderMutation.isPending}>
+            loading={isPending}>
             {translate('Action.AddItemToFolder')}
           </Button>
         </DialogActions>
       </Dialog>
     );
-  }, [
-    isAddItemDialogOpen,
-    itemId,
-    itemType,
-    handleAddItemToFolder,
-    translate,
-    addItemToFolderMutation.isPending,
-  ]);
+  }, [isAddItemDialogOpen, itemId, itemType, handleAddItemToFolder, translate, isPending]);
 
   const handleAddItemClick = useCallback(() => {
     setItemId('');
-    setItemType(RobloxItemConfigurationApiModelsRequestFolderAddItemRequestItemTypeEnum.Asset);
+    setItemType(RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum.Asset);
     setIsAddItemDialogOpen(true);
   }, []);
 

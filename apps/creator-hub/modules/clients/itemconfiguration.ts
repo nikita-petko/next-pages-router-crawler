@@ -35,25 +35,25 @@ import type {
   RobloxItemConfigurationApiModelsRequestCreateContentMetadataAppealRequest,
   RobloxItemConfigurationApiModelsResponseCreateContentMetadataAppealResponse,
   RobloxItemConfigurationApiGetAppealStatusResponse,
-  RobloxItemConfigurationApiModelsRequestFolderAddItemRequest,
+  RobloxItemConfigurationApiModelsRequestFolderAddItemsRequest,
   RobloxItemConfigurationApiModelsRequestFolderCreateFolderRequest,
-  RobloxItemConfigurationApiModelsRequestFolderDeleteItemRequest,
+  RobloxItemConfigurationApiModelsRequestFolderDeleteItemsRequest,
   RobloxItemConfigurationApiModelsRequestFolderUpdateFolderRequest,
   RobloxItemConfigurationApiModelsResponseFolderCreateFolderResponse,
   RobloxItemConfigurationApiModelsResponseFolderGetFolderItemsResponse,
   RobloxItemConfigurationApiModelsResponseFolderGetFoldersResponse,
   RobloxItemConfigurationApiModelsFolderFolder,
+  RobloxItemConfigurationApiModelsFolderFolderItem,
   RobloxItemConfigurationApiModelsFolderFolderItemDetails,
   V1FoldersFolderIdDeleteRequest,
   V1FoldersFolderIdGetRequest,
-  V1FoldersFolderIdItemDeleteRequest,
   V1FoldersGetRequest,
   V1FoldersPostRequest,
   V1FoldersFolderIdItemsGetRequest,
   V1FoldersFolderIdItemsPostRequest,
+  V1FoldersFolderIdItemsDeleteRequest,
   V1FoldersFolderIdPatchRequest,
-  RobloxItemConfigurationApiModelsRequestFolderAddItemRequestItemTypeEnum,
-  RobloxItemConfigurationApiModelsRequestFolderDeleteItemRequestItemTypeEnum,
+  RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum,
   V1ItemsUploadFeeGetRequest,
   V1ItemsUploadFeeGetAssetTypeEnum,
   V1ItemsUploadFeeGetBundleTypeEnum,
@@ -132,11 +132,12 @@ export type CreateFolderResponse =
 export type GetFolderItemsResponse =
   RobloxItemConfigurationApiModelsResponseFolderGetFolderItemsResponse;
 export type GetFoldersResponse = RobloxItemConfigurationApiModelsResponseFolderGetFoldersResponse;
-export type AddItemRequest = RobloxItemConfigurationApiModelsRequestFolderAddItemRequest;
+export type AddItemsRequest = RobloxItemConfigurationApiModelsRequestFolderAddItemsRequest;
 export type CreateFolderRequest = RobloxItemConfigurationApiModelsRequestFolderCreateFolderRequest;
-export type DeleteItemRequest = RobloxItemConfigurationApiModelsRequestFolderDeleteItemRequest;
+export type DeleteItemsRequest = RobloxItemConfigurationApiModelsRequestFolderDeleteItemsRequest;
 export type UpdateFolderRequest = RobloxItemConfigurationApiModelsRequestFolderUpdateFolderRequest;
 export type Folder = RobloxItemConfigurationApiModelsFolderFolder;
+export type FolderItem = RobloxItemConfigurationApiModelsFolderFolderItem;
 export type FolderItemDetails = RobloxItemConfigurationApiModelsFolderFolderItemDetails;
 export type GetCategoriesResponse = RobloxItemConfigurationApiModelsResponseGetCategoriesResponse;
 export type CategoryNode = RobloxItemConfigurationApiModelsResponseCategoryNode;
@@ -694,34 +695,32 @@ export class ItemConfigurationClient {
 
   addItemToFolder(
     itemId: string,
-    itemType: RobloxItemConfigurationApiModelsRequestFolderAddItemRequestItemTypeEnum,
+    itemType: RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum,
     folderId: string,
   ): Promise<void> {
-    const addItemRequest: AddItemRequest = {
-      itemId,
-      itemType,
+    const addItemsRequest: AddItemsRequest = {
+      items: [{ id: itemId, itemType }],
     };
     const request: V1FoldersFolderIdItemsPostRequest = {
       folderId,
-      request: addItemRequest,
+      request: addItemsRequest,
     };
     return this.foldersApi.v1FoldersFolderIdItemsPost(request);
   }
 
   removeItemFromFolder(
     itemId: string,
-    itemType: RobloxItemConfigurationApiModelsRequestFolderDeleteItemRequestItemTypeEnum,
+    itemType: RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum,
     folderId: string,
   ): Promise<void> {
-    const deleteItemRequest: DeleteItemRequest = {
-      itemId,
-      itemType,
+    const deleteItemsRequest: DeleteItemsRequest = {
+      items: [{ id: itemId, itemType }],
     };
-    const request: V1FoldersFolderIdItemDeleteRequest = {
+    const request: V1FoldersFolderIdItemsDeleteRequest = {
       folderId,
-      request: deleteItemRequest,
+      request: deleteItemsRequest,
     };
-    return this.foldersApi.v1FoldersFolderIdItemDelete(request);
+    return this.foldersApi.v1FoldersFolderIdItemsDelete(request);
   }
 
   updateFolder(folderId: string, name: string): Promise<void> {
