@@ -13,6 +13,10 @@ import {
   DialogContent,
   DialogFooter,
   DialogTitle,
+  Icon,
+  Tooltip,
+  TooltipTrigger,
+  VisuallyHidden,
 } from '@rbx/foundation-ui';
 import { withTranslation, useTranslation } from '@rbx/intl';
 import { CircularProgress, makeStyles } from '@rbx/ui';
@@ -86,6 +90,16 @@ const useStyles = makeStyles()((theme) => ({
       boxShadow: `inset 0 0 0 2px ${theme.palette.components.input.outlined.focusBorder}`,
     },
   },
+  invalidSelectedTile: {
+    boxShadow: `inset 0 0 0 2px ${theme.palette.actionV2.important.fill}`,
+    '&:hover': {
+      boxShadow: `inset 0 0 0 2px ${theme.palette.actionV2.important.fill}`,
+    },
+  },
+  ineligibleOverlay: {
+    backgroundColor: theme.palette.components.media.overlay,
+    color: theme.palette.common.white,
+  },
   unselectedCheckbox: {
     boxShadow: `inset 0 0 0 2px ${theme.palette.common.white}`,
     '& [data-slot="checkbox"]': {
@@ -109,18 +123,30 @@ const ShowcasedExperiencesDialog = ({
     pageSize: SHOWCASE_ELIGIBLE_CONTENT_PAGE_SIZE,
     enabled: open,
   });
-  const eligibleUniverseIds = useMemo(
-    () => [...new Set(getUniverseIds(showcaseEligibleContentReq.data?.content))],
-    [showcaseEligibleContentReq.data?.content],
-  );
   const selectedContentUniverseIds = useMemo(
     () => getUniverseIds(selectedContent),
     [selectedContent],
   );
+  const eligibleUniverseIds = useMemo(
+    () => [...new Set(getUniverseIds(showcaseEligibleContentReq.data?.content))],
+    [showcaseEligibleContentReq.data?.content],
+  );
   const [selectedUniverseIds, setSelectedUniverseIds] = useState(selectedContentUniverseIds);
+  const invalidUniverseIds = useMemo(() => {
+    if (!showcaseEligibleContentReq.isSuccess) {
+      return new Set<number>();
+    }
+    const eligibleUniverseIdSet = new Set(eligibleUniverseIds);
+    return new Set(
+      selectedContentUniverseIds.filter((universeId) => !eligibleUniverseIdSet.has(universeId)),
+    );
+  }, [eligibleUniverseIds, selectedContentUniverseIds, showcaseEligibleContentReq.isSuccess]);
   const selectableUniverseIds = useMemo(
-    () => [...new Set([...eligibleUniverseIds, ...selectedUniverseIds])],
-    [eligibleUniverseIds, selectedUniverseIds],
+    () => [...new Set([...selectedContentUniverseIds, ...eligibleUniverseIds])],
+    [eligibleUniverseIds, selectedContentUniverseIds],
+  );
+  const hasSelectedInvalidUniverse = selectedUniverseIds.some((universeId) =>
+    invalidUniverseIds.has(universeId),
   );
   const showcaseUniverseDetailsReq = useGetShowcaseUniverseDetails({
     universeIds: selectableUniverseIds,
@@ -163,6 +189,9 @@ const ShowcasedExperiencesDialog = ({
   const toggleSelection = useCallback(
     (universeId: number) => {
       const isSelected = selectedUniverseIds.includes(universeId);
+      if (!isSelected && invalidUniverseIds.has(universeId)) {
+        return;
+      }
       if (!isSelected && selectedUniverseIds.length >= MAX_SHOWCASE_SELECTIONS) {
         return;
       }
@@ -179,7 +208,7 @@ const ShowcasedExperiencesDialog = ({
         selectedCount: nextSelectedUniverseIds.length,
       });
     },
-    [listingId, logEvent, selectedUniverseIds],
+    [invalidUniverseIds, listingId, logEvent, selectedUniverseIds],
   );
 
   const closeDialog = (action: 'cancel' | 'dismiss') => {
@@ -202,6 +231,13 @@ const ShowcasedExperiencesDialog = ({
   };
 
   const handleSave = () => {
+    if (
+      showcaseEligibleContentReq.isPending ||
+      showcaseEligibleContentReq.isFetching ||
+      hasSelectedInvalidUniverse
+    ) {
+      return;
+    }
     logEvent(LicenseManagerClickEvent.IphListingsDetailsPageSaveShowcasedExperiencesClickEvent, {
       listingId,
       selectedCount: selectedUniverseIds.length,
@@ -240,6 +276,27 @@ const ShowcasedExperiencesDialog = ({
     'Add up to 10 creations to highlight to Creators browsing your IP. Only creations in active license agreement with a license of this listing are eligible to be spotlighted.',
     'Description explaining which creations can be spotlighted on an IP listing',
     translationKey('Description.AddSpotlightedCreations', TranslationNamespace.AgreementsManager),
+  );
+  const invalidSelectionDescription = tPendingTranslation(
+    'One or more of your spotlighted creations is no longer in active license agreement. Please deselect them.',
+    'Warning shown when a spotlighted creation is no longer eligible',
+    translationKey(
+      'Description.IneligibleSpotlightedCreations',
+      TranslationNamespace.AgreementsManager,
+    ),
+  );
+  const ineligibleCreationLabel = tPendingTranslation(
+    'Ineligible creation',
+    'Label shown over a spotlighted creation that can no longer be selected',
+    translationKey('Label.IneligibleCreation', TranslationNamespace.AgreementsManager),
+  );
+  const ineligibleCreationTooltip = tPendingTranslation(
+    'This creation is no longer in active license agreement with this listing',
+    'Tooltip explaining why a spotlighted creation can no longer be selected',
+    translationKey(
+      'Description.IneligibleSpotlightedCreationTooltip',
+      TranslationNamespace.AgreementsManager,
+    ),
   );
   const emptyStateTitle = tPendingTranslation(
     'No licensed creations yet',
@@ -284,6 +341,9 @@ const ShowcasedExperiencesDialog = ({
   );
   const isAddDisabled =
     isContentError ||
+    showcaseEligibleContentReq.isPending ||
+    showcaseEligibleContentReq.isFetching ||
+    hasSelectedInvalidUniverse ||
     replaceShowcaseContent.isPending ||
     (selectableUniverseIds.length === 0 && !hasRemovedSelections);
 
@@ -363,6 +423,9 @@ const ShowcasedExperiencesDialog = ({
               )}>
               {selectableUniverseIds.map((universeId) => {
                 const isSelected = selectedUniverseIds.includes(universeId);
+                const isInvalid = invalidUniverseIds.has(universeId);
+                const isDeselectedInvalid = isInvalid && !isSelected;
+                const ineligibleDescriptionId = `ineligible-showcase-content-description-${universeId.toString()}`;
                 const name =
                   detailsByUniverseId.get(universeId)?.name ??
                   tPendingTranslation(
@@ -383,14 +446,53 @@ const ShowcasedExperiencesDialog = ({
                   ),
                   { experienceName: name },
                 );
+                if (isDeselectedInvalid) {
+                  const ineligibleCreationAriaLabel = tPendingTranslation(
+                    '{experienceName}: {label}',
+                    'ARIA label for a spotlighted creation that can no longer be selected',
+                    translationKey(
+                      'Label.IneligibleSpotlightedCreationAriaLabel',
+                      TranslationNamespace.AgreementsManager,
+                    ),
+                    { experienceName: name, label: ineligibleCreationLabel },
+                  );
+                  return (
+                    <div key={universeId} className='group relative width-[144px]'>
+                      <Tooltip position='top-center' title={ineligibleCreationTooltip}>
+                        <TooltipTrigger asChild>
+                          <button
+                            type='button'
+                            className='relative block width-full radius-medium clip padding-small [border:none] [background:transparent] text-align-x-left cursor-not-allowed focus-visible:outline-focus'
+                            aria-disabled='true'
+                            aria-label={ineligibleCreationAriaLabel}
+                            aria-describedby={ineligibleDescriptionId}
+                            data-testid={`ineligible-showcase-content-${universeId}`}>
+                            <ShowcaseContentTile universeId={universeId} name={name} />
+                            <VisuallyHidden id={ineligibleDescriptionId}>
+                              {ineligibleCreationTooltip}
+                            </VisuallyHidden>
+                            <div
+                              className={`${classes.ineligibleOverlay} absolute inset-[0] [z-index:2] flex flex-col items-center justify-center gap-xsmall padding-small text-align-x-center`}>
+                              <Icon name='icon-regular-triangle-exclamation' size='Medium' />
+                              <span className='text-label-medium'>{ineligibleCreationLabel}</span>
+                            </div>
+                          </button>
+                        </TooltipTrigger>
+                      </Tooltip>
+                    </div>
+                  );
+                }
                 return (
                   <div key={universeId} className='group relative width-[144px]'>
                     <button
                       type='button'
                       aria-pressed={isSelected}
+                      data-testid={`showcase-content-selection-${universeId.toString()}`}
                       className={cx(
                         classes.selectableTile,
                         isSelected && classes.selectedTile,
+                        isInvalid && classes.invalidSelectedTile,
+                        isInvalid && 'stroke-system-alert',
                         'block width-full cursor-pointer radius-medium padding-small [border:none] [background:transparent] [transition:box-shadow_0.2s] text-align-x-left focus-visible:outline-focus',
                       )}
                       onClick={() => toggleSelection(universeId)}>
@@ -438,13 +540,29 @@ const ShowcasedExperiencesDialog = ({
             </Alert>
           ) : null}
         </DialogBody>
-        <DialogFooter className='flex gap-small justify-end'>
-          <Button variant='Emphasis' size='Medium' onClick={handleSave} isDisabled={isAddDisabled}>
-            {addLabel}
-          </Button>
-          <Button variant='Standard' size='Medium' onClick={handleCancel}>
-            {cancelLabel}
-          </Button>
+        <DialogFooter className='flex flex-col gap-small'>
+          <div className='width-full'>
+            <p
+              className={`text-body-medium content-system-alert margin-none width-full ${
+                hasSelectedInvalidUniverse ? '' : '[visibility:hidden]'
+              }`}
+              role={hasSelectedInvalidUniverse ? 'alert' : undefined}
+              aria-hidden={!hasSelectedInvalidUniverse}>
+              {invalidSelectionDescription}
+            </p>
+          </div>
+          <div className='flex gap-small justify-end width-full'>
+            <Button
+              variant='Emphasis'
+              size='Medium'
+              onClick={handleSave}
+              isDisabled={isAddDisabled}>
+              {addLabel}
+            </Button>
+            <Button variant='Standard' size='Medium' onClick={handleCancel}>
+              {cancelLabel}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
