@@ -1,5 +1,5 @@
 import type { FunctionComponent } from 'react';
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useRobloxAuthentication } from '@rbx/auth';
 import type { LicenseResponse } from '@rbx/client-content-licensing-api/v1';
 import { LicenseDurationType } from '@rbx/client-content-licensing-api/v1';
@@ -15,12 +15,18 @@ import {
   Typography,
   makeStyles,
 } from '@rbx/ui';
+import {
+  LicenseManagerClickEvent,
+  LicenseManagerImpressionEvent,
+  useLicenseManagerLogger,
+} from '@modules/ip/license-manager/utils/logger';
 import { getMaturityRatingLabel } from '@modules/ip/license-manager/utils/maturityRating';
 import { getDurationRangeLabel } from '@modules/ip/license-manager/utils/timeLimitedLicense';
 import { Link, PageLoading } from '@modules/miscellaneous/components';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
 import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
+import { useVisibleImpression } from '../hooks/useVisibleImpression';
 import { LICENSE_APPLY_HREF } from '../urls';
 import { formatRoyaltyRate } from '../utils/format';
 import { getLicenseTypeTranslationKeys } from '../utils/licenseTypeTranslationKeys';
@@ -42,6 +48,7 @@ const useStyles = makeStyles()((theme) => ({
 
 interface LicenseAccordionProps {
   license: LicenseResponse;
+  licensePosition?: number;
   isExpanded: boolean;
   onAccordionChange: (
     licenseId: string,
@@ -51,6 +58,7 @@ interface LicenseAccordionProps {
 
 const LicenseAccordion: FunctionComponent<LicenseAccordionProps> = ({
   license,
+  licensePosition = 1,
   isExpanded,
   onAccordionChange,
   onViewDetails,
@@ -60,20 +68,45 @@ const LicenseAccordion: FunctionComponent<LicenseAccordionProps> = ({
   const { isFetched } = useSettings();
   const { frontendFlags, loadingFrontendFlags } = useToolboxServiceApiProvider();
   const { status, login } = useRobloxAuthentication();
+  const { logEvent } = useLicenseManagerLogger();
 
   const isAuthenticated = status === 'success';
+  const isAuthenticationResolved = status !== 'loading';
   const enableCollaborationLicensing =
     frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
+  const licenseId = license.id ?? '';
+  const listingId = license.listingId ?? '';
 
-  if (!license.id) {
+  const logLicenseImpression = useCallback(() => {
+    logEvent(LicenseManagerImpressionEvent.PublicListingDetailsPageLicenseImpressionEvent, {
+      licenseId,
+      listingId,
+      licensePosition,
+      isAuthenticated,
+    });
+  }, [isAuthenticated, licenseId, licensePosition, listingId, logEvent]);
+  const accordionRef = useVisibleImpression<HTMLDivElement>(
+    logLicenseImpression,
+    licenseId !== '' && isAuthenticationResolved && isFetched && !loadingFrontendFlags,
+  );
+
+  const handleChange = useCallback(
+    (event: React.SyntheticEvent, nextIsExpanded: boolean) => {
+      logEvent(LicenseManagerClickEvent.PublicListingDetailsPageLicenseAccordionToggleClickEvent, {
+        licenseId,
+        listingId,
+        licensePosition,
+        action: nextIsExpanded ? 'expand' : 'collapse',
+        isAuthenticated,
+      });
+      onAccordionChange(licenseId)(event, nextIsExpanded);
+    },
+    [isAuthenticated, licenseId, licensePosition, listingId, logEvent, onAccordionChange],
+  );
+
+  if (licenseId === '') {
     return null;
   }
-
-  const licenseId = license.id;
-  const listingId = license.listingId;
-
-  // Unauthenticated users: accordion still expands/collapses normally
-  const handleChange = onAccordionChange(licenseId);
 
   if (!isFetched || loadingFrontendFlags) {
     return <PageLoading />;
@@ -84,7 +117,7 @@ const LicenseAccordion: FunctionComponent<LicenseAccordionProps> = ({
   const showDurationInSummary = isAuthenticated;
 
   return (
-    <Accordion variant='outlined' expanded={isExpanded} onChange={handleChange}>
+    <Accordion ref={accordionRef} variant='outlined' expanded={isExpanded} onChange={handleChange}>
       <AccordionSummary>
         <Grid container flexDirection='column'>
           <Grid item>

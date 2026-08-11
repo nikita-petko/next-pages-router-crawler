@@ -2,7 +2,6 @@ import type { FC } from 'react';
 import React from 'react';
 import { useTranslation } from '@rbx/intl';
 import { Grid, Typography, Link } from '@rbx/ui';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import {
   notificationContentPlayerInvitePromptDocUrl,
   notificationContentExperienceNotificationDocUrl,
@@ -10,78 +9,52 @@ import {
 
 const NotificationContentFormPlaceholderDescription: FC<React.PropsWithChildren> = () => {
   const { translateHTML } = useTranslation();
-  const { settings } = useSettings();
-  const UENDescriptionPlaceholderExample = settings.enableUENSocialMentions
-    ? translateHTML('Description.Placeholder.ExampleExperienceNotification', [
-        {
-          opening: 'strongStartUserIdHighScore',
-          closing: 'strongEndUserIdHighScore',
-          content() {
-            return <strong>{`{userId-highScorer}`}</strong>;
-          },
+  const UENDescriptionPlaceholderExample = translateHTML(
+    'Description.Placeholder.ExampleExperienceNotification',
+    [
+      {
+        opening: 'strongStartUserIdHighScore',
+        closing: 'strongEndUserIdHighScore',
+        content() {
+          // oxlint-disable-next-line rbx/no-hardcoded-translation-string -- format parameter placeholder, not translatable
+          return <strong>{`{userId-highScorer}`}</strong>;
         },
-        {
-          opening: 'strongStartPoints',
-          closing: 'strongEndPoints',
-          content() {
-            return <strong>{`{points}`}</strong>;
-          },
+      },
+      {
+        opening: 'strongStartPoints',
+        closing: 'strongEndPoints',
+        content() {
+          // oxlint-disable-next-line rbx/no-hardcoded-translation-string -- format parameter placeholder, not translatable
+          return <strong>{`{points}`}</strong>;
         },
-      ])
-    : translateHTML('Description.PlaceHolder.ExampleExperienceNotificationsQuests', [
-        {
-          opening: 'strongStartQuestsLeft',
-          closing: 'strongEndQuestsLeft',
-          content() {
-            return <strong>{`{questsLeft}`}</strong>;
-          },
-        },
-        {
-          opening: 'strongStartPoints',
-          closing: 'strongEndPoints',
-          content() {
-            return <strong>{`{points}`}</strong>;
-          },
-        },
-      ]);
+      },
+    ],
+  );
 
-  const UENDescriptionPlaceholderInstruction = settings.enableUENSocialMentions
-    ? translateHTML('Description.Placeholder.InstructionExperienceNotification', [
-        {
-          opening: 'linkStart',
-          closing: 'linkEnd',
-          content(chunks) {
-            return (
-              <Link href={notificationContentExperienceNotificationDocUrl} target='_blank'>
-                {chunks}
-              </Link>
-            );
-          },
+  const UENDescriptionPlaceholderInstruction = translateHTML(
+    'Description.Placeholder.InstructionExperienceNotification',
+    [
+      {
+        opening: 'linkStart',
+        closing: 'linkEnd',
+        content(chunks) {
+          return (
+            <Link href={notificationContentExperienceNotificationDocUrl} target='_blank'>
+              {chunks}
+            </Link>
+          );
         },
-        {
-          opening: 'strongStartUserIdSuffix',
-          closing: 'strongEndUserIdSuffix',
-          content() {
-            return <strong>{`{userId-{suffix}}`}</strong>;
-          },
+      },
+      {
+        opening: 'strongStartUserIdSuffix',
+        closing: 'strongEndUserIdSuffix',
+        content() {
+          // oxlint-disable-next-line rbx/no-hardcoded-translation-string -- format parameter placeholder, not translatable
+          return <strong>{`{userId-{suffix}}`}</strong>;
         },
-      ])
-    : translateHTML(
-        'Description.Placeholder.InstructionExperienceNotificationsRestrictedDisplayNames',
-        [
-          {
-            opening: 'linkStart',
-            closing: 'linkEnd',
-            content(chunks) {
-              return (
-                <Link href={notificationContentExperienceNotificationDocUrl} target='_blank'>
-                  {chunks}
-                </Link>
-              );
-            },
-          },
-        ],
-      );
+      },
+    ],
+  );
 
   return (
     <Grid container item XSmall={12} direction='column'>
@@ -102,6 +75,7 @@ const NotificationContentFormPlaceholderDescription: FC<React.PropsWithChildren>
             opening: 'strongStartExpName',
             closing: 'strongEndExpName',
             content() {
+              // oxlint-disable-next-line rbx/no-hardcoded-translation-string -- format parameter placeholder, not translatable
               return <strong>{`{experienceName}`}</strong>;
             },
           },
@@ -109,6 +83,7 @@ const NotificationContentFormPlaceholderDescription: FC<React.PropsWithChildren>
             opening: 'strongStartDisName',
             closing: 'strongEndDisName',
             content() {
+              // oxlint-disable-next-line rbx/no-hardcoded-translation-string -- format parameter placeholder, not translatable
               return <strong>{`{displayName}`}</strong>;
             },
           },
@@ -121,6 +96,7 @@ const NotificationContentFormPlaceholderDescription: FC<React.PropsWithChildren>
             opening: 'strongStartDisName',
             closing: 'strongEndDisName',
             content() {
+              // oxlint-disable-next-line rbx/no-hardcoded-translation-string -- format parameter placeholder, not translatable
               return <strong>{`{displayName}`}</strong>;
             },
           },
@@ -128,6 +104,7 @@ const NotificationContentFormPlaceholderDescription: FC<React.PropsWithChildren>
             opening: 'strongStartExpName',
             closing: 'strongEndExpName',
             content() {
+              // oxlint-disable-next-line rbx/no-hardcoded-translation-string -- format parameter placeholder, not translatable
               return <strong>{`{experienceName}`}</strong>;
             },
           },
