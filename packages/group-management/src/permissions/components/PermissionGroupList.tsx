@@ -10,7 +10,6 @@ import {
   makeStyles,
   StickyFooter,
   Typography,
-  useMediaQuery,
 } from '@rbx/ui';
 import ErrorState from '../../components/ErrorState';
 import TranslationNamespace from '../../constants/TranslationNamespace';
@@ -50,14 +49,17 @@ const usePermissionsContainerStyles = makeStyles()((theme) => ({
   footerButton: {
     margin: `0 ${theme.spacing(1)} 0 0`,
   },
+  stickyFooter: {
+    paddingLeft: 0,
+    paddingRight: 0,
+  },
 }));
 
 const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ creator, entity }) => {
   const {
-    classes: { rootClass, footerButton },
+    classes: { rootClass, footerButton, stickyFooter },
   } = usePermissionsContainerStyles();
   const { showRevokeAllButton, showConfirmationOnSave } = usePermissionsUiConfig();
-  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('Medium'));
   const { translate, displayMessage } = usePermissionsTranslation();
   const { translateWithNamespace } = useTranslation();
   const { organization, surface, isOrganizationLoading } = useCurrentGroup();
@@ -298,17 +300,20 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
           />
         ))}
       </ul>
-      {isAnyEditable && isMobile && (
+      {isAnyEditable && (
         <StickyFooter
-          secondary={{
+          classes={{ root: stickyFooter }}
+          primary={{
             variant: 'outlined',
+            size: 'medium',
             color: 'primary',
             onClick: discardUnsavedChanges,
             disabled: isPending || isSaving || (selected.length === 0 && unselected.length === 0),
             label: typeof cancelActionLabel === 'string' ? cancelActionLabel : '',
           }}
-          primary={{
+          secondary={{
             variant: 'contained',
+            size: 'medium',
             loading: isPending || isSaving,
             disabled: selected.length === 0 && unselected.length === 0,
             onClick: maybePromptAndPersist,
@@ -326,7 +331,7 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
             disabled={selected.length === 0 && unselected.length === 0}
             onClick={maybePromptAndPersist}
             className={footerButton}>
-            {translate('Action.Save')}
+            {saveActionLabel}
           </Button>
           <Button
             data-testid='permission-cancel-button'
@@ -336,7 +341,7 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
             disabled={isPending || isSaving || (selected.length === 0 && unselected.length === 0)}
             onClick={discardUnsavedChanges}
             className={footerButton}>
-            {translate('Action.Cancel')}
+            {cancelActionLabel}
           </Button>
         </Grid>
       )}

@@ -2,6 +2,7 @@ import type { FunctionComponent } from 'react';
 import { useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { StatusCodes } from '@rbx/core';
+import { Alert } from '@rbx/foundation-ui';
 import {
   EntityTypes as GroupManagementEntityTypes,
   GroupManagementProvider,
@@ -9,11 +10,10 @@ import {
   PermissionsContainer as UnifiedPermissionsContainer,
 } from '@rbx/group-management';
 import { withTranslation } from '@rbx/intl';
-import { useMediaQuery } from '@rbx/ui';
+import { useMediaQuery, useSnackbar } from '@rbx/ui';
 import { useAuthentication } from '@modules/authentication/providers';
-import useBottomToast from '@modules/group/hooks/useBottomToast';
 import useCurrentOrganization from '@modules/group/hooks/useCurrentOrganization';
-import { CreatorType } from '@modules/miscellaneous/common';
+import { CreatorType, toastDurationTime } from '@modules/miscellaneous/common';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { ErrorPage } from '@modules/miscellaneous/error';
 import LoadError from '@modules/miscellaneous/error/LoadError';
@@ -37,7 +37,7 @@ const CollaboratorPermissionsContainer: FunctionComponent = () => {
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('Medium'));
   const { user } = useAuthentication();
   const { open: openStudio, dialog } = useStudio();
-  const { showBottomToast } = useBottomToast();
+  const { enqueue, close } = useSnackbar();
   const groupId = organization?.groupId ? Number.parseInt(organization.groupId, 10) : undefined;
   const { data: productFeatures, isLoading: isProductFeaturesLoading } =
     useGetGroupProductFeatures(groupId);
@@ -81,9 +81,22 @@ const CollaboratorPermissionsContainer: FunctionComponent = () => {
 
   const showToast = useCallback(
     (message: string, isError?: boolean) => {
-      showBottomToast(message, { severity: isError ? 'error' : 'success' });
+      enqueue({
+        children: (
+          <Alert
+            severity={isError ? 'Error' : 'Success'}
+            variant='Feedback'
+            hasCloseAffordance={false}>
+            {message}
+          </Alert>
+        ),
+        anchorOrigin: { vertical: 'top', horizontal: 'center' },
+        autoHideDuration: toastDurationTime,
+        autoHide: true,
+        onClose: close,
+      });
     },
-    [showBottomToast],
+    [enqueue, close],
   );
 
   if (

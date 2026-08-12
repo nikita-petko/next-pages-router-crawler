@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import Router from 'next/router';
 import type { RoleMetadata } from '@rbx/client-organizations-service-api/v1';
 import { buildBreadcrumb, buildTitle, HubMeta } from '@rbx/creator-hub-history';
-import { ProgressCircle } from '@rbx/foundation-ui';
+import { ProgressCircle, Alert } from '@rbx/foundation-ui';
 import {
   GroupInviteButton as UnifiedGroupInviteButton,
   GroupManagementProvider,
@@ -12,8 +12,9 @@ import {
   GroupMembersTable as UnifiedGroupMembersTable,
 } from '@rbx/group-management';
 import { useTranslation } from '@rbx/intl';
-import { Grid, makeStyles } from '@rbx/ui';
+import { Grid, makeStyles, useSnackbar } from '@rbx/ui';
 import { useAuthentication } from '@modules/authentication/providers';
+import { toastDurationTime } from '@modules/miscellaneous/common';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 import { creatorHub, www } from '@modules/miscellaneous/urls';
 import { useGetOrganizationRoles } from '@modules/react-query/groupMembers';
@@ -27,7 +28,6 @@ import {
   InviteQueryKey,
   MigratedGroupStatus,
 } from '../../constants/groupConstants';
-import useBottomToast from '../../hooks/useBottomToast';
 import useCurrentOrganization from '../../hooks/useCurrentOrganization';
 import GroupRolesMenu from '../GroupRolesMenu';
 import MaintenanceBanner from '../MaintenanceBanner';
@@ -59,7 +59,7 @@ const GroupMembers: FunctionComponent = () => {
   const { organization, permissions } = useCurrentOrganization();
   const { user } = useAuthentication();
   const { unifiedLogger } = useUnifiedLoggerProvider();
-  const { showBottomToast } = useBottomToast();
+  const { enqueue, close } = useSnackbar();
   const { data: roles } = useGetOrganizationRoles(organization?.id);
   const groupId = organization?.groupId ? Number.parseInt(organization.groupId, 10) : undefined;
   const { data: productFeatures, isLoading: isProductFeaturesLoading } =
@@ -98,9 +98,22 @@ const GroupMembers: FunctionComponent = () => {
   );
   const showToast = useCallback(
     (message: string, isError?: boolean) => {
-      showBottomToast(message, { severity: isError ? 'error' : 'success' });
+      enqueue({
+        children: (
+          <Alert
+            severity={isError ? 'Error' : 'Success'}
+            variant='Feedback'
+            hasCloseAffordance={false}>
+            {message}
+          </Alert>
+        ),
+        anchorOrigin: { vertical: 'top', horizontal: 'center' },
+        autoHideDuration: toastDurationTime,
+        autoHide: true,
+        onClose: close,
+      });
     },
-    [showBottomToast],
+    [enqueue, close],
   );
 
   if (!organization || isMigrationStatusLoading || isProductFeaturesLoading) {
