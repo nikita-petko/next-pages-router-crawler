@@ -78,6 +78,7 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
   const totalLoaded = (serverItems?.length ?? 0) + (localItems?.length ?? 0);
   const filterIsActive = pageState.searchQuery.trim().length > 0;
   const nextPageToken = listQuery.data?.nextPageToken;
+  const { isStale: isListStale } = listQuery;
 
   const { pagedItems: serverPagedItems, filteredCount: serverFilteredCount } =
     useFilteredAndPagedDashboards(
@@ -205,12 +206,17 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
 
   const handlePageChange = useCallback(
     (nextPage: number) => {
+      // Client-side pagination only slices the root query. Reobserve a stale
+      // list after navigation so a deferred pin/unpin reorder is applied.
+      if (!isApiBacked && nextPage !== page && isListStale) {
+        void refetchList();
+      }
       if (nextPage === page + 1 && nextPageToken) {
         setTokenForPage(nextPage, nextPageToken);
       }
       setPage(nextPage);
     },
-    [nextPageToken, page, setPage, setTokenForPage],
+    [isApiBacked, isListStale, nextPageToken, page, refetchList, setPage, setTokenForPage],
   );
 
   const renderTable = (): React.ReactElement => {

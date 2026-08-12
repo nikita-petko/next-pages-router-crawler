@@ -35,8 +35,26 @@ export function useCustomDashboardServiceSubscription(universeId: number): void 
         });
         return;
       }
-      // Mutation-scoped event: precisely invalidate list, suggested name,
-      // and the affected detail row.
+      // Pin / unpin: the optimistic update already flipped `isPinned` in
+      // the shared list cache (so the side nav and the current manage
+      // page reflect the new state in place). Mark the list stale WITHOUT
+      // refetching so the manage table doesn't reorder mid-toggle; the
+      // reorder lands on the next page switch, remount, or manual refresh
+      // when the now-stale query is reobserved. Detail is invalidated
+      // normally so an open dashboard view reflects the new pin metadata.
+      // Suggested-name is unaffected by pinning, so it's left alone.
+      if (event.eventType === 'pin' || event.eventType === 'unpin') {
+        void queryClient.invalidateQueries({
+          queryKey: customDashboardQueryKeys.list(event.universeId),
+          refetchType: 'none',
+        });
+        void queryClient.invalidateQueries({
+          queryKey: customDashboardQueryKeys.detail(event.universeId, event.dashboardId),
+        });
+        return;
+      }
+      // Other mutation-scoped events: precisely invalidate list, suggested
+      // name, and the affected detail row.
       void queryClient.invalidateQueries({
         queryKey: customDashboardQueryKeys.list(event.universeId),
       });

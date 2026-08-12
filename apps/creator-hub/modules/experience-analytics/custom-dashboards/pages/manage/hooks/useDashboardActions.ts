@@ -88,7 +88,11 @@ export function useDashboardActions({
   }, [queryClient, listQueryKey]);
 
   const replaceItemInCache = useCallback(
-    (dashboardId: string, updater: (item: CustomDashboardListItem) => CustomDashboardListItem) => {
+    (
+      dashboardId: string,
+      updater: (item: CustomDashboardListItem) => CustomDashboardListItem,
+      resort = true,
+    ) => {
       queryClient.setQueriesData<CustomDashboardListResult>(
         { queryKey: listQueryKey },
         (previous) => {
@@ -103,9 +107,11 @@ export function useDashboardActions({
           );
           return {
             ...previous,
-            items: sortDashboardsForList(nextItems),
+            items: resort ? sortDashboardsForList(nextItems) : nextItems,
             localItems: nextLocalItems
-              ? sortDashboardsForList(nextLocalItems)
+              ? resort
+                ? sortDashboardsForList(nextLocalItems)
+                : nextLocalItems
               : previous.localItems,
           };
         },
@@ -138,8 +144,9 @@ export function useDashboardActions({
       dashboardId: string,
       patch: (item: CustomDashboardListItem) => CustomDashboardListItem,
       run: () => Promise<unknown>,
+      resort = true,
     ): Promise<void> => {
-      replaceItemInCache(dashboardId, patch);
+      replaceItemInCache(dashboardId, patch, resort);
       try {
         await run();
       } catch (error) {
@@ -159,11 +166,13 @@ export function useDashboardActions({
       if (nextPinned && pinnedCount >= MAX_PINNED_DASHBOARDS) {
         return;
       }
-      // Don't synthesize `pinnedAt` here — we'd need the service's clock,
-      // not wall-clock time, and the cache invalidates on success so the
-      // canonical timestamp wins on the next refetch. The visual change
-      // (`isPinned`) is the only thing the user sees in the optimistic
-      // frame.
+      // Optimistic in place: flip `isPinned` without re-sorting the cached
+      // list so the row doesn't jump mid-toggle. The canonical `pinnedAt`
+      // / `updatedAt` are intentionally not synthesized here — we'd need
+      // the service's clock, not wall-clock time. The service-subscription
+      // bridge marks the list stale (without refetching) on pin success,
+      // so the reorder lands on the next page switch, remount, or manual
+      // refresh rather than while the user is looking at the page.
       optimisticUpdate(
         dashboard.id,
         (item) => ({ ...item, isPinned: nextPinned }),
@@ -171,6 +180,7 @@ export function useDashboardActions({
           nextPinned
             ? service.pin(universeId, dashboard.id)
             : service.unpin(universeId, dashboard.id),
+        false,
       ).catch(() => undefined);
     },
     [optimisticUpdate, pinnedCount, service, universeId],
