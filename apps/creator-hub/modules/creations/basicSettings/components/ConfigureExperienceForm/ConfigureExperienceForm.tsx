@@ -7,7 +7,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { CreatorTierEnum } from '@rbx/client-core-content-api/v1';
 import { ReleaseStatus, ReleaseTransitionError } from '@rbx/client-experience-releases-api/v1';
 import { UniversePlayerHostingStatus } from '@rbx/client-player-hosted-events-api/v1';
-import { getProductionCreatorHubUrl } from '@rbx/env-utils';
+import { getProductionCreatorHubUrl, resolveUrl } from '@rbx/env-utils';
 import { FeedbackBanner } from '@rbx/foundation-ui';
 import { useLocalization, useTranslation } from '@rbx/intl';
 import { useLocalStorage } from '@rbx/react-utilities';
@@ -1134,6 +1134,7 @@ const ConfigureExperienceForm: FunctionComponent<
 
         {isQuestionnaireV2 && isDescriptionOrGenreMissing && (
           <Grid item XSmall={12}>
+            {/* oxlint-disable-next-line typescript/no-deprecated */}
             <FeedbackBanner
               title=''
               description={translate('Message.AddDescriptionAndGenreForRating')}
@@ -1179,6 +1180,7 @@ const ConfigureExperienceForm: FunctionComponent<
                     {...field}
                     SelectProps={{
                       MenuProps: {
+                        // oxlint-disable-next-line typescript/no-deprecated
                         PaperProps: {
                           className: dropdownMenuList,
                         },
@@ -1212,6 +1214,7 @@ const ConfigureExperienceForm: FunctionComponent<
                         {...field}
                         SelectProps={{
                           MenuProps: {
+                            // oxlint-disable-next-line typescript/no-deprecated
                             PaperProps: {
                               className: dropdownMenuList,
                             },
@@ -1310,6 +1313,7 @@ const ConfigureExperienceForm: FunctionComponent<
             />
             {audienceBannerProps && (
               <Grid container item XSmall={12}>
+                {/* oxlint-disable-next-line typescript/no-deprecated */}
                 <FeedbackBanner
                   {...audienceBannerProps}
                   className={cx('width-full', audienceBanner)}
@@ -1712,7 +1716,13 @@ const ConfigureExperienceForm: FunctionComponent<
                     closing: 'LinkEnd',
                     content(chunks) {
                       return (
-                        <Link href={settings.meshTextureApisUsagePolicyUrl} target='_blank'>
+                        <Link
+                          href={resolveUrl(
+                            'creatorsRestrictionsOnUse',
+                            process.env.targetEnvironment,
+                            process.env.buildTarget,
+                          )}
+                          target='_blank'>
                           {chunks}
                         </Link>
                       );

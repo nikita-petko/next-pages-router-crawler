@@ -1,5 +1,3 @@
-import { resolveUrl } from '@rbx/env-utils';
-
 /**
  * This registry is the single source of truth for all frontend client settings managed by admin site.
  * keep consistent with Roblox.Platform.ClientSettings.Properties.ClientApplications value for CreatorDashboard
@@ -12,7 +10,6 @@ export enum FeatureFlagName {
   enableShowOnlyPublishedPlaceVersions = 'enableShowOnlyPublishedPlaceVersions',
   isOldAutomaticTextCaptureDisabled = 'isOldAutomaticTextCaptureDisabled',
   enableMeshTextureApisToggle = 'enableMeshTextureApisToggle',
-  meshTextureApisUsagePolicyUrl = 'meshTextureApisUsagePolicyUrl',
   enableDevexMaintenanceBanner = 'enableDevexMaintenanceBanner',
   enablePlaceSelectForEvent = 'enablePlaceSelectForEvent',
   enableItemDelisting = 'enableItemDelisting',
@@ -110,11 +107,6 @@ export const featureFlagDefaults = defineFeatureFlagDefaults({
   [FeatureFlagName.enableShowOnlyPublishedPlaceVersions]: false,
   [FeatureFlagName.isOldAutomaticTextCaptureDisabled]: false,
   [FeatureFlagName.enableMeshTextureApisToggle]: false,
-  [FeatureFlagName.meshTextureApisUsagePolicyUrl]: resolveUrl(
-    'creatorsRestrictionsOnUse',
-    process.env.targetEnvironment,
-    process.env.buildTarget,
-  ),
   [FeatureFlagName.enableDevexMaintenanceBanner]: false,
   [FeatureFlagName.enablePlaceSelectForEvent]: false,
   [FeatureFlagName.enableItemDelisting]: false,
