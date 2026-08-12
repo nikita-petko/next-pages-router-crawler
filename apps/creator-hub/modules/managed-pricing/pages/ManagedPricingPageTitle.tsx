@@ -2,6 +2,7 @@
 import { memo } from 'react';
 import { clsx } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { docs } from '@modules/miscellaneous/urls/creatorHub';
 import { useUniverseId } from '@modules/monetization-shared/route/useUniverseId';
 import { useTabs } from '@modules/monetization-shared/tabs/useTabs';
@@ -34,7 +35,9 @@ function ManagedPricingPageTitle() {
   return (
     <PageTitle
       titleKey='Heading.ManagedPricing'
+      titleNamespace={TranslationNamespace.Creations}
       subtitleKey='Description.ManagedPricingSubtitleWithLearnMore'
+      subtitleNamespace={TranslationNamespace.Creations}
       subtitleLink={docs.getManagedPricingMonetizationUrl()}
       actionProps={{
         // TODO(jeminpark): coming back to this after conferring with design

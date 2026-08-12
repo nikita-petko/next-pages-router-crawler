@@ -30,7 +30,9 @@ function PersonalizedShopsPageTitle() {
   return (
     <PageTitle
       titleKey='Heading.PersonalizedShop'
+      titleNamespace={TranslationNamespace.Creations}
       subtitleKey='Description.PersonalizedShopSubtitle'
+      subtitleNamespace={TranslationNamespace.Creations}
       subtitleLink={LEARN_MORE_HREF}
       className='wrap medium:no-wrap'
       actions={

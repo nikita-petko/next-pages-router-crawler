@@ -1,7 +1,6 @@
 import { memo } from 'react';
 import type { NextLayoutPage } from 'next';
 import { withTranslation } from '@rbx/intl';
-import { analyticsItemFreeAvatarsNavigationItem } from '@modules/charts-generic/constants/analyticsNavigationItems';
 import { useCreationsCustomSettings } from '@modules/creations/common/implementations/creationsCustomSettings';
 import getAnalyticsPageLayout from '@modules/experience-analytics-shared/pages/getUniverseAnalyticsPageLayout';
 import FreeAvatarsPageContent from '@modules/free-avatars/FreeAvatarsPageContent';
@@ -29,8 +28,10 @@ const FreeAvatarsTitle = withTranslation(
 
     return (
       <PageTitle
-        titleKey={analyticsItemFreeAvatarsNavigationItem.title.key}
+        titleKey='Label.FreeAvatars'
+        titleNamespace={TranslationNamespace.Navigation}
         subtitleKey='Description.FreeAvatarsPageSubtitle'
+        subtitleNamespace={TranslationNamespace.Creations}
         subtitleLink={settings.freeAvatarDocumentationUrl}
       />
     );

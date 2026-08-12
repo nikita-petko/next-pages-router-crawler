@@ -1,5 +1,6 @@
 import { Badge, type TBadgeVariant } from '@rbx/foundation-ui';
-import { useTranslation } from '@rbx/intl';
+import { useTranslationWithNamespace } from '@rbx/intl';
+import TranslationNamespace from '@modules/miscellaneous/localization/enums/TranslationNamespace';
 import type { ManagedPricingEvent } from '../types';
 
 const STATUS_LABEL_KEYS = {
@@ -12,7 +13,7 @@ const STATUS_LABEL_KEYS = {
 
 const STATUS_BADGE_VARIANTS = {
   Upcoming: 'Contrast',
-  Active: 'Neutral',
+  Active: 'Success',
   Completed: 'Neutral',
   Cancelled: 'Neutral',
   Failed: 'Alert',
@@ -25,7 +26,7 @@ type Props = Pick<ManagedPricingEvent, 'status'> & {
 };
 
 function EventStatusBadge({ status, variant, className }: Props) {
-  const { translate } = useTranslation();
+  const { translate } = useTranslationWithNamespace(TranslationNamespace.ManagedPricing);
   return (
     <Badge
       variant={variant ?? STATUS_BADGE_VARIANTS[status]}

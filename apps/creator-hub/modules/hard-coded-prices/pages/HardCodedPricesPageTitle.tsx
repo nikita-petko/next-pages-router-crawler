@@ -46,7 +46,9 @@ function HardCodedPricesPageTitle() {
   return (
     <PageTitle
       titleKey='Heading.HardCodedPrices'
+      titleNamespace={TranslationNamespace.HardCodedPrices}
       subtitleKey='Description.HardCodedPricesSubtitle'
+      subtitleNamespace={TranslationNamespace.Creations}
       subtitleLink='/docs/production/monetization/hard-coded-prices'
       actions={
         hardCodedPricesSummary?.lastScanned && (

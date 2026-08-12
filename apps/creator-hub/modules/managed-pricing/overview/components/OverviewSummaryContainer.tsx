@@ -1,5 +1,11 @@
 import { NumberFormatter } from '@rbx/core';
-import { Locale, useLocalization, useTranslation, type UseTranslationResult } from '@rbx/intl';
+import {
+  Locale,
+  useLocalization,
+  useTranslationWithNamespace,
+  type UseTranslationWithNamespaceResult,
+} from '@rbx/intl';
+import TranslationNamespace from '@modules/miscellaneous/localization/enums/TranslationNamespace';
 import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
 import { pluralize } from '@modules/monetization-shared/pluralize';
 import EventStatusBadge from '../../common/EventStatusBadge';
@@ -45,7 +51,7 @@ type CardProps = {
 
 function ProductCountCard({ universeId, className, loading }: CardProps) {
   const locale = useLocalization().locale ?? undefined;
-  const { translate } = useTranslation();
+  const { translate } = useTranslationWithNamespace(TranslationNamespace.ManagedPricing);
 
   const {
     totalEligibleCount,
@@ -94,7 +100,7 @@ function ProductCountCard({ universeId, className, loading }: CardProps) {
 
 function TotalRevenueCard({ universeId, className, loading }: CardProps) {
   const locale = useLocalization().locale ?? undefined;
-  const { translate } = useTranslation();
+  const { translate } = useTranslationWithNamespace(TranslationNamespace.ManagedPricing);
   const { data } = useGetManagedPricingSummary(universeId);
 
   const percentageFormatter = new Intl.NumberFormat(locale, {
@@ -154,7 +160,7 @@ function TotalRevenueCard({ universeId, className, loading }: CardProps) {
 
 function PayerConversionCard({ universeId, className, loading }: CardProps) {
   const locale = useLocalization().locale ?? undefined;
-  const { translate } = useTranslation();
+  const { translate } = useTranslationWithNamespace(TranslationNamespace.ManagedPricing);
   const { data } = useGetManagedPricingSummary(universeId);
 
   const percentageFormatter = new Intl.NumberFormat(locale, {
@@ -197,7 +203,7 @@ function PayerConversionCard({ universeId, className, loading }: CardProps) {
 function formatItemCount(
   count: number,
   clamp: boolean,
-  translate: UseTranslationResult['translate'],
+  translate: UseTranslationWithNamespaceResult<TranslationNamespace.ManagedPricing>['translate'],
 ) {
   const displayCount = clamp ? displayTotalCount(count) : count.toString();
   return pluralize(
@@ -210,7 +216,7 @@ function formatItemCount(
 function formatDaysRemaining(
   endTime: Date | null,
   startTime: Date,
-  translate: UseTranslationResult['translate'],
+  translate: UseTranslationWithNamespaceResult<TranslationNamespace.ManagedPricing>['translate'],
 ): string {
   /* istanbul ignore next - defensive guard, only called for non-Upcoming events which have endTime */
   if (endTime == null) {
@@ -231,7 +237,7 @@ function formatDaysRemaining(
 
 function formatDaysUntilStart(
   startTime: Date,
-  translate: UseTranslationResult['translate'],
+  translate: UseTranslationWithNamespaceResult<TranslationNamespace.ManagedPricing>['translate'],
 ): string {
   const msUntilStart = startTime.getTime() - Date.now();
   const daysUntilStart = Math.max(0, Math.floor(msUntilStart / (24 * 60 * 60 * 1000)));
@@ -249,7 +255,7 @@ function formatEndedDate(endTime: Date, locale?: Locale | null): string {
 }
 
 function CurrentPriceTestCard({ universeId, className, loading }: CardProps) {
-  const { translate } = useTranslation();
+  const { translate } = useTranslationWithNamespace(TranslationNamespace.ManagedPricing);
   const { data } = useGetManagedPricingSummary(universeId);
   const currentEvent = data?.experimentOverview?.currentEvent ?? null;
 
@@ -302,7 +308,7 @@ function CurrentPriceTestCard({ universeId, className, loading }: CardProps) {
 
 function PreviousPriceTestCard({ universeId, className, loading }: CardProps) {
   const locale = useLocalization().locale;
-  const { translate } = useTranslation();
+  const { translate } = useTranslationWithNamespace(TranslationNamespace.ManagedPricing);
   const { data } = useGetManagedPricingSummary(universeId);
   const previousEvent = data?.experimentOverview?.previousEvent ?? null;
 

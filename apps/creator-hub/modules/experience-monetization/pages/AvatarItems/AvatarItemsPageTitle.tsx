@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { analyticsItemMonetizationAvatarItemsNavigationItem } from '@modules/charts-generic/constants/analyticsNavigationItems';
+import TranslationNamespace from '@modules/miscellaneous/localization/enums/TranslationNamespace';
 import { useUniverseId } from '@modules/monetization-shared/route/useUniverseId';
 import PageTitle from '@modules/monetization-shared/title';
 
@@ -15,8 +15,10 @@ function AvatarItemsPageTitle() {
 
   return (
     <PageTitle
-      titleKey={analyticsItemMonetizationAvatarItemsNavigationItem.title.key}
+      titleKey='Label.ThirdPartyAvatarItemCommissions'
+      titleNamespace={TranslationNamespace.Navigation}
       subtitleKey='Description.TakeActionAvatarItemCommissions'
+      subtitleNamespace={TranslationNamespace.Analytics}
       subtitleLink={avatarItemsDocLink}
     />
   );

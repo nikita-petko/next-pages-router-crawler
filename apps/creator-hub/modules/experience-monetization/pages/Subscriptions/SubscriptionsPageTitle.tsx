@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import NextLink from 'next/link';
 import { useTranslation } from '@rbx/intl';
-import { analyticsSubscriptionsNavigationItem } from '@modules/charts-generic/constants/analyticsNavigationItems';
+import TranslationNamespace from '@modules/miscellaneous/localization/enums/TranslationNamespace';
 import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
 import { useUniverseId } from '@modules/monetization-shared/route/useUniverseId';
 import PageTitle from '@modules/monetization-shared/title';
@@ -21,8 +21,10 @@ function SubscriptionsPageTitle() {
 
   return (
     <PageTitle
-      titleKey={analyticsSubscriptionsNavigationItem.title.key}
+      titleKey='Heading.Subscriptions'
+      titleNamespace={TranslationNamespace.Navigation}
       subtitleKey='Description.TakeActionSubscriptions'
+      subtitleNamespace={TranslationNamespace.Analytics}
       subtitleLink={subscriptionsDocLink}
       actionProps={{
         asChild: true,

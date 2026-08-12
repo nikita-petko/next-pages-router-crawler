@@ -1,15 +1,33 @@
 import { memo } from 'react';
 import { Button, clsx, type TButtonProps } from '@rbx/foundation-ui';
-import { useTranslation } from '@rbx/intl';
+import { type TTranslationKey, type TTranslationNamespace, useTranslation } from '@rbx/intl';
 import { Link } from './link';
 
-type TitleProps =
-  | { titleKey: string; title?: never }
-  | { title: React.ReactNode; titleKey?: never };
+type TitleProps<Namespace extends TTranslationNamespace> =
+  | {
+      titleKey: TTranslationKey<NoInfer<Namespace>>;
+      titleNamespace: Namespace;
+      title?: never;
+    }
+  | {
+      title: React.ReactNode;
+      titleNamespace?: never;
+      titleKey?: never;
+    };
 
-type SubtitleProps =
-  | { subtitleKey?: string; subtitleLink?: string; subtitle?: never }
-  | { subtitle?: React.ReactNode; subtitleKey?: never; subtitleLink?: never };
+type SubtitleProps<Namespace extends TTranslationNamespace> =
+  | {
+      subtitleKey: TTranslationKey<NoInfer<Namespace>>;
+      subtitleNamespace: Namespace;
+      subtitleLink?: string;
+      subtitle?: never;
+    }
+  | {
+      subtitle?: React.ReactNode;
+      subtitleNamespace?: never;
+      subtitleKey?: never;
+      subtitleLink?: never;
+    };
 
 // TODO(jeminpark): add support for multiple actions (primary, secondary, options)
 type ActionsProps =
@@ -18,7 +36,10 @@ type ActionsProps =
 
 type OverrideProps = { className?: string };
 
-type PageTitleProps = TitleProps & SubtitleProps & ActionsProps & OverrideProps;
+type PageTitleProps<
+  TitleNamespace extends TTranslationNamespace,
+  SubtitleNamespace extends TTranslationNamespace,
+> = TitleProps<TitleNamespace> & SubtitleProps<SubtitleNamespace> & ActionsProps & OverrideProps;
 
 export const DEFAULT_ACTION_PROPS = {
   className: 'min-width-fit',
@@ -31,11 +52,11 @@ export const DEFAULT_ACTION_PROPS = {
  * Accepts the following:
  *
  * Title
- *   - Translation Key (string)
+ *   - Translation namespace and key
  *   - Node (React.ReactNode)
  *
  * Subtitle (optional)
- *   - Translation Key + (optional) Link (string)
+ *   - Translation namespace and key + (optional) Link (string)
  *   - Node (React.ReactNode)
  *
  * Action (optional)
@@ -47,7 +68,9 @@ export const DEFAULT_ACTION_PROPS = {
  * // With translation keys
  * <PageTitle
  *   titleKey='Heading.ManagedPricing'
- *   subtitleKey='Description.ManagedPricing'
+ *   titleNamespace='CreatorDashboard.Creations'
+ *   subtitleKey='Description.ManagedPricingSubtitleWithLearnMore'
+ *   subtitleNamespace='CreatorDashboard.Creations'
  *   subtitleLink='/docs/production/monetization/managed-pricing'
  *   actionProps={{ variant: 'Standard', children: translate('Action.AddItems') }}
  * />
@@ -59,7 +82,7 @@ export const DEFAULT_ACTION_PROPS = {
  * <PageTitle
  *   title={<h1>Managed Pricing</h1>}
  *   subtitle={<span>Take action to optimize your pricing</span>}
- *   action={
+ *   actions={
  *     <Button variant='Emphasis' size='Medium'>
  *       <NextLink href='/monetization/managed-pricing/add-items'>
  *         Add items
@@ -69,31 +92,39 @@ export const DEFAULT_ACTION_PROPS = {
  * />
  * ```
  */
-function PageTitle({
+function PageTitle<
+  TitleNamespace extends TTranslationNamespace,
+  SubtitleNamespace extends TTranslationNamespace,
+>({
   title,
   titleKey,
+  titleNamespace,
   subtitle,
   subtitleKey,
+  subtitleNamespace,
   subtitleLink,
   actions,
   actionProps,
   className,
-}: PageTitleProps) {
-  const { translate, translateHTML } = useTranslation();
+}: PageTitleProps<TitleNamespace, SubtitleNamespace>): React.ReactNode {
+  const { translateWithNamespace, translateWithNamespaceHTML } = useTranslation();
 
   const titleNode =
-    titleKey !== undefined ? (
-      <h1 className='text-heading-large margin-none'>{translate(titleKey)}</h1>
+    titleKey !== undefined && titleNamespace !== undefined ? (
+      <h1 className='text-heading-large margin-none'>
+        {translateWithNamespace<TitleNamespace>(titleNamespace, titleKey)}
+      </h1>
     ) : (
       title
     );
 
   const subtitleNode =
-    subtitleKey !== undefined ? (
+    subtitleKey !== undefined && subtitleNamespace !== undefined ? (
       // Note(jeminpark): Temporarily adding padding and increasing size from text-body-medium
       // until rest of layout is migrated to standard
       <span className='text-body-large content-default padding-top-xsmall'>
-        {translateHTML(
+        {translateWithNamespaceHTML<SubtitleNamespace>(
+          subtitleNamespace,
           subtitleKey,
           subtitleLink
             ? [

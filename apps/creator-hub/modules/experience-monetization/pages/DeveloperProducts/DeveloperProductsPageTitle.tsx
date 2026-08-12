@@ -2,7 +2,6 @@ import { memo } from 'react';
 import NextLink from 'next/link';
 import { Button } from '@rbx/foundation-ui';
 import { useTranslationWithNamespace } from '@rbx/intl';
-import { analyticsItemMonetizationDeveloperProductsNavigationItem } from '@modules/charts-generic/constants/analyticsNavigationItems';
 import DeveloperProductsOptionsMenu from '@modules/developer-products/components/DeveloperProductsOptionsMenu';
 import TranslationNamespace from '@modules/miscellaneous/localization/enums/TranslationNamespace';
 import { dashboard, docs } from '@modules/miscellaneous/urls/creatorHub';
@@ -24,8 +23,10 @@ function DeveloperProductsPageTitle() {
 
   return (
     <PageTitle
-      titleKey={analyticsItemMonetizationDeveloperProductsNavigationItem.title.key}
+      titleKey='Label.DeveloperProducts'
+      titleNamespace={TranslationNamespace.Navigation}
       subtitleKey='Description.TakeActionDeveloperProducts'
+      subtitleNamespace={TranslationNamespace.Analytics}
       subtitleLink={developerProductsDocLink}
       actions={
         <div className='flex items-center gap-small'>

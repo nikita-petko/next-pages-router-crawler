@@ -2,7 +2,7 @@
 import { memo } from 'react';
 import { Badge } from '@rbx/foundation-ui';
 import type { Locale } from '@rbx/intl';
-import { useLocalization, useTranslation, withTranslation } from '@rbx/intl';
+import { useLocalization, useTranslationWithNamespace, withTranslation } from '@rbx/intl';
 import TranslationNamespace from '@modules/miscellaneous/localization/enums/TranslationNamespace';
 import { useEventId } from '@modules/monetization-shared/route/useEventId';
 import { useUniverseId } from '@modules/monetization-shared/route/useUniverseId';
@@ -41,7 +41,7 @@ function formatEventDateRange(startTime: Date | null, endTime: Date | null, loca
  * Note this is dynamic based on the event type and status
  */
 function ManagedPricingEventDetailsPageTitle() {
-  const { translate } = useTranslation();
+  const { translate } = useTranslationWithNamespace(TranslationNamespace.ManagedPricing);
   const { locale } = useLocalization();
   const { universeId } = useUniverseId();
   const { eventId } = useEventId();

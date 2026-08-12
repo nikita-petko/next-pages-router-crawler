@@ -2,7 +2,6 @@ import { memo } from 'react';
 import NextLink from 'next/link';
 import { Button } from '@rbx/foundation-ui';
 import { useTranslationWithNamespace } from '@rbx/intl';
-import { analyticsItemMonetizationPassesNavigationItem } from '@modules/charts-generic/constants/analyticsNavigationItems';
 import TranslationNamespace from '@modules/miscellaneous/localization/enums/TranslationNamespace';
 import { dashboard, docs } from '@modules/miscellaneous/urls/creatorHub';
 import { useUniverseId } from '@modules/monetization-shared/route/useUniverseId';
@@ -24,8 +23,10 @@ function GamePassesPageTitle() {
 
   return (
     <PageTitle
-      titleKey={analyticsItemMonetizationPassesNavigationItem.title.key}
+      titleKey='Label.GamePasses'
+      titleNamespace={TranslationNamespace.Navigation}
       subtitleKey='Description.TakeActionPasses'
+      subtitleNamespace={TranslationNamespace.Analytics}
       subtitleLink={gamePassesDocLink}
       actions={
         <div className='flex items-center gap-small'>
