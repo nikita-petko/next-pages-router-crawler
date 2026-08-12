@@ -40,8 +40,10 @@ import {
   hasIncompleteTargetingClause,
 } from '../../utils/experimentTargetingTransforms';
 import type { SetupStepFormData } from '../types/FormData';
+import { MetricTemplateType } from '../types/MetricTemplateType';
 import ExperimentTypeTranslationKeys from '../utils/experimentTypeTranslationKeys';
 import CreationStepperButtons from './CreationStepperButtons';
+import CustomMetricsCard from './CustomMetricsCard';
 import ExperimentTargetingCopyModal from './ExperimentTargetingCopyModal';
 import MDECardInForm from './MDECardInForm';
 import MetricSetSelector from './MetricSetSelector';
@@ -109,6 +111,7 @@ const ExperimentSetupStep: FunctionComponent<ExperimentSetupStepProps> = ({
   const { control, handleSubmit, setValue } = useFormContext<SetupStepFormData>();
 
   const experimentType = useWatch({ control, name: 'type' });
+  const metricTemplateType = useWatch({ control, name: 'metricTemplateType' });
 
   const { field: targetingClausesField, fieldState: targetingClausesFieldState } = useController({
     control,
@@ -374,6 +377,14 @@ const ExperimentSetupStep: FunctionComponent<ExperimentSetupStepProps> = ({
       {isExperimentationTemplatesEnabled && (
         <Grid item>
           <MetricSetSelector
+            disabled={!!(experiment && experiment.state !== ExperimentState.Draft)}
+          />
+        </Grid>
+      )}
+      {/* Custom metrics panel — only when the Custom metric set is selected */}
+      {isExperimentationTemplatesEnabled && metricTemplateType === MetricTemplateType.Custom && (
+        <Grid item>
+          <CustomMetricsCard
             disabled={!!(experiment && experiment.state !== ExperimentState.Draft)}
           />
         </Grid>

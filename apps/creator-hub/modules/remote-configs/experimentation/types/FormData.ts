@@ -11,6 +11,7 @@ import type {
 } from '../../api/universeExperimentationClientEnums';
 import type { ValidExperimentConfigurationForCreation } from '../../api/validExperimentationTypes';
 import type { TargetingClauseFormData } from '../../types/FormData';
+import type { CustomMetric } from './CustomMetric';
 import type { MetricTemplateType } from './MetricTemplateType';
 
 export type PlaceScoringConfig = {
@@ -49,6 +50,9 @@ export type SetupStepFormData = {
   // the form but only surfaced behind the `isExperimentationTemplatesEnabled` flag
   // and not yet sent to the backend.
   metricTemplateType: MetricTemplateType | null;
+  // Custom metrics for the experiment. Only surfaced when `metricTemplateType`
+  // is `Custom` (behind the same flag). Not yet sent to the backend.
+  customMetrics: CustomMetric[];
   exposurePercent: number;
   goalMetric: ExperimentMetric | null;
   durationDays: number;
@@ -59,6 +63,7 @@ export const setupStepFormDataKeys = [
   'type',
   'name',
   'metricTemplateType',
+  'customMetrics',
   'exposurePercent',
   'goalMetric',
   'durationDays',
