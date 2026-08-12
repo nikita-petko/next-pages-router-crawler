@@ -17,7 +17,7 @@ const FinanceRail: React.FC = () => {
   const { translate } = translation;
   const { tPendingTranslation } = useTranslationWrapper(translation);
   const { value: revShareAgreementsEnabled } = useFlag(isRevenueShareAgreementsEnabled);
-  const { canAccessTaxDocumentation, isLoading: isTaxAccessLoading } = useTaxDocumentationAccess();
+  const { canAccessTaxDocumentation } = useTaxDocumentationAccess();
   const group = useCurrentGroup();
   const pathname = usePathname();
   const hasGroup = Boolean(group);
@@ -76,6 +76,7 @@ const FinanceRail: React.FC = () => {
       href: `${baseUrl}/transactions`,
       label: translate('Heading.Transactions'),
     });
+    // Taxes is last in the top list; append only when access is known so we don't blank the rail.
     if (canAccessTaxDocumentation) {
       topMenuItems.push({
         key: 'taxes',
@@ -109,22 +110,15 @@ const FinanceRail: React.FC = () => {
     translate,
   ]);
 
-  // Wait for tax access before painting items so Taxes doesn't insert mid-list and
-  // shove the bottom half (Billing / Payments / Account info) down. Keep the header
-  // visible — same pattern as primary rail (no spinner).
   return (
     <>
       <LeftNavigationMenuV2
         activeKey={activeKey}
         header={translate('Heading.Finances')}
-        items={isTaxAccessLoading ? [] : topItems}
+        items={topItems}
       />
-      {!isTaxAccessLoading && (
-        <>
-          <Divider sx={{ margin: '12px 0px' }} />
-          <LeftNavigationMenuV2 activeKey={activeKey} items={bottomItems} />
-        </>
-      )}
+      <Divider sx={{ margin: '12px 0px' }} />
+      <LeftNavigationMenuV2 activeKey={activeKey} items={bottomItems} />
     </>
   );
 };

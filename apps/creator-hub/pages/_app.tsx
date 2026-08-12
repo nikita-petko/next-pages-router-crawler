@@ -29,6 +29,7 @@ import { ApplicationAuthorizationsClient } from '@modules/clients/applicationAut
 import { AuthClient } from '@modules/clients/auth';
 import { UsersClient } from '@modules/clients/users';
 import { getBEDEV1ServiceBasePath } from '@modules/clients/utils';
+import PreloadL2TranslationNamespaces from '@modules/creator-hub-layout/PreloadL2TranslationNamespaces';
 import AuthenticatedThemeModeProvider from '@modules/creator-settings/hooks/AuthenticatedThemeModeProvider';
 import CreatorNotificationsSettingsProvider from '@modules/creator-settings/hooks/CreatorNotificationsSettingsContext';
 import ModeResponsiveThemeProvider from '@modules/creator-settings/hooks/ModeResponsiveThemeProvider';
@@ -218,6 +219,7 @@ not change */
 not change */
           ]}>
           <PageEventsTracker />
+          <PreloadL2TranslationNamespaces provider={translationResourceProvider} />
           <MonetizationSnackbarOutlet />
           <MonetizationDialogOutlet />
           <ModerationOverlay />

@@ -1,6 +1,7 @@
 import type { FunctionComponent } from 'react';
 import React from 'react';
 import { NavigationTree, NavigationTreeItem } from '@rbx/creator-hub-navigation';
+import { useTranslation } from '@rbx/intl';
 import { Typography, Grid, makeStyles, Divider } from '@rbx/ui';
 
 export type TMenuItem = {
@@ -89,6 +90,11 @@ const LeftNavigationMenu: FunctionComponent<React.PropsWithChildren<LeftNavigati
   defaultExpanded,
 }) => {
   const { classes: styles } = useStyles();
+
+  const { ready } = useTranslation();
+  if (!ready) {
+    return null;
+  }
 
   return (
     <Grid classes={{ root: styles.container }}>
