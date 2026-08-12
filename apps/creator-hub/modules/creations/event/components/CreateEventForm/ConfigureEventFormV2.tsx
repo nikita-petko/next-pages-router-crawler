@@ -1,6 +1,6 @@
-import Router, { useRouter } from 'next/router';
 import type { FunctionComponent } from 'react';
-import { useCallback, useState, useEffect, useMemo, Fragment, type PropsWithChildren } from 'react';
+import { useCallback, useState, useEffect, useMemo, type PropsWithChildren } from 'react';
+import Router, { useRouter } from 'next/router';
 import type { SubmitHandler, FormState } from 'react-hook-form';
 import { useForm, useFieldArray } from 'react-hook-form';
 import type { EventMedia, VirtualEventResponse } from '@rbx/client-virtual-events-api/v1';
@@ -23,7 +23,6 @@ import FormMode from '@modules/miscellaneous/common/enums/FormMode';
 import { useRouteChange } from '@modules/miscellaneous/hooks';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import { useCurrentGroup } from '@modules/providers/groups/GroupsProvider';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import sendEventsAnalyticsEvent from '../../utils/eventsAnalyticsHelper';
 import {
   getEventDetailsUrl,
@@ -107,10 +106,10 @@ function mergeFormValues(
     );
 
     if (primaryCategory) {
-      initialValues.primaryEventType = primaryCategory.category || '';
+      initialValues.primaryEventType = primaryCategory.category ?? '';
     }
     if (secondaryCategory) {
-      initialValues.secondaryEventType = secondaryCategory.category || '';
+      initialValues.secondaryEventType = secondaryCategory.category ?? '';
     }
   }
   if (initialEventDetails.thumbnails) {
@@ -156,7 +155,7 @@ const ConfigureEventFormV2: FunctionComponent<PropsWithChildren<ConfigureEventFo
       CreateEventFormDefaultValues,
       initialEventDetails,
       correlationId,
-      gameDetails?.rootPlaceId as number,
+      gameDetails?.rootPlaceId ?? 0,
     ),
   });
 
@@ -168,7 +167,7 @@ const ConfigureEventFormV2: FunctionComponent<PropsWithChildren<ConfigureEventFo
     if (initialEventDetails?.thumbnails) {
       replace(parseThumbnailData(initialEventDetails?.thumbnails));
     }
-    setValue('id', initialEventDetails?.id || undefined);
+    setValue('id', initialEventDetails?.id ?? undefined);
   }, [initialEventDetails?.id, initialEventDetails?.thumbnails, replace, setValue]);
   // isDirty: true if the form has been changed from its default or last published state
   const { isDirty } = formState;
@@ -184,15 +183,11 @@ const ConfigureEventFormV2: FunctionComponent<PropsWithChildren<ConfigureEventFo
     [initialEventDetails?.eventStatus],
   );
 
-  const isRunning = useMemo(
-    () =>
-      isPublished &&
-      initialEventDetails?.eventTime?.startUtc &&
-      initialEventDetails?.eventTime?.startUtc.getTime() <= Date.now(),
-    [initialEventDetails?.eventTime?.startUtc, isPublished],
-  );
-
-  const { isFetched, settings } = useSettings();
+  const [mountTime] = useState(Date.now);
+  const isRunning =
+    isPublished &&
+    initialEventDetails?.eventTime?.startUtc &&
+    initialEventDetails?.eventTime?.startUtc.getTime() <= mountTime;
 
   useEffect(() => {
     if (universeId) {
@@ -202,7 +197,7 @@ const ConfigureEventFormV2: FunctionComponent<PropsWithChildren<ConfigureEventFo
 
   useEffect(() => {
     if (initialEventDetails) {
-      trigger();
+      void trigger();
     }
   }, [initialEventDetails, trigger]);
 
@@ -266,10 +261,10 @@ const ConfigureEventFormV2: FunctionComponent<PropsWithChildren<ConfigureEventFo
         }
         // Send the user back to the event page for the experience
         const eventPagePath = maybeAppendGroupIdToUrl(
-          `/dashboard/creations/experiences/${router.query.id}/events?activeTab=${targetTab.name}`,
+          `/dashboard/creations/experiences/${String(router.query.id)}/events?activeTab=${targetTab.name}`,
           currentGroup,
         );
-        Router.push(eventPagePath);
+        void Router.push(eventPagePath);
       }
     },
     [
@@ -307,7 +302,7 @@ const ConfigureEventFormV2: FunctionComponent<PropsWithChildren<ConfigureEventFo
   const handleConfirmDiscardChanges = useCallback(() => {
     setDidConfirmDiscardChanges(true);
     closeDialog();
-    Router.push(`/dashboard/creations/experiences/${router.query.id}/events`);
+    void Router.push(`/dashboard/creations/experiences/${String(router.query.id)}/events`);
   }, [closeDialog, router.query.id]);
 
   const ConfirmDiscardDialog = useMemo(
@@ -327,10 +322,7 @@ const ConfigureEventFormV2: FunctionComponent<PropsWithChildren<ConfigureEventFo
   const handlePublishButtonClick = useCallback(() => {
     // If the user is changing their event to private, we open a confirmation dialog,
     // otherwise we just go ahead and save their changes.
-    if (
-      formState.dirtyFields.visibility &&
-      getValues('visibility').toString() === EventVisibility.Private.toString()
-    ) {
+    if (formState.dirtyFields.visibility && getValues('visibility') === EventVisibility.Private) {
       configure(ConfirmPrivateDialog);
       open();
     } else {
@@ -477,9 +469,7 @@ const ConfigureEventFormV2: FunctionComponent<PropsWithChildren<ConfigureEventFo
           trigger={trigger}
         />
         <>
-          {isFetched && settings.enablePlaceSelectForEvent && (
-            <EventPlaceSelect control={control} getValues={getValues} setValue={setValue} />
-          )}
+          <EventPlaceSelect control={control} getValues={getValues} setValue={setValue} />
           <EventPrivacySelector control={control} />
         </>
         <EventFeaturingFields
