@@ -3,7 +3,7 @@ import type { LineChartZones } from '@rbx/analytics-ui';
 import { ProgressCircle, Tabs, TabsList, TabsTrigger } from '@rbx/foundation-ui';
 import { useLocalization } from '@rbx/intl';
 import { FormControl, MenuItem, Select } from '@rbx/ui';
-import { ChangeEvent, useCallback, useMemo, useState } from 'react';
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import useCampaignReportingChartsStyles from '@components/reporting/CampaignReportingCharts.styles';
 import {
@@ -13,7 +13,7 @@ import {
 import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
 import { TranslationNamespace } from '@constants/localization';
 import { REPORTING_TIMEZONE_DB_NAME } from '@constants/reportingStatsConstants';
-import { getAttributionWindow } from '@constants/reportingViewType';
+import ReportingViewType, { getAttributionWindow } from '@constants/reportingViewType';
 import { MS_PER_DAY } from '@constants/time';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
@@ -21,8 +21,6 @@ import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider'
 import { CampaignTimeSeriesDataPoints } from '@type/timeSeries';
 import {
   formatTimestampLabel,
-  getRoasMetric,
-  getTotalRoasFromTimeSeries,
   makePlaysValueFormatter,
   makeRoasValueFormatter,
   MetricValueFormatter,
@@ -120,6 +118,14 @@ const CampaignReportingCharts = () => {
   );
 
   const attributionWindowDays = getAttributionWindow(reportingViewType);
+  const canShowRoas =
+    isCampaignRoasEnabled && reportingViewType === ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT;
+
+  useEffect(() => {
+    if (!canShowRoas && activeMetricTab === 'roas') {
+      setActiveMetricTab('plays');
+    }
+  }, [activeMetricTab, canShowRoas]);
 
   const zoneLegendItemFormatter = (type: SeriesDataTypes) =>
     type === SeriesDataTypes.Projection
@@ -138,25 +144,14 @@ const CampaignReportingCharts = () => {
     setActiveMetricTab(newTab as MetricTab);
   };
 
-  // Only recomputes when the underlying time-series data reference changes.
-  // spend/revenue are only present when the ROAS feature is enabled.
-  const roasDataPoints = useMemo(
-    () =>
-      timeSeriesState.data?.spend && timeSeriesState.data?.revenue
-        ? getRoasMetric(timeSeriesState.data.spend, timeSeriesState.data.revenue)
-        : undefined,
-    [timeSeriesState.data],
-  );
+  const roasDataPoints = timeSeriesState.data?.roas;
 
   const totalPlays = useMemo(
     () => sumPlaysFromTimeSeries(timeSeriesState.data?.plays),
     [timeSeriesState.data],
   );
 
-  const totalRoas = useMemo(
-    () => getTotalRoasFromTimeSeries(timeSeriesState.data?.spend, timeSeriesState.data?.revenue),
-    [timeSeriesState.data],
-  );
+  const totalRoas = timeSeriesState.data?.totalRoas;
 
   const playsScorecardDisplayValue = useMemo(() => {
     if (timeSeriesState.isLoading || timeSeriesState.isError || totalPlays === undefined) {
@@ -259,7 +254,7 @@ const CampaignReportingCharts = () => {
                 value='plays'>
                 {playsTabLabel}
               </TabsTrigger>
-              {isCampaignRoasEnabled && (
+              {canShowRoas && (
                 <TabsTrigger
                   aria-label={translateReport('Label.ROAS')}
                   className={classes.metricTab}

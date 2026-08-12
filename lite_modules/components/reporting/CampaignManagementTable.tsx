@@ -32,15 +32,24 @@ import {
   GetCampaignStatusText,
   GetToggleDisabled,
 } from '@utils/displayStatus';
-import {
-  shouldUseCaaSReportingStats,
-  shouldUseProgressiveCampaignStats,
-} from '@utils/frontendReportingStats';
+import { shouldUseCaaSReportingStats } from '@utils/frontendReportingStats';
 import { GetTimezoneObjFromEnum, GetValidatedTimezoneDbName } from '@utils/timezone';
 
 // Generally performance always has payment type (even if campaign doesn't have stats), but in case it doesn't, we fallback to the payment type stored on the campaign
 const getCampaignPaymentType = (campaign: Campaign) =>
   campaign.performance?.payment_type || campaign.payment_type;
+
+const PAGE_LOCAL_PERFORMANCE_SORT_KEYS: ReadonlySet<keyof GenericSortableRowData> = new Set([
+  'click_count',
+  'click_through_rate',
+  'cost_per_play_usd',
+  'display_spending_usd',
+  'impression',
+  'play_count',
+  'roas',
+  'total_play_time_hours_7d',
+  'total_robux_revenue_30d',
+]);
 
 interface CampaignManagementTableProps {
   showCreatorColumn?: boolean;
@@ -92,10 +101,6 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
     (state: AppStoreType) => state.appMetadataState?.data?.isCampaignRoasEnabled ?? false,
   );
   const useCaaSReportingStats = useAppStore(shouldUseCaaSReportingStats);
-  const useProgressiveCampaignStats = useAppStore(shouldUseProgressiveCampaignStats);
-  const campaignPerformanceState = useNewFlowStore(
-    (state: NewFlowStoreType) => state.campaignPerformanceState,
-  );
   const visibleCampaignStatsState = useNewFlowStore(
     (state: NewFlowStoreType) => state.visibleCampaignStatsState,
   );
@@ -115,7 +120,9 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
   } = useCampaignManagementTableStyles();
 
   const headCells = getCampaignTableHeadCells({
-    includeRoas: isCampaignRoasEnabled,
+    includeRoas:
+      isCampaignRoasEnabled &&
+      currentReportingView === ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT,
     showCreatorColumn,
   });
   const isLoading = campaignsState.isLoading || filteredIdsState.isLoading;
@@ -245,13 +252,9 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
       is_off_platform_request: campaign.is_off_platform_request || false,
       is_reporting_enabled: campaign.is_reporting_enabled || false,
       is_stats_loading:
-        (useCaaSReportingStats &&
-          !visibleCampaignStatsState.isError &&
-          (visibleCampaignStatsState.isLoading || performance === undefined)) ||
-        (useProgressiveCampaignStats &&
-          campaignPerformanceState.isLoading &&
-          !campaignPerformanceState.isError &&
-          performance === undefined),
+        useCaaSReportingStats &&
+        !visibleCampaignStatsState.isError &&
+        (visibleCampaignStatsState.isLoading || performance === undefined),
       name: campaign.name,
       objective: campaign.objective,
       play_count: performance?.play_count || 0,
@@ -354,10 +357,10 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
       getTooltipAnchorRowId={getRetentionTooltipAnchorRowId}
       headCells={headCells}
       onVisibleEntityIdsChange={useCaaSReportingStats ? fetchVisibleCampaignStats : undefined}
+      pageLocalSortKeys={useCaaSReportingStats ? PAGE_LOCAL_PERFORMANCE_SORT_KEYS : undefined}
       RowElement={CampaignTableRow}
       showFooter
       sortableData={rows}
-      sortWithinPage={useCaaSReportingStats}
       visibleEntityIdsRefreshKey={visibleStatsRefreshKey}
     />
   );

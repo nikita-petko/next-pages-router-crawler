@@ -11,14 +11,16 @@ import { unifiedLogger } from '@clients/unifiedLogger';
 import DateFilteringTimePeriod from '@constants/dateFilteringTimePeriod';
 import ReportingViewType from '@constants/reportingViewType';
 import {
-  buildUniverseAnalyticsQueryRequest,
+  AnalyticsDataQualityPolicy,
+  AnalyticsReportingResource,
+  buildReportingAnalyticsQueryRequest,
   UniverseReportingMetric,
 } from '@services/ads/analyticsQueryBuilder';
 import { getFrontendReportingTimeSeriesRange } from '@services/ads/campaignTimeSeriesDateRange';
 import {
+  CaaSReportingMetric,
   CaaSReportingStatsResult,
   RawReportingMetric,
-  RawReportingStats,
 } from '@type/reportingStats';
 import { EMPTY_RAW_REPORTING_STATS } from '@utils/frontendReportingStats';
 import { GetApiSiteBaseUrl, GetSitetestBaseUrl } from '@utils/url';
@@ -35,25 +37,44 @@ const analyticsQueryGatewayApi = new AnalyticsQueryGatewayAPIApi(
 
 type ReportingEntityType = 'ad' | 'campaign';
 
-interface ReportingQueryContext {
+interface BaseReportingQueryContext {
+  customEndDate?: string;
+  customStartDate?: string;
   entityIds?: string[];
   entityType?: ReportingEntityType;
+  includeRoas?: boolean;
   reportingView: ReportingViewType;
   requestTimestamp: string;
   timePeriod: DateFilteringTimePeriod;
+}
+
+interface UniverseReportingQueryContext extends BaseReportingQueryContext {
   universeId: number;
 }
 
+interface AdAccountReportingQueryContext extends BaseReportingQueryContext {
+  adAccountId: string;
+}
+
+type ReportingQueryContext = BaseReportingQueryContext & {
+  resource: AnalyticsReportingResource;
+};
+
 interface MetricQuery {
   endTime: Date;
-  failureMetric: RawReportingMetric;
+  failureMetric: CaaSReportingMetric;
   metric: UniverseReportingMetric;
+  qualityPolicy: AnalyticsDataQualityPolicy;
   startTime: Date;
-  target: keyof RawReportingStats;
+  target?: RawReportingMetric;
 }
 
 const resultCache = new Map<string, Promise<Record<string, CaaSReportingStatsResult>>>();
 const MAX_CACHE_ENTRIES = 100;
+const NON_QUERYABLE_METRICS = new Set<CaaSReportingMetric>([
+  'fifteenSecVideoViewCount',
+  'twoSecVideoViewCount',
+]);
 
 const queryMetric = async (
   context: ReportingQueryContext,
@@ -64,14 +85,15 @@ const queryMetric = async (
     !context.entityType && query.target === 'spendMicroUsd'
       ? { ...context, entityType: 'campaign' as const }
       : context;
-  const request = buildUniverseAnalyticsQueryRequest({
+  const request = buildReportingAnalyticsQueryRequest({
     endTime: query.endTime,
     entityIds: queryContext.entityIds,
     entityType: queryContext.entityType,
     metric: query.metric,
+    qualityPolicy: query.qualityPolicy,
     reportingView: queryContext.reportingView,
+    resource: queryContext.resource,
     startTime: query.startTime,
-    universeId: queryContext.universeId,
   });
 
   return pollAnalyticsOperation(
@@ -93,7 +115,7 @@ const getEntityId = (queryResultValue: NonNullable<QueryResult['values']>[number
     ({ dimension }) => dimension === 'CampaignId' || dimension === 'AdId',
   )?.value ?? 'summary';
 
-const aggregateQueryResult = (queryResult: QueryResult): Map<string, number> => {
+export const aggregateReportingQueryResult = (queryResult: QueryResult): Map<string, number> => {
   const totals = new Map<string, number>();
   (queryResult.values ?? []).forEach((value) => {
     const entityId = getEntityId(value);
@@ -109,6 +131,21 @@ const aggregateQueryResult = (queryResult: QueryResult): Map<string, number> => 
   return totals;
 };
 
+const aggregateDirectMetricQueryResult = (queryResult: QueryResult): Map<string, number> => {
+  const values = new Map<string, number>();
+  (queryResult.values ?? []).forEach((value) => {
+    const entityId = getEntityId(value);
+    if (entityId === 'RAQI_RESERVED_DIMENSION_VALUES_NO_VALUE') {
+      return;
+    }
+    const directValue = value.dataPoints?.find((dataPoint) => dataPoint.value !== undefined)?.value;
+    if (directValue !== undefined) {
+      values.set(entityId, directValue);
+    }
+  });
+  return values;
+};
+
 const createResult = (): CaaSReportingStatsResult => ({
   // The current universe CAaaS contract does not expose video-view metrics.
   // Keep them unavailable instead of presenting initialized zeroes as totals.
@@ -116,17 +153,21 @@ const createResult = (): CaaSReportingStatsResult => ({
   stats: { ...EMPTY_RAW_REPORTING_STATS },
 });
 
-const buildMetricQueries = (context: ReportingQueryContext): MetricQuery[] => {
+export const buildMetricQueries = (context: ReportingQueryContext): MetricQuery[] => {
   const { endTime, startTime } = getFrontendReportingTimeSeriesRange(
     context.requestTimestamp,
     context.timePeriod,
+    context.customStartDate,
+    context.customEndDate,
   );
+  const qualityPolicy: AnalyticsDataQualityPolicy = 'combined';
 
-  return [
+  const queries = [
     {
       endTime,
       failureMetric: 'impressionCount',
       metric: 'impressions',
+      qualityPolicy,
       startTime,
       target: 'impressionCount',
     },
@@ -134,6 +175,7 @@ const buildMetricQueries = (context: ReportingQueryContext): MetricQuery[] => {
       endTime,
       failureMetric: 'clickCount',
       metric: 'clicks',
+      qualityPolicy,
       startTime,
       target: 'clickCount',
     },
@@ -141,6 +183,7 @@ const buildMetricQueries = (context: ReportingQueryContext): MetricQuery[] => {
       endTime,
       failureMetric: 'spendMicroUsd',
       metric: 'spend',
+      qualityPolicy,
       startTime,
       target: 'spendMicroUsd',
     },
@@ -148,6 +191,7 @@ const buildMetricQueries = (context: ReportingQueryContext): MetricQuery[] => {
       endTime,
       failureMetric: 'playCount',
       metric: 'plays',
+      qualityPolicy,
       startTime,
       target: 'playCount',
     },
@@ -155,6 +199,7 @@ const buildMetricQueries = (context: ReportingQueryContext): MetricQuery[] => {
       endTime,
       failureMetric: 'playTimeSeconds7d',
       metric: 'playtime',
+      qualityPolicy,
       startTime,
       target: 'playTimeSeconds7d',
     },
@@ -162,10 +207,29 @@ const buildMetricQueries = (context: ReportingQueryContext): MetricQuery[] => {
       endTime,
       failureMetric: 'robuxRevenue30d',
       metric: 'revenue',
+      qualityPolicy,
       startTime,
       target: 'robuxRevenue30d',
     },
-  ];
+  ].filter(
+    (query) =>
+      context.entityType !== undefined ||
+      (query.target !== 'clickCount' && query.target !== 'robuxRevenue30d'),
+  ) as MetricQuery[];
+  if (
+    context.includeRoas &&
+    context.entityType === 'campaign' &&
+    context.reportingView === ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT
+  ) {
+    queries.push({
+      endTime,
+      failureMetric: 'roas',
+      metric: 'roas',
+      qualityPolicy,
+      startTime,
+    });
+  }
+  return queries;
 };
 
 const fetchCaaSStats = async (
@@ -178,7 +242,10 @@ const fetchCaaSStats = async (
   const settledQueries = await Promise.allSettled(
     metricQueries.map(async (query) => ({
       query,
-      totals: aggregateQueryResult(await queryMetric(context, query, pollingOptions)),
+      totals:
+        query.metric === 'roas'
+          ? aggregateDirectMetricQueryResult(await queryMetric(context, query, pollingOptions))
+          : aggregateReportingQueryResult(await queryMetric(context, query, pollingOptions)),
     })),
   );
 
@@ -195,11 +262,10 @@ const fetchCaaSStats = async (
     if (!context.entityType && query.target === 'spendMicroUsd') {
       const summaryResult = results.summary;
       if (summaryResult) {
-        summaryResult.campaignSpendMicroUsd = Object.fromEntries(settled.value.totals);
-        summaryResult.stats.spendMicroUsd = Array.from(settled.value.totals.values()).reduce(
-          (total, value) => total + value,
-          0,
-        );
+        summaryResult.campaignSpendMicroUsd = Object.fromEntries(settled.value.totals.entries());
+        summaryResult.stats.spendMicroUsd = Object.values(
+          summaryResult.campaignSpendMicroUsd,
+        ).reduce((total, value) => total + value, 0);
       }
       return;
     }
@@ -208,13 +274,17 @@ const fetchCaaSStats = async (
       if (!result) {
         return;
       }
-      result.stats[query.target] += value;
+      if (query.metric === 'roas') {
+        result.roas = value;
+      } else if (query.target) {
+        result.stats[query.target] += value;
+      }
     });
   });
   return results;
 };
 
-export const getUniverseCaaSReportingStats = (
+const getCaaSReportingStats = (
   context: ReportingQueryContext,
   pollingOptions: RAQIClientOptions = ANALYTICS_POLLING_DEFAULTS,
 ): Promise<Record<string, CaaSReportingStatsResult>> => {
@@ -229,10 +299,44 @@ export const getUniverseCaaSReportingStats = (
       resultCache.delete(oldestCacheKey);
     }
   }
-  const request = fetchCaaSStats(context, pollingOptions).catch((error) => {
-    resultCache.delete(cacheKey);
-    throw error;
-  });
+  const request = fetchCaaSStats(context, pollingOptions)
+    .then((results) => {
+      const hasQueryFailure = Object.values(results).some((result) =>
+        result.failedMetrics.some((metric) => !NON_QUERYABLE_METRICS.has(metric)),
+      );
+      if (hasQueryFailure) {
+        resultCache.delete(cacheKey);
+      }
+      return results;
+    })
+    .catch((error) => {
+      resultCache.delete(cacheKey);
+      throw error;
+    });
   resultCache.set(cacheKey, request);
   return request;
 };
+
+export const getUniverseCaaSReportingStats = (
+  context: UniverseReportingQueryContext,
+  pollingOptions: RAQIClientOptions = ANALYTICS_POLLING_DEFAULTS,
+): Promise<Record<string, CaaSReportingStatsResult>> =>
+  getCaaSReportingStats(
+    {
+      ...context,
+      resource: { id: context.universeId, type: 'universe' },
+    },
+    pollingOptions,
+  );
+
+export const getAdAccountCaaSReportingStats = (
+  context: AdAccountReportingQueryContext,
+  pollingOptions: RAQIClientOptions = ANALYTICS_POLLING_DEFAULTS,
+): Promise<Record<string, CaaSReportingStatsResult>> =>
+  getCaaSReportingStats(
+    {
+      ...context,
+      resource: { id: context.adAccountId, type: 'adAccount' },
+    },
+    pollingOptions,
+  );

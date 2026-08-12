@@ -66,10 +66,14 @@ interface GenericManagementTableProps {
   headCells: (SortableHeadCell | UnsortableHeadCell)[];
   isLoading?: boolean;
   onVisibleEntityIdsChange?: (entityIds: string[]) => void;
+  /**
+   * Sort keys whose values are only available for the current page. These keys sort after
+   * pagination; every other key sorts the complete data set before pagination.
+   */
+  pageLocalSortKeys?: ReadonlySet<keyof GenericSortableRowData>;
   RowElement: (props: GenericTableRowProps) => JSX.Element;
   showFooter: boolean;
   sortableData: GenericSortableRowData[];
-  sortWithinPage?: boolean;
   tableId?: string;
   visibleEntityIdsRefreshKey?: string;
 }
@@ -85,10 +89,10 @@ const GenericManagementTable = ({
   headCells,
   isLoading = false,
   onVisibleEntityIdsChange,
+  pageLocalSortKeys,
   RowElement,
   showFooter,
   sortableData,
-  sortWithinPage = false,
   tableId,
   visibleEntityIdsRefreshKey,
 }: GenericManagementTableProps) => {
@@ -178,7 +182,7 @@ const GenericManagementTable = ({
   // Page slice (sorted + paginated). Memoized so layout measurement only reruns when the slice
   // inputs change (avoids `exhaustive-deps` churn from a freshly allocated array each render).
   const visibleRows = useMemo(() => {
-    if (sortWithinPage) {
+    if (pageLocalSortKeys?.has(orderBy)) {
       return stableSort<GenericSortableRowData>(
         sortableData.slice(paginationStartIndex, paginationEndIndex),
         getSortComparator(order, orderBy),
@@ -188,7 +192,7 @@ const GenericManagementTable = ({
       sortableData,
       getSortComparator(order, orderBy),
     ).slice(paginationStartIndex, paginationEndIndex);
-  }, [order, orderBy, paginationEndIndex, paginationStartIndex, sortableData, sortWithinPage]);
+  }, [order, orderBy, pageLocalSortKeys, paginationEndIndex, paginationStartIndex, sortableData]);
   const visibleEntityIdsKey = visibleRows.map(({ id }) => id).join(',');
   const visibleEntityIdsRequest = useMemo(
     () => ({ idsKey: visibleEntityIdsKey, refreshKey: visibleEntityIdsRefreshKey }),

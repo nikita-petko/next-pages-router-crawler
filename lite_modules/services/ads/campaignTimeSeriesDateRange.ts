@@ -155,7 +155,11 @@ export const getAdvertiserTimeSeriesRange = (
 export const getFrontendReportingTimeSeriesRange = (
   requestTimestamp: string,
   timePeriod: DateFilteringTimePeriod,
+  customStartDate?: string,
+  customEndDate?: string,
 ): AdvertiserTimeSeriesRange =>
   getAdvertiserTimeSeriesRange(requestTimestamp, timePeriod, REPORTING_TIMEZONE_DB_NAME, {
+    customEndDate,
+    customStartDate,
     unifiedAttributionCutoverDate: FRONTEND_REPORTING_CAAS_START_DATE,
   });

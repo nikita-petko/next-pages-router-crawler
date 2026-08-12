@@ -1,9 +1,9 @@
 import { ServerPaymentType } from '@constants/campaign';
 import {
+  CaaSReportingMetric,
   CaaSReportingStatsResult,
   EntityPerformance,
   FrontendReportingStats,
-  RawReportingMetric,
   RawReportingStats,
 } from '@type/reportingStats';
 import { MICRO_USD_IN_USD } from '@utils/currency';
@@ -29,12 +29,7 @@ export const EMPTY_RAW_REPORTING_STATS: RawReportingStats = {
 };
 
 export const shouldUseCaaSReportingStats = (state: FrontendReportingStatsGateState): boolean =>
-  state.shouldUseWorkspaceUniverseFiltering();
-
-export const shouldUseProgressiveCampaignStats = (
-  state: FrontendReportingStatsGateState,
-): boolean =>
-  !shouldUseCaaSReportingStats(state) &&
+  state.shouldUseWorkspaceUniverseFiltering() ||
   Boolean(state.appMetadataState?.data?.isFrontendReportingStatsEnabled);
 
 const roundSpendUpToCentMicroUsd = (spendMicroUsd: number): number =>
@@ -52,7 +47,7 @@ const divideWhenAvailable = (
   multiplier: number = 1,
 ): number | undefined => (denominator > 0 ? (numerator / denominator) * multiplier : undefined);
 
-const hasFailed = (failedMetrics: RawReportingMetric[], metric: RawReportingMetric): boolean =>
+const hasFailed = (failedMetrics: CaaSReportingMetric[], metric: CaaSReportingMetric): boolean =>
   failedMetrics.includes(metric);
 
 export const buildFrontendReportingStats = ({
@@ -66,6 +61,7 @@ export const buildFrontendReportingStats = ({
   const rawStats: RawReportingStats = { ...caas.stats };
   const roundedSpendMicroUsd = roundSpendUpToCentMicroUsd(rawStats.spendMicroUsd);
   const displaySpendUsd = getDisplaySpendUsd(rawStats.spendMicroUsd);
+  const roas = hasFailed(failedMetrics, 'roas') ? undefined : caas.roas;
 
   const performance: EntityPerformance = {
     click_count: hasFailed(failedMetrics, 'clickCount') ? undefined : rawStats.clickCount,
@@ -106,10 +102,7 @@ export const buildFrontendReportingStats = ({
       hasFailed(failedMetrics, 'playCount') || hasFailed(failedMetrics, 'impressionCount')
         ? undefined
         : divideWhenAvailable(rawStats.playCount, rawStats.impressionCount),
-    roas:
-      hasFailed(failedMetrics, 'robuxRevenue30d') || hasFailed(failedMetrics, 'spendMicroUsd')
-        ? undefined
-        : divideWhenAvailable(rawStats.robuxRevenue30d, rawStats.spendMicroUsd / MICRO_USD_IN_USD),
+    roas,
     spend_micro_usd: hasFailed(failedMetrics, 'spendMicroUsd') ? undefined : rawStats.spendMicroUsd,
     total_play_time_hours_7d: hasFailed(failedMetrics, 'playTimeSeconds7d')
       ? undefined

@@ -19,9 +19,13 @@ import { EntityType } from '@constants/entity';
 import { REPORTING_TIMEZONE_DB_NAME } from '@constants/reportingStatsConstants';
 import ReportingViewType from '@constants/reportingViewType';
 import { defaultAdvertisedUniverse } from '@constants/universeConstants';
+import { AnalyticsReportingResource } from '@services/ads/analyticsQueryBuilder';
 import { FRONTEND_REPORTING_CAAS_START_DATE } from '@services/ads/campaignTimeSeriesDateRange';
 import { getFilteredCampaignIds } from '@services/ads/filterService';
-import { getUniverseCaaSReportingStats } from '@services/ads/frontendReportingStatsService';
+import {
+  getAdAccountCaaSReportingStats,
+  getUniverseCaaSReportingStats,
+} from '@services/ads/frontendReportingStatsService';
 import { getCampaignTimeSeries } from '@services/ads/getCampaignTimeSeriesService';
 import {
   getDateFilteredAds,
@@ -59,7 +63,6 @@ import {
   buildFrontendReportingStats,
   getDisplaySpendUsd,
   shouldUseCaaSReportingStats,
-  shouldUseProgressiveCampaignStats,
 } from '@utils/frontendReportingStats';
 import {
   buildPickerUniversesWithAllOption,
@@ -98,19 +101,8 @@ interface VisibleStatsState extends RequestStateType<FrontendReportingStatsById>
   requestKey?: string;
 }
 
-interface CampaignPerformanceState {
-  isError: boolean;
-  isLoading: boolean;
-}
-
-interface CampaignPerformanceResult {
-  campaigns?: Campaign[];
-  error?: unknown;
-}
-
 interface CampaignFetchResult {
   campaigns: Campaign[];
-  performancePromise?: Promise<CampaignPerformanceResult>;
   requestTimestamp: string;
 }
 
@@ -154,7 +146,6 @@ interface SponsoredAdsPageStateType {
   advertisedUniversesState: RequestStateType<AdvertisedUniverse[]>;
   campaignDetailsState: CampaignDetailsStateType;
   campaignNameFilterState: CampaignNameFilterState;
-  campaignPerformanceState: CampaignPerformanceState;
   campaignsState: RequestStateType<Campaign[]>;
   dateSelectionState: DateSelectionStateType;
   filteredIdsState: FilterState;
@@ -215,14 +206,10 @@ const getShouldUseWorkspaceUniverseFiltering = (): boolean =>
 const getShouldUseCaaSReportingStats = (): boolean =>
   shouldUseCaaSReportingStats(useAppStore.getState());
 
-const getShouldUseProgressiveCampaignStats = (): boolean =>
-  shouldUseProgressiveCampaignStats(useAppStore.getState());
-
 const getSummaryUniverseId = (universe: AdvertisedUniverse): number | undefined =>
   universe.universe_id === 0 ? undefined : universe.universe_id;
 
 interface SponsoredAdsPageActionType {
-  applyCampaignPerformanceResult: (result: CampaignFetchResult) => Promise<void>;
   cancelCampaign: (campaignId: string) => Promise<void>;
   // Resets
   closeDrawer: () => void;
@@ -319,22 +306,34 @@ export interface NewFlowStoreType extends SponsoredAdsPageStateType, SponsoredAd
 // Create request manager outside the store to persist across renders
 // Shared by date, reporting view, and universe picker to ensure only the most recent filter change is applied
 const dateReportingViewRequestManager = createRequestManager();
+const campaignTimeSeriesRequestManager = createRequestManager();
 const visibleAdStatsRequestManager = createRequestManager();
 const visibleCampaignStatsRequestManager = createRequestManager();
 
 const fetchFrontendStatsForEntities = async ({
+  customEndDate,
+  customStartDate,
   entities,
   entityType,
+  includeRoas,
   reportingView,
   requestTimestamp,
   timePeriod,
 }: {
+  customEndDate?: string;
+  customStartDate?: string;
   entities: { id: string; paymentType: ServerPaymentType; universeId?: number }[];
   entityType: 'ad' | 'campaign';
+  includeRoas?: boolean;
   reportingView: ReportingViewType;
   requestTimestamp: string;
   timePeriod: DateFilteringTimePeriod;
 }): Promise<FrontendReportingStatsById> => {
+  const shouldUseWorkspaceUniverseFiltering = getShouldUseWorkspaceUniverseFiltering();
+  const adAccountId = useAppStore.getState().appData?.adAccountId;
+  if (!shouldUseWorkspaceUniverseFiltering && !adAccountId) {
+    return {};
+  }
   const entitiesByUniverse = new Map<
     number,
     { id: string; paymentType: ServerPaymentType; universeId?: number }[]
@@ -348,19 +347,36 @@ const fetchFrontendStatsForEntities = async ({
     entitiesByUniverse.set(entity.universeId, existing);
   });
 
-  const caasResults = await Promise.all(
-    Array.from(entitiesByUniverse.entries()).map(async ([universeId, groupedEntities]) => {
-      const context = {
-        entityIds: groupedEntities.map(({ id }) => id),
-        entityType,
-        reportingView,
-        requestTimestamp,
-        timePeriod,
-        universeId,
-      };
-      return getUniverseCaaSReportingStats(context);
-    }),
-  );
+  const caasResults = shouldUseWorkspaceUniverseFiltering
+    ? await Promise.all(
+        Array.from(entitiesByUniverse.entries()).map(async ([universeId, groupedEntities]) => {
+          const context = {
+            customEndDate,
+            customStartDate,
+            entityIds: groupedEntities.map(({ id }) => id),
+            entityType,
+            includeRoas,
+            reportingView,
+            requestTimestamp,
+            timePeriod,
+            universeId,
+          };
+          return getUniverseCaaSReportingStats(context);
+        }),
+      )
+    : [
+        await getAdAccountCaaSReportingStats({
+          adAccountId: adAccountId!,
+          customEndDate,
+          customStartDate,
+          entityIds: entities.map(({ id }) => id),
+          entityType,
+          includeRoas,
+          reportingView,
+          requestTimestamp,
+          timePeriod,
+        }),
+      ];
 
   const frontendStats: FrontendReportingStatsById = {};
   caasResults.forEach((results) => {
@@ -378,6 +394,8 @@ const fetchFrontendStatsForEntities = async ({
 const fetchFrontendSummaryStats = async ({
   backendSummary,
   campaigns,
+  customEndDate,
+  customStartDate,
   reportingView,
   requestTimestamp,
   timePeriod,
@@ -386,12 +404,16 @@ const fetchFrontendSummaryStats = async ({
 }: {
   backendSummary?: AdAccountSummary;
   campaigns: Campaign[];
+  customEndDate?: string;
+  customStartDate?: string;
   reportingView: ReportingViewType;
   requestTimestamp: string;
   timePeriod: DateFilteringTimePeriod;
   universeId?: number;
   universeIds?: number[];
 }): Promise<AdAccountSummary | undefined> => {
+  const shouldUseWorkspaceUniverseFiltering = getShouldUseWorkspaceUniverseFiltering();
+  const adAccountId = useAppStore.getState().appData?.adAccountId;
   const universeIds =
     requestedUniverseIds ??
     (universeId
@@ -404,22 +426,62 @@ const fetchFrontendSummaryStats = async ({
           ),
         ));
   const universeIdSet = new Set(universeIds);
-  const scopedCampaigns = campaigns.filter(
-    (campaign) => campaign.universe_id !== undefined && universeIdSet.has(campaign.universe_id),
-  );
-  if (universeIds.length === 0) {
+  let scopedCampaigns = campaigns;
+  if (shouldUseWorkspaceUniverseFiltering) {
+    scopedCampaigns = campaigns.filter(
+      (campaign) => campaign.universe_id !== undefined && universeIdSet.has(campaign.universe_id),
+    );
+  } else if (universeId !== undefined) {
+    scopedCampaigns = campaigns.filter((campaign) => campaign.universe_id === universeId);
+  }
+  if (shouldUseWorkspaceUniverseFiltering && universeIds.length === 0) {
     return backendSummary;
   }
-  const contexts = universeIds.map((id) => ({
-    reportingView,
-    requestTimestamp,
-    timePeriod,
-    universeId: id,
-  }));
-  const universeResults = await Promise.all(
-    contexts.map(async (context) => (await getUniverseCaaSReportingStats(context)).summary!),
-  );
-  const caasTotal = universeResults.reduce<CaaSReportingStatsResult>(
+  if (!shouldUseWorkspaceUniverseFiltering && !adAccountId) {
+    return backendSummary;
+  }
+  const scopedAdAccountCampaignIds =
+    !shouldUseWorkspaceUniverseFiltering && universeId !== undefined
+      ? scopedCampaigns.map(({ id }) => id)
+      : undefined;
+  let caasResults: CaaSReportingStatsResult[];
+  if (shouldUseWorkspaceUniverseFiltering) {
+    caasResults = await Promise.all(
+      universeIds.map(async (id) => {
+        const results = await getUniverseCaaSReportingStats({
+          customEndDate,
+          customStartDate,
+          reportingView,
+          requestTimestamp,
+          timePeriod,
+          universeId: id,
+        });
+        return results.summary!;
+      }),
+    );
+  } else if (scopedAdAccountCampaignIds?.length === 0) {
+    caasResults = [];
+  } else {
+    const results = await getAdAccountCaaSReportingStats({
+      adAccountId: adAccountId!,
+      customEndDate,
+      customStartDate,
+      entityIds: scopedAdAccountCampaignIds,
+      entityType: scopedAdAccountCampaignIds ? 'campaign' : undefined,
+      reportingView,
+      requestTimestamp,
+      timePeriod,
+    });
+    caasResults = scopedAdAccountCampaignIds
+      ? Object.entries(results).map(([campaignId, result]) => ({
+          ...result,
+          campaignSpendMicroUsd: {
+            [campaignId]: result.stats.spendMicroUsd,
+          },
+        }))
+      : [results.summary!];
+  }
+  const caasTotal = caasResults.reduce<CaaSReportingStatsResult>(
     (total, result) => ({
       campaignSpendMicroUsd: {
         ...total.campaignSpendMicroUsd,
@@ -475,49 +537,26 @@ const fetchFrontendSummaryStats = async ({
     addCampaignSpend(campaignId, spendMicroUsd);
   });
   const hasSpendQueryFailure = caasTotal.failedMetrics.includes('spendMicroUsd');
+  const adCreditDisplaySpending = hasSpendQueryFailure
+    ? backendSummary?.ad_credit_display_spending
+    : getDisplaySpendUsd(adCreditSpendMicroUsd);
+  const usdDisplaySpending = hasSpendQueryFailure
+    ? backendSummary?.usd_display_spending
+    : getDisplaySpendUsd(usdSpendMicroUsd);
 
-  return {
-    ad_credit_display_spending: !hasSpendQueryFailure
-      ? getDisplaySpendUsd(adCreditSpendMicroUsd)
-      : undefined,
+  const frontendSummary = {
+    ad_credit_display_spending: adCreditDisplaySpending,
     impression_count: frontendStats.performance?.impression,
     play_count: frontendStats.performance?.play_count,
     total_play_time_hours_7d: frontendStats.performance?.total_play_time_hours_7d,
-    usd_display_spending: !hasSpendQueryFailure ? getDisplaySpendUsd(usdSpendMicroUsd) : undefined,
+    usd_display_spending: usdDisplaySpending,
   };
+  return frontendSummary;
 };
 
 export const useNewFlowStore = create<NewFlowStoreType>()(
   immer((set, get) => ({
     advertisedUniversesState: GetInitialRequestState<AdvertisedUniverse[]>([]),
-    applyCampaignPerformanceResult: async (result: CampaignFetchResult) => {
-      if (!result.performancePromise) {
-        return;
-      }
-
-      const performanceResult = await result.performancePromise;
-      if (get().reportingRequestTimestamp !== result.requestTimestamp) {
-        return;
-      }
-
-      const performanceCampaigns = performanceResult.campaigns;
-      if (performanceResult.error || !performanceCampaigns) {
-        set((draft) => {
-          draft.campaignPerformanceState.isError = true;
-          draft.campaignPerformanceState.isLoading = false;
-        });
-        CaptureException(performanceResult.error, {
-          context: 'fetchProgressiveCampaignPerformance',
-        });
-        return;
-      }
-
-      set((draft) => {
-        draft.campaignsState.data = performanceCampaigns;
-        draft.campaignPerformanceState.isError = false;
-        draft.campaignPerformanceState.isLoading = false;
-      });
-    },
     campaignDetailsState: {
       adsState: GetInitialRequestState<Ad[]>([]),
       campaign: undefined,
@@ -527,10 +566,6 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       visibleStatsState: GetInitialRequestState<FrontendReportingStatsById>({}),
     },
     campaignNameFilterState: { isError: false },
-    campaignPerformanceState: {
-      isError: false,
-      isLoading: false,
-    },
     campaignsState: GetInitialRequestState<Campaign[]>([]),
     cancelCampaign: async (campaignId: string) =>
       get().updateCampaignStatus(campaignId, ServerCampaignStatusType.CANCELLED),
@@ -543,6 +578,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         draft.campaignDetailsState.uploadedCreatives = undefined;
         draft.campaignDetailsState.visibleStatsState =
           GetInitialRequestState<FrontendReportingStatsById>({});
+        campaignTimeSeriesRequestManager.cancel();
         visibleAdStatsRequestManager.cancel();
       });
     },
@@ -569,7 +605,14 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
     ) => {
       const { campaign } = get().campaignDetailsState;
       const adAccountId = useAppStore.getState().appData?.adAccountId;
-      if (!campaign || !adAccountId) {
+      const shouldUseWorkspaceUniverseFiltering = getShouldUseWorkspaceUniverseFiltering();
+      let resource: AnalyticsReportingResource | undefined;
+      if (shouldUseWorkspaceUniverseFiltering && campaign?.universe_id !== undefined) {
+        resource = { id: campaign.universe_id, type: 'universe' };
+      } else if (adAccountId) {
+        resource = { id: adAccountId, type: 'adAccount' };
+      }
+      if (!campaign || !resource) {
         set((draft) => {
           draft.campaignDetailsState.timeSeriesState = {
             data: undefined,
@@ -603,21 +646,23 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       try {
         const reportingMetadata = useAppStore.getState().appMetadataState?.data;
 
-        const timeSeries = await getCampaignTimeSeries({
-          adAccountId,
-          campaignId: requestCampaignId,
-          customEndDate,
-          customStartDate,
-          isRoasEnabled: reportingMetadata?.isCampaignRoasEnabled ?? false,
-          reportingView: requestReportingView,
-          requestTimestamp: get().reportingRequestTimestamp,
-          timePeriod,
-          timezoneDbName: REPORTING_TIMEZONE_DB_NAME,
-          unifiedAttributionCutoverDate: getShouldUseCaaSReportingStats()
-            ? FRONTEND_REPORTING_CAAS_START_DATE
-            : reportingMetadata?.unifiedAttributionCutoverDate,
-        });
-        if (isStale()) {
+        const timeSeries = await campaignTimeSeriesRequestManager.executeRequest(() =>
+          getCampaignTimeSeries({
+            campaignId: requestCampaignId,
+            customEndDate,
+            customStartDate,
+            isRoasEnabled: reportingMetadata?.isCampaignRoasEnabled ?? false,
+            reportingView: requestReportingView,
+            requestTimestamp: get().reportingRequestTimestamp,
+            resource,
+            timePeriod,
+            timezoneDbName: REPORTING_TIMEZONE_DB_NAME,
+            unifiedAttributionCutoverDate: getShouldUseCaaSReportingStats()
+              ? FRONTEND_REPORTING_CAAS_START_DATE
+              : reportingMetadata?.unifiedAttributionCutoverDate,
+          }),
+        );
+        if (!timeSeries || isStale()) {
           return;
         }
         set((draft) => {
@@ -685,17 +730,18 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
           reportingRequestTimestamp,
         );
         const shouldUseFrontendSummary = getShouldUseCaaSReportingStats();
-        const summaryPromise = shouldUseFrontendSummary
-          ? Promise.resolve(undefined)
-          : get().getSummaryStats(
-              initialDateSelection,
-              initialReportingView,
-              summaryUniverseId,
-              undefined,
-              initialCustomStart,
-              initialCustomEnd,
-              reportingRequestTimestamp,
-            );
+        const summaryPromise =
+          shouldUseFrontendSummary && shouldUseWorkspaceUniverseFiltering
+            ? Promise.resolve(undefined)
+            : get().getSummaryStats(
+                initialDateSelection,
+                initialReportingView,
+                summaryUniverseId,
+                undefined,
+                initialCustomStart,
+                initialCustomEnd,
+                reportingRequestTimestamp,
+              );
 
         const filteredIdsPromise =
           !shouldUseWorkspaceUniverseFiltering && universeFilter.universe_id !== 0
@@ -716,9 +762,6 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
               draft.campaignsState.data = fetchResult.campaigns;
               draft.campaignsState.isError = false;
             });
-            get()
-              .applyCampaignPerformanceResult(fetchResult)
-              .catch(() => undefined);
             if (campaignId) {
               get().getAdsAndOpenDrawer(campaignId);
             }
@@ -742,6 +785,8 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
                 frontendSummary = await fetchFrontendSummaryStats({
                   backendSummary,
                   campaigns: (await campaignsPromise).campaigns,
+                  customEndDate: initialCustomEnd,
+                  customStartDate: initialCustomStart,
                   reportingView: initialReportingView,
                   requestTimestamp: reportingRequestTimestamp,
                   timePeriod: initialDateSelection,
@@ -750,6 +795,9 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
                 });
               } catch (error) {
                 CaptureException(error, { context: 'fetchInitialFrontendSummary' });
+                if (!backendSummary) {
+                  throw error;
+                }
               }
             }
             if (get().summaryRequestTimestamp !== reportingRequestTimestamp) {
@@ -922,12 +970,22 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       if (!campaign) {
         return;
       }
+      const {
+        currentSelection: timePeriod,
+        customEndDate: storedCustomEndDate,
+        customStartDate: storedCustomStartDate,
+      } = get().dateSelectionState;
+      const isCustom = timePeriod === DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM;
+      const customEndDate = isCustom ? storedCustomEndDate : undefined;
+      const customStartDate = isCustom ? storedCustomStartDate : undefined;
       const requestKey = JSON.stringify({
         adIds,
         campaignId: campaign.id,
+        customEndDate,
+        customStartDate,
         reportingView: get().reportingViewState.currentSelection,
         requestTimestamp: get().reportingRequestTimestamp,
-        timePeriod: get().dateSelectionState.currentSelection,
+        timePeriod,
       });
       if (get().campaignDetailsState.visibleStatsState.requestKey === requestKey) {
         return;
@@ -945,6 +1003,8 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         const adsById = new Map(ads.map((ad) => [ad.id, ad]));
         const result = await visibleAdStatsRequestManager.executeRequest(() =>
           fetchFrontendStatsForEntities({
+            customEndDate,
+            customStartDate,
             entities: adIds
               .map((id) => adsById.get(id))
               .filter((ad): ad is Ad => ad !== undefined)
@@ -956,7 +1016,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             entityType: 'ad',
             reportingView: get().reportingViewState.currentSelection,
             requestTimestamp: get().reportingRequestTimestamp,
-            timePeriod: get().dateSelectionState.currentSelection,
+            timePeriod,
           }),
         );
         if (result === null) {
@@ -982,11 +1042,26 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       if (!getShouldUseCaaSReportingStats() || campaignIds.length === 0) {
         return;
       }
+      const {
+        currentSelection: timePeriod,
+        customEndDate: storedCustomEndDate,
+        customStartDate: storedCustomStartDate,
+      } = get().dateSelectionState;
+      const isCustom = timePeriod === DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM;
+      const customEndDate = isCustom ? storedCustomEndDate : undefined;
+      const customStartDate = isCustom ? storedCustomStartDate : undefined;
+      const reportingView = get().reportingViewState.currentSelection;
+      const includeRoas =
+        Boolean(useAppStore.getState().appMetadataState.data?.isCampaignRoasEnabled) &&
+        reportingView === ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT;
       const requestKey = JSON.stringify({
         campaignIds,
-        reportingView: get().reportingViewState.currentSelection,
+        customEndDate,
+        customStartDate,
+        includeRoas,
+        reportingView,
         requestTimestamp: get().reportingRequestTimestamp,
-        timePeriod: get().dateSelectionState.currentSelection,
+        timePeriod,
       });
       if (get().visibleCampaignStatsState.requestKey === requestKey) {
         return;
@@ -1004,6 +1079,8 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         const campaignsById = new Map(campaigns.map((campaign) => [campaign.id, campaign]));
         const result = await visibleCampaignStatsRequestManager.executeRequest(() =>
           fetchFrontendStatsForEntities({
+            customEndDate,
+            customStartDate,
             entities: campaignIds
               .map((id) => campaignsById.get(id))
               .filter((campaign): campaign is Campaign => campaign !== undefined)
@@ -1013,9 +1090,10 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
                 universeId: campaign.universe_id,
               })),
             entityType: 'campaign',
-            reportingView: get().reportingViewState.currentSelection,
+            includeRoas,
+            reportingView,
             requestTimestamp: get().reportingRequestTimestamp,
-            timePeriod: get().dateSelectionState.currentSelection,
+            timePeriod,
           }),
         );
         if (result === null) {
@@ -1324,15 +1402,10 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
     ) => {
       const requestTimestamp = reportingRequestTimestamp ?? new Date().toISOString();
       const shouldUseCaaSStats = getShouldUseCaaSReportingStats();
-      const shouldUseProgressiveStats = getShouldUseProgressiveCampaignStats();
-      const includePerformance = !shouldUseCaaSStats && !shouldUseProgressiveStats;
+      const includePerformance = !shouldUseCaaSStats;
       set((draft) => {
         draft.reportingRequestTimestamp = requestTimestamp;
         draft.summaryRequestTimestamp = requestTimestamp;
-        draft.campaignPerformanceState = {
-          isError: false,
-          isLoading: shouldUseProgressiveStats,
-        };
         draft.visibleCampaignStatsState = GetInitialRequestState<FrontendReportingStatsById>({});
       });
       try {
@@ -1374,12 +1447,6 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         };
 
         const campaignsPromise = fetchCampaignPages(includePerformance);
-        const performancePromise = shouldUseProgressiveStats
-          ? fetchCampaignPages(true).then(
-              (campaigns): CampaignPerformanceResult => ({ campaigns }),
-              (error: unknown): CampaignPerformanceResult => ({ error }),
-            )
-          : undefined;
         const allCampaigns = await campaignsPromise;
 
         // Status fetch always after campaigns fetch
@@ -1388,13 +1455,9 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
 
         return {
           campaigns: allCampaigns,
-          performancePromise,
           requestTimestamp,
         };
       } catch (error) {
-        set((draft) => {
-          draft.campaignPerformanceState.isLoading = false;
-        });
         logNativeErrorEvent({
           error,
           eventName: EventName.DateFilteringError,
@@ -1605,16 +1668,30 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         });
 
         dateReportingViewRequestManager
-          .executeRequest(() =>
-            fetchFrontendSummaryStats({
+          .executeRequest(async (abortSignal) => {
+            const backendSummary = shouldUseWorkspaceUniverseFiltering
+              ? undefined
+              : await get().getSummaryStats(
+                  currentDateSelection,
+                  newReportingView,
+                  universeId,
+                  abortSignal,
+                  customStartDate,
+                  customEndDate,
+                  requestTimestamp,
+                );
+            return fetchFrontendSummaryStats({
+              backendSummary,
               campaigns,
+              customEndDate,
+              customStartDate,
               reportingView: newReportingView,
               requestTimestamp,
               timePeriod: currentDateSelection,
               universeId,
               universeIds,
-            }),
-          )
+            });
+          })
           .then((summaryStats) => {
             if (summaryStats === null || get().summaryRequestTimestamp !== requestTimestamp) {
               return;
@@ -1752,7 +1829,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
                     newCampaignNameSearch: undefined,
                     newUniverseId: universe.universe_id,
                   }),
-              shouldUseFrontendSummary
+              shouldUseFrontendSummary && shouldUseWorkspaceUniverseFiltering
                 ? Promise.resolve(undefined)
                 : get().getSummaryStats(
                     currentDateSelection,
@@ -1769,6 +1846,8 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             ? await fetchFrontendSummaryStats({
                 backendSummary: backendSummaryStats,
                 campaigns: campaignFetchResult.campaigns,
+                customEndDate,
+                customStartDate,
                 reportingView: currentReportingView,
                 requestTimestamp,
                 timePeriod: currentDateSelection,
@@ -1809,9 +1888,6 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             // Clear campaign name search error as a successful filter request has been sent
             draft.campaignNameFilterState.isError = false;
           });
-          get()
-            .applyCampaignPerformanceResult(result.campaignFetchResult)
-            .catch(() => undefined);
         })
         .catch(() => {
           set((draft) => {
@@ -1860,17 +1936,18 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         // Use request manager to handle cancellation of stale requests
         const result = await dateReportingViewRequestManager.executeRequest(async (abortSignal) => {
           const shouldUseFrontendSummary = getShouldUseCaaSReportingStats();
-          const summaryPromise = shouldUseFrontendSummary
-            ? Promise.resolve(undefined)
-            : get().getSummaryStats(
-                params.dateSelection,
-                params.reportingView,
-                params.universeId,
-                abortSignal,
-                params.customStartDate,
-                params.customEndDate,
-                requestTimestamp,
-              );
+          const summaryPromise =
+            shouldUseFrontendSummary && getShouldUseWorkspaceUniverseFiltering()
+              ? Promise.resolve(undefined)
+              : get().getSummaryStats(
+                  params.dateSelection,
+                  params.reportingView,
+                  params.universeId,
+                  abortSignal,
+                  params.customStartDate,
+                  params.customEndDate,
+                  requestTimestamp,
+                );
           const [campaignFetchResult, backendSummaryStats] = await Promise.all([
             get().getDateFilteredCampaigns(
               params.dateSelection,
@@ -1887,6 +1964,8 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             ? fetchFrontendSummaryStats({
                 backendSummary: backendSummaryStats,
                 campaigns: campaignFetchResult.campaigns,
+                customEndDate: params.customEndDate,
+                customStartDate: params.customStartDate,
                 reportingView: params.reportingView,
                 requestTimestamp,
                 timePeriod: params.dateSelection,
@@ -1935,9 +2014,6 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
 
           params.onSuccess(result.campaignFetchResult.campaigns, result.backendSummaryStats, draft);
         });
-        get()
-          .applyCampaignPerformanceResult(result.campaignFetchResult)
-          .catch(() => undefined);
         if (result.frontendSummaryPromise) {
           keepFrontendSummaryLoading = true;
           result.frontendSummaryPromise
@@ -2053,9 +2129,6 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             };
           }
         });
-        get()
-          .applyCampaignPerformanceResult(campaignFetchResult)
-          .catch(() => undefined);
       } catch {
         if (get().reportingRequestTimestamp === requestTimestamp) {
           set((draft) => {
@@ -2100,21 +2173,24 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       });
 
       try {
-        const backendSummary = shouldUseFrontendSummary
-          ? undefined
-          : await get().getSummaryStats(
-              dateSelectionState.currentSelection,
-              reportingViewState.currentSelection,
-              universeId,
-              undefined,
-              customStartDate,
-              customEndDate,
-              requestTimestamp,
-            );
+        const backendSummary =
+          shouldUseFrontendSummary && shouldUseWorkspaceUniverseFiltering
+            ? undefined
+            : await get().getSummaryStats(
+                dateSelectionState.currentSelection,
+                reportingViewState.currentSelection,
+                universeId,
+                undefined,
+                customStartDate,
+                customEndDate,
+                requestTimestamp,
+              );
         const summaryStats = shouldUseFrontendSummary
           ? await fetchFrontendSummaryStats({
               backendSummary,
               campaigns: campaignsState.data ?? [],
+              customEndDate,
+              customStartDate,
               reportingView: reportingViewState.currentSelection,
               requestTimestamp,
               timePeriod: dateSelectionState.currentSelection,

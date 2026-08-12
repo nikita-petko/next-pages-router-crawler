@@ -11,13 +11,16 @@ import { unifiedLogger } from '@clients/unifiedLogger';
 import DateFilteringTimePeriod from '@constants/dateFilteringTimePeriod';
 import ReportingViewType from '@constants/reportingViewType';
 import {
+  AnalyticsQueryGranularity,
+  AnalyticsReportingResource,
   buildAnalyticsQueryRequest,
   getPlaysMetricForReportingView,
-  getRevenueMetricForReportingView,
-  getSpendMetricForReportingView,
 } from '@services/ads/analyticsQueryBuilder';
-import { aggregateQueryResultToDailyDataPoints } from '@services/ads/campaignTimeSeriesDataPoints';
-import { CampaignTimeSeries, CampaignTimeSeriesDataPoints } from '@type/timeSeries';
+import {
+  aggregateQueryResultToDailyDataPoints,
+  queryResultToDailyDirectDataPoints,
+} from '@services/ads/campaignTimeSeriesDataPoints';
+import { CampaignTimeSeries } from '@type/timeSeries';
 import { CaptureException } from '@utils/error';
 import { GetApiSiteBaseUrl, GetSitetestBaseUrl } from '@utils/url';
 
@@ -33,7 +36,7 @@ const analyticsQueryGatewayApi = new AnalyticsQueryGatewayAPIApi(
 
 const queryMetric = async (
   metric: string,
-  adAccountId: string,
+  resource: AnalyticsReportingResource,
   campaignId: string,
   requestTimestamp: string,
   timePeriod: DateFilteringTimePeriod,
@@ -42,14 +45,19 @@ const queryMetric = async (
   customStartDate: string | undefined,
   customEndDate: string | undefined,
   pollingOptions: RAQIClientOptions,
+  granularity: AnalyticsQueryGranularity = 'oneDay',
+  breakdownByAttributionDate: boolean = true,
 ): Promise<QueryResult> => {
   const request = buildAnalyticsQueryRequest({
-    adAccountId,
+    breakdownByAttributionDate,
     campaignId,
     customEndDate,
     customStartDate,
+    granularity,
     metric,
+    qualityPolicy: 'combined',
     requestTimestamp,
+    resource,
     timePeriod,
     timezoneDbName,
     unifiedAttributionCutoverDate,
@@ -71,24 +79,22 @@ const queryMetric = async (
 };
 
 interface GetCampaignTimeSeriesRequest {
-  adAccountId: string;
   campaignId: string;
   /** YYYY-MM-DD, required (with customStartDate) when timePeriod === CUSTOM. */
   customEndDate?: string;
   customStartDate?: string;
-  // When true, also queries spend and revenue (required for the ROAS chart).
-  // When false, only plays is queried.
+  // When true, also queries direct AdsUARoas for the Default View.
   isRoasEnabled: boolean;
   pollingOptions?: RAQIClientOptions;
   reportingView?: ReportingViewType;
   requestTimestamp: string;
+  resource: AnalyticsReportingResource;
   timePeriod: DateFilteringTimePeriod;
   timezoneDbName: string;
   unifiedAttributionCutoverDate?: string;
 }
 
 export const getCampaignTimeSeries = async ({
-  adAccountId,
   campaignId,
   customEndDate,
   customStartDate,
@@ -96,14 +102,19 @@ export const getCampaignTimeSeries = async ({
   pollingOptions = ANALYTICS_POLLING_DEFAULTS,
   reportingView = ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT,
   requestTimestamp,
+  resource,
   timePeriod,
   timezoneDbName,
   unifiedAttributionCutoverDate,
 }: GetCampaignTimeSeriesRequest): Promise<CampaignTimeSeries> => {
-  const fetchMetric = (metric: string) =>
+  const fetchMetric = (
+    metric: string,
+    granularity: AnalyticsQueryGranularity = 'oneDay',
+    breakdownByAttributionDate: boolean = true,
+  ) =>
     queryMetric(
       metric,
-      adAccountId,
+      resource,
       campaignId,
       requestTimestamp,
       timePeriod,
@@ -112,32 +123,43 @@ export const getCampaignTimeSeries = async ({
       customStartDate,
       customEndDate,
       pollingOptions,
-    ).then((queryResult) => aggregateQueryResultToDailyDataPoints(queryResult));
+      granularity,
+      breakdownByAttributionDate,
+    );
 
   // Plays is the baseline series; failing to fetch it rejects the whole call
   // so the chart shows its generic error state instead of an empty plot.
-  const playsPromise = fetchMetric(getPlaysMetricForReportingView(reportingView));
+  const playsPromise = fetchMetric(getPlaysMetricForReportingView(reportingView)).then(
+    aggregateQueryResultToDailyDataPoints,
+  );
 
-  // Spend + revenue are only used together (to compute ROAS). Query the
-  // reporting-view-specific CAaaS metrics (same pairing as AMSv2 aggregate ROAS)
-  // and treat them as a single unit: if either fails, drop both.
-  const roasPromise: Promise<{
-    revenue?: CampaignTimeSeriesDataPoints;
-    spend?: CampaignTimeSeriesDataPoints;
-  }> = isRoasEnabled
+  const shouldQueryRoas =
+    isRoasEnabled && reportingView === ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT;
+  const roasPromise: Promise<Pick<CampaignTimeSeries, 'roas' | 'totalRoas'>> = shouldQueryRoas
     ? Promise.all([
-        fetchMetric(getSpendMetricForReportingView(reportingView)),
-        fetchMetric(getRevenueMetricForReportingView(reportingView)),
+        fetchMetric('AdsUARoas', 'oneDay', false),
+        fetchMetric('AdsUARoas', 'none', false),
       ])
-        .then(([spend, revenue]) => ({ revenue, spend }))
+        .then(([dailyResult, totalResult]) => {
+          const totalRoas = totalResult.values
+            ?.flatMap((value) => value.dataPoints ?? [])
+            .find((dataPoint) => typeof dataPoint.value === 'number')?.value;
+          return {
+            roas: queryResultToDailyDirectDataPoints(dailyResult),
+            totalRoas: typeof totalRoas === 'number' ? totalRoas : undefined,
+          };
+        })
         .catch((error) => {
           CaptureException(error as Error, {
-            context: 'getCampaignTimeSeries: ROAS metrics (spend/revenue) fetch failed',
+            context: 'getCampaignTimeSeries: direct ROAS fetch failed',
           });
           return {};
         })
     : Promise.resolve({});
 
-  const [plays, { revenue, spend }] = await Promise.all([playsPromise, roasPromise]);
-  return { plays, revenue, spend };
+  const [plays, roas] = await Promise.all([playsPromise, roasPromise]);
+  return {
+    plays,
+    ...roas,
+  };
 };
