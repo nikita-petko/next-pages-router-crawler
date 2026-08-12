@@ -1475,9 +1475,6 @@
 .margin-bottom-\[32px\] {
   margin-bottom: 32px;
 }
-.margin-bottom-\[4px\] {
-  margin-bottom: 4px;
-}
 .margin-bottom-\[8px\] {
   margin-bottom: 8px;
 }
@@ -2933,9 +2930,6 @@
 .padding-\[32px\] {
   padding: 32px;
 }
-.padding-\[6px\] {
-  padding: 6px;
-}
 .padding-\[var\(--size-150\)\] {
   padding: var(--size-150);
 }
@@ -3128,9 +3122,6 @@
 }
 .padding-left-\[32px\] {
   padding-left: 32px;
-}
-.padding-left-\[4px\] {
-  padding-left: 4px;
 }
 .padding-left-\[5px\] {
   padding-left: 5px;
@@ -5535,9 +5526,6 @@ html.studio-webview.dark-theme,
 @media (min-width: 361px) {
   .small\:justify-self-end {
     justify-self: end;
-  }
-  .small\:margin-top-\[4px\] {
-    margin-top: 4px;
   }
   .small\:flex-row {
     flex-direction: row;
