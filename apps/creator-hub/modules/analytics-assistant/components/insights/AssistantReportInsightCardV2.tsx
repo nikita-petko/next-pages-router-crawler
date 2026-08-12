@@ -51,6 +51,15 @@ const useAssistantReportInsightCardV2Styles = makeStyles()((theme) => ({
   cardRow: {
     marginTop: theme.spacing(2),
   },
+  header: {
+    padding: theme.spacing(0.5, 0.5),
+  },
+  cardContent: {
+    padding: theme.spacing(0, 0.5),
+    '&:last-child': {
+      paddingBottom: theme.spacing(1),
+    },
+  },
 }));
 
 const AssistantReportInsightCardV2: React.FC<{
@@ -59,10 +68,10 @@ const AssistantReportInsightCardV2: React.FC<{
   const locale = useLocale();
   const { id: universeId } = useUniverseResource();
   const {
-    classes: { header, cardContent, titleItem },
+    classes: { titleItem },
   } = useAssistantCardStyles();
   const {
-    classes: { link, cardRow, fadeTextContainer },
+    classes: { link, cardRow, fadeTextContainer, header, cardContent },
   } = useAssistantReportInsightCardV2Styles();
   const { unifiedLogger } = useUnifiedLoggerProvider();
   const { mutate: snoozeInsight } = useSnoozeInsight(universeId, spec.type, spec.snoozeKey);
