@@ -22,6 +22,11 @@ export const enableTaxonomyBasedCreatorDashboard = defineFlag({
     name: 'enableTaxonomyBasedCreatorDashboard',
     defaultValue: false,
   });
+export const enableCreatorShowcases = defineFlag({
+    namespace: 'avatar-marketplace',
+    name: 'enableCreatorShowcases',
+    defaultValue: false,
+  });
 export const isAutoPublishPreferencesEnabled = defineFlag({
     namespace: 'avatar-marketplace',
     name: 'isAutoPublishPreferencesEnabled',

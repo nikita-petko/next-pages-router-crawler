@@ -60,6 +60,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: avatarMarketplaceFlags.enableCreatorShowcases,
+      metadata: {
+        namespace: 'avatar-marketplace',
+        name: 'enableCreatorShowcases',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: avatarMarketplaceFlags.isAutoPublishPreferencesEnabled,
       metadata: {
         namespace: 'avatar-marketplace',
