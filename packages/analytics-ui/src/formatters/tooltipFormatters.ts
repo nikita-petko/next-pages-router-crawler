@@ -1,17 +1,17 @@
+import { useCallback } from 'react';
 import type {
   FormatterCallbackFunction,
   Point,
   Tooltip,
   TooltipFormatterCallbackFunction,
 } from 'highcharts';
-import Highcharts from 'highcharts';
-import { useCallback } from 'react';
 import type { TTheme } from '@rbx/ui';
 import { useMediaQuery, useTheme } from '@rbx/ui';
 import { getChartThemedColors } from '../color';
 import { SeriesDataTypes } from '../types/BaseChart';
 import type { LineChartZones } from '../types/LineChart';
 import { escapeHtmlFn, escapeHtmlString } from '../utils/escape-html';
+import sanitizeImageUrl from '../utils/sanitize-url';
 import UnicodeTokensForChartFormatters from './unicodeTokensForChartFormatters';
 
 export const highchartsSkipTooltipToken = '';
@@ -47,7 +47,67 @@ export type SeriesValueForPointFormatter<Y extends number> = (
   },
 ) => string;
 
+/**
+ * Reinterprets a value Highcharts hands us (typed as `any`, `string | number`,
+ * or similar) as the concrete type the caller declared via a generic parameter.
+ *
+ * These formatters are generic over the x/y/slice types purely so callers can
+ * describe their own data; Highcharts itself has no knowledge of those types
+ * and cannot validate them. Declaring the type is therefore part of the API
+ * contract with the caller, not an unchecked guess about runtime shape, so the
+ * assertion is confined to this one reviewed helper instead of being repeated
+ * at every call site.
+ */
+// eslint-disable-next-line typescript/no-unsafe-type-assertion -- see above
+const asCallerDeclared = <T>(value: unknown): T => value as T;
+
+/**
+ * Highcharts types `series.userOptions.custom` as `Record<string, any>`, so
+ * reading fields off it spreads `any` through the formatters. Narrow it once,
+ * here, and validate the fields we actually depend on.
+ */
+type SeriesCustomFields = {
+  imageUrl?: string;
+  seriesType?: SeriesDataTypes;
+  zones?: LineChartZones;
+};
+
+const SERIES_DATA_TYPE_VALUES: ReadonlySet<unknown> = new Set(Object.values(SeriesDataTypes));
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const isSeriesDataType = (value: unknown): value is SeriesDataTypes =>
+  SERIES_DATA_TYPE_VALUES.has(value);
+
+const readSeriesCustomFields = (custom: unknown): SeriesCustomFields => {
+  if (!isRecord(custom)) {
+    return {};
+  }
+
+  const { imageUrl, seriesType, zones } = custom;
+  return {
+    imageUrl: typeof imageUrl === 'string' ? imageUrl : undefined,
+    seriesType: isSeriesDataType(seriesType) ? seriesType : undefined,
+    // `zones` is a structural array the chart adapters build; an element-level
+    // check would duplicate the type for no practical benefit.
+    zones: Array.isArray(zones) ? (zones as LineChartZones) : undefined,
+  };
+};
+
+// Matches `__chip(label)__` markers injected by `decorateTooltipSeriesName`.
+// The label is delimited by `[^)]+`, which means chip labels themselves cannot
+// contain `)` — a call like `decorateTooltipSeriesName('Series', 'foo)bar')`
+// will round-trip as literal text, not as a badge. Callers that need a
+// user-controlled chip label should pre-strip parentheses. (This constraint
+// is intentional: it also prevents pathological inputs like
+// `__chip(<img src=x onerror=alert(1))>__` from tricking the splitter.)
 const CHIP_TOKEN_REGEX = /__chip\(([^)]+)\)__/g;
+
+const CHIP_STYLE =
+  'display:inline-block;background-color:#696A6D;color:#FFFFFF;font-size:12px;font-weight:600;padding:2px 6px;border-radius:4px;margin-left:4px;vertical-align:baseline;';
+
+type KeySegment = { kind: 'text'; value: string } | { kind: 'chip'; label: string };
 
 /**
  * Decorate a tooltip series name with a chip badge using special syntax
@@ -61,19 +121,75 @@ export const decorateTooltipSeriesName = (seriesName: string, chipLabel: string)
 };
 
 /**
- * Parse special chip syntax in text and convert to HTML badges
- * Syntax: __chip(label)__ becomes a styled badge
+ * Split a raw (unescaped) formatted-key string into an ordered list of text
+ * and chip segments based on `__chip(label)__` markers.
+ *
+ * Returning segments (rather than a single string) lets the caller escape and
+ * truncate each kind independently, so the final HTML is safe regardless of
+ * what the upstream formatter produced.
  */
-const parseChipSyntax = (text: string): string => {
-  const chipStyle =
-    'display:inline-block;background-color:#696A6D;color:#FFFFFF;font-size:12px;font-weight:600;padding:2px 6px;border-radius:4px;margin-left:4px;vertical-align:baseline;';
-  return text.replace(CHIP_TOKEN_REGEX, (_, label) => {
-    return `<span style="${chipStyle}">${label}</span>`;
-  });
+const splitKeyIntoSegments = (rawKey: string): KeySegment[] => {
+  const segments: KeySegment[] = [];
+  let cursor = 0;
+  const regex = new RegExp(CHIP_TOKEN_REGEX.source, 'g');
+  let match: RegExpExecArray | null = regex.exec(rawKey);
+  while (match !== null) {
+    if (match.index > cursor) {
+      segments.push({ kind: 'text', value: rawKey.slice(cursor, match.index) });
+    }
+    segments.push({ kind: 'chip', label: match[1] });
+    cursor = match.index + match[0].length;
+    match = regex.exec(rawKey);
+  }
+  if (cursor < rawKey.length) {
+    segments.push({ kind: 'text', value: rawKey.slice(cursor) });
+  }
+  return segments;
 };
 
 /**
- * @description export for testing only
+ * Assemble the final (HTML-safe) key HTML from a raw formatted-key string.
+ *
+ * - Text segments are truncated against their raw character length (so
+ *   truncation math is not thrown off by HTML entities) and then escaped.
+ * - Chip labels are always rendered (truncation never drops chips) and are
+ *   escaped at the point they are interpolated into the badge HTML. This
+ *   makes the function safe regardless of whether the caller pre-escaped.
+ */
+const buildEscapedKeyWithChips = (rawKey: string, maxTextCharacters: number): string => {
+  const segments = splitKeyIntoSegments(rawKey);
+  let remaining = maxTextCharacters;
+  let truncationApplied = false;
+  const parts: string[] = [];
+
+  for (const segment of segments) {
+    if (segment.kind === 'chip') {
+      parts.push(`<span style="${CHIP_STYLE}">${escapeHtmlString(segment.label)}</span>`);
+    } else if (!truncationApplied && remaining > 0) {
+      if (segment.value.length <= remaining) {
+        parts.push(escapeHtmlString(segment.value));
+        remaining -= segment.value.length;
+      } else {
+        parts.push(`${escapeHtmlString(segment.value.slice(0, remaining))}...`);
+        remaining = 0;
+        truncationApplied = true;
+      }
+    }
+    // Trailing text segments after truncation are dropped.
+  }
+
+  return parts.join('');
+};
+
+/**
+ * Builds the per-series tooltip HTML.
+ *
+ * @description Export for testing only.
+ *
+ * `key` and `value` must already be HTML-escaped. `key` may also contain the
+ * trusted chip `<span>` markup produced by `buildEscapedKeyWithChips`, so
+ * escaping them here would both be too late for safety and break chip
+ * rendering. Escape dynamic values before calling this function.
  */
 export const perSeriesHTML = ({
   key,
@@ -90,10 +206,12 @@ export const perSeriesHTML = ({
   imageUrl?: string;
   color?: Point['color'];
 }) => {
-  const shouldUseHollowBulletPoint =
-    getChartThemedColors(theme).tooltipBackground === color?.toString();
+  // `Point['color']` may also be a gradient or pattern object, which would
+  // stringify to `[object Object]`. Only a plain color string is usable here.
+  const colorString = typeof color === 'string' ? color : undefined;
+  const shouldUseHollowBulletPoint = getChartThemedColors(theme).tooltipBackground === colorString;
   // render a hollowed bullet point if series color is the same as background
-  const dotStyle = shouldUseHollowBulletPoint ? '' : `color:${color?.toString()};`;
+  const dotStyle = shouldUseHollowBulletPoint ? '' : `color:${colorString};`;
   const bulletPointUnicode = shouldUseHollowBulletPoint
     ? UnicodeTokensForChartFormatters.HollowBulletPoint
     : UnicodeTokensForChartFormatters.BulletPoint;
@@ -101,11 +219,12 @@ export const perSeriesHTML = ({
 
   const imageStyle =
     'width: 56px; height: 32px; vertical-align: middle; border: 4px solid white; border-radius: 4px;';
-  const image = `<img src="${imageUrl}" alt="" style="${imageStyle}"/>`;
+  const safeImageUrl = sanitizeImageUrl(imageUrl);
+  const image = safeImageUrl ? `<img src="${safeImageUrl}" alt="" style="${imageStyle}"/>` : '';
 
-  // use image as key if imageUrl is provided
+  // use image as key if a safe imageUrl is provided
   const keyStyle = `font-weight: 600;`;
-  const formattedKey = `<span style="${keyStyle}">${shouldRenderDot ? dot : ''}${imageUrl ? image : key}</span>`;
+  const formattedKey = `<span style="${keyStyle}">${shouldRenderDot ? dot : ''}${image || key}</span>`;
 
   const formattedValue = `<span>${value}</span>`;
 
@@ -133,15 +252,7 @@ export const usePerSeriesTooltipPointFormatter = <X extends string | number, Y e
       }
 
       const { custom, id } = series.userOptions;
-      const imageUrl: string | undefined = Highcharts.defined(custom?.imageUrl)
-        ? custom?.imageUrl
-        : undefined;
-
-      const seriesType: SeriesDataTypes | undefined = Highcharts.defined(custom?.seriesType)
-        ? custom?.seriesType
-        : undefined;
-
-      const zones: LineChartZones | undefined = custom?.zones;
+      const { imageUrl, seriesType, zones } = readSeriesCustomFields(custom);
 
       // Do not render dot if there's only one series in the chart
       const firstSeriesWithDataPoint = series.chart.series.find((s) => s.data.length > 0);
@@ -150,41 +261,36 @@ export const usePerSeriesTooltipPointFormatter = <X extends string | number, Y e
         .find((s) => s.data.length > 0);
       const shouldRenderDot = firstSeriesWithDataPoint !== lastSeriesWithDataPoint;
 
-      const formattedKey = escapeHtmlFn(formatSeriesKeyForPoint)({
+      // NOTE: we intentionally do NOT escape the formatter output up front.
+      // `buildEscapedKeyWithChips` splits the string into text and chip
+      // segments and escapes each one at the point it is assembled into HTML.
+      // This keeps XSS safety local to the segment builder and makes
+      // truncation operate on real character counts (not HTML entities).
+      const rawKey = formatSeriesKeyForPoint({
         seriesName: series.name,
         seriesType,
-        x: (name ?? x) as X,
+        x: asCallerDeclared<X>(name ?? x),
         seriesId: id,
         zones,
       });
 
       // Sometimes there are really long series name, we need to truncate it so that tooltip
       // doesn't get too wide and gets cutoff from the screen
-      let maxCharacters = formattedKey.length;
+      let maxTextCharacters = Number.POSITIVE_INFINITY;
       if (inSmallViewPort) {
-        maxCharacters = MaxCharactersFromFormattedKeyByViewPortSize[ViewPortSize.Small];
+        maxTextCharacters = MaxCharactersFromFormattedKeyByViewPortSize[ViewPortSize.Small];
       } else if (inMediumViewPort) {
-        maxCharacters = MaxCharactersFromFormattedKeyByViewPortSize[ViewPortSize.Medium];
+        maxTextCharacters = MaxCharactersFromFormattedKeyByViewPortSize[ViewPortSize.Medium];
       } else if (inLargeViewPort) {
-        maxCharacters = MaxCharactersFromFormattedKeyByViewPortSize[ViewPortSize.Large];
+        maxTextCharacters = MaxCharactersFromFormattedKeyByViewPortSize[ViewPortSize.Large];
       }
 
-      const chipTokens: string[] = [];
-      const textPart = formattedKey.replace(CHIP_TOKEN_REGEX, (match) => {
-        chipTokens.push(match);
-        return '';
-      });
-
-      const truncatedText =
-        textPart.length > maxCharacters ? `${textPart.slice(0, maxCharacters)}...` : textPart;
-
-      const keyWithChips = truncatedText + chipTokens.join('');
-      const finalKey = parseChipSyntax(keyWithChips);
+      const finalKey = buildEscapedKeyWithChips(rawKey, maxTextCharacters);
 
       return perSeriesHTML({
         key: finalKey,
         value: escapeHtmlFn(formatSeriesValueForPoint)({
-          y: y as Y,
+          y: asCallerDeclared<Y>(y),
           seriesType,
           seriesId: id,
           zones,
@@ -235,8 +341,8 @@ export const getRangePointFormatter = <RangeTag, X>({
     const { rangeKey, rangeValue } = formatRange({
       top,
       bottom,
-      tag: options.custom?.tag,
-      x: x as X,
+      tag: asCallerDeclared<RangeTag | undefined>(options.custom?.tag),
+      x: asCallerDeclared<X>(x),
     });
 
     return `<div style="font-weight:600;">${escapeHtmlString(rangeKey ?? '')}</div>${escapeHtmlString(
@@ -279,13 +385,17 @@ export const useLineChartTooltipFormatter = ({
       // 1. Identify the number of categories in the chart
       const numberOfCategories =
         points?.filter((point: Point) => {
-          const seriesType = point.series.userOptions.custom?.seriesType;
+          const { seriesType } = readSeriesCustomFields(point.series.userOptions.custom);
           return seriesType === SeriesDataTypes.Total || seriesType === SeriesDataTypes.Normal;
         }).length ?? 0;
       const shouldRenderPerSeriesTooltipInOneCallout = inLargeViewPort && numberOfCategories > 6;
 
       // 2. If it should render in shared tooltip, sort the points by y value so that they are not jumbled in
       //    shared tooltip container.
+      // `defaultFormatter` only reads own data properties off its `this`, so the
+      // dropped `Point` prototype is intentional here; preserving it would change
+      // what Highcharts sees.
+      // eslint-disable-next-line typescript/no-misused-spread -- see above
       let tooltipFormatterContext = { ...this, points };
       if (shouldRenderPerSeriesTooltipInOneCallout && points?.length) {
         const sortedPoints = [...points].sort((a: Point, b: Point) => {
@@ -364,8 +474,8 @@ export const useColumnChartTooltipFormatter = ({
       let sortedPoints = points;
       if (points?.length) {
         sortedPoints = [...points].sort((a: Point, b: Point) => {
-          const seriesTypeA = a.series.options.custom?.seriesType;
-          const seriesTypeB = b.series.options.custom?.seriesType;
+          const { seriesType: seriesTypeA } = readSeriesCustomFields(a.series.options.custom);
+          const { seriesType: seriesTypeB } = readSeriesCustomFields(b.series.options.custom);
           if (seriesTypeA === seriesTypeB) {
             return 0;
           }
@@ -377,6 +487,9 @@ export const useColumnChartTooltipFormatter = ({
       }
 
       // 3. call tooltip.defaultFormatter to get per-Series formatted tooltip
+      // See the note in `useLineChartTooltipFormatter`: dropping the `Point`
+      // prototype is intentional for the `defaultFormatter` context object.
+      // eslint-disable-next-line typescript/no-misused-spread -- see above
       const tooltipFormatterContext = { ...this, points: sortedPoints };
       const currentFormattedTooltips = tooltip.defaultFormatter
         .call(tooltipFormatterContext, tooltip)
@@ -476,14 +589,14 @@ export const usePieChartTooltipPointFormatter = <SliceName extends string, Y ext
       }
 
       const formattedKey = escapeHtmlFn(formatSeriesKeyForSlice)({
-        sliceName: name as SliceName,
-        sliceValue: y as Y,
+        sliceName: asCallerDeclared<SliceName>(name),
+        sliceValue: asCallerDeclared<Y>(y),
         percentage,
       });
 
       const formattedValue = escapeHtmlFn(formatSeriesValueForSlice)({
-        sliceName: name as SliceName,
-        sliceValue: y as Y,
+        sliceName: asCallerDeclared<SliceName>(name),
+        sliceValue: asCallerDeclared<Y>(y),
         percentage,
       });
 

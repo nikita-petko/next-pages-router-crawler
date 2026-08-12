@@ -185,8 +185,13 @@ export const useTreemapTooltipOptions = (
       const value = pointValue ?? 0;
       // Calculate percentage based on root total if available
       const percentage = rootTotal && rootTotal > 0 ? value / rootTotal : undefined;
+      // `formatTooltip` is expected to return HTML, so its output cannot be
+      // escaped here. Escape `name` on the way in instead: it mirrors the
+      // treemap point name, which can originate from untrusted data (e.g.
+      // Instance names from a creator's place), and consumers interpolate it
+      // straight into their returned markup.
       const formattedContent = formatTooltip({
-        name: name ?? '',
+        name: escapeHtmlString(name ?? ''),
         value,
         percentage,
         custom: options?.custom as Record<string, unknown> | undefined,

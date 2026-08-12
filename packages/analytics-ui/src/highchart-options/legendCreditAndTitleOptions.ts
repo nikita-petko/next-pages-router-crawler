@@ -1,9 +1,10 @@
-import type { CreditsOptions, LegendOptions, Series, TitleOptions } from 'highcharts';
 import { useMemo } from 'react';
+import type { CreditsOptions, LegendOptions, TitleOptions } from 'highcharts';
 import { useTheme } from '@rbx/ui';
 import { getChartThemedColors } from '../color';
 import { ChartStyleMode } from '../types/BaseChart';
-import { escapeHtmlFn } from '../utils/escape-html';
+import { escapeHtmlFn, escapeHtmlString } from '../utils/escape-html';
+import sanitizeImageUrl from '../utils/sanitize-url';
 
 const useLegendTitleAndCreditOptions = ({
   chartStyleMode,
@@ -34,10 +35,15 @@ const useLegendTitleAndCreditOptions = ({
         },
         useHTML: true,
         labelFormatter() {
-          if (this.options?.custom?.imageUrl) {
-            return `<img src="${this.options.custom.imageUrl}" alt="" style="width: 56px; height: 32px; border: 4px solid white; border-radius: 4px;"/>`;
+          // `imageUrl` and `this.name` can originate from untrusted data
+          // (experience metadata). `useHTML: true` means the returned string
+          // is injected as raw HTML, so sanitize the URL and HTML-escape the
+          // series name before interpolation.
+          const safeImageUrl = sanitizeImageUrl(this.options?.custom?.imageUrl);
+          if (safeImageUrl) {
+            return `<img src="${safeImageUrl}" alt="" style="width: 56px; height: 32px; border: 4px solid white; border-radius: 4px;"/>`;
           }
-          return `<div style="max-width: 200px; text-overflow: ellipsis; overflow: hidden">${this.name}</div>`;
+          return `<div style="max-width: 200px; text-overflow: ellipsis; overflow: hidden">${escapeHtmlString(this.name ?? '')}</div>`;
         },
         itemHoverStyle: {
           color: getChartThemedColors(theme).legendText,
@@ -57,10 +63,25 @@ const useLegendTitleAndCreditOptions = ({
 
 export type MapChartLegendLabelFormatter = ({ from, to }: { from?: number; to?: number }) => string;
 
-interface MapSeries extends Series {
-  from?: number;
-  to?: number;
-}
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+/**
+ * Highcharts types the legend `labelFormatter` receiver as `Point | Series`,
+ * but map series additionally carry the bucket bounds the label describes.
+ * Read them defensively rather than asserting the whole series shape.
+ */
+const readMapSeriesRange = (series: unknown): { from?: number; to?: number } => {
+  if (!isRecord(series)) {
+    return {};
+  }
+
+  const { from, to } = series;
+  return {
+    from: typeof from === 'number' ? from : undefined,
+    to: typeof to === 'number' ? to : undefined,
+  };
+};
 
 export const useMapChartLegendTitleAndCreditOptions = ({
   chartStyleMode,
@@ -94,7 +115,7 @@ export const useMapChartLegendTitleAndCreditOptions = ({
           color: getChartThemedColors(theme).legendText,
         },
         labelFormatter() {
-          const { from, to } = this as MapSeries;
+          const { from, to } = readMapSeriesRange(this);
           const formattedLabel = escapeHtmlFn(formatLegendLabel)({ from, to });
           return `<div style="max-width: 200px; text-overflow: ellipsis; overflow: hidden">${formattedLabel}</div>`;
         },
