@@ -1,6 +1,6 @@
 import { makeStyles } from '@rbx/ui';
 
-const LocalizationSettingsContainerStyles = makeStyles()((theme) => ({
+const useLocalizationSettingsContainerStyles = makeStyles()((theme) => ({
   descriptionText: {
     marginBottom: 25,
   },
@@ -45,4 +45,4 @@ const LocalizationSettingsContainerStyles = makeStyles()((theme) => ({
   },
 }));
 
-export default LocalizationSettingsContainerStyles;
+export default useLocalizationSettingsContainerStyles;

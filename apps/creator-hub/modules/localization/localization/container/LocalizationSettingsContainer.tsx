@@ -13,7 +13,6 @@ import CreatorDashboardEventType from '@modules/eventStream/enum/CreatorDashboar
 import CreatorDashboardUserResponse from '@modules/eventStream/enum/CreatorDashboardUserResponse';
 import { useEventTrackerProvider } from '@modules/eventStream/eventTrackerProvider';
 import { useMetricsMonitoring } from '@modules/miscellaneous/metricsMonitoring';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import Panel from '../../common/components/Panel';
 import useTranslationToast from '../../common/hooks/useTranslationToast';
 import {
@@ -21,7 +20,7 @@ import {
   clearUntranslatedStringTimes,
   clearUntranslatedStringTimesTranslation,
 } from '../constants/LocalizationConstants';
-import LocalizationSettingsContainerStyles from './LocalizationSettingsContainer.styles';
+import useLocalizationSettingsContainerStyles from './LocalizationSettingsContainer.styles';
 
 export interface LocalizationSettingsProps {
   universeId: number;
@@ -31,7 +30,6 @@ const LocalizationSettingsContainer: FunctionComponent<
   React.PropsWithChildren<LocalizationSettingsProps>
 > = ({ universeId }) => {
   const { trackerClient } = useEventTrackerProvider();
-  const { settings } = useSettings();
   const { translate, translateHTML } = useTranslation();
   const { showSuccessToast, showFailureToast } = useTranslationToast();
   const { error } = useMetricsMonitoring();
@@ -47,9 +45,8 @@ const LocalizationSettingsContainer: FunctionComponent<
       toggleButton,
       container,
     },
-  } = LocalizationSettingsContainerStyles();
+  } = useLocalizationSettingsContainerStyles();
 
-  const [isAutolocalizationEnabled, setIsAutolocalizationEnabled] = useState<boolean>(false);
   const [isAutomaticDeletionsEnabled, setIsAutomaticDeletionsEnabled] = useState<boolean>(false);
   const [shouldUseLocalizationTable, setShouldUseLocalizationTable] = useState<boolean>(false);
   const [isAutomaticEntriesSettingEnabled, setIsAutomaticEntriesSettingEnabled] =
@@ -58,19 +55,16 @@ const LocalizationSettingsContainer: FunctionComponent<
   const [autoEntriesToggleLoading, setAutoEntriesToggleLoading] = useState<boolean>(false);
   const [autoEntriesDeletionsToggleLoading, setAutoEntriesDeletionsToggleLoading] =
     useState<boolean>(false);
-  const [TextCaptureToggleLoading, setTextCaptureToggleLoading] = useState<boolean>(false);
   const [TranslatedContentToggleLoading, setTranslatedContentToggleLoading] =
     useState<boolean>(false);
   const [ButtonLoading, setButtonLoading] = useState<boolean>(false);
 
   const getAutoTranslationStatus = useCallback(async (id: number) => {
     try {
-      setTextCaptureToggleLoading(true);
       setTranslatedContentToggleLoading(true);
       setAutoEntriesToggleLoading(true);
       setAutoEntriesDeletionsToggleLoading(true);
       const res = await localizationTableClient.getAutoLocalizationTable({ gameId: id });
-      setIsAutolocalizationEnabled(res.isAutolocalizationEnabled ?? false);
       setShouldUseLocalizationTable(res.shouldUseLocalizationTable ?? false);
       setIsAutomaticEntriesSettingEnabled(res.isAutomaticEntriesSettingEnabled ?? false);
       setIsAutomaticDeletionsEnabled(res.isAutomaticEntriesDeletionEnabled ?? false);
@@ -78,7 +72,6 @@ const LocalizationSettingsContainer: FunctionComponent<
       // do nothing - sometimes the API returns 500 when a table already exists
       // but it tries to create a new one anyway
     } finally {
-      setTextCaptureToggleLoading(false);
       setTranslatedContentToggleLoading(false);
       setAutoEntriesToggleLoading(false);
       setAutoEntriesDeletionsToggleLoading(false);
@@ -86,52 +79,9 @@ const LocalizationSettingsContainer: FunctionComponent<
   }, []);
 
   useEffect(() => {
-    getAutoTranslationStatus(universeId);
+    // oxlint-disable-next-line react/react-compiler -- pre-existing: data fetch on mount
+    void getAutoTranslationStatus(universeId);
   }, [universeId, getAutoTranslationStatus]);
-
-  const onTextCaptureToggleChange = useCallback(
-    async (checked: boolean) => {
-      try {
-        setTextCaptureToggleLoading(true);
-        setAutoEntriesToggleLoading(true);
-
-        await localizationTableClient.patchAutolocalizationSettings({
-          gameId: universeId,
-          request: {
-            isAutolocalizationEnabled: checked,
-            isAutomaticEntriesSettingEnabled: checked,
-          },
-        });
-        trackerClient.sendEvent(
-          localizationSettingsToggledEventModel(
-            CreatorDashboardEventType.AutomaticTextCaptureToggled,
-            universeId,
-            checked ? CreatorDashboardUserResponse.TurnOn : CreatorDashboardUserResponse.TurnOff,
-            200,
-          ),
-        );
-        setIsAutolocalizationEnabled(checked);
-        setIsAutomaticEntriesSettingEnabled(checked);
-        showSuccessToast(translate('Toast.ToggleSuccess'));
-      } catch (ex) {
-        const errorStatus = getErrorStatus(ex, 500);
-        trackerClient.sendEvent(
-          localizationSettingsToggledEventModel(
-            CreatorDashboardEventType.AutomaticTextCaptureToggled,
-            universeId,
-            checked ? CreatorDashboardUserResponse.TurnOn : CreatorDashboardUserResponse.TurnOff,
-            errorStatus,
-          ),
-        );
-        error('Localization - Settings - patchAutolocalizationSettings failed');
-        showFailureToast(translate('Toast.GenericError'));
-      } finally {
-        setTextCaptureToggleLoading(false);
-        setAutoEntriesToggleLoading(false);
-      }
-    },
-    [universeId, showSuccessToast, showFailureToast, translate, error, trackerClient],
-  );
 
   const onTranslatedContentToggleChange = useCallback(
     async (checked: boolean) => {
@@ -181,15 +131,11 @@ const LocalizationSettingsContainer: FunctionComponent<
           gameId: universeId,
           request: {
             isAutomaticEntriesSettingEnabled: checked,
-            isAutomaticEntriesDeletionsEnabled: settings.isOldAutomaticTextCaptureDisabled
-              ? checked
-              : undefined,
+            isAutomaticEntriesDeletionsEnabled: checked,
           },
         });
         setIsAutomaticEntriesSettingEnabled(checked);
-        if (settings.isOldAutomaticTextCaptureDisabled) {
-          setIsAutomaticDeletionsEnabled(checked);
-        }
+        setIsAutomaticDeletionsEnabled(checked);
         showSuccessToast(translate('Toast.ToggleSuccess'));
       } catch {
         error('Localization - Settings - patch automatic entries settings failed');
@@ -199,14 +145,7 @@ const LocalizationSettingsContainer: FunctionComponent<
         setAutoEntriesDeletionsToggleLoading(false);
       }
     },
-    [
-      universeId,
-      settings.isOldAutomaticTextCaptureDisabled,
-      showSuccessToast,
-      translate,
-      error,
-      showFailureToast,
-    ],
+    [universeId, showSuccessToast, translate, error, showFailureToast],
   );
 
   const onAutomaticEntriesDeletionsChange = useCallback(
@@ -232,7 +171,7 @@ const LocalizationSettingsContainer: FunctionComponent<
   );
 
   const handleChange = useCallback((event: React.ChangeEvent<{ value: unknown }>) => {
-    const selectedAgeForFlush = event.target.value as string;
+    const selectedAgeForFlush = String(event.target.value);
     setSelectedTime(selectedAgeForFlush);
   }, []);
 
@@ -300,17 +239,11 @@ const LocalizationSettingsContainer: FunctionComponent<
         </Grid>
         <Grid item container direction='column' XSmall={8} className={atcContainer}>
           <Grid className={descriptionText}>
-            <Typography variant='captionBody'>
-              {settings.isOldAutomaticTextCaptureDisabled
-                ? atcDescription
-                : translate('Description.AutomaticTextCapture')}
-            </Typography>
+            <Typography variant='captionBody'>{atcDescription}</Typography>
           </Grid>
           <Grid>
             <Typography variant='captionBody'>
-              {settings.isOldAutomaticTextCaptureDisabled
-                ? translate('Description.TextCaptureDeletions')
-                : translate('Description.AutomaticEntriesSettings')}
+              {translate('Description.TextCaptureDeletions')}
             </Typography>
           </Grid>
         </Grid>
@@ -323,48 +256,25 @@ const LocalizationSettingsContainer: FunctionComponent<
           justifyContent='flex-start'
           alignItems='end'>
           <Grid item>
-            {settings.isOldAutomaticTextCaptureDisabled ? (
-              <Switch
-                className={automaticEntriesSettingToggle}
-                aria-label='allow automatic entries management'
-                size='medium'
-                checked={isAutomaticEntriesSettingEnabled}
-                onChange={() => onAutomaticEntriesSettingsChange(!isAutomaticEntriesSettingEnabled)}
-                loading={autoEntriesToggleLoading}
-              />
-            ) : (
-              <Switch
-                className={automaticEntriesSettingToggle}
-                aria-label='ATC1.0 setting'
-                size='medium'
-                checked={isAutolocalizationEnabled}
-                onChange={() => onTextCaptureToggleChange(!isAutolocalizationEnabled)}
-                loading={TextCaptureToggleLoading}
-              />
-            )}
+            <Switch
+              className={automaticEntriesSettingToggle}
+              aria-label='allow automatic entries management'
+              size='medium'
+              checked={isAutomaticEntriesSettingEnabled}
+              onChange={() => onAutomaticEntriesSettingsChange(!isAutomaticEntriesSettingEnabled)}
+              loading={autoEntriesToggleLoading}
+            />
           </Grid>
           <Grid item>
-            {settings.isOldAutomaticTextCaptureDisabled ? (
-              <Switch
-                disabled={!isAutomaticEntriesSettingEnabled}
-                className={automaticEntriesSettingToggle}
-                aria-label='allow automatic entries deletions'
-                size='medium'
-                checked={isAutomaticDeletionsEnabled}
-                onChange={() => onAutomaticEntriesDeletionsChange(!isAutomaticDeletionsEnabled)}
-                loading={autoEntriesDeletionsToggleLoading}
-              />
-            ) : (
-              <Switch
-                disabled={!isAutolocalizationEnabled}
-                className={automaticEntriesSettingToggle}
-                aria-label='allow automatic entries management'
-                size='medium'
-                checked={isAutomaticEntriesSettingEnabled}
-                onChange={() => onAutomaticEntriesSettingsChange(!isAutomaticEntriesSettingEnabled)}
-                loading={autoEntriesToggleLoading}
-              />
-            )}
+            <Switch
+              disabled={!isAutomaticEntriesSettingEnabled}
+              className={automaticEntriesSettingToggle}
+              aria-label='allow automatic entries deletions'
+              size='medium'
+              checked={isAutomaticDeletionsEnabled}
+              onChange={() => onAutomaticEntriesDeletionsChange(!isAutomaticDeletionsEnabled)}
+              loading={autoEntriesDeletionsToggleLoading}
+            />
           </Grid>
         </Grid>
       </Grid>
