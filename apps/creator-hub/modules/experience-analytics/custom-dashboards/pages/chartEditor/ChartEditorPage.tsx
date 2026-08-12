@@ -4,6 +4,7 @@ import { useFlag } from '@rbx/flags';
 import {
   isClientScriptCpuTimeEnabled as isClientScriptCPUTimeEnabledFlag,
   isRotraceMetricEnabled as isRotraceMetricEnabledFlag,
+  isTelemetryMigrationEnabled as isTelemetryMigrationEnabledFlag,
 } from '@generated/flags/creatorAnalytics';
 import { isHomeAcquisitionSignalsEnabled as isHomeAcquisitionSignalsEnabledFlag } from '@generated/flags/gameDiscoveryServing';
 import getEnabledChartConfiguratorMetrics from '@modules/experience-analytics-shared/chartConfigurator/getEnabledChartConfiguratorMetrics';
@@ -45,18 +46,31 @@ const ChartEditorPage: FC = () => {
     });
   const isHomeAcquisitionSignalsEnabled =
     isHomeAcquisitionSignalsReady && isHomeAcquisitionSignalsEnabledValue;
+  const { ready: isTelemetryMigrationReady, value: isTelemetryMigrationEnabledValue } = useFlag(
+    isTelemetryMigrationEnabledFlag,
+    {
+      universeId,
+    },
+  );
+  const isTelemetryMigrationEnabled = isTelemetryMigrationReady && isTelemetryMigrationEnabledValue;
 
   const allowedMetrics = useMemo(() => {
     const metrics = getEnabledChartConfiguratorMetrics({
       isClientScriptCPUTimeEnabled,
       isRotraceMetricEnabled,
       isHomeAcquisitionSignalsEnabled,
+      isTelemetryMigrationEnabled,
     });
     if (!metrics.includes(customEventsMetric)) {
       return [...metrics, customEventsMetric];
     }
     return metrics;
-  }, [isClientScriptCPUTimeEnabled, isRotraceMetricEnabled, isHomeAcquisitionSignalsEnabled]);
+  }, [
+    isClientScriptCPUTimeEnabled,
+    isRotraceMetricEnabled,
+    isHomeAcquisitionSignalsEnabled,
+    isTelemetryMigrationEnabled,
+  ]);
 
   const handleBackToEditor = useCallback(
     (nextDraftId?: string) => {

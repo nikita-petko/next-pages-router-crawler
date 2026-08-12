@@ -6,6 +6,7 @@ import { useTranslation } from '@rbx/intl';
 import {
   isClientScriptCpuTimeEnabled as isClientScriptCPUTimeEnabledFlag,
   isRotraceMetricEnabled as isRotraceMetricEnabledFlag,
+  isTelemetryMigrationEnabled as isTelemetryMigrationEnabledFlag,
 } from '@generated/flags/creatorAnalytics';
 import { isHomeAcquisitionSignalsEnabled as isHomeAcquisitionSignalsEnabledFlag } from '@generated/flags/gameDiscoveryServing';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
@@ -143,17 +144,30 @@ const EditPageContent: FC<EditPageContentProps> = ({
     });
   const isHomeAcquisitionSignalsEnabled =
     isHomeAcquisitionSignalsReady && isHomeAcquisitionSignalsEnabledValue;
+  const { ready: isTelemetryMigrationReady, value: isTelemetryMigrationEnabledValue } = useFlag(
+    isTelemetryMigrationEnabledFlag,
+    {
+      universeId,
+    },
+  );
+  const isTelemetryMigrationEnabled = isTelemetryMigrationReady && isTelemetryMigrationEnabledValue;
   const allowedMetrics = useMemo(() => {
     const metrics = getEnabledChartConfiguratorMetrics({
       isClientScriptCPUTimeEnabled,
       isRotraceMetricEnabled,
       isHomeAcquisitionSignalsEnabled,
+      isTelemetryMigrationEnabled,
     });
     if (!metrics.includes(customEventsMetric)) {
       return [...metrics, customEventsMetric];
     }
     return metrics;
-  }, [isClientScriptCPUTimeEnabled, isRotraceMetricEnabled, isHomeAcquisitionSignalsEnabled]);
+  }, [
+    isClientScriptCPUTimeEnabled,
+    isRotraceMetricEnabled,
+    isHomeAcquisitionSignalsEnabled,
+    isTelemetryMigrationEnabled,
+  ]);
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const duplicateNameSuffixes = useMemo(
     () => createDuplicateDashboardNameSuffixes({ tPendingTranslation }),

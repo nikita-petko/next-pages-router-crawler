@@ -122,6 +122,11 @@ export const isRotraceMetricEnabled = defineFlag({
     name: 'isRotraceMetricEnabled',
     defaultValue: false,
   });
+export const isTelemetryMigrationEnabled = defineFlag({
+    namespace: 'creator-analytics',
+    name: 'isTelemetryMigrationEnabled',
+    defaultValue: false,
+  });
 export const showVideoServiceDashboard = defineFlag({
     namespace: 'creator-analytics',
     name: 'showVideoServiceDashboard',

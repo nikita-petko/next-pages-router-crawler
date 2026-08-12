@@ -1,4 +1,4 @@
-import { RAQIV2Metric } from '@rbx/creator-hub-analytics-config';
+import { RAQIV2Metric, RAQIV2UIMetric } from '@rbx/creator-hub-analytics-config';
 import {
   getAllChartConfiguratorMetrics,
   getChartConfiguratorExcludedMetrics,
@@ -11,15 +11,25 @@ const getEnabledChartConfiguratorMetrics = ({
   isClientScriptCPUTimeEnabled,
   isRotraceMetricEnabled,
   isHomeAcquisitionSignalsEnabled,
+  isTelemetryMigrationEnabled,
 }: {
   isClientScriptCPUTimeEnabled: boolean;
   isRotraceMetricEnabled: boolean;
   isHomeAcquisitionSignalsEnabled: boolean;
+  isTelemetryMigrationEnabled: boolean;
 }): readonly TChartConfiguratorMetrics[] => {
   const disabledMetrics = [
     ...getChartConfiguratorExcludedMetrics(),
     ...(!isClientScriptCPUTimeEnabled ? [RAQIV2Metric.ClientCpuTimeAvg] : []),
     ...(!isRotraceMetricEnabled ? [RAQIV2Metric.RotraceTotalCalls] : []),
+    ...(!isTelemetryMigrationEnabled
+      ? [
+          RAQIV2Metric.ClientCrashCountMigration,
+          RAQIV2Metric.ClientCrashRate15mMigration,
+          RAQIV2Metric.OomUnexpectedExitsMigration,
+          RAQIV2UIMetric.SessionDurationSecondsMigration,
+        ]
+      : []),
     ...(isHomeAcquisitionSignalsEnabled
       ? [RAQIV2Metric.QualifiedEndToEndCVR, RAQIV2Metric.RFYQualifiedPTR]
       : [RAQIV2Metric.L7AverageRFYPlayThroughRate, RAQIV2Metric.EndToEndCVR]),

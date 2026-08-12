@@ -480,6 +480,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: creatorAnalyticsFlags.isTelemetryMigrationEnabled,
+      metadata: {
+        namespace: 'creator-analytics',
+        name: 'isTelemetryMigrationEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'universe',
+      },
+    },
+    {
       flag: creatorAnalyticsFlags.showVideoServiceDashboard,
       metadata: {
         namespace: 'creator-analytics',
