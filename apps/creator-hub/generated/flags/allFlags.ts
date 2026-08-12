@@ -214,7 +214,7 @@ export const generatedFlags = [
       metadata: {
         namespace: 'content-licensing',
         name: 'isIgnoreMatchEnabled',
-        defaultValue: false,
+        defaultValue: true,
         valueType: 'boolean',
         contextType: 'static',
       },

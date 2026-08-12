@@ -26,10 +26,9 @@ import {
   getValidTimedOptionsTypes,
   getValidWearTimeTypes,
 } from '../../unifiedFeeSystem/helper/UnifiedFeeSystemConstants';
-import AddItemToFolderButton from '../components/AddItemToFolderButton';
 import AvatarItemsDropdownCategorySubmenu from '../components/AvatarItemsDropdownCategorySubmenu';
 import CreateFolderButton from '../components/CreateFolderButton';
-import DeleteFolderButton from '../components/DeleteFolderButton';
+import FolderActionsMenu from '../components/FolderActionsMenu';
 import TaxonomyCategorySelector from '../components/TaxonomyCategorySelector';
 import type { AvatarItemDropdown, BundleType } from '../constants/avatarItemConstants';
 import {
@@ -536,28 +535,27 @@ const AvatarItemsGridContainer: FunctionComponent<
             {isAssetAll && !isTaxonomyView && (
               <Grid item className={folderActionContainer}>
                 <Grid container item direction='row' spacing={2} justifyContent='flex-end'>
-                  <CreateFolderButton
-                    selectedFolderId={selectedAvatarItemDropdown.folderId ?? ''}
-                    selectedFolderName={
-                      selectedAvatarItemDropdown.isFolder
-                        ? selectedAvatarItemDropdown.nameKey
-                        : undefined
-                    }
-                    onFolderCreated={handleFolderCreated}
-                    onFolderUpdated={handleFolderUpdated}
-                    onFolderContentsUpdated={handleFolderContentsUpdated}
-                    groupId={groupId}
-                  />
-                  {!!selectedAvatarItemDropdown.folderId && (
-                    <AddItemToFolderButton
+                  {selectedAvatarItemDropdown.folderId ? (
+                    // Inside a folder: rename / add / delete collapse into one folder-level gear menu.
+                    <FolderActionsMenu
                       selectedFolderId={selectedAvatarItemDropdown.folderId}
+                      selectedFolderName={
+                        selectedAvatarItemDropdown.isFolder
+                          ? selectedAvatarItemDropdown.nameKey
+                          : ''
+                      }
+                      onFolderUpdated={handleFolderUpdated}
                       onFolderContentsUpdated={handleFolderContentsUpdated}
-                    />
-                  )}
-                  {!!selectedAvatarItemDropdown.folderId && (
-                    <DeleteFolderButton
-                      selectedFolderId={selectedAvatarItemDropdown.folderId}
                       onFolderDeleted={handleFolderDeleted}
+                    />
+                  ) : (
+                    <CreateFolderButton
+                      selectedFolderId=''
+                      selectedFolderName={undefined}
+                      onFolderCreated={handleFolderCreated}
+                      onFolderUpdated={handleFolderUpdated}
+                      onFolderContentsUpdated={handleFolderContentsUpdated}
+                      groupId={groupId}
                     />
                   )}
                 </Grid>

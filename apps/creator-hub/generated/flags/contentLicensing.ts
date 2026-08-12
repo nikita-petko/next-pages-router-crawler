@@ -30,5 +30,5 @@ export const isShowcaseExperiencesEnabled = defineFlag({
 export const isIgnoreMatchEnabled = defineFlag({
     namespace: 'content-licensing',
     name: 'isIgnoreMatchEnabled',
-    defaultValue: false,
+    defaultValue: true,
   });
