@@ -1,9 +1,9 @@
 import type { FunctionComponent } from 'react';
 import { useCallback, useState } from 'react';
 import { StatusCodes } from '@rbx/core';
-import { Divider, StatusBadge } from '@rbx/foundation-ui';
+import { Divider, Link, StatusBadge } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
-import { CircularProgress, Link } from '@rbx/ui';
+import { CircularProgress } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { EmptyGrid } from '@modules/miscellaneous/components/EmptyGrid';
@@ -67,8 +67,11 @@ const PresetChatPageContent: FunctionComponent = () => {
                   translationKey('Description.QuickWords', TranslationNamespace.PresetChat),
                 )}{' '}
                 <Link
+                  className='content-link'
+                  variant='Inline'
                   href='https://create.roblox.com/docs/chat/preset-system-guidelines'
-                  target='_blank'>
+                  target='_blank'
+                  isExternal={false}>
                   {tPendingTranslation(
                     'Learn more',
                     'A link to the Preset system guidelines.',

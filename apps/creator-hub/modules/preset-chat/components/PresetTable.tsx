@@ -6,11 +6,15 @@ import type { DragEndEvent } from '@dnd-kit/react';
 import { DragDropProvider, KeyboardSensor, PointerSensor } from '@dnd-kit/react';
 import {
   Button,
+  Icon,
+  Link,
   Table,
   TableBody,
   TableHeader,
   TableHeaderCell,
   TableRow,
+  Tooltip,
+  TooltipTrigger,
 } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
@@ -88,11 +92,47 @@ const PresetTable: FunctionComponent<PresetTableProps> = ({
                   )}
                 </TableHeaderCell>
                 <TableHeaderCell className='[&>div]:!content-emphasis [&>div]:!text-caption-large height-1200'>
-                  {tPendingTranslation(
-                    'Status',
-                    'Column header for preset approval status',
-                    translationKey('Label.Status', TranslationNamespace.PresetChat),
-                  )}
+                  <span className='flex items-center gap-xsmall'>
+                    {tPendingTranslation(
+                      'Status',
+                      'Column header for preset approval status',
+                      translationKey('Label.Status', TranslationNamespace.PresetChat),
+                    )}
+                    <Tooltip
+                      position='top-center'
+                      title={
+                        <span>
+                          {tPendingTranslation(
+                            'Quick Words status is based on Roblox policy.',
+                            'Tooltip explaining that status is policy-based',
+                            translationKey('Tooltip.StatusInfo', TranslationNamespace.PresetChat),
+                          )}{' '}
+                          <Link
+                            className='content-link'
+                            variant='Inline'
+                            href='https://create.roblox.com/docs/chat/preset-system-guidelines'
+                            target='_blank'
+                            isExternal={false}>
+                            {tPendingTranslation(
+                              'Learn more',
+                              'A link to the Preset system guidelines.',
+                              translationKey('Action.LearnMore', TranslationNamespace.PresetChat),
+                            )}
+                          </Link>
+                        </span>
+                      }
+                      ariaLabel={tPendingTranslation(
+                        'Quick Words status is based on Roblox policy.',
+                        'Tooltip explaining that status is policy-based',
+                        translationKey('Tooltip.StatusInfo', TranslationNamespace.PresetChat),
+                      )}>
+                      <TooltipTrigger asChild>
+                        <span className='flex items-center content-muted'>
+                          <Icon size='Small' name='icon-regular-circle-i' />
+                        </span>
+                      </TooltipTrigger>
+                    </Tooltip>
+                  </span>
                 </TableHeaderCell>
                 <TableHeaderCell>{null}</TableHeaderCell>
               </TableRow>

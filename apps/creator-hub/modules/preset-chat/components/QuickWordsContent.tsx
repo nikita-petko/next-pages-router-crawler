@@ -104,6 +104,36 @@ const QuickWordsContent: FunctionComponent = () => {
       ? settings.presetChatMaxPresetsPerCategory
       : DEFAULT_MAX_PRESETS;
 
+  if (categories.length === 0) {
+    return (
+      <div className='flex flex-col items-center justify-center gap-large padding-y-xxlarge'>
+        <div className='flex flex-col items-center text-align-x-center gap-small'>
+          <h3 className='text-heading-small margin-none'>
+            {tPendingTranslation(
+              'No custom Quick Words category yet',
+              'Empty state title when no categories exist',
+              translationKey('EmptyState.Title', TranslationNamespace.PresetChat),
+            )}
+          </h3>
+          <p className='text-body-large content-default margin-none'>
+            {tPendingTranslation(
+              'Add custom Quick Words to your in-game chat for players of all ages to coordinate gameplay.',
+              'Empty state description explaining what Quick Words does',
+              translationKey('EmptyState.Description', TranslationNamespace.PresetChat),
+            )}
+          </p>
+        </div>
+        <Button variant='Emphasis' size='Medium' onClick={addCategory}>
+          {tPendingTranslation(
+            'Add category',
+            'Button to add a new preset category',
+            translationKey('Action.AddCategory', TranslationNamespace.PresetChat),
+          )}
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className='flex flex-col gap-xlarge'>
       {categories.map((category, index) => (
