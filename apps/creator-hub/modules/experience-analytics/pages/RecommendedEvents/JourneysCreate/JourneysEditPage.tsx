@@ -41,7 +41,11 @@ const JourneysEditPageContent: FC<{ resource: RAQIV2ChartResource; journeyName: 
 
   if (resolvedEntry && initialValues) {
     return (
-      <JourneyConfigWizard initialValues={initialValues} originalName={resolvedEntry.journeyName} />
+      <JourneyConfigWizard
+        universeId={resource.id}
+        initialValues={initialValues}
+        originalName={resolvedEntry.journeyName}
+      />
     );
   }
 

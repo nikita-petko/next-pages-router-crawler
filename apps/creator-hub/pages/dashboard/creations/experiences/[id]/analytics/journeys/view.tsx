@@ -3,7 +3,7 @@ import { analyticsRecommendedEventsJourneyViewNavigationItem } from '@modules/ch
 import RecommendedEventsLiveStatsClientProvider from '@modules/experience-analytics-shared/context/RecommendedEventsLiveStatsClientProvider';
 import getAnalyticsPageLayout from '@modules/experience-analytics-shared/pages/getUniverseAnalyticsPageLayout';
 import JourneysPageContent from '@modules/experience-analytics/pages/RecommendedEvents/Journeys/JourneysPageContent';
-import JourneysPageTitle from '@modules/experience-analytics/pages/RecommendedEvents/Journeys/JourneysPageTitle';
+import { JourneysViewPageTitle } from '@modules/experience-analytics/pages/RecommendedEvents/Journeys/JourneysPageTitle';
 
 const AnalyticsJourneyViewPage: NextLayoutPage = () => {
   return (
@@ -16,7 +16,7 @@ const AnalyticsJourneyViewPage: NextLayoutPage = () => {
 AnalyticsJourneyViewPage.getPageLayout = (page) =>
   getAnalyticsPageLayout(page, {
     navigationItem: analyticsRecommendedEventsJourneyViewNavigationItem,
-    titleOverride: <JourneysPageTitle />,
+    titleOverride: <JourneysViewPageTitle />,
   });
 AnalyticsJourneyViewPage.loggerConfig = { rosId: RosTeams.Analytics };
 

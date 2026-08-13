@@ -32,8 +32,8 @@ const useRAQIV2PredefinedPageControlsBundle = (config: RAQIV2PageConfig) => {
   );
 
   const buildDescription = useCallback(
-    (spec: RAQIV2PageDescriptionSpec) => {
-      if (!ready) {
+    (spec: RAQIV2PageDescriptionSpec | undefined) => {
+      if (!ready || !spec) {
         return undefined;
       }
 

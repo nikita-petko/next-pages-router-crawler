@@ -127,6 +127,14 @@ export const dashboard = {
     `/dashboard/creations/experiences/${universeId}/analytics/explore`,
   getAnalyticsAgentUrl: (universeId: number) =>
     `/dashboard/creations/experiences/${universeId}/analytics/agent`,
+  getAnalyticsJourneysUrl: (universeId: number) =>
+    `/dashboard/creations/experiences/${universeId}/analytics/journeys`,
+  getAnalyticsJourneysCreateUrl: (universeId: number) =>
+    `/dashboard/creations/experiences/${universeId}/analytics/journeys/create`,
+  getAnalyticsJourneysEditUrl: (universeId: number, journeyName: string) =>
+    `/dashboard/creations/experiences/${universeId}/analytics/journeys/edit?journeyName=${encodeURIComponent(journeyName)}`,
+  getAnalyticsJourneysViewUrl: (universeId: number, journeyName: string) =>
+    `/dashboard/creations/experiences/${universeId}/analytics/journeys/view?filter_JourneyName=${encodeURIComponent(journeyName)}`,
   getBundleAnalyticsUrl: (bundleId: number, rangeType = 'Last7Days') =>
     `/dashboard/creations/bundle/${bundleId}/analytics?rangeType=${rangeType}`,
   getCatalogAnalyticsUrl: (assetId: number, rangeType = 'Last7Days') =>
@@ -306,6 +314,7 @@ export const docs = {
   getPlatformUrl: () => `${docSiteUrl}/platform`,
   getAnalyticsUrl: () => `${docSiteUrl}/production/analytics`,
   getAnalyticsErrorReportUrl: () => `${docSiteUrl}/production/analytics/error-report`,
+  getAnalyticsJourneyEventsUrl: () => `${docSiteUrl}/production/analytics/journey-events`,
   getUnityGuideUrl: () => `${docSiteUrl}/unity`,
   getUnrealGuideUrl: () => `${docSiteUrl}/unreal`,
   getEventsPlatformUrl: () => `${docSiteUrl}/production/promotion/events-platform`,

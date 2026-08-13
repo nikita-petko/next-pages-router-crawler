@@ -11,19 +11,11 @@ const journeysDocLink: AnalyticsDocLink = '/docs/production/analytics/journey-ev
 
 const journeysBasePageConfig: Pick<
   CreatorAnalyticsUntabbedPageConfig,
-  | 'docLinks'
-  | 'resourceTypes'
-  | 'title'
-  | 'description'
-  | 'surfaceAnnotationOptions'
-  | 'breakdownDimensions'
+  'docLinks' | 'resourceTypes' | 'title' | 'surfaceAnnotationOptions' | 'breakdownDimensions'
 > = {
   docLinks: [journeysDocLink],
   resourceTypes: [RAQIV2ChartResourceType.Universe],
   title: translationKey('Heading.Journeys', TranslationNamespace.Analytics),
-  description: {
-    standard: translationKey('Description.TakeActionJourneyEvents', TranslationNamespace.Analytics),
-  },
   surfaceAnnotationOptions: {
     supportedAnnotationTypes: [AnnotationType.Announcement],
     defaultAnnotationTypes: [],

@@ -20,7 +20,9 @@ const JourneysCreatePage: FC = () => {
 
   return (
     <JourneysFlagGate>
-      {() => <JourneyConfigWizard initialValues={makeEmptyJourney()} />}
+      {(resource) => (
+        <JourneyConfigWizard universeId={resource.id} initialValues={makeEmptyJourney()} />
+      )}
     </JourneysFlagGate>
   );
 };

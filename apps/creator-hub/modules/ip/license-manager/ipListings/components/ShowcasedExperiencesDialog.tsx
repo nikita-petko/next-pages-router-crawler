@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ShowcaseContentReferenceRequest } from '@rbx/client-content-licensing-api/v1';
 import loadErrorDark from '@rbx/foundation-images/pictograms/alert_dark.svg';
 import loadErrorLight from '@rbx/foundation-images/pictograms/alert_light.svg';
@@ -22,6 +22,7 @@ import { withTranslation, useTranslation } from '@rbx/intl';
 import { CircularProgress, makeStyles } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { getResponseFromError } from '@modules/clients/utils';
 import ThemedImage from '@modules/miscellaneous/components/ThemedImage';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import ShowcaseContentTile from '../../components/ShowcaseContentTile';
@@ -43,8 +44,11 @@ type ShowcasedExperiencesDialogProps = {
 };
 
 const EMPTY_SELECTED_CONTENT: ShowcaseContentReferenceRequest[] = [];
-const CONTENT_VIEWPORT_CLASS = 'width-full height-[600px] min-height-[600px]';
+// A tile row is 168px tall. The maximum shows two full rows, two 16px gaps,
+// and half of a third row to communicate that the viewport is scrollable.
+const CONTENT_VIEWPORT_CLASS = 'width-full min-height-[168px] max-height-[452px]';
 const MAX_SHOWCASE_SELECTIONS = 10;
+const MAX_FULLY_VISIBLE_TILE_COUNT = 10;
 const SHOWCASE_ELIGIBLE_CONTENT_PAGE_SIZE = 500;
 
 const getUniverseIds = (
@@ -106,6 +110,22 @@ const useStyles = makeStyles()((theme) => ({
       opacity: 0,
     },
   },
+  saveError: {
+    marginBottom: theme.spacing(1),
+  },
+  dialogLayout: {
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
+  },
+  dialogBody: {
+    flex: '1 1 auto',
+    minHeight: 0,
+    overflow: 'hidden',
+  },
+  dialogFooter: {
+    flexShrink: 0,
+  },
 }));
 
 const ShowcasedExperiencesDialog = ({
@@ -148,6 +168,9 @@ const ShowcasedExperiencesDialog = ({
   const hasSelectedInvalidUniverse = selectedUniverseIds.some((universeId) =>
     invalidUniverseIds.has(universeId),
   );
+  const dialogLayoutRef = useRef<HTMLDivElement>(null);
+  const submittedUniverseIdsRef = useRef<number[]>([]);
+  const hasLoggedScrollableContentImpressionRef = useRef(false);
   const showcaseUniverseDetailsReq = useGetShowcaseUniverseDetails({
     universeIds: selectableUniverseIds,
     enabled: open,
@@ -179,7 +202,31 @@ const ShowcasedExperiencesDialog = ({
     isContentRetrying;
   const replaceShowcaseContent = useReplaceListingShowcaseContentMutation({
     listingId,
-    onSuccess: onClose,
+    onSuccess: () => {
+      const submittedUniverseIds = submittedUniverseIdsRef.current;
+      logEvent(
+        LicenseManagerImpressionEvent.IphListingsDetailsPageSaveShowcasedExperiencesSuccessImpressionEvent,
+        {
+          listingId,
+          selectedCount: submittedUniverseIds.length,
+          universeIds: submittedUniverseIds.join(','),
+        },
+      );
+      dialogLayoutRef.current?.style.removeProperty('height');
+      onClose();
+    },
+    onError: (error) => {
+      const submittedUniverseIds = submittedUniverseIdsRef.current;
+      logEvent(
+        LicenseManagerImpressionEvent.IphListingsDetailsPageSaveShowcasedExperiencesFailureImpressionEvent,
+        {
+          listingId,
+          selectedCount: submittedUniverseIds.length,
+          universeIds: submittedUniverseIds.join(','),
+          failureStatus: getResponseFromError(error)?.status ?? 'unknown',
+        },
+      );
+    },
     onConflict: (latestContent) => {
       if (latestContent) {
         setSelectedUniverseIds(getUniverseIds(latestContent.content));
@@ -196,6 +243,7 @@ const ShowcasedExperiencesDialog = ({
         return;
       }
 
+      replaceShowcaseContent.reset();
       const nextSelectedUniverseIds = isSelected
         ? selectedUniverseIds.filter((selectedUniverseId) => selectedUniverseId !== universeId)
         : [...selectedUniverseIds, universeId];
@@ -208,7 +256,7 @@ const ShowcasedExperiencesDialog = ({
         selectedCount: nextSelectedUniverseIds.length,
       });
     },
-    [invalidUniverseIds, listingId, logEvent, selectedUniverseIds],
+    [invalidUniverseIds, listingId, logEvent, replaceShowcaseContent, selectedUniverseIds],
   );
 
   const closeDialog = (action: 'cancel' | 'dismiss') => {
@@ -217,6 +265,7 @@ const ShowcasedExperiencesDialog = ({
       action,
       selectedCount: selectedUniverseIds.length,
     });
+    dialogLayoutRef.current?.style.removeProperty('height');
     onClose();
   };
 
@@ -230,8 +279,10 @@ const ShowcasedExperiencesDialog = ({
       {
         listingId,
         selectedCount: selectedUniverseIds.length,
+        universeIds: selectedUniverseIds.join(','),
       },
     );
+    replaceShowcaseContent.reset();
     setSelectedUniverseIds([]);
   };
 
@@ -252,7 +303,13 @@ const ShowcasedExperiencesDialog = ({
     logEvent(LicenseManagerClickEvent.IphListingsDetailsPageSaveShowcasedExperiencesClickEvent, {
       listingId,
       selectedCount: selectedUniverseIds.length,
+      universeIds: selectedUniverseIds.join(','),
     });
+    const dialogLayout = dialogLayoutRef.current;
+    if (dialogLayout) {
+      dialogLayout.style.height = `${dialogLayout.getBoundingClientRect().height.toString()}px`;
+    }
+    submittedUniverseIdsRef.current = [...selectedUniverseIds];
     replaceShowcaseContent.mutate({
       request: {
         content: selectedUniverseIds.map((universeId) => ({
@@ -282,11 +339,6 @@ const ShowcasedExperiencesDialog = ({
     'Manage featured creations',
     'Title of the dialog for adding spotlighted creations to an IP listing',
     translationKey('Heading.AddSpotlightedCreations', TranslationNamespace.AgreementsManager),
-  );
-  const description = tPendingTranslation(
-    'Save up to 10 creations to highlight to Creators browsing your IP. Only creations in active license agreement with a license of this listing are eligible to be featured.',
-    'Description explaining which creations can be spotlighted on an IP listing',
-    translationKey('Description.AddSpotlightedCreations', TranslationNamespace.AgreementsManager),
   );
   const invalidSelectionDescription = tPendingTranslation(
     'One or more of your featured creations is no longer in active license agreement. Please deselect them.',
@@ -374,6 +426,15 @@ const ShowcasedExperiencesDialog = ({
     hasSelectedInvalidUniverse ||
     replaceShowcaseContent.isPending ||
     (selectableUniverseIds.length === 0 && !hasRemovedSelections);
+  const hasNonContentState =
+    isContentLoading || isContentError || selectableUniverseIds.length === 0;
+  const dialogWidthClass = hasNonContentState
+    ? 'width-[min(800px,95vw)]'
+    : selectableUniverseIds.length <= 3
+      ? 'width-[min(496px,95vw)]'
+      : selectableUniverseIds.length === 4
+        ? 'width-[min(648px,95vw)]'
+        : 'width-[min(800px,95vw)]';
 
   useEffect(() => {
     if (
@@ -408,16 +469,37 @@ const ShowcasedExperiencesDialog = ({
     }
   }, [failedShowcaseRequest, isContentError, listingId, logEvent]);
   useEffect(() => {
+    if (
+      open &&
+      !isContentLoading &&
+      !isContentError &&
+      selectableUniverseIds.length > MAX_FULLY_VISIBLE_TILE_COUNT &&
+      !hasLoggedScrollableContentImpressionRef.current
+    ) {
+      hasLoggedScrollableContentImpressionRef.current = true;
+      logEvent(
+        LicenseManagerImpressionEvent.IphListingsDetailsPageScrollableShowcasedExperiencesImpressionEvent,
+        {
+          listingId,
+          contentCount: selectableUniverseIds.length,
+          fullyVisibleTileCount: MAX_FULLY_VISIBLE_TILE_COUNT,
+        },
+      );
+    }
+  }, [isContentError, isContentLoading, listingId, logEvent, open, selectableUniverseIds.length]);
+  useEffect(() => {
     if (open && hasSelectedInvalidUniverse) {
       logEvent(
         LicenseManagerImpressionEvent.IphListingsDetailsPageInvalidShowcasedExperiencesWarningImpressionEvent,
         {
           listingId,
           surface: 'dialog',
+          invalidSelectionCount: invalidUniverseIds.size,
+          universeIds: [...invalidUniverseIds].join(','),
         },
       );
     }
-  }, [hasSelectedInvalidUniverse, listingId, logEvent, open]);
+  }, [hasSelectedInvalidUniverse, invalidUniverseIds, listingId, logEvent, open]);
 
   return (
     <Dialog
@@ -426,189 +508,215 @@ const ShowcasedExperiencesDialog = ({
       size='Large'
       isModal
       hasCloseAffordance={false}>
-      <DialogContent className='flex flex-col min-width-0 width-[min(880px,95vw)] !max-width-[min(880px,95vw)]'>
-        <DialogBody className='flex flex-col gap-medium'>
-          <div className='flex flex-col gap-xsmall'>
-            <DialogTitle className='text-heading-small content-emphasis margin-none'>
-              {title}
-            </DialogTitle>
-            <p className='text-body-medium content-default margin-none'>{description}</p>
-            <p className='text-body-medium content-default margin-none'>{selectedCountLabel}</p>
-          </div>
-          {isContentLoading ? (
-            <div
-              className={`${CONTENT_VIEWPORT_CLASS} flex radius-medium stroke-standard stroke-default items-center justify-center`}>
-              <CircularProgress />
-            </div>
-          ) : isContentError ? (
-            <div
-              className={`${CONTENT_VIEWPORT_CLASS} flex radius-medium stroke-standard stroke-default flex-col items-center justify-center padding-y-xxlarge padding-x-large`}>
-              <ThemedImage lightSrc={loadErrorLight} darkSrc={loadErrorDark} alt='' />
-              <div className='flex flex-col items-center gap-small text-align-x-center max-width-[510px]'>
-                <h2 className='text-heading-small content-emphasis margin-none'>
-                  {loadErrorTitle}
-                </h2>
-                <p className='text-body-medium content-muted margin-none'>{loadErrorDescription}</p>
-                <Button variant='Emphasis' size='Medium' onClick={handleRetry}>
-                  {retryLabel}
+      <DialogContent
+        className={`flex flex-col min-width-[min(496px,95vw)] !max-width-[min(800px,95vw)] ${dialogWidthClass}`}
+        data-testid='showcase-dialog-content'>
+        <div
+          ref={dialogLayoutRef}
+          className={classes.dialogLayout}
+          data-testid='showcase-dialog-layout'>
+          <DialogBody className={`${classes.dialogBody} flex flex-col gap-medium`}>
+            <div className='flex flex-col gap-xsmall'>
+              <DialogTitle className='text-heading-small content-emphasis margin-none'>
+                {title}
+              </DialogTitle>
+              <div className='flex items-center gap-small'>
+                <p className='text-body-medium content-default margin-none'>{selectedCountLabel}</p>
+                <Button
+                  variant='Link'
+                  size='Medium'
+                  className={selectedUniverseIds.length > 0 ? undefined : '[visibility:hidden]'}
+                  aria-hidden={selectedUniverseIds.length === 0}
+                  onClick={handleDeselectAll}>
+                  {deselectAllLabel}
                 </Button>
               </div>
             </div>
-          ) : selectableUniverseIds.length > 0 ? (
-            <div
-              className={cx(
-                classes.tileViewport,
-                CONTENT_VIEWPORT_CLASS,
-                'flex [flex-wrap:wrap] [align-content:flex-start] [overflow-y:auto] gap-medium',
-              )}>
-              {selectableUniverseIds.map((universeId) => {
-                const isSelected = selectedUniverseIds.includes(universeId);
-                const isInvalid = invalidUniverseIds.has(universeId);
-                const isDeselectedInvalid = isInvalid && !isSelected;
-                const ineligibleDescriptionId = `ineligible-showcase-content-description-${universeId.toString()}`;
-                const name =
-                  detailsByUniverseId.get(universeId)?.name ??
-                  tPendingTranslation(
-                    'Universe {universeId}',
-                    'Fallback name for a showcased experience when its name cannot be loaded',
+            {isContentLoading ? (
+              <div
+                className={`${CONTENT_VIEWPORT_CLASS} ${
+                  replaceShowcaseContent.isError ? '!min-height-0' : ''
+                } flex radius-medium stroke-standard stroke-default items-center justify-center`}>
+                <CircularProgress />
+              </div>
+            ) : isContentError ? (
+              <div
+                className={`${CONTENT_VIEWPORT_CLASS} ${
+                  replaceShowcaseContent.isError ? '!min-height-0' : ''
+                } flex radius-medium stroke-standard stroke-default flex-col items-center justify-center padding-y-xxlarge padding-x-large`}>
+                <ThemedImage lightSrc={loadErrorLight} darkSrc={loadErrorDark} alt='' />
+                <div className='flex flex-col items-center gap-small text-align-x-center max-width-[510px]'>
+                  <h2 className='text-heading-small content-emphasis margin-none'>
+                    {loadErrorTitle}
+                  </h2>
+                  <p className='text-body-medium content-muted margin-none'>
+                    {loadErrorDescription}
+                  </p>
+                  <Button variant='Emphasis' size='Medium' onClick={handleRetry}>
+                    {retryLabel}
+                  </Button>
+                </div>
+              </div>
+            ) : selectableUniverseIds.length > 0 ? (
+              <div
+                className={cx(
+                  classes.tileViewport,
+                  CONTENT_VIEWPORT_CLASS,
+                  replaceShowcaseContent.isError && '!min-height-0',
+                  'grid [grid-template-columns:repeat(auto-fill,144px)] [align-content:flex-start] [justify-content:space-between] [overflow-y:auto] gap-y-medium',
+                )}
+                data-testid='showcase-content-selection-grid'>
+                {selectableUniverseIds.map((universeId) => {
+                  const isSelected = selectedUniverseIds.includes(universeId);
+                  const isInvalid = invalidUniverseIds.has(universeId);
+                  const isDeselectedInvalid = isInvalid && !isSelected;
+                  const ineligibleDescriptionId = `ineligible-showcase-content-description-${universeId.toString()}`;
+                  const name =
+                    detailsByUniverseId.get(universeId)?.name ??
+                    tPendingTranslation(
+                      'Universe {universeId}',
+                      'Fallback name for a showcased experience when its name cannot be loaded',
+                      translationKey(
+                        'Label.ShowcasedExperienceUniverseWithId',
+                        TranslationNamespace.AgreementsManager,
+                      ),
+                      { universeId: universeId.toString() },
+                    );
+                  const selectAriaLabel = tPendingTranslation(
+                    'Select {experienceName}',
+                    'ARIA label for selecting an experience to showcase on an IP listing',
                     translationKey(
-                      'Label.ShowcasedExperienceUniverseWithId',
+                      'Label.SelectShowcasedExperience',
                       TranslationNamespace.AgreementsManager,
                     ),
-                    { universeId: universeId.toString() },
+                    { experienceName: name },
                   );
-                const selectAriaLabel = tPendingTranslation(
-                  'Select {experienceName}',
-                  'ARIA label for selecting an experience to showcase on an IP listing',
-                  translationKey(
-                    'Label.SelectShowcasedExperience',
-                    TranslationNamespace.AgreementsManager,
-                  ),
-                  { experienceName: name },
-                );
-                if (isDeselectedInvalid) {
-                  const ineligibleCreationAriaLabel = tPendingTranslation(
-                    '{experienceName}: {label}',
-                    'ARIA label for a spotlighted creation that can no longer be selected',
-                    translationKey(
-                      'Label.IneligibleSpotlightedCreationAriaLabel',
-                      TranslationNamespace.AgreementsManager,
-                    ),
-                    { experienceName: name, label: ineligibleCreationLabel },
-                  );
+                  if (isDeselectedInvalid) {
+                    const ineligibleCreationAriaLabel = tPendingTranslation(
+                      '{experienceName}: {label}',
+                      'ARIA label for a spotlighted creation that can no longer be selected',
+                      translationKey(
+                        'Label.IneligibleSpotlightedCreationAriaLabel',
+                        TranslationNamespace.AgreementsManager,
+                      ),
+                      { experienceName: name, label: ineligibleCreationLabel },
+                    );
+                    return (
+                      <div key={universeId} className='group relative width-[144px]'>
+                        <Tooltip position='top-center' title={ineligibleCreationTooltip}>
+                          <TooltipTrigger asChild>
+                            <button
+                              type='button'
+                              className='relative block width-full radius-medium clip padding-small [border:none] [background:transparent] text-align-x-left cursor-not-allowed focus-visible:outline-focus'
+                              aria-disabled='true'
+                              aria-label={ineligibleCreationAriaLabel}
+                              aria-describedby={ineligibleDescriptionId}
+                              data-testid={`ineligible-showcase-content-${universeId}`}>
+                              <ShowcaseContentTile universeId={universeId} name={name} />
+                              <VisuallyHidden id={ineligibleDescriptionId}>
+                                {ineligibleCreationTooltip}
+                              </VisuallyHidden>
+                              <div
+                                className={`${classes.ineligibleOverlay} absolute inset-[0] [z-index:2] flex flex-col items-center justify-center gap-xsmall padding-small text-align-x-center`}>
+                                <Icon name='icon-regular-triangle-exclamation' size='Medium' />
+                                <span className='text-label-medium'>{ineligibleCreationLabel}</span>
+                              </div>
+                            </button>
+                          </TooltipTrigger>
+                        </Tooltip>
+                      </div>
+                    );
+                  }
                   return (
                     <div key={universeId} className='group relative width-[144px]'>
-                      <Tooltip position='top-center' title={ineligibleCreationTooltip}>
-                        <TooltipTrigger asChild>
-                          <button
-                            type='button'
-                            className='relative block width-full radius-medium clip padding-small [border:none] [background:transparent] text-align-x-left cursor-not-allowed focus-visible:outline-focus'
-                            aria-disabled='true'
-                            aria-label={ineligibleCreationAriaLabel}
-                            aria-describedby={ineligibleDescriptionId}
-                            data-testid={`ineligible-showcase-content-${universeId}`}>
-                            <ShowcaseContentTile universeId={universeId} name={name} />
-                            <VisuallyHidden id={ineligibleDescriptionId}>
-                              {ineligibleCreationTooltip}
-                            </VisuallyHidden>
-                            <div
-                              className={`${classes.ineligibleOverlay} absolute inset-[0] [z-index:2] flex flex-col items-center justify-center gap-xsmall padding-small text-align-x-center`}>
-                              <Icon name='icon-regular-triangle-exclamation' size='Medium' />
-                              <span className='text-label-medium'>{ineligibleCreationLabel}</span>
-                            </div>
-                          </button>
-                        </TooltipTrigger>
-                      </Tooltip>
+                      <button
+                        type='button'
+                        aria-pressed={isSelected}
+                        data-testid={`showcase-content-selection-${universeId.toString()}`}
+                        className={cx(
+                          classes.selectableTile,
+                          isSelected && classes.selectedTile,
+                          isInvalid && classes.invalidSelectedTile,
+                          isInvalid && 'stroke-system-alert',
+                          'block width-full cursor-pointer radius-medium padding-small [border:none] [background:transparent] [transition:box-shadow_0.2s] text-align-x-left focus-visible:outline-focus',
+                        )}
+                        onClick={() => toggleSelection(universeId)}>
+                        <ShowcaseContentTile universeId={universeId} name={name} />
+                      </button>
+                      <div
+                        className={cx(
+                          'absolute [top:8px] [right:8px] inline-flex items-center justify-center size-600 radius-small',
+                          !isSelected && '[background-color:var(--color-shift-500)]',
+                          !isSelected && classes.unselectedCheckbox,
+                        )}>
+                        <Checkbox
+                          size='Medium'
+                          placement='End'
+                          aria-label={selectAriaLabel}
+                          isChecked={isSelected}
+                          onCheckedChange={() => toggleSelection(universeId)}
+                        />
+                      </div>
                     </div>
                   );
-                }
-                return (
-                  <div key={universeId} className='group relative width-[144px]'>
-                    <button
-                      type='button'
-                      aria-pressed={isSelected}
-                      data-testid={`showcase-content-selection-${universeId.toString()}`}
-                      className={cx(
-                        classes.selectableTile,
-                        isSelected && classes.selectedTile,
-                        isInvalid && classes.invalidSelectedTile,
-                        isInvalid && 'stroke-system-alert',
-                        'block width-full cursor-pointer radius-medium padding-small [border:none] [background:transparent] [transition:box-shadow_0.2s] text-align-x-left focus-visible:outline-focus',
-                      )}
-                      onClick={() => toggleSelection(universeId)}>
-                      <ShowcaseContentTile universeId={universeId} name={name} />
-                    </button>
-                    <div
-                      className={cx(
-                        'absolute [top:8px] [right:8px] inline-flex items-center justify-center size-600 radius-small',
-                        !isSelected && '[background-color:var(--color-shift-500)]',
-                        !isSelected && classes.unselectedCheckbox,
-                      )}>
-                      <Checkbox
-                        size='Medium'
-                        placement='End'
-                        aria-label={selectAriaLabel}
-                        isChecked={isSelected}
-                        onCheckedChange={() => toggleSelection(universeId)}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div
-              className={`${CONTENT_VIEWPORT_CLASS} flex radius-medium stroke-standard stroke-default flex-col items-center justify-center padding-y-xxlarge padding-x-large`}>
-              <ThemedImage
-                lightSrc={experiencesLight}
-                darkSrc={experiencesDark}
-                alt={illustrationAlt}
-              />
-              <div className='flex flex-col items-center gap-xsmall text-align-x-center max-width-[510px]'>
-                <h2 className='text-heading-medium content-emphasis margin-none'>
-                  {emptyStateTitle}
-                </h2>
-                <p className='text-body-medium content-muted margin-none'>
-                  {emptyStateDescription}
+                })}
+              </div>
+            ) : (
+              <div
+                className={`${CONTENT_VIEWPORT_CLASS} ${
+                  replaceShowcaseContent.isError ? '!min-height-0' : ''
+                } flex radius-medium stroke-standard stroke-default flex-col items-center justify-center padding-y-xxlarge padding-x-large`}>
+                <ThemedImage
+                  lightSrc={experiencesLight}
+                  darkSrc={experiencesDark}
+                  alt={illustrationAlt}
+                />
+                <div className='flex flex-col items-center gap-xsmall text-align-x-center max-width-[510px]'>
+                  <h2 className='text-heading-medium content-emphasis margin-none'>
+                    {emptyStateTitle}
+                  </h2>
+                  <p className='text-body-medium content-muted margin-none'>
+                    {emptyStateDescription}
+                  </p>
+                </div>
+              </div>
+            )}
+          </DialogBody>
+          <DialogFooter
+            className={`${classes.dialogFooter} flex flex-col gap-small`}
+            data-testid='showcase-dialog-footer'>
+            {hasSelectedInvalidUniverse ? (
+              <div className='width-full'>
+                <p
+                  className='text-body-medium content-system-alert margin-none width-full'
+                  role='alert'>
+                  {invalidSelectionDescription}
                 </p>
               </div>
-            </div>
-          )}
-          {replaceShowcaseContent.isError ? (
-            <Alert variant='Feedback' severity='Error' hasCloseAffordance={false}>
-              {saveErrorMessage}
-            </Alert>
-          ) : null}
-        </DialogBody>
-        <DialogFooter className='flex flex-col gap-small'>
-          <div className='width-full'>
-            <p
-              className={`text-body-medium content-system-alert margin-none width-full ${
-                hasSelectedInvalidUniverse ? '' : '[visibility:hidden]'
-              }`}
-              role={hasSelectedInvalidUniverse ? 'alert' : undefined}
-              aria-hidden={!hasSelectedInvalidUniverse}>
-              {invalidSelectionDescription}
-            </p>
-          </div>
-          <div className='flex gap-small justify-end width-full'>
-            {selectedUniverseIds.length > 0 ? (
-              <Button variant='Link' size='Medium' onClick={handleDeselectAll}>
-                {deselectAllLabel}
-              </Button>
             ) : null}
-            <Button
-              variant='Emphasis'
-              size='Medium'
-              onClick={handleSave}
-              isDisabled={isAddDisabled}>
-              {addLabel}
-            </Button>
-            <Button variant='Standard' size='Medium' onClick={handleCancel}>
-              {cancelLabel}
-            </Button>
-          </div>
-        </DialogFooter>
+            <div className='width-full'>
+              {replaceShowcaseContent.isError ? (
+                <div className={classes.saveError} data-testid='showcase-save-error'>
+                  <Alert variant='Feedback' severity='Error' hasCloseAffordance={false}>
+                    {saveErrorMessage}
+                  </Alert>
+                </div>
+              ) : null}
+              <div className='flex gap-small justify-end width-full'>
+                <Button
+                  variant='Emphasis'
+                  size='Medium'
+                  onClick={handleSave}
+                  isDisabled={isAddDisabled}>
+                  {addLabel}
+                </Button>
+                <Button variant='Standard' size='Medium' onClick={handleCancel}>
+                  {cancelLabel}
+                </Button>
+              </div>
+            </div>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

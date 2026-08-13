@@ -21,15 +21,15 @@ const GenericTabs = <TTabKey extends string | number>({
   onTabSelected,
 }: TGenericTabsProps<TTabKey>) => {
   const {
-    classes: { tabRoot, tabsRoot },
+    classes: { tabsRoot },
   } = useGenericTabsStyles();
 
   const renderChildren = useMemo(
     () =>
       tabs.map((tab) => {
-        return <Tab key={tab.key} value={tab.key} label={tab.label} classes={{ root: tabRoot }} />;
+        return <Tab key={tab.key} value={tab.key} label={tab.label} />;
       }),
-    [tabs, tabRoot],
+    [tabs],
   );
 
   const handleOnTabSelected: TTabsProps['onChange'] = useCallback(
@@ -46,6 +46,7 @@ const GenericTabs = <TTabKey extends string | number>({
       onChange={handleOnTabSelected}
       orientation='horizontal'
       variant='scrollable'
+      capitalize={false}
       scrollButtons={false}
       classes={{ root: tabsRoot }}>
       {renderChildren}

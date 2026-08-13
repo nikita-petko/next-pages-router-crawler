@@ -1,7 +1,7 @@
 import type { FC, ReactNode } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Button, ProgressCircle } from '@rbx/foundation-ui';
+import { ProgressCircle } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { DialogTemplate, useDialog } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
@@ -13,14 +13,16 @@ import type {
   ActionCellType,
   CellDataType,
 } from '@modules/charts-generic/tables/types/GenericTableType';
-import { useUniverseIdDeprecatedFromAnalytics as useUniverseId } from '@modules/experience-analytics-shared/context/useUniverseID';
+import type { RAQIV2ChartResource } from '@modules/clients/analytics';
 import { EmptyState, Link } from '@modules/miscellaneous/components';
 import LoadError from '@modules/miscellaneous/error/LoadError';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { dashboard, docs } from '@modules/miscellaneous/urls/creatorHub';
 import {
   useJourneyConfigs,
   useDeleteJourneyConfig,
 } from '../../JourneysCreate/useJourneyConfigStorage';
+import JourneysCreateAction from './JourneysCreateAction';
 
 type JourneyAction = 'view' | 'edit' | 'delete';
 
@@ -92,24 +94,20 @@ const JourneyDeleteConfirmContent: FC<{
   );
 };
 
-const JourneysHomeBody: FC = () => {
+const JourneysHomeBody: FC<{ resource: RAQIV2ChartResource }> = ({ resource }) => {
   const { tPendingTranslation, tPendingHtmlTranslation } = useTranslationWrapper(useTranslation());
   const router = useRouter();
-  const { id } = router.query;
-  const universeId = useUniverseId();
+  const universeId = resource.id;
 
-  const { data: configs, isLoading, error, refetch } = useJourneyConfigs();
+  const { data: configs, isLoading, error, refetch } = useJourneyConfigs(universeId);
   const { open, close, configure } = useDialog();
 
   const handleAction = useCallback(
     (actionType: JourneyAction, journeyName: string) => {
-      const base = `/dashboard/creations/experiences/${String(id)}/analytics`;
       if (actionType === 'view') {
-        void router.push(
-          `${base}/journeys/view?filter_JourneyName=${encodeURIComponent(journeyName)}`,
-        );
+        void router.push(dashboard.getAnalyticsJourneysViewUrl(universeId, journeyName));
       } else if (actionType === 'edit') {
-        void router.push(`${base}/journeys/edit?journeyName=${encodeURIComponent(journeyName)}`);
+        void router.push(dashboard.getAnalyticsJourneysEditUrl(universeId, journeyName));
       } else if (actionType === 'delete') {
         configure(
           <JourneyDeleteConfirmContent
@@ -121,7 +119,7 @@ const JourneysHomeBody: FC = () => {
         open();
       }
     },
-    [id, universeId, router, configure, open, close],
+    [universeId, router, configure, open, close],
   );
 
   const columnConfigs: TableColumnConfig<Col>[] = useMemo(
@@ -130,7 +128,7 @@ const JourneysHomeBody: FC = () => {
         columnKey: Col.Name,
         columnType: ColumnType.Text,
         titleKey: tPendingTranslation(
-          'Journey name',
+          'Name',
           'Label for journey name input field',
           translationKey('Label.JourneyName', TranslationNamespace.Analytics),
         ),
@@ -138,7 +136,7 @@ const JourneysHomeBody: FC = () => {
       },
       {
         columnKey: Col.LastModified,
-        columnType: ColumnType.Text,
+        columnType: ColumnType.Timestamp,
         titleKey: tPendingTranslation(
           'Last modified',
           'Column header: when the journey was last modified',
@@ -214,8 +212,8 @@ const JourneysHomeBody: FC = () => {
           [
             Col.LastModified,
             {
-              type: ColumnType.Text,
-              value: entry.lastModified ? new Date(entry.lastModified).toLocaleDateString() : '—',
+              type: ColumnType.Timestamp,
+              value: entry.lastModified ?? '',
             },
           ],
           [Col.Actions, actionsCell],
@@ -228,11 +226,6 @@ const JourneysHomeBody: FC = () => {
     (_: Map<Col, CellDataType<JourneyAction>>, i: number) => configs?.[i]?.journeyName ?? '',
     [configs],
   );
-
-  const handleCreateClick = useCallback(() => {
-    const base = `/dashboard/creations/experiences/${String(id)}/analytics`;
-    void router.push(`${base}/journeys/create`);
-  }, [id, router]);
 
   if (isLoading) {
     return (
@@ -272,7 +265,7 @@ const JourneysHomeBody: FC = () => {
               closing: 'linkEnd',
               content: (chunks: ReactNode) => (
                 <Link
-                  href='/docs/production/analytics/journey-events'
+                  href={docs.getAnalyticsJourneyEventsUrl()}
                   target='_blank'
                   underline='always'
                   color='inherit'>
@@ -282,13 +275,7 @@ const JourneysHomeBody: FC = () => {
             },
           ],
         )}>
-        <Button variant='Emphasis' size='Medium' onClick={handleCreateClick}>
-          {tPendingTranslation(
-            'Create',
-            'Button to create a new journey from the empty state',
-            translationKey('Action.CreateJourney', TranslationNamespace.Analytics),
-          )}
-        </Button>
+        <JourneysCreateAction universeId={universeId} />
       </EmptyState>
     );
   }
@@ -298,7 +285,7 @@ const JourneysHomeBody: FC = () => {
       <GenericTableV2
         rowData={rowData}
         columnConfigs={columnConfigs}
-        tableConfig={{ stickyHeader: true, hover: true }}
+        tableConfig={{ stickyHeader: true, hover: true, tableBorder: false }}
         getRowKey={getRowKey}
         showNoDataMessage={false}
         isDataLoading={false}

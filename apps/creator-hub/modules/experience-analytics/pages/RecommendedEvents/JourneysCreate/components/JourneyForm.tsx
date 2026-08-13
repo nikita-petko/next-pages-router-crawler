@@ -293,7 +293,7 @@ const JourneyForm: FC<JourneyFormProps> = ({
   );
 
   const journeyNameLabel = tPendingTranslation(
-    'Journey name',
+    'Name',
     'Label for journey name input field',
     translationKey('Label.JourneyName', TranslationNamespace.Analytics),
   );
@@ -373,10 +373,10 @@ const JourneyForm: FC<JourneyFormProps> = ({
         />
       </div>
 
-      <div className='flex flex-col gap-medium'>
+      <div className='flex flex-col'>
         <h2 className='text-title-medium content-emphasis'>
           {tPendingTranslation(
-            'Journey stages',
+            'Stages',
             'Section heading for the list of stages in a journey config',
             translationKey('Heading.JourneyStages', TranslationNamespace.Analytics),
           )}
@@ -432,7 +432,7 @@ const JourneyForm: FC<JourneyFormProps> = ({
           </Accordion>
         </div>
 
-        <div className='flex gap-small'>
+        <div className='flex margin-top-small'>
           <Button
             variant='Standard'
             size='Small'

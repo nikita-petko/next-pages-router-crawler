@@ -35,7 +35,7 @@ export const ShowcaseContentTile: FunctionComponent<ShowcaseContentTileProps> = 
         />
       </div>
       <span
-        className='text-title-medium content-emphasis clip [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]'
+        className='text-title-medium content-emphasis clip [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:1]'
         title={name}>
         {name}
       </span>

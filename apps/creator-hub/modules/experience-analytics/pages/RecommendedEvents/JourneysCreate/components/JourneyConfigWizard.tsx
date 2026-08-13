@@ -1,25 +1,21 @@
-import type { FC, ReactNode } from 'react';
+import type { FC } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/router';
 import type { TStepperStep } from '@rbx/foundation-ui';
 import { Button, Snackbar, Stepper } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { Grid } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import HighlightingCodeBlock, {
   HighlightingCodeBlockLanguage,
 } from '@modules/charts-generic/components/HighlightingCodeBlock/HighlightingCodeBlock';
-import { AnalyticsPageDescription } from '@modules/charts-generic/layout/AnalyticsPageDescription';
-import { Link } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
 import generateJourneySnippet from '../generateJourneySnippet';
 import type { JourneyFormValues } from '../journeyFormValues';
 import type { JourneyEntry } from '../useJourneyConfigStorage';
 import JourneyForm from './JourneyForm';
-
-const journeysDocsLink = '/docs/production/analytics/journey-events';
 
 enum JourneyStep {
   Configure = 0,
@@ -27,14 +23,19 @@ enum JourneyStep {
 }
 
 export type JourneyConfigWizardProps = {
+  universeId: number;
   initialValues: JourneyFormValues;
   // Present only when editing; passed through to `useSaveJourneyConfig` so a
   // rename deletes the old config key when it publishes the new one.
   originalName?: string;
 };
 
-const JourneyConfigWizard: FC<JourneyConfigWizardProps> = ({ initialValues, originalName }) => {
-  const { tPendingTranslation, translateHTML } = useTranslationWrapper(useTranslation());
+const JourneyConfigWizard: FC<JourneyConfigWizardProps> = ({
+  universeId,
+  initialValues,
+  originalName,
+}) => {
+  const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const router = useRouter();
 
   const [activeStep, setActiveStep] = useState<JourneyStep>(JourneyStep.Configure);
@@ -48,10 +49,8 @@ const JourneyConfigWizard: FC<JourneyConfigWizardProps> = ({ initialValues, orig
   );
 
   const onCancel = useCallback(() => {
-    void router.push(
-      `/dashboard/creations/experiences/${String(router.query.id)}/analytics/journeys`,
-    );
-  }, [router]);
+    void router.push(dashboard.getAnalyticsJourneysUrl(universeId));
+  }, [router, universeId]);
 
   const onSaved = useCallback((entry: JourneyEntry) => {
     setSavedEntry(entry);
@@ -60,10 +59,8 @@ const JourneyConfigWizard: FC<JourneyConfigWizardProps> = ({ initialValues, orig
 
   const onDone = useCallback(() => {
     const name = savedEntry?.journeyName ?? '';
-    void router.push(
-      `/dashboard/creations/experiences/${String(router.query.id)}/analytics/journeys/view?filter_JourneyName=${encodeURIComponent(name)}`,
-    );
-  }, [savedEntry, router]);
+    void router.push(dashboard.getAnalyticsJourneysViewUrl(universeId, name));
+  }, [savedEntry, router, universeId]);
 
   const onCopyClick = useCallback(() => {
     if (snippetText === null) {
@@ -105,27 +102,6 @@ const JourneyConfigWizard: FC<JourneyConfigWizardProps> = ({ initialValues, orig
     [tPendingTranslation],
   );
 
-  const description = (
-    <Grid container>
-      <AnalyticsPageDescription
-        text={translateHTML(
-          translationKey('Description.TakeActionJourneyEvents', TranslationNamespace.Analytics),
-          [
-            {
-              opening: 'linkStart',
-              closing: 'linkEnd',
-              content: (chunks: ReactNode) => (
-                <Link href={journeysDocsLink} target='_blank' underline='always' color='inherit'>
-                  {chunks}
-                </Link>
-              ),
-            },
-          ],
-        )}
-      />
-    </Grid>
-  );
-
   return (
     <div className='flex flex-col width-full min-height-[calc(100vh-280px)]'>
       {showCopySnackbar && (
@@ -141,9 +117,7 @@ const JourneyConfigWizard: FC<JourneyConfigWizardProps> = ({ initialValues, orig
       )}
 
       <div className='width-full [max-width:720px]'>
-        {description}
-
-        <div className='margin-bottom-large'>
+        <div className='margin-bottom-medium'>
           <Stepper steps={steps} currentStepIndex={activeStep} size='Medium' showDescription />
         </div>
 
@@ -159,7 +133,7 @@ const JourneyConfigWizard: FC<JourneyConfigWizardProps> = ({ initialValues, orig
         )}
 
         {activeStep === JourneyStep.AddToCode && savedEntry !== null && (
-          <div className='margin-top-large'>
+          <div className='margin-top-medium'>
             <p className='text-title-medium content-emphasis margin-none margin-bottom-small'>
               {tPendingTranslation(
                 'Code snippet',
@@ -185,7 +159,7 @@ const JourneyConfigWizard: FC<JourneyConfigWizardProps> = ({ initialValues, orig
               )}
             </p>
 
-            <div className='margin-top-large'>
+            <div className='margin-top-medium'>
               <Button
                 type='button'
                 variant='Standard'

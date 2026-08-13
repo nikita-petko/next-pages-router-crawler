@@ -342,7 +342,7 @@ export type RAQIV2PageDescriptionSpec = {
 export type RAQIV2PageConfig = {
   debugPageName?: string;
   title: TranslationKey;
-  description: RAQIV2PageDescriptionSpec;
+  description?: RAQIV2PageDescriptionSpec;
   action?: React.ReactElement;
   eligibility?: RAQIV2PageEligibilityConfig;
   /** Navigation item for this page, used by tabbed layouts to auto-construct HubMeta titles. */

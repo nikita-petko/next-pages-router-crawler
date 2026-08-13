@@ -1,4 +1,4 @@
-import type { FunctionComponent } from 'react';
+import type { FunctionComponent, ReactNode } from 'react';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { useRobloxAuthentication } from '@rbx/auth';
 import { HubMeta, SiteName, buildTitle } from '@rbx/creator-hub-history';
@@ -33,6 +33,7 @@ import ThumbnailCarousel from '../components/ThumbnailCarousel';
 import useGetIPListing from '../hooks/useGetIPListing';
 import useGetPublicListingShowcaseContent from '../hooks/useGetPublicListingShowcaseContent';
 import useGetShowcaseExperienceDetails from '../hooks/useGetShowcaseExperienceDetails';
+import { useVisibleImpression } from '../hooks/useVisibleImpression';
 import { getListingThumbnailAssetIds } from '../utils/listingThumbnails';
 
 interface ListingDetailsContainerProps {
@@ -45,6 +46,19 @@ const EMPTY_THUMBNAIL_ASSET_IDS: number[] = [];
 const MAX_SHOWCASED_EXPERIENCES = 10;
 const CANONICAL_POSITIVE_INTEGER_PATTERN = /^[1-9]\d*$/;
 const SPOTLIGHTED_CREATIONS_HEADING_ID = 'spotlighted-creations-heading';
+
+type VisibleShowcaseContentProps = {
+  children: ReactNode;
+  onImpression: () => void;
+};
+
+const VisibleShowcaseContent: FunctionComponent<VisibleShowcaseContentProps> = ({
+  children,
+  onImpression,
+}) => {
+  const impressionRef = useVisibleImpression<HTMLDivElement>(onImpression);
+  return <div ref={impressionRef}>{children}</div>;
+};
 
 const getValidShowcasedUniverseIds = (
   content: Array<{ contentType?: string; contentId?: string | null }> | null | undefined,
@@ -154,6 +168,20 @@ const ListingDetailsContainer: FunctionComponent<ListingDetailsContainerProps> =
     },
     [listingId, logEvent],
   );
+  const handleShowcaseContentImpression = useCallback(
+    (universeId: number, contentPosition: number) => {
+      logEvent(
+        LicenseManagerImpressionEvent.PublicListingDetailsPageShowcaseContentImpressionEvent,
+        {
+          listingId,
+          contentType: 'Universe',
+          contentId: universeId,
+          contentPosition,
+        },
+      );
+    },
+    [listingId, logEvent],
+  );
   const showcasedCarouselItems = useMemo(() => {
     const detailsByUniverseId = new Map(
       (showcaseExperienceDetailsRequest.data?.data ?? []).flatMap((details) =>
@@ -175,20 +203,25 @@ const ListingDetailsContainer: FunctionComponent<ListingDetailsContainerProps> =
       return [
         {
           id: `Universe:${universeId}:${index}`,
+          universeId,
           content: (
-            <ShowcaseContentTile
-              universeId={universeId}
-              name={name}
-              link={EXTERNAL_EXPERIENCE_HREF(rootPlaceId)}
-              showExternalIcon={false}
-              onClick={() => handleShowcaseContentClick(universeId, index + 1)}
-            />
+            <VisibleShowcaseContent
+              onImpression={() => handleShowcaseContentImpression(universeId, index + 1)}>
+              <ShowcaseContentTile
+                universeId={universeId}
+                name={name}
+                link={EXTERNAL_EXPERIENCE_HREF(rootPlaceId)}
+                showExternalIcon={false}
+                onClick={() => handleShowcaseContentClick(universeId, index + 1)}
+              />
+            </VisibleShowcaseContent>
           ),
         },
       ];
     });
   }, [
     handleShowcaseContentClick,
+    handleShowcaseContentImpression,
     showcaseExperienceDetailsRequest.data?.data,
     showcasedUniverseIds,
   ]);
@@ -270,10 +303,11 @@ const ListingDetailsContainer: FunctionComponent<ListingDetailsContainerProps> =
         {
           listingId,
           contentCount: showcasedCarouselItems.length,
+          universeIds: showcasedCarouselItems.map(({ universeId }) => universeId).join(','),
         },
       );
     }
-  }, [hasShowcasedExperiences, listingId, logOnce, showcasedCarouselItems.length]);
+  }, [hasShowcasedExperiences, listingId, logOnce, showcasedCarouselItems]);
   useEffect(() => {
     if (hasEmptyShowcasedExperiences) {
       logOnce(

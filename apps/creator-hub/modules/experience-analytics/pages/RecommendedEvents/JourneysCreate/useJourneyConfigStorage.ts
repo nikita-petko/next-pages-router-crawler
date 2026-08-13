@@ -29,7 +29,8 @@ export type JourneyEntry = {
   lastModified?: string;
 };
 
-const journeyConfigQueryKey = (universeId: number) => ['journey-configs', universeId] as const;
+const journeyConfigQueryKey = (universeId: number | undefined) =>
+  ['journey-configs', universeId ?? -1] as const;
 
 function isJourneyConfigPayload(value: unknown): value is JourneyConfigPayload {
   if (!value || typeof value !== 'object') {
@@ -38,10 +39,7 @@ function isJourneyConfigPayload(value: unknown): value is JourneyConfigPayload {
   return 'stages' in value && Array.isArray(value.stages);
 }
 
-export function useJourneyConfigs(universeIdOverride?: number) {
-  const contextUniverseId = useUniverseId();
-  const universeId = universeIdOverride ?? contextUniverseId;
-
+export function useJourneyConfigs(universeId: number | undefined) {
   return useQuery({
     queryKey: journeyConfigQueryKey(universeId),
     queryFn: async (): Promise<JourneyEntry[]> => {
@@ -57,7 +55,7 @@ export function useJourneyConfigs(universeIdOverride?: number) {
         return [{ journeyName, config: entry.value, lastModified: entry.lastModifiedTime }];
       });
     },
-    enabled: Number.isFinite(universeId) && universeId > 0,
+    enabled: universeId !== undefined && Number.isFinite(universeId) && universeId > 0,
   });
 }
 

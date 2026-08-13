@@ -1997,8 +1997,11 @@
 .\!max-width-\[min\(720px\2c 95vw\)\] {
   max-width: min(720px, 95vw) !important;
 }
-.\!max-width-\[min\(880px\2c 95vw\)\] {
-  max-width: min(880px, 95vw) !important;
+.\!max-width-\[min\(800px\2c 95vw\)\] {
+  max-width: min(800px, 95vw) !important;
+}
+.\!min-height-0 {
+  min-height: var(--size-0) !important;
 }
 .\!min-width-\[280px\] {
   min-width: 280px !important;
@@ -2106,9 +2109,6 @@
 .height-\[45px\] {
   height: 45px;
 }
-.height-\[600px\] {
-  height: 600px;
-}
 .height-\[64px\] {
   height: 64px;
 }
@@ -2156,6 +2156,9 @@
 }
 .max-height-\[420px\] {
   max-height: 420px;
+}
+.max-height-\[452px\] {
+  max-height: 452px;
 }
 .max-height-\[500px\] {
   max-height: 500px;
@@ -2362,6 +2365,9 @@
 .min-height-\[120px\] {
   min-height: 120px;
 }
+.min-height-\[168px\] {
+  min-height: 168px;
+}
 .min-height-\[174px\] {
   min-height: 174px;
 }
@@ -2412,9 +2418,6 @@
 }
 .min-height-\[56px\] {
   min-height: 56px;
-}
-.min-height-\[600px\] {
-  min-height: 600px;
 }
 .min-height-\[60px\] {
   min-height: 60px;
@@ -2559,6 +2562,9 @@
 }
 .min-width-\[min\(200px\2c 100\%\)\] {
   min-width: min(200px, 100%);
+}
+.min-width-\[min\(496px\2c 95vw\)\] {
+  min-width: min(496px, 95vw);
 }
 .min-width-\[var\(--size-1200\)\] {
   min-width: var(--size-1200);
@@ -2766,11 +2772,17 @@
   width: -moz-fit-content;
   width: fit-content;
 }
+.width-\[min\(496px\2c 95vw\)\] {
+  width: min(496px, 95vw);
+}
+.width-\[min\(648px\2c 95vw\)\] {
+  width: min(648px, 95vw);
+}
 .width-\[min\(720px\2c 95vw\)\] {
   width: min(720px, 95vw);
 }
-.width-\[min\(880px\2c 95vw\)\] {
-  width: min(880px, 95vw);
+.width-\[min\(800px\2c 95vw\)\] {
+  width: min(800px, 95vw);
 }
 .width-\[var\(--license-hero-card-width\)\] {
   width: var(--license-hero-card-width);
@@ -4112,6 +4124,9 @@
 .\[-webkit-box-orient\:vertical\] {
   -webkit-box-orient: vertical;
 }
+.\[-webkit-line-clamp\:1\] {
+  -webkit-line-clamp: 1;
+}
 .\[-webkit-line-clamp\:2\] {
   -webkit-line-clamp: 2;
 }
@@ -4426,6 +4441,9 @@
 .\[grid-template-columns\:repeat\(3\2c minmax\(0\2c 1fr\)\)\] {
   grid-template-columns: repeat(3,minmax(0,1fr));
 }
+.\[grid-template-columns\:repeat\(auto-fill\2c 144px\)\] {
+  grid-template-columns: repeat(auto-fill,144px);
+}
 .\[grid-template-columns\:repeat\(auto-fill\2c 184px\)\] {
   grid-template-columns: repeat(auto-fill,184px);
 }
@@ -4461,6 +4479,9 @@
 }
 .\[inset\:0\] {
   inset: 0;
+}
+.\[justify-content\:space-between\] {
+  justify-content: space-between;
 }
 .\[left\:0\] {
   left: 0;

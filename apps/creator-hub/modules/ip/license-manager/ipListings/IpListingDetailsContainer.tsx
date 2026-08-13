@@ -141,10 +141,10 @@ const IpListingDetailsContainer = () => {
     'Description of the spotlighted creations section on an IP listing details page',
     translationKey('Description.SpotlightedCreations', TranslationNamespace.AgreementsManager),
   );
-  const addCreationsLabel = tPendingTranslation(
-    'Manage creations',
-    'Action to add creations to an IP listing showcase',
-    translationKey('Action.ManageCreations', TranslationNamespace.AgreementsManager),
+  const editCreationsLabel = tPendingTranslation(
+    'Edit',
+    'Button to edit the associated item',
+    translationKey('Action.Edit', TranslationNamespace.Creations),
   );
   const retryShowcasedExperiencesLabel = tPendingTranslation(
     'Retry',
@@ -427,7 +427,7 @@ const IpListingDetailsContainer = () => {
                   size='Medium'
                   className='width-fit'
                   onClick={handleAddCreations}>
-                  {addCreationsLabel}
+                  {editCreationsLabel}
                 </FoundationButton>
                 {showcasedUniverseIds.length > 0 && (
                   <ShowcaseContentCarousel
@@ -478,5 +478,6 @@ const IpListingDetailsContainer = () => {
 export default withTranslation(IpListingDetailsContainer, [
   TranslationNamespace.Navigation,
   TranslationNamespace.AgreementsManager,
+  TranslationNamespace.Creations,
   TranslationNamespace.Licenses,
 ]);
