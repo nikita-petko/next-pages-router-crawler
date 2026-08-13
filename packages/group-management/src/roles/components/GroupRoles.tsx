@@ -375,6 +375,8 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
             isNewRole: prevSelectedRole.isNewRole,
           };
         });
+
+        showToast(translateWithNamespace(TranslationNamespace.Groups, 'Message.RoleUpdateSuccess'));
       } catch {
         showToast(
           translateWithNamespace(TranslationNamespace.Organization, 'Error.SavingRoleSettings'),
