@@ -2984,10 +2984,6 @@
   padding-left: var(--padding-small) !important;
   padding-right: var(--padding-small) !important;
 }
-.\!padding-x-xsmall {
-  padding-left: var(--padding-xsmall) !important;
-  padding-right: var(--padding-xsmall) !important;
-}
 .\!padding-y-none {
   padding-top: var(--padding-none) !important;
   padding-bottom: var(--padding-none) !important;

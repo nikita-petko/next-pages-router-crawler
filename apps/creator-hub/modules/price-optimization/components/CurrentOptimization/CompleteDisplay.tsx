@@ -14,7 +14,6 @@ import { convertTimeSpanToWeeks } from '../../helpers/experimentUtils';
 import { usePricingError } from '../../providers/PricingErrorProvider';
 import { useGetExperimentationMetadata } from '../../queries/useGetExperimentationMetadata';
 import { useGetExperimentResults } from '../../queries/useGetExperimentResults';
-import { useGetProducts } from '../../queries/useGetProducts';
 import ItemLevelExperimentResults from '../PriceOptimizationResults/ItemLevelExperimentResults';
 import useCurrentOptimizationStyles from './CurrentOptimization.styles';
 
@@ -29,7 +28,6 @@ enum UserAction {
 const CompleteDisplay = () => {
   const { translate } = useTranslation();
   const { classes } = useCurrentOptimizationStyles();
-  const { isLoading: isLoadingProducts, isError: isErrorProducts } = useGetProducts();
   const {
     experimentResults,
     isLoading: isLoadingResults,
@@ -110,10 +108,10 @@ const CompleteDisplay = () => {
     noop();
   };
 
-  const isLoading = isLoadingProducts || isLoadingResults || isCompletingExperiment;
+  const isLoading = isLoadingResults || isCompletingExperiment;
 
   // Display error if fail to load data;
-  const isError = isErrorProducts || isErrorResults;
+  const isError = isErrorResults;
   usePricingError(isError);
 
   let confirmModalTitle = '';
