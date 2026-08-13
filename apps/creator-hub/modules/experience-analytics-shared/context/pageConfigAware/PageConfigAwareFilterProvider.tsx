@@ -7,7 +7,7 @@
  */
 
 import type { FC } from 'react';
-import React, { useMemo, useCallback, useContext, useState, useEffect } from 'react';
+import React, { useMemo, useCallback, useContext, useEffect, useRef } from 'react';
 import type { TRAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
 import legacyFiltersToRAQIV2 from '../../adapters/legacyFiltersToRAQIV2';
 import { getFilterBarDimensionForRAQIV2Dimension } from '../../constants/FilterDimensionConfig';
@@ -33,7 +33,7 @@ export const PageConfigAwareFilterProvider: FC<PageConfigAwareFilterProviderProp
   config,
 }) => {
   const rawParams = useRawAnalyticsQueryParams();
-  const [hasAppliedDefaults, setHasAppliedDefaults] = useState(false);
+  const hasAppliedDefaultsRef = useRef(false);
 
   // Get filter config from surface config
   const filterDimensions = useMemo(() => config?.filterDimensions ?? [], [config]);
@@ -41,7 +41,7 @@ export const PageConfigAwareFilterProvider: FC<PageConfigAwareFilterProviderProp
 
   // Convert RAQI dimensions to filter bar dimensions
   const knownDimensions = useMemo(() => {
-    return filterDimensions.flatMap((dim) => getFilterBarDimensionForRAQIV2Dimension(dim) || []);
+    return filterDimensions.flatMap((dim) => getFilterBarDimensionForRAQIV2Dimension(dim) ?? []);
   }, [filterDimensions]);
 
   // Get raw filters from Layer 1
@@ -49,12 +49,12 @@ export const PageConfigAwareFilterProvider: FC<PageConfigAwareFilterProviderProp
 
   // Apply default filters on initialization
   useEffect(() => {
-    if (hasAppliedDefaults) {
+    if (hasAppliedDefaultsRef.current) {
       return;
     }
 
     if (!defaultFilters || defaultFilters.length === 0) {
-      setHasAppliedDefaults(true);
+      hasAppliedDefaultsRef.current = true;
       return;
     }
 
@@ -73,8 +73,8 @@ export const PageConfigAwareFilterProvider: FC<PageConfigAwareFilterProviderProp
       rawParams.setFilters(newFilters, knownDimensions);
     }
 
-    setHasAppliedDefaults(true);
-  }, [hasAppliedDefaults, defaultFilters, knownDimensions, knownFilters, rawParams]);
+    hasAppliedDefaultsRef.current = true;
+  }, [defaultFilters, knownDimensions, knownFilters, rawParams]);
 
   // Callback to change known filters
   const onKnownFiltersChange = useCallback(
@@ -135,7 +135,7 @@ export const usePageConfigAwareFilterBundle = (
   }, [knownFilters]);
 
   const knownDimensions = useMemo(() => {
-    return raqiDimensions.flatMap((dim) => getFilterBarDimensionForRAQIV2Dimension(dim) || []);
+    return raqiDimensions.flatMap((dim) => getFilterBarDimensionForRAQIV2Dimension(dim) ?? []);
   }, [raqiDimensions]);
 
   return useMemo(() => {

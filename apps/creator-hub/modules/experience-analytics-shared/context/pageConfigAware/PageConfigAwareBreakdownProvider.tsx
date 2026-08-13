@@ -6,7 +6,7 @@ import type { FC } from 'react';
  * for breakdown dimensions. It provides to the EXISTING AnalyticsCurrentBreakdownContext
  * so that existing hooks continue to work unchanged.
  */
-import React, { useMemo, useCallback, useContext, useEffect, useState } from 'react';
+import React, { useMemo, useCallback, useContext, useEffect, useRef } from 'react';
 import type { TRAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
 import type { CreatorAnalyticsPageSurfaceConfig } from '../../types/RAQIV2PageConfig';
 import { AnalyticsCurrentBreakdownContext } from '../AnalyticsCurrentBreakdownBundleProvider';
@@ -26,7 +26,7 @@ export const PageConfigAwareBreakdownProvider: FC<PageConfigAwareBreakdownProvid
   config,
 }) => {
   const rawParams = useRawAnalyticsQueryParams();
-  const [hasAppliedDefaults, setHasAppliedDefaults] = useState(false);
+  const hasAppliedDefaultsRef = useRef(false);
 
   // Get supported and default breakdowns from config
   const supportedDimensions = useMemo(() => config?.breakdownDimensions ?? [], [config]);
@@ -48,11 +48,15 @@ export const PageConfigAwareBreakdownProvider: FC<PageConfigAwareBreakdownProvid
 
   // Sync defaults to the URL query params as a side effect
   useEffect(() => {
-    if (rawParams.breakdown === undefined && defaultBreakdown.length > 0 && !hasAppliedDefaults) {
+    if (
+      rawParams.breakdown === undefined &&
+      defaultBreakdown.length > 0 &&
+      !hasAppliedDefaultsRef.current
+    ) {
       rawParams.setBreakdown([...defaultBreakdown]);
-      setHasAppliedDefaults(true);
+      hasAppliedDefaultsRef.current = true;
     }
-  }, [rawParams, defaultBreakdown, hasAppliedDefaults]);
+  }, [rawParams, defaultBreakdown]);
 
   const setBreakdown = useCallback(
     (newBreakdown: TRAQIV2Dimension[]) => {

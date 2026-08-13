@@ -1,11 +1,13 @@
-import * as signalR from '@microsoft/signalr';
 import type { FC, PropsWithChildren } from 'react';
 import { useCallback, useMemo } from 'react';
+import * as signalR from '@microsoft/signalr';
 import type { ConversationState } from '@rbx/conv-ai-provider';
 import { ConversationLogEvent, ConversationReducerProvider } from '@rbx/conv-ai-provider';
 import AnalyticsQueryParams from '@modules/charts-generic/enums/AnalyticsQueryParams';
-import { useQueryParams } from '@modules/miscellaneous/hooks';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
+import useQueryParams, {
+  normalizeSingleQueryParam,
+} from '@modules/miscellaneous/hooks/useQueryParams';
 import { useUniverseResource } from '../hooks/useChartResourceProvider';
 
 const signalRConnectionUrl =
@@ -19,27 +21,44 @@ const signalRLogLevel =
     : signalR.LogLevel.Trace;
 
 const conversationNamespace = 'Analytics';
+const insightQueryKeys = [AnalyticsQueryParams.InsightId] as const;
 
 const getAnalyticsAssistantEventName = (eventName: ConversationLogEvent): string =>
   `AnalyticsAssistant_${eventName}`;
 
-const convertToRecordString = (params?: Record<string, unknown>): Record<string, string> => {
+const stringifyLogParam = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint' ||
+    typeof value === 'symbol'
+  ) {
+    return value.toString();
+  }
+  // Objects, arrays and functions have no useful primitive form. JSON.stringify
+  // returns undefined for a function — deliberately dropping its source text,
+  // which was never useful telemetry — and throws on circular values, which a
+  // log call must not be able to do.
+  try {
+    return JSON.stringify(value) ?? '';
+  } catch {
+    return '[unserializable]';
+  }
+};
+
+export const convertToRecordString = (params?: Record<string, unknown>): Record<string, string> => {
   if (!params) {
     return {};
   }
 
-  return Object.entries(params).reduce(
-    (acc, [key, value]) => {
-      if (value === null || value === undefined) {
-        acc[key] = '';
-      } else if (typeof value === 'object') {
-        acc[key] = JSON.stringify(value);
-      } else {
-        acc[key] = String(value);
-      }
-      return acc;
-    },
-    {} as Record<string, string>,
+  return Object.fromEntries(
+    Object.entries(params).map(([key, value]) => [key, stringifyLogParam(value)]),
   );
 };
 
@@ -93,7 +112,7 @@ const useGetAnalyticsAssistantLogger = (universeId: number, insightId?: string) 
           break;
         default: {
           const exhaustiveCheck: never = eventName;
-          throw new Error(`Unhandled conversation log event: ${exhaustiveCheck}`);
+          throw new Error(`Unhandled conversation log event: ${String(exhaustiveCheck)}`);
         }
       }
     },
@@ -105,19 +124,8 @@ const useGetAnalyticsAssistantLogger = (universeId: number, insightId?: string) 
 
 const ExperienceAnalyticsConvAIProvider: FC<PropsWithChildren> = ({ children }) => {
   const { id: universeId } = useUniverseResource();
-  const [{ [AnalyticsQueryParams.InsightId]: queryParamInsightId }] = useQueryParams([
-    AnalyticsQueryParams.InsightId,
-  ]);
-  const insightId = useMemo(() => {
-    if (!queryParamInsightId) {
-      return undefined;
-    }
-    if (Array.isArray(queryParamInsightId)) {
-      return queryParamInsightId[0];
-    }
-
-    return queryParamInsightId;
-  }, [queryParamInsightId]);
+  const [queryParams] = useQueryParams(insightQueryKeys);
+  const insightId = normalizeSingleQueryParam(queryParams[AnalyticsQueryParams.InsightId]);
 
   const assistantOptIn = useMemo(() => {
     return {

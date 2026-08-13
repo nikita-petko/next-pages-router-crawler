@@ -1,20 +1,28 @@
 import type { ParsedUrlQuery } from 'node:querystring';
-import { useRouter } from 'next/router';
 import { useCallback, useMemo } from 'react';
+import { useRouter } from 'next/router';
 
-type TQueryParams<PossibleKeys extends string> = {
-  [key in PossibleKeys]: string | string[] | undefined | null;
+export type TQueryParamValue = string | string[] | undefined | null;
+export type TQueryParamInputValue =
+  | string
+  | number
+  | boolean
+  | Array<string>
+  | Array<number>
+  | Array<boolean>
+  | undefined
+  | null;
+
+export type TQueryParams<PossibleKeys extends string> = Partial<
+  Record<PossibleKeys, TQueryParamValue>
+>;
+export type TQueryParamsInput<PossibleKeys extends string> = {
+  [key in PossibleKeys]?: TQueryParamInputValue;
 };
-type TQueryParamsInput<PossibleKeys extends string> = {
-  [key in PossibleKeys]?:
-    | string
-    | number
-    | boolean
-    | Array<string>
-    | Array<number>
-    | Array<boolean>
-    | undefined
-    | null;
+
+export const normalizeSingleQueryParam = (value: TQueryParamValue): string | undefined => {
+  const single = Array.isArray(value) ? value[0] : value;
+  return single === '' || single == null ? undefined : single;
 };
 
 const isQueryValueEquivalent = (
@@ -28,8 +36,8 @@ const isQueryValueEquivalent = (
     return false;
   }
 
-  const lhsValues = Array.isArray(lhs) ? lhs.map((value) => value.toString()) : [lhs.toString()];
-  const rhsValues = Array.isArray(rhs) ? rhs.map((value) => value.toString()) : [rhs.toString()];
+  const lhsValues = Array.isArray(lhs) ? lhs : [lhs];
+  const rhsValues = Array.isArray(rhs) ? rhs : [rhs];
 
   if (lhsValues.length !== rhsValues.length) {
     return false;
@@ -55,8 +63,12 @@ const useQueryParams = <T extends string>(
   (values: TQueryParamsInput<T>, options?: { skipHistory: boolean }) => void,
 ] => {
   const router = useRouter();
-  const queryParamValues = useMemo(() => {
-    return queryParamKeys.reduce((result, key) => ({ ...result, [key]: router.query[key] }), {});
+  const queryParamValues = useMemo<TQueryParams<T>>(() => {
+    const result: TQueryParams<T> = {};
+    for (const key of queryParamKeys) {
+      result[key] = router.query[key];
+    }
+    return result;
   }, [queryParamKeys, router.query]);
 
   const setQueryParamValues = useCallback(
@@ -82,12 +94,12 @@ const useQueryParams = <T extends string>(
       }
 
       if (options.skipHistory) {
-        router.replace({
+        void router.replace({
           pathname: router.pathname,
           query: newQuery,
         });
       } else {
-        router.push(
+        void router.push(
           {
             pathname: router.pathname,
             query: newQuery,
@@ -100,7 +112,7 @@ const useQueryParams = <T extends string>(
     [router, queryParamKeys, transitionOptions],
   );
 
-  return [queryParamValues as TQueryParams<T>, setQueryParamValues];
+  return [queryParamValues, setQueryParamValues];
 };
 
 export default useQueryParams;

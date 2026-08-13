@@ -32,6 +32,11 @@ const defaultSingleDateConfig: SingleDateConfig = {
   maxEndDateOffset: 2,
 };
 
+const minimumQueryDate = minimalDateForQuerying;
+
+const isSingleDateType = (value: string): value is SingleDateType =>
+  Object.values<string>(SingleDateType).includes(value);
+
 /**
  * Get the effective single date type with defaulting.
  */
@@ -39,24 +44,15 @@ function getEffectiveSingleDateType(
   rawSingleDateType: string | undefined,
   singleDateConfig: SingleDateConfig,
 ): SingleDateType {
-  if (!rawSingleDateType) {
+  if (!rawSingleDateType || !isSingleDateType(rawSingleDateType)) {
     return singleDateConfig.defaultDate;
   }
 
-  // Check if the raw value is a valid SingleDateType
-  const isValidType = Object.values(SingleDateType).includes(rawSingleDateType as SingleDateType);
-  if (!isValidType) {
+  if (!singleDateConfig.supportedDates.includes(rawSingleDateType)) {
     return singleDateConfig.defaultDate;
   }
 
-  const typedValue = rawSingleDateType as SingleDateType;
-
-  // Check if it's supported
-  if (!singleDateConfig.supportedDates.includes(typedValue)) {
-    return singleDateConfig.defaultDate;
-  }
-
-  return typedValue;
+  return rawSingleDateType;
 }
 
 /**
@@ -106,7 +102,6 @@ export const PageConfigAwareSingleDateProvider: FC<PageConfigAwareSingleDateProv
   }, [config]);
 
   // Calculate date bounds
-  const minStartDate = useMemo(() => minimalDateForQuerying, []);
   const maxEndDate = useMemo(() => {
     const now = new Date();
     const offset = singleDateConfig.maxEndDateOffset ?? 0;
@@ -121,8 +116,8 @@ export const PageConfigAwareSingleDateProvider: FC<PageConfigAwareSingleDateProv
 
   // Calculate the effective date
   const date = useMemo(
-    () => calculateDate(singleDateType, rawParams.singleDateTime, maxEndDate, minStartDate),
-    [singleDateType, rawParams.singleDateTime, maxEndDate, minStartDate],
+    () => calculateDate(singleDateType, rawParams.singleDateTime, maxEndDate, minimumQueryDate),
+    [singleDateType, rawParams.singleDateTime, maxEndDate],
   );
 
   // Create callbacks that use raw setters
@@ -148,7 +143,7 @@ export const PageConfigAwareSingleDateProvider: FC<PageConfigAwareSingleDateProv
       date,
       onChangeDate,
       maxEndDate,
-      minStartDate,
+      minStartDate: minimumQueryDate,
       singleDateType,
       onChangeDateType,
       singleDateOptions: singleDateConfig.supportedDates,
@@ -157,7 +152,6 @@ export const PageConfigAwareSingleDateProvider: FC<PageConfigAwareSingleDateProv
       date,
       onChangeDate,
       maxEndDate,
-      minStartDate,
       singleDateType,
       onChangeDateType,
       singleDateConfig.supportedDates,

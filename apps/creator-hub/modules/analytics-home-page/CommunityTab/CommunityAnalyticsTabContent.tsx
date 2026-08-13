@@ -5,8 +5,6 @@ import {
   RAQIV2Metric,
   RAQIV2MetricGranularity,
 } from '@rbx/creator-hub-analytics-config';
-import { useFlag } from '@rbx/flags';
-import { announcementAnalytics } from '@generated/flags/communities';
 import AnalyticsComponentType from '@modules/analytics-configurations/AnalyticsComponentType';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import type { AnnotationType } from '@modules/clients/analytics';
@@ -30,7 +28,6 @@ import {
 } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
 import { RAQIV2SpecialLayoutType } from '@modules/experience-analytics-shared/types/RAQIV2SpecialLayoutConfig';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { useCurrentGroup } from '@modules/providers/groups/GroupsProvider';
 import { getAnnouncementCompareChartConfig } from './AnnouncementCompareChart';
 import { getAnnouncementEngagementConfig } from './AnnouncementEngagementDropdown';
 import { getAnnouncementNotificationCtrConfig } from './AnnouncementNotificationCtrDropdown';
@@ -97,12 +94,7 @@ const communityDimensions: ReadonlyArray<RAQIV2Dimension> = [
 ];
 
 const CommunityAnalyticsTabContent: React.FC = () => {
-  const currentGroup = useCurrentGroup();
   const { translate } = useRAQIV2TranslationDependencies();
-  const { value: showAnnouncements } = useFlag(
-    announcementAnalytics,
-    currentGroup ? { groupId: currentGroup.id } : { groupId: 0 },
-  );
 
   const config: CreatorAnalyticsEmbeddedSurfaceConfig = useMemo(() => {
     const body: CreatorAnalyticsEmbeddedSurfaceConfig['body'] = [
@@ -136,32 +128,30 @@ const CommunityAnalyticsTabContent: React.FC = () => {
       tabbedChartConfigPostReactions,
     ];
 
-    if (showAnnouncements) {
-      body.push(
-        {
-          type: RAQIV2SpecialLayoutType.SectionTitle,
-          titleKey: translationKey('Heading.Announcements', TranslationNamespace.Community),
-          tooltipKey: translationKey(
-            'Description.AnnouncementDataAvailability',
-            TranslationNamespace.Community,
-          ),
-        },
-        tabbedChartConfigAnnouncementVisits,
-        getAnnouncementEngagementConfig(),
-        {
-          type: RAQIV2SpecialLayoutType.FullWidthLayout,
-          items: [getAnnouncementNotificationCtrConfig()],
-        },
-        {
-          type: RAQIV2SpecialLayoutType.FullWidthLayout,
-          items: [getAnnouncementCompareChartConfig()],
-        },
-        {
-          type: RAQIV2SpecialLayoutType.FullWidthLayout,
-          items: [getAnnouncementHistoryTableConfig(translate)],
-        },
-      );
-    }
+    body.push(
+      {
+        type: RAQIV2SpecialLayoutType.SectionTitle,
+        titleKey: translationKey('Heading.Announcements', TranslationNamespace.Community),
+        tooltipKey: translationKey(
+          'Description.AnnouncementDataAvailability',
+          TranslationNamespace.Community,
+        ),
+      },
+      tabbedChartConfigAnnouncementVisits,
+      getAnnouncementEngagementConfig(),
+      {
+        type: RAQIV2SpecialLayoutType.FullWidthLayout,
+        items: [getAnnouncementNotificationCtrConfig()],
+      },
+      {
+        type: RAQIV2SpecialLayoutType.FullWidthLayout,
+        items: [getAnnouncementCompareChartConfig()],
+      },
+      {
+        type: RAQIV2SpecialLayoutType.FullWidthLayout,
+        items: [getAnnouncementHistoryTableConfig(translate)],
+      },
+    );
 
     return {
       mode: CreatorAnalyticsPageMode.Embedded,
@@ -187,15 +177,12 @@ const CommunityAnalyticsTabContent: React.FC = () => {
       filterDimensions: communityDimensions,
       body,
     };
-  }, [showAnnouncements, translate]);
+  }, [translate]);
 
-  const layout = <CreatorAnalyticsLayout config={config} />;
   return getCreatorAnalyticsPageLayout(
-    showAnnouncements ? (
-      <AnnouncementNameMapProvider>{layout}</AnnouncementNameMapProvider>
-    ) : (
-      layout
-    ),
+    <AnnouncementNameMapProvider>
+      <CreatorAnalyticsLayout config={config} />
+    </AnnouncementNameMapProvider>,
   );
 };
 

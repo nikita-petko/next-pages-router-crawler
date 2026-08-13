@@ -11,7 +11,7 @@
  */
 
 import type { FC } from 'react';
-import React, { useMemo, useCallback, useEffect, useState } from 'react';
+import React, { useMemo, useCallback, useEffect, useRef } from 'react';
 import { RAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
 import { useAnalyticsCurrentDateRangeBundle } from '@modules/charts-generic/context/AnalyticsQueryDateRangeBundleContext';
 import ChartResourceType from '@modules/charts-generic/enums/ChartResourceType';
@@ -54,7 +54,7 @@ function toChartResourceType(raqiType: RAQIV2ChartResourceType): ChartResourceTy
       return ChartResourceType.User;
     default: {
       const exhaustiveCheck: never = raqiType;
-      throw new Error(`Unknown RAQIV2ChartResourceType: ${exhaustiveCheck}`);
+      throw new Error(`Unknown RAQIV2ChartResourceType: ${String(exhaustiveCheck)}`);
     }
   }
 }
@@ -74,15 +74,16 @@ export const PageConfigAwareAnnotationProvider: FC<PageConfigAwareAnnotationProv
 }) => {
   const rawParams = useRawAnalyticsQueryParams();
   const { startDate, endDate } = useAnalyticsCurrentDateRangeBundle();
-  const [hasAppliedDefaults, setHasAppliedDefaults] = useState(false);
+  const hasAppliedDefaultsRef = useRef(false);
 
   // Get resource types from config
+  const configuredResourceTypes = config.resourceTypes;
   const resourceTypes = useMemo(() => {
-    if (config?.resourceTypes && config.resourceTypes.length > 0) {
-      return config.resourceTypes.map(toChartResourceType);
+    if (configuredResourceTypes && configuredResourceTypes.length > 0) {
+      return configuredResourceTypes.map(toChartResourceType);
     }
     return DEFAULT_RESOURCE_TYPES;
-  }, [config?.resourceTypes]);
+  }, [configuredResourceTypes]);
 
   const resource = useBestSupportedChartResourceOfTypes(resourceTypes);
 
@@ -127,11 +128,15 @@ export const PageConfigAwareAnnotationProvider: FC<PageConfigAwareAnnotationProv
 
   // Sync defaults to the URL query params as a side effect
   useEffect(() => {
-    if (shouldApplyDefaults && defaultAnnotationTypes.length > 0 && !hasAppliedDefaults) {
+    if (
+      shouldApplyDefaults &&
+      defaultAnnotationTypes.length > 0 &&
+      !hasAppliedDefaultsRef.current
+    ) {
       rawParams.setAnnotations([...defaultAnnotationTypes]);
-      setHasAppliedDefaults(true);
+      hasAppliedDefaultsRef.current = true;
     }
-  }, [rawParams, defaultAnnotationTypes, hasAppliedDefaults, shouldApplyDefaults]);
+  }, [rawParams, defaultAnnotationTypes, shouldApplyDefaults]);
 
   // Types to request from the backend (excluding 'None')
   const requestAnnotationTypes = useMemo(() => {

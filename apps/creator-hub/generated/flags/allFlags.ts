@@ -90,16 +90,6 @@ export const generatedFlags = [
       },
     },
     {
-      flag: communitiesFlags.announcementAnalytics,
-      metadata: {
-        namespace: 'communities',
-        name: 'AnnouncementAnalytics',
-        defaultValue: true,
-        valueType: 'boolean',
-        contextType: 'group',
-      },
-    },
-    {
       flag: contentAccessAndInventoryFlags.isAssetPrivacyOptOutSurveyEnabled,
       metadata: {
         namespace: 'content-access-and-inventory',

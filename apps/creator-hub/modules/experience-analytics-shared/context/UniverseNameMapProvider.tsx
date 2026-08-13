@@ -1,6 +1,7 @@
 import type { FunctionComponent } from 'react';
-import React, { useContext, createContext, useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useContext, createContext, useState, useMemo, useCallback } from 'react';
 import developClient from '@modules/clients/develop';
+import useBatchedNameMap from '../hooks/useBatchedNameMap';
 
 const MAX_BATCH_SIZE = 100;
 
@@ -19,6 +20,8 @@ export const useUniverseNameMapFromContext = (): UniverseNameMapBundle => {
   return useContext(UniverseNameMapContext);
 };
 
+const universeIdToKey = (id: number) => id.toString();
+
 const processBatch = async (batch: number[]): Promise<Map<string, string>> => {
   try {
     const response = await developClient.getUniversesDetails(batch);
@@ -35,53 +38,17 @@ const processBatch = async (batch: number[]): Promise<Map<string, string>> => {
   }
 };
 
-const useGetUniverseNameMap = (universeIds: Set<number>) => {
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [universeMap, setUniverseMap] = useState<Map<string, string>>(new Map());
-
-  const pendingIDs = useMemo(
-    () => Array.from(universeIds).filter((id) => !universeMap.has(`${id}`)),
-    [universeIds, universeMap],
-  );
-
-  const processNextBatch = useCallback(async () => {
-    if (isProcessing || !pendingIDs.length) {
-      return;
-    }
-
-    const batchIds = Array.from(pendingIDs).slice(0, MAX_BATCH_SIZE);
-    try {
-      setIsProcessing(true);
-      const batchResults = await processBatch(batchIds);
-      setUniverseMap((prevMap) => {
-        const newMap = new Map(prevMap);
-        batchResults.forEach((value, key) => {
-          newMap.set(key, value);
-        });
-        return newMap;
-      });
-    } catch {
-      /* empty */
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [isProcessing, pendingIDs]);
-
-  useEffect(() => {
-    processNextBatch();
-  }, [processNextBatch]);
-
-  return {
-    data: universeMap,
-  };
-};
-
 export const UniverseNameMapProvider: FunctionComponent<React.PropsWithChildren> = ({
   children,
 }) => {
   const [universeIds, setUniverseIds] = useState<Set<number>>(new Set<number>());
 
-  const { data: universeNamesMap } = useGetUniverseNameMap(universeIds);
+  const universeNamesMap = useBatchedNameMap({
+    ids: universeIds,
+    batchSize: MAX_BATCH_SIZE,
+    fetchBatch: processBatch,
+    toKey: universeIdToKey,
+  });
 
   const addUniverseIds = useCallback(
     (ids: number[]) => {
@@ -98,7 +65,7 @@ export const UniverseNameMapProvider: FunctionComponent<React.PropsWithChildren>
 
   const context = useMemo(() => {
     return {
-      universeNamesMap: universeNamesMap as ReadonlyMap<string, string>,
+      universeNamesMap,
       addUniverseIds,
     };
   }, [universeNamesMap, addUniverseIds]);
