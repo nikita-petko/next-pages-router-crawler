@@ -29,3 +29,14 @@ export function getLicenseTypeTranslationKeys(
 ): LicenseTypeTranslationKeys {
   return LICENSE_TYPE_TRANSLATION_KEYS[licenseType ?? LicenseType.FullExperience];
 }
+
+/** When collaboration licensing is off, UI always presents Full Experience; otherwise use API value. */
+export function getEffectiveLicenseTypeForDisplay(
+  licenseType: LicenseType | undefined,
+  enableCollaborationLicensing: boolean,
+): LicenseType {
+  if (!enableCollaborationLicensing) {
+    return LicenseType.FullExperience;
+  }
+  return licenseType ?? LicenseType.FullExperience;
+}

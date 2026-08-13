@@ -22,7 +22,10 @@ import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManageme
 import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
 import { LICENSE_APPLY_HREF, type LicenseRequestCancelReturnToValue } from '../urls';
 import { formatRoyaltyRate } from '../utils/format';
-import { getLicenseTypeTranslationKeys } from '../utils/licenseTypeTranslationKeys';
+import {
+  getLicenseTypeTranslationKeys,
+  getEffectiveLicenseTypeForDisplay,
+} from '../utils/licenseTypeTranslationKeys';
 import { getIsNonZeroRevShareFromValue } from '../utils/revShare';
 
 function coerceDauBucketForDisplay(
@@ -86,6 +89,9 @@ const useStyles = makeStyles()((theme) => ({
     minWidth: 0,
   },
 }));
+
+/** Revenue Share, License Type, and License Duration — always shown in the subtitle metrics row. */
+const BASE_SUBTITLE_METRIC_COUNT = 3;
 
 type LicenseDetailTileProps = {
   title: ReactNode;
@@ -152,7 +158,9 @@ const LicenseDetailsModal: FunctionComponent<LicenseDetailsModalProps> = ({
 
   const enableCollaborationLicensing =
     frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
-  const licenseTypeLabels = getLicenseTypeTranslationKeys(license.licenseType);
+  const licenseTypeLabels = getLicenseTypeTranslationKeys(
+    getEffectiveLicenseTypeForDisplay(license.licenseType, enableCollaborationLicensing),
+  );
 
   const listingId = license.listingId;
   const licenseId = license.id;
@@ -163,9 +171,8 @@ const LicenseDetailsModal: FunctionComponent<LicenseDetailsModalProps> = ({
     licenseId.length > 0;
 
   const showRevShareTiming = getIsNonZeroRevShareFromValue(license.royaltyRate);
-  const subtitleMetricCount =
-    2 + (enableCollaborationLicensing ? 1 : 0) + (showRevShareTiming ? 1 : 0);
-  const hasFourSubtitleMetrics = subtitleMetricCount === 4;
+  const subtitleMetricCount = BASE_SUBTITLE_METRIC_COUNT + (showRevShareTiming ? 1 : 0);
+  const hasFourSubtitleMetrics = subtitleMetricCount === BASE_SUBTITLE_METRIC_COUNT + 1;
 
   const licenseDurationTooltipTitle =
     license.licenseDuration?.durationType === LicenseDurationType.TimeLimited
@@ -210,13 +217,11 @@ const LicenseDetailsModal: FunctionComponent<LicenseDetailsModalProps> = ({
                     />
                   </div>
                   <div className={classes.subtitleMetricRow}>
-                    {enableCollaborationLicensing && (
-                      <LicenseDetailTile
-                        title={translate(licenseTypeLabels.detail)}
-                        label={translate('Label.LicenseType')}
-                        tooltipTitle={translate(licenseTypeLabels.tooltip)}
-                      />
-                    )}
+                    <LicenseDetailTile
+                      title={translate(licenseTypeLabels.detail)}
+                      label={translate('Label.LicenseType')}
+                      tooltipTitle={translate(licenseTypeLabels.tooltip)}
+                    />
                     <LicenseDetailTile
                       title={getDurationRangeLabel(translate, license.licenseDuration)}
                       label={translate('Label.LicenseDuration')}
@@ -243,13 +248,11 @@ const LicenseDetailsModal: FunctionComponent<LicenseDetailsModalProps> = ({
                       tooltipTitle={translate('Label.TooltipRevShareTiming')}
                     />
                   )}
-                  {enableCollaborationLicensing && (
-                    <LicenseDetailTile
-                      title={translate(licenseTypeLabels.detail)}
-                      label={translate('Label.LicenseType')}
-                      tooltipTitle={translate(licenseTypeLabels.tooltip)}
-                    />
-                  )}
+                  <LicenseDetailTile
+                    title={translate(licenseTypeLabels.detail)}
+                    label={translate('Label.LicenseType')}
+                    tooltipTitle={translate(licenseTypeLabels.tooltip)}
+                  />
                   <LicenseDetailTile
                     title={getDurationRangeLabel(translate, license.licenseDuration)}
                     label={translate('Label.LicenseDuration')}

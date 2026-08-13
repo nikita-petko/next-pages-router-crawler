@@ -29,7 +29,10 @@ import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxSer
 import { useVisibleImpression } from '../hooks/useVisibleImpression';
 import { LICENSE_APPLY_HREF } from '../urls';
 import { formatRoyaltyRate } from '../utils/format';
-import { getLicenseTypeTranslationKeys } from '../utils/licenseTypeTranslationKeys';
+import {
+  getLicenseTypeTranslationKeys,
+  getEffectiveLicenseTypeForDisplay,
+} from '../utils/licenseTypeTranslationKeys';
 import { getIsNonZeroRevShareFromLicense } from '../utils/revShare';
 
 const useStyles = makeStyles()((theme) => ({
@@ -112,7 +115,9 @@ const LicenseAccordion: FunctionComponent<LicenseAccordionProps> = ({
     return <PageLoading />;
   }
 
-  const licenseTypeLabels = getLicenseTypeTranslationKeys(license.licenseType);
+  const licenseTypeLabels = getLicenseTypeTranslationKeys(
+    getEffectiveLicenseTypeForDisplay(license.licenseType, enableCollaborationLicensing),
+  );
   const showRevShareInSummary = isAuthenticated && license.royaltyRate !== undefined;
   const showDurationInSummary = isAuthenticated;
 
@@ -136,31 +141,25 @@ const LicenseAccordion: FunctionComponent<LicenseAccordionProps> = ({
                       })}
                     </Typography>
                   </Grid>
-                  {(enableCollaborationLicensing || showDurationInSummary) && (
-                    <Grid item>
-                      <Typography variant='body1' color='secondary'>
-                        •
-                      </Typography>
-                    </Grid>
-                  )}
+                  <Grid item>
+                    <Typography variant='body1' color='secondary'>
+                      •
+                    </Typography>
+                  </Grid>
                 </>
               )}
-              {enableCollaborationLicensing && (
-                <Grid item>
-                  <Typography variant='body1' color='secondary'>
-                    {translate(licenseTypeLabels.summary)}
-                  </Typography>
-                </Grid>
-              )}
+              <Grid item>
+                <Typography variant='body1' color='secondary'>
+                  {translate(licenseTypeLabels.summary)}
+                </Typography>
+              </Grid>
               {showDurationInSummary && (
                 <>
-                  {enableCollaborationLicensing && (
-                    <Grid item>
-                      <Typography variant='body1' color='secondary'>
-                        •
-                      </Typography>
-                    </Grid>
-                  )}
+                  <Grid item>
+                    <Typography variant='body1' color='secondary'>
+                      •
+                    </Typography>
+                  </Grid>
                   <Grid item>
                     <Typography variant='body1' color='secondary'>
                       {license.licenseDuration?.durationType === LicenseDurationType.TimeLimited
@@ -229,25 +228,23 @@ const LicenseAccordion: FunctionComponent<LicenseAccordionProps> = ({
                 </Grid>
               </Grid>
             )}
-            {enableCollaborationLicensing && (
-              <Grid item container flexDirection='column' width='auto'>
+            <Grid item container flexDirection='column' width='auto'>
+              <Grid item>
+                <Typography variant='h2'>{translate(licenseTypeLabels.detail)}</Typography>
+              </Grid>
+              <Grid item container className={classes.tooltipContainer}>
                 <Grid item>
-                  <Typography variant='h2'>{translate(licenseTypeLabels.detail)}</Typography>
+                  <Typography variant='body1' display='block' color='secondary'>
+                    {translate('Label.LicenseType')}
+                  </Typography>
                 </Grid>
-                <Grid item container className={classes.tooltipContainer}>
-                  <Grid item>
-                    <Typography variant='body1' display='block' color='secondary'>
-                      {translate('Label.LicenseType')}
-                    </Typography>
-                  </Grid>
-                  <Grid item className={classes.tooltip}>
-                    <Tooltip arrow placement='right' title={translate(licenseTypeLabels.tooltip)}>
-                      <InfoOutlinedIcon fontSize='medium' className={classes.icon} />
-                    </Tooltip>
-                  </Grid>
+                <Grid item className={classes.tooltip}>
+                  <Tooltip arrow placement='right' title={translate(licenseTypeLabels.tooltip)}>
+                    <InfoOutlinedIcon fontSize='medium' className={classes.icon} />
+                  </Tooltip>
                 </Grid>
               </Grid>
-            )}
+            </Grid>
             <Grid item container flexDirection='column' width='auto'>
               <Grid item>
                 <Typography variant='h2'>
