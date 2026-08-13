@@ -99,16 +99,13 @@ export const PrimaryRail: React.FC<PropsWithChildren<TPrimaryRailProps>> = ({
 }) => {
   const {
     primaryRailOpen,
-    primaryRailCompact,
-    iconOnly,
+    primaryRailCompact: compact,
     allToolsOpen,
     drawerVariant,
     setHasSecondaryRail,
     setPrimaryRailOpen,
     setAllToolsOpen,
   } = useRailContext();
-
-  const compact = primaryRailCompact || iconOnly;
 
   const hasChildren = Boolean(children);
   const { login, isFetched, user } = useRobloxAuthentication();

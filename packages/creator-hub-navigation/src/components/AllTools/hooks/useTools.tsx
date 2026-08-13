@@ -63,7 +63,7 @@ export const getTalentHref = (talentHome: string, enableTalentHubV2M2?: boolean)
 const useTools = (searchTerm = '') => {
   const { Dashboard, Documentation, Store, Ads, Roblox, Forum, Talent } = useProductUrls();
   const { currentWorkspace } = useWorkspaces();
-  const { enableAdsManager, enableTalentHubV2M2 } = useNavigationConfigs();
+  const { enableTalentHubV2M2 } = useNavigationConfigs();
   const { translate } = useTranslation();
   const debounceSearchTerm = useDebounce(searchTerm, 100);
   const talentHref = getTalentHref(Talent.home, enableTalentHubV2M2);
@@ -185,8 +185,6 @@ const useTools = (searchTerm = '') => {
               key: 'adsManager',
               label: translate('Heading.AdsManager'),
               href: Ads.home,
-              external: !enableAdsManager,
-              adornment: enableAdsManager ? undefined : <LaunchIcon fontSize='small' />,
             },
             {
               key: 'sponsoredItems',
@@ -286,7 +284,6 @@ const useTools = (searchTerm = '') => {
       Store.audio,
       Store.decals,
       Ads.home,
-      enableAdsManager,
       currentWorkspace.creatorType,
       currentWorkspace.creatorId,
       Roblox,

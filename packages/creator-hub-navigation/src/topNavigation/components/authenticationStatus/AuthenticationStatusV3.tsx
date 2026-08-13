@@ -11,8 +11,6 @@ import {
 } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { useSessionStorage } from '@rbx/react-utilities';
-import { Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
-import { Avatar } from '@rbx/ui';
 import type {
   AccountSwitcherSnackbarConfig,
   SwitchedAccountUsersStorage,
@@ -25,8 +23,10 @@ import {
   useLoadAccountSwitcherFrame,
 } from '../../../accountSwitcher';
 import { isDesktopSafari, isIOS, isRobloxApp } from '../../../accountSwitcher/utils/browser';
+import WorkplaceThumbnailContainer from '../../../components/WorkplaceSelector/components/WorkplaceThumbnailContainer';
 import { openNavUserMenuButtonEventModel } from '../../../event/eventConstants';
 import useNavigationConfigs from '../../../hooks/useNavigationConfigs';
+import { CreatorType } from '../../../providers/WorkspaceProvider/constants';
 import useGetAuthenticatedUser from '../../../queries/useGetAuthenticatedUser';
 import AuthenticationStatusMenu from './AuthenticationStatusMenu';
 import RefreshDialog from './RefreshDialog';
@@ -37,7 +37,7 @@ enum DialogType {
   Refresh,
 }
 
-type TAuthenticationStatusV3Props = {
+export type TAuthenticationStatusV3Props = {
   desktopDropdownContent?: ReactElement<TMenuItemProps>[];
   onLogout?: VoidFunction; // optional callback that runs after logout
 };
@@ -80,6 +80,7 @@ const AuthenticationStatusV3: FunctionComponent<TAuthenticationStatusV3Props> = 
     }
 
     if (user?.id !== authUser?.id) {
+      // oxlint-disable-next-line react/react-compiler
       setDialogType(DialogType.Refresh);
     }
   }, [authUser?.id, isAuthUserSuccess, isUserFetched, user?.id]);
@@ -95,6 +96,7 @@ const AuthenticationStatusV3: FunctionComponent<TAuthenticationStatusV3Props> = 
     }
 
     if (user?.id === switchedAccountUsersStorage?.switchedToUserId) {
+      // oxlint-disable-next-line react/react-compiler
       setSnackbarConfig({
         title: translate('Message.YouSwitchedTo', { username: user.name ?? '' }),
         isError: false,
@@ -154,13 +156,13 @@ const AuthenticationStatusV3: FunctionComponent<TAuthenticationStatusV3Props> = 
   }
 
   const avatar = (
-    <Avatar alt='avatar'>
-      <Thumbnail2d
-        targetId={user.id ?? 0}
-        type={ThumbnailTypes.avatarHeadshot}
-        alt={user.name ?? ''}
-      />
-    </Avatar>
+    <WorkplaceThumbnailContainer
+      creator={{
+        creatorId: user.id ?? 0,
+        creatorName: user.name,
+        creatorType: CreatorType.User,
+      }}
+    />
   );
 
   return (

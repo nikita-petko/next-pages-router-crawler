@@ -28,7 +28,6 @@ export type NavigationConfigsContextValue = NavigationDrawerState & {
   navigationDropdownTabs: TProductKey[] | null;
   enableCourses: boolean;
   enableNotificationsM2: boolean; // TODO @ahua (1/30/2026): Remove once notifications M2 is fully released
-  enableAdsManager: boolean;
   enableTalentHubV2M2: boolean;
   creatorHubSearchIxpParams: CreatorHubSearchIxpParams;
   isCompact: boolean;
@@ -55,7 +54,6 @@ const defaultContextValue: NavigationConfigsContextValue = {
   navigationDropdownTabs: null,
   enableCourses: false,
   enableNotificationsM2: false, // TODO @ahua (1/30/2026): Remove once notifications M2 is fully released
-  enableAdsManager: false,
   enableTalentHubV2M2: false,
   creatorHubSearchIxpParams: DEFAULT_CREATOR_HUB_SEARCH_VERSION,
   isCompact: false,

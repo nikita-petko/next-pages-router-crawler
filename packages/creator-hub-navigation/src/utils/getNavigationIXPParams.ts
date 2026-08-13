@@ -1,4 +1,4 @@
-import type { CreatorHubSearchIxpParams } from '@rbx/creator-hub-search';
+import { z } from 'zod';
 import { DEFAULT_CREATOR_HUB_SEARCH_VERSION } from '@rbx/creator-hub-search';
 import type { TBuildTarget, TProductKey, TTargetEnvironment } from '../types';
 import { getBEDEV2ServiceBasePath } from './getBasePaths';
@@ -16,7 +16,6 @@ enum NavigationIXPParameters {
   creatorEventsVariant = 'creatorEventsVariant',
   enableAssistant = 'enableAssistant',
   enableCourses = 'enableCourses',
-  enableAdsManager = 'enableAdsManager',
   enableNotificationsM2 = 'enableNotificationsM2',
 }
 
@@ -24,31 +23,83 @@ enum TalentHubIXPParameters {
   enableTalentHubV2M2 = 'enableTalentHubV2M2',
 }
 
-export type TNavigationIXPResults = {
-  [NavigationIXPParameters.enableNotificationsM2]: boolean | null;
-  [NavigationIXPParameters.enableAssistant]: boolean;
-  [NavigationIXPParameters.disableProducts]: string[] | null;
-  [NavigationIXPParameters.enableLuobu]: boolean | null;
-  [NavigationIXPParameters.creatorEventsVariant]: string | null; // 'tab', 'dropdown', 'control'
-  [NavigationIXPParameters.enableCourses]: boolean | null;
-  [NavigationIXPParameters.enableAdsManager]: boolean | null;
-  [TalentHubIXPParameters.enableTalentHubV2M2]: boolean | number | null;
-  creatorHubSearchIxpParams: CreatorHubSearchIxpParams;
-};
+const navigationIXPResultsSchema = z.object({
+  [NavigationIXPParameters.enableNotificationsM2]: z.boolean().nullable().default(false),
+  [NavigationIXPParameters.enableAssistant]: z.boolean().default(false),
+  [NavigationIXPParameters.disableProducts]: z.array(z.string()).nullable().default(null),
+  [NavigationIXPParameters.enableLuobu]: z.boolean().nullable().default(null),
+  [NavigationIXPParameters.creatorEventsVariant]: z.string().nullable().default(null),
+  [NavigationIXPParameters.enableCourses]: z.boolean().nullable().default(false),
+  [TalentHubIXPParameters.enableTalentHubV2M2]: z
+    .union([z.boolean(), z.number()])
+    .nullable()
+    .default(false),
+  creatorHubSearchIxpParams: z.number().nullable().default(DEFAULT_CREATOR_HUB_SEARCH_VERSION),
+});
+
+export type TNavigationIXPResults = z.infer<typeof navigationIXPResultsSchema>;
+
+const navigationConfigsSchema = z.object({
+  disableProducts: z.array(z.string()).default([]),
+  enableLuobu: z.boolean().default(false),
+  enableNotificationsM2: z.boolean().default(false),
+  enableAssistant: z.boolean().default(false),
+  creatorEventsVariant: z.string().nullable().default(null),
+  layoutVariant: z.string().nullable().default(null),
+  enableCourses: z.boolean().default(false),
+  enableTalentHubV2M2: z.union([z.boolean(), z.number()]).default(false),
+  creatorHubSearchIxpParams: z.number().nullable().default(DEFAULT_CREATOR_HUB_SEARCH_VERSION),
+});
+
+type TNavigationConfigs = z.infer<typeof navigationConfigsSchema>;
+
+const optionalBooleanSchema = z
+  .preprocess((value) => value ?? undefined, z.boolean().optional())
+  .catch(undefined);
+const optionalNumberSchema = z
+  .preprocess((value) => value ?? undefined, z.number().optional())
+  .catch(undefined);
+const optionalStringSchema = z
+  .preprocess((value) => value ?? undefined, z.string().optional())
+  .catch(undefined);
+
+const navigationIXPResponseSchema = z
+  .object({
+    disableProducts: z
+      .preprocess((value) => value ?? undefined, z.array(z.string()).optional())
+      .catch(undefined),
+    enableLuobu: optionalBooleanSchema,
+    enableNotificationsM2: optionalBooleanSchema,
+    enableAssistant: optionalBooleanSchema,
+    creatorEventsVariant: optionalStringSchema,
+    layoutVariant: optionalStringSchema,
+  })
+  .catch({});
+
+const creatorDocumentationIXPResponseSchema = z
+  .object({
+    enableCourses: optionalBooleanSchema,
+  })
+  .catch({});
+
+const creatorHubSearchIXPResponseSchema = z
+  .object({
+    searchVersion: optionalNumberSchema,
+  })
+  .catch({});
+
+const talentHubIXPResponseSchema = z
+  .object({
+    enableTalentHubV2M2: z
+      .preprocess((value) => value ?? undefined, z.union([z.boolean(), z.number()]).optional())
+      .catch(undefined),
+  })
+  .catch({});
+
 // update storage key everytime we change ixp params setup
 export const storageKey = '_navigation';
 
-export const defaultIXPParamsValue: TNavigationIXPResults = {
-  enableAssistant: false,
-  disableProducts: null,
-  enableLuobu: null,
-  creatorEventsVariant: null,
-  enableCourses: false,
-  enableNotificationsM2: false,
-  enableAdsManager: false,
-  enableTalentHubV2M2: false,
-  creatorHubSearchIxpParams: DEFAULT_CREATOR_HUB_SEARCH_VERSION,
-};
+export const defaultIXPParamsValue = navigationIXPResultsSchema.parse({});
 
 export async function fetchNavigationIXPParametersForLayer(
   layer: string,
@@ -62,7 +113,8 @@ export async function fetchNavigationIXPParametersForLayer(
   const response = await fetch(url, {
     credentials: 'include',
   });
-  return response.json();
+  const data: unknown = await response.json();
+  return data;
 }
 
 export async function getNavigationIXPParamsUncached(
@@ -107,17 +159,22 @@ export async function getNavigationIXPParamsUncached(
     ixpParamsTalentHubLayer.status === 'fulfilled'
   ) {
     return {
-      ixpParamsValue: ixpParams.value,
-      ixpParamsByUserValue: ixpParamsByUser.value,
-      ixpParamsByUserIdValue: ixpParamsByUserId.value,
-      ixpParamsCreatorHubSearchValue: ixpParamsCreatorHubSearchLayer.value,
-      ixpParamsTalentHubValue: ixpParamsTalentHubLayer.value,
+      ixpParamsValue: navigationIXPResponseSchema.parse(ixpParams.value),
+      ixpParamsByUserValue: navigationIXPResponseSchema.parse(ixpParamsByUser.value),
+      ixpParamsByUserIdValue: creatorDocumentationIXPResponseSchema.parse(ixpParamsByUserId.value),
+      ixpParamsCreatorHubSearchValue: creatorHubSearchIXPResponseSchema.parse(
+        ixpParamsCreatorHubSearchLayer.value,
+      ),
+      ixpParamsTalentHubValue: talentHubIXPResponseSchema.parse(ixpParamsTalentHubLayer.value),
     };
   }
   return null;
 }
 
-async function getNavigationConfigsUncached(target: TBuildTarget, environment: TTargetEnvironment) {
+async function getNavigationConfigsUncached(
+  target: TBuildTarget,
+  environment: TTargetEnvironment,
+): Promise<TNavigationConfigs | null> {
   const res = await getNavigationIXPParamsUncached(target, environment, NavigationIXPParameters);
   if (res) {
     const {
@@ -128,22 +185,21 @@ async function getNavigationConfigsUncached(target: TBuildTarget, environment: T
       ixpParamsTalentHubValue,
     } = res;
 
-    return {
-      disableProducts: ixpParamsValue.disableProducts || ixpParamsByUserValue.disableProducts || [],
-      enableLuobu: ixpParamsValue.enableLuobu || ixpParamsByUserValue.enableLuobu || false,
+    return navigationConfigsSchema.parse({
+      disableProducts: ixpParamsValue.disableProducts ?? ixpParamsByUserValue.disableProducts,
+      /* eslint-disable typescript/prefer-nullish-coalescing -- A true value from either IXP layer should enable the feature. */
+      enableLuobu: ixpParamsValue.enableLuobu || ixpParamsByUserValue.enableLuobu,
       enableNotificationsM2:
-        ixpParamsValue.enableNotificationsM2 || ixpParamsByUserValue.enableNotificationsM2 || false,
-      enableAssistant:
-        ixpParamsValue.enableAssistant || ixpParamsByUserValue.enableAssistant || false,
+        ixpParamsValue.enableNotificationsM2 || ixpParamsByUserValue.enableNotificationsM2,
+      enableAssistant: ixpParamsValue.enableAssistant || ixpParamsByUserValue.enableAssistant,
+      /* eslint-enable typescript/prefer-nullish-coalescing */
       creatorEventsVariant:
-        ixpParamsValue.creatorEventsVariant || ixpParamsByUserValue.creatorEventsVariant || null,
-      layoutVariant: ixpParamsValue.layoutVariant || ixpParamsByUserValue.layoutVariant || null,
-      enableCourses: ixpParamsByUserIdValue?.enableCourses ?? false,
-      enableAdsManager: ixpParamsValue?.enableAdsManager ?? false,
-      enableTalentHubV2M2: ixpParamsTalentHubValue?.enableTalentHubV2M2 ?? false,
-      creatorHubSearchIxpParams:
-        ixpParamsCreatorHubSearchValue?.searchVersion ?? DEFAULT_CREATOR_HUB_SEARCH_VERSION,
-    };
+        ixpParamsValue.creatorEventsVariant ?? ixpParamsByUserValue.creatorEventsVariant,
+      layoutVariant: ixpParamsValue.layoutVariant ?? ixpParamsByUserValue.layoutVariant,
+      enableCourses: ixpParamsByUserIdValue.enableCourses,
+      enableTalentHubV2M2: ixpParamsTalentHubValue.enableTalentHubV2M2,
+      creatorHubSearchIxpParams: ixpParamsCreatorHubSearchValue.searchVersion,
+    });
   }
   return null;
 }
@@ -157,7 +213,7 @@ export function getNavigationIXPParams(
   const configs: TNavigationIXPResults = localStorageUtils.get(storageKey) ?? defaultValue;
 
   // async trigger ixp fetching and update cache for next time
-  getNavigationConfigsUncached(target, environment).then((result) =>
+  void getNavigationConfigsUncached(target, environment).then((result) =>
     localStorageUtils.set(storageKey, result ?? defaultValue),
   );
 

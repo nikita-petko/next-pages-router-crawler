@@ -84,22 +84,19 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
 
   const {
     iconOnly,
-    primaryRailCompact,
+    primaryRailCompact: compact,
     drawerVariant,
     allToolsOpen,
     learnOpen,
     isReady,
     shouldAnimate,
     setIconOnly,
-    setPrimaryRailCompact,
     setLearnOpen,
     setAllToolsOpen,
     setPrimaryRailOpen,
   } = useRailContext();
 
-  const compact = primaryRailCompact || iconOnly;
-
-  const { currentProduct, enableAdsManager } = useNavigationConfigs();
+  const { currentProduct } = useNavigationConfigs();
   const {
     currentWorkspace: { creatorType },
   } = useWorkspaces();
@@ -166,10 +163,6 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
       ProductKey.Talent,
     ];
 
-    if (enableAdsManager) {
-      productPaths.push(ProductKey.Advertise);
-    }
-
     if (productPaths.includes(currentProduct)) {
       return currentProduct;
     }
@@ -178,7 +171,6 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
   }, [
     learnOpen,
     currentProduct,
-    enableAdsManager,
     pathname,
     Dashboard.creations,
     Dashboard.analytics,
@@ -211,9 +203,6 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
   const onSidebarToggleClick = () => {
     const next = !iconOnly;
     sendEvent(clickNavPrimaryRailCollapseEventModel(next ? 'collapse' : 'expand'));
-    if (!next) {
-      setPrimaryRailCompact(false);
-    }
     setIconOnly(next);
     localStorage.setItem(RAIL_ICON_ONLY_STORAGE_KEY, String(next));
   };

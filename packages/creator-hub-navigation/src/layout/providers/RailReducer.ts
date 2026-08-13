@@ -33,11 +33,14 @@ const getStoredIconOnly = (): boolean => {
 };
 
 export const createInitialState = ({ screenSize }: { screenSize: ScreenSize }): RailState => {
+  const drawerVariant = screenSize === 'large' ? 'persistent' : 'temporary';
+  const iconOnly = getStoredIconOnly();
+
   return {
     primaryRailOpen: screenSize === 'large',
-    primaryRailCompact: false,
-    iconOnly: getStoredIconOnly(),
-    drawerVariant: screenSize === 'large' ? 'persistent' : 'temporary',
+    primaryRailCompact: drawerVariant === 'persistent' && iconOnly,
+    iconOnly,
+    drawerVariant,
     hasSecondaryRail: false,
     allToolsOpen: false,
     learnOpen: false,
@@ -57,12 +60,17 @@ function railReducer(state: Readonly<RailState>, action: RailAction): RailState 
       return { ...state, primaryRailCompact: action.payload };
     }
     case 'setIconOnly': {
-      return { ...state, iconOnly: action.payload };
+      return {
+        ...state,
+        iconOnly: action.payload,
+        primaryRailCompact: state.drawerVariant === 'persistent' && action.payload,
+      };
     }
     case 'setScreenSize': {
       const drawerVariant = action.payload === 'large' ? 'persistent' : 'temporary';
       const primaryRailOpen = drawerVariant !== 'temporary';
-      const primaryRailCompact = action.payload !== 'large' && state.hasSecondaryRail;
+      const primaryRailCompact =
+        drawerVariant === 'persistent' ? state.iconOnly : state.hasSecondaryRail;
 
       return {
         ...state,
