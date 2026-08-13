@@ -112,19 +112,26 @@ const getReportsSurfaceConfig = (
   breakdownDimensions: [],
   preControlCharts:
     bannerElements.length > 0
-      ? bannerElements.map((bannerElement) => ({
-          type: RAQIV2SpecialLayoutType.FullWidthLayout,
-          items: [
-            {
-              type: AnalyticsComponentType.NonGeneric,
-              metrics: [],
-              renderer: {
-                type: 'isolated',
-                render: () => bannerElement,
+      ? [
+          {
+            type: RAQIV2SpecialLayoutType.FullWidthLayout,
+            items: [
+              {
+                type: AnalyticsComponentType.NonGeneric,
+                metrics: [],
+                renderer: {
+                  type: 'isolated',
+                  render: () =>
+                    React.createElement(
+                      'div',
+                      { className: 'flex flex-col gap-xxlarge' },
+                      React.Children.toArray(bannerElements),
+                    ),
+                },
               },
-            },
-          ],
-        }))
+            ],
+          },
+        ]
       : undefined,
   body: [
     {
