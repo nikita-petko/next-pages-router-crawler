@@ -31,9 +31,12 @@ function buildMockSummary(experimentId: string): GetExperimentSummaryResponse {
   // breakdown so the UI exercises its empty-state branches.
   if (event.status !== 'Completed') {
     return {
+      state: 'HoldoutRunning',
       priceChangeBreakdown: null,
       experimentPopulationInMicroUnits:
         event.status === 'Active' ? MOCK_TEST_POPULATION_MICROS : null,
+      projectedRevenueLift: event.revenueLiftMicros,
+      allowStopHoldout: true,
       revenueLiftInMicroUnits: null,
     };
   }
@@ -45,8 +48,11 @@ function buildMockSummary(experimentId: string): GetExperimentSummaryResponse {
   const decreased = updated - increased;
 
   return {
+    state: 'Completed',
     priceChangeBreakdown: { increased, decreased, noChange },
     experimentPopulationInMicroUnits: MOCK_TEST_POPULATION_MICROS,
+    projectedRevenueLift: event.revenueLiftMicros,
+    allowStopHoldout: false,
     revenueLiftInMicroUnits: event.revenueLiftMicros,
   };
 }

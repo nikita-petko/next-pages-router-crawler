@@ -104,6 +104,7 @@ function ExperimentSummaryContainer({
   const testPopulationPercent = experimentPopulationInMicroUnits
     ? formatMicrosToPercent(experimentPopulationInMicroUnits, locale)
     : null;
+  const projectedRevenueLiftMicros = summary?.projectedRevenueLift;
 
   if (status === 'Upcoming') {
     return (
@@ -118,23 +119,35 @@ function ExperimentSummaryContainer({
     // (e.g. cancelled before any product ran). Distinguish unknown (null) from
     // legitimately zero so the card surfaces the same '—' placeholder we use for
     // testPopulation rather than misreporting "0 items".
-    const statCards = [
-      {
-        label: translate('Label.ProductsTested' /* TranslationNamespace.ManagedPricing */),
-        content:
-          totalProductCount != null ? formatCount(totalProductCount) : EMPTY_VALUE_PLACEHOLDER,
-      },
-    ] as const satisfies React.ComponentProps<typeof ManagedPricingCard>[];
+    const statCards: React.ComponentProps<typeof ManagedPricingCard>[] = [];
+    // Only show impact projection if it's available and positive.
+    if (projectedRevenueLiftMicros != null && projectedRevenueLiftMicros > 0) {
+      statCards.push({
+        label: translate('Label.ProjectedRevenueImpact' /* TranslationNamespace.ManagedPricing */),
+        content: translate(
+          'Label.ProjectedRevenueIncrease' /* TranslationNamespace.ManagedPricing */,
+          { percentage: formatMicrosToPercent(projectedRevenueLiftMicros, locale) },
+        ),
+        tooltip: translate(
+          'Description.ProjectedRevenueImpact' /* TranslationNamespace.ManagedPricing */,
+        ),
+      });
+    }
+    statCards.push({
+      label: translate('Label.ProductsTested' /* TranslationNamespace.ManagedPricing */),
+      content: totalProductCount != null ? formatCount(totalProductCount) : EMPTY_VALUE_PLACEHOLDER,
+    });
 
     return (
-      <div className='flex flex-col gap-large medium:flex-row medium:max-width-[200px]'>
+      <div className='flex flex-col gap-large medium:flex-row medium:wrap'>
         {statCards.map((card) => (
           <ManagedPricingCard
             key={card.label}
             label={card.label}
             content={card.content}
+            tooltip={card.tooltip}
             loading={isLoadingSummary}
-            className='grow-1 text-no-wrap min-width-[180px]'
+            className='width-full text-no-wrap min-width-[180px] medium:shrink-0 medium:width-fit'
           />
         ))}
       </div>
@@ -142,12 +155,25 @@ function ExperimentSummaryContainer({
   }
 
   if (status === 'Active') {
-    const statCards: React.ComponentProps<typeof ManagedPricingCard>[] = [
-      {
-        label: translate('Label.ProductsInTest' /* TranslationNamespace.ManagedPricing */),
-        content: formatCount(productCount),
-      },
-    ];
+    const statCards: React.ComponentProps<typeof ManagedPricingCard>[] = [];
+    // Only show impact projection if it's available and positive.
+    if (projectedRevenueLiftMicros != null && projectedRevenueLiftMicros > 0) {
+      statCards.push({
+        label: translate('Label.ProjectedRevenueImpact' /* TranslationNamespace.ManagedPricing */),
+        content: translate(
+          'Label.ProjectedRevenueIncrease' /* TranslationNamespace.ManagedPricing */,
+          { percentage: formatMicrosToPercent(projectedRevenueLiftMicros, locale) },
+        ),
+        tooltip: translate(
+          'Description.ProjectedRevenueImpact' /* TranslationNamespace.ManagedPricing */,
+        ),
+      });
+    }
+
+    statCards.push({
+      label: translate('Label.ProductsInTest' /* TranslationNamespace.ManagedPricing */),
+      content: formatCount(productCount),
+    });
 
     // Hide the test population card if it's not available (i.e., not during holdout or later).
     if (testPopulationPercent != null) {
@@ -158,17 +184,15 @@ function ExperimentSummaryContainer({
     }
 
     return (
-      <div
-        className={`flex flex-col gap-large medium:flex-row ${
-          testPopulationPercent != null ? 'medium:max-width-[400px]' : 'medium:max-width-[200px]'
-        }`}>
+      <div className='flex flex-col gap-large medium:flex-row medium:wrap'>
         {statCards.map((card) => (
           <ManagedPricingCard
             key={card.label}
             label={card.label}
             content={card.content}
+            tooltip={card.tooltip}
             loading={isLoadingSummary}
-            className='grow-1 text-no-wrap min-width-[180px]'
+            className='width-full text-no-wrap min-width-[180px] medium:shrink-0 medium:width-fit'
           />
         ))}
       </div>
