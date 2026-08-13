@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import type { RobloxApiDevelopAssetVersion } from '@rbx/client-develop/v1';
 import developClient from '@modules/clients/develop';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import placeVersionHistoryContext from '../hooks/PlaceVersionHistoryContext';
 import { getMaxVersionNumber, setPlaceVersionHistory } from '../utils/PlaceVersionHistoryUtils';
 
@@ -13,9 +12,6 @@ type PagingParameters = {
   prevPageCount: number;
 };
 const PlaceVersionHistoryProvider: FunctionComponent<React.PropsWithChildren> = ({ children }) => {
-  const { settings, isFetched } = useSettings();
-  const enableShowOnlyPublishedPlaceVersions =
-    isFetched && settings.enableShowOnlyPublishedPlaceVersions;
   const [currentPage, setCurrentPage] = useState(0);
   const [nextPageCursor, setNextPageCursor] = useState<string>('');
   const [currentVersionHistory, setCurrentVersionHistory] = useState<
@@ -60,36 +56,21 @@ const PlaceVersionHistoryProvider: FunctionComponent<React.PropsWithChildren> = 
   const fetchVersionHistory = useCallback(
     async (limit?: number, cursor?: string, prevPageCount?: number) => {
       if (currentPlaceId) {
-        if (enableShowOnlyPublishedPlaceVersions) {
-          await setPlaceVersionHistory(
-            publishedVersionsOnly,
-            currentPlaceId,
-            setIsLoadingCurrentVersionHistory,
-            setNextPageCursor,
-            setCurrentVersionHistory,
-            setVersionHistoryCount,
-            setMaxVersionNumber,
-            limit,
-            cursor,
-            prevPageCount,
-          );
-        } else {
-          await setPlaceVersionHistory(
-            publishedVersionsOnly,
-            currentPlaceId,
-            setIsLoadingCurrentVersionHistory,
-            setNextPageCursor,
-            setCurrentVersionHistory,
-            setVersionHistoryCount,
-            setMaxVersionNumber,
-            limit,
-            cursor,
-            prevPageCount,
-          );
-        }
+        await setPlaceVersionHistory(
+          publishedVersionsOnly,
+          currentPlaceId,
+          setIsLoadingCurrentVersionHistory,
+          setNextPageCursor,
+          setCurrentVersionHistory,
+          setVersionHistoryCount,
+          setMaxVersionNumber,
+          limit,
+          cursor,
+          prevPageCount,
+        );
       }
     },
-    [currentPlaceId, enableShowOnlyPublishedPlaceVersions, publishedVersionsOnly],
+    [currentPlaceId, publishedVersionsOnly],
   );
 
   const restoreCurrentVersionHistory = useCallback(

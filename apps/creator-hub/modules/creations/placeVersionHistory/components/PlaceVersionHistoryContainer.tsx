@@ -20,7 +20,6 @@ import FailureView from '@modules/miscellaneous/components/FailureView/FailureVi
 import { ErrorPage } from '@modules/miscellaneous/error';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import useCurrentPlace from '../../places/hooks/useCurrentPlace';
 import usePlaceVersionHistory from '../hooks/usePlaceVersionHistory';
 import usePlaceVersionHistoryStyles from './PlaceVersionHistory.styles';
@@ -31,9 +30,6 @@ const PlaceVersionHistoryContainer: FunctionComponent<PropsWithChildren> = () =>
   const {
     classes: { description, subdescription, container, tableContainer },
   } = usePlaceVersionHistoryStyles();
-  const { settings, isFetched } = useSettings();
-  const enableShowOnlyPublishedPlaceVersions =
-    isFetched && settings.enableShowOnlyPublishedPlaceVersions;
   const [dialogVersion, setDialogVersion] = useState<number | null>(null);
   const { canConfigurePlace, containingUniverse } = useCurrentPlace();
   const { canConfigure, gameDetails } = useCurrentGame();
@@ -127,23 +123,21 @@ const PlaceVersionHistoryContainer: FunctionComponent<PropsWithChildren> = () =>
           {translate('Description.PlaceVersionHistory')}
         </Typography>
       </Grid>
-      {enableShowOnlyPublishedPlaceVersions && (
-        <Grid item Large={12} XLarge={8} classes={{ root: subdescription }}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={isPublishedVersionsOnly}
-                onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                  const newIsPublishedVersionsOnly = event.target.checked;
-                  setPublishedVersionsOnly(newIsPublishedVersionsOnly);
-                }}
-                aria-label={translate('Action.ShowPublished')}
-              />
-            }
-            label={translate('Action.ShowPublished')}
-          />
-        </Grid>
-      )}
+      <Grid item Large={12} XLarge={8} classes={{ root: subdescription }}>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={isPublishedVersionsOnly}
+              onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                const newIsPublishedVersionsOnly = event.target.checked;
+                setPublishedVersionsOnly(newIsPublishedVersionsOnly);
+              }}
+              aria-label={translate('Action.ShowPublished')}
+            />
+          }
+          label={translate('Action.ShowPublished')}
+        />
+      </Grid>
       {isLoadingCurrentVersionHistory ? (
         <EmptyGrid>
           <PageLoading />
@@ -187,15 +181,7 @@ const PlaceVersionHistoryContainer: FunctionComponent<PropsWithChildren> = () =>
                   onPageChange={onPageChange}
                   onRowsPerPageChange={onRowsPerPageChange}
                   labelRowsPerPage={translate('Label.RowsPerPage')}
-                  labelDisplayedRows={
-                    enableShowOnlyPublishedPlaceVersions
-                      ? labelDisplayedRows
-                      : ({ from, to, count: totalPageCount }) =>
-                          translate('Label.PageRange', {
-                            pageRange: `${from}-${to}`,
-                            totalPageCount: `${totalPageCount}`,
-                          })
-                  }
+                  labelDisplayedRows={labelDisplayedRows}
                 />
               </TableRow>
             </TableFooter>
