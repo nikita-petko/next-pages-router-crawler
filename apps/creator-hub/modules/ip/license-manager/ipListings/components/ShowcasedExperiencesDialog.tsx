@@ -26,6 +26,7 @@ import { getResponseFromError } from '@modules/clients/utils';
 import ThemedImage from '@modules/miscellaneous/components/ThemedImage';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import ShowcaseContentTile from '../../components/ShowcaseContentTile';
+import { EXTERNAL_EXPERIENCE_HREF } from '../../urls';
 import {
   LicenseManagerClickEvent,
   LicenseManagerImpressionEvent,
@@ -571,8 +572,9 @@ const ShowcasedExperiencesDialog = ({
                   const isInvalid = invalidUniverseIds.has(universeId);
                   const isDeselectedInvalid = isInvalid && !isSelected;
                   const ineligibleDescriptionId = `ineligible-showcase-content-description-${universeId.toString()}`;
+                  const details = detailsByUniverseId.get(universeId);
                   const name =
-                    detailsByUniverseId.get(universeId)?.name ??
+                    details?.name ??
                     tPendingTranslation(
                       'Universe {universeId}',
                       'Fallback name for a showcased experience when its name cannot be loaded',
@@ -582,6 +584,10 @@ const ShowcasedExperiencesDialog = ({
                       ),
                       { universeId: universeId.toString() },
                     );
+                  const nameLink =
+                    details?.rootPlaceId != null
+                      ? EXTERNAL_EXPERIENCE_HREF(details.rootPlaceId)
+                      : undefined;
                   const selectAriaLabel = tPendingTranslation(
                     'Select {experienceName}',
                     'ARIA label for selecting an experience to showcase on an IP listing',
@@ -631,6 +637,7 @@ const ShowcasedExperiencesDialog = ({
                     <div key={universeId} className='group relative width-[144px]'>
                       <button
                         type='button'
+                        aria-label={selectAriaLabel}
                         aria-pressed={isSelected}
                         data-testid={`showcase-content-selection-${universeId.toString()}`}
                         className={cx(
@@ -638,14 +645,19 @@ const ShowcasedExperiencesDialog = ({
                           isSelected && classes.selectedTile,
                           isInvalid && classes.invalidSelectedTile,
                           isInvalid && 'stroke-system-alert',
-                          'block width-full cursor-pointer radius-medium padding-small [border:none] [background:transparent] [transition:box-shadow_0.2s] text-align-x-left focus-visible:outline-focus',
+                          'absolute inset-[0] block width-full cursor-pointer radius-medium [border:none] [background:transparent] [transition:box-shadow_0.2s] focus-visible:outline-focus',
                         )}
-                        onClick={() => toggleSelection(universeId)}>
-                        <ShowcaseContentTile universeId={universeId} name={name} />
-                      </button>
+                        onClick={() => toggleSelection(universeId)}
+                      />
+                      <ShowcaseContentTile
+                        universeId={universeId}
+                        name={name}
+                        nameLink={nameLink}
+                        className='relative padding-small [pointer-events:none] [&_a]:[pointer-events:auto]'
+                      />
                       <div
                         className={cx(
-                          'absolute [top:8px] [right:8px] inline-flex items-center justify-center size-600 radius-small',
+                          'absolute [top:8px] [right:8px] [z-index:2] inline-flex items-center justify-center size-600 radius-small',
                           !isSelected && '[background-color:var(--color-shift-500)]',
                           !isSelected && classes.unselectedCheckbox,
                         )}>

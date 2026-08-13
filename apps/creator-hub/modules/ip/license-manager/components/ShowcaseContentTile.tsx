@@ -6,6 +6,7 @@ export type ShowcaseContentTileProps = {
   universeId: number;
   name: string;
   link?: string;
+  nameLink?: string;
   showExternalIcon?: boolean;
   onClick?: () => void;
   className?: string;
@@ -18,10 +19,30 @@ export const ShowcaseContentTile: FunctionComponent<ShowcaseContentTileProps> = 
   universeId,
   name,
   link,
+  nameLink,
   showExternalIcon = true,
   onClick,
   className,
 }) => {
+  const nameContent =
+    nameLink != null && link == null ? (
+      <Link
+        className='self-start width-fit max-width-full min-width-0 text-title-medium !content-emphasis hover:!content-emphasis clip [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:1] [text-decoration:none] hover:[text-decoration:underline]'
+        href={nameLink}
+        target='_blank'
+        rel='noopener noreferrer'
+        isExternal={false}
+        underline='none'
+        title={name}>
+        {name}
+      </Link>
+    ) : (
+      <span
+        className='text-title-medium content-emphasis clip [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:1]'
+        title={name}>
+        {name}
+      </span>
+    );
   const content = (
     <div className='flex flex-col gap-xsmall min-width-0 width-full'>
       <div className='relative width-full aspect-1-1 clip radius-medium bg-shift-300'>
@@ -34,11 +55,7 @@ export const ShowcaseContentTile: FunctionComponent<ShowcaseContentTileProps> = 
           includeBackground
         />
       </div>
-      <span
-        className='text-title-medium content-emphasis clip [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:1]'
-        title={name}>
-        {name}
-      </span>
+      {nameContent}
     </div>
   );
 

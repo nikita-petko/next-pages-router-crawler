@@ -5026,6 +5026,10 @@ html.studio-webview.dark-theme,
           text-decoration-skip-ink: none;
 }
 
+.hover\:\!content-emphasis:hover {
+  color: var(--color-content-emphasis) !important;
+}
+
 .hover\:content-default:hover {
   color: var(--color-content-default);
 }
@@ -5072,6 +5076,10 @@ html.studio-webview.dark-theme,
 
 .hover\:\[text-decoration\:none\]:hover {
   text-decoration: none;
+}
+
+.hover\:\[text-decoration\:underline\]:hover {
+  text-decoration: underline;
 }
 
 .focus\:outline-focus:focus {
@@ -6113,6 +6121,10 @@ html.studio-webview.dark-theme,
 
 .\[\&_\[data-slot\=checkbox\]\]\:\!\[border-color\:white\] [data-slot=checkbox] {
   border-color: white !important;
+}
+
+.\[\&_a\]\:\[pointer-events\:auto\] a {
+  pointer-events: auto;
 }
 
 .\[\&_button\:last-child\]\:hidden button:last-child {
