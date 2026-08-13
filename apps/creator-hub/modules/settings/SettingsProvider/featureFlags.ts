@@ -7,7 +7,6 @@
 export enum FeatureFlagName {
   enableExample = 'enableExample',
   enableActivityFeedLocation = 'enableActivityFeedLocation',
-  enableMeshTextureApisToggle = 'enableMeshTextureApisToggle',
   enableDevexMaintenanceBanner = 'enableDevexMaintenanceBanner',
   enableItemDelisting = 'enableItemDelisting',
   ownershipTransferCompletedTimeout = 'ownershipTransferCompletedTimeout',
@@ -100,7 +99,6 @@ const defineFeatureFlagDefaults = <T extends { readonly [K in FeatureFlagName]: 
 export const featureFlagDefaults = defineFeatureFlagDefaults({
   [FeatureFlagName.enableExample]: false,
   [FeatureFlagName.enableActivityFeedLocation]: false,
-  [FeatureFlagName.enableMeshTextureApisToggle]: false,
   [FeatureFlagName.enableDevexMaintenanceBanner]: false,
   [FeatureFlagName.enableItemDelisting]: false,
   [FeatureFlagName.ownershipTransferCompletedTimeout]: 60,

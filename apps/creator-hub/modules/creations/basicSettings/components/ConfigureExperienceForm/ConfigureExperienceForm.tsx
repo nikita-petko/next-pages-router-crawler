@@ -75,7 +75,6 @@ import {
   getExperienceReleaseStatusQueryKeys,
 } from '@modules/react-query/experience-releases/experienceReleasesQueries';
 import { useUpdateExperienceGenre } from '@modules/react-query/experienceGenre';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import StepsToGoPublicModal from '../../../common/components/StepsToGoPublicModal';
 import UniverseHostingPolicyToggle from '../../../event/components/common/UniverseHostingPolicyToggle';
 import {
@@ -187,8 +186,6 @@ const ConfigureExperienceForm: FunctionComponent<
     React.ReactNode | string | null
   >(null);
 
-  const { settings, isFetched } = useSettings();
-  const isFeatureMeshTextureApiEnabled = isFetched && settings.enableMeshTextureApisToggle; // todo: replace with fflag
   const { data: releaseStatusData } = useGetExperienceReleaseStatusQuery(
     universeConfiguration.id,
     !!universeConfiguration.id,
@@ -777,7 +774,7 @@ const ConfigureExperienceForm: FunctionComponent<
         if (dirtyFields.isStudioAccessToApisAllowed) {
           errorFields.push(translate('Label.isStudioAccessToApisAllowed'));
         }
-        if (isFeatureMeshTextureApiEnabled && dirtyFields.isMeshTextureApiAccessAllowed) {
+        if (dirtyFields.isMeshTextureApiAccessAllowed) {
           errorFields.push(translate('Label.isMeshTextureApiAccessAllowed'));
         }
       }
@@ -861,9 +858,7 @@ const ConfigureExperienceForm: FunctionComponent<
       } else {
         showBottomToast(translate('Message.ConfigureExperienceSuccess'));
       }
-      if (isFeatureMeshTextureApiEnabled) {
-        setAmpStatusOfEnableMeshTextureApi(await fetchUserAmpStatusOfEnableMeshTextureApi());
-      }
+      setAmpStatusOfEnableMeshTextureApi(await fetchUserAmpStatusOfEnableMeshTextureApi());
 
       const experienceReleaseQueryKeys = getExperienceReleaseStatusQueryKeys(
         universeConfiguration.id,
@@ -888,7 +883,6 @@ const ConfigureExperienceForm: FunctionComponent<
       resetField,
       updateGenre,
       genreToSubgenre,
-      isFeatureMeshTextureApiEnabled,
       updateReleaseStatus,
       setShowBetaModeAlert,
       dirtyFields.isReleaseStatusEnabled,
@@ -1637,11 +1631,7 @@ const ConfigureExperienceForm: FunctionComponent<
             />
           </Grid>
 
-          <Grid
-            container
-            item
-            XSmall={12}
-            display={isFeatureMeshTextureApiEnabled ? 'block' : 'none'}>
+          <Grid container item XSmall={12} display='block'>
             <Grid item XSmall={12}>
               <Controller
                 name='isMeshTextureApiAccessAllowed'
