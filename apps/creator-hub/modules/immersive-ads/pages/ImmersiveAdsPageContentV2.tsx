@@ -505,10 +505,15 @@ const ImmersiveAdsPageContent = () => {
           universeId={universeId}
           placements={placementsState.placements}
           isLoading={placementsState.isLoading}
-          error={placementsState.isError ? new Error('Failed to load placements') : null}
+          error={placementsState.isError ? new Error('Placements request failed') : null}
           onRefreshPlacements={fetchPlacementsList}
           createPlacementUrl={dashboard.getMonetizationImmersiveAdsCreatePlacementUrl(universeId)}
-          showPlayWithRewardSettings={eligibilityState.showPwRSettings}
+          showPlayWithRewardSettings={
+            eligibilityState.showPwRSettings &&
+            (!isAdsPageRedesignOn ||
+              (!universeAdsSettingsState.isLoading && !universeAdsSettingsState.isError))
+          }
+          isAdsPageRedesignEnabled={isAdsPageRedesignOn}
           rewardMetadata={universeAdsSettingsState.rewardMetadata}
           playWithRewardServingStatus={universeAdsSettingsState.pwrServingStatus}
           onRefreshPlayWithRewardServingStatus={fetchUniverseAdsSettings}
@@ -521,6 +526,9 @@ const ImmersiveAdsPageContent = () => {
       fetchPlacementsList,
       universeId,
       eligibilityState.showPwRSettings,
+      isAdsPageRedesignOn,
+      universeAdsSettingsState.isError,
+      universeAdsSettingsState.isLoading,
       universeAdsSettingsState.rewardMetadata,
       universeAdsSettingsState.pwrServingStatus,
       fetchUniverseAdsSettings,

@@ -2142,6 +2142,9 @@
 .max-height-800 {
   max-height: var(--size-800);
 }
+.max-height-\[280px\] {
+  max-height: 280px;
+}
 .max-height-\[300px\] {
   max-height: 300px;
 }
@@ -4202,6 +4205,9 @@
 .\[border-left-width\:0\] {
   border-left-width: 0;
 }
+.\[border-radius\:0_0_var\(--radius-medium\)_var\(--radius-medium\)\] {
+  border-radius: 0 0 var(--radius-medium) var(--radius-medium);
+}
 .\[border-radius\:10px\] {
   border-radius: 10px;
 }
@@ -4213,6 +4219,9 @@
 }
 .\[border-radius\:6px\] {
   border-radius: 6px;
+}
+.\[border-radius\:var\(--radius-medium\)_var\(--radius-medium\)_0_0\] {
+  border-radius: var(--radius-medium) var(--radius-medium) 0 0;
 }
 .\[border-right-width\:0\] {
   border-right-width: 0;
