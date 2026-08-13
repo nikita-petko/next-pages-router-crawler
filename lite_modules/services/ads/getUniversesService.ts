@@ -36,6 +36,7 @@ export const searchOwnedUniverses = async ({
     creatorTargetId,
     creatorType,
     isArchived: false,
+    isPublic: true,
     pageSize: OWNED_UNIVERSES_PAGE_SIZE,
     sortOrder: SortOrder.Desc,
     sortParam: SearchSortParameter.LastUpdated,

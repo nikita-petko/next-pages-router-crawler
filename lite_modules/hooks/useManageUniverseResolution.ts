@@ -31,6 +31,7 @@ interface UseManageUniverseResolutionParams {
   hasNewFlowCampaignLoading: boolean;
   isGroupWorkspaceView: boolean;
   isWorkspaceLoading: boolean;
+  isWorkspaceResolved: boolean;
   resetFilterState: () => void;
   selectedUniverseId: number;
   shouldRequireNewFlowCampaign: boolean;
@@ -60,6 +61,7 @@ const useManageUniverseResolution = ({
   hasNewFlowCampaignLoading,
   isGroupWorkspaceView,
   isWorkspaceLoading,
+  isWorkspaceResolved,
   resetFilterState,
   selectedUniverseId,
   shouldRequireNewFlowCampaign,
@@ -170,7 +172,7 @@ const useManageUniverseResolution = ({
     }
 
     if (shouldUseWorkspaceUniverseFiltering) {
-      if (isWorkspaceLoading || !workspaceIdentity) {
+      if (!isWorkspaceResolved || !workspaceIdentity) {
         return;
       }
 
@@ -238,6 +240,7 @@ const useManageUniverseResolution = ({
     hasNewFlowCampaignLoading,
     isResolvingInitialUniverseId,
     isWorkspaceLoading,
+    isWorkspaceResolved,
     resetFilterState,
     resolvedInitialUniverseId,
     router.isReady,

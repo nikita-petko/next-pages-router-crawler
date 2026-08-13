@@ -40,7 +40,7 @@ const NewFlow = () => {
   const selectedUniverseId = useNewFlowStore(
     (state: NewFlowStoreType) => state.universePickerFilterState.universeFilter.universe_id,
   );
-  const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspaces();
+  const { currentWorkspace, isLoading: isWorkspaceLoading, workspaces } = useWorkspaces();
   const { getPromotions } = usePromotionStore();
   const isGroupWorkspaceView =
     shouldUseWorkspaceUniverseFiltering && currentWorkspace?.creatorType === 'Group';
@@ -59,6 +59,7 @@ const NewFlow = () => {
       creatorType: currentWorkspace.creatorType,
     };
   }, [currentWorkspace?.creatorId, currentWorkspace?.creatorType]);
+  const isWorkspaceResolved = !isWorkspaceLoading && workspaces != null && workspace !== undefined;
   useEffect(() => {
     fetchEssentialAppInfo({ urlPath: Routes.MANAGE }).then(() =>
       setFetchingEssentialAppInfo(false),
@@ -75,6 +76,7 @@ const NewFlow = () => {
     hasNewFlowCampaignLoading,
     isGroupWorkspaceView,
     isWorkspaceLoading,
+    isWorkspaceResolved,
     resetFilterState,
     selectedUniverseId,
     shouldRequireNewFlowCampaign,
