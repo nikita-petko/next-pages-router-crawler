@@ -11,7 +11,6 @@ import PriceCheckProductCreationWarning from '@modules/dynamic-price-check/compo
 import { withManagedPricingSubmitGuard } from '@modules/managed-pricing/dialogs/withManagedPricingSubmitGuard';
 import type { ManagedPricingOnboardingStatus } from '@modules/managed-pricing/types';
 import { DEVELOPER_PRODUCT_LEARN_MORE_URL } from '@modules/miscellaneous/common/constants/linkConstants';
-import ThumbnailImageUploader from '@modules/miscellaneous/components/uploaders/components/ThumbnailImageUploader';
 import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
 import { ButtonLink } from '@modules/monetization-shared/button-link';
 import { Link } from '@modules/monetization-shared/link';
@@ -28,6 +27,7 @@ import {
   PriceTextInput,
   ShopCategoryComboboxField,
 } from '../form-shared/DeveloperProductFieldsV3';
+import { ProductImageUploader } from '../form-shared/ProductImageUploader';
 import RegionalPricesDisplay from '../form-shared/RegionalPricesDisplay';
 
 type Props = {
@@ -163,7 +163,9 @@ function CreateDeveloperProductFormV3({
         onboardingStatus: managedPricingOnboardingStatus,
         giftingTradingStatus,
         page: '/creations/developer-product/create',
-        onConfirm: () => void saveChanges(data),
+        onConfirm: () => {
+          void saveChanges(data);
+        },
       });
     },
     [universeId, managedPricingOnboardingStatus, giftingTradingStatus, saveChanges],
@@ -210,7 +212,7 @@ function CreateDeveloperProductFormV3({
 
       <PriceCheckProductCreationWarning />
 
-      <ThumbnailImageUploader onChange={handleFileChange} imageType={['jpg', 'png', 'bmp']} />
+      <ProductImageUploader control={control} onChange={handleFileChange} />
 
       <section className='flex flex-col gap-xlarge max-width-[678px]'>
         <h2 className='text-heading-small large:text-heading-medium margin-none'>

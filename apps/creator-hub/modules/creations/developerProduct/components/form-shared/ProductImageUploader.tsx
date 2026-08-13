@@ -6,14 +6,13 @@ import { useTranslationWithNamespace } from '@rbx/intl';
 import { ReturnPolicy, ThumbnailTypes } from '@rbx/thumbnails';
 import ThumbnailImageUploader from '@modules/miscellaneous/components/uploaders/components/ThumbnailImageUploader';
 import TranslationNamespace from '@modules/miscellaneous/localization/enums/TranslationNamespace';
-import { configurePassMetadataSchema } from './schemas';
-import type { ConfigurePassMetadataFormValues } from './types';
+import type { ConfigureDeveloperProductFormV2Values } from '../../types';
+import { configureDeveloperProductSchema } from './schemas';
 
-export type PassImageUploaderProps = {
-  control: Control<ConfigurePassMetadataFormValues>;
-  imageAssetId?: number;
+type ProductImageUploaderProps = {
+  control: Control<ConfigureDeveloperProductFormV2Values>;
   onChange: (file: File | null) => void;
-  changeLabel?: string;
+  imageAssetId?: number;
   disabled?: boolean;
   className?: string;
 };
@@ -21,36 +20,27 @@ export type PassImageUploaderProps = {
 const MAX_IMAGE_SIZE_MB = 5;
 const ARIA_DESCRIPTION_ID = 'thumbnail-aria-description';
 
-export const PassImageUploader = memo(
-  ({
-    control,
-    imageAssetId,
-    onChange,
-    changeLabel,
-    disabled,
-    className,
-  }: PassImageUploaderProps) => {
+export const ProductImageUploader = memo(
+  ({ control, onChange, imageAssetId, disabled, className }: ProductImageUploaderProps) => {
     const { translate } = useTranslationWithNamespace(TranslationNamespace.ConfigureItem);
     const { field } = useController({
       control,
       name: 'file',
-      rules: configurePassMetadataSchema.file,
+      rules: configureDeveloperProductSchema.file,
       disabled,
     });
 
     return (
       <div className={className}>
         <ThumbnailImageUploader
-          targetReturnPolicy={ReturnPolicy.PlaceHolder}
+          onChange={onChange}
           targetId={imageAssetId}
           targetType={ThumbnailTypes.assetThumbnail}
-          changeText={changeLabel}
-          imageAltText={translate('Label.ItemImage')}
-          ariaDescribedBy={ARIA_DESCRIPTION_ID}
-          onChange={onChange}
+          targetReturnPolicy={ReturnPolicy.PlaceHolder}
           imageType={['jpg', 'png', 'bmp']}
           maxImageSizeMB={MAX_IMAGE_SIZE_MB}
-          removeButtonEnabled={false}
+          imageAltText={translate('Label.ItemImage')}
+          ariaDescribedBy={ARIA_DESCRIPTION_ID}
           disabled={field.disabled}
         />
         <VisuallyHidden id={ARIA_DESCRIPTION_ID} aria-live='polite'>
@@ -62,4 +52,4 @@ export const PassImageUploader = memo(
     );
   },
 );
-PassImageUploader.displayName = 'PassImageUploader';
+ProductImageUploader.displayName = 'ProductImageUploader';

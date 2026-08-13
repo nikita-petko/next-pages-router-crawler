@@ -5,13 +5,11 @@ import { Controller, FormProvider, useForm, useFormContext, useWatch } from 'rea
 import type { GiftingTradingStatus } from '@rbx/client-developer-products-api/v1';
 import { Alert, Button, clsx, Toggle } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { ReturnPolicy, ThumbnailTypes } from '@rbx/thumbnails';
 import { openDeveloperProductArchiveDialog } from '@modules/developer-products/components/DeveloperProductArchiveDialog';
 import { useUpdateDeveloperProduct } from '@modules/developer-products/queries/useUpdateDeveloperProduct';
 import { withManagedPricingSubmitGuard } from '@modules/managed-pricing/dialogs/withManagedPricingSubmitGuard';
 import type { ManagedPricingOnboardingStatus } from '@modules/managed-pricing/types';
 import { DEVELOPER_PRODUCT_LEARN_MORE_URL } from '@modules/miscellaneous/common/constants/linkConstants';
-import ThumbnailImageUploader from '@modules/miscellaneous/components/uploaders/components/ThumbnailImageUploader';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
 import { logProductArchiveClick } from '@modules/monetization-shared/archive-dialog/logging';
@@ -27,6 +25,7 @@ import {
   NameTextInput,
   PriceTextInput,
 } from '../form-shared/DeveloperProductFieldsV3';
+import { ProductImageUploader } from '../form-shared/ProductImageUploader';
 import RegionalPricesDisplay from '../form-shared/RegionalPricesDisplay';
 
 type Props = {
@@ -130,7 +129,9 @@ function ConfigureDeveloperProductFormV3({
         onboardingStatus: managedPricingOnboardingStatus,
         giftingTradingStatus,
         page: '/creations/developer-product/configure',
-        onConfirm: () => void saveChanges(data),
+        onConfirm: () => {
+          void saveChanges(data);
+        },
       });
     },
     [
@@ -235,12 +236,10 @@ function ConfigureDeveloperProductFormV3({
         />
       </div>
 
-      <ThumbnailImageUploader
+      <ProductImageUploader
+        control={control}
         onChange={handleFileChange}
-        targetId={developerProduct.iconImageAssetId}
-        targetType={ThumbnailTypes.assetThumbnail}
-        targetReturnPolicy={ReturnPolicy.PlaceHolder}
-        imageType={['jpg', 'png', 'bmp']}
+        imageAssetId={developerProduct.iconImageAssetId}
         disabled={isReadOnly}
       />
 
