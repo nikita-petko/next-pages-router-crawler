@@ -19,7 +19,6 @@ import { Item, toastDurationTime } from '@modules/miscellaneous/common';
 import { getUrlForItemType } from '@modules/miscellaneous/urls';
 import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
 import { useGetActivationEligibilityForUniverse } from '@modules/react-query/develop';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import ItemCardExperienceSubscriptionActivationButton from '../../experienceSubscriptions/components/ItemCardContextMenu/ItemCardExperienceSubscriptionActivationButton';
 import ItemCardExperienceSubscriptionDeactivationButton from '../../experienceSubscriptions/components/ItemCardContextMenu/ItemCardExperienceSubscriptionDeactivationButton';
 import ItemCardExperienceSubscriptionDeletionButton from '../../experienceSubscriptions/components/ItemCardContextMenu/ItemCardExperienceSubscriptionDeletionButton';
@@ -123,7 +122,6 @@ const ItemCardContextMenu: FunctionComponent<React.PropsWithChildren<ItemCardCon
   const [activeSubmenu, setActiveSubmenu] = useState('');
   const { translate } = useTranslation();
   const { enqueue, close: closeSnackbar } = useSnackbar();
-  const { settings } = useSettings();
   const {
     classes: { redText, icon },
   } = useItemCardContextMenuStyles();
@@ -387,12 +385,12 @@ const ItemCardContextMenu: FunctionComponent<React.PropsWithChildren<ItemCardCon
           onClick={() => {
             setShowAddVariantDialog(true);
           }}>
+          {/* oxlint-disable-next-line rbx/no-hardcoded-translation-string -- pre-existing placeholder (@mryumae TODO), unrelated to this flag cleanup */}
           Lorem ipsum
         </TrackedMenuItem>
       )}
 
-      {settings.enableItemDelisting &&
-        (itemType === Item.CatalogAsset || itemType === Item.Bundle) &&
+      {(itemType === Item.CatalogAsset || itemType === Item.Bundle) &&
         !creation.isIEC &&
         !onlyShowToggleEnableMenuItem && (
           <ItemCardDelistButton

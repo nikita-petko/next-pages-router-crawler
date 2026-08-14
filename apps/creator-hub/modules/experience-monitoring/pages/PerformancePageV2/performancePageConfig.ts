@@ -42,6 +42,7 @@ import { RAQIV2SpecialLayoutType } from '@modules/experience-analytics-shared/ty
 import type { TabbedChartConfig } from '@modules/experience-analytics-shared/types/RAQIV2TabbedChartConfig';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import Category from '../../types/Category';
+import { bandwidthNetworkTabBody } from './bandwidthChartConfigs';
 
 const performanceDocLink: AnalyticsDocLink = '/docs/production/analytics/performance';
 
@@ -73,12 +74,13 @@ const tabbedChartConfigPerformanceClientCrashRate = {
 } as const satisfies TabbedChartConfig;
 
 // Default to client tab when orderedTabKeys[0] is client
-const orderedTabKeys = [Category.Client, Category.Server] as const;
+const orderedTabKeys = [Category.Client, Category.Server, Category.Network] as const;
 type TPerformanceTabKeys = (typeof orderedTabKeys)[number];
 
 const getPerformancePageConfig = (
   isClientScriptCPUTimeEnabled: boolean,
   isExperienceAlertsEnabled: boolean,
+  isNetworkTabEnabled: boolean,
   serverTabPrependedBody: RAQIV2UIComponent[] = [],
 ): CreatorAnalyticsFixedTabPageConfig<TPerformanceTabKeys> => {
   return {
@@ -107,7 +109,7 @@ const getPerformancePageConfig = (
     },
     // TODO(gperkins@20240507): DSA-2360 -- convert CCUSummary to be a special predefined component
     // preControlCharts: [RAQIV2PredefinedChartKey.CCUSummary],
-    tabOrder: orderedTabKeys,
+    tabOrder: isNetworkTabEnabled ? orderedTabKeys : ([Category.Client, Category.Server] as const),
     tabs: {
       [Category.Client]: {
         tabKey: Category.Client,
@@ -237,6 +239,42 @@ const getPerformancePageConfig = (
             RAQIV2MetricGranularity.HalfHour,
             RAQIV2MetricGranularity.OneMinute,
           ],
+        },
+        endDateBehavior: EndDateBehavior.LatestAvailableForMetrics,
+      },
+      [Category.Network]: {
+        tabKey: Category.Network,
+        resourceTypes: [RAQIV2ChartResourceType.Universe],
+        label: translationKey('Label.Network', TranslationNamespace.Analytics),
+        body: [...bandwidthNetworkTabBody],
+        // Instance type is pinned as the breakdown per chart; these are page-level filters.
+        filterDimensions: [
+          RAQIV2Dimension.Place,
+          RAQIV2Dimension.PlaceVersion,
+          RAQIV2Dimension.Platform,
+          RAQIV2Dimension.OperatingSystem,
+          RAQIV2Dimension.MemoryGroup,
+        ],
+        breakdownDimensions: [],
+        timeRangeOptions: {
+          type: 'dateRange',
+          supportedRanges: [
+            RAQIV2DateRangeType.Last1Day,
+            RAQIV2DateRangeType.Last7Days,
+            RAQIV2DateRangeType.Last28Days,
+            RAQIV2DateRangeType.Custom,
+          ],
+          defaultRange: RAQIV2DateRangeType.Last1Day,
+          maxStartDateOffsetDays: 30,
+        } as const satisfies AnalyticsPageConfigDateOptions,
+        surfaceAnnotationOptions: {
+          supportedAnnotationTypes: [AnnotationType.PlaceVersion, AnnotationType.EngineRelease],
+          defaultAnnotationTypes: [AnnotationType.PlaceVersion, AnnotationType.EngineRelease],
+          showAnnotationsControl: true,
+        } as const satisfies AnalyticsPageConfigAnnotationOptions,
+        // Bandwidth data is hourly (no minute/half-hour granularity available).
+        granularity: {
+          options: [RAQIV2MetricGranularity.OneDay, RAQIV2MetricGranularity.OneHour],
         },
         endDateBehavior: EndDateBehavior.LatestAvailableForMetrics,
       },

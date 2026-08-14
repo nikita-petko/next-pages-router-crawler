@@ -7,6 +7,7 @@ import {
   isClientScriptCpuTimeEnabled as isClientScriptCPUTimeEnabledFlag,
   isExperienceAlertsEnabled,
 } from '@generated/flags/creatorAnalytics';
+import { isBandwidthNetworkTabEnabled as isBandwidthNetworkTabEnabledFlag } from '@generated/flags/engineNetworking';
 import AnalyticsAlertClientProvider from '@modules/experience-alerts/components/AnalyticsAlertClientProvider';
 import { analyticsAlertControlPlaneClient } from '@modules/experience-alerts/constants/types';
 import CreatorAnalyticsLayout from '@modules/experience-analytics-shared/components/RAQIV2/layout/CreatorAnalyticsLayout';
@@ -24,6 +25,13 @@ const PerformancePageContent: FC = () => {
   const isClientScriptCPUTimeEnabled =
     isClientScriptCPUTimeReady && isClientScriptCPUTimeEnabledValue;
 
+  // Network (bandwidth) tab is gated to the DeveloperAnalyticsAdmin and
+  // DeveloperAnalyticsLimited roles while in development.
+  const { ready: isNetworkTabReady, value: isNetworkTabEnabledValue } = useFlag(
+    isBandwidthNetworkTabEnabledFlag,
+  );
+  const isNetworkTabEnabled = isNetworkTabReady && isNetworkTabEnabledValue;
+
   const { id } = useUniverseResource();
   const { value: isExperienceAlertsEnabledFlag, ready: isExperienceAlertsFlagReady } = useFlag(
     isExperienceAlertsEnabled,
@@ -38,11 +46,13 @@ const PerformancePageContent: FC = () => {
     return getPerformancePageConfig(
       isClientScriptCPUTimeEnabled,
       !!isExperienceAlertsEnabledFlag,
+      isNetworkTabEnabled,
       extendedServicesComputeInsightConfigs,
     );
   }, [
     isClientScriptCPUTimeEnabled,
     isExperienceAlertsEnabledFlag,
+    isNetworkTabEnabled,
     extendedServicesComputeInsightConfigs,
   ]);
 

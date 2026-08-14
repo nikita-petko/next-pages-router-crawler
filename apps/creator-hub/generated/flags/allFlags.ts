@@ -11,6 +11,7 @@ import * as creatorGameopsFlags from './creatorGameops';
 import * as creatorRoadmapFlags from './creatorRoadmap';
 import * as creatorServicesInsightsFlags from './creatorServicesInsights';
 import * as devexFlags from './devex';
+import * as engineNetworkingFlags from './engineNetworking';
 import * as gameDiscoveryServingFlags from './gameDiscoveryServing';
 import * as groupsFlags from './groups';
 import * as immersiveAdsFlags from './immersiveAds';
@@ -744,6 +745,16 @@ export const generatedFlags = [
       metadata: {
         namespace: 'devex',
         name: 'isTaxDocumentationEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
+      flag: engineNetworkingFlags.isBandwidthNetworkTabEnabled,
+      metadata: {
+        namespace: 'engine-networking',
+        name: 'isBandwidthNetworkTabEnabled',
         defaultValue: false,
         valueType: 'boolean',
         contextType: 'static',
