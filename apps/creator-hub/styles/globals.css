@@ -1365,6 +1365,9 @@
 .left-\[8px\] {
   left: 8px;
 }
+.left-\[var\(--size-250\)\] {
+  left: var(--size-250);
+}
 .right-\[0\] {
   right: 0;
 }
@@ -1394,6 +1397,9 @@
 }
 .top-\[2px\] {
   top: 2px;
+}
+.top-\[50\%\] {
+  top: 50%;
 }
 .top-\[5px\] {
   top: 5px;
@@ -5042,6 +5048,10 @@ html.studio-webview.dark-theme,
   background-color: var(--color-state-hover);
 }
 
+.hover\:bg-none:hover {
+  background-color: var(--color-none);
+}
+
 .hover\:bg-shift-100:hover {
   background-color: var(--color-shift-100);
 }
@@ -5117,6 +5127,10 @@ html.studio-webview.dark-theme,
 
 .focus-visible\:hover\:outline-none:hover:focus-visible {
   outline: var(--stroke-none) solid var(--color-none);
+}
+
+.active\:bg-none:active {
+  background-color: var(--color-none);
 }
 
 .active\:bg-shift-300:active {

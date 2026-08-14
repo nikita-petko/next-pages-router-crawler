@@ -6,11 +6,9 @@ import {
   BuilderChatSideIcon,
   BuilderHomeFillIcon,
   BuilderHomeIcon,
-  Button,
   Grid,
   RobloxIcon,
   StudioIcon,
-  Typography,
   useMediaQuery,
 } from '@rbx/ui';
 import WorkplaceSelector from '../../components/WorkplaceSelector';
@@ -39,6 +37,7 @@ import useRailStyles from './Rail.styles';
 import RailHeader from './RailHeader';
 import RailItem from './RailItem';
 import SidebarToggleTooltip from './SidebarToggleTooltip';
+import UnauthSignInTransition from './UnauthSignInTransition';
 
 const FINANCES_PATHS = [
   '/dashboard/devex',
@@ -344,43 +343,36 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
           )}
         </>
       )}
-      {isAuth || compact ? (
+      {isAuth ? (
         <RailItem
           enableAnimation={isReady && shouldAnimate}
           compact={compact}
-          icon={
-            <Icon
-              name={
-                isAuth
-                  ? 'icon-regular-three-dots-horizontal'
-                  : 'icon-regular-arrow-right-to-portrait-rectangle'
-              }
-              size='Medium'
-            />
-          }
-          label={translate(isAuth ? 'Heading.AllTools' : 'Action.LogIn')}
+          icon={<Icon name='icon-regular-three-dots-horizontal' size='Medium' />}
+          label={translate('Heading.AllTools')}
           onClick={() => {
-            if (isAuth) {
-              sendEvent(clickRailEventModel('AllTools'));
-              setAllToolsOpen(!allToolsOpen);
-            } else {
-              login();
-              sendEvent(clickRailEventModel('AllToolsLogin'));
-            }
+            sendEvent(clickRailEventModel('AllTools'));
+            setAllToolsOpen(!allToolsOpen);
           }}
         />
-      ) : (
-        <Button
-          variant='contained'
-          color='secondary'
+      ) : compact && !iconOnly ? (
+        <RailItem
+          enableAnimation={isReady && shouldAnimate}
+          compact={compact}
+          icon={<Icon name='icon-regular-arrow-right-to-portrait-rectangle' size='Medium' />}
+          label={translate('Action.LogIn')}
           onClick={() => {
             sendEvent(clickRailEventModel('AllToolsLogin'));
             login();
-          }}>
-          <Typography variant='smallLabel2' noWrap>
-            {translate('Action.LogInAllTools')}
-          </Typography>
-        </Button>
+          }}
+        />
+      ) : (
+        <UnauthSignInTransition
+          enableAnimation={isReady && shouldAnimate}
+          onClick={() => {
+            sendEvent(clickRailEventModel('AllToolsLogin'));
+            login();
+          }}
+        />
       )}
       <RailItem
         enableAnimation={isReady && shouldAnimate}
