@@ -40,10 +40,10 @@ import {
 } from '../../utils/constants';
 import { OrganizationsEventName, logOrganizationsEvent } from '../../utils/eventUtils';
 import {
-  canEditRoleMetadata,
-  canEditRolePermissions,
   canViewAnyRoleTab,
   canViewRoleMembersTab,
+  canViewRolePermissionsTab,
+  canViewRoleSettingsTab,
 } from '../../utils/groupPermissions';
 import { getRandomRoleColorType, getRoleStyle } from '../../utils/groupUtils';
 import { ConfigureRoleTab } from '../../utils/types';
@@ -76,7 +76,7 @@ const getConfigureRoleTabs = (
   return CONFIGURE_ROLE_TABS.filter((tab) => {
     switch (tab) {
       case ConfigureRoleTab.Permissions:
-        return isOwner || canEditRolePermissions(permissionsForRole);
+        return canViewRolePermissionsTab(permissionsForRole, isOwner);
       case ConfigureRoleTab.Members:
         return canViewRoleMembersTab(
           permissionsForRole,
@@ -85,7 +85,7 @@ const getConfigureRoleTabs = (
           isOwner,
         );
       case ConfigureRoleTab.Settings:
-        return isOwner || canEditRoleMetadata(permissionsForRole);
+        return canViewRoleSettingsTab(permissionsForRole, roleRank === GuestRoleRank, isOwner);
       default:
         return false;
     }
@@ -555,7 +555,11 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
         ? undefined
         : rolePermissions?.[selectedRole.metadata.id.toString()];
     const canViewRoleSettings =
-      isOwner === true || canEditRoleMetadata(permissionsForRole) || isRecentlyCreatedRole;
+      canViewRoleSettingsTab(
+        permissionsForRole,
+        selectedRole.metadata.rank === GuestRoleRank,
+        isOwner,
+      ) || isRecentlyCreatedRole;
 
     return (
       <>

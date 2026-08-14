@@ -19,13 +19,23 @@ export const canViewRoleMembersTab = (
   isOwner: boolean | undefined = false,
 ): boolean => !isDefaultMemberRole && !isGuestRole && (isOwner || canAssignRole(permissions));
 
+export const canViewRolePermissionsTab = (
+  permissions: ResolvedPermissions | undefined,
+  isOwner: boolean | undefined = false,
+): boolean => isOwner || canEditRolePermissions(permissions);
+
+export const canViewRoleSettingsTab = (
+  permissions: ResolvedPermissions | undefined,
+  isGuestRole: boolean,
+  isOwner: boolean | undefined = false,
+): boolean => !isGuestRole && (isOwner || canEditRoleMetadata(permissions));
+
 export const canViewAnyRoleTab = (
   permissions: ResolvedPermissions | undefined,
   isDefaultMemberRole: boolean,
   isGuestRole: boolean,
   isOwner: boolean | undefined = false,
 ): boolean =>
-  isOwner ||
-  canEditRolePermissions(permissions) ||
+  canViewRolePermissionsTab(permissions, isOwner) ||
   canViewRoleMembersTab(permissions, isDefaultMemberRole, isGuestRole, isOwner) ||
-  canEditRoleMetadata(permissions);
+  canViewRoleSettingsTab(permissions, isGuestRole, isOwner);

@@ -2,7 +2,7 @@ import type { FunctionComponent } from 'react';
 import React, { useCallback, useMemo, useState } from 'react';
 import { TextArea, TextInput, Button, Icon, Radio, RadioGroup } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { Grid, FormHelperText, DialogTemplate, useDialog, useTheme } from '@rbx/ui';
+import { Grid, DialogTemplate, useDialog, useTheme } from '@rbx/ui';
 import type { GroupRoleColorType } from '../../clients/groups';
 import type { GroupRoleMetadata } from '../../clients/groups';
 import TranslationNamespace from '../../constants/TranslationNamespace';
@@ -15,7 +15,6 @@ import {
   DefaultRoleMaxRank,
   DefaultRoleMinRank,
   DefaultRoleNameMaxLength,
-  GuestRoleRank,
   getColorDotTokens,
   PickableRoleColorsList,
   RoleColorTokenMap,
@@ -50,7 +49,6 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
   const minRank = roleConfig?.minRank ?? DefaultRoleMinRank;
   const maxRank = roleConfig?.maxRank ?? DefaultRoleMaxRank;
 
-  const isGuestRole = role.rank === GuestRoleRank;
   const isBaseMemberRole = role.id === DefaultMemberRoleIdNumber;
 
   const [name, setName] = useState<string>(role?.name ?? '');
@@ -67,7 +65,7 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
     isPrivate !== (role?.isPrivate ?? false);
 
   const rankErrorMessage = useMemo((): string | undefined => {
-    if (isGuestRole || isBaseMemberRole) {
+    if (isBaseMemberRole) {
       return undefined;
     }
     if (Number.isNaN(rank)) {
@@ -88,7 +86,7 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
       );
     }
     return undefined;
-  }, [isGuestRole, isBaseMemberRole, rank, minRank, maxRank, translateWithNamespace]);
+  }, [isBaseMemberRole, rank, minRank, maxRank, translateWithNamespace]);
 
   const rankHasError = rankErrorMessage !== undefined;
 
@@ -193,12 +191,12 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
     openDialog();
   }, [configureDialog, openDialog, confirmRemoveUserDialog]);
 
-  const isSaveButtonDisabled = !name.trim() || rankHasError || isGuestRole || !hasUnsavedChanges;
+  const isSaveButtonDisabled = !name.trim() || rankHasError || !hasUnsavedChanges;
 
   const showDeleteRole =
-    (isOwner === true || permissions?.canDeleteRoles === true) && !isBaseMemberRole && !isGuestRole;
+    (isOwner === true || permissions?.canDeleteRoles === true) && !isBaseMemberRole;
 
-  const showVisibility = isOwner === true && !isGuestRole && !isBaseMemberRole;
+  const showVisibility = isOwner === true && !isBaseMemberRole;
 
   return (
     <Grid
@@ -214,7 +212,7 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
             label={translateWithNamespace(TranslationNamespace.GroupManagement, 'Label.RoleName')}
             maxLength={nameMaxLength}
             value={name}
-            isDisabled={disabled || saving || isGuestRole}
+            isDisabled={disabled || saving}
             onChange={onNameChanged}
           />
           <span className='block text-caption-medium text-align-x-end'>
@@ -227,7 +225,7 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
             textareaStyle={{ resize: 'vertical', minHeight: '150px' }}
             maxLength={descriptionMaxLength}
             value={description}
-            isDisabled={disabled || saving || isGuestRole}
+            isDisabled={disabled || saving}
             onChange={onDescriptionChanged}
           />
           <span className='block text-caption-medium text-align-x-end'>
@@ -235,7 +233,7 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
           </span>
         </div>
       </Grid>
-      {!isBaseMemberRole && !isGuestRole && (
+      {!isBaseMemberRole && (
         <Grid container item XSmall={12} wrap='wrap'>
           <div className='block text-title-large padding-bottom-small'>
             {translateWithNamespace(TranslationNamespace.GroupManagement, 'Label.RoleColor')}
@@ -292,7 +290,7 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
           min={minRank}
           max={maxRank}
           value={rank.toString()}
-          isDisabled={disabled || saving || isGuestRole || isBaseMemberRole}
+          isDisabled={disabled || saving || isBaseMemberRole}
           hasError={rankHasError}
           onChange={onRankChanged}
           helperText={
@@ -362,15 +360,6 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
               onClick={handleOpenDialog}>
               {translateWithNamespace(TranslationNamespace.GroupManagement, 'Action.DeleteRole')}
             </Button>
-          )}
-
-          {isGuestRole && (
-            <FormHelperText className='width-full margin-top-small text-caption-medium content-system-alert'>
-              {translateWithNamespace(
-                TranslationNamespace.GroupManagement,
-                'Message.ModifyGuestRole',
-              )}
-            </FormHelperText>
           )}
         </Grid>
       )}

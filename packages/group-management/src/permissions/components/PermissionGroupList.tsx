@@ -232,9 +232,23 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
   const cancelActionLabel = translate('Action.Cancel');
   const saveActionLabel = translate('Action.Save');
 
-  const filteredMetadata = isGroupEntity
-    ? metadata.filter((group) => PERMISSION_TAB_GROUP_IDS[selectedTab].has(group.groupId))
+  const isGuestRole = creator.type === CreatorTypes.GUEST_ROLE;
+  const showTabChips = isGroupEntity && !isGuestRole;
+
+  const visibleMetadata = isGuestRole
+    ? metadata
+        .map((group) => ({
+          ...group,
+          permissions: group.permissions.filter(
+            (permission) => initialPermissions[permission.permissionId]?.canEdit,
+          ),
+        }))
+        .filter((group) => group.permissions.length > 0)
     : metadata;
+
+  const filteredMetadata = showTabChips
+    ? visibleMetadata.filter((group) => PERMISSION_TAB_GROUP_IDS[selectedTab].has(group.groupId))
+    : visibleMetadata;
 
   return (
     <Grid className={rootClass} data-testid='permission-group-list'>
@@ -266,7 +280,7 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
         </Alert>
       )}
 
-      {isGroupEntity && (
+      {showTabChips && (
         <Grid container justifyContent='left'>
           {(surface === GroupManagementSurface.Community
             ? ORDERED_PERMISSION_TABS_COMMUNITY
