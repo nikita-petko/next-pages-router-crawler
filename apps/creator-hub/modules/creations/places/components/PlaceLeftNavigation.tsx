@@ -1,12 +1,12 @@
-import { useRouter } from 'next/router';
 import type { FunctionComponent, PropsWithChildren } from 'react';
-import { Fragment, useMemo } from 'react';
+import { useMemo } from 'react';
+import { useRouter } from 'next/router';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { ArrowBackIcon, Divider, Grid, Button, Typography } from '@rbx/ui';
 import { Item, itemTypeToSingularNameKeys } from '@modules/miscellaneous/common';
 import { Link } from '@modules/miscellaneous/components';
 import { useStudioEditPlaceLauncher } from '@modules/miscellaneous/hooks';
-import useStudio, { EStudioTaskType } from '@modules/miscellaneous/hooks/useStudio';
+import useStudio from '@modules/miscellaneous/hooks/useStudio';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import type Feature from '@modules/navigation/feature/interfaces/Feature';
 import Features from '@modules/navigation/leftNavigation/components/Features';
@@ -24,11 +24,11 @@ const PlaceLeftNavigation: FunctionComponent<PropsWithChildren> = () => {
   const { id, placeId } = router.query;
   const { gameDetails, isLoadingGame } = useCurrentGame();
   const { classes: styles } = useLeftNavigationStyles();
-  const { open, dialog } = useStudio();
+  const { dialog } = useStudio();
   const { launch } = useStudioEditPlaceLauncher();
 
   const isRootPlace = useMemo(() => {
-    const routerPlaceId = Number.parseInt(router.query.placeId as string, 10);
+    const routerPlaceId = Number.parseInt(router.query.placeId?.toString() ?? '', 10);
     return { isRootPlace: !isLoadingGame && gameDetails?.rootPlaceId === routerPlaceId };
   }, [isLoadingGame, gameDetails, router]);
 
@@ -38,29 +38,17 @@ const PlaceLeftNavigation: FunctionComponent<PropsWithChildren> = () => {
       if (currentFeature.isEnabledOnSettings?.(mergedSettings) ?? true) {
         let feature = currentFeature;
         if (currentFeature.key === 'editInStudio') {
-          if (settings.enableUseStudioEditPlaceLauncherWithPrelaunch) {
-            feature = {
-              ...currentFeature,
-              onSelectFeature: () => () =>
-                launch(Number(id?.toString() || ''), Number(placeId?.toString() || '')),
-            };
-          } else {
-            feature = {
-              ...currentFeature,
-              onSelectFeature: () =>
-                open({
-                  task: EStudioTaskType.EditPlace,
-                  universeId: id?.toString() || '',
-                  placeId: placeId?.toString() || '',
-                }),
-            };
-          }
+          feature = {
+            ...currentFeature,
+            onSelectFeature: () =>
+              launch(Number(id?.toString() ?? ''), Number(placeId?.toString() ?? '')),
+          };
         }
         features.push(feature);
       }
       return features;
     }, [] as Feature<PlaceFeatureSettings>[]);
-  }, [settings, isFetched, isRootPlace, id, placeId, open, launch]);
+  }, [settings, isFetched, isRootPlace, id, placeId, launch]);
 
   const activeFeature = useMemo(
     () => enabledFeatures.find((feature) => feature.path && router.pathname.endsWith(feature.path)),
@@ -70,7 +58,9 @@ const PlaceLeftNavigation: FunctionComponent<PropsWithChildren> = () => {
   return (
     <>
       <Grid item container direction='column'>
-        <Link className={styles.backButton} href={`/dashboard/creations/experiences/${id}/places`}>
+        <Link
+          className={styles.backButton}
+          href={`/dashboard/creations/experiences/${id?.toString() ?? ''}/places`}>
           <Button color='primary' size='small' startIcon={<ArrowBackIcon />}>
             {translate('Action.BackToPlaces')}
           </Button>

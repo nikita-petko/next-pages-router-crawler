@@ -6,7 +6,6 @@ import gamejoinClient from '@modules/clients/gamejoin';
 import unifiedLoggerClient from '@modules/eventStream/unifiedLoggerClient';
 import type { useStudio } from '@modules/miscellaneous/hooks';
 import { EStudioTaskType } from '@modules/miscellaneous/hooks';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 
 export type EditInStudioActionMenuItemProps = {
   universeId?: number | string;
@@ -18,16 +17,12 @@ const EditInStudioActionMenuItem: FunctionComponent<
   React.PropsWithChildren<EditInStudioActionMenuItemProps>
 > = ({ universeId, placeId, openStudio }) => {
   const { translate } = useTranslation();
-  const { settings } = useSettings();
 
   return (
     <MenuItem
       onClick={() => {
-        if (settings.enableUseStudioEditPlaceLauncherWithPrelaunch) {
-          // Pre-launch the Team Create RCC server so it is ready by the time Studio finishes starting
-          if (placeId !== undefined) {
-            gamejoinClient.teamCreatePreemptive(Number(placeId));
-          }
+        if (placeId !== undefined) {
+          gamejoinClient.teamCreatePreemptive(Number(placeId));
         }
 
         openStudio({

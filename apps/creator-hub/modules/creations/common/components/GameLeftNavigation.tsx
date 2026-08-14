@@ -24,7 +24,7 @@ import useQuestionnaireV2Gate from '@modules/experience-questionnaire/hooks/useQ
 import useCurrentOrganization from '@modules/group/hooks/useCurrentOrganization';
 import { uninitializedUniverseId } from '@modules/miscellaneous/common';
 import { useStudioEditPlaceLauncher } from '@modules/miscellaneous/hooks';
-import useStudio, { EStudioTaskType } from '@modules/miscellaneous/hooks/useStudio';
+import useStudio from '@modules/miscellaneous/hooks/useStudio';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import NavigationFeatureManager from '@modules/navigation/feature/implementations/NavigationFeatureManager';
 import type Feature from '@modules/navigation/feature/interfaces/Feature';
@@ -83,7 +83,7 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
   const router = useRouter();
   const { translate } = useTranslation();
   const { locale } = useLocalization();
-  const { open, dialog, isCompatible } = useStudio();
+  const { dialog, isCompatible } = useStudio();
   const { gameDetails, canConfigure, isLoadingGame } = useCurrentGame();
   const { data: permissions } = useUniversePermissions(gameDetails?.id);
   const { user } = useAuthentication();
@@ -218,20 +218,9 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
     const mapFeature = (currentFeature: Feature<CreationsFeatureSettings>) => {
       switch (currentFeature.key) {
         case 'editInStudio':
-          if (settings.enableUseStudioEditPlaceLauncherWithPrelaunch) {
-            return {
-              ...currentFeature,
-              onSelectFeature: () => launch(gameDetails?.id ?? 0, gameDetails?.rootPlaceId ?? 0),
-            };
-          }
           return {
             ...currentFeature,
-            onSelectFeature: () =>
-              open({
-                task: EStudioTaskType.EditPlace,
-                universeId: gameDetails?.id?.toString() ?? '',
-                placeId: gameDetails?.rootPlaceId?.toString() ?? '',
-              }),
+            onSelectFeature: () => launch(gameDetails?.id ?? 0, gameDetails?.rootPlaceId ?? 0),
           };
         case 'sponsor':
           return {
@@ -308,7 +297,6 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
     shouldUseQuestionnaireV2,
     allFeatures,
     launch,
-    open,
     shouldHideSocialLinksSection,
     canGetSelectEligibilityData,
     pinnedDashboardFeatures,
