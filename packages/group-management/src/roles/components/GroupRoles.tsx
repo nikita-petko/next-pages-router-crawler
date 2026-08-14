@@ -45,7 +45,7 @@ import {
   canViewRolePermissionsTab,
   canViewRoleSettingsTab,
 } from '../../utils/groupPermissions';
-import { getRandomRoleColorType, getRoleStyle } from '../../utils/groupUtils';
+import { getRandomRoleColorType, getRoleIconName, getRoleStyle } from '../../utils/groupUtils';
 import { ConfigureRoleTab } from '../../utils/types';
 import type { RoleCreationMetadata, RoleMetadataForNewRole } from '../../utils/types';
 import CreateRoleModal from './CreateRoleModal';
@@ -92,6 +92,21 @@ const getConfigureRoleTabs = (
     }
   });
 };
+
+const renderRoleIcon = (role: GroupRoleMetadata, size: 'Small' | 'Medium', paletteMode: string) => (
+  <Icon
+    name={getRoleIconName(role.id, role.isPrivate)}
+    size={size}
+    style={getRoleStyle(role.color, paletteMode, 'color')}
+  />
+);
+
+const renderRoleHeaderLabel = (role: GroupRoleMetadata, paletteMode: string) => (
+  <span className='inline-flex items-center gap-small'>
+    {renderRoleIcon(role, 'Small', paletteMode)}
+    {role.name}
+  </span>
+);
 
 const useGroupRolesStyles = makeStyles()((theme) => ({
   container: {
@@ -658,19 +673,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
           </Grid>
           <Grid item XSmall={12} style={{ margin: '12px 12px 32px' }}>
             <Grid container>
-              {selectedRole.metadata.id === DefaultMemberRoleIdNumber ? (
-                <Icon
-                  name='icon-filled-square-person'
-                  size='Medium'
-                  style={getRoleStyle(selectedRole.metadata.color, palette.mode, 'color')}
-                />
-              ) : (
-                <Icon
-                  name='icon-filled-person-rectangle-horizontal-line'
-                  size='Medium'
-                  style={getRoleStyle(selectedRole.metadata.color, palette.mode, 'color')}
-                />
-              )}
+              {renderRoleIcon(selectedRole.metadata, 'Medium', palette.mode)}
               <Typography variant='body1' style={{ marginLeft: 8 }}>
                 {selectedRole.metadata.name}
               </Typography>
@@ -712,7 +715,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
             onClick={() => setSelectedTab(undefined)}
             color='primary'
             className={beforeButton}>
-            {selectedRole.metadata.name}
+            {renderRoleHeaderLabel(selectedRole.metadata, palette.mode)}
           </Button>
           <Grid container className={container}>
             {newRolePermissionsTabContent}
@@ -728,7 +731,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
             onClick={() => setSelectedTab(undefined)}
             color='primary'
             className={beforeButton}>
-            {selectedRole.metadata.name}
+            {renderRoleHeaderLabel(selectedRole.metadata, palette.mode)}
           </Button>
           <Grid container className={container}>
             {roleMembersTabContent}
@@ -744,7 +747,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
             onClick={() => setSelectedTab(undefined)}
             color='primary'
             className={beforeButton}>
-            {selectedRole.metadata.name}
+            {renderRoleHeaderLabel(selectedRole.metadata, palette.mode)}
           </Button>
           <Grid container className={container}>
             {roleSettingsTabContent}

@@ -52,6 +52,16 @@ const usePermissionsContainerStyles = makeStyles()((theme) => ({
   stickyFooter: {
     paddingLeft: 0,
     paddingRight: 0,
+    '&&': {
+      backgroundColor: theme.palette.surface[0],
+      backdropFilter: 'none',
+    },
+    '&& > div': {
+      flexDirection: 'row',
+    },
+    '&& button': {
+      width: 'auto',
+    },
   },
 }));
 
