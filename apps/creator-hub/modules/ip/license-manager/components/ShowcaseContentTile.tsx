@@ -9,6 +9,7 @@ export type ShowcaseContentTileProps = {
   nameLink?: string;
   showExternalIcon?: boolean;
   onClick?: () => void;
+  onNameClick?: () => void;
   className?: string;
 };
 
@@ -22,6 +23,7 @@ export const ShowcaseContentTile: FunctionComponent<ShowcaseContentTileProps> = 
   nameLink,
   showExternalIcon = true,
   onClick,
+  onNameClick,
   className,
 }) => {
   const nameContent =
@@ -33,6 +35,7 @@ export const ShowcaseContentTile: FunctionComponent<ShowcaseContentTileProps> = 
         rel='noopener noreferrer'
         isExternal={false}
         underline='none'
+        onClick={onNameClick}
         title={name}>
         {name}
       </Link>

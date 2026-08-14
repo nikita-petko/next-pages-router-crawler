@@ -337,9 +337,14 @@ const ShowcasedExperiencesDialog = ({
   };
 
   const title = tPendingTranslation(
-    'Manage featured creations',
-    'Title of the dialog for adding spotlighted creations to an IP listing',
+    'Edit featured creations',
+    'Title of the dialog for editing featured / spotlighted creations to an IP listing',
     translationKey('Heading.AddSpotlightedCreations', TranslationNamespace.AgreementsManager),
+  );
+  const description = tPendingTranslation(
+    'Creations must be public and have an active agreement to be featured.',
+    'Description explaining which creations can be featured / spotlighted on an IP listing',
+    translationKey('Description.AddSpotlightedCreations', TranslationNamespace.AgreementsManager),
   );
   const invalidSelectionDescription = tPendingTranslation(
     'One or more of your featured creations is no longer in active license agreement. Please deselect them.',
@@ -521,6 +526,7 @@ const ShowcasedExperiencesDialog = ({
               <DialogTitle className='text-heading-small content-emphasis margin-none'>
                 {title}
               </DialogTitle>
+              <p className='text-body-medium content-default margin-none'>{description}</p>
               <div className='flex items-center gap-small'>
                 <p className='text-body-medium content-default margin-none'>{selectedCountLabel}</p>
                 <Button
@@ -567,7 +573,7 @@ const ShowcasedExperiencesDialog = ({
                   'grid [grid-template-columns:repeat(auto-fill,144px)] [align-content:flex-start] [justify-content:space-between] [overflow-y:auto] gap-y-medium',
                 )}
                 data-testid='showcase-content-selection-grid'>
-                {selectableUniverseIds.map((universeId) => {
+                {selectableUniverseIds.map((universeId, index) => {
                   const isSelected = selectedUniverseIds.includes(universeId);
                   const isInvalid = invalidUniverseIds.has(universeId);
                   const isDeselectedInvalid = isInvalid && !isSelected;
@@ -653,6 +659,18 @@ const ShowcasedExperiencesDialog = ({
                         universeId={universeId}
                         name={name}
                         nameLink={nameLink}
+                        onNameClick={() =>
+                          logEvent(
+                            LicenseManagerClickEvent.IphListingsDetailsPageShowcaseContentClickEvent,
+                            {
+                              listingId,
+                              contentType: 'Universe',
+                              contentId: universeId,
+                              contentPosition: index + 1,
+                              surface: 'dialog',
+                            },
+                          )
+                        }
                         className='relative padding-small [pointer-events:none] [&_a]:[pointer-events:auto]'
                       />
                       <div
