@@ -12,6 +12,7 @@ import type {
   V1GroupsGroupIdUsersGetRequest,
   RobloxGroupsApiGroupMigrationStatusResponse,
   RobloxGroupsApiGroupMigrationBreakingChangesResponse,
+  RobloxGroupsApiPropertiesCommunityProductFeatures,
 } from '@rbx/client-groups/v1';
 import {
   GroupsApi,
@@ -50,6 +51,8 @@ const rolesetsApi = new RoleSetsApi(configuration);
 const rolesetsV2Api = new RolesetsV2Api(configuration);
 const permissionsV2Api = new PermissionsV2Api(configuration);
 const migrationApi = new MigrationApi(configuration);
+
+export type CommunityProductFeatures = RobloxGroupsApiPropertiesCommunityProductFeatures;
 
 export type GroupAllRolesResponse = RobloxGroupsApiGroupAllRolesResponse;
 export type GroupRoleMetadata = RobloxGroupsApiGroupRoleResponse;
@@ -132,6 +135,7 @@ interface GroupsClient {
     groupId: number,
   ): Promise<RobloxGroupsApiGroupMigrationBreakingChangesResponse>;
   migrateGroup(groupId: number): Promise<void>;
+  getGroupProductFeatures(groupId: number): Promise<CommunityProductFeatures>;
 }
 
 const groupsClient: GroupsClient = {
@@ -265,6 +269,9 @@ const groupsClient: GroupsClient = {
   },
   migrateGroup(groupId: number) {
     return migrationApi.v1GroupsGroupIdMigrationMigratePost({ groupId });
+  },
+  getGroupProductFeatures(groupId: number) {
+    return groupApi.v1GroupsGroupIdProductFeaturesGet({ groupId });
   },
 };
 

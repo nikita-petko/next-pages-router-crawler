@@ -17,6 +17,7 @@ import usersClient from '../clients/users';
 const ORGANIZATIONS_ROLES_KEY_PREFIX = 'organizationsApi_roles_';
 const GROUPS_ROLES_KEY_PREFIX = 'groupsApi_roles_';
 const GROUPS_CONFIGURATION_KEY = 'groupsApi_configuration_metadata';
+const GROUPS_PRODUCT_FEATURES_KEY = 'groupsApi_product_features';
 
 export function useGetGroupsRoles(groupId: string | undefined) {
   return useQuery({
@@ -362,5 +363,18 @@ export function useGetGroupConfigurationMetadata() {
     placeholderData: keepPreviousData,
     queryKey: [GROUPS_CONFIGURATION_KEY],
     queryFn: () => groupsClient.getConfigurationMetadata(),
+  });
+}
+
+export function useGetGroupProductFeatures(groupId: number | undefined) {
+  return useQuery({
+    enabled: groupId !== undefined,
+    queryKey: [GROUPS_PRODUCT_FEATURES_KEY, groupId],
+    queryFn: () => {
+      if (groupId === undefined) {
+        throw new Error('Tried to fetch product features for a group but group id was undefined');
+      }
+      return groupsClient.getGroupProductFeatures(groupId);
+    },
   });
 }

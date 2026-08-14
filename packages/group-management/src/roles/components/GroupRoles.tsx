@@ -30,6 +30,7 @@ import type { CreatorDetails, EntityDetails } from '../../permissions/utils/type
 import {
   useCreateRole,
   useDeleteRole,
+  useGetGroupProductFeatures,
   useGetGroupsRoles,
   useUpdateRoleMetadata,
 } from '../../queries/rolesQueries';
@@ -161,6 +162,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
   const { translate, translateWithNamespace } = useTranslation();
   const { palette } = useTheme();
   const {
+    group,
     isOwner,
     organization,
     permissions,
@@ -170,6 +172,10 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
     navigation,
     showToast,
   } = useCurrentGroup();
+
+  // Warm the product-features cache on roles-page load so RoleSettings reads it from cache
+  // and never flashes a loading state when a role is opened.
+  useGetGroupProductFeatures(group?.id);
   const roleId = Number.parseInt(navigation?.currentRoleId ?? '0', 10);
 
   const {

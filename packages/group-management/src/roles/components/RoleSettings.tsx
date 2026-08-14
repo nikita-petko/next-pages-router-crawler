@@ -7,7 +7,10 @@ import type { GroupRoleColorType } from '../../clients/groups';
 import type { GroupRoleMetadata } from '../../clients/groups';
 import TranslationNamespace from '../../constants/TranslationNamespace';
 import useCurrentGroup from '../../hooks/useCurrentGroup';
-import { useGetGroupConfigurationMetadata } from '../../queries/rolesQueries';
+import {
+  useGetGroupConfigurationMetadata,
+  useGetGroupProductFeatures,
+} from '../../queries/rolesQueries';
 import {
   DefaultMemberRoleIdNumber,
   DefaultRoleColor,
@@ -40,10 +43,17 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
 }) => {
   const { translate, translateWithNamespace } = useTranslation();
   const { palette } = useTheme();
-  const { isOwner, organization, permissions, unifiedLogger } = useCurrentGroup();
+  const { group, isOwner, organization, permissions, unifiedLogger } = useCurrentGroup();
   const { configure: configureDialog, open: openDialog, close: closeDialog } = useDialog();
 
   const { data: configMetadata } = useGetGroupConfigurationMetadata();
+  const { data: productFeatures, isLoading: isProductFeaturesLoading } = useGetGroupProductFeatures(
+    group?.id,
+  );
+  // Hidden until product features load so it never flashes in then out when the flag is on;
+  // it pops in only once we know HideRoleDescription is off.
+  const showRoleDescription =
+    !isProductFeaturesLoading && !(productFeatures?.hideRoleDescription ?? false);
   const roleConfig = configMetadata?.roleConfiguration;
   const nameMaxLength = roleConfig?.nameMaxLength ?? DefaultRoleNameMaxLength;
   const descriptionMaxLength = roleConfig?.descriptionMaxLength ?? DefaultRoleDescriptionMaxLength;
@@ -208,7 +218,7 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
       className='padding-top-large padding-bottom-large'
       gap={3}>
       <Grid container item XSmall={12}>
-        <div className='padding-bottom-large width-full'>
+        <div className={`width-full${showRoleDescription ? ' padding-bottom-large' : ''}`}>
           <TextInput
             label={translateWithNamespace(TranslationNamespace.GroupManagement, 'Label.RoleName')}
             maxLength={nameMaxLength}
@@ -220,19 +230,21 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
             {name.length}/{nameMaxLength}
           </span>
         </div>
-        <div className='width-full'>
-          <TextArea
-            label={translateWithNamespace(TranslationNamespace.Groups, 'Heading.Description')}
-            textareaStyle={{ resize: 'vertical', minHeight: '150px' }}
-            maxLength={descriptionMaxLength}
-            value={description}
-            isDisabled={disabled || saving}
-            onChange={onDescriptionChanged}
-          />
-          <span className='block text-caption-medium text-align-x-end'>
-            {description.length}/{descriptionMaxLength}
-          </span>
-        </div>
+        {showRoleDescription && (
+          <div className='width-full'>
+            <TextArea
+              label={translateWithNamespace(TranslationNamespace.Groups, 'Heading.Description')}
+              textareaStyle={{ resize: 'vertical', minHeight: '150px' }}
+              maxLength={descriptionMaxLength}
+              value={description}
+              isDisabled={disabled || saving}
+              onChange={onDescriptionChanged}
+            />
+            <span className='block text-caption-medium text-align-x-end'>
+              {description.length}/{descriptionMaxLength}
+            </span>
+          </div>
+        )}
       </Grid>
       {!isBaseMemberRole && (
         <Grid container item XSmall={12} wrap='wrap'>
