@@ -49,6 +49,7 @@ import { getRandomRoleColorType, getRoleStyle } from '../../utils/groupUtils';
 import { ConfigureRoleTab } from '../../utils/types';
 import type { RoleCreationMetadata, RoleMetadataForNewRole } from '../../utils/types';
 import CreateRoleModal from './CreateRoleModal';
+import RoleIdCopyRow from './RoleIdCopyRow';
 import RoleMembers from './RoleMembers';
 import RoleSettings from './RoleSettings';
 import RolesSidebar from './RolesSidebar';
@@ -809,6 +810,11 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
                     display: selectedTab !== ConfigureRoleTab.Permissions ? 'none' : 'block',
                   }}>
                   {newRolePermissionsTabContent}
+                  {selectedRole.metadata?.id != null && (
+                    <Grid item XSmall={12} style={{ paddingTop: 24 }}>
+                      <RoleIdCopyRow roleId={selectedRole.metadata.id} />
+                    </Grid>
+                  )}
                 </Grid>
               )}
 

@@ -21,6 +21,7 @@ import {
   RoleVisibility,
 } from '../../utils/constants';
 import { OrganizationsEventName, logOrganizationsEvent } from '../../utils/eventUtils';
+import RoleIdCopyRow from './RoleIdCopyRow';
 
 export type RoleSettingsProps = {
   role: GroupRoleMetadata;
@@ -363,6 +364,7 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
           )}
         </Grid>
       )}
+      {role.id != null && <RoleIdCopyRow roleId={role.id} />}
     </Grid>
   );
 };

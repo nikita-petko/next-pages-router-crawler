@@ -14,11 +14,16 @@ import {
   TextField,
   Alert,
   LaunchIcon,
+  FileCopyOutlinedIcon,
+  IconButton,
+  Tooltip,
   RobuxIcon,
   AlertTitle,
   FormControlLabel,
   Switch,
 } from '@rbx/ui';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import type { GroupSocialLink } from '@modules/clients/groups';
 import groupsClient from '@modules/clients/groups';
 import type { User } from '@modules/clients/users';
@@ -26,6 +31,7 @@ import tryParseResponseError from '@modules/clients/utils/tryParseResponseError'
 import { FormMode, toastDurationTime } from '@modules/miscellaneous/common';
 import { ASSET_ACCESS_PRIVACY } from '@modules/miscellaneous/common/constants/linkConstants';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { getEnumKeyByValue } from '@modules/miscellaneous/utils';
 import { useUpdateGroupAssetPrivacyDefault } from '@modules/react-query/assetPermissions';
 import useSocialLinksBehavior from '@modules/social-links/hooks/useSocialLinksBehavior';
@@ -170,7 +176,9 @@ const ConfigureGroupForm: FunctionComponent<React.PropsWithChildren<ConfigureGro
     },
   } = useConfigureGroupFormStyles();
 
-  const { translate } = useTranslation();
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
   const { enqueue, close } = useSnackbar();
   const { unifiedLogger } = useUnifiedLoggerProvider();
   const { refreshPermission, permissions } = useCurrentOrganization();
@@ -234,7 +242,7 @@ const ConfigureGroupForm: FunctionComponent<React.PropsWithChildren<ConfigureGro
       resetField(field);
     });
     setConfirmationDialogOpen(false);
-  }, [resetField]);
+  }, [resetField, setConfirmationDialogOpen]);
 
   const showBottomToast = useCallback(
     (msg: string) => {
@@ -248,6 +256,31 @@ const ConfigureGroupForm: FunctionComponent<React.PropsWithChildren<ConfigureGro
     },
     [enqueue, close],
   );
+
+  const copyGroupIdLabel = tPendingTranslation(
+    'Copy group ID',
+    'Copy-button tooltip/aria label',
+    translationKey('Action.CopyGroupId', TranslationNamespace.Organization),
+  );
+  const groupIdLabel = tPendingTranslation(
+    'Group ID',
+    'Label before the numeric ID',
+    translationKey('Label.GroupId', TranslationNamespace.Organization),
+  );
+  const groupIdCopiedMessage = tPendingTranslation(
+    'Group ID copied to clipboard',
+    'Copy-confirmation toast',
+    translationKey('Message.GroupIdCopied', TranslationNamespace.Organization),
+  );
+
+  const handleCopyGroupId = useCallback(() => {
+    if (!groupConfiguration.id) {
+      return;
+    }
+    void navigator.clipboard.writeText(groupConfiguration.id.toString()).then(() => {
+      showBottomToast(groupIdCopiedMessage);
+    });
+  }, [groupConfiguration.id, showBottomToast, groupIdCopiedMessage]);
 
   const handleIconChange = useCallback(
     (newValue: GroupIcon, fieldOnChange: ControllerRenderProps['onChange']) => {
@@ -461,7 +494,7 @@ const ConfigureGroupForm: FunctionComponent<React.PropsWithChildren<ConfigureGro
 
         resetField('owner', { defaultValue: owner });
 
-        refreshPermission();
+        void refreshPermission();
       } catch (errRes) {
         let errorMsgKey = 'Error.UnknownError';
         const err = await tryParseResponseError(errRes);
@@ -899,6 +932,23 @@ const ConfigureGroupForm: FunctionComponent<React.PropsWithChildren<ConfigureGro
             <FormHelperText className={errorMessageStyles}>{formSubmissionErrorMsg}</FormHelperText>
           )}
         </Grid>
+        {!!groupConfiguration.id && (
+          <Grid container item XSmall={12} alignItems='center' gap={0.5}>
+            <Typography variant='captionBody' color='primary'>
+              {groupIdLabel}: {groupConfiguration.id}
+            </Typography>
+            <Tooltip arrow placement='top' title={copyGroupIdLabel}>
+              <IconButton
+                data-testid='copy-group-id-button'
+                aria-label={copyGroupIdLabel}
+                size='small'
+                color='default'
+                onClick={handleCopyGroupId}>
+                <FileCopyOutlinedIcon fontSize='small' />
+              </IconButton>
+            </Tooltip>
+          </Grid>
+        )}
       </Grid>
     </Grid>
   );
