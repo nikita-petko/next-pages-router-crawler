@@ -1,8 +1,9 @@
 import type { FunctionComponent } from 'react';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { Divider, Tabs, TabsContent, TabsList, TabsTrigger } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
+import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 import useServerManagementDevGate from '../../hooks/useServerManagementDevGate';
 import ServerLogsList from './ServerLogsList/ServerLogsList';
 import ServerPlayersList from './ServerPlayersList';
@@ -39,6 +40,7 @@ const ServerDetailsPage: FunctionComponent = () => {
   const { translate } = useTranslation();
   const router = useRouter();
   const showLogsTab = useServerManagementDevGate();
+  const { unifiedLogger } = useUnifiedLoggerProvider();
 
   const { placeId: queryPlaceId, jobId: queryJobId } = router.query;
   const rawPlaceId = Array.isArray(queryPlaceId) ? queryPlaceId[0] : queryPlaceId;
@@ -47,6 +49,19 @@ const ServerDetailsPage: FunctionComponent = () => {
   const jobId = rawJobId != null && rawJobId !== '' ? rawJobId : undefined;
 
   const activeTab = resolveActiveTab(queryValueAsString(router.query.tab), showLogsTab);
+
+  useEffect(() => {
+    if (activeTab !== ServerDetailsTabs.Players) {
+      return;
+    }
+    unifiedLogger.logImpressionEvent({
+      eventName: 'ServerDetails.PlayersTab.PageView',
+      parameters: {
+        placeId: placeId != null ? String(placeId) : '',
+        jobId: jobId ?? '',
+      },
+    });
+  }, [activeTab, placeId, jobId, unifiedLogger]);
 
   const handleTabChange = useCallback(
     (value: string) => {

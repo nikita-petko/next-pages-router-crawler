@@ -7,6 +7,7 @@ import { makeStyles, TreeItem, treeItemClasses, Typography } from '@rbx/ui';
 import withNavAdornmentSize from '../utils/withNavAdornmentSize';
 import {
   navTreeContentWithTrailingClass,
+  navTreeExpandOnlyClass,
   navTreeLabelClass,
   navTreeTrailingClass,
 } from './NavigationTree';
@@ -88,7 +89,7 @@ const useStyles = makeStyles()(() => {
     category: {
       display: '-webkit-box',
       overflow: 'hidden',
-      WebkitBoxOrient: 'vertical',
+      '-webkit-box-orient': 'vertical',
       WebkitLineClamp: 2,
       color: 'var(--color-content-emphasis)',
       textOverflow: 'ellipsis',
@@ -107,7 +108,7 @@ const useStyles = makeStyles()(() => {
     subheading: {
       display: '-webkit-box',
       overflow: 'hidden',
-      WebkitBoxOrient: 'vertical',
+      '-webkit-box-orient': 'vertical',
       WebkitLineClamp: 2,
       color: 'var(--color-content-default)',
       textOverflow: 'ellipsis',
@@ -235,7 +236,12 @@ const NavigationTreeItem: React.FunctionComponent<TNavigationTreeItemProps> = ({
       label={treeItemLabel}
       classes={{
         ...classesProp,
-        content: cx(classesProp?.content, adornment ? navTreeContentWithTrailingClass : undefined),
+        content: cx(
+          classesProp?.content,
+          adornment ? navTreeContentWithTrailingClass : undefined,
+          // Expand-only rows suppress the focused-looks-selected fill; links don't.
+          isSelectionDisabled ? navTreeExpandOnlyClass : undefined,
+        ),
       }}
       slotProps={{
         ...slotPropsProp,

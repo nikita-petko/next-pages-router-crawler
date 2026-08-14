@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import Router from 'next/router';
 import { Divider, Icon } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import {
@@ -107,9 +108,14 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
 
   const isOnDocsite = ['Documentation', 'Assistant'].includes(currentProduct);
 
+  const [pendingActive, setPendingActive] = useState<string | null>(null);
+
   const selectItem = useCallback(
-    (event: string) => {
+    (event: string, activeKey?: string) => {
       sendEvent(clickRailEventModel(event));
+      if (activeKey != null) {
+        setPendingActive(activeKey);
+      }
       if (drawerVariant === 'temporary' && event !== 'Learn') {
         setPrimaryRailOpen(false);
       }
@@ -125,7 +131,7 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
     [drawerVariant, sendEvent, setLearnOpen, setPrimaryRailOpen, isOnDocsite],
   );
 
-  const active = useMemo(() => {
+  const routeActive = useMemo(() => {
     if (learnOpen) {
       return 'Documentation';
     }
@@ -176,6 +182,25 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
     Dashboard.collaborations,
     Dashboard.updates,
   ]);
+
+  if (pendingActive != null && routeActive === pendingActive) {
+    setPendingActive(null);
+  }
+  const active = pendingActive ?? routeActive;
+
+  useEffect(() => {
+    const events = Router.events;
+    if (!events) {
+      return undefined;
+    }
+    const revertPending = () => {
+      setPendingActive(null);
+    };
+    events.on('routeChangeError', revertPending);
+    return () => {
+      events.off('routeChangeError', revertPending);
+    };
+  }, []);
 
   if (isLoading) {
     return (
@@ -232,7 +257,7 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
         active={active === 'Home'}
         activeIcon={<BuilderHomeFillIcon />}
         label={translate('Heading.Home')}
-        onClick={() => selectItem('Home')}
+        onClick={() => selectItem('Home', 'Home')}
         href={Dashboard.home}
       />
       {isAuth && (
@@ -243,7 +268,7 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
           activeIcon={<Icon name='icon-filled-folder' size='Medium' />}
           active={active === 'Creations'}
           label={translate('Heading.Creations')}
-          onClick={() => selectItem('Creations')}
+          onClick={() => selectItem('Creations', 'Creations')}
           href={Dashboard.creations}
         />
       )}
@@ -254,7 +279,7 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
         activeIcon={<Icon name='icon-filled-book-open' size='Medium' />}
         active={active === 'Documentation'}
         label={translate('Heading.Learn')}
-        onClick={() => selectItem('Learn')}
+        onClick={() => selectItem('Learn', 'Documentation')}
         href={Documentation.home}
       />
       <RailItem
@@ -264,7 +289,7 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
         activeIcon={<Icon name='icon-filled-shopping-basket' size='Medium' />}
         active={active === 'Store'}
         label={translate('Heading.Store')}
-        onClick={() => selectItem('Store')}
+        onClick={() => selectItem('Store', 'Store')}
         href={Store.home}
       />
       <RailItem
@@ -274,7 +299,7 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
         activeIcon={<BuilderChatSideFillIcon />}
         active={active === 'Forum'}
         label={translate('Heading.Forums')}
-        onClick={() => selectItem('Forum')}
+        onClick={() => selectItem('Forum', 'Forum')}
         href={Forum.home}
       />
       <RailItem
@@ -284,7 +309,7 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
         activeIcon={<TempUpdatesFillIcon />}
         active={active === ProductKey.Updates}
         label={translate('Heading.Updates')}
-        onClick={() => selectItem(ProductKey.Updates)}
+        onClick={() => selectItem(ProductKey.Updates, ProductKey.Updates)}
         href={Dashboard.updates}
       />
       {isAuth && (
@@ -301,7 +326,7 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
             activeIcon={<TempFinanceFillIcon />}
             active={active === 'Finances'}
             label={translate('Heading.Finances')}
-            onClick={() => selectItem('Finances')}
+            onClick={() => selectItem('Finances', 'Finances')}
             href={Dashboard.finances}
           />
           <RailItem
@@ -311,7 +336,7 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
             activeIcon={<Icon name='icon-filled-chart-three-vertical-bars' size='Medium' />}
             active={active === 'Analytics'}
             label={translate('Title.Analytics')}
-            onClick={() => selectItem('Analytics')}
+            onClick={() => selectItem('Analytics', 'Analytics')}
             href={Dashboard.analytics}
           />
           {creatorType === CreatorType.Group && (
@@ -322,7 +347,7 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
               activeIcon={<Icon name='icon-filled-two-people' size='Medium' />}
               active={active === 'Collaboration'}
               label={translate('Heading.Collaboration')}
-              onClick={() => selectItem('Collaboration')}
+              onClick={() => selectItem('Collaboration', 'Collaboration')}
               href={Dashboard.groupProfile}
             />
           )}
@@ -333,7 +358,7 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
             icon={<TempAdsIcon />}
             activeIcon={<TempAdsFillIcon />}
             label={translate('Heading.Ads')}
-            onClick={() => selectItem('Ads')}
+            onClick={() => selectItem('Ads', ProductKey.Advertise)}
             href={Ads.home}
           />
           {(!compact || iconOnly) && (
