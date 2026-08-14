@@ -271,7 +271,6 @@ function ItemDetails(props: ItemDetailsProps) {
             label={translate('Label.ItemName')}
             fullWidth
             margin='normal'
-            disabled={isBundle && isCollectible && !settings.allowUpdatingBundleName}
             inputProps={{ maxLength: 50 }}
             value={name}
             onChange={(event) => setName(event.target.value)}

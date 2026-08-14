@@ -627,24 +627,6 @@ function PublishPanel(props: PublishPanelProps) {
                 </>
               )}
 
-              {isBundle && !settings.allowUpdatingBundleName && (
-                <>
-                  <Grid container item XSmall={12} alignItems='center' padding='16px'>
-                    <Grid item XSmall={6}>
-                      <Typography style={{ fontSize: '14px', fontWeight: '400' }}>
-                        {translate('Label.ItemName')}
-                      </Typography>
-                    </Grid>
-                    <Grid item XSmall={6}>
-                      <Typography variant='body2' className={classes.fieldValue}>
-                        {name}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                  <Divider />
-                </>
-              )}
-
               {isLimited && (
                 <>
                   <Grid container item XSmall={12} alignItems='center' padding='16px'>
