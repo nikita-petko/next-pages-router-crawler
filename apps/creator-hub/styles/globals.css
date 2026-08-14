@@ -4335,6 +4335,9 @@
 .\[filter\:grayscale\(100\%\)\] {
   filter: grayscale(100%);
 }
+.\[flex-direction\:column\] {
+  flex-direction: column;
+}
 .\[flex-wrap\:wrap\] {
   flex-wrap: wrap;
 }
@@ -4470,6 +4473,9 @@
 .\[height\:2px\] {
   height: 2px;
 }
+.\[height\:400px\] {
+  height: 400px;
+}
 .\[height\:80px\] {
   height: 80px;
 }
@@ -4553,6 +4559,9 @@
 }
 .\[margin-left\:4px\] {
   margin-left: 4px;
+}
+.\[margin-right\:auto\] {
+  margin-right: auto;
 }
 .\[margin-right\:var\(--size-50\)\] {
   margin-right: var(--size-50);

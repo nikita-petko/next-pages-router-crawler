@@ -19,10 +19,12 @@ import { Item, toastDurationTime } from '@modules/miscellaneous/common';
 import { getUrlForItemType } from '@modules/miscellaneous/urls';
 import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
 import { useGetActivationEligibilityForUniverse } from '@modules/react-query/develop';
+import ItemCardAddToFolderButton from '../../avatarItem/components/ItemCardAddToFolderButton';
 import ItemCardExperienceSubscriptionActivationButton from '../../experienceSubscriptions/components/ItemCardContextMenu/ItemCardExperienceSubscriptionActivationButton';
 import ItemCardExperienceSubscriptionDeactivationButton from '../../experienceSubscriptions/components/ItemCardContextMenu/ItemCardExperienceSubscriptionDeactivationButton';
 import ItemCardExperienceSubscriptionDeletionButton from '../../experienceSubscriptions/components/ItemCardContextMenu/ItemCardExperienceSubscriptionDeletionButton';
 import ItemCardExperienceSubscriptionTakeOffSaleButton from '../../experienceSubscriptions/components/ItemCardContextMenu/ItemCardExperienceSubscriptionTakeOffSaleButton';
+import useUGCFoldersGate from '../../home/hooks/useUGCFoldersGate';
 import AddVariantDialog from '../../itemConfiguration/components/AddVariantDialog';
 import ItemCardMigratePlaceButton from '../../places/components/ItemCardMigratePlaceButton';
 import type CreationData from '../interfaces/CreationData';
@@ -126,6 +128,7 @@ const ItemCardContextMenu: FunctionComponent<React.PropsWithChildren<ItemCardCon
     classes: { redText, icon },
   } = useItemCardContextMenuStyles();
   const { user } = useAuthentication();
+  const isUGCFoldersEnabled = useUGCFoldersGate();
 
   const router = useRouter();
   const onlyShowToggleEnableMenuItem = useMemo(() => {
@@ -550,6 +553,16 @@ const ItemCardContextMenu: FunctionComponent<React.PropsWithChildren<ItemCardCon
         />
       )}
 
+      {isUGCFoldersEnabled &&
+        !onlyShowToggleEnableMenuItem &&
+        creation.containingFolderId === undefined &&
+        (itemType === Item.CatalogAsset || itemType === Item.Bundle) && (
+          <ItemCardAddToFolderButton
+            key='Action.AddToFolder'
+            creation={creation}
+            handleClose={handleClose}
+          />
+        )}
       {creation.containingFolderId !== undefined && (
         <ItemCardRemoveFromFolderButton
           key='Action.RemoveItemFromFolder'
