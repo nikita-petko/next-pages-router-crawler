@@ -130,12 +130,14 @@ export function useGetAssetDependencies(
   );
 
   // Combine the data
-  const extendedDependenciesData = React.useMemo(() => {
+  const extendedDependenciesData = React.useMemo<
+    ExtendedGetAssetDependenciesResult[] | undefined
+  >(() => {
     if (!filteredDependencies) {
       return undefined;
     }
     if (!includeCreatorName || !creatorInfoQuery.data) {
-      return filteredDependencies as ExtendedGetAssetDependenciesResult[];
+      return filteredDependencies;
     }
 
     return filteredDependencies.map((dependency) => {
@@ -148,7 +150,7 @@ export function useGetAssetDependencies(
         ...dependency,
         creatorName: creatorInfoQuery.data.get(creator),
       };
-    }) as ExtendedGetAssetDependenciesResult[];
+    });
   }, [filteredDependencies, creatorInfoQuery.data, includeCreatorName]);
 
   return {
@@ -257,13 +259,11 @@ export function useSetAssetOpenUse(assetId: number) {
       const enableDeepAccessCheck = false;
 
       const result = await assetPermissionsApiClient.batchGrantAssetPermissions(
-        [], // Won't be used since the flag is true
         [assetGrantRequest],
         enableDeepAccessCheck,
         SubjectType.All,
         '',
         AssetGrantableAction.Use,
-        true, // This can be an unflagged change since the codepath itself is behind AAC flags
       );
 
       // The API will return a 200, even if the asset was not successfully set to OpenUse

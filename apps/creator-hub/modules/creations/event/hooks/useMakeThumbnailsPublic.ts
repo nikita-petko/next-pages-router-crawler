@@ -4,12 +4,10 @@ import type { EventMedia } from '@rbx/client-virtual-events-api/v1';
 import { useTranslation } from '@rbx/intl';
 import assetPermissionsApiClient from '@modules/clients/assetPermissions';
 import tryParseResponseError from '@modules/clients/utils/tryParseResponseError';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 
 const useMakeThumbnailsPublic = () => {
   const { translate } = useTranslation();
   const failedUploadMessage = translate('Error.EEFailedToUploadThumbnail');
-  const { settings } = useSettings(); // Remove with migrateAssetPermissionsParams
 
   return useCallback(
     async (rankedThumbnails: EventMedia[]) => {
@@ -33,13 +31,11 @@ const useMakeThumbnailsPublic = () => {
         const enableDeepAccessCheck = false;
 
         const response = await assetPermissionsApiClient.batchGrantAssetPermissions(
-          thumbnailIds,
           assetGrantRequests,
           enableDeepAccessCheck,
           SubjectType.All,
           '',
           AssetConsumerAction.Use,
-          settings.migrateAssetPermissionsParams ?? false,
         );
         if (response.errors?.length) {
           throw new Error(failedUploadMessage);
@@ -50,7 +46,7 @@ const useMakeThumbnailsPublic = () => {
         throw new Error(message, { cause: e });
       }
     },
-    [failedUploadMessage, settings.migrateAssetPermissionsParams],
+    [failedUploadMessage],
   );
 };
 

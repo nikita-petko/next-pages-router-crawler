@@ -133,31 +133,19 @@ const assetPermissionsApiClient = {
   },
 
   batchGrantAssetPermissions(
-    assetIds: number[], // Remove with migrateAssetPermissionsParams
     assetsGrantRequests: AssetGrantRequest[],
     enableDeepAccessCheck: boolean,
     subjectType: SubjectType,
     subjectId: string,
     action: AssetConsumerAction,
-    migrateAssetPermissionsParams: boolean, // Remove with migrateAssetPermissionsParams
   ) {
-    let batchGrantPermissionsRequest;
-    if (migrateAssetPermissionsParams) {
-      batchGrantPermissionsRequest = {
-        requests: assetsGrantRequests,
-        enableDeepAccessCheck,
-        subjectId,
-        subjectType,
-        action,
-      };
-    } else {
-      batchGrantPermissionsRequest = {
-        assetIds,
-        subjectId,
-        subjectType,
-        action,
-      };
-    }
+    const batchGrantPermissionsRequest = {
+      requests: assetsGrantRequests,
+      enableDeepAccessCheck,
+      subjectId,
+      subjectType,
+      action,
+    };
     const request = { assetPermissionsBatchGrantPermissionsRequest: batchGrantPermissionsRequest };
     return assetPermissionsApi.assetPermissionsBatchGrantPermissions(request);
   },

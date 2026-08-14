@@ -1,14 +1,13 @@
-import { useRouter } from 'next/router';
 import type { FunctionComponent } from 'react';
 import React, { useCallback } from 'react';
+import { useRouter } from 'next/router';
 import type { GrantPermissionError } from '@rbx/client-asset-permissions-api/v1';
 import { AssetConsumerAction, ErrorCode, SubjectType } from '@rbx/client-asset-permissions-api/v1';
 import { useTranslation } from '@rbx/intl';
 import { Grid, Button } from '@rbx/ui';
 import assetPermissionsApiClient from '@modules/clients/assetPermissions';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import UseAssetPermissionsStyles from './AssetPermissionsContainer.styles';
+import useAssetPermissionsStyles from './AssetPermissionsContainer.styles';
 import type { TAssetDetails } from './types';
 
 type SaveAssetPermissionsContainerProps = {
@@ -23,11 +22,10 @@ const SaveAssetPermissionsContainer: FunctionComponent<
 > = ({ universeId, pendingAssetIdsList, onItemsSave, onShowToast }) => {
   const {
     classes: { actionContainer, buttonText },
-  } = UseAssetPermissionsStyles();
+  } = useAssetPermissionsStyles();
   const router = useRouter();
   const { translate } = useTranslation();
   const { unifiedLogger } = useUnifiedLoggerProvider();
-  const { settings } = useSettings(); // Remove with migrateAssetPermissionsParams
 
   const emitSaveChangesSuccessEvent = useCallback(
     (itemCount: number) => {
@@ -53,6 +51,7 @@ const SaveAssetPermissionsContainer: FunctionComponent<
     [unifiedLogger],
   );
 
+  /* oxlint-disable react/react-compiler -- annotation-mode compiler skips this file (no 'use memo'); manual useCallback for a stable ref, deps per exhaustive-deps */
   const handleFormSubmit = useCallback(async () => {
     const toastMessages: { isSuccess: boolean; title: string; description?: string }[] = [];
     const assetIds = Array.from(pendingAssetIdsList.keys());
@@ -69,13 +68,11 @@ const SaveAssetPermissionsContainer: FunctionComponent<
       const enableDeepAccessCheck = true;
 
       const response = await assetPermissionsApiClient.batchGrantAssetPermissions(
-        assetIds,
         assetGrantRequests,
         enableDeepAccessCheck,
         SubjectType.Universe,
         universeId.toString(),
         AssetConsumerAction.Use,
-        settings.migrateAssetPermissionsParams ?? false,
       );
 
       const successCount = response.successAssetIds?.length ?? 0;
@@ -132,16 +129,16 @@ const SaveAssetPermissionsContainer: FunctionComponent<
   }, [
     pendingAssetIdsList,
     universeId,
-    settings.migrateAssetPermissionsParams,
-    onItemsSave,
     translate,
     emitSaveChangesSuccessEvent,
     emitSaveChangesFailureEvent,
+    onItemsSave,
     onShowToast,
   ]);
+  /* oxlint-enable react/react-compiler */
 
   const handleFormCancel = useCallback(() => {
-    router.push(`/dashboard/creations/experiences/${universeId}/overview`);
+    void router.push(`/dashboard/creations/experiences/${universeId}/overview`);
   }, [router, universeId]);
 
   return (
