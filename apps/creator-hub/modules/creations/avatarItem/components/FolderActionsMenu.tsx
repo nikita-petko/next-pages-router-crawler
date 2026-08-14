@@ -75,7 +75,7 @@ const FolderActionsMenu: FunctionComponent<FolderActionsMenuProps> = ({
           <Typography>{translate('Action.RenameFolder')}</Typography>
         </MenuItem>
         <MenuItem onClick={openAddItemDialog} disableRipple>
-          <Typography>{translate('Action.AddItemToFolder')}</Typography>
+          <Typography>{translate('Action.AddItemsToFolder')}</Typography>
         </MenuItem>
         <MenuItem onClick={openDeleteDialog} disableRipple>
           <Typography color='error'>{translate('Action.DeleteFolder')}</Typography>

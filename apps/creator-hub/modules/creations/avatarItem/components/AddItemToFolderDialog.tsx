@@ -14,13 +14,30 @@ import {
   TextField,
   useSnackbar,
 } from '@rbx/ui';
+import { MaxItemsPerFolderAddRequest } from '../constants/avatarItemConstants';
 import useAddItemToFolderMutation from '../hooks/useAddItemToFolderMutation';
+
+const ItemIdsInputRows = 3;
 
 const isFolderItemType = (
   value: string,
 ): value is RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum =>
   value === RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum.Asset ||
   value === RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum.Bundle;
+
+/**
+ * Parses a comma/whitespace/newline-separated list of item IDs into a de-duplicated, trimmed list
+ * (dropping empty entries). Non-numeric entries are preserved so callers can validate them.
+ */
+export const parseItemIds = (raw: string): string[] => {
+  const ids = raw
+    .split(/[\s,]+/)
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  return [...new Set(ids)];
+};
+
+const isNumericId = (id: string): boolean => /^\d+$/.test(id);
 
 export interface AddItemToFolderDialogProps {
   selectedFolderId: string;
@@ -37,7 +54,7 @@ const AddItemToFolderDialog: FunctionComponent<AddItemToFolderDialogProps> = ({
 }) => {
   const { translate } = useTranslation();
   const { enqueue, close: closeSnackbar } = useSnackbar();
-  const [itemId, setItemId] = useState<string>('');
+  const [itemIdsInput, setItemIdsInput] = useState<string>('');
   const [itemType, setItemType] =
     useState<RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum>(
       RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum.Asset,
@@ -56,9 +73,9 @@ const AddItemToFolderDialog: FunctionComponent<AddItemToFolderDialogProps> = ({
     [enqueue, closeSnackbar],
   );
 
-  const { addItemToFolder, isAddingItem } = useAddItemToFolderMutation({
+  const { addItemsToFolder, isAddingItems } = useAddItemToFolderMutation({
     onSuccess: () => {
-      showBottomMsg(translate('Message.AddItemToFolderSuccess'));
+      showBottomMsg(translate('Message.AddItemsToFolderSuccess'));
       onFolderContentsUpdated();
       onClose();
     },
@@ -71,31 +88,45 @@ const AddItemToFolderDialog: FunctionComponent<AddItemToFolderDialogProps> = ({
         event.preventDefault();
       }
 
-      if (!itemId.trim()) {
+      const itemIds = parseItemIds(itemIdsInput);
+      if (itemIds.length === 0) {
         showBottomMsg(translate('Error.ItemIdEmpty'));
         return;
       }
+      if (itemIds.some((id) => !isNumericId(id))) {
+        showBottomMsg(translate('Error.ItemIdInvalid'));
+        return;
+      }
+      if (itemIds.length > MaxItemsPerFolderAddRequest) {
+        showBottomMsg(
+          translate('Error.TooManyItemsToAdd', { max: String(MaxItemsPerFolderAddRequest) }),
+        );
+        return;
+      }
 
-      addItemToFolder({ itemId: itemId.trim(), itemType, folderId: selectedFolderId });
+      addItemsToFolder({ itemIds, itemType, folderId: selectedFolderId });
     },
-    [itemId, itemType, selectedFolderId, showBottomMsg, addItemToFolder, translate],
+    [itemIdsInput, itemType, selectedFolderId, showBottomMsg, addItemsToFolder, translate],
   );
 
   return (
     <Dialog open onClose={onClose} fullWidth>
-      <DialogTitle>{translate('Label.AddItemToFolder')}</DialogTitle>
+      <DialogTitle>{translate('Label.AddItemsToFolder')}</DialogTitle>
       <DialogContent>
         <form onSubmit={handleSubmit} id='add-item-form'>
           <Grid container direction='column' spacing={2} className='padding-top-small'>
             <Grid item>
               <TextField
-                id='itemId'
-                label={translate('Label.ItemId')}
-                value={itemId}
-                onChange={(e) => setItemId(e.target.value)}
+                id='itemIds'
+                label={translate('Label.ItemIds')}
+                value={itemIdsInput}
+                onChange={(e) => setItemIdsInput(e.target.value)}
                 fullWidth
-                placeholder={translate('Label.ItemId')}
+                multiline
+                minRows={ItemIdsInputRows}
+                placeholder={translate('Placeholder.ItemIdsCsv')}
                 margin='dense'
+                InputLabelProps={{ shrink: true }}
               />
             </Grid>
             <Grid item>
@@ -132,11 +163,11 @@ const AddItemToFolderDialog: FunctionComponent<AddItemToFolderDialogProps> = ({
         <Button
           type='submit'
           form='add-item-form'
-          disabled={isAddingItem}
+          disabled={isAddingItems}
           variant='contained'
           size='large'
-          loading={isAddingItem}>
-          {translate('Action.AddItemToFolder')}
+          loading={isAddingItems}>
+          {translate('Action.AddItemsToFolder')}
         </Button>
       </DialogActions>
     </Dialog>

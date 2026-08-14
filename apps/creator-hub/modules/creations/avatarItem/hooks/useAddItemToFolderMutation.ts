@@ -4,8 +4,8 @@ import { useTranslation } from '@rbx/intl';
 import itemconfigurationClient from '@modules/clients/itemconfiguration';
 import tryParseResponseError from '@modules/clients/utils/tryParseResponseError';
 
-interface AddItemToFolderParams {
-  itemId: string;
+interface AddItemsToFolderParams {
+  itemIds: string[];
   itemType: RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum;
   folderId: string;
 }
@@ -16,15 +16,15 @@ interface UseAddItemToFolderMutationOptions {
 }
 
 /**
- * Adds a single item to a folder via itemconfiguration. Maps the item-level error codes to localized
+ * Adds items to a folder via itemconfiguration. Maps the item-level error codes to localized
  * messages and delegates success / error messaging to the caller.
  */
 const useAddItemToFolderMutation = ({ onSuccess, onError }: UseAddItemToFolderMutationOptions) => {
   const { translate } = useTranslation();
 
-  const { mutate: addItemToFolder, isPending: isAddingItem } = useMutation({
-    mutationFn: (params: AddItemToFolderParams) =>
-      itemconfigurationClient.addItemToFolder(params.itemId, params.itemType, params.folderId),
+  const { mutate: addItemsToFolder, isPending: isAddingItems } = useMutation({
+    mutationFn: (params: AddItemsToFolderParams) =>
+      itemconfigurationClient.addItemsToFolder(params.itemIds, params.itemType, params.folderId),
     onSuccess,
     onError: async (error) => {
       const errorResponse = await tryParseResponseError(error);
@@ -45,7 +45,7 @@ const useAddItemToFolderMutation = ({ onSuccess, onError }: UseAddItemToFolderMu
     },
   });
 
-  return { addItemToFolder, isAddingItem };
+  return { addItemsToFolder, isAddingItems };
 };
 
 export default useAddItemToFolderMutation;

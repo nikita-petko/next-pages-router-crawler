@@ -704,8 +704,16 @@ export class ItemConfigurationClient {
     itemType: RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum,
     folderId: string,
   ): Promise<void> {
+    return this.addItemsToFolder([itemId], itemType, folderId);
+  }
+
+  addItemsToFolder(
+    itemIds: string[],
+    itemType: RobloxItemConfigurationApiModelsFolderFolderItemItemTypeEnum,
+    folderId: string,
+  ): Promise<void> {
     const addItemsRequest: AddItemsRequest = {
-      items: [{ id: itemId, itemType }],
+      items: itemIds.map((id) => ({ id, itemType })),
     };
     const request: V1FoldersFolderIdItemsPostRequest = {
       folderId,
