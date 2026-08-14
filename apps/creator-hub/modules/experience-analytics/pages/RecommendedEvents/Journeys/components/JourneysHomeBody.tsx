@@ -6,6 +6,7 @@ import { useTranslation } from '@rbx/intl';
 import { DialogTemplate, useDialog } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import type { GenericTablePaginationSpec } from '@modules/charts-generic/tables/GenericTablePagination';
 import GenericTableV2 from '@modules/charts-generic/tables/GenericTableV2';
 import type { TableColumnConfig } from '@modules/charts-generic/tables/types/GenericColumnType';
 import { ColumnType } from '@modules/charts-generic/tables/types/GenericColumnType';
@@ -31,6 +32,9 @@ enum Col {
   LastModified = 'lastModified',
   Actions = 'actions',
 }
+
+const PageSizeOptions = [5, 10, 25, 50];
+const DefaultPageSize = 10;
 
 const JourneyDeleteConfirmContent: FC<{
   journeyName: string;
@@ -102,6 +106,9 @@ const JourneysHomeBody: FC<{ resource: RAQIV2ChartResource }> = ({ resource }) =
   const { data: configs, isLoading, error, refetch } = useJourneyConfigs(universeId);
   const { open, close, configure } = useDialog();
 
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(DefaultPageSize);
+
   const handleAction = useCallback(
     (actionType: JourneyAction, journeyName: string) => {
       if (actionType === 'view') {
@@ -126,7 +133,7 @@ const JourneysHomeBody: FC<{ resource: RAQIV2ChartResource }> = ({ resource }) =
     () => [
       {
         columnKey: Col.Name,
-        columnType: ColumnType.Text,
+        columnType: ColumnType.TextWithLink,
         titleKey: tPendingTranslation(
           'Name',
           'Label for journey name input field',
@@ -166,7 +173,7 @@ const JourneysHomeBody: FC<{ resource: RAQIV2ChartResource }> = ({ resource }) =
     translationKey('Action.View', TranslationNamespace.Analytics),
   );
   const editLabel = tPendingTranslation(
-    'Edit config',
+    'Edit',
     'Action to edit journey configuration',
     translationKey('Action.EditConfig', TranslationNamespace.Analytics),
   );
@@ -176,9 +183,14 @@ const JourneysHomeBody: FC<{ resource: RAQIV2ChartResource }> = ({ resource }) =
     translationKey('Action.Delete', TranslationNamespace.Analytics),
   );
 
+  const pagedConfigs = useMemo(() => {
+    const start = page * pageSize;
+    return (configs ?? []).slice(start, start + pageSize);
+  }, [configs, page, pageSize]);
+
   const rowData = useMemo(
     () =>
-      (configs ?? []).map((entry) => {
+      pagedConfigs.map((entry) => {
         const actionsCell: ActionCellType<JourneyAction> = {
           type: ColumnType.Actions,
           actions: [
@@ -208,7 +220,16 @@ const JourneysHomeBody: FC<{ resource: RAQIV2ChartResource }> = ({ resource }) =
         };
 
         return new Map<Col, CellDataType<JourneyAction>>([
-          [Col.Name, { type: ColumnType.Text, value: entry.journeyName }],
+          [
+            Col.Name,
+            {
+              type: ColumnType.TextWithLink,
+              text: entry.journeyName,
+              href: dashboard.getAnalyticsJourneysViewUrl(universeId, entry.journeyName),
+              newTab: false,
+              onClick: () => {},
+            },
+          ],
           [
             Col.LastModified,
             {
@@ -219,12 +240,30 @@ const JourneysHomeBody: FC<{ resource: RAQIV2ChartResource }> = ({ resource }) =
           [Col.Actions, actionsCell],
         ]);
       }),
-    [configs, handleAction, viewLabel, editLabel, deleteLabel],
+    [pagedConfigs, handleAction, viewLabel, editLabel, deleteLabel, universeId],
   );
 
+  const pagination: GenericTablePaginationSpec = useMemo(() => {
+    const total = configs?.length ?? 0;
+    return {
+      page,
+      total,
+      pageSize,
+      pageSizeOptions: PageSizeOptions,
+      setPageSize: (newPageSize: number) => {
+        setPageSize(newPageSize);
+        setPage(0);
+      },
+      onNextPage: () => setPage((prev) => prev + 1),
+      onPreviousPage: () => setPage((prev) => Math.max(0, prev - 1)),
+      hasNext: (page + 1) * pageSize < total,
+      hasPrevious: page > 0,
+    };
+  }, [configs, page, pageSize]);
+
   const getRowKey = useCallback(
-    (_: Map<Col, CellDataType<JourneyAction>>, i: number) => configs?.[i]?.journeyName ?? '',
-    [configs],
+    (_: Map<Col, CellDataType<JourneyAction>>, i: number) => pagedConfigs[i]?.journeyName ?? '',
+    [pagedConfigs],
   );
 
   if (isLoading) {
@@ -286,6 +325,7 @@ const JourneysHomeBody: FC<{ resource: RAQIV2ChartResource }> = ({ resource }) =
         rowData={rowData}
         columnConfigs={columnConfigs}
         tableConfig={{ stickyHeader: true, hover: true, tableBorder: false }}
+        pagination={pagination}
         getRowKey={getRowKey}
         showNoDataMessage={false}
         isDataLoading={false}
