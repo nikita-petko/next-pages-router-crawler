@@ -1,4 +1,3 @@
-/* istanbul ignore file */
 import { useMutation, type UseMutationOptions, type QueryClient } from '@tanstack/react-query';
 import {
   GamePassProperty,

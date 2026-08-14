@@ -1,4 +1,3 @@
-/* istanbul ignore file */
 import { useMutation, type QueryClient, type UseMutationOptions } from '@tanstack/react-query';
 import {
   ErrorCode,
