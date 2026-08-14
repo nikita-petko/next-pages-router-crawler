@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@rbx/ui';
 import type { AssetPermissionRequest } from '@modules/clients/assetPermissions';
+import { useResolveRequesterNames } from '@modules/react-query/assetPermissions/assetPermissionsHelperQueries';
 import useAccessRequestsTableStyles from './AccessRequestsTable.styles';
 import AccessRequestsTableRow from './AccessRequestsTableRow';
 
@@ -25,7 +26,7 @@ const DEFAULT_ROWS_PER_PAGE = 5;
 const AccessRequestsTable: FC<AccessRequestsTableProps> = ({ assetId, requests }) => {
   const { translate } = useTranslation();
   const {
-    classes: { tableContainer, paginationCell, requesterCell, groupCell, dateCell, actionsCell },
+    classes: { tableContainer, paginationCell, requesterCell, dateCell, actionsCell },
   } = useAccessRequestsTableStyles();
   const [page, setPage] = useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_ROWS_PER_PAGE);
@@ -36,9 +37,17 @@ const AccessRequestsTable: FC<AccessRequestsTableProps> = ({ assetId, requests }
   const effectivePage = Math.min(page, maxPage);
 
   const displayedRequests = useMemo(
-    () => requests.slice(effectivePage * rowsPerPage, effectivePage * rowsPerPage + rowsPerPage),
+    () =>
+      requests
+        .slice(effectivePage * rowsPerPage, effectivePage * rowsPerPage + rowsPerPage)
+        .filter(
+          (request): request is AssetPermissionRequest & { requestId: string } =>
+            request.requestId !== undefined,
+        ),
     [requests, effectivePage, rowsPerPage],
   );
+
+  const { data: requesterNames } = useResolveRequesterNames(displayedRequests);
 
   const handlePageChange = useCallback(
     (_: React.MouseEvent<HTMLButtonElement> | null, pageNum: number) => setPage(pageNum),
@@ -62,14 +71,18 @@ const AccessRequestsTable: FC<AccessRequestsTableProps> = ({ assetId, requests }
         <TableHead>
           <TableRow>
             <TableCell classes={{ root: requesterCell }}>{translate('Label.Requester')}</TableCell>
-            <TableCell classes={{ root: groupCell }}>{translate('Label.Group')}</TableCell>
             <TableCell classes={{ root: dateCell }}>{translate('Label.DateRequested')}</TableCell>
             <TableCell classes={{ root: actionsCell }} align='right' />
           </TableRow>
         </TableHead>
         <TableBody>
           {displayedRequests.map((request) => (
-            <AccessRequestsTableRow key={request.requestId} assetId={assetId} request={request} />
+            <AccessRequestsTableRow
+              key={request.requestId}
+              assetId={assetId}
+              request={request}
+              requesterDisplay={requesterNames?.get(request.requestId) ?? ''}
+            />
           ))}
         </TableBody>
         <TableFooter>

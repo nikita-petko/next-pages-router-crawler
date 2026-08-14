@@ -4907,9 +4907,6 @@
 .\[width\:150px\] {
   width: 150px;
 }
-.\[width\:18\%\] {
-  width: 18%;
-}
 .\[width\:192px\] {
   width: 192px;
 }
@@ -4922,11 +4919,14 @@
 .\[width\:200px\] {
   width: 200px;
 }
-.\[width\:22\%\] {
-  width: 22%;
-}
 .\[width\:240px\] {
   width: 240px;
+}
+.\[width\:25\%\] {
+  width: 25%;
+}
+.\[width\:30\%\] {
+  width: 30%;
 }
 .\[width\:320px\] {
   width: 320px;

@@ -16,8 +16,15 @@ import type {
   GetAssetAccessPropertiesRequest,
   AssetPermissionsBatchGetAssetAccessPropertiesOperationRequest,
   AssetPermissionsGetAssetDependenciesRequest,
+  AssetPermissionRequestStatus,
+  AssetPermissionRequestResponse,
+  ListAssetPermissionRequestsResponse,
+  AssetPermissionRequestActionResponse,
 } from '@rbx/client-asset-permissions-api/v1';
-import { AssetPermissionsApi } from '@rbx/client-asset-permissions-api/v1';
+import {
+  AssetPermissionsApi,
+  AssetPermissionRequestsApi,
+} from '@rbx/client-asset-permissions-api/v1';
 /*
  * NOTE(lucaswang 02-15-2023): Part of the task https://roblox.atlassian.net/browse/DSA-900
  * which introduces a new eslint rule to disallow importing private components from other modules.
@@ -29,27 +36,19 @@ import { createClientConfiguration } from './utils/createClientConfiguration';
 const configuration = createClientConfiguration('asset-permissions-api', 'bedev2');
 
 const assetPermissionsApi = new AssetPermissionsApi(configuration);
+const assetPermissionRequestsApi = new AssetPermissionRequestsApi(configuration);
 
-// Types for the asset access request endpoints.
-// TODO: Replace with generated types from @rbx/client-asset-permissions-api once backend ships.
-export type AssetPermissionRequest = {
-  requestId: string;
-  assetId: number;
-  assetName?: string;
-  requesterUserId: number;
-  requesterUsername: string;
-  // Present when the request was submitted on behalf of a group (group-owned universe context)
-  requesterGroupId?: number;
-  requesterGroupName?: string;
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Expired';
-  createdAt: string;
-  expiresAt: string;
+// Asset access request types come from the generated client (@rbx/client-asset-permissions-api).
+// `AssetPermissionRequest` is the app-facing alias for the generated per-item response type.
+// As of client v1.3.3 requestId is a string (int64, string-serialized to avoid JS precision loss)
+// and the response no longer carries requesterName — names are resolved via the users/groups APIs.
+export type {
+  AssetPermissionRequestResponse,
+  ListAssetPermissionRequestsResponse,
+  AssetPermissionRequestActionResponse,
+  AssetPermissionRequestStatus,
 };
-
-export type ListAssetPermissionRequestsResponse = {
-  requests: AssetPermissionRequest[];
-  nextCursor?: string;
-};
+export type AssetPermissionRequest = AssetPermissionRequestResponse;
 
 const assetPermissionsApiClient = {
   async batchCheckAssetPermissions(
@@ -217,6 +216,44 @@ const assetPermissionsApiClient = {
     const response =
       await assetPermissionsApi.assetPermissionsBatchGetAssetAccessProperties(request);
     return response;
+  },
+
+  // ── Asset access requests ────────────────────────────────────────────────
+  listOwnerAssetPermissionRequests(
+    params: {
+      status?: AssetPermissionRequestStatus;
+      assetId?: number;
+      limit?: number;
+      cursor?: string;
+    } = {},
+  ) {
+    return assetPermissionRequestsApi.assetPermissionRequestsListOwnerAssetPermissionRequests(
+      params,
+    );
+  },
+
+  listRequesterAssetPermissionRequests(
+    params: {
+      status?: AssetPermissionRequestStatus;
+      limit?: number;
+      cursor?: string;
+    } = {},
+  ) {
+    return assetPermissionRequestsApi.assetPermissionRequestsListRequesterAssetPermissionRequests(
+      params,
+    );
+  },
+
+  approveAssetPermissionRequest(requestId: string) {
+    return assetPermissionRequestsApi.assetPermissionRequestsApproveAssetPermissionRequest({
+      requestId,
+    });
+  },
+
+  rejectAssetPermissionRequest(requestId: string) {
+    return assetPermissionRequestsApi.assetPermissionRequestsRejectAssetPermissionRequest({
+      requestId,
+    });
   },
 };
 

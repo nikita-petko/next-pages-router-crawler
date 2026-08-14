@@ -18,7 +18,6 @@ import { useGetExperimentationMetadata } from '../../queries/useGetExperimentati
 import { useGetExperimentResults } from '../../queries/useGetExperimentResults';
 import { useGetHoldoutMetrics } from '../../queries/useGetHoldoutMetrics';
 import { useGetLatestExperiment } from '../../queries/useGetLatestExperiment';
-import { useGetProducts } from '../../queries/useGetProducts';
 import ExperimentResultCard, {
   ExperimentResultTextColor,
 } from '../ExperimentResultCard/ExperimentResultCard';
@@ -47,8 +46,6 @@ const HoldoutResults = () => {
     isError: isErrorMetrics,
   } = useGetHoldoutMetrics();
 
-  const { products, isLoading: isLoadingProducts, isError: isErrorProducts } = useGetProducts();
-
   const { holdoutDuration: defaultHoldoutDuration } = useGetExperimentationMetadata();
 
   const recentlyStartedHoldout =
@@ -70,11 +67,10 @@ const HoldoutResults = () => {
     ? legacyHoldoutTestPopulation
     : holdoutTestPopulation;
 
-  const isError = isErrorCurrentExperiment || isErrorResults || isErrorProducts || isErrorMetrics;
+  const isError = isErrorCurrentExperiment || isErrorResults || isErrorMetrics;
   const isLoading =
     isLoadingCurrentExperiment ||
     isLoadingResults ||
-    isLoadingProducts ||
     // Holdout metrics will not load if the experiment is not in a state which has metrics yet
     (isLoadingMetrics && isInHoldoutResultsState(currentExperiment?.state));
 
@@ -201,7 +197,7 @@ const HoldoutResults = () => {
   });
 
   const priceReviewProductsTestedString = translate('Label.NumProducts', {
-    numProducts: products.length.toString(),
+    numProducts: '0',
   });
 
   const testPopulationString = translate('Label.TestPopulationPercent', {

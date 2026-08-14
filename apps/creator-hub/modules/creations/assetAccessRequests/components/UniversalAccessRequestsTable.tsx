@@ -14,6 +14,7 @@ import {
 } from '@rbx/ui';
 import type { AssetPermissionRequest } from '@modules/clients/assetPermissions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { useResolveRequesterNames } from '@modules/react-query/assetPermissions/assetPermissionsHelperQueries';
 import { TRUNCATING_CELL_CLASS } from './UniversalAccessRequestsTable.styles';
 import UniversalAccessRequestsTableRow from './UniversalAccessRequestsTableRow';
 
@@ -38,19 +39,31 @@ const UniversalAccessRequestsTable: FC<UniversalAccessRequestsTableProps> = ({
   const [page, setPage] = useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = useState<number>(DEFAULT_ROWS_PER_PAGE);
 
+  const validRequests = useMemo(
+    () =>
+      requests.filter(
+        (request): request is AssetPermissionRequest & { requestId: string; assetId: number } =>
+          request.requestId !== undefined && request.assetId !== undefined,
+      ),
+    [requests],
+  );
+
   // Clamp page so approve/reject shrinking the dataset never leaves an empty
   // table body while earlier pages still have rows.
-  const maxPage = Math.max(0, Math.ceil(requests.length / rowsPerPage) - 1);
+  const maxPage = Math.max(0, Math.ceil(validRequests.length / rowsPerPage) - 1);
   const effectivePage = Math.min(page, maxPage);
 
   const displayedRequests = useMemo(
-    () => requests.slice(effectivePage * rowsPerPage, (effectivePage + 1) * rowsPerPage),
-    [requests, effectivePage, rowsPerPage],
+    () => validRequests.slice(effectivePage * rowsPerPage, (effectivePage + 1) * rowsPerPage),
+    [validRequests, effectivePage, rowsPerPage],
   );
 
+  const { data: requesterNames } = useResolveRequesterNames(displayedRequests);
+
   const allSelected =
-    requests.length > 0 && requests.every((r) => selectedRequestIds.has(r.requestId));
-  const someSelected = !allSelected && requests.some((r) => selectedRequestIds.has(r.requestId));
+    validRequests.length > 0 && validRequests.every((r) => selectedRequestIds.has(r.requestId));
+  const someSelected =
+    !allSelected && validRequests.some((r) => selectedRequestIds.has(r.requestId));
 
   const handleSelectAll = useCallback(
     (_: React.ChangeEvent<HTMLInputElement>, checked: boolean) => onSelectAll(checked),
@@ -94,16 +107,13 @@ const UniversalAccessRequestsTable: FC<UniversalAccessRequestsTableProps> = ({
                 }}
               />
             </TableCell>
-            <TableCell className={`[width:22%] ${TRUNCATING_CELL_CLASS}`}>
+            <TableCell className={`[width:30%] ${TRUNCATING_CELL_CLASS}`}>
               {translateWithNamespace(TranslationNamespace.AssetPermissions, 'Label.Requester')}
             </TableCell>
-            <TableCell className={`[width:18%] ${TRUNCATING_CELL_CLASS}`}>
-              {translateWithNamespace(TranslationNamespace.AssetPermissions, 'Label.Group')}
-            </TableCell>
-            <TableCell className={`[width:20%] ${TRUNCATING_CELL_CLASS}`}>
+            <TableCell className={`[width:25%] ${TRUNCATING_CELL_CLASS}`}>
               {translateWithNamespace(TranslationNamespace.AssetPermissions, 'Label.AssetName')}
             </TableCell>
-            <TableCell className='[width:15%]'>
+            <TableCell className='[width:20%]'>
               {translateWithNamespace(TranslationNamespace.AssetPermissions, 'Label.DateRequested')}
             </TableCell>
             <TableCell className='[width:20%]' align='right' />
@@ -114,6 +124,7 @@ const UniversalAccessRequestsTable: FC<UniversalAccessRequestsTableProps> = ({
             <UniversalAccessRequestsTableRow
               key={request.requestId}
               request={request}
+              requesterDisplay={requesterNames?.get(request.requestId) ?? ''}
               isSelected={selectedRequestIds.has(request.requestId)}
               onSelectionChange={onSelectionChange}
             />
@@ -123,7 +134,7 @@ const UniversalAccessRequestsTable: FC<UniversalAccessRequestsTableProps> = ({
           <TableRow>
             <TablePagination
               className='[border-bottom:0]'
-              count={requests.length}
+              count={validRequests.length}
               labelDisplayedRows={displayLabelRows}
               labelRowsPerPage={translateWithNamespace(
                 TranslationNamespace.Table,

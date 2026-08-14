@@ -12,12 +12,17 @@ import useAccessRequestsTableStyles from './AccessRequestsTable.styles';
 export type AccessRequestsTableRowProps = {
   assetId: number;
   request: AssetPermissionRequest;
+  requesterDisplay: string;
 };
 
-const AccessRequestsTableRow: FC<AccessRequestsTableRowProps> = ({ assetId, request }) => {
+const AccessRequestsTableRow: FC<AccessRequestsTableRowProps> = ({
+  assetId,
+  request,
+  requesterDisplay,
+}) => {
   const { translate } = useTranslation();
   const {
-    classes: { requesterCell, groupCell, dateCell, actionsCell },
+    classes: { requesterCell, dateCell, actionsCell },
   } = useAccessRequestsTableStyles();
   const { mutate: approveRequest, isPending: isApproving } =
     useApproveAssetPermissionRequest(assetId);
@@ -25,32 +30,33 @@ const AccessRequestsTableRow: FC<AccessRequestsTableRowProps> = ({ assetId, requ
     useRejectAssetPermissionRequest(assetId);
   const isProcessing = isApproving || isRejecting;
 
-  const handleAccept = useCallback(
-    () => approveRequest(request.requestId),
-    [approveRequest, request.requestId],
-  );
-  const handleDecline = useCallback(
-    () => rejectRequest(request.requestId),
-    [rejectRequest, request.requestId],
-  );
-
-  const groupLabel = request.requesterGroupName ?? translate('Label.NotApplicable');
+  const handleAccept = useCallback(() => {
+    if (request.requestId !== undefined) {
+      approveRequest(request.requestId);
+    }
+  }, [approveRequest, request.requestId]);
+  const handleDecline = useCallback(() => {
+    if (request.requestId !== undefined) {
+      rejectRequest(request.requestId);
+    }
+  }, [rejectRequest, request.requestId]);
 
   const formattedDate = useMemo(
     () =>
-      // undefined locale → user's browser locale; field order adapts (MM/DD/YYYY vs DD/MM/YYYY etc.)
-      new Intl.DateTimeFormat(undefined, {
-        month: '2-digit',
-        day: '2-digit',
-        year: 'numeric',
-      }).format(new Date(request.createdAt)),
+      request.createdAt
+        ? // undefined locale → user's browser locale; field order adapts (MM/DD/YYYY vs DD/MM/YYYY etc.)
+          new Intl.DateTimeFormat(undefined, {
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric',
+          }).format(request.createdAt)
+        : '',
     [request.createdAt],
   );
 
   return (
     <TableRow data-testid={`access-request-row-${request.requestId}`}>
-      <TableCell classes={{ root: requesterCell }}>{`@${request.requesterUsername}`}</TableCell>
-      <TableCell classes={{ root: groupCell }}>{groupLabel}</TableCell>
+      <TableCell classes={{ root: requesterCell }}>{requesterDisplay}</TableCell>
       <TableCell classes={{ root: dateCell }}>{formattedDate}</TableCell>
       <TableCell classes={{ root: actionsCell }} align='right'>
         <div className='inline-flex gap-small'>

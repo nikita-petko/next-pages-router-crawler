@@ -2,18 +2,16 @@ import { makeStyles } from '@rbx/ui';
 
 // ─── Column widths ────────────────────────────────────────────────────────────
 // Adjust the percentages here to tune column proportions.
-// The four values must sum to 100%.
+// The three values must sum to 100%.
 // table-layout: fixed (set on the Table element) enforces these widths strictly —
 // content that overflows is truncated with ellipsis rather than expanding the column.
 //   requesterCell  – username / display name (can be long, truncates with ellipsis)
-//   groupCell      – group name or N/A      (can be long, truncates with ellipsis)
 //   dateCell       – date requested         (fixed-format, short)
 //   actionsCell    – Accept / Decline       (two buttons, never truncated)
 const COLUMN_WIDTHS = {
-  requesterCell: { width: '35%' },
-  groupCell: { width: '30%' },
-  dateCell: { width: '15%' },
-  actionsCell: { width: '20%' },
+  requesterCell: { width: '50%' },
+  dateCell: { width: '20%' },
+  actionsCell: { width: '30%' },
 } as const;
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -33,12 +31,6 @@ const useAccessRequestsTableStyles = makeStyles()((theme) => ({
   // Column widths
   requesterCell: {
     ...COLUMN_WIDTHS.requesterCell,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  groupCell: {
-    ...COLUMN_WIDTHS.groupCell,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',

@@ -49,7 +49,11 @@ const UniversalAccessRequestsView: FunctionComponent = () => {
 
   const handleSelectAll = useCallback(
     (selectAll: boolean) => {
-      setSelectedRequestIds(selectAll ? new Set(requests.map((r) => r.requestId)) : new Set());
+      setSelectedRequestIds(
+        selectAll
+          ? new Set(requests.map((r) => r.requestId).filter((id): id is string => id !== undefined))
+          : new Set(),
+      );
     },
     [requests],
   );

@@ -11,13 +11,16 @@ import {
 import { TRUNCATING_CELL_CLASS } from './UniversalAccessRequestsTable.styles';
 
 export type UniversalAccessRequestsTableRowProps = {
-  request: AssetPermissionRequest;
+  // assetId is guaranteed present — the table filters out requests missing requestId/assetId.
+  request: AssetPermissionRequest & { assetId: number };
+  requesterDisplay: string;
   isSelected: boolean;
   onSelectionChange: (requestId: string, isSelected: boolean) => void;
 };
 
 const UniversalAccessRequestsTableRow: FC<UniversalAccessRequestsTableRowProps> = ({
   request,
+  requesterDisplay,
   isSelected,
   onSelectionChange,
 }) => {
@@ -35,33 +38,35 @@ const UniversalAccessRequestsTableRow: FC<UniversalAccessRequestsTableRowProps> 
 
   const handleCheckboxChange = useCallback(
     (_: React.ChangeEvent<HTMLInputElement>, checked: boolean) => {
-      onSelectionChange(request.requestId, checked);
+      if (request.requestId !== undefined) {
+        onSelectionChange(request.requestId, checked);
+      }
     },
     [onSelectionChange, request.requestId],
   );
 
-  const handleAccept = useCallback(
-    () => approveRequest(request.requestId),
-    [approveRequest, request.requestId],
-  );
+  const handleAccept = useCallback(() => {
+    if (request.requestId !== undefined) {
+      approveRequest(request.requestId);
+    }
+  }, [approveRequest, request.requestId]);
 
-  const handleDecline = useCallback(
-    () => rejectRequest(request.requestId),
-    [rejectRequest, request.requestId],
-  );
-
-  const groupLabel =
-    request.requesterGroupName ??
-    translateWithNamespace(TranslationNamespace.AssetPermissions, 'Label.NotApplicable');
+  const handleDecline = useCallback(() => {
+    if (request.requestId !== undefined) {
+      rejectRequest(request.requestId);
+    }
+  }, [rejectRequest, request.requestId]);
 
   // undefined locale → user's browser locale; field order adapts (MM/DD/YYYY vs DD/MM/YYYY etc.)
   const formattedDate = useMemo(
     () =>
-      new Intl.DateTimeFormat(undefined, {
-        month: '2-digit',
-        day: '2-digit',
-        year: 'numeric',
-      }).format(new Date(request.createdAt)),
+      request.createdAt
+        ? new Intl.DateTimeFormat(undefined, {
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric',
+          }).format(request.createdAt)
+        : '',
     [request.createdAt],
   );
 
@@ -79,14 +84,11 @@ const UniversalAccessRequestsTableRow: FC<UniversalAccessRequestsTableRowProps> 
           }}
         />
       </TableCell>
-      <TableCell className={`[width:22%] ${TRUNCATING_CELL_CLASS}`}>
-        {`@${request.requesterUsername}`}
-      </TableCell>
-      <TableCell className={`[width:18%] ${TRUNCATING_CELL_CLASS}`}>{groupLabel}</TableCell>
-      <TableCell className={`[width:20%] ${TRUNCATING_CELL_CLASS}`}>
+      <TableCell className={`[width:30%] ${TRUNCATING_CELL_CLASS}`}>{requesterDisplay}</TableCell>
+      <TableCell className={`[width:25%] ${TRUNCATING_CELL_CLASS}`}>
         {request.assetName ?? String(request.assetId)}
       </TableCell>
-      <TableCell className='[width:15%]'>{formattedDate}</TableCell>
+      <TableCell className='[width:20%]'>{formattedDate}</TableCell>
       <TableCell className='[width:20%]' align='right'>
         <div className='inline-flex gap-small'>
           <Button

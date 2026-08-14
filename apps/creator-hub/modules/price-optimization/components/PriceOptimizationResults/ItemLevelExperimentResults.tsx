@@ -3,13 +3,11 @@ import { memo, useMemo } from 'react';
 import { useTranslation } from '@rbx/intl';
 import { CircularProgress, Typography } from '@rbx/ui';
 import { convertTimeSpanToWeeks } from '../../helpers/experimentUtils';
-import { calculatePriceChangeCounts } from '../../helpers/priceChangeUtils';
 import { useFormatters } from '../../helpers/useFormatters';
 import { usePricingError } from '../../providers/PricingErrorProvider';
 import { useGetExperimentationMetadata } from '../../queries/useGetExperimentationMetadata';
 import { useGetExperimentResults } from '../../queries/useGetExperimentResults';
 import { useGetLatestExperiment } from '../../queries/useGetLatestExperiment';
-import { useGetProducts } from '../../queries/useGetProducts';
 import ExperimentResultCard, {
   ExperimentResultTextColor,
 } from '../ExperimentResultCard/ExperimentResultCard';
@@ -30,12 +28,11 @@ const ItemLevelExperimentResults = () => {
     isLoading: isLoadingResults,
     isError: isErrorResults,
   } = useGetExperimentResults();
-  const { products, isLoading: isLoadingProducts, isError: isErrorProducts } = useGetProducts();
 
   const { changeFormatter, percentageFormatter, dateFormatter } = useFormatters();
 
-  const isLoading = isLoadingCurrentExperiment || isLoadingResults || isLoadingProducts;
-  const isError = isErrorCurrentExperiment || isErrorResults || isErrorProducts;
+  const isLoading = isLoadingCurrentExperiment || isLoadingResults;
+  const isError = isErrorCurrentExperiment || isErrorResults;
 
   const { holdoutDuration } = useGetExperimentationMetadata();
 
@@ -45,8 +42,8 @@ const ItemLevelExperimentResults = () => {
 
   // Calculate item-level price change counts using helper function
   const { priceIncreaseCount, priceDecreaseCount, noChangeCount } = useMemo(
-    () => calculatePriceChangeCounts(products),
-    [products],
+    () => ({ priceIncreaseCount: 0, priceDecreaseCount: 0, noChangeCount: 0 }),
+    [],
   );
 
   if (isError) {
@@ -129,7 +126,7 @@ const ItemLevelExperimentResults = () => {
         <ExperimentResultCard
           title={translate('Label.ProductsTested')}
           text={translate('Label.NumProducts', {
-            numProducts: products.length.toString(),
+            numProducts: '0',
           })}
         />
         <ExperimentResultCard
