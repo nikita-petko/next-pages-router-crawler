@@ -1,5 +1,8 @@
 import { RAQIV2Metric, RAQIV2UIMetric } from '@rbx/creator-hub-analytics-config';
-import type { TRAQIV2UIMetricFanoutDimensionValues } from '@rbx/creator-hub-analytics-config';
+import type {
+  TRAQIV2UIMetric,
+  TRAQIV2UIMetricFanoutDimensionValues,
+} from '@rbx/creator-hub-analytics-config';
 import type { TRAQIV2NumericUIMetric } from '../constants/AnalyticsMetricDisplayConfig';
 import type {
   AtomicMetricLike,
@@ -31,16 +34,6 @@ type L7SmoothingPair = (typeof l7SmoothingMetricPairs)[number];
 /** Union of all pre-computed L7 metric enum values. */
 export type PrecomputedL7Metric = L7SmoothingPair[1];
 
-/** Maps a base metric to its pre-computed L7 average counterpart. */
-export const l7SmoothingMetricMap: Partial<Record<TRAQIV2NumericUIMetric, TRAQIV2NumericUIMetric>> =
-  l7SmoothingMetricPairs.reduce<Partial<Record<TRAQIV2NumericUIMetric, TRAQIV2NumericUIMetric>>>(
-    (metricMap, [baseMetric, precomputedMetric]) => {
-      metricMap[baseMetric] = precomputedMetric;
-      return metricMap;
-    },
-    {},
-  );
-
 /** Reverse map: every pre-computed L7 metric -> its base metric. */
 export const reverseL7SmoothingMetricMap: Partial<
   Record<PrecomputedL7Metric, TRAQIV2NumericUIMetric>
@@ -52,6 +45,8 @@ export const reverseL7SmoothingMetricMap: Partial<
   {},
 );
 
+const baseToPrecomputedL7Metric = new Map<string, PrecomputedL7Metric>(l7SmoothingMetricPairs);
+
 /** Set of all pre-computed L7 metric keys (the L7 side of the pairs). */
 export const precomputedL7Metrics: ReadonlySet<string> = new Set(
   l7SmoothingMetricPairs.map(([, l7]) => l7),
@@ -59,9 +54,6 @@ export const precomputedL7Metrics: ReadonlySet<string> = new Set(
 
 export const isPrecomputedL7Metric = (metric: string): metric is PrecomputedL7Metric =>
   precomputedL7Metrics.has(metric);
-
-export const hasPrecomputedL7Metric = (metric: TRAQIV2NumericUIMetric): boolean =>
-  metric in l7SmoothingMetricMap;
 
 type L7SmoothingComputedMetricSourceOptions = {
   customEventName?: string;
@@ -120,12 +112,13 @@ export const buildL7SmoothingComputedMetric = (
 };
 
 /**
- * Given a base metric and whether L7 smoothing is active, returns the
- * pre-computed L7 metric when one exists, or a synthetic
+ * Given a base metric and whether L7 smoothing is active, returns either
+ * the base metric (when smoothing is disabled) or a synthetic
  * {@link ComputedMetric} that applies a 7-day rolling average via ACE.
  *
- * Source options are ignored for the pre-computed L7 path (those API metrics
- * encode the aggregation in the metric name itself).
+ * Source options are forwarded onto the ComputedMetric source so downstream
+ * DAG construction can resolve the source to the correct event and
+ * underlying API metric.
  */
 export const getMetricForL7Smoothing = (
   metric: TRAQIV2NumericUIMetric,
@@ -134,10 +127,6 @@ export const getMetricForL7Smoothing = (
 ): MetricLike => {
   if (!isSmoothingEnabled) {
     return buildAtomicMetricLike(metric, options);
-  }
-  const mappedMetric = l7SmoothingMetricMap[metric];
-  if (mappedMetric) {
-    return mappedMetric;
   }
   return buildL7SmoothingComputedMetric(metric, options);
 };
@@ -166,13 +155,12 @@ export const isIdentityFormulaComputedMetric = (metric: ComputedMetric): boolean
 /**
  * A "pure L7 smoothing" ComputedMetric is a single-source identity formula
  * (`{ sources: [{ key: K, metric }], formula: K, l7Smoothing: true }`)
- * produced by {@link buildL7SmoothingComputedMetric} for metrics without a
- * pre-computed L7 counterpart. Its output is unitarily the rolling average
- * of one underlying metric, so it should render with that metric's units
- * and formatting (Robux icon, percentage scaling, decimal precision,
- * suffix, etc.) rather than the neutral computed-metric fallback used for
- * arbitrary equations. Delegates to {@link isIdentityFormulaComputedMetric}
- * for the structural check.
+ * produced by {@link buildL7SmoothingComputedMetric}. Its output is unitarily
+ * the rolling average of one underlying metric, so it should render with that
+ * metric's units and formatting (Robux icon, percentage scaling, decimal
+ * precision, suffix, etc.) rather than the neutral computed-metric fallback
+ * used for arbitrary equations. Delegates to
+ * {@link isIdentityFormulaComputedMetric} for the structural check.
  */
 export const isPureL7SmoothingComputedMetric = (metric: ComputedMetric): boolean =>
   Boolean(metric.l7Smoothing) && isIdentityFormulaComputedMetric(metric);
@@ -186,4 +174,42 @@ export const getBaseMetricFromL7 = (metric: string): TRAQIV2NumericUIMetric | nu
     return null;
   }
   return reverseL7SmoothingMetricMap[metric] ?? null;
+};
+
+/**
+ * If `metric` is a base metric with a leftover precomputed L7 dataset, returns
+ * that L7 identity. Otherwise returns `null`.
+ *
+ * Query execution no longer sends `L7Average*` (those CAaaS definitions are
+ * gone), but the benchmark API is still keyed by those leftover names. Explore
+ * Mode L7-on for the mapped ten therefore queries as an ACE
+ * {@link ComputedMetric} and resolves the overlay through this lookup.
+ */
+export const getPrecomputedL7MetricFromBase = (metric: string): PrecomputedL7Metric | null =>
+  baseToPrecomputedL7Metric.get(metric) ?? null;
+
+/**
+ * Request-boundary compatibility rewrite for leftover `L7Average*` identities.
+ *
+ * Chart specs, URLs, benchmarks, duration eligibility, and display config keep
+ * the precomputed L7 name as the UI identity. Query execution cannot: those
+ * CAaaS definitions are gone, so this converts the leftover name into the ACE
+ * seven-day rolling-window {@link ComputedMetric} that now backs it.
+ *
+ * Returns `null` for everything else (computed metrics, custom-event atomics,
+ * and non-L7 strings). The lookup is a small-set check, so calling this on
+ * every request metric is cheap. Add additional identity rewrites here rather
+ * than inlining them into request dispatch.
+ */
+export const rewritePrecomputedL7MetricForRequest = (
+  metric: MetricLike<TRAQIV2UIMetric>,
+): ComputedMetric | null => {
+  if (typeof metric !== 'string') {
+    return null;
+  }
+  const baseMetric = getBaseMetricFromL7(metric);
+  if (!baseMetric) {
+    return null;
+  }
+  return buildL7SmoothingComputedMetric(baseMetric, undefined);
 };

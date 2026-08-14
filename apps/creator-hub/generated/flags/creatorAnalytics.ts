@@ -52,11 +52,6 @@ export const isFirstSeenColumnEnabled = defineFlag({
     name: 'isFirstSeenColumnEnabled',
     defaultValue: true,
   });
-export const isAceL7SmoothingEnabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'isAceL7SmoothingEnabled',
-    defaultValue: true,
-  });
 export const sentryChartTracingEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'sentryChartTracingEnabled',

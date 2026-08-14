@@ -7,6 +7,10 @@ import {
 import ChartSummaryType from '@modules/charts-generic/enums/ChartSummaryType';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
+import {
+  getPrecomputedL7MetricFromBase,
+  isPureL7SmoothingComputedMetric,
+} from '../chartConfigurator/l7MetricMapping';
 import getAnalyticsMetricDisplayConfig from '../constants/AnalyticsMetricDisplayConfig';
 import {
   getUIMetricFromAtomicMetricLike,
@@ -106,11 +110,25 @@ export const getMetricTitleKeyFromMetricLike = (
   return UNTITLED_FORMULA_TRANSLATION_KEY;
 };
 
+/**
+ * Canonical RAQI metric identity for the analytics-benchmark API.
+ *
+ * Atomic leftover `L7Average*` identities pass through unchanged (predefined
+ * L7 charts keep that name as UI identity). Pure L7 smoothing ComputedMetrics
+ * — Explore Mode's ACE rewrite of those same ten — map back to the leftover
+ * name so the overlay still hits the L7 benchmark dataset. Arbitrary formulas
+ * and L7-on metrics with no leftover dataset return null.
+ */
 export const getRAQIV2BenchmarkMetricFromMetricLike = <TMetric extends TRAQIV2UIMetric>(
   metricLike: MetricLike<TMetric>,
 ): RAQIV2Metric | null => {
   if (isComputedMetric(metricLike)) {
-    return null;
+    if (!isPureL7SmoothingComputedMetric(metricLike)) {
+      return null;
+    }
+    const sourceMetric = getUIMetricFromAtomicMetricLike(metricLike.sources[0].metric);
+    const precomputedL7 = getPrecomputedL7MetricFromBase(sourceMetric);
+    return precomputedL7 && isRAQIV2Metric(precomputedL7) ? precomputedL7 : null;
   }
 
   const uiMetric = getUIMetricFromAtomicMetricLike(metricLike);

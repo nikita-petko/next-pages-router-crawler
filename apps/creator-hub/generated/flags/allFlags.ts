@@ -330,16 +330,6 @@ export const generatedFlags = [
       },
     },
     {
-      flag: creatorAnalyticsFlags.isAceL7SmoothingEnabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'isAceL7SmoothingEnabled',
-        defaultValue: true,
-        valueType: 'boolean',
-        contextType: 'static',
-      },
-    },
-    {
       flag: creatorAnalyticsFlags.sentryChartTracingEnabled,
       metadata: {
         namespace: 'creator-analytics',

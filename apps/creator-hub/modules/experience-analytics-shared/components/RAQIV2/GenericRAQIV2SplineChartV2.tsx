@@ -66,7 +66,10 @@ import useLoadAnnouncementIdsForData from '../../utils/announcementUtils';
 import getFetchComparison from '../../utils/getFetchComparison';
 import { hasMetricFanoutBreakdown } from '../../utils/isMetricFanoutDimension';
 import type { MakeRAQIV2RequestOptions } from '../../utils/makeRAQIV2Request';
-import { getMetricLabelFromMetricLike } from '../../utils/metricLikeSemantics';
+import {
+  getMetricLabelFromMetricLike,
+  getRAQIV2BenchmarkMetricFromMetricLike,
+} from '../../utils/metricLikeSemantics';
 import resolveComparisonConfig from '../../utils/resolveComparisonConfig';
 import shouldFetchTotalSeries from '../../utils/shouldFetchTotalSeries';
 import useLoadThumbnailAssetIdsForData from '../../utils/thumbnailsUtils';
@@ -403,10 +406,10 @@ const GenericRAQIV2SplineChartV2: FC<GenericRAQIV2SplineChartV2Props> = ({
   const isAnnotationSupported = useCallback(
     (annotationType: AnnotationType): boolean | undefined => {
       if (annotationType === AnnotationType.Benchmark) {
-        // Benchmark needs a single canonical metric. For computed metrics
-        // `getRAQIV2BenchmarkMetricFromMetricLike` returns null, so a benchmark
-        // annotation has no meaningful target — match AreaChart and turn it off.
-        if (isComputedMetric(metric)) {
+        // Benchmark needs a single canonical metric. User-authored formulas
+        // have none. Pure L7 smoothing of one of the leftover `L7Average*`
+        // datasets still maps to that identity, so keep annotations on.
+        if (!getRAQIV2BenchmarkMetricFromMetricLike(metric)) {
           return false;
         }
         if (!hasSimilarityBenchmarks) {

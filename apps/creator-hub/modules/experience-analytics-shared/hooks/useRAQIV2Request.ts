@@ -25,10 +25,6 @@ const useRAQIV2Request = (
     const effectiveOptions: MakeRAQIV2RequestOptions = {
       ...callerOptions,
       enableAceVariantFanout: makeRAQIV2RequestOptions?.enableAceVariantFanout ?? true,
-      routePrecomputedL7ToAce:
-        makeRAQIV2RequestOptions?.routePrecomputedL7ToAce ??
-        client.routePrecomputedL7ToAce ??
-        false,
     };
 
     if (!effectiveOptions.fetchComparison) {
@@ -49,7 +45,7 @@ const useRAQIV2Request = (
       ...effectiveOptions,
       fetchComparison: undefined,
     };
-  }, [makeRAQIV2RequestOptions, request, client.routePrecomputedL7ToAce]);
+  }, [makeRAQIV2RequestOptions, request]);
 
   const makeRaqiRequest = useCallback(() => {
     const validationError = validateRAQIV2Request(request);

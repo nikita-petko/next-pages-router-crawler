@@ -156,7 +156,7 @@ import extractPseudoDimensionsFromFilters, {
 } from '@modules/experience-analytics-shared/utils/extractPseudoDimensionsFromFilters';
 import { getAPIMetricFromUIMetric } from '@modules/experience-analytics-shared/utils/getAPIMetricFromUIMetric';
 import getOverlayAvailability, {
-  type OverlayDisabledReason,
+  type OverlayAvailability,
 } from '@modules/experience-analytics-shared/utils/getOverlayAvailability';
 import { getQuotaConfigForMetric } from '@modules/experience-analytics-shared/utils/getQuotaConfigForMetric';
 import isMetricFanoutDimension from '@modules/experience-analytics-shared/utils/isMetricFanoutDimension';
@@ -936,8 +936,8 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
     if (!dims.includes(RAQIV2Dimension.CustomEventName)) {
       dims.push(RAQIV2Dimension.CustomEventName);
     }
-    if (!dims.includes(RAQIV2UIPseudoDimension.AggregationType as TRAQIV2Dimension)) {
-      dims.push(RAQIV2UIPseudoDimension.AggregationType as TRAQIV2Dimension);
+    if (!dims.includes(RAQIV2UIPseudoDimension.AggregationType)) {
+      dims.push(RAQIV2UIPseudoDimension.AggregationType);
     }
     return dims;
   }, [dimensions]);
@@ -1127,9 +1127,9 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
         benchmark: {
           applicable: true,
           disabled: true,
-          reason: 'noBenchmarkData' as OverlayDisabledReason,
+          reason: 'noBenchmarkData',
         },
-      };
+      } satisfies OverlayAvailability;
     }
     return overlayAvailability;
   }, [overlayAvailability, isBenchmarksLoading, hasAnyBenchmarkData]);
