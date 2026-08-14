@@ -93,7 +93,7 @@ const NoMatchesWithFiltersContent = ({
   return (
     <EmptyStateBorder>
       <EmptyState
-        title={translate('Heading.NoRequestsYet')}
+        title={translate('Heading.NoMatchResultsYet')}
         size='small'
         description={translate('Description.NoMatchesFoundWithFiltersManualScan')}
         illustration='findPeople'>
