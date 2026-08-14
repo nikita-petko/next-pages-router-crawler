@@ -9,6 +9,9 @@ export const canEditRoleMetadata = (permissions: ResolvedPermissions | undefined
 export const canEditRolePermissions = (permissions: ResolvedPermissions | undefined): boolean =>
   permissions?.canEditPermissions === true;
 
+export const canViewRolePermissions = (permissions: ResolvedPermissions | undefined): boolean =>
+  permissions?.canViewPermissions === true;
+
 export const canUpdateRolePosition = (permissions: ResolvedPermissions | undefined): boolean =>
   permissions?.canUpdatePosition === true;
 
@@ -19,10 +22,11 @@ export const canViewRoleMembersTab = (
   isOwner: boolean | undefined = false,
 ): boolean => !isDefaultMemberRole && !isGuestRole && (isOwner || canAssignRole(permissions));
 
+// canViewPermissions is resolved true for owners, permission editors, and role assigners.
 export const canViewRolePermissionsTab = (
   permissions: ResolvedPermissions | undefined,
   isOwner: boolean | undefined = false,
-): boolean => isOwner || canEditRolePermissions(permissions);
+): boolean => isOwner || canViewRolePermissions(permissions);
 
 export const canViewRoleSettingsTab = (
   permissions: ResolvedPermissions | undefined,
