@@ -80,7 +80,7 @@ export function adaptJourneyAPIResponse(
     if (!sankeyNodeMap.has(toId)) {
       sankeyNodeMap.set(toId, { id: toId, name: row.toNode, column: row.toStage });
     }
-    sankeyLinks.push({ source: fromId, target: toId, value: row.countTransitions });
+    sankeyLinks.push({ from: fromId, to: toId, weight: row.countTransitions });
   }
 
   // JourneyData: compute node userCounts correctly

@@ -1,18 +1,38 @@
-import type { SeriesSankeyNodesOptionsObject, SeriesSankeyPointOptionsObject } from 'highcharts';
+import type { SeriesSankeyNodesOptionsObject } from 'highcharts';
 import type { TTheme } from '@rbx/ui';
 import type { ChartColor } from '../color';
 import { getChartColorHexString } from '../color';
-import type { SankeyLink, SankeyNode } from '../types/SankeyChart';
+import type { SankeyNode } from '../types/SankeyChart';
 
-/** Horizontal gap between a stage bar and its label (matches prior SVG chart). */
-export const SankeyLabelGap = 12;
+/**
+ * Remaps {@link SankeyNode.column} onto a dense zero-based sequence, preserving
+ * stage order, so callers can pass domain stage numbers straight through.
+ * A gap leaves an empty Highcharts column, whose translation factor of 0 wins
+ * across the series and collapses every bar and ribbon to zero size.
+ */
+export const densifySankeyNodeColumns = (nodes: SankeyNode[]): SankeyNode[] => {
+  const columns = Array.from(
+    new Set(nodes.map((node) => node.column).filter((column) => column !== undefined)),
+  ).sort((a, b) => a - b);
+
+  if (columns.every((column, index) => column === index)) {
+    return nodes;
+  }
+
+  const denseColumnByColumn = new Map(columns.map((column, index) => [column, index]));
+  return nodes.map((node) =>
+    node.column === undefined
+      ? node
+      : { ...node, column: denseColumnByColumn.get(node.column) ?? node.column },
+  );
+};
 
 /**
  * Maps package-level Sankey nodes to Highcharts node options, assigning palette
  * colors when a node does not specify an explicit {@link SankeyNode.color}.
  *
- * When {@link SankeyNode.column} is set, also configures label side: final-stage
- * labels sit to the left of the bar; earlier stages sit to the right.
+ * When {@link SankeyNode.column} is set, also anchors the label to the outer
+ * side of its stage: the first stage reads rightward, the final stage leftward.
  */
 export const buildSankeyNodes = ({
   nodes,
@@ -37,6 +57,7 @@ export const buildSankeyNodes = ({
         ? getChartColorHexString(paletteColor, theme)
         : undefined;
 
+    const isFirstColumn = node.column === 0;
     const isLastColumn = node.column !== undefined && node.column === maxColumn;
 
     return {
@@ -44,26 +65,11 @@ export const buildSankeyNodes = ({
       name: node.name,
       column: node.column,
       color: resolvedColor,
-      dataLabels: {
-        // Outside the bar with a gap; final stage flips to the left of the bar.
-        inside: false,
-        align: isLastColumn ? 'left' : 'right',
-        verticalAlign: 'top',
-        x: isLastColumn ? -SankeyLabelGap : SankeyLabelGap,
-        y: 0,
-        padding: 0,
-      },
+      // Intermediate stages have no outer side, so they keep the series default.
+      dataLabels: isFirstColumn ? { align: 'left' } : isLastColumn ? { align: 'right' } : {},
     };
   });
 };
-
-/** Maps package-level Sankey links to Highcharts sankey point options. */
-export const buildSankeyLinks = (links: SankeyLink[]): SeriesSankeyPointOptionsObject[] =>
-  links.map((link) => ({
-    from: link.source,
-    to: link.target,
-    weight: link.value,
-  }));
 
 /**
  * Resolves the text for a rendered node label. Highcharts identifies nodes by
@@ -74,16 +80,16 @@ export const resolveSankeyNodeLabel = ({
   nodeId,
   nodeName,
   nodesById,
-  formatNodeLabel,
+  formatDataLabel,
 }: {
   nodeId: string | undefined;
   nodeName: string | undefined;
   nodesById: ReadonlyMap<string, SankeyNode>;
-  formatNodeLabel?: (node: SankeyNode) => string;
+  formatDataLabel?: (node: SankeyNode) => string;
 }): string | undefined => {
   const node = nodeId === undefined ? undefined : nodesById.get(nodeId);
   if (!node) {
     return nodeName;
   }
-  return formatNodeLabel ? formatNodeLabel(node) : node.name;
+  return formatDataLabel ? formatDataLabel(node) : node.name;
 };

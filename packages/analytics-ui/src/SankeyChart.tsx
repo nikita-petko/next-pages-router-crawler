@@ -12,8 +12,12 @@ import GenericSeriesChart from './GenericSeriesChart';
 import { useSankeyChartOptions } from './highchart-options/chartOptions';
 import { useSankeyTooltipOptions } from './highchart-options/tooltipOptions';
 import { ChartStyleMode, ChartType } from './types/BaseChart';
-import type { SankeyChartProps, SankeyNode } from './types/SankeyChart';
-import type { SankeyLink } from './types/SankeyChart';
+import type {
+  SankeyChartProps,
+  SankeyLink,
+  SankeyNode,
+  SankeyZoomAction,
+} from './types/SankeyChart';
 import { applySankeyNodePresentation } from './utils/applySankeyNodePresentation';
 import { computeSankeyContentSize } from './utils/computeSankeyContentSize';
 import {
@@ -21,13 +25,13 @@ import {
   type SankeyOverviewModel,
 } from './utils/extractSankeyOverviewModel';
 import {
-  buildSankeyLinks,
   buildSankeyNodes,
+  densifySankeyNodeColumns,
   resolveSankeyNodeLabel,
-  SankeyLabelGap,
 } from './utils/sankeyUtils';
 
-const DefaultHeight = 444;
+/** Matches the other chart types in `ChartStyleMode.Normal` so cards line up. */
+const DefaultHeight = 360;
 const DefaultMaxHeight = 640;
 const DefaultNodePadding = 16;
 const DefaultNodeWidth = 8;
@@ -37,7 +41,7 @@ const DefaultMaxZoom = 8;
 const DefaultMinNodeThickness = 0;
 const DefaultMinColumnWidth = 0;
 /** Soft ribbons so gradients don't overpower the stage bars (design idle). */
-const DefaultLinkOpacity = 0.3;
+const DefaultLinkOpacity = 0.2;
 /** Hovered ribbon opacity (design on-hover). */
 const HoverLinkOpacity = 1;
 /**
@@ -54,7 +58,7 @@ const FocusDimmedNodeOpacity = 0.25;
  * Background-colored stroke around stage bars. Half sits outside the fill
  * (via paint-order) so ribbons appear to stop short of the bar.
  */
-const DefaultNodeBorderWidth = 2;
+const DefaultNodeBorderWidth = 4;
 const DefaultOverviewHideDelayMs = 1200;
 
 /**
@@ -64,12 +68,14 @@ const DefaultOverviewHideDelayMs = 1200;
  * Foundation Tailwind has no utilities for overflow, box-sizing, opacity or
  * transform-origin, and no tokens for absolute offsets, so those stay arbitrary.
  */
-const RootClassName = 'relative width-full [overflow:hidden]';
+const RootClassName = 'relative width-full [overflow:hidden] [min-width:0]';
 const ScrollContainerClassName =
   'relative width-full [overflow:auto] [overscroll-behavior:contain]';
-/** Panning is driven by pointer events, so the browser must not claim the gesture. */
+/**
+ * Applied only while zoom is on, where pointer handlers drive panning and the
+ * browser must not claim the gesture. Without zoom the canvas scrolls natively.
+ */
 const PanTouchActionClassName = '[touch-action:none]';
-const ScrollTouchActionClassName = '[touch-action:pan-x_pan-y]';
 const ZoomControlsClassName = 'absolute flex flex-col gap-xsmall top-[8px] right-[8px] [z-index:2]';
 const OverviewContainerClassName =
   'absolute transition-opacity ease-standard-out bottom-[8px] left-[8px] [z-index:2]';
@@ -80,46 +86,39 @@ const CenteringWrapperClassName = '[box-sizing:content-box]';
 const ClipClassName = '[overflow:hidden]';
 const ChartStageClassName = '[overflow:hidden] [transform-origin:0_0]';
 
+const ViewportTestId = 'sankey-viewport';
+
+const ZoomAction = {
+  ZoomIn: 'zoomIn',
+  ZoomOut: 'zoomOut',
+  ResetView: 'resetView',
+} as const satisfies Record<string, SankeyZoomAction>;
+
 /** Sankey points carry node identity that Highcharts' `Point` type omits. */
 type SankeyPointContext = Point & {
   isNode?: boolean;
   id?: string;
 };
 
-const defaultFormatNodeCount = (value: number): string =>
-  new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value);
-
 const SankeyChart = ({
   data,
-  height = DefaultHeight,
-  containerHeight: containerHeightProp,
-  enableZoom = true,
-  zoomControlLabels,
-  enableNodeFocus = true,
+  tooltipFormatter,
+  formatDataLabel,
   chartStyleMode = ChartStyleMode.Normal,
-  formatNodeLabel,
-  formatNodeCount = defaultFormatNodeCount,
-  ariaLabel,
+  height = DefaultHeight,
   onChartLoad,
-  className,
-  'data-testid': dataTestId,
+  containerHeight: containerHeightProp,
+  zoomLabelsFormatter,
 }: SankeyChartProps) => {
-  const { nodes, links } = data;
+  const { nodes: givenNodes, links } = data;
+  const nodes = useMemo(() => densifySankeyNodeColumns(givenNodes), [givenNodes]);
+  // The frame renders even while empty so the card keeps its height and the
+  // ResizeObserver stays attached, leaving a measured width ready for data.
+  // Highcharts itself only mounts once there is something to draw.
+  const hasSeries = nodes.length > 0 && links.length > 0;
   const theme = useTheme();
   const { dataLabelText } = getChartThemedColors(theme);
   const nodeBorderColor = theme.palette.surface[0];
-
-  /**
-   * Forces GenericSeriesChart to unmount/remount when the underlying data
-   * changes. Highcharts' `chart.update()` with `oneToOne` does not properly
-   * reconcile sankey nodes — stale nodes from the previous dataset persist
-   * alongside the new ones. A key change ensures a clean chart instance.
-   */
-  const chartKey = useMemo(
-    () =>
-      `${nodes.map((n: SankeyNode) => n.id).join(',')}|${links.map((l: SankeyLink) => `${l.source}:${l.target}`).join(',')}`,
-    [nodes, links],
-  );
 
   const outerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<Chart | null>(null);
@@ -144,6 +143,19 @@ const SankeyChart = ({
     [nodes, links, measuredWidth, height],
   );
 
+  // Highcharts' `chart.update()` with `oneToOne` leaves stale sankey nodes
+  // behind and skips relayout on size changes, so remounting on a key change
+  // is the only reliable way to pick up new data or a new stage size.
+  const chartKey = useMemo(
+    () =>
+      `${nodes.map((n: SankeyNode) => n.id).join(',')}|${links.map((l: SankeyLink) => `${l.from}:${l.to}`).join(',')}|${contentWidth}x${contentHeight}`,
+    [nodes, links, contentWidth, contentHeight],
+  );
+
+  // Zoom is opt-in: without labels for the controls there is no affordance to
+  // undo a gesture zoom, so gestures and the minimap stay off as well.
+  const isZoomEnabled = zoomLabelsFormatter !== undefined;
+
   // Small funnels keep a zoom floor of 1; larger canvases can zoom out to fit.
   const fitZoom =
     measuredWidth > 0
@@ -164,7 +176,8 @@ const SankeyChart = ({
   } = useSankeyViewport({
     contentWidth,
     contentHeight,
-    enabled: enableZoom,
+    enabled: true,
+    zoomEnabled: isZoomEnabled,
     minZoom: fitZoom,
     maxZoom: DefaultMaxZoom,
     panHideDelayMs: DefaultOverviewHideDelayMs,
@@ -176,7 +189,6 @@ const SankeyChart = ({
         nodeRadius: DefaultNodeRadius,
         borderWidth: DefaultNodeBorderWidth,
         borderColor: nodeBorderColor,
-        labelGap: SankeyLabelGap,
         focusedNodeId,
         idleLinkOpacity: DefaultLinkOpacity,
         activeLinkOpacity: FocusActiveLinkOpacity,
@@ -187,17 +199,23 @@ const SankeyChart = ({
     [focusedNodeId, nodeBorderColor],
   );
 
-  const refreshOverviewModel = useCallback((chart: Chart) => {
-    const nextModel = extractSankeyOverviewModel(chart);
-    setOverviewModel((previous) =>
-      previous?.width === nextModel?.width &&
-      previous?.height === nextModel?.height &&
-      previous?.nodes.length === nextModel?.nodes.length &&
-      previous?.links.length === nextModel?.links.length
-        ? previous
-        : nextModel,
-    );
-  }, []);
+  const refreshOverviewModel = useCallback(
+    (chart: Chart) => {
+      if (!isZoomEnabled) {
+        return;
+      }
+      const nextModel = extractSankeyOverviewModel(chart);
+      setOverviewModel((previous) =>
+        previous?.width === nextModel?.width &&
+        previous?.height === nextModel?.height &&
+        previous?.nodes.length === nextModel?.nodes.length &&
+        previous?.links.length === nextModel?.links.length
+          ? previous
+          : nextModel,
+      );
+    },
+    [isZoomEnabled],
+  );
 
   const nodesById = useMemo(() => {
     const map = new Map<string, SankeyNode>();
@@ -213,21 +231,15 @@ const SankeyChart = ({
         nodeId: this.id ?? this.name,
         nodeName: this.name,
         nodesById,
-        formatNodeLabel,
+        formatDataLabel,
       });
     },
-    [formatNodeLabel, nodesById],
+    [formatDataLabel, nodesById],
   );
 
-  const toggleFocus = useCallback(
-    (nodeId: string) => {
-      if (!enableNodeFocus) {
-        return;
-      }
-      setFocusedNodeId((current) => (current === nodeId ? undefined : nodeId));
-    },
-    [enableNodeFocus],
-  );
+  const toggleFocus = useCallback((nodeId: string) => {
+    setFocusedNodeId((current) => (current === nodeId ? undefined : nodeId));
+  }, []);
 
   const clearFocus = useCallback(() => setFocusedNodeId(undefined), []);
 
@@ -239,7 +251,7 @@ const SankeyChart = ({
     return [
       {
         type: ChartType.Sankey,
-        data: buildSankeyLinks(links),
+        data: links,
         nodes: buildSankeyNodes({ nodes, colors: ExtendedCategoricalChartColors, theme }),
         nodePadding: DefaultNodePadding,
         nodeWidth: DefaultNodeWidth,
@@ -263,7 +275,7 @@ const SankeyChart = ({
         point: {
           events: {
             click(this: SankeyPointContext) {
-              if (!enableNodeFocus || !this.isNode) {
+              if (!this.isNode) {
                 return;
               }
               const nodeId = this.id ?? this.name;
@@ -275,13 +287,12 @@ const SankeyChart = ({
         },
         dataLabels: {
           enabled: true,
-          inside: false,
           crop: false,
           overflow: 'allow',
           allowOverlap: true,
-          padding: 0,
           verticalAlign: 'top',
           color: dataLabelText,
+          padding: DefaultNodePadding,
           style: {
             textOutline: 'none',
             fontSize: `${DefaultLabelFontSize}px`,
@@ -297,7 +308,6 @@ const SankeyChart = ({
     theme,
     nodeBorderColor,
     focusedNodeId,
-    enableNodeFocus,
     toggleFocus,
     dataLabelText,
     nodeFormatter,
@@ -331,7 +341,7 @@ const SankeyChart = ({
     }),
     [applyPresentation, refreshOverviewModel, chartOptions, contentWidth],
   );
-  const tooltipOptions = useSankeyTooltipOptions({ formatNodeCount });
+  const tooltipOptions = useSankeyTooltipOptions(tooltipFormatter);
 
   const highchartsOptions: Options = useMemo(
     () => ({
@@ -340,42 +350,36 @@ const SankeyChart = ({
       tooltip: tooltipOptions,
       title: { text: undefined },
       credits: { enabled: false },
-      accessibility: ariaLabel
-        ? {
-            description: ariaLabel,
-          }
-        : undefined,
     }),
-    [series, chartOptionsWithPresentation, tooltipOptions, ariaLabel],
+    [series, chartOptionsWithPresentation, tooltipOptions],
   );
 
-  // Measure the scroll container width so the chart can fill it at zoom 1.
-  // A 1px threshold ignores sub-pixel noise and scrollbar jitter that would
-  // otherwise cause a measure → re-render → re-measure cycle.
+  // Observe the outer wrapper rather than the scroll viewport: inside a flex
+  // card an overflow:auto viewport can report 0 width until Highcharts mounts.
+  // The 1px threshold ignores jitter that would cause a re-measure loop.
   useLayoutEffect(() => {
-    const element = scrollRef.current;
+    const element = outerRef.current;
     if (!element) {
       return undefined;
     }
     let lastWidth = 0;
+    const applyWidth = (nextWidth: number) => {
+      if (nextWidth > 0 && Math.abs(nextWidth - lastWidth) >= 1) {
+        lastWidth = nextWidth;
+        setMeasuredWidth(nextWidth);
+      }
+    };
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
       if (!entry) {
         return;
       }
-      const nextWidth = entry.contentRect.width;
-      if (nextWidth > 0 && Math.abs(nextWidth - lastWidth) >= 1) {
-        lastWidth = nextWidth;
-        setMeasuredWidth(nextWidth);
-      }
+      applyWidth(entry.contentRect.width);
     });
     observer.observe(element);
-    if (element.clientWidth > 0) {
-      lastWidth = element.clientWidth;
-      setMeasuredWidth(element.clientWidth);
-    }
+    applyWidth(element.clientWidth);
     return () => observer.disconnect();
-  }, [scrollRef]);
+  }, []);
 
   // Re-apply presentation when focus changes without waiting for a Highcharts redraw.
   useLayoutEffect(() => {
@@ -388,7 +392,7 @@ const SankeyChart = ({
   // Clear focus when clicking empty canvas; ignore the click that ends a drag-pan.
   useLayoutEffect(() => {
     const element = scrollRef.current;
-    if (!element || !enableNodeFocus) {
+    if (!element) {
       return undefined;
     }
     const handleClick = (event: MouseEvent): void => {
@@ -408,7 +412,7 @@ const SankeyChart = ({
     };
     element.addEventListener('click', handleClick);
     return () => element.removeEventListener('click', handleClick);
-  }, [scrollRef, enableNodeFocus, clearFocus, wasDraggedRef]);
+  }, [scrollRef, clearFocus, wasDraggedRef]);
 
   const scaledWidth = contentWidth * zoom;
   const scaledHeight = contentHeight * zoom;
@@ -418,9 +422,8 @@ const SankeyChart = ({
     scaledHeight + 1 < viewportHeight ? (viewportHeight - scaledHeight) / 2 : 0;
   const clientWidth = viewport.clientWidth || measuredWidth;
   const overflows = scaledWidth > clientWidth + 1 || scaledHeight > viewportHeight + 1;
-  const overviewVisible =
-    enableZoom && overflows && !!overviewModel && (isPanning || isOverviewHovered);
-  const zoomControlsVisible = enableZoom && zoomControlLabels !== undefined;
+  const overviewMounted = isZoomEnabled && overflows && overviewModel !== undefined;
+  const overviewVisible = overviewMounted && (isPanning || isOverviewHovered);
 
   const handleOverviewMouseEnter = useCallback(() => {
     if (overviewHoverHideTimerRef.current) {
@@ -449,23 +452,20 @@ const SankeyChart = ({
     [],
   );
 
-  if (links.length === 0 || nodes.length === 0) {
-    return null;
-  }
-
   return (
     <div
       ref={outerRef}
-      className={className ? `${RootClassName} ${className}` : RootClassName}
-      data-testid={dataTestId}
-      onMouseEnter={enableZoom && overflows ? handleOverviewMouseEnter : undefined}
-      onMouseLeave={enableZoom && overflows ? handleOverviewMouseLeave : undefined}>
+      className={RootClassName}
+      onMouseEnter={overviewMounted ? handleOverviewMouseEnter : undefined}
+      onMouseLeave={overviewMounted ? handleOverviewMouseLeave : undefined}>
       <div
         ref={scrollRef}
-        data-testid={dataTestId ? `${dataTestId}-viewport` : undefined}
-        className={`${ScrollContainerClassName} ${
-          enableZoom ? PanTouchActionClassName : ScrollTouchActionClassName
-        }`}
+        data-testid={ViewportTestId}
+        className={
+          isZoomEnabled
+            ? `${ScrollContainerClassName} ${PanTouchActionClassName}`
+            : ScrollContainerClassName
+        }
         style={{
           height: viewportHeight,
           maxHeight: containerHeightProp !== undefined ? undefined : DefaultMaxHeight,
@@ -493,7 +493,7 @@ const SankeyChart = ({
                 height: contentHeight,
                 transform: `scale(${zoom})`,
               }}>
-              {measuredWidth > 0 ? (
+              {hasSeries ? (
                 <GenericSeriesChart
                   key={chartKey}
                   options={highchartsOptions}
@@ -506,25 +506,25 @@ const SankeyChart = ({
         </div>
       </div>
 
-      {zoomControlsVisible && zoomControlLabels ? (
+      {zoomLabelsFormatter ? (
         <div className={ZoomControlsClassName}>
           <IconButton
             icon='icon-filled-magnifying-glass-plus'
-            ariaLabel={zoomControlLabels.zoomIn}
+            ariaLabel={zoomLabelsFormatter(ZoomAction.ZoomIn)}
             onClick={zoomIn}
             variant='OverMedia'
             size='Small'
           />
           <IconButton
             icon='icon-filled-magnifying-glass-minus'
-            ariaLabel={zoomControlLabels.zoomOut}
+            ariaLabel={zoomLabelsFormatter(ZoomAction.ZoomOut)}
             onClick={zoomOut}
             variant='OverMedia'
             size='Small'
           />
           <IconButton
             icon='icon-filled-arrow-spin-counter-clockwise'
-            ariaLabel={zoomControlLabels.resetView}
+            ariaLabel={zoomLabelsFormatter(ZoomAction.ResetView)}
             onClick={reset}
             variant='OverMedia'
             size='Small'
@@ -532,7 +532,7 @@ const SankeyChart = ({
         </div>
       ) : null}
 
-      {enableZoom && overflows && overviewModel ? (
+      {overviewMounted ? (
         <div
           className={`${OverviewContainerClassName} ${
             overviewVisible ? OverviewVisibleClassName : OverviewHiddenClassName

@@ -13,6 +13,7 @@ import {
   useTooltipContainerStyle,
   highchartsSkipTooltipToken,
 } from '../formatters/tooltipFormatters';
+import type { SankeyTooltipFormatter } from '../types/SankeyChart';
 import { escapeHtmlString } from '../utils/escape-html';
 
 const getBaseOptions = ({ theme }: { theme: TTheme }): TooltipOptions => {
@@ -224,42 +225,40 @@ type SankeyTooltipPointContext = Point & {
   isNode?: boolean;
 };
 
-export const useSankeyTooltipOptions = ({
-  formatNodeCount,
-}: {
-  formatNodeCount: (value: number) => string;
-}): TooltipOptions => {
+const getSankeyLinkSourceShare = (point: SankeyTooltipPointContext): number | undefined => {
+  const sourceSum = point.fromNode?.sum;
+  if (sourceSum === undefined || sourceSum <= 0) {
+    return undefined;
+  }
+  return (point.weight ?? 0) / sourceSum;
+};
+
+export const useSankeyTooltipOptions = (formatTooltip: SankeyTooltipFormatter): TooltipOptions => {
   const theme = useTheme();
   const tooltipBackgroundStyle = useTooltipContainerStyle();
 
-  const percentFormatter = useMemo(
-    () =>
-      new Intl.NumberFormat(undefined, {
-        style: 'percent',
-        maximumFractionDigits: 1,
-      }),
-    [],
-  );
-
   const formatter = useCallback(
     function sankeyTooltipFormatter(this: SankeyTooltipPointContext) {
-      const count = this.isNode ? (this.sum ?? this.weight ?? 0) : (this.weight ?? 0);
-      const countLabel = escapeHtmlString(formatNodeCount(count));
+      // `formatTooltip` returns HTML, so its output cannot be escaped here.
+      // Names are escaped on the way in instead: they carry untrusted data such
+      // as creator-authored stage names that consumers interpolate directly.
+      const formattedContent = this.isNode
+        ? formatTooltip({
+            kind: 'node',
+            name: escapeHtmlString(this.name ?? ''),
+            value: this.sum ?? this.weight ?? 0,
+          })
+        : formatTooltip({
+            kind: 'link',
+            fromName: escapeHtmlString(this.fromNode?.name ?? ''),
+            toName: escapeHtmlString(this.toNode?.name ?? ''),
+            value: this.weight ?? 0,
+            sourceShare: getSankeyLinkSourceShare(this),
+          });
 
-      if (this.isNode) {
-        const name = escapeHtmlString(this.name ?? '');
-        return `<div style="${tooltipBackgroundStyle}"><b>${name}</b><br/>${countLabel}</div>`;
-      }
-
-      const fromName = escapeHtmlString(this.fromNode?.name ?? '');
-      const toName = escapeHtmlString(this.toNode?.name ?? '');
-      const sourceSum = this.fromNode?.sum ?? 0;
-      const percentLabel =
-        sourceSum > 0 ? ` (${escapeHtmlString(percentFormatter.format(count / sourceSum))})` : '';
-      // Match Recommended Events design: "Source → Target  10,000 (50.2%)"
-      return `<div style="${tooltipBackgroundStyle}"><b>${fromName} → ${toName}</b>&nbsp;&nbsp;${countLabel}${percentLabel}</div>`;
+      return `<div style="${tooltipBackgroundStyle}">${formattedContent}</div>`;
     },
-    [formatNodeCount, percentFormatter, tooltipBackgroundStyle],
+    [formatTooltip, tooltipBackgroundStyle],
   );
 
   return useMemo(

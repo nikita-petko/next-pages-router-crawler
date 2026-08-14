@@ -1,26 +1,30 @@
 import type { FC } from 'react';
-import { useMemo, useState } from 'react';
-import { type ChartCardHeaderAction, ChartColor, SankeyChart } from '@rbx/analytics-ui';
+import { useCallback, useMemo, useState } from 'react';
+import { type ChartCardHeaderAction, ChartColor, type SankeyChartData } from '@rbx/analytics-ui';
 import { RAQIV2Dimension, RAQIV2Metric } from '@rbx/creator-hub-analytics-config';
-import { ProgressCircle } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
-import ChartOverflowMenu, {
+import {
   ChartSourceQueryDialog,
   ChartSourceQueryMenuItem,
 } from '@modules/experience-analytics-shared/components/ChartOverflowMenu';
+import GenericSankeyChart from '@modules/experience-analytics-shared/components/RAQIV2/GenericSankeyChart';
 import { useRAQIAnalyticsCurrentFilterBundle } from '@modules/experience-analytics-shared/context/AnalyticsCurrentFilterBundleProvider';
 import { useAnalyticsEnumTabLayoutBundle } from '@modules/experience-analytics-shared/context/AnalyticsTabLayoutBundleProvider';
 import useChartOverflowMenu from '@modules/experience-analytics-shared/hooks/useChartOverflowMenu';
 import type RAQIV2ChartContext from '@modules/experience-analytics-shared/types/RAQIV2ChartContext';
 import type RAQIV2ChartSpec from '@modules/experience-analytics-shared/types/RAQIV2ChartSpec';
-import LoadError from '@modules/miscellaneous/error/LoadError';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import recommendedEventsJourneysFilterDimensions from '../config/recommendedEventsJourneysFilterDimensions';
 import { JOURNEY_SANKEY_METRIC_TABS } from '../types';
 import { useJourneyTransitions } from '../useJourneyData';
 import JourneySankeyCsvExporter from './journeySankeyCsvExporter';
+
+const EMPTY_SANKEY_DATA: SankeyChartData = { nodes: [], links: [] };
+
+/** Funnels get a taller canvas than the standard card so stages stay readable. */
+const JOURNEY_CHART_HEIGHT = 444;
 
 /**
  * Muted categorical palette so the Sankey link gradients read as soft flows
@@ -54,7 +58,7 @@ const JourneySankeyChart: FC<{ chartContext: RAQIV2ChartContext }> = ({ chartCon
     chartContext.filter?.find((f) => f.dimension === RAQIV2Dimension.JourneyVersion)?.values[0] ??
     null;
 
-  const { isLoading, error, sankeyData, journeyData, refetch } = useJourneyTransitions(
+  const { isLoading, error, sankeyData, journeyData } = useJourneyTransitions(
     journeyName,
     journeyVersion,
     raqiFilters,
@@ -65,9 +69,9 @@ const JourneySankeyChart: FC<{ chartContext: RAQIV2ChartContext }> = ({ chartCon
       return undefined;
     }
     return journeyData.edges.map((edge) => ({
-      source: `${edge.fromNode}:${edge.fromStage}`,
-      target: `${edge.toNode}:${edge.toStage}`,
-      value: sankeyMetric === 'sessions' ? edge.transitionCount : edge.userCount,
+      from: `${edge.fromNode}:${edge.fromStage}`,
+      to: `${edge.toNode}:${edge.toStage}`,
+      weight: sankeyMetric === 'sessions' ? edge.transitionCount : edge.userCount,
     }));
   }, [journeyData, sankeyMetric]);
 
@@ -92,8 +96,6 @@ const JourneySankeyChart: FC<{ chartContext: RAQIV2ChartContext }> = ({ chartCon
     [sankeyNodes, activeSankeyLinks],
   );
 
-  // Standard chart overflow: "Download CSV" + "View source query", matching the
-  // chrome the generic chart cards get.
   const activeMetric =
     sankeyMetric === 'sessions'
       ? RAQIV2Metric.JourneyTransitionCount
@@ -112,34 +114,28 @@ const JourneySankeyChart: FC<{ chartContext: RAQIV2ChartContext }> = ({ chartCon
     [chartContext, activeMetric],
   );
 
-  const downloadCsvLabel = tPendingTranslation(
-    'Download CSV',
-    'Menu item label to download chart data as a CSV file.',
-    translationKey('Action.ExploreMode.DownloadCsv', TranslationNamespace.Analytics),
-  );
   const viewSourceQueryLabel = tPendingTranslation(
     'View source query',
     'Menu item label to view the source query for the chart.',
     translationKey('Action.ExploreMode.ViewSourceQuery', TranslationNamespace.Analytics),
   );
 
-  const overflowActions: ChartCardHeaderAction[] = [
-    {
-      id: 'download',
-      kind: 'button',
-      label: downloadCsvLabel,
-      onClick: () => csvExporter.download({}),
-      disabled: csvExporter.hasEmptyData,
-      testId: 'chart-overflow-download-csv',
-    },
-    {
+  const handleOpenSourceQuery = useCallback(() => {
+    setSourceQueryOpen(true);
+  }, []);
+  const handleCloseSourceQuery = useCallback(() => {
+    setSourceQueryOpen(false);
+  }, []);
+
+  const sourceQueryAction: ChartCardHeaderAction = useMemo(
+    () => ({
       id: 'view-source-query',
       kind: 'custom',
       label: viewSourceQueryLabel,
       render: ({ closeMenu } = {}) => (
         <ChartSourceQueryMenuItem
           onClick={() => {
-            setSourceQueryOpen(true);
+            handleOpenSourceQuery();
             closeMenu?.();
           }}
         />
@@ -148,53 +144,50 @@ const JourneySankeyChart: FC<{ chartContext: RAQIV2ChartContext }> = ({ chartCon
         <ChartSourceQueryDialog
           open={sourceQueryOpen}
           spec={sourceQuerySpec}
-          onClose={() => setSourceQueryOpen(false)}
+          onClose={handleCloseSourceQuery}
         />
       ),
-    },
-  ];
+    }),
+    [
+      handleCloseSourceQuery,
+      handleOpenSourceQuery,
+      sourceQueryOpen,
+      sourceQuerySpec,
+      viewSourceQueryLabel,
+    ],
+  );
 
-  const overflowMenuAction = useChartOverflowMenu({ actions: overflowActions });
+  const sourceQueryActions = useMemo(() => [sourceQueryAction], [sourceQueryAction]);
+  const overflowMenuAction = useChartOverflowMenu({ actions: sourceQueryActions });
+  const headerActionItems = useMemo(
+    () => (overflowMenuAction ? [overflowMenuAction] : undefined),
+    [overflowMenuAction],
+  );
+
+  const requestStatus = useMemo(
+    () => ({
+      isDataLoading: isLoading,
+      isResponseFailed: !!error,
+      isUserForbidden: false,
+      error: error instanceof Error ? error : undefined,
+    }),
+    [error, isLoading],
+  );
 
   if (!journeyName) {
     return null;
   }
 
-  if (error) {
-    return <LoadError onReload={refetch} />;
-  }
-
   return (
-    <div className='flex flex-col gap-large padding-large bg-surface-100 stroke-thin stroke-default radius-large [overflow-x:auto]'>
-      <div className='flex items-center justify-between'>
-        <h2 className='text-title-large content-emphasis margin-none'>{journeyName}</h2>
-        {overflowMenuAction?.kind === 'menu' && (
-          <ChartOverflowMenu action={overflowMenuAction} actions={overflowActions} />
-        )}
-      </div>
-      {isLoading ? (
-        <div className='flex justify-center items-center [min-height:200px]'>
-          <ProgressCircle
-            variant='Indeterminate'
-            ariaLabel={tPendingTranslation(
-              'Loading journey data',
-              'Aria label for the loading spinner while journey transition data is fetched',
-              translationKey('Label.LoadingJourneyData', TranslationNamespace.Analytics),
-            )}
-          />
-        </div>
-      ) : sankeyDataProp ? (
-        <SankeyChart data={sankeyDataProp} />
-      ) : (
-        <p className='content-muted'>
-          {tPendingTranslation(
-            'No data for this selection.',
-            'Empty state when no journey data exists for the current filters',
-            translationKey('Label.NoJourneyData', TranslationNamespace.Analytics),
-          )}
-        </p>
-      )}
-    </div>
+    <GenericSankeyChart
+      titleLabel={journeyName}
+      data={sankeyDataProp ?? EMPTY_SANKEY_DATA}
+      requestStatus={requestStatus}
+      chartHeight={JOURNEY_CHART_HEIGHT}
+      exportFileName={journeyName}
+      exporter={csvExporter}
+      headerActionItems={headerActionItems}
+    />
   );
 };
 

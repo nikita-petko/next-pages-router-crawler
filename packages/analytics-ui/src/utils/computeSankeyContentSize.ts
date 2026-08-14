@@ -56,13 +56,13 @@ export const computeSankeyContentSize = ({
   }
 
   // When columns are omitted, Highcharts derives them from topology. Approximate
-  // depth from longest source→target chain so minColumnWidth still has effect.
+  // depth from longest from→to chain so minColumnWidth still has effect.
   if (columnCounts.size === 0 && links.length > 0) {
     const outgoing = new Map<string, string[]>();
     for (const link of links) {
-      const targets = outgoing.get(link.source) ?? [];
-      targets.push(link.target);
-      outgoing.set(link.source, targets);
+      const outgoingTargets = outgoing.get(link.from) ?? [];
+      outgoingTargets.push(link.to);
+      outgoing.set(link.from, outgoingTargets);
     }
     const depthMemo = new Map<string, number>();
     const depthOf = (id: string, stack: Set<string>): number => {

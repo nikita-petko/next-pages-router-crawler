@@ -16,6 +16,8 @@ type UseSankeyViewportParams = {
   /** Unzoomed (base) content height in px. */
   contentHeight: number;
   enabled: boolean;
+  /** Allows ⌘/Ctrl + wheel and pinch zoom. Panning stays available either way. */
+  zoomEnabled?: boolean;
   minZoom?: number;
   maxZoom?: number;
   /** Multiplier applied per zoom-button press. */
@@ -64,6 +66,7 @@ export const useSankeyViewport = ({
   contentWidth,
   contentHeight,
   enabled,
+  zoomEnabled = true,
   minZoom = 1,
   maxZoom = 8,
   zoomStep = 1.2,
@@ -208,7 +211,7 @@ export const useSankeyViewport = ({
   // Non-passive wheel listener so we can preventDefault on zoom gestures.
   useEffect(() => {
     const element = scrollRef.current;
-    if (!element || !enabled) {
+    if (!element || !enabled || !zoomEnabled) {
       return undefined;
     }
     const handleWheel = (event: WheelEvent): void => {
@@ -222,13 +225,14 @@ export const useSankeyViewport = ({
     };
     element.addEventListener('wheel', handleWheel, { passive: false });
     return () => element.removeEventListener('wheel', handleWheel);
-  }, [enabled, zoomToPoint]);
+  }, [enabled, zoomEnabled, zoomToPoint]);
 
   // Mouse: grab-and-drag to pan (Figma-style hand). A small movement threshold
-  // distinguishes a pan from a click so node-focus clicks still work.
+  // distinguishes a pan from a click so node-focus clicks still work. Without
+  // zoom the canvas is left to native scrolling, so this drag layer stays off.
   useEffect(() => {
     const element = scrollRef.current;
-    if (!element || !enabled) {
+    if (!element || !enabled || !zoomEnabled) {
       return undefined;
     }
 
@@ -303,13 +307,14 @@ export const useSankeyViewport = ({
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [enabled, signalPanActivity]);
+  }, [enabled, zoomEnabled, signalPanActivity]);
 
   // Touch: one-finger pan, two-finger pinch. touch-action is disabled on the
   // element (see renderer) so these gestures don't fight native scrolling.
+  // Without zoom the browser keeps the gesture and scrolls the canvas itself.
   useEffect(() => {
     const element = scrollRef.current;
-    if (!element || !enabled) {
+    if (!element || !enabled || !zoomEnabled) {
       return undefined;
     }
 
@@ -393,11 +398,11 @@ export const useSankeyViewport = ({
       element.removeEventListener('touchend', handleTouchEnd);
       element.removeEventListener('touchcancel', handleTouchEnd);
     };
-  }, [enabled, zoomToPoint, signalPanActivity]);
+  }, [enabled, zoomEnabled, zoomToPoint, signalPanActivity]);
 
   return {
     scrollRef,
-    zoom: enabled ? zoom : 1,
+    zoom: enabled && zoomEnabled ? zoom : 1,
     viewport,
     isPanning,
     zoomIn,
