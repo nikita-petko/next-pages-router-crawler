@@ -130,6 +130,13 @@ const statusToContent: { [key in AgreementStatus]: content } = {
     text: 'Label.ConditionalOffer',
     textWithDate: undefined,
   },
+  // TODO - aquach/anagajaran - Handle draft visual treatment
+  Draft: {
+    icon: undefined,
+    variant: undefined,
+    text: '',
+    textWithDate: undefined,
+  },
 };
 
 interface Props {

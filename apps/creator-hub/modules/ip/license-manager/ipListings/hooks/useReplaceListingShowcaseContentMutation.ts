@@ -10,7 +10,7 @@ import { GET_LISTING_SHOWCASE_CONTENT_QUERY_KEY } from '../../queryKeys';
 
 type ReplaceListingShowcaseContentParams = {
   request: ListingsReplaceListingShowcaseContentRequest;
-  ifMatch?: string;
+  ifMatch: string;
 };
 
 type UseReplaceListingShowcaseContentMutationParams = {

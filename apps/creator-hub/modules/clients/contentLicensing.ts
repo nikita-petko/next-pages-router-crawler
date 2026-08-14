@@ -338,7 +338,7 @@ export class ContentLicensingApiClient {
     accountId: string,
     listingId: string,
     request: ListingsReplaceListingShowcaseContentRequest,
-    ifMatch?: string,
+    ifMatch: string,
   ): Promise<ListingShowcaseContentResponse> {
     return this.listingsApi.listingsReplaceListingShowcaseContent({
       accountId,

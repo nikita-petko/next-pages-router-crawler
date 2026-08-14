@@ -132,6 +132,13 @@ const statusToContent: { [key in AgreementStatus]: content } = {
     text: 'Label.ConditionalOffer',
     textWithDate: undefined,
   },
+  // TODO - aquach/anagajaran - Handle draft visual treatment
+  Draft: {
+    icon: undefined,
+    variant: undefined,
+    text: '',
+    textWithDate: undefined,
+  },
 };
 
 interface Props {
@@ -154,6 +161,9 @@ const IphAgreementStatusLabel: React.FC<Props> = ({ agreement, isCompact = false
   }
 
   const { status } = agreement;
+  if (status === AgreementStatus.Draft) {
+    return null;
+  }
   const isPendingTermination =
     status === AgreementStatus.Active && normalizeTerminatesAt(agreement.terminatesAt);
   const date = isPendingTermination ? agreement.terminatesAt : agreement.statusExpireAt;

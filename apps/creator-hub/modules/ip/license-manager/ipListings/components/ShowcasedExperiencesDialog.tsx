@@ -297,7 +297,8 @@ const ShowcasedExperiencesDialog = ({
     if (
       showcaseEligibleContentReq.isPending ||
       showcaseEligibleContentReq.isFetching ||
-      hasSelectedInvalidUniverse
+      hasSelectedInvalidUniverse ||
+      ifMatch == null
     ) {
       return;
     }
@@ -430,6 +431,7 @@ const ShowcasedExperiencesDialog = ({
     showcaseEligibleContentReq.isPending ||
     showcaseEligibleContentReq.isFetching ||
     hasSelectedInvalidUniverse ||
+    ifMatch == null ||
     replaceShowcaseContent.isPending ||
     (selectableUniverseIds.length === 0 && !hasRemovedSelections);
   const hasNonContentState =

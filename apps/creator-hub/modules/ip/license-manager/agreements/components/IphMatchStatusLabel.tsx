@@ -72,6 +72,8 @@ export const statusToContent: { [key in AgreementStatus]: content } = {
   None: unknownContent,
   Pending: unknownContent,
   ConditionalOffer: conditionalOfferContent,
+  // TODO - aquach/anagajaran - Handle draft visual treatment
+  Draft: unknownContent,
 };
 
 export interface MatchStatusLabelProps {
