@@ -45,6 +45,13 @@ import type {
   RobloxItemConfigurationApiModelsFolderFolder,
   RobloxItemConfigurationApiModelsFolderFolderItem,
   RobloxItemConfigurationApiModelsFolderFolderItemDetails,
+  RobloxItemConfigurationApiModelsRequestPublishingPreferencesCreatePublishingPreferencesRequest,
+  RobloxItemConfigurationApiModelsRequestPublishingPreferencesUpdatePublishingPreferencesRequest,
+  RobloxItemConfigurationApiModelsResponsePublishingPreferencesPublishingPreferencesResponse,
+  V1PreferencesPublishingDeleteRequest,
+  V1PreferencesPublishingGetRequest,
+  V1PreferencesPublishingPatchRequest,
+  V1PreferencesPublishingPostRequest,
   V1FoldersFolderIdDeleteRequest,
   V1FoldersFolderIdGetRequest,
   V1FoldersGetRequest,
@@ -106,6 +113,7 @@ import {
   PermissionsApi,
   ContentMetadataApi,
   FoldersApi,
+  PublishingPreferencesApi,
 } from '@rbx/client-itemconfiguration/v1';
 import type {
   PurchasePlatformEnum,
@@ -158,6 +166,8 @@ export class ItemConfigurationClient {
 
   private foldersApi: FoldersApi;
 
+  private publishingPreferencesApi: PublishingPreferencesApi;
+
   constructor() {
     const configuration = createClientConfiguration('itemconfiguration', 'bedev1');
 
@@ -174,6 +184,8 @@ export class ItemConfigurationClient {
     this.contentMetadataApi = new ContentMetadataApi(configuration);
 
     this.foldersApi = new FoldersApi(configuration);
+
+    this.publishingPreferencesApi = new PublishingPreferencesApi(configuration);
   }
 
   checkItemConfigurationAccess(isBundle: boolean, targetId: number) {
@@ -502,6 +514,9 @@ export class ItemConfigurationClient {
     assetType?: V1ItemsPriceFloorGetAssetTypeEnum,
     bundleType?: V1ItemsPriceFloorGetBundleTypeEnum,
     categoryId?: string,
+    // isEmissive became a required request field in client 1.13.0. Defaulted here so the existing
+    // caller keeps sending what it sent before this bump; a caller that needs emissive pricing has
+    // to pass it explicitly.
     isEmissive = false,
   ) {
     const request: V1ItemsPriceFloorGetRequest = {
@@ -788,6 +803,32 @@ export class ItemConfigurationClient {
       collectibleItemId,
     };
     return this.collectiblesApi.v1CollectiblesCollectibleItemIdRestockEligibilityGet(request);
+  }
+
+  getPublishingPreferences(
+    groupId?: number,
+  ): Promise<RobloxItemConfigurationApiModelsResponsePublishingPreferencesPublishingPreferencesResponse> {
+    const request: V1PreferencesPublishingGetRequest = { groupId };
+    return this.publishingPreferencesApi.v1PreferencesPublishingGet(request);
+  }
+
+  createPublishingPreferences(
+    body: RobloxItemConfigurationApiModelsRequestPublishingPreferencesCreatePublishingPreferencesRequest,
+  ): Promise<RobloxItemConfigurationApiModelsResponsePublishingPreferencesPublishingPreferencesResponse> {
+    const request: V1PreferencesPublishingPostRequest = { request: body };
+    return this.publishingPreferencesApi.v1PreferencesPublishingPost(request);
+  }
+
+  updatePublishingPreferences(
+    body: RobloxItemConfigurationApiModelsRequestPublishingPreferencesUpdatePublishingPreferencesRequest,
+  ): Promise<RobloxItemConfigurationApiModelsResponsePublishingPreferencesPublishingPreferencesResponse> {
+    const request: V1PreferencesPublishingPatchRequest = { request: body };
+    return this.publishingPreferencesApi.v1PreferencesPublishingPatch(request);
+  }
+
+  deletePublishingPreferences(groupId?: number): Promise<void> {
+    const request: V1PreferencesPublishingDeleteRequest = { groupId };
+    return this.publishingPreferencesApi.v1PreferencesPublishingDelete(request);
   }
 }
 
