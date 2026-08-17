@@ -15,8 +15,6 @@ import type { CustomMetricDraft } from '../utils/customMetricDraft';
 import { FILTER_DIMENSIONS_BY_CATEGORY } from '../utils/customMetricOptions';
 import CustomMetricDimensionValueSelect from './CustomMetricDimensionValueSelect';
 
-const NS = TranslationNamespace.UniverseConfigAndExperimentation;
-
 type CustomMetricFilterRowsProps = {
   category: CustomMetricCategory;
   resource: RAQIV2ChartResource;
@@ -65,7 +63,10 @@ const CustomMetricFilterRows: FC<CustomMetricFilterRowsProps> = ({
   const valuesPlaceholder = tPendingTranslation(
     'Select values',
     'Placeholder for the value multi-select on a custom metric filter row.',
-    translationKey('Placeholder.ExperimentCreation.CustomMetricFilterValues', NS),
+    translationKey(
+      'Placeholder.ExperimentCreation.CustomMetricFilterValues',
+      TranslationNamespace.UniverseConfigAndExperimentation,
+    ),
   );
 
   return (
@@ -75,14 +76,20 @@ const CustomMetricFilterRows: FC<CustomMetricFilterRowsProps> = ({
           {tPendingTranslation(
             'Filters',
             'Heading for the optional filters section of the custom metric drawer.',
-            translationKey('Label.ExperimentCreation.CustomMetricFilters', NS),
+            translationKey(
+              'Label.ExperimentCreation.CustomMetricFilters',
+              TranslationNamespace.UniverseConfigAndExperimentation,
+            ),
           )}
         </span>
         <span className='text-body-medium content-muted'>
           {tPendingTranslation(
             'Further specify what this metric will track. This is optional.',
             'Description under the Filters heading in the custom metric drawer.',
-            translationKey('Message.ExperimentCreation.CustomMetricFiltersDescription', NS),
+            translationKey(
+              'Message.ExperimentCreation.CustomMetricFiltersDescription',
+              TranslationNamespace.UniverseConfigAndExperimentation,
+            ),
           )}
         </span>
       </div>
@@ -95,7 +102,10 @@ const CustomMetricFilterRows: FC<CustomMetricFilterRowsProps> = ({
               {tPendingTranslation(
                 'Filter {number}',
                 'Label for a single filter row in the custom metric drawer (numbered).',
-                translationKey('Label.ExperimentCreation.CustomMetricFilterNumber', NS),
+                translationKey(
+                  'Label.ExperimentCreation.CustomMetricFilterNumber',
+                  TranslationNamespace.UniverseConfigAndExperimentation,
+                ),
                 { number: String(index + 1) },
               )}
             </span>
@@ -119,7 +129,7 @@ const CustomMetricFilterRows: FC<CustomMetricFilterRowsProps> = ({
                       'Placeholder for the dimension dropdown on a custom metric filter row.',
                       translationKey(
                         'Placeholder.ExperimentCreation.CustomMetricFilterDimension',
-                        NS,
+                        TranslationNamespace.UniverseConfigAndExperimentation,
                       ),
                     )}
                     onValueChange={(next) => {
@@ -173,7 +183,10 @@ const CustomMetricFilterRows: FC<CustomMetricFilterRowsProps> = ({
                 {tPendingTranslation(
                   'Delete',
                   'Button to remove a filter row in the custom metric drawer.',
-                  translationKey('Action.ExperimentCreation.DeleteCustomMetricFilter', NS),
+                  translationKey(
+                    'Action.ExperimentCreation.DeleteCustomMetricFilter',
+                    TranslationNamespace.UniverseConfigAndExperimentation,
+                  ),
                 )}
               </Button>
             </div>
@@ -192,7 +205,10 @@ const CustomMetricFilterRows: FC<CustomMetricFilterRowsProps> = ({
         {tPendingTranslation(
           'Filter',
           'Button label to add another filter row in the custom metric drawer.',
-          translationKey('Action.ExperimentCreation.AddCustomMetricFilter', NS),
+          translationKey(
+            'Action.ExperimentCreation.AddCustomMetricFilter',
+            TranslationNamespace.UniverseConfigAndExperimentation,
+          ),
         )}
       </Button>
     </div>
