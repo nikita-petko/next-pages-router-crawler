@@ -1,6 +1,11 @@
 import type { FunctionComponent, MouseEvent } from 'react';
 import { memo, useCallback, useState } from 'react';
 import { getFormattedDateTime } from '@rbx/core';
+import { useVisibleImpression } from '@modules/licenses/hooks/useVisibleImpression';
+import {
+  logDevelopmentItemClick,
+  logDevelopmentItemImpression,
+} from '../developmentItemsAnalytics';
 import type { DevelopmentItemsInventoryItem } from '../developmentItemsInventoryUtils';
 import type { DevelopmentItemToolboxIds } from '../useDevelopmentItemToolboxIds';
 import DevelopmentItemActionsMenu, {
@@ -14,6 +19,8 @@ export type DevelopmentItemsGridProps = {
   items: readonly DevelopmentItemsInventoryItem[];
   onArchiveStateChange: DevelopmentItemArchiveStateChangeHandler;
   onSelectItem: (item: DevelopmentItemsInventoryItem) => void;
+  pageNumber: number;
+  pageSize: number;
   thumbnailUrls: ReadonlyMap<number, string>;
   toolboxIdsByAssetId: ReadonlyMap<number, DevelopmentItemToolboxIds>;
 };
@@ -23,18 +30,48 @@ type DevelopmentItemsGridItemProps = {
   item: DevelopmentItemsInventoryItem;
   onArchiveStateChange: DevelopmentItemArchiveStateChangeHandler;
   onSelectItem: (item: DevelopmentItemsInventoryItem) => void;
+  pageNumber: number;
+  pageSize: number;
+  position: number;
   thumbnailUrl?: string;
   toolboxIds?: DevelopmentItemToolboxIds;
 };
 
 const DevelopmentItemsGridItem: FunctionComponent<DevelopmentItemsGridItemProps> = memo(
-  ({ isArchivable, item, onArchiveStateChange, onSelectItem, thumbnailUrl, toolboxIds }) => {
+  ({
+    isArchivable,
+    item,
+    onArchiveStateChange,
+    onSelectItem,
+    pageNumber,
+    pageSize,
+    position,
+    thumbnailUrl,
+    toolboxIds,
+  }) => {
     const timestamp = item.updated ?? item.created;
     const [contextMenuPosition, setContextMenuPosition] =
       useState<DevelopmentItemContextMenuPosition>();
+    const logImpression = useCallback(() => {
+      logDevelopmentItemImpression({
+        item,
+        pageNumber,
+        pageSize,
+        position,
+        view: 'grid',
+      });
+    }, [item, pageNumber, pageSize, position]);
+    const itemRef = useVisibleImpression<HTMLDivElement>(logImpression);
     const handleSelect = useCallback(() => {
+      logDevelopmentItemClick({
+        item,
+        pageNumber,
+        pageSize,
+        position,
+        view: 'grid',
+      });
       onSelectItem(item);
-    }, [item, onSelectItem]);
+    }, [item, onSelectItem, pageNumber, pageSize, position]);
     const handleContextMenu = useCallback((event: MouseEvent<HTMLDivElement>) => {
       event.preventDefault();
       event.stopPropagation();
@@ -45,7 +82,10 @@ const DevelopmentItemsGridItem: FunctionComponent<DevelopmentItemsGridItemProps>
     }, []);
 
     return (
-      <div className='group relative min-width-0 width-full' onContextMenu={handleContextMenu}>
+      <div
+        className='group relative min-width-0 width-full'
+        onContextMenu={handleContextMenu}
+        ref={itemRef}>
         <button
           aria-label={item.name}
           className='flex flex-col gap-small min-width-0 width-full bg-none stroke-none padding-none cursor-pointer text-align-x-left focus-visible:outline-focus'
@@ -102,17 +142,22 @@ const DevelopmentItemsGrid: FunctionComponent<DevelopmentItemsGridProps> = ({
   items,
   onArchiveStateChange,
   onSelectItem,
+  pageNumber,
+  pageSize,
   thumbnailUrls,
   toolboxIdsByAssetId,
 }) => (
   <div className='grid gap-large width-full min-width-0 [grid-template-columns:repeat(auto-fill,minmax(min(150px,100%),1fr))]'>
-    {items.map((item) => (
+    {items.map((item, index) => (
       <DevelopmentItemsGridItem
         isArchivable={archivableAssetIds.has(item.assetId)}
         item={item}
         key={item.id}
         onArchiveStateChange={onArchiveStateChange}
         onSelectItem={onSelectItem}
+        pageNumber={pageNumber}
+        pageSize={pageSize}
+        position={(pageNumber - 1) * pageSize + index + 1}
         thumbnailUrl={thumbnailUrls.get(item.assetId)}
         toolboxIds={toolboxIdsByAssetId.get(item.assetId)}
       />

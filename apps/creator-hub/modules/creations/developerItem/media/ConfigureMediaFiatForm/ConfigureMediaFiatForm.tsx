@@ -1,6 +1,7 @@
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
+import { useQueryClient } from '@tanstack/react-query';
 import type { SubmitHandler } from 'react-hook-form';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { RobloxApiDevelopAssetModelReviewStatusEnum } from '@rbx/client-develop/v1';
@@ -59,6 +60,7 @@ import { getEnumKeyByValue } from '@modules/miscellaneous/utils';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import DiscoverabilitySection from '../../../common/components/DiscoverabilitySection/DiscoverabilitySection';
 import type { SongArtist } from '../../../common/components/SongArtistsSection/useGetFriendsAsSongArtists';
+import { cacheDevelopmentItemMetadataUpdate } from '../../../common/utils/developmentItemsInventoryCache';
 import AssetAccessForm from '../../common/AssetAccessForm/AssetAccessForm';
 import BasicInfoForm from '../../common/BasicInfoForm/BasicInfoForm';
 import {
@@ -147,6 +149,7 @@ const ConfigureMediaFiatForm: FunctionComponent<
   } = useConfigureMediaFiatFormStyles();
   const theme = useTheme();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { enqueue } = useSnackbar();
   const { translate } = useTranslation();
   const { configureProduct } = useMarketplaceFiatServiceProvider();
@@ -272,6 +275,11 @@ const ConfigureMediaFiatForm: FunctionComponent<
           description: description ?? '',
           name,
         });
+        cacheDevelopmentItemMetadataUpdate(queryClient, {
+          assetId,
+          description: description ?? '',
+          name,
+        });
         methods.resetField('name', { defaultValue: name });
         methods.resetField('description', { defaultValue: description });
       } catch (errRes) {
@@ -288,7 +296,15 @@ const ConfigureMediaFiatForm: FunctionComponent<
         throw new Error(errorMsg, { cause: errRes });
       }
     },
-    [developerItemDetails.id, dirtyFields.description, dirtyFields.name, methods, translate],
+    [
+      assetId,
+      developerItemDetails.id,
+      dirtyFields.description,
+      dirtyFields.name,
+      methods,
+      queryClient,
+      translate,
+    ],
   );
 
   const configureFiatProduct = useCallback(

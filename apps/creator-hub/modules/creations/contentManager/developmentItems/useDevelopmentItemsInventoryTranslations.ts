@@ -69,6 +69,11 @@ const useDevelopmentItemsInventoryTranslations = () => {
       'Label for the Development Items asset type filter and table column.',
       translationKey('Label.DevelopmentItems.AssetType', TranslationNamespace.Creations),
     ),
+    dateCreated: tPendingTranslation(
+      'Date created',
+      'Development Items table column showing when an asset was created.',
+      translationKey('Label.DevelopmentItems.DateCreated', TranslationNamespace.Creations),
+    ),
     clearFilter,
     clearSearch: tPendingTranslation(
       'Clear search',
@@ -138,7 +143,7 @@ const useDevelopmentItemsInventoryTranslations = () => {
       ),
     ),
     sharedWithMe: tPendingTranslation(
-      'Shared With Me',
+      'Shared with me',
       'Source filter option for Development Items shared with the current creator.',
       translationKey('Label.DevelopmentItems.SharedWithMe', TranslationNamespace.Creations),
     ),

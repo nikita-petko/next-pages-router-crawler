@@ -1,6 +1,10 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import creatorInventoryClient from '@modules/clients/creatorInventory';
 import type { CreatorInventoryScope } from '@modules/clients/creatorInventory';
+import {
+  DEVELOPMENT_ITEMS_INVENTORY_QUERY_KEY,
+  reconcileDevelopmentItemsInventoryMetadata,
+} from '../../common/utils/developmentItemsInventoryCache';
 import {
   buildCreatorInventorySearchFilter,
   mapCreatorInventoryItem,
@@ -28,7 +32,7 @@ export const developmentItemsInventoryQueryKey = ({
   scope?: CreatorInventoryScope;
   source: DevelopmentItemsSourceSelection;
 }) => [
-  'development-items-inventory',
+  ...DEVELOPMENT_ITEMS_INVENTORY_QUERY_KEY,
   scope?.type,
   scope?.id,
   assetType,
@@ -52,8 +56,10 @@ const useDevelopmentItemsInventory = ({
   query: string;
   scope?: CreatorInventoryScope;
   source: DevelopmentItemsSourceSelection;
-}) =>
-  useQuery({
+}) => {
+  const queryClient = useQueryClient();
+
+  return useQuery({
     queryKey: developmentItemsInventoryQueryKey({
       assetType,
       pageSize,
@@ -77,11 +83,28 @@ const useDevelopmentItemsInventory = ({
         { signal },
       );
 
+      const responseItems = response.items ?? [];
+      const serverMetadataByAssetId = new Map<
+        number,
+        { description?: string | null; name?: string }
+      >();
+      const items = responseItems.flatMap((item) => {
+        const mappedItem = mapCreatorInventoryItem(item);
+        if (mappedItem != null) {
+          serverMetadataByAssetId.set(mappedItem.assetId, {
+            description: item.assetItem?.asset?.description,
+            name: item.assetItem?.asset?.displayName,
+          });
+        }
+        return mappedItem == null ? [] : [mappedItem];
+      });
+
       return {
-        items: (response.items ?? []).flatMap((item) => {
-          const mappedItem = mapCreatorInventoryItem(item);
-          return mappedItem == null ? [] : [mappedItem];
-        }),
+        items: reconcileDevelopmentItemsInventoryMetadata(
+          queryClient,
+          items,
+          serverMetadataByAssetId,
+        ),
         nextPageToken: response.nextPageToken,
       };
     },
@@ -89,6 +112,7 @@ const useDevelopmentItemsInventory = ({
     placeholderData: keepPreviousData,
     staleTime: INVENTORY_STALE_TIME_MS,
   });
+};
 
 export { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS };
 export default useDevelopmentItemsInventory;

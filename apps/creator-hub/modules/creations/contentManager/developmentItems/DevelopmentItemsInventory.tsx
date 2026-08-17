@@ -1,5 +1,5 @@
 import type { FunctionComponent } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Alert, clsx, ProgressCircle, SegmentedControl } from '@rbx/foundation-ui';
 import type { TSegmentedControlIconItem } from '@rbx/foundation-ui';
@@ -29,6 +29,15 @@ import DevelopmentItemsScopedSearch from './components/DevelopmentItemsScopedSea
 import type { DevelopmentItemsSearchScope } from './components/DevelopmentItemsScopedSearch';
 import DevelopmentItemsToolbar from './components/DevelopmentItemsToolbar';
 import InventoryFilterDropdown from './components/InventoryFilterDropdown';
+import {
+  logDevelopmentItemsAssetTypeChange,
+  logDevelopmentItemsFilter,
+  logDevelopmentItemsPageView,
+  logDevelopmentItemsPagination,
+  logDevelopmentItemsRetry,
+  logDevelopmentItemsSearch,
+  logDevelopmentItemsViewChange,
+} from './developmentItemsAnalytics';
 import {
   buildCreatorInventoryScope,
   DevelopmentItemsSourceFilter,
@@ -136,6 +145,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
       }),
       assetIdWithValue: translations.assetIdWithValue,
       assetType: translations.assetType,
+      dateCreated: translations.dateCreated,
       lastUpdated: translations.lastUpdated,
       name: translations.name,
       source: translations.inventorySource,
@@ -146,6 +156,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
       translations.assetId,
       translations.assetIdWithValue,
       translations.assetType,
+      translations.dateCreated,
       translations.inventorySource,
       translations.lastUpdated,
       translations.name,
@@ -230,6 +241,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
   const [optimisticArchivedItems, setOptimisticArchivedItems] = useState<
     ReadonlyMap<number, DevelopmentItemsInventoryItem>
   >(() => new Map());
+  const hasLoggedPageView = useRef(false);
 
   const resetPagination = useCallback(() => {
     setPageTokens(new Map([[0, undefined]]));
@@ -254,7 +266,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
     [resetPagination, setQueryParams],
   );
 
-  const commitSearch = useCallback(
+  const applySearch = useCallback(
     (value: string) => {
       if (isArchived && value.trim().length > 0) {
         setIsArchived(false);
@@ -262,6 +274,18 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
       updateQuery({ inventoryQuery: value.trim() || null });
     },
     [isArchived, setIsArchived, updateQuery],
+  );
+  const commitSearch = useCallback(
+    (value: string) => {
+      const trimmedValue = value.trim();
+      logDevelopmentItemsSearch({
+        action: 'submit',
+        assetType,
+        queryLength: trimmedValue.length,
+      });
+      applySearch(trimmedValue);
+    },
+    [applySearch, assetType],
   );
 
   const activeInventoryQuery = useDevelopmentItemsInventory({
@@ -280,10 +304,25 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
     pageToken: currentPageToken,
   });
   const inventoryQuery = isArchived ? archivedInventoryQuery : activeInventoryQuery;
+  useEffect(() => {
+    if (hasLoggedPageView.current || scope == null) {
+      return;
+    }
+    hasLoggedPageView.current = true;
+    logDevelopmentItemsPageView({
+      assetType,
+      creatorType: groupId == null ? 'user' : 'group',
+      queryLength: query.length,
+      showArchived: isArchived,
+      source,
+      view,
+    });
+  }, [assetType, groupId, isArchived, query.length, scope, source, view]);
   const { refetch: refetchInventory } = inventoryQuery;
   const handleRetry = useCallback(() => {
+    logDevelopmentItemsRetry({ assetType, showArchived: isArchived });
     void refetchInventory();
-  }, [refetchInventory]);
+  }, [assetType, isArchived, refetchInventory]);
   const handleArchiveStateChange = useCallback(
     (
       item: DevelopmentItemsInventoryItem,
@@ -443,9 +482,14 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
     setSearchInput(value);
   }, []);
   const handleClearSearch = useCallback(() => {
+    logDevelopmentItemsSearch({
+      action: 'clear',
+      assetType,
+      queryLength: searchInput.trim().length,
+    });
     setSearchInput('');
-    commitSearch('');
-  }, [commitSearch]);
+    applySearch('');
+  }, [applySearch, assetType, searchInput]);
   const handleDismissSearch = useCallback(() => {
     setSearchInput(query);
   }, [query]);
@@ -459,6 +503,12 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
       if (!isDevelopmentItemsAssetTypeSelection(selectedScope.value)) {
         return;
       }
+      logDevelopmentItemsSearch({
+        action: 'scope_select',
+        assetType,
+        queryLength: value.trim().length,
+        selectedAssetType: selectedScope.value,
+      });
       setSearchInput(value);
       if (isArchived) {
         setIsArchived(false);
@@ -468,11 +518,15 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
         inventoryQuery: value,
       });
     },
-    [isArchived, setIsArchived, updateQuery],
+    [assetType, isArchived, setIsArchived, updateQuery],
   );
   const handleAssetTypeChange = useCallback(
     (value: string) => {
       if (isDevelopmentItemsAssetTypeSelection(value)) {
+        if (value === assetType) {
+          return;
+        }
+        logDevelopmentItemsAssetTypeChange({ from: assetType, to: value });
         if (value !== assetType && isArchived) {
           setIsArchived(false);
         }
@@ -485,13 +539,21 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
     () => ({ showArchived: isArchived, source }),
     [isArchived, source],
   );
-  const applySheetFilters = useCallback(
-    (filters: DevelopmentItemsSheetFilters) => {
+  const updateSheetFilters = useCallback(
+    (
+      filters: DevelopmentItemsSheetFilters,
+      action: 'apply' | 'clear_archived' | 'clear_source' | 'reset',
+    ) => {
       const sourceChanged = filters.source !== source;
       const archiveStatusChanged = filters.showArchived !== isArchived;
       if (!sourceChanged && !archiveStatusChanged) {
         return;
       }
+      logDevelopmentItemsFilter({
+        action,
+        showArchived: filters.showArchived,
+        source: filters.source,
+      });
 
       const queryUpdates: Partial<
         Record<(typeof INVENTORY_QUERY_KEYS)[number], string | number | null>
@@ -512,21 +574,43 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
     },
     [isArchived, setIsArchived, source, updateQuery],
   );
+  const applySheetFilters = useCallback(
+    (filters: DevelopmentItemsSheetFilters) => {
+      const isReset =
+        filters.source === DEFAULT_SHEET_FILTERS.source &&
+        filters.showArchived === DEFAULT_SHEET_FILTERS.showArchived;
+      updateSheetFilters(filters, isReset ? 'reset' : 'apply');
+    },
+    [updateSheetFilters],
+  );
+  const handleOpenFilters = useCallback(() => {
+    logDevelopmentItemsFilter({
+      action: 'open',
+      showArchived: isArchived,
+      source,
+    });
+  }, [isArchived, source]);
   const resetSheetFilters = useCallback(() => {
-    applySheetFilters(DEFAULT_SHEET_FILTERS);
-  }, [applySheetFilters]);
+    updateSheetFilters(DEFAULT_SHEET_FILTERS, 'reset');
+  }, [updateSheetFilters]);
   const clearSourceFilter = useCallback(() => {
-    applySheetFilters({
-      ...sheetFilters,
-      source: DEFAULT_SHEET_FILTERS.source,
-    });
-  }, [applySheetFilters, sheetFilters]);
+    updateSheetFilters(
+      {
+        ...sheetFilters,
+        source: DEFAULT_SHEET_FILTERS.source,
+      },
+      'clear_source',
+    );
+  }, [sheetFilters, updateSheetFilters]);
   const clearArchivedFilter = useCallback(() => {
-    applySheetFilters({
-      ...sheetFilters,
-      showArchived: false,
-    });
-  }, [applySheetFilters, sheetFilters]);
+    updateSheetFilters(
+      {
+        ...sheetFilters,
+        showArchived: false,
+      },
+      'clear_archived',
+    );
+  }, [sheetFilters, updateSheetFilters]);
   const activeSheetFilterChips = useMemo<DevelopmentItemsActiveFilterChip[]>(() => {
     const chips: DevelopmentItemsActiveFilterChip[] = [];
     if (!isArchived && source !== DEFAULT_SHEET_FILTERS.source) {
@@ -556,11 +640,15 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
   const handleViewChange = useCallback(
     (value: string) => {
       if (isDevelopmentItemsView(value)) {
+        if (value === view) {
+          return;
+        }
+        logDevelopmentItemsViewChange({ from: view, to: value });
         setStoredView(value);
         updateQuery({ inventoryView: value }, false);
       }
     },
-    [setStoredView, updateQuery],
+    [setStoredView, updateQuery, view],
   );
   const hasActiveFilters = hasActiveDevelopmentItemsInventoryFilters({
     query,
@@ -587,6 +675,11 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
         rowsPerPage: translations.rowsPerPage,
       },
       onPageChange: (nextPage: number, nextPageToken?: string) => {
+        logDevelopmentItemsPagination({
+          action: 'page_change',
+          from: currentPage + 1,
+          to: nextPage + 1,
+        });
         setPageTokens(new Map(availablePageTokens));
         updateQuery(
           {
@@ -597,6 +690,11 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
         );
       },
       onRowsPerPageChange: (nextPageSize: number) => {
+        logDevelopmentItemsPagination({
+          action: 'page_size_change',
+          from: effectivePageSize,
+          to: nextPageSize,
+        });
         updateQuery({
           inventoryPageSize:
             nextPageSize === (isArchived ? LEGACY_ARCHIVED_DEFAULT_PAGE_SIZE : DEFAULT_PAGE_SIZE)
@@ -658,6 +756,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
             defaultFilters={DEFAULT_SHEET_FILTERS}
             filters={sheetFilters}
             onFiltersChange={applySheetFilters}
+            onOpen={handleOpenFilters}
             resetLabel={translate('Action.ResetAll')}
             sourceLabel={translations.inventorySource}
             sourceOptions={sourceOptions}
@@ -756,6 +855,8 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
           items={items}
           onArchiveStateChange={handleArchiveStateChange}
           onSelectItem={handleSelectItem}
+          pageNumber={currentPage + 1}
+          pageSize={effectivePageSize}
           thumbnailUrls={thumbnailUrls}
           toolboxIdsByAssetId={toolboxIdsByAssetId}
         />

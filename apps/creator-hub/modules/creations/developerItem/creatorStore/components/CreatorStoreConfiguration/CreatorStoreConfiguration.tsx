@@ -1,6 +1,7 @@
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import router from 'next/router';
+import { useQueryClient } from '@tanstack/react-query';
 import type { SubmitHandler, FormState } from 'react-hook-form';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { ModerationState, AssetType } from '@rbx/client-assets-upload-api/v1';
@@ -59,6 +60,7 @@ import {
 } from '@modules/react-query/resourceSettings';
 import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
 import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
+import { cacheDevelopmentItemMetadataUpdate } from '../../../../common/utils/developmentItemsInventoryCache';
 import AssetAccessForm from '../../../common/AssetAccessForm/AssetAccessForm';
 import BasicInfoForm from '../../../common/BasicInfoForm/BasicInfoForm';
 import {
@@ -133,6 +135,7 @@ const CreatorStoreConfiguration: FunctionComponent<
   const { data: wasDataSharingEnabled, isPending: isWasDataSharingEnabledLoading } =
     useGetWasDataSharingEnabled(parseInt(assetId, 10), assetType);
   const { translate, translateHTML } = useTranslation();
+  const queryClient = useQueryClient();
   const { enqueue } = useSnackbar();
   const { configureProduct } = useMarketplaceFiatServiceProvider();
   const {
@@ -358,6 +361,7 @@ const CreatorStoreConfiguration: FunctionComponent<
     shouldUnregister: false,
   });
   const { isSubmitting, isValid, isValidating, isDirty } = methods.formState;
+  const isSubmittingRef = useRef(isSubmitting);
 
   const handleUploadPreview = useCallback(
     async (file: File, fileAssetType: AssetType) => {
@@ -377,12 +381,14 @@ const CreatorStoreConfiguration: FunctionComponent<
     [deletePreview, methods],
   );
   useEffect(() => {
+    isSubmittingRef.current = isSubmitting;
+  }, [isSubmitting]);
+  useEffect(() => {
     // This prevents flickering issues when the form is submitted
-    if (isSubmitting) {
+    if (isSubmittingRef.current) {
       return;
     }
     methods.reset(formValues);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- We don't want to trigger this based on isSubmitting
   }, [formValues, methods]);
 
   const isItemDistributedValue = useWatch({
@@ -543,6 +549,11 @@ const CreatorStoreConfiguration: FunctionComponent<
             description: data.description ?? '',
             name: data.name,
           });
+          cacheDevelopmentItemMetadataUpdate(queryClient, {
+            assetId: parseInt(assetId, 10),
+            description: data.description ?? '',
+            name: data.name,
+          });
         } catch (err) {
           const errorName = getEnumKeyByValue(AssetError, getErrorCode(err));
           const errorReason = translate(`Error.${errorName}`) ?? translate('Error.UnknownError');
@@ -550,7 +561,7 @@ const CreatorStoreConfiguration: FunctionComponent<
         }
       }
     },
-    [assetId, translate],
+    [assetId, queryClient, translate],
   );
 
   const configureSocialLinks = useCallback(

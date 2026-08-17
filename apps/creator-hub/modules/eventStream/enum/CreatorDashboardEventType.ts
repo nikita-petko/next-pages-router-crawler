@@ -159,6 +159,17 @@ enum CreatorDashboardEventType {
   RoadmapFeedbackClose = 'roadmapFeedbackClose',
   RoadmapItemImpression = 'roadmapItemImpression',
   RoadmapItemLikeToggle = 'roadmapItemLikeToggle',
+  CreatorInventoryPageView = 'creatorInventoryPageView',
+  CreatorInventoryItemImpression = 'creatorInventoryItemImpression',
+  CreatorInventoryItemClick = 'creatorInventoryItemClick',
+  CreatorInventorySearch = 'creatorInventorySearch',
+  CreatorInventoryFilter = 'creatorInventoryFilter',
+  CreatorInventoryAssetTypeChange = 'creatorInventoryAssetTypeChange',
+  CreatorInventoryViewChange = 'creatorInventoryViewChange',
+  CreatorInventoryPagination = 'creatorInventoryPagination',
+  CreatorInventoryMenuOpen = 'creatorInventoryMenuOpen',
+  CreatorInventoryMenuAction = 'creatorInventoryMenuAction',
+  CreatorInventoryRetry = 'creatorInventoryRetry',
 }
 
 export default CreatorDashboardEventType;

@@ -1,6 +1,6 @@
 import type { FunctionComponent, MouseEvent } from 'react';
 import { memo, useCallback, useState } from 'react';
-import { getFormattedDateTime } from '@rbx/core';
+import { getInternationalizedFormattedDate } from '@rbx/core';
 import {
   Table,
   TableBody,
@@ -10,7 +10,13 @@ import {
   TableRow,
   VisuallyHidden,
 } from '@rbx/foundation-ui';
+import { useVisibleImpression } from '@modules/licenses/hooks/useVisibleImpression';
 import { toast } from '@modules/monetization-shared/snackbar/actions';
+import {
+  logDevelopmentItemClick,
+  logDevelopmentItemImpression,
+  logDevelopmentItemsMenuAction,
+} from '../developmentItemsAnalytics';
 import type { DevelopmentItemsInventoryItem } from '../developmentItemsInventoryUtils';
 import type { DevelopmentItemToolboxIds } from '../useDevelopmentItemToolboxIds';
 import DevelopmentItemActionsMenu, {
@@ -27,6 +33,7 @@ export type DevelopmentItemsListLabels = {
   assetIdCopied: string;
   assetIdWithValue: (assetId: number) => string;
   assetType: string;
+  dateCreated: string;
   lastUpdated: string;
   name: string;
   source: string;
@@ -49,6 +56,7 @@ const STICKY_ACTIONS_HEADER_CLASS =
   'sticky [right:0] [z-index:2] min-width-1400 !padding-left-small !padding-right-small';
 const STICKY_ACTIONS_CELL_CLASS =
   'sticky [right:0] [z-index:1] min-width-1400 !padding-left-small !padding-right-small';
+const NO_WRAP_CELL_CLASS = 'text-no-wrap';
 
 type DevelopmentItemsListRowProps = {
   getAssetTypeLabel: (item: DevelopmentItemsInventoryItem) => string;
@@ -58,6 +66,9 @@ type DevelopmentItemsListRowProps = {
   labels: Pick<DevelopmentItemsListLabels, 'assetIdCopied' | 'assetIdWithValue'>;
   onArchiveStateChange: DevelopmentItemArchiveStateChangeHandler;
   onSelectItem: (item: DevelopmentItemsInventoryItem) => void;
+  pageNumber: number;
+  pageSize: number;
+  position: number;
   thumbnailUrl?: string;
   toolboxIds?: DevelopmentItemToolboxIds;
 };
@@ -71,29 +82,49 @@ const DevelopmentItemsListRow: FunctionComponent<DevelopmentItemsListRowProps> =
     labels,
     onArchiveStateChange,
     onSelectItem,
+    pageNumber,
+    pageSize,
+    position,
     thumbnailUrl,
     toolboxIds,
   }) => {
-    const updated = item.updated ?? item.created;
     const [contextMenuPosition, setContextMenuPosition] =
       useState<DevelopmentItemContextMenuPosition>();
+    const logImpression = useCallback(() => {
+      logDevelopmentItemImpression({
+        item,
+        pageNumber,
+        pageSize,
+        position,
+        view: 'list',
+      });
+    }, [item, pageNumber, pageSize, position]);
+    const itemRef = useVisibleImpression<HTMLTableRowElement>(logImpression);
     const handleSelect = useCallback(() => {
       if (window.getSelection()?.isCollapsed === false) {
         return;
       }
+      logDevelopmentItemClick({
+        item,
+        pageNumber,
+        pageSize,
+        position,
+        view: 'list',
+      });
       onSelectItem(item);
-    }, [item, onSelectItem]);
+    }, [item, onSelectItem, pageNumber, pageSize, position]);
     const handleCopyAssetId = useCallback(
       (event: MouseEvent<HTMLButtonElement>) => {
         event.stopPropagation();
         if (window.getSelection()?.isCollapsed === false) {
           return;
         }
+        logDevelopmentItemsMenuAction(item, 'copy_asset_id', 'table_cell');
         void navigator.clipboard.writeText(item.assetId.toString()).then(() => {
           toast({ title: labels.assetIdCopied });
         });
       },
-      [item.assetId, labels.assetIdCopied],
+      [item, labels.assetIdCopied],
     );
     const handleContextMenu = useCallback((event: MouseEvent<HTMLElement>) => {
       event.preventDefault();
@@ -109,7 +140,8 @@ const DevelopmentItemsListRow: FunctionComponent<DevelopmentItemsListRowProps> =
         className='group'
         isInteractive
         onClick={handleSelect}
-        onContextMenu={handleContextMenu}>
+        onContextMenu={handleContextMenu}
+        ref={itemRef}>
         <TableCell>
           <div className='flex items-center gap-medium min-width-0'>
             <div className='relative size-1000 shrink-0 clip radius-medium bg-surface-200'>
@@ -126,8 +158,8 @@ const DevelopmentItemsListRow: FunctionComponent<DevelopmentItemsListRowProps> =
             </span>
           </div>
         </TableCell>
-        <TableCell>{getAssetTypeLabel(item)}</TableCell>
-        <TableCell>
+        <TableCell className={NO_WRAP_CELL_CLASS}>{getAssetTypeLabel(item)}</TableCell>
+        <TableCell className={NO_WRAP_CELL_CLASS}>
           <button
             aria-label={labels.assetIdWithValue(item.assetId)}
             className='text-body-medium content-inherit bg-none stroke-none padding-none margin-none cursor-pointer [user-select:text] radius-small focus-visible:outline-focus'
@@ -136,8 +168,13 @@ const DevelopmentItemsListRow: FunctionComponent<DevelopmentItemsListRowProps> =
             {item.assetId}
           </button>
         </TableCell>
-        <TableCell>{getSourceLabel(item)}</TableCell>
-        <TableCell>{updated == null ? undefined : getFormattedDateTime(updated)}</TableCell>
+        <TableCell className={NO_WRAP_CELL_CLASS}>{getSourceLabel(item)}</TableCell>
+        <TableCell className={NO_WRAP_CELL_CLASS}>
+          {item.created == null ? undefined : getInternationalizedFormattedDate(item.created)}
+        </TableCell>
+        <TableCell className={NO_WRAP_CELL_CLASS}>
+          {item.updated == null ? undefined : getInternationalizedFormattedDate(item.updated)}
+        </TableCell>
         <TableCell align='end' className={STICKY_ACTIONS_CELL_CLASS}>
           <div className='flex justify-end'>
             <DevelopmentItemActionsMenu
@@ -179,23 +216,24 @@ const DevelopmentItemsList: FunctionComponent<DevelopmentItemsListProps> = ({
   <div className='flex flex-col width-full min-width-0'>
     <div className='width-full min-width-0 [&>div]:bg-none [&>div]:max-width-full [&>div]:!scroll-x'>
       <Table
-        className='[min-width:1040px] [&_th:first-child]:[min-width:260px] [&_td:first-child]:[min-width:260px]'
+        className='[min-width:1160px] [&_th:first-child]:[min-width:260px] [&_td:first-child]:[min-width:260px]'
         size='Medium'
         variant='Framed'>
         <TableHeader>
           <TableRow>
-            <TableHeaderCell>{labels.name}</TableHeaderCell>
-            <TableHeaderCell>{labels.assetType}</TableHeaderCell>
-            <TableHeaderCell>{labels.assetId}</TableHeaderCell>
-            <TableHeaderCell>{labels.source}</TableHeaderCell>
-            <TableHeaderCell>{labels.lastUpdated}</TableHeaderCell>
+            <TableHeaderCell className={NO_WRAP_CELL_CLASS}>{labels.name}</TableHeaderCell>
+            <TableHeaderCell className={NO_WRAP_CELL_CLASS}>{labels.assetType}</TableHeaderCell>
+            <TableHeaderCell className={NO_WRAP_CELL_CLASS}>{labels.assetId}</TableHeaderCell>
+            <TableHeaderCell className={NO_WRAP_CELL_CLASS}>{labels.source}</TableHeaderCell>
+            <TableHeaderCell className={NO_WRAP_CELL_CLASS}>{labels.dateCreated}</TableHeaderCell>
+            <TableHeaderCell className={NO_WRAP_CELL_CLASS}>{labels.lastUpdated}</TableHeaderCell>
             <TableHeaderCell className={STICKY_ACTIONS_HEADER_CLASS}>
               <VisuallyHidden>{labels.actions}</VisuallyHidden>
             </TableHeaderCell>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((item) => (
+          {items.map((item, index) => (
             <DevelopmentItemsListRow
               getAssetTypeLabel={getAssetTypeLabel}
               getSourceLabel={getSourceLabel}
@@ -205,6 +243,9 @@ const DevelopmentItemsList: FunctionComponent<DevelopmentItemsListProps> = ({
               labels={labels}
               onArchiveStateChange={onArchiveStateChange}
               onSelectItem={onSelectItem}
+              pageNumber={pagination.page + 1}
+              pageSize={pagination.pageSize}
+              position={pagination.page * pagination.pageSize + index + 1}
               thumbnailUrl={thumbnailUrls.get(item.assetId)}
               toolboxIds={toolboxIdsByAssetId.get(item.assetId)}
             />

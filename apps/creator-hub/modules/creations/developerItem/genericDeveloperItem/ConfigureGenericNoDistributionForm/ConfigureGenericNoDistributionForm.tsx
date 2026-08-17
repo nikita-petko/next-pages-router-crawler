@@ -1,6 +1,7 @@
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { useQueryClient } from '@tanstack/react-query';
 import type { SubmitHandler } from 'react-hook-form';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from '@rbx/intl';
@@ -10,6 +11,7 @@ import { getErrorCode } from '@modules/clients/utils/errorHelpers';
 import { AssetError, FormMode } from '@modules/miscellaneous/common';
 import useThumbnailImage from '@modules/miscellaneous/components/ThumbnailImage/useThumbnailImage';
 import { getEnumKeyByValue } from '@modules/miscellaneous/utils';
+import { cacheDevelopmentItemMetadataUpdate } from '../../../common/utils/developmentItemsInventoryCache';
 import AssetAccessForm from '../../common/AssetAccessForm/AssetAccessForm';
 import BasicInfoForm from '../../common/BasicInfoForm/BasicInfoForm';
 import { getBackToCreationsPageLink, postDeveloperItemDetails } from '../../common/common';
@@ -46,6 +48,7 @@ const ConfigureGenericNoDistributionForm: FunctionComponent<
   } = useConfigureGenericFormStyles();
   const { translate } = useTranslation();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { enqueue } = useSnackbar();
   const { thumbnailImage } = useThumbnailImage({
     targetId: assetId,
@@ -92,6 +95,11 @@ const ConfigureGenericNoDistributionForm: FunctionComponent<
           isCopyingAllowed: false,
           name: data.name,
         });
+        cacheDevelopmentItemMetadataUpdate(queryClient, {
+          assetId,
+          description: data.description ?? '',
+          name: data.name,
+        });
         await refreshData();
         showSuccessToast();
       } catch (err) {
@@ -102,7 +110,7 @@ const ConfigureGenericNoDistributionForm: FunctionComponent<
         setIsLoading(false);
       }
     },
-    [refreshData, showSuccessToast, translate, developerItemDetails],
+    [assetId, developerItemDetails, queryClient, refreshData, showSuccessToast, translate],
   );
 
   const handleFormCancel = useCallback(() => {

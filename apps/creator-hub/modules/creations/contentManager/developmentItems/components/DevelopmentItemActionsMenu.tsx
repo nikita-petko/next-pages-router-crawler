@@ -12,6 +12,7 @@ import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { logDevelopmentItemsMenuOpen } from '../developmentItemsAnalytics';
 import DevelopmentItemActionsMenuContent from './DevelopmentItemActionsMenuContent';
 import type { DevelopmentItemActionsProps } from './DevelopmentItemActionsMenuContent';
 
@@ -32,6 +33,7 @@ const DevelopmentItemActionsMenu: FunctionComponent<DevelopmentItemActionsMenuPr
   const intl = useTranslation();
   const { tPendingTranslation } = useTranslationWrapper(intl);
   const [isOpen, setIsOpen] = useState(false);
+  const isOpenRef = useRef(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const assetActionsLabel = tPendingTranslation(
     'Asset actions',
@@ -42,15 +44,24 @@ const DevelopmentItemActionsMenu: FunctionComponent<DevelopmentItemActionsMenuPr
     event.stopPropagation();
   }, []);
 
-  const handleOpenChange = useCallback((open: boolean) => {
-    setIsOpen(open);
-    if (!open) {
-      // Drop focus/active styles that Radix leaves on the trigger after dismiss.
-      requestAnimationFrame(() => {
-        triggerRef.current?.blur();
-      });
-    }
-  }, []);
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      const wasOpen = isOpenRef.current;
+      isOpenRef.current = open;
+      setIsOpen(open);
+      if (open) {
+        if (!wasOpen) {
+          logDevelopmentItemsMenuOpen(item, 'overflow');
+        }
+      } else {
+        // Drop focus/active styles that Radix leaves on the trigger after dismiss.
+        requestAnimationFrame(() => {
+          triggerRef.current?.blur();
+        });
+      }
+    },
+    [item],
+  );
 
   return (
     <div
@@ -83,6 +94,7 @@ const DevelopmentItemActionsMenu: FunctionComponent<DevelopmentItemActionsMenuPr
           <DevelopmentItemActionsMenuContent
             isArchivable={isArchivable}
             item={item}
+            menuSource='overflow'
             onArchiveStateChange={onArchiveStateChange}
             onClose={() => handleOpenChange(false)}
             onOpenDetails={onOpenDetails}

@@ -1,6 +1,7 @@
 import type { ReactNode, FunctionComponent } from 'react';
 import React, { useContext, createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
+import { useQueryClient } from '@tanstack/react-query';
 import { ReturnPolicy, ThumbnailTypes } from '@rbx/thumbnails';
 import { useAuthentication } from '@modules/authentication/providers';
 import assetsUploadApiClient, { FieldMask } from '@modules/clients/assetsupload';
@@ -9,6 +10,7 @@ import type { DevelopAssetDetailsResponse } from '@modules/clients/develop';
 import { AllSettlePromiseSuccess, Asset, CreatorType } from '@modules/miscellaneous/common';
 import useThumbnailImage from '@modules/miscellaneous/components/ThumbnailImage/useThumbnailImage';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
+import { reconcileDeveloperItemDetailsMetadata } from '../../common/utils/developmentItemsInventoryCache';
 import { getUserHasEditPermissionForAsset } from './common';
 import type { DeveloperItemDetails } from './types';
 
@@ -49,7 +51,9 @@ export const DeveloperItemProvider: FunctionComponent<React.PropsWithChildren> =
   const [developerItemDetails, setDeveloperItemDetails] = useState<DeveloperItemDetails | null>(
     null,
   );
+  const [metadataOverrideExpiresAt, setMetadataOverrideExpiresAt] = useState<number>();
 
+  const queryClient = useQueryClient();
   const { user } = useAuthentication();
   const { settings } = useSettings();
   const { query: routerQuery, isReady: isRouterReady } = useRouter();
@@ -127,6 +131,7 @@ export const DeveloperItemProvider: FunctionComponent<React.PropsWithChildren> =
           );
           if (!assetType || !creatorType) {
             setDeveloperItemDetails(null);
+            setMetadataOverrideExpiresAt(undefined);
             setIsLoadingDeveloperItem(false);
             return;
           }
@@ -143,18 +148,26 @@ export const DeveloperItemProvider: FunctionComponent<React.PropsWithChildren> =
             isVersioningEnabled: developDetail.isVersioningEnabled ?? false,
             description: developDetail.description,
           };
-          setDeveloperItemDetails(resultInfo);
+          const reconciledMetadata = reconcileDeveloperItemDetailsMetadata(
+            queryClient,
+            itemId,
+            resultInfo,
+          );
+          setDeveloperItemDetails(reconciledMetadata.details);
+          setMetadataOverrideExpiresAt(reconciledMetadata.expiresAt);
         } else {
           setDeveloperItemDetails(null);
+          setMetadataOverrideExpiresAt(undefined);
         }
 
         setCanConfigureDeveloperItem(canConfigureAssetResponse.value);
       } else {
         setDeveloperItemDetails(null);
+        setMetadataOverrideExpiresAt(undefined);
       }
       setIsLoadingDeveloperItem(false);
     },
-    [isValidDeveloperItemDetail],
+    [isValidDeveloperItemDetail, queryClient],
   );
 
   const refreshDeveloperItemDetails = useCallback(
@@ -171,8 +184,26 @@ export const DeveloperItemProvider: FunctionComponent<React.PropsWithChildren> =
   );
 
   useEffect(() => {
-    void refreshDeveloperItemDetails();
+    const timeout = window.setTimeout(() => {
+      void refreshDeveloperItemDetails();
+    }, 0);
+    return () => window.clearTimeout(timeout);
   }, [refreshDeveloperItemDetails]);
+
+  useEffect(() => {
+    if (metadataOverrideExpiresAt == null) {
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(
+      () => {
+        setMetadataOverrideExpiresAt(undefined);
+        void refreshDeveloperItemDetails();
+      },
+      Math.max(0, metadataOverrideExpiresAt - Date.now()),
+    );
+    return () => window.clearTimeout(timeout);
+  }, [metadataOverrideExpiresAt, refreshDeveloperItemDetails]);
 
   const value = useMemo(() => {
     return {

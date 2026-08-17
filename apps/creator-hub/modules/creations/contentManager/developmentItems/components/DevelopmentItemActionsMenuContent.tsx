@@ -9,6 +9,11 @@ import developClient from '@modules/clients/develop';
 import tryParseResponseError from '@modules/clients/utils/tryParseResponseError';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { toast } from '@modules/monetization-shared/snackbar/actions';
+import {
+  logDevelopmentItemsMenuAction,
+  type DevelopmentItemsMenuAction,
+  type DevelopmentItemsMenuSource,
+} from '../developmentItemsAnalytics';
 import type { DevelopmentItemsInventoryItem } from '../developmentItemsInventoryUtils';
 import type { DevelopmentItemToolboxIds } from '../useDevelopmentItemToolboxIds';
 
@@ -28,12 +33,21 @@ export type DevelopmentItemActionsProps = {
 };
 
 export type DevelopmentItemActionsMenuContentProps = DevelopmentItemActionsProps & {
+  menuSource: DevelopmentItemsMenuSource;
   onClose: () => void;
 };
 
 const DevelopmentItemActionsMenuContent: FunctionComponent<
   DevelopmentItemActionsMenuContentProps
-> = ({ isArchivable, item, onArchiveStateChange, onClose, onOpenDetails, toolboxIds }) => {
+> = ({
+  isArchivable,
+  item,
+  menuSource,
+  onArchiveStateChange,
+  onClose,
+  onOpenDetails,
+  toolboxIds,
+}) => {
   const intl = useTranslation();
   const { translate } = intl;
   const { tPendingTranslation } = useTranslationWrapper(intl);
@@ -72,22 +86,25 @@ const DevelopmentItemActionsMenuContent: FunctionComponent<
       : undefined;
 
   const handleOpenDetails = useCallback(() => {
+    logDevelopmentItemsMenuAction(item, 'open_asset_details', menuSource);
     onClose();
     onOpenDetails(item);
-  }, [item, onClose, onOpenDetails]);
+  }, [item, menuSource, onClose, onOpenDetails]);
   const copyId = useCallback(
-    (value: number, itemName: string) => {
+    (value: number, itemName: string, action: DevelopmentItemsMenuAction) => {
+      logDevelopmentItemsMenuAction(item, action, menuSource);
       onClose();
       void navigator.clipboard.writeText(value.toString()).then(() => {
         toast({ title: translate('Message.CopySuccess', { item: itemName }) });
       });
     },
-    [onClose, translate],
+    [item, menuSource, onClose, translate],
   );
   const handleCopyAssetId = useCallback(() => {
-    copyId(item.assetId, assetIdItemName);
+    copyId(item.assetId, assetIdItemName, 'copy_asset_id');
   }, [assetIdItemName, copyId, item.assetId]);
   const handleToggleArchiveState = useCallback(async () => {
+    logDevelopmentItemsMenuAction(item, isArchived ? 'restore_asset' : 'archive_asset', menuSource);
     setIsUpdatingArchiveState(true);
     try {
       if (isArchived) {
@@ -114,7 +131,7 @@ const DevelopmentItemActionsMenuContent: FunctionComponent<
     } finally {
       setIsUpdatingArchiveState(false);
     }
-  }, [isArchived, item, onArchiveStateChange, onClose, translate]);
+  }, [isArchived, item, menuSource, onArchiveStateChange, onClose, translate]);
 
   return (
     <Menu className='padding-small' size='Medium'>
@@ -128,14 +145,14 @@ const DevelopmentItemActionsMenuContent: FunctionComponent<
         <MenuItem onSelect={handleCopyAssetId} title={copyAssetIdLabel} value='copy-asset-id' />
         {meshId != null && meshId > 0 && (
           <MenuItem
-            onSelect={() => copyId(meshId, meshIdItemName)}
+            onSelect={() => copyId(meshId, meshIdItemName, 'copy_mesh_id')}
             title={copyMeshIdLabel}
             value='copy-mesh-id'
           />
         )}
         {textureId != null && textureId > 0 && (
           <MenuItem
-            onSelect={() => copyId(textureId, textureIdItemName)}
+            onSelect={() => copyId(textureId, textureIdItemName, 'copy_texture_id')}
             title={copyTextureIdLabel}
             value='copy-texture-id'
           />

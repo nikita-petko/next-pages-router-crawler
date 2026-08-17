@@ -1,10 +1,11 @@
 import type { FunctionComponent, SyntheticEvent } from 'react';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Popover, PopoverAnchor, PopoverContent } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { logDevelopmentItemsMenuOpen } from '../developmentItemsAnalytics';
 import DevelopmentItemActionsMenuContent from './DevelopmentItemActionsMenuContent';
 import type { DevelopmentItemActionsProps } from './DevelopmentItemActionsMenuContent';
 
@@ -34,6 +35,7 @@ const DevelopmentItemContextMenu: FunctionComponent<DevelopmentItemContextMenuPr
     'Accessible label for a Development Item actions menu.',
     translationKey('Label.DevelopmentItems.AssetActions', TranslationNamespace.Creations),
   );
+  const isOpenRef = useRef(false);
   const stopPropagation = useCallback((event: SyntheticEvent) => {
     event.stopPropagation();
   }, []);
@@ -45,6 +47,13 @@ const DevelopmentItemContextMenu: FunctionComponent<DevelopmentItemContextMenuPr
     },
     [onClose],
   );
+  useEffect(() => {
+    const isOpen = position != null;
+    if (isOpen && !isOpenRef.current) {
+      logDevelopmentItemsMenuOpen(item, 'context_menu');
+    }
+    isOpenRef.current = isOpen;
+  }, [item, position]);
 
   return (
     <div onClick={stopPropagation} onKeyDown={stopPropagation} role='presentation'>
@@ -65,6 +74,7 @@ const DevelopmentItemContextMenu: FunctionComponent<DevelopmentItemContextMenuPr
           <DevelopmentItemActionsMenuContent
             isArchivable={isArchivable}
             item={item}
+            menuSource='context_menu'
             onArchiveStateChange={onArchiveStateChange}
             onClose={onClose}
             onOpenDetails={onOpenDetails}
