@@ -42,7 +42,7 @@ const getDevProductThumbnailUrl = async (
   try {
     const { data } = await client.getCachedDeveloperProducts(universeId, [key.itemId]);
     const iconImageAssetId = data[0]?.iconImageAssetId ?? 0;
-    return client.getThumbnailImageUrl(ThumbnailTypes.assetThumbnail, iconImageAssetId);
+    return await client.getThumbnailImageUrl(ThumbnailTypes.assetThumbnail, iconImageAssetId);
   } catch {
     return '';
   }
@@ -76,7 +76,7 @@ const buildDevProductsPageConfig = (
         keys.map((k) => k.itemId),
       );
       return data.map((p) => ({
-        id: p.productId,
+        id: String(p.productId),
         name: p.name,
         priceInRobux: p.defaultPriceInRobux ?? 0,
       }));

@@ -203,6 +203,8 @@ export const dashboard = {
     `/dashboard/creations/experiences/${universeId}/monetization/roblox-plus`,
   getMonetizationAvatarCreationTokensUrl: (universeId: number) =>
     `/dashboard/creations/experiences/${universeId}/monetization/avatar-creation-tokens`,
+  getConfigureAvatarCreationTokenUrl: (universeId: number, tokenId: string) =>
+    `/dashboard/creations/experiences/${universeId}/avatar-creation-tokens/${tokenId}/configure` as const,
   getMonetizationPriceOptimizationUrl: (universeId: number) =>
     `/dashboard/creations/experiences/${universeId}/monetization/price-optimization` as const,
   getMonetizationDynamicPriceCheckUrl: (

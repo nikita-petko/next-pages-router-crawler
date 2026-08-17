@@ -55,7 +55,7 @@ const buildGamePassPageConfig = (
         keys.map((k) => k.itemId),
       );
       return data.map((p) => ({
-        id: p.gamePassId,
+        id: String(p.gamePassId),
         name: p.name,
         priceInRobux: p.defaultPriceInRobux ?? 0,
       }));

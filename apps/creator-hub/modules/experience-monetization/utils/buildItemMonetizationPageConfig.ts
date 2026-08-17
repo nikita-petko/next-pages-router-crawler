@@ -46,7 +46,8 @@ import buildGamePassBonusPromotionsTableConfig from '../pages/GamePasses/BonusPr
 import type { ParsedProductKey } from './parseProductKeyBreakdownValue';
 import parseProductKeyBreakdownValue from './parseProductKeyBreakdownValue';
 
-const keyToString = (key: ParsedProductKey): string => `${key.subtype ?? ''}_${key.itemId}`;
+export const keyToString = (key: ParsedProductKey): string =>
+  key.stringId !== undefined ? `${key.subtype ?? ''}_${key.stringId}` : String(key.itemId);
 
 export interface ItemMonetizationContentConfig {
   productType: RAQIV2ProductType;
@@ -65,7 +66,7 @@ export interface ItemMonetizationContentConfig {
     universeId: number,
     keys: ParsedProductKey[],
     client: ItemMonetizationApiClient,
-  ) => Promise<Array<{ id: number; name: string; priceInRobux: number }>>;
+  ) => Promise<Array<{ id: string; name: string; priceInRobux: number }>>;
 
   getThumbnailUrl: (key: ParsedProductKey) => Promise<string>;
 
@@ -91,9 +92,9 @@ const buildGetNameData = (
 
     try {
       const items = await content.getItemsByIds(universeId, parsedKeys, client);
-      const idToName = new Map<number, string>();
+      const keyToName = new Map<string, string>();
       items.forEach((p) => {
-        idToName.set(p.id, p.name);
+        keyToName.set(p.id, p.name);
       });
 
       const thumbnailResults = await Promise.all(
@@ -110,8 +111,7 @@ const buildGetNameData = (
       const values: RowDataResponse<RAQIV2BreakdownValue[], RAQIV2TableRowID>[] = rows.map(
         ({ id, data }) => {
           const parsed = parseProductKeyBreakdownValue(data);
-          const itemId = parsed?.itemId;
-          const name = itemId !== undefined ? (idToName.get(itemId) ?? '') : '';
+          const name = parsed ? (keyToName.get(keyToString(parsed)) ?? '') : '';
           const imageUrl = parsed ? (keyStringToImageUrl.get(keyToString(parsed)) ?? '') : '';
           const link = parsed ? content.getConfigureUrl(universeId, parsed) : undefined;
 
@@ -166,17 +166,17 @@ const buildGetCurrentPriceData = (
 
     try {
       const items = await content.getItemsByIds(universeId, parsedKeys, client);
-      const idToPrice = new Map<number, number>();
+      const keyToPrice = new Map<string, number>();
       items.forEach((p) => {
-        idToPrice.set(p.id, p.priceInRobux ?? 0);
+        keyToPrice.set(p.id, p.priceInRobux ?? 0);
       });
       const values: RowDataResponse<RAQIV2BreakdownValue[], RAQIV2TableRowID>[] = rows.map(
         ({ id, data }) => {
           const parsed = parseProductKeyBreakdownValue(data);
-          const itemId = parsed?.itemId ?? 0;
+          const price = parsed ? (keyToPrice.get(keyToString(parsed)) ?? 0) : 0;
           return {
             rowId: id,
-            data: { type: ColumnType.Number, value: idToPrice.get(itemId) ?? 0 },
+            data: { type: ColumnType.Number, value: price },
             rowData: data,
           };
         },

@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import type { AvatarCreationTokenItemType } from '@rbx/client-open-cloud/v2';
 import type { ThumbnailTypes } from '@rbx/thumbnails';
 import { ThumbnailClient, ReturnPolicy } from '@rbx/thumbnails';
 import { developerAnalyticsAggregationsClient } from '@modules/clients/analytics';
@@ -9,6 +10,10 @@ import developerProductsClient, {
   type DeveloperProductConfigV2,
 } from '@modules/clients/developerProducts';
 import passesClient, { type GamePassConfigV2 } from '@modules/clients/passes';
+import {
+  getAvatarCreationToken,
+  getTokenIdFromPath,
+} from '@modules/react-query/openCloudAvatarCreationTokens/openCloudAvatarCreationTokensRequests';
 
 // Fallback timeout (ms) for the thumbnail image race; resolves to an empty
 // string if the thumbnail service has not responded in time.
@@ -33,6 +38,13 @@ type GamePassData = {
   gamePassId: number;
   name: string;
   defaultPriceInRobux: number | null;
+};
+
+type AvatarCreationTokenData = {
+  tokenId: string;
+  name: string;
+  priceInRobux: number;
+  itemType?: AvatarCreationTokenItemType;
 };
 
 const mapCatalogArrayToAvatarItems = (res: {
@@ -70,6 +82,10 @@ export type ItemMonetizationApiClient = {
   ) => Promise<{ data: DeveloperProductData[] }>;
   getCachedAssetDetails: (assetIds: number[]) => Promise<{ data: AvatarItemData[] }>;
   getCachedBundleDetails: (bundleIds: number[]) => Promise<{ data: AvatarItemData[] }>;
+  getCachedAvatarCreationTokens: (
+    universeId: number,
+    tokenIds: string[],
+  ) => Promise<{ data: AvatarCreationTokenData[] }>;
   getThumbnailImageUrl: (thumbnailType: ThumbnailTypes, itemId: number) => Promise<string>;
 };
 
@@ -79,6 +95,7 @@ export const ItemMonetizationClientContext = createContext<ItemMonetizationApiCl
   getCachedDeveloperProducts: async () => ({ data: [] }),
   getCachedAssetDetails: async () => ({ data: [] }),
   getCachedBundleDetails: async () => ({ data: [] }),
+  getCachedAvatarCreationTokens: async () => ({ data: [] }),
   getThumbnailImageUrl: async () => '',
 });
 export const useItemMonetizationClient = (): ItemMonetizationApiClient => {
@@ -190,6 +207,44 @@ function ItemMonetizationClientProvider({ children }: React.PropsWithChildren) {
       return { data: mapCatalogArrayToAvatarItems(res) };
     };
 
+    const getCachedAvatarCreationTokens = async (universeId: number, tokenIds: string[]) => {
+      const normalizedIds = Array.from(new Set(tokenIds.filter((id) => id !== ''))).sort();
+      if (!universeId || !Number.isFinite(universeId) || normalizedIds.length === 0) {
+        return { data: [] };
+      }
+
+      const results = await Promise.all(
+        normalizedIds.map(async (tokenId): Promise<AvatarCreationTokenData | null> => {
+          try {
+            const token = await queryClient.ensureQueryData({
+              queryKey: [
+                'avatarCreationTokens',
+                'getAvatarCreationToken',
+                universeId,
+                tokenId,
+              ] as const,
+              queryFn: () =>
+                getAvatarCreationToken({
+                  universeId: universeId.toString(),
+                  avatarCreationTokenId: tokenId,
+                }),
+              staleTime: 60_000,
+            });
+            return {
+              tokenId: getTokenIdFromPath(token.path) || tokenId,
+              name: token.displayName ?? '',
+              priceInRobux: token.dynamicPrice?.currentPriceRobux ?? 0,
+              itemType: token.itemType,
+            };
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      return { data: results.filter((r): r is AvatarCreationTokenData => r !== null) };
+    };
+
     const getThumbnailImageUrl = async (
       thumbnailType: ThumbnailTypes,
       itemId: number,
@@ -231,6 +286,7 @@ function ItemMonetizationClientProvider({ children }: React.PropsWithChildren) {
       getCachedDeveloperProducts,
       getCachedAssetDetails,
       getCachedBundleDetails,
+      getCachedAvatarCreationTokens,
       getThumbnailImageUrl,
     };
   }, [queryClient]);
