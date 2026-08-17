@@ -115,13 +115,16 @@ const IpListingDetailsContainer = () => {
       ),
     [showcaseUniverseDetailsReq.data?.data],
   );
+  const isShowcaseETagMissing =
+    showcaseContentReq.isSuccess && showcaseContentReq.data.eTag == null;
+  const isOwnerShowcaseContentError = showcaseContentReq.isError || isShowcaseETagMissing;
   const isShowcaseContentError =
-    showcaseContentReq.isError ||
+    isOwnerShowcaseContentError ||
     (showcasedUniverseIds.length > 0 && showcaseUniverseDetailsReq.isError);
   const failedShowcaseRequest =
-    showcaseContentReq.isError && showcaseUniverseDetailsReq.isError
+    isOwnerShowcaseContentError && showcaseUniverseDetailsReq.isError
       ? 'featured_creations_and_universe_details'
-      : showcaseContentReq.isError
+      : isOwnerShowcaseContentError
         ? 'featured_creations'
         : 'universe_details';
   const isShowcaseContentRetrying =
@@ -220,6 +223,14 @@ const IpListingDetailsContainer = () => {
       );
     }
   }, [failedShowcaseRequest, ipListingId, isShowcaseContentError, logEvent]);
+  useEffect(() => {
+    if (isShowcaseETagMissing) {
+      logEvent(
+        LicenseManagerImpressionEvent.IphListingsDetailsPageMissingShowcaseETagImpressionEvent,
+        { listingId: ipListingId },
+      );
+    }
+  }, [ipListingId, isShowcaseETagMissing, logEvent]);
 
   if (ipListingReq.isError || ipFamilyReq.isError || licensesReq.isError) {
     return <IpLoadError error={ipListingReq.error ?? ipFamilyReq.error ?? licensesReq.error} />;
@@ -240,11 +251,14 @@ const IpListingDetailsContainer = () => {
   const isPublic = listing.visibility === ListingVisibility.Public;
   const showPublicLink = isPublic && listing.status === ListingStatus.Approved;
 
-  const handleAddCreations = () => {
+  const handleAddCreations = async () => {
     logEvent(LicenseManagerClickEvent.IphListingsDetailsPageManageShowcasedExperiencesClickEvent, {
       listingId: ipListingId,
     });
-    setShowcasedExperiencesDialogOpen(true);
+    const refreshedShowcaseContent = await showcaseContentReq.refetch();
+    if (refreshedShowcaseContent.isSuccess && refreshedShowcaseContent.data.eTag != null) {
+      setShowcasedExperiencesDialogOpen(true);
+    }
   };
   const handleRetryShowcasedExperiences = () => {
     logEvent(LicenseManagerClickEvent.IphListingsDetailsPageRetryShowcasedExperiencesClickEvent, {
@@ -252,7 +266,7 @@ const IpListingDetailsContainer = () => {
       surface: 'details',
       failedRequest: failedShowcaseRequest,
     });
-    if (showcaseContentReq.isError) {
+    if (isOwnerShowcaseContentError) {
       void showcaseContentReq.refetch();
     }
     if (showcaseUniverseDetailsReq.isError) {

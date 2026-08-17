@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ShowcaseContentReferenceRequest } from '@rbx/client-content-licensing-api/v1';
+import type {
+  ShowcaseContentReferenceRequest,
+  ShowcaseRejectedContentResponse,
+} from '@rbx/client-content-licensing-api/v1';
 import loadErrorDark from '@rbx/foundation-images/pictograms/alert_dark.svg';
 import loadErrorLight from '@rbx/foundation-images/pictograms/alert_light.svg';
 import experiencesDark from '@rbx/foundation-images/pictograms/video_game_dark.svg';
@@ -13,16 +16,11 @@ import {
   DialogContent,
   DialogFooter,
   DialogTitle,
-  Icon,
-  Tooltip,
-  TooltipTrigger,
-  VisuallyHidden,
 } from '@rbx/foundation-ui';
 import { withTranslation, useTranslation } from '@rbx/intl';
 import { CircularProgress, makeStyles } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
-import { getResponseFromError } from '@modules/clients/utils';
 import ThemedImage from '@modules/miscellaneous/components/ThemedImage';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import ShowcaseContentTile from '../../components/ShowcaseContentTile';
@@ -35,12 +33,13 @@ import {
 import useGetShowcaseUniverseDetails from '../hooks/useGetShowcaseUniverseDetails';
 import useListShowcaseEligibleContentByListing from '../hooks/useListShowcaseEligibleContentByListing';
 import useReplaceListingShowcaseContentMutation from '../hooks/useReplaceListingShowcaseContentMutation';
+import { parseShowcaseSaveError } from '../utils/parseShowcaseSaveError';
 
 type ShowcasedExperiencesDialogProps = {
   open: boolean;
   listingId: string;
   selectedContent?: ShowcaseContentReferenceRequest[];
-  ifMatch?: string;
+  ifMatch: string | undefined;
   onClose: () => void;
 };
 
@@ -51,9 +50,32 @@ const CONTENT_VIEWPORT_CLASS = 'width-full min-height-[168px] max-height-[452px]
 const MAX_SHOWCASE_SELECTIONS = 10;
 const MAX_FULLY_VISIBLE_TILE_COUNT = 10;
 const SHOWCASE_ELIGIBLE_CONTENT_PAGE_SIZE = 500;
+const CONFIRMED_INELIGIBLE_REASONS = new Set([
+  'missing_licensing_coverage',
+  'not_publicly_displayable',
+  'malformed_content_id',
+]);
+const INDETERMINATE_REASONS = new Set([
+  'indeterminate_universe_metadata',
+  'indeterminate_licensing_data',
+  'indeterminate_evaluation',
+]);
+
+type SaveErrorKind = 'confirmed-ineligible' | 'indeterminate' | 'generic';
+
+type SaveFailureKind =
+  | 'confirmed_ineligible'
+  | 'indeterminate'
+  | 'dependency_unavailable'
+  | 'rate_limited'
+  | 'timeout'
+  | 'conflict'
+  | 'generic';
+
+type SaveErrorMessageVariant = 'confirmed_ineligible' | 'verification_failed' | 'generic';
 
 const getUniverseIds = (
-  content: Array<{ contentType?: string; contentId?: string | null }> | null | undefined,
+  content: Array<{ contentType?: string | null; contentId?: string | null }> | null | undefined,
 ) =>
   content?.flatMap((reference) => {
     const universeId = Number(reference.contentId);
@@ -95,15 +117,11 @@ const useStyles = makeStyles()((theme) => ({
       boxShadow: `inset 0 0 0 2px ${theme.palette.components.input.outlined.focusBorder}`,
     },
   },
-  invalidSelectedTile: {
+  rejectedTile: {
     boxShadow: `inset 0 0 0 2px ${theme.palette.actionV2.important.fill}`,
     '&:hover': {
       boxShadow: `inset 0 0 0 2px ${theme.palette.actionV2.important.fill}`,
     },
-  },
-  ineligibleOverlay: {
-    backgroundColor: theme.palette.components.media.overlay,
-    color: theme.palette.common.white,
   },
   unselectedCheckbox: {
     boxShadow: `inset 0 0 0 2px ${theme.palette.common.white}`,
@@ -152,26 +170,53 @@ const ShowcasedExperiencesDialog = ({
     () => [...new Set(getUniverseIds(showcaseEligibleContentReq.data?.content))],
     [showcaseEligibleContentReq.data?.content],
   );
-  const [selectedUniverseIds, setSelectedUniverseIds] = useState(selectedContentUniverseIds);
-  const invalidUniverseIds = useMemo(() => {
-    if (!showcaseEligibleContentReq.isSuccess) {
-      return new Set<number>();
-    }
-    const eligibleUniverseIdSet = new Set(eligibleUniverseIds);
-    return new Set(
-      selectedContentUniverseIds.filter((universeId) => !eligibleUniverseIdSet.has(universeId)),
-    );
-  }, [eligibleUniverseIds, selectedContentUniverseIds, showcaseEligibleContentReq.isSuccess]);
-  const selectableUniverseIds = useMemo(
-    () => [...new Set([...selectedContentUniverseIds, ...eligibleUniverseIds])],
-    [eligibleUniverseIds, selectedContentUniverseIds],
+  const initialSelectedUniverseIds = useMemo(
+    () => [...new Set(selectedContentUniverseIds)],
+    [selectedContentUniverseIds],
   );
-  const hasSelectedInvalidUniverse = selectedUniverseIds.some((universeId) =>
-    invalidUniverseIds.has(universeId),
+  const [selectedUniverseIdsOverride, setSelectedUniverseIds] = useState<number[] | null>(null);
+  const [confirmedRejectedUniverseIds, setConfirmedRejectedUniverseIds] = useState<number[]>([]);
+  const [saveErrorKind, setSaveErrorKind] = useState<SaveErrorKind | null>(null);
+  const [rejectionSequence, setRejectionSequence] = useState(0);
+  const selectedUniverseIds = selectedUniverseIdsOverride ?? initialSelectedUniverseIds;
+  const confirmedRejectedUniverseIdSet = useMemo(
+    () => new Set(confirmedRejectedUniverseIds),
+    [confirmedRejectedUniverseIds],
+  );
+  const selectableUniverseIds = useMemo(
+    () => [
+      ...new Set([
+        ...initialSelectedUniverseIds.filter(
+          (universeId) =>
+            !confirmedRejectedUniverseIdSet.has(universeId) ||
+            selectedUniverseIds.includes(universeId),
+        ),
+        ...eligibleUniverseIds.filter(
+          (universeId) =>
+            !confirmedRejectedUniverseIdSet.has(universeId) ||
+            selectedUniverseIds.includes(universeId),
+        ),
+      ]),
+    ],
+    [
+      confirmedRejectedUniverseIdSet,
+      eligibleUniverseIds,
+      initialSelectedUniverseIds,
+      selectedUniverseIds,
+    ],
+  );
+  const selectedConfirmedRejectedUniverseIds = useMemo(
+    () =>
+      selectedUniverseIds.filter((universeId) => confirmedRejectedUniverseIdSet.has(universeId)),
+    [confirmedRejectedUniverseIdSet, selectedUniverseIds],
   );
   const dialogLayoutRef = useRef<HTMLDivElement>(null);
   const submittedUniverseIdsRef = useRef<number[]>([]);
+  const previousSaveErrorKindRef = useRef<SaveFailureKind | null>(null);
+  const hasLoggedMissingETagImpressionRef = useRef(false);
   const hasLoggedScrollableContentImpressionRef = useRef(false);
+  const contentGridRef = useRef<HTMLDivElement>(null);
+  const tileRefs = useRef(new Map<number, HTMLDivElement>());
   const showcaseUniverseDetailsReq = useGetShowcaseUniverseDetails({
     universeIds: selectableUniverseIds,
     enabled: open,
@@ -211,43 +256,159 @@ const ShowcasedExperiencesDialog = ({
           listingId,
           selectedCount: submittedUniverseIds.length,
           universeIds: submittedUniverseIds.join(','),
+          previousSaveErrorKind: previousSaveErrorKindRef.current ?? 'none',
         },
       );
       dialogLayoutRef.current?.style.removeProperty('height');
       onClose();
     },
-    onError: (error) => {
-      const submittedUniverseIds = submittedUniverseIdsRef.current;
+    onError: async (error) => {
+      const { status, body } = await parseShowcaseSaveError(error);
+      const rejectedContent: ShowcaseRejectedContentResponse[] =
+        body?.errorCategory === 'content_not_eligible' ? (body.rejectedContent ?? []) : [];
+      const reasonCounts = new Map<string, number>();
+      rejectedContent.forEach(({ reason }) => {
+        if (reason) {
+          reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
+        }
+      });
+      const confirmedRejectedIds = [
+        ...new Set(
+          getUniverseIds(
+            rejectedContent.filter(
+              ({ reason }) => reason != null && CONFIRMED_INELIGIBLE_REASONS.has(reason),
+            ),
+          ),
+        ),
+      ];
+      const hasConfirmedIneligibleRejection = rejectedContent.some(
+        ({ reason }) => reason != null && CONFIRMED_INELIGIBLE_REASONS.has(reason),
+      );
+      const hasIndeterminateRejection = rejectedContent.some(
+        ({ reason }) => reason != null && INDETERMINATE_REASONS.has(reason),
+      );
+      const hasDependencyUnavailable =
+        status === 503 && body?.errorCategory === 'eligibility_dependency_unavailable';
+      const saveFailureKind: SaveFailureKind = hasConfirmedIneligibleRejection
+        ? 'confirmed_ineligible'
+        : hasIndeterminateRejection
+          ? 'indeterminate'
+          : hasDependencyUnavailable
+            ? 'dependency_unavailable'
+            : status === 429
+              ? 'rate_limited'
+              : status === 504
+                ? 'timeout'
+                : status === 409
+                  ? 'conflict'
+                  : 'generic';
+      const nextSaveErrorKind: SaveErrorKind = hasConfirmedIneligibleRejection
+        ? 'confirmed-ineligible'
+        : hasIndeterminateRejection || hasDependencyUnavailable
+          ? 'indeterminate'
+          : 'generic';
+      const messageVariant: SaveErrorMessageVariant =
+        nextSaveErrorKind === 'confirmed-ineligible'
+          ? 'confirmed_ineligible'
+          : nextSaveErrorKind === 'indeterminate'
+            ? 'verification_failed'
+            : 'generic';
+      const confirmedIneligibleCount = rejectedContent.filter(
+        ({ reason }) => reason != null && CONFIRMED_INELIGIBLE_REASONS.has(reason),
+      ).length;
+      const indeterminateCount = rejectedContent.filter(
+        ({ reason }) => reason != null && INDETERMINATE_REASONS.has(reason),
+      ).length;
+      const unknownReasonCount =
+        rejectedContent.length - confirmedIneligibleCount - indeterminateCount;
+
+      setConfirmedRejectedUniverseIds(confirmedRejectedIds);
+      setSaveErrorKind(nextSaveErrorKind);
+      previousSaveErrorKindRef.current = saveFailureKind;
+      if (confirmedRejectedIds.length > 0) {
+        setRejectionSequence((sequence) => sequence + 1);
+      }
+
+      const analyticsParameters = {
+        listingId,
+        selectedCount: submittedUniverseIdsRef.current.length,
+        universeIds: submittedUniverseIdsRef.current.join(','),
+        failureStatus: status ?? 'unknown',
+        failureReason: body?.failureReason ?? 'unknown',
+        errorCategory: body?.errorCategory ?? 'unknown',
+        saveErrorKind: saveFailureKind,
+        messageVariant,
+        rejectedContentCount: rejectedContent.length,
+        confirmedIneligibleCount,
+        indeterminateCount,
+        unknownReasonCount,
+        rejectionReasonCounts: [...reasonCounts.entries()]
+          .map(([reason, count]) => `${reason}:${count.toString()}`)
+          .join(','),
+        rejectedContentIds: rejectedContent
+          .flatMap(({ contentId }) => (contentId == null ? [] : [contentId]))
+          .join(','),
+      };
       logEvent(
         LicenseManagerImpressionEvent.IphListingsDetailsPageSaveShowcasedExperiencesFailureImpressionEvent,
+        analyticsParameters,
+      );
+      if (nextSaveErrorKind === 'confirmed-ineligible') {
+        logEvent(
+          LicenseManagerImpressionEvent.IphListingsDetailsPageConfirmedIneligibleShowcasedExperiencesAlertImpressionEvent,
+          analyticsParameters,
+        );
+      } else if (nextSaveErrorKind === 'indeterminate') {
+        logEvent(
+          LicenseManagerImpressionEvent.IphListingsDetailsPageIndeterminateShowcasedExperiencesAlertImpressionEvent,
+          analyticsParameters,
+        );
+      }
+    },
+    onConflict: ({ latestContent, refreshSucceeded }) => {
+      const latestUniverseIds = getUniverseIds(latestContent?.content);
+      const submittedUniverseIds = submittedUniverseIdsRef.current;
+      const selectionsChanged = refreshSucceeded
+        ? latestUniverseIds.length !== submittedUniverseIds.length ||
+          latestUniverseIds.some((universeId, index) => universeId !== submittedUniverseIds[index])
+        : 'unknown';
+      logEvent(
+        LicenseManagerImpressionEvent.IphListingsDetailsPageShowcaseConflictRecoveryImpressionEvent,
         {
           listingId,
-          selectedCount: submittedUniverseIds.length,
-          universeIds: submittedUniverseIds.join(','),
-          failureStatus: getResponseFromError(error)?.status ?? 'unknown',
+          refreshResult: refreshSucceeded ? 'success' : 'failure',
+          selectionsChanged,
+          submittedCount: submittedUniverseIds.length,
+          refreshedCount: latestUniverseIds.length,
         },
       );
-    },
-    onConflict: (latestContent) => {
       if (latestContent) {
-        setSelectedUniverseIds(getUniverseIds(latestContent.content));
+        setSelectedUniverseIds(latestUniverseIds);
+        setConfirmedRejectedUniverseIds([]);
+        setSaveErrorKind(null);
       }
     },
   });
   const toggleSelection = useCallback(
     (universeId: number) => {
       const isSelected = selectedUniverseIds.includes(universeId);
-      if (!isSelected && invalidUniverseIds.has(universeId)) {
-        return;
-      }
       if (!isSelected && selectedUniverseIds.length >= MAX_SHOWCASE_SELECTIONS) {
         return;
       }
 
-      replaceShowcaseContent.reset();
       const nextSelectedUniverseIds = isSelected
         ? selectedUniverseIds.filter((selectedUniverseId) => selectedUniverseId !== universeId)
         : [...selectedUniverseIds, universeId];
+      replaceShowcaseContent.reset();
+      if (
+        !nextSelectedUniverseIds.some((selectedUniverseId) =>
+          confirmedRejectedUniverseIdSet.has(selectedUniverseId),
+        )
+      ) {
+        setSaveErrorKind(null);
+      } else if (saveErrorKind !== 'confirmed-ineligible') {
+        setSaveErrorKind(null);
+      }
       setSelectedUniverseIds(nextSelectedUniverseIds);
       logEvent(LicenseManagerClickEvent.IphListingsDetailsPageToggleShowcasedExperienceClickEvent, {
         listingId,
@@ -257,7 +418,14 @@ const ShowcasedExperiencesDialog = ({
         selectedCount: nextSelectedUniverseIds.length,
       });
     },
-    [invalidUniverseIds, listingId, logEvent, replaceShowcaseContent, selectedUniverseIds],
+    [
+      confirmedRejectedUniverseIdSet,
+      listingId,
+      logEvent,
+      replaceShowcaseContent,
+      saveErrorKind,
+      selectedUniverseIds,
+    ],
   );
 
   const closeDialog = (action: 'cancel' | 'dismiss') => {
@@ -284,6 +452,7 @@ const ShowcasedExperiencesDialog = ({
       },
     );
     replaceShowcaseContent.reset();
+    setSaveErrorKind(null);
     setSelectedUniverseIds([]);
   };
 
@@ -297,7 +466,7 @@ const ShowcasedExperiencesDialog = ({
     if (
       showcaseEligibleContentReq.isPending ||
       showcaseEligibleContentReq.isFetching ||
-      hasSelectedInvalidUniverse ||
+      selectedConfirmedRejectedUniverseIds.length > 0 ||
       ifMatch == null
     ) {
       return;
@@ -346,27 +515,6 @@ const ShowcasedExperiencesDialog = ({
     'Creations must be public and have an active agreement to be featured.',
     'Description explaining which creations can be featured / spotlighted on an IP listing',
     translationKey('Description.AddSpotlightedCreations', TranslationNamespace.AgreementsManager),
-  );
-  const invalidSelectionDescription = tPendingTranslation(
-    'One or more of your featured creations is no longer in active license agreement. Please deselect them.',
-    'Warning shown when a spotlighted creation is no longer eligible',
-    translationKey(
-      'Description.IneligibleSpotlightedCreations',
-      TranslationNamespace.AgreementsManager,
-    ),
-  );
-  const ineligibleCreationLabel = tPendingTranslation(
-    'Ineligible creation',
-    'Label shown over a spotlighted creation that can no longer be selected',
-    translationKey('Label.IneligibleCreation', TranslationNamespace.AgreementsManager),
-  );
-  const ineligibleCreationTooltip = tPendingTranslation(
-    'This creation is no longer in active license agreement with this listing',
-    'Tooltip explaining why a spotlighted creation can no longer be selected',
-    translationKey(
-      'Description.IneligibleSpotlightedCreationTooltip',
-      TranslationNamespace.AgreementsManager,
-    ),
   );
   const emptyStateTitle = tPendingTranslation(
     'No licensed creations yet',
@@ -423,6 +571,28 @@ const ShowcasedExperiencesDialog = ({
     'Description shown when creations fail to load',
     translationKey('Description.CreationsFailedToLoad', TranslationNamespace.AgreementsManager),
   );
+  const confirmedIneligibleSaveErrorMessage = tPendingTranslation(
+    'Some selected creations are no longer eligible. Please deselect them.',
+    'Error shown when selected featured creations are confirmed to be ineligible',
+    translationKey(
+      'Error.ConfirmedIneligibleShowcasedExperiences',
+      TranslationNamespace.AgreementsManager,
+    ),
+  );
+  const indeterminateSaveErrorMessage = tPendingTranslation(
+    "We couldn't verify some selected creations. Please try again.",
+    'Error shown when featured creation eligibility could not be verified',
+    translationKey(
+      'Error.IndeterminateShowcasedExperiences',
+      TranslationNamespace.AgreementsManager,
+    ),
+  );
+  const displayedSaveErrorMessage =
+    saveErrorKind === 'confirmed-ineligible'
+      ? confirmedIneligibleSaveErrorMessage
+      : saveErrorKind === 'indeterminate'
+        ? indeterminateSaveErrorMessage
+        : saveErrorMessage;
   const hasRemovedSelections = selectedContentUniverseIds.some(
     (universeId) => !selectedUniverseIds.includes(universeId),
   );
@@ -430,9 +600,9 @@ const ShowcasedExperiencesDialog = ({
     isContentError ||
     showcaseEligibleContentReq.isPending ||
     showcaseEligibleContentReq.isFetching ||
-    hasSelectedInvalidUniverse ||
     ifMatch == null ||
     replaceShowcaseContent.isPending ||
+    selectedConfirmedRejectedUniverseIds.length > 0 ||
     (selectableUniverseIds.length === 0 && !hasRemovedSelections);
   const hasNonContentState =
     isContentLoading || isContentError || selectableUniverseIds.length === 0;
@@ -444,6 +614,15 @@ const ShowcasedExperiencesDialog = ({
         ? 'width-[min(648px,95vw)]'
         : 'width-[min(800px,95vw)]';
 
+  useEffect(() => {
+    if (open && ifMatch == null && !hasLoggedMissingETagImpressionRef.current) {
+      hasLoggedMissingETagImpressionRef.current = true;
+      logEvent(
+        LicenseManagerImpressionEvent.IphListingsDetailsPageMissingShowcaseETagImpressionEvent,
+        { listingId },
+      );
+    }
+  }, [ifMatch, listingId, logEvent, open]);
   useEffect(() => {
     if (
       open &&
@@ -495,19 +674,29 @@ const ShowcasedExperiencesDialog = ({
       );
     }
   }, [isContentError, isContentLoading, listingId, logEvent, open, selectableUniverseIds.length]);
+  const lastScrolledRejectionSequenceRef = useRef(0);
   useEffect(() => {
-    if (open && hasSelectedInvalidUniverse) {
-      logEvent(
-        LicenseManagerImpressionEvent.IphListingsDetailsPageInvalidShowcasedExperiencesWarningImpressionEvent,
-        {
-          listingId,
-          surface: 'dialog',
-          invalidSelectionCount: invalidUniverseIds.size,
-          universeIds: [...invalidUniverseIds].join(','),
-        },
-      );
+    if (rejectionSequence === 0 || rejectionSequence === lastScrolledRejectionSequenceRef.current) {
+      return;
     }
-  }, [hasSelectedInvalidUniverse, invalidUniverseIds, listingId, logEvent, open]);
+    const firstRejectedUniverseId = selectableUniverseIds.find((universeId) =>
+      confirmedRejectedUniverseIdSet.has(universeId),
+    );
+    const contentGrid = contentGridRef.current;
+    const firstRejectedTile =
+      firstRejectedUniverseId == null ? null : tileRefs.current.get(firstRejectedUniverseId);
+    if (!contentGrid || !firstRejectedTile) {
+      return;
+    }
+
+    lastScrolledRejectionSequenceRef.current = rejectionSequence;
+    const contentGridRect = contentGrid.getBoundingClientRect();
+    const rejectedTileRect = firstRejectedTile.getBoundingClientRect();
+    contentGrid.scrollTo({
+      top: Math.max(0, contentGrid.scrollTop + rejectedTileRect.top - contentGridRect.top),
+      behavior: 'smooth',
+    });
+  }, [confirmedRejectedUniverseIdSet, rejectionSequence, selectableUniverseIds]);
 
   return (
     <Dialog
@@ -568,6 +757,7 @@ const ShowcasedExperiencesDialog = ({
               </div>
             ) : selectableUniverseIds.length > 0 ? (
               <div
+                ref={contentGridRef}
                 className={cx(
                   classes.tileViewport,
                   CONTENT_VIEWPORT_CLASS,
@@ -577,9 +767,7 @@ const ShowcasedExperiencesDialog = ({
                 data-testid='showcase-content-selection-grid'>
                 {selectableUniverseIds.map((universeId, index) => {
                   const isSelected = selectedUniverseIds.includes(universeId);
-                  const isInvalid = invalidUniverseIds.has(universeId);
-                  const isDeselectedInvalid = isInvalid && !isSelected;
-                  const ineligibleDescriptionId = `ineligible-showcase-content-description-${universeId.toString()}`;
+                  const isConfirmedRejected = confirmedRejectedUniverseIdSet.has(universeId);
                   const details = detailsByUniverseId.get(universeId);
                   const name =
                     details?.name ??
@@ -605,44 +793,22 @@ const ShowcasedExperiencesDialog = ({
                     ),
                     { experienceName: name },
                   );
-                  if (isDeselectedInvalid) {
-                    const ineligibleCreationAriaLabel = tPendingTranslation(
-                      '{experienceName}: {label}',
-                      'ARIA label for a spotlighted creation that can no longer be selected',
-                      translationKey(
-                        'Label.IneligibleSpotlightedCreationAriaLabel',
-                        TranslationNamespace.AgreementsManager,
-                      ),
-                      { experienceName: name, label: ineligibleCreationLabel },
-                    );
-                    return (
-                      <div key={universeId} className='group relative width-[144px]'>
-                        <Tooltip position='top-center' title={ineligibleCreationTooltip}>
-                          <TooltipTrigger asChild>
-                            <button
-                              type='button'
-                              className='relative block width-full radius-medium clip padding-small [border:none] [background:transparent] text-align-x-left cursor-not-allowed focus-visible:outline-focus'
-                              aria-disabled='true'
-                              aria-label={ineligibleCreationAriaLabel}
-                              aria-describedby={ineligibleDescriptionId}
-                              data-testid={`ineligible-showcase-content-${universeId}`}>
-                              <ShowcaseContentTile universeId={universeId} name={name} />
-                              <VisuallyHidden id={ineligibleDescriptionId}>
-                                {ineligibleCreationTooltip}
-                              </VisuallyHidden>
-                              <div
-                                className={`${classes.ineligibleOverlay} absolute inset-[0] [z-index:2] flex flex-col items-center justify-center gap-xsmall padding-small text-align-x-center`}>
-                                <Icon name='icon-regular-triangle-exclamation' size='Medium' />
-                                <span className='text-label-medium'>{ineligibleCreationLabel}</span>
-                              </div>
-                            </button>
-                          </TooltipTrigger>
-                        </Tooltip>
-                      </div>
-                    );
-                  }
                   return (
-                    <div key={universeId} className='group relative width-[144px]'>
+                    <div
+                      key={universeId}
+                      ref={(tile) => {
+                        if (tile) {
+                          tileRefs.current.set(universeId, tile);
+                        } else {
+                          tileRefs.current.delete(universeId);
+                        }
+                      }}
+                      className='group relative width-[144px]'
+                      data-testid={
+                        isConfirmedRejected
+                          ? `rejected-showcase-content-${universeId.toString()}`
+                          : undefined
+                      }>
                       <button
                         type='button'
                         aria-label={selectAriaLabel}
@@ -651,8 +817,8 @@ const ShowcasedExperiencesDialog = ({
                         className={cx(
                           classes.selectableTile,
                           isSelected && classes.selectedTile,
-                          isInvalid && classes.invalidSelectedTile,
-                          isInvalid && 'stroke-system-alert',
+                          isConfirmedRejected && classes.rejectedTile,
+                          isConfirmedRejected && 'stroke-system-alert',
                           'absolute inset-[0] block width-full cursor-pointer radius-medium [border:none] [background:transparent] [transition:box-shadow_0.2s] focus-visible:outline-focus',
                         )}
                         onClick={() => toggleSelection(universeId)}
@@ -717,20 +883,11 @@ const ShowcasedExperiencesDialog = ({
           <DialogFooter
             className={`${classes.dialogFooter} flex flex-col gap-small`}
             data-testid='showcase-dialog-footer'>
-            {hasSelectedInvalidUniverse ? (
-              <div className='width-full'>
-                <p
-                  className='text-body-medium content-system-alert margin-none width-full'
-                  role='alert'>
-                  {invalidSelectionDescription}
-                </p>
-              </div>
-            ) : null}
             <div className='width-full'>
-              {replaceShowcaseContent.isError ? (
+              {replaceShowcaseContent.isError || saveErrorKind !== null ? (
                 <div className={classes.saveError} data-testid='showcase-save-error'>
                   <Alert variant='Feedback' severity='Error' hasCloseAffordance={false}>
-                    {saveErrorMessage}
+                    {displayedSaveErrorMessage}
                   </Alert>
                 </div>
               ) : null}
