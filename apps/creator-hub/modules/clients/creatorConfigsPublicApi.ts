@@ -4,7 +4,11 @@ export type CreatorConfigsPublicApiRepository =
   | 'DataStoresConfig'
   | 'ExtendedServicesConfig'
   | 'LeaderboardsConfig'
-  | 'JourneysConfig';
+  | 'JourneysConfig'
+  // Maps (in the creator-configs-public-api gateway) to the internal
+  // RepositoryType.AntiCheatConfiguration / `EnhancedAntiCheat` namespace. Requires the gateway
+  // to add this repository to its `Repository` enum + `AllowedRepositories` before it resolves.
+  | 'AntiCheatConfig';
 export type CreatorConfigsPublicApiDeploymentStrategy = 'GradualRollout' | 'Immediate';
 
 export type CreatorConfigsPublicApiConfigValueFull = {
