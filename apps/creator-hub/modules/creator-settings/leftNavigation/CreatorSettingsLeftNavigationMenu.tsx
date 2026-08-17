@@ -2,24 +2,19 @@ import type { FunctionComponent } from 'react';
 import React, { useCallback, useMemo, useContext } from 'react';
 import Router, { useRouter } from 'next/router';
 import type { CreatorNotificationCategory } from '@rbx/client-creator-settings/v1';
-import { useFlag } from '@rbx/flags';
 import { useTranslation, withTranslation } from '@rbx/intl';
-import { showDevExO18LandingPage } from '@generated/flags/creatorBusiness';
 import { IXPLayers } from '@modules/clients/ixpExperiments';
 import { notificationSettingsLeftNavEventModel } from '@modules/eventStream/constants/eventConstants';
 import { useEventTrackerProvider } from '@modules/eventStream/eventTrackerProvider';
 import { useIXPParameters } from '@modules/miscellaneous/hooks';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import LeftNavigationMenuV2 from '@modules/navigation/leftNavigation/components/LeftNavigationMenuV2';
-import { EligibilityType } from '../constants/eligibilityConstants';
 import type { TCreatorNotificationsSettingsContext } from '../hooks/CreatorNotificationsSettingsContext';
 import { CreatorNotificationsSettingsContext } from '../hooks/CreatorNotificationsSettingsContext';
 import { getEligibilityNavigationSubitems } from '../hooks/getEligibilityNavigationSubitems';
 
 const CreatorSettingsLeftNavigation: FunctionComponent<React.PropsWithChildren> = () => {
   const { translate } = useTranslation();
-  const { value: showDevExO18LandingPageEnabled, ready: isDevExO18FlagReady } =
-    useFlag(showDevExO18LandingPage);
   const { trackerClient } = useEventTrackerProvider();
   const router = useRouter();
   const { notificationSettings } = useContext<TCreatorNotificationsSettingsContext>(
@@ -76,10 +71,7 @@ const CreatorSettingsLeftNavigation: FunctionComponent<React.PropsWithChildren> 
       },
     );
 
-    const showDevExO18NavItem = isDevExO18FlagReady && (showDevExO18LandingPageEnabled ?? false);
-    const eligibilityNavigationSubitems = getEligibilityNavigationSubitems(true).filter(
-      (item) => showDevExO18NavItem || item.key !== EligibilityType.UsO18DevexRate,
-    );
+    const eligibilityNavigationSubitems = getEligibilityNavigationSubitems(true);
     const eligibilitySubitemsList = eligibilityNavigationSubitems.flatMap((setting) => {
       const key = `eligibility/${setting.key}`;
       return {
@@ -154,14 +146,7 @@ const CreatorSettingsLeftNavigation: FunctionComponent<React.PropsWithChildren> 
     });
 
     return items;
-  }, [
-    translate,
-    notificationSettings,
-    ixpParams.showAdvancedSettingsPage,
-    isDevExO18FlagReady,
-    showDevExO18LandingPageEnabled,
-    handleSelectSettingKey,
-  ]);
+  }, [translate, notificationSettings, ixpParams.showAdvancedSettingsPage, handleSelectSettingKey]);
 
   return (
     <LeftNavigationMenuV2

@@ -1,11 +1,8 @@
 import { useCallback, useEffect } from 'react';
-import { useFlag } from '@rbx/flags';
 import { Dropdown, Menu, MenuItem } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
-import { showDevExO18LandingPage } from '@generated/flags/creatorBusiness';
 import { O18Eligibility } from '@modules/clients/creatorDevexApi';
 import PageLoading from '@modules/miscellaneous/components/PageLoading';
-import { PageNotFound } from '@modules/miscellaneous/error';
 import useQueryParams from '@modules/miscellaneous/hooks/useQueryParams';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import useDevExO18EligibilityState from '../../hooks/useDevExO18EligibilityState';
@@ -15,13 +12,12 @@ import { parseUniverseIdQueryParam, resolveSelectedUniverseId } from './utils/de
 
 function DevExO18PageContentContainer() {
   const { translate } = useTranslation();
-  const { value: showDevExO18LandingPageEnabled } = useFlag(showDevExO18LandingPage);
   const [query, setQueryParams] = useQueryParams(['universeId']);
   const {
     data: experienceOptions = [],
     isPending: isLoadingExperiences,
     isError: isExperiencesError,
-  } = useDevExO18SelectableExperiences(showDevExO18LandingPageEnabled ?? false);
+  } = useDevExO18SelectableExperiences();
 
   const queryUniverseId = parseUniverseIdQueryParam(query.universeId);
   const selectedUniverseId =
@@ -54,10 +50,6 @@ function DevExO18PageContentContainer() {
     selectedUniverseId != null &&
     !isLoadingEligibility &&
     o18Eligibility === O18Eligibility.Eligible;
-
-  if (!showDevExO18LandingPageEnabled) {
-    return <PageNotFound />;
-  }
 
   if (isLoadingExperiences) {
     return <PageLoading />;

@@ -4,8 +4,6 @@ import {
   RAQIV2Metric,
   RAQIV2MetricGranularity,
 } from '@rbx/creator-hub-analytics-config';
-import { useFlag } from '@rbx/flags';
-import { showDevExO18LandingPage } from '@generated/flags/creatorBusiness';
 import AnalyticsComponentType from '@modules/analytics-configurations/AnalyticsComponentType';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
@@ -207,10 +205,7 @@ export const arbitraryComponentConfigDevExO18PromotionBanner = {
     type: 'withChartContext',
     render: function DevExO18PromotionBannerRenderer() {
       const { universeId = 0 } = useUniverseId();
-      const { value: showDevExO18 } = useFlag(showDevExO18LandingPage);
-      const { o18Eligibility } = useDevExO18EligibilityState(universeId, {
-        enabled: showDevExO18 === true,
-      });
+      const { o18Eligibility } = useDevExO18EligibilityState(universeId);
       const isPersonalizedShopBannerShown = useIsPersonalizedShopPromotionBannerShown(universeId);
 
       const { isOpen: isManagedPricingBannerShown } = useManagedPricingPromotionBanner({
@@ -220,7 +215,6 @@ export const arbitraryComponentConfigDevExO18PromotionBanner = {
 
       // Only surface this banner if the shop or the managed-pricing banner is no longer taking the slot
       if (
-        !showDevExO18 ||
         !Number.isFinite(universeId) ||
         (isPersonalizedShopBannerShown && isManagedPricingBannerShown)
       ) {

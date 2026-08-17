@@ -59,7 +59,7 @@ async function toSelectableOptions(
   return permissionResults.filter((option): option is DevExO18ExperienceOption => option != null);
 }
 
-function useDevExO18SelectableExperiences(isEnabled = true) {
+function useDevExO18SelectableExperiences() {
   const { user } = useAuthentication();
   const { currentGroup, isFetched: isGroupsFetched } = useGroups();
   const { settings } = useSettings();
@@ -90,7 +90,7 @@ function useDevExO18SelectableExperiences(isEnabled = true) {
       );
       return toSelectableOptions(experiences);
     },
-    enabled: isEnabled && creatorTargetId != null && isGroupsFetched && isIxpFetched,
+    enabled: creatorTargetId != null && isGroupsFetched && isIxpFetched,
     staleTime: STALE_TIME_MS,
   });
 }

@@ -6,8 +6,6 @@ import {
   RAQIV2MetricGranularity,
   RAQIV2UIPseudoDimension,
 } from '@rbx/creator-hub-analytics-config';
-import { useFlag } from '@rbx/flags';
-import { isDailyRevenueByBalanceTypeChartEnabled as isDailyRevenueByBalanceTypeChartFlag } from '@generated/flags/creatorBusiness';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import type { AnalyticsDocLink } from '@modules/charts-generic/types/AnalyticsDocLink';
 import { AnnotationType, RAQIV2ChartResourceType } from '@modules/clients/analytics';
@@ -76,14 +74,9 @@ const monetizationSurfaceAnnotationOptions = {
   showAnnotationsControl: true,
 } as const satisfies AnalyticsPageConfigAnnotationOptions;
 const MonetizationPageRAQIV2 = () => {
-  const { value: isDailyRevenueByBalanceTypeChartEnabled } = useFlag(
-    isDailyRevenueByBalanceTypeChartFlag,
-  );
   const isMonetizationBreakglassBannerOn = useIsMonetizationBreakglassBannerOn();
   const universeId = Number(useRouter().query.id);
-  const { o18Eligibility } = useDevExO18EligibilityState(universeId, {
-    enabled: isDailyRevenueByBalanceTypeChartEnabled === true,
-  });
+  const { o18Eligibility } = useDevExO18EligibilityState(universeId);
   const monetizationPageConfig = useMemo(
     (): CreatorAnalyticsUntabbedPageConfig =>
       ({
@@ -132,7 +125,7 @@ const MonetizationPageRAQIV2 = () => {
           RAQIV2Dimension.UserO18Eligibility,
         ],
         body: [
-          ...(isDailyRevenueByBalanceTypeChartEnabled && o18Eligibility === O18Eligibility.Eligible
+          ...(o18Eligibility === O18Eligibility.Eligible
             ? ([
                 {
                   type: RAQIV2SpecialLayoutType.FullWidthLayout,
@@ -175,7 +168,7 @@ const MonetizationPageRAQIV2 = () => {
         hideHeroDivider: false,
         endDateBehavior: EndDateBehavior.LatestAvailableForMetrics,
       }) as const,
-    [isDailyRevenueByBalanceTypeChartEnabled, o18Eligibility],
+    [o18Eligibility],
   );
 
   const updatedPageConfig = useMemo(() => {

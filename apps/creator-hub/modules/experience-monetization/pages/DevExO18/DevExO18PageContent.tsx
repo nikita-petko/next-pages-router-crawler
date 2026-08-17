@@ -1,10 +1,5 @@
 import { StatusCodes } from '@rbx/core';
-import { useFlag } from '@rbx/flags';
 import { withTranslation } from '@rbx/intl';
-import {
-  showDevExO18LandingPage,
-  showDevExO18LandingPageAnalyticsSection,
-} from '@generated/flags/creatorBusiness';
 import { O18Eligibility } from '@modules/clients/creatorDevexApi';
 import PageLoading from '@modules/miscellaneous/components/PageLoading';
 import { ErrorPage, PageNotFound } from '@modules/miscellaneous/error';
@@ -25,13 +20,6 @@ function DevExO18PageContent({ universeId }: DevExO18PageContentProps) {
     o18Eligibility,
     eligibilityCriteria,
   } = useDevExO18EligibilityState(universeId);
-  const { value: showPageEnabled } = useFlag(showDevExO18LandingPage);
-  const { value: showAnalyticsSection } = useFlag(showDevExO18LandingPageAnalyticsSection);
-
-  if (!showPageEnabled) {
-    return <PageNotFound />;
-  }
-
   if (isLoadingPermissions || isLoadingEligibility) {
     return <PageLoading />;
   }
@@ -56,12 +44,8 @@ function DevExO18PageContent({ universeId }: DevExO18PageContentProps) {
         <div className='flex grow-1 shrink-1 basis-0 min-width-0'>
           <DevExO18CriteriaCard isEligible={isEligible} />
         </div>
-        {/* Keep the column so the eligibility card stays at half width even when
-            the analytics section is hidden by the flag. */}
         <div className='flex grow-1 shrink-1 basis-0 min-width-0'>
-          {showAnalyticsSection && (
-            <DevExO18AnalyticsSection universeId={universeId} o18Eligibility={o18Eligibility} />
-          )}
+          <DevExO18AnalyticsSection universeId={universeId} o18Eligibility={o18Eligibility} />
         </div>
       </div>
     </section>

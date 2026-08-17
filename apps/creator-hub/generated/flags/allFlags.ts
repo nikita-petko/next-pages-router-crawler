@@ -591,36 +591,6 @@ export const generatedFlags = [
       },
     },
     {
-      flag: creatorBusinessFlags.showDevExO18LandingPage,
-      metadata: {
-        namespace: 'creator-business',
-        name: 'showDevExO18LandingPage',
-        defaultValue: true,
-        valueType: 'boolean',
-        contextType: 'static',
-      },
-    },
-    {
-      flag: creatorBusinessFlags.showDevExO18LandingPageAnalyticsSection,
-      metadata: {
-        namespace: 'creator-business',
-        name: 'showDevExO18LandingPageAnalyticsSection',
-        defaultValue: true,
-        valueType: 'boolean',
-        contextType: 'static',
-      },
-    },
-    {
-      flag: creatorBusinessFlags.isDailyRevenueByBalanceTypeChartEnabled,
-      metadata: {
-        namespace: 'creator-business',
-        name: 'isDailyRevenueByBalanceTypeChartEnabled',
-        defaultValue: true,
-        valueType: 'boolean',
-        contextType: 'static',
-      },
-    },
-    {
       flag: creatorBusinessFlags.isRevenueShareAgreementsEnabled,
       metadata: {
         namespace: 'creator-business',
