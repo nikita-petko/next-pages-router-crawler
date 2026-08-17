@@ -42,3 +42,29 @@ export function getDashboardDraftSignature(draft: DashboardDraft): string {
     });
   }
 }
+
+/**
+ * True when the live editor draft would be abandoned by leaving the page.
+ * New dashboards are dirty as soon as a working copy exists. Existing
+ * dashboards compare a stable signature so key-order / undefined-key noise
+ * does not look like an edit. Saving does not clear this on its own — the
+ * caller deletes the working copy (or navigates away) after a successful
+ * persist.
+ */
+export function isDashboardDraftDirty({
+  currentDraft,
+  isNewDashboard,
+  persistedDraft,
+}: {
+  readonly currentDraft: DashboardDraft | null;
+  readonly isNewDashboard: boolean;
+  readonly persistedDraft: DashboardDraft | null;
+}): boolean {
+  if (!currentDraft) {
+    return false;
+  }
+  if (isNewDashboard || !persistedDraft) {
+    return true;
+  }
+  return getDashboardDraftSignature(currentDraft) !== getDashboardDraftSignature(persistedDraft);
+}

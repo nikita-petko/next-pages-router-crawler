@@ -16,6 +16,7 @@ import {
   filterBarDimensionToQueryKey,
   type UIFilterDimension,
 } from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/filterUtils';
+import { openDiscardChangesDialog } from '@modules/monetization-shared/discard-dialog/DiscardChangesDialog';
 import { useDiscardChangesPrompt } from '@modules/monetization-shared/discard-dialog/useDiscardChangesPrompt';
 import CustomDashboardBreadcrumbRegistration from '../../components/CustomDashboardBreadcrumbRegistration';
 import InternalSandboxBanner from '../../components/InternalSandboxBanner';
@@ -62,11 +63,16 @@ import AddSummaryCardDialog, {
 import EditConflictDialog from './components/EditConflictDialog';
 import EditPageCanvas from './components/EditPageCanvas';
 import EditPageHeaderStack from './components/EditPageHeaderStack';
-import { getDashboardDraftSignature, type DashboardDraft } from './hooks/dashboardDraftState';
+import {
+  getDashboardDraftSignature,
+  isDashboardDraftDirty,
+  type DashboardDraft,
+} from './hooks/dashboardDraftState';
 import useDashboardDocumentQuery from './hooks/useDashboardDocumentQuery';
 import useDashboardEditHistory from './hooks/useDashboardEditHistory';
 import { persistExistingDashboardUpdate } from './persistExistingDashboardUpdate';
 import { resolveActiveSession } from './resolveActiveSession';
+import { shouldPromptBeforeLeavingEditor } from './shouldPromptBeforeLeavingEditor';
 import useEditPageTranslations from './useEditPageTranslations';
 
 /**
@@ -204,6 +210,26 @@ const EditPageContent: FC<EditPageContentProps> = ({
     historyKey: activeSession?.draftId ?? null,
     persistedDraft,
   });
+
+  const hasUnsavedChanges = useMemo(
+    () =>
+      isDashboardDraftDirty({
+        currentDraft,
+        isNewDashboard,
+        persistedDraft: persistedDocument
+          ? { name: persistedDocument.name, config: persistedDocument.config }
+          : null,
+      }),
+    [currentDraft, isNewDashboard, persistedDocument],
+  );
+  const shouldPromptForEditorRoute = useCallback(
+    (url: string) => shouldPromptBeforeLeavingEditor(url, dashboardId),
+    [dashboardId],
+  );
+  const bypassUnsavedChangesPrompt = useDiscardChangesPrompt(
+    hasUnsavedChanges,
+    shouldPromptForEditorRoute,
+  );
 
   const activeSessionDraftSignature = useMemo(
     () =>
@@ -418,9 +444,12 @@ const EditPageContent: FC<EditPageContentProps> = ({
       baselineVersionRef.current.delete(sessionDraftId);
       deleteEditorWorkingCopy(sessionDraftId);
       setIsConflictDialogOpen(false);
+      // Publish is a deliberate commit. Bypass before opening the view so the
+      // still-dirty React state does not open "Unsaved changes will be lost."
+      bypassUnsavedChangesPrompt();
       onOpenView(savedDocument.id);
     },
-    [onOpenView, queryClient, universeId],
+    [bypassUnsavedChangesPrompt, onOpenView, queryClient, universeId],
   );
 
   const persistExistingDraft = useCallback(
@@ -656,43 +685,20 @@ const EditPageContent: FC<EditPageContentProps> = ({
     };
   }, [allowedMetrics, editingSummaryCard]);
 
-  const hasUnsavedChanges = useMemo(() => {
-    if (!currentDraft) {
-      return false;
-    }
-    if (isNewDashboard || !persistedDocument) {
-      return true;
-    }
-    return (
-      getDashboardDraftSignature(currentDraft) !==
-      getDashboardDraftSignature({
-        name: persistedDocument.name,
-        config: persistedDocument.config,
-      })
-    );
-  }, [currentDraft, isNewDashboard, persistedDocument]);
-
-  const shouldPromptBeforeLeavingEditor = useCallback(
-    (url: string) => {
-      if (!dashboardId) {
-        return true;
-      }
-      const editorPath = `/analytics/dashboards/${dashboardId}/`;
-      return !(url.includes(`${editorPath}preview`) || url.includes(`${editorPath}tile/`));
-    },
-    [dashboardId],
-  );
-  const bypassUnsavedChangesPrompt = useDiscardChangesPrompt(
-    hasUnsavedChanges,
-    shouldPromptBeforeLeavingEditor,
-  );
-  const handleCancel = useCallback(() => {
-    // Cancel intentionally destroys the working copy, so bypass the route guard
-    // for this one navigation instead of prompting about edits we just discarded.
+  const leaveEditorWithoutPrompt = useCallback(() => {
     bypassUnsavedChangesPrompt();
     deleteEditorWorkingCopy(activeSessionDraftId);
     onBackToManage();
   }, [activeSessionDraftId, bypassUnsavedChangesPrompt, onBackToManage]);
+  const handleCancel = useCallback(() => {
+    if (!hasUnsavedChanges) {
+      leaveEditorWithoutPrompt();
+      return;
+    }
+    openDiscardChangesDialog({
+      onConfirm: leaveEditorWithoutPrompt,
+    });
+  }, [hasUnsavedChanges, leaveEditorWithoutPrompt]);
 
   // Disabled queries report `isLoading: false` in RQ v5; `isPending` stays
   // true until the query is enabled. Treat unresolved route ids and pending
