@@ -3,7 +3,10 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from '@rbx/intl';
 import { makeStyles, Slider, sliderClasses, Typography } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
-import { formatNumberWithSpec } from '@modules/charts-generic/charts/numberFormatters';
+import {
+  formatNumberWithSpec,
+  InfinityCharacter,
+} from '@modules/charts-generic/charts/numberFormatters';
 import useLocale from '@modules/charts-generic/context/useLocale';
 
 const useStyles = makeStyles()((theme) => ({
@@ -115,11 +118,15 @@ export const ConfidenceIntervalCellHeader = ({ marks }: { marks: number[] }) => 
 const IntervalTrack = ({
   metricValueLiftPercentage,
   valueLabelFormat,
+  isMinUnbounded,
+  isMaxUnbounded,
   style: positionStyle,
   ownerState,
 }: {
   metricValueLiftPercentage: number;
   valueLabelFormat: ({ value }: { value: number }) => string;
+  isMinUnbounded: boolean;
+  isMaxUnbounded: boolean;
 
   // props injected by mui slider
   style: CSSProperties;
@@ -192,7 +199,7 @@ const IntervalTrack = ({
         classes={{
           root: intervalMinValueLabel,
         }}>
-        {valueLabelFormat({ value: min })}
+        {isMinUnbounded ? `-${InfinityCharacter}` : valueLabelFormat({ value: min })}
       </Typography>
       {/* Max value label on right side of the interval */}
       <Typography
@@ -201,7 +208,7 @@ const IntervalTrack = ({
         classes={{
           root: intervalMaxValueLabel,
         }}>
-        {valueLabelFormat({ value: max })}
+        {isMaxUnbounded ? InfinityCharacter : valueLabelFormat({ value: max })}
       </Typography>
     </span>
   );
@@ -211,10 +218,14 @@ export const ConfidenceIntervalCellContent = ({
   marks: givenMarks,
   metricValueLiftPercentage,
   interval,
+  isMinUnbounded = false,
+  isMaxUnbounded = false,
 }: {
   marks: number[];
   metricValueLiftPercentage: number;
   interval: [number, number];
+  isMinUnbounded?: boolean;
+  isMaxUnbounded?: boolean;
 }) => {
   const { translate } = useTranslationWrapper(useTranslation());
   const locale = useLocale();
@@ -253,10 +264,12 @@ export const ConfidenceIntervalCellContent = ({
         track: {
           metricValueLiftPercentage,
           valueLabelFormat,
+          isMinUnbounded,
+          isMaxUnbounded,
         },
       },
     };
-  }, [metricValueLiftPercentage, valueLabelFormat]);
+  }, [metricValueLiftPercentage, valueLabelFormat, isMinUnbounded, isMaxUnbounded]);
 
   return (
     <Slider

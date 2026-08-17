@@ -21,6 +21,7 @@ import ConfidenceIntervalTable from './ConfidenceIntervalTable';
 type ConfidenceIntervalDialogProps = ConfidenceIntervalTableProps & {
   open: boolean;
   onClose: () => void;
+  isEarlyHarmAnalysisPeriod: boolean;
 };
 
 const ConfidenceIntervalDialog: FC<ConfidenceIntervalDialogProps> = ({
@@ -28,6 +29,7 @@ const ConfidenceIntervalDialog: FC<ConfidenceIntervalDialogProps> = ({
   onClose,
   metric,
   orderedCellDataWithConfidenceInterval,
+  isEarlyHarmAnalysisPeriod,
 }) => {
   const { translate, translateHTML } = useTranslationWrapper(useTranslation());
   return (
@@ -48,10 +50,15 @@ const ConfidenceIntervalDialog: FC<ConfidenceIntervalDialogProps> = ({
       <DialogContent>
         <DialogContentText color='secondary' variant='caption'>
           {translateHTML(
-            translationKey(
-              'Description.ConfidenceIntervalDialog',
-              TranslationNamespace.UniverseConfigAndExperimentation,
-            ),
+            isEarlyHarmAnalysisPeriod
+              ? translationKey(
+                  'Description.ConfidenceIntervalDialog.EarlyHarm',
+                  TranslationNamespace.UniverseConfigAndExperimentation,
+                )
+              : translationKey(
+                  'Description.ConfidenceIntervalDialog',
+                  TranslationNamespace.UniverseConfigAndExperimentation,
+                ),
             [
               {
                 opening: 'linkStart',

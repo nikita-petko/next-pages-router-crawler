@@ -1,16 +1,18 @@
-import { useQuery } from '@tanstack/react-query';
 import React, { useCallback, useMemo } from 'react';
+import { useFlag } from '@rbx/flags';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { CircularProgress, Grid, Tab, Tabs } from '@rbx/ui';
-import type { FormattedText } from '@modules/analytics-translations/types';
+import { isEhdResultsEnabled as isEhdResultsEnabledFlag } from '@generated/flags/creatorAnalytics';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
-import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import {
+  brandUntranslatableText,
+  translationKey,
+} from '@modules/analytics-translations/wrapperFunctions';
 import { BannerCategory, StatusBanners } from '@modules/charts-generic/components/StatusBanner';
 import AnalyticsQueryParams from '@modules/charts-generic/enums/AnalyticsQueryParams';
 import { AnalyticsPageDescription } from '@modules/charts-generic/layout/AnalyticsPageDescription';
 import { AnalyticsPageLayout } from '@modules/charts-generic/layout/AnalyticsPageLayout';
 import { AnalyticsPageTitle } from '@modules/charts-generic/layout/AnalyticsPageTitle';
-import usersClient from '@modules/clients/users';
 import { AnalyticsContextLayerInnerProvider } from '@modules/experience-analytics-shared/context/AnalyticsContextLayerProvider';
 import { useAnalyticsBannerConfiguration } from '@modules/experience-analytics-shared/hooks/useStatusConfiguration';
 import { defaultAnalyticsPageSurfaceConfig } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
@@ -32,28 +34,12 @@ import ToExperimentCreateOrEditPageButton from '../components/ToExperimentCreate
 import { VariantsConfigurationForInExperienceProvider } from '../context/VariantsConfigurationForInExperienceProvider';
 import { VariantsConfigurationForMatchmakingProvider } from '../context/VariantsConfigurationForMatchMakingProvider';
 import useExperiment from '../hooks/useExperiment';
+import useExperimentCreator from '../hooks/useExperimentCreator';
 import { ExperimentDetailsTab } from '../types/UIEnums';
 import ExperimentationDetailsTab from './ExperimentationDetailsTab';
 import ExperimentationResultsTab from './ExperimentationResultsTab';
 
 const emptyArray: never[] = [];
-
-const experimentDetailsTabs = [
-  {
-    value: ExperimentDetailsTab.DetailsAndProgress,
-    labelKey: translationKey(
-      'Label.DetailsAndProgress',
-      TranslationNamespace.UniverseConfigAndExperimentation,
-    ),
-  },
-  {
-    value: ExperimentDetailsTab.Results,
-    labelKey: translationKey(
-      'Label.Results',
-      TranslationNamespace.UniverseConfigAndExperimentation,
-    ),
-  },
-] as const;
 
 type ExperimentationDetailsPageContentProps = {
   experimentId: string;
@@ -62,16 +48,16 @@ type ExperimentationDetailsPageContentProps = {
 const ExperimentationDetailsPageContent = ({
   experimentId,
 }: ExperimentationDetailsPageContentProps) => {
+  const { ready: isEhdResultsFlagReady, value: isEhdResultsFlagValue } =
+    useFlag(isEhdResultsEnabledFlag);
+  const isEhdResultsEnabled = isEhdResultsFlagReady && (isEhdResultsFlagValue ?? false);
+
   const { translate, translateHTML } = useTranslationWrapper(useTranslation());
   const { experiment, ...experimentQueryState } = useExperiment({
     experimentId,
   });
 
-  const { data: experimentCreator } = useQuery({
-    queryKey: ['get-experiment-creator', experiment?.createdBy],
-    queryFn: () => usersClient.getUserById(experiment!.createdBy as unknown as number),
-    enabled: !!experiment?.createdBy,
-  });
+  const { data: experimentCreator } = useExperimentCreator(experiment?.createdBy);
 
   const VariantsConfigurationProvider = useMemo(() => {
     if (!experiment?.experimentType) {
@@ -87,13 +73,13 @@ const ExperimentationDetailsPageContent = ({
         return VariantsConfigurationForMatchmakingProvider;
       default: {
         const exhaustiveCheck: never = experimentType;
-        throw new Error(`Unknown experiment type: ${exhaustiveCheck}`);
+        throw new Error(`Unknown experiment type: ${String(exhaustiveCheck)}`);
       }
     }
   }, [experiment]);
 
   const title = useMemo(
-    () => <AnalyticsPageTitle text={(experiment?.name ?? '') as FormattedText} />,
+    () => <AnalyticsPageTitle text={brandUntranslatableText(experiment?.name ?? '')} />,
     [experiment],
   );
 
@@ -120,7 +106,7 @@ const ExperimentationDetailsPageContent = ({
         )}
       />
     );
-  }, [experimentCreator?.displayName, experimentCreator?.id, translateHTML]);
+  }, [experimentCreator, translateHTML]);
 
   const action = useMemo(() => {
     const isEditable = experiment && isExperimentEditable(experiment.state);
@@ -128,7 +114,7 @@ const ExperimentationDetailsPageContent = ({
     const isStartable = experiment && isExperimentStartable(experiment.state);
 
     if (!isEditable && !isStoppable && !isStartable) {
-      return;
+      return undefined;
     }
 
     return (
@@ -214,7 +200,7 @@ const ExperimentationDetailsPageContent = ({
         return <ExperimentationResultsTab experimentId={experimentId} />;
       default: {
         const exhaustiveCheck: never = selectedTab;
-        throw new Error(`Unhandled tab: ${exhaustiveCheck}`);
+        throw new Error(`Unhandled tab: ${String(exhaustiveCheck)}`);
       }
     }
   }, [experiment, selectedTab, experimentId]);
@@ -237,9 +223,26 @@ const ExperimentationDetailsPageContent = ({
           banners={banners}>
           <Grid item XSmall={12} marginBottom='24px'>
             <Tabs value={selectedTab} onChange={handleSelectTab}>
-              {experimentDetailsTabs.map(({ value, labelKey }) => (
-                <Tab key={value} label={translate(labelKey)} value={value} />
-              ))}
+              <Tab
+                label={translate(
+                  translationKey(
+                    'Label.DetailsAndProgress',
+                    TranslationNamespace.UniverseConfigAndExperimentation,
+                  ),
+                )}
+                value={ExperimentDetailsTab.DetailsAndProgress}
+              />
+              <Tab
+                label={translate(
+                  translationKey(
+                    isEhdResultsEnabled && experiment?.isEarlyHarmAnalysisPeriod
+                      ? 'Label.Metrics'
+                      : 'Label.Results',
+                    TranslationNamespace.UniverseConfigAndExperimentation,
+                  ),
+                )}
+                value={ExperimentDetailsTab.Results}
+              />
             </Tabs>
           </Grid>
           {tabContent}

@@ -63,7 +63,7 @@ const ExperimentRolloutDialog = ({
   const locale = useLocale();
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const { experiment } = useExperiment({ experimentId });
-  const { experimentVariantsResults } = useExperimentVariantsResults(experimentId);
+  const { experimentVariantsResults } = useExperimentVariantsResults({ experimentId });
 
   const validateConditionName = useConfigConditionNameValidator();
 
@@ -311,6 +311,7 @@ const ExperimentRolloutDialog = ({
           {step === DialogStep.VariantSelection && (
             <div className='flex flex-col gap-x-small margin-top-[8px]'>
               {warningBanner && (
+                // oxlint-disable-next-line typescript/no-deprecated
                 <FeedbackBanner
                   title={String(warningBanner.title)}
                   description={String(warningBanner.description)}
@@ -369,6 +370,7 @@ const ExperimentRolloutDialog = ({
                 </div>
               ) : previewError ? (
                 <div className='flex flex-col gap-small'>
+                  {/* oxlint-disable-next-line typescript/no-deprecated*/}
                   <FeedbackBanner
                     title={String(
                       tPendingTranslation(
@@ -420,23 +422,25 @@ const ExperimentRolloutDialog = ({
                       />
                     </div>
                   ))}
-                  {previewData && previewData.conflicts.length > 0 && (
-                    <FeedbackBanner
-                      title={String(
-                        tPendingTranslation(
-                          'Any existing conditional values on the config will be removed.',
-                          'Warning title shown when rollout has conflicts with existing conditions.',
-                          translationKey(
-                            'Title.RolloutDialog.ConflictWarning',
-                            TranslationNamespace.UniverseConfigAndExperimentation,
+                  {previewData &&
+                    previewData.conflicts.length > 0 && (
+                      // oxlint-disable-next-line typescript/no-deprecated
+                      <FeedbackBanner
+                        title={String(
+                          tPendingTranslation(
+                            'Any existing conditional values on the config will be removed.',
+                            'Warning title shown when rollout has conflicts with existing conditions.',
+                            translationKey(
+                              'Title.RolloutDialog.ConflictWarning',
+                              TranslationNamespace.UniverseConfigAndExperimentation,
+                            ),
                           ),
-                        ),
-                      )}
-                      severity='Warning'
-                      layout='Stacked'
-                      variant='Standard'
-                    />
-                  )}
+                        )}
+                        severity='Warning'
+                        layout='Stacked'
+                        variant='Standard'
+                      />
+                    )}
                   {previewData && (
                     <div className='margin-top-[8px]'>
                       <ConfigDiffTable

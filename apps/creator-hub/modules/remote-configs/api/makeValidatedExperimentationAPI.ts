@@ -75,6 +75,7 @@ import type {
   ValidCalculateExperimentMdeDataResponse,
   InternalV1UniversesUniverseIdExperimentExperimentIdResultsGetRequest,
   ValidGetExperimentResultsResponse,
+  ValidExperimentMetricResult,
   InternalV1UniversesUniverseIdExperimentExperimentIdStatsGetRequest,
   ValidGetExperimentStatsResponse,
   InternalV1UniversesUniverseIdExperimentExperimentIdRolloutpreviewPostRequest,
@@ -398,6 +399,7 @@ export const toValidGetExperimentResponse = (
       learningMetrics: validLearningMetrics,
       durationDays: toValidDurationDays(experiment.duration),
       targetingCriteria: experiment.targetingCriteria,
+      isEarlyHarmAnalysisPeriod: experiment.isEarlyHarmAnalysisPeriod ?? false,
       ...validExperimentBase,
       ...validExperimentConfiguration,
     },
@@ -562,6 +564,7 @@ const toValidExperimentOperationStatusResponse = (
         name: dangerousExperiment.name ?? '',
         createdBy: dangerousExperiment.createdBy ?? '',
         durationDays: 0,
+        isEarlyHarmAnalysisPeriod: false,
         state: ExperimentState.Deleted,
         exposurePercent: 0,
         goalMetrics: [],
@@ -770,15 +773,7 @@ const toValidGetExperimentResultsResponse = (
 
   const validVariantsResults: Map<
     string,
-    Map<
-      ExperimentMetric,
-      {
-        ciUpper: number;
-        ciLower: number;
-        controlMean: number;
-        isStatisticallySignificant: boolean;
-      }
-    >
+    Map<ExperimentMetric, ValidExperimentMetricResult>
   > = new Map();
 
   Object.entries(experimentResults.variantResults).forEach(([variantId, { metricResults }]) => {
@@ -787,42 +782,49 @@ const toValidGetExperimentResultsResponse = (
     }
     validVariantsResults.set(variantId, new Map());
 
-    metricResults.forEach(
-      ({ metric, ciLower, ciUpper, controlMean, isStatisticallySignificant }) => {
-        if (!metric) {
-          handleError(
-            `Metric is required for variant ${variantId} when getting experiment results`,
-          );
-        }
+    metricResults.forEach((rawMetricResult) => {
+      const {
+        metric,
+        ciLower,
+        ciUpper,
+        controlMean,
+        isStatisticallySignificant,
+        isHarmDetected,
+        lift,
+      } = rawMetricResult;
+      if (!metric) {
+        handleError(`Metric is required for variant ${variantId} when getting experiment results`);
+      }
 
-        if (!isValidEnumValue(ExperimentMetric, metric)) {
-          return;
-        }
+      if (!isValidEnumValue(ExperimentMetric, metric)) {
+        return;
+      }
 
-        if (ciUpper === undefined) {
-          handleError(
-            `CI upper is required for variant ${variantId} when getting experiment results`,
-          );
-        }
-        if (ciLower === undefined) {
-          handleError(
-            `CI lower is required for variant ${variantId} when getting experiment results`,
-          );
-        }
-        if (controlMean === undefined) {
-          handleError(
-            `Control mean is required for variant ${variantId} when getting experiment results`,
-          );
-        }
+      if (ciUpper === undefined) {
+        handleError(
+          `CI upper is required for variant ${variantId} when getting experiment results`,
+        );
+      }
+      if (ciLower === undefined) {
+        handleError(
+          `CI lower is required for variant ${variantId} when getting experiment results`,
+        );
+      }
+      if (controlMean === undefined) {
+        handleError(
+          `Control mean is required for variant ${variantId} when getting experiment results`,
+        );
+      }
 
-        validVariantsResults.get(variantId)?.set(metric, {
-          ciUpper,
-          ciLower,
-          controlMean,
-          isStatisticallySignificant: isStatisticallySignificant ?? false,
-        });
-      },
-    );
+      validVariantsResults.get(variantId)?.set(metric, {
+        ciUpper: typeof ciUpper === 'string' ? Number(ciUpper) : ciUpper,
+        ciLower: typeof ciLower === 'string' ? Number(ciLower) : ciLower,
+        controlMean,
+        isStatisticallySignificant: isStatisticallySignificant ?? false,
+        isHarmDetected: isHarmDetected ?? false,
+        ...(lift !== undefined ? { lift } : {}),
+      });
+    });
   });
 
   if (!experimentResults.resultsTime) {

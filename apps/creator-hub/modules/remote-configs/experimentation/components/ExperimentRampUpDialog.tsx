@@ -84,7 +84,7 @@ const ExperimentRampUpDialog = ({
     return experiment.variants[0].variantId;
   }, [experiment]);
 
-  const { experimentVariantsResults } = useExperimentVariantsResults(experimentId);
+  const { experimentVariantsResults } = useExperimentVariantsResults({ experimentId });
 
   const titleLabel = useMemo(() => {
     return (

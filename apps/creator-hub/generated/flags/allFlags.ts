@@ -571,6 +571,26 @@ export const generatedFlags = [
       },
     },
     {
+      flag: creatorAnalyticsFlags.isEhdResultsEnabled,
+      metadata: {
+        namespace: 'creator-analytics',
+        name: 'isEhdResultsEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
+      flag: creatorAnalyticsFlags.isEhdResultsAlwaysFetched,
+      metadata: {
+        namespace: 'creator-analytics',
+        name: 'isEhdResultsAlwaysFetched',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: creatorBusinessFlags.showDevExO18LandingPage,
       metadata: {
         namespace: 'creator-business',

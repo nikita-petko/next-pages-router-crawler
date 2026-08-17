@@ -2,8 +2,10 @@ import type { FC } from 'react';
 import { useCallback, useMemo } from 'react';
 import { startOfToday, subDays } from '@rbx/core';
 import { RAQIV2Dimension, RAQIV2MetricGranularity } from '@rbx/creator-hub-analytics-config';
+import { useFlag } from '@rbx/flags';
 import { useTranslation } from '@rbx/intl';
 import { CircularProgress, Grid } from '@rbx/ui';
+import { isEhdResultsEnabled as isEhdResultsEnabledFlag } from '@generated/flags/creatorAnalytics';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { isNonEmptyArray } from '@modules/charts-generic/types/NonEmptyArray';
@@ -14,13 +16,23 @@ import makeRAQIV2Request from '@modules/experience-analytics-shared/utils/makeRA
 import { EmptyGrid } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { ExperimentMetricToRAQIV2Metric } from '../../api/makeValidatedExperimentationAPI';
-import { ExperimentMetric, ExperimentState } from '../../api/universeExperimentationClientEnums';
+import {
+  ExperimentMetric,
+  ExperimentState,
+  ExperimentResultsSource,
+} from '../../api/universeExperimentationClientEnums';
+import type {
+  ValidExperimentVariantBase,
+  ValidExperimentVariantsResults,
+} from '../../api/validExperimentationTypes';
 import {
   hasExperimentStarted,
+  isExperimentHarmDetected,
   isExperimentRunningAndDurationMet,
   isExperimentStoppable,
 } from '../../utils/experimentProperties';
 import getExperimentTimeSpec from '../../utils/experimentTimeSpec';
+import EarlyHarmBanner from '../components/EarlyHarmBanner';
 import EmptyExperimentResultsCard from '../components/EmptyExperimentResultsCard';
 import ExperimentMetricsResultChart from '../components/ExperimentMetricsResultChart';
 import ExperimentMetricsResultTable from '../components/ExperimentMetricsResultTable';
@@ -33,6 +45,45 @@ import useExperimentVariantsResults from '../hooks/useExperimentVariantsResults'
 
 const emptyArray: never[] = [];
 
+// Build a RAQI response from experimentVariantsResults to bypass RAQI
+const buildResultsBasedResponseForMetric = (
+  metric: ExperimentMetric,
+  experimentVariantsResults: ValidExperimentVariantsResults | undefined,
+  orderedVariants: ReadonlyArray<ValidExperimentVariantBase>,
+) => {
+  const variantResults = experimentVariantsResults?.variantResults;
+  if (!variantResults) {
+    return { response: null };
+  }
+
+  let controlMean: number | undefined;
+  variantResults.forEach((metricResults) => {
+    const forMetric = metricResults.get(metric);
+    if (forMetric && controlMean === undefined) {
+      controlMean = forMetric.controlMean;
+    }
+  });
+
+  if (controlMean === undefined) {
+    return { response: null };
+  }
+
+  const baselineControlMean = controlMean;
+  const values = orderedVariants.map((variant) => {
+    const lift = variantResults.get(variant.variantId)?.get(metric)?.lift;
+    const value =
+      variant.isBaseline || lift === undefined
+        ? baselineControlMean
+        : baselineControlMean * (1 + lift);
+    return {
+      breakdownValue: [{ dimension: RAQIV2Dimension.ExperimentVariant, value: variant.label }],
+      dataPoints: [{ value }],
+    };
+  });
+
+  return { response: { values } };
+};
+
 type ExperimentationResultsTabProps = {
   experimentId: string;
 };
@@ -41,11 +92,30 @@ const ExperimentationResultsTab: FC<ExperimentationResultsTabProps> = ({ experim
   const { translate } = useTranslationWrapper(useTranslation());
   const { client: raqiClient } = useRAQIV2Client(false);
   const resource = useUniverseResource();
-  const { experiment } = useExperiment({
+  const { ready: isEhdResultsFlagReady, value: isEhdResultsFlagValue } =
+    useFlag(isEhdResultsEnabledFlag);
+  const isEhdResultsEnabled = isEhdResultsFlagReady && (isEhdResultsFlagValue ?? false);
+  const { experiment, isDataLoading: isExperimentLoading } = useExperiment({
     experimentId,
   });
+  const isEarlyHarmAnalysisPeriod = isEhdResultsEnabled && !!experiment?.isEarlyHarmAnalysisPeriod;
+
+  // Disable metric requests if EHD period and flag is not ready
+  const areMetricRequestsEnabled = !experiment?.isEarlyHarmAnalysisPeriod || isEhdResultsFlagReady;
   const { experimentVariantsResults, isLoading: isLoadingExperimentVariantsResults } =
-    useExperimentVariantsResults(experimentId);
+    useExperimentVariantsResults({
+      experimentId,
+      resultsSource: isEarlyHarmAnalysisPeriod
+        ? ExperimentResultsSource.Ehd
+        : ExperimentResultsSource.Batch,
+      fallbackResultsSource: isEhdResultsEnabled ? ExperimentResultsSource.Ehd : undefined,
+      disabled: isExperimentLoading || experiment == null || !areMetricRequestsEnabled,
+    });
+
+  const isHarmDetected = useMemo(
+    () => isExperimentHarmDetected(experimentVariantsResults),
+    [experimentVariantsResults],
+  );
 
   const { orderedVariants, orederedGoalMetrics, orederedLearningMetrics, timeSpec } =
     useMemo(() => {
@@ -75,6 +145,17 @@ const ExperimentationResultsTab: FC<ExperimentationResultsTabProps> = ({ experim
     async (metrics: ExperimentMetric[]) => {
       const responses = await Promise.all(
         metrics.map(async (metric) => {
+          if (isEarlyHarmAnalysisPeriod) {
+            return {
+              key: metric,
+              response: buildResultsBasedResponseForMetric(
+                metric,
+                experimentVariantsResults,
+                orderedVariants,
+              ),
+            };
+          }
+
           const response = await makeRAQIV2Request(
             {
               resource,
@@ -129,8 +210,11 @@ const ExperimentationResultsTab: FC<ExperimentationResultsTabProps> = ({ experim
     },
     [
       experimentId,
+      experimentVariantsResults,
       isD1RetentionLikelyToBeBlank,
       isD7RetentionLikelyToBeBlank,
+      isEarlyHarmAnalysisPeriod,
+      orderedVariants,
       raqiClient,
       resource,
       timeSpec,
@@ -140,11 +224,13 @@ const ExperimentationResultsTab: FC<ExperimentationResultsTabProps> = ({ experim
   const { data: responsesByGoalMetric, ...goalMetricState } = useMappedApiRequest(
     orederedGoalMetrics,
     makeRequestsForMetrics,
+    areMetricRequestsEnabled,
   );
 
   const { data: responsesByLearningMetric, ...learningMetricState } = useMappedApiRequest(
     orederedLearningMetrics,
     makeRequestsForMetrics,
+    areMetricRequestsEnabled,
   );
 
   const availableMetricOptions: ExperimentMetric[] = useMemo(() => {
@@ -176,25 +262,43 @@ const ExperimentationResultsTab: FC<ExperimentationResultsTabProps> = ({ experim
   }, [experiment, experimentId, translate]);
 
   const { isSRMDetected, isLoading: isSRMLoading } = useExperimentSRMDetected(experimentId);
+
   const banner = useMemo(() => {
     if (isSRMDetected) {
       return <SRMBanner />;
     }
 
-    if (experiment) {
-      return (
-        <ExperimentSignificanceNotificationArea
-          experiment={experiment}
-          action={actionInNotificationArea}
-          experimentVariantsResults={experimentVariantsResults}
-        />
-      );
+    if (!experiment) {
+      return null;
     }
 
-    return null;
-  }, [actionInNotificationArea, experiment, experimentVariantsResults, isSRMDetected]);
+    return (
+      <>
+        {isEhdResultsEnabled ? (
+          <EarlyHarmBanner
+            experiment={experiment}
+            experimentVariantsResults={experimentVariantsResults}
+            isHarmDetected={isHarmDetected}
+          />
+        ) : (
+          <ExperimentSignificanceNotificationArea
+            experiment={experiment}
+            action={actionInNotificationArea}
+            experimentVariantsResults={experimentVariantsResults}
+          />
+        )}
+      </>
+    );
+  }, [
+    actionInNotificationArea,
+    experiment,
+    experimentVariantsResults,
+    isSRMDetected,
+    isEhdResultsEnabled,
+    isHarmDetected,
+  ]);
 
-  if (isLoadingExperimentVariantsResults || isSRMLoading) {
+  if (isExperimentLoading || isLoadingExperimentVariantsResults || isSRMLoading) {
     return (
       <EmptyGrid>
         <CircularProgress />
@@ -228,6 +332,7 @@ const ExperimentationResultsTab: FC<ExperimentationResultsTabProps> = ({ experim
         experimentVariantsResults={experimentVariantsResults}
         showResultsUpdatedAt={!isSRMDetected}
         isSRMDetected={isSRMDetected}
+        isEarlyHarmAnalysisPeriod={isEarlyHarmAnalysisPeriod}
       />
       <ExperimentMetricsResultTable
         orderedExperimentVariants={orderedVariants}
@@ -243,6 +348,7 @@ const ExperimentationResultsTab: FC<ExperimentationResultsTabProps> = ({ experim
         raqiResponseByMetric={responsesByLearningMetric}
         experimentVariantsResults={experimentVariantsResults}
         isSRMDetected={isSRMDetected}
+        isEarlyHarmAnalysisPeriod={isEarlyHarmAnalysisPeriod}
       />
       {isNonEmptyArray(availableMetricOptions) && (
         <ExperimentMetricsResultChart

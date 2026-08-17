@@ -1,9 +1,10 @@
-import type { FC } from 'react';
+import type { CSSProperties, FC } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { dateTimeFormatter } from '@rbx/core';
 import { RAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
 import { useTranslation } from '@rbx/intl';
-import { Grid, InfoOutlinedIcon, makeStyles, Tooltip, Typography } from '@rbx/ui';
+import { Grid, InfoOutlinedIcon, makeStyles, Tooltip, Typography, useTheme } from '@rbx/ui';
+import type { TTheme } from '@rbx/ui';
 import type { TranslationKey } from '@modules/analytics-translations/types';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
@@ -11,8 +12,10 @@ import {
   formatNumberWithSpec,
   NumberContext,
 } from '@modules/charts-generic/charts/numberFormatters';
+import { getTableCellBackgroundRgbTuple } from '@modules/charts-generic/charts/options';
 import type { GenericChartState } from '@modules/charts-generic/charts/types/ChartTypes';
 import useLocale from '@modules/charts-generic/context/useLocale';
+import formatCellContent from '@modules/charts-generic/tables/formatCellContent';
 import GenericTableV2 from '@modules/charts-generic/tables/GenericTableV2';
 import {
   CellBackgroundType,
@@ -36,6 +39,10 @@ import type {
   ValidExperimentConfiguration,
   ValidExperimentVariantsResults,
 } from '../../api/validExperimentationTypes';
+import {
+  DEFAULT_EARLY_HARM_DURATION_HRS,
+  DEFAULT_EARLY_HARM_UPDATE_FREQUENCY_MINS,
+} from '../constants/earlyHarmAnalysisDefaults';
 import ConfidenceIntervalDialog from './ConfidenceIntervalDialog';
 import type {
   CellDataWithConfidenceInterval,
@@ -51,11 +58,36 @@ const tableConfig: TableConfig<string> = {
 const MetricColumnKey = 'metric';
 const ActionColumnKey = 'action';
 
+const getStatSigCellBackground = (color: TableCellBackgroundColor, theme: TTheme): string => {
+  switch (color) {
+    case TableCellBackgroundColor.Positive:
+      return theme.palette.components.alert.activeFill;
+    case TableCellBackgroundColor.Negative:
+      return theme.palette.components.alert.importantFill;
+    case TableCellBackgroundColor.Progression:
+    case TableCellBackgroundColor.Highlight:
+      return `rgba(${getTableCellBackgroundRgbTuple(color, theme)}, 0.16)`;
+    default: {
+      return color;
+    }
+  }
+};
+
+const getStatSigCellOverrideStyle = (
+  color: TableCellBackgroundColor,
+  theme: TTheme,
+): CSSProperties => ({
+  background: getStatSigCellBackground(color, theme),
+});
+
 const useStyles = makeStyles()(() => ({
   tooltipIcon: {
     verticalAlign: 'middle',
     marginBottom: '4px',
     marginLeft: '4px',
+  },
+  mutedCell: {
+    opacity: 0.5,
   },
 }));
 
@@ -70,6 +102,7 @@ type ExperimentMetricsResultTableProps = {
   metricsSortOrder?: Array<ExperimentMetric>;
   showResultsUpdatedAt?: boolean;
   isSRMDetected?: boolean;
+  isEarlyHarmAnalysisPeriod?: boolean;
 };
 
 const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
@@ -82,10 +115,12 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
   metricsSortOrder,
   showResultsUpdatedAt,
   isSRMDetected,
+  isEarlyHarmAnalysisPeriod = false,
 }) => {
   const {
-    classes: { tooltipIcon },
+    classes: { tooltipIcon, mutedCell },
   } = useStyles();
+  const theme = useTheme();
   const locale = useLocale();
   const { translate } = useTranslationWrapper(useTranslation());
 
@@ -155,7 +190,7 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
           TranslationNamespace.UniverseConfigAndExperimentation,
         ),
         titleOverride: undefined,
-        columnType: ColumnType.Text,
+        columnType: isEarlyHarmAnalysisPeriod ? ColumnType.TextWithTooltip : ColumnType.Text,
         endAdormentColumnKeyInCompactView: ActionColumnKey,
       },
       ...orderedExperimentVariants.map(({ variantId, label }) => ({
@@ -166,7 +201,7 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
         ),
         // use titleOverride if column is a variant
         titleOverride: label,
-        columnType: ColumnType.Number,
+        columnType: isEarlyHarmAnalysisPeriod ? ColumnType.Other : ColumnType.Number,
         endAdormentColumnKeyInCompactView: undefined,
       })),
       {
@@ -198,7 +233,7 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
         };
       },
     );
-  }, [orderedExperimentVariants]);
+  }, [orderedExperimentVariants, isEarlyHarmAnalysisPeriod]);
 
   const updateCellValue = useCallback(
     ({
@@ -360,6 +395,49 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
         .map(([metric, variantCellData]) => {
           const raqiMetric = ExperimentMetricToRAQIV2Metric[metric];
           const { isPositiveGood } = getAnalyticsMetricDisplayConfig(raqiMetric);
+          const hasResultsApiMetric = Array.from(
+            experimentVariantsResults?.variantResults.values() ?? [],
+          ).some((metricResults) => metricResults.has(metric));
+          const isUnavailableEarlyHarmMetric = isEarlyHarmAnalysisPeriod && !hasResultsApiMetric;
+
+          const metricTitle = translate(
+            translationKey(
+              `Title.Chart.${raqiMetric}`,
+              TranslationNamespace.UniverseConfigAndExperimentation,
+            ),
+          );
+
+          if (isUnavailableEarlyHarmMetric) {
+            const unavailableEarlyHarmCellProps = {
+              cellOverrideClassName: mutedCell,
+              disableRowHover: true,
+            };
+
+            const row = new Map<string, CellDataType>(
+              Object.keys(variantCellData).map((variantId) => [
+                variantId,
+                {
+                  type: ColumnType.Other,
+                  value: '—',
+                  ...unavailableEarlyHarmCellProps,
+                },
+              ]),
+            );
+            row.set(MetricColumnKey, {
+              type: ColumnType.TextWithTooltip,
+              text: metricTitle,
+              tooltip: translate(
+                translationKey(
+                  'Description.ExperimentResultTable.MetricsUnavailable',
+                  TranslationNamespace.UniverseConfigAndExperimentation,
+                ),
+                { durationHrs: String(DEFAULT_EARLY_HARM_DURATION_HRS) },
+              ),
+              ...unavailableEarlyHarmCellProps,
+            });
+            return row;
+          }
+
           const baselineCellData = variantCellData[baselineVariant.variantId];
           const baselineValue =
             baselineCellData.type === ColumnType.Number ? baselineCellData.value : Number.NaN;
@@ -398,6 +476,9 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
                   ...cellData,
                   comparisonChipSpec,
                   cellBackground,
+                  cellOverrideStyle: cellBackground
+                    ? getStatSigCellOverrideStyle(cellBackground.color, theme)
+                    : undefined,
                 };
                 return [variantId, variantCellDataWithComparisonSpec] as const;
               }
@@ -405,15 +486,53 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
             },
           );
 
-          const row = new Map(cellDataWithComparisonSpec).set(MetricColumnKey, {
-            type: ColumnType.Text,
-            value: translate(
-              translationKey(
-                `Title.Chart.${raqiMetric}`,
-                TranslationNamespace.UniverseConfigAndExperimentation,
-              ),
-            ),
+          const row = new Map<string, CellDataType>();
+          cellDataWithComparisonSpec.forEach(([variantId, cellData]) => {
+            if (isEarlyHarmAnalysisPeriod && cellData.type === ColumnType.Number) {
+              row.set(variantId, {
+                type: ColumnType.Other,
+                value: formatCellContent(
+                  cellData,
+                  {
+                    columnKey: '',
+                    columnType: ColumnType.Number,
+                    titleKey: translationKey(
+                      'Title.Column.Metric',
+                      TranslationNamespace.UniverseConfigAndExperimentation,
+                    ),
+                  },
+                  locale,
+                  translate,
+                ),
+                cellOverrideStyle: cellData.cellOverrideStyle,
+              });
+              return;
+            }
+            row.set(variantId, cellData);
           });
+
+          row.set(
+            MetricColumnKey,
+            isEarlyHarmAnalysisPeriod
+              ? {
+                  type: ColumnType.TextWithTooltip,
+                  text: metricTitle,
+                  tooltip: translate(
+                    translationKey(
+                      'Description.ExperimentResultTable.EarlyHarmMetrics',
+                      TranslationNamespace.UniverseConfigAndExperimentation,
+                    ),
+                    {
+                      updateFrequencyMins: String(DEFAULT_EARLY_HARM_UPDATE_FREQUENCY_MINS),
+                      durationHrs: String(DEFAULT_EARLY_HARM_DURATION_HRS),
+                    },
+                  ),
+                }
+              : {
+                  type: ColumnType.Text,
+                  value: metricTitle,
+                },
+          );
 
           if (!isSRMDetected) {
             // only show confidence interval button if srm is NOT detected
@@ -446,11 +565,15 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
     [
       baselineVariant,
       experimentVariantsResults,
+      isEarlyHarmAnalysisPeriod,
       isSRMDetected,
+      locale,
       metricsSortOrder,
+      mutedCell,
       onViewConfidenceIntervalActionInvoked,
       orderedExperimentVariants,
       shouldShowComparisonChip,
+      theme,
       translate,
       updateCellValue,
     ],
@@ -460,6 +583,17 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
     () => adaptToRows(raqiResponseByMetric),
     [adaptToRows, raqiResponseByMetric],
   );
+
+  const getRowKey = useCallback((rowInfo: Map<string, CellDataType>, rowIndex: number) => {
+    const metricCell = rowInfo.get(MetricColumnKey);
+    if (metricCell?.type === ColumnType.TextWithTooltip) {
+      return metricCell.text;
+    }
+    if (metricCell?.type === ColumnType.Text) {
+      return metricCell.value;
+    }
+    return String(rowIndex);
+  }, []);
 
   return (
     <Grid container item>
@@ -474,25 +608,43 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
         </div>
         {experimentVariantsResults && showResultsUpdatedAt && (
           <Typography variant='body2' component='div' alignContent='center'>
-            {translate(
-              translationKey(
-                'Description.ExperimentResultTable.ResultsUpdatedAt',
-                TranslationNamespace.UniverseConfigAndExperimentation,
-              ),
-              {
-                time: dateTimeFormatter(locale).getCustomDateTime(
-                  experimentVariantsResults.resultsTime,
+            {isEarlyHarmAnalysisPeriod
+              ? translate(
+                  translationKey(
+                    'Description.ExperimentResultTable.MetricsUpdatedAt',
+                    TranslationNamespace.UniverseConfigAndExperimentation,
+                  ),
                   {
-                    month: 'short',
-                    day: 'numeric',
-                    // resultsTime is a UTC instant and the chart buckets metrics
-                    // by UTC reporting day; format in UTC so the "updated on" date
-                    // matches the chart instead of shifting a day in local time.
-                    timeZone: 'UTC',
+                    time: dateTimeFormatter(locale).getCustomDateTime(
+                      experimentVariantsResults.resultsTime,
+                      {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      },
+                    ),
                   },
-                ),
-              },
-            )}
+                )
+              : translate(
+                  translationKey(
+                    'Description.ExperimentResultTable.ResultsUpdatedAt',
+                    TranslationNamespace.UniverseConfigAndExperimentation,
+                  ),
+                  {
+                    time: dateTimeFormatter(locale).getCustomDateTime(
+                      experimentVariantsResults.resultsTime,
+                      {
+                        month: 'short',
+                        day: 'numeric',
+                        // resultsTime is a UTC instant and the chart buckets metrics
+                        // by UTC reporting day; format in UTC so the "updated on" date
+                        // matches the chart instead of shifting a day in local time.
+                        timeZone: 'UTC',
+                      },
+                    ),
+                  },
+                )}
           </Typography>
         )}
       </Grid>
@@ -501,11 +653,13 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
         rowData={rowsData}
         columnConfigs={columnConfigs}
         tableConfig={tableConfig}
+        getRowKey={getRowKey}
       />
       <ConfidenceIntervalDialog
         open={showConfidenceIntervalDialog}
         {...confidenceIntervalDialogProps}
         onClose={onCloseConfidenceIntervalDialog}
+        isEarlyHarmAnalysisPeriod={isEarlyHarmAnalysisPeriod}
       />
     </Grid>
   );

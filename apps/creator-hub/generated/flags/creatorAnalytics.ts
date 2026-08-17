@@ -172,3 +172,13 @@ export const isClientSessionsEnabled = defineFlag({
     name: 'isClientSessionsEnabled',
     defaultValue: false,
   });
+export const isEhdResultsEnabled = defineFlag({
+    namespace: 'creator-analytics',
+    name: 'isEhdResultsEnabled',
+    defaultValue: false,
+  });
+export const isEhdResultsAlwaysFetched = defineFlag({
+    namespace: 'creator-analytics',
+    name: 'isEhdResultsAlwaysFetched',
+    defaultValue: false,
+  });

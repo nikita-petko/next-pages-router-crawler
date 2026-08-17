@@ -9,13 +9,11 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  useTheme,
 } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import useLocale from '@modules/charts-generic/context/useLocale';
 import formatCellContent from '@modules/charts-generic/tables/formatCellContent';
-import { formatCellBackgroundStyle } from '@modules/charts-generic/tables/formatCellStyles';
 import {
   ColumnType,
   type TableColumnConfig,
@@ -64,14 +62,22 @@ const useStyles = makeStyles()((theme) => ({
   },
   confidenceIntervalCell: {
     width: '80%',
+    minWidth: '300px',
     position: 'relative',
     paddingLeft: '48px',
     paddingRight: '48px',
   },
+  confidenceIntervalCellZeroIndicatorTrack: {
+    position: 'absolute',
+    top: '0',
+    bottom: '0',
+    left: '48px',
+    right: '48px',
+    pointerEvents: 'none',
+  },
   confidenceIntervalCellZeroIndicator: {
     position: 'absolute',
     top: '0',
-    left: '50%',
     height: '100%',
     borderLeft: `1px dotted ${theme.palette.content.disabled}`,
   },
@@ -87,44 +93,90 @@ const ConfidenceIntervalTable: FC<ConfidenceIntervalTableProps> = ({
       confidenceIntervalCell,
       tableHeaderRow,
       confidenceIntervalCellZeroIndicator,
+      confidenceIntervalCellZeroIndicatorTrack,
     },
     cx,
   } = useStyles();
   const { translate } = useTranslationWrapper(useTranslation());
   const locale = useLocale();
-  const theme = useTheme();
 
   const marks = useMemo(() => {
-    let markBoundary = 0;
-    orderedCellDataWithConfidenceInterval.forEach(([, { confidenceInterval }]) => {
+    let globalMax = 0;
+    let globalMin = 0;
+
+    orderedCellDataWithConfidenceInterval.forEach(([, { confidenceInterval, cellData }]) => {
       const [localMin, localMax] = confidenceInterval;
-      markBoundary = Math.max(markBoundary, Math.abs(localMin), Math.abs(localMax));
+
+      if (Number.isFinite(localMin)) {
+        if (localMin < 0) {
+          globalMin = Math.max(globalMin, -localMin);
+        } else {
+          globalMax = Math.max(globalMax, localMin);
+        }
+      }
+      if (Number.isFinite(localMax)) {
+        if (localMax > 0) {
+          globalMax = Math.max(globalMax, localMax);
+        } else {
+          globalMin = Math.max(globalMin, -localMax);
+        }
+      }
+
+      // Include the point-estimate lift so its marker stays inside the visible axis.
+      if (cellData.comparisonChipSpec) {
+        const liftMagnitude = cellData.comparisonChipSpec.percentage;
+        const liftSigned = cellData.comparisonChipSpec.isUp ? liftMagnitude : -liftMagnitude;
+        if (liftSigned < 0) {
+          globalMin = Math.max(globalMin, liftMagnitude);
+        } else {
+          globalMax = Math.max(globalMax, liftMagnitude);
+        }
+      }
     });
 
     const maxNumberOfSteps = 2;
-    const stepSize = Math.ceil((markBoundary * 100) / maxNumberOfSteps) / 100;
+    const stepSize = Math.ceil((Math.max(globalMax, globalMin) * 100) / maxNumberOfSteps) / 100;
     const results = [0];
-    while (results[results.length - 1] <= markBoundary) {
-      results.push(results[results.length - 1] + stepSize);
-    }
-    while (results[0] >= -markBoundary) {
-      results.unshift(results[0] - stepSize);
+    if (stepSize > 0) {
+      while (results[results.length - 1] <= globalMax) {
+        results.push(results[results.length - 1] + stepSize);
+      }
+      while (results[0] >= -globalMin) {
+        results.unshift(results[0] - stepSize);
+      }
     }
 
     return results;
   }, [orderedCellDataWithConfidenceInterval]);
 
   const rows = useMemo(() => {
+    const minMark = marks[0];
+    const maxMark = marks[marks.length - 1];
+
+    // Position of 0 along the slider axis
+    const zeroAxisAlpha = -minMark / (maxMark - minMark);
+
     return orderedCellDataWithConfidenceInterval.map(
       ([variantId, { cellData, variantName, confidenceInterval }]) => {
         let confidenceIntervalContent: React.ReactNode | null = null;
+
+        // Clamp non-finite CI bounds
+        const [rawMin, rawMax] = confidenceInterval;
+        const isMinUnbounded = !Number.isFinite(rawMin);
+        const isMaxUnbounded = !Number.isFinite(rawMax);
+        const clampedInterval: [number, number] = [
+          isMinUnbounded ? minMark : rawMin,
+          isMaxUnbounded ? maxMark : rawMax,
+        ];
 
         if (!cellData.comparisonChipSpec) {
           confidenceIntervalContent = Number.isNaN(cellData.value) ? null : (
             <ConfidenceIntervalCellContent
               marks={marks}
               metricValueLiftPercentage={0}
-              interval={confidenceInterval}
+              interval={clampedInterval}
+              isMinUnbounded={isMinUnbounded}
+              isMaxUnbounded={isMaxUnbounded}
             />
           );
         } else {
@@ -136,7 +188,9 @@ const ConfidenceIntervalTable: FC<ConfidenceIntervalTableProps> = ({
             <ConfidenceIntervalCellContent
               marks={marks}
               metricValueLiftPercentage={metricValueLiftPercentage}
-              interval={confidenceInterval}
+              interval={clampedInterval}
+              isMinUnbounded={isMinUnbounded}
+              isMaxUnbounded={isMaxUnbounded}
             />
           );
         }
@@ -146,7 +200,7 @@ const ConfidenceIntervalTable: FC<ConfidenceIntervalTableProps> = ({
             <TableCell data-testid={`variant-name-${variantId}`}>{variantName}</TableCell>
             <TableCell
               data-testid={`metric-value-${variantId}`}
-              style={{ ...formatCellBackgroundStyle(cellData, MetricColumnConfig, theme) }}
+              style={cellData.cellOverrideStyle}
               align='right'>
               {formatCellContent(cellData, MetricColumnConfig, locale, translate)}
             </TableCell>
@@ -155,7 +209,12 @@ const ConfidenceIntervalTable: FC<ConfidenceIntervalTableProps> = ({
               data-testid={`confidence-interval-${variantId}`}>
               {confidenceIntervalContent}
               {/** a dotted vertical line indicating where 0 percent is */}
-              <span className={confidenceIntervalCellZeroIndicator} />
+              <span className={confidenceIntervalCellZeroIndicatorTrack}>
+                <span
+                  className={confidenceIntervalCellZeroIndicator}
+                  style={{ left: `${zeroAxisAlpha * 100}%` }}
+                />
+              </span>
             </TableCell>
           </TableRow>
         );
@@ -163,11 +222,11 @@ const ConfidenceIntervalTable: FC<ConfidenceIntervalTableProps> = ({
     );
   }, [
     orderedCellDataWithConfidenceInterval,
-    theme,
     locale,
     translate,
     confidenceIntervalCell,
     confidenceIntervalCellZeroIndicator,
+    confidenceIntervalCellZeroIndicatorTrack,
     marks,
   ]);
 

@@ -1,7 +1,9 @@
+import { useCallback, useMemo } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useMemo } from 'react';
 import { StatusCodes } from '@rbx/core';
+import { useFlag } from '@rbx/flags';
+import { isEhdResultsAlwaysFetched as isEhdResultsAlwaysFetchedFlag } from '@generated/flags/creatorAnalytics';
 import type { GenericChartState } from '@modules/charts-generic/charts/types/ChartTypes';
 import { getResponseFromError } from '@modules/clients/utils';
 import { useUniverseResource } from '@modules/experience-analytics-shared/hooks/useChartResourceProvider';
@@ -58,15 +60,25 @@ const useExperiment = ({
     refetchOnMount,
   });
 
+  const { ready: isEhdResultsAlwaysFetchedFlagReady, value: isEhdResultsAlwaysFetchedFlagValue } =
+    useFlag(isEhdResultsAlwaysFetchedFlag);
+  const shouldForceEarlyHarmAnalysisPeriod =
+    isEhdResultsAlwaysFetchedFlagReady && isEhdResultsAlwaysFetchedFlagValue;
+
   return useMemo(() => {
+    const experiment =
+      data && shouldForceEarlyHarmAnalysisPeriod
+        ? { ...data, isEarlyHarmAnalysisPeriod: true }
+        : data;
+
     return {
-      experiment: data,
+      experiment,
       isDataLoading: isPending,
       isResponseFailed: !!error,
       isUserForbidden: getResponseFromError(error)?.status === StatusCodes.FORBIDDEN,
       error,
     };
-  }, [data, error, isPending]);
+  }, [data, error, isPending, shouldForceEarlyHarmAnalysisPeriod]);
 };
 
 export default useExperiment;

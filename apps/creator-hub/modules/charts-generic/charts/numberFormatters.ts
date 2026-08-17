@@ -38,6 +38,8 @@ const fallbackNoDataSeriesValueConfig: Record<FallbackValue, string | number> = 
   [FallbackValue.Zero]: 0,
 };
 
+export const InfinityCharacter = '∞';
+
 export const getFallbackNoDataSeriesValue = (noDataFallback: FallbackValue) => {
   return fallbackNoDataSeriesValueConfig[noDataFallback];
 };

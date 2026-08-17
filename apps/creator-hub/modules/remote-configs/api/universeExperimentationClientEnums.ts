@@ -3,6 +3,11 @@ export enum ExperimentProductType {
   Matchmaking = 'EXPERIMENT_PRODUCT_TYPE_MATCHMAKING',
 }
 
+export enum ExperimentResultsSource {
+  Batch = 'EXPERIMENT_RESULTS_SOURCE_BATCH',
+  Ehd = 'EXPERIMENT_RESULTS_SOURCE_EHD',
+}
+
 export enum ExperimentMetric {
   AverageSessionTime = 'UNIVERSE_EXPERIMENT_METRIC_AVERAGE_SESSION_TIME',
   PlaytimePerUser = 'UNIVERSE_EXPERIMENT_METRIC_PLAYTIME_PER_USER',

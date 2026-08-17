@@ -60,8 +60,11 @@ type BaseCellType = {
   /** Skip rendering this cell, usually because an adjacent cell spans across it. */
   skipCell?: boolean;
   colSpan?: number;
-  cellOverrideClassName?: string;
   cellOverrideStyle?: React.CSSProperties;
+  /** Class names applied to the cell element, overriding the computed background/text styles. */
+  cellOverrideClassName?: string;
+  /** When true, row hover background is not applied for the row containing this cell. */
+  disableRowHover?: boolean;
 };
 
 type TextCellType = BaseCellType & {

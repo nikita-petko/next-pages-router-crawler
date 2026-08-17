@@ -179,6 +179,7 @@ const GenericTableV2 = <
     [columnConfigs, defaultActiveSortColumnKey],
   );
   useEffect(() => {
+    // oxlint-disable-next-line react/react-compiler
     setOrder(defaultActiveSortDirection ?? undefined);
     setOrderBy(defaultActiveSortColumnKey);
   }, [defaultActiveSortColumnKey, defaultActiveSortDirection]);
@@ -362,18 +363,20 @@ const GenericTableV2 = <
         expansionToggleColumnIndex = keyedIndex ?? lastVisibleColIndex;
       }
 
-      const isGroupHovered = !!tableConfig?.hover && hoveredParentKey === rowKey;
-      const handleGroupMouseEnter = tableConfig?.hover
-        ? () => setHoveredParentKey(rowKey)
-        : undefined;
-      const handleGroupMouseLeave = tableConfig?.hover
-        ? () => setHoveredParentKey((prev) => (prev === rowKey ? null : prev))
-        : undefined;
+      const disableRowHover = Array.from(rowInfo.values()).some((cell) => cell?.disableRowHover);
+      const isGroupHovered =
+        !!tableConfig?.hover && !disableRowHover && hoveredParentKey === rowKey;
+      const handleGroupMouseEnter =
+        tableConfig?.hover && !disableRowHover ? () => setHoveredParentKey(rowKey) : undefined;
+      const handleGroupMouseLeave =
+        tableConfig?.hover && !disableRowHover
+          ? () => setHoveredParentKey((prev) => (prev === rowKey ? null : prev))
+          : undefined;
 
       const parentRow = (
         <GenericTableRow
           key={rowKey}
-          hover={!!tableConfig?.hover}
+          hover={!!tableConfig?.hover && !disableRowHover}
           selected={isRowSelected}
           onMouseEnter={handleGroupMouseEnter}
           onMouseLeave={handleGroupMouseLeave}
@@ -427,6 +430,7 @@ const GenericTableV2 = <
               formattedContent
             );
             const toggleContent =
+              // oxlint-disable-next-line react/react-compiler
               colIndex === expansionToggleColumnIndex && showExpansionToggle ? (
                 <IconButton
                   aria-label={isRowExpanded ? 'Collapse row' : 'Expand row'}

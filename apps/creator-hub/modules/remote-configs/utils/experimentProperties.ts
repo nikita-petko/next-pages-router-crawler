@@ -1,9 +1,11 @@
 import { ExperimentProductType, ExperimentState } from '../api/universeExperimentationClientEnums';
+import type { ExperimentMetric } from '../api/universeExperimentationClientEnums';
 import type {
   ValidExperimentVariantsResults,
   ValidExperiment,
   ValidExperimentConfiguration,
   ValidExperimentStateInfo,
+  ValidExperimentMetricResult,
 } from '../api/validExperimentationTypes';
 
 export const isExperimentEditable = (experimentState: ExperimentState) => {
@@ -110,6 +112,80 @@ export const isExperimentStatsSig = ({
         experimentVariantsResults.variantResults.get(variant.variantId)?.get(metric)
           ?.isStatisticallySignificant === true,
     ),
+  );
+};
+
+export type ExperimentHarmMetricResult = {
+  variantId: string;
+  metric: ExperimentMetric;
+  lift: number;
+};
+
+export const getExperimentHarmMetricResults = (
+  experimentVariantsResults?: ValidExperimentVariantsResults,
+): ExperimentHarmMetricResult[] => {
+  if (!experimentVariantsResults) {
+    return [];
+  }
+
+  const harmMetricResults: ExperimentHarmMetricResult[] = [];
+
+  experimentVariantsResults.variantResults.forEach((metricResults, variantId) => {
+    metricResults.forEach((result: ValidExperimentMetricResult, metric) => {
+      if (!result.isHarmDetected || result.lift === undefined) {
+        return;
+      }
+
+      harmMetricResults.push({ variantId, metric, lift: result.lift });
+    });
+  });
+
+  return harmMetricResults;
+};
+
+export const getMostHarmfulExperimentMetric = (
+  harmMetricResults: ExperimentHarmMetricResult[],
+): ExperimentHarmMetricResult | undefined => {
+  if (harmMetricResults.length === 0) {
+    return undefined;
+  }
+
+  return harmMetricResults.reduce((mostHarmful, current) =>
+    Math.abs(current.lift) > Math.abs(mostHarmful.lift) ? current : mostHarmful,
+  );
+};
+
+export const getUniqueHarmfulExperimentMetricsCount = (
+  harmMetricResults: ExperimentHarmMetricResult[],
+): number => {
+  return new Set(harmMetricResults.map(({ metric }) => metric)).size;
+};
+
+export const getExperimentHarmSummary = (
+  experimentVariantsResults?: ValidExperimentVariantsResults,
+): {
+  harmMetricResults: ExperimentHarmMetricResult[];
+  harmingMetricsCount: number;
+  mostHarmfulMetric?: ExperimentHarmMetricResult;
+} => {
+  const harmMetricResults = getExperimentHarmMetricResults(experimentVariantsResults);
+
+  return {
+    harmMetricResults,
+    harmingMetricsCount: getUniqueHarmfulExperimentMetricsCount(harmMetricResults),
+    mostHarmfulMetric: getMostHarmfulExperimentMetric(harmMetricResults),
+  };
+};
+
+export const isExperimentHarmDetected = (
+  experimentVariantsResults?: ValidExperimentVariantsResults,
+): boolean => {
+  if (!experimentVariantsResults) {
+    return false;
+  }
+
+  return Array.from(experimentVariantsResults.variantResults.values()).some((metricResults) =>
+    Array.from(metricResults.values()).some((result) => result.isHarmDetected),
   );
 };
 
