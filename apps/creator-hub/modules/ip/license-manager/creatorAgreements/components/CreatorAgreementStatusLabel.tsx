@@ -6,8 +6,10 @@ import {
   AgreementTransition,
   ChangeRequestSubstatusType,
 } from '@rbx/client-content-licensing-api/v1';
+import { useFlag } from '@rbx/flags';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import { AccessTimeIcon, CheckCircleOutlineIcon, InfoOutlinedIcon } from '@rbx/ui';
+import { isImageAttachmentEnabledInLicenseApplication } from '@generated/flags/contentLicensing';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import type { variants } from '../../../components/StatusLabel';
 import StatusLabel from '../../../components/StatusLabel';
@@ -153,6 +155,9 @@ const CreatorAgreementStatusLabel: React.FC<Props> = ({ agreement, isCompact = f
   const { translate } = useTranslation();
   const { settings } = useSettings();
   const { enableIpPlatformConditionalOffers } = settings;
+  const { ready: isImageAttachmentFlagReady, value: isImageAttachmentEnabled } = useFlag(
+    isImageAttachmentEnabledInLicenseApplication,
+  );
 
   if (!agreement || !agreement.status) {
     return null;
@@ -216,6 +221,14 @@ const CreatorAgreementStatusLabel: React.FC<Props> = ({ agreement, isCompact = f
   if (status === AgreementStatus.Terminated && ipRemovalAttestation?.ipRemovalAttestationStatus) {
     content = creatorActionRequired;
     date = ipRemovalAttestation.expiresAtTime;
+  }
+  if (
+    isImageAttachmentFlagReady &&
+    isImageAttachmentEnabled &&
+    status === AgreementStatus.Draft &&
+    activityLog?.[0]?.transition === AgreementTransition.PitchImageRejected
+  ) {
+    content = creatorActionRequired;
   }
 
   let text = translate(content.text);

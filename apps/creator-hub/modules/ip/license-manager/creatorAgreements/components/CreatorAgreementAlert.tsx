@@ -7,9 +7,11 @@ import {
   IpRemovalAttestationStatus,
   LicenseDurationType,
 } from '@rbx/client-content-licensing-api/v1';
+import { useFlag } from '@rbx/flags';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import { useLocalStorage } from '@rbx/react-utilities';
 import { Alert, AlertTitle, Button, makeStyles } from '@rbx/ui';
+import { isImageAttachmentEnabledInLicenseApplication } from '@generated/flags/contentLicensing';
 import { isNonEmptyString } from '@modules/miscellaneous/utils';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import AgreementDetailsTabs from '../../agreements/enums/AgreementDetailsTabs';
@@ -29,17 +31,18 @@ const useStyles = makeStyles()(() => ({
   fullWidth: {
     width: '100%',
   },
-  /** Keeps action controls from shrinking below their content on narrow viewports */
+  /** Keeps action controls from shrinking and centers them vertically with the alert body */
   alertAction: {
     flex: '0 0 fit-content',
     alignItems: 'center',
+    alignSelf: 'center',
+    paddingTop: 0,
   },
   buttonContainer: {
     display: 'flex',
     flexWrap: 'nowrap',
     gap: '8px',
     alignSelf: 'center',
-    marginTop: '-4px',
   },
   actionButtonLabel: {
     whiteSpace: 'nowrap',
@@ -69,6 +72,7 @@ export enum AlertType {
   IpRemovalAttestationInitiated = 'IpRemovalAttestationInitiated',
   IpRemovalAttestationCompleted = 'IpRemovalAttestationCompleted',
   IpRemovalAttestationExpired = 'IpRemovalAttestationExpired',
+  PitchImageRejected = 'PitchImageRejected',
 }
 
 interface Content {
@@ -178,12 +182,17 @@ const statusToContent: { [key in AlertType]: Content } = {
     headerText: 'Heading.GenericAgreementExpiredWithDate',
     bodyText: 'Description.CreatorIpRemovalAttestationExpired',
   },
+  PitchImageRejected: {
+    severity: 'error',
+    bodyText: 'Description.CreatorPitchImageRejectedAlert',
+  },
 };
 
 const getAlertType = (
   agreement: HydratedAgreementWithHydratedTargetsResponse,
   isTimelimitedLicense?: boolean,
   enableIpPlatformConditionalOffers?: boolean,
+  isImageAttachmentEnabled?: boolean,
 ): AlertType | null => {
   if (!agreement || !agreement.status) {
     return null;
@@ -197,6 +206,13 @@ const getAlertType = (
 
   if (activityLog) {
     const { transition } = activityLog[0];
+    if (
+      isImageAttachmentEnabled &&
+      status === AgreementStatus.Draft &&
+      transition === AgreementTransition.PitchImageRejected
+    ) {
+      return AlertType.PitchImageRejected;
+    }
     if (status === AgreementStatus.Active) {
       // Change requests are only valid for active agreements
       // oxlint-disable-next-line typescript/switch-exhaustiveness-check -- non-change-request transitions fall through
@@ -326,7 +342,8 @@ const isNonDismissableAlert = (alertType: AlertType): boolean => {
     alertType === AlertType.ConditionalChangeRequestReceived ||
     alertType === AlertType.ConditionalChangeRequestConfirmed ||
     alertType === AlertType.ConditionalChangeRequestExpired ||
-    alertType === AlertType.ConditionalChangeRequestResent
+    alertType === AlertType.ConditionalChangeRequestResent ||
+    alertType === AlertType.PitchImageRejected
   );
 };
 
@@ -355,6 +372,9 @@ const CreatorAgreementAlert: React.FC<Props> = ({
   const { logEvent } = useLicenseManagerLogger();
   const { settings, isFetched } = useSettings();
   const { enableIpPlatformConditionalOffers } = settings;
+  const { ready: isImageAttachmentFlagReady, value: isImageAttachmentEnabled } = useFlag(
+    isImageAttachmentEnabledInLicenseApplication,
+  );
   const isTimelimitedLicense =
     agreement.license?.licenseDuration?.durationType === LicenseDurationType.TimeLimited;
 
@@ -362,6 +382,7 @@ const CreatorAgreementAlert: React.FC<Props> = ({
     agreement,
     isTimelimitedLicense,
     enableIpPlatformConditionalOffers,
+    isImageAttachmentFlagReady && isImageAttachmentEnabled,
   );
   const dismissalKey = useMemo(() => {
     if (!alertType) {
@@ -411,6 +432,10 @@ const CreatorAgreementAlert: React.FC<Props> = ({
   const openActivityTab = useCallback(() => {
     handleTabChange?.(null, AgreementDetailsTabs.Activity);
   }, [handleTabChange]);
+
+  const handlePitchImageRejectedTakeAction = useCallback(() => {
+    // TODO - aathreya - Implement PitchImageRejected "Take Action" CTA behavior
+  }, []);
 
   const alertClasses = useMemo(() => ({ action: alertAction }), [alertAction]);
   const isDismissable = alertType ? !isNonDismissableAlert(alertType) : false;
@@ -599,6 +624,18 @@ const CreatorAgreementAlert: React.FC<Props> = ({
           size='small'
           onClick={handleCompleteIpRemoval}>
           {translate('Action.ChangeImplemented')}
+        </Button>
+      );
+      break;
+    case AlertType.PitchImageRejected:
+      action = (
+        <Button
+          className={actionButtonLabel}
+          variant='text'
+          color='inherit'
+          size='small'
+          onClick={handlePitchImageRejectedTakeAction}>
+          {translate('Action.TakeAction')}
         </Button>
       );
       break;
