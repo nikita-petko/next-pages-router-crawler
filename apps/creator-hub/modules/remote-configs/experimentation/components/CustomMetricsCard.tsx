@@ -1,107 +1,58 @@
 import type { FunctionComponent } from 'react';
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
-import {
-  RAQIV2AggregationType,
-  RAQIV2Dimension,
-  RAQIV2DimensionDisplayConfig,
-} from '@rbx/creator-hub-analytics-config';
+import { RAQIV2DimensionDisplayConfig } from '@rbx/creator-hub-analytics-config';
+import type { RAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
 import { Badge, Button, Divider, IconButton } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import type { CustomMetric } from '../types/CustomMetric';
-import { CustomMetricCategory, MAX_CUSTOM_METRICS } from '../types/CustomMetric';
+import { MAX_CUSTOM_METRICS } from '../types/CustomMetric';
 import type { SetupStepFormData } from '../types/FormData';
+import { draftToMetric } from '../utils/customMetricDraft';
+import type { CustomMetricDraft } from '../utils/customMetricDraft';
 import { getDisplayableFilters } from '../utils/customMetricOptions';
+import CustomMetricDrawer from './CustomMetricDrawer';
 
 type CustomMetricsCardProps = {
   disabled?: boolean;
 };
 
-// Stable no-op for affordances whose handler isn't built yet, so IconButton
-// doesn't get a new onClick reference on every render.
-const noop = () => {};
-
-// Distributive `Omit` so each member of the `CustomMetric` union keeps its own
-// category-specific fields (a plain `Omit<Union, 'id'>` would collapse to only
-// the keys common to every member).
-type CustomMetricSample = CustomMetric extends infer M
-  ? M extends CustomMetric
-    ? Omit<M, 'id'>
-    : never
-  : never;
-
-// Sample metrics cycled through when mock-inserting. The dedicated create/edit
-// drawer that populates a real metric is not built yet, so "+ Add" just drops a
-// pre-filled sample in to demonstrate the list and exercise the data model.
-// `id` is stamped on insert (see handleAdd).
-const buildSampleCustomMetric = (id: string, index: number): CustomMetric => {
-  const samples: ReadonlyArray<CustomMetricSample> = [
-    {
-      name: 'Average herbs collected',
-      category: CustomMetricCategory.Custom,
-      aggregation: RAQIV2AggregationType.Average,
-      customEvent: 'HerbCollected',
-      filters: [
-        {
-          dimension: RAQIV2Dimension.CustomField1,
-          values: ['PowerHerb', 'HealthHerb'],
-        },
-        { dimension: RAQIV2Dimension.CustomField2, values: ['MeadowMap1'] },
-      ],
-    },
-    {
-      name: 'Average flowers collected',
-      category: CustomMetricCategory.Custom,
-      aggregation: RAQIV2AggregationType.Average,
-      customEvent: 'FlowerCollected',
-      filters: [
-        { dimension: RAQIV2Dimension.CustomField1, values: ['StarLily', 'MoonRose'] },
-        { dimension: RAQIV2Dimension.CustomField2, values: ['MeadowMap1'] },
-      ],
-    },
-    {
-      name: 'Premium pass purchased',
-      category: CustomMetricCategory.Economy,
-      aggregation: RAQIV2AggregationType.Average,
-      currency: 'Robux',
-      filters: [
-        { dimension: RAQIV2Dimension.TransactionType, values: ['IAP'] },
-        { dimension: RAQIV2Dimension.ItemSku, values: ['PremiumPass'] },
-      ],
-    },
-  ];
-  const sample = samples[index % samples.length];
-  return { ...sample, id };
-};
+// Which metric (if any) the create/edit drawer is currently open for.
+type DrawerState = { mode: 'add' } | { mode: 'edit'; index: number; metric: CustomMetric };
 
 /**
  * "Custom metrics" panel shown underneath the metric set selector when the
  * creator has picked the `Custom` metric set. Guides the creator to define up
  * to {@link MAX_CUSTOM_METRICS} custom metrics: it lists the metrics they have
- * added (with edit/delete affordances) and offers a "+ Add" button.
+ * added (with edit/delete affordances) and offers a "+ Add" button that opens
+ * the {@link CustomMetricDrawer} for creating or editing a single metric.
  *
  * Presentational only — it does not render its own layout wrapper, and gating
- * (flag + `metricTemplateType === Custom`) is the consumer's responsibility.
- * The create/edit flow for an individual metric is not built yet, so "+ Add"
- * mock-inserts a placeholder and the edit affordance is a no-op for now. The
+ * (flag + `metricTemplateType === Custom`) is the consumer's responsibility. The
  * metrics are captured in the form but not yet sent to the backend (UI-only
  * phase of the custom metrics & experiment templates work).
  */
 const CustomMetricsCard: FunctionComponent<CustomMetricsCardProps> = ({ disabled = false }) => {
   const { translate, tPendingTranslation } = useTranslationWrapper(useTranslation());
   const { control } = useFormContext<SetupStepFormData>();
-  const { fields, append, remove } = useFieldArray<SetupStepFormData, 'customMetrics', 'fieldId'>({
+  const { fields, append, remove, update } = useFieldArray<
+    SetupStepFormData,
+    'customMetrics',
+    'fieldId'
+  >({
     control,
     name: 'customMetrics',
     keyName: 'fieldId',
   });
 
-  // Monotonic counter for generating stable, unique client-side ids for
-  // mock-inserted metrics (Date.now()/Math.random() are intentionally avoided
-  // so behavior stays deterministic in tests and storybook).
+  const [drawerState, setDrawerState] = useState<DrawerState | null>(null);
+
+  // Monotonic counter for generating stable, unique client-side ids for newly
+  // created metrics (Date.now()/Math.random() are intentionally avoided so
+  // behavior stays deterministic in tests and storybook).
   const nextIdRef = useRef(0);
 
   const hasReachedLimit = fields.length >= MAX_CUSTOM_METRICS;
@@ -110,10 +61,35 @@ const CustomMetricsCard: FunctionComponent<CustomMetricsCardProps> = ({ disabled
     if (hasReachedLimit) {
       return;
     }
-    const insertionIndex = nextIdRef.current;
-    nextIdRef.current += 1;
-    append(buildSampleCustomMetric(`custom-metric-${insertionIndex}`, insertionIndex));
-  }, [append, hasReachedLimit]);
+    setDrawerState({ mode: 'add' });
+  }, [hasReachedLimit]);
+
+  const handleEdit = useCallback(
+    (index: number, metric: CustomMetric) => {
+      setDrawerState({ mode: 'edit', index, metric });
+    },
+    [setDrawerState],
+  );
+
+  const handleCloseDrawer = useCallback(() => {
+    setDrawerState(null);
+  }, []);
+
+  const handleSaveMetric = useCallback(
+    (draft: CustomMetricDraft) => {
+      if (!drawerState) {
+        return;
+      }
+      if (drawerState.mode === 'add') {
+        const insertionIndex = nextIdRef.current;
+        nextIdRef.current += 1;
+        append(draftToMetric(draft, `custom-metric-${insertionIndex}`));
+      } else {
+        update(drawerState.index, draftToMetric(draft, drawerState.metric.id));
+      }
+    },
+    [drawerState, append, update],
+  );
 
   const title = tPendingTranslation(
     'Custom metrics',
@@ -238,8 +214,7 @@ const CustomMetricsCard: FunctionComponent<CustomMetricsCardProps> = ({ disabled
                     icon='icon-regular-pencil'
                     ariaLabel={editLabel}
                     isDisabled={disabled}
-                    // Edit flow is not built yet — no-op for now.
-                    onClick={noop}
+                    onClick={() => handleEdit(index, field)}
                   />
                   <IconButton
                     type='button'
@@ -268,6 +243,15 @@ const CustomMetricsCard: FunctionComponent<CustomMetricsCardProps> = ({ disabled
         </Button>
         {fields.length > 0 && <span className='text-body-medium content-muted'>{countLabel}</span>}
       </div>
+
+      <CustomMetricDrawer
+        open={drawerState !== null}
+        mode={drawerState?.mode ?? 'add'}
+        initialMetric={drawerState?.mode === 'edit' ? drawerState.metric : undefined}
+        onClose={handleCloseDrawer}
+        onSave={handleSaveMetric}
+        disabled={disabled}
+      />
     </section>
   );
 };

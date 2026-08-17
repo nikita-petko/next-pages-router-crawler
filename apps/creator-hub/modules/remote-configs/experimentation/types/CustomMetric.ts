@@ -1,14 +1,16 @@
-import type { RAQIV2AggregationType, RAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
+import type { RAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
 import type { RAQIMetricFilter } from '@modules/clients/analytics';
+import type { CustomMetricCalculation } from './CustomMetricCalculation';
 
 /**
  * Domain model for a creator-defined custom metric attached to an experiment.
  *
  * Mirrors the Custom Metrics & Experiment Templates tech spec (Phase 1 / Alpha):
  * a metric is built on one of three event categories (Economy / Funnel /
- * Custom), reduced by an aggregation, and optionally narrowed by dimension
- * filters. Each category has a required "primary" selection (currency /
- * funnel + target step / custom event) plus category-specific optional filters.
+ * Custom), reduced by a category-specific calculation, and optionally narrowed
+ * by dimension filters. Each category has a required "primary" selection
+ * (currency / funnel + target step / custom event) plus category-specific
+ * optional filters.
  *
  * `CustomMetric` is a discriminated union keyed on `category`, so a metric only
  * carries the primary selection(s) that its category defines — an Economy
@@ -18,13 +20,13 @@ import type { RAQIMetricFilter } from '@modules/clients/analytics';
  * primary-selection values stay nullable because they are filled in
  * progressively after the category is chosen.
  *
- * Dimensions and aggregations reuse the analytics config enums
- * (`RAQIV2Dimension`, `RAQIV2AggregationType`) — the same ones the explore-mode
- * and economy/funnel/custom-event analytics pages use — rather than a bespoke
- * copy. Only the three-way `CustomMetricCategory` is local: there is no clean
- * reusable 3-value enum for it (`RAQIV2Namespace` models the same split as
- * namespace path strings alongside many unrelated members, which is a different
- * concept).
+ * Dimensions reuse the analytics config enum (`RAQIV2Dimension`) — the same one
+ * the explore-mode and economy/funnel/custom-event analytics pages use — rather
+ * than a bespoke copy. The `calculation` uses the local, temporary
+ * `CustomMetricCalculation` enum (to be folded into `RAQIV2Metric` once they
+ * unify). `CustomMetricCategory` is also local: there is no clean reusable
+ * 3-value enum for it (`RAQIV2Namespace` models the same split as namespace path
+ * strings alongside many unrelated members, which is a different concept).
  *
  * This is still UI-only — captured in the create-experiment form but not yet
  * sent to the backend. It is gated behind the `isExperimentationTemplatesEnabled`
@@ -46,7 +48,9 @@ type CustomMetricBase = {
   // Not persisted to the backend.
   id: string;
   name: string;
-  aggregation: RAQIV2AggregationType | null;
+  // The computation this metric performs. Restricted per category — see
+  // `CALCULATIONS_BY_CATEGORY` in `customMetricOptions`.
+  calculation: CustomMetricCalculation | null;
   // Optional dimension filters. Each is an analytics dimension plus 1-10 values
   // (each up to 256 chars), mirroring the CETS filter contract. Reuses the
   // shared analytics `RAQIMetricFilter` shape — `{ dimension, values }` — keyed
@@ -63,12 +67,12 @@ export type EconomyCustomMetric = CustomMetricBase & {
 };
 
 // Funnel metric: `funnel` is the selected VALUE for `RAQIV2Dimension.FunnelName`
-// and `funnelStep` is its target step (wire contract requires a single integer
-// >= MIN_FUNNEL_STEP).
+// and `funnelStep` is the selected VALUE for `RAQIV2Dimension.FunnelStep` (a step
+// value scoped to the chosen funnel), like any other primary selection.
 export type FunnelCustomMetric = CustomMetricBase & {
   category: CustomMetricCategory.Funnel;
   funnel: string | null;
-  funnelStep: number | null;
+  funnelStep: string | null;
 };
 
 // Custom-event metric: `customEvent` is the selected VALUE for
@@ -90,6 +94,3 @@ export const MAX_CUSTOM_METRIC_FILTER_VALUES = 10;
 
 // Maximum length of a metric name (and of a single filter value).
 export const MAX_CUSTOM_METRIC_NAME_LENGTH = 256;
-
-// Funnel target steps must be at least this value (step 1 is the funnel entry).
-export const MIN_FUNNEL_STEP = 2;

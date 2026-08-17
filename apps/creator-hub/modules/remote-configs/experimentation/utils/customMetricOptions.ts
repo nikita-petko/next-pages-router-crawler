@@ -1,7 +1,8 @@
-import { RAQIV2AggregationType, RAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
+import { RAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
 import type { RAQIMetricFilter } from '@modules/clients/analytics';
 import type { CustomMetric } from '../types/CustomMetric';
 import { CustomMetricCategory } from '../types/CustomMetric';
+import { CustomMetricCalculation } from '../types/CustomMetricCalculation';
 
 /**
  * Static option orderings and category → capability maps for the custom metric
@@ -9,11 +10,11 @@ import { CustomMetricCategory } from '../types/CustomMetric';
  * allows*; the drawer UI is responsible for rendering the relevant controls and
  * resetting fields when the category changes.
  *
- * Dimensions/aggregations reuse the analytics config enums (`RAQIV2Dimension`,
- * `RAQIV2AggregationType`) so the option lists stay in lockstep with the rest
- * of the analytics surface. Display labels for each dimension come from
- * `RAQIV2DimensionDisplayConfig[dimension].name` at the call site — no bespoke
- * label table here.
+ * Dimensions reuse the analytics config enum (`RAQIV2Dimension`) so the option
+ * lists stay in lockstep with the rest of the analytics surface; calculations
+ * use the local, temporary `CustomMetricCalculation` enum. Display labels for
+ * each dimension come from `RAQIV2DimensionDisplayConfig[dimension].name` at the
+ * call site — no bespoke label table here.
  */
 
 // Display order of categories in the "Category" dropdown.
@@ -23,17 +24,26 @@ export const CUSTOM_METRIC_CATEGORY_ORDER: readonly CustomMetricCategory[] = [
   CustomMetricCategory.Custom,
 ];
 
-// Aggregations offered per category. Phase 1 / Alpha exposes the Average
-// aggregation for all three categories; the concrete IXP metric each resolves
-// to (e.g. average currency change vs. average ending wallet balance vs. funnel
-// conversion) is decided during backend instrumentation, not here.
-export const AGGREGATIONS_BY_CATEGORY: Record<
+// Calculations offered per category, in display order. Phase 1 / Alpha P0 set
+// (P1 calculations are omitted until built — see `CustomMetricCalculation`).
+export const CALCULATIONS_BY_CATEGORY: Record<
   CustomMetricCategory,
-  readonly RAQIV2AggregationType[]
+  readonly CustomMetricCalculation[]
 > = {
-  [CustomMetricCategory.Economy]: [RAQIV2AggregationType.Average],
-  [CustomMetricCategory.Funnel]: [RAQIV2AggregationType.Average],
-  [CustomMetricCategory.Custom]: [RAQIV2AggregationType.Average],
+  [CustomMetricCategory.Economy]: [
+    CustomMetricCalculation.AverageNetCurrencyDelta,
+    CustomMetricCalculation.AverageCurrencySourceDelta,
+    CustomMetricCalculation.AverageCurrencySinkDelta,
+  ],
+  [CustomMetricCategory.Funnel]: [
+    CustomMetricCalculation.PerUserFunnelConversion,
+    CustomMetricCalculation.PerInstanceFunnelConversion,
+  ],
+  [CustomMetricCategory.Custom]: [
+    CustomMetricCalculation.AverageCustomValue,
+    CustomMetricCalculation.AverageCustomValueAllUsers,
+    CustomMetricCalculation.CustomPenetration,
+  ],
 };
 
 // Optional filter dimensions offered per category (the "Filters" section),
@@ -61,10 +71,6 @@ export const FILTER_DIMENSIONS_BY_CATEGORY: Record<
     RAQIV2Dimension.CustomField3,
   ],
 };
-
-// Whether a category requires a funnel target step (funnel_step) selection.
-export const categoryRequiresFunnelStep = (category: CustomMetricCategory | null): boolean =>
-  category === CustomMetricCategory.Funnel;
 
 // Returns the filters that are complete enough to display (at least one value).
 // Used to derive the summary chips shown on a metric row without surfacing
