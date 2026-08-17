@@ -42,7 +42,7 @@ const CategoryGroup: FunctionComponent<CategoryGroupProps> = ({
         </h3>
         <CategoryNameField
           value={category.name}
-          status={category.status}
+          state={category.state}
           onChange={handleNameChange}
         />
       </div>

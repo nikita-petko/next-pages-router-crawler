@@ -6,9 +6,14 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import useCategoryManager from '../hooks/useCategoryManager';
-import type { CategoryFormState } from '../types';
+import type { CategoryFormState, CategoryGroupResponse, PresetStatus } from '../types';
 import CategoryGroup from './CategoryGroup';
 import PresetTable from './PresetTable';
+
+type QuickWordsContentProps = {
+  categoryGroups?: CategoryGroupResponse[];
+  overallStatus?: PresetStatus;
+};
 
 const DEFAULT_MIN_PRESETS = 3;
 const DEFAULT_MAX_PRESETS = 10;
@@ -80,7 +85,10 @@ const CategoryItem: FunctionComponent<CategoryItemProps> = ({
   );
 };
 
-const QuickWordsContent: FunctionComponent = () => {
+const QuickWordsContent: FunctionComponent<QuickWordsContentProps> = ({
+  categoryGroups,
+  overallStatus,
+}) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const { settings } = useSettings();
   const {
@@ -93,7 +101,7 @@ const QuickWordsContent: FunctionComponent = () => {
     updatePresetText,
     reorderPresets,
     canAddCategory,
-  } = useCategoryManager();
+  } = useCategoryManager(categoryGroups, overallStatus);
 
   const minPresetsPerCategory =
     settings.presetChatMinPresetsPerCategory > 0

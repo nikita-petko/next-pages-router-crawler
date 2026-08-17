@@ -10,14 +10,14 @@ import QuickWordsStatusBadge from './QuickWordsStatusBadge';
 
 type CategoryNameFieldProps = {
   value: string;
-  status: PresetStatus;
+  state: PresetStatus;
   onChange: (value: string) => void;
   isDisabled?: boolean;
 };
 
 const CategoryNameField: FunctionComponent<CategoryNameFieldProps> = ({
   value,
-  status,
+  state,
   onChange,
   isDisabled,
 }) => {
@@ -45,7 +45,7 @@ const CategoryNameField: FunctionComponent<CategoryNameFieldProps> = ({
         />
       </div>
       <div className='height-1000 flex items-center'>
-        <QuickWordsStatusBadge status={status} />
+        <QuickWordsStatusBadge status={state} />
       </div>
     </div>
   );

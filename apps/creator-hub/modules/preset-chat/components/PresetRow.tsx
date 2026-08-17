@@ -10,9 +10,9 @@ import useTranslationWrapper from '@modules/analytics-translations/useTranslatio
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import {
-  LETTERS_ONLY_REGEX,
   MaxPresetLength,
   MinPresetLength,
+  VALID_PRESET_TEXT_REGEX,
 } from '../constants/presetChatConstants';
 import type { Preset } from '../types';
 import QuickWordsStatusBadge from './QuickWordsStatusBadge';
@@ -61,7 +61,7 @@ const PresetRow: FunctionComponent<PresetRowProps> = ({
 
   const hasInvalidInput =
     preset.text.length > 0 &&
-    (preset.text.length < MinPresetLength || !LETTERS_ONLY_REGEX.test(preset.text));
+    (preset.text.length < MinPresetLength || !VALID_PRESET_TEXT_REGEX.test(preset.text));
 
   return (
     <TableRow ref={ref} className={isDragging ? 'opacity-[0.5]' : ''}>
@@ -96,7 +96,7 @@ const PresetRow: FunctionComponent<PresetRowProps> = ({
         />
       </TableCell>
       <TableCell>
-        <QuickWordsStatusBadge status={preset.status} />
+        <QuickWordsStatusBadge status={preset.state} />
       </TableCell>
       <TableCell className='[text-align:right]'>
         <div className='flex items-center justify-end gap-small'>

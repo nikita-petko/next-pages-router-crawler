@@ -8,4 +8,4 @@ export const MinPresetLength = 2;
 
 export const MaxPresetLength = 25;
 
-export const LETTERS_ONLY_REGEX = /^[a-zA-Z\s]*$/;
+export const VALID_PRESET_TEXT_REGEX = /^[a-zA-Z][a-zA-Z\s'-]*[a-zA-Z]$/;

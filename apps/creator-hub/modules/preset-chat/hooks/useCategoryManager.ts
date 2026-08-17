@@ -1,13 +1,34 @@
 import { useCallback, useState } from 'react';
 import { DefaultPresetsPerCategory, MaxCustomCategories } from '../constants/presetChatConstants';
-import type { CategoryFormState, Preset } from '../types';
+import type { CategoryFormState, CategoryGroupResponse, Preset, PresetStatus } from '../types';
 
 const createEmptyPresets = (count: number): Preset[] =>
   Array.from({ length: count }, () => ({
     id: crypto.randomUUID(),
     text: '',
-    status: 'DRAFT' as const,
+    state: 'DRAFT' as const,
   }));
+
+function mapCategoryGroupsToFormState(
+  categoryGroups: CategoryGroupResponse[],
+  overallStatus?: PresetStatus,
+): CategoryFormState[] {
+  return categoryGroups.flatMap((group) =>
+    group.categories
+      .filter((category) => !(overallStatus === 'ROBLOX_DEFAULT' && category.name === 'General'))
+      .map((category) => ({
+        id: category.id,
+        name: category.name,
+        state: category.state,
+        isNew: false,
+        presets: category.presets.map((preset) => ({
+          id: preset.id,
+          text: preset.value,
+          state: preset.state,
+        })),
+      })),
+  );
+}
 
 export type UseCategoryManagerReturn = {
   categories: CategoryFormState[];
@@ -21,8 +42,13 @@ export type UseCategoryManagerReturn = {
   canAddCategory: boolean;
 };
 
-const useCategoryManager = (): UseCategoryManagerReturn => {
-  const [categories, setCategories] = useState<CategoryFormState[]>([]);
+const useCategoryManager = (
+  initialCategoryGroups?: CategoryGroupResponse[],
+  overallStatus?: PresetStatus,
+): UseCategoryManagerReturn => {
+  const [categories, setCategories] = useState<CategoryFormState[]>(() =>
+    initialCategoryGroups ? mapCategoryGroupsToFormState(initialCategoryGroups, overallStatus) : [],
+  );
 
   const addCategory = useCallback(() => {
     setCategories((prev) => {
@@ -33,7 +59,7 @@ const useCategoryManager = (): UseCategoryManagerReturn => {
         id: crypto.randomUUID(),
         name: '',
         presets: createEmptyPresets(DefaultPresetsPerCategory),
-        status: 'DRAFT',
+        state: 'DRAFT',
         isNew: true,
       };
       return [...prev, newCategory];
@@ -59,7 +85,7 @@ const useCategoryManager = (): UseCategoryManagerReturn => {
         const newPreset: Preset = {
           id: crypto.randomUUID(),
           text: '',
-          status: 'DRAFT',
+          state: 'DRAFT',
         };
         return { ...category, presets: [...category.presets, newPreset] };
       }),

@@ -1,25 +1,33 @@
 import type { FunctionComponent } from 'react';
 import { useCallback, useState } from 'react';
 import { StatusCodes } from '@rbx/core';
-import { Divider, Link, StatusBadge } from '@rbx/foundation-ui';
+import { Divider, Link } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { CircularProgress } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { PresetChatApiError } from '@modules/clients/presetChatApi';
 import { EmptyGrid } from '@modules/miscellaneous/components/EmptyGrid';
 import { ErrorPage } from '@modules/miscellaneous/error';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import ChatTabOptions from '../enums/ChatTabOptions';
+import { useGetPresetChatState } from '../queries/useGetPresetChatState';
 import ChatNavigation from './ChatNavigation';
 import QuickWordsContent from './QuickWordsContent';
+import QuickWordsStatusBadge from './QuickWordsStatusBadge';
 
 const PresetChatPageContent: FunctionComponent = () => {
   const { gameDetails } = useCurrentGame();
   const { settings } = useSettings();
   const { ready, tPendingTranslation } = useTranslationWrapper(useTranslation());
   const [currentTab, setCurrentTab] = useState<ChatTabOptions>(ChatTabOptions.QuickWords);
+  const {
+    data: presetChatState,
+    isLoading: isPresetChatLoading,
+    error: presetChatError,
+  } = useGetPresetChatState(gameDetails?.id, settings.enableCustomPresetChat);
 
   const handleSelectTab = useCallback((value: ChatTabOptions) => {
     setCurrentTab(value);
@@ -29,12 +37,24 @@ const PresetChatPageContent: FunctionComponent = () => {
     return <ErrorPage errorCode={StatusCodes.NOT_FOUND} />;
   }
 
-  if (!ready || !gameDetails?.id) {
+  if (!ready || !gameDetails?.id || isPresetChatLoading) {
     return (
       <EmptyGrid>
         <CircularProgress data-testid='preset-chat-loading' />
       </EmptyGrid>
     );
+  }
+
+  if (presetChatError) {
+    const status =
+      presetChatError instanceof PresetChatApiError ? presetChatError.status : undefined;
+    const errorCode =
+      status === StatusCodes.FORBIDDEN
+        ? StatusCodes.FORBIDDEN
+        : status === StatusCodes.NOT_FOUND
+          ? StatusCodes.NOT_FOUND
+          : StatusCodes.BAD_REQUEST;
+    return <ErrorPage errorCode={errorCode} />;
   }
 
   return (
@@ -87,22 +107,20 @@ const PresetChatPageContent: FunctionComponent = () => {
                     translationKey('Label.SystemStatus', TranslationNamespace.PresetChat),
                   )}
                 </span>
-                <StatusBadge
-                  size='Small'
-                  variant='Standard'
-                  label={tPendingTranslation(
-                    'Draft',
-                    'Badge label for draft status',
-                    translationKey('Status.Draft', TranslationNamespace.PresetChat),
-                  )}
+                <QuickWordsStatusBadge
+                  status={presetChatState?.overallStatus ?? 'DRAFT'}
+                  isSystemStatus
                 />
               </div>
             </div>
             {/* TODO (EXPR-4049): Publish/Save action buttons */}
           </div>
           <Divider className='margin-top-medium margin-bottom-small' />
-          {/* TODO (EXPR-4047): Wire up API integration and render categories */}
-          <QuickWordsContent />
+          <QuickWordsContent
+            key={gameDetails.id}
+            categoryGroups={presetChatState?.categoryGroups}
+            overallStatus={presetChatState?.overallStatus}
+          />
         </div>
       )}
     </section>

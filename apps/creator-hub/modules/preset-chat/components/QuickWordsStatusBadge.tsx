@@ -8,22 +8,35 @@ import type { PresetStatus } from '../types';
 
 type QuickWordsStatusBadgeProps = {
   status: PresetStatus;
+  isSystemStatus?: boolean;
 };
 
-const QuickWordsStatusBadge: FunctionComponent<QuickWordsStatusBadgeProps> = ({ status }) => {
+const QuickWordsStatusBadge: FunctionComponent<QuickWordsStatusBadgeProps> = ({
+  status,
+  isSystemStatus,
+}) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
 
   switch (status) {
     case 'APPROVED':
+    case 'ROBLOX_DEFAULT':
       return (
         <StatusBadge
           size='Small'
           variant='Success'
-          label={tPendingTranslation(
-            'Approved',
-            'Badge label for approved status',
-            translationKey('Status.Approved', TranslationNamespace.PresetChat),
-          )}
+          label={
+            isSystemStatus
+              ? tPendingTranslation(
+                  'Published',
+                  'Badge label for published system status',
+                  translationKey('Status.Published', TranslationNamespace.PresetChat),
+                )
+              : tPendingTranslation(
+                  'Approved',
+                  'Badge label for approved status',
+                  translationKey('Status.Approved', TranslationNamespace.PresetChat),
+                )
+          }
         />
       );
     case 'FAILED_PUBLISH':
@@ -51,8 +64,8 @@ const QuickWordsStatusBadge: FunctionComponent<QuickWordsStatusBadgeProps> = ({ 
         />
       );
     case 'DRAFT':
-    case 'ROBLOX_DEFAULT':
     case 'RESET_TO_DEFAULTS':
+    case 'INELIGIBLE':
     default:
       return (
         <StatusBadge
