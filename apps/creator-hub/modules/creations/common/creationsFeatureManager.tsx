@@ -471,18 +471,6 @@ const monetizationOverviewFeature: Feature<CreationsFeatureSettings> = {
     settings?.userCanViewAnalyticsForUniverse ?? false,
 };
 
-const monetizationPriceOptimizationFeature: Feature<CreationsFeatureSettings> = {
-  key: 'monetizationPriceOptimization',
-  nameKey: 'Heading.PriceOptimization',
-  path: '/monetization/price-optimization',
-  sectionTitleKey: 'Heading.Monetization',
-  isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
-    (settings?.permissions?.monetizeExperience &&
-      !settings?.isManagedPricingEnabled && // Only display if managed pricing is not enabled as we are migrating
-      settings?.isPriceOptimizationEnabled) ??
-    false,
-};
-
 const monetizationManagedPricingFeature: Feature<CreationsFeatureSettings> = {
   key: 'monetizationManagedPricing',
   nameKey: 'Heading.ManagedPricing',
@@ -839,7 +827,6 @@ const monetizationFeatureCategory: Feature<CreationsFeatureSettings> = {
   subFeatures: [
     monetizationOverviewFeature,
     monetizationPersonalizedShopFeature,
-    monetizationPriceOptimizationFeature,
     monetizationManagedPricingFeature,
     monetizationDeveloperProductsFeature,
     monetizationGamePassesFeature,

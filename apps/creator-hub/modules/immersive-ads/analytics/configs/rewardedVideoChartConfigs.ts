@@ -10,77 +10,8 @@ import {
   baseSplineChartConfig,
   baseSplineChartConfigWithAverageSummary,
   baseSplineChartConfigWithTotalAndAverageSummary,
-  noFilterOrBreakdownOverride,
 } from './baseConfigs';
 import configConstants from './configConstants';
-
-// -----------------------------------------------------------------------------
-// Legacy charts: rendered when `isRewardedVideoRedesignEnabled` is OFF.
-// -----------------------------------------------------------------------------
-
-const rewardedVideoRevenueRobuxChartConfig = {
-  ...baseSplineChartConfigWithTotalAndAverageSummary,
-  titleKey: configConstants.TotalRobuxEarningsTitleKey,
-  definitionTooltipKey: configConstants.TotalRewardedVideoEarningsDescriptionKey,
-  metric: RAQIV2Metric.AdsPublisherReportingVideo2DRevenueRobux,
-} as const satisfies ChartConfig;
-
-const rewardedVideoAverageEarningsPerDailyUniqueViewerChartConfig = {
-  ...baseSplineChartConfigWithAverageSummary,
-  titleKey: configConstants.AverageEarningsPerDailyUniqueViewerTitleKey,
-  definitionTooltipKey: configConstants.AverageEarningsPerDailyUniqueViewerDescriptionKey,
-  metric: RAQIV2Metric.AdsPublisherReportingVideo2DAverageEarningPerDailyUniqueViewer,
-} as const satisfies ChartConfig;
-
-const rewardedVideoDailyUniqueViewerChartConfig = {
-  ...baseSplineChartConfigWithAverageSummary,
-  titleKey: configConstants.DailyUniqueViewersTitleKey,
-  definitionTooltipKey: configConstants.DailyUniqueViewersDescriptionKey,
-  metric: RAQIV2Metric.AdsPublisherReportingVideo2DDailyUniqueViewer,
-} as const satisfies ChartConfig;
-
-const rewardedVideoEPMChartConfig = {
-  ...baseSplineChartConfigWithAverageSummary,
-  titleKey: configConstants.EPMTitleKey,
-  definitionTooltipKey: configConstants.RewardedVideoEPMDescriptionKey,
-  metric: RAQIV2Metric.AdsPublisherReportingVideo2DEpmNoUnvalidatedPc,
-} as const satisfies ChartConfig;
-
-const rewardedVideoEligibleDAUChartConfig = {
-  ...baseSplineChartConfigWithAverageSummary,
-  overrides: noFilterOrBreakdownOverride,
-  titleKey: configConstants.EligibleDAUTitleKey,
-  definitionTooltipKey: configConstants.RewardedVideoEligibleDAUDescriptionKey,
-  metric: RAQIV2Metric.AdsPublisherReportingVideo2DEligibleDau,
-} as const satisfies ChartConfig;
-
-const rewardedVideoReachPercentageChartConfig = {
-  ...baseSplineChartConfigWithAverageSummary,
-  overrides: noFilterOrBreakdownOverride,
-  titleKey: configConstants.ReachPercentageTitleKey,
-  definitionTooltipKey: configConstants.ReachPercentageDescriptionKey,
-  metric: RAQIV2Metric.AdsPublisherReportingVideo2DReachRatio,
-} as const satisfies ChartConfig;
-
-const rewardedVideoEligibleDAUBreakdownChartConfig = {
-  ...baseSplineChartConfigWithAverageSummary,
-  overrides: {},
-  titleKey: configConstants.EligibleDAUTitleKey,
-  definitionTooltipKey: configConstants.RewardedVideoEligibleDAUDescriptionKey,
-  metric: RAQIV2Metric.AdsVideo2DEligibleDauBreakdown,
-} as const satisfies ChartConfig;
-
-const rewardedVideoReachPercentageBreakdownChartConfig = {
-  ...baseSplineChartConfigWithAverageSummary,
-  overrides: {},
-  titleKey: configConstants.ReachPercentageTitleKey,
-  definitionTooltipKey: configConstants.ReachPercentageDescriptionKey,
-  metric: RAQIV2Metric.AdsVideo2DReachRatioBreakdown,
-} as const satisfies ChartConfig;
-
-// -----------------------------------------------------------------------------
-// V2 (redesign) charts: rendered when `isRewardedVideoRedesignEnabled` is ON.
-// -----------------------------------------------------------------------------
 
 // Earnings overview section: full-width earnings chart.
 const rewardedVideoEarningsChartConfig = {
@@ -154,19 +85,9 @@ const rewardedVideoFunnelChartConfig = {
 } as const satisfies ChartConfig;
 
 export default {
-  // V2 (redesign)
   rewardedVideoEarningsChartConfig,
   rewardedVideoTotalImpressionsChartConfig,
   rewardedVideoOptInRateChartConfig,
   rewardedVideoFrequencyChartConfig,
   rewardedVideoFunnelChartConfig,
-  // Legacy
-  rewardedVideoRevenueRobuxChartConfig,
-  rewardedVideoAverageEarningsPerDailyUniqueViewerChartConfig,
-  rewardedVideoDailyUniqueViewerChartConfig,
-  rewardedVideoEPMChartConfig,
-  rewardedVideoEligibleDAUChartConfig,
-  rewardedVideoReachPercentageChartConfig,
-  rewardedVideoEligibleDAUBreakdownChartConfig,
-  rewardedVideoReachPercentageBreakdownChartConfig,
 };

@@ -791,16 +791,6 @@ export const generatedFlags = [
       },
     },
     {
-      flag: immersiveAdsFlags.isRewardedVideoRedesignEnabled,
-      metadata: {
-        namespace: 'immersive-ads',
-        name: 'isRewardedVideoRedesignEnabled',
-        defaultValue: true,
-        valueType: 'boolean',
-        contextType: 'static',
-      },
-    },
-    {
       flag: leaderboardsFlags.isLeaderboardConfigsEnabled,
       metadata: {
         namespace: 'leaderboards',

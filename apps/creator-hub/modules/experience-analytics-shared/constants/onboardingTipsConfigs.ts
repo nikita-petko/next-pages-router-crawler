@@ -131,8 +131,7 @@ export const onboardingTipsConfigs: Record<OnboardingStepKey, OnboardingTipsConf
       TranslationNamespace.Insights,
     ),
   },
-  // Rewarded Video Onboarding (V2 layout only — anchors only exist on the
-  // redesigned three-section layout gated by `isRewardedVideoRedesignEnabled`).
+  // Rewarded Video Onboarding (anchors exist on the three-section layout).
   [OnboardingStepKey.RewardedVideoEarningsOverview]: {
     titleKey: translationKey(
       'Title.OnboardingTips.RewardedVideoEarningsOverview',

@@ -135,52 +135,6 @@ export const rewardedVideoPageLayout: RAQIV2UIComponent[] = [
   },
 ];
 
-// Legacy rewarded video page layout: matches the layout currently on prod.
-// Rendered when `isRewardedVideoRedesignEnabled` is OFF. Kept here verbatim
-// so the feature flag can fall back to the existing UX while the redesign
-// rolls out; once the flag reaches 100%, this constant and its callers can be
-// removed alongside the legacy card/chart configs.
-//
-// The eDAU breakdown variants are always used since the legacy
-// `isEdauBreakdownEnabled` setting is fully rolled out on prod. Non-breakdown
-// variants are retained in the configs file but no longer referenced here.
-export const rewardedVideoPageLayoutLegacy: RAQIV2UIComponent[] = [
-  {
-    type: RAQIV2SpecialLayoutType.RowLayout,
-    items: [
-      cardConfigs.impressionsPerEligibileDAUBreakdownCardConfig,
-      cardConfigs.impressionsPerDailyUniqueViewersCardConfig,
-      cardConfigs.fillRateCardConfig,
-      cardConfigs.rewardedVideoConversionRateCardConfig,
-    ],
-  },
-  {
-    type: RAQIV2SpecialLayoutType.FullWidthLayout,
-    items: [rewardedVideoChartConfigs.rewardedVideoRevenueRobuxChartConfig],
-  },
-  {
-    type: RAQIV2SpecialLayoutType.VerticalPriorityLayout,
-    firstColumn: [rewardedVideoChartConfigs.rewardedVideoTotalImpressionsChartConfig],
-    secondColumn: [rewardedVideoChartConfigs.rewardedVideoEPMChartConfig],
-  },
-  {
-    type: RAQIV2SpecialLayoutType.VerticalPriorityLayout,
-    firstColumn: [rewardedVideoChartConfigs.rewardedVideoDailyUniqueViewerChartConfig],
-    secondColumn: [
-      rewardedVideoChartConfigs.rewardedVideoAverageEarningsPerDailyUniqueViewerChartConfig,
-    ],
-  },
-  {
-    type: RAQIV2SpecialLayoutType.VerticalPriorityLayout,
-    firstColumn: [rewardedVideoChartConfigs.rewardedVideoEligibleDAUBreakdownChartConfig],
-    secondColumn: [rewardedVideoChartConfigs.rewardedVideoReachPercentageBreakdownChartConfig],
-  },
-  {
-    type: RAQIV2SpecialLayoutType.FullWidthLayout,
-    items: [rewardedVideoChartConfigs.rewardedVideoFunnelChartConfig],
-  },
-];
-
 export const immersiveVideoPageLayout: RAQIV2UIComponent[] = [
   {
     type: RAQIV2SpecialLayoutType.VerticalPriorityLayout,

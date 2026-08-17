@@ -99,15 +99,6 @@ export const baseTableConfigForAdPlacement = {
   breakdowns: [RAQIV2Dimension.AdPlacementId],
 } as const satisfies Partial<TAnalyticsSerializableTableConfig>;
 
-export const noFilterOrBreakdownOverride = {
-  filter: {
-    override: [],
-  },
-  breakdown: {
-    override: [],
-  },
-} as const satisfies Partial<SpecOverride>;
-
 export const noBreakdownOverride = {
   breakdown: {
     override: [],
@@ -122,7 +113,6 @@ export default {
   baseTableConfigForAdInstanceName,
   baseTableConfigForAdPlacement,
   baseAdInstanceNameDataColumnConfig,
-  noFilterOrBreakdownOverride,
   noBreakdownOverride,
   basePieChartConfigWithTotalBreakdownSummary,
 };

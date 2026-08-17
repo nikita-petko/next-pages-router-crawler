@@ -3,7 +3,6 @@ import { useRouter } from 'next/router';
 import commerceApiClient from '@modules/clients/commerce';
 import itemconfigurationClient from '@modules/clients/itemconfiguration';
 import priceConfigurationApi from '@modules/clients/priceConfigurationApi';
-import priceExperimentationApi from '@modules/clients/priceExperimentation';
 import serviceEfficiencyClient from '@modules/clients/serviceEfficiency';
 import { createCustomSettingsWithArgs } from '@modules/settings/implementations/createCustomSettings';
 import type CreationsCustomSettings from '../interfaces/CreationsCustomSettings';
@@ -35,7 +34,6 @@ function useCreationsCustomSettingsArgs(): CreationsCustomSettingsArgs {
 
 const creationsCustomSettingsManager = new CreationsCustomSettingsManager(
   serviceEfficiencyClient,
-  priceExperimentationApi,
   priceConfigurationApi,
   itemconfigurationClient,
   commerceApiClient,

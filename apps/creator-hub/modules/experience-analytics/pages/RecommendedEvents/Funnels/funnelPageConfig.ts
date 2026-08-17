@@ -192,6 +192,7 @@ const getFunnelPageConfig = (
       timeRangeOptions: {
         type: 'dateRange',
         supportedRanges: [
+          RAQIV2DateRangeType.Last1Hour,
           RAQIV2DateRangeType.Last1Day,
           RAQIV2DateRangeType.Last7Days,
           RAQIV2DateRangeType.Last28Days,
@@ -238,6 +239,7 @@ const getFunnelPageConfig = (
     timeRangeOptions: {
       type: 'dateRange',
       supportedRanges: [
+        RAQIV2DateRangeType.Last1Hour,
         RAQIV2DateRangeType.Last1Day,
         RAQIV2DateRangeType.Last7Days,
         RAQIV2DateRangeType.Last28Days,

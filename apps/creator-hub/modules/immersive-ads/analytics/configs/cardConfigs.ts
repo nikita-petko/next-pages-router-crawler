@@ -3,92 +3,7 @@ import AnalyticsComponentType from '@modules/analytics-configurations/AnalyticsC
 import type { AnalyticsSummaryCardConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedSummaryCardConfig';
 import { RAQIV2SummaryCardType } from '@modules/experience-analytics-shared/constants/RAQIV2SummaryCardType';
 import { RAQIV2SummaryType } from '@modules/experience-analytics-shared/enums/RAQIV2SummaryType';
-import { noFilterOrBreakdownOverride } from './baseConfigs';
 import configConstants from './configConstants';
-
-// -----------------------------------------------------------------------------
-// Legacy cards: rendered when `isRewardedVideoRedesignEnabled` is OFF. They
-// match prod's current single-row layout. Once the redesign flag is fully
-// rolled out, these (and their consumers in `rewardedVideoPageLayoutLegacy`)
-// can be deleted.
-// -----------------------------------------------------------------------------
-
-const impressionsPerEligibileDAUCardConfig = {
-  type: AnalyticsComponentType.SummaryCard,
-  cardType: RAQIV2SummaryCardType.Metric,
-  metric: RAQIV2Metric.AdsPublisherReportingAdsPerEDAU,
-  summaryType: { type: RAQIV2SummaryType.Average },
-  label: {
-    key: configConstants.AdsPerEDAUTitleKey,
-    tooltip: configConstants.AdsPerEDAUTooltipKey,
-    type: 'simple',
-  },
-  fullWidth: false,
-  overrides: noFilterOrBreakdownOverride,
-} as const satisfies AnalyticsSummaryCardConfig;
-
-const impressionsPerEligibileDAUBreakdownCardConfig = {
-  type: AnalyticsComponentType.SummaryCard,
-  cardType: RAQIV2SummaryCardType.Metric,
-  metric: RAQIV2Metric.AdsVideo2DAdsPerEDAUBreakdown,
-  summaryType: { type: RAQIV2SummaryType.Average },
-  label: {
-    key: configConstants.AdsPerEDAUTitleKey,
-    tooltip: configConstants.AdsPerEDAUTooltipKey,
-    type: 'simple',
-  },
-  fullWidth: false,
-  overrides: {},
-} as const satisfies AnalyticsSummaryCardConfig;
-
-const impressionsPerDailyUniqueViewersCardConfig = {
-  type: AnalyticsComponentType.SummaryCard,
-  cardType: RAQIV2SummaryCardType.Metric,
-  metric: RAQIV2Metric.AdsPublisherReportingVideo2DAdsPerDUV,
-  summaryType: { type: RAQIV2SummaryType.Average },
-  label: {
-    key: configConstants.ImpressionsPerDailyUniqueViewersTitleKey,
-    tooltip: configConstants.ImpressionsPerDailyUniqueViewersTooltipKey,
-    type: 'simple',
-  },
-  fullWidth: false,
-  overrides: {},
-} as const satisfies AnalyticsSummaryCardConfig;
-
-const rewardedVideoConversionRateCardConfig = {
-  type: AnalyticsComponentType.SummaryCard,
-  cardType: RAQIV2SummaryCardType.Metric,
-  metric: RAQIV2Metric.AdsPublisherReportingVideo2DConversionRate,
-  summaryType: { type: RAQIV2SummaryType.Average },
-  label: {
-    key: configConstants.ConversionTitleKey,
-    tooltip: configConstants.RewardedVideoConversionTooltipKey,
-    type: 'simple',
-  },
-  fullWidth: false,
-  overrides: {},
-} as const satisfies AnalyticsSummaryCardConfig;
-
-// Legacy Fill Rate card. Same metric as `fillRateCardConfigV2` below, but
-// without `showComparisonChip` so the legacy layout's behavior stays
-// byte-for-byte the same when `isRewardedVideoRedesignEnabled` is OFF.
-const fillRateCardConfig = {
-  type: AnalyticsComponentType.SummaryCard,
-  cardType: RAQIV2SummaryCardType.Metric,
-  metric: RAQIV2Metric.AdsPublisherReportingVideo2DFillPercent,
-  summaryType: { type: RAQIV2SummaryType.Average },
-  label: {
-    key: configConstants.FillRateTitleKey,
-    tooltip: configConstants.FillRateTooltipKey,
-    type: 'simple',
-  },
-  fullWidth: false,
-  overrides: {},
-} as const satisfies AnalyticsSummaryCardConfig;
-
-// -----------------------------------------------------------------------------
-// V2 cards: rendered when `isRewardedVideoRedesignEnabled` is ON.
-// -----------------------------------------------------------------------------
 
 // Earnings overview: total impressions.
 const totalImpressionsCardConfig = {
@@ -176,10 +91,7 @@ const frequencyCardConfig = {
   showComparisonChip: true,
 } as const satisfies AnalyticsSummaryCardConfig;
 
-// EPM breakdown: fill rate. V2 variant of the legacy `fillRateCardConfig`,
-// opting into the inline comparison chip for the redesign layout. The legacy
-// config is intentionally kept chip-free so the prod fallback layout doesn't
-// change behavior when `isRewardedVideoRedesignEnabled` is OFF.
+// EPM breakdown: fill rate.
 const fillRateCardConfigV2 = {
   type: AnalyticsComponentType.SummaryCard,
   cardType: RAQIV2SummaryCardType.Metric,
@@ -247,7 +159,6 @@ const rewardRateCardConfig = {
 } as const satisfies AnalyticsSummaryCardConfig;
 
 export default {
-  // V2 (redesign)
   totalImpressionsCardConfig,
   epmCardConfig,
   totalEarningsCardConfig,
@@ -257,10 +168,4 @@ export default {
   optInRateCardConfig,
   showRateCardConfig,
   rewardRateCardConfig,
-  // Legacy
-  impressionsPerEligibileDAUCardConfig,
-  impressionsPerEligibileDAUBreakdownCardConfig,
-  impressionsPerDailyUniqueViewersCardConfig,
-  rewardedVideoConversionRateCardConfig,
-  fillRateCardConfig,
 };

@@ -2,7 +2,6 @@ import type { CommerceApiClient } from '@modules/clients/commerce';
 import type { ItemConfigurationClient } from '@modules/clients/itemconfiguration';
 import { fetchIXPParametersForCurrentUser, IXPLayers } from '@modules/clients/ixpExperiments';
 import type { PriceConfigurationApiClient } from '@modules/clients/priceConfigurationApi';
-import type { PriceExperimentationApiClient } from '@modules/clients/priceExperimentation';
 import type { ServiceEfficiencyClient } from '@modules/clients/serviceEfficiency';
 import SkippedUpdateError from '@modules/settings/implementations/SkippedUpdateError';
 import type CustomSettingsManagerWithArgs from '@modules/settings/interfaces/CustomSettingsManagerWithArgs';
@@ -22,7 +21,6 @@ export default class CreationsCustomSettingsManager implements CustomSettingsMan
 
   constructor(
     private serviceEfficiencyClient: ServiceEfficiencyClient,
-    private priceExperimentationClient: PriceExperimentationApiClient,
     private priceConfigurationApiClient: PriceConfigurationApiClient,
     private itemConfigurationClient: ItemConfigurationClient,
     private commerceApiClient: CommerceApiClient,
@@ -32,7 +30,6 @@ export default class CreationsCustomSettingsManager implements CustomSettingsMan
     this.defaultSettings = Object.freeze({
       isCloudServicesEnabled: false,
       showVrDeviceOption: false,
-      isPriceOptimizationEnabled: false,
       isManagedPricingEnabled: false,
       isExperienceCreatedByCurrentUserOrGroup: false,
       isCommercePilotEnabled: false,
@@ -64,7 +61,6 @@ export default class CreationsCustomSettingsManager implements CustomSettingsMan
     const [
       userIXPParams,
       serviceEfficiencyPermission,
-      priceOptimizationPermission,
       managedPricingStatus,
       getCollectiblesMetadata,
       getCommerceExperienceConfiguration,
@@ -72,9 +68,6 @@ export default class CreationsCustomSettingsManager implements CustomSettingsMan
     ] = await Promise.allSettled([
       fetchIXPParametersForCurrentUser(IXPLayers.CreatorDashboard),
       this.serviceEfficiencyClient.serviceEfficiencyApiIsAllowed({ universeId }),
-      this.priceExperimentationClient.getExperimentEligibility({
-        universeId,
-      }),
       this.priceConfigurationApiClient.getManagedPricingStatus(universeId),
       this.itemConfigurationClient.getCollectiblesMetadata(),
       this.commerceApiClient.getCommerceExperienceConfiguration(universeId),
@@ -87,9 +80,6 @@ export default class CreationsCustomSettingsManager implements CustomSettingsMan
         (serviceEfficiencyPermission.value ?? false),
       showVrDeviceOption:
         userIXPParams.status === 'fulfilled' && (userIXPParams.value.showVrDeviceOption ?? false),
-      isPriceOptimizationEnabled:
-        priceOptimizationPermission.status === 'fulfilled' &&
-        (priceOptimizationPermission.value?.isEligible ?? false),
       isManagedPricingEnabled:
         managedPricingStatus.status === 'fulfilled' &&
         (managedPricingStatus.value?.status === 'Pending' ||
