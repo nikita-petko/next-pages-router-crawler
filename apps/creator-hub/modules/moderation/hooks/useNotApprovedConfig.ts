@@ -1,9 +1,12 @@
 import { useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useTranslation } from '@rbx/intl';
-import type { NotApprovedAnalyticsEvent } from '@rbx/not-approved-page-events';
-import { EventTypes } from '@rbx/not-approved-page-events';
-import type { NotApprovedUIConfig, TPunishment } from '@rbx/not-approved-page-ui';
+import {
+  EventTypes,
+  type NotApprovedAnalyticsEvent,
+  type NotApprovedUIConfig,
+  type TPunishment,
+} from '@rbx/not-approved-page-ui';
 import { useAuthentication } from '@modules/authentication/providers';
 import unifiedLoggerClient from '@modules/eventStream/unifiedLoggerClient';
 import { getAuthorizationEndpoint } from '@modules/navigation/applicationAuthorization/services/appAuthDataService';
@@ -22,24 +25,6 @@ function useNotApprovedConfig(): NotApprovedUIConfig {
   const { translate } = useTranslation();
   const auth = useAuthentication();
   const router = useRouter();
-
-  const surfaceColor = 'var(--color-surface-100)';
-
-  // Wrap translate to convert Record<string, unknown> params to Record<string, string>
-  const translateAdapter = useCallback(
-    (key: string, params?: Record<string, unknown>): string => {
-      if (!params) {
-        return translate(key);
-      }
-
-      const stringParams = Object.fromEntries(
-        Object.entries(params).map(([k, v]) => [k, String(v)]),
-      );
-
-      return translate(key, stringParams);
-    },
-    [translate],
-  );
 
   const userModerationApiUrl = `https://usermoderation.${process.env.bedev1BaseDomain}`;
   const apiGatewayUrl = process.env.bedev2BaseUrl;
@@ -75,7 +60,7 @@ function useNotApprovedConfig(): NotApprovedUIConfig {
 
   return useMemo(
     (): NotApprovedUIConfig => ({
-      translate: translateAdapter,
+      translate,
       httpGet,
       httpPost,
       userModerationApiUrl,
@@ -83,19 +68,17 @@ function useNotApprovedConfig(): NotApprovedUIConfig {
       websiteUrl,
       sendAnalyticsEvent,
       platform,
-      surfaceColor,
       shouldShowGenericFallback,
       onLogout,
       onAccountReactivated,
     }),
     [
-      translateAdapter,
+      translate,
       userModerationApiUrl,
       apiGatewayUrl,
       websiteUrl,
       sendAnalyticsEvent,
       platform,
-      surfaceColor,
       shouldShowGenericFallback,
       onLogout,
       onAccountReactivated,
