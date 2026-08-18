@@ -275,7 +275,7 @@ export const docs = {
   getExperiencesPublishingUrl: () =>
     `${docSiteUrl}/production/publishing/publishing-experiences-and-places`,
   getSellingOnCreatorStoreUrl: () =>
-    `${docSiteUrl}/production/publishing/selling-on-the-creator-store`,
+    `${docSiteUrl}/production/creator-store#distribute-and-sell-assets`,
   getPassesMonetizationUrl: () => `${docSiteUrl}/production/monetization/game-passes` as const,
   getDeveloperProductsMonetizationUrl: () =>
     `${docSiteUrl}/production/monetization/developer-products` as const,
@@ -352,7 +352,10 @@ export const docs = {
   getDiscoveryKeySignalsUrl: () => `${docSiteUrl}/discovery#key-signals`,
   getDiscoveryGetDiscoveredUrl: () =>
     `${docSiteUrl}/discovery#how-you-can-get-discovered-via-recommendations`,
-  getCreatorStoreAssetModerationUrl: () => `${docSiteUrl}/production/creator-store#requirements`,
+  getCreatorStoreAssetModerationUrl: () =>
+    `${docSiteUrl}/production/creator-store#asset-requirements`,
+  getCreatorStoreAccountRequirementsUrl: () =>
+    `${docSiteUrl}/production/creator-store#account-requirements`,
   getPerformanceOptimizationUrl: () => `${docSiteUrl}/performance-optimization`,
   getPromotionalThumbnailsUrl: () => `${docSiteUrl}/production/promotion/promotional-thumbnails`,
   getExperienceGenresUrl: () => `${docSiteUrl}/production/publishing/experience-genres`,

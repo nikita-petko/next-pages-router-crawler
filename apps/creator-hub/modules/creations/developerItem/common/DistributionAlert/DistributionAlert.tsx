@@ -134,7 +134,7 @@ const DistributionAlert: FunctionComponent<React.PropsWithChildren<DistributionA
           link: undefined,
           message: undefined,
           translationLabelProps: {
-            anchorTargetUrl: docs.getSellingOnCreatorStoreUrl(),
+            anchorTargetUrl: docs.getCreatorStoreAccountRequirementsUrl(),
             closing: 'reqLinkEnd',
             typographyVariantOverride: messageTypographyVariant,
             linkVariantOverride: 'inherit',
