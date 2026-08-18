@@ -5,6 +5,7 @@ import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider
 import useAvatarLooksGate from '../../home/hooks/useAvatarLooksGate';
 import useUGCFoldersGate from '../../home/hooks/useUGCFoldersGate';
 import useMomentsGate from '../../moments/hooks/useMomentsGate';
+import useShowcasesGate from '../../showcase/hooks/useShowcasesGate';
 import { getAvatarItemsEntryPointAssetTypes } from '../constants/MenuConstants';
 import creationsMenuManager from '../implementations/CreationsMenuManager';
 import type MenuItem from '../interfaces/MenuItem';
@@ -23,6 +24,7 @@ const useEnabledSubmenuItems = (menuState: MenuState, group: TGroup | null): Men
   const isMomentsTabEnabled = useMomentsGate();
   const isUGCFoldersEnabled = useUGCFoldersGate();
   const isAvatarLooksEnabled = useAvatarLooksGate();
+  const isShowcasesEnabled = useShowcasesGate();
 
   // The entry-point set rather than the publish-permitted one: Avatar Backgrounds are uploadable
   // without being publish-permitted, and the tab row keys off what can be entered. Cached by
@@ -48,6 +50,7 @@ const useEnabledSubmenuItems = (menuState: MenuState, group: TGroup | null): Men
           isMomentsTabEnabled,
           isUGCFoldersEnabled,
           isAvatarLooksEnabled,
+          isShowcasesEnabled,
         ),
       ) ?? [],
     [
@@ -59,6 +62,7 @@ const useEnabledSubmenuItems = (menuState: MenuState, group: TGroup | null): Men
       isMomentsTabEnabled,
       isUGCFoldersEnabled,
       isAvatarLooksEnabled,
+      isShowcasesEnabled,
     ],
   );
 };

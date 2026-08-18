@@ -31,8 +31,7 @@ const isComparisonWithinRetention = (
   }
 
   const { comparisonStartDate } = getComparisonRange(
-    timeSpec.startTime,
-    timeSpec.endTime,
+    timeSpec,
     comparison.granularity,
     comparison.relativeOffset,
     comparison.customStartDate,

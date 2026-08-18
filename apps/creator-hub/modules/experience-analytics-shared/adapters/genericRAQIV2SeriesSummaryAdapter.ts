@@ -1,10 +1,10 @@
 import { RAQIV2DateRangeType } from '@rbx/creator-hub-analytics-config';
 import type { TNumberContextMetadata } from '@modules/charts-generic/charts/numberFormatters';
-import { getComparisonTimeRange } from '@modules/charts-generic/utils/comparisonChipUtils';
 import type RAQIV2ChartSpec from '../types/RAQIV2ChartSpec';
 import type { RAQIV2TranslationDependencies } from '../types/RAQIV2DimensionRenderer';
 import type { RAQIV2QueryResponses } from '../utils/combineRAQIV2QueryResponses';
 import combineRAQIV2QueryResponses from '../utils/combineRAQIV2QueryResponses';
+import getComparisonRange from '../utils/getComparisonRange';
 import { ingestAllRaqiV2Series } from './genericRAQIV2ChartAdapter';
 import type { RAQIV2SummarySpec } from './genericRAQIV2ChartSummaryAdapter';
 import { getDefaultSummarySpec, summarizeSeriesInfo } from './genericRAQIV2ChartSummaryAdapter';
@@ -29,11 +29,7 @@ const genericRAQIV2SeriesSummaryAdapter = ({
 
   // None/cumulative comparison uses Separate fetch (two window aggregates). The
   // previous-period range is still well-defined via equal-duration offset.
-  const comparisonDates = getComparisonTimeRange(
-    spec.timeSpec.startTime,
-    spec.timeSpec.endTime,
-    granularity,
-  );
+  const comparisonDates = getComparisonRange(spec.timeSpec, granularity);
 
   const { series } = ingestAllRaqiV2Series({
     response,

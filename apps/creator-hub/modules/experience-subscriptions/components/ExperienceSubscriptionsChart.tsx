@@ -8,7 +8,7 @@ import {
 } from '@rbx/analytics-ui';
 import type { GetDeveloperSubscriptionsAnalyticsResponse } from '@rbx/client-developer-subscriptions-api/v1';
 import { DeveloperSubscriptionsAnalyticsDimension } from '@rbx/client-developer-subscriptions-api/v1';
-import { RAQIV2MetricGranularity } from '@rbx/creator-hub-analytics-config';
+import { RAQIV2DateRangeType, RAQIV2MetricGranularity } from '@rbx/creator-hub-analytics-config';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import { Grid } from '@rbx/ui';
 import type { TranslationKey } from '@modules/analytics-translations/types';
@@ -24,7 +24,6 @@ import XAxisGranularity from '@modules/charts-generic/enums/XAxisGranularity';
 import { validateResponse } from '@modules/charts-generic/types/RAQIValidator';
 import {
   getComparisonChipSpec,
-  getComparisonTimeRange,
   getComparisonChipTooltip,
 } from '@modules/charts-generic/utils/comparisonChipUtils';
 import type { RAQIResponse } from '@modules/clients/analytics';
@@ -34,6 +33,7 @@ import { useUniverseResource } from '@modules/experience-analytics-shared/hooks/
 import useCurrentAnnotationsBundleProvider from '@modules/experience-analytics-shared/hooks/useCurrentAnnotationsBundleProvider';
 import useOnSelectChartRegion from '@modules/experience-analytics-shared/hooks/useOnSelectChartRegion';
 import useTimeSeriesWebbloxAnnotations from '@modules/experience-analytics-shared/hooks/useTimeSeriesWebbloxAnnotations';
+import getComparisonRange from '@modules/experience-analytics-shared/utils/getComparisonRange';
 import { HttpStatusCodes } from '@modules/miscellaneous/common';
 import experienceSubscriptionsChartAdapters from '../adapters/experienceSubscriptionsChartAdapters';
 import { useExperienceSubscriptionsClientProvider } from '../context/ExperienceSubscriptionsClientProvider';
@@ -146,7 +146,15 @@ function ExperienceSubscriptionsChart({
   }, [startDate, endDate, getExperienceSubscriptionsAnalyticsForDateRange]);
 
   const { comparisonStartDate, comparisonEndDate } = useMemo(
-    () => getComparisonTimeRange(startDate, endDate, RAQIV2MetricGranularity.OneDay),
+    () =>
+      getComparisonRange(
+        {
+          rangeType: RAQIV2DateRangeType.Custom,
+          startTime: startDate,
+          endTime: endDate,
+        },
+        RAQIV2MetricGranularity.OneDay,
+      ),
     [startDate, endDate],
   );
 

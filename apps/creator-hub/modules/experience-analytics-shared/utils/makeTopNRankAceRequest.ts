@@ -494,8 +494,7 @@ const executeStandardRankAceRequest = async ({
   }
 
   const { comparisonStartDate, comparisonEndDate } = getComparisonRange(
-    request.timeSpec.startTime,
-    request.timeSpec.endTime,
+    request.timeSpec,
     comparison.granularity,
     comparison.relativeOffset,
     comparison.customStartDate,

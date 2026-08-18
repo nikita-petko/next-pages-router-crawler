@@ -91,8 +91,11 @@ const getExpectedChartDataPoints = ({
     const startTime = snapToLatestStartTime(timeSpec.startTime, snapGranularity);
     const endTime = snapToLatestEndTime(timeSpec.endTime, snapGranularity);
     const { comparisonStartDate, comparisonEndDate } = getComparisonRange(
-      startTime,
-      endTime,
+      {
+        ...timeSpec,
+        startTime,
+        endTime,
+      },
       comparison.granularity,
       comparison.relativeOffset,
       comparison.customStartDate,

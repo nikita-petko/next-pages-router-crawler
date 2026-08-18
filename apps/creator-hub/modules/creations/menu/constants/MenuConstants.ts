@@ -285,6 +285,10 @@ const menuItems: MenuItem[] = [
         nameKey: 'Label.Animations',
       },
       {
+        type: Asset.Showcase,
+        nameKey: 'Label.Showcases',
+      },
+      {
         type: Asset.AllCatalogAsset,
         nameKey: 'Label.AllAssetTypes',
       },

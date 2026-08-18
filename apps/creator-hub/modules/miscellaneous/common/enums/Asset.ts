@@ -28,6 +28,8 @@ enum Asset {
   AvatarBackground = 'AvatarBackground',
   // Avatar Look is not an asset type, but needs its own pill
   AvatarLooks = 'AvatarLooks',
+  // A showcase is a curated collection, not an asset type, but needs its own pill
+  Showcase = 'Showcase',
   Decal = 'Decal',
   Image = 'Image',
   Audio = 'Audio',

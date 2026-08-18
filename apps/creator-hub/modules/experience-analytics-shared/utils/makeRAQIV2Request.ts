@@ -145,9 +145,11 @@ const buildSnappedTimeSpec = (
     startTime = new Date(endTime.getTime() - presetDuration);
   }
 
+  // Keep the original rangeType. Snapping only rewrites start/end; collapsing
+  // to Custom would make getComparisonWindowGranularity treat Last1Hour/Last1Day
+  // as end-inclusive day ranges and insert a one-day gap on the fetch path.
   return {
     ...givenTimeSpec,
-    rangeType: RAQIV2DateRangeType.Custom,
     startTime: snapToLatestStartTime(startTime, snapGranularity),
     endTime: snapToLatestEndTime(endTime, snapGranularity),
   };
@@ -191,8 +193,7 @@ const fetchSeparateComparisonSeries = async (
   customStartDate?: Date,
 ): Promise<RAQIV2QueryResultWithComparison> => {
   const { comparisonStartDate, comparisonEndDate } = getComparisonRange(
-    request.timeSpec.startTime,
-    request.timeSpec.endTime,
+    request.timeSpec,
     granularity,
     relativeOffset,
     customStartDate,
@@ -223,8 +224,7 @@ const fetchCombinedComparisonSeries = async (
   customStartDate?: Date,
 ): Promise<RAQIV2QueryResultWithComparison> => {
   const { comparisonStartDate, comparisonEndDate } = getComparisonRange(
-    request.timeSpec.startTime,
-    request.timeSpec.endTime,
+    request.timeSpec,
     granularity,
     relativeOffset,
     customStartDate,
@@ -1069,8 +1069,7 @@ const fillMissingDataPointsForResponse = (
 
   if (fetchComparison) {
     const { comparisonStartDate, comparisonEndDate } = getComparisonRange(
-      startTime,
-      endTime,
+      snappedRequestBase.timeSpec,
       fetchComparison.granularity,
       fetchComparison.relativeOffset,
       fetchComparison.customStartDate,
@@ -1492,8 +1491,7 @@ const executeAceDagComparison = async (
   }
 
   const { comparisonStartDate, comparisonEndDate } = getComparisonRange(
-    baseTimeSpec.startTime,
-    baseTimeSpec.endTime,
+    baseTimeSpec,
     comparison.granularity,
     comparison.relativeOffset,
     comparison.customStartDate,

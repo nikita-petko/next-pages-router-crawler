@@ -41,6 +41,7 @@ const DEFAULT_MENU_STATE = { menuItem: MenuItems[0] };
 const MAKEUP_FIRST_ASSET_TYPE = Asset.EyeMakeup;
 const AVATAR_LOOKS_ASSET_TYPE = Asset.AvatarLooks;
 const AVATAR_BACKGROUND_ASSET_TYPE = Asset.AvatarBackground;
+const SHOWCASE_ASSET_TYPE = Asset.Showcase;
 
 const creationsMenuManager: MenuManager = {
   isMenuItemEnabled(
@@ -54,6 +55,7 @@ const creationsMenuManager: MenuManager = {
     isMomentsTabEnabled?: boolean,
     isUGCFoldersEnabled?: boolean,
     showAvatarLooksInCreations?: boolean | null,
+    isShowcasesEnabled?: boolean | null,
   ): boolean {
     if (menuItem?.type === Asset.AllCatalogAsset) {
       return isUGCFoldersEnabled ?? false;
@@ -74,10 +76,13 @@ const creationsMenuManager: MenuManager = {
     if (menuItem?.type === AVATAR_BACKGROUND_ASSET_TYPE) {
       return settings.enableAvatarBackgrounds && (allowedAssetTypes?.has(menuItem.type) ?? false);
     }
+    // A showcase is a curated collection rather than an asset type, so it is not
+    // present in allowedAssetTypes and is gated on the flag alone.
+    if (menuItem?.type === SHOWCASE_ASSET_TYPE) {
+      return isShowcasesEnabled ?? false;
+    }
     if (menuItem?.type === MAKEUP_FIRST_ASSET_TYPE) {
-      return (
-        settings.enableMakeupAssets && (allowedAssetTypes?.has(menuItem?.type as Asset) ?? false)
-      );
+      return settings.enableMakeupAssets && (allowedAssetTypes?.has(menuItem.type) ?? false);
     }
 
     if (menuItem?.type !== undefined) {
@@ -104,6 +109,7 @@ const creationsMenuManager: MenuManager = {
     isMomentsTabEnabled?: boolean,
     isUGCFoldersEnabled?: boolean,
     showAvatarLooksInCreations?: boolean | null,
+    isShowcasesEnabled?: boolean | null,
   ): MenuState {
     let validMenuItem;
     let validSubmenuItem;
@@ -127,6 +133,7 @@ const creationsMenuManager: MenuManager = {
         isMomentsTabEnabled,
         isUGCFoldersEnabled,
         showAvatarLooksInCreations,
+        isShowcasesEnabled,
       )
     ) {
       [validMenuItem] = menuItems;
@@ -143,6 +150,7 @@ const creationsMenuManager: MenuManager = {
         isMomentsTabEnabled,
         isUGCFoldersEnabled,
         showAvatarLooksInCreations,
+        isShowcasesEnabled,
       )
     ) {
       if (menuState.menuItem.submenuItems !== undefined) {
@@ -159,6 +167,7 @@ const creationsMenuManager: MenuManager = {
               isMomentsTabEnabled,
               isUGCFoldersEnabled,
               showAvatarLooksInCreations,
+              isShowcasesEnabled,
             )
           ) {
             validSubmenuIndex = submenuSeekIndex;

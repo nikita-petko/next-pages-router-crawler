@@ -40,6 +40,7 @@ import creationsMenuManager from '../../menu/implementations/CreationsMenuManage
 import type MenuState from '../../menu/interfaces/MenuState';
 import MomentsCreationsPanel from '../../moments/components/MomentsCreationsPanel';
 import useMomentsGate from '../../moments/hooks/useMomentsGate';
+import useShowcasesGate from '../../showcase/hooks/useShowcasesGate';
 import type { VerificationMetadataContextValue } from '../../verification/hooks/VerificationMetadataContext';
 import useCreationsStyles from '../components/Creations.styles';
 import useAvatarLooksGate from '../hooks/useAvatarLooksGate';
@@ -122,6 +123,7 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
   const isMomentsTabEnabled = useMomentsGate();
   const isUGCFoldersEnabled = useUGCFoldersGate();
   const isAvatarLooksEnabled = useAvatarLooksGate();
+  const isShowcasesEnabled = useShowcasesGate();
   const { translate } = useTranslation();
   const isTaxonomyEnabled = useTaxonomyDashboardGate();
   const enablePublishingConsolidation = useEnablePublishingConsolidation();
@@ -193,18 +195,17 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
   );
 
   const validatedMenuState = useMemo(() => {
-    const isOnMomentsTab = parseActiveTabQueryParam(query.activeTab) === Asset.Moments;
-    if (isMomentsTabEnabled === undefined && isOnMomentsTab) {
-      return menuState;
-    }
+    const activeTab = parseActiveTabQueryParam(query.activeTab);
 
-    const isOnAllCatalogTab = parseActiveTabQueryParam(query.activeTab) === Asset.AllCatalogAsset;
-    if (isUGCFoldersEnabled === undefined && isOnAllCatalogTab) {
-      return menuState;
-    }
+    // Hold the current state while a tab's gate is still resolving, so a deep link
+    // into that tab is not redirected away before we know whether it is allowed.
+    const isGateResolvingForActiveTab =
+      (isMomentsTabEnabled === undefined && activeTab === Asset.Moments) ||
+      (isUGCFoldersEnabled === undefined && activeTab === Asset.AllCatalogAsset) ||
+      (isAvatarLooksEnabled === undefined && activeTab === Asset.AvatarLooks) ||
+      (isShowcasesEnabled === undefined && activeTab === Asset.Showcase);
 
-    const isOnAvatarLooksTab = parseActiveTabQueryParam(query.activeTab) === Asset.AvatarLooks;
-    if (isAvatarLooksEnabled === undefined && isOnAvatarLooksTab) {
+    if (isGateResolvingForActiveTab) {
       return menuState;
     }
 
@@ -220,6 +221,7 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
       isMomentsTabEnabled,
       isUGCFoldersEnabled,
       isAvatarLooksEnabled,
+      isShowcasesEnabled,
     );
 
     if (validMenuState !== menuState) {
@@ -244,6 +246,7 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
     isMomentsTabEnabled,
     isUGCFoldersEnabled,
     isAvatarLooksEnabled,
+    isShowcasesEnabled,
     setQueryParams,
   ]);
 

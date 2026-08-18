@@ -29,8 +29,7 @@ export const adaptAllRaqiV2SeriesWithComparisonAndSummary = (
   const { series, timestamps } = ingestAllRaqiV2Series(spec);
   const { spec: chartSpec, translationDependencies, granularity } = spec;
   const { comparisonStartDate, comparisonEndDate } = getComparisonRange(
-    chartSpec.timeSpec.startTime,
-    chartSpec.timeSpec.endTime,
+    chartSpec.timeSpec,
     granularity,
     relativeOffset,
     customStartDate,

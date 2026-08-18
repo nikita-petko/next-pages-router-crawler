@@ -13,7 +13,6 @@ import type {
   DurationSplineChartSpec,
 } from '@modules/charts-generic/charts/types/DurationSplineChartTypes';
 import type { TimeSeriesDataPoint } from '@modules/charts-generic/charts/types/TimeSeriesTypes';
-import { getComparisonTimeRange } from '@modules/charts-generic/utils/comparisonChipUtils';
 import logAnalyticsError from '@modules/charts-generic/utils/logAnalyticsError';
 import type { RAQIV2BreakdownValue, RAQIV2MetricValue } from '@modules/clients/analytics';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -27,6 +26,7 @@ import type RAQIV2ChartSpec from '../types/RAQIV2ChartSpec';
 import type { RAQIV2TranslationDependencies } from '../types/RAQIV2DimensionRenderer';
 import type { RAQIV2QueryResponses } from '../utils/combineRAQIV2QueryResponses';
 import combineRAQIV2QueryResponses from '../utils/combineRAQIV2QueryResponses';
+import getComparisonRange from '../utils/getComparisonRange';
 import { buildChartUnitOptions, getBreakdownName } from './genericRAQIV2ChartAdapter';
 import type { RAQIV2SummarySpec } from './genericRAQIV2ChartSummaryAdapter';
 import { getDefaultSummarySpec, summarizeSeriesInfo } from './genericRAQIV2ChartSummaryAdapter';
@@ -244,9 +244,8 @@ const genericRAQIV2DurationChartAdapter = ({
     bucketType: DurationBucketDimensionToBucketType[durationBucketDimension],
   };
 
-  const { comparisonStartDate, comparisonEndDate } = getComparisonTimeRange(
-    spec.timeSpec.startTime,
-    spec.timeSpec.endTime,
+  const { comparisonStartDate, comparisonEndDate } = getComparisonRange(
+    spec.timeSpec,
     RAQIV2MetricGranularity.OneDay,
   );
 

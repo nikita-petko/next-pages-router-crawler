@@ -14,10 +14,10 @@ import {
 import ChartSummaryType from '@modules/charts-generic/enums/ChartSummaryType';
 import type { SeriesIntervalMeaning } from '@modules/charts-generic/enums/SeriesIntervalMeaning';
 import {
-  getComparisonTimeRange,
   getComparisonChipSpec,
   getComparisonChipTooltip,
 } from '@modules/charts-generic/utils/comparisonChipUtils';
+import getComparisonRange from '@modules/experience-analytics-shared/utils/getComparisonRange';
 
 type NumericChartSummaryType = NumericChartSummaryItemSpec['summaryType'];
 import type { FormattedText } from '@modules/analytics-translations/types';
@@ -109,9 +109,8 @@ const playerFeedbackVoteChartAdapter = ({
         spec,
       }).series
     : undefined;
-  const { comparisonStartDate, comparisonEndDate } = getComparisonTimeRange(
-    spec.timeSpec.startTime,
-    spec.timeSpec.endTime,
+  const { comparisonStartDate, comparisonEndDate } = getComparisonRange(
+    spec.timeSpec,
     effectiveGranularity,
   );
 

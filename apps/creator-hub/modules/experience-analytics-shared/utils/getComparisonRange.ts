@@ -1,7 +1,22 @@
 import type { RAQIV2MetricGranularity } from '@rbx/creator-hub-analytics-config';
+import type { TExplicitTimeRangeSpec } from '@modules/charts-generic/charts/types/ChartTypes';
 import { getComparisonTimeRange } from '@modules/charts-generic/utils/comparisonChipUtils';
+import { getComparisonWindowGranularity } from '@modules/charts-generic/utils/granularityUtils';
 import { COMPARISON_RELATIVE_OFFSET_TO_MS } from '../constants/comparisonOffset';
 import type { ComparisonOverlay } from '../types/RAQIV2ChartSpec';
+
+/**
+ * The window a comparison range is derived from.
+ *
+ * Taken whole rather than as loose start/end dates because the previous-period
+ * offset depends on `rangeType`, the window bounds, and `snapGranularity`: see
+ * {@link getComparisonWindowGranularity}. `rangeType` must be the preset the
+ * window was derived from — not `Custom` from snapping explicit bounds.
+ */
+export type ComparisonRangeTimeSpec = Pick<
+  TExplicitTimeRangeSpec,
+  'startTime' | 'endTime' | 'rangeType' | 'snapGranularity'
+>;
 
 /**
  * Everything {@link getComparisonRange} needs to derive a comparison window.
@@ -30,12 +45,12 @@ export type ComparisonRangeSpec = {
  *   "previous period" behavior (window immediately preceding the main one).
  */
 const getComparisonRange = (
-  startTime: Date,
-  endTime: Date,
+  timeSpec: ComparisonRangeTimeSpec,
   granularity: RAQIV2MetricGranularity,
   relativeOffset?: ComparisonOverlay['relativeOffset'],
   customStartDate?: ComparisonOverlay['customStartDate'],
 ): { comparisonStartDate: Date; comparisonEndDate: Date } => {
+  const { startTime, endTime } = timeSpec;
   if (customStartDate) {
     const durationMs = endTime.getTime() - startTime.getTime();
     return {
@@ -50,7 +65,11 @@ const getComparisonRange = (
       comparisonEndDate: new Date(endTime.getTime() - offsetMs),
     };
   }
-  return getComparisonTimeRange(startTime, endTime, granularity);
+  return getComparisonTimeRange(
+    startTime,
+    endTime,
+    getComparisonWindowGranularity(granularity, timeSpec),
+  );
 };
 
 export default getComparisonRange;

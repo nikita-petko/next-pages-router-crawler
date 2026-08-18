@@ -100,6 +100,10 @@ const ASSET_TYPE_MAPPING: Record<
     asset: Asset.AvatarLooks,
     apiType: V1ItemsByCreatorGetAssetTypeEnum.NUMBER_0,
   },
+  [Asset.Showcase]: {
+    asset: Asset.Showcase,
+    apiType: V1ItemsByCreatorGetAssetTypeEnum.NUMBER_0,
+  },
   [Asset.Decal]: { asset: Asset.Decal, apiType: V1ItemsByCreatorGetAssetTypeEnum.NUMBER_13 },
   [Asset.Image]: { asset: Asset.Image, apiType: V1ItemsByCreatorGetAssetTypeEnum.NUMBER_1 },
   [Asset.Audio]: { asset: Asset.Audio, apiType: V1ItemsByCreatorGetAssetTypeEnum.NUMBER_3 },

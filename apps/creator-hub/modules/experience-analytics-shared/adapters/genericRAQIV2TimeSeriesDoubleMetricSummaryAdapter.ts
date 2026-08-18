@@ -13,7 +13,6 @@ import ChartSummaryType from '@modules/charts-generic/enums/ChartSummaryType';
 import {
   getComparisonChipSpec,
   getComparisonChipTooltip,
-  getComparisonTimeRange,
 } from '@modules/charts-generic/utils/comparisonChipUtils';
 import logAnalyticsError from '@modules/charts-generic/utils/logAnalyticsError';
 import type {
@@ -25,6 +24,7 @@ import { isComputedMetric } from '../types/ComputedMetric';
 import type RAQIV2ChartSpec from '../types/RAQIV2ChartSpec';
 import type { RAQIV2TranslationDependencies } from '../types/RAQIV2DimensionRenderer';
 import { generateAnalyticsNumberFormattingSpec } from '../utils/analyticsNumberFormattingSpec';
+import getComparisonRange from '../utils/getComparisonRange';
 import { getIsPositiveGoodFromMetricLike } from '../utils/metricLikeSemantics';
 
 type GenericRAQIV2TimeSeriesSplineQuotaChartAdapterProps = {
@@ -178,11 +178,7 @@ const genericRAQIV2TimeSeriesDoubleMetricSummaryAdapter = ({
   granularity,
   numberContextMetadata,
 }: GenericRAQIV2TimeSeriesSplineQuotaChartAdapterProps): ChartSummaryItemSpec[] => {
-  const { comparisonStartDate, comparisonEndDate } = getComparisonTimeRange(
-    spec.timeSpec.startTime,
-    spec.timeSpec.endTime,
-    granularity,
-  );
+  const { comparisonStartDate, comparisonEndDate } = getComparisonRange(spec.timeSpec, granularity);
 
   const [primaryChart, secondaryChart] = charts;
   const { total: primarySeries, comparison: primaryComparisonSeries } =
