@@ -9,8 +9,7 @@ import { useUniverseId } from '@modules/monetization-shared/route/useUniverseId'
 import PageTitle from '@modules/monetization-shared/title';
 import { useUniversePermissions } from '@modules/react-query/organizations';
 import EventStatusBadge from '../common/EventStatusBadge';
-import { openRescheduleEventDialog } from '../dialogs/RescheduleEventDialog';
-import { openStopAndRescheduleWarningDialog } from '../dialogs/StopAndRescheduleWarningDialog';
+import { PriceExperimentTitleAction } from '../experiment-details/components/PriceExperimentTitleAction';
 import { useGetManagedPricingEvent } from '../queries/useGetManagedPricingEvent';
 import type { ManagedPricingEvent } from '../types';
 
@@ -58,21 +57,6 @@ function ManagedPricingEventDetailsPageTitle() {
 
   const dateRangeLabel = formatEventDateRange(event.startTime, event.endTime, locale);
 
-  const shouldShowReschedule = event.status === 'Upcoming' || event.status === 'Active';
-
-  const handleRescheduleClick = () => {
-    if (event.status === 'Active') {
-      openStopAndRescheduleWarningDialog({ universeId, eventId, eventStartTime: event.startTime });
-    } else {
-      openRescheduleEventDialog({ universeId, eventId, eventStartTime: event.startTime });
-    }
-  };
-
-  const actionLabel =
-    event.status === 'Active'
-      ? translate('Action.StopAndReschedule')
-      : translate('Action.Reschedule');
-
   return (
     <PageTitle
       title={
@@ -86,18 +70,17 @@ function ManagedPricingEventDetailsPageTitle() {
           </span>
         </div>
       }
-      actionProps={
-        shouldShowReschedule
-          ? {
-              variant: 'Standard',
-              isDisabled: !permissions?.monetizeExperience,
-              onClick: handleRescheduleClick,
-              children: actionLabel,
-              className: 'width-full medium:width-fit', // Custom responsive layout for this title action
-            }
-          : undefined
+      actions={
+        event.eventType === 'PriceTest' ? (
+          <PriceExperimentTitleAction
+            universeId={universeId}
+            event={event}
+            disabled={!permissions?.monetizeExperience}
+            className='width-full medium:width-fit'
+          />
+        ) : undefined
       }
-      className={shouldShowReschedule ? 'wrap' : undefined} // TODO: revisiting this once we iterate on creator hub layout
+      className='wrap'
     />
   );
 }

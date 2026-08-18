@@ -1,5 +1,5 @@
 import { Button, DialogBody, DialogContent, DialogFooter, DialogTitle } from '@rbx/foundation-ui';
-import { useTranslation, withTranslation } from '@rbx/intl';
+import { useTranslationWithNamespace, withTranslation } from '@rbx/intl';
 import TranslationNamespace from '@modules/miscellaneous/localization/enums/TranslationNamespace';
 import { closeDialog, openDialog } from '@modules/monetization-shared/dialog/actions';
 import { openRescheduleEventDialog } from './RescheduleEventDialog';
@@ -17,7 +17,7 @@ function StopAndRescheduleWarningDialogContent({
   eventStartTime,
   onClose,
 }: Props) {
-  const { translate } = useTranslation();
+  const { translate } = useTranslationWithNamespace(TranslationNamespace.ManagedPricing);
 
   const handleConfirm = () => {
     onClose();
@@ -31,7 +31,7 @@ function StopAndRescheduleWarningDialogContent({
           {/* Note: heading is currently specific to price tests */}
           {translate('Heading.StopAndRescheduleWarning')}
         </DialogTitle>
-        <span className='text-body-medium content-default margin-none padding-bottom-medium'>
+        <span className='text-body-medium content-default margin-none'>
           {/* Note: message is currently specific to price tests  */}
           {translate('Message.StopAndRescheduleWarning')}
         </span>
@@ -45,7 +45,7 @@ function StopAndRescheduleWarningDialogContent({
           {translate('Action.StopAndReschedule')}
         </Button>
         <Button variant='Standard' size='Medium' className='fill small:basis-0' onClick={onClose}>
-          {translate('Action.Cancel')}
+          {translate('Action.KeepTestRunning')}
         </Button>
       </DialogFooter>
     </DialogContent>

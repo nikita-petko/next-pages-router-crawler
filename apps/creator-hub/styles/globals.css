@@ -2536,6 +2536,9 @@
 .min-width-\[220px\] {
   min-width: 220px;
 }
+.min-width-\[225px\] {
+  min-width: 225px;
+}
 .min-width-\[240px\] {
   min-width: 240px;
 }
@@ -2978,6 +2981,10 @@
 .padding-xxsmall {
   padding: var(--padding-xxsmall);
 }
+.\!padding-x-large {
+  padding-left: var(--padding-large) !important;
+  padding-right: var(--padding-large) !important;
+}
 .\!padding-x-medium {
   padding-left: var(--padding-medium) !important;
   padding-right: var(--padding-medium) !important;
@@ -2989,6 +2996,10 @@
 .\!padding-x-small {
   padding-left: var(--padding-small) !important;
   padding-right: var(--padding-small) !important;
+}
+.\!padding-y-\[10px\] {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
 }
 .\!padding-y-none {
   padding-top: var(--padding-none) !important;
@@ -3753,6 +3764,9 @@
 }
 .icon-regular-chevron-small-down {
   --svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'%3E%3Cpath d='M15.2929 20.7071C15.6834 21.0976 16.3166 21.0976 16.7071 20.7071L22.7071 14.7071C23.0976 14.3166 23.0976 13.6834 22.7071 13.2929C22.3166 12.9024 21.6834 12.9024 21.2929 13.2929L16 18.5858L10.7071 13.2929C10.3166 12.9024 9.68342 12.9024 9.29289 13.2929C8.90237 13.6834 8.90237 14.3166 9.29289 14.7071L15.2929 20.7071Z' fill='black'/%3E%3C/svg%3E");
+}
+.icon-filled-chevron-small-down {
+  --svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'%3E%3Cpath d='M15.0536 21.164C15.6428 21.6442 16.5114 21.6095 17.0604 21.0605L23.0604 15.0605L23.1639 14.9463C23.6441 14.3571 23.6095 13.4884 23.0604 12.9394C22.5114 12.3904 21.6427 12.3558 21.0536 12.8359L20.9393 12.9394L15.9999 17.8789L11.0604 12.9394C10.4746 12.3536 9.52513 12.3536 8.93934 12.9394C8.35355 13.5252 8.35355 14.4747 8.93934 15.0605L14.9393 21.0605L15.0536 21.164Z' fill='black'/%3E%3C/svg%3E");
 }
 .icon-regular-chevron-small-left {
   --svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'%3E%3Cpath d='M11.2929 16.7071C10.9024 16.3166 10.9024 15.6834 11.2929 15.2929L17.2929 9.29289C17.6834 8.90237 18.3166 8.90237 18.7071 9.29289C19.0976 9.68342 19.0976 10.3166 18.7071 10.7071L13.4142 16L18.7071 21.2929C19.0976 21.6834 19.0976 22.3166 18.7071 22.7071C18.3166 23.0976 17.6834 23.0976 17.2929 22.7071L11.2929 16.7071Z' fill='black'/%3E%3C/svg%3E");

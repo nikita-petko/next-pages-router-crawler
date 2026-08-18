@@ -7,6 +7,7 @@ import type {
   PriceExperimentationApiGetExperimentResultsRequest,
   PriceExperimentationApiListExperimentsRequest,
   PriceExperimentationApiListHoldoutMetricsRequest,
+  PriceExperimentationApiStopHoldoutRequest,
   PriceExperimentationApiV2GetExperimentSummaryRequest,
   PriceExperimentationApiV2ListExperimentProductDetailsRequest,
 } from '@rbx/client-price-experimentation-api/v1';
@@ -58,6 +59,10 @@ export class PriceExperimentationApiClient {
     options: RequestInit = {},
   ) {
     return this.api.priceExperimentationApiListHoldoutMetrics(request, options);
+  }
+
+  stopHoldout(request: PriceExperimentationApiStopHoldoutRequest, options: RequestInit = {}) {
+    return this.api.priceExperimentationApiStopHoldout(request, options);
   }
 
   listExperimentProductDetails(
