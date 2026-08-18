@@ -56,6 +56,7 @@ import type {
   BatchCreateIpContentsRequest,
   UpdateIpFamilyRequest,
   GetIpFamilyIdRequest,
+  GetIpContentRequest,
   ListIpFamiliesByAccountRequest,
   ListIpContentsByIpFamilyRequest,
   ArchiveIpContentRequest,
@@ -80,6 +81,7 @@ import type {
 } from '@rbx/client-rights/v1';
 import {
   DefaultApi as RightsApi,
+  ClaimClaimTypeEnum,
   ClaimStatusEnum,
   ClaimItemStatusEnum,
 } from '@rbx/client-rights/v1';
@@ -428,6 +430,7 @@ export class RightsClient {
     documentIds: Array<string>,
     claimItems: Array<ClaimItem>,
     snapshotId?: string,
+    claimType: ClaimClaimTypeEnum = ClaimClaimTypeEnum.Copyright,
   ): Promise<Claim> {
     const request: CreateClaimRequest = {
       accountId,
@@ -439,6 +442,7 @@ export class RightsClient {
         documentIds,
         status: ClaimStatusEnum.Creating,
         claimItems,
+        claimType,
       },
     };
 
@@ -553,6 +557,10 @@ export class RightsClient {
 
   getIpFamilyId(params: GetIpFamilyIdRequest) {
     return this.rightsApi.getIpFamilyId(params);
+  }
+
+  getIpContent(params: GetIpContentRequest) {
+    return this.rightsApi.getIpContent(params);
   }
 
   // eslint-disable-next-line class-methods-use-this, @typescript-eslint/no-unused-vars -- temporary

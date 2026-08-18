@@ -1,6 +1,6 @@
-import Link from 'next/link';
 import type { FunctionComponent } from 'react';
 import React from 'react';
+import Link from 'next/link';
 import { AccountStatusEnum } from '@rbx/client-rights/v1';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import {
@@ -46,7 +46,7 @@ const RemovalRequests: FunctionComponent<React.PropsWithChildren<RemovalRequests
   const { claims, nextPageToken, isPending, isPlaceholderData, error } = useListClaims(
     accountId,
     rowsPerPage[0],
-    pageToken || '',
+    pageToken ?? '',
   );
 
   const { intervention } = useGetRightsFeatureTimeoutIntervention(
@@ -97,20 +97,22 @@ const RemovalRequests: FunctionComponent<React.PropsWithChildren<RemovalRequests
         </Grid>
       )}
       <Grid item sx={{ display: 'flex', gap: '8px' }}>
-        <Link href={CREATE_REMOVAL_REQUEST_HREF} passHref legacyBehavior>
-          <Button
-            variant='contained'
-            color='primaryBrand'
-            disabled={accountStatus !== AccountStatusEnum.Verified || isBlockedByFeatureTimeout}>
-            {translate('Label.NewRemovalRequest')}
-          </Button>
-        </Link>
+        <Button
+          component={Link}
+          href={CREATE_REMOVAL_REQUEST_HREF}
+          variant='contained'
+          color='primaryBrand'
+          disabled={accountStatus !== AccountStatusEnum.Verified || isBlockedByFeatureTimeout}>
+          {translate('Label.NewRemovalRequest')}
+        </Button>
         {enableInExperienceIpReporting && (
-          <Link href={REPORT_CODE_REMOVAL_REQUESTS_HREF} passHref legacyBehavior>
-            <Button variant='contained' color='secondary'>
-              {translate('Label.UseReportCode')}
-            </Button>
-          </Link>
+          <Button
+            component={Link}
+            href={REPORT_CODE_REMOVAL_REQUESTS_HREF}
+            variant='contained'
+            color='secondary'>
+            {translate('Label.UseReportCode')}
+          </Button>
         )}
       </Grid>
       <Grid item>
@@ -120,6 +122,7 @@ const RemovalRequests: FunctionComponent<React.PropsWithChildren<RemovalRequests
               <TableRow>
                 <TableCell width='30px' />
                 <TableCell>{translate('Label.NameOfRequest')}</TableCell>
+                <TableCell>{translate('Label.Type')}</TableCell>
                 <TableCell>{translate('Label.ID')}</TableCell>
                 <TableCell>{translate('Label.Status')}</TableCell>
                 <TableCell>{translate('Label.SubmittedDate')}</TableCell>

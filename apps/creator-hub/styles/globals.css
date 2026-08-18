@@ -1877,6 +1877,10 @@
   width: var(--size-150);
   height: var(--size-150);
 }
+.size-1500 {
+  width: var(--size-1500);
+  height: var(--size-1500);
+}
 .size-1600 {
   width: var(--size-1600);
   height: var(--size-1600);

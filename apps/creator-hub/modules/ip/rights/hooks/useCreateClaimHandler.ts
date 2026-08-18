@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import type { ClaimClaimTypeEnum } from '@rbx/client-rights/v1';
 import { getResponseFromError } from '@modules/clients/utils';
 import type { TakedownRequest } from '../types/types';
 import useCreateClaim from './useCreateClaim';
@@ -13,6 +14,7 @@ type CreateClaimData = {
   accountId: string;
   userId: string;
   snapshotId?: string;
+  claimType?: ClaimClaimTypeEnum;
   description: string;
   takedownRequests: TakedownRequest[];
 };
@@ -46,9 +48,18 @@ export default function useCreateClaimHandler() {
     } catch (error) {
       const response = getResponseFromError(error);
       if (response?.status === 409) {
-        const { message: errorMessage } = await response.json();
-        if (isUUID(errorMessage)) {
-          await submitClaim.mutateAsync({ accountId: data.accountId, claimId: errorMessage });
+        const responseBody: unknown = await response.json();
+        if (
+          typeof responseBody === 'object' &&
+          responseBody !== null &&
+          'message' in responseBody &&
+          typeof responseBody.message === 'string' &&
+          isUUID(responseBody.message)
+        ) {
+          await submitClaim.mutateAsync({
+            accountId: data.accountId,
+            claimId: responseBody.message,
+          });
         }
       }
     }

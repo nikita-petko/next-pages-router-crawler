@@ -9,6 +9,10 @@ export const LIST_IP_FAMILIES = (
 
 const rootIpContentKey = 'am_ipContent';
 export const IP_CONTENTS_QUERY_KEY = [rootIpContentKey];
+export const GET_IP_CONTENT_BY_ID = (
+  accountId: string | undefined,
+  ipContentId: string | undefined,
+) => [...IP_CONTENTS_QUERY_KEY, 'by-id', accountId, ipContentId];
 export const LIST_IP_CONTENTS_BY_FAMILY = (id: string) => [rootIpContentKey, id];
 export const LIST_IP_CONTENTS_BY_FAMILY_PAGINATED = (
   id: string,
@@ -33,3 +37,8 @@ export const LIST_IP_CONTENTS_BY_ACCOUNT_PAGINATED = (
   pageSize: number | undefined,
   pageToken: string | undefined,
 ) => [rootIpContentByAccountKey, accountId, filter ?? '', pageSize ?? 0, pageToken ?? ''];
+export const LIST_IP_CONTENTS_BY_ACCOUNT_INFINITE = (
+  accountId: string,
+  filter: string | undefined,
+  pageSize: number | undefined,
+) => [rootIpContentByAccountKey, accountId, filter ?? '', 'infinite', pageSize ?? 0];

@@ -1,5 +1,6 @@
 import type { FunctionComponent } from 'react';
 import React from 'react';
+import { ClaimClaimTypeEnum } from '@rbx/client-rights/v1';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import {
   Collapse,
@@ -15,7 +16,6 @@ import {
 import type { Claim as RightsClaim } from '@modules/clients/rights';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import ClaimItemTable from './ClaimItemTable';
-
 // This is the length of the first section of a UUIDv4
 const MAX_CLAIM_ID_LENGTH = 8;
 
@@ -43,7 +43,7 @@ const RemovalRequestRow: FunctionComponent<React.PropsWithChildren<RemovalReques
 
   const getShortenedClaimId = () => {
     let shortenedId = claim.id?.replaceAll('-', '') ?? '';
-    shortenedId = shortenedId.substring(0, Math.min(shortenedId.length, MAX_CLAIM_ID_LENGTH));
+    shortenedId = shortenedId.slice(0, Math.min(shortenedId.length, MAX_CLAIM_ID_LENGTH));
     return shortenedId;
   };
 
@@ -79,6 +79,13 @@ const RemovalRequestRow: FunctionComponent<React.PropsWithChildren<RemovalReques
           </Typography>
         </TableCell>
         <TableCell>
+          <Typography noWrap variant='body1'>
+            {claim.claimType === ClaimClaimTypeEnum.Trademark
+              ? translate('Label.Trademark')
+              : translate('Label.Copyright')}
+          </Typography>
+        </TableCell>
+        <TableCell>
           <Tooltip arrow placement='top' title={claim.id}>
             <Typography noWrap variant='body1'>
               {getShortenedClaimId()}
@@ -93,9 +100,9 @@ const RemovalRequestRow: FunctionComponent<React.PropsWithChildren<RemovalReques
         </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell colSpan={5} className={collapseTableCell}>
+        <TableCell colSpan={6} className={collapseTableCell}>
           <Collapse in={open} timeout='auto' unmountOnExit={false}>
-            <ClaimItemTable accountId={accountId} claim={claim} />
+            <ClaimItemTable accountId={accountId} claim={claim} enableTrademarkEnrichment={open} />
           </Collapse>
         </TableCell>
       </TableRow>

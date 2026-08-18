@@ -1,5 +1,5 @@
 import { captureException } from '@sentry/nextjs';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRobloxAuthentication } from '@rbx/auth';
 import type {
   IPContent,
@@ -29,6 +29,7 @@ import {
   IP_CONTENTS_QUERY_KEY,
   IP_FAMILIES_QUERY_KEY,
   LIST_IP_CONTENTS_BY_ACCOUNT,
+  LIST_IP_CONTENTS_BY_ACCOUNT_INFINITE,
   LIST_IP_CONTENTS_BY_FAMILY,
   LIST_IP_CONTENTS_BY_FAMILY_PAGINATED,
   LIST_IP_FAMILIES,
@@ -764,6 +765,51 @@ export const useListAllIpContentsByAccount = (params: { filter?: IPContentsByAcc
         ipContents,
       };
     },
+  });
+};
+
+type TrademarkContentType =
+  | typeof IPContentContentTypeEnum.Text
+  | typeof IPContentContentTypeEnum.Asset;
+
+// Currently we only support trademarks through this endpoint. We also only use approved ones
+const getTrademarkFilter = (contentType: TrademarkContentType) =>
+  `is_trademark=true AND status="${IPContentStatusEnum.Approved}" AND ip_content_type="${contentType}"`;
+
+/**
+ * Fetches approved trademark IP contents one page at a time for infinite-scrolling consumers.
+ */
+export const useInfiniteTrademarksByAccount = (
+  contentType: TrademarkContentType,
+  pageSize: number,
+) => {
+  const { account } = useCurrentAccountContext();
+  const accountId = account?.id;
+  const filter = getTrademarkFilter(contentType);
+
+  return useInfiniteQuery({
+    queryKey: LIST_IP_CONTENTS_BY_ACCOUNT_INFINITE(accountId ?? '', filter, pageSize),
+    queryFn: async ({ pageParam }) => {
+      if (!accountId) {
+        throw new Error('Missing account ID');
+      }
+
+      const response = await rightsClient.listIpContentsByAccount({
+        accountId,
+        pageSize,
+        pageToken: pageParam,
+        filter,
+      });
+
+      return {
+        ...response,
+        ipContents: response.ipContents ?? [],
+      };
+    },
+    getNextPageParam: (lastPage) =>
+      lastPage.nextPageToken === '' ? undefined : lastPage.nextPageToken,
+    initialPageParam: '',
+    enabled: !!accountId,
   });
 };
 

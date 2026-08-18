@@ -1,6 +1,6 @@
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { ClaimItemDiscoveredFromEnum, ClaimItemSourceEnum } from '@rbx/client-rights/v1';
 import { uuidService } from '@rbx/core';
 import { useTranslation, withTranslation } from '@rbx/intl';
@@ -16,11 +16,14 @@ import ApplyFooter from '../registration/ApplyFooter';
 import AddCreation from './AddCreation';
 import CreationsTable from './CreationsTable';
 import EditModal from './EditModal';
+import ReportTypeSection, { ReportType } from './ReportTypeSection';
 import type { RemovalRequestFormFields, RemovalRequestFormFieldsModal } from './types';
 
 const MaxTakedownRequests = 250;
 
 interface RemovalRequestFormProps {
+  reportType?: ReportType;
+  setReportType?: (reportType: ReportType) => void;
   takedownRequests: Array<TakedownRequest>;
   setTakedownRequests: (takedownRequests: Array<TakedownRequest>) => void;
   onClickBack: () => void;
@@ -34,8 +37,12 @@ interface RemovalRequestFormProps {
 const cloneTakedownRequest = (originalRequest: TakedownRequest): TakedownRequest => {
   return {
     creationSource: originalRequest.creationSource,
+    /* eslint-disable unicorn/prefer-structured-clone, typescript/no-unsafe-assignment --
+     * Preserve the existing JSON cloning behavior because structuredClone is unavailable in Jest.
+     */
     infringingContent: JSON.parse(JSON.stringify(originalRequest.infringingContent)),
     myContent: originalRequest.myContent && JSON.parse(JSON.stringify(originalRequest.myContent)),
+    /* eslint-enable unicorn/prefer-structured-clone, typescript/no-unsafe-assignment */
     description: originalRequest.description,
     supportingFiles: originalRequest.supportingFiles.map((doc) => {
       const clonedFile = new File([doc.file ?? ''], doc.file?.name ?? '', { type: doc.file?.type });
@@ -50,7 +57,23 @@ const cloneTakedownRequest = (originalRequest: TakedownRequest): TakedownRequest
   };
 };
 
+const convertTakedownRequestToFormData = (
+  takedownRequest: TakedownRequest,
+): RemovalRequestFormFields => {
+  return {
+    creationSource: takedownRequest.creationSource,
+    myCreationLink: takedownRequest.myContent?.originalLink ?? '',
+    myTrademarkContent: takedownRequest.myContent?.myTrademarkContent,
+    description: takedownRequest.description,
+    documents: takedownRequest.supportingFiles,
+    infringingCreationsLinks: [takedownRequest.infringingContent.originalLink],
+    discoveredFrom: takedownRequest.discoveredFrom,
+  };
+};
+
 const RemovalRequestForm: FunctionComponent<React.PropsWithChildren<RemovalRequestFormProps>> = ({
+  reportType = ReportType.CopyrightInfringement,
+  setReportType,
   takedownRequests,
   setTakedownRequests,
   onClickNext,
@@ -84,29 +107,20 @@ const RemovalRequestForm: FunctionComponent<React.PropsWithChildren<RemovalReque
       // we won't show the user empty page
       setPage(Math.floor(Math.abs((newTakedownRequests.length - 1) / rowsPerPage)));
     },
-    /* eslint-disable-next-line react-hooks/exhaustive-deps --
-     * NOTE (jcountryman, 2/6/24): Turned off to check in @rbx/ui upgrade. Codeowners is
-     * responsible for triaging issue.
-     */
-    [takedownRequests, setTakedownRequests, setPage],
+    [
+      rowsPerPage,
+      setActiveStep,
+      setBacktrackToSearch,
+      setPage,
+      setTakedownRequests,
+      takedownRequests,
+    ],
   );
-
-  const convertTakedownRequestToFormData = (
-    takedownRequest: TakedownRequest,
-  ): RemovalRequestFormFields => {
-    return {
-      creationSource: takedownRequest.creationSource,
-      myCreationLink: takedownRequest.myContent?.originalLink || '',
-      description: takedownRequest.description,
-      documents: takedownRequest.supportingFiles,
-      infringingCreationsLinks: [takedownRequest.infringingContent.originalLink],
-      discoveredFrom: takedownRequest.discoveredFrom,
-    };
-  };
 
   const defaultValues: RemovalRequestFormFields = {
     creationSource: ClaimItemSourceEnum.OnRoblox,
     myCreationLink: '',
+    myTrademarkContent: undefined,
     description: '',
     documents: [],
     infringingCreationsLinks: [''],
@@ -125,7 +139,8 @@ const RemovalRequestForm: FunctionComponent<React.PropsWithChildren<RemovalReque
     defaultValues,
   });
 
-  const { reset, watch } = formMethods;
+  const { reset } = formMethods;
+  const description = useWatch({ control: formMethods.control, name: 'description' });
   const { reset: resetModal } = formMethodsModal;
   const onEditRequest = (index: number) => {
     const takedownRequest = takedownRequests[index];
@@ -142,11 +157,7 @@ const RemovalRequestForm: FunctionComponent<React.PropsWithChildren<RemovalReque
       setIsDuplicating(true);
       setIsEditing(true);
     },
-    /* eslint-disable-next-line react-hooks/exhaustive-deps --
-     * NOTE (jcountryman, 2/6/24): Turned off to check in @rbx/ui upgrade. Codeowners is
-     * responsible for triaging issue.
-     */
-    [takedownRequests],
+    [resetModal, takedownRequests],
   );
 
   const onAddCreation = () => {
@@ -159,13 +170,14 @@ const RemovalRequestForm: FunctionComponent<React.PropsWithChildren<RemovalReque
   }
 
   const isMaxCreationsReached = takedownRequests.length >= MaxTakedownRequests;
-  const descriptionLength = watch('description').length;
+  const descriptionLength = description.length;
   const isNextButtonEnabled =
     takedownRequests && takedownRequests.length > 0 && descriptionLength <= MAX_CHARACTER_COUNT;
 
   return (
     <Grid container direction='column' spacing={2}>
       <EditModal
+        reportType={reportType}
         defaultValues={defaultValues}
         formMethods={formMethodsModal}
         takedownRequests={takedownRequests}
@@ -183,22 +195,32 @@ const RemovalRequestForm: FunctionComponent<React.PropsWithChildren<RemovalReque
       />
       <Grid item XSmall>
         {showAddCreation && (
-          <AddCreation
-            defaultValues={defaultValues}
-            formMethods={formMethods}
-            takedownRequests={takedownRequests}
-            setTakedownRequests={setTakedownRequests}
-            setShowAddCreation={setShowAddCreation}
-            isEditing={false}
-            setIsEditing={setIsEditing}
-            isDuplicating={false}
-            editIndex={editIndex}
-            setEditIndex={setEditIndex}
-            rowsPerPage={rowsPerPage}
-            setPage={setPage}
-            activeStep={activeStep}
-            setActiveStep={setActiveStep}
-          />
+          <>
+            {setReportType !== undefined && (
+              <ReportTypeSection
+                reportType={reportType}
+                setReportType={setReportType}
+                takedownRequests={takedownRequests}
+              />
+            )}
+            <AddCreation
+              reportType={reportType}
+              defaultValues={defaultValues}
+              formMethods={formMethods}
+              takedownRequests={takedownRequests}
+              setTakedownRequests={setTakedownRequests}
+              setShowAddCreation={setShowAddCreation}
+              isEditing={false}
+              setIsEditing={setIsEditing}
+              isDuplicating={false}
+              editIndex={editIndex}
+              setEditIndex={setEditIndex}
+              rowsPerPage={rowsPerPage}
+              setPage={setPage}
+              activeStep={activeStep}
+              setActiveStep={setActiveStep}
+            />
+          </>
         )}
         {takedownRequests.length > 0 && (
           <Grid item container direction='column' spacing={2}>

@@ -24,6 +24,7 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import type { UsePaginationActions, UsePaginationState } from '../../hooks/usePagination';
 import type { TakedownRequest } from '../../types/types';
 import ContentGrid from '../common/ContentGrid';
+import TrademarkContentGrid from '../common/TrademarkContentGrid';
 import ExpandableText from '../removalRequests/ExpandableText';
 import FileDisplay from './FileDisplay';
 
@@ -63,6 +64,8 @@ const ContentRow: FunctionComponent<React.PropsWithChildren<ContentRowProps>> = 
   onEdit,
 }) => {
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const { translate } = useTranslation();
+  const isTrademark = creation.myContent?.myTrademarkContent !== undefined;
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -99,15 +102,19 @@ const ContentRow: FunctionComponent<React.PropsWithChildren<ContentRowProps>> = 
       </TableCell>
       <TableCell>
         {creation.myContent ? (
-          <ContentGrid
-            contentId={creation.myContent.contentId}
-            contentType={creation.myContent.contentType}
-            originalLink={creation.myContent.originalLink}
-            sourceOfCreation={creation.creationSource}
-            isMyCreation
-          />
+          creation.myContent.myTrademarkContent ? (
+            <TrademarkContentGrid content={creation.myContent.myTrademarkContent} />
+          ) : (
+            <ContentGrid
+              contentId={creation.myContent.contentId}
+              contentType={creation.myContent.contentType}
+              originalLink={creation.myContent.originalLink}
+              sourceOfCreation={creation.creationSource}
+              isMyCreation
+            />
+          )
         ) : (
-          <Typography>Original content was not provided</Typography>
+          <Typography>{translate('Label.OriginalContentNotProvided')}</Typography>
         )}
       </TableCell>
       <TableCell>
@@ -131,23 +138,27 @@ const ContentRow: FunctionComponent<React.PropsWithChildren<ContentRowProps>> = 
           keepMounted
           open={!!anchorEl}
           onClose={handleClose}>
-          <MenuItem onClick={onEditEntry}>
-            <ListItemIcon>
-              <EditOutlinedIcon />
-            </ListItemIcon>
-            <Typography>Edit</Typography>
-          </MenuItem>
-          <MenuItem onClick={onDuplicateEntry}>
-            <ListItemIcon>
-              <FileCopyOutlinedIcon />
-            </ListItemIcon>
-            <Typography>Duplicate</Typography>
-          </MenuItem>
+          {!isTrademark && (
+            <MenuItem onClick={onEditEntry}>
+              <ListItemIcon>
+                <EditOutlinedIcon />
+              </ListItemIcon>
+              <Typography>{translate('Action.Edit')}</Typography>
+            </MenuItem>
+          )}
+          {!isTrademark && (
+            <MenuItem onClick={onDuplicateEntry}>
+              <ListItemIcon>
+                <FileCopyOutlinedIcon />
+              </ListItemIcon>
+              <Typography>{translate('Action.Duplicate')}</Typography>
+            </MenuItem>
+          )}
           <MenuItem onClick={onDeleteEntry}>
             <ListItemIcon>
               <DeleteIcon />
             </ListItemIcon>
-            <Typography>Delete</Typography>
+            <Typography>{translate('Action.Delete')}</Typography>
           </MenuItem>
         </Menu>
       </TableCell>
@@ -187,6 +198,9 @@ const CreationsTable: FunctionComponent<React.PropsWithChildren<CreationsTablePr
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage,
   );
+  const isTrademarkClaim = creations.some(
+    (creation) => creation.myContent?.myTrademarkContent !== undefined,
+  );
 
   const tableContents = currentPageCreations.map((creation, index) => {
     const globalIndex = page * rowsPerPage + index;
@@ -209,7 +223,9 @@ const CreationsTable: FunctionComponent<React.PropsWithChildren<CreationsTablePr
           <TableCell className={claimItemDescription}>
             {translate('Label.ReportedCreation')}
           </TableCell>
-          <TableCell className={claimItemDescription}>{translate('Label.MyCreation')}</TableCell>
+          <TableCell className={claimItemDescription}>
+            {isTrademarkClaim ? translate('Label.MyTrademark') : translate('Label.MyCreation')}
+          </TableCell>
           <TableCell className={claimItemDescription}>{translate('Label.Description')}</TableCell>
           <TableCell className={claimItemDescription}>
             {translate('Label.SupportingFiles')}

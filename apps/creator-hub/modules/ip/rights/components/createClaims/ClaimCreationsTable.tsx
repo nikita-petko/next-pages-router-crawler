@@ -22,13 +22,13 @@ import {
 } from '@rbx/ui';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import type { UsePaginationActions, UsePaginationState } from '../../hooks/usePagination';
-import type { TakedownRequest } from '../../types/types';
+import type { ClaimRequest } from '../../types/types';
 import ContentGrid from '../common/ContentGrid';
 import FileDisplay from '../createRemovalRequest/FileDisplay';
 import ExpandableText from '../removalRequests/ExpandableText';
 
 interface CreationsTableProps {
-  creations: TakedownRequest[];
+  creations: ClaimRequest[];
   onDelete: (index: number) => void;
   onDuplicate: (index: number) => void;
   onEdit: (index: number) => void;
@@ -36,7 +36,7 @@ interface CreationsTableProps {
 }
 
 interface ContentRowProps {
-  creation: TakedownRequest;
+  creation: ClaimRequest;
   index: number;
   onDelete: (index: number) => void;
   onDuplicate: (index: number) => void;
@@ -63,6 +63,7 @@ const ContentRow: FunctionComponent<React.PropsWithChildren<ContentRowProps>> = 
   onEdit,
 }) => {
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const { translate } = useTranslation();
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -107,7 +108,7 @@ const ContentRow: FunctionComponent<React.PropsWithChildren<ContentRowProps>> = 
             isMyCreation
           />
         ) : (
-          <Typography>Original content was not provided</Typography>
+          <Typography>{translate('Label.OriginalContentNotProvided')}</Typography>
         )}
       </TableCell>
       <TableCell>
@@ -135,19 +136,19 @@ const ContentRow: FunctionComponent<React.PropsWithChildren<ContentRowProps>> = 
             <ListItemIcon>
               <EditOutlinedIcon />
             </ListItemIcon>
-            <Typography>Edit</Typography>
+            <Typography>{translate('Action.Edit')}</Typography>
           </MenuItem>
           <MenuItem onClick={onDuplicateEntry}>
             <ListItemIcon>
               <FileCopyOutlinedIcon />
             </ListItemIcon>
-            <Typography>Duplicate</Typography>
+            <Typography>{translate('Action.Duplicate')}</Typography>
           </MenuItem>
           <MenuItem onClick={onDeleteEntry}>
             <ListItemIcon>
               <DeleteIcon />
             </ListItemIcon>
-            <Typography>Delete</Typography>
+            <Typography>{translate('Action.Delete')}</Typography>
           </MenuItem>
         </Menu>
       </TableCell>

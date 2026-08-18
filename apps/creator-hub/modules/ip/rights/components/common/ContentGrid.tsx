@@ -5,8 +5,8 @@ import useContentDetails from '../../hooks/useContentDetails';
 import ContentGridLayout from './ContentGridLayout';
 
 interface ContentGridProps {
-  contentId?: number;
-  contentType?: ClaimContentContentTypeEnum;
+  contentId: number;
+  contentType: ClaimContentContentTypeEnum;
   originalLink?: string;
   sourceOfCreation?: ClaimItemSourceEnum;
   isMyCreation?: boolean;
@@ -21,12 +21,12 @@ const ContentGrid: FunctionComponent<React.PropsWithChildren<ContentGridProps>> 
   isMyCreation,
   showCreatorName = true,
 }) => {
-  const { isPending, error, contentDetails } = useContentDetails(contentId!, contentType!);
+  const { isPending, error, contentDetails } = useContentDetails(contentId, contentType);
 
   return (
     <ContentGridLayout
-      contentId={contentId!}
-      contentType={contentType!}
+      contentId={contentId}
+      contentType={contentType}
       originalLink={originalLink}
       sourceOfCreation={sourceOfCreation}
       isMyCreation={isMyCreation}

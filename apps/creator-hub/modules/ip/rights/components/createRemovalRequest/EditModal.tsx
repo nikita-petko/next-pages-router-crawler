@@ -33,6 +33,7 @@ const ModalHeader = ({ isDuplicating }: { isDuplicating: boolean }) => {
 };
 
 const EditModal: FunctionComponent<React.PropsWithChildren<TAddCreationProps>> = ({
+  reportType,
   defaultValues,
   formMethods,
   takedownRequests,
@@ -58,6 +59,7 @@ const EditModal: FunctionComponent<React.PropsWithChildren<TAddCreationProps>> =
       <Container>
         <ModalHeader isDuplicating={isDuplicating} />
         <AddCreation
+          reportType={reportType}
           defaultValues={defaultValues}
           formMethods={formMethods}
           takedownRequests={takedownRequests}

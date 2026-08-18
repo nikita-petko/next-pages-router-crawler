@@ -1,10 +1,12 @@
-import { useRouter } from 'next/router';
 import type { FunctionComponent } from 'react';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { AccountStatusEnum } from '@rbx/client-rights/v1';
+import { useRouter } from 'next/router';
+import { AccountStatusEnum, ClaimClaimTypeEnum } from '@rbx/client-rights/v1';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { Grid, Typography, Stepper, Step, StepLabel, makeStyles } from '@rbx/ui';
+import { IXPLayers } from '@modules/clients/ixpExperiments';
 import { PageLoading } from '@modules/miscellaneous/components';
+import { useIXPParameters } from '@modules/miscellaneous/hooks';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentAccountContext } from '../../../components/AccountProvider';
 import useCreateClaimHandler from '../../hooks/useCreateClaimHandler';
@@ -14,6 +16,7 @@ import createClaimHandlerErrorDialog from '../error/CreateClaimHandlerErrorDialo
 import ConflictClaimSubmittedDialog from './ConflictClaimSubmittedDialog';
 import LegalAgreementsContainer from './LegalAgreementsContainer';
 import RemovalRequestForm from './RemovalRequestForm';
+import { ReportType } from './ReportTypeSection';
 
 const LAST_STEP = 2;
 
@@ -36,11 +39,15 @@ const CreateRemovalRequestContainer: FunctionComponent<React.PropsWithChildren> 
   const { ready, translate } = useTranslation();
   const { account, user } = useCurrentAccountContext();
   const {
+    isFetched: isIXPFetched,
+    params: { enableTrademark },
+  } = useIXPParameters(IXPLayers.RightsManager, { restoreInitialValueFromCache: true });
+  const {
     classes: { hiddenContainer, fullWidth },
   } = useStyles();
 
+  const [reportType, setReportType] = useState<ReportType>(ReportType.CopyrightInfringement);
   const [takedownRequests, setTakedownRequests] = useState<TakedownRequest[]>([]);
-  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const {
     handler,
@@ -69,15 +76,9 @@ const CreateRemovalRequestContainer: FunctionComponent<React.PropsWithChildren> 
     }
   }, [activeStep, setActiveStep]);
 
-  useEffect(() => {
-    if (handlerIsError && !isErrorDialogOpen) {
-      setIsErrorDialogOpen(true);
-    }
-  }, [handlerIsError, isErrorDialogOpen]);
-
   const reset = useCallback(() => {
     handlerReset();
-    router.push(ACCOUNTS_HREF);
+    void router.push(ACCOUNTS_HREF);
   }, [handlerReset, router]);
 
   useEffect(() => {
@@ -87,7 +88,7 @@ const CreateRemovalRequestContainer: FunctionComponent<React.PropsWithChildren> 
   }, [handlerIsSuccess, shouldToastConflict, reset]);
 
   if (account && account.status && account.status !== AccountStatusEnum.Verified) {
-    router.push(ACCOUNTS_HREF);
+    void router.push(ACCOUNTS_HREF);
     return null;
   }
 
@@ -97,7 +98,7 @@ const CreateRemovalRequestContainer: FunctionComponent<React.PropsWithChildren> 
     ) : null;
   }
 
-  if (!account || !user || !ready) {
+  if (!account || !user || !ready || !isIXPFetched) {
     return <PageLoading />;
   }
 
@@ -106,15 +107,16 @@ const CreateRemovalRequestContainer: FunctionComponent<React.PropsWithChildren> 
     userId: user?.id ?? '',
     description: claimDescription,
     takedownRequests,
+    claimType:
+      reportType === ReportType.TrademarkInfringement
+        ? ClaimClaimTypeEnum.Trademark
+        : ClaimClaimTypeEnum.Copyright,
   };
 
   const HandlerErrorDialog = createClaimHandlerErrorDialog({
-    open: isErrorDialogOpen,
+    open: handlerIsError,
     reset: handlerReset,
-    onClose: () => {
-      setIsErrorDialogOpen(false);
-      handlerReset();
-    },
+    onClose: handlerReset,
     isLoading: handlerIsPending,
     onSubmit: () => handler(submissionData),
     shouldEditConflictClaim,
@@ -154,11 +156,13 @@ const CreateRemovalRequestContainer: FunctionComponent<React.PropsWithChildren> 
         </Grid>
         <Grid item className={activeStep === 2 ? hiddenContainer : ''}>
           <RemovalRequestForm
+            reportType={reportType}
+            setReportType={enableTrademark === true ? setReportType : undefined}
             takedownRequests={takedownRequests}
             setTakedownRequests={setTakedownRequests}
             onClickNext={onClickNext}
             onClickBack={() => {
-              router.push(ACCOUNTS_HREF);
+              void router.push(ACCOUNTS_HREF);
             }}
             activeStep={activeStep}
             setActiveStep={setActiveStep}
@@ -167,6 +171,7 @@ const CreateRemovalRequestContainer: FunctionComponent<React.PropsWithChildren> 
         </Grid>
         <Grid item className={activeStep !== 2 ? hiddenContainer : ''}>
           <LegalAgreementsContainer
+            key={submissionData.claimType}
             requestName={claimDescription}
             setRequestName={setClaimDescription}
             onClickBack={() => {
@@ -174,8 +179,9 @@ const CreateRemovalRequestContainer: FunctionComponent<React.PropsWithChildren> 
               onClickBack();
             }}
             onClickNext={() => handler(submissionData)}
-            isLoading={handlerIsPending && !isErrorDialogOpen}
+            isLoading={handlerIsPending && !handlerIsError}
             isClaimsEnabled={false}
+            claimType={submissionData.claimType}
           />
         </Grid>
       </Grid>

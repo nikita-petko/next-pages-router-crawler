@@ -1,19 +1,23 @@
 import type { FunctionComponent } from 'react';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { Controller, FormProvider } from 'react-hook-form';
 import {
   ClaimItemSourceEnum,
+  ClaimItemDiscoveredFromEnum,
   ClaimContentContentTypeEnum,
   AccountAccountTypeEnum,
+  type IPContent,
 } from '@rbx/client-rights/v1';
 import { uuidService } from '@rbx/core';
+import { Link } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { Button, Grid, MenuItem, Select, TextField, Typography, makeStyles } from '@rbx/ui';
 import { IXPLayers } from '@modules/clients/ixpExperiments';
 import { useIXPParameters } from '@modules/miscellaneous/hooks';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentAccountContext } from '../../../components/AccountProvider';
+import { IP_FAMILIES_HREF } from '../../../ipFamilies/urls';
 import type { ParsedContentUrl } from '../../helpers/parseContentUrl';
 import parseContentUrl, {
   ContentUrlDuplicateError,
@@ -31,10 +35,14 @@ import {
   PLACEHOLDER_CREATION_LINK,
 } from '../createClaims/AddCreationsForm/constants';
 import { DocumentUploader } from '../documents/DocumentForm';
+import AddTrademarkSideSheet from './AddTrademarkSideSheet';
 import MultiLinkField from './MultiLinkField';
+import { ReportType } from './ReportTypeSection';
+import TrademarkListItem from './TrademarkListItem';
 import type { RemovalRequestFormFields } from './types';
 
 export type TAddCreationProps = {
+  reportType: ReportType;
   defaultValues: RemovalRequestFormFields;
   formMethods: UseFormReturn<RemovalRequestFormFields>;
   takedownRequests: Array<TakedownRequest>;
@@ -58,6 +66,7 @@ const useStyles = makeStyles()(() => ({
 }));
 
 const AddCreation: FunctionComponent<React.PropsWithChildren<TAddCreationProps>> = ({
+  reportType,
   defaultValues,
   formMethods,
   takedownRequests,
@@ -75,7 +84,9 @@ const AddCreation: FunctionComponent<React.PropsWithChildren<TAddCreationProps>>
 }) => {
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const [addError, setAddError] = useState('');
-  const { ready, translate } = useTranslation();
+  const [isAddTrademarkSideSheetOpen, setIsAddTrademarkSideSheetOpen] = useState(false);
+  const isTrademarkReport = reportType === ReportType.TrademarkInfringement;
+  const { ready, translate, translateHTML } = useTranslation();
   const { account } = useCurrentAccountContext();
   const isOffPlatformSourceEnabled =
     account && account.accountType === AccountAccountTypeEnum.Corporate;
@@ -90,27 +101,40 @@ const AddCreation: FunctionComponent<React.PropsWithChildren<TAddCreationProps>>
     ParsedContentUrl[]
   >([]);
   const { classes: styles } = useStyles();
-  const { handleSubmit, control, formState, reset, trigger, watch, setError, clearErrors } =
-    formMethods;
+  const {
+    handleSubmit,
+    control,
+    formState,
+    reset,
+    trigger,
+    watch,
+    setValue,
+    setError,
+    clearErrors,
+  } = formMethods;
   const { errors } = formState;
+  const selectedTrademark = watch('myTrademarkContent');
   const remainingTakedownRequests = Math.max(0, MAX_CLAIM_REQUESTS - takedownRequests.length);
   const [invalidIds, setInvalidIds] = useState<number[]>([]);
 
   const addCreationToList = (formData: RemovalRequestFormFields) => {
+    if (isTrademarkReport && !formData.myTrademarkContent) {
+      return;
+    }
     setIsLoadingContent(true);
     try {
       const addedTakedownRequests = (
         Array.isArray(formData.infringingCreationsLinks)
           ? formData.infringingCreationsLinks
           : [formData.infringingCreationsLinks]
-      ).map((infringingCreationLink: string) => {
+      ).map((infringingCreationLink: string): TakedownRequest => {
         const parsedInfringingContentUrl = parseContentUrl(
           infringingCreationLink,
           ContentURLType.Infringing,
         );
         let parsedMyContentId: number | null = null;
         let parsedMyContentType: ClaimContentContentTypeEnum | null = null;
-        if (formData.myCreationLink?.length) {
+        if (!isTrademarkReport && formData.myCreationLink?.length) {
           const parsedMyContentUrl = parseContentUrl(
             formData.myCreationLink,
             ContentURLType.Original,
@@ -124,8 +148,30 @@ const AddCreation: FunctionComponent<React.PropsWithChildren<TAddCreationProps>>
           }
         }
 
+        let myContent: TakedownRequest['myContent'];
+        if (isTrademarkReport && formData.myTrademarkContent) {
+          myContent = {
+            myTrademarkContent: formData.myTrademarkContent,
+            contentType: ClaimContentContentTypeEnum.IpContent,
+            originalLink: '',
+          };
+        } else if (
+          !isTrademarkReport &&
+          formData.myCreationLink?.trim() &&
+          parsedMyContentId &&
+          parsedMyContentType
+        ) {
+          myContent = {
+            contentId: parsedMyContentId,
+            contentType: parsedMyContentType,
+            originalLink: formData.myCreationLink,
+          };
+        }
+
         return {
-          creationSource: formData.creationSource || '',
+          creationSource: isTrademarkReport
+            ? ClaimItemSourceEnum.OnRoblox
+            : formData.creationSource,
           infringingContent: {
             contentId: parsedInfringingContentUrl.contentId,
             contentType: parsedInfringingContentUrl.contentType,
@@ -134,17 +180,11 @@ const AddCreation: FunctionComponent<React.PropsWithChildren<TAddCreationProps>>
           description: formData.description,
           supportingFiles: formData.documents,
           key: uuidService.generateRandomUuid(),
-          discoveredFrom: formData.discoveredFrom,
-          ...(!!formData.myCreationLink?.trim() &&
-            parsedMyContentId &&
-            parsedMyContentType && {
-              myContent: {
-                contentId: parsedMyContentId,
-                contentType: parsedMyContentType,
-                originalLink: formData.myCreationLink,
-              },
-            }),
-        } as TakedownRequest;
+          discoveredFrom: isTrademarkReport
+            ? ClaimItemDiscoveredFromEnum.BulkEntry
+            : formData.discoveredFrom,
+          ...(myContent ? { myContent } : {}),
+        };
       });
       if (activeStep === 0) {
         setActiveStep(1);
@@ -183,6 +223,25 @@ const AddCreation: FunctionComponent<React.PropsWithChildren<TAddCreationProps>>
     setIsEditing(false);
     setEditIndex(undefined);
   };
+
+  const handleOpenSideSheet = useCallback(() => {
+    setIsAddTrademarkSideSheetOpen(true);
+  }, []);
+
+  const handleCloseSideSheet = useCallback(() => {
+    setIsAddTrademarkSideSheetOpen(false);
+  }, []);
+
+  const handleRemoveTrademark = useCallback(() => {
+    setValue('myTrademarkContent', undefined, { shouldDirty: true });
+  }, [setValue]);
+
+  const handleConfirmTrademark = useCallback(
+    (trademark: IPContent) => {
+      setValue('myTrademarkContent', trademark, { shouldDirty: true });
+    },
+    [setValue],
+  );
 
   const infringingCreationsLinksError = () => {
     if (!errors.infringingCreationsLinks || Array.isArray(errors.infringingCreationsLinks)) {
@@ -331,12 +390,45 @@ const AddCreation: FunctionComponent<React.PropsWithChildren<TAddCreationProps>>
 
   return (
     <FormProvider {...formMethods}>
-      <Grid container direction='column' spacing={4}>
-        <Grid item XSmall container spacing={3} marginBottom='40px'>
+      <Grid container direction='column'>
+        <Grid item XSmall container columnSpacing={3} rowGap={3} marginBottom='40px'>
           <Grid item XSmall={12} Large={12}>
-            <Typography variant='h5'>{translate('Heading.YourCreation')}</Typography>
+            <Typography variant='h5'>
+              {isTrademarkReport
+                ? translate('Heading.YourTrademark')
+                : translate('Heading.YourCreation')}
+            </Typography>
           </Grid>
-          {isOffPlatformSourceEnabled && (
+          {isTrademarkReport && (
+            <Grid item XSmall={12} Large={mdColSize}>
+              <Typography variant='body1' color='secondary'>
+                {translateHTML('Description.YourTrademark', [
+                  {
+                    opening: 'ipLibraryStart',
+                    closing: 'ipLibraryEnd',
+                    content: (chunks) => (
+                      <Link href={IP_FAMILIES_HREF} variant='Inline' underline='always'>
+                        {chunks}
+                      </Link>
+                    ),
+                  },
+                  {
+                    opening: 'emailStart',
+                    closing: 'emailEnd',
+                    content: (chunks) => (
+                      <Link
+                        href='mailto:trademark_agent@roblox.com'
+                        variant='Inline'
+                        underline='always'>
+                        {chunks}
+                      </Link>
+                    ),
+                  },
+                ])}
+              </Typography>
+            </Grid>
+          )}
+          {isOffPlatformSourceEnabled && !isTrademarkReport && (
             <Grid item XSmall={12} Large={mdColSize}>
               <Controller
                 name='creationSource'
@@ -370,58 +462,80 @@ const AddCreation: FunctionComponent<React.PropsWithChildren<TAddCreationProps>>
               />
             </Grid>
           )}
-          <Grid item XSmall={12} Large={mdColSize}>
-            <Controller
-              name='myCreationLink'
-              control={control}
-              rules={{
-                validate: {
-                  required: (value) => {
-                    return (
-                      watch('creationSource') === ClaimItemSourceEnum.OutsideOfRoblox ||
-                      value.length > 0
-                    );
+          {!isTrademarkReport && (
+            <Grid item XSmall={12} Large={mdColSize}>
+              <Controller
+                name='myCreationLink'
+                control={control}
+                rules={{
+                  validate: {
+                    required: (value) => {
+                      return (
+                        watch('creationSource') === ClaimItemSourceEnum.OutsideOfRoblox ||
+                        value.length > 0
+                      );
+                    },
+                    format: (value) => {
+                      // 'current' because it relies on the latest ref value
+                      const currentIsOffRoblox =
+                        watch('creationSource') === ClaimItemSourceEnum.OutsideOfRoblox;
+                      return (
+                        (currentIsOffRoblox && value.length === 0) ||
+                        parseUrl(value) ||
+                        parseContentUrl(value, ContentURLType.Original).error.length === 0
+                      );
+                    },
+                    ownership: async (value) => {
+                      // 'current' because it relies on the latest ref value
+                      const currentIsOffRoblox =
+                        watch('creationSource') === ClaimItemSourceEnum.OutsideOfRoblox;
+                      return currentIsOffRoblox || contentPermissions.mutateAsync(value);
+                    },
                   },
-                  format: (value) => {
-                    // 'current' because it relies on the latest ref value
-                    const currentIsOffRoblox =
-                      watch('creationSource') === ClaimItemSourceEnum.OutsideOfRoblox;
-                    return (
-                      (currentIsOffRoblox && value.length === 0) ||
-                      parseUrl(value) ||
-                      parseContentUrl(value, ContentURLType.Original).error.length === 0
-                    );
-                  },
-                  ownership: async (value) => {
-                    // 'current' because it relies on the latest ref value
-                    const currentIsOffRoblox =
-                      watch('creationSource') === ClaimItemSourceEnum.OutsideOfRoblox;
-                    return currentIsOffRoblox || contentPermissions.mutateAsync(value);
-                  },
-                },
-              }}
-              render={({ field }) => {
-                const label =
-                  watch('creationSource') === ClaimItemSourceEnum.OutsideOfRoblox
-                    ? translate('Label.LinkToYourNonRobloxCreation')
-                    : translate('Label.LinkToYourRobloxCreation');
-                return (
-                  <TextField
-                    {...field}
-                    id='my-creation-link'
-                    data-testid='my-creation-link'
-                    label={label}
-                    placeholder={PLACEHOLDER_CREATION_LINK}
-                    fullWidth
-                    error={!!errors.myCreationLink}
-                    helperText={myCreationLinkError()}
+                }}
+                render={({ field }) => {
+                  const label =
+                    watch('creationSource') === ClaimItemSourceEnum.OutsideOfRoblox
+                      ? translate('Label.LinkToYourNonRobloxCreation')
+                      : translate('Label.LinkToYourRobloxCreation');
+                  return (
+                    <TextField
+                      {...field}
+                      id='my-creation-link'
+                      data-testid='my-creation-link'
+                      label={label}
+                      placeholder={PLACEHOLDER_CREATION_LINK}
+                      fullWidth
+                      error={!!errors.myCreationLink}
+                      helperText={myCreationLinkError()}
+                    />
+                  );
+                }}
+              />
+            </Grid>
+          )}
+          {isTrademarkReport && (
+            <>
+              {selectedTrademark && (
+                <Grid item XSmall={12} Large={8}>
+                  <TrademarkListItem
+                    trademark={selectedTrademark}
+                    variant='selected'
+                    onRemove={handleRemoveTrademark}
                   />
-                );
-              }}
-            />
-          </Grid>
-          {/* This is to support 60% width for normal screens, 100% width for small ones or sliding modal */}
-          {!isEditing && <Grid item XSmall={0} Large={4} />}
+                </Grid>
+              )}
+              <Grid item XSmall={12}>
+                <Button
+                  variant='contained'
+                  color='secondary'
+                  size='medium'
+                  onClick={handleOpenSideSheet}>
+                  {translate('Action.Select')}
+                </Button>
+              </Grid>
+            </>
+          )}
           {(isEditing || !enableBulkFiling) && (
             <>
               <Grid item XSmall={12} Large={12}>
@@ -573,7 +687,10 @@ const AddCreation: FunctionComponent<React.PropsWithChildren<TAddCreationProps>>
               )}
               <Grid item>
                 <Button
-                  disabled={!isDuplicating && !formMethods.formState.isDirty}
+                  disabled={
+                    (!isDuplicating && !formMethods.formState.isDirty) ||
+                    (isTrademarkReport && !selectedTrademark)
+                  }
                   variant='contained'
                   color='primary'
                   size='medium'
@@ -591,6 +708,13 @@ const AddCreation: FunctionComponent<React.PropsWithChildren<TAddCreationProps>>
           </Grid>
         </Grid>
       </Grid>
+      {isAddTrademarkSideSheetOpen && (
+        <AddTrademarkSideSheet
+          onClose={handleCloseSideSheet}
+          onConfirm={handleConfirmTrademark}
+          selectedTrademark={selectedTrademark}
+        />
+      )}
     </FormProvider>
   );
 };

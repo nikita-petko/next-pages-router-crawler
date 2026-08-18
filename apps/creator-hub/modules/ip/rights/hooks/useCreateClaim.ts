@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import type { ClaimContent, ClaimItem } from '@rbx/client-rights/v1';
-import { ClaimItemStatusEnum } from '@rbx/client-rights/v1';
+import { ClaimClaimTypeEnum, ClaimItemStatusEnum } from '@rbx/client-rights/v1';
 import rightsClient from '@modules/clients/rights';
 import type { TakedownRequest } from '../types/types';
 import { createDocumentsFromMap } from './document';
@@ -11,6 +11,8 @@ export type CreateClaimItemsData = {
   accountId: string;
   userId: string;
   snapshotId?: string;
+  // TODO [CDS-1449]: Set to mandatory once the claim creation flow is updated to support trademarks [williamwu]
+  claimType?: ClaimClaimTypeEnum;
   description: string;
   takedownRequests: TakedownRequest[];
 };
@@ -42,8 +44,10 @@ export default function useCreateClaim() {
           originalContent = {
             claimId: DefaultId,
             claimItemId: DefaultId,
-            contentId: request.myContent?.contentId?.toString(),
-            contentType: request.myContent?.contentType,
+            contentId: request.myContent.myTrademarkContent
+              ? request.myContent.myTrademarkContent.id
+              : request.myContent.contentId?.toString(),
+            contentType: request.myContent.contentType,
             url: request.myContent.originalLink,
           };
         }
@@ -74,6 +78,7 @@ export default function useCreateClaim() {
       [],
       claimItems,
       data.snapshotId,
+      data.claimType ?? ClaimClaimTypeEnum.Copyright,
     );
   };
   const mutation = useMutation({

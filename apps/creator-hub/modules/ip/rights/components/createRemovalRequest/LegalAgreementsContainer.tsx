@@ -1,6 +1,7 @@
 import type { FunctionComponent } from 'react';
 import React, { useState, useCallback } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
+import { ClaimClaimTypeEnum } from '@rbx/client-rights/v1';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { Grid, Typography, TextField } from '@rbx/ui';
 import LegalAgreements from '@modules/legal-agreements/components/LegalAgreements';
@@ -15,22 +16,43 @@ interface LegalAgreementsContainerProps {
   setRequestName: (name: string) => void;
   isLoading: boolean;
   isClaimsEnabled: boolean;
+  claimType?: ClaimClaimTypeEnum;
 }
 
 const LegalAgreementsContainer: FunctionComponent<
   React.PropsWithChildren<LegalAgreementsContainerProps>
-> = ({ onClickBack, onClickNext, requestName, setRequestName, isLoading, isClaimsEnabled }) => {
+> = ({
+  onClickBack,
+  onClickNext,
+  requestName,
+  setRequestName,
+  isLoading,
+  isClaimsEnabled,
+  claimType,
+}) => {
   const { ready, translate } = useTranslation();
-  const legalStatements = [
-    {
-      text: translate('Description.FirstLegalStatement'),
-      id: 'first',
-    },
-    {
-      text: translate('Description.SecondLegalStatement'),
-      id: 'second',
-    },
-  ];
+  const legalStatements =
+    claimType === ClaimClaimTypeEnum.Trademark
+      ? [
+          {
+            text: translate('Description.FirstTrademarkLegalStatement'),
+            id: 'first',
+          },
+          {
+            text: translate('Description.SecondTrademarkLegalStatement'),
+            id: 'second',
+          },
+        ]
+      : [
+          {
+            text: translate('Description.FirstLegalStatement'),
+            id: 'first',
+          },
+          {
+            text: translate('Description.SecondLegalStatement'),
+            id: 'second',
+          },
+        ];
 
   const [legalAgreementsCompleted, setLegalAgreementsCompleted] = useState(false);
 

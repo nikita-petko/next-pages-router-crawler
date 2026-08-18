@@ -1,6 +1,10 @@
 import type { FunctionComponent } from 'react';
 import React, { useState } from 'react';
-import { ClaimItemDiscoveredFromEnum } from '@rbx/client-rights/v1';
+import {
+  ClaimClaimTypeEnum,
+  ClaimContentContentTypeEnum,
+  ClaimItemDiscoveredFromEnum,
+} from '@rbx/client-rights/v1';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import {
   Table,
@@ -22,6 +26,7 @@ import useClaimItems from '../../hooks/useClaimItems';
 import { ClaimContentRole } from '../../types/types';
 import ClaimItemContentGrid from '../common/ClaimItemContentGrid';
 import SnapshotClaimContentGrid from '../common/SnapshotContentGrid';
+import TrademarkContentGridById from '../common/TrademarkContentGridById';
 import FileDisplay from '../createRemovalRequest/FileDisplay';
 import ExpandableText from './ExpandableText';
 import RemovalRequestStatus from './RemovalRequestStatus';
@@ -29,6 +34,7 @@ import RemovalRequestStatus from './RemovalRequestStatus';
 interface ClaimItemTableProps {
   accountId: string;
   claim: RightsClaim;
+  enableTrademarkEnrichment: boolean;
 }
 
 const useStyles = makeStyles()((theme) => ({
@@ -48,6 +54,7 @@ const useStyles = makeStyles()((theme) => ({
 const ClaimItemTable: FunctionComponent<React.PropsWithChildren<ClaimItemTableProps>> = ({
   accountId,
   claim,
+  enableTrademarkEnrichment,
 }) => {
   const { isPending, error, claimItems } = useClaimItems(accountId, claim.id);
   const {
@@ -87,6 +94,10 @@ const ClaimItemTable: FunctionComponent<React.PropsWithChildren<ClaimItemTablePr
     tableRows = currentPageItems.map((claimItem) => {
       const docs = claimItem.originalDocuments?.map((d) => getDoc(d)) ?? [];
       const isFromSnapshot = claimItem.discoveredFrom === ClaimItemDiscoveredFromEnum.Snapshot;
+      const originalTrademarkId =
+        claimItem.content?.contentType === ClaimContentContentTypeEnum.IpContent
+          ? claimItem.content.contentId
+          : undefined;
 
       return (
         <TableRow key={claimItem.id ?? ''}>
@@ -99,11 +110,19 @@ const ClaimItemTable: FunctionComponent<React.PropsWithChildren<ClaimItemTablePr
           </TableCell>
           <TableCell className={claimItemDescription}>
             {claimItem.content ? (
-              <ClaimItemContentGrid
-                claimItem={claimItem}
-                role={ClaimContentRole.Original}
-                isMyCreation
-              />
+              originalTrademarkId !== undefined ? (
+                <TrademarkContentGridById
+                  accountId={accountId}
+                  trademarkId={originalTrademarkId}
+                  enabled={enableTrademarkEnrichment}
+                />
+              ) : (
+                <ClaimItemContentGrid
+                  claimItem={claimItem}
+                  role={ClaimContentRole.Original}
+                  isMyCreation
+                />
+              )
             ) : (
               <Typography variant='body2'>{translate('Label.NoOriginalContent')}</Typography>
             )}
@@ -130,7 +149,11 @@ const ClaimItemTable: FunctionComponent<React.PropsWithChildren<ClaimItemTablePr
             <TableCell className={claimItemDescription}>
               {translate('Label.ReportedCreation')}
             </TableCell>
-            <TableCell className={claimItemDescription}>{translate('Label.MyCreation')}</TableCell>
+            <TableCell className={claimItemDescription}>
+              {claim.claimType === ClaimClaimTypeEnum.Trademark
+                ? translate('Label.MyTrademark')
+                : translate('Label.MyCreation')}
+            </TableCell>
             <TableCell className={statusColumn}>{translate('Label.Status')}</TableCell>
             <TableCell className={claimItemDescription}>{translate('Label.Description')}</TableCell>
             <TableCell className={claimItemDescription}>{translate('Label.Files')}</TableCell>
