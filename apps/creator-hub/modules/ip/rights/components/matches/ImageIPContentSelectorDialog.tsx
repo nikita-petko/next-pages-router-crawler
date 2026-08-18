@@ -5,22 +5,18 @@ import {
   IPContentStatusEnum,
   type IPContent,
 } from '@rbx/client-rights/v1';
+import { Dropdown, Button, Menu, MenuItem, MenuSection } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { ReturnPolicy, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
 import {
   Grid,
-  Button,
+  Button as RbxUIButton,
   Dialog,
   DialogActions,
   DialogTitle,
   DialogContent,
   makeStyles,
-  Typography,
   CircularProgress,
-  Menu,
-  MenuItem,
-  ExpandMoreIcon,
-  IconButton,
 } from '@rbx/ui';
 import { EmptyState, EmptyStateBorder, PageLoading } from '@modules/miscellaneous/components';
 import { SupportedRobloxAssetTypeEnum } from '../../../ipFamilies/constants';
@@ -66,6 +62,10 @@ const useStyles = makeStyles()((theme) => ({
   },
 }));
 
+// Override z-index to 1000 instead of 1300 default, since foundation-ui's dropdown
+// has a z-index of 1050 and we want the dropdown on top of the dialog.
+const DIALOG_Z_INDEX = 1000;
+
 interface IpFamilySelectorTitleProps {
   ipFamilies: IPFamily[];
   selectedIpFamily: IPFamily | undefined;
@@ -77,66 +77,48 @@ const IpFamilySelectorTitle = ({
   selectedIpFamily,
   onSelect,
 }: IpFamilySelectorTitleProps) => {
-  const { translate } = useTranslation();
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | undefined>(undefined);
+  const { translate, translateHTML } = useTranslation();
 
-  const displayName = selectedIpFamily?.name ?? translate('Heading.IPLibrary');
+  const byId = useMemo(
+    () => new Map(ipFamilies.map((ipFamily) => [ipFamily.id, ipFamily])),
+    [ipFamilies],
+  );
 
-  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
+  const handleSelect = useCallback(
+    (id: string) => {
+      const ipFamily = byId.get(id);
+      if (ipFamily !== undefined) {
+        onSelect(ipFamily);
+      }
+    },
+    [byId, onSelect],
+  );
 
-  const handleClose = () => {
-    setAnchorEl(undefined);
-  };
-
-  const handleSelect = (ipFamily: IPFamily) => {
-    onSelect(ipFamily);
-    handleClose();
-  };
+  const ipFamilySelector = (
+    <div className='grow-1 min-width-0'>
+      <Dropdown
+        size='Large'
+        className='width-full'
+        placeholder={translate('Label.IpFamily')}
+        value={selectedIpFamily?.id}
+        onValueChange={handleSelect}>
+        <Menu>
+          <MenuSection>
+            {ipFamilies.map((ipFamily) => (
+              <MenuItem key={ipFamily.id} title={ipFamily.name ?? ''} value={ipFamily.id ?? ''} />
+            ))}
+          </MenuSection>
+        </Menu>
+      </Dropdown>
+    </div>
+  );
 
   return (
-    <>
-      <Grid alignItems='center'>
-        {translate('Heading.SelectImageFromIpFamily', {
-          family: displayName,
-        })}
-        {ipFamilies.length > 0 && (
-          <IconButton
-            onClick={handleClick}
-            color='inherit'
-            disableRipple
-            aria-label={translate('Label.IpFamily')}>
-            <ExpandMoreIcon sx={{ fontSize: '32px' }} />
-          </IconButton>
-        )}
-      </Grid>
-
-      {ipFamilies.length > 0 && (
-        <Menu
-          anchorEl={anchorEl}
-          open={!!anchorEl}
-          onClose={handleClose}
-          anchorOrigin={{
-            vertical: 'bottom',
-            horizontal: 'left',
-          }}
-          transformOrigin={{
-            vertical: 'top',
-            horizontal: 'left',
-          }}>
-          {ipFamilies.map((ipFamily) => (
-            <MenuItem
-              key={ipFamily.id}
-              onClick={() => handleSelect(ipFamily)}
-              dense
-              selected={ipFamily.id === selectedIpFamily?.id}>
-              <Typography>{ipFamily.name}</Typography>
-            </MenuItem>
-          ))}
-        </Menu>
-      )}
-    </>
+    <div className='flex items-center gap-small width-full'>
+      {translateHTML('Heading.SelectImageFromIpFamily', null, {
+        family: ipFamilySelector,
+      })}
+    </div>
   );
 };
 
@@ -166,16 +148,17 @@ const SelectableImage = ({ ipContent, selectedImage, setSelectedImage }: Selecta
     />
   );
 
+  // Foundation UI Button component only works with text
   return (
     <Grid item XSmall={4} key={ipContent.id}>
-      <Button
+      <RbxUIButton
         tabIndex={0}
         aria-checked={isSelected}
         className={`${classes.tile} ${classes.tileClickable} ${isSelected ? classes.tileSelected : ''}`}
         onClick={() => setSelectedImage(ipContent)}
         onDragStart={(event) => event.preventDefault()}>
         {thumbnail}
-      </Button>
+      </RbxUIButton>
     </Grid>
   );
 };
@@ -333,7 +316,13 @@ const ImageIPContentSelectorDialog = ({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth='Medium'>
+    // Can't use a tailwind z-[1000] class since it doesn't exist at runtime.
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth='Medium'
+      style={{ zIndex: DIALOG_Z_INDEX }}>
       <DialogTitle>
         <IpFamilySelectorTitle
           ipFamilies={ipFamilies}
@@ -346,6 +335,7 @@ const ImageIPContentSelectorDialog = ({
         <Grid container spacing={2}>
           <Grid item XSmall={6}>
             <Button
+              className='width-full'
               onClick={() => {
                 if (selectedImage) {
                   // Should always be the case since the button is disabled if selectedImage is undefined
@@ -353,15 +343,14 @@ const ImageIPContentSelectorDialog = ({
                 }
                 onClose();
               }}
-              color='primaryBrand'
-              variant='contained'
-              fullWidth
-              disabled={!selectedImage}>
+              variant='Emphasis'
+              size='Large'
+              isDisabled={!selectedImage}>
               {translate('Action.Select')}
             </Button>
           </Grid>
           <Grid item XSmall={6}>
-            <Button onClick={onClose} color='secondary' variant='outlined' fullWidth>
+            <Button className='width-full' onClick={onClose} variant='Standard' size='Large'>
               {translate('Label.Cancel')}
             </Button>
           </Grid>

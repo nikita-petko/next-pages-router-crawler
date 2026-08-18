@@ -1,37 +1,9 @@
 import React from 'react';
-import { makeStyles } from '@rbx/ui';
-
-const useSearchFooterStyles = makeStyles()((theme) => ({
-  footer: {
-    rowGap: 12,
-    backgroundColor: theme.palette.components.stickyFooter.fill,
-    backdropFilter: 'blur(50px);',
-    transition: 'opacity 0.2s',
-    position: 'sticky',
-    bottom: 0,
-    width: '100%',
-    justifyContent: 'flex-end',
-    alignItems: 'stretch',
-    display: 'flex',
-  },
-  containerPadding: {
-    paddingTop: 24,
-    [theme.breakpoints.down('Medium')]: {
-      paddingTop: 16,
-    },
-  },
-  visible: {
-    bottom: 0,
-    opacity: 1,
-  },
-  hidden: {
-    opacity: 0,
-    pointerEvents: 'none',
-  },
-}));
+import { clsx } from '@rbx/foundation-ui';
 
 /**
- * SearchFooter is forked from sticky footer to work well with infinite scroll
+ * Renders its children as a sticky footer, with a blur effect.
+ * Renders as a flexbox, so Button children can be passed in directly.
  */
 const SearchFooter = ({
   children,
@@ -40,12 +12,16 @@ const SearchFooter = ({
   children: React.ReactNode;
   isVisible: boolean;
 }) => {
-  const {
-    classes: { footer, containerPadding, visible, hidden },
-  } = useSearchFooterStyles();
-
   return (
-    <div className={`${footer} ${containerPadding} ${isVisible ? visible : hidden} `}>
+    <div
+      className={clsx(
+        'sticky bottom-[0px] flex width-full flex-col-reverse items-center justify-end gap-large',
+        'padding-top-large padding-bottom-large padding-right-large',
+        'medium:flex-row medium:padding-top-xxlarge medium:padding-bottom-xxlarge medium:padding-right-xxlarge',
+        'transition-opacity duration-200 ease-standard-out',
+        '[backdrop-filter:blur(20px)] [-webkit-backdrop-filter:blur(20px)]',
+        isVisible ? 'opacity-[1]' : 'pointer-events-none opacity-[0]',
+      )}>
       {children}
     </div>
   );

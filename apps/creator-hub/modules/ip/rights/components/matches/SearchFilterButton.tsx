@@ -1,18 +1,8 @@
 import React, { useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import type { TTheme } from '@rbx/ui';
-import { Button, FilterListIcon, IconButton, makeStyles } from '@rbx/ui';
+import { Button, IconButton } from '@rbx/foundation-ui';
 import type { FormattedText } from '@modules/analytics-translations/types';
 import FilterDrawer from '@modules/charts-generic/components/FilterDrawer/FilterDrawer';
-
-const useFilterDrawerButtonStyles = makeStyles()((theme: TTheme) => {
-  return {
-    buttonRoot: {
-      fontWeight: theme.typography.body1.fontWeight,
-      borderColor: theme.palette.surface.outline,
-    },
-  };
-});
 
 interface SearchFilterButtonProps {
   isMobile: boolean;
@@ -31,9 +21,6 @@ function SearchFilterButton({
   filterDrawerContent,
   canFilter,
 }: SearchFilterButtonProps) {
-  const {
-    classes: { buttonRoot },
-  } = useFilterDrawerButtonStyles();
   const [open, setOpen] = React.useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const toggleDrawer = useCallback(() => {
@@ -46,26 +33,22 @@ function SearchFilterButton({
 
   const button = isMobile ? (
     <IconButton
-      color='inherit'
+      ref={buttonRef}
+      icon='icon-regular-three-bars-horizontal-narrowing'
+      variant='Utility'
+      size='Small'
+      ariaLabel={buttonLabel}
+      isDisabled={!canFilter}
       onClick={toggleDrawer}
-      classes={{
-        root: buttonRoot,
-      }}
-      aria-label='filtering'
-      disabled={!canFilter}>
-      <FilterListIcon />
-    </IconButton>
+    />
   ) : (
     <Button
       ref={buttonRef}
-      onClick={toggleDrawer}
-      endIcon={<FilterListIcon />}
-      variant='outlined'
-      color='inherit'
-      classes={{
-        root: buttonRoot,
-      }}
-      disabled={!canFilter}>
+      icon='icon-regular-three-bars-horizontal-narrowing'
+      variant='Standard'
+      size='Large'
+      isDisabled={!canFilter}
+      onClick={toggleDrawer}>
       {buttonLabel}
     </Button>
   );

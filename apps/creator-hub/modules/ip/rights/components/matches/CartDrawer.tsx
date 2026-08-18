@@ -1,14 +1,6 @@
+import { Button, IconButton } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
-import {
-  Button,
-  CloseIcon,
-  Container,
-  Drawer,
-  Grid,
-  IconButton,
-  Typography,
-  makeStyles,
-} from '@rbx/ui';
+import { Container, Drawer, Grid, Typography, makeStyles } from '@rbx/ui';
 import EmptyState from '@modules/miscellaneous/components/EmptyState/EmptyState';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import type Match from './Match';
@@ -108,9 +100,14 @@ const CartDrawer = ({
             <Typography variant='h3'>{translate('Label.ViewSelectedItems')}</Typography>
           </Grid>
           <Grid item>
-            <IconButton aria-label='Close' color='inherit' onClick={onClose} size='small'>
-              <CloseIcon />
-            </IconButton>
+            <IconButton
+              icon='icon-regular-x'
+              ariaLabel={translate('Action.Close')}
+              variant='Utility'
+              color='inherit'
+              onClick={onClose}
+              size='Small'
+            />
           </Grid>
         </Grid>
         <Grid container className={drawerSecondRow}>
@@ -123,7 +120,7 @@ const CartDrawer = ({
               justifyContent: 'space-between',
               alignItems: 'center',
             }}>
-            <Button variant='contained' color='secondary' onClick={clear} size='large'>
+            <Button variant='Standard' size='Large' onClick={clear}>
               {translate('Action.DeleteAll')}
             </Button>
             <div>
@@ -164,18 +161,17 @@ const CartDrawer = ({
             sm: 'row',
           }}>
           <Grid item XSmall={6}>
-            <Button variant='outlined' color='secondary' onClick={onClose} fullWidth size='large'>
+            <Button variant='Standard' size='Large' onClick={onClose} className='width-full'>
               {translate('Action.Close')}
             </Button>
           </Grid>
           <Grid item XSmall={6}>
             <Button
-              variant='contained'
-              color='primaryBrand'
+              variant='Emphasis'
+              size='Large'
               onClick={onSubmit}
-              fullWidth
-              size='large'
-              disabled={cartItems.length === 0}>
+              className='width-full'
+              isDisabled={cartItems.length === 0}>
               {`${buttonText} (${cartItems.length})`}
             </Button>
           </Grid>

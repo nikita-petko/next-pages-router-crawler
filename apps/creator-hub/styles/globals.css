@@ -4137,6 +4137,9 @@
 .\[--license-hero-side-space\:46px\] {
   --license-hero-side-space: 46px;
 }
+.\[-webkit-backdrop-filter\:blur\(20px\)\] {
+  -webkit-backdrop-filter: blur(20px);
+}
 .\[-webkit-box-orient\:vertical\] {
   -webkit-box-orient: vertical;
 }
@@ -4159,6 +4162,10 @@
 }
 .\[aspect-ratio\:4\/3\] {
   aspect-ratio: 4/3;
+}
+.\[backdrop-filter\:blur\(20px\)\] {
+  -webkit-backdrop-filter: blur(20px);
+          backdrop-filter: blur(20px);
 }
 .\[backdrop-filter\:blur\(4px\)\] {
   -webkit-backdrop-filter: blur(4px);
@@ -5818,11 +5825,20 @@ html.studio-webview.dark-theme,
     padding-top: var(--padding-xxlarge);
     padding-bottom: var(--padding-xxlarge);
   }
+  .medium\:padding-bottom-xxlarge {
+    padding-bottom: var(--padding-xxlarge);
+  }
   .medium\:padding-left-small {
     padding-left: var(--padding-small);
   }
+  .medium\:padding-right-xxlarge {
+    padding-right: var(--padding-xxlarge);
+  }
   .medium\:padding-top-medium {
     padding-top: var(--padding-medium);
+  }
+  .medium\:padding-top-xxlarge {
+    padding-top: var(--padding-xxlarge);
   }
   .medium\:text-body-large {
     font: var(--typography-body-large-font);

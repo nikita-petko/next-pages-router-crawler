@@ -3,19 +3,10 @@ import { CircularProgress } from '@mui/material';
 import type { FetchNextPageOptions } from '@tanstack/react-query';
 import { ClaimItemDiscoveredFromEnum, IPContentStatusEnum } from '@rbx/client-rights/v1';
 import type { IPContent } from '@rbx/client-rights/v1';
-import { Button as FUIButton } from '@rbx/foundation-ui';
+import { Button, IconButton, Chip } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
-import {
-  Button as UIButton,
-  Grid,
-  makeStyles,
-  IconButton,
-  CloseIcon,
-  Chip,
-  useTheme,
-  useMediaQuery,
-} from '@rbx/ui';
+import { Grid, makeStyles, useTheme, useMediaQuery } from '@rbx/ui';
 import { UnifiedLogger } from '@rbx/unified-logger';
 import type { FormattedText } from '@modules/analytics-translations/types';
 import CreatorDashboardEventType from '@modules/eventStream/enum/CreatorDashboardEventType';
@@ -361,15 +352,15 @@ const IPContentSearchContainer = ({
 
   const imageSearching = (
     <>
-      <FUIButton
+      <Button
         onClick={() => {
           setImageSelectorDialogOpen(true);
         }}
         variant='Standard'
         icon='icon-regular-image'
-        size='Medium'>
+        size='Large'>
         {translate('Action.SearchByImage')}
-      </FUIButton>
+      </Button>
       {currentImage && (
         <>
           <Thumbnail2d
@@ -379,13 +370,15 @@ const IPContentSearchContainer = ({
             containerClass={classes.selectedImagePreview}
           />
           <IconButton
-            aria-label={translate('Action.Clear')}
+            icon='icon-regular-x'
+            ariaLabel={translate('Action.Clear')}
             onClick={() => {
               setCurrentImage(undefined);
             }}
-            color='secondary'>
-            <CloseIcon />
-          </IconButton>
+            size='Small'
+            variant='Utility'
+            iconColor='Default'
+          />
         </>
       )}
     </>
@@ -411,12 +404,24 @@ const IPContentSearchContainer = ({
               {filter && (
                 <Grid item>
                   <Chip
-                    size='large'
-                    color='secondary'
-                    label={translate(getCategoryTLKey(filter))}
-                    onDelete={() => {
-                      setFilter('');
-                    }}
+                    as='button'
+                    isChecked={false}
+                    size='Large'
+                    color='Default'
+                    text={translate(getCategoryTLKey(filter))}
+                    tabIndex={-1}
+                    trailingIconNode={
+                      <IconButton
+                        icon='icon-regular-x'
+                        ariaLabel={translate('Action.Clear')}
+                        onClick={() => {
+                          setFilter('');
+                        }}
+                        size='Small'
+                        variant='Utility'
+                        iconColor='Default'
+                      />
+                    }
                   />
                 </Grid>
               )}
@@ -452,46 +457,19 @@ const IPContentSearchContainer = ({
         <Grid item>{mainContent}</Grid>
       </Grid>
       <SearchFooter isVisible={cartSize > 0}>
-        <Grid
-          container
-          justifyContent='flex-end'
-          direction={{
-            xs: 'column-reverse',
-            sm: 'row',
-          }}
-          alignItems='stretch'
-          spacing={2}>
-          <Grid item XSmall='auto'>
-            <UIButton
-              sx={{
-                width: {
-                  xs: '100%',
-                  sm: 'auto',
-                },
-              }}
-              variant='outlined'
-              color='secondary'
-              size='medium'
-              onClick={() => setIsCartDrawerOpen(!isCartDrawerOpen)}>
-              {`${translate('Label.ViewSelectedItems')} (${cartSize})`}
-            </UIButton>
-          </Grid>
-          <Grid item XSmall='auto'>
-            <UIButton
-              variant='contained'
-              size='medium'
-              onClick={submitSelections}
-              disabled={isBlockedByFeatureTimeout}
-              sx={{
-                width: {
-                  xs: '100%',
-                  sm: 'auto',
-                },
-              }}>
-              {cartButtonText}
-            </UIButton>
-          </Grid>
-        </Grid>
+        <Button
+          variant='Standard'
+          size='Large'
+          onClick={() => setIsCartDrawerOpen(!isCartDrawerOpen)}>
+          {`${translate('Label.ViewSelectedItems')} (${cartSize})`}
+        </Button>
+        <Button
+          variant='Emphasis'
+          size='Large'
+          onClick={submitSelections}
+          isDisabled={isBlockedByFeatureTimeout}>
+          {cartButtonText}
+        </Button>
       </SearchFooter>
       <CartDrawer
         open={isCartDrawerOpen}
