@@ -211,6 +211,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: contentLicensingFlags.isAvatarItemLicensingEnabled,
+      metadata: {
+        namespace: 'content-licensing',
+        name: 'isAvatarItemLicensingEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: contentSuitabilityFlags.questionnaireV2Allowlist,
       metadata: {
         namespace: 'content-suitability',

@@ -7,7 +7,10 @@ import type {
   AgreementResponse,
 } from '@rbx/client-content-licensing-api/v1';
 import type { UniverseContentMaturity } from '@rbx/client-content-licensing-api/v1';
-import { AgreementCandidateIndexSortDirection } from '@rbx/client-content-licensing-api/v1';
+import {
+  AgreementCandidateIndexSortDirection,
+  AgreementCandidateType,
+} from '@rbx/client-content-licensing-api/v1';
 import { useTranslation } from '@rbx/intl';
 import { makeStyles, CircularProgress, Button, Tooltip, FilterListIcon } from '@rbx/ui';
 import EmptyState from '@modules/miscellaneous/components/EmptyState/EmptyState';
@@ -15,7 +18,7 @@ import EmptyStateBorder from '@modules/miscellaneous/components/EmptyState/Empty
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import IpLoadError from '../../../components/error/IpLoadError';
 import { useIpFamiliesQuery } from '../../../ipFamilies/hooks/ipFamily';
-import { IP_FAMILIES_HREF, IP_FAMILY_CREATE_HREF } from '../../../ipFamilies/urls';
+import { IP_FAMILY_CREATE_HREF } from '../../../ipFamilies/urls';
 import {
   LicenseManagerClickEvent,
   LicenseManagerImpressionEvent,
@@ -41,6 +44,7 @@ import MatchesFilterPanelContent from './MatchesFilterPanelContent';
 import MatchesSidePanel from './MatchesSidePanel';
 import MatchesTable from './MatchesTable';
 import MatchOfferPanelContent from './MatchOfferPanelContent';
+import NoMatchesContent from './NoMatchesContent';
 
 enum MatchPanelView {
   None = 'none',
@@ -100,53 +104,6 @@ const NoMatchesWithFiltersContent = ({
         <div className={classes.buttonContainer}>
           <Button onClick={onResetFilters} color='primaryBrand' variant='contained'>
             {translate('Action.ResetFilters')}
-          </Button>
-          <Tooltip
-            title={translate('Label.DailyLimitReached', {
-              maxLimit: maxLimit.toString(),
-            })}
-            arrow
-            placement='bottom'
-            disableHoverListener={!!openDialog}
-            disableFocusListener={!!openDialog}
-            disableTouchListener={!!openDialog}>
-            <div>
-              <Button
-                size='medium'
-                variant='contained'
-                color='secondary'
-                onClick={openDialog}
-                disabled={!openDialog}>
-                {translate('Action.RequestMatch')}
-              </Button>
-            </div>
-          </Tooltip>
-        </div>
-      </EmptyState>
-    </EmptyStateBorder>
-  );
-};
-
-const NoMatchesContent = ({
-  openDialog,
-  maxLimit,
-}: {
-  openDialog?: () => void;
-  maxLimit: number;
-}) => {
-  const { classes } = useStyles();
-  const { translate } = useTranslation();
-
-  return (
-    <EmptyStateBorder>
-      <EmptyState
-        title={translate('Heading.NoMatchResultsYet')}
-        size='small'
-        description={translate('Description.NoMatches')}
-        illustration='findPeople'>
-        <div className={classes.buttonContainer}>
-          <Button component={Link} href={IP_FAMILIES_HREF} color='primaryBrand' variant='contained'>
-            {translate('Action.UpdateIpLibrary')}
           </Button>
           <Tooltip
             title={translate('Label.DailyLimitReached', {
@@ -595,7 +552,14 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
     const eventName = hasActiveFilters
       ? LicenseManagerImpressionEvent.EmptyStateMatchesTableNoMatchesWithAppliedFiltersImpressionEvent
       : LicenseManagerImpressionEvent.EmptyStateMatchesTableNoMatchesImpressionEvent;
-    logOnce(eventName, analyticsContext, analyticsContextDedupeKey);
+    logOnce(
+      eventName,
+      {
+        ...analyticsContext,
+        candidateType: AgreementCandidateType.Universe,
+      },
+      analyticsContextDedupeKey,
+    );
   }, [
     analyticsContext,
     analyticsContextDedupeKey,
@@ -627,7 +591,13 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
         />
       );
     } else {
-      content = <NoMatchesContent openDialog={openDialog} maxLimit={maxManualRequestsLimit ?? 0} />;
+      content = (
+        <NoMatchesContent
+          candidateType={AgreementCandidateType.Universe}
+          openDialog={openDialog}
+          maxLimit={maxManualRequestsLimit ?? 0}
+        />
+      );
     }
   } else if (hasNoIpFamilies) {
     logOnce(LicenseManagerImpressionEvent.EmptyStateMatchesTableCreateIpFamilyImpressionEvent);

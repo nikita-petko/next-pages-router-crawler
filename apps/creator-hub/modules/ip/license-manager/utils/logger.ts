@@ -25,6 +25,7 @@ export enum LicenseManagerClickEvent {
   MatchesTableLoadMoreClickEvent = 'matchesTableLoadMoreClickEvent',
   SuccessfulLicenseOfferViewAgreementClickEvent = 'successfulLicenseOfferViewAgreementClickEvent',
   MatchesTableClearFiltersClickEvent = 'matchesTableClearFiltersClickEvent',
+  MatchesTableUpdateIpLibraryClickEvent = 'matchesTableUpdateIpLibraryClickEvent',
   PublicLicensesTableDurationTypeFilterClickEvent = 'PublicLicensesTableDurationTypeFilterClickEvent',
   PublicLicensesTableLicenseTypeFilterClickEvent = 'PublicLicensesTableLicenseTypeFilterClickEvent',
   PublicLicensesTableClearFiltersClickEvent = 'publicLicensesTableClearFiltersClickEvent',

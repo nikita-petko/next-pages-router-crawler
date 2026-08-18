@@ -32,3 +32,8 @@ export const isIgnoreMatchEnabled = defineFlag({
     name: 'isIgnoreMatchEnabled',
     defaultValue: true,
   });
+export const isAvatarItemLicensingEnabled = defineFlag({
+    namespace: 'content-licensing',
+    name: 'isAvatarItemLicensingEnabled',
+    defaultValue: false,
+  });

@@ -1,6 +1,11 @@
 import { useCallback, useState } from 'react';
+import { AgreementCandidateType } from '@rbx/client-content-licensing-api/v1';
+import { useFlag } from '@rbx/flags';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { Button, makeStyles, Tab, Tabs, Tooltip, Typography } from '@rbx/ui';
+import { isAvatarItemLicensingEnabled as isAvatarItemLicensingEnabledFlag } from '@generated/flags/contentLicensing';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -8,6 +13,7 @@ import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../utils/logg
 import IphManualMatchRequestDialog from './components/IphManualMatchRequestDialog';
 import ManualMatchesTable from './components/ManualMatchesTable';
 import Matches from './components/Matches';
+import NoMatchesContent from './components/NoMatchesContent';
 import { useManualMatchesQuery } from './hooks/useManualMatchesQuery';
 
 const useStyles = makeStyles()((theme) => ({
@@ -32,17 +38,24 @@ const useStyles = makeStyles()((theme) => ({
 enum MatchesTabs {
   MyMatches = 'MyMatches',
   MyRequests = 'MyRequests',
+  AvatarItems = 'AvatarItems',
 }
 
 /**
  * Tabbed view
- * - My Matches
+ * - Experiences (fka My Matches when avatar item licensing is disabled)
+ * - Avatar items
  * - My Requests
  */
 const MatchesContainer = () => {
   const { classes } = useStyles();
-  const { translate } = useTranslation();
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
   const { logEvent } = useLicenseManagerLogger();
+  const { ready: isAvatarItemLicensingFlagReady, value: isAvatarItemLicensingEnabled } = useFlag(
+    isAvatarItemLicensingEnabledFlag,
+  );
   const [isManualMatchRequestDialogOpen, setIsManualMatchRequestDialogOpen] = useState(false);
 
   const [queryParams, setQueryParams] = useQueryParams(['tab']);
@@ -69,8 +82,11 @@ const MatchesContainer = () => {
 
   const defaultTab = MatchesTabs.MyMatches;
   const tabParam = queryParams.tab;
+  const shouldShowAvatarItemsTab = isAvatarItemLicensingFlagReady && isAvatarItemLicensingEnabled;
   const activeTab =
-    tabParam === MatchesTabs.MyMatches || tabParam === MatchesTabs.MyRequests
+    tabParam === MatchesTabs.MyMatches ||
+    tabParam === MatchesTabs.MyRequests ||
+    (shouldShowAvatarItemsTab && tabParam === MatchesTabs.AvatarItems)
       ? tabParam
       : defaultTab;
 
@@ -84,7 +100,7 @@ const MatchesContainer = () => {
     setIsManualMatchRequestDialogOpen(false);
   };
 
-  let content;
+  let content = null;
   if (activeTab === MatchesTabs.MyMatches) {
     content = (
       <Matches
@@ -92,12 +108,14 @@ const MatchesContainer = () => {
         maxManualRequestsLimit={maxDailyLimit}
       />
     );
-  } else {
+  } else if (activeTab === MatchesTabs.MyRequests) {
     content = (
       <ManualMatchesTable
         openDialog={shouldDisableManualScan ? undefined : handleOpenManualMatchRequestDialog}
       />
     );
+  } else if (shouldShowAvatarItemsTab && activeTab === MatchesTabs.AvatarItems) {
+    content = <NoMatchesContent candidateType={AgreementCandidateType.Collectible} />;
   }
 
   if (manualScanCandidatesQuery.isPending) {
@@ -108,7 +126,16 @@ const MatchesContainer = () => {
     <>
       <div className={classes.descriptionContainer}>
         <Typography variant='body1' component='div' color='secondary' gutterBottom>
-          {translate('Description.MatchesLanding')}
+          {shouldShowAvatarItemsTab
+            ? tPendingTranslation(
+                'Matches are creations that Roblox systems have indicated make significant use of content similar to your IP Library. It is your responsibility to verify that matches are using your IP before sending out a license offer.',
+                'Body text shown at the top of the page when the rights holder visits their licensing matches table.',
+                translationKey(
+                  'Description.MatchesLanding',
+                  TranslationNamespace.AgreementsManager,
+                ),
+              )
+            : translate('Description.MatchesLanding')}
         </Typography>
         <div className={classes.button}>
           <Tooltip
@@ -139,7 +166,13 @@ const MatchesContainer = () => {
         onChange={handleTabChange}
         className={classes.tabsMargin}
         capitalize={false}>
-        <Tab label={translate('Label.MyMatches')} value={MatchesTabs.MyMatches} />
+        <Tab
+          label={translate(shouldShowAvatarItemsTab ? 'Label.Experiences' : 'Label.MyMatches')}
+          value={MatchesTabs.MyMatches}
+        />
+        {shouldShowAvatarItemsTab && (
+          <Tab label={translate('Label.AvatarItems')} value={MatchesTabs.AvatarItems} />
+        )}
         <Tab label={translate('Label.MyRequests')} value={MatchesTabs.MyRequests} />
       </Tabs>
       {content}
