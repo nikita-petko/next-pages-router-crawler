@@ -66,7 +66,7 @@ const useDevelopmentItemsInventoryTranslations = () => {
     assetIdWithValue,
     assetType: tPendingTranslation(
       'Asset type',
-      'Label for the Development Items asset type filter and table column.',
+      'Accessible label for the Development Items asset type filter.',
       translationKey('Label.DevelopmentItems.AssetType', TranslationNamespace.Creations),
     ),
     dateCreated: tPendingTranslation(
@@ -124,6 +124,11 @@ const useDevelopmentItemsInventoryTranslations = () => {
       'No items found',
       'Heading shown when no Development Items match the current query and filters.',
       translationKey('Heading.DevelopmentItems.NoItemsFound', TranslationNamespace.Creations),
+    ),
+    package: tPendingTranslation(
+      'Package',
+      'Accessible label for the package indicator on a Development Item thumbnail.',
+      translationKey('Label.DevelopmentItems.Package', TranslationNamespace.Creations),
     ),
     previousPage: tPendingTranslation(
       'Previous page',

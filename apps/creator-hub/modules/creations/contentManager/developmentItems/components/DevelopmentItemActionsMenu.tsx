@@ -26,7 +26,8 @@ const DevelopmentItemActionsMenu: FunctionComponent<DevelopmentItemActionsMenuPr
   isArchivable,
   item,
   onArchiveStateChange,
-  onOpenDetails,
+  onConfigureAsset,
+  onViewAssetDetails,
   toolboxIds,
   variant = 'Utility',
 }) => {
@@ -97,7 +98,8 @@ const DevelopmentItemActionsMenu: FunctionComponent<DevelopmentItemActionsMenuPr
             menuSource='overflow'
             onArchiveStateChange={onArchiveStateChange}
             onClose={() => handleOpenChange(false)}
-            onOpenDetails={onOpenDetails}
+            onConfigureAsset={onConfigureAsset}
+            onViewAssetDetails={onViewAssetDetails}
             toolboxIds={toolboxIds}
           />
         </PopoverContent>

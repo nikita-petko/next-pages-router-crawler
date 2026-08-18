@@ -16,6 +16,7 @@ export type DevelopmentItemsCreatorType = 'group' | 'user';
 export type DevelopmentItemsMenuSource = 'context_menu' | 'overflow';
 export type DevelopmentItemsMenuAction =
   | 'archive_asset'
+  | 'configure_asset'
   | 'copy_asset_id'
   | 'copy_mesh_id'
   | 'copy_texture_id'

@@ -24,6 +24,7 @@ import DevelopmentItemActionsMenu, {
 } from './DevelopmentItemActionsMenu';
 import DevelopmentItemContextMenu from './DevelopmentItemContextMenu';
 import type { DevelopmentItemContextMenuPosition } from './DevelopmentItemContextMenu';
+import DevelopmentItemPackageBadge from './DevelopmentItemPackageBadge';
 import DevelopmentItemsPagination from './DevelopmentItemsPagination';
 import type { DevelopmentItemsPaginationProps } from './DevelopmentItemsPagination';
 
@@ -32,21 +33,22 @@ export type DevelopmentItemsListLabels = {
   assetId: string;
   assetIdCopied: string;
   assetIdWithValue: (assetId: number) => string;
-  assetType: string;
   dateCreated: string;
   lastUpdated: string;
   name: string;
+  package: string;
   source: string;
 };
 
 export type DevelopmentItemsListProps = {
   archivableAssetIds: ReadonlySet<number>;
-  getAssetTypeLabel: (item: DevelopmentItemsInventoryItem) => string;
   getSourceLabel: (item: DevelopmentItemsInventoryItem) => string;
   items: readonly DevelopmentItemsInventoryItem[];
   labels: DevelopmentItemsListLabels;
   onArchiveStateChange: DevelopmentItemArchiveStateChangeHandler;
+  onConfigureAsset: (item: DevelopmentItemsInventoryItem) => void;
   onSelectItem: (item: DevelopmentItemsInventoryItem) => void;
+  onViewAssetDetails: (item: DevelopmentItemsInventoryItem) => void;
   pagination: DevelopmentItemsPaginationProps;
   thumbnailUrls: ReadonlyMap<number, string>;
   toolboxIdsByAssetId: ReadonlyMap<number, DevelopmentItemToolboxIds>;
@@ -59,13 +61,14 @@ const STICKY_ACTIONS_CELL_CLASS =
 const NO_WRAP_CELL_CLASS = 'text-no-wrap';
 
 type DevelopmentItemsListRowProps = {
-  getAssetTypeLabel: (item: DevelopmentItemsInventoryItem) => string;
   getSourceLabel: (item: DevelopmentItemsInventoryItem) => string;
   isArchivable: boolean;
   item: DevelopmentItemsInventoryItem;
-  labels: Pick<DevelopmentItemsListLabels, 'assetIdCopied' | 'assetIdWithValue'>;
+  labels: Pick<DevelopmentItemsListLabels, 'assetIdCopied' | 'assetIdWithValue' | 'package'>;
   onArchiveStateChange: DevelopmentItemArchiveStateChangeHandler;
+  onConfigureAsset: (item: DevelopmentItemsInventoryItem) => void;
   onSelectItem: (item: DevelopmentItemsInventoryItem) => void;
+  onViewAssetDetails: (item: DevelopmentItemsInventoryItem) => void;
   pageNumber: number;
   pageSize: number;
   position: number;
@@ -75,13 +78,14 @@ type DevelopmentItemsListRowProps = {
 
 const DevelopmentItemsListRow: FunctionComponent<DevelopmentItemsListRowProps> = memo(
   ({
-    getAssetTypeLabel,
     getSourceLabel,
     isArchivable,
     item,
     labels,
     onArchiveStateChange,
+    onConfigureAsset,
     onSelectItem,
+    onViewAssetDetails,
     pageNumber,
     pageSize,
     position,
@@ -152,13 +156,13 @@ const DevelopmentItemsListRow: FunctionComponent<DevelopmentItemsListRowProps> =
                   src={thumbnailUrl}
                 />
               )}
+              {item.isPackage && <DevelopmentItemPackageBadge label={labels.package} />}
             </div>
             <span className='text-body-medium content-emphasis text-no-wrap text-truncate-split'>
               {item.name}
             </span>
           </div>
         </TableCell>
-        <TableCell className={NO_WRAP_CELL_CLASS}>{getAssetTypeLabel(item)}</TableCell>
         <TableCell className={NO_WRAP_CELL_CLASS}>
           <button
             aria-label={labels.assetIdWithValue(item.assetId)}
@@ -181,7 +185,8 @@ const DevelopmentItemsListRow: FunctionComponent<DevelopmentItemsListRowProps> =
               isArchivable={isArchivable}
               item={item}
               onArchiveStateChange={onArchiveStateChange}
-              onOpenDetails={onSelectItem}
+              onConfigureAsset={onConfigureAsset}
+              onViewAssetDetails={onViewAssetDetails}
               toolboxIds={toolboxIds}
               variant='OverMedia'
             />
@@ -191,7 +196,8 @@ const DevelopmentItemsListRow: FunctionComponent<DevelopmentItemsListRowProps> =
             item={item}
             onArchiveStateChange={onArchiveStateChange}
             onClose={handleCloseContextMenu}
-            onOpenDetails={onSelectItem}
+            onConfigureAsset={onConfigureAsset}
+            onViewAssetDetails={onViewAssetDetails}
             position={contextMenuPosition}
             toolboxIds={toolboxIds}
           />
@@ -203,12 +209,13 @@ const DevelopmentItemsListRow: FunctionComponent<DevelopmentItemsListRowProps> =
 
 const DevelopmentItemsList: FunctionComponent<DevelopmentItemsListProps> = ({
   archivableAssetIds,
-  getAssetTypeLabel,
   getSourceLabel,
   items,
   labels,
   onArchiveStateChange,
+  onConfigureAsset,
   onSelectItem,
+  onViewAssetDetails,
   pagination,
   thumbnailUrls,
   toolboxIdsByAssetId,
@@ -216,13 +223,12 @@ const DevelopmentItemsList: FunctionComponent<DevelopmentItemsListProps> = ({
   <div className='flex flex-col width-full min-width-0'>
     <div className='width-full min-width-0 [&>div]:bg-none [&>div]:max-width-full [&>div]:!scroll-x'>
       <Table
-        className='[min-width:1160px] [&_th:first-child]:[min-width:260px] [&_td:first-child]:[min-width:260px]'
+        className='[min-width:1000px] [&_th:first-child]:[min-width:260px] [&_td:first-child]:[min-width:260px]'
         size='Medium'
         variant='Framed'>
         <TableHeader>
           <TableRow>
             <TableHeaderCell className={NO_WRAP_CELL_CLASS}>{labels.name}</TableHeaderCell>
-            <TableHeaderCell className={NO_WRAP_CELL_CLASS}>{labels.assetType}</TableHeaderCell>
             <TableHeaderCell className={NO_WRAP_CELL_CLASS}>{labels.assetId}</TableHeaderCell>
             <TableHeaderCell className={NO_WRAP_CELL_CLASS}>{labels.source}</TableHeaderCell>
             <TableHeaderCell className={NO_WRAP_CELL_CLASS}>{labels.dateCreated}</TableHeaderCell>
@@ -235,14 +241,15 @@ const DevelopmentItemsList: FunctionComponent<DevelopmentItemsListProps> = ({
         <TableBody>
           {items.map((item, index) => (
             <DevelopmentItemsListRow
-              getAssetTypeLabel={getAssetTypeLabel}
               getSourceLabel={getSourceLabel}
               isArchivable={archivableAssetIds.has(item.assetId)}
               item={item}
               key={item.id}
               labels={labels}
               onArchiveStateChange={onArchiveStateChange}
+              onConfigureAsset={onConfigureAsset}
               onSelectItem={onSelectItem}
+              onViewAssetDetails={onViewAssetDetails}
               pageNumber={pagination.page + 1}
               pageSize={pagination.pageSize}
               position={pagination.page * pagination.pageSize + index + 1}

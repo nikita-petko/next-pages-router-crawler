@@ -40,6 +40,7 @@ import {
 } from './developmentItemsAnalytics';
 import {
   buildCreatorInventoryScope,
+  canConfigureDevelopmentItem,
   DevelopmentItemsSourceFilter,
   developmentItemsAssetTypes,
   filterDevelopmentItemsByArchivedState,
@@ -50,7 +51,6 @@ import {
   isDevelopmentItemsSourceSelection,
   isDevelopmentItemsView,
   mergeOptimisticArchivedDevelopmentItems,
-  shouldOpenDevelopmentItemInCreatorStore,
   type DevelopmentItemsAssetTypeSelection,
   type DevelopmentItemsInventoryItem,
   type DevelopmentItemsSourceSelection,
@@ -144,10 +144,10 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
         item: translate('Label.AssetID'),
       }),
       assetIdWithValue: translations.assetIdWithValue,
-      assetType: translations.assetType,
       dateCreated: translations.dateCreated,
       lastUpdated: translations.lastUpdated,
       name: translations.name,
+      package: translations.package,
       source: translations.inventorySource,
     }),
     [
@@ -155,11 +155,11 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
       translations.actions,
       translations.assetId,
       translations.assetIdWithValue,
-      translations.assetType,
       translations.dateCreated,
       translations.inventorySource,
       translations.lastUpdated,
       translations.name,
+      translations.package,
     ],
   );
   const [queryParams, setQueryParams] = useQueryParams(INVENTORY_QUERY_KEYS);
@@ -421,16 +421,6 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
   const { data: thumbnailUrls = EMPTY_THUMBNAIL_URLS } = useDevelopmentItemThumbnailUrls(assetIds);
   const { data: toolboxIdsByAssetId = EMPTY_TOOLBOX_IDS } = useDevelopmentItemToolboxIds(items);
 
-  const getAssetTypeLabel = useCallback(
-    (item: DevelopmentItemsInventoryItem) => {
-      if (item.assetType == null) {
-        return translate('Label.Unknown');
-      }
-      return translate(assetTypeLabelKeys[item.assetType]);
-    },
-    [translate],
-  );
-
   const getSourceLabel = useCallback(
     (item: DevelopmentItemsInventoryItem) => {
       const labels = item.sources.map((itemSource) => sourceLabels[itemSource]);
@@ -439,16 +429,28 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
     [sourceLabels, translate],
   );
 
-  const handleSelectItem = useCallback(
+  const handleConfigureAsset = useCallback(
     (item: DevelopmentItemsInventoryItem) => {
-      if (shouldOpenDevelopmentItemInCreatorStore(item)) {
-        void router.push(creatorHub.creatorStore.getAssetUrl(item.assetId));
-        return;
-      }
       const configureUrl = creatorHub.dashboard.getConfigureCreatorStoreItemUrl(item.assetId);
       void router.push(addPublishingConsolidationReturnTo(configureUrl, router.asPath));
     },
     [router],
+  );
+  const handleViewAssetDetails = useCallback(
+    (item: DevelopmentItemsInventoryItem) => {
+      void router.push(creatorHub.creatorStore.getAssetUrl(item.assetId));
+    },
+    [router],
+  );
+  const handleSelectItem = useCallback(
+    (item: DevelopmentItemsInventoryItem) => {
+      if (canConfigureDevelopmentItem(item)) {
+        handleConfigureAsset(item);
+        return;
+      }
+      handleViewAssetDetails(item);
+    },
+    [handleConfigureAsset, handleViewAssetDetails],
   );
 
   const assetTypeOptions = useMemo(
@@ -854,7 +856,10 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
           archivableAssetIds={archivableAssetIds}
           items={items}
           onArchiveStateChange={handleArchiveStateChange}
+          onConfigureAsset={handleConfigureAsset}
           onSelectItem={handleSelectItem}
+          onViewAssetDetails={handleViewAssetDetails}
+          packageLabel={translations.package}
           pageNumber={currentPage + 1}
           pageSize={effectivePageSize}
           thumbnailUrls={thumbnailUrls}
@@ -865,12 +870,13 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
       {scope != null && inventoryQuery.isSuccess && items.length > 0 && view === 'list' && (
         <DevelopmentItemsList
           archivableAssetIds={archivableAssetIds}
-          getAssetTypeLabel={getAssetTypeLabel}
           getSourceLabel={getSourceLabel}
           items={items}
           labels={listLabels}
           onArchiveStateChange={handleArchiveStateChange}
+          onConfigureAsset={handleConfigureAsset}
           onSelectItem={handleSelectItem}
+          onViewAssetDetails={handleViewAssetDetails}
           pagination={inventoryPagination}
           thumbnailUrls={thumbnailUrls}
           toolboxIdsByAssetId={toolboxIdsByAssetId}

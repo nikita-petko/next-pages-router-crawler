@@ -14,7 +14,10 @@ import {
   type DevelopmentItemsMenuAction,
   type DevelopmentItemsMenuSource,
 } from '../developmentItemsAnalytics';
-import type { DevelopmentItemsInventoryItem } from '../developmentItemsInventoryUtils';
+import {
+  canConfigureDevelopmentItem,
+  type DevelopmentItemsInventoryItem,
+} from '../developmentItemsInventoryUtils';
 import type { DevelopmentItemToolboxIds } from '../useDevelopmentItemToolboxIds';
 
 const ARCHIVING_PREVENTED_FOR_WEARABLE_ERROR_CODE = 21;
@@ -28,7 +31,8 @@ export type DevelopmentItemActionsProps = {
   isArchivable: boolean;
   item: DevelopmentItemsInventoryItem;
   onArchiveStateChange: DevelopmentItemArchiveStateChangeHandler;
-  onOpenDetails: (item: DevelopmentItemsInventoryItem) => void;
+  onConfigureAsset: (item: DevelopmentItemsInventoryItem) => void;
+  onViewAssetDetails: (item: DevelopmentItemsInventoryItem) => void;
   toolboxIds?: DevelopmentItemToolboxIds;
 };
 
@@ -45,7 +49,8 @@ const DevelopmentItemActionsMenuContent: FunctionComponent<
   menuSource,
   onArchiveStateChange,
   onClose,
-  onOpenDetails,
+  onConfigureAsset,
+  onViewAssetDetails,
   toolboxIds,
 }) => {
   const intl = useTranslation();
@@ -74,8 +79,18 @@ const DevelopmentItemActionsMenuContent: FunctionComponent<
     'Item name shown in the "Copied {item}" snackbar after copying a texture ID',
     translationKey('Label.TextureID', TranslationNamespace.Creations),
   );
-  const openAssetDetailsLabel = translate('Action.OpenAssetDetails');
+  const configureAssetLabel = tPendingTranslation(
+    'Configure Asset',
+    'Development Items menu action that opens an asset configuration page.',
+    translationKey('Action.DevelopmentItems.ConfigureAsset', TranslationNamespace.Creations),
+  );
+  const viewAssetDetailsLabel = tPendingTranslation(
+    'View Asset Details',
+    'Development Items menu action that opens an asset in Creator Store.',
+    translationKey('Action.DevelopmentItems.ViewAssetDetails', TranslationNamespace.Creations),
+  );
   const isArchived = item.state === 'Archived';
+  const isConfigurable = canConfigureDevelopmentItem(item);
   const archiveActionLabel = translate(isArchived ? 'Action.Restore' : 'Action.Archive');
   const meshId =
     item.assetType === CreatorInventoryAssetType.MeshPart ? toolboxIds?.meshId : undefined;
@@ -85,11 +100,16 @@ const DevelopmentItemActionsMenuContent: FunctionComponent<
       ? toolboxIds?.textureId
       : undefined;
 
-  const handleOpenDetails = useCallback(() => {
+  const handleConfigureAsset = useCallback(() => {
+    logDevelopmentItemsMenuAction(item, 'configure_asset', menuSource);
+    onClose();
+    onConfigureAsset(item);
+  }, [item, menuSource, onClose, onConfigureAsset]);
+  const handleViewAssetDetails = useCallback(() => {
     logDevelopmentItemsMenuAction(item, 'open_asset_details', menuSource);
     onClose();
-    onOpenDetails(item);
-  }, [item, menuSource, onClose, onOpenDetails]);
+    onViewAssetDetails(item);
+  }, [item, menuSource, onClose, onViewAssetDetails]);
   const copyId = useCallback(
     (value: number, itemName: string, action: DevelopmentItemsMenuAction) => {
       logDevelopmentItemsMenuAction(item, action, menuSource);
@@ -136,11 +156,19 @@ const DevelopmentItemActionsMenuContent: FunctionComponent<
   return (
     <Menu className='padding-small' size='Medium'>
       <MenuSection>
+        {isConfigurable && (
+          <MenuItem
+            leading={<Icon name='icon-regular-pencil' size='Medium' />}
+            onSelect={handleConfigureAsset}
+            title={configureAssetLabel}
+            value='configure-asset'
+          />
+        )}
         <MenuItem
           leading={<Icon name='icon-regular-arrow-up-right-from-square' size='Medium' />}
-          onSelect={handleOpenDetails}
-          title={openAssetDetailsLabel}
-          value='open-asset-details'
+          onSelect={handleViewAssetDetails}
+          title={viewAssetDetailsLabel}
+          value='view-asset-details'
         />
         <MenuItem onSelect={handleCopyAssetId} title={copyAssetIdLabel} value='copy-asset-id' />
         {meshId != null && meshId > 0 && (

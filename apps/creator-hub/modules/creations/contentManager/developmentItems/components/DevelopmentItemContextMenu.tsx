@@ -24,7 +24,8 @@ const DevelopmentItemContextMenu: FunctionComponent<DevelopmentItemContextMenuPr
   item,
   onArchiveStateChange,
   onClose,
-  onOpenDetails,
+  onConfigureAsset,
+  onViewAssetDetails,
   position,
   toolboxIds,
 }) => {
@@ -77,7 +78,8 @@ const DevelopmentItemContextMenu: FunctionComponent<DevelopmentItemContextMenuPr
             menuSource='context_menu'
             onArchiveStateChange={onArchiveStateChange}
             onClose={onClose}
-            onOpenDetails={onOpenDetails}
+            onConfigureAsset={onConfigureAsset}
+            onViewAssetDetails={onViewAssetDetails}
             toolboxIds={toolboxIds}
           />
         </PopoverContent>

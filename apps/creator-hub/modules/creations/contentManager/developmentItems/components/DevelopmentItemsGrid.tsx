@@ -13,12 +13,16 @@ import DevelopmentItemActionsMenu, {
 } from './DevelopmentItemActionsMenu';
 import DevelopmentItemContextMenu from './DevelopmentItemContextMenu';
 import type { DevelopmentItemContextMenuPosition } from './DevelopmentItemContextMenu';
+import DevelopmentItemPackageBadge from './DevelopmentItemPackageBadge';
 
 export type DevelopmentItemsGridProps = {
   archivableAssetIds: ReadonlySet<number>;
   items: readonly DevelopmentItemsInventoryItem[];
   onArchiveStateChange: DevelopmentItemArchiveStateChangeHandler;
+  onConfigureAsset: (item: DevelopmentItemsInventoryItem) => void;
   onSelectItem: (item: DevelopmentItemsInventoryItem) => void;
+  onViewAssetDetails: (item: DevelopmentItemsInventoryItem) => void;
+  packageLabel: string;
   pageNumber: number;
   pageSize: number;
   thumbnailUrls: ReadonlyMap<number, string>;
@@ -29,7 +33,10 @@ type DevelopmentItemsGridItemProps = {
   isArchivable: boolean;
   item: DevelopmentItemsInventoryItem;
   onArchiveStateChange: DevelopmentItemArchiveStateChangeHandler;
+  onConfigureAsset: (item: DevelopmentItemsInventoryItem) => void;
   onSelectItem: (item: DevelopmentItemsInventoryItem) => void;
+  onViewAssetDetails: (item: DevelopmentItemsInventoryItem) => void;
+  packageLabel: string;
   pageNumber: number;
   pageSize: number;
   position: number;
@@ -42,7 +49,10 @@ const DevelopmentItemsGridItem: FunctionComponent<DevelopmentItemsGridItemProps>
     isArchivable,
     item,
     onArchiveStateChange,
+    onConfigureAsset,
     onSelectItem,
+    onViewAssetDetails,
+    packageLabel,
     pageNumber,
     pageSize,
     position,
@@ -99,6 +109,7 @@ const DevelopmentItemsGridItem: FunctionComponent<DevelopmentItemsGridItemProps>
                 src={thumbnailUrl}
               />
             )}
+            {item.isPackage && <DevelopmentItemPackageBadge label={packageLabel} size='Medium' />}
           </div>
           <div className='flex flex-col gap-xxsmall min-width-0 width-full padding-right-small padding-bottom-small'>
             <span className='text-body-medium content-emphasis text-no-wrap text-truncate-split width-full'>
@@ -117,7 +128,8 @@ const DevelopmentItemsGridItem: FunctionComponent<DevelopmentItemsGridItemProps>
               isArchivable={isArchivable}
               item={item}
               onArchiveStateChange={onArchiveStateChange}
-              onOpenDetails={onSelectItem}
+              onConfigureAsset={onConfigureAsset}
+              onViewAssetDetails={onViewAssetDetails}
               toolboxIds={toolboxIds}
               variant='OverMedia'
             />
@@ -128,7 +140,8 @@ const DevelopmentItemsGridItem: FunctionComponent<DevelopmentItemsGridItemProps>
           item={item}
           onArchiveStateChange={onArchiveStateChange}
           onClose={handleCloseContextMenu}
-          onOpenDetails={onSelectItem}
+          onConfigureAsset={onConfigureAsset}
+          onViewAssetDetails={onViewAssetDetails}
           position={contextMenuPosition}
           toolboxIds={toolboxIds}
         />
@@ -141,7 +154,10 @@ const DevelopmentItemsGrid: FunctionComponent<DevelopmentItemsGridProps> = ({
   archivableAssetIds,
   items,
   onArchiveStateChange,
+  onConfigureAsset,
   onSelectItem,
+  onViewAssetDetails,
+  packageLabel,
   pageNumber,
   pageSize,
   thumbnailUrls,
@@ -154,7 +170,10 @@ const DevelopmentItemsGrid: FunctionComponent<DevelopmentItemsGridProps> = ({
         item={item}
         key={item.id}
         onArchiveStateChange={onArchiveStateChange}
+        onConfigureAsset={onConfigureAsset}
         onSelectItem={onSelectItem}
+        onViewAssetDetails={onViewAssetDetails}
+        packageLabel={packageLabel}
         pageNumber={pageNumber}
         pageSize={pageSize}
         position={(pageNumber - 1) * pageSize + index + 1}

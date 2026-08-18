@@ -170,12 +170,8 @@ export const isDevelopmentItemDirectlyArchivable = (
   assetType: CreatorInventoryAssetType | undefined,
 ): boolean => assetType != null && directlyArchivableDevelopmentItemsAssetTypes.has(assetType);
 
-export const shouldOpenDevelopmentItemInCreatorStore = (
-  item: DevelopmentItemsInventoryItem,
-): boolean =>
-  !item.sources.includes(CreatorInventorySourceType.Created) &&
-  (item.sources.includes(CreatorInventorySourceType.Purchased) ||
-    item.sources.includes(CreatorInventorySourceType.Shared));
+export const canConfigureDevelopmentItem = (item: DevelopmentItemsInventoryItem): boolean =>
+  item.sources.includes(CreatorInventorySourceType.Created);
 
 export const isDevelopmentItemsAssetType = (
   value: string | undefined,
