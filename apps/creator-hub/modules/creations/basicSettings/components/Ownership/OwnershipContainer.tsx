@@ -1,5 +1,5 @@
 import type { FunctionComponent } from 'react';
-import React, { Fragment, useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { ResourceType, HoldState } from '@rbx/client-ownership-transfer-api/v1';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { Grid, Typography, useDialog } from '@rbx/ui';
@@ -13,7 +13,6 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import type { TGroup } from '@modules/providers/groups/constants';
 import { useGroups } from '@modules/providers/groups/GroupsProvider';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import OwnershipEvents from '../../constants/OwnershipEvents';
 import CancelTransferButton from './CancelTransferButton';
 import ExpiredTransferAcknowledgementDialog from './ExpiredTransferAcknowledgementDialog';
@@ -35,7 +34,6 @@ const OwnershipContainer: FunctionComponent<React.PropsWithChildren<OwnershipCon
   const { groups } = useGroups();
   const { open: openDialog, close: closeDialog, configure } = useDialog();
   const { unifiedLogger } = useUnifiedLoggerProvider();
-  const { settings } = useSettings();
 
   const [latestTransferDetails, setLatestTransferDetails] = useState<TransferHold | null>();
   const [transferActionStatus, setTransferActionStatus] =
@@ -43,16 +41,21 @@ const OwnershipContainer: FunctionComponent<React.PropsWithChildren<OwnershipCon
 
   const [pendingTargetGroup, setPendingTargetGroup] = useState<TGroup>();
 
+  const gameId = gameDetails?.id;
+
   const getTransfer = useCallback(async () => {
     try {
       const getTransferResponse = await ownershipTransferClient.getLatestTransfer({
         resourceType: ResourceType.Universe,
-        resourceId: gameDetails?.id ?? 0,
+        resourceId: gameId ?? 0,
       });
 
       setLatestTransferDetails(getTransferResponse);
-    } catch (error) {
-      if (error instanceof SyntaxError || (error as Error).name === 'SyntaxError') {
+    } catch (error: unknown) {
+      if (
+        error instanceof SyntaxError ||
+        (error instanceof Error && error.name === 'SyntaxError')
+      ) {
         // Syntax error comes from incorrect json deserialization of 204 response
         // empty response - authorized response meaning never transferred before
         // Safari isn't respecting instanceof so we check the name property as well
@@ -62,25 +65,26 @@ const OwnershipContainer: FunctionComponent<React.PropsWithChildren<OwnershipCon
         setLatestTransferDetails(undefined);
       }
     }
-  }, [gameDetails?.id]);
+  }, [gameId]);
 
   useEffect(() => {
-    getTransfer();
+    // oxlint-disable-next-line react/react-compiler -- syncing local state with fetched data
+    void getTransfer();
   }, [getTransfer]);
 
   const acknowledgeExpiration = useCallback(async () => {
-    if (gameDetails?.id) {
+    if (gameId) {
       try {
         await ownershipTransferClient.acknowledgeTransfer({
           resourceType: ResourceType.Universe,
-          resourceId: gameDetails?.id,
+          resourceId: gameId,
         });
 
         unifiedLogger.logClickEvent({
           eventName: OwnershipEvents.AcknowledgeExpiredTransfer,
           parameters: {
             resourceType: ResourceType.Universe,
-            resourceId: gameDetails?.id.toString(),
+            resourceId: gameId.toString(),
           },
         });
       } catch {
@@ -88,11 +92,12 @@ const OwnershipContainer: FunctionComponent<React.PropsWithChildren<OwnershipCon
         // loads and this non-blocking for creating new transfers
       }
     }
-  }, [gameDetails?.id, unifiedLogger]);
+  }, [gameId, unifiedLogger]);
 
   useEffect(() => {
     if (latestTransferDetails !== undefined) {
       if (latestTransferDetails === null) {
+        // oxlint-disable-next-line react/react-compiler -- effect syncs transferActionStatus from fetched transfer details
         setTransferActionStatus('CanInitiate');
       } else if (
         latestTransferDetails?.holdState === HoldState.Timedout &&
@@ -109,7 +114,7 @@ const OwnershipContainer: FunctionComponent<React.PropsWithChildren<OwnershipCon
           />,
         );
         openDialog();
-        acknowledgeExpiration();
+        void acknowledgeExpiration();
         setTransferActionStatus('CanInitiate');
       } else if (latestTransferDetails?.holdState === HoldState.Pending) {
         setTransferActionStatus('CanCancel');
@@ -119,8 +124,7 @@ const OwnershipContainer: FunctionComponent<React.PropsWithChildren<OwnershipCon
         setPendingTargetGroup(targetGroup);
       } else if (
         (latestTransferDetails?.holdState === HoldState.Completed &&
-          latestTransferDetails.updatedUtcTime >
-            new Date(Date.now() - settings.ownershipTransferCompletedTimeout * 1000)) ||
+          latestTransferDetails.updatedUtcTime > new Date(Date.now() - 60 * 1000)) ||
         latestTransferDetails?.holdState === HoldState.Accepted
       ) {
         setTransferActionStatus('Ineligible');
@@ -137,7 +141,6 @@ const OwnershipContainer: FunctionComponent<React.PropsWithChildren<OwnershipCon
     closeDialog,
     acknowledgeExpiration,
     pendingTargetGroup?.name,
-    settings.ownershipTransferCompletedTimeout,
   ]);
 
   return (
@@ -149,12 +152,14 @@ const OwnershipContainer: FunctionComponent<React.PropsWithChildren<OwnershipCon
         </Typography>
         <Grid container justifyContent='space-between'>
           <Grid item style={{ marginTop: 16 }}>
-            {gameDetails?.creator?.id && gameDetails?.creator?.type && (
-              <ThumbnailWithNames
-                target={experienceCreator}
-                targetType={gameDetails?.creator?.type as CreatorType}
-              />
-            )}
+            {gameDetails?.creator?.id &&
+              (gameDetails?.creator?.type === CreatorType.User ||
+                gameDetails?.creator?.type === CreatorType.Group) && (
+                <ThumbnailWithNames
+                  target={experienceCreator}
+                  targetType={gameDetails.creator.type}
+                />
+              )}
           </Grid>
           <Grid item style={{ marginTop: 16 }}>
             {transferActionStatus === 'CanInitiate' && (
