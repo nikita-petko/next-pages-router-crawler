@@ -2,7 +2,6 @@ import { withTranslation, useTranslation } from '@rbx/intl';
 import { Alert, AlertTitle, Button, makeStyles, Typography } from '@rbx/ui';
 import { useAuthentication } from '@modules/authentication/providers';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import type { GroupConfiguration } from '../../ConfigureGroupTypes';
 import useGroupOwnershipTransfer from '../../hooks/useGroupOwnershipTransfer';
 
@@ -26,13 +25,12 @@ const GroupOwnershipTransferAlert = ({ groupConfiguration }: TGroupOwnershipTran
     useGroupOwnershipTransfer(groupConfiguration);
 
   const { translate, translateHTML } = useTranslation();
-  const { settings } = useSettings();
   const { user } = useAuthentication();
 
   const { classes } = useStyles();
 
   const isTargetCreator = targetCreator?.creatorId === user?.id;
-  if (!hasPendingTransfer || !isTargetCreator || !settings?.enableGroupOwnershipTransferV2) {
+  if (!hasPendingTransfer || !isTargetCreator) {
     return null;
   }
 

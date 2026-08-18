@@ -196,7 +196,7 @@ const ConfigureGroupForm: FunctionComponent<React.PropsWithChildren<ConfigureGro
 
   const [formSubmissionErrorMsg, setFormSubmissionErrorMsg] = useState<string | null>(null);
   const [hasError, setHasError] = useState<boolean>(false);
-  const [transferRecipient, setTransferRecipient] = useState<User | undefined>();
+  const [transferRecipient] = useState<User | undefined>();
   const [confirmationDialogOpen, setConfirmationDialogOpen] = useState<boolean>(false);
   const { mutateAsync: updateAssetPrivacyDefault } = useUpdateGroupAssetPrivacyDefault();
 
@@ -299,20 +299,6 @@ const ConfigureGroupForm: FunctionComponent<React.PropsWithChildren<ConfigureGro
       fieldOnChange(newSocialLinks);
     },
     [setValue],
-  );
-
-  const handleOwnerChange = useCallback(
-    (newOwner: User | null, fieldOnChange: ControllerRenderProps['onChange']) => {
-      if (newOwner && newOwner.id !== groupConfiguration.owner.id) {
-        setValue('owner', newOwner);
-        setTransferRecipient(newOwner);
-        fieldOnChange(newOwner);
-      } else {
-        setTransferRecipient(undefined);
-        resetField('owner');
-      }
-    },
-    [groupConfiguration.owner.id, resetField, setValue],
   );
 
   const configureGroupIcon = useCallback(
@@ -872,12 +858,7 @@ const ConfigureGroupForm: FunctionComponent<React.PropsWithChildren<ConfigureGro
           transferRecipient={transferRecipient}
         />
         <Grid container item XSmall={12} className={innerSectionPadding}>
-          <OwnershipSection
-            groupConfiguration={groupConfiguration}
-            control={control}
-            isDisabled={isSubmitting || disabled}
-            handleOwnerChange={handleOwnerChange}
-          />
+          <OwnershipSection groupConfiguration={groupConfiguration} />
         </Grid>
       </Grid>
       <Grid container item XSmall={12} XLarge={8}>
