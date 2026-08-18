@@ -1,5 +1,4 @@
 export const rootQueryKey = 'priceExperimentationApi';
-export const isEligibleQueryKey = 'isEligibleForPriceExperimentation';
 export const currentExperimentQueryKey = 'currentExperiment';
 export const lastCompletedExperimentQueryKey = 'lastCompletedExperiment';
 export const getExperimentResultsQueryKey = 'getExperimentResults';

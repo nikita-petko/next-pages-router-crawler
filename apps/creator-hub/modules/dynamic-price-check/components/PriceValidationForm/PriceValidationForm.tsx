@@ -1,10 +1,8 @@
 import { useCallback } from 'react';
-import NextLink from 'next/link';
 import { FormProvider, useForm, useFormState } from 'react-hook-form';
 import { useTranslation } from '@rbx/intl';
 import { Typography, Divider, Button } from '@rbx/ui';
 import usersClient from '@modules/clients/users';
-import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
 import { openGeneralErrorDialog } from '../../dialogs/GeneralErrorDialog';
 import { openTooManyOnSaleErrorDialog } from '../../dialogs/TooManyOnSaleErrorDialog';
 import { useSetUniversePinnedLocation } from '../../queries/useSetUniversePinnedLocation';
@@ -29,12 +27,9 @@ interface PriceValidationFormProps {
   initialTestingType: TestingType | null;
   initialPinnedPrice: number | null;
   initialPinnedLocation: Country | null;
-  showReturnToPriceOptimization: boolean;
   /** Whether inputs AND form submission should be disabled */
   disabled?: boolean;
 }
-
-const getPriceOptimizationLink = dashboard.getMonetizationPriceOptimizationUrl;
 
 /** Separating out submit button to granularly handle formstate */
 const SubmitButton = ({
@@ -70,7 +65,6 @@ const PriceValidationForm = ({
   initialPinnedPrice,
   initialPinnedLocation,
   disabled,
-  showReturnToPriceOptimization,
 }: PriceValidationFormProps) => {
   const { translate, translateHTML } = useTranslation();
   const { classes } = usePriceValidationFormStyles();
@@ -194,17 +188,6 @@ const PriceValidationForm = ({
 
         <div className={classes.actionContainer}>
           <SubmitButton initialStatus={initialStatus} disabled={disabled} />
-
-          {showReturnToPriceOptimization && (
-            <Button
-              size='large'
-              variant='outlined'
-              color='secondary'
-              component={NextLink}
-              href={getPriceOptimizationLink(universeId)}>
-              {translate('Action.ReturnPriceOptimization')}
-            </Button>
-          )}
         </div>
 
         {isValidationLoading && <PriceValidationLoadingModal isEnabling={isEnabling} />}

@@ -1,6 +1,5 @@
 /* istanbul ignore file */
 import { useEffect } from 'react';
-import { useRouter } from 'next/router';
 import { StatusCodes } from '@rbx/core';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { Typography } from '@rbx/ui';
@@ -27,8 +26,6 @@ function DynamicPriceCheckPageContent({ universeId }: { universeId: number }) {
 
   const { data: permissions, isLoading: isLoadingPermissions } = useUniversePermissions(universeId);
 
-  const router = useRouter();
-
   // Get price validation config
   const {
     config,
@@ -39,10 +36,9 @@ function DynamicPriceCheckPageContent({ universeId }: { universeId: number }) {
   // Get latest experiment to check if price optimization is active
   const {
     isPriceOptimizationActive,
-    isEligible: isEligibleForPriceOptimization,
     isLoading: isLoadingPriceOptimization,
     isError: isErrorPriceOptimization,
-  } = useIsPriceOptimizationActive();
+  } = useIsPriceOptimizationActive(universeId);
 
   const isLoading =
     !areTranslationsReady ||
@@ -67,8 +63,6 @@ function DynamicPriceCheckPageContent({ universeId }: { universeId: number }) {
   }
 
   const isPriceValidationActive = isActiveStatus(config.status) && !isPriceOptimizationActive;
-  const showReturnToPriceOptimization =
-    isEligibleForPriceOptimization && router.query.from === 'price-optimization';
 
   return (
     <div className={classes.container}>
@@ -121,7 +115,6 @@ function DynamicPriceCheckPageContent({ universeId }: { universeId: number }) {
           initialTestingType={config.testing}
           initialPinnedPrice={!isPriceOptimizationActive ? config.price : null}
           initialPinnedLocation={!isPriceOptimizationActive ? config.location : null}
-          showReturnToPriceOptimization={showReturnToPriceOptimization}
           disabled={isPriceOptimizationActive || isPollingStatus(config.status)}
         />
       </div>

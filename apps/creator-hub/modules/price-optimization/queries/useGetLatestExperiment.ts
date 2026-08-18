@@ -14,21 +14,26 @@ import {
 } from './constants';
 
 type Parameters = {
+  universeId?: number;
   completed?: boolean;
   enabled?: boolean;
 };
 
-export function useGetLatestExperiment({ completed = false, enabled = true }: Parameters = {}) {
+export function useGetLatestExperiment({
+  universeId,
+  completed = false,
+  enabled = true,
+}: Parameters = {}) {
   const { gameDetails } = useCurrentGame();
-  const universeId = gameDetails && gameDetails.id ? gameDetails.id : undefined;
+  const gameUniverseId = gameDetails && gameDetails.id ? gameDetails.id : undefined;
 
   const queryKey = useMemo(
     () => [
       rootQueryKey,
-      universeId,
+      universeId ?? gameUniverseId,
       completed ? lastCompletedExperimentQueryKey : currentExperimentQueryKey,
     ],
-    [universeId, completed],
+    [universeId, gameUniverseId, completed],
   );
 
   const { data, isPending, isLoading, isError } = useQuery({
@@ -37,7 +42,7 @@ export function useGetLatestExperiment({ completed = false, enabled = true }: Pa
       const response = await priceExperimentationApi.listExperiments({
         // Query is only enabled when universeId is defined
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- guarded by enabled
-        universeId: universeId as number,
+        universeId: universeId ?? (gameUniverseId as number),
         state: completed ? ExperimentState.Completed : undefined,
         limit: 1,
       });
@@ -54,16 +59,16 @@ export function useGetLatestExperiment({ completed = false, enabled = true }: Pa
       }
       return false;
     },
-    enabled: !!universeId && enabled,
+    enabled: !!(universeId ?? gameUniverseId) && enabled,
     staleTime,
     retry: queryRetry,
     refetchOnWindowFocus: true,
   });
 
   return {
-    universeId,
+    universeId: universeId ?? gameUniverseId,
     latestExperiment: data,
-    isLoading: isPending || !universeId,
+    isLoading: isPending || !(universeId ?? gameUniverseId),
     isInitialLoading: isLoading, // Keeping v4 interface until later refactor
     isError,
   } as const;

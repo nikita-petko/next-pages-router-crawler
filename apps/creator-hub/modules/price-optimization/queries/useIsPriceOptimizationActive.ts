@@ -1,31 +1,19 @@
 import { isOngoingExperiment } from '../helpers/experimentUtils';
 import { useGetLatestExperiment } from './useGetLatestExperiment';
-import { useGetPriceExperimentationEligibility } from './useGetPriceExperimentationEligibility';
 
 /**
  * External query hook to see if the current experience has an active price optimization experiment.
  */
-export function useIsPriceOptimizationActive() {
-  const { isEligible, isInitialLoading: isLoadingEligibility } =
-    useGetPriceExperimentationEligibility();
-
-  // Get latest experiment to check if price optimization is active
+export function useIsPriceOptimizationActive(universeId?: number) {
   const {
     latestExperiment: currentExperiment,
-    isInitialLoading: isLoadingExperiment,
+    isLoading: isLoadingExperiment,
     isError: isErrorExperiment,
-  } = useGetLatestExperiment({ enabled: isEligible });
-
-  const isLoading = (isLoadingExperiment && isEligible) || isLoadingEligibility;
-
-  const isError = isErrorExperiment;
-
-  const isPriceOptimizationActive = isOngoingExperiment(currentExperiment?.state);
+  } = useGetLatestExperiment({ universeId });
 
   return {
-    isEligible,
-    isPriceOptimizationActive,
-    isLoading,
-    isError,
+    isPriceOptimizationActive: isOngoingExperiment(currentExperiment?.state),
+    isLoading: isLoadingExperiment,
+    isError: isErrorExperiment,
   } as const;
 }
