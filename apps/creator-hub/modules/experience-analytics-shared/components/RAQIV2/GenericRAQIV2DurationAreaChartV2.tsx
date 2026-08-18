@@ -25,7 +25,13 @@ const GenericRAQIV2DurationAreaChartV2: FC<GenericRAQIV2ChartProps> = (props) =>
   } = props;
 
   const hookData = useDurationChartData(props, ChartType.DurationArea);
-  const { chart, xAxisFormatter, translationDependencies } = hookData;
+  const {
+    chart,
+    xAxisFormatter,
+    translationDependencies,
+    handleSuccessfulChartRender,
+    handleChartDependencyStatus,
+  } = hookData;
 
   const convertedData = useMemo(() => {
     const series: Array<SingleAreaSeries<number, number>> = [];
@@ -102,9 +108,20 @@ const GenericRAQIV2DurationAreaChartV2: FC<GenericRAQIV2ChartProps> = (props) =>
         yAxisConfig={yAxisConfig}
         tooltipFormatters={tooltipFormatters}
         height={chartHeight}
+        onChartRender={handleSuccessfulChartRender}
+        onChartDependencyStatus={handleChartDependencyStatus}
       />
     ),
-    [convertedData, chartStyleMode, xAxisFormatter, yAxisConfig, tooltipFormatters, chartHeight],
+    [
+      chartHeight,
+      chartStyleMode,
+      handleSuccessfulChartRender,
+      handleChartDependencyStatus,
+      convertedData,
+      tooltipFormatters,
+      xAxisFormatter,
+      yAxisConfig,
+    ],
   );
 
   return renderWithoutPeripherals ? (

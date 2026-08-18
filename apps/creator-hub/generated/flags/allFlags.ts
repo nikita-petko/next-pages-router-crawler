@@ -231,6 +231,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: creatorAnalyticsFlags.analyticsChartLoadEventstreamEnabled,
+      metadata: {
+        namespace: 'creator-analytics',
+        name: 'analyticsChartLoadEventstreamEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: creatorAnalyticsFlags.isLimitedAnalyticsAdminMonitoringNavigationEnabled,
       metadata: {
         namespace: 'creator-analytics',
@@ -328,16 +338,6 @@ export const generatedFlags = [
         defaultValue: true,
         valueType: 'boolean',
         contextType: 'universe',
-      },
-    },
-    {
-      flag: creatorAnalyticsFlags.sentryChartTracingEnabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'sentryChartTracingEnabled',
-        defaultValue: false,
-        valueType: 'boolean',
-        contextType: 'static',
       },
     },
     {

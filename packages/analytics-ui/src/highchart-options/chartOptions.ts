@@ -184,11 +184,13 @@ export const useColumnChartChartOptions = <X>({
 export const useBarChartChartOptions = ({
   chartStyleMode,
   onChartLoad,
+  onChartRender,
   height: givenHeight,
   longestDataLabelLength,
 }: {
   chartStyleMode: ChartStyleMode;
   onChartLoad?: Highcharts.ChartLoadCallbackFunction;
+  onChartRender?: Highcharts.ChartRenderCallbackFunction;
   height?: number;
   longestDataLabelLength: number;
 }): ChartOptions => {
@@ -200,8 +202,9 @@ export const useBarChartChartOptions = ({
         chartType: ChartType.Bar,
         chartStyleMode,
         onChartLoad,
+        onChartRender,
       }),
-    [chartStyleMode, onChartLoad, theme],
+    [chartStyleMode, onChartLoad, onChartRender, theme],
   );
 
   return useMemo(
@@ -221,12 +224,14 @@ export const useBarChartChartOptions = ({
 export const useMapChartChartOptions = ({
   chartStyleMode,
   onChartLoad,
+  onChartRender,
   topoJSONData,
   height: givenHeight,
 }: {
   chartStyleMode: ChartStyleMode;
   topoJSONData: Highcharts.TopoJSON;
   onChartLoad?: Highcharts.ChartLoadCallbackFunction;
+  onChartRender?: Highcharts.ChartRenderCallbackFunction;
   height?: number;
 }): ChartOptions => {
   const theme = useTheme();
@@ -237,8 +242,9 @@ export const useMapChartChartOptions = ({
         chartType: ChartType.Map,
         chartStyleMode,
         onChartLoad,
+        onChartRender,
       }),
-    [chartStyleMode, onChartLoad, theme],
+    [chartStyleMode, onChartLoad, onChartRender, theme],
   );
 
   return useMemo(
@@ -255,10 +261,12 @@ export const useMapChartChartOptions = ({
 export const usePieChartChartOptions = ({
   chartStyleMode,
   onChartLoad,
+  onChartRender,
   height: givenHeight,
 }: {
   chartStyleMode: ChartStyleMode;
   onChartLoad?: Highcharts.ChartLoadCallbackFunction;
+  onChartRender?: Highcharts.ChartRenderCallbackFunction;
   height?: number;
 }): ChartOptions => {
   const theme = useTheme();
@@ -269,8 +277,9 @@ export const usePieChartChartOptions = ({
         chartType: ChartType.Pie,
         chartStyleMode,
         onChartLoad,
+        onChartRender,
       }),
-    [chartStyleMode, onChartLoad, theme],
+    [chartStyleMode, onChartLoad, onChartRender, theme],
   );
 
   return useMemo(

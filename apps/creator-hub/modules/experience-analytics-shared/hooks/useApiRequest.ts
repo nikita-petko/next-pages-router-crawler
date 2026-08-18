@@ -16,11 +16,14 @@ export type TUseApiRequestOptions = {
   enabled?: boolean;
   refetchShouldSetLoading?: boolean;
   invalidateCache?: () => void;
+  trackRequestVersion?: boolean;
 };
 
 export type TUseApiRequestResponse<ResponseType> = GenericChartState & {
   data: ResponseType | null;
   refresh: () => void;
+  requestIdentity?: TMakeRequest<ResponseType>;
+  requestVersion?: number;
 };
 
 enum RequestAbortedReason {
@@ -43,9 +46,27 @@ const useApiRequest = <ResponseType>(
   const [data, setData] = useState<ResponseType | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const abortControllerRef = useRef<AbortController>(new AbortController());
+  const hasStartedRequest = useRef(false);
+  // NOTE: the attempt counter is a ref rather than state on purpose. Callers commonly rebuild the
+  // `makeRequest` closure on every render, so the request effect re-runs whenever this hook
+  // re-renders. Storing the counter in state would make every attempt schedule a render, which
+  // re-fires the effect and starts another attempt, looping forever. Attempts always land
+  // alongside a real state change (loading/data/error), so consumers still observe each bump.
+  const requestVersionRef = useRef(0);
 
-  const { enabled = true, refetchShouldSetLoading = false, invalidateCache } = options ?? {};
+  const {
+    enabled = true,
+    refetchShouldSetLoading = false,
+    invalidateCache,
+    trackRequestVersion = false,
+  } = options ?? {};
   const makeRequestAndUpdateState = useCallback(async () => {
+    if (trackRequestVersion && hasStartedRequest.current) {
+      requestVersionRef.current += 1;
+    } else {
+      hasStartedRequest.current = true;
+    }
+
     // abort in-flight request when a new request is made
     abortControllerRef.current.abort(RequestAbortedReason.NewRequestMade);
     const abortControllerForCurrentRequest = new AbortController();
@@ -151,7 +172,7 @@ const useApiRequest = <ResponseType>(
         logAnalyticsError('Unknown useApiRequest Error:', e);
       }
     }
-  }, [makeRequest, refetchShouldSetLoading]);
+  }, [makeRequest, refetchShouldSetLoading, trackRequestVersion]);
 
   useEffect(() => {
     if (enabled) {
@@ -179,6 +200,10 @@ const useApiRequest = <ResponseType>(
     void makeRequestAndUpdateState();
   }, [enabled, makeRequestAndUpdateState, invalidateCache]);
 
+  // oxlint-disable react/react-compiler -- see requestVersionRef above; a ref-backed counter is
+  // what keeps an attempt from scheduling a render and re-firing the request effect.
+  const requestVersion = requestVersionRef.current;
+
   return {
     isDataLoading,
     isResponseFailed,
@@ -186,6 +211,8 @@ const useApiRequest = <ResponseType>(
     data,
     refresh,
     error,
+    requestIdentity: makeRequest,
+    requestVersion,
   };
 };
 

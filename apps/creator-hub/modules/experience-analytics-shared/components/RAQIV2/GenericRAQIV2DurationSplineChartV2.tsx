@@ -24,7 +24,13 @@ const GenericRAQIV2DurationSplineChartV2: FC<GenericRAQIV2ChartProps> = (props) 
   const { metric } = spec;
 
   const hookData = useDurationChartData(props, ChartType.DurationSpline);
-  const { chart, xAxisFormatter, translationDependencies } = hookData;
+  const {
+    chart,
+    xAxisFormatter,
+    translationDependencies,
+    handleSuccessfulChartRender,
+    handleChartDependencyStatus,
+  } = hookData;
 
   const convertedData = useMemo(() => {
     return {
@@ -73,10 +79,14 @@ const GenericRAQIV2DurationSplineChartV2: FC<GenericRAQIV2ChartProps> = (props) 
         yAxisConfigs={yAxisConfigs}
         tooltipFormatters={tooltipFormatters}
         height={chartHeight}
+        onChartRender={handleSuccessfulChartRender}
+        onChartDependencyStatus={handleChartDependencyStatus}
       />
     ),
     [
       chartStyleMode,
+      handleSuccessfulChartRender,
+      handleChartDependencyStatus,
       convertedData,
       chartHeight,
       lineChartUpdateProps,

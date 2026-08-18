@@ -193,7 +193,7 @@ export const getAtomicMetricLikesFromMetricLike = <TMetric extends TRAQIV2UIMetr
     const key = getMetricCacheKeyFromAtomicMetricLike(source.metric as AtomicMetricLike<TMetric>);
     if (!seen.has(key)) {
       seen.add(key);
-      atomicMetrics.push(source.metric as AtomicMetricLike<TMetric>);
+      atomicMetrics.push(source.metric);
     }
   });
   return atomicMetrics;
@@ -213,8 +213,22 @@ export const getMetricCacheKeyFromMetricLike = (
 
 export const getAtomicMetricsFromMetricLike = getUIMetricsFromMetricLike;
 
-export const getSentryMetricNameFromMetricLike = (
+export const getTelemetryMetricNameFromMetricLike = (
   metricLike: MetricLike<TRAQIV2UIMetric>,
 ): string => {
-  return getMetricCacheKeyFromMetricLike(metricLike);
+  if (!isComputedMetric(metricLike)) {
+    return getUIMetricFromAtomicMetricLike(metricLike);
+  }
+
+  const boundedMetricNames = [...new Set(getUIMetricsFromMetricLike(metricLike))].sort();
+  return `ACEComputed:${boundedMetricNames.join('|')}`;
+};
+
+export const getTelemetryMetricNameFromMetricLikes = (
+  metricLikes: readonly MetricLike<TRAQIV2UIMetric>[],
+): string => {
+  const boundedMetricNames = [...new Set(metricLikes.map(getTelemetryMetricNameFromMetricLike))]
+    .sort()
+    .join('|');
+  return `MetricSet:${boundedMetricNames}`;
 };

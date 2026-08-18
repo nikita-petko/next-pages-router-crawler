@@ -20,10 +20,11 @@ import { hasMetricFanoutBreakdown } from '../utils/isMetricFanoutDimension';
 import type { MakeRAQIV2RequestOptions } from '../utils/makeRAQIV2Request';
 import { getMetricLabelFromMetricLike } from '../utils/metricLikeSemantics';
 import resolveComparisonConfig from '../utils/resolveComparisonConfig';
+import useChartLoadTelemetry from './useChartLoadTelemetry';
 import useRAQIV2Request from './useRAQIV2Request';
 import useRAQIV2TranslationDependencies from './useRAQIV2TranslationDependencies';
 import useResolvedOverlays from './useResolvedOverlays';
-import useSentryChartTracers from './useSentryChartTracers';
+import useSuccessfulChartRenderCallback from './useSuccessfulChartRenderCallback';
 
 /**
  * Shared data-fetching and adapter logic for all duration chart variants.
@@ -56,18 +57,15 @@ const useDurationChartData = (
     );
   }
 
-  const sentryBundle = useSentryChartTracers({
-    metric,
-    componentKeyOrConfig: chartKeyOrConfig,
-    breakdown: breakdown?.slice(),
-    numExpectedPoints: 0,
-  });
   const translationDependencies = useRAQIV2TranslationDependencies();
   const metricLabel = useMemo(
     () => getMetricLabelFromMetricLike(metric, translationDependencies),
     [metric, translationDependencies],
   );
-  const resolvedOverlays = useResolvedOverlays(overlays, { chartType, breakdown });
+  const resolvedOverlays = useResolvedOverlays(overlays, {
+    chartType,
+    breakdown,
+  });
   const showComparisonInChart = resolvedOverlays.comparison;
   const resolvedComparison = useMemo(() => resolveComparisonConfig(comparison), [comparison]);
   const showComparisonChip =
@@ -77,7 +75,10 @@ const useDurationChartData = (
   // request layer would otherwise strip the comparison fetch via
   // `stripFetchComparisonForBreakdown`. Opt in when the comparison is valid for
   // this breakdown (same rule as the overlay default) so the data is fetched.
-  const allowComparisonWithBreakdown = isComparisonOverlayMeaningful({ chartType, breakdown });
+  const allowComparisonWithBreakdown = isComparisonOverlayMeaningful({
+    chartType,
+    breakdown,
+  });
 
   const RAQIV2RequestOptions: MakeRAQIV2RequestOptions = useMemo(
     () => ({
@@ -101,26 +102,49 @@ const useDurationChartData = (
       showComparisonInChart,
     ],
   );
-
-  sentryBundle.startDataLoading();
   const {
     data: raqiData,
     isDataLoading,
     isResponseFailed,
     isUserForbidden,
     error,
+    getClientCacheStatus,
+    requestIdentity,
+    requestVersion,
+    resolvedOptions,
   } = useRAQIV2Request(spec, RAQIV2RequestOptions, ignoreCache);
+  const telemetryBreakdown = useMemo(() => breakdown?.slice(), [breakdown]);
+  const telemetryTimeSpecs = useMemo(() => [timeSpec], [timeSpec]);
+  const telemetryBundle = useChartLoadTelemetry({
+    metric,
+    componentKeyOrConfig: chartKeyOrConfig,
+    breakdown: telemetryBreakdown,
+    timeSpecs: telemetryTimeSpecs,
+    granularity: spec.granularity,
+    comparison: resolvedOptions?.fetchComparison,
+    resource,
+    timeInterval: spec.granularity,
+  });
   const requestStatus = useMemo(
     () => ({
       isDataLoading,
       isResponseFailed,
       isUserForbidden,
       error,
+      getClientCacheStatus,
+      requestIdentity,
+      requestVersion,
     }),
-    [isDataLoading, isResponseFailed, isUserForbidden, error],
+    [
+      isDataLoading,
+      isResponseFailed,
+      isUserForbidden,
+      error,
+      getClientCacheStatus,
+      requestIdentity,
+      requestVersion,
+    ],
   );
-  sentryBundle.handleRAQIV2RequestResult(requestStatus);
-
   const { chart, summary } = useMemo(
     () =>
       genericRAQIV2DurationChartAdapter({
@@ -161,6 +185,18 @@ const useDurationChartData = (
       ),
     [chart, metricLabel, resource, timeSpec.startTime, timeSpec.endTime, translationDependencies],
   );
+  useEffect(() => {
+    telemetryBundle.handleRAQIV2RequestResult({
+      ...requestStatus,
+      hasNoData: !requestStatus.isDataLoading && exporter.hasEmptyData,
+      isClassificationReady: translationDependencies.ready,
+    });
+  }, [exporter.hasEmptyData, requestStatus, telemetryBundle, translationDependencies.ready]);
+  const handleSuccessfulChartRender = useSuccessfulChartRenderCallback(telemetryBundle, {
+    ...requestStatus,
+    hasNoData: exporter.hasEmptyData,
+    isClassificationReady: translationDependencies.ready,
+  });
 
   const xAxisFormatter = useMemo(
     () => makeDurationFormatter(chart.bucketType, translationDependencies),
@@ -203,6 +239,8 @@ const useDurationChartData = (
     chartSummarySpecs,
     metricLabel,
     translationDependencies,
+    handleSuccessfulChartRender,
+    handleChartDependencyStatus: telemetryBundle.handleChartDependencyStatus,
   };
 };
 

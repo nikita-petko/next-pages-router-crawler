@@ -1,6 +1,6 @@
-import { useQueryClient } from '@tanstack/react-query';
 import type { FC } from 'react';
 import React, { useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { AnalyticsQueryGatewayAPIApi } from '@rbx/client-analytics-query-gateway/v1';
 import { RAQIV2WithPollingDefaults } from '@modules/clients/analytics';
 import type {
@@ -18,17 +18,51 @@ export const AnalyticsQueryGatewayContext = React.createContext<{
   uncached: AnalyticsQueryGatewayClientWrapper;
   cached: AnalyticsQueryGatewayClientWrapper;
   clearCache: () => void;
+  createCacheTrackedClient?: () => CacheTrackedAnalyticsQueryGatewayClient;
 } | null>(null);
 
-export const useCachedAnalyticsQueryGateway = () => {
+export type ClientCacheStatus = 'hit' | 'miss' | 'mixed' | 'disabled';
+
+type CacheTrackedAnalyticsQueryGatewayClient = {
+  client: AnalyticsQueryGatewayClientWrapper;
+  getClientCacheStatus: () => ClientCacheStatus | undefined;
+};
+
+const getCacheStatus = (
+  cacheAccesses: Array<Exclude<ClientCacheStatus, 'mixed' | 'disabled'>>,
+): Exclude<ClientCacheStatus, 'disabled'> | undefined => {
+  if (cacheAccesses.length === 0) {
+    return undefined;
+  }
+  if (cacheAccesses.every((status) => status === 'miss')) {
+    return 'miss';
+  }
+  if (cacheAccesses.every((status) => status === 'hit')) {
+    return 'hit';
+  }
+  return 'mixed';
+};
+
+export const useCachedAnalyticsQueryGateway = (): {
+  client: AnalyticsQueryGatewayClientWrapper;
+  clearCache: () => void;
+  createCacheTrackedClient?: () => CacheTrackedAnalyticsQueryGatewayClient;
+} => {
   const context = React.useContext(AnalyticsQueryGatewayContext);
   if (!context) {
     throw new Error(
       'useCachedAnalyticsQueryGateway must be used within a CachedAnalyticsQueryGatewayProvider',
     );
   }
-  const { cached: client, clearCache } = context;
-  return useMemo(() => ({ client, clearCache }), [client, clearCache]);
+  const { cached: client, clearCache, createCacheTrackedClient } = context;
+  return useMemo(
+    () => ({
+      client,
+      clearCache,
+      ...(createCacheTrackedClient === undefined ? {} : { createCacheTrackedClient }),
+    }),
+    [client, clearCache, createCacheTrackedClient],
+  );
 };
 
 export const useUncachedAnalyticsQueryGateway = () => {
@@ -70,10 +104,14 @@ const getQueryKey = (request: AnalyticsQueryGatewayAPIQueryRequest) => {
     endTime,
     granularity,
     [...(unstableBreakdown ?? [])].sort(),
-    [...(unstableFilter ?? [])].sort().map((filter) => ({
-      ...filter,
-      values: [...filter.values].sort(),
-    })),
+    [...(unstableFilter ?? [])]
+      .sort((left, right) =>
+        left.dimension < right.dimension ? -1 : left.dimension > right.dimension ? 1 : 0,
+      )
+      .map((filter) => ({
+        ...filter,
+        values: [...filter.values].sort(),
+      })),
     limit,
   ]);
 };
@@ -119,7 +157,11 @@ const AnalyticsQueryGatewayProvider: FC<
     const query = async (queryRequest: AnalyticsQueryGatewayAPIQueryRequest) => {
       const queryKey = ['analytics-query-gateway', 'query', getQueryKey(queryRequest)];
       const makeRequest = () => uncached.query(queryRequest);
-      return tanstackCache.fetchQuery({ queryKey, queryFn: makeRequest, ...noStale });
+      return tanstackCache.fetchQuery({
+        queryKey,
+        queryFn: makeRequest,
+        ...noStale,
+      });
     };
     const getDimensionValues = async (request: AnalyticsQueryGatewayGetDimensionValuesRequest) => {
       const queryKey = [
@@ -141,12 +183,20 @@ const AnalyticsQueryGatewayProvider: FC<
         getMetricMetadataQueryKey(request),
       ];
       const makeRequest = () => uncached.getMetricMetadata(request);
-      return tanstackCache.fetchQuery({ queryKey, queryFn: makeRequest, ...noStale });
+      return tanstackCache.fetchQuery({
+        queryKey,
+        queryFn: makeRequest,
+        ...noStale,
+      });
     };
     const getStatusConfig = async (request: AnalyticsQueryGatewayGetStatusConfigRequest) => {
       const queryKey = ['analytics-query-gateway', 'getStatusConfig', request.universeId];
       const makeRequest = () => uncached.getStatusConfig(request);
-      return tanstackCache.fetchQuery({ queryKey, queryFn: makeRequest, ...noStale });
+      return tanstackCache.fetchQuery({
+        queryKey,
+        queryFn: makeRequest,
+        ...noStale,
+      });
     };
     const executeDag = async (request: AnalyticsQueryGatewayExecuteDagRequest) => {
       return uncached.executeDag(request);
@@ -164,6 +214,54 @@ const AnalyticsQueryGatewayProvider: FC<
     };
   }, [tanstackCache, uncached]);
 
+  const createCacheTrackedClient = useCallback((): CacheTrackedAnalyticsQueryGatewayClient => {
+    const cacheAccesses: Array<Exclude<ClientCacheStatus, 'mixed' | 'disabled'>> = [];
+    const recordCacheAccess = (queryKey: unknown[]) => {
+      cacheAccesses.push(tanstackCache.getQueryData(queryKey) === undefined ? 'miss' : 'hit');
+    };
+    const recordUncachedAccess = () => cacheAccesses.push('miss');
+
+    const client: AnalyticsQueryGatewayClientWrapper = {
+      query: (request) => {
+        recordCacheAccess(['analytics-query-gateway', 'query', getQueryKey(request)]);
+        return cached.query(request);
+      },
+      getDimensionValues: (request) => {
+        recordCacheAccess([
+          'analytics-query-gateway',
+          'getDimension',
+          getDimensionValuesQueryKey(request),
+        ]);
+        return cached.getDimensionValues(request);
+      },
+      getMetricMetadata: (request) => {
+        recordCacheAccess([
+          'analytics-query-gateway',
+          'getMetricMetadata',
+          getMetricMetadataQueryKey(request),
+        ]);
+        return cached.getMetricMetadata(request);
+      },
+      getStatusConfig: (request) => {
+        recordCacheAccess(['analytics-query-gateway', 'getStatusConfig', request.universeId]);
+        return cached.getStatusConfig(request);
+      },
+      executeDag: (request) => {
+        recordUncachedAccess();
+        return cached.executeDag(request);
+      },
+      validateDag: (request) => {
+        recordUncachedAccess();
+        return cached.validateDag(request);
+      },
+    };
+
+    return {
+      client,
+      getClientCacheStatus: () => getCacheStatus(cacheAccesses),
+    };
+  }, [cached, tanstackCache]);
+
   const clearCache = useCallback(() => {
     /**
      * NOTE(gperkins@20240819): We clear all of the values from the cache
@@ -179,12 +277,15 @@ const AnalyticsQueryGatewayProvider: FC<
      *
      * See also https://stackoverflow.com/a/76089491
      */
-    tanstackCache.resetQueries({
+    void tanstackCache.resetQueries({
       queryKey: ['analytics-query-gateway'],
     });
   }, [tanstackCache]);
 
-  const result = useMemo(() => ({ cached, uncached, clearCache }), [cached, clearCache, uncached]);
+  const result = useMemo(
+    () => ({ cached, uncached, clearCache, createCacheTrackedClient }),
+    [cached, clearCache, createCacheTrackedClient, uncached],
+  );
   return (
     <AnalyticsQueryGatewayContext.Provider value={result}>
       {children}

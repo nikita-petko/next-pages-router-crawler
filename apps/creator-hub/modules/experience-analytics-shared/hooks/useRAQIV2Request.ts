@@ -1,4 +1,5 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
+import type { ClientCacheStatus } from '../context/AnalyticsQueryGatewayProvider';
 import { useRAQIV2Client } from '../context/RAQIV2ClientProvider';
 import type { RAQIV2UIQueryRequest } from '../types/RAQIV2UIQueryRequest';
 import type { RAQIV2QueryResponses } from '../utils/combineRAQIV2QueryResponses';
@@ -17,8 +18,14 @@ const useRAQIV2Request = (
   request: RAQIV2UIQueryRequest,
   makeRAQIV2RequestOptions?: MakeRAQIV2RequestOptions,
   ignoreCache?: boolean,
-): TUseApiRequestResponse<RAQIV2QueryResponses> => {
-  const { client, clearCache } = useRAQIV2Client(ignoreCache ?? false);
+): TUseApiRequestResponse<RAQIV2QueryResponses> & {
+  getClientCacheStatus: () => ClientCacheStatus | undefined;
+  requestIdentity?: object;
+  requestVersion?: number;
+  resolvedOptions?: MakeRAQIV2RequestOptions;
+} => {
+  const { clearCache, createClientCacheTracking } = useRAQIV2Client(ignoreCache ?? false);
+  const clientCacheStatus = useRef<ClientCacheStatus | undefined>(undefined);
 
   const resolvedOptions = useMemo((): MakeRAQIV2RequestOptions => {
     const callerOptions = stripFetchComparisonForBreakdown(request, makeRAQIV2RequestOptions) ?? {};
@@ -47,21 +54,37 @@ const useRAQIV2Request = (
     };
   }, [makeRAQIV2RequestOptions, request]);
 
-  const makeRaqiRequest = useCallback(() => {
+  const makeRaqiRequest = useCallback(async () => {
+    clientCacheStatus.current = undefined;
+    const cacheTracking = createClientCacheTracking();
     const validationError = validateRAQIV2Request(request);
     if (validationError.length > 0) {
       throw validationError[0];
     }
     maybeThrowRAQIV2InternalException(request.resource, 'useRAQIV2Request');
-    return makeRAQIV2Request(request, client, resolvedOptions);
-  }, [client, resolvedOptions, request]);
+    try {
+      const result = await makeRAQIV2Request(request, cacheTracking.client, resolvedOptions);
+      clientCacheStatus.current = cacheTracking.getClientCacheStatus();
+      return result;
+    } catch (error) {
+      clientCacheStatus.current = cacheTracking.getClientCacheStatus();
+      throw error;
+    }
+  }, [createClientCacheTracking, resolvedOptions, request]);
 
   const response = useApiRequest(makeRaqiRequest, {
     refetchShouldSetLoading: true,
     invalidateCache: ignoreCache ? clearCache : undefined,
+    trackRequestVersion: true,
   });
+  const getClientCacheStatus = useCallback(() => clientCacheStatus.current, []);
 
-  return response;
+  return {
+    ...response,
+    getClientCacheStatus,
+    requestIdentity: makeRaqiRequest,
+    resolvedOptions,
+  };
 };
 
 export default useRAQIV2Request;

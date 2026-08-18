@@ -12,6 +12,7 @@ import useLegendTitleAndCreditOptions from './highchart-options/legendCreditAndT
 import { usePieChartPlotOptions } from './highchart-options/plotOptions';
 import { usePieChartResponsiveRulesOptions } from './highchart-options/responsiveRulesOptions';
 import { usePieChartTooltipOptions } from './highchart-options/tooltipOptions';
+import type { ChartDependencyStatus } from './types/BaseChart';
 import { ChartStyleMode, ChartType } from './types/BaseChart';
 import type { SinglePieSeries } from './types/PieChart';
 
@@ -55,6 +56,8 @@ type PieChartProps<SliceName extends string, Y extends number> = {
   height?: number;
 
   onChartLoad?: () => void;
+  onChartRender?: () => void;
+  onChartDependencyStatus?: (status: ChartDependencyStatus) => void;
 };
 
 const PieChart = <SliceName extends string, Y extends number>({
@@ -67,6 +70,8 @@ const PieChart = <SliceName extends string, Y extends number>({
   chartStyleMode = ChartStyleMode.Normal,
   height,
   onChartLoad,
+  onChartRender,
+  onChartDependencyStatus,
 }: PieChartProps<SliceName, Y>) => {
   const theme = useTheme();
   const isChartInAbnormalState = useChartIsInAbnormalState();
@@ -114,6 +119,7 @@ const PieChart = <SliceName extends string, Y extends number>({
 
   const chartOptions = usePieChartChartOptions({
     onChartLoad,
+    onChartRender,
     chartStyleMode,
     height,
   });
@@ -150,7 +156,13 @@ const PieChart = <SliceName extends string, Y extends number>({
     legendTitleAndCreditOptions,
   ]);
 
-  return <GenericSeriesChart options={highchartsOptions} showLocalizedTime={false} />;
+  return (
+    <GenericSeriesChart
+      options={highchartsOptions}
+      showLocalizedTime={false}
+      onChartDependencyStatus={onChartDependencyStatus}
+    />
+  );
 };
 
 export default React.memo(PieChart);

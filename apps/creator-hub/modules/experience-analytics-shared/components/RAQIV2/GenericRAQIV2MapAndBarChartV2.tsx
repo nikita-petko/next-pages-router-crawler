@@ -26,8 +26,10 @@ import { getDefaultSummarySpec } from '../../adapters/genericRAQIV2ChartSummaryA
 import genericRAQIV2HorizontalBarChartAdapter from '../../adapters/genericRAQIV2HorizontalBarChartAdapter';
 import type { MapAndBarChartConfig } from '../../constants/RAQIV2PredefinedChartConfig';
 import getEmptyArray from '../../emptyArray';
+import useChartLoadTelemetry from '../../hooks/useChartLoadTelemetry';
 import useRAQIV2Request from '../../hooks/useRAQIV2Request';
 import useRAQIV2TranslationDependencies from '../../hooks/useRAQIV2TranslationDependencies';
+import useSuccessfulChartRenderCallback from '../../hooks/useSuccessfulChartRenderCallback';
 import type GenericRAQIV2ChartProps from '../../types/GenericRAQIV2ChartProps';
 import formatAnalyticsNumber from '../../utils/analyticsNumberFormatter';
 import type { MakeRAQIV2RequestOptions } from '../../utils/makeRAQIV2Request';
@@ -36,6 +38,10 @@ import getDimensionRenderer from '../getDimensionRenderer';
 import genericChartStateToChartAbnormalState from './genericChartStateToChartAbnormalState';
 import RAQIV2SingleChartCard, { downloadOnlyChartActionLayout } from './RAQIV2SingleChartCard';
 import useMetricOwnershipWatermarkSlots from './useMetricOwnershipWatermarkSlots';
+
+const MapRenderTarget = 'map';
+const BarRenderTarget = 'bar';
+const RequiredRenderTargetCount = 2;
 
 const adaptBarSeriesForWebbloxChart = (genericSeries: BarSeriesEntry[]) => {
   const categories = new Set<string>();
@@ -99,6 +105,7 @@ const GenericRAQIV2MapAndBarChartV2: FC<
   GenericRAQIV2ChartProps & Omit<MapAndBarChartConfig, 'chartType'>
 > = ({
   spec,
+  chartKeyOrConfig,
   titleLabel,
   titleKey,
   definitionTooltipKey,
@@ -137,7 +144,24 @@ const GenericRAQIV2MapAndBarChartV2: FC<
     isUserForbidden,
     isResponseFailed,
     error,
+    getClientCacheStatus,
+    requestIdentity,
+    requestVersion,
+    resolvedOptions,
   } = useRAQIV2Request(spec, requestOptions, ignoreCache);
+  const telemetryBreakdown = useMemo(() => breakdown?.slice(), [breakdown]);
+  const telemetryTimeSpecs = useMemo(() => [timeSpec], [timeSpec]);
+  const telemetryBundle = useChartLoadTelemetry({
+    metric,
+    componentKeyOrConfig: chartKeyOrConfig,
+    breakdown: telemetryBreakdown,
+    timeSpecs: telemetryTimeSpecs,
+    granularity: spec.granularity,
+    comparison: resolvedOptions?.fetchComparison,
+    resource: spec.resource,
+    timeInterval: spec.granularity,
+    requiredRenderTargetCount: RequiredRenderTargetCount,
+  });
 
   const requestStatus = useMemo(
     () => ({
@@ -145,8 +169,19 @@ const GenericRAQIV2MapAndBarChartV2: FC<
       isResponseFailed,
       isUserForbidden,
       error,
+      getClientCacheStatus,
+      requestIdentity,
+      requestVersion,
     }),
-    [isDataLoading, isResponseFailed, isUserForbidden, error],
+    [
+      isDataLoading,
+      isResponseFailed,
+      isUserForbidden,
+      error,
+      getClientCacheStatus,
+      requestIdentity,
+      requestVersion,
+    ],
   );
 
   const summarySpecOrDefault = useMemo(
@@ -241,6 +276,29 @@ const GenericRAQIV2MapAndBarChartV2: FC<
       translationDependencies.translate,
     );
   }, [genericSeries, breakdown, metricLabel, timeSpec.startTime, translationDependencies, spec]);
+
+  useEffect(() => {
+    telemetryBundle.handleRAQIV2RequestResult({
+      ...requestStatus,
+      hasNoData: !requestStatus.isDataLoading && exporter.hasEmptyData,
+      isClassificationReady: translationDependencies.ready,
+    });
+  }, [exporter.hasEmptyData, requestStatus, telemetryBundle, translationDependencies.ready]);
+  const successfulRenderStatus = {
+    ...requestStatus,
+    hasNoData: exporter.hasEmptyData,
+    isClassificationReady: translationDependencies.ready,
+  };
+  const handleSuccessfulMapRender = useSuccessfulChartRenderCallback(
+    telemetryBundle,
+    successfulRenderStatus,
+    MapRenderTarget,
+  );
+  const handleSuccessfulBarRender = useSuccessfulChartRenderCallback(
+    telemetryBundle,
+    successfulRenderStatus,
+    BarRenderTarget,
+  );
 
   useEffect(() => {
     onChartDataUpdated?.({
@@ -338,7 +396,10 @@ const GenericRAQIV2MapAndBarChartV2: FC<
         };
         const percentage =
           seriesInfo.get(seriesName)?.find((point) => point.category === category)?.percentage ?? 0;
-        return numberFormatter(percentage, { style: 'percent', ...oneDecimalDigit });
+        return numberFormatter(percentage, {
+          style: 'percent',
+          ...oneDecimalDigit,
+        });
       }
       return formatAnalyticsNumber(
         y,
@@ -387,6 +448,8 @@ const GenericRAQIV2MapAndBarChartV2: FC<
           height={chartHeight}
           tooltipFormatter={mapChartTooltipFormatter}
           legendLabelFormatter={mapLegendFormatter}
+          onChartRender={handleSuccessfulMapRender}
+          onChartDependencyStatus={telemetryBundle.handleChartDependencyStatus}
         />
       </Grid>
       <Grid item Large={5} XSmall={12}>
@@ -400,6 +463,8 @@ const GenericRAQIV2MapAndBarChartV2: FC<
           chartStyleMode={chartStyleMode}
           height={chartHeight}
           forceHideLegends
+          onChartRender={handleSuccessfulBarRender}
+          onChartDependencyStatus={telemetryBundle.handleChartDependencyStatus}
         />
       </Grid>
     </Grid>

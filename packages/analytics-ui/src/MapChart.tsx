@@ -1,5 +1,5 @@
-import type { Options, SeriesMapOptions, TopoJSON } from 'highcharts';
 import React, { useMemo, memo } from 'react';
+import type { Options, SeriesMapOptions, TopoJSON } from 'highcharts';
 import { useChartIsInAbnormalState } from './context/ChartIsInAbnormalStateContext';
 import type { MapSeriesPointFormatter } from './formatters/tooltipFormatters';
 import GenericSeriesChart from './GenericSeriesChart';
@@ -10,6 +10,7 @@ import { useMapChartLegendTitleAndCreditOptions } from './highchart-options/lege
 import useMapNavigationOptions from './highchart-options/mapNavigationOptions';
 import { useMapChartPlotOptions } from './highchart-options/plotOptions';
 import { useMapChartTooltipOptions } from './highchart-options/tooltipOptions';
+import type { ChartDependencyStatus } from './types/BaseChart';
 import { ChartStyleMode, ChartType } from './types/BaseChart';
 import type { SingleMapSeries } from './types/MapChart';
 
@@ -36,12 +37,16 @@ type MapChartProps<HCKey extends string, Value extends number> = {
   height?: number;
 
   onChartLoad?: () => void;
+  onChartRender?: () => void;
+  onChartDependencyStatus?: (status: ChartDependencyStatus) => void;
 };
 
 const MapChart = <HCKey extends string, Value extends number>({
   data,
   tooltipFormatter,
   onChartLoad,
+  onChartRender,
+  onChartDependencyStatus,
   legendLabelFormatter,
   height,
   chartStyleMode = ChartStyleMode.Normal,
@@ -67,6 +72,7 @@ const MapChart = <HCKey extends string, Value extends number>({
   const chartOptions = useMapChartChartOptions({
     chartStyleMode,
     onChartLoad,
+    onChartRender,
     height,
     topoJSONData: data.topoJSON,
   });
@@ -103,7 +109,13 @@ const MapChart = <HCKey extends string, Value extends number>({
     tooltipOptions,
   ]);
 
-  return <GenericSeriesChart options={highchartsOptions} constructorType='mapChart' />;
+  return (
+    <GenericSeriesChart
+      options={highchartsOptions}
+      constructorType='mapChart'
+      onChartDependencyStatus={onChartDependencyStatus}
+    />
+  );
 };
 
 export default memo(MapChart);

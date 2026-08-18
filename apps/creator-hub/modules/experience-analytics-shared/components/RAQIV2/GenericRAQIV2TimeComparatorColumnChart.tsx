@@ -2,8 +2,12 @@ import type { FC } from 'react';
 import { useCallback, useEffect, useMemo } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { useQueries } from '@tanstack/react-query';
-import type { AxisType, NonCategoricalSingleColumnSeries } from '@rbx/analytics-ui';
-import { ColumnChart, SingleChartCardContainer } from '@rbx/analytics-ui';
+import {
+  ColumnChart,
+  SingleChartCardContainer,
+  type AxisType,
+  type NonCategoricalSingleColumnSeries,
+} from '@rbx/analytics-ui';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import TimeComparatorChartExporter from '@modules/charts-generic/charts/exporters/TimeComparatorChartExporter';
 import { formatDurationInDay } from '@modules/charts-generic/charts/formatters/timeFormatters';
@@ -19,10 +23,12 @@ import genericRAQIV2TimeComparatorChartAdapter, {
   formatTimeComparatorDataForColumnChart,
 } from '../../adapters/genericRAQIV2TimeComparatorChartAdapter';
 import type { ColumnChartConfig } from '../../constants/RAQIV2PredefinedChartConfig';
+import type { ClientCacheStatus } from '../../context/AnalyticsQueryGatewayProvider';
 import { useRAQIV2Client } from '../../context/RAQIV2ClientProvider';
 import getEmptyArray from '../../emptyArray';
+import useChartLoadTelemetry from '../../hooks/useChartLoadTelemetry';
 import useRAQIV2TranslationDependencies from '../../hooks/useRAQIV2TranslationDependencies';
-import useSentryChartTracers from '../../hooks/useSentryChartTracers';
+import useSuccessfulChartRenderCallback from '../../hooks/useSuccessfulChartRenderCallback';
 import type { GenericRAQIV2TimeComparatorChartProps } from '../../types/GenericRAQIV2ChartProps';
 import type {
   RAQIV2MultiTimeSpecUIQueryRequest,
@@ -58,12 +64,6 @@ const GenericRAQIV2TimeComparatorColumnChart: FC<
   chartBanner,
 }) => {
   const ownershipWatermarkSlots = useMetricOwnershipWatermarkSlots(spec);
-  const sentryBundle = useSentryChartTracers({
-    metric: spec.metric,
-    componentKeyOrConfig: chartKeyOrConfig,
-    numExpectedPoints: 0,
-  });
-
   const locale = useLocale();
   const translationDependencies = useRAQIV2TranslationDependencies();
   const { translate } = translationDependencies;
@@ -72,8 +72,21 @@ const GenericRAQIV2TimeComparatorColumnChart: FC<
     [spec.metric, translationDependencies],
   );
 
-  const queryRequest: RAQIV2MultiTimeSpecUIQueryRequest = spec;
-  const { client } = useRAQIV2Client(ignoreCache ?? false);
+  const queryRequest: RAQIV2MultiTimeSpecUIQueryRequest = useMemo(() => spec, [spec]);
+  const isClientCacheDisabled = ignoreCache ?? false;
+  const { client } = useRAQIV2Client(isClientCacheDisabled);
+  const telemetryTimeSpecs = useMemo(
+    () => spec.labeledTimeSpecs.map(({ timeSpec }) => timeSpec),
+    [spec.labeledTimeSpecs],
+  );
+  const telemetryBundle = useChartLoadTelemetry({
+    metric: spec.metric,
+    componentKeyOrConfig: chartKeyOrConfig,
+    timeSpecs: telemetryTimeSpecs,
+    granularity: spec.granularity,
+    resource: spec.resource,
+    timeInterval: spec.granularity,
+  });
 
   const makeLabeledRAQIV2Request = useCallback(
     async (
@@ -90,25 +103,44 @@ const GenericRAQIV2TimeComparatorColumnChart: FC<
     [client, queryRequest],
   );
 
-  const combine = useCallback((results: UseQueryResult<RAQIV2TimeComparatorQueryResult>[]) => {
-    return {
-      orderedData: results.map((result) => result.data ?? null),
-      isDataLoading: results.some((result) => result.isPending),
-      isResponseFailed: results.some((result) => result.isError),
-      isUserForbidden: results.some(
-        (result) =>
-          result.isError &&
-          getResponseFromError(result.error)?.status === HttpStatusCodes.FORBIDDEN,
-      ),
-    };
-  }, []);
+  const combine = useCallback(
+    (results: UseQueryResult<RAQIV2TimeComparatorQueryResult>[]) => {
+      const isRequestInFlight = results.some((result) => result.fetchStatus === 'fetching');
+      const cacheStatuses = results.map((result) =>
+        result.dataUpdatedAt > 0 && !result.isFetchedAfterMount
+          ? ('hit' as const)
+          : ('miss' as const),
+      );
+      const clientCacheStatus: ClientCacheStatus = isClientCacheDisabled
+        ? 'disabled'
+        : cacheStatuses.every((status) => status === 'miss')
+          ? 'miss'
+          : cacheStatuses.every((status) => status === 'hit')
+            ? 'hit'
+            : 'mixed';
+      return {
+        orderedData: results.map((result) => result.data ?? null),
+        isDataLoading: results.some((result) => result.isPending),
+        isRequestInFlight,
+        isResponseFailed: results.some((result) => result.isError),
+        isUserForbidden: results.some(
+          (result) =>
+            result.isError &&
+            getResponseFromError(result.error)?.status === HttpStatusCodes.FORBIDDEN,
+        ),
+        clientCacheStatus,
+      };
+    },
+    [isClientCacheDisabled],
+  );
 
-  sentryBundle.startDataLoading();
   const {
     orderedData: raqiData,
     isDataLoading,
+    isRequestInFlight,
     isResponseFailed,
     isUserForbidden,
+    clientCacheStatus,
   } = useQueries({
     queries: spec.labeledTimeSpecs.map((timeSpec) => {
       return {
@@ -137,11 +169,47 @@ const GenericRAQIV2TimeComparatorColumnChart: FC<
     combine,
   });
 
-  const requestStatus = useMemo(() => {
-    return { isDataLoading, isResponseFailed, isUserForbidden };
-  }, [isDataLoading, isResponseFailed, isUserForbidden]);
-  sentryBundle.handleRAQIV2RequestResult(requestStatus);
+  const semanticRequestIdentity = useMemo(
+    () =>
+      JSON.stringify([
+        spec.labeledTimeSpecs.map(({ timeSpec }) => [
+          timeSpec.startTime.getTime(),
+          timeSpec.endTime.getTime(),
+          timeSpec.snapGranularity,
+        ]),
+        [...(queryRequest.breakdown ?? [])].sort((a, b) => a.localeCompare(b)),
+        [...(queryRequest.filter ?? [])]
+          .sort((a, b) => a.dimension.localeCompare(b.dimension))
+          .map((filter) => ({
+            ...filter,
+            values: [...filter.values].sort((a, b) => a.localeCompare(b)),
+          })),
+        queryRequest.limit,
+        queryRequest.granularity,
+        queryRequest.resource.id,
+        queryRequest.resource.type,
+        queryRequest.metric,
+      ]),
+    [queryRequest, spec.labeledTimeSpecs],
+  );
 
+  const requestStatus = useMemo(() => {
+    return {
+      isDataLoading,
+      isRequestInFlight,
+      isResponseFailed,
+      isUserForbidden,
+      clientCacheStatus,
+      requestIdentity: semanticRequestIdentity,
+    };
+  }, [
+    clientCacheStatus,
+    isDataLoading,
+    isRequestInFlight,
+    isResponseFailed,
+    isUserForbidden,
+    semanticRequestIdentity,
+  ]);
   const chart = genericRAQIV2TimeComparatorChartAdapter(
     raqiData ?? { response: null },
     spec,
@@ -153,6 +221,18 @@ const GenericRAQIV2TimeComparatorColumnChart: FC<
     () => new TimeComparatorChartExporter(metricLabel, chart, translate, locale),
     [metricLabel, chart, translate, locale],
   );
+  useEffect(() => {
+    telemetryBundle.handleRAQIV2RequestResult({
+      ...requestStatus,
+      hasNoData: !requestStatus.isDataLoading && exporter.hasEmptyData,
+      isClassificationReady: translationDependencies.ready,
+    });
+  }, [exporter.hasEmptyData, requestStatus, telemetryBundle, translationDependencies.ready]);
+  const handleSuccessfulChartRender = useSuccessfulChartRenderCallback(telemetryBundle, {
+    ...requestStatus,
+    hasNoData: exporter.hasEmptyData,
+    isClassificationReady: translationDependencies.ready,
+  });
 
   const formattedData: {
     series: NonCategoricalSingleColumnSeries<number, number>[];
@@ -219,6 +299,8 @@ const GenericRAQIV2TimeComparatorColumnChart: FC<
       xAxisFormatter={xAxisFormatter}
       xAxisType={xAxisType}
       stacking={false}
+      onChartRender={handleSuccessfulChartRender}
+      onChartDependencyStatus={telemetryBundle.handleChartDependencyStatus}
     />
   );
 

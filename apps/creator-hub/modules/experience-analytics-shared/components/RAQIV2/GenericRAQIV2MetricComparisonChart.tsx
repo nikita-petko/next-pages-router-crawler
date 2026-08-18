@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { SingleLineSeries, YAxisConfig } from '@rbx/analytics-ui';
 import { ChartStyleMode, LineChart, SingleChartCardContainer } from '@rbx/analytics-ui';
 import { numberFormatter } from '@rbx/core';
@@ -18,15 +18,18 @@ import genericRAQIV2TimeSeriesSplineChartAdapter from '../../adapters/genericRAQ
 import getAnalyticsMetricDisplayConfig, {
   type TRAQIV2NumericUIMetric,
 } from '../../constants/AnalyticsMetricDisplayConfig';
+import type { ClientCacheStatus } from '../../context/AnalyticsQueryGatewayProvider';
 import { useRAQIV2Client } from '../../context/RAQIV2ClientProvider';
 import useExperienceAnalyticsCurrentXAxisGranularity from '../../context/useExperienceAnalyticsCurrentXAxisGranularity';
 import getEmptyArray from '../../emptyArray';
 import singleToMappedRequest from '../../hooks/singleToMappedRequest';
+import useChartLoadTelemetry from '../../hooks/useChartLoadTelemetry';
 import { shouldShowConfiguredAlertIncident } from '../../hooks/useChartTimeSeriesAnnotations';
 import useCurrentAnnotationsBundleProvider from '../../hooks/useCurrentAnnotationsBundleProvider';
 import useMappedApiRequest from '../../hooks/useMappedApiRequest';
 import useMetricAwareYAxisFormatterEnabled from '../../hooks/useMetricAwareYAxisFormatterEnabled';
 import useRAQIV2TranslationDependencies from '../../hooks/useRAQIV2TranslationDependencies';
+import useSuccessfulChartRenderCallback from '../../hooks/useSuccessfulChartRenderCallback';
 import useTimeSeriesWebbloxAnnotations from '../../hooks/useTimeSeriesWebbloxAnnotations';
 import type { GenericRAQIV2MultiMetricChartProps } from '../../types/GenericRAQIV2ChartProps';
 import makeRAQIV2Request from '../../utils/makeRAQIV2Request';
@@ -38,6 +41,7 @@ import genericChartStateToChartAbnormalState from './genericChartStateToChartAbn
  */
 const GenericRAQIV2MetricComparisonChart: FC<GenericRAQIV2MultiMetricChartProps> = ({
   spec,
+  chartKeyOrConfig,
   titleLabel,
   titleKey,
   definitionTooltipKey,
@@ -61,32 +65,46 @@ const GenericRAQIV2MetricComparisonChart: FC<GenericRAQIV2MultiMetricChartProps>
 
   const { getCurrentSupportedAnnotations } = useCurrentAnnotationsBundleProvider(resource.type);
 
-  const { client } = useRAQIV2Client(ignoreCache ?? false);
+  const { createClientCacheTracking } = useRAQIV2Client(ignoreCache ?? false);
+  const cacheStatusByMetric = useRef(new Map<TRAQIV2NumericUIMetric, ClientCacheStatus>());
 
+  /* oxlint-disable react/react-compiler -- cache provenance is request-scoped mutable state updated when each async request settles */
   const makeRAQIRequestForSingleMetric = useCallback(
     async (metric: TRAQIV2NumericUIMetric) => {
       const currentMetricSpec = metricSpec.find((m) => m.metric === metric);
       if (!currentMetricSpec || isLoadingRAQIV2Prerequisites(resource)) {
         return null;
       }
-      return makeRAQIV2Request(
-        {
-          resource,
-          timeSpec,
-          granularity,
-          metric: currentMetricSpec.metric,
-          filter: currentMetricSpec.filter,
-        },
-        client,
-      );
+      const cacheTracking = createClientCacheTracking();
+      try {
+        return await makeRAQIV2Request(
+          {
+            resource,
+            timeSpec,
+            granularity,
+            metric: currentMetricSpec.metric,
+            filter: currentMetricSpec.filter,
+          },
+          cacheTracking.client,
+        );
+      } finally {
+        const cacheStatus = cacheTracking.getClientCacheStatus();
+        if (cacheStatus !== undefined) {
+          cacheStatusByMetric.current.set(metric, cacheStatus);
+        }
+      }
     },
-    [client, granularity, metricSpec, resource, timeSpec],
+    [createClientCacheTracking, granularity, metricSpec, resource, timeSpec],
   );
+  /* oxlint-enable react/react-compiler */
 
-  const makeMappedRequest = useMemo(
-    () => singleToMappedRequest(makeRAQIRequestForSingleMetric),
-    [makeRAQIRequestForSingleMetric],
-  );
+  const makeMappedRequest = useMemo(() => {
+    const requestMetrics = singleToMappedRequest(makeRAQIRequestForSingleMetric);
+    return (requestedMetrics: TRAQIV2NumericUIMetric[]) => {
+      cacheStatusByMetric.current.clear();
+      return requestMetrics(requestedMetrics);
+    };
+  }, [makeRAQIRequestForSingleMetric]);
   const metrics = useMemo(() => metricSpec.map((mSpec) => mSpec.metric), [metricSpec]);
   const announcementTargetingDimensions = useMemo(() => {
     const filterDimensions = metricSpec.flatMap(
@@ -144,7 +162,40 @@ const GenericRAQIV2MetricComparisonChart: FC<GenericRAQIV2MultiMetricChartProps>
     isDataLoading,
     isUserForbidden,
     isResponseFailed,
-  } = useMappedApiRequest(metrics, makeMappedRequest);
+    requestIdentity,
+    requestVersion,
+  } = useMappedApiRequest(metrics, makeMappedRequest, true, true);
+  const getClientCacheStatus = useCallback((): ClientCacheStatus | undefined => {
+    const cacheStatuses = metrics.flatMap((metric) => {
+      const status = cacheStatusByMetric.current.get(metric);
+      return status === undefined ? [] : [status];
+    });
+    const firstCacheStatus = cacheStatuses[0];
+    if (cacheStatuses.length !== metrics.length || firstCacheStatus === undefined) {
+      return undefined;
+    }
+    return cacheStatuses.every((status) => status === firstCacheStatus)
+      ? firstCacheStatus
+      : 'mixed';
+  }, [metrics]);
+  const requestStatus = useMemo(
+    () => ({
+      isDataLoading,
+      isResponseFailed,
+      isUserForbidden,
+      requestIdentity,
+      requestVersion,
+      getClientCacheStatus,
+    }),
+    [
+      isDataLoading,
+      isResponseFailed,
+      isUserForbidden,
+      requestIdentity,
+      requestVersion,
+      getClientCacheStatus,
+    ],
+  );
 
   const abnormalState = useMemo(
     () =>
@@ -258,6 +309,30 @@ const GenericRAQIV2MetricComparisonChart: FC<GenericRAQIV2MultiMetricChartProps>
     };
   }, [charts, enableMetricAwareYAxisFormatter, translationDependencies]);
 
+  const telemetryTimeSpecs = useMemo(() => [timeSpec], [timeSpec]);
+  const telemetryBundle = useChartLoadTelemetry({
+    metric: metrics,
+    componentKeyOrConfig: chartKeyOrConfig,
+    timeSpecs: telemetryTimeSpecs,
+    granularity,
+    resource,
+    timeInterval: granularity,
+  });
+  const hasNoData = dataForLineChart.series.every(({ dataPoints }) => dataPoints.length === 0);
+
+  useEffect(() => {
+    telemetryBundle.handleRAQIV2RequestResult({
+      ...requestStatus,
+      hasNoData: !requestStatus.isDataLoading && hasNoData,
+      isClassificationReady: translationDependencies.ready,
+    });
+  }, [hasNoData, requestStatus, telemetryBundle, translationDependencies.ready]);
+  const handleSuccessfulChartRender = useSuccessfulChartRenderCallback(telemetryBundle, {
+    ...requestStatus,
+    hasNoData,
+    isClassificationReady: translationDependencies.ready,
+  });
+
   const annotations = useTimeSeriesWebbloxAnnotations({
     timeSeriesAnnotations: timeSeriesAnnotations ?? getEmptyArray(),
     timeAxisSpec: {
@@ -306,6 +381,8 @@ const GenericRAQIV2MetricComparisonChart: FC<GenericRAQIV2MultiMetricChartProps>
         yAxisConfigs={yAxisConfigs}
         onSelectChartRegion={onSelectChartRegion ?? undefined}
         annotations={annotations}
+        onChartRender={handleSuccessfulChartRender}
+        onChartDependencyStatus={telemetryBundle.handleChartDependencyStatus}
       />
     ),
     [
@@ -318,6 +395,8 @@ const GenericRAQIV2MetricComparisonChart: FC<GenericRAQIV2MultiMetricChartProps>
       yAxisConfigs,
       onSelectChartRegion,
       annotations,
+      handleSuccessfulChartRender,
+      telemetryBundle.handleChartDependencyStatus,
     ],
   );
 

@@ -46,13 +46,14 @@ import { RAQIV2SummaryType, type RAQIV2CompoundSummaryType } from '../../enums/R
 import useAnalyticsBenchmarksHook from '../../hooks/useAnalyticsBenchmarks';
 import { useAnalyticsQuota } from '../../hooks/useAnalyticsQuota';
 import useBreakdownColors from '../../hooks/useBreakdownColors';
+import useChartLoadTelemetry from '../../hooks/useChartLoadTelemetry';
 import useChartTimeSeriesAnnotations from '../../hooks/useChartTimeSeriesAnnotations';
 import useCurrentAnnotationsBundleProvider from '../../hooks/useCurrentAnnotationsBundleProvider';
 import useMetricAwareYAxisFormatterEnabled from '../../hooks/useMetricAwareYAxisFormatterEnabled';
 import useRAQIV2Request from '../../hooks/useRAQIV2Request';
 import useRAQIV2TranslationDependencies from '../../hooks/useRAQIV2TranslationDependencies';
 import useResolvedOverlays from '../../hooks/useResolvedOverlays';
-import useSentryChartTracers from '../../hooks/useSentryChartTracers';
+import useSuccessfulChartRenderCallback from '../../hooks/useSuccessfulChartRenderCallback';
 import useTimeAxisSpecFromChartContext from '../../hooks/useTimeAxisSpecFromChartContext';
 import useTimeSeriesWebbloxAnnotations from '../../hooks/useTimeSeriesWebbloxAnnotations';
 import {
@@ -156,13 +157,6 @@ const GenericRAQIV2SplineChartV2: FC<GenericRAQIV2SplineChartV2Props> = ({
   const benchmarkTypeOverride = resolvedOverlays.benchmark.benchmarkType;
   const hideTotalSeriesInChart = effectiveDisplayOptions?.hideTotalSeriesInChart ?? false;
 
-  const sentryBundle = useSentryChartTracers({
-    metric,
-    componentKeyOrConfig: chartKeyOrConfig,
-    breakdown: breakdown?.slice(),
-    numExpectedPoints: 0,
-  });
-
   const locale = useLocale();
   const translationDependencies = useRAQIV2TranslationDependencies();
   const metricLabel = useMemo(
@@ -243,20 +237,49 @@ const GenericRAQIV2SplineChartV2: FC<GenericRAQIV2SplineChartV2Props> = ({
     };
   }, [breakdown, filter, granularity, metric, spec.resource, timeSpec, limit]);
 
-  sentryBundle.startDataLoading();
   const {
     data: raqiData,
     isDataLoading,
     isResponseFailed,
     isUserForbidden,
     error,
+    getClientCacheStatus,
+    requestIdentity,
+    requestVersion,
+    resolvedOptions,
   } = useRAQIV2Request(queryRequest, RAQIV2RequestOptions, ignoreCache);
+  const telemetryBreakdown = useMemo(() => breakdown?.slice(), [breakdown]);
+  const telemetryTimeSpecs = useMemo(() => [timeSpec], [timeSpec]);
+  const telemetryBundle = useChartLoadTelemetry({
+    metric,
+    componentKeyOrConfig: chartKeyOrConfig,
+    breakdown: telemetryBreakdown,
+    timeSpecs: telemetryTimeSpecs,
+    granularity,
+    comparison: resolvedOptions?.fetchComparison,
+    resource: spec.resource,
+    timeInterval: spec.granularity,
+  });
 
   const requestStatus = useMemo(() => {
-    return { isDataLoading, isResponseFailed, isUserForbidden, error };
-  }, [isDataLoading, isResponseFailed, isUserForbidden, error]);
-  sentryBundle.handleRAQIV2RequestResult(requestStatus);
-
+    return {
+      isDataLoading,
+      isResponseFailed,
+      isUserForbidden,
+      error,
+      getClientCacheStatus,
+      requestIdentity,
+      requestVersion,
+    };
+  }, [
+    isDataLoading,
+    isResponseFailed,
+    isUserForbidden,
+    error,
+    getClientCacheStatus,
+    requestIdentity,
+    requestVersion,
+  ]);
   useLoadThumbnailAssetIdsForData(raqiData);
   useLoadAnnouncementIdsForData(raqiData);
 
@@ -298,7 +321,10 @@ const GenericRAQIV2SplineChartV2: FC<GenericRAQIV2SplineChartV2Props> = ({
         showComparisonInChart: showComparisonInChartOverride && !hasBenchmarks,
         showComparisonChip,
         hideTotalSeriesInChart,
-        numberContextMetadata: { chartSpec: spec, inRoundedComparisonChipContext },
+        numberContextMetadata: {
+          chartSpec: spec,
+          inRoundedComparisonChipContext,
+        },
         comparisonRelativeOffset,
         comparisonCustomStartDate,
       }),
@@ -562,41 +588,6 @@ const GenericRAQIV2SplineChartV2: FC<GenericRAQIV2SplineChartV2Props> = ({
     [metricForPerMetricTweaks, givenFormatXForAnnotationTooltip, timeSeriesAnnotations],
   );
 
-  const chartComponent = useMemo(
-    () => (
-      <LineChart
-        data={dataForLineChart}
-        chartStyleMode={chartStyleMode}
-        xAxisFormatter={xAxisFormatter}
-        xAxisType={xAxisType}
-        xAxisTickPositions={xAxisTickPosition}
-        yAxisConfigs={yAxisConfigs}
-        onSelectChartRegion={onSelectChartRegion ?? undefined}
-        annotations={annotations}
-        zoneLegendItemFormatter={zoneLegendItemFormatter}
-        height={chartHeight}
-        tooltipFormatters={tooltipFormatters}
-        xAxisBounds={xAxisBounds}
-        formatXForAnnotationTooltip={formatXForAnnotationTooltip}
-      />
-    ),
-    [
-      xAxisType,
-      dataForLineChart,
-      chartStyleMode,
-      xAxisFormatter,
-      xAxisTickPosition,
-      yAxisConfigs,
-      onSelectChartRegion,
-      annotations,
-      zoneLegendItemFormatter,
-      chartHeight,
-      tooltipFormatters,
-      xAxisBounds,
-      formatXForAnnotationTooltip,
-    ],
-  );
-
   const exporter = useMemo(() => {
     // Falsy-fallback chain (preserve existing semantics: empty `titleLabel`
     // and empty translation results both fall through to the resource-id
@@ -641,6 +632,57 @@ const GenericRAQIV2SplineChartV2: FC<GenericRAQIV2SplineChartV2Props> = ({
     translationDependencies,
     customExporter,
   ]);
+  useEffect(() => {
+    telemetryBundle.handleRAQIV2RequestResult({
+      ...requestStatus,
+      hasNoData: !requestStatus.isDataLoading && exporter.hasEmptyData,
+      isClassificationReady: translationDependencies.ready,
+    });
+  }, [exporter.hasEmptyData, requestStatus, telemetryBundle, translationDependencies.ready]);
+  const handleSuccessfulChartRender = useSuccessfulChartRenderCallback(telemetryBundle, {
+    ...requestStatus,
+    hasNoData: exporter.hasEmptyData,
+    isClassificationReady: translationDependencies.ready,
+  });
+
+  const chartComponent = useMemo(
+    () => (
+      <LineChart
+        data={dataForLineChart}
+        chartStyleMode={chartStyleMode}
+        xAxisFormatter={xAxisFormatter}
+        xAxisType={xAxisType}
+        xAxisTickPositions={xAxisTickPosition}
+        yAxisConfigs={yAxisConfigs}
+        onSelectChartRegion={onSelectChartRegion ?? undefined}
+        annotations={annotations}
+        zoneLegendItemFormatter={zoneLegendItemFormatter}
+        height={chartHeight}
+        tooltipFormatters={tooltipFormatters}
+        xAxisBounds={xAxisBounds}
+        formatXForAnnotationTooltip={formatXForAnnotationTooltip}
+        onChartRender={handleSuccessfulChartRender}
+        onChartDependencyStatus={telemetryBundle.handleChartDependencyStatus}
+      />
+    ),
+    [
+      xAxisType,
+      dataForLineChart,
+      chartStyleMode,
+      xAxisFormatter,
+      xAxisTickPosition,
+      yAxisConfigs,
+      onSelectChartRegion,
+      annotations,
+      zoneLegendItemFormatter,
+      chartHeight,
+      tooltipFormatters,
+      xAxisBounds,
+      formatXForAnnotationTooltip,
+      handleSuccessfulChartRender,
+      telemetryBundle.handleChartDependencyStatus,
+    ],
+  );
 
   const charSummarySpecs = useChartSummarySpecs(summary);
   const abnormalState = useMemo(

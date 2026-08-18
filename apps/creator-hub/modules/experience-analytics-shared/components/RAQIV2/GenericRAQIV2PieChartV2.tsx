@@ -15,9 +15,10 @@ import {
 import genericRAQIV2PieChartAdapter from '../../adapters/genericRAQIV2PieChartAdapter';
 import type { PieChartConfig } from '../../constants/RAQIV2PredefinedChartConfig';
 import useBreakdownColors from '../../hooks/useBreakdownColors';
+import useChartLoadTelemetry from '../../hooks/useChartLoadTelemetry';
 import useRAQIV2Request from '../../hooks/useRAQIV2Request';
 import useRAQIV2TranslationDependencies from '../../hooks/useRAQIV2TranslationDependencies';
-import useSentryChartTracers from '../../hooks/useSentryChartTracers';
+import useSuccessfulChartRenderCallback from '../../hooks/useSuccessfulChartRenderCallback';
 import type GenericRAQIV2ChartProps from '../../types/GenericRAQIV2ChartProps';
 import formatAnalyticsNumber from '../../utils/analyticsNumberFormatter';
 import type { MakeRAQIV2RequestOptions } from '../../utils/makeRAQIV2Request';
@@ -51,12 +52,6 @@ const GenericRAQIV2PieChartV2: FC<GenericRAQIV2ChartProps & Omit<PieChartConfig,
 }) => {
   const { breakdown, timeSpec, metric } = spec;
   const ownershipWatermarkSlots = useMetricOwnershipWatermarkSlots(spec);
-  const sentryBundle = useSentryChartTracers({
-    metric,
-    componentKeyOrConfig: chartKeyOrConfig,
-    breakdown: breakdown?.slice(),
-    numExpectedPoints: 0,
-  });
   const theme = useTheme();
   const translationDependencies = useRAQIV2TranslationDependencies();
   const { translate, tPendingTranslation } = translationDependencies;
@@ -73,25 +68,53 @@ const GenericRAQIV2PieChartV2: FC<GenericRAQIV2ChartProps & Omit<PieChartConfig,
     () => ({ fetchTotalSeries: !breakdown?.length }),
     [breakdown],
   );
-
-  sentryBundle.startDataLoading();
   const {
     data: raqiData,
     isDataLoading,
     isResponseFailed,
     isUserForbidden,
     error,
+    getClientCacheStatus,
+    requestIdentity,
+    requestVersion,
+    resolvedOptions,
   } = useRAQIV2Request(spec, requestOptions, ignoreCache);
+  const telemetryBreakdown = useMemo(() => breakdown?.slice(), [breakdown]);
+  const telemetryTimeSpecs = useMemo(() => [timeSpec], [timeSpec]);
+  const telemetryBundle = useChartLoadTelemetry({
+    metric,
+    componentKeyOrConfig: chartKeyOrConfig,
+    breakdown: telemetryBreakdown,
+    timeSpecs: telemetryTimeSpecs,
+    granularity: spec.granularity,
+    comparison: resolvedOptions?.fetchComparison,
+    resource: spec.resource,
+    timeInterval: spec.granularity,
+  });
   // Memoize so the `onChartDataUpdated` effect below (which lifts the
   // exporter into Explore Mode) only re-fires on real status changes,
   // not on every render. `useApiRequest` returns a fresh object each
   // render, so spreading it directly would churn the dependency array.
   const requestStatus = useMemo(
-    () => ({ isDataLoading, isResponseFailed, isUserForbidden, error }),
-    [isDataLoading, isResponseFailed, isUserForbidden, error],
+    () => ({
+      isDataLoading,
+      isResponseFailed,
+      isUserForbidden,
+      error,
+      getClientCacheStatus,
+      requestIdentity,
+      requestVersion,
+    }),
+    [
+      isDataLoading,
+      isResponseFailed,
+      isUserForbidden,
+      error,
+      getClientCacheStatus,
+      requestIdentity,
+      requestVersion,
+    ],
   );
-  sentryBundle.handleRAQIV2RequestResult(requestStatus);
-
   const { series, sliceBreakdownValues, summary } = useMemo(() => {
     return genericRAQIV2PieChartAdapter({
       responses: raqiData ?? { response: null },
@@ -164,6 +187,18 @@ const GenericRAQIV2PieChartV2: FC<GenericRAQIV2ChartProps & Omit<PieChartConfig,
     translate,
     translationDependencies,
   ]);
+  useEffect(() => {
+    telemetryBundle.handleRAQIV2RequestResult({
+      ...requestStatus,
+      hasNoData: !requestStatus.isDataLoading && exporter.hasEmptyData,
+      isClassificationReady: translationDependencies.ready,
+    });
+  }, [exporter.hasEmptyData, requestStatus, telemetryBundle, translationDependencies.ready]);
+  const handleSuccessfulChartRender = useSuccessfulChartRenderCallback(telemetryBundle, {
+    ...requestStatus,
+    hasNoData: exporter.hasEmptyData,
+    isClassificationReady: translationDependencies.ready,
+  });
 
   // Surface the freshly built exporter and request state to embedders that
   // own the download affordance themselves (e.g. Explore Mode's overflow
@@ -256,7 +291,10 @@ const GenericRAQIV2PieChartV2: FC<GenericRAQIV2ChartProps & Omit<PieChartConfig,
           minimumFractionDigits: 1,
           maximumFractionDigits: 1,
         };
-        return numberFormatter(percentage / 100, { style: 'percent', ...oneDecimalDigit });
+        return numberFormatter(percentage / 100, {
+          style: 'percent',
+          ...oneDecimalDigit,
+        });
       }
       return formatAnalyticsNumber(
         y,
@@ -285,6 +323,8 @@ const GenericRAQIV2PieChartV2: FC<GenericRAQIV2ChartProps & Omit<PieChartConfig,
         }
         borderWidth={3}
         borderColor={theme.palette.surface[0]}
+        onChartRender={handleSuccessfulChartRender}
+        onChartDependencyStatus={telemetryBundle.handleChartDependencyStatus}
       />
     ),
     [
@@ -293,6 +333,8 @@ const GenericRAQIV2PieChartV2: FC<GenericRAQIV2ChartProps & Omit<PieChartConfig,
       data,
       formatDataLabel,
       labelDataAsPercent,
+      handleSuccessfulChartRender,
+      telemetryBundle.handleChartDependencyStatus,
       tooltipFormatters,
       unit,
       theme.palette.surface,

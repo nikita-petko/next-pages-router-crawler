@@ -15,12 +15,13 @@ import genericRAQIV2TimeSeriesStackedColumnChartAdapter from '../../adapters/gen
 import useExperienceAnalyticsCurrentXAxisGranularity from '../../context/useExperienceAnalyticsCurrentXAxisGranularity';
 import getEmptyArray from '../../emptyArray';
 import useBreakdownColors from '../../hooks/useBreakdownColors';
+import useChartLoadTelemetry from '../../hooks/useChartLoadTelemetry';
 import useChartTimeSeriesAnnotations from '../../hooks/useChartTimeSeriesAnnotations';
 import useCurrentAnnotationsBundleProvider from '../../hooks/useCurrentAnnotationsBundleProvider';
 import useMetricAwareYAxisFormatterEnabled from '../../hooks/useMetricAwareYAxisFormatterEnabled';
 import useRAQIV2Request from '../../hooks/useRAQIV2Request';
 import useRAQIV2TranslationDependencies from '../../hooks/useRAQIV2TranslationDependencies';
-import useSentryChartTracers from '../../hooks/useSentryChartTracers';
+import useSuccessfulChartRenderCallback from '../../hooks/useSuccessfulChartRenderCallback';
 import useTimeAxisSpecFromChartContext from '../../hooks/useTimeAxisSpecFromChartContext';
 import useTimeSeriesWebbloxAnnotations from '../../hooks/useTimeSeriesWebbloxAnnotations';
 import type GenericRAQIV2ChartProps from '../../types/GenericRAQIV2ChartProps';
@@ -59,12 +60,6 @@ const GenericRAQIV2StackedColumnChartV2: FC<GenericRAQIV2ChartProps & { stacking
 }) => {
   const { resource, granularity, breakdown, filter, metric } = spec;
   const ownershipWatermarkSlots = useMetricOwnershipWatermarkSlots(spec);
-  const sentryBundle = useSentryChartTracers({
-    metric,
-    componentKeyOrConfig: chartKeyOrConfig,
-    breakdown: breakdown?.slice(),
-    numExpectedPoints: 0,
-  });
   const locale = useLocale();
   const translationDependencies = useRAQIV2TranslationDependencies();
   const metricLabel = useMemo(
@@ -112,26 +107,49 @@ const GenericRAQIV2StackedColumnChartV2: FC<GenericRAQIV2ChartProps & { stacking
       summarySpecOrDefault,
     ],
   );
-
-  sentryBundle.startDataLoading();
   const {
     data: raqiData,
     isDataLoading,
     isResponseFailed,
     isUserForbidden,
     error,
+    getClientCacheStatus,
+    requestIdentity,
+    requestVersion,
+    resolvedOptions,
   } = useRAQIV2Request(spec, RAQIV2RequestOptions, ignoreCache);
+  const telemetryBreakdown = useMemo(() => breakdown?.slice(), [breakdown]);
+  const telemetryTimeSpecs = useMemo(() => [spec.timeSpec], [spec.timeSpec]);
+  const telemetryBundle = useChartLoadTelemetry({
+    metric,
+    componentKeyOrConfig: chartKeyOrConfig,
+    breakdown: telemetryBreakdown,
+    timeSpecs: telemetryTimeSpecs,
+    granularity,
+    comparison: resolvedOptions?.fetchComparison,
+    resource,
+    timeInterval: granularity,
+  });
   const requestStatus = useMemo(
     () => ({
       isDataLoading,
       isResponseFailed,
       isUserForbidden,
       error,
+      getClientCacheStatus,
+      requestIdentity,
+      requestVersion,
     }),
-    [isDataLoading, isResponseFailed, isUserForbidden, error],
+    [
+      isDataLoading,
+      isResponseFailed,
+      isUserForbidden,
+      error,
+      getClientCacheStatus,
+      requestIdentity,
+      requestVersion,
+    ],
   );
-  sentryBundle.handleRAQIV2RequestResult(requestStatus);
-
   const { chart, summary } = useMemo(
     () =>
       genericRAQIV2TimeSeriesStackedColumnChartAdapter({
@@ -142,7 +160,10 @@ const GenericRAQIV2StackedColumnChartV2: FC<GenericRAQIV2ChartProps & { stacking
         summarySpec: summarySpecOrDefault,
         showComparisonChip,
         hideTotalSeriesBecauseAllBreakdownsAreUniformlyPositiveOrNegative,
-        numberContextMetadata: { chartSpec: spec, inRoundedComparisonChipContext },
+        numberContextMetadata: {
+          chartSpec: spec,
+          inRoundedComparisonChipContext,
+        },
       }),
     [
       hideTotalSeriesBecauseAllBreakdownsAreUniformlyPositiveOrNegative,
@@ -239,6 +260,18 @@ const GenericRAQIV2StackedColumnChartV2: FC<GenericRAQIV2ChartProps & { stacking
     titleKey,
     translationDependencies,
   ]);
+  useEffect(() => {
+    telemetryBundle.handleRAQIV2RequestResult({
+      ...requestStatus,
+      hasNoData: !requestStatus.isDataLoading && exporter.hasEmptyData,
+      isClassificationReady: translationDependencies.ready,
+    });
+  }, [exporter.hasEmptyData, requestStatus, telemetryBundle, translationDependencies.ready]);
+  const handleSuccessfulChartRender = useSuccessfulChartRenderCallback(telemetryBundle, {
+    ...requestStatus,
+    hasNoData: exporter.hasEmptyData,
+    isClassificationReady: translationDependencies.ready,
+  });
 
   const xAxisBounds: [number, number] | undefined = useMemo(
     () =>
@@ -262,6 +295,8 @@ const GenericRAQIV2StackedColumnChartV2: FC<GenericRAQIV2ChartProps & { stacking
         height={chartHeight}
         xAxisBounds={xAxisBounds}
         stacking={stacking}
+        onChartRender={handleSuccessfulChartRender}
+        onChartDependencyStatus={telemetryBundle.handleChartDependencyStatus}
       />
     ),
     [
@@ -276,6 +311,8 @@ const GenericRAQIV2StackedColumnChartV2: FC<GenericRAQIV2ChartProps & { stacking
       chartHeight,
       xAxisBounds,
       stacking,
+      handleSuccessfulChartRender,
+      telemetryBundle.handleChartDependencyStatus,
     ],
   );
 

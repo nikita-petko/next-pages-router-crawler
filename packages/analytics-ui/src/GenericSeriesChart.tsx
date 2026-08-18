@@ -1,16 +1,29 @@
 import type { FC } from 'react';
-import React, { useMemo, useRef, useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import type { LangOptions } from 'highcharts';
 import Highcharts from 'highcharts';
 import type { HighchartsReactRefObject } from 'highcharts-react-official';
 import HighchartsReact from 'highcharts-react-official';
 import clone from 'just-clone';
 import { useChartColors } from './color';
-import type { ChartConstructorTypes, ChartUpdatePolicy } from './types/BaseChart';
+import type {
+  ChartConstructorTypes,
+  ChartDependencyStatus,
+  ChartUpdatePolicy,
+} from './types/BaseChart';
 
 // Highcharts v12: modules self-register on import (client-side only)
 let highchartsModulesPromise: Promise<void> | null = null;
 let modulesLoaded = false;
+const moduleLoadListeners = new Set<() => void>();
+const subscribeToModuleLoad = (listener: () => void) => {
+  moduleLoadListeners.add(listener);
+  return () => {
+    moduleLoadListeners.delete(listener);
+  };
+};
+const getModuleLoadSnapshot = () => modulesLoaded;
+const getServerModuleLoadSnapshot = () => false;
 
 const loadHighchartsModules = (): Promise<void> => {
   highchartsModulesPromise ??= Promise.all([
@@ -22,6 +35,7 @@ const loadHighchartsModules = (): Promise<void> => {
     import('highcharts/modules/sankey'),
   ]).then(() => {
     modulesLoaded = true;
+    moduleLoadListeners.forEach((listener) => listener());
     return undefined;
   });
   return highchartsModulesPromise;
@@ -35,7 +49,7 @@ if (
   typeof process !== 'undefined' &&
   process.env?.NODE_ENV !== 'test'
 ) {
-  void loadHighchartsModules();
+  void loadHighchartsModules().catch(() => undefined);
 }
 
 export const langOptions: LangOptions = {
@@ -53,6 +67,7 @@ type GenericSeriesChartProps = {
   constructorType?: ChartConstructorTypes;
   showLocalizedTime?: boolean;
   chartUpdatePolicy?: ChartUpdatePolicy;
+  onChartDependencyStatus?: (status: ChartDependencyStatus) => void;
 };
 
 // Positional flags for `HighchartsReact`'s `updateArgs` prop, forwarded to
@@ -102,25 +117,57 @@ const GenericSeriesChart: FC<GenericSeriesChartProps> = ({
   constructorType,
   options,
   showLocalizedTime,
-  chartUpdatePolicy = 'default',
+  chartUpdatePolicy: givenChartUpdatePolicy,
+  onChartDependencyStatus,
 }) => {
-  const [modulesReady, setModulesReady] = useState(modulesLoaded);
+  const chartUpdatePolicy: ChartUpdatePolicy = givenChartUpdatePolicy ?? 'default';
+  const modulesReady = useSyncExternalStore(
+    subscribeToModuleLoad,
+    getModuleLoadSnapshot,
+    getServerModuleLoadSnapshot,
+  );
   const colors = useChartColors();
   const chartComponentRef = useRef<HighchartsReactRefObject>(null);
+  const onChartDependencyStatusRef = useRef(onChartDependencyStatus);
+
+  useLayoutEffect(() => {
+    onChartDependencyStatusRef.current = onChartDependencyStatus;
+  }, [onChartDependencyStatus]);
 
   // Load highcharts modules on mount
   useEffect(() => {
     if (modulesLoaded) {
+      onChartDependencyStatusRef.current?.({
+        dependency: 'highchartsModules',
+        status: 'ready',
+      });
       return () => {};
     }
 
     let isMounted = true;
-    void loadHighchartsModules().then(() => {
-      if (isMounted) {
-        setModulesReady(modulesLoaded);
-      }
-      return undefined;
+    onChartDependencyStatusRef.current?.({
+      dependency: 'highchartsModules',
+      status: 'pending',
     });
+    void loadHighchartsModules()
+      .then(() => {
+        if (isMounted) {
+          onChartDependencyStatusRef.current?.({
+            dependency: 'highchartsModules',
+            status: 'ready',
+          });
+        }
+        return undefined;
+      })
+      .catch((error: unknown) => {
+        if (isMounted) {
+          onChartDependencyStatusRef.current?.({
+            dependency: 'highchartsModules',
+            status: 'failed',
+            error: error instanceof Error ? error : new Error('Highcharts module loading failed'),
+          });
+        }
+      });
 
     return () => {
       isMounted = false;

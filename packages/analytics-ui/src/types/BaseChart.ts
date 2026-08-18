@@ -18,6 +18,10 @@ export enum ChartStyleMode {
 
 export type ChartUpdatePolicy = 'default' | 'non-animated';
 
+export type ChartDependencyStatus =
+  | { dependency: 'highchartsModules'; status: 'pending' | 'ready' }
+  | { dependency: 'highchartsModules'; status: 'failed'; error: Error };
+
 /**
  * A data point tuple containing x value, y value, and optional metadata.
  * Past the second element, the tuple is extended with unknown types.

@@ -7,18 +7,25 @@ import { isRAQIV2LoadingException } from '../utils/RAQIV2InternalException';
 type MappedApiRequestResponse<IdType, ResponseType> = {
   data: Map<IdType, ResponseType | null>;
   orderedData: (ResponseType | null)[];
+  requestIdentity: (ids: IdType[]) => Promise<Map<IdType, ResponseType>>;
+  requestVersion: number;
 } & GenericChartState;
 
 const useMappedApiRequest = <IdType, ResponseType>(
   ids: IdType[],
   makeRequest: (ids: IdType[]) => Promise<Map<IdType, ResponseType>>,
   enabled = true,
+  trackRequestVersion = false,
 ): MappedApiRequestResponse<IdType, ResponseType> => {
   const [isDataLoading, setDataLoading] = useState<boolean>(true);
   const [isResponseFailed, setResponseFailure] = useState<boolean>(false);
   const [isUserForbidden, setUserForbidden] = useState<boolean>(false);
   const [data, setData] = useState<Map<IdType, ResponseType | null>>(new Map());
   const previousMakeRequest = useRef(makeRequest);
+  const hasStartedRequest = useRef(false);
+  // NOTE: ref-backed for the same reason as useApiRequest — a state bump per attempt would
+  // re-render, re-run this effect for callers that rebuild `makeRequest` each render, and loop.
+  const requestVersionRef = useRef(0);
 
   useEffect(() => {
     if (!enabled) {
@@ -42,6 +49,13 @@ const useMappedApiRequest = <IdType, ResponseType>(
       // oxlint-disable-next-line react/react-compiler -- loading state follows the derived request set
       setDataLoading(false);
       return;
+    }
+
+    if (trackRequestVersion && hasStartedRequest.current) {
+      // oxlint-disable-next-line react/react-compiler -- attempt counter is intentionally ref-backed to avoid a render/refetch loop
+      requestVersionRef.current += 1;
+    } else {
+      hasStartedRequest.current = true;
     }
 
     const makeRequestAndUpdateState = async () => {
@@ -76,7 +90,7 @@ const useMappedApiRequest = <IdType, ResponseType>(
       }
     };
     void makeRequestAndUpdateState();
-  }, [ids, data, enabled, makeRequest]);
+  }, [ids, data, enabled, makeRequest, trackRequestVersion]);
 
   const orderedData = useMemo(() => ids.map((id) => data.get(id) ?? null), [data, ids]);
 
@@ -86,6 +100,9 @@ const useMappedApiRequest = <IdType, ResponseType>(
     isUserForbidden,
     data,
     orderedData,
+    requestIdentity: makeRequest,
+    // oxlint-disable-next-line react/react-compiler -- attempt counter is intentionally ref-backed to avoid a render/refetch loop
+    requestVersion: requestVersionRef.current,
   };
 };
 

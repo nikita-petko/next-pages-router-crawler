@@ -27,10 +27,21 @@ const GenericRAQIV2TopBreakdownSummaryCard: FC<GenericRAQIV2SummaryCardProps> = 
     () => ({ fetchTotalSeries: false, fetchComparison: undefined }),
     [],
   );
-  const { data: raqiData, ...chartState } = useRAQIV2Request(
-    spec,
-    RAQIV2RequestOptions,
-    ignoreCache,
+  const requestResult = useRAQIV2Request(spec, RAQIV2RequestOptions, ignoreCache);
+  const { data: raqiData } = requestResult;
+  const chartState = useMemo(
+    () => ({
+      isDataLoading: requestResult.isDataLoading,
+      isResponseFailed: requestResult.isResponseFailed,
+      isUserForbidden: requestResult.isUserForbidden,
+      error: requestResult.error,
+    }),
+    [
+      requestResult.error,
+      requestResult.isDataLoading,
+      requestResult.isResponseFailed,
+      requestResult.isUserForbidden,
+    ],
   );
 
   const { summary } = useMemo(

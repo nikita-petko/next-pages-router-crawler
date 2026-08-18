@@ -88,11 +88,8 @@ const GenericRAQIV2ItemSummaryCard: FC<GenericRAQIV2ItemSummaryCardProps> = ({
     () => ({ fetchTotalSeries: false, fetchComparison: undefined }),
     [],
   );
-  const { data: raqiData, ...chartState } = useRAQIV2Request(
-    spec,
-    RAQIV2RequestOptions,
-    ignoreCache,
-  );
+  const requestResult = useRAQIV2Request(spec, RAQIV2RequestOptions, ignoreCache);
+  const { data: raqiData } = requestResult;
 
   const { summary } = useMemo(
     () =>
@@ -155,10 +152,10 @@ const GenericRAQIV2ItemSummaryCard: FC<GenericRAQIV2ItemSummaryCardProps> = ({
       itemName={displayName}
       iconImageAssetId={iconImageAssetId}
       styleConfig={styleConfig}
-      isDataLoading={chartState.isDataLoading || isMetadataLoading}
-      isResponseFailed={chartState.isResponseFailed || isMetadataError}
-      isUserForbidden={chartState.isUserForbidden}
-      error={chartState.error ?? (isMetadataError ? error : null)}
+      isDataLoading={requestResult.isDataLoading || isMetadataLoading}
+      isResponseFailed={requestResult.isResponseFailed || isMetadataError}
+      isUserForbidden={requestResult.isUserForbidden}
+      error={requestResult.error ?? (isMetadataError ? error : null)}
       showNoDataMessage={summary?.value === null}
       value={
         summary?.value !== null && (

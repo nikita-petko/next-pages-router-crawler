@@ -17,9 +17,10 @@ import { getDefaultSummarySpec } from '../../adapters/genericRAQIV2ChartSummaryA
 import genericRAQIV2HorizontalBarChartAdapter from '../../adapters/genericRAQIV2HorizontalBarChartAdapter';
 import type { BarChartConfig } from '../../constants/RAQIV2PredefinedChartConfig';
 import getEmptyArray from '../../emptyArray';
+import useChartLoadTelemetry from '../../hooks/useChartLoadTelemetry';
 import useRAQIV2Request from '../../hooks/useRAQIV2Request';
 import useRAQIV2TranslationDependencies from '../../hooks/useRAQIV2TranslationDependencies';
-import useSentryChartTracers from '../../hooks/useSentryChartTracers';
+import useSuccessfulChartRenderCallback from '../../hooks/useSuccessfulChartRenderCallback';
 import type GenericRAQIV2ChartProps from '../../types/GenericRAQIV2ChartProps';
 import formatAnalyticsNumber from '../../utils/analyticsNumberFormatter';
 import type { MakeRAQIV2RequestOptions } from '../../utils/makeRAQIV2Request';
@@ -53,12 +54,6 @@ const GenericRAQIV2HorizontalBarChartV2: FC<
 }) => {
   const { breakdown, timeSpec, metric } = spec;
   const ownershipWatermarkSlots = useMetricOwnershipWatermarkSlots(spec);
-  const sentryBundle = useSentryChartTracers({
-    metric,
-    componentKeyOrConfig: chartKeyOrConfig,
-    breakdown: breakdown?.slice(),
-    numExpectedPoints: 0,
-  });
   const translationDependencies = useRAQIV2TranslationDependencies();
   const { translate, tPendingTranslation } = translationDependencies;
   const metricLabel = useMemo(
@@ -75,24 +70,53 @@ const GenericRAQIV2HorizontalBarChartV2: FC<
   );
 
   const requestOptions: MakeRAQIV2RequestOptions = useMemo(() => ({ fetchTotalSeries: true }), []);
-
-  sentryBundle.startDataLoading();
   const {
     data: raqiData,
     isDataLoading,
     isResponseFailed,
     isUserForbidden,
     error,
+    getClientCacheStatus,
+    requestIdentity,
+    requestVersion,
+    resolvedOptions,
   } = useRAQIV2Request(spec, requestOptions, ignoreCache);
+  const telemetryBreakdown = useMemo(() => breakdown?.slice(), [breakdown]);
+  const telemetryTimeSpecs = useMemo(() => [timeSpec], [timeSpec]);
+  const telemetryBundle = useChartLoadTelemetry({
+    metric,
+    componentKeyOrConfig: chartKeyOrConfig,
+    breakdown: telemetryBreakdown,
+    timeSpecs: telemetryTimeSpecs,
+    granularity: spec.granularity,
+    comparison: resolvedOptions?.fetchComparison,
+    resource: spec.resource,
+    timeInterval: spec.granularity,
+  });
   // Memoize so the `onChartDataUpdated` effect below (which lifts the
   // exporter into Explore Mode) only re-fires on real status changes,
   // not on every render. `useApiRequest` returns a fresh object each
   // render, so spreading it directly would churn the dependency array.
   const requestStatus = useMemo(
-    () => ({ isDataLoading, isResponseFailed, isUserForbidden, error }),
-    [isDataLoading, isResponseFailed, isUserForbidden, error],
+    () => ({
+      isDataLoading,
+      isResponseFailed,
+      isUserForbidden,
+      error,
+      getClientCacheStatus,
+      requestIdentity,
+      requestVersion,
+    }),
+    [
+      isDataLoading,
+      isResponseFailed,
+      isUserForbidden,
+      error,
+      getClientCacheStatus,
+      requestIdentity,
+      requestVersion,
+    ],
   );
-  sentryBundle.handleRAQIV2RequestResult(requestStatus);
   const { seriesWithBreakdowns, summary } = useMemo(() => {
     if (
       !requestStatus.isDataLoading &&
@@ -111,7 +135,10 @@ const GenericRAQIV2HorizontalBarChartV2: FC<
       });
       return { seriesWithBreakdowns: adapted.series, summary: adapted.summary };
     }
-    return { seriesWithBreakdowns: [], summary: getEmptyArray<ChartSummaryItemSpec>() };
+    return {
+      seriesWithBreakdowns: [],
+      summary: getEmptyArray<ChartSummaryItemSpec>(),
+    };
   }, [
     requestStatus.isDataLoading,
     labelDataAsPercent,
@@ -169,6 +196,18 @@ const GenericRAQIV2HorizontalBarChartV2: FC<
     translate,
     translationDependencies,
   ]);
+  useEffect(() => {
+    telemetryBundle.handleRAQIV2RequestResult({
+      ...requestStatus,
+      hasNoData: !requestStatus.isDataLoading && exporter.hasEmptyData,
+      isClassificationReady: translationDependencies.ready,
+    });
+  }, [exporter.hasEmptyData, requestStatus, telemetryBundle, translationDependencies.ready]);
+  const handleSuccessfulChartRender = useSuccessfulChartRenderCallback(telemetryBundle, {
+    ...requestStatus,
+    hasNoData: exporter.hasEmptyData,
+    isClassificationReady: translationDependencies.ready,
+  });
 
   // Surface the freshly built exporter and request state to embedders that
   // own the download affordance themselves (e.g. Explore Mode's overflow
@@ -265,7 +304,10 @@ const GenericRAQIV2HorizontalBarChartV2: FC<
         };
         const percentage =
           seriesInfo.get(seriesName)?.find((point) => point.category === category)?.percentage ?? 0;
-        return numberFormatter(percentage, { style: 'percent', ...oneDecimalDigit });
+        return numberFormatter(percentage, {
+          style: 'percent',
+          ...oneDecimalDigit,
+        });
       }
       return formatAnalyticsNumber(
         y,
@@ -292,9 +334,20 @@ const GenericRAQIV2HorizontalBarChartV2: FC<
         dataLabelsFormatter={dataLabelsFormatter}
         forceHideLegends
         DataLabelLeadingIcon={String(unit.formattingSpec?.icon) === 'Robux' ? RobuxIcon : undefined}
+        onChartRender={handleSuccessfulChartRender}
+        onChartDependencyStatus={telemetryBundle.handleChartDependencyStatus}
       />
     ),
-    [chartHeight, chartStyleMode, data, dataLabelsFormatter, tooltipFormatters, unit],
+    [
+      chartHeight,
+      chartStyleMode,
+      data,
+      dataLabelsFormatter,
+      handleSuccessfulChartRender,
+      telemetryBundle.handleChartDependencyStatus,
+      tooltipFormatters,
+      unit,
+    ],
   );
 
   return renderWithoutPeripherals ? (

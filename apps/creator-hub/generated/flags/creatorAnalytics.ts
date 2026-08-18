@@ -2,6 +2,11 @@ import { defineFlag } from '@rbx/flags';
 
 // oxlint-disable-next-line typescript-eslint/triple-slash-reference -- generated flags need registry augmentation in type-aware consumers
 /// <reference path='./registry.d.ts' />
+export const analyticsChartLoadEventstreamEnabled = defineFlag({
+    namespace: 'creator-analytics',
+    name: 'analyticsChartLoadEventstreamEnabled',
+    defaultValue: false,
+  });
 export const isLimitedAnalyticsAdminMonitoringNavigationEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isLimitedAnalyticsAdminMonitoringNavigationEnabled',
@@ -51,11 +56,6 @@ export const isFirstSeenColumnEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isFirstSeenColumnEnabled',
     defaultValue: true,
-  });
-export const sentryChartTracingEnabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'sentryChartTracingEnabled',
-    defaultValue: false,
   });
 export const acquisitionMigrationMetricsEnabled = defineFlag({
     namespace: 'creator-analytics',
