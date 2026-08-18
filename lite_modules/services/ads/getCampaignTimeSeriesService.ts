@@ -47,12 +47,14 @@ const queryMetric = async (
   pollingOptions: RAQIClientOptions,
   granularity: AnalyticsQueryGranularity = 'oneDay',
   breakdownByAttributionDate: boolean = true,
+  extendEndTimeByAttributionWindow: boolean = true,
 ): Promise<QueryResult> => {
   const request = buildAnalyticsQueryRequest({
     breakdownByAttributionDate,
     campaignId,
     customEndDate,
     customStartDate,
+    extendEndTimeByAttributionWindow,
     granularity,
     metric,
     qualityPolicy: 'combined',
@@ -78,7 +80,11 @@ const queryMetric = async (
   );
 };
 
+/** Chart bucketing for the plays series: attribution day or raw conversion day. */
+type CampaignTimeSeriesAggregationType = 'attributionDate' | 'default';
+
 interface GetCampaignTimeSeriesRequest {
+  aggregationType: CampaignTimeSeriesAggregationType;
   campaignId: string;
   /** YYYY-MM-DD, required (with customStartDate) when timePeriod === CUSTOM. */
   customEndDate?: string;
@@ -95,6 +101,7 @@ interface GetCampaignTimeSeriesRequest {
 }
 
 export const getCampaignTimeSeries = async ({
+  aggregationType,
   campaignId,
   customEndDate,
   customStartDate,
@@ -111,6 +118,7 @@ export const getCampaignTimeSeries = async ({
     metric: string,
     granularity: AnalyticsQueryGranularity = 'oneDay',
     breakdownByAttributionDate: boolean = true,
+    extendEndTimeByAttributionWindow: boolean = true,
   ) =>
     queryMetric(
       metric,
@@ -125,12 +133,20 @@ export const getCampaignTimeSeries = async ({
       pollingOptions,
       granularity,
       breakdownByAttributionDate,
+      extendEndTimeByAttributionWindow,
     );
 
-  // Plays is the baseline series; failing to fetch it rejects the whole call
-  // so the chart shows its generic error state instead of an empty plot.
-  const playsPromise = fetchMetric(getPlaysMetricForReportingView(reportingView)).then(
-    aggregateQueryResultToDailyDataPoints,
+  // Plays is the baseline series; a failure rejects the whole call.
+  const useAttributionDate = aggregationType === 'attributionDate';
+  const playsPromise = fetchMetric(
+    getPlaysMetricForReportingView(reportingView),
+    'oneDay',
+    useAttributionDate,
+    useAttributionDate,
+  ).then((result) =>
+    aggregateQueryResultToDailyDataPoints(result, {
+      by: useAttributionDate ? 'attributionDate' : 'conversionDate',
+    }),
   );
 
   const shouldQueryRoas =

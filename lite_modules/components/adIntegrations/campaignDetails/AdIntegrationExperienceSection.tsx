@@ -1,10 +1,10 @@
-import { Autocomplete, TextField } from '@rbx/ui';
-import { useState } from 'react';
+import { Autocomplete, AutocompleteOption } from '@rbx/foundation-ui';
+import { useEffect, useState } from 'react';
 import { Control, Controller, useWatch } from 'react-hook-form';
 
 import useCampaignBuilderCommonStyles from '@components/campaignBuilder/common/CampaignBuilderCommon.styles';
 import UniverseFilterAvatar from '@components/common/UniverseFilterAvatar';
-import { AdIntegrationFormField } from '@constants/adIntegrations';
+import { AdIntegrationFormField, MaxUniversesPerCampaign } from '@constants/adIntegrations';
 import { warningUniverseId } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -15,18 +15,20 @@ import {
 } from '@type/adIntegrations';
 import { UniverseShapeType } from '@type/universe';
 
+type ExperienceOption = Pick<UniverseShapeType, 'universe_id' | 'universe_name'>;
+
 interface AdIntegrationExperienceSectionProps {
   control: Control<AdIntegrationCampaignDetailsFormValues>;
+  disabled?: boolean;
   errorMessage?: string;
   isMultiExperienceEnabled: boolean;
   mode: AdIntegrationFormMode;
   universes: UniverseShapeType[];
 }
 
-const MaxAutocompleteSelections = 20;
-
 const AdIntegrationExperienceSection = ({
   control,
+  disabled = false,
   errorMessage,
   isMultiExperienceEnabled,
   mode,
@@ -40,10 +42,14 @@ const AdIntegrationExperienceSection = ({
   const {
     classes: { spacedWarning },
   } = useCampaignBuilderCommonStyles();
-  const selectedExperienceId = useWatch({
-    control,
-    name: AdIntegrationFormField.Experience,
-  });
+  // The form field holds every selection, so the single-select flow reads the
+  // head of the same array the multi-select flow renders in full.
+  const selectedExperienceIds =
+    useWatch({
+      control,
+      name: AdIntegrationFormField.ExperienceIds,
+    }) ?? [];
+  const selectedExperienceId = selectedExperienceIds[0] ?? warningUniverseId;
   const hasEligibleExperiences = universes.length > 0;
   const selectedEligibleExperience = universes.find(
     (universe) => universe.universe_id === selectedExperienceId,
@@ -54,16 +60,15 @@ const AdIntegrationExperienceSection = ({
     selectedExperienceId > warningUniverseId &&
     !selectedEligibleExperience;
 
-  const noExperienceFoundOption: Pick<UniverseShapeType, 'universe_id' | 'universe_name'> = {
+  const noExperienceFoundOption: ExperienceOption = {
     universe_id: warningUniverseId,
     universe_name: translateCampaign('Description.NoExperiencesFound'),
   };
 
-  const experienceNoLongerEligibleOption: Pick<UniverseShapeType, 'universe_id' | 'universe_name'> =
-    {
-      universe_id: selectedExperienceId,
-      universe_name: translateCampaign('Description.ExperienceNotFound'),
-    };
+  const experienceNoLongerEligibleOption: ExperienceOption = {
+    universe_id: selectedExperienceId,
+    universe_name: translateCampaign('Description.ExperienceNotFound'),
+  };
   const thumbnailsByUniverseId = useThumbnailStore(
     (state: ThumbnailStoreType) => state.thumbnailsByUniverseId,
   );
@@ -71,90 +76,143 @@ const AdIntegrationExperienceSection = ({
     selectedExperienceId > warningUniverseId
       ? thumbnailsByUniverseId[selectedExperienceId]?.data?.imageUrl
       : undefined;
-  const [selectedExperienceIds, setSelectedExperienceIds] = useState<number[]>([]);
   const selectedExperiences = selectedExperienceIds
     .map((universeId) => universes.find((universe) => universe.universe_id === universeId))
     .filter((universe): universe is UniverseShapeType => universe !== undefined);
-  const experienceErrorMessage = isMultiExperienceEnabled ? undefined : errorMessage;
+
+  const selectedOption: ExperienceOption =
+    selectedEligibleExperience ??
+    (isExperienceNoLongerEligible ? experienceNoLongerEligibleOption : noExperienceFoundOption);
+  const options: ExperienceOption[] = hasEligibleExperiences
+    ? universes
+    : [noExperienceFoundOption];
+
+  const [inputValue, setInputValue] = useState<string>(selectedOption.universe_name);
+  const [multiInputValue, setMultiInputValue] = useState<string>('');
+
+  // Resync the text when the selection changes outside the field (mode switch,
+  // universes finishing loading) so a stale experience name is never shown.
+  useEffect(() => {
+    setInputValue(selectedOption.universe_name);
+  }, [selectedOption.universe_id, selectedOption.universe_name]);
+
+  // MUI filtered options internally from `getOptionLabel`; Foundation expects the
+  // caller to render the filtered set. Text equal to the current selection shows
+  // the full list so clicking into the field does not narrow it to one row.
+  const query = inputValue.trim().toLocaleLowerCase();
+  const visibleOptions =
+    !query || query === selectedOption.universe_name.toLocaleLowerCase()
+      ? options
+      : options.filter((option) => option.universe_name.toLocaleLowerCase().includes(query));
+
+  const multiQuery = multiInputValue.trim().toLocaleLowerCase();
+  const visibleMultiOptions = multiQuery
+    ? universes.filter((universe) =>
+        universe.universe_name.toLocaleLowerCase().includes(multiQuery),
+      )
+    : universes;
+  const hasReachedSelectionLimit = selectedExperienceIds.length >= MaxUniversesPerCampaign;
+  // Foundation reads multi-select chip text from the `title` of the options it is
+  // currently rendering, so a selected experience the filter leaves out is rendered
+  // hidden purely to supply its label.
+  const unlistedSelectedExperiences = selectedExperiences.filter(
+    (selected) =>
+      !visibleMultiOptions.some((option) => option.universe_id === selected.universe_id),
+  );
 
   return (
     <>
       <Controller
         control={control}
-        name={AdIntegrationFormField.Experience}
+        name={AdIntegrationFormField.ExperienceIds}
         render={({ field }) =>
           isMultiExperienceEnabled ? (
             <Autocomplete
-              disabled={!hasEligibleExperiences}
-              getOptionDisabled={(option) =>
-                selectedExperienceIds.length >= MaxAutocompleteSelections &&
-                !selectedExperienceIds.includes(option.universe_id)
+              data-testid='ad-integration-multi-experience-autocomplete'
+              error={errorMessage}
+              hasError={Boolean(errorMessage)}
+              helperText={
+                errorMessage ? undefined : translateAccount('Description.ChooseUpTo20Games')
               }
-              getOptionLabel={(option) => option.universe_name}
-              isOptionEqualToValue={(option, value) => option.universe_id === value.universe_id}
+              inputValue={multiInputValue}
+              isDisabled={disabled || !hasEligibleExperiences}
+              label={translateCreativeLibrary('Label.Game')}
               multiple
-              onChange={(_event, selectedOptions) => {
+              multiSelectLayout='Expand'
+              onInputValueChange={setMultiInputValue}
+              onValueChange={(nextValues) => {
                 const nextSelectedExperienceIds = Array.from(
-                  new Set(selectedOptions.map((option) => option.universe_id)),
-                ).slice(0, MaxAutocompleteSelections);
-                setSelectedExperienceIds(nextSelectedExperienceIds);
-                field.onChange(nextSelectedExperienceIds[0] ?? 0);
+                  new Set(nextValues.map((nextValue) => Number(nextValue))),
+                ).slice(0, MaxUniversesPerCampaign);
+                // Match MUI, which reset the query after each selection.
+                setMultiInputValue('');
+                field.onChange(nextSelectedExperienceIds);
               }}
-              options={universes}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  error={Boolean(experienceErrorMessage)}
-                  helperText={
-                    experienceErrorMessage ?? translateAccount('Description.ChooseUpTo20Games')
+              placeholder={translateAccount('Label.ChooseAGame')}
+              size='Medium'
+              value={selectedExperienceIds.map((universeId) => String(universeId))}>
+              {visibleMultiOptions.map((option) => (
+                <AutocompleteOption
+                  disabled={
+                    hasReachedSelectionLimit && !selectedExperienceIds.includes(option.universe_id)
                   }
-                  InputLabelProps={{ shrink: true }}
-                  label={translateCreativeLibrary('Label.Game')}
-                  placeholder={translateAccount('Label.ChooseAGame')}
+                  key={option.universe_id}
+                  leading={
+                    <UniverseFilterAvatar
+                      src={thumbnailsByUniverseId[option.universe_id]?.data?.imageUrl}
+                    />
+                  }
+                  title={option.universe_name}
+                  value={String(option.universe_id)}
                 />
-              )}
-              renderOption={(props, option) => (
-                <li {...props} key={option.universe_id}>
-                  <UniverseFilterAvatar
-                    src={thumbnailsByUniverseId[option.universe_id]?.data?.imageUrl}
-                  />
-                  <span className='margin-left-small'>{option.universe_name}</span>
-                </li>
-              )}
-              value={selectedExperiences}
-            />
+              ))}
+              {unlistedSelectedExperiences.map((option) => (
+                <AutocompleteOption
+                  className='hidden'
+                  disabled
+                  key={option.universe_id}
+                  title={option.universe_name}
+                  value={String(option.universe_id)}
+                />
+              ))}
+            </Autocomplete>
           ) : (
             <Autocomplete
-              disableClearable
-              disabled={mode === 'edit' || !hasEligibleExperiences}
-              getOptionLabel={(option) => option.universe_name}
-              isOptionEqualToValue={(option, value) => option.universe_id === value.universe_id}
-              onChange={(_event, option) => {
-                field.onChange(option.universe_id);
-              }}
-              options={hasEligibleExperiences ? universes : [noExperienceFoundOption]}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  error={Boolean(experienceErrorMessage)}
-                  helperText={experienceErrorMessage}
-                  InputProps={{
-                    ...params.InputProps,
-                    startAdornment:
-                      selectedExperienceId > warningUniverseId ? (
-                        <UniverseFilterAvatar src={selectedThumbnailUrl} />
-                      ) : null,
-                  }}
-                  label={translateCreativeLibrary('Label.Experience')}
-                />
-              )}
-              value={
-                selectedEligibleExperience ??
-                (isExperienceNoLongerEligible
-                  ? experienceNoLongerEligibleOption
-                  : noExperienceFoundOption)
+              data-testid='ad-integration-experience-autocomplete'
+              error={errorMessage}
+              hasError={Boolean(errorMessage)}
+              inputValue={inputValue}
+              isDisabled={disabled || mode === 'edit' || !hasEligibleExperiences}
+              label={translateCreativeLibrary('Label.Experience')}
+              leadingIconNode={
+                selectedExperienceId > warningUniverseId ? (
+                  <UniverseFilterAvatar src={selectedThumbnailUrl} />
+                ) : undefined
               }
-            />
+              // Foundation keeps edited text on blur, so restore the selected name
+              // when the user typed without picking an option.
+              onBlur={() => setInputValue(selectedOption.universe_name)}
+              onInputValueChange={setInputValue}
+              onValueChange={(nextValue) => {
+                const option = options.find(
+                  (candidate) => String(candidate.universe_id) === nextValue,
+                );
+                if (!option) {
+                  return;
+                }
+                field.onChange([option.universe_id]);
+                setInputValue(option.universe_name);
+              }}
+              size='Medium'
+              value={String(selectedOption.universe_id)}>
+              {visibleOptions.map((option) => (
+                <AutocompleteOption
+                  key={option.universe_id}
+                  title={option.universe_name}
+                  value={String(option.universe_id)}
+                />
+              ))}
+            </Autocomplete>
           )
         }
       />

@@ -1,23 +1,17 @@
+import { Dropdown, Menu, MenuItem, MenuSection } from '@rbx/foundation-ui';
 import { useLocalization } from '@rbx/intl';
-import { DatePicker, MenuItem, PickersUtilsProvider, Select, TextField } from '@rbx/ui';
 import moment from 'moment-timezone';
-import { ChangeEvent, ReactNode, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
 import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
 import AppTooltip from '@components/common/AppTooltip';
+import DateField from '@components/common/form/DateField';
 import { defaultTimeZone } from '@constants/app';
-import {
-  DateFormat,
-  FlowTypes,
-  FORM_HELPER_TEXT_PROPS,
-  FormField,
-  INPUT_LABEL_PROPS,
-} from '@constants/campaignBuilder';
+import { DateFormat, FlowTypes, FormField } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
-import useDateFnsLocale from '@hooks/useDateFnsLocale';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
@@ -39,8 +33,11 @@ const EndTimePicker = () => {
   // Timezone city labels (Label.TimezoneCity.*) are defined in the Timezone
   // namespace, so resolve them separately from the Campaign copy.
   const { translate: translateTimezone } = useNamespacedTranslation(TranslationNamespace.Timezone);
+  // Calendar navigation labels (Label.NextMonth / Label.PreviousMonth) only exist
+  // in the Report namespace, and the localization rules require reusing an
+  // existing key rather than duplicating the string into Campaign.
+  const { translate: translateReport } = useNamespacedTranslation(TranslationNamespace.Report);
   const { locale } = useLocalization();
-  const dateFnsLocale = useDateFnsLocale();
   const { control, getValues, trigger } = useFormContext<FormType>();
   const endDate = useWatch<FormType, typeof FormField.END_DATE>({
     name: FormField.END_DATE,
@@ -48,8 +45,6 @@ const EndTimePicker = () => {
   const endTime = useWatch<FormType, typeof FormField.END_TIME>({
     name: FormField.END_TIME,
   });
-
-  const [isOpen, setIsOpen] = useState<boolean>(false);
 
   const { offPlatformRequestMinimumDaysFromStartDate } = useAppStore(
     (state) => state.appMetadataState.data,
@@ -96,9 +91,27 @@ const EndTimePicker = () => {
     [endDate, timezoneDbName],
   );
 
+  // Same `moment(endDate)` parse the MUI picker was handed, but an unparseable
+  // stored value becomes `null` instead of an Invalid Date: the calendar formats
+  // and serializes whatever it is given, so NaN would throw rather than render.
+  const endDateValue = useMemo<Date | null>(() => {
+    const parsedEndDate = moment(endDate);
+    return parsedEndDate.isValid() ? parsedEndDate.toDate() : null;
+  }, [endDate]);
+
   const timeOptions = useMemo<TimeOption[]>(
     () => GenerateTimeOptions(isToday, timezoneDbName, locale),
     [isToday, timezoneDbName, locale],
+  );
+  // The saved end time can fall outside the generated window (e.g. a campaign
+  // ending later today whose slot has already passed). Keep it in the list so the
+  // collapsed dropdown still shows the selected time instead of going blank.
+  const timeMenuOptions = useMemo<TimeOption[]>(
+    () =>
+      !endTime || timeOptions.some(({ value }) => value === endTime)
+        ? timeOptions
+        : [{ label: endTime, value: endTime }, ...timeOptions],
+    [endTime, timeOptions],
   );
   const endTimeConversion = useMemo(
     () =>
@@ -149,122 +162,87 @@ const EndTimePicker = () => {
     (editMode && isOffPlatformCampaign);
 
   return (
-    <PickersUtilsProvider adapterLocale={dateFnsLocale}>
-      <div className={`text-body-large ${cx(formRow, fullWidth)}`}>
-        <span className={`text-body-large ${halfWidth}`}>
-          <Controller
-            control={control}
-            name={FormField.END_DATE}
-            render={({ field, fieldState: { error } }) => (
-              <DatePicker
-                className={fullWidth}
-                disabled={isEditDisabled}
-                disablePast
-                format='MMM dd, yyyy'
-                label={translate('Label.EndDate')}
-                minDate={
-                  getValues(FormField.IS_EXTEND_TO_OFF_PLATFORM_ENABLED)
-                    ? moment().add(offPlatformRequestMinimumDaysFromStartDate, 'days').toDate()
-                    : undefined
-                }
-                onChange={(date) => {
-                  logNativeClickEvent(EventName.EndDateChanged, {
-                    flowType,
-                    previousValue: field.value?.toString() || '',
-                    value: date?.toString() || '',
-                  });
-                  field.onChange(moment.tz(date, timezoneDbName).format(DateFormat));
-                  trigger(FormField.END_TIME);
-                }}
-                onClose={() => setIsOpen(false)}
-                open={isOpen}
-                renderInput={(params) => (
-                  <AppTooltip title={GetTooltipText()}>
-                    <div>
-                      <TextField
-                        {...params}
-                        error={!!error}
-                        FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                        helperText={error?.message}
-                        id='end-date'
-                        InputLabelProps={INPUT_LABEL_PROPS}
-                        label={translate('Label.EndDate')}
-                        onBlur={field.onBlur}
-                        onClick={isEditDisabled ? undefined : () => setIsOpen(true)}
-                        ref={field.ref}
-                        variant='outlined'
-                      />
-                    </div>
-                  </AppTooltip>
-                )}
-                value={moment(endDate).toDate()}
-              />
-            )}
-          />
-        </span>
-
+    <div className={`text-body-large ${cx(formRow, fullWidth)}`}>
+      <span className={`text-body-large ${halfWidth}`}>
         <Controller
           control={control}
-          name={FormField.END_TIME}
+          name={FormField.END_DATE}
           render={({ field, fieldState: { error } }) => (
-            <div className={halfWidth}>
-              <AppTooltip title={GetTooltipText()}>
-                <Select
+            <AppTooltip title={GetTooltipText()}>
+              <div className={fullWidth}>
+                <DateField
+                  direction='Future'
+                  error={error?.message}
+                  id='end-date'
+                  isDisabled={isEditDisabled}
+                  label={translate('Label.EndDate')}
+                  locale={locale}
+                  minDate={
+                    getValues(FormField.IS_EXTEND_TO_OFF_PLATFORM_ENABLED)
+                      ? moment().add(offPlatformRequestMinimumDaysFromStartDate, 'days').toDate()
+                      : undefined
+                  }
+                  nextMonthLabel={translateReport('Label.NextMonth')}
+                  onChange={(date) => {
+                    logNativeClickEvent(EventName.EndDateChanged, {
+                      flowType,
+                      previousValue: field.value?.toString() || '',
+                      value: date?.toString() || '',
+                    });
+                    field.onChange(moment.tz(date, timezoneDbName).format(DateFormat));
+                    trigger(FormField.END_TIME);
+                  }}
+                  previousMonthLabel={translateReport('Label.PreviousMonth')}
+                  value={endDateValue}
+                />
+              </div>
+            </AppTooltip>
+          )}
+        />
+      </span>
+
+      <Controller
+        control={control}
+        name={FormField.END_TIME}
+        render={({ field, fieldState: { error } }) => (
+          <div className={halfWidth}>
+            <AppTooltip title={GetTooltipText()}>
+              <div>
+                <Dropdown
                   className={fullWidth}
-                  disabled={isEditDisabled || !endDate}
-                  error={!!error}
-                  FormHelperTextProps={{
-                    sx: {
-                      zIndex: 0,
-                    },
-                  }}
-                  fullWidth
-                  helperText={error?.message || endTimeHelperText}
-                  InputLabelProps={{
-                    sx: {
-                      zIndex: 0,
-                    },
-                  }}
+                  hasError={!!error}
+                  hint={error?.message || endTimeHelperText}
+                  isDisabled={isEditDisabled || !endDate}
                   label={translate('Label.EndTime')}
-                  onBlur={field.onBlur}
-                  onChange={(event: ChangeEvent<{ value: string }>) => {
-                    const newTime = event.target.value;
-                    field.onChange(event);
+                  onValueChange={(newTime) => {
                     logNativeClickEvent(EventName.EndTimeChanged, {
                       flowType,
                       previousValue: field.value?.toString() || '',
                       value: newTime,
                     });
+                    field.onChange(newTime);
                   }}
+                  placeholder={translate('Label.SelectTime')}
                   ref={field.ref}
-                  renderValue={(selected) =>
-                    timeOptions.find((option) => option.value === selected)?.label ??
-                    (selected as ReactNode) ??
-                    translate('Label.SelectTime')
-                  }
-                  SelectProps={{
-                    MenuProps: {
-                      style: {
-                        maxHeight: 236,
-                      },
-                    },
-                  }}
+                  size='Medium'
                   value={endTime}>
-                  {timeOptions.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </AppTooltip>
-              {error && endTimeConversionText && (
-                <span className='text-body-medium content-default'>{endTimeConversionText}</span>
-              )}
-            </div>
-          )}
-        />
-      </div>
-    </PickersUtilsProvider>
+                  <Menu>
+                    <MenuSection>
+                      {timeMenuOptions.map((option) => (
+                        <MenuItem key={option.value} title={option.label} value={option.value} />
+                      ))}
+                    </MenuSection>
+                  </Menu>
+                </Dropdown>
+              </div>
+            </AppTooltip>
+            {error && endTimeConversionText && (
+              <span className='text-body-medium content-default'>{endTimeConversionText}</span>
+            )}
+          </div>
+        )}
+      />
+    </div>
   );
 };
 

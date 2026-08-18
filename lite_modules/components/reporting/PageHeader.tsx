@@ -1,3 +1,4 @@
+import { useWorkspaces } from '@rbx/creator-hub-navigation';
 import { Button, Divider, Icon, IconButton, Link } from '@rbx/foundation-ui';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect } from 'react';
@@ -12,10 +13,12 @@ import PromotionBanner from '@components/reporting/PromotionBanner';
 import ReportingViewQuickPick from '@components/reporting/ReportingViewQuickPick';
 import SearchBox from '@components/reporting/SearchBox';
 import SummaryCardRow from '@components/reporting/SummaryCardRow';
+import SyncedDateRangePicker from '@components/reporting/SyncedDateRangePicker';
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
 import useAdAccountAutoCreateCreateAction from '@hooks/account/useAdAccountAutoCreateCreateAction';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import useShouldUseWorkspaceUniverseFiltering from '@hooks/useShouldUseWorkspaceUniverseFiltering';
 import { useAppStore } from '@stores/appStoreProvider';
 import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider';
 
@@ -23,14 +26,30 @@ const PageHeader = () => {
   const { translate, translateHTML } = useNamespacedTranslation(TranslationNamespace.Report);
   const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
+  const { currentWorkspace } = useWorkspaces();
   const router = useRouter();
   const { advertisingShouldBeEnabled, disabledTooltip } = useAppStore((state) =>
     state.advertisingShouldBeEnabled(),
+  );
+  const isCustomDateRangeEnabled = useAppStore(
+    (state) => state.appMetadataState.data?.isCustomDateRangeEnabled ?? false,
   );
   const { isError: summaryStatsIsError, isLoading: summaryStatsIsLoading } = useNewFlowStore(
     (state: NewFlowStoreType) => state.summaryStatsState,
   );
   const retrySummaryStats = useNewFlowStore((state: NewFlowStoreType) => state.retrySummaryStats);
+  const selectedUniverseId = useNewFlowStore(
+    (state: NewFlowStoreType) => state.universePickerFilterState.universeFilter.universe_id,
+  );
+  const shouldUseWorkspaceUniverseFiltering = useShouldUseWorkspaceUniverseFiltering();
+  const groupName =
+    shouldUseWorkspaceUniverseFiltering && currentWorkspace?.creatorType === 'Group'
+      ? currentWorkspace.creatorName
+      : undefined;
+  const reportUniverseId =
+    shouldUseWorkspaceUniverseFiltering && selectedUniverseId !== 0
+      ? selectedUniverseId
+      : undefined;
   const navigateToCreateCampaign = useCallback(() => {
     logNativeClickEvent(EventName.CreateCampaignButtonClicked);
     router.push(Routes.NEW_CREATE_CAMPAIGN);
@@ -54,9 +73,16 @@ const PageHeader = () => {
       <div className='margin-bottom-medium flex width-full flex-col gap-xxlarge'>
         {/* Figma Body order: pageHeaderStack → banners → filters/metrics/search */}
         <div className='flex width-full wrap items-center justify-between gap-xlarge padding-y-xsmall'>
-          <h1 className='margin-[0px] text-heading-large content-emphasis min-width-[300px] grow'>
-            {translateCampaign('Heading.ManageAds')}
-          </h1>
+          <div className='flex min-width-[300px] grow flex-col gap-xsmall'>
+            <h1 className='margin-[0px] text-heading-large content-emphasis'>
+              {translateCampaign('Heading.ManageAds')}
+            </h1>
+            {groupName ? (
+              <p className='margin-[0px] text-body-large content-muted'>
+                {translateCampaign('Description.ViewingAsGroup', { groupName })}
+              </p>
+            ) : null}
+          </div>
           <AppTooltip
             position='left-center'
             title={disabledTooltip ? translate(disabledTooltip) : ''}>
@@ -77,9 +103,9 @@ const PageHeader = () => {
         <PromotionBanner />
 
         <div className='flex width-full flex-col gap-small'>
-          <div className='flex width-full wrap items-start justify-between gap-medium'>
+          <div className='flex width-full wrap items-end justify-between gap-medium'>
             <div className='flex wrap items-start gap-medium'>
-              <DateQuickPick />
+              {isCustomDateRangeEnabled ? <SyncedDateRangePicker /> : <DateQuickPick />}
               <ExperienceFilterPicker />
               <ReportingViewQuickPick />
             </div>
@@ -140,7 +166,12 @@ const PageHeader = () => {
         <div className='flex width-full items-center justify-between gap-medium'>
           <SearchBox />
           <Button
-            onClick={() => openReportDownloadDialog({ isNewFlowType: true })}
+            onClick={() =>
+              openReportDownloadDialog({
+                isNewFlowType: true,
+                universeId: reportUniverseId,
+              })
+            }
             size='Medium'
             variant='Standard'>
             {translate('Action.Download')}

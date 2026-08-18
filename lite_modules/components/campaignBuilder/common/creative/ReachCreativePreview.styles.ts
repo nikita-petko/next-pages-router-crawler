@@ -7,11 +7,6 @@ const useReachCreativePreviewStyles = makeStyles()(() => ({
     height: '100%',
     justifyContent: 'center',
   },
-  previewTileContainer: {
-    height: 190,
-    padding: 0,
-    width: 510,
-  },
   reachCreativeFieldContainer: {
     display: 'flex',
     flexDirection: 'column',

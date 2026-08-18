@@ -8,6 +8,7 @@ import UniverseFilterAvatar from '@components/common/UniverseFilterAvatar';
 import useExperienceFilterPickerStyles from '@components/reporting/ExperienceFilterPicker.styles';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import useWorkspaceUniverseMemory from '@hooks/useWorkspaceUniverseMemory';
 import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider';
 import { ThumbnailStoreType, useThumbnailStore } from '@stores/thumbnailStoreProvider';
 import { ThumbnailType } from '@type/thumbnail';
@@ -29,19 +30,11 @@ const ExperienceFilterPicker = () => {
     TranslationNamespace.CreativeLibrary,
   );
   const router = useRouter();
+  const { rememberUniverseId } = useWorkspaceUniverseMemory();
   const {
     classes: { experiencePicker },
   } = useExperienceFilterPickerStyles();
 
-  const campaignsIsLoading = useNewFlowStore(
-    (state: NewFlowStoreType) => state.campaignsState.isLoading,
-  );
-  const filterIsLoading = useNewFlowStore(
-    (state: NewFlowStoreType) => state.filteredIdsState.isLoading,
-  );
-  const summaryStatsIsLoading = useNewFlowStore(
-    (state: NewFlowStoreType) => state.summaryStatsState.isLoading,
-  );
   const {
     data: universes,
     isError: advertisedUniversesIsError,
@@ -60,13 +53,7 @@ const ExperienceFilterPicker = () => {
 
   const showNoEligibleUniversesHelperText =
     !isLoading && !advertisedUniversesIsError && universes.length === 0;
-  const isDisabled =
-    advertisedUniversesIsError ||
-    showNoEligibleUniversesHelperText ||
-    isLoading ||
-    campaignsIsLoading ||
-    filterIsLoading ||
-    summaryStatsIsLoading;
+  const isDisabled = advertisedUniversesIsError || showNoEligibleUniversesHelperText || isLoading;
   const showErrorHelperText = universePickerIsError || advertisedUniversesIsError;
 
   const universesById = useMemo(() => {
@@ -88,6 +75,8 @@ const ExperienceFilterPicker = () => {
 
   const handleUniverseChange = (universeObj: AdvertisedUniverse) => {
     handleUniversePickerChange(universeObj);
+    rememberUniverseId(universeObj.universe_id);
+
     const query = { ...router.query };
     if (universeObj.universe_id === 0) {
       delete query.universeId;
@@ -146,7 +135,7 @@ const ExperienceFilterPicker = () => {
     <AppTooltip
       position='top-center'
       title={advertisedUniversesIsError ? translateCampaign('Description.TryReloading') : ''}>
-      <div className={experiencePicker}>
+      <div className={`${experiencePicker} flex flex-col gap-small`}>
         <Autocomplete
           data-testid='universePickerAutocomplete'
           emptyState={translateReport('Description.NoResults')}
@@ -173,7 +162,7 @@ const ExperienceFilterPicker = () => {
         </Autocomplete>
         {showNoEligibleUniversesHelperText && (
           <p
-            className='text-body-small content-muted'
+            className='margin-[0px] text-body-small content-muted'
             data-testid='universePickerNoEligibleHelperText'>
             {translateCampaign('Heading.NoEligibleExperiencesFound')}
           </p>

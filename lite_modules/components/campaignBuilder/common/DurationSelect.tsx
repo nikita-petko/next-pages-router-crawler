@@ -1,5 +1,4 @@
-import { Badge } from '@rbx/foundation-ui';
-import { InputAdornment, MenuItem, Select, TextField } from '@rbx/ui';
+import { Badge, Dropdown, Menu, MenuItem, MenuSection, TextInput } from '@rbx/foundation-ui';
 import { useMemo } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { NumericFormat } from 'react-number-format';
@@ -7,14 +6,13 @@ import { NumericFormat } from 'react-number-format';
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
 import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
 import AppTooltip from '@components/common/AppTooltip';
+import FieldUnitAdornment from '@components/common/form/FieldUnitAdornment';
 import { ServerBudgetType } from '@constants/campaign';
 import {
   CONTINUOUS_VALUE,
   DefaultDuration,
   FlowTypes,
-  FORM_HELPER_TEXT_PROPS,
   FormField,
-  INPUT_LABEL_PROPS,
 } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
@@ -147,83 +145,85 @@ const DurationSelect = () => {
         <AppTooltip title={GetTooltipText()}>
           <div className={`text-body-large ${cx(formRow, halfWidth)}`}>
             {showSelect && (
-              <Select
-                className={cx({ [halfWidth]: isCustom })}
-                data-testid='duration-select'
-                disabled={isEditDisabled}
-                fullWidth
-                InputLabelProps={INPUT_LABEL_PROPS}
-                label={translate('Label.Duration')}
-                onChange={(e) => {
-                  logNativeClickEvent(EventName.DurationSelectChanged, {
-                    flowType,
-                    previousValue: value.toString(),
-                    value: e.target.value,
-                  });
-                  if (e.target.value === CUSTOM_VALUE) {
-                    setValue(FormField.CUSTOM_DURATION, true);
-                    // if changing from continuous to custom, set value to default duration
-                    const recommendedDuration =
-                      options.find(({ isRecommended }) => isRecommended)?.value || DefaultDuration;
-                    if (value === CONTINUOUS_VALUE) {
-                      onChange(
-                        recommendedDuration === CONTINUOUS_VALUE
-                          ? DefaultDuration
-                          : recommendedDuration,
-                      );
+              <div className={cx({ [halfWidth]: isCustom })} data-testid='duration-select'>
+                <Dropdown
+                  isDisabled={isEditDisabled}
+                  label={translate('Label.Duration')}
+                  onValueChange={(newValue) => {
+                    logNativeClickEvent(EventName.DurationSelectChanged, {
+                      flowType,
+                      previousValue: value.toString(),
+                      value: newValue,
+                    });
+                    if (newValue === CUSTOM_VALUE) {
+                      setValue(FormField.CUSTOM_DURATION, true);
+                      // if changing from continuous to custom, set value to default duration
+                      const recommendedDuration =
+                        options.find(({ isRecommended }) => isRecommended)?.value ||
+                        DefaultDuration;
+                      if (value === CONTINUOUS_VALUE) {
+                        onChange(
+                          recommendedDuration === CONTINUOUS_VALUE
+                            ? DefaultDuration
+                            : recommendedDuration,
+                        );
+                      }
+                    } else {
+                      onChange(newValue === CONTINUOUS_VALUE ? CONTINUOUS_VALUE : Number(newValue));
+                      setValue(FormField.CUSTOM_DURATION, false);
                     }
-                  } else {
-                    onChange(e);
-                    setValue(FormField.CUSTOM_DURATION, false);
-                  }
-                }}
-                size='medium'
-                value={(isCustom ? CUSTOM_VALUE : value) || CONTINUOUS_VALUE}
-                variant='outlined'>
-                {options.map(({ isRecommended, label, value: optionValue }) => (
-                  <MenuItem key={optionValue} value={optionValue}>
-                    <span className='inline-flex items-center gap-small'>
-                      {label}
-                      {isRecommended && <Badge label={translate('Label.Recommended')} />}
-                    </span>
-                  </MenuItem>
-                ))}
-              </Select>
+                  }}
+                  placeholder={translate('Label.Duration')}
+                  size='Medium'
+                  value={String((isCustom ? CUSTOM_VALUE : value) || CONTINUOUS_VALUE)}>
+                  <Menu>
+                    <MenuSection>
+                      {options.map(({ isRecommended, label, value: optionValue }) => (
+                        <MenuItem
+                          key={optionValue}
+                          title={label}
+                          trailing={
+                            isRecommended ? (
+                              <Badge label={translate('Label.Recommended')} />
+                            ) : undefined
+                          }
+                          value={String(optionValue)}
+                        />
+                      ))}
+                    </MenuSection>
+                  </Menu>
+                </Dropdown>
+              </div>
             )}
             {isCustom && (
-              <NumericFormat
-                allowNegative={false}
-                className={halfWidth}
-                color='primary'
-                customInput={TextField}
-                decimalScale={0}
-                disabled={isEditDisabled}
-                error={!!error}
-                fixedDecimalScale
-                FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                fullWidth
-                helperText={error?.message}
-                id='custom-duration'
-                InputLabelProps={INPUT_LABEL_PROPS}
-                InputProps={{
-                  endAdornment: <InputAdornment position='end'>{daysLabel}</InputAdornment>,
-                }}
-                isAllowed={({ floatValue }) => {
-                  if (floatValue === undefined) {
-                    return true;
-                  }
-                  return floatValue <= 999999;
-                }}
-                label={editMode ? translate('Label.Duration') : translate('Label.CustomDuration')}
-                margin='none'
-                onBlur={onBlur}
-                onValueChange={({ floatValue = NaN }) => {
-                  onChange(floatValue);
-                }}
-                thousandSeparator=','
-                thousandsGroupStyle='thousand'
-                value={value}
-              />
+              <div className={halfWidth}>
+                <NumericFormat
+                  allowNegative={false}
+                  className='width-full'
+                  customInput={TextInput}
+                  decimalScale={0}
+                  error={error?.message}
+                  fixedDecimalScale
+                  id='custom-duration'
+                  isAllowed={({ floatValue }) => {
+                    if (floatValue === undefined) {
+                      return true;
+                    }
+                    return floatValue <= 999999;
+                  }}
+                  isDisabled={isEditDisabled}
+                  label={editMode ? translate('Label.Duration') : translate('Label.CustomDuration')}
+                  onBlur={onBlur}
+                  onValueChange={({ floatValue = NaN }) => {
+                    onChange(floatValue);
+                  }}
+                  size='Medium'
+                  thousandSeparator=','
+                  thousandsGroupStyle='thousand'
+                  trailingIconNode={<FieldUnitAdornment>{daysLabel}</FieldUnitAdornment>}
+                  value={value}
+                />
+              </div>
             )}
           </div>
         </AppTooltip>

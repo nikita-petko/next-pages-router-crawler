@@ -58,6 +58,10 @@ const PaymentMethodDrawer = () => {
     userOver18 ? (initialPaymentTab ?? ADD_PAYMENT_TABS.CREDIT_CARD) : ADD_PAYMENT_TABS.ADS_CREDIT,
   );
   const hasLoggedStepStarted = useRef<boolean>(false);
+  const isAdCreditPurchaseOnly =
+    initialPaymentTab === ADD_PAYMENT_TABS.ADS_CREDIT &&
+    initialBalanceScope !== null &&
+    initialBalanceScope !== undefined;
 
   useEffect(() => {
     if (!isOpen) {
@@ -206,6 +210,7 @@ const PaymentMethodDrawer = () => {
             groupName={currentWorkspace?.creatorName}
             groupRobuxBalance={groupRobuxBalance}
             initialBalanceScope={initialBalanceScope ?? undefined}
+            isAdCreditPurchaseOnly={isAdCreditPurchaseOnly}
             isDrawer
             isUnlocked
             onCancel={handleClose}

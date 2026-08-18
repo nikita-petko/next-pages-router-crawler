@@ -14,6 +14,7 @@ import {
   listUniverseOptionsForAdIntegrations,
   SearchOwnedUniversesParams,
 } from '@services/ads/getUniversesService';
+import { useAppStore } from '@stores/appStoreProvider';
 import { useThumbnailStore } from '@stores/thumbnailStoreProvider';
 import {
   AdIntegrationCampaignDetailsFormValues,
@@ -229,11 +230,59 @@ export const useAdIntegrationCampaignStore = create<AdIntegrationCampaignStoreTy
           ),
         );
 
-        const flatCampaignList = campaignsByUniverse.flat();
+        // Multi-universe read is per-user, but campaigns are shared within a
+        // publisher. Only collapse the per-universe rows into a single
+        // multi-universe row when the flag is on; flag-off sessions keep the
+        // legacy one-row-per-fetched-universe behavior so a flag-on teammate's
+        // campaign can't change what a flag-off teammate sees.
+        const isMultiUniverseEnabled =
+          useAppStore.getState().appMetadataState?.data?.isMultiUniverseAdIntegrationsEnabled ??
+          false;
+
+        let campaignList: AdIntegrationCampaignListItem[];
+        if (!isMultiUniverseEnabled) {
+          campaignList = campaignsByUniverse.flat();
+        } else {
+          const campaignsById = new Map<string, AdIntegrationCampaignListItem>();
+          campaignsByUniverse.flat().forEach((campaign) => {
+            const existingCampaign = campaignsById.get(campaign.campaignId);
+            if (!existingCampaign) {
+              campaignsById.set(campaign.campaignId, campaign);
+              return;
+            }
+
+            campaignsById.set(campaign.campaignId, {
+              ...existingCampaign,
+              universeIds: Array.from(
+                new Set([
+                  ...(existingCampaign.universeIds ?? [existingCampaign.universeId]),
+                  ...(campaign.universeIds ?? [campaign.universeId]),
+                ]),
+              ),
+            });
+          });
+          campaignList = Array.from(campaignsById.values()).map((campaign) => {
+            const universeIds = campaign.universeIds ?? [campaign.universeId];
+            // Match the service's primary-universe resolution
+            // (`campaign.universeId ?? universeIds[0]`) so "primary universe"
+            // means the same thing in both places.
+            const primaryUniverseId = campaign.universeId ?? universeIds[0];
+
+            return {
+              ...campaign,
+              universeId: primaryUniverseId,
+              universeIds,
+              universeName: universeNameById.get(primaryUniverseId) ?? campaign.universeName,
+              universeNames: universeIds.map(
+                (universeId) => universeNameById.get(universeId) ?? '',
+              ),
+            };
+          });
+        }
 
         set((draft) => {
           draft.campaignList = {
-            data: flatCampaignList,
+            data: campaignList,
             isError: false,
             isLoading: false,
           };

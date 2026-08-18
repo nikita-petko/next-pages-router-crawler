@@ -38,6 +38,7 @@ const analyticsQueryGatewayApi = new AnalyticsQueryGatewayAPIApi(
 type ReportingEntityType = 'ad' | 'campaign';
 
 interface BaseReportingQueryContext {
+  abortSignal?: AbortSignal;
   customEndDate?: string;
   customStartDate?: string;
   entityIds?: string[];
@@ -80,6 +81,7 @@ const queryMetric = async (
   context: ReportingQueryContext,
   query: MetricQuery,
   pollingOptions: RAQIClientOptions,
+  abortSignal?: AbortSignal,
 ): Promise<QueryResult> => {
   const queryContext =
     !context.entityType && query.target === 'spendMicroUsd'
@@ -99,7 +101,9 @@ const queryMetric = async (
   return pollAnalyticsOperation(
     async () => {
       const { operation } =
-        await analyticsQueryGatewayApi.v1MetricsResourceResourceTypeIdResourceIdPost(request);
+        await analyticsQueryGatewayApi.v1MetricsResourceResourceTypeIdResourceIdPost(request, {
+          signal: abortSignal,
+        });
       if (!operation) {
         throw new Error('analytics-query-gateway: no operation in query response');
       }
@@ -235,6 +239,7 @@ export const buildMetricQueries = (context: ReportingQueryContext): MetricQuery[
 const fetchCaaSStats = async (
   context: ReportingQueryContext,
   pollingOptions: RAQIClientOptions,
+  abortSignal?: AbortSignal,
 ): Promise<Record<string, CaaSReportingStatsResult>> => {
   const resultIds = context.entityIds?.length ? context.entityIds : ['summary'];
   const results = Object.fromEntries(resultIds.map((id) => [id, createResult()]));
@@ -244,8 +249,12 @@ const fetchCaaSStats = async (
       query,
       totals:
         query.metric === 'roas'
-          ? aggregateDirectMetricQueryResult(await queryMetric(context, query, pollingOptions))
-          : aggregateReportingQueryResult(await queryMetric(context, query, pollingOptions)),
+          ? aggregateDirectMetricQueryResult(
+              await queryMetric(context, query, pollingOptions, abortSignal),
+            )
+          : aggregateReportingQueryResult(
+              await queryMetric(context, query, pollingOptions, abortSignal),
+            ),
     })),
   );
 
@@ -288,7 +297,8 @@ const getCaaSReportingStats = (
   context: ReportingQueryContext,
   pollingOptions: RAQIClientOptions = ANALYTICS_POLLING_DEFAULTS,
 ): Promise<Record<string, CaaSReportingStatsResult>> => {
-  const cacheKey = JSON.stringify(context);
+  const { abortSignal, ...queryContext } = context;
+  const cacheKey = JSON.stringify(queryContext);
   const cached = resultCache.get(cacheKey);
   if (cached) {
     return cached;
@@ -299,7 +309,7 @@ const getCaaSReportingStats = (
       resultCache.delete(oldestCacheKey);
     }
   }
-  const request = fetchCaaSStats(context, pollingOptions)
+  const request = fetchCaaSStats(queryContext, pollingOptions, abortSignal)
     .then((results) => {
       const hasQueryFailure = Object.values(results).some((result) =>
         result.failedMetrics.some((metric) => !NON_QUERYABLE_METRICS.has(metric)),

@@ -1,7 +1,6 @@
-import { Button, Checkbox, Link, ProgressCircle } from '@rbx/foundation-ui';
-import { Autocomplete, FormLabel, TextField } from '@rbx/ui';
+import { Button, Link, ProgressCircle } from '@rbx/foundation-ui';
 import { AxiosError } from 'axios';
-import { type ReactElement, useEffect, useId, useState } from 'react';
+import { type ReactElement, useEffect, useState } from 'react';
 import { Controller, FormProvider } from 'react-hook-form';
 
 import { EventName, logNativeImpressionEvent } from '@clients/unifiedLogger';
@@ -10,6 +9,7 @@ import { openDialog } from '@components/common/dialog/actions';
 import BaseDialog from '@components/common/dialog/BaseDialog';
 import { openErrorDialogWithMessage } from '@components/common/dialog/errorDialog';
 import type { BaseInjectedDialogProps } from '@components/common/dialog/types';
+import TitleValueAutocomplete from '@components/common/form/TitleValueAutocomplete';
 import { FormFields } from '@constants/account';
 import { OrganizationType } from '@constants/app';
 import ErrorCodes from '@constants/errorCodes';
@@ -44,8 +44,6 @@ const AdAccountAutoCreateDialog = ({
   const { translate: translateAccount, translateHTML: translateAccountHTML } =
     useNamespacedTranslation(TranslationNamespace.Account);
   const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
-  const termsLabelId = useId();
-  const termsCheckboxId = useId();
 
   const currentUser = useAppStore((state: AppStoreType) => state.appData.currentUser);
   const setAdAccountId = useAppStore((state: AppStoreType) => state.setAdAccountId);
@@ -86,7 +84,7 @@ const AdAccountAutoCreateDialog = ({
       [FormFields.LAST_NAME]: '',
       [FormFields.NICKNAME]: currentUser?.name || '',
       [FormFields.TAX_ID]: '',
-      [FormFields.TERMS_CHECKBOX]: false,
+      [FormFields.TERMS_CHECKBOX]: true,
       [FormFields.TIME_ZONE]: localizedDefaultTimeZone,
       [FormFields.TYPE]: OrganizationType.ORGANIZATION_TYPE_INDIVIDUAL,
     },
@@ -142,7 +140,7 @@ const AdAccountAutoCreateDialog = ({
                 time_zone: data[FormFields.TIME_ZONE].value,
                 type: OrganizationType.ORGANIZATION_TYPE_INDIVIDUAL,
               },
-              signed_terms_of_service: data[FormFields.TERMS_CHECKBOX],
+              signed_terms_of_service: true,
             },
             groupId !== undefined ? { groupId } : undefined,
           );
@@ -220,73 +218,36 @@ const AdAccountAutoCreateDialog = ({
               control={control}
               name={FormFields.TIME_ZONE}
               render={({ field }) => (
-                <Autocomplete
-                  disableClearable
-                  getOptionLabel={(option) => (option && option.title) || ''}
-                  id={FormFields.TIME_ZONE}
-                  onChange={(_event, timezoneObj) => handleTimeZoneChange(timezoneObj)}
+                <TitleValueAutocomplete
+                  dataTestId={FormFields.TIME_ZONE}
+                  errorMessage={errors[FormFields.TIME_ZONE]?.message}
+                  helperText={translateAccount('Description.TimezoneCannotUpdate')}
+                  label={translateAccount('Label.Timezone')}
+                  onBlur={field.onBlur}
+                  onChange={handleTimeZoneChange}
                   options={localizedTimezones}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      error={Boolean(errors[FormFields.TIME_ZONE])}
-                      helperText={
-                        errors[FormFields.TIME_ZONE]?.message ||
-                        translateAccount('Description.TimezoneCannotUpdate')
-                      }
-                      label={translateAccount('Label.Timezone')}
-                      name={FormFields.TIME_ZONE}
-                      onBlur={field.onBlur}
-                    />
-                  )}
                   value={field.value}
                 />
               )}
             />
 
-            <Controller
-              control={control}
-              name={FormFields.TERMS_CHECKBOX}
-              render={({ field }) => (
-                <>
-                  <div className='flex items-start gap-small'>
-                    <Checkbox
-                      aria-labelledby={termsLabelId}
-                      id={termsCheckboxId}
-                      isChecked={field.value === true}
-                      isDisabled={isPending}
-                      name={FormFields.TERMS_CHECKBOX}
-                      onCheckedChange={(checked) => field.onChange(checked === true)}
-                      placement='Start'
-                      size='Small'
-                    />
-                    <label
-                      className='text-body-large cursor-pointer'
-                      htmlFor={termsCheckboxId}
-                      id={termsLabelId}>
-                      {translateAccountHTML('Description.TermsAgreementV2', [
-                        {
-                          closing: 'linkEnd',
-                          content: (chunks) => (
-                            <Link
-                              href='https://en.help.roblox.com/hc/articles/15494846263060'
-                              rel='noopener noreferrer'
-                              target='_blank'
-                              underline='always'>
-                              {chunks}
-                            </Link>
-                          ),
-                          opening: 'linkStart',
-                        },
-                      ])}
-                    </label>
-                  </div>
-                  {errors[FormFields.TERMS_CHECKBOX] && (
-                    <FormLabel error>{errors[FormFields.TERMS_CHECKBOX]?.message}</FormLabel>
-                  )}
-                </>
-              )}
-            />
+            <div className='text-body-large'>
+              {translateAccountHTML('Description.TermsAgreementV2', [
+                {
+                  closing: 'linkEnd',
+                  content: (chunks) => (
+                    <Link
+                      href='https://en.help.roblox.com/hc/articles/15494846263060'
+                      rel='noopener noreferrer'
+                      target='_blank'
+                      underline='always'>
+                      {chunks}
+                    </Link>
+                  ),
+                  opening: 'linkStart',
+                },
+              ])}
+            </div>
           </div>
         </FormProvider>
       }

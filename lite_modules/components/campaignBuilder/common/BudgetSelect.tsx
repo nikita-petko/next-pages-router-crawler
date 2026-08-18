@@ -1,5 +1,4 @@
-import { Badge } from '@rbx/foundation-ui';
-import { InputAdornment, MenuItem, Select, TextField } from '@rbx/ui';
+import { Badge, Dropdown, Menu, MenuItem, MenuSection, TextInput } from '@rbx/foundation-ui';
 import { useMemo } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { NumericFormat } from 'react-number-format';
@@ -7,13 +6,9 @@ import { NumericFormat } from 'react-number-format';
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
 import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
 import AppTooltip from '@components/common/AppTooltip';
+import FieldUnitAdornment from '@components/common/form/FieldUnitAdornment';
 import { ServerBudgetType } from '@constants/campaign';
-import {
-  FlowTypes,
-  FORM_HELPER_TEXT_PROPS,
-  FormField,
-  INPUT_LABEL_PROPS,
-} from '@constants/campaignBuilder';
+import { FlowTypes, FormField } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -132,75 +127,77 @@ const BudgetSelect = ({ selectedLabel, unit }: BudgetSelectProps) => {
         <AppTooltip title={getTooltipTitle()}>
           <div className={`text-body-large ${cx(formRow, fullWidth)}`}>
             {editMode ? null : (
-              <Select
-                className={cx({ [halfWidth]: isCustom })}
-                data-testid='budget-select'
-                fullWidth
-                InputLabelProps={INPUT_LABEL_PROPS}
-                label={selectedLabel}
-                onChange={(e) => {
-                  logNativeClickEvent(EventName.BudgetSelectChanged, {
-                    flowType,
-                    previousValue: value.toString(),
-                    value: e.target.value,
-                  });
-                  if (e.target.value === CUSTOM_VALUE) {
-                    setValue(FormField.CUSTOM_BUDGET, true);
-                  } else {
-                    onChange(e);
-                    setValue(FormField.CUSTOM_BUDGET, false);
-                  }
-                }}
-                size='medium'
-                value={isCustom ? CUSTOM_VALUE : value}
-                variant='outlined'>
-                {options.map(({ isRecommended, label, value: optionValue }) => (
-                  <MenuItem key={optionValue} value={optionValue}>
-                    <span className='inline-flex items-center gap-small'>
-                      {label}
-                      {isRecommended && <Badge label={translate('Label.Recommended')} />}
-                    </span>
-                  </MenuItem>
-                ))}
-              </Select>
+              <div className={cx({ [halfWidth]: isCustom })} data-testid='budget-select'>
+                <Dropdown
+                  label={selectedLabel}
+                  onValueChange={(newValue) => {
+                    logNativeClickEvent(EventName.BudgetSelectChanged, {
+                      flowType,
+                      previousValue: value.toString(),
+                      value: newValue,
+                    });
+                    if (newValue === CUSTOM_VALUE) {
+                      setValue(FormField.CUSTOM_BUDGET, true);
+                    } else {
+                      onChange(Number(newValue));
+                      setValue(FormField.CUSTOM_BUDGET, false);
+                    }
+                  }}
+                  placeholder={selectedLabel}
+                  size='Medium'
+                  value={isCustom ? CUSTOM_VALUE : String(value)}>
+                  <Menu>
+                    <MenuSection>
+                      {options.map(({ isRecommended, label, value: optionValue }) => (
+                        <MenuItem
+                          key={optionValue}
+                          title={label}
+                          trailing={
+                            isRecommended ? (
+                              <Badge label={translate('Label.Recommended')} />
+                            ) : undefined
+                          }
+                          value={String(optionValue)}
+                        />
+                      ))}
+                    </MenuSection>
+                  </Menu>
+                </Dropdown>
+              </div>
             )}
             {(isCustom || editMode) && (
-              <NumericFormat
-                allowNegative={false}
-                className={halfWidth}
-                color='primary'
-                customInput={TextField}
-                data-test-id='custom-budget-input'
-                decimalScale={2}
-                disabled={!!IsEditCampaignDisabled(flowType, campaignStatus)}
-                error={!!error}
-                fixedDecimalScale
-                FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                fullWidth
-                helperText={
-                  error?.message ||
-                  (isPendingDecrease &&
-                    campaignIsLive &&
-                    translate('Description.BudgetDecreasesNextDay')) ||
-                  (!editMode &&
-                    !isExtendToOffPlatformEnabled &&
-                    translate('Description.CustomBudgetWarning'))
-                }
-                id='custom-budget'
-                InputLabelProps={INPUT_LABEL_PROPS}
-                InputProps={{
-                  endAdornment: <InputAdornment position='end'>{unit}</InputAdornment>,
-                }}
-                label={editMode ? translate('Label.Budget') : translate('Label.CustomBudget')}
-                margin='none'
-                onBlur={onBlur}
-                onValueChange={({ floatValue = NaN }) => {
-                  onChange(floatValue);
-                }}
-                thousandSeparator=','
-                thousandsGroupStyle='thousand'
-                value={value}
-              />
+              <div className={halfWidth}>
+                <NumericFormat
+                  allowNegative={false}
+                  className='width-full'
+                  customInput={TextInput}
+                  data-test-id='custom-budget-input'
+                  decimalScale={2}
+                  error={error?.message}
+                  fixedDecimalScale
+                  helperText={
+                    (isPendingDecrease &&
+                      campaignIsLive &&
+                      translate('Description.BudgetDecreasesNextDay')) ||
+                    (!editMode &&
+                      !isExtendToOffPlatformEnabled &&
+                      translate('Description.CustomBudgetWarning')) ||
+                    undefined
+                  }
+                  id='custom-budget'
+                  isDisabled={!!IsEditCampaignDisabled(flowType, campaignStatus)}
+                  label={editMode ? translate('Label.Budget') : translate('Label.CustomBudget')}
+                  onBlur={onBlur}
+                  onValueChange={({ floatValue = NaN }) => {
+                    onChange(floatValue);
+                  }}
+                  size='Medium'
+                  thousandSeparator=','
+                  thousandsGroupStyle='thousand'
+                  trailingIconNode={<FieldUnitAdornment>{unit}</FieldUnitAdornment>}
+                  value={value}
+                />
+              </div>
             )}
           </div>
         </AppTooltip>

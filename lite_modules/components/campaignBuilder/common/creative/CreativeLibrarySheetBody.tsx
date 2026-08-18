@@ -37,6 +37,7 @@ import { FormField } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import useUniverseOptionsForAdCreation from '@hooks/useUniverseOptionsForAdCreation';
 import { useAiCreateSessionStore } from '@stores/aiCreateSessionStoreProvider';
 import type { AspectRatioValidation } from '@type/fileUpload';
 import { countSelectedCreatives } from '@utils/campaignBuilder';
@@ -56,8 +57,11 @@ interface CreativeLibrarySheetBodyProps {
    * by the server).
    */
   aspectRatioValidation?: AspectRatioValidation;
-  /** THUMBNAILS or LOGO_ASSETS — picks which form field both tabs write to. */
-  formField: typeof FormField.THUMBNAILS | typeof FormField.LOGO_ASSETS;
+  /** Picks which form field both tabs write to. */
+  formField:
+    | typeof FormField.THUMBNAILS
+    | typeof FormField.LOGO_ASSETS
+    | typeof FormField.ATTRIBUTION_THUMBNAILS;
   /**
    * At-capacity flag. When true:
    *  - The Upload tab trigger is disabled and shows a lock affordance.
@@ -84,7 +88,7 @@ interface CreativeLibrarySheetBodyProps {
    */
   showActiveTab?: boolean;
   /** Used to disambiguate test ids (e.g. 'thumbnail' vs 'logo'). */
-  testIdPrefix: 'thumbnail' | 'logo';
+  testIdPrefix: 'thumbnail' | 'logo' | 'attribution-thumbnail';
   universeId?: number;
 }
 
@@ -127,6 +131,7 @@ const CreativeLibraryScrollContent = ({
 }: CreativeLibraryScrollContentProps) => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.CreativeLibrary);
   const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
+  const { groupId } = useUniverseOptionsForAdCreation({ enabled: false });
   const isUploadDrawerBannerDismissed = useAiCreateSessionStore(
     (state) => state.isUploadDrawerBannerDismissed,
   );
@@ -255,6 +260,7 @@ const CreativeLibraryScrollContent = ({
         <FoundationTabsContent value={DrawerTab.IMPORT}>
           <CreativeImportTab
             formField={formField}
+            groupId={groupId}
             maxAllowedSelections={maxAllowedSelections}
             onFooterActionChange={onImportFooterActionChange}
             onPendingDeltaChange={handleImportPendingDeltaChange}
@@ -288,6 +294,7 @@ const CreativeLibraryScrollContent = ({
             }
             deferRegisteredUntilAdd
             externalCommittedCount={externalCommittedCount}
+            groupId={groupId}
             isCampaignCreativeSource
             isSelectMediaDisabled={isSelectMediaDisabled}
             maxFiles={maxUploadFiles}

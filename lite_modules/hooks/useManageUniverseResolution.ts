@@ -5,16 +5,15 @@ import { getSimplifiedCampaign } from '@services/ads/getEntitiesService';
 import type { FetchInitialDataOptions } from '@stores/newFlowStoreProvider';
 import type { AdvertisedUniverse } from '@type/universe';
 import { CaptureException } from '@utils/error';
+import {
+  getRememberedWorkspaceUniverseId,
+  type WorkspaceIdentity,
+} from '@utils/workspaceUniverseStorage';
 
 interface CampaignUniverseResolutionState {
   campaignId?: string;
   isLoading: boolean;
   universeId?: number;
-}
-
-interface ManageWorkspace {
-  creatorId: number;
-  creatorType: 'Group' | 'User';
 }
 
 interface UseManageUniverseResolutionParams {
@@ -36,7 +35,7 @@ interface UseManageUniverseResolutionParams {
   selectedUniverseId: number;
   shouldRequireNewFlowCampaign: boolean;
   shouldUseWorkspaceUniverseFiltering: boolean;
-  workspace?: ManageWorkspace;
+  workspace?: WorkspaceIdentity;
 }
 
 const getStringQueryParam = (queryParam: string | string[] | undefined): string | undefined =>
@@ -90,11 +89,19 @@ const useManageUniverseResolution = ({
   const isResolvingInitialUniverseId =
     shouldResolveCampaignUniverseId &&
     (campaignUniverseResolution.campaignId !== campaignId || campaignUniverseResolution.isLoading);
+  const rememberedUniverseId = useMemo(
+    () =>
+      shouldUseWorkspaceUniverseFiltering && workspace
+        ? getRememberedWorkspaceUniverseId(workspace)
+        : undefined,
+    [shouldUseWorkspaceUniverseFiltering, workspace],
+  );
   const resolvedInitialUniverseId =
     initialUniverseId ??
     (campaignUniverseResolution.campaignId === campaignId
       ? campaignUniverseResolution.universeId
-      : undefined);
+      : undefined) ??
+    rememberedUniverseId;
   const workspaceIdentity = useMemo(
     () =>
       shouldUseWorkspaceUniverseFiltering && workspace
@@ -250,10 +257,17 @@ const useManageUniverseResolution = ({
     workspaceIdentity,
   ]);
 
+  // Mirror the selected universe into the URL so a refresh or shared link keeps it.
   useEffect(() => {
     if (
       !router.isReady ||
       !isGroupWorkspaceView ||
+      // Only mirror a selection produced by this mount's own initial fetch. The reporting
+      // store outlives client-side navigation, so until that fetch runs `selectedUniverseId`
+      // is still the previous visit's selection. Stamping it into the URL would outrank the
+      // remembered universe and mark the workspace as already fetched, stranding the page on
+      // the stale selection.
+      lastFetchedWorkspaceKeyRef.current === undefined ||
       initialUniverseId !== undefined ||
       advertisedUniversesIsLoading ||
       selectedUniverseId === 0 ||

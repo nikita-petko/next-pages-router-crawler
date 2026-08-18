@@ -54,25 +54,24 @@ const CreateAdIntegrationCampaignDetails = () => {
     return universesCanAdvertise.filter((universe) => eligibleIdSet.has(universe.universe_id));
   }, [publisherEligibleUniverseIds, universesCanAdvertise]);
 
-  const defaultValues = useMemo<AdIntegrationCampaignDetailsFormValues>(
-    () => ({
+  const defaultValues = useMemo<AdIntegrationCampaignDetailsFormValues>(() => {
+    const firstEligibleUniverseId = eligibleUniverses[0]?.universe_id;
+    return {
       adsCategory: AdsCategoryOtherValue,
       advertiserName: '',
       campaignName: '',
       endDate: '',
       endTime: '',
-      // The multi-experience picker starts with nothing selected, so leave the
-      // singular form value empty (schema requires a positive id, blocking
-      // submission until the user picks a game). The original single-select
-      // flow keeps pre-selecting the first eligible experience.
-      experience: isMultiExperienceEnabled ? 0 : (eligibleUniverses[0]?.universe_id ?? 0),
+      experienceIds:
+        isMultiExperienceEnabled || firstEligibleUniverseId === undefined
+          ? []
+          : [firstEligibleUniverseId],
       hasRewardedPlacements: false,
       startDate: '',
       startTime: '',
       termsAndAdsStandardsAcknowledgement: false,
-    }),
-    [eligibleUniverses, isMultiExperienceEnabled],
-  );
+    };
+  }, [eligibleUniverses, isMultiExperienceEnabled]);
 
   useEffect(() => {
     if (shouldUseWorkspaceUniverseFiltering && isWorkspaceLoading) {

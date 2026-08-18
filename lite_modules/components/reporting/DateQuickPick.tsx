@@ -14,7 +14,7 @@ import DateFilteringTimePeriod from '@constants/dateFilteringTimePeriod';
 import {
   dateFilteringTimePeriodToPreset,
   dateRangePresetToBackend,
-  WACAM_DATE_RANGE_PRESETS,
+  LEGACY_DATE_RANGE_PRESETS,
 } from '@constants/dateRangePresetMapping';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -105,7 +105,7 @@ const DateQuickPick = () => {
   });
 
   const presetLabels = useMemo<PopoverDateRangeControlProps['presetLabels']>(() => {
-    const entries = WACAM_DATE_RANGE_PRESETS.map(
+    const entries = LEGACY_DATE_RANGE_PRESETS.map(
       (preset) => [preset, PRESET_LABEL_KEYS[preset]] as const,
     )
       .filter((entry): entry is [DateRangePreset, string] => entry[1] !== undefined)
@@ -209,7 +209,7 @@ const DateQuickPick = () => {
           onCustomDateRangeChangeConfirmed={handleCustomConfirmed}
           pickerLabels={pickerLabels}
           presetLabels={presetLabels}
-          presetOptions={WACAM_DATE_RANGE_PRESETS}
+          presetOptions={LEGACY_DATE_RANGE_PRESETS}
           startDate={displayStartDate}
         />
       </div>

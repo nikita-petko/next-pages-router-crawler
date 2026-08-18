@@ -153,6 +153,21 @@ export const useTransformFormToCampaign = ({
     const clickDestination = data[FormField.CLICK_DESTINATION]?.trim();
     const clickoutUrl = isVerticalFormat && clickDestination ? clickDestination : undefined;
 
+    // The attribution thumbnail only renders in the clickout ad's attribution
+    // bar, and the backend rejects it as a forbidden field on 2x1 image ads, so
+    // it ships under exactly the same gate as the clickout URL.
+    const selectedAttributionThumbnail = data[FormField.ATTRIBUTION_THUMBNAILS].find(
+      ({ isSelected }) => isSelected,
+    )?.assetId;
+    const attributionThumbnailAssetId =
+      clickoutUrl !== undefined ? selectedAttributionThumbnail : undefined;
+
+    // The CTA button is a 1x2-only choice; 2x1 ads take their button text from
+    // the max-reach tile-variant experiment, so sending it there would be a
+    // forbidden field. Only the format gates it — unlike the attribution
+    // thumbnail, a 1x2 ad without a clickout URL still renders a CTA.
+    const ctaButtonType = isVerticalFormat ? data[FormField.CTA_BUTTON_TYPE] : undefined;
+
     // 1x2 vertical reach is a video ad: the primary asset is the uploaded video
     // (asset_type VIDEO) and the selected image is its poster/fallback
     // (thumbnail_asset_id). Cap to a single poster so we do not emit N ads
@@ -174,7 +189,11 @@ export const useTransformFormToCampaign = ({
             thumbnail_asset_id: assetId,
           }),
           headline: data[FormField.HEADLINE] || '',
+          ...(attributionThumbnailAssetId !== undefined && {
+            attribution_thumbnail_asset_id: attributionThumbnailAssetId,
+          }),
           ...(clickoutUrl !== undefined && { clickout_url: clickoutUrl }),
+          ...(ctaButtonType !== undefined && { cta_button_type: ctaButtonType }),
           ...(selectedLogo !== undefined && { logo_asset_id: selectedLogo }),
           ...(logoAspectWidth !== undefined && { logo_asset_aspect_width: logoAspectWidth }),
           ...(data[FormField.SUBTITLE] !== undefined && { subtitle: data[FormField.SUBTITLE] }),

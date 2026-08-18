@@ -1,8 +1,7 @@
-import { ProgressCircle } from '@rbx/foundation-ui';
-import { Autocomplete, FormControl, TextField } from '@rbx/ui';
+import { Autocomplete, AutocompleteOption, ProgressCircle } from '@rbx/foundation-ui';
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Controller, useFormContext, UseFormReturn } from 'react-hook-form';
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Controller, useFormContext, UseFormReturn, useWatch } from 'react-hook-form';
 
 import { EventName, logNativeClickEvent, logNativeImpressionEvent } from '@clients/unifiedLogger';
 import AppTooltip from '@components/common/AppTooltip';
@@ -12,9 +11,7 @@ import {
   AllDetailedTargetingMatchTypes,
   experienceNotFoundOption,
   FlowTypes,
-  FORM_HELPER_TEXT_PROPS,
   FormField,
-  INPUT_LABEL_PROPS,
   noExperiencesOption,
 } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
@@ -22,6 +19,7 @@ import { PUBLIC_UNIVERSE_PRIVACY_TYPE } from '@constants/universeConstants';
 import type { FormType as AdvancedTargetingFormType } from '@hooks/campaignBuilder/advancedTargetingFormSchema';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import useWorkspaceUniverseMemory from '@hooks/useWorkspaceUniverseMemory';
 import { getUniverses } from '@services/ads/getUniversesService';
 import { useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
@@ -39,18 +37,14 @@ const TooltipTextMapping: Record<string, string> = {
 };
 
 const maybeGetUniverseFilterThumbnail = (
-  universeFilter: UniverseShapeType,
+  universeFilter: Pick<UniverseShapeType, 'universe_id'>,
   thumbnailsByUniverseId: Record<number, EmptyRequestStateType<ThumbnailType>>,
 ) =>
   universeFilter && universeFilter.universe_id !== 0 ? (
     <UniverseFilterAvatar
       src={thumbnailsByUniverseId[universeFilter.universe_id]?.data?.imageUrl}
     />
-  ) : null;
-
-interface CreatableUniverseOption extends UniverseShapeType {
-  inputValue?: string;
-}
+  ) : undefined;
 
 interface ExperienceSelectProps {
   advancedTargetingFormMethods: UseFormReturn<AdvancedTargetingFormType>;
@@ -60,6 +54,7 @@ const ExperienceSelect = ({ advancedTargetingFormMethods }: ExperienceSelectProp
   const { translate } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
   const { control, getValues, setValue } = useFormContext<FormType>();
+  const { rememberUniverseId } = useWorkspaceUniverseMemory();
   const { fetchInitialAudienceEstimates, flowType, getAudienceEstimate } =
     useCampaignBuilderStore();
   const editMode = flowType === FlowTypes.EDIT;
@@ -237,6 +232,62 @@ const ExperienceSelect = ({ advancedTargetingFormMethods }: ExperienceSelectProp
   );
   const universeOptions = hasEligibleUniverses ? universes : [noEligibleUniverseOption];
 
+  const experienceValue = useWatch<FormType, typeof FormField.EXPERIENCE>({
+    control,
+    name: FormField.EXPERIENCE,
+  });
+  const selectedUniverse = hasEligibleUniverses ? experienceValue : noEligibleUniverseOption;
+
+  const [inputValue, setInputValue] = useState<string>(selectedUniverse.universe_name);
+
+  // Resync the text whenever the selection changes outside the field (universes
+  // finishing loading, a bypass id resolving) so a stale name is never shown.
+  useEffect(() => {
+    setInputValue(selectedUniverse.universe_name);
+  }, [selectedUniverse.universe_id, selectedUniverse.universe_name]);
+
+  // MUI filtered options internally from `getOptionLabel`; Foundation expects the
+  // caller to render the filtered set. Text equal to the current selection shows
+  // the full list so clicking into the field does not narrow it to one row.
+  const trimmedInput = inputValue.trim();
+  const query = trimmedInput.toLocaleLowerCase();
+  const visibleOptions =
+    !query || query === selectedUniverse.universe_name.toLocaleLowerCase()
+      ? universeOptions
+      : universeOptions.filter((option) =>
+          option.universe_name.toLocaleLowerCase().includes(query),
+        );
+
+  // Foundation's Autocomplete has no `freeSolo`, so the "advertise a universe you
+  // do not own" affordance is a consumer-rendered extra option: a positive
+  // integer that is not already an eligible universe becomes a selectable row
+  // whose value is the typed id, routed into the resolution flow on select.
+  const creatableUniverseId =
+    isUniverseOwnershipBypassEnabled &&
+    /^\d+$/.test(trimmedInput) &&
+    Number(trimmedInput) > 0 &&
+    !universeOptions.some((option) => String(option.universe_id) === trimmedInput)
+      ? trimmedInput
+      : undefined;
+
+  const optionNodes: ReactNode[] = visibleOptions.map((option) => (
+    <AutocompleteOption
+      key={option.universe_id}
+      leading={maybeGetUniverseFilterThumbnail(option, thumbnailsByUniverseId)}
+      title={option.universe_name}
+      value={String(option.universe_id)}
+    />
+  ));
+  if (creatableUniverseId) {
+    optionNodes.push(
+      <AutocompleteOption
+        key={`add-universe-${creatableUniverseId}`}
+        title={translate('Action.AddUniverseId', { universeId: creatableUniverseId })}
+        value={creatableUniverseId}
+      />,
+    );
+  }
+
   const GetTooltipText = () => {
     if (fetchUniversesCanAdvertiseIsError) {
       return translate('Description.TryReloading');
@@ -252,165 +303,115 @@ const ExperienceSelect = ({ advancedTargetingFormMethods }: ExperienceSelectProp
     return text ? translate(text) : '';
   };
 
+  const hasFieldError = fetchUniversesCanAdvertiseIsError || isResolutionErrorState;
+  const fieldMessage = fetchUniversesCanAdvertiseIsError
+    ? translate('Description.FailedToFetch')
+    : getResolutionHelperText();
+
   return (
     <Controller
       control={control}
       name={FormField.EXPERIENCE}
-      render={({ field: { onChange, value, ...rest } }) => (
+      render={({ field: { onChange } }) => (
         <AppTooltip title={GetTooltipText()}>
-          <Autocomplete
-            {...rest}
-            {...(isUniverseOwnershipBypassEnabled && {
-              clearOnBlur: true,
-              handleHomeEndKeys: true,
-              selectOnFocus: true,
-            })}
-            data-testid='experience-autocomplete'
-            disableClearable
-            disabled={
-              fetchUniversesCanAdvertiseIsError ||
-              fetchUniversesCanAdvertiseIsLoading ||
-              !hasEligibleUniverses ||
-              editMode ||
-              cloneMode
-            }
-            filterOptions={(options, params) => {
-              const inputLower = params.inputValue.toLowerCase();
-              const filtered = options.filter((option) =>
-                option.universe_name.toLowerCase().includes(inputLower),
-              );
-              const trimmed = params.inputValue.trim();
-              if (
-                isUniverseOwnershipBypassEnabled &&
-                trimmed &&
-                /^\d+$/.test(trimmed) &&
-                Number(trimmed) > 0
-              ) {
-                filtered.push({
-                  inputValue: trimmed,
-                  privacy_type: '',
-                  root_place_id: 0,
-                  universe_id: 0,
-                  universe_name: translate('Action.AddUniverseId', {
-                    universeId: trimmed,
-                  }),
-                } as UniverseShapeType);
+          <div className='width-full'>
+            <Autocomplete
+              data-testid='experience-autocomplete'
+              error={hasFieldError ? fieldMessage : undefined}
+              hasError={hasFieldError}
+              helperText={hasFieldError ? undefined : fieldMessage || undefined}
+              inputValue={inputValue}
+              isDisabled={
+                fetchUniversesCanAdvertiseIsError ||
+                fetchUniversesCanAdvertiseIsLoading ||
+                !hasEligibleUniverses ||
+                editMode ||
+                cloneMode
               }
-              return filtered;
-            }}
-            freeSolo={isUniverseOwnershipBypassEnabled}
-            getOptionLabel={(option) => {
-              if (typeof option === 'string') {
-                return option;
-              }
-              return option.universe_name;
-            }}
-            id='universe-filter-picker'
-            isOptionEqualToValue={(option, selectedValue) =>
-              typeof selectedValue !== 'string' && option.universe_id === selectedValue.universe_id
-            }
-            onChange={(_event, universeObj) => {
-              if (!universeObj || typeof universeObj === 'string') {
-                return;
-              }
-
-              const creatableOption = universeObj as CreatableUniverseOption;
-              if (creatableOption.inputValue) {
-                const targetId = Number(creatableOption.inputValue);
-                setResolutionAttempt((prev) => prev + 1);
-                setPendingUniverseId(targetId);
-                onChange({
-                  privacy_type: '',
-                  root_place_id: 0,
-                  universe_id: targetId,
-                  universe_name: creatableOption.inputValue,
-                } as UniverseShapeType);
-                return;
-              }
-
-              setPendingUniverseId(null);
-
-              const chosenOptionIndex = universes.findIndex(
-                (universe) => universe.universe_id === universeObj.universe_id,
-              );
-
-              logNativeClickEvent(EventName.ExperienceChanged, {
-                chosenOptionPosition: chosenOptionIndex.toString(),
-                flowType,
-                optionsLength: universes.length.toString(),
-                previousValue: value.universe_id.toString(),
-                value: universeObj.universe_id.toString(),
-              });
-
-              if (value.universe_id === universeObj.universe_id) {
-                return;
-              }
-
-              onChange(universeObj);
-
-              advancedTargetingFormMethods.setValue(
-                AdvancedTargetingFormField.UNIVERSE,
-                universeObj as UniverseShapeType,
-              );
-              fetchInitialAudienceEstimates({
-                detailedTargetingMatchTypes: AllDetailedTargetingMatchTypes,
-                universeId: universeObj.universe_id,
-              });
-              ResetAdvancedTargetingForm({
-                getAudienceEstimate,
-                getValues: advancedTargetingFormMethods.getValues,
-                reset: advancedTargetingFormMethods.reset,
-                setValue: advancedTargetingFormMethods.setValue,
-                trigger: advancedTargetingFormMethods.trigger,
-                universe: universeObj as UniverseShapeType,
-              });
-            }}
-            options={universeOptions}
-            renderInput={(params) => {
-              const resolutionHelperText = getResolutionHelperText();
-              const hasError = fetchUniversesCanAdvertiseIsError || isResolutionErrorState;
-              const helperText = fetchUniversesCanAdvertiseIsError
-                ? translate('Description.FailedToFetch')
-                : resolutionHelperText;
-
-              return (
-                <FormControl error={hasError} fullWidth variant='outlined'>
-                  <TextField
-                    helperText={helperText}
-                    {...params}
-                    error={hasError}
-                    FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                    InputLabelProps={INPUT_LABEL_PROPS}
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <>
-                          {isUniverseOwnershipBypassEnabled && isResolvingUniverse && (
-                            <ProgressCircle
-                              ariaLabel={translateMisc('Label.Loading')}
-                              size='Small'
-                              variant='Indeterminate'
-                            />
-                          )}
-                          {params.InputProps.endAdornment}
-                        </>
-                      ),
-                      startAdornment: maybeGetUniverseFilterThumbnail(
-                        value as UniverseShapeType,
-                        thumbnailsByUniverseId,
-                      ),
-                      style: {
-                        height: '54px',
-                        paddingTop: '9px',
-                      },
-                    }}
-                    label={translate('Heading.Experience')}
+              label={translate('Heading.Experience')}
+              leadingIconNode={
+                isUniverseOwnershipBypassEnabled && isResolvingUniverse ? (
+                  <ProgressCircle
+                    ariaLabel={translateMisc('Label.Loading')}
+                    size='Small'
+                    variant='Indeterminate'
                   />
-                </FormControl>
-              );
-            }}
-            value={hasEligibleUniverses ? value : noEligibleUniverseOption}
-          />
+                ) : (
+                  maybeGetUniverseFilterThumbnail(selectedUniverse, thumbnailsByUniverseId)
+                )
+              }
+              // Foundation keeps edited text on blur, so restore the selected name
+              // when the user typed without picking an option.
+              onBlur={() => setInputValue(selectedUniverse.universe_name)}
+              onInputValueChange={setInputValue}
+              onValueChange={(nextValue) => {
+                if (!nextValue) {
+                  return;
+                }
+
+                const universeObj = universeOptions.find(
+                  (option) => String(option.universe_id) === nextValue,
+                );
+
+                // Anything that is not an eligible universe came from the
+                // consumer-rendered "add universe id" row.
+                if (!universeObj) {
+                  const targetId = Number(nextValue);
+                  setResolutionAttempt((prev) => prev + 1);
+                  setPendingUniverseId(targetId);
+                  onChange({
+                    privacy_type: '',
+                    root_place_id: 0,
+                    universe_id: targetId,
+                    universe_name: nextValue,
+                  } as UniverseShapeType);
+                  return;
+                }
+
+                setPendingUniverseId(null);
+                setInputValue(universeObj.universe_name);
+                rememberUniverseId(universeObj.universe_id);
+
+                const chosenOptionIndex = universes.findIndex(
+                  (universe) => universe.universe_id === universeObj.universe_id,
+                );
+
+                logNativeClickEvent(EventName.ExperienceChanged, {
+                  chosenOptionPosition: chosenOptionIndex.toString(),
+                  flowType,
+                  optionsLength: universes.length.toString(),
+                  previousValue: selectedUniverse.universe_id.toString(),
+                  value: universeObj.universe_id.toString(),
+                });
+
+                if (selectedUniverse.universe_id === universeObj.universe_id) {
+                  return;
+                }
+
+                onChange(universeObj);
+
+                advancedTargetingFormMethods.setValue(
+                  AdvancedTargetingFormField.UNIVERSE,
+                  universeObj,
+                );
+                fetchInitialAudienceEstimates({
+                  detailedTargetingMatchTypes: AllDetailedTargetingMatchTypes,
+                  universeId: universeObj.universe_id,
+                });
+                ResetAdvancedTargetingForm({
+                  getAudienceEstimate,
+                  getValues: advancedTargetingFormMethods.getValues,
+                  reset: advancedTargetingFormMethods.reset,
+                  setValue: advancedTargetingFormMethods.setValue,
+                  trigger: advancedTargetingFormMethods.trigger,
+                  universe: universeObj,
+                });
+              }}
+              size='Medium'
+              value={String(selectedUniverse.universe_id)}>
+              {optionNodes}
+            </Autocomplete>
+          </div>
         </AppTooltip>
       )}
     />

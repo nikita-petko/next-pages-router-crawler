@@ -1,6 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button } from '@rbx/foundation-ui';
-import { TextField } from '@rbx/ui';
+import { Button, TextInput } from '@rbx/foundation-ui';
 import { memo, useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
@@ -91,12 +90,13 @@ const VerifyEmailComponent = memo(() => {
           ? translateAccount('Description.UpdateEmailForAdAccount')
           : translateAccount('Description.ChangeEmailAtRoblox')}
       </span>
-      <TextField
+      <TextInput
         className={textInput}
-        error={Boolean(errors[VERIFY_EMAIL_FIELD])}
-        helperText={errors[VERIFY_EMAIL_FIELD]?.message}
+        error={errors[VERIFY_EMAIL_FIELD]?.message}
+        hasError={Boolean(errors[VERIFY_EMAIL_FIELD])}
         id='email'
         label={translateAccount('Label.Email')}
+        size='Medium'
         {...register(VERIFY_EMAIL_FIELD)}
       />
       <Button

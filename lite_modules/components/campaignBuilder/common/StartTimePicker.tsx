@@ -1,23 +1,17 @@
+import { Dropdown, Menu, MenuItem, MenuSection } from '@rbx/foundation-ui';
 import { useLocalization } from '@rbx/intl';
-import { DatePicker, MenuItem, PickersUtilsProvider, Select, TextField } from '@rbx/ui';
 import moment from 'moment-timezone';
-import { ChangeEvent, ReactNode, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
 import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
 import AppTooltip from '@components/common/AppTooltip';
+import DateField from '@components/common/form/DateField';
 import { defaultTimeZone } from '@constants/app';
-import {
-  DateFormat,
-  FlowTypes,
-  FORM_HELPER_TEXT_PROPS,
-  FormField,
-  INPUT_LABEL_PROPS,
-} from '@constants/campaignBuilder';
+import { DateFormat, FlowTypes, FormField } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
-import useDateFnsLocale from '@hooks/useDateFnsLocale';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
@@ -39,8 +33,11 @@ const StartTimePicker = () => {
   // Timezone city labels (Label.TimezoneCity.*) are defined in the Timezone
   // namespace, so resolve them separately from the Campaign copy.
   const { translate: translateTimezone } = useNamespacedTranslation(TranslationNamespace.Timezone);
+  // Calendar navigation labels (Label.NextMonth / Label.PreviousMonth) only exist
+  // in the Report namespace, and the localization rules require reusing an
+  // existing key rather than duplicating the string into Campaign.
+  const { translate: translateReport } = useNamespacedTranslation(TranslationNamespace.Report);
   const { locale } = useLocalization();
-  const dateFnsLocale = useDateFnsLocale();
   const { control, getValues, trigger } = useFormContext<FormType>();
   const startDate = useWatch<FormType, typeof FormField.START_DATE>({
     name: FormField.START_DATE,
@@ -54,7 +51,6 @@ const StartTimePicker = () => {
   >({
     name: FormField.IS_EXTEND_TO_OFF_PLATFORM_ENABLED,
   });
-  const [isOpen, setIsOpen] = useState<boolean>(false);
 
   const { offPlatformRequestMinimumDaysFromStartDate } = useAppStore(
     (state) => state.appMetadataState.data,
@@ -96,9 +92,27 @@ const StartTimePicker = () => {
     [startDate, timezoneDbName],
   );
 
+  // Same `moment(startDate)` parse the MUI picker was handed, but an unparseable
+  // stored value becomes `null` instead of an Invalid Date: the calendar formats
+  // and serializes whatever it is given, so NaN would throw rather than render.
+  const startDateValue = useMemo<Date | null>(() => {
+    const parsedStartDate = moment(startDate);
+    return parsedStartDate.isValid() ? parsedStartDate.toDate() : null;
+  }, [startDate]);
+
   const timeOptions = useMemo<TimeOption[]>(
     () => GenerateTimeOptions(isToday, timezoneDbName, locale),
     [isToday, timezoneDbName, locale],
+  );
+  // The saved start time can fall outside the generated window (e.g. a campaign
+  // that already started earlier today). Keep it in the list so the collapsed
+  // dropdown still shows the selected time instead of going blank.
+  const timeMenuOptions = useMemo<TimeOption[]>(
+    () =>
+      !startTime || timeOptions.some(({ value }) => value === startTime)
+        ? timeOptions
+        : [{ label: startTime, value: startTime }, ...timeOptions],
+    [startTime, timeOptions],
   );
   const startTimeConversion = useMemo(
     () =>
@@ -167,122 +181,88 @@ const StartTimePicker = () => {
   ]);
 
   return (
-    <PickersUtilsProvider adapterLocale={dateFnsLocale}>
-      <div className={`text-body-large ${cx(formRow, fullWidth)}`}>
-        <span className={`text-body-large ${halfWidth}`}>
-          <Controller
-            control={control}
-            name={FormField.START_DATE}
-            render={({ field, fieldState: { error } }) => (
-              <DatePicker
-                className={fullWidth}
-                disabled={isDisabled}
-                disablePast
-                format='MMM dd, yyyy'
-                label={translate('Label.CampaignStartDate')}
-                minDate={
-                  getValues(FormField.IS_EXTEND_TO_OFF_PLATFORM_ENABLED)
-                    ? moment().add(offPlatformRequestMinimumDaysFromStartDate, 'days').toDate()
-                    : undefined
-                }
-                onChange={(date) => {
-                  logNativeClickEvent(EventName.StartDateChanged, {
-                    flowType,
-                    previousValue: field.value.toString(),
-                    value: date?.toString(),
-                  });
-                  field.onChange(moment.tz(date, timezoneDbName).format(DateFormat));
-                  trigger(FormField.START_TIME);
-                }}
-                onClose={() => setIsOpen(false)}
-                open={isOpen}
-                renderInput={(params) => (
-                  <AppTooltip title={GetTooltipText()}>
-                    <div>
-                      <TextField
-                        {...params}
-                        error={!!error}
-                        FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                        helperText={error?.message || startDateHelperText}
-                        id='start-date'
-                        InputLabelProps={INPUT_LABEL_PROPS}
-                        label={translate('Label.CampaignStartDate')}
-                        onBlur={field.onBlur}
-                        onClick={isDisabled ? undefined : () => setIsOpen(true)}
-                        ref={field.ref}
-                        variant='outlined'
-                      />
-                    </div>
-                  </AppTooltip>
-                )}
-                value={moment(startDate).toDate()}
-              />
-            )}
-          />
-        </span>
-
+    <div className={`text-body-large ${cx(formRow, fullWidth)}`}>
+      <span className={`text-body-large ${halfWidth}`}>
         <Controller
           control={control}
-          name={FormField.START_TIME}
+          name={FormField.START_DATE}
           render={({ field, fieldState: { error } }) => (
-            <div className={halfWidth}>
-              <AppTooltip title={GetTooltipText()}>
-                <Select
-                  className={fullWidth}
-                  disabled={isDisabled || !startDate}
-                  error={!!error}
-                  FormHelperTextProps={{
-                    sx: {
-                      zIndex: 0,
-                    },
-                  }}
-                  fullWidth
-                  helperText={error?.message || startTimeHelperText}
-                  InputLabelProps={{
-                    sx: {
-                      zIndex: 0,
-                    },
-                  }}
-                  label={translate('Label.CampaignStartTime')}
-                  onBlur={field.onBlur}
-                  onChange={(event: ChangeEvent<{ value: string }>) => {
-                    const newTime = event.target.value;
-                    field.onChange(event);
-                    logNativeClickEvent(EventName.StartTimeChanged, {
+            <AppTooltip title={GetTooltipText()}>
+              <div className={fullWidth}>
+                <DateField
+                  direction='Future'
+                  error={error?.message}
+                  helperText={startDateHelperText}
+                  id='start-date'
+                  isDisabled={isDisabled}
+                  label={translate('Label.CampaignStartDate')}
+                  locale={locale}
+                  minDate={
+                    getValues(FormField.IS_EXTEND_TO_OFF_PLATFORM_ENABLED)
+                      ? moment().add(offPlatformRequestMinimumDaysFromStartDate, 'days').toDate()
+                      : undefined
+                  }
+                  nextMonthLabel={translateReport('Label.NextMonth')}
+                  onChange={(date) => {
+                    logNativeClickEvent(EventName.StartDateChanged, {
                       flowType,
                       previousValue: field.value.toString(),
-                      value: newTime,
+                      value: date?.toString(),
                     });
+                    field.onChange(moment.tz(date, timezoneDbName).format(DateFormat));
+                    trigger(FormField.START_TIME);
                   }}
-                  ref={field.ref}
-                  renderValue={(selected) =>
-                    timeOptions.find((option) => option.value === selected)?.label ??
-                    (selected as ReactNode) ??
-                    translate('Label.SelectTime')
-                  }
-                  SelectProps={{
-                    MenuProps: {
-                      style: {
-                        maxHeight: 236,
-                      },
-                    },
-                  }}
-                  value={startTime}>
-                  {timeOptions.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </AppTooltip>
-              {error && startTimeConversionText && (
-                <span className='text-body-medium content-default'>{startTimeConversionText}</span>
-              )}
-            </div>
+                  previousMonthLabel={translateReport('Label.PreviousMonth')}
+                  value={startDateValue}
+                />
+              </div>
+            </AppTooltip>
           )}
         />
-      </div>
-    </PickersUtilsProvider>
+      </span>
+
+      <Controller
+        control={control}
+        name={FormField.START_TIME}
+        render={({ field, fieldState: { error } }) => (
+          <div className={halfWidth}>
+            <AppTooltip title={GetTooltipText()}>
+              <div>
+                <Dropdown
+                  className={fullWidth}
+                  hasError={!!error}
+                  hint={error?.message || startTimeHelperText}
+                  isDisabled={isDisabled || !startDate}
+                  label={translate('Label.CampaignStartTime')}
+                  onValueChange={(newTime) => {
+                    logNativeClickEvent(EventName.StartTimeChanged, {
+                      flowType,
+                      previousValue: field.value?.toString() || '',
+                      value: newTime,
+                    });
+                    field.onChange(newTime);
+                  }}
+                  placeholder={translate('Label.SelectTime')}
+                  ref={field.ref}
+                  size='Medium'
+                  value={startTime}>
+                  <Menu>
+                    <MenuSection>
+                      {timeMenuOptions.map((option) => (
+                        <MenuItem key={option.value} title={option.label} value={option.value} />
+                      ))}
+                    </MenuSection>
+                  </Menu>
+                </Dropdown>
+              </div>
+            </AppTooltip>
+            {error && startTimeConversionText && (
+              <span className='text-body-medium content-default'>{startTimeConversionText}</span>
+            )}
+          </div>
+        )}
+      />
+    </div>
   );
 };
 

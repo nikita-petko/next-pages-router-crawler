@@ -1,12 +1,13 @@
 import { RobloxLocaleApiUserLocalizationLocusLocalesResponse } from '@rbx/client-locale/v1';
-import { Button, Checkbox, Link, Radio, RadioGroup } from '@rbx/foundation-ui';
-import { Autocomplete, FormLabel, TextField } from '@rbx/ui';
+import { Button, Checkbox, Link, Radio, RadioGroup, TextInput } from '@rbx/foundation-ui';
+import { FormLabel } from '@rbx/ui';
 import router from 'next/router';
 import { useId } from 'react';
 import { Controller, FormProvider, useWatch } from 'react-hook-form';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
 import useAccountFormStyles from '@components/account/AccountForm.styles';
+import TitleValueAutocomplete from '@components/common/form/TitleValueAutocomplete';
 import { FormFields } from '@constants/account';
 import { OrganizationType } from '@constants/app';
 import { TranslationNamespace } from '@constants/localization';
@@ -164,17 +165,19 @@ const AdAccountCreationForm = ({ handleSubmit, supportedLocales }: AdAccountCrea
               control={control}
               name={FormFields.FIRST_NAME}
               render={({ field }) => (
-                <TextField
+                <TextInput
                   className={nameWrapper}
                   {...field}
-                  error={!!errors[FormFields.FIRST_NAME]}
-                  helperText={errors[FormFields.FIRST_NAME]?.message}
+                  error={errors[FormFields.FIRST_NAME]?.message}
+                  hasError={Boolean(errors[FormFields.FIRST_NAME])}
                   id={FormFields.FIRST_NAME}
                   label={translateAccount('Label.FirstName')}
                   name={FormFields.FIRST_NAME}
                   onChange={(e) => {
                     handleFirstNameChange(e.target.value);
                   }}
+                  size='Medium'
+                  value={field.value ?? ''}
                 />
               )}
             />
@@ -182,17 +185,19 @@ const AdAccountCreationForm = ({ handleSubmit, supportedLocales }: AdAccountCrea
               control={control}
               name={FormFields.LAST_NAME}
               render={({ field }) => (
-                <TextField
+                <TextInput
                   className={nameWrapper}
                   {...field}
-                  error={!!errors[FormFields.LAST_NAME]}
-                  helperText={errors[FormFields.LAST_NAME]?.message}
+                  error={errors[FormFields.LAST_NAME]?.message}
+                  hasError={Boolean(errors[FormFields.LAST_NAME])}
                   id={FormFields.LAST_NAME}
                   label={translateAccount('Label.LastName')}
                   name={FormFields.LAST_NAME}
                   onChange={(e) => {
                     handleLastNameChange(e.target.value);
                   }}
+                  size='Medium'
+                  value={field.value ?? ''}
                 />
               )}
             />
@@ -203,19 +208,19 @@ const AdAccountCreationForm = ({ handleSubmit, supportedLocales }: AdAccountCrea
               control={control}
               name={FormFields.BUSINESS_NAME}
               render={({ field }) => (
-                <TextField
+                <TextInput
                   {...field}
-                  error={!!errors[FormFields.BUSINESS_NAME]}
-                  helperText={
-                    errors[FormFields.BUSINESS_NAME]?.message ||
-                    translateAccount('Description.BusinessNameDisclosure')
-                  }
+                  error={errors[FormFields.BUSINESS_NAME]?.message}
+                  hasError={Boolean(errors[FormFields.BUSINESS_NAME])}
+                  helperText={translateAccount('Description.BusinessNameDisclosure')}
                   id={FormFields.BUSINESS_NAME}
                   label={translateAccount('Label.BusinessName')}
                   name={FormFields.BUSINESS_NAME}
                   onChange={(e) => {
                     handleBusinessNameChange(e.target.value);
                   }}
+                  size='Medium'
+                  value={field.value ?? ''}
                 />
               )}
             />
@@ -223,16 +228,18 @@ const AdAccountCreationForm = ({ handleSubmit, supportedLocales }: AdAccountCrea
               control={control}
               name={FormFields.TAX_ID}
               render={({ field }) => (
-                <TextField
+                <TextInput
                   {...field}
-                  error={!!errors[FormFields.TAX_ID]}
-                  helperText={errors[FormFields.TAX_ID]?.message}
+                  error={errors[FormFields.TAX_ID]?.message}
+                  hasError={Boolean(errors[FormFields.TAX_ID])}
                   id={FormFields.TAX_ID}
                   label={translateAccount('Label.TaxIdOptional')}
                   name={FormFields.TAX_ID}
                   onChange={(e) => {
                     handleTaxIdChange(e.target.value);
                   }}
+                  size='Medium'
+                  value={field.value ?? ''}
                 />
               )}
             />
@@ -242,22 +249,13 @@ const AdAccountCreationForm = ({ handleSubmit, supportedLocales }: AdAccountCrea
           control={control}
           name={FormFields.COUNTRY}
           render={({ field }) => (
-            <Autocomplete
-              disableClearable
-              getOptionLabel={(option) => option.title || ''}
-              id={FormFields.COUNTRY}
-              onChange={(_event, countryObj) => handleCountryChange(countryObj)}
+            <TitleValueAutocomplete
+              dataTestId={FormFields.COUNTRY}
+              errorMessage={errors[FormFields.COUNTRY]?.message}
+              label={translateAccount('Label.Location')}
+              onBlur={field.onBlur}
+              onChange={handleCountryChange}
               options={countries}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  error={Boolean(errors[FormFields.COUNTRY])}
-                  helperText={errors[FormFields.COUNTRY]?.message}
-                  label={translateAccount('Label.Location')}
-                  name={FormFields.COUNTRY}
-                  onBlur={field.onBlur}
-                />
-              )}
               value={field.value}
             />
           )}
@@ -269,16 +267,18 @@ const AdAccountCreationForm = ({ handleSubmit, supportedLocales }: AdAccountCrea
           control={control}
           name={FormFields.NICKNAME}
           render={({ field }) => (
-            <TextField
+            <TextInput
               {...field}
-              error={!!errors[FormFields.NICKNAME]}
-              helperText={errors[FormFields.NICKNAME]?.message}
+              error={errors[FormFields.NICKNAME]?.message}
+              hasError={Boolean(errors[FormFields.NICKNAME])}
               id={FormFields.NICKNAME}
               label={translateAccount('Label.AdAccountNickname')}
               name={FormFields.NICKNAME}
               onChange={(e) => {
                 handleNicknameChange(e.target.value);
               }}
+              size='Medium'
+              value={field.value ?? ''}
             />
           )}
         />
@@ -286,25 +286,14 @@ const AdAccountCreationForm = ({ handleSubmit, supportedLocales }: AdAccountCrea
           control={control}
           name={FormFields.TIME_ZONE}
           render={({ field }) => (
-            <Autocomplete
-              disableClearable
-              getOptionLabel={(option) => (option && option.title) || ''}
-              id={FormFields.TIME_ZONE}
-              onChange={(_event, timezoneObj) => handleTimeZoneChange(timezoneObj)}
+            <TitleValueAutocomplete
+              dataTestId={FormFields.TIME_ZONE}
+              errorMessage={errors[FormFields.TIME_ZONE]?.message}
+              helperText={translateAccount('Description.TimezoneCannotUpdate')}
+              label={translateAccount('Label.Timezone')}
+              onBlur={field.onBlur}
+              onChange={handleTimeZoneChange}
               options={localizedTimezones}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  error={Boolean(errors[FormFields.TIME_ZONE])}
-                  helperText={
-                    errors[FormFields.TIME_ZONE]?.message ||
-                    translateAccount('Description.TimezoneCannotUpdate')
-                  }
-                  label={translateAccount('Label.Timezone')}
-                  name={FormFields.TIME_ZONE}
-                  onBlur={field.onBlur}
-                />
-              )}
               value={field.value}
             />
           )}

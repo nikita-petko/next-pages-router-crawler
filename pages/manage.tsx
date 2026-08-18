@@ -24,7 +24,8 @@ const NewFlow = () => {
   // Not a property on the store above because we would like this to go from just true -> false, not false -> true -> false
   // This avoids unnecessary unmount/remount of the page
   const [fetchingEssentialAppInfo, setFetchingEssentialAppInfo] = useState<boolean>(true);
-  const adAccountId = useAppStore((state: AppStoreType) => state.appData.adAccountId) ?? undefined;
+  const userAdAccountId =
+    useAppStore((state: AppStoreType) => state.appData.adAccountId) ?? undefined;
   const hasNewFlowCampaignState = useAppStore((state: AppStoreType) => state.hasNewFlowCampaign);
   const hasNewFlowCampaignLoading = hasNewFlowCampaignState.isLoading;
   const hasNewFlowCampaign = hasNewFlowCampaignState.data;
@@ -45,6 +46,19 @@ const NewFlow = () => {
   const isGroupWorkspaceView =
     shouldUseWorkspaceUniverseFiltering && currentWorkspace?.creatorType === 'Group';
   const shouldRequireNewFlowCampaign = !isGroupWorkspaceView;
+  const groupAdvertiserState = useAppStore((state: AppStoreType) =>
+    isGroupWorkspaceView && currentWorkspace?.creatorId
+      ? state.groupScopedAccountStateByGroupId[currentWorkspace.creatorId]?.advertiserState
+      : undefined,
+  );
+  const groupAdAccountId = groupAdvertiserState?.data?.ad_account?.id;
+  const activeAdAccountId =
+    (isGroupWorkspaceView ? groupAdAccountId : undefined) ?? userAdAccountId;
+  const isGroupAdAccountLoading =
+    isGroupWorkspaceView &&
+    !groupAdvertiserState?.data &&
+    !groupAdvertiserState?.isError &&
+    (groupAdvertiserState?.isLoading ?? true);
 
   const workspace = useMemo(() => {
     if (
@@ -67,7 +81,7 @@ const NewFlow = () => {
   }, [fetchEssentialAppInfo]);
 
   useManageUniverseResolution({
-    adAccountId,
+    adAccountId: activeAdAccountId,
     advertisedUniverses,
     advertisedUniversesIsLoading,
     fetchingEssentialAppInfo,
@@ -90,7 +104,11 @@ const NewFlow = () => {
 
   // Avoid flashing the reporting table while we do not yet know if the user
   // has an ad account or a new-flow campaign.
-  if (fetchingEssentialAppInfo || (shouldRequireNewFlowCampaign && hasNewFlowCampaignLoading)) {
+  if (
+    fetchingEssentialAppInfo ||
+    isGroupAdAccountLoading ||
+    (shouldRequireNewFlowCampaign && hasNewFlowCampaignLoading)
+  ) {
     return (
       <AdsManagerPageBaseLayout isLoading>
         <div>
@@ -100,8 +118,9 @@ const NewFlow = () => {
     );
   }
 
-  // Show education page if user has not created an ad account or a campaign in the new flow yet.
-  if (!adAccountId || (shouldRequireNewFlowCampaign && !hasNewFlowCampaign)) {
+  // Show education when the active workspace has no ad account, or when the
+  // personal workspace has not created a new-flow campaign yet.
+  if (!activeAdAccountId || (shouldRequireNewFlowCampaign && !hasNewFlowCampaign)) {
     return (
       <AdsManagerPageBaseLayout isLoading={fetchingEssentialAppInfo}>
         <div>

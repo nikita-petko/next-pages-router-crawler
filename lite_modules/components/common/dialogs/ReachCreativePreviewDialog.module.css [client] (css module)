@@ -1,4 +1,6 @@
 __turbopack_context__.v({
   "heroMedia": "ReachCreativePreviewDialog-module__FnjmbW__heroMedia",
   "tileContainer": "ReachCreativePreviewDialog-module__FnjmbW__tileContainer",
+  "verticalBody": "ReachCreativePreviewDialog-module__FnjmbW__verticalBody",
+  "verticalTileStage": "ReachCreativePreviewDialog-module__FnjmbW__verticalTileStage",
 });

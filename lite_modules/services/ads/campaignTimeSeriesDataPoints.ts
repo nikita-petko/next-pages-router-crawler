@@ -71,17 +71,25 @@ const dailyTotalsToDataPoints = (totalsByDay: Map<number, number>): CampaignTime
     .map(([timestamp, total]) => [timestamp, total]);
 
 /**
- * With AttributionDateHour breakdown, RAQI returns one values[] row per attribution-hour
- * bucket. Each row can carry conversion-day data points up to 30 days after the
- * attribution hour. Sum those values into the originating attribution day so
- * delayed conversions do not move chart points outside the selected range.
+ * Aggregate query result values into daily totals. `by` chooses the key:
+ * - `attributionDate` (default): key by AttributionDateHour breakdown, so delayed
+ *   conversions attach to their originating attribution day.
+ * - `conversionDate`: key by dataPoint.time (Druid __time), ignoring any
+ *   breakdown, so buckets reflect the day the conversion occurred.
  */
 export const aggregateQueryResultToDailyDataPoints = (
   queryResult: QueryResult,
+  { by = 'attributionDate' }: { by?: 'attributionDate' | 'conversionDate' } = {},
 ): CampaignTimeSeriesDataPoints => {
   const totalsByDay = new Map<number, number>();
 
-  (queryResult.values ?? []).forEach((series) => addSeriesToDailyTotals(totalsByDay, series));
+  (queryResult.values ?? []).forEach((series) => {
+    if (by === 'conversionDate') {
+      addDataPointsToDailyTotals(totalsByDay, series.dataPoints ?? []);
+    } else {
+      addSeriesToDailyTotals(totalsByDay, series);
+    }
+  });
 
   return dailyTotalsToDataPoints(totalsByDay);
 };

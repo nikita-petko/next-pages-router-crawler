@@ -3,7 +3,8 @@
   padding-bottom: calc(var(--padding-large, 16px) + var(--padding-medium, 12px));
 }
 
-/* Custom multiline prompt; Foundation TextInput is single-line. */
+/* The card owns the prompt's border and error state, so the Foundation TextArea
+   nested inside it is stripped flush and transparent (see .promptTextarea). */
 .promptCard {
   border: 1px solid var(--stroke-default, rgba(208, 217, 251, 0.12));
   padding: var(--padding-medium, 12px);
@@ -28,7 +29,12 @@
   width: 100%;
 }
 
-.promptTextarea {
+/* Strips Foundation TextArea's own chrome so the field sits flush inside
+   .promptCard and .promptHintOverlay lines up with the typed text. The `textarea`
+   qualifier is load-bearing: Foundation's padding/border/line-height come from
+   single-class utilities, so without it the winner would depend on stylesheet
+   order rather than specificity. */
+textarea.promptTextarea {
   background: transparent;
   border: none;
   color: var(--content-emphasis, #f7f7f8);
@@ -40,6 +46,14 @@
   padding: 0;
   resize: none;
   width: 100%;
+}
+
+/* The one declaration that needs !important: Foundation scopes its inset focus
+   ring to `.foundation-web-input.stroke-contrast-alpha:focus`, which outranks any
+   selector reachable from this module. The card's border is the focus affordance
+   here, so the ring would draw a second rounded edge inside it. */
+textarea.promptTextarea:focus {
+  box-shadow: none !important;
 }
 
 .promptHintOverlay {
@@ -77,12 +91,23 @@
   animation: promptHintCycle 3200ms ease-in-out forwards;
 }
 
-.promptTextarea::-moz-placeholder {
-  color: var(--content-muted, #9ca3af);
-}
+/* Qualified for the same reason as above — Foundation's `placeholder:content-muted`
+   utility sits at equal specificity.
 
-.promptTextarea::placeholder {
+   Foundation types the placeholder through its own `placeholder:text-body-medium`
+   utility rather than letting it inherit, so the hint would render at the token
+   size while the typed text and the caret keep the inherited size above. Pulling
+   the font back to `inherit` puts the placeholder on the same metrics as the
+   caret, which is what makes them line up. */
+textarea.promptTextarea::-moz-placeholder {
   color: var(--content-muted, #9ca3af);
+  font: inherit;
+  letter-spacing: inherit;
+}
+textarea.promptTextarea::placeholder {
+  color: var(--content-muted, #9ca3af);
+  font: inherit;
+  letter-spacing: inherit;
 }
 
 .promptTextarea:disabled {

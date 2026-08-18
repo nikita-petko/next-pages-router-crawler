@@ -1,13 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Radio, RadioGroup } from '@rbx/foundation-ui';
 import { useLocalization } from '@rbx/intl';
-import {
-  DatePicker,
-  FormHelperText,
-  PickersUtilsProvider,
-  TextField,
-  UIThemeProvider,
-} from '@rbx/ui';
+import { FormHelperText, UIThemeProvider } from '@rbx/ui';
 import { type ReactElement, useState } from 'react';
 import { type SubmitHandler, useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
@@ -17,6 +11,7 @@ import CenteredCircularProgress from '@components/common/CenteredCircularProgres
 import { openDialog } from '@components/common/dialog/actions';
 import BaseDialog from '@components/common/dialog/BaseDialog';
 import type { BaseInjectedDialogProps } from '@components/common/dialog/types';
+import DateField from '@components/common/form/DateField';
 import useReportDownloadStyles from '@components/reporting/ReportDownloadModal.styles';
 import { TranslationNamespace } from '@constants/localization';
 import {
@@ -26,7 +21,7 @@ import {
   ReportDownloadModelFieldNames,
   ReportTypeText,
 } from '@constants/reportDownload';
-import useDateFnsLocale from '@hooks/useDateFnsLocale';
+import { REPORTING_TIMEZONE_DB_NAME } from '@constants/reportingStatsConstants';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import {
   createReportDownload,
@@ -49,15 +44,14 @@ interface ReportDownloadDialogProps extends BaseInjectedDialogProps {
    * apart usage between the legacy classic page and the new dashboard.
    */
   isNewFlowType?: boolean;
+  universeId?: number;
 }
 
-interface KeyboardDatePickerReportDownloadProps {
+interface ReportDownloadDateFieldProps {
   dateInputLabel: string;
   dateInputName: ReportDownloadModelFieldNames.START_DATE | ReportDownloadModelFieldNames.END_DATE;
   form: UseFormReturn<ReportDownloadFormValues>;
   helperText?: string;
-  locale?: string;
-  onDateBlurCustom: () => void;
   onDateChangeCustom: (
     date: Date | null,
     inputName: ReportDownloadModelFieldNames.START_DATE | ReportDownloadModelFieldNames.END_DATE,
@@ -68,16 +62,6 @@ interface KeyboardDatePickerReportDownloadProps {
 interface CancelPollingObj {
   cancelFn: () => void;
 }
-
-const formatDate = (timestamp: Date, locale?: string): string => {
-  const date = new Date(timestamp);
-  const options: Intl.DateTimeFormatOptions = {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  };
-  return date.toLocaleDateString(locale || undefined, options);
-};
 
 const validationSchema = z
   .object({
@@ -114,59 +98,36 @@ const validationSchema = z
     },
   );
 
-const KeyboardDatePickerReportDownload = ({
+const ReportDownloadDateField = ({
   dateInputLabel,
   dateInputName,
   form,
   helperText,
-  locale,
-  onDateBlurCustom,
   onDateChangeCustom,
   translateFn,
-}: KeyboardDatePickerReportDownloadProps): ReactElement => {
-  const [isOpen, setIsOpen] = useState<boolean>(false);
-  const dateFnsLocale = useDateFnsLocale();
+}: ReportDownloadDateFieldProps): ReactElement => {
+  const { locale } = useLocalization();
+  const errorMsg = form.formState.errors[dateInputName]?.message;
+  // An invalid selection is written back to the form as-is so the resolver can
+  // flag it, so the watched value is not necessarily a usable Date.
+  const watchedDate = form.watch(dateInputName);
 
   return (
-    <PickersUtilsProvider adapterLocale={dateFnsLocale}>
-      <DatePicker
-        disableFuture
-        label={dateInputLabel}
-        onChange={(date) => onDateChangeCustom(date, dateInputName)}
-        onClose={() => setIsOpen(false)}
-        open={isOpen}
-        openTo='day'
-        PopperProps={{ disablePortal: true }}
-        renderInput={(params) => {
-          const errorMsg = form.formState.errors[dateInputName]?.message;
-          return (
-            <TextField
-              {...params}
-              error={!!form.formState.errors[dateInputName]}
-              helperText={
-                (form.formState.touchedFields[dateInputName] && errorMsg
-                  ? translateFn(errorMsg)
-                  : undefined) || helperText
-              }
-              id={dateInputName}
-              inputProps={{
-                readOnly: true,
-                value: formatDate(form.watch(dateInputName), locale),
-              }}
-              label={dateInputLabel}
-              name={dateInputName}
-              onBlur={onDateBlurCustom}
-              onClick={() => {
-                onDateBlurCustom();
-                setIsOpen(true);
-              }}
-              variant='outlined'
-            />
-          );
-        }}
-        value={form.watch(dateInputName)}
-      />
-    </PickersUtilsProvider>
+    <DateField
+      dataTestId={dateInputName}
+      direction='Past'
+      error={
+        form.formState.touchedFields[dateInputName] && errorMsg ? translateFn(errorMsg) : undefined
+      }
+      helperText={helperText}
+      id={dateInputName}
+      label={dateInputLabel}
+      locale={locale}
+      nextMonthLabel={translateFn('Label.NextMonth')}
+      onChange={(date) => onDateChangeCustom(date, dateInputName)}
+      previousMonthLabel={translateFn('Label.PreviousMonth')}
+      value={IsValidDate(watchedDate) ? watchedDate : null}
+    />
   );
 };
 
@@ -174,10 +135,10 @@ const ReportDownloadDialog = ({
   isNewFlowType,
   onClose,
   setDismissible,
+  universeId,
 }: ReportDownloadDialogProps): ReactElement => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Report);
   const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
-  const { locale } = useLocalization();
   const {
     classes: {
       actionRow,
@@ -200,6 +161,9 @@ const ReportDownloadDialog = ({
   const timezoneDbName = organizationInfo?.time_zone
     ? GetTimezoneObjFromEnum(organizationInfo.time_zone).timezoneDbName
     : undefined;
+  const reportTimezoneDbName =
+    universeId === undefined ? timezoneDbName : REPORTING_TIMEZONE_DB_NAME;
+  const reportTimezoneLabel = universeId === undefined ? timezoneDbName : 'UTC';
 
   const getInitStartDate = (): Date => {
     const initStartDate = new Date();
@@ -223,7 +187,10 @@ const ReportDownloadDialog = ({
 
   const tryDownloadReport = async (reportDownloadRequestId: string): Promise<boolean> => {
     try {
-      const reportCreationStatusRes = await getReportCreationStatus(reportDownloadRequestId);
+      const reportCreationStatusRes = await getReportCreationStatus(
+        reportDownloadRequestId,
+        universeId,
+      );
 
       if (!reportCreationStatusRes?.reportCreationStatus) {
         throw new Error('undefined report creation status');
@@ -233,7 +200,7 @@ const ReportDownloadDialog = ({
         reportCreationStatusRes.reportCreationStatus ===
         ReportCreationStatus.REPORT_CREATION_STATUS_READY_TO_DOWNLOAD
       ) {
-        const downloadReportUrl = await getReportDownloadUrl(reportDownloadRequestId);
+        const downloadReportUrl = await getReportDownloadUrl(reportDownloadRequestId, universeId);
 
         if (!downloadReportUrl?.reportPreSignedUrl) {
           return false;
@@ -306,10 +273,10 @@ const ReportDownloadDialog = ({
     setErrorWithDownload('');
     const createReportDownloadRequest = ConvertFormDataToCreateReportDownloadRequest({
       isNewFlowType,
-      timezoneDbName,
+      timezoneDbName: reportTimezoneDbName,
       values,
     });
-    await createReportDownload(createReportDownloadRequest)
+    await createReportDownload(createReportDownloadRequest, universeId)
       .then((body) => {
         if (!body?.reportDownloadRequestId) {
           throw new Error('undefined report download request id');
@@ -358,18 +325,12 @@ const ReportDownloadDialog = ({
     form.setValue(inputName, newDate as Date, { shouldTouch: true, shouldValidate: true });
   };
 
-  const handleDateBlur = (
-    inputName: ReportDownloadModelFieldNames.START_DATE | ReportDownloadModelFieldNames.END_DATE,
-  ): void => {
-    form.trigger(inputName);
-  };
-
   const dialogBody = downloadLoading ? (
     // UIThemeProvider is required for the inner @rbx/ui (MUI) components
-    // (CenteredCircularProgress, the keyboard date pickers). It wraps only
-    // the inner @rbx/ui content so it doesn't nest a MUI Modal focus trap
-    // inside Foundation-UI's <Dialog> (which would cause an infinite
-    // focus-event loop).
+    // (CenteredCircularProgress, FormHelperText). It wraps only the inner
+    // @rbx/ui content so it doesn't nest a MUI Modal focus trap inside
+    // Foundation-UI's <Dialog> (which would cause an infinite focus-event
+    // loop).
     <UIThemeProvider>
       <div className={loadingStyle}>
         <CenteredCircularProgress />
@@ -385,26 +346,24 @@ const ReportDownloadDialog = ({
           </span>
         </div>
         <div className={cx(dialogRow, datePickerRow)}>
-          <KeyboardDatePickerReportDownload
+          <ReportDownloadDateField
             dateInputLabel={translate(ReportDownloadModel.startDate.label)}
             dateInputName={ReportDownloadModelFieldNames.START_DATE}
             form={form}
             helperText={
-              timezoneDbName ? translate('Label.TimezoneValue', { timezone: timezoneDbName }) : ''
+              reportTimezoneLabel
+                ? translate('Label.TimezoneValue', { timezone: reportTimezoneLabel })
+                : ''
             }
-            locale={locale || undefined}
-            onDateBlurCustom={() => handleDateBlur(ReportDownloadModelFieldNames.START_DATE)}
             onDateChangeCustom={handleDateChange}
             translateFn={translate}
           />
           <div className={datePickerGroupSpace} />
-          <KeyboardDatePickerReportDownload
+          <ReportDownloadDateField
             dateInputLabel={translate(ReportDownloadModel.endDate.label)}
             dateInputName={ReportDownloadModelFieldNames.END_DATE}
             form={form}
             helperText=' '
-            locale={locale || undefined}
-            onDateBlurCustom={() => handleDateBlur(ReportDownloadModelFieldNames.END_DATE)}
             onDateChangeCustom={handleDateChange}
             translateFn={translate}
           />
@@ -493,7 +452,9 @@ const ReportDownloadDialog = ({
  * renders its own X in the top-right; we don't need to hand-roll one in the
  * body the way the legacy modal did.
  */
-export const openReportDownloadDialog = (params: { isNewFlowType?: boolean } = {}): void => {
+export const openReportDownloadDialog = (
+  params: { isNewFlowType?: boolean; universeId?: number } = {},
+): void => {
   openDialog({
     component: ReportDownloadDialog,
     options: { hasCloseAffordance: true, size: 'Large' },

@@ -1,5 +1,5 @@
-import { Button, Divider, IconButton, Link } from '@rbx/foundation-ui';
-import { DialogContent, Grid, TextField, UIThemeProvider } from '@rbx/ui';
+import { Button, Divider, IconButton, Link, TextInput } from '@rbx/foundation-ui';
+import { DialogContent, Grid, UIThemeProvider } from '@rbx/ui';
 import { useRouter } from 'next/router';
 import { type ReactElement, useEffect, useRef, useState } from 'react';
 
@@ -355,14 +355,11 @@ const CardVerificationDialog = ({
       {verifyPinDescription}
       <Grid className={pinInputContainer} container data-testid='pinInputContainer'>
         <Grid item>
-          <TextField
+          <TextInput
             className={failedAttempt ? incorrectPinInput : verifyCardPinInput}
             data-testid='verifyCardPinInput1'
-            error={failedAttempt}
-            id=''
-            inputProps={{ maxLength: 1, min: 0, style: { textAlign: 'center' } }}
-            inputRef={inputRef1}
-            label=''
+            hasError={failedAttempt}
+            maxLength={1}
             name='verifyCardPinInput1'
             onChange={(e) => {
               if (Number.isInteger(parseInt(e.target.value, 10))) {
@@ -378,19 +375,17 @@ const CardVerificationDialog = ({
                 setFailedAttempt(false);
               }
             }}
+            ref={inputRef1}
+            size='Medium'
             value={inputOne}
-            variant='outlined'
           />
         </Grid>
         <Grid item>
-          <TextField
+          <TextInput
             className={failedAttempt ? incorrectPinInput : verifyCardPinInput}
             data-testid='verifyCardPinInput2'
-            error={failedAttempt}
-            id=''
-            inputProps={{ maxLength: 1, min: 0, style: { textAlign: 'center' } }}
-            inputRef={inputRef2}
-            label=''
+            hasError={failedAttempt}
+            maxLength={1}
             name='verifyCardPinInput2'
             onChange={(e) => {
               if (Number.isInteger(parseInt(e.target.value, 10))) {
@@ -411,19 +406,17 @@ const CardVerificationDialog = ({
                 }
               }
             }}
+            ref={inputRef2}
+            size='Medium'
             value={inputTwo}
-            variant='outlined'
           />
         </Grid>
         <Grid item>
-          <TextField
+          <TextInput
             className={failedAttempt ? incorrectPinInput : verifyCardPinInput}
             data-testid='verifyCardPinInput3'
-            error={failedAttempt}
-            id=''
-            inputProps={{ maxLength: 1, min: 0, style: { textAlign: 'center' } }}
-            inputRef={inputRef3}
-            label=''
+            hasError={failedAttempt}
+            maxLength={1}
             name='verifyCardPinInput3'
             onChange={(e) => {
               if (Number.isInteger(parseInt(e.target.value, 10))) {
@@ -444,19 +437,17 @@ const CardVerificationDialog = ({
                 }
               }
             }}
+            ref={inputRef3}
+            size='Medium'
             value={inputThree}
-            variant='outlined'
           />
         </Grid>
         <Grid item>
-          <TextField
+          <TextInput
             className={failedAttempt ? incorrectPinInput : verifyCardPinInput}
             data-testid='verifyCardPinInput4'
-            error={failedAttempt}
-            id=''
-            inputProps={{ maxLength: 1, min: 0, style: { textAlign: 'center' } }}
-            inputRef={inputRef4}
-            label=''
+            hasError={failedAttempt}
+            maxLength={1}
             name='verifyCardPinInput4'
             onChange={(e) => {
               if (Number.isInteger(parseInt(e.target.value, 10))) {
@@ -476,8 +467,9 @@ const CardVerificationDialog = ({
                 }
               }
             }}
+            ref={inputRef4}
+            size='Medium'
             value={inputFour}
-            variant='outlined'
           />
         </Grid>
       </Grid>

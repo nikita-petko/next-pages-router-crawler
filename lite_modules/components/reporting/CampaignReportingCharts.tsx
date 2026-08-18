@@ -1,12 +1,20 @@
 import { LineChart, SeriesDataTypes, XAxisGranularity } from '@rbx/analytics-ui';
 import type { LineChartZones } from '@rbx/analytics-ui';
-import { ProgressCircle, Tabs, TabsList, TabsTrigger } from '@rbx/foundation-ui';
+import {
+  Dropdown,
+  Menu,
+  MenuItem,
+  MenuSection,
+  ProgressCircle,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from '@rbx/foundation-ui';
 import { useLocalization } from '@rbx/intl';
-import { FormControl, MenuItem, Select } from '@rbx/ui';
-import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import useCampaignReportingChartsStyles from '@components/reporting/CampaignReportingCharts.styles';
-import {
+import DateFilteringTimePeriod, {
   DATE_FILTERING_TIME_PERIOD_OPTIONS,
   IsValidDateFilteringTimePeriod,
 } from '@constants/dateFilteringTimePeriod';
@@ -97,6 +105,13 @@ const CampaignReportingCharts = () => {
   const isCampaignRoasEnabled = useAppStore(
     (state: AppStoreType) => state.appMetadataState?.data?.isCampaignRoasEnabled ?? false,
   );
+  // Under the custom-range flag the drawer chart is driven entirely by the
+  // page-level date selection (the store already re-fetches it on page-level
+  // date changes and on drawer open), so the drawer's own picker is redundant
+  // and is hidden to prevent divergence.
+  const isCustomDateRangeEnabled = useAppStore(
+    (state: AppStoreType) => state.appMetadataState?.data?.isCustomDateRangeEnabled ?? false,
+  );
 
   const [activeMetricTab, setActiveMetricTab] = useState<MetricTab>('plays');
 
@@ -132,13 +147,35 @@ const CampaignReportingCharts = () => {
       ? translateReport('Label.Unvalidated')
       : translateReport('Label.Validated');
 
-  const handlePeriodChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const newPeriod = Number(event.target.value);
+  const handlePeriodChange = (nextValue: string) => {
+    const newPeriod = Number(nextValue);
     if (!IsValidDateFilteringTimePeriod(newPeriod) || newPeriod === timeSeriesPeriod) {
       return;
     }
     fetchCampaignTimeSeries(newPeriod);
   };
+
+  // Custom is not one of the presets, but the page-level picker can leave the drawer
+  // on it. It is appended only then, so the trigger has a label to show instead of
+  // collapsing to the empty placeholder.
+  const periodMenuItems = [
+    ...DATE_FILTERING_TIME_PERIOD_OPTIONS.map((option) => (
+      <MenuItem
+        key={option.value}
+        title={translateReport(option.labelKey)}
+        value={String(option.value)}
+      />
+    )),
+    ...(timeSeriesPeriod === DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM
+      ? [
+          <MenuItem
+            key={DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM}
+            title={translateReport('Label.Custom')}
+            value={String(DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM)}
+          />,
+        ]
+      : []),
+  ];
 
   const handleMetricTabChange = (newTab: string) => {
     setActiveMetricTab(newTab as MetricTab);
@@ -247,7 +284,7 @@ const CampaignReportingCharts = () => {
       <div className={classes.controlsRow}>
         <div className={classes.controlsLeft}>
           <Tabs onValueChange={handleMetricTabChange} size='Small' value={activeMetricTab}>
-            <TabsList className='gap-medium'>
+            <TabsList className={classes.metricTabList}>
               <TabsTrigger
                 aria-label={translateCampaign('Label.Plays')}
                 className={classes.metricTab}
@@ -265,26 +302,20 @@ const CampaignReportingCharts = () => {
             </TabsList>
           </Tabs>
         </div>
-        <FormControl className={classes.periodSelect} variant='outlined'>
-          <Select
-            disabled={timeSeriesState.isLoading}
-            inputProps={{ name: 'campaignPerformancePeriod' }}
+        {!isCustomDateRangeEnabled && (
+          <Dropdown
+            className={classes.periodSelect}
+            isDisabled={timeSeriesState.isLoading}
             label={translateReport('Label.DateRange')}
-            onChange={handlePeriodChange}
-            // Render the dropdown inside the Sheet (Radix Dialog) rather than
-            // portaling to <body>, which is inert while the Sheet is open and
-            // would treat a dropdown click as an outside dismiss.
-            SelectProps={{ MenuProps: { disablePortal: true } }}
-            size='small'
-            value={timeSeriesPeriod}
-            variant='outlined'>
-            {DATE_FILTERING_TIME_PERIOD_OPTIONS.map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {translateReport(option.labelKey)}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+            onValueChange={handlePeriodChange}
+            placeholder=''
+            size='Small'
+            value={String(timeSeriesPeriod)}>
+            <Menu>
+              <MenuSection>{periodMenuItems}</MenuSection>
+            </Menu>
+          </Dropdown>
+        )}
       </div>
       <div className={classes.chartWrapper}>{renderChartContent()}</div>
     </div>

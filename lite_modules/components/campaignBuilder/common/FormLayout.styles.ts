@@ -33,8 +33,11 @@ const useFormLayoutStyles = makeStyles()((theme) => ({
     minWidth: '276px',
     width: 'calc(50% - 8px)',
   },
+  // Anchored to the top rather than centered: Foundation renders a field's label
+  // above its input, so centering against the whole column would float the action
+  // into the gap between label and input.
   inlineAction: {
-    alignSelf: 'center',
+    alignSelf: 'flex-start',
     flexShrink: 0,
   },
   inlineRow: {

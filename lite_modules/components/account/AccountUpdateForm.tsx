@@ -1,9 +1,9 @@
-import { Button } from '@rbx/foundation-ui';
-import { Autocomplete, TextField } from '@rbx/ui';
+import { Button, TextInput } from '@rbx/foundation-ui';
 import { useRouter } from 'next/router';
 import { Controller, FormProvider, useWatch } from 'react-hook-form';
 
 import useAccountFormStyles from '@components/account/AccountForm.styles';
+import TitleValueAutocomplete from '@components/common/form/TitleValueAutocomplete';
 import { FormFields } from '@constants/account';
 import { OrganizationType } from '@constants/app';
 import { TranslationNamespace } from '@constants/localization';
@@ -136,17 +136,19 @@ const AccountUpdateForm = ({
                   control={control}
                   name={FormFields.FIRST_NAME}
                   render={({ field, fieldState: { error } }) => (
-                    <TextField
+                    <TextInput
                       {...field}
                       className={nameWrapper}
-                      error={!!error}
-                      helperText={error?.message}
+                      error={error?.message}
+                      hasError={Boolean(error)}
                       id={FormFields.FIRST_NAME}
                       label={translateAccount('Label.FirstName')}
                       name={FormFields.FIRST_NAME}
                       onChange={(e) => {
                         handleFirstNameChange(e.target.value);
                       }}
+                      size='Medium'
+                      value={field.value ?? ''}
                     />
                   )}
                 />
@@ -154,17 +156,19 @@ const AccountUpdateForm = ({
                   control={control}
                   name={FormFields.LAST_NAME}
                   render={({ field, fieldState: { error } }) => (
-                    <TextField
+                    <TextInput
                       {...field}
                       className={nameWrapper}
-                      error={!!error}
-                      helperText={error?.message}
+                      error={error?.message}
+                      hasError={Boolean(error)}
                       id={FormFields.LAST_NAME}
                       label={translateAccount('Label.LastName')}
                       name={FormFields.LAST_NAME}
                       onChange={(e) => {
                         handleLastNameChange(e.target.value);
                       }}
+                      size='Medium'
+                      value={field.value ?? ''}
                     />
                   )}
                 />
@@ -180,18 +184,19 @@ const AccountUpdateForm = ({
               control={control}
               name={FormFields.BUSINESS_NAME}
               render={({ field, fieldState: { error } }) => (
-                <TextField
+                <TextInput
                   {...field}
-                  error={!!error}
-                  helperText={
-                    error?.message || translateAccount('Description.BusinessNameDisclosure')
-                  }
+                  error={error?.message}
+                  hasError={Boolean(error)}
+                  helperText={translateAccount('Description.BusinessNameDisclosure')}
                   id={FormFields.BUSINESS_NAME}
                   label={translateAccount('Label.BusinessName')}
                   name={FormFields.BUSINESS_NAME}
                   onChange={(e) => {
                     handleBusinessNameChange(e.target.value);
                   }}
+                  size='Medium'
+                  value={field.value ?? ''}
                 />
               )}
             />
@@ -199,16 +204,18 @@ const AccountUpdateForm = ({
               control={control}
               name={FormFields.TAX_ID}
               render={({ field, fieldState: { error } }) => (
-                <TextField
+                <TextInput
                   {...field}
-                  error={!!error}
-                  helperText={error?.message}
+                  error={error?.message}
+                  hasError={Boolean(error)}
                   id={FormFields.TAX_ID}
                   label={translateAccount('Label.TaxIdOptional')}
                   name={FormFields.TAX_ID}
                   onChange={(e) => {
                     handleTaxIdChange(e.target.value);
                   }}
+                  size='Medium'
+                  value={field.value ?? ''}
                 />
               )}
             />
@@ -218,23 +225,13 @@ const AccountUpdateForm = ({
           control={control}
           name={FormFields.COUNTRY}
           render={({ field, fieldState: { error } }) => (
-            <Autocomplete
-              disableClearable
-              getOptionLabel={(option) => option.title || ''}
-              id={FormFields.COUNTRY}
-              isOptionEqualToValue={(option, value) => option.value === value.value}
-              onChange={(_event, countryObj) => handleCountryChange(countryObj)}
+            <TitleValueAutocomplete
+              dataTestId={FormFields.COUNTRY}
+              errorMessage={error?.message}
+              label={translateAccount('Label.Location')}
+              onBlur={field.onBlur}
+              onChange={handleCountryChange}
               options={countries}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  error={Boolean(error)}
-                  helperText={error?.message}
-                  label={translateAccount('Label.Location')}
-                  name={FormFields.COUNTRY}
-                  onBlur={field.onBlur}
-                />
-              )}
               value={field.value}
             />
           )}
@@ -247,31 +244,35 @@ const AccountUpdateForm = ({
             control={control}
             name={FormFields.NICKNAME}
             render={({ field, fieldState: { error } }) => (
-              <TextField
+              <TextInput
                 {...field}
-                error={!!error}
-                helperText={error?.message}
+                error={error?.message}
+                hasError={Boolean(error)}
                 id={FormFields.NICKNAME}
                 label={translateAccount('Label.AdAccountNickname')}
                 name={FormFields.NICKNAME}
                 onChange={(e) => {
                   handleNicknameChange(e.target.value);
                 }}
+                size='Medium'
+                value={field.value ?? ''}
               />
             )}
           />
         )}
-        <TextField
-          disabled
+        <TextInput
           id={FormFields.ACCOUNT_ID}
+          isDisabled
           label={translateAccount('Label.AdAccountId')}
-          value={adAccountInfo?.id}
+          size='Medium'
+          value={adAccountInfo?.id ?? ''}
         />
-        <TextField
-          disabled
+        <TextInput
           id={FormFields.TIME_ZONE}
+          isDisabled
           label={translateAccount('Label.Timezone')}
-          value={getTimezoneByEnum(organizationInfo.time_zone)?.title}
+          size='Medium'
+          value={getTimezoneByEnum(organizationInfo.time_zone)?.title ?? ''}
         />
 
         <span className='flex gap-large'>

@@ -10,7 +10,7 @@ import ThumbnailCreativeSection from '@components/campaignBuilder/common/creativ
 import VideoCreativeSection from '@components/campaignBuilder/common/creative/VideoCreativeSection';
 import FormAccordion from '@components/campaignBuilder/common/FormAccordion';
 import { ServerCampaignObjectiveType } from '@constants/campaign';
-import { AssetSource, FlowTypes, FormField, ReachAdFormat } from '@constants/campaignBuilder';
+import { AssetSource, FlowTypes, FormField } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -41,9 +41,6 @@ const CreativeSection = () => {
   });
   const goal = useWatch<FormType, typeof FormField.GOAL>({
     name: FormField.GOAL,
-  });
-  const creativeFormat = useWatch<FormType, typeof FormField.CREATIVE_FORMAT>({
-    name: FormField.CREATIVE_FORMAT,
   });
   const { universe_id: universeId } = universeFilter || {};
 
@@ -178,8 +175,7 @@ const CreativeSection = () => {
 
   const renderRightContent = () => {
     if (goal === ServerCampaignObjectiveType.REACH) {
-      // The 1x2 vertical (video) format has no preview yet.
-      return creativeFormat === ReachAdFormat.VERTICAL_1X2 ? undefined : <ReachCreativePreview />;
+      return <ReachCreativePreview />;
     }
 
     if (!editMode) {

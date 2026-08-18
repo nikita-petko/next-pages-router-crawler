@@ -25,6 +25,18 @@ export enum ServerAdAssetType {
   VIDEO = 2,
 }
 
+// Based on shared enumv3 CtaButtonType: https://sourcegraph.rbx.com/search?q=context:global+repo:%5Egithub%5C.rbx%5C.com/Roblox/service-contracts%24+CtaButtonType&patternType=keyword&sm=0
+// Advertiser-selected call-to-action button on a 1x2 vertical (video) reach ad.
+// UNSPECIFIED is omitted deliberately: the field is optional end to end, and
+// ads-root resolves both an absent value and an explicit 0 to the View label,
+// so the form models "no choice" as `undefined` rather than as a member here.
+export enum ServerCtaButtonType {
+  VIEW = 1,
+  BUY = 2,
+  GET = 3,
+  SUBSCRIBE = 4,
+}
+
 // Based on shared enumsv2 AdAssetStatus: https://sourcegraph.rbx.com/search?q=context:global+repo:%5Egithub%5C.rbx%5C.com/Roblox/ads%24+AdAssetStatus&patternType=keyword&sm=0
 export enum ServerAdAssetStatusType {
   PENDING_REVIEW = 1,

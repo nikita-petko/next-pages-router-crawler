@@ -58,6 +58,10 @@ import {
 import { CampaignTimeSeries } from '@type/timeSeries';
 import { AdvertisedUniverse } from '@type/universe';
 import { SimplifiedUploadedCreative } from '@type/uploadedCreative';
+import {
+  parseDateSelectionFromWindowLocation,
+  resolveDefaultTreatmentSelection,
+} from '@utils/dateSelectionUrl';
 import { CaptureException } from '@utils/error';
 import {
   buildFrontendReportingStats,
@@ -160,6 +164,7 @@ interface SponsoredAdsPageStateType {
 }
 
 interface FilteredCampaignIdsRequest {
+  abortSignal?: AbortSignal;
   newCampaignNameSearch?: string;
   newUniverseId?: number;
 }
@@ -206,6 +211,9 @@ const getShouldUseWorkspaceUniverseFiltering = (): boolean =>
 const getShouldUseCaaSReportingStats = (): boolean =>
   shouldUseCaaSReportingStats(useAppStore.getState());
 
+const getIsCustomDateRangeEnabled = (): boolean =>
+  useAppStore.getState().appMetadataState.data?.isCustomDateRangeEnabled ?? false;
+
 const getSummaryUniverseId = (universe: AdvertisedUniverse): number | undefined =>
   universe.universe_id === 0 ? undefined : universe.universe_id;
 
@@ -213,6 +221,15 @@ interface SponsoredAdsPageActionType {
   cancelCampaign: (campaignId: string) => Promise<void>;
   // Resets
   closeDrawer: () => void;
+  // Commit half of the control-arm date-change flow (fetch half is
+  // `refetchForDateSelection`). On error, keeps the prior selection and
+  // only flips `isError` so retry re-dispatches the same request.
+  commitDateSelection: (
+    newDateSelection: DateFilteringTimePeriod,
+    customStartDate: string | undefined,
+    customEndDate: string | undefined,
+    isError: boolean,
+  ) => void;
   commitPendingStatusChanges: (entityType: EntityType) => void;
   fetchCampaignTimeSeries: (
     timePeriod: DateFilteringTimePeriod,
@@ -231,13 +248,13 @@ interface SponsoredAdsPageActionType {
     openDrawer?: boolean,
     isOffPlatformCampaign?: boolean,
   ) => void;
+
   getAndUpdateDisplayStatuses: (
     campaignId: string,
     adId?: string,
   ) => Promise<GetUpdatedStatusesResponseType>;
 
   getCampaignStatuses: (campaignIds: string[]) => void;
-
   getDateFilteredCampaigns: (
     dateSelection: DateFilteringTimePeriod,
     reportingView: ReportingViewType,
@@ -259,7 +276,9 @@ interface SponsoredAdsPageActionType {
   ) => Promise<AdAccountSummary | undefined>;
   // --> Promise.all(getFilteredCampaignIds, getSummaryStats, getDateFilteredCampaigns)
   handleCampaignNameSearchChange: (newCampaignNameSearch: string) => void;
-  // UI handleChange
+  // Control-arm entry point: `refetchForDateSelection` + `commitDateSelection`.
+  // Treatment arm calls `refetchForDateSelection` directly (URL is the source
+  // of truth, no store commit).
   handleDateSelectionChange: (
     newDateSelection: DateFilteringTimePeriod,
     customStartDate?: string,
@@ -282,6 +301,14 @@ interface SponsoredAdsPageActionType {
     universeIds?: number[];
     universeId?: number;
   }) => Promise<boolean>;
+  // Fetches campaigns + summary (and best-effort drawer sync on success).
+  // Does not write `dateSelectionState`; callers can chain
+  // `commitDateSelection`. Resolves to the fetch success flag.
+  refetchForDateSelection: (
+    newDateSelection: DateFilteringTimePeriod,
+    customStartDate?: string,
+    customEndDate?: string,
+  ) => Promise<boolean>;
   resetFilterState: () => void;
   retryCampaigns: () => Promise<void>;
   retrySummaryStats: () => Promise<void>;
@@ -306,6 +333,8 @@ export interface NewFlowStoreType extends SponsoredAdsPageStateType, SponsoredAd
 // Create request manager outside the store to persist across renders
 // Shared by date, reporting view, and universe picker to ensure only the most recent filter change is applied
 const dateReportingViewRequestManager = createRequestManager();
+const frontendSummaryRequestManager = createRequestManager();
+const initialBackendSummaryRequestManager = createRequestManager();
 const campaignTimeSeriesRequestManager = createRequestManager();
 const visibleAdStatsRequestManager = createRequestManager();
 const visibleCampaignStatsRequestManager = createRequestManager();
@@ -392,6 +421,7 @@ const fetchFrontendStatsForEntities = async ({
 };
 
 const fetchFrontendSummaryStats = async ({
+  abortSignal,
   backendSummary,
   campaigns,
   customEndDate,
@@ -402,6 +432,7 @@ const fetchFrontendSummaryStats = async ({
   universeId,
   universeIds: requestedUniverseIds,
 }: {
+  abortSignal?: AbortSignal;
   backendSummary?: AdAccountSummary;
   campaigns: Campaign[];
   customEndDate?: string;
@@ -449,6 +480,7 @@ const fetchFrontendSummaryStats = async ({
     caasResults = await Promise.all(
       universeIds.map(async (id) => {
         const results = await getUniverseCaaSReportingStats({
+          abortSignal,
           customEndDate,
           customStartDate,
           reportingView,
@@ -463,6 +495,7 @@ const fetchFrontendSummaryStats = async ({
     caasResults = [];
   } else {
     const results = await getAdAccountCaaSReportingStats({
+      abortSignal,
       adAccountId: adAccountId!,
       customEndDate,
       customStartDate,
@@ -582,6 +615,28 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         visibleAdStatsRequestManager.cancel();
       });
     },
+    commitDateSelection: (
+      newDateSelection: DateFilteringTimePeriod,
+      customStartDate: string | undefined,
+      customEndDate: string | undefined,
+      isError: boolean,
+    ) => {
+      const isCustom =
+        newDateSelection === DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM;
+      set((draft) => {
+        if (isError) {
+          // Preserve prior selection so retry re-dispatches the same request.
+          draft.dateSelectionState.isError = true;
+          return;
+        }
+        draft.dateSelectionState = {
+          currentSelection: newDateSelection,
+          customEndDate: isCustom ? customEndDate : undefined,
+          customStartDate: isCustom ? customStartDate : undefined,
+          isError: false,
+        };
+      });
+    },
     commitPendingStatusChanges: (entityType: EntityType) => {
       // Zustand is smart and doesn't trigger re-render if object reference is the same
       if (entityType === EntityType.ENTITY_TYPE_AD) {
@@ -594,8 +649,10 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         });
       }
     },
+    // Control-arm default. Treatment reads from the URL and seeds first-load
+    // fetches via `resolveDefaultTreatmentSelection`; delete slice at 100%.
     dateSelectionState: {
-      currentSelection: DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_SEVEN_DAYS, // Default date selection
+      currentSelection: DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_SEVEN_DAYS,
       isError: false,
     },
     fetchCampaignTimeSeries: async (
@@ -648,6 +705,9 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
 
         const timeSeries = await campaignTimeSeriesRequestManager.executeRequest(() =>
           getCampaignTimeSeries({
+            aggregationType: reportingMetadata?.isAttributionDateAggregationEnabled
+              ? 'attributionDate'
+              : 'default',
             campaignId: requestCampaignId,
             customEndDate,
             customStartDate,
@@ -688,7 +748,17 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
     },
     fetchInitialData: (createdFirstCampaign: boolean, campaignId?: string, options?) => {
       const shouldUseWorkspaceUniverseFiltering = getShouldUseWorkspaceUniverseFiltering();
-      const initialDateSelection = get().dateSelectionState.currentSelection;
+      // Treatment: honor bookmarked URL, else fall back to the default.
+      // Control: ignore URL, use the slice's own SEVEN_DAYS default.
+      const treatmentSelection = getIsCustomDateRangeEnabled()
+        ? (parseDateSelectionFromWindowLocation() ?? resolveDefaultTreatmentSelection())
+        : undefined;
+      const initialDateSelection =
+        treatmentSelection?.currentSelection ?? get().dateSelectionState.currentSelection;
+      const initialCustomStart =
+        treatmentSelection?.customStartDate ?? get().dateSelectionState.customStartDate;
+      const initialCustomEnd =
+        treatmentSelection?.customEndDate ?? get().dateSelectionState.customEndDate;
       const initialReportingView = get().reportingViewState.currentSelection;
       const { initialUniverseId, workspace } = options ?? {};
 
@@ -702,13 +772,6 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
           };
         }
       });
-
-      const { customEndDate: storedInitialCustomEnd, customStartDate: storedInitialCustomStart } =
-        get().dateSelectionState;
-      const initialIsCustom =
-        initialDateSelection === DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM;
-      const initialCustomStart = initialIsCustom ? storedInitialCustomStart : undefined;
-      const initialCustomEnd = initialIsCustom ? storedInitialCustomEnd : undefined;
 
       const fetchCampaignsAndSummary = (
         universeFilter: AdvertisedUniverse,
@@ -733,15 +796,19 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         const summaryPromise =
           shouldUseFrontendSummary && shouldUseWorkspaceUniverseFiltering
             ? Promise.resolve(undefined)
-            : get().getSummaryStats(
-                initialDateSelection,
-                initialReportingView,
-                summaryUniverseId,
-                undefined,
-                initialCustomStart,
-                initialCustomEnd,
-                reportingRequestTimestamp,
-              );
+            : initialBackendSummaryRequestManager
+                .executeRequest((abortSignal) =>
+                  get().getSummaryStats(
+                    initialDateSelection,
+                    initialReportingView,
+                    summaryUniverseId,
+                    abortSignal,
+                    initialCustomStart,
+                    initialCustomEnd,
+                    reportingRequestTimestamp,
+                  ),
+                )
+                .then((summary) => summary ?? undefined);
 
         const filteredIdsPromise =
           !shouldUseWorkspaceUniverseFiltering && universeFilter.universe_id !== 0
@@ -752,12 +819,17 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             : Promise.resolve(undefined);
 
         set((draft) => {
+          draft.reportingRequestTimestamp = reportingRequestTimestamp;
+          draft.summaryRequestTimestamp = reportingRequestTimestamp;
           draft.universePickerFilterState.universeFilter = universeFilter;
           draft.universePickerFilterState.isError = false;
         });
 
         const campaignsUpdate = campaignsPromise
           .then((fetchResult) => {
+            if (get().summaryRequestTimestamp !== reportingRequestTimestamp) {
+              return;
+            }
             set((draft) => {
               draft.campaignsState.data = fetchResult.campaigns;
               draft.campaignsState.isError = false;
@@ -767,11 +839,17 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             }
           })
           .catch(() => {
+            if (get().summaryRequestTimestamp !== reportingRequestTimestamp) {
+              return;
+            }
             set((draft) => {
               draft.campaignsState.isError = true;
             });
           })
           .finally(() => {
+            if (get().summaryRequestTimestamp !== reportingRequestTimestamp) {
+              return;
+            }
             set((draft) => {
               draft.campaignsState.isLoading = false;
             });
@@ -782,17 +860,21 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             let frontendSummary: AdAccountSummary | undefined;
             if (shouldUseFrontendSummary) {
               try {
-                frontendSummary = await fetchFrontendSummaryStats({
-                  backendSummary,
-                  campaigns: (await campaignsPromise).campaigns,
-                  customEndDate: initialCustomEnd,
-                  customStartDate: initialCustomStart,
-                  reportingView: initialReportingView,
-                  requestTimestamp: reportingRequestTimestamp,
-                  timePeriod: initialDateSelection,
-                  universeId: summaryUniverseId,
-                  universeIds,
-                });
+                frontendSummary =
+                  (await frontendSummaryRequestManager.executeRequest(async (abortSignal) =>
+                    fetchFrontendSummaryStats({
+                      abortSignal,
+                      backendSummary,
+                      campaigns: (await campaignsPromise).campaigns,
+                      customEndDate: initialCustomEnd,
+                      customStartDate: initialCustomStart,
+                      reportingView: initialReportingView,
+                      requestTimestamp: reportingRequestTimestamp,
+                      timePeriod: initialDateSelection,
+                      universeId: summaryUniverseId,
+                      universeIds,
+                    }),
+                  )) ?? undefined;
               } catch (error) {
                 CaptureException(error, { context: 'fetchInitialFrontendSummary' });
                 if (!backendSummary) {
@@ -810,12 +892,18 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             });
           })
           .catch((error) => {
+            if (get().summaryRequestTimestamp !== reportingRequestTimestamp) {
+              return;
+            }
             set((draft) => {
               draft.summaryStatsState.isError = true;
             });
             CaptureException(error, { context: 'fetchInitialSummary' });
           })
           .finally(() => {
+            if (get().summaryRequestTimestamp !== reportingRequestTimestamp) {
+              return;
+            }
             set((draft) => {
               draft.summaryStatsState.isLoading = false;
             });
@@ -823,6 +911,9 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
 
         const filteredIdsUpdate = filteredIdsPromise
           .then((filteredCampaignIds) => {
+            if (get().summaryRequestTimestamp !== reportingRequestTimestamp) {
+              return;
+            }
             set((draft) => {
               draft.filteredIdsState = {
                 filteredCampaignIds,
@@ -831,6 +922,9 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             });
           })
           .catch(() => {
+            if (get().summaryRequestTimestamp !== reportingRequestTimestamp) {
+              return;
+            }
             set((draft) => {
               draft.filteredIdsState.isLoading = false;
             });
@@ -1467,6 +1561,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       }
     },
     getFilteredCampaignIds: async ({
+      abortSignal,
       newCampaignNameSearch,
       newUniverseId,
     }: FilteredCampaignIdsRequest) => {
@@ -1493,7 +1588,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       }
       // Fetch filtered ids
       try {
-        const response = await getFilteredCampaignIds(request);
+        const response = await getFilteredCampaignIds(request, abortSignal);
         return new Set(response);
       } catch (error) {
         logNativeErrorEvent({
@@ -1576,58 +1671,10 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       customStartDate?: string,
       customEndDate?: string,
     ) => {
-      const currentReportingView = get().reportingViewState.currentSelection;
-      const isCustom =
-        newDateSelection === DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM;
-      const nextCustomStart = isCustom ? customStartDate : undefined;
-      const nextCustomEnd = isCustom ? customEndDate : undefined;
-      const shouldUseWorkspaceUniverseFiltering = getShouldUseWorkspaceUniverseFiltering();
-      const { universeFilter } = get().universePickerFilterState;
-      const pickerUniverses = get().advertisedUniversesState.data;
-
       get()
-        .refetchCampaignsAndSummary({
-          customEndDate: nextCustomEnd,
-          customStartDate: nextCustomStart,
-          dateSelection: newDateSelection,
-          onError: (draft) => {
-            // If the new selection failed, keep the previous campaigns and summary stats
-            // Show error under date selector
-            draft.dateSelectionState.isError = true;
-          },
-          onSuccess: (_fetchedCampaigns, _summaryStats, draft) => {
-            // Commit the new date selection
-            draft.dateSelectionState = {
-              currentSelection: newDateSelection,
-              customEndDate: nextCustomEnd,
-              customStartDate: nextCustomStart,
-              isError: false,
-            };
-          },
-          reportingView: currentReportingView,
-          universeId: shouldUseWorkspaceUniverseFiltering
-            ? getSummaryUniverseId(universeFilter)
-            : universeFilter.universe_id || undefined,
-          universeIds: shouldUseWorkspaceUniverseFiltering
-            ? resolveUniverseIdsForDateFilter(universeFilter, pickerUniverses)
-            : undefined,
-        })
+        .refetchForDateSelection(newDateSelection, customStartDate, customEndDate)
         .then((success) => {
-          if (!success) {
-            return;
-          }
-          // Keep the drawer's reporting chart synchronized with the page-level
-          // date selection when the drawer is open.
-          if (get().campaignDetailsState.campaign) {
-            get()
-              .fetchCampaignTimeSeries(newDateSelection, nextCustomStart, nextCustomEnd)
-              .catch(() => undefined);
-            get()
-              .fetchVisibleAdStats(
-                (get().campaignDetailsState.adsState.data ?? []).map(({ id }) => id),
-              )
-              .catch(() => undefined);
-          }
+          get().commitDateSelection(newDateSelection, customStartDate, customEndDate, !success);
         });
     },
     handleReportingViewChange: (newReportingView: ReportingViewType) => {
@@ -1789,11 +1836,17 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         ? resolveUniverseIdsForDateFilter(universe, pickerUniverses)
         : undefined;
       const summaryUniverseId = getSummaryUniverseId(universe);
+      const requestTimestamp = new Date().toISOString();
 
+      frontendSummaryRequestManager.cancel();
+      initialBackendSummaryRequestManager.cancel();
       set((draft) => {
         draft.campaignsState.isLoading = true;
         draft.filteredIdsState.isLoading = !shouldUseWorkspaceUniverseFiltering;
+        draft.summaryRequestTimestamp = requestTimestamp;
         draft.summaryStatsState.isLoading = true;
+        draft.universePickerFilterState.universeFilter = universe;
+        draft.universePickerFilterState.isError = false;
       });
 
       const {
@@ -1810,7 +1863,6 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       // Use shared request manager to handle cancellation of stale requests (fire-and-forget)
       dateReportingViewRequestManager
         .executeRequest(async (abortSignal) => {
-          const requestTimestamp = new Date().toISOString();
           const shouldUseFrontendSummary = getShouldUseCaaSReportingStats();
           const [campaignFetchResult, filteredCampaignIds, backendSummaryStats] = await Promise.all(
             [
@@ -1826,6 +1878,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
               shouldUseWorkspaceUniverseFiltering
                 ? Promise.resolve(undefined)
                 : get().getFilteredCampaignIds({
+                    abortSignal,
                     newCampaignNameSearch: undefined,
                     newUniverseId: universe.universe_id,
                   }),
@@ -1842,18 +1895,22 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
                   ),
             ],
           );
+          abortSignal.throwIfAborted();
           const frontendSummaryStats = shouldUseFrontendSummary
-            ? await fetchFrontendSummaryStats({
-                backendSummary: backendSummaryStats,
-                campaigns: campaignFetchResult.campaigns,
-                customEndDate,
-                customStartDate,
-                reportingView: currentReportingView,
-                requestTimestamp,
-                timePeriod: currentDateSelection,
-                universeId: summaryUniverseId,
-                universeIds,
-              })
+            ? await frontendSummaryRequestManager.executeRequest((summaryAbortSignal) =>
+                fetchFrontendSummaryStats({
+                  abortSignal: summaryAbortSignal,
+                  backendSummary: backendSummaryStats,
+                  campaigns: campaignFetchResult.campaigns,
+                  customEndDate,
+                  customStartDate,
+                  reportingView: currentReportingView,
+                  requestTimestamp,
+                  timePeriod: currentDateSelection,
+                  universeId: summaryUniverseId,
+                  universeIds,
+                }),
+              )
             : undefined;
           const summaryStats =
             shouldUseFrontendSummary && frontendSummaryStats
@@ -1882,19 +1939,22 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             };
             draft.summaryStatsState.data = result.summaryStats;
             draft.summaryStatsState.isError = false;
-            // Commit the change only if successful
-            draft.universePickerFilterState.universeFilter = universe;
-            draft.universePickerFilterState.isError = false;
             // Clear campaign name search error as a successful filter request has been sent
             draft.campaignNameFilterState.isError = false;
           });
         })
         .catch(() => {
+          if (get().summaryRequestTimestamp !== requestTimestamp) {
+            return;
+          }
           set((draft) => {
             draft.universePickerFilterState.isError = true;
           });
         })
         .finally(() => {
+          if (get().summaryRequestTimestamp !== requestTimestamp) {
+            return;
+          }
           set((draft) => {
             // Clear error from date picker as more recent requests have been sent
             draft.dateSelectionState.isError = false;
@@ -1925,6 +1985,8 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       universeId?: number;
     }) => {
       const requestTimestamp = new Date().toISOString();
+      frontendSummaryRequestManager.cancel();
+      initialBackendSummaryRequestManager.cancel();
       set((draft) => {
         draft.campaignsState.isLoading = true;
         draft.summaryRequestTimestamp = requestTimestamp;
@@ -1960,18 +2022,22 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             ),
             summaryPromise,
           ]);
+          abortSignal.throwIfAborted();
           const frontendSummaryPromise = shouldUseFrontendSummary
-            ? fetchFrontendSummaryStats({
-                backendSummary: backendSummaryStats,
-                campaigns: campaignFetchResult.campaigns,
-                customEndDate: params.customEndDate,
-                customStartDate: params.customStartDate,
-                reportingView: params.reportingView,
-                requestTimestamp,
-                timePeriod: params.dateSelection,
-                universeId: params.universeId,
-                universeIds: params.universeIds,
-              })
+            ? frontendSummaryRequestManager.executeRequest((summaryAbortSignal) =>
+                fetchFrontendSummaryStats({
+                  abortSignal: summaryAbortSignal,
+                  backendSummary: backendSummaryStats,
+                  campaigns: campaignFetchResult.campaigns,
+                  customEndDate: params.customEndDate,
+                  customStartDate: params.customStartDate,
+                  reportingView: params.reportingView,
+                  requestTimestamp,
+                  timePeriod: params.dateSelection,
+                  universeId: params.universeId,
+                  universeIds: params.universeIds,
+                }),
+              )
             : undefined;
 
           return {
@@ -2018,7 +2084,10 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
           keepFrontendSummaryLoading = true;
           result.frontendSummaryPromise
             .then((frontendSummaryStats) => {
-              if (get().summaryRequestTimestamp !== result.requestTimestamp) {
+              if (
+                frontendSummaryStats === null ||
+                get().summaryRequestTimestamp !== result.requestTimestamp
+              ) {
                 return;
               }
               set((draft) => {
@@ -2054,6 +2123,50 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
           }
         });
       }
+    },
+    refetchForDateSelection: (
+      newDateSelection: DateFilteringTimePeriod,
+      customStartDate?: string,
+      customEndDate?: string,
+    ): Promise<boolean> => {
+      const currentReportingView = get().reportingViewState.currentSelection;
+      const isCustom =
+        newDateSelection === DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM;
+      const nextCustomStart = isCustom ? customStartDate : undefined;
+      const nextCustomEnd = isCustom ? customEndDate : undefined;
+      const shouldUseWorkspaceUniverseFiltering = getShouldUseWorkspaceUniverseFiltering();
+      const { universeFilter } = get().universePickerFilterState;
+      const pickerUniverses = get().advertisedUniversesState.data;
+
+      return get()
+        .refetchCampaignsAndSummary({
+          customEndDate: nextCustomEnd,
+          customStartDate: nextCustomStart,
+          dateSelection: newDateSelection,
+          onError: () => undefined,
+          onSuccess: () => undefined,
+          reportingView: currentReportingView,
+          universeId: shouldUseWorkspaceUniverseFiltering
+            ? getSummaryUniverseId(universeFilter)
+            : universeFilter.universe_id || undefined,
+          universeIds: shouldUseWorkspaceUniverseFiltering
+            ? resolveUniverseIdsForDateFilter(universeFilter, pickerUniverses)
+            : undefined,
+        })
+        .then((success) => {
+          // Keep the drawer's reporting chart in sync when it's open.
+          if (success && get().campaignDetailsState.campaign) {
+            get()
+              .fetchCampaignTimeSeries(newDateSelection, nextCustomStart, nextCustomEnd)
+              .catch(() => undefined);
+            get()
+              .fetchVisibleAdStats(
+                (get().campaignDetailsState.adsState.data ?? []).map(({ id }) => id),
+              )
+              .catch(() => undefined);
+          }
+          return success;
+        });
     },
     reportingRequestTimestamp: new Date().toISOString(),
     reportingViewState: {

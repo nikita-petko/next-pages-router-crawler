@@ -146,6 +146,7 @@ const AdIntegrationsListPage = () => {
     getCampaignDetailsById,
     getCampaignListBySelectedUniverse,
     getUniversesCanAdvertise,
+    isCampaignDetailsLoading,
     isCampaignListError,
     isCampaignListLoading,
     isUniversesError,
@@ -157,6 +158,9 @@ const AdIntegrationsListPage = () => {
     universesCanAdvertise,
   } = useAdIntegrationCampaignApi({ loadUniversesOnMount: false });
   const [showArchivedCampaigns, setShowArchivedCampaigns] = useState<boolean>(false);
+  const isMultiUniverseEnabled = useAppStore(
+    (state) => state.appMetadataState?.data?.isMultiUniverseAdIntegrationsEnabled ?? false,
+  );
   const shouldUseWorkspaceUniverseFiltering = useShouldUseWorkspaceUniverseFiltering();
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspaces();
 
@@ -277,19 +281,46 @@ const AdIntegrationsListPage = () => {
   const managedCampaignEnded = isAdIntegrationCampaignEndedByTimestamp(
     managedCampaign?.endTimestampMs ?? campaignEndTimestampMs,
   );
+  // `campaignDetails` is the store-wide snapshot of whichever campaign's details
+  // loaded last, so while a newly selected campaign's details are still loading it
+  // holds the PREVIOUS campaign's experienceIds. Only fall back to it once loading
+  // has settled, otherwise the assets drawer would run asset-creator validation
+  // against the wrong universes for a campaign that isn't present in the list.
+  const campaignDetailsExperienceIds = isCampaignDetailsLoading
+    ? undefined
+    : campaignDetails?.experienceIds;
+  const managedCampaignUniverseIds =
+    managedCampaign?.universeIds ?? campaignDetailsExperienceIds ?? [];
+  const managedCampaignAdditionalUniverseCount = isMultiUniverseEnabled
+    ? Math.max(managedCampaignUniverseIds.length - 1, 0)
+    : undefined;
+  const campaignDetailsUniverseId = campaignDetailsExperienceIds?.[0];
+  const managedCampaignPrimaryUniverseId =
+    managedCampaignUniverseIds[0] ?? managedCampaign?.universeId ?? campaignDetailsUniverseId;
   const managedCampaignExperienceName = useMemo<string>(
     () =>
-      managedCampaign?.universeName ??
-      universesCanAdvertise.find((universe) => universe.universe_id === campaignDetails?.experience)
-        ?.universe_name ??
+      // `universeNames` entries default to '' when a universe is outside the
+      // publisher's advertisable set (the store resolves names from
+      // `universesCanAdvertise`). Use `||`, not `??`, so an unresolved empty
+      // string falls through to the next source instead of rendering blank.
+      managedCampaign?.universeNames?.[0] ||
+      managedCampaign?.universeName ||
+      universesCanAdvertise.find(
+        (universe) => universe.universe_id === managedCampaignPrimaryUniverseId,
+      )?.universe_name ||
       UNAVAILABLE_VALUE_DISPLAY,
-    [managedCampaign?.universeName, universesCanAdvertise, campaignDetails?.experience],
+    [
+      managedCampaign?.universeName,
+      managedCampaign?.universeNames,
+      managedCampaignPrimaryUniverseId,
+      universesCanAdvertise,
+    ],
   );
 
   const isRevenueShareEstimateEnabled = useAppStore(
     (state) => state.appMetadataState?.data?.isAdIntegrationRevenueShareEstimateEnabled ?? false,
   );
-  const managedCampaignUniverseId = managedCampaign?.universeId ?? campaignDetails?.experience;
+  const managedCampaignUniverseId = managedCampaignPrimaryUniverseId;
   // The detail drawer always fetches fresh signals for the selected campaign's
   // universe rather than reusing the store-wide saved snapshot: that snapshot is
   // whichever campaign's details loaded last, so reusing it would show stale
@@ -332,6 +363,7 @@ const AdIntegrationsListPage = () => {
     }
 
     return {
+      additionalUniverseCount: managedCampaignAdditionalUniverseCount,
       advertiserName: campaignDetails?.advertiserName || UNAVAILABLE_VALUE_DISPLAY,
       campaignId: managedCampaignId,
       campaignName: managedCampaign?.campaignName ?? campaignDetails?.campaignName ?? '',
@@ -342,8 +374,7 @@ const AdIntegrationsListPage = () => {
           : campaignDetails?.endDate || getDateDisplayValue(campaignEndTimestampMs, locale),
       experienceName: managedCampaignExperienceName,
       experienceThumbnailUrl:
-        thumbnailsByUniverseId[managedCampaign?.universeId ?? campaignDetails?.experience ?? 0]
-          ?.data?.imageUrl,
+        thumbnailsByUniverseId[managedCampaignPrimaryUniverseId ?? 0]?.data?.imageUrl,
       maxCostDisplay: managedCampaignMaxCostDisplay,
       registrationDate: getDateDisplayValue(
         managedCampaign?.createdTimestampMs ?? campaignCreatedTimestampMs,
@@ -361,16 +392,17 @@ const AdIntegrationsListPage = () => {
     campaignDetails?.campaignName,
     campaignDetails?.advertiserName,
     campaignDetails?.endDate,
-    campaignDetails?.experience,
     campaignDetails?.startDate,
     campaignEndTimestampMs,
     campaignStartTimestampMs,
     locale,
     managedCampaignId,
     managedCampaign,
+    managedCampaignAdditionalUniverseCount,
     managedCampaignCptvDisplay,
     managedCampaignExperienceName,
     managedCampaignMaxCostDisplay,
+    managedCampaignPrimaryUniverseId,
     managedCampaignStatusPresentation.label,
     managedCampaignStatusPresentation.tone,
     thumbnailsByUniverseId,
@@ -578,9 +610,17 @@ const AdIntegrationsListPage = () => {
                     <GameUniverseDropdown
                       advertisableUniverses={sortedPickerUniverses}
                       hasError={showIneligibleNotice}
-                      label={translateReport('Label.Experience')}
+                      label={
+                        isMultiUniverseEnabled
+                          ? translateMisc('Label.Games')
+                          : translateReport('Label.Experience')
+                      }
                       onValueChange={handleUniverseFilterChange}
-                      placeholder={translateReport('Label.Experience')}
+                      placeholder={
+                        isMultiUniverseEnabled
+                          ? translateMisc('Label.Games')
+                          : translateReport('Label.Experience')
+                      }
                       staticOptions={allUniverseStaticOptions}
                       value={String(selectedUniverseId)}
                     />
@@ -684,8 +724,10 @@ const AdIntegrationsListPage = () => {
         hasCampaigns && (
           <AdIntegrationsCampaignTable
             campaigns={visibleCampaignList}
+            isMultiUniverseEnabled={isMultiUniverseEnabled}
             onArchiveCampaign={handleArchiveCampaign}
             onToggleCampaignStatus={toggleCampaignStatus}
+            selectedUniverseId={selectedUniverseId}
             toggleLoadingMap={campaignStatusToggleLoadingMap}
           />
         )}
@@ -700,7 +742,8 @@ const AdIntegrationsListPage = () => {
         onSavePlacements={handleSaveManagedCampaignPlacements}
         open={Boolean(managedCampaignId)}
         placements={campaignPlacements}
-        universeId={managedCampaign?.universeId ?? campaignDetails?.experience}
+        universeId={isMultiUniverseEnabled ? undefined : managedCampaignUniverseId}
+        universeIds={isMultiUniverseEnabled ? managedCampaignUniverseIds : undefined}
         userId={authenticatedUser?.id}
       />
     </div>

@@ -1,9 +1,9 @@
 import { AdIntegrationPlacement } from '@rbx/client-ads-management-api/v1';
-import { Button, Checkbox, Link } from '@rbx/foundation-ui';
+import { Button, Checkbox, Dropdown, Link, Menu, MenuItem, MenuSection } from '@rbx/foundation-ui';
 import { useLocalization } from '@rbx/intl';
-import { DatePicker, FormLabel, MenuItem, PickersUtilsProvider, Select, TextField } from '@rbx/ui';
+import { FormLabel, TextField } from '@rbx/ui';
 import moment from 'moment-timezone';
-import { type ChangeEvent, type ReactNode, useCallback, useId, useMemo, useState } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
 import { Controller, useWatch } from 'react-hook-form';
 
 import AdIntegrationAssetsDrawer from '@components/adIntegrations/assetsDrawer/AdIntegrationAssetsDrawer';
@@ -12,6 +12,7 @@ import AdIntegrationExperienceSection from '@components/adIntegrations/campaignD
 import RevenueShareEstimateTile from '@components/adIntegrations/campaignDetails/RevenueShareEstimateTile';
 import { openAdIntegrationRevenueShareIncreaseDialog } from '@components/adIntegrations/dialogs/AdIntegrationRevenueShareIncreaseDialog';
 import { openErrorDialog } from '@components/common/dialog/errorDialog';
+import DateField from '@components/common/form/DateField';
 import {
   AdIntegrationFormField,
   MaxAdvertiserNameLength,
@@ -19,19 +20,13 @@ import {
 } from '@constants/adIntegrations';
 import { AdIntegrationsDocsUrl } from '@constants/adIntegrationsUrls';
 import { defaultTimeZone } from '@constants/app';
-import {
-  DateFormat,
-  FORM_HELPER_TEXT_PROPS,
-  INPUT_LABEL_PROPS,
-  TimeFormat,
-} from '@constants/campaignBuilder';
+import { DateFormat, TimeFormat } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import useAdIntegrationCampaignDetailsForm, {
   getIsCampaignEnded,
   getIsCampaignInProgress,
 } from '@hooks/adIntegrations/useAdIntegrationCampaignDetailsForm';
 import useRevenueShareEstimatePreview from '@hooks/adIntegrations/useRevenueShareEstimatePreview';
-import useDateFnsLocale from '@hooks/useDateFnsLocale';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { useAppStore } from '@stores/appStoreProvider';
 import {
@@ -95,12 +90,13 @@ const AdIntegrationCampaignDetailsForm = ({
   // Timezone city labels (Label.TimezoneCity.*) are defined in the Timezone
   // namespace, so resolve them separately from the Campaign copy.
   const { translate: translateTimezone } = useNamespacedTranslation(TranslationNamespace.Timezone);
+  // The calendar navigation labels (Label.NextMonth / Label.PreviousMonth) only
+  // exist in the Report namespace, and the repo forbids duplicating a string
+  // across namespaces, so resolve them from there.
+  const { translate: translateReport } = useNamespacedTranslation(TranslationNamespace.Report);
   const { locale } = useLocalization();
-  const dateFnsLocale = useDateFnsLocale();
   const [assetsDrawerOpen, setAssetsDrawerOpen] = useState<boolean>(false);
   const [pendingAssetIds, setPendingAssetIds] = useState<number[]>([]);
-  const [startDatePickerOpen, setStartDatePickerOpen] = useState<boolean>(false);
-  const [endDatePickerOpen, setEndDatePickerOpen] = useState<boolean>(false);
 
   const {
     cityKey,
@@ -132,7 +128,12 @@ const AdIntegrationCampaignDetailsForm = ({
     [timezoneDbName, cityKey, rawTimezoneDbName, staticTimezoneTitle, locale, translateTimezone],
   );
 
-  const campaignInProgress = getIsCampaignInProgress(mode, defaultValues.startDate, timezoneDbName);
+  const campaignInProgress = getIsCampaignInProgress(
+    mode,
+    defaultValues.startDate,
+    defaultValues.startTime,
+    timezoneDbName,
+  );
   const campaignEnded = getIsCampaignEnded(mode, defaultValues.endDate, timezoneDbName);
   const disableEditing = campaignEnded;
   // A live campaign has already started but has not yet ended. Extending its end
@@ -199,9 +200,9 @@ const AdIntegrationCampaignDetailsForm = ({
     control,
     name: AdIntegrationFormField.EndTime,
   });
-  const selectedExperience = useWatch({
+  const selectedExperienceIds = useWatch({
     control,
-    name: AdIntegrationFormField.Experience,
+    name: AdIntegrationFormField.ExperienceIds,
   });
   const isStartDateRangeError = errors.startDate?.type === 'custom';
   const startDateRangeErrorMessage = isStartDateRangeError ? errors.startDate?.message : undefined;
@@ -267,6 +268,23 @@ const AdIntegrationCampaignDetailsForm = ({
     () => GenerateTimeOptions(isEndToday, timezoneDbName, locale),
     [isEndToday, timezoneDbName, locale],
   );
+  // A saved time can fall outside the generated window (e.g. an in-progress
+  // campaign whose start slot has already passed today). Keep it in the list so
+  // the collapsed dropdown still shows the selected time instead of going blank.
+  const startTimeMenuOptions = useMemo<TimeOption[]>(
+    () =>
+      !startTime || startTimeOptions.some(({ value }) => value === startTime)
+        ? startTimeOptions
+        : [{ label: startTime, value: startTime }, ...startTimeOptions],
+    [startTime, startTimeOptions],
+  );
+  const endTimeMenuOptions = useMemo<TimeOption[]>(
+    () =>
+      !endTime || endTimeOptions.some(({ value }) => value === endTime)
+        ? endTimeOptions
+        : [{ label: endTime, value: endTime }, ...endTimeOptions],
+    [endTime, endTimeOptions],
+  );
   const startTimeConversion = useMemo(
     () =>
       getSelectedTimeConversion({
@@ -330,7 +348,7 @@ const AdIntegrationCampaignDetailsForm = ({
     () => toTimestampMs(endDate, endTime),
     [endDate, endTime, toTimestampMs],
   );
-  const selectedUniverseId = selectedExperience || undefined;
+  const selectedUniverseId = selectedExperienceIds[0];
   const {
     avgDailyVisits,
     billableDays,
@@ -362,7 +380,7 @@ const AdIntegrationCampaignDetailsForm = ({
         campaignName: Boolean(dirtyFields.campaignName),
         endDate: Boolean(dirtyFields.endDate),
         endTime: Boolean(dirtyFields.endTime),
-        experience: Boolean(dirtyFields.experience),
+        experienceIds: Boolean(dirtyFields.experienceIds),
         hasRewardedPlacements: Boolean(dirtyFields.hasRewardedPlacements),
         startDate: Boolean(dirtyFields.startDate),
         startTime: Boolean(dirtyFields.startTime),
@@ -440,7 +458,8 @@ const AdIntegrationCampaignDetailsForm = ({
             <form className={formColumn} onSubmit={handleSubmit(handleFormSubmit)}>
               <AdIntegrationExperienceSection
                 control={control}
-                errorMessage={errors.experience?.message}
+                disabled={campaignInProgress || disableEditing}
+                errorMessage={errors.experienceIds?.message}
                 isMultiExperienceEnabled={isMultiExperienceEnabled}
                 mode={mode}
                 universes={universes}
@@ -464,199 +483,144 @@ const AdIntegrationCampaignDetailsForm = ({
                 )}
               />
 
-              <PickersUtilsProvider adapterLocale={dateFnsLocale}>
-                <div className={dateTimeRow}>
-                  <div className={cx(halfWidth, startDateRangeErrorMessage && datePickerError)}>
-                    <Controller
-                      control={control}
-                      name={AdIntegrationFormField.StartDate}
-                      render={({ field, fieldState: { error } }) => (
-                        <DatePicker
-                          disabled={campaignInProgress || disableEditing}
-                          disablePast
-                          format='MMM dd, yyyy'
-                          label={translate('Label.CampaignStartDate')}
-                          minDate={minimumAllowedStartDateMoment?.toDate()}
-                          onChange={(date) => {
-                            field.onChange(
-                              date ? moment.tz(date, timezoneDbName).format(DateFormat) : '',
-                            );
-                            trigger([
-                              AdIntegrationFormField.StartTime,
-                              AdIntegrationFormField.EndDate,
-                            ]);
-                          }}
-                          onClose={() => setStartDatePickerOpen(false)}
-                          open={startDatePickerOpen}
-                          renderInput={(params) => (
-                            <TextField
-                              {...params}
-                              error={!!error || isStartDateRangeError || !!params.error}
-                              FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                              fullWidth
-                              helperText={
-                                isStartDateRangeError
-                                  ? undefined
-                                  : error?.message || params.helperText
-                              }
-                              id='start-date'
-                              InputLabelProps={INPUT_LABEL_PROPS}
-                              label={translate('Label.CampaignStartDate')}
-                              onBlur={field.onBlur}
-                              onClick={
-                                campaignInProgress || disableEditing
-                                  ? undefined
-                                  : () => setStartDatePickerOpen(true)
-                              }
-                              ref={field.ref}
-                              variant='outlined'
-                            />
-                          )}
-                          value={startDate ? moment(startDate, DateFormat).toDate() : null}
-                        />
-                      )}
-                    />
-                  </div>
+              <div className={dateTimeRow}>
+                <div className={cx(halfWidth, startDateRangeErrorMessage && datePickerError)}>
                   <Controller
                     control={control}
-                    name={AdIntegrationFormField.StartTime}
+                    name={AdIntegrationFormField.StartDate}
                     render={({ field, fieldState: { error } }) => (
-                      <Select
-                        className={halfWidth}
-                        disabled={campaignInProgress || disableEditing || !startDate}
-                        error={!!error}
-                        FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                        fullWidth
-                        helperText={error?.message || startTimeHelperText}
-                        InputLabelProps={INPUT_LABEL_PROPS}
-                        label={translate('Label.StartTime')}
-                        onBlur={field.onBlur}
-                        onChange={(event: ChangeEvent<{ value: string }>) => {
-                          field.onChange(event);
+                      <DateField
+                        direction='Future'
+                        // A cross-field range error is already reported once
+                        // below the row, so keep it out of the field helper text.
+                        error={isStartDateRangeError ? undefined : error?.message}
+                        id='start-date'
+                        isDisabled={campaignInProgress || disableEditing}
+                        label={translate('Label.CampaignStartDate')}
+                        locale={locale}
+                        minDate={minimumAllowedStartDateMoment?.toDate()}
+                        nextMonthLabel={translateReport('Label.NextMonth')}
+                        onChange={(date) => {
+                          field.onChange(
+                            date ? moment.tz(date, timezoneDbName).format(DateFormat) : '',
+                          );
                           trigger([
-                            AdIntegrationFormField.StartDate,
+                            AdIntegrationFormField.StartTime,
                             AdIntegrationFormField.EndDate,
                           ]);
                         }}
-                        ref={field.ref}
-                        renderValue={(selected) =>
-                          startTimeOptions.find((option) => option.value === selected)?.label ??
-                          (selected as ReactNode) ??
-                          translate('Label.SelectTime')
-                        }
-                        SelectProps={{
-                          MenuProps: {
-                            style: {
-                              maxHeight: 236,
-                            },
-                          },
-                        }}
-                        value={startTime}>
-                        {startTimeOptions.map((option) => (
-                          <MenuItem key={option.value} value={option.value}>
-                            {option.label}
-                          </MenuItem>
-                        ))}
-                      </Select>
+                        previousMonthLabel={translateReport('Label.PreviousMonth')}
+                        value={startDate ? moment(startDate, DateFormat).toDate() : null}
+                      />
                     )}
                   />
                 </div>
-                {startDateRangeErrorMessage && (
-                  <FormLabel className={rowError} error>
-                    {startDateRangeErrorMessage}
-                  </FormLabel>
-                )}
-
-                <div className={dateTimeRow}>
-                  <div className={cx(halfWidth, endDateRangeErrorMessage && datePickerError)}>
-                    <Controller
-                      control={control}
-                      name={AdIntegrationFormField.EndDate}
-                      render={({ field, fieldState: { error } }) => (
-                        <DatePicker
-                          disabled={disableEditing}
-                          disablePast
-                          format='MMM dd, yyyy'
-                          label={translate('Label.EndDate')}
-                          minDate={minimumAllowedEndDateMoment?.toDate()}
-                          onChange={(date) => {
-                            field.onChange(
-                              date ? moment.tz(date, timezoneDbName).format(DateFormat) : '',
-                            );
-                            trigger(AdIntegrationFormField.EndTime);
-                          }}
-                          onClose={() => setEndDatePickerOpen(false)}
-                          open={endDatePickerOpen}
-                          renderInput={(params) => (
-                            <TextField
-                              {...params}
-                              error={!!error || !!endDateRangeErrorMessage}
-                              FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                              fullWidth
-                              helperText={isEndDateRangeError ? undefined : error?.message}
-                              id='end-date'
-                              InputLabelProps={INPUT_LABEL_PROPS}
-                              label={translate('Label.EndDate')}
-                              onBlur={field.onBlur}
-                              onClick={
-                                disableEditing ? undefined : () => setEndDatePickerOpen(true)
-                              }
-                              ref={field.ref}
-                              variant='outlined'
+                <Controller
+                  control={control}
+                  name={AdIntegrationFormField.StartTime}
+                  render={({ field, fieldState: { error } }) => (
+                    <Dropdown
+                      className={halfWidth}
+                      hasError={!!error}
+                      hint={error?.message || startTimeHelperText}
+                      isDisabled={campaignInProgress || disableEditing || !startDate}
+                      label={translate('Label.StartTime')}
+                      onValueChange={(newTime) => {
+                        field.onChange(newTime);
+                        trigger([AdIntegrationFormField.StartDate, AdIntegrationFormField.EndDate]);
+                      }}
+                      placeholder={translate('Label.SelectTime')}
+                      ref={field.ref}
+                      size='Medium'
+                      value={startTime}>
+                      <Menu>
+                        <MenuSection>
+                          {startTimeMenuOptions.map((option) => (
+                            <MenuItem
+                              key={option.value}
+                              title={option.label}
+                              value={option.value}
                             />
-                          )}
-                          value={endDate ? moment(endDate, DateFormat).toDate() : null}
-                        />
-                      )}
-                    />
-                  </div>
+                          ))}
+                        </MenuSection>
+                      </Menu>
+                    </Dropdown>
+                  )}
+                />
+              </div>
+              {startDateRangeErrorMessage && (
+                <FormLabel className={rowError} error>
+                  {startDateRangeErrorMessage}
+                </FormLabel>
+              )}
+
+              <div className={dateTimeRow}>
+                <div className={cx(halfWidth, endDateRangeErrorMessage && datePickerError)}>
                   <Controller
                     control={control}
-                    name={AdIntegrationFormField.EndTime}
+                    name={AdIntegrationFormField.EndDate}
                     render={({ field, fieldState: { error } }) => (
-                      <Select
-                        className={halfWidth}
-                        disabled={disableEditing || !endDate}
-                        error={!!error || !!endDateRangeErrorMessage}
-                        FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                        fullWidth
-                        helperText={error?.message || endTimeHelperText}
-                        InputLabelProps={INPUT_LABEL_PROPS}
-                        label={translate('Label.EndTime')}
-                        onBlur={field.onBlur}
-                        onChange={(event: ChangeEvent<{ value: string }>) => {
-                          field.onChange(event);
-                          trigger(AdIntegrationFormField.EndDate);
+                      <DateField
+                        direction='Future'
+                        // A cross-field range error is already reported once
+                        // below the row, so keep it out of the field helper text.
+                        error={isEndDateRangeError ? undefined : error?.message}
+                        id='end-date'
+                        isDisabled={disableEditing}
+                        label={translate('Label.EndDate')}
+                        locale={locale}
+                        minDate={minimumAllowedEndDateMoment?.toDate()}
+                        nextMonthLabel={translateReport('Label.NextMonth')}
+                        onChange={(date) => {
+                          field.onChange(
+                            date ? moment.tz(date, timezoneDbName).format(DateFormat) : '',
+                          );
+                          trigger(AdIntegrationFormField.EndTime);
                         }}
-                        ref={field.ref}
-                        renderValue={(selected) =>
-                          endTimeOptions.find((option) => option.value === selected)?.label ??
-                          (selected as ReactNode) ??
-                          translate('Label.SelectTime')
-                        }
-                        SelectProps={{
-                          MenuProps: {
-                            style: {
-                              maxHeight: 236,
-                            },
-                          },
-                        }}
-                        value={endTime}>
-                        {endTimeOptions.map((option) => (
-                          <MenuItem key={option.value} value={option.value}>
-                            {option.label}
-                          </MenuItem>
-                        ))}
-                      </Select>
+                        previousMonthLabel={translateReport('Label.PreviousMonth')}
+                        value={endDate ? moment(endDate, DateFormat).toDate() : null}
+                      />
                     )}
                   />
                 </div>
-                {endDateRangeErrorMessage && (
-                  <FormLabel className={rowError} error>
-                    {endDateRangeErrorMessage}
-                  </FormLabel>
-                )}
-              </PickersUtilsProvider>
+                <Controller
+                  control={control}
+                  name={AdIntegrationFormField.EndTime}
+                  render={({ field, fieldState: { error } }) => (
+                    <Dropdown
+                      className={halfWidth}
+                      hasError={!!error || !!endDateRangeErrorMessage}
+                      hint={error?.message || endTimeHelperText}
+                      isDisabled={disableEditing || !endDate}
+                      label={translate('Label.EndTime')}
+                      onValueChange={(newTime) => {
+                        field.onChange(newTime);
+                        trigger(AdIntegrationFormField.EndDate);
+                      }}
+                      placeholder={translate('Label.SelectTime')}
+                      ref={field.ref}
+                      size='Medium'
+                      value={endTime}>
+                      <Menu>
+                        <MenuSection>
+                          {endTimeMenuOptions.map((option) => (
+                            <MenuItem
+                              key={option.value}
+                              title={option.label}
+                              value={option.value}
+                            />
+                          ))}
+                        </MenuSection>
+                      </Menu>
+                    </Dropdown>
+                  )}
+                />
+              </div>
+              {endDateRangeErrorMessage && (
+                <FormLabel className={rowError} error>
+                  {endDateRangeErrorMessage}
+                </FormLabel>
+              )}
 
               {revenueShareTile && <div className={inlineTile}>{revenueShareTile}</div>}
 
@@ -761,7 +725,8 @@ const AdIntegrationCampaignDetailsForm = ({
                   onSavePlacements={onSavePlacements}
                   open={assetsDrawerOpen}
                   placements={placements}
-                  universeId={selectedExperience || undefined}
+                  universeId={isMultiExperienceEnabled ? undefined : selectedExperienceIds[0]}
+                  universeIds={isMultiExperienceEnabled ? selectedExperienceIds : undefined}
                   userId={userId}
                 />
               </div>

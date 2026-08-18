@@ -29,7 +29,8 @@ const PageHeaderBanners = () => {
   );
   const hasUnverifiedCard = paymentProfile ? !paymentProfile.is_verified : false; // default false
   const adCreditActivated = useAppStore((state) => state.appData.adCreditActivated || false); // default false
-  const hasNoPaymentMethod = (!paymentProfile || hasUnverifiedCard) && !adCreditActivated;
+  const personalAccountHasNoPaymentMethod =
+    (!paymentProfile || hasUnverifiedCard) && !adCreditActivated;
   const loadingPaymentProfile = useAppStore((state) => state.getPaymentProfilesState.isLoading);
   const loadingPaymentStatus = useAppStore((state) => state.adAccountStatusState.isLoading);
   const isAdAccountAutoCreateEnabled = useAppStore(
@@ -40,6 +41,11 @@ const PageHeaderBanners = () => {
   const groupAdCreditState = useAppStore((state) =>
     groupId ? state.groupScopedAccountStateByGroupId[groupId]?.adCreditState : undefined,
   );
+  const groupAdvertiserState = useAppStore((state) =>
+    groupId ? state.groupScopedAccountStateByGroupId[groupId]?.advertiserState : undefined,
+  );
+  const hasSelectedGroupAdAccount = Boolean(groupAdvertiserState?.data?.ad_account?.id);
+  const hasNoPaymentMethod = personalAccountHasNoPaymentMethod && !hasSelectedGroupAdAccount;
   const isGroupAdCreditPending =
     groupId !== undefined && !groupAdCreditState?.data && !groupAdCreditState?.isError;
   const hasGroupAdCreditAvailable = groupAdCreditState?.data?.is_account_activated ?? false;

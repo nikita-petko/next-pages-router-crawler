@@ -1,7 +1,9 @@
+import { ServerCtaButtonType } from '@constants/ad';
 import { ServerCampaignObjectiveType, ServerDetailedTargetingMatchType } from '@constants/campaign';
 import { ServerAdSetBidType } from '@type/adSet';
 
 export enum FormField {
+  ATTRIBUTION_THUMBNAILS = 'attributionThumbnail',
   BID_TYPE = 'bidType',
   BID_VALUE = 'bidValue',
   BUDGET = 'budget',
@@ -9,6 +11,7 @@ export enum FormField {
   CAMPAIGN_NAME = 'campaignName',
   CLICK_DESTINATION = 'clickDestination',
   CREATIVE_FORMAT = 'creativeFormat',
+  CTA_BUTTON_TYPE = 'ctaButtonType',
   CUSTOM_BUDGET = 'customBudget',
   CUSTOM_DURATION = 'customDuration',
   DETAILED_TARGETING_MATCH_TYPE = 'detailedTargetingMatchType',
@@ -82,6 +85,9 @@ export const MAX_DISPLAYABLE_ADS = 100;
 // matching "(selected/max)" count next to the logo header without
 // duplicating the literal 1.
 export const MAX_LOGO_SELECTIONS = 1;
+// The expanded 1x2 video player shows exactly one square brand icon in its
+// attribution bar, so the slot is single-select like the logo slot above.
+export const MAX_ATTRIBUTION_THUMBNAIL_SELECTIONS = 1;
 
 export enum AssetSource {
   ADS_MANAGER = 'AdsManager',
@@ -183,19 +189,6 @@ export enum CampaignObjectiveType {
   VISITS = 'VISITS',
 }
 
-// Common MUI props for form fields to fix z-index issues
-export const FORM_HELPER_TEXT_PROPS = {
-  sx: {
-    zIndex: 0,
-  },
-};
-
-export const INPUT_LABEL_PROPS = {
-  sx: {
-    zIndex: 0,
-  },
-};
-
 export const DEFAULT_REACH_BID_VALUE = 10;
 export const DEFAULT_REACH_FREQUENCY_CAPPING_VALUE = 2;
 export const DEFAULT_REACH_FREQUENCY_CAPPING_DURATION_DAYS = 1;
@@ -218,6 +211,28 @@ export const DEFAULT_REACH_BID_TYPE = ServerAdSetBidType.CPM_CHARGE;
 export const REACH_BID_TYPE_OPTIONS_BY_FORMAT: Record<ReachAdFormat, ServerAdSetBidType[]> = {
   [ReachAdFormat.HORIZONTAL_2X1]: [ServerAdSetBidType.CPM_CHARGE],
   [ReachAdFormat.VERTICAL_1X2]: [ServerAdSetBidType.CPM_CHARGE, ServerAdSetBidType.CPV2],
+};
+
+// Call-to-action button the advertiser picks for a 1x2 vertical (video) reach ad,
+// in the order the picker lists them. 2x1 ads have no picker — their CTA is driven
+// by the max-reach tile-variant experiment instead.
+export const REACH_CTA_OPTIONS = [
+  ServerCtaButtonType.VIEW,
+  ServerCtaButtonType.BUY,
+  ServerCtaButtonType.GET,
+  ServerCtaButtonType.SUBSCRIBE,
+];
+
+export const DEFAULT_REACH_CTA_BUTTON_TYPE = ServerCtaButtonType.VIEW;
+
+// Keys live in the Ads.Serving namespace, not a campaign-builder one, so the
+// preview renders the exact string ads-root will serve for the same enum value.
+// Mirrors CtaTranslationKeysByType in ads-root's ReachResponsePopulator.
+export const ReachCtaButtonLabelKey: Record<ServerCtaButtonType, string> = {
+  [ServerCtaButtonType.BUY]: 'Action.Buy',
+  [ServerCtaButtonType.GET]: 'Action.Get',
+  [ServerCtaButtonType.SUBSCRIBE]: 'Action.Subscribe',
+  [ServerCtaButtonType.VIEW]: 'Action.View',
 };
 
 export const DEFAULT_HEADLINE_MAX_LENGTH = 22;

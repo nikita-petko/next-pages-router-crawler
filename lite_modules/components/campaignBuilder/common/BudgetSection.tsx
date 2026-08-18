@@ -1,5 +1,16 @@
-import { Checkbox, Icon, IconButton, Radio, RadioGroup } from '@rbx/foundation-ui';
-import { Alert, InputAdornment, MenuItem, Select, TextField } from '@rbx/ui';
+import {
+  Checkbox,
+  Dropdown,
+  Icon,
+  IconButton,
+  Menu,
+  MenuItem,
+  MenuSection,
+  Radio,
+  RadioGroup,
+  TextInput,
+} from '@rbx/foundation-ui';
+import { Alert } from '@rbx/ui';
 import { Fragment, ReactNode, useEffect, useMemo, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { NumericFormat } from 'react-number-format';
@@ -16,6 +27,7 @@ import PaymentSelect from '@components/campaignBuilder/common/PaymentSelect';
 import StartTimePicker from '@components/campaignBuilder/common/StartTimePicker';
 import AppTooltip from '@components/common/AppTooltip';
 import Collapse from '@components/common/Collapse';
+import FieldUnitAdornment from '@components/common/form/FieldUnitAdornment';
 import {
   isAdCreditPaymentType,
   ServerBudgetType,
@@ -26,10 +38,8 @@ import {
   DefaultBudget,
   DefaultDuration,
   FlowTypes,
-  FORM_HELPER_TEXT_PROPS,
   FormField,
   HIGH_BUDGET_WARNING_TEXT,
-  INPUT_LABEL_PROPS,
   REACH_BID_TYPE_OPTIONS_BY_FORMAT,
   ReachAdFormat,
 } from '@constants/campaignBuilder';
@@ -375,35 +385,28 @@ const BudgetSection = () => {
             render={({ field: { onBlur, onChange, value }, fieldState: { error } }) => (
               <NumericFormat
                 allowNegative={false}
-                color='primary'
-                customInput={TextField}
+                className='width-full'
+                customInput={TextInput}
                 decimalScale={0}
-                disabled={isBudgetDurationDisabled}
-                error={!!error}
+                error={error?.message}
                 fixedDecimalScale
-                FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                fullWidth
-                helperText={error?.message}
                 id='duration'
-                InputLabelProps={INPUT_LABEL_PROPS}
-                InputProps={{
-                  endAdornment: <InputAdornment position='end'>{daysLabel}</InputAdornment>,
-                }}
                 isAllowed={({ floatValue }) => {
                   if (floatValue === undefined) {
                     return true;
                   }
                   return floatValue <= 999999;
                 }}
+                isDisabled={isBudgetDurationDisabled}
                 label={editMode ? translate('Label.Duration') : translate('Label.CustomDuration')}
-                margin='none'
                 onBlur={onBlur}
                 onValueChange={({ floatValue = NaN }) => {
                   onChange(floatValue);
                 }}
-                size='medium'
+                size='Medium'
                 thousandSeparator=','
                 thousandsGroupStyle='thousand'
+                trailingIconNode={<FieldUnitAdornment>{daysLabel}</FieldUnitAdornment>}
                 value={value}
               />
             )}
@@ -584,35 +587,29 @@ const BudgetSection = () => {
                 render={({ field: { onBlur, onChange, value }, fieldState: { error } }) => (
                   <NumericFormat
                     allowNegative={false}
-                    color='primary'
-                    customInput={TextField}
+                    className='width-full'
+                    customInput={TextInput}
                     decimalScale={2}
-                    disabled={isBudgetDurationDisabled}
-                    error={!!error || isLastDayOfCampaign}
-                    fixedDecimalScale
-                    FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                    fullWidth
-                    helperText={
+                    error={
                       error?.message ||
-                      (isLastDayOfCampaign && translate('Description.BudgetLastDayWarning')) ||
-                      budgetDecreaseHelperText
+                      (isLastDayOfCampaign
+                        ? translate('Description.BudgetLastDayWarning')
+                        : undefined)
                     }
+                    fixedDecimalScale
+                    helperText={budgetDecreaseHelperText}
                     id='budget'
-                    InputLabelProps={INPUT_LABEL_PROPS}
-                    InputProps={{
-                      endAdornment: <InputAdornment position='end'>{unit}</InputAdornment>,
-                    }}
+                    isDisabled={isBudgetDurationDisabled}
                     label={translate(BudgetNameKey[budgetType])}
-                    margin='none'
                     onBlur={onBlur}
                     onValueChange={({ floatValue = NaN }) => {
                       onChange(floatValue);
                     }}
-                    size='medium'
+                    size='Medium'
                     thousandSeparator=','
                     thousandsGroupStyle='thousand'
+                    trailingIconNode={<FieldUnitAdornment>{unit}</FieldUnitAdornment>}
                     value={value}
-                    variant='outlined'
                   />
                 )}
               />
@@ -626,28 +623,33 @@ const BudgetSection = () => {
           <Controller
             control={control}
             name={FormField.BID_TYPE}
-            render={({ field: { onBlur, onChange, value } }) => {
+            render={({ field: { onChange, value } }) => {
               const bidTypeOptions =
                 REACH_BID_TYPE_OPTIONS_BY_FORMAT[creativeFormat ?? ReachAdFormat.HORIZONTAL_2X1];
               return (
-                <Select
-                  className={halfWidth}
-                  data-testid='reach-bid-type-select'
-                  disabled={editMode}
-                  fullWidth
-                  InputLabelProps={INPUT_LABEL_PROPS}
-                  label={translate('Label.BidType')}
-                  onBlur={onBlur}
-                  onChange={onChange}
-                  size='medium'
-                  value={value ?? ServerAdSetBidType.CPM_CHARGE}
-                  variant='outlined'>
-                  {bidTypeOptions.map((option) => (
-                    <MenuItem key={option} value={option}>
-                      {translate(ReachBidTypeShortLabelKey[option] ?? 'Label.CPM')}
-                    </MenuItem>
-                  ))}
-                </Select>
+                <div className={halfWidth} data-testid='reach-bid-type-select'>
+                  <Dropdown
+                    isDisabled={editMode}
+                    label={translate('Label.BidType')}
+                    onValueChange={(newValue) => {
+                      onChange(Number(newValue));
+                    }}
+                    placeholder={translate('Label.BidType')}
+                    size='Medium'
+                    value={String(value ?? ServerAdSetBidType.CPM_CHARGE)}>
+                    <Menu>
+                      <MenuSection>
+                        {bidTypeOptions.map((option) => (
+                          <MenuItem
+                            key={option}
+                            title={translate(ReachBidTypeShortLabelKey[option] ?? 'Label.CPM')}
+                            value={String(option)}
+                          />
+                        ))}
+                      </MenuSection>
+                    </Menu>
+                  </Dropdown>
+                </div>
               );
             }}
           />
@@ -658,38 +660,34 @@ const BudgetSection = () => {
               const shouldShowError = !!error && isTouched;
               const effectiveBidType = bidType ?? ServerAdSetBidType.CPM_CHARGE;
               return (
-                <NumericFormat
-                  allowNegative={false}
-                  className={halfWidth}
-                  color='primary'
-                  customInput={TextField}
-                  decimalScale={2}
-                  disabled={editMode}
-                  error={shouldShowError}
-                  fixedDecimalScale
-                  FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                  helperText={shouldShowError ? error?.message : ''}
-                  id='cpm'
-                  InputLabelProps={INPUT_LABEL_PROPS}
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position='end'>
-                        {translate(ReachBidTypeShortLabelKey[effectiveBidType] ?? 'Label.CPM')}
-                      </InputAdornment>
-                    ),
-                    startAdornment: (
-                      <InputAdornment position='start'>
+                <div className={halfWidth}>
+                  <NumericFormat
+                    allowNegative={false}
+                    className='width-full'
+                    customInput={TextInput}
+                    decimalScale={2}
+                    error={shouldShowError ? error?.message : undefined}
+                    fixedDecimalScale
+                    id='cpm'
+                    isDisabled={editMode}
+                    label={translate(ReachBidPriceLabelKey[effectiveBidType] ?? 'Label.CpmPrice')}
+                    leadingIconNode={
+                      <FieldUnitAdornment>
                         {translateReport('Label.CurrencyPrefix')}
-                      </InputAdornment>
-                    ),
-                  }}
-                  label={translate(ReachBidPriceLabelKey[effectiveBidType] ?? 'Label.CpmPrice')}
-                  onValueChange={({ floatValue = NaN }) => {
-                    onChange(floatValue);
-                  }}
-                  size='medium'
-                  value={value}
-                />
+                      </FieldUnitAdornment>
+                    }
+                    onValueChange={({ floatValue = NaN }) => {
+                      onChange(floatValue);
+                    }}
+                    size='Medium'
+                    trailingIconNode={
+                      <FieldUnitAdornment>
+                        {translate(ReachBidTypeShortLabelKey[effectiveBidType] ?? 'Label.CPM')}
+                      </FieldUnitAdornment>
+                    }
+                    value={value}
+                  />
+                </div>
               );
             }}
           />
@@ -699,35 +697,31 @@ const BudgetSection = () => {
             render={({ field: { onChange, value }, fieldState: { error, isTouched } }) => {
               const shouldShowError = !!error && isTouched;
               return (
-                <NumericFormat
-                  allowNegative={false}
-                  className={halfWidth}
-                  color='primary'
-                  customInput={TextField}
-                  decimalScale={2}
-                  disabled={editMode}
-                  error={shouldShowError}
-                  fixedDecimalScale
-                  FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                  helperText={shouldShowError ? error?.message : ''}
-                  id='discount'
-                  InputLabelProps={INPUT_LABEL_PROPS}
-                  InputProps={{
-                    endAdornment: <InputAdornment position='end'>%</InputAdornment>,
-                  }}
-                  isAllowed={({ floatValue }) => {
-                    if (floatValue === undefined) {
-                      return true;
-                    }
-                    return floatValue >= 0 && floatValue <= 100;
-                  }}
-                  label={translate('Label.Discount')}
-                  onValueChange={({ floatValue = NaN }) => {
-                    onChange(floatValue);
-                  }}
-                  size='medium'
-                  value={value}
-                />
+                <div className={halfWidth}>
+                  <NumericFormat
+                    allowNegative={false}
+                    className='width-full'
+                    customInput={TextInput}
+                    decimalScale={2}
+                    error={shouldShowError ? error?.message : undefined}
+                    fixedDecimalScale
+                    id='discount'
+                    isAllowed={({ floatValue }) => {
+                      if (floatValue === undefined) {
+                        return true;
+                      }
+                      return floatValue >= 0 && floatValue <= 100;
+                    }}
+                    isDisabled={editMode}
+                    label={translate('Label.Discount')}
+                    onValueChange={({ floatValue = NaN }) => {
+                      onChange(floatValue);
+                    }}
+                    size='Medium'
+                    trailingIconNode={<FieldUnitAdornment>%</FieldUnitAdornment>}
+                    value={value}
+                  />
+                </div>
               );
             }}
           />

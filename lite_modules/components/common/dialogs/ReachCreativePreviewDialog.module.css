@@ -34,3 +34,25 @@
   isolation: isolate;
   width: 100%;
 }
+
+/*
+ * The 1x2 preview is tabbed, so unlike the 2x1 lightbox it renders in a body
+ * rather than as hero media. Centre the fixed-size tile stage under the tabs.
+ */
+.verticalBody {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-medium);
+}
+
+/*
+ * Native 1x2 tile is 344x499; OneByTwoTile fills its container, so the stage
+ * has to pin both dimensions. `isolation` is needed for the same close-X
+ * stacking reason documented on `.tileContainer`.
+ */
+.verticalTileStage {
+  height: 499px;
+  isolation: isolate;
+  width: 320px;
+}

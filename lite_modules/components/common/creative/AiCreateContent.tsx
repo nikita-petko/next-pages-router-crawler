@@ -1,3 +1,4 @@
+import { useWorkspaces } from '@rbx/creator-hub-navigation';
 import {
   Button,
   Divider,
@@ -5,6 +6,7 @@ import {
   IconButton,
   Link,
   ProgressCircle,
+  TextArea,
 } from '@rbx/foundation-ui';
 import { useMutation } from '@tanstack/react-query';
 import {
@@ -21,6 +23,8 @@ import {
 } from 'react';
 
 import { EventName, logNativeClickEvent, logNativeImpressionEvent } from '@clients/unifiedLogger';
+import { openAdAccountAutoCreateDialog } from '@components/account/dialogs/AdAccountAutoCreateDialog';
+import { openGroupAdAccountSetupDialog } from '@components/billing/dialogs/GroupAdAccountSetupDialog';
 import AppTooltip from '@components/common/AppTooltip';
 import contentStyles from '@components/common/creative/AiCreateContent.module.css';
 import {
@@ -68,6 +72,7 @@ import {
   setGenAiCreativesAgreementAccepted,
 } from '@utils/aiCreativesAgreementStorage';
 import { CaptureException } from '@utils/error';
+import { isGroupAdAccountMissing } from '@utils/groupAdAccountSetup';
 
 const GENERATING_SKELETON_COUNT = 3;
 
@@ -178,6 +183,7 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
   );
   const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
   const user = useAuthenticatedUser();
+  const { currentWorkspace } = useWorkspaces();
   const isGenAiCreativesEnabled = useAppStore(
     (state: AppStoreStateType) => state.appMetadataState?.data?.isGenAiCreativesEnabled ?? false,
   );
@@ -280,6 +286,13 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
     isLoading: isUniversesLoading,
     universeOptions: advertisableUniverses,
   } = useUniverseOptionsForAdCreation({ enabled: showGameSelector });
+  const groupAdvertiserState = useAppStore((state: AppStoreType) =>
+    creativeLibraryGroupId
+      ? state.groupScopedAccountStateByGroupId[creativeLibraryGroupId]?.advertiserState
+      : undefined,
+  );
+  const groupAdAccountNeedsSetup =
+    creativeLibraryGroupId !== undefined && isGroupAdAccountMissing(groupAdvertiserState);
 
   useEffect(() => {
     const hasAgreement = hasAcceptedGenAiCreativesAgreement(user?.id);
@@ -695,7 +708,7 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
   // user is done here); in the standalone library flow we stay open so the user
   // can keep generating. Shared by the campaign "Add to library" secondary
   // action and the standalone "Save selected" button.
-  const handleAddToLibrary = useCallback(() => {
+  const addToLibrary = useCallback(() => {
     if (selectedImageUrls.size === 0 || isBusy) {
       return;
     }
@@ -758,9 +771,36 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
     translate,
   ]);
 
+  const handleAddToLibrary = useCallback(() => {
+    if (groupAdAccountNeedsSetup && creativeLibraryGroupId !== undefined) {
+      openGroupAdAccountSetupDialog({
+        entryPoint: 'aiCreativeAddToLibrary',
+        groupId: creativeLibraryGroupId,
+        groupName: currentWorkspace?.creatorName ?? translateMisc('Label.Group'),
+        onComplete: addToLibrary,
+      });
+      return;
+    }
+    if (creativeLibraryGroupId === undefined && !adAccountId) {
+      openAdAccountAutoCreateDialog({
+        entryPoint: 'aiCreativeAddToLibrary',
+        onSuccess: addToLibrary,
+      });
+      return;
+    }
+    addToLibrary();
+  }, [
+    adAccountId,
+    addToLibrary,
+    creativeLibraryGroupId,
+    currentWorkspace?.creatorName,
+    groupAdAccountNeedsSetup,
+    translateMisc,
+  ]);
+
   // Register the selected images to the library, then hand them to the campaign.
   // Disabled when the selection can't fit the campaign (see `isOverCampaignLimit`).
-  const handleAddToCampaign = useCallback(() => {
+  const addToCampaign = useCallback(() => {
     if (selectedImageUrls.size === 0 || isBusy || isOverCampaignLimit) {
       return;
     }
@@ -847,6 +887,33 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
     setBlobByAssetId,
     setPreviewUrlByAssetId,
     userPrompt,
+  ]);
+
+  const handleAddToCampaign = useCallback(() => {
+    if (groupAdAccountNeedsSetup && creativeLibraryGroupId !== undefined) {
+      openGroupAdAccountSetupDialog({
+        entryPoint: 'aiCreativeAddToCampaign',
+        groupId: creativeLibraryGroupId,
+        groupName: currentWorkspace?.creatorName ?? translateMisc('Label.Group'),
+        onComplete: addToCampaign,
+      });
+      return;
+    }
+    if (creativeLibraryGroupId === undefined && !adAccountId) {
+      openAdAccountAutoCreateDialog({
+        entryPoint: 'aiCreativeAddToCampaign',
+        onSuccess: addToCampaign,
+      });
+      return;
+    }
+    addToCampaign();
+  }, [
+    adAccountId,
+    addToCampaign,
+    creativeLibraryGroupId,
+    currentWorkspace?.creatorName,
+    groupAdAccountNeedsSetup,
+    translateMisc,
   ]);
 
   // `handleAddToCampaign`/`handleAddToLibrary` get a fresh identity every render
@@ -1327,10 +1394,9 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
                 selectedAssetIds={referenceAssetIds}
               />
               <div className={contentStyles.promptInputContainer}>
-                <textarea
+                <TextArea
                   aria-label={translate('Label.DescribeImagePrompt')}
-                  className={contentStyles.promptTextarea}
-                  disabled={isBusy || isQuotaExhausted}
+                  isDisabled={isBusy || isQuotaExhausted}
                   maxLength={maxPromptLength}
                   onBlur={() => setIsPromptFocused(false)}
                   onChange={handlePromptChange}
@@ -1343,7 +1409,10 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
                   }
                   ref={promptTextareaRef}
                   rows={3}
+                  size='Medium'
+                  textareaClassName={contentStyles.promptTextarea}
                   value={userPrompt}
+                  variant='Utility'
                 />
                 {showPromptHintOverlay && activePromptHint !== '' ? (
                   <div aria-hidden className={contentStyles.promptHintOverlay}>

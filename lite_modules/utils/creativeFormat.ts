@@ -200,6 +200,26 @@ export const LOGO_ASPECT_RATIO_VALIDATION: AspectRatioValidation = {
 };
 
 /**
+ * Upload-validator config for the 1x2 video ad's attribution thumbnail, which
+ * renders as a square icon in the expanded player's attribution bar. Square-only
+ * (no 3:1 bucket), so it reuses the `SPONSORED_LOGO_SQUARE` shape rather than
+ * introducing a redundant format.
+ */
+export const ATTRIBUTION_THUMBNAIL_ASPECT_RATIO_VALIDATION: AspectRatioValidation = {
+  allowedRatios: [[LOGO_ALLOWED_RATIOS[0][0], LOGO_ALLOWED_RATIOS[0][1]]],
+  tolerance: ASPECT_RATIO_TOLERANCE,
+};
+
+/**
+ * True when `asset` is a near-square image. The attribution thumbnail drawer's
+ * "Select from library" tab uses this to hide assets the upload tab would reject.
+ */
+export const isCompatibleWithAttributionThumbnailPlacement = (asset: AspectShape): boolean =>
+  computeCompatibleFormats(asset).some(
+    ({ format }) => format === AD_CREATIVE_FORMAT.SPONSORED_LOGO_SQUARE,
+  );
+
+/**
  * Bucket a logo's pixel dimensions into the `'1:1'` or `'3:1'` string the
  * sponsored-ads form stores on its logo items (`ThumbnailType.aspectRatio`).
  * The transform hook reads the `w` from this string and sends it as

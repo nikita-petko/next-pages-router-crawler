@@ -1,9 +1,10 @@
 import { Button, Checkbox, Link } from '@rbx/foundation-ui';
-import { Alert, Autocomplete, FormLabel, TextField } from '@rbx/ui';
+import { Alert, FormLabel } from '@rbx/ui';
 import { useId } from 'react';
 import { Controller, FormProvider, UseFormReturn } from 'react-hook-form';
 
 import useAccountFormStyles from '@components/account/AccountForm.styles';
+import TitleValueAutocomplete from '@components/common/form/TitleValueAutocomplete';
 import { FormFields } from '@constants/account';
 import { TranslationNamespace } from '@constants/localization';
 import { type AdAccountFormType, type TimezoneType } from '@hooks/account/useAccountForm';
@@ -67,25 +68,14 @@ const AccountInfoStep = ({
           control={control}
           name={FormFields.TIME_ZONE}
           render={({ field }) => (
-            <Autocomplete
-              disableClearable
-              getOptionLabel={(option) => (option && option.title) || ''}
-              id={FormFields.TIME_ZONE}
-              onChange={(_event, timezoneObj) => handleTimeZoneChange(timezoneObj)}
+            <TitleValueAutocomplete
+              dataTestId={FormFields.TIME_ZONE}
+              errorMessage={errors[FormFields.TIME_ZONE]?.message}
+              helperText={translate('Description.TimezoneCannotUpdate')}
+              label={translate('Label.Timezone')}
+              onBlur={field.onBlur}
+              onChange={handleTimeZoneChange}
               options={localizedTimezones}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  error={Boolean(errors[FormFields.TIME_ZONE])}
-                  helperText={
-                    errors[FormFields.TIME_ZONE]?.message ||
-                    translate('Description.TimezoneCannotUpdate')
-                  }
-                  label={translate('Label.Timezone')}
-                  name={FormFields.TIME_ZONE}
-                  onBlur={field.onBlur}
-                />
-              )}
               value={field.value}
             />
           )}

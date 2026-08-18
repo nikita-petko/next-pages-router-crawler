@@ -30,14 +30,26 @@ import { useAppStore } from '@stores/appStoreProvider';
 import { useThumbnailStore } from '@stores/thumbnailStoreProvider';
 import { getHttpStatusFromError } from '@type/errorResponse';
 import { countSelectedCreatives } from '@utils/campaignBuilder';
-import { bucketLogoAspectRatio, isCompatibleWithLogoPlacement } from '@utils/creativeFormat';
+import {
+  bucketLogoAspectRatio,
+  isCompatibleWithAttributionThumbnailPlacement,
+  isCompatibleWithLogoPlacement,
+} from '@utils/creativeFormat';
 import { CaptureException } from '@utils/error';
 
-type SupportedFormField = typeof FormField.THUMBNAILS | typeof FormField.LOGO_ASSETS;
+type SupportedFormField =
+  | typeof FormField.THUMBNAILS
+  | typeof FormField.LOGO_ASSETS
+  | typeof FormField.ATTRIBUTION_THUMBNAILS;
 
 interface CreativeImportTabProps {
-  /** THUMBNAILS or LOGO_ASSETS — appended to with imported library items. */
+  /**
+   * THUMBNAILS, LOGO_ASSETS, or ATTRIBUTION_THUMBNAILS — appended to with
+   * imported library items.
+   */
   formField: SupportedFormField;
+  /** Group workspace id for creative-library reads and registrations. */
+  groupId?: number;
   /** Cap on per-drawer selections so we don't push the draft past its limit. */
   maxAllowedSelections: number;
   /**
@@ -96,6 +108,7 @@ const getTileImageClass = ({
 // only mutates the form; published campaign assets stay locked in-grid.
 const CreativeImportTab = ({
   formField,
+  groupId,
   maxAllowedSelections,
   onFooterActionChange,
   onPendingDeltaChange,
@@ -145,9 +158,13 @@ const CreativeImportTab = ({
     isError: isLibraryLoadError,
     isFetching: isFetchingLibrary,
   } = useQuery({
-    enabled: adAccountId != null,
-    queryFn: () => getAdCreatives(false),
-    queryKey: ['adCreatives', adAccountId, false],
+    enabled: groupId !== undefined || adAccountId != null,
+    queryFn: () =>
+      groupId === undefined ? getAdCreatives(false) : getAdCreatives(false, { groupId }),
+    queryKey:
+      groupId === undefined
+        ? ['adCreatives', adAccountId, false]
+        : ['adCreatives', adAccountId, groupId, false],
     select: (response) => response.assets,
     // Opt out of the global staleTime: Infinity (set in _app.tsx) so
     // pending_review creatives don't get pinned to the cache for the
@@ -247,6 +264,14 @@ const CreativeImportTab = ({
           // drawer keeps everything since tiles crop with object-fit:
           // cover.
           if (formField === FormField.LOGO_ASSETS && !isCompatibleWithLogoPlacement(asset)) {
+            return false;
+          }
+          // Attribution thumbnails are square-only, so the grid is filtered
+          // tighter than the logo drawer's 1:1-or-3:1 gate.
+          if (
+            formField === FormField.ATTRIBUTION_THUMBNAILS &&
+            !isCompatibleWithAttributionThumbnailPlacement(asset)
+          ) {
             return false;
           }
           return true;
@@ -493,7 +518,9 @@ const CreativeImportTab = ({
         if (registerable.length === 0) {
           return;
         }
-        await batchRegisterAdCreativeAssets(registerable);
+        await (groupId === undefined
+          ? batchRegisterAdCreativeAssets(registerable)
+          : batchRegisterAdCreativeAssets(registerable, { groupId }));
         // Refresh the library so the just-registered assets move out of the
         // auto-import row and render as ordinary (now-selected) library tiles.
         await queryClient.invalidateQueries({ queryKey: ['adCreatives'] });
@@ -503,7 +530,7 @@ const CreativeImportTab = ({
         });
       }
     },
-    [campaignUniverseId, queryClient],
+    [campaignUniverseId, groupId, queryClient],
   );
 
   const handleAddSelected = useCallback(() => {

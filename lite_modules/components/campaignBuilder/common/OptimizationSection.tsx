@@ -1,5 +1,4 @@
-import { Checkbox } from '@rbx/foundation-ui';
-import { FormHelperText, MenuItem, Select } from '@rbx/ui';
+import { Checkbox, Dropdown, Menu, MenuItem, MenuSection } from '@rbx/foundation-ui';
 import { useMemo, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
@@ -7,8 +6,9 @@ import useCampaignBuilderCommonStyles from '@components/campaignBuilder/common/C
 import FormAccordion from '@components/campaignBuilder/common/FormAccordion';
 import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
 import useFrequencyCappingStyles from '@components/campaignBuilder/common/FrequencyCapping.styles';
+import FieldLabelOffset from '@components/common/form/FieldLabelOffset';
 import { ServerCampaignObjectiveType } from '@constants/campaign';
-import { FlowTypes, FormField, INPUT_LABEL_PROPS } from '@constants/campaignBuilder';
+import { FlowTypes, FormField } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -166,76 +166,76 @@ const OptimizationSection = () => {
               control={control}
               name={FormField.FREQUENCY_CAPPING_VALUE}
               render={({ field: { onChange, value } }) => (
-                <Select
+                <div
                   className={frequencyCappingValueSelect}
-                  data-testid='frequency-capping-value-select'
-                  disabled={editMode || !frequencyCappingOn}
-                  InputLabelProps={INPUT_LABEL_PROPS}
-                  label={translate(
-                    isVideoViewBidType ? 'Label.NumberOfVideoViews' : 'Label.NumberOfImpressions',
-                  )}
-                  onChange={onChange}
-                  SelectProps={{
-                    MenuProps: {
-                      style: {
-                        maxHeight: 200,
-                      },
-                    },
-                  }}
-                  size='medium'
-                  value={value}
-                  variant='outlined'>
-                  {impressionOptions.map(({ label, value: optionValue }) => (
-                    <MenuItem key={optionValue} value={optionValue}>
-                      {label}
-                    </MenuItem>
-                  ))}
-                </Select>
+                  data-testid='frequency-capping-value-select'>
+                  <Dropdown
+                    isDisabled={editMode || !frequencyCappingOn}
+                    label={translate(
+                      isVideoViewBidType ? 'Label.NumberOfVideoViews' : 'Label.NumberOfImpressions',
+                    )}
+                    onValueChange={(nextValue: string) => {
+                      onChange(Number(nextValue));
+                    }}
+                    placeholder=''
+                    size='Medium'
+                    value={value === undefined || value === null ? '' : String(value)}>
+                    <Menu>
+                      <MenuSection>
+                        {impressionOptions.map(({ label, value: optionValue }) => (
+                          <MenuItem key={optionValue} title={label} value={String(optionValue)} />
+                        ))}
+                      </MenuSection>
+                    </Menu>
+                  </Dropdown>
+                </div>
               )}
             />
-            <span
-              className={`text-body-large ${frequencyCappingOn ? 'content-inherit' : 'content-muted'} ${frequencyCappingConnectingText}`}>
-              {translate(isVideoViewBidType ? 'Label.VideoViewsEvery' : 'Label.ImpressionsEvery')}
-            </span>
+            <FieldLabelOffset className={frequencyCappingConnectingText}>
+              <span
+                className={`flex items-center height-1000 text-body-large ${frequencyCappingOn ? 'content-inherit' : 'content-muted'}`}>
+                {translate(isVideoViewBidType ? 'Label.VideoViewsEvery' : 'Label.ImpressionsEvery')}
+              </span>
+            </FieldLabelOffset>
             <Controller
               control={control}
               name={FormField.FREQUENCY_CAPPING_DURATION_DAYS}
               render={({ field: { onChange, value } }) => (
-                <Select
+                <div
                   className={frequencyCappingDurationSelect}
-                  data-testid='frequency-capping-duration-select'
-                  disabled={editMode || !frequencyCappingOn}
-                  InputLabelProps={INPUT_LABEL_PROPS}
-                  label={translate('Label.Frequency')}
-                  onChange={onChange}
-                  SelectProps={{
-                    MenuProps: {
-                      style: {
-                        maxHeight: 200,
-                      },
-                    },
-                  }}
-                  size='medium'
-                  value={value}
-                  variant='outlined'>
-                  {dayOptions.map(({ label, value: optionValue }) => (
-                    <MenuItem key={optionValue} value={optionValue}>
-                      {label}
-                    </MenuItem>
-                  ))}
-                </Select>
+                  data-testid='frequency-capping-duration-select'>
+                  <Dropdown
+                    isDisabled={editMode || !frequencyCappingOn}
+                    label={translate('Label.Frequency')}
+                    onValueChange={(nextValue: string) => {
+                      onChange(Number(nextValue));
+                    }}
+                    placeholder=''
+                    size='Medium'
+                    value={value === undefined || value === null ? '' : String(value)}>
+                    <Menu>
+                      <MenuSection>
+                        {dayOptions.map(({ label, value: optionValue }) => (
+                          <MenuItem key={optionValue} title={label} value={String(optionValue)} />
+                        ))}
+                      </MenuSection>
+                    </Menu>
+                  </Dropdown>
+                </div>
               )}
             />
-            <span
-              className={`text-body-large ${frequencyCappingOn ? 'content-inherit' : 'content-muted'}`}>
-              {translate('Label.Days')}
-            </span>
+            <FieldLabelOffset>
+              <span
+                className={`flex items-center height-1000 text-body-large ${frequencyCappingOn ? 'content-inherit' : 'content-muted'}`}>
+                {translate('Label.Days')}
+              </span>
+            </FieldLabelOffset>
           </div>
 
           {frequencyCapSummary && (
-            <FormHelperText className={formRow} component='div'>
+            <div className={`text-caption-small content-muted ${formRow}`}>
               {frequencyCapSummary}
-            </FormHelperText>
+            </div>
           )}
         </div>
       </div>

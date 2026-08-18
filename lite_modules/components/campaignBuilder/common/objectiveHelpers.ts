@@ -13,6 +13,7 @@ import {
   DEFAULT_REACH_BID_DISCOUNT_BPS,
   DEFAULT_REACH_BID_TYPE,
   DEFAULT_REACH_BID_VALUE,
+  DEFAULT_REACH_CTA_BUTTON_TYPE,
   DEFAULT_REACH_FREQUENCY_CAPPING_DURATION_DAYS,
   DEFAULT_REACH_FREQUENCY_CAPPING_VALUE,
   FormField,
@@ -133,6 +134,8 @@ export const applyObjectiveChange = ({
     setValue(FormField.SUBTITLE, undefined);
     setValue(FormField.CLICK_DESTINATION, undefined);
     setValue(FormField.LOGO_ASSETS, []);
+    setValue(FormField.ATTRIBUTION_THUMBNAILS, []);
+    setValue(FormField.CTA_BUTTON_TYPE, undefined);
     setValue(FormField.DISCOUNT, undefined);
   };
 
@@ -154,6 +157,8 @@ export const applyObjectiveChange = ({
       setValue(FormField.HEADLINE, undefined);
       setValue(FormField.SUBTITLE, undefined);
       setValue(FormField.LOGO_ASSETS, []);
+      setValue(FormField.ATTRIBUTION_THUMBNAILS, []);
+      setValue(FormField.CTA_BUTTON_TYPE, DEFAULT_REACH_CTA_BUTTON_TYPE);
       setValue(FormField.DISCOUNT, DEFAULT_REACH_BID_DISCOUNT_BPS);
     },
     [ServerCampaignObjectiveType.SPEND]: () => {

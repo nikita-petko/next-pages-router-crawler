@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { z } from 'zod';
 
+import { ServerCtaButtonType } from '@constants/ad';
 import {
   ServerBudgetType,
   ServerCampaignObjectiveType,
@@ -33,6 +34,18 @@ const useFormSchema = () => {
   return useMemo(
     () =>
       z.object({
+        // Square brand icon for the expanded 1x2 video player's attribution bar.
+        // Only collected for the vertical format; image (2x1) ads reject it
+        // server-side.
+        [FormField.ATTRIBUTION_THUMBNAILS]: z.array(
+          z.object({
+            assetId: z.number(),
+            creativeOrigin: z.enum(['upload', 'library', 'ai']).optional(),
+            existing: z.boolean(),
+            isSelected: z.boolean(),
+            source: z.enum(AssetSource).optional(),
+          }),
+        ),
         [FormField.BID_TYPE]: z.enum(ServerAdSetBidType).optional(),
         [FormField.BID_VALUE]: z.number().positive().optional(),
         [FormField.BUDGET]: z
@@ -65,6 +78,7 @@ const useFormSchema = () => {
         // vertical format; image (2x1) ads reject it server-side.
         [FormField.CLICK_DESTINATION]: z.string().optional(),
         [FormField.CREATIVE_FORMAT]: z.enum(ReachAdFormat).optional(),
+        [FormField.CTA_BUTTON_TYPE]: z.enum(ServerCtaButtonType).optional(),
         [FormField.CUSTOM_BUDGET]: z.boolean(),
         [FormField.CUSTOM_DURATION]: z.boolean(),
         [FormField.DETAILED_TARGETING_MATCH_TYPE]: z.enum(ServerDetailedTargetingMatchType),

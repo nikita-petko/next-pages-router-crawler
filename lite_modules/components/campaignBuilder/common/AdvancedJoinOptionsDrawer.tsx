@@ -1,4 +1,6 @@
 import {
+  Autocomplete,
+  AutocompleteOption,
   Button,
   IconButton,
   Link,
@@ -7,26 +9,22 @@ import {
   SheetContent,
   SheetRoot,
   SheetTitle,
+  TextArea,
+  TextInput,
 } from '@rbx/foundation-ui';
-import { Alert, Autocomplete, TextField } from '@rbx/ui';
+import { Alert } from '@rbx/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
 import AppTooltip from '@components/common/AppTooltip';
 import useDrawerStyles from '@components/common/Drawer.styles';
 import GenericSnackBar from '@components/common/GenericSnackBar';
-import {
-  FlowTypes,
-  FORM_HELPER_TEXT_PROPS,
-  FormField,
-  INPUT_LABEL_PROPS,
-} from '@constants/campaignBuilder';
+import { FlowTypes, FormField } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { validateUniverseText } from '@services/ads/campaignBuilderService';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
-import { Place } from '@type/place';
 import { GetSitetestBaseUrl, GetUrlWithParams } from '@utils/url';
 
 const API_ERROR_TYPE = 'api';
@@ -34,6 +32,7 @@ const LAUNCH_DATA_VALIDATION_DEBOUNCE_MS = 500;
 
 const AdvancedJoinOptionsDrawer = () => {
   const { translate, translateHTML } = useNamespacedTranslation(TranslationNamespace.Campaign);
+  const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
   const {
     classes: { drawerSection, inlineRow },
   } = useDrawerStyles();
@@ -130,6 +129,27 @@ const AdvancedJoinOptionsDrawer = () => {
 
   const rootPlaceId = useMemo(() => places.find((p) => p.is_root_place)?.place_id, [places]);
 
+  const selectedPlace = useMemo(
+    () => places.find((p) => p.place_id === placeIdOverride),
+    [places, placeIdOverride],
+  );
+  const [placeInputValue, setPlaceInputValue] = useState<string>(selectedPlace?.place_name ?? '');
+
+  // Resync the text when the override changes outside the field (places finishing
+  // loading, "Reset all") so a stale place name is never shown.
+  useEffect(() => {
+    setPlaceInputValue(selectedPlace?.place_name ?? '');
+  }, [selectedPlace?.place_id, selectedPlace?.place_name]);
+
+  // MUI filtered options internally from `getOptionLabel`; Foundation expects the
+  // caller to render the filtered set. Text equal to the current selection shows
+  // the full list so clicking into the field does not narrow it to one row.
+  const placeQuery = placeInputValue.trim().toLocaleLowerCase();
+  const visiblePlaces =
+    !placeQuery || placeQuery === (selectedPlace?.place_name ?? '').toLocaleLowerCase()
+      ? places
+      : places.filter((p) => p.place_name.toLocaleLowerCase().includes(placeQuery));
+
   const launchUrl = useMemo(() => {
     const base = `https://www.${GetSitetestBaseUrl()}`;
     const placeIdForUrl = placeIdOverride ?? rootPlaceId;
@@ -200,55 +220,61 @@ const AdvancedJoinOptionsDrawer = () => {
               control={control}
               name={FormField.PLACE_ID_OVERRIDE}
               render={({ field }) => (
-                <Autocomplete
-                  data-testid='place-override-autocomplete'
-                  disabled={editMode}
-                  // Render the dropdown inside the Sheet (Radix Dialog) instead
-                  // of portaling to <body>: the body is inert (pointer-events
-                  // none) while the Sheet is open, and a body-portaled popper
-                  // counts as an outside interaction that dismisses the Sheet.
-                  disablePortal
-                  getOptionLabel={(option: Place) => option.place_name}
-                  isOptionEqualToValue={(option, val) => option.place_id === val.place_id}
-                  loading={placesLoading}
-                  onChange={(_, selectedPlace) => field.onChange(selectedPlace?.place_id)}
-                  options={places}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                      helperText={translateHTML('Description.CheckAccessSettings', [
-                        {
-                          closing: 'linkEnd',
-                          content: (chunks) => (
-                            <Link
-                              href={`https://create.${GetSitetestBaseUrl()}/dashboard/creations/experiences/${experience?.universe_id}/places`}
-                              target='_blank'>
-                              {chunks}
-                            </Link>
-                          ),
-                          opening: 'linkStart',
-                        },
-                      ])}
-                      InputLabelProps={INPUT_LABEL_PROPS}
-                      label={translate('Label.StartPlace')}
-                      variant='outlined'
-                    />
-                  )}
-                  value={places.find((p) => p.place_id === field.value) || null}
-                />
+                <div className='flex flex-col gap-small'>
+                  <Autocomplete
+                    data-testid='place-override-autocomplete'
+                    emptyState={placesLoading ? translateMisc('Label.Loading') : undefined}
+                    inputValue={placeInputValue}
+                    isDisabled={editMode}
+                    label={translate('Label.StartPlace')}
+                    // Foundation keeps edited text on blur, so restore the selected
+                    // place name when the user typed without picking an option.
+                    onBlur={() => setPlaceInputValue(selectedPlace?.place_name ?? '')}
+                    onInputValueChange={setPlaceInputValue}
+                    onValueChange={(nextValue) => {
+                      const place = places.find((p) => String(p.place_id) === nextValue);
+                      if (!place) {
+                        return;
+                      }
+                      field.onChange(place.place_id);
+                      setPlaceInputValue(place.place_name);
+                    }}
+                    size='Medium'
+                    value={selectedPlace ? String(selectedPlace.place_id) : undefined}>
+                    {visiblePlaces.map((place) => (
+                      <AutocompleteOption
+                        key={place.place_id}
+                        title={place.place_name}
+                        value={String(place.place_id)}
+                      />
+                    ))}
+                  </Autocomplete>
+                  <span className='text-caption-small content-default'>
+                    {translateHTML('Description.CheckAccessSettings', [
+                      {
+                        closing: 'linkEnd',
+                        content: (chunks) => (
+                          <Link
+                            href={`https://create.${GetSitetestBaseUrl()}/dashboard/creations/experiences/${experience?.universe_id}/places`}
+                            target='_blank'>
+                            {chunks}
+                          </Link>
+                        ),
+                        opening: 'linkStart',
+                      },
+                    ])}
+                  </span>
+                </div>
               )}
             />
             <Controller
               control={control}
               name={FormField.LAUNCH_DATA}
               render={({ field, fieldState: { error } }) => (
-                <TextField
+                <TextArea
                   {...field}
                   data-testid='launch-data-input'
-                  disabled={editMode}
-                  error={!!error}
-                  FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
+                  hasError={!!error}
                   helperText={
                     error?.message
                       ? error.message
@@ -267,27 +293,23 @@ const AdvancedJoinOptionsDrawer = () => {
                         ])
                   }
                   id='launch-data-input'
-                  InputLabelProps={INPUT_LABEL_PROPS}
+                  isDisabled={editMode}
                   label={translate('Label.LaunchDataParameters')}
-                  multiline
                   rows={3}
+                  size='Medium'
                   value={field.value ?? ''}
-                  variant='outlined'
                 />
               )}
             />
             <div className={inlineRow}>
-              <TextField
-                disabled
-                FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                fullWidth
+              <TextInput
                 helperText={translate('Description.LaunchUrlHelper')}
                 id='launch-url'
-                InputLabelProps={INPUT_LABEL_PROPS}
-                InputProps={{ readOnly: true }}
+                isDisabled
                 label={translate('Label.LaunchUrl')}
+                readOnly
+                size='Medium'
                 value={launchUrl}
-                variant='outlined'
               />
               <AppTooltip position='top-center' title={translate('Action.CopyUrlToClipboard')}>
                 <IconButton

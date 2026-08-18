@@ -1,6 +1,13 @@
 import { useWorkspaces } from '@rbx/creator-hub-navigation';
-import { Icon } from '@rbx/foundation-ui';
-import { Divider, ListSubheader, MenuItem, Select } from '@rbx/ui';
+import {
+  Dropdown,
+  Icon,
+  Menu,
+  MenuItem,
+  MenuLabel,
+  MenuSection,
+  MenuSeparator,
+} from '@rbx/foundation-ui';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
@@ -23,7 +30,6 @@ import {
   FAILED_TO_FETCH_PAYMENT_METHOD_COPY,
   FlowTypes,
   FormField,
-  INPUT_LABEL_PROPS,
   NO_PAYMENT_METHOD_COPY,
 } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
@@ -44,8 +50,11 @@ interface ZodFormIssue {
 const ADD_CREDIT_CARD_OPTION_VALUE = 'add-credit-card';
 
 interface PaymentTypeSelectOption {
-  label: ReactNode;
+  /** Optional accessory rendered before the title inside the open menu only. */
+  leading?: ReactNode;
   shouldShow: boolean;
+  /** Foundation derives the collapsed trigger text from this string. */
+  title: string;
   value: ServerPaymentType;
 }
 
@@ -219,7 +228,7 @@ const PaymentSelect = () => {
     classes: { inputHelperText, linkInHelperText },
   } = useCampaignBuilderCommonStyles();
   const {
-    classes: { formLabel, fullWidth, halfWidth, halfWidthSkeleton, paymentSectionHeader },
+    classes: { fullWidth, halfWidth, halfWidthSkeleton },
   } = useFormLayoutStyles();
 
   const shouldShowAdCredit = !shouldShowInvoice && !isExtendToOffPlatformEnabled;
@@ -257,41 +266,35 @@ const PaymentSelect = () => {
 
   const groupPaymentTypeSelects: PaymentTypeSelectOption[] = [
     {
-      label: translateCampaign('Label.GroupAdCreditBalance', {
+      shouldShow: shouldShowAdCredit && (shouldShowGroupAdCredit || isGroupAdCreditSelected),
+      title: translateCampaign('Label.GroupAdCreditBalance', {
         balance: formattedGroupAdCreditBalance,
       }),
-      shouldShow: shouldShowAdCredit && (shouldShowGroupAdCredit || isGroupAdCreditSelected),
       value: ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT,
     },
   ];
 
   const personalPaymentTypeSelects: PaymentTypeSelectOption[] = [
     {
-      label: translateCampaign('Label.Invoice'),
       shouldShow: shouldShowInvoice,
+      title: translateCampaign('Label.Invoice'),
       value: ServerPaymentType.PAYMENT_TYPE_INVOICE,
     },
     {
-      label: translateCampaign('Label.PersonalAdCreditBalance', {
+      shouldShow: shouldShowAdCredit,
+      title: translateCampaign('Label.PersonalAdCreditBalance', {
         balance: formattedAdCreditBalance,
       }),
-      shouldShow: shouldShowAdCredit,
       value: ServerPaymentType.PAYMENT_TYPE_ADS_CREDIT,
     },
     {
-      label: (
-        <span className={`text-body-large ${formLabel}`}>
-          <PaymentMethodIcon largeIcon={false} paymentMethodType={cardNetwork} smallIcon />
-          <span className='text-body-large'>
-            {translateCampaign('Label.CardEnding', {
-              expMonth: String(expMonth),
-              expYear: String(expYear),
-              lastFour: lastFourDigits,
-            })}
-          </span>
-        </span>
-      ),
+      leading: <PaymentMethodIcon largeIcon={false} paymentMethodType={cardNetwork} smallIcon />,
       shouldShow: shouldShowCreditCard && !shouldShowInvoice,
+      title: translateCampaign('Label.CardEnding', {
+        expMonth: String(expMonth),
+        expYear: String(expYear),
+        lastFour: lastFourDigits,
+      }),
       value: ServerPaymentType.PAYMENT_TYPE_CARD,
     },
   ];
@@ -421,122 +424,118 @@ const PaymentSelect = () => {
     <Controller
       control={control}
       name={FormField.PAYMENT_TYPE}
-      render={({ field: { onChange, value, ...rest }, fieldState: { error } }) => (
+      render={({ field: { onChange, value }, fieldState: { error } }) => (
         <AppTooltip title={getTooltipTitle()}>
           <div className={halfWidth}>
-            <Select
-              {...rest}
-              className={fullWidth}
-              data-testid='payment-select'
-              disabled={
-                editMode || (!shouldShowAddCreditCardAction && visiblePaymentTypeSelectCount === 1)
-              }
-              error={!!error}
-              InputLabelProps={INPUT_LABEL_PROPS}
-              label={translateBilling('Heading.PaymentMethod')}
-              margin='none'
-              onChange={(e) => {
-                if (e.target.value === ADD_CREDIT_CARD_OPTION_VALUE) {
-                  openAddCreditCardDrawer();
-                  return;
+            <div data-testid='payment-select'>
+              <Dropdown
+                className={fullWidth}
+                hasError={!!error}
+                isDisabled={
+                  editMode ||
+                  (!shouldShowAddCreditCardAction && visiblePaymentTypeSelectCount === 1)
                 }
-
-                const newPaymentType = parseInt(e.target.value, 10);
-                if (
-                  newPaymentType === ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT &&
-                  selectedGroupId &&
-                  !groupAdAccountId
-                ) {
-                  openGroupAdAccountSetupDialog({
-                    entryPoint: 'campaignPaymentSelect',
-                    groupId: selectedGroupId,
-                    groupName: currentWorkspace?.creatorName ?? '',
-                    onComplete: () => {
-                      setValue(
-                        FormField.PAYMENT_TYPE,
-                        ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT,
-                        {
-                          shouldValidate: true,
-                        },
-                      );
-                      setPaymentMethodDrawerOpen(
-                        true,
-                        ADD_PAYMENT_TABS.ADS_CREDIT,
-                        AdCreditBalanceScope.Group,
-                      );
-                    },
-                  });
-                  return;
-                }
-
-                onChange(e);
-                logNativeClickEvent(EventName.PaymentMethodChanged, {
-                  flowType,
-                  previousValue: value !== null ? value.toString() : '',
-                  value: e.target.value,
-                });
-                const recommendedDuration =
-                  durationOptions.find(({ is_recommended }) => is_recommended)?.value ||
-                  DefaultDuration;
-
-                // reset duration to recommended if changing to ad credit and duration is continuous
-                if (
-                  getValues(FormField.DURATION) === CONTINUOUS_VALUE &&
-                  isAdCreditPaymentType(newPaymentType as ServerPaymentType)
-                ) {
-                  setValue(FormField.DURATION, recommendedDuration);
-                  setValue(FormField.CUSTOM_DURATION, false);
-                }
-              }}
-              SelectProps={{
-                onOpen: () => {
+                label={translateBilling('Heading.PaymentMethod')}
+                onOpenChange={(isOpen) => {
+                  if (!isOpen) {
+                    return;
+                  }
                   logNativeClickEvent(EventName.CreateCampaignPaymentMethodDropdownOpened, {
                     flowType,
                   });
-                },
-              }}
-              size='medium'
-              value={value}
-              variant='outlined'>
-              {shouldShowSectionHeaders && (
-                <ListSubheader
-                  className={paymentSectionHeader}
-                  data-testid='payment-group-section-header'
-                  disableSticky>
-                  {groupSectionName}
-                </ListSubheader>
-              )}
-              {visibleGroupPaymentTypeSelects.map(({ label, value: val }) => (
-                <MenuItem data-testid={`payment-option-${val}`} key={val} value={val}>
-                  {label}
-                </MenuItem>
-              ))}
-              {shouldShowPaymentGroupDivider && <Divider data-testid='payment-group-divider' />}
-              {shouldShowSectionHeaders &&
-                (visiblePersonalPaymentTypeSelects.length > 0 || shouldShowAddCreditCardAction) && (
-                  <ListSubheader
-                    className={paymentSectionHeader}
-                    data-testid='payment-individual-section-header'
-                    disableSticky>
-                    {individualSectionName}
-                  </ListSubheader>
-                )}
-              {visiblePersonalPaymentTypeSelects.map(({ label, value: val }) => (
-                <MenuItem data-testid={`payment-option-${val}`} key={val} value={val}>
-                  {label}
-                </MenuItem>
-              ))}
-              {shouldShowAddCreditCardAction && (
-                <MenuItem data-testid='add-credit-card-option' value={ADD_CREDIT_CARD_OPTION_VALUE}>
-                  <span className={`text-body-large ${formLabel}`}>
-                    <Icon name='icon-regular-plus-large' size='Small' />
-                    <span className='text-body-large'>
-                      {translateCampaign('Action.AddCreditCard')}
-                    </span>
-                  </span>
-                </MenuItem>
-              )}
-            </Select>
+                }}
+                onValueChange={(nextValue: string) => {
+                  if (nextValue === ADD_CREDIT_CARD_OPTION_VALUE) {
+                    openAddCreditCardDrawer();
+                    return;
+                  }
+
+                  const newPaymentType = parseInt(nextValue, 10);
+                  if (
+                    newPaymentType === ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT &&
+                    selectedGroupId &&
+                    !groupAdAccountId
+                  ) {
+                    openGroupAdAccountSetupDialog({
+                      entryPoint: 'campaignPaymentSelect',
+                      groupId: selectedGroupId,
+                      groupName: currentWorkspace?.creatorName ?? '',
+                      onComplete: () => {
+                        setValue(
+                          FormField.PAYMENT_TYPE,
+                          ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT,
+                          {
+                            shouldValidate: true,
+                          },
+                        );
+                        setPaymentMethodDrawerOpen(
+                          true,
+                          ADD_PAYMENT_TABS.ADS_CREDIT,
+                          AdCreditBalanceScope.Group,
+                        );
+                      },
+                    });
+                    return;
+                  }
+
+                  onChange(newPaymentType);
+                  logNativeClickEvent(EventName.PaymentMethodChanged, {
+                    flowType,
+                    previousValue: value !== null ? value.toString() : '',
+                    value: nextValue,
+                  });
+                  const recommendedDuration =
+                    durationOptions.find(({ is_recommended }) => is_recommended)?.value ||
+                    DefaultDuration;
+
+                  // reset duration to recommended if changing to ad credit and duration is continuous
+                  if (
+                    getValues(FormField.DURATION) === CONTINUOUS_VALUE &&
+                    isAdCreditPaymentType(newPaymentType as ServerPaymentType)
+                  ) {
+                    setValue(FormField.DURATION, recommendedDuration);
+                    setValue(FormField.CUSTOM_DURATION, false);
+                  }
+                }}
+                placeholder=''
+                size='Medium'
+                value={value === undefined || value === null ? '' : String(value)}>
+                <Menu>
+                  {/* MenuSection only accepts a single element or a flat array of
+                      them, so each section wraps its heading + items in a fragment. */}
+                  {visibleGroupPaymentTypeSelects.length > 0 && (
+                    <MenuSection>
+                      <>
+                        {shouldShowSectionHeaders && <MenuLabel title={groupSectionName} />}
+                        {visibleGroupPaymentTypeSelects.map(({ leading, title, value: val }) => (
+                          <MenuItem key={val} leading={leading} title={title} value={String(val)} />
+                        ))}
+                      </>
+                    </MenuSection>
+                  )}
+                  {shouldShowPaymentGroupDivider && <MenuSeparator />}
+                  <MenuSection>
+                    <>
+                      {shouldShowSectionHeaders &&
+                        (visiblePersonalPaymentTypeSelects.length > 0 ||
+                          shouldShowAddCreditCardAction) && (
+                          <MenuLabel title={individualSectionName} />
+                        )}
+                      {visiblePersonalPaymentTypeSelects.map(({ leading, title, value: val }) => (
+                        <MenuItem key={val} leading={leading} title={title} value={String(val)} />
+                      ))}
+                      {shouldShowAddCreditCardAction && (
+                        <MenuItem
+                          leading={<Icon name='icon-regular-plus-large' size='Small' />}
+                          title={translateCampaign('Action.AddCreditCard')}
+                          value={ADD_CREDIT_CARD_OPTION_VALUE}
+                        />
+                      )}
+                    </>
+                  </MenuSection>
+                </Menu>
+              </Dropdown>
+            </div>
             {getErrorHelperEl(error as ZodFormIssue)}
           </div>
         </AppTooltip>

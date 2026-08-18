@@ -41,8 +41,10 @@ import { IsImpersonationError } from '@utils/error';
 
 interface AdIntegrationsCampaignTableProps {
   campaigns: AdIntegrationCampaignListItem[];
+  isMultiUniverseEnabled?: boolean;
   onArchiveCampaign?: (campaignId: string) => void;
   onToggleCampaignStatus: (campaignId: string, currentStatus?: string) => Promise<void>;
+  selectedUniverseId?: number;
   toggleLoadingMap: Record<string, boolean>;
 }
 
@@ -63,8 +65,10 @@ const getDateDisplayValue = (timestampMs?: number): string => {
 
 const AdIntegrationsCampaignTable = ({
   campaigns,
+  isMultiUniverseEnabled = false,
   onArchiveCampaign,
   onToggleCampaignStatus,
+  selectedUniverseId,
   toggleLoadingMap,
 }: AdIntegrationsCampaignTableProps) => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Report);
@@ -133,8 +137,17 @@ const AdIntegrationsCampaignTable = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHeaderCell>{translate('Label.Experience')}</TableHeaderCell>
-            <TableHeaderCell>{translate('Label.Campaign')}</TableHeaderCell>
+            {isMultiUniverseEnabled ? (
+              <>
+                <TableHeaderCell>{translate('Label.Campaign')}</TableHeaderCell>
+                <TableHeaderCell>{translateMisc('Label.Games')}</TableHeaderCell>
+              </>
+            ) : (
+              <>
+                <TableHeaderCell>{translate('Label.Experience')}</TableHeaderCell>
+                <TableHeaderCell>{translate('Label.Campaign')}</TableHeaderCell>
+              </>
+            )}
             <TableHeaderCell>
               <div className='inline-flex items-center'>
                 {translate('Label.OffOn')}
@@ -154,8 +167,21 @@ const AdIntegrationsCampaignTable = ({
         </TableHeader>
         <TableBody>
           {campaigns.map((campaign) => {
+            const universeIds = campaign.universeIds ?? [campaign.universeId];
+            // Surface the universe the user is actively filtering on as the
+            // primary row, rather than positional API order — otherwise the
+            // game they filtered for gets folded into "+N additional games".
+            // Falls back to the first universe when viewing all games.
+            const primaryUniverseIndex =
+              selectedUniverseId !== undefined && universeIds.includes(selectedUniverseId)
+                ? universeIds.indexOf(selectedUniverseId)
+                : 0;
+            const primaryUniverseId = universeIds[primaryUniverseIndex] ?? campaign.universeId;
+            const primaryUniverseName =
+              campaign.universeNames?.[primaryUniverseIndex] || campaign.universeName;
+            const additionalUniverseCount = Math.max(universeIds.length - 1, 0);
             const universeThumbnailUrl =
-              thumbnailsByUniverseId[campaign.universeId]?.data?.imageUrl ?? undefined;
+              thumbnailsByUniverseId[primaryUniverseId]?.data?.imageUrl ?? undefined;
             const toggleLoading = toggleLoadingMap[campaign.campaignId] ?? false;
             const isEnabled = isAdIntegrationCampaignStatusEnabled(campaign.status);
             const isArchived = isAdIntegrationCampaignStatusArchived(campaign.status);
@@ -182,54 +208,78 @@ const AdIntegrationsCampaignTable = ({
               }
               return getModerationStatusText(moderationStatus);
             };
+            const experienceTableCell = (
+              <TableCell>
+                <div className={experienceCell}>
+                  <UniverseFilterAvatar src={universeThumbnailUrl} />
+                  <div className='flex flex-col'>
+                    <span className={`text-body-medium ${experienceName}`}>
+                      {primaryUniverseName}
+                    </span>
+                    {isMultiUniverseEnabled && additionalUniverseCount > 0 && (
+                      <span className='text-body-small content-muted'>
+                        {translateMisc('Label.AdditionalGames', {
+                          count: String(additionalUniverseCount),
+                        })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </TableCell>
+            );
+            const campaignTableCell = (
+              <TableCell>
+                <Tooltip
+                  placement='top-start'
+                  slotProps={{
+                    popper: {
+                      className: campaignIdTooltipPopper,
+                    },
+                  }}
+                  title={
+                    <div className={campaignIdTooltipContent}>
+                      <span className='text-title-large'>
+                        {translate('Label.CampaignId', {
+                          id: campaign.campaignId,
+                        })}
+                      </span>
+                      <IconButton
+                        ariaLabel={translate('Description.CopyToClipboard')}
+                        icon='icon-regular-two-stacked-squares'
+                        iconColor='Inverse'
+                        onClick={() => navigator.clipboard.writeText(campaign.campaignId)}
+                        size='Small'
+                        variant='Utility'
+                      />
+                    </div>
+                  }>
+                  <Link
+                    className={campaignLink}
+                    href={{
+                      pathname: Routes.AD_INTEGRATIONS_CAMPAIGN,
+                      query: { campaignId: campaign.campaignId },
+                    }}>
+                    <span className={`text-body-medium ${campaignName}`}>
+                      {campaign.campaignName}
+                    </span>
+                  </Link>
+                </Tooltip>
+              </TableCell>
+            );
 
             return (
               <TableRow isHoverable key={campaign.campaignId}>
-                <TableCell>
-                  <div className={experienceCell}>
-                    <UniverseFilterAvatar src={universeThumbnailUrl} />
-                    <span className={`text-body-medium ${experienceName}`}>
-                      {campaign.universeName}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Tooltip
-                    placement='top-start'
-                    slotProps={{
-                      popper: {
-                        className: campaignIdTooltipPopper,
-                      },
-                    }}
-                    title={
-                      <div className={campaignIdTooltipContent}>
-                        <span className='text-title-large'>
-                          {translate('Label.CampaignId', {
-                            id: campaign.campaignId,
-                          })}
-                        </span>
-                        <IconButton
-                          ariaLabel={translate('Description.CopyToClipboard')}
-                          icon='icon-regular-two-stacked-squares'
-                          iconColor='Inverse'
-                          onClick={() => navigator.clipboard.writeText(campaign.campaignId)}
-                          size='Small'
-                          variant='Utility'
-                        />
-                      </div>
-                    }>
-                    <Link
-                      className={campaignLink}
-                      href={{
-                        pathname: Routes.AD_INTEGRATIONS_CAMPAIGN,
-                        query: { campaignId: campaign.campaignId },
-                      }}>
-                      <span className={`text-body-medium ${campaignName}`}>
-                        {campaign.campaignName}
-                      </span>
-                    </Link>
-                  </Tooltip>
-                </TableCell>
+                {isMultiUniverseEnabled ? (
+                  <>
+                    {campaignTableCell}
+                    {experienceTableCell}
+                  </>
+                ) : (
+                  <>
+                    {experienceTableCell}
+                    {campaignTableCell}
+                  </>
+                )}
                 <TableCell>
                   <Toggle
                     aria-label={translate('Description.ToggleEntity')}

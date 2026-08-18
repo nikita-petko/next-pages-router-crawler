@@ -1,6 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Card, Divider, Dropdown, Icon, Menu, MenuItem } from '@rbx/foundation-ui';
-import { TextField } from '@rbx/ui';
+import {
+  Button,
+  Card,
+  Divider,
+  Dropdown,
+  Icon,
+  Menu,
+  MenuItem,
+  TextInput,
+} from '@rbx/foundation-ui';
 import { ReactElement, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Controller, useForm } from 'react-hook-form';
@@ -46,6 +54,7 @@ export interface BuyAdCreditProps {
   onCancel?: () => void;
   onComplete?: (completion: PaymentSetupCompletion) => void | Promise<void>;
   robuxBalance: number;
+  showBalanceScopeSelector?: boolean;
   showGroupBalanceOption?: boolean;
 }
 
@@ -79,6 +88,7 @@ export const BuyAdCredit = ({
   onCancel,
   onComplete,
   robuxBalance,
+  showBalanceScopeSelector = true,
   showGroupBalanceOption = false,
 }: BuyAdCreditProps): ReactElement => {
   const { translate: translateBilling, translateHTML: translateBillingHTML } =
@@ -300,32 +310,33 @@ export const BuyAdCredit = ({
     </div>
   );
 
-  const balanceScopeSelectorComponent = showGroupBalanceOption ? (
-    <div className={balanceScopeSelectorContainer}>
-      <Dropdown
-        className={balanceScopeSelector}
-        label={translateBilling('Label.BalanceScope')}
-        onValueChange={(value) => {
-          const selectedBalanceScope = value as AdCreditBalanceScope;
-          userSelectedBalanceScope.current = selectedBalanceScope;
-          setBalanceScope(selectedBalanceScope);
-        }}
-        placeholder={translateBilling('Label.BalanceScope')}
-        size='Medium'
-        value={balanceScope}>
-        <Menu>
-          <MenuItem
-            title={groupName || translateBilling('Label.RobloxAdCredit')}
-            value={AdCreditBalanceScope.Group}
-          />
-          <MenuItem
-            title={translateBilling('Heading.PersonalFunds')}
-            value={AdCreditBalanceScope.Personal}
-          />
-        </Menu>
-      </Dropdown>
-    </div>
-  ) : null;
+  const balanceScopeSelectorComponent =
+    showGroupBalanceOption && showBalanceScopeSelector ? (
+      <div className={balanceScopeSelectorContainer}>
+        <Dropdown
+          className={balanceScopeSelector}
+          label={translateBilling('Label.BalanceScope')}
+          onValueChange={(value) => {
+            const selectedBalanceScope = value as AdCreditBalanceScope;
+            userSelectedBalanceScope.current = selectedBalanceScope;
+            setBalanceScope(selectedBalanceScope);
+          }}
+          placeholder={translateBilling('Label.BalanceScope')}
+          size='Medium'
+          value={balanceScope}>
+          <Menu>
+            <MenuItem
+              title={groupName || translateBilling('Label.RobloxAdCredit')}
+              value={AdCreditBalanceScope.Group}
+            />
+            <MenuItem
+              title={translateBilling('Heading.PersonalFunds')}
+              value={AdCreditBalanceScope.Personal}
+            />
+          </Menu>
+        </Dropdown>
+      </div>
+    ) : null;
 
   const purchaseRate = (
     <span
@@ -416,13 +427,12 @@ export const BuyAdCredit = ({
                 {...field}
                 allowNegative={false}
                 className={fullWidth}
-                color='primary'
-                customInput={TextField}
+                customInput={TextInput}
+                data-testid={AD_CREDIT_AMOUNT_FORM_FIELD}
                 decimalScale={0}
-                error={!!errors[AD_CREDIT_AMOUNT_FORM_FIELD]}
-                helperText={errors[AD_CREDIT_AMOUNT_FORM_FIELD]?.message || minAdCreditError}
+                error={errors[AD_CREDIT_AMOUNT_FORM_FIELD]?.message}
+                helperText={minAdCreditError}
                 id={AD_CREDIT_AMOUNT_FORM_FIELD}
-                inputProps={{ 'data-testid': AD_CREDIT_AMOUNT_FORM_FIELD }}
                 isAllowed={({ floatValue }) => {
                   if (floatValue === undefined) {
                     return true;
@@ -430,11 +440,10 @@ export const BuyAdCredit = ({
                   return floatValue >= 0 && floatValue <= adCreditMaximumPurchaseAmount;
                 }}
                 label={translateBilling('Title.AdCreditAmount')}
-                margin='none'
                 onValueChange={({ floatValue = NaN }) => {
                   onChange(floatValue);
                 }}
-                variant='outlined'
+                size='Medium'
               />
             )}
           />

@@ -34,6 +34,9 @@ const useAdIntegrationCampaignApi = ({
     () => GetValidatedTimezoneDbName(rawTimezoneDbName),
     [rawTimezoneDbName],
   );
+  const isMultiUniverseEnabled = useAppStore(
+    (state) => state.appMetadataState?.data?.isMultiUniverseAdIntegrationsEnabled ?? false,
+  );
 
   const {
     data: campaignList,
@@ -133,12 +136,16 @@ const useAdIntegrationCampaignApi = ({
     ): Promise<CreateAdIntegrationCampaignResult> => {
       setIsSubmitting(true);
       try {
-        return await createAdIntegrationCampaignDetails(payload, timezoneDbName);
+        return await createAdIntegrationCampaignDetails(
+          payload,
+          timezoneDbName,
+          isMultiUniverseEnabled,
+        );
       } finally {
         setIsSubmitting(false);
       }
     },
-    [timezoneDbName],
+    [isMultiUniverseEnabled, timezoneDbName],
   );
 
   const updateCampaignDetails = useCallback(
@@ -153,15 +160,24 @@ const useAdIntegrationCampaignApi = ({
           campaignId,
           payload,
           timezoneDbName,
+          isMultiUniverseEnabled,
           changedFields,
         );
         await invalidateCampaignDetailsCache(campaignId);
+        if (!changedFields || changedFields.experienceIds) {
+          await getCampaignListBySelectedUniverse(true);
+        }
         return result;
       } finally {
         setIsSubmitting(false);
       }
     },
-    [invalidateCampaignDetailsCache, timezoneDbName],
+    [
+      getCampaignListBySelectedUniverse,
+      invalidateCampaignDetailsCache,
+      isMultiUniverseEnabled,
+      timezoneDbName,
+    ],
   );
 
   return {

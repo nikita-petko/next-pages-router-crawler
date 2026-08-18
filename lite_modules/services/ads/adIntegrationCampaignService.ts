@@ -207,6 +207,7 @@ const mapCampaignResponseToFormValues = (
         name?: string;
         startTimestampMs?: number;
         universeId?: number;
+        universeIds?: number[];
       }
     | null
     | undefined,
@@ -231,7 +232,8 @@ const mapCampaignResponseToFormValues = (
     campaignName: campaign?.name ?? '',
     endDate: end.date,
     endTime: end.time,
-    experience: campaign?.universeId ?? 0,
+    experienceIds:
+      campaign?.universeIds ?? (campaign?.universeId === undefined ? [] : [campaign.universeId]),
     hasRewardedPlacements,
     startDate: start.date,
     startTime: start.time,
@@ -242,6 +244,7 @@ const mapCampaignResponseToFormValues = (
 const mapFormToCreateRequest = (
   payload: AdIntegrationCampaignDetailsFormValues,
   timezoneDbName: string,
+  isMultiUniverseEnabled: boolean,
 ): CreateAdIntegrationCampaignRequest => {
   const declaredLabels = buildDeclaredLabels(payload);
 
@@ -255,13 +258,16 @@ const mapFormToCreateRequest = (
       payload.startTime,
       timezoneDbName,
     ),
-    universeId: payload.experience,
+    ...(isMultiUniverseEnabled
+      ? { universeIds: payload.experienceIds }
+      : { universeId: payload.experienceIds[0] }),
   };
 };
 
 const mapFormToUpdateRequest = (
   payload: AdIntegrationCampaignDetailsFormValues,
   timezoneDbName: string,
+  isMultiUniverseEnabled: boolean,
   changedFields?: AdIntegrationCampaignDetailsChangedFields,
 ): UpdateAdIntegrationCampaignRequest => {
   const shouldIncludeField = (field: keyof AdIntegrationCampaignDetailsFormValues): boolean => {
@@ -292,6 +298,15 @@ const mapFormToUpdateRequest = (
 
   if (shouldIncludeField('hasRewardedPlacements')) {
     updateRequest.declaredLabels = buildDeclaredLabels(payload);
+  }
+
+  if (shouldIncludeField('experienceIds')) {
+    if (isMultiUniverseEnabled) {
+      updateRequest.universeIds = payload.experienceIds;
+    } else {
+      const [universeId] = payload.experienceIds;
+      updateRequest.universeId = universeId;
+    }
   }
 
   if (shouldIncludeField('startDate') || shouldIncludeField('startTime')) {
@@ -419,9 +434,10 @@ export interface CreateAdIntegrationCampaignResult {
 export const createAdIntegrationCampaignDetails = async (
   payload: AdIntegrationCampaignDetailsFormValues,
   timezoneDbName: string,
+  isMultiUniverseEnabled: boolean,
 ): Promise<CreateAdIntegrationCampaignResult> => {
   const response = await adIntegrationsClient.createAdIntegrationCampaign({
-    request: mapFormToCreateRequest(payload, timezoneDbName),
+    request: mapFormToCreateRequest(payload, timezoneDbName, isMultiUniverseEnabled),
   });
 
   return {
@@ -437,9 +453,15 @@ export const updateAdIntegrationCampaignDetails = async (
   campaignId: string,
   payload: AdIntegrationCampaignDetailsFormValues,
   timezoneDbName: string,
+  isMultiUniverseEnabled: boolean,
   changedFields?: AdIntegrationCampaignDetailsChangedFields,
 ): Promise<AdIntegrationCampaignDetailsFormValues> => {
-  const updateRequest = mapFormToUpdateRequest(payload, timezoneDbName, changedFields);
+  const updateRequest = mapFormToUpdateRequest(
+    payload,
+    timezoneDbName,
+    isMultiUniverseEnabled,
+    changedFields,
+  );
   if (Object.keys(updateRequest).length === 0) {
     return payload;
   }
@@ -463,17 +485,26 @@ export const listAdIntegrationCampaignListItemsByUniverse = async (
     (campaign): campaign is AdIntegrationCampaign & { id: string } => Boolean(campaign.id),
   );
 
-  return campaigns.map((campaign) => ({
-    campaignId: campaign.id,
-    campaignName: campaign.name ?? '',
-    createdTimestampMs: campaign.createdTimestampMs,
-    endTimestampMs: campaign.endTimestampMs,
-    moderationStatus: campaign.moderationStatus,
-    startTimestampMs: campaign.startTimestampMs,
-    status: campaign.status,
-    universeId: campaign.universeId ?? universeId,
-    universeName,
-  }));
+  return campaigns.map((campaign) => {
+    const universeIds =
+      campaign.universeIds && campaign.universeIds.length > 0
+        ? campaign.universeIds
+        : [campaign.universeId ?? universeId];
+    const primaryUniverseId = campaign.universeId ?? universeIds[0] ?? universeId;
+
+    return {
+      campaignId: campaign.id,
+      campaignName: campaign.name ?? '',
+      createdTimestampMs: campaign.createdTimestampMs,
+      endTimestampMs: campaign.endTimestampMs,
+      moderationStatus: campaign.moderationStatus,
+      startTimestampMs: campaign.startTimestampMs,
+      status: campaign.status,
+      universeId: primaryUniverseId,
+      universeIds,
+      universeName,
+    };
+  });
 };
 
 export const addPlacementToAdIntegration = async (

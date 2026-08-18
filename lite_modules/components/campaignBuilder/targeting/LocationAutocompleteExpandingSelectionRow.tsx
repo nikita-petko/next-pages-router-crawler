@@ -1,125 +1,84 @@
 import { Checkbox, Icon } from '@rbx/foundation-ui';
-import React, { useId, useState } from 'react';
+import React from 'react';
 
-import useAdvancedTargetingLocationAutocompleteStyles from '@components/campaignBuilder/targeting/AdvancedTargetingLocationAutocomplete.styles';
-import AppTooltip from '@components/common/AppTooltip';
-import { TranslationNamespace } from '@constants/localization';
 import { CheckboxState, RowType } from '@constants/locationAutocomplete';
-import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
-import { RegionsAndLocationsFormInputObj } from '@type/locationAutocomplete';
-import { GetRegionToCountryMap } from '@utils/locationAutocomplete';
 
-interface ExpandingSelectionRowProps {
-  carrotExpanded: boolean;
+interface LocationSelectionCheckboxProps {
   checkboxState: CheckboxState;
-  locationInfo: RegionsAndLocationsFormInputObj;
-  onCarrotClick: (locationInfo: RegionsAndLocationsFormInputObj) => void;
-  onRowToggle: () => void;
   rowType: RowType;
-  showTooltipOnhover: boolean;
+  title: string;
 }
 
-const ExpandingSelectionRow = ({
-  carrotExpanded,
-  checkboxState = CheckboxState.UNCHECKED,
-  locationInfo,
-  onCarrotClick,
-  onRowToggle,
+interface LocationExpandToggleProps {
+  isExpandable: boolean;
+  isExpanded: boolean;
+  onToggle: () => void;
+}
+
+/**
+ * Leading accessory of a location option row. Foundation owns the option shell, so the
+ * checkbox is presentational: the surrounding `AutocompleteOption` handles the toggle.
+ * Country rows are indented to show that they sit under their region.
+ */
+export const LocationSelectionCheckbox = ({
+  checkboxState,
   rowType,
-  showTooltipOnhover = false,
-}: ExpandingSelectionRowProps) => {
-  const { translate } = useNamespacedTranslation(TranslationNamespace.Campaign);
-  const rowLabelId = useId();
-  const [tooltipOpen, setTooltipOpen] = useState<boolean>(false);
-  const isRegion = rowType === RowType.REGION;
-  const isSuperGroup = rowType === RowType.SUPER_GROUP;
+  title,
+}: LocationSelectionCheckboxProps) => (
+  <div className={rowType === RowType.COUNTRY ? 'margin-left-large' : undefined}>
+    <Checkbox
+      aria-label={title}
+      isChecked={
+        checkboxState === CheckboxState.PARTIAL
+          ? 'indeterminate'
+          : checkboxState === CheckboxState.CHECKED
+      }
+      placement='Start'
+      size='XSmall'
+    />
+  </div>
+);
 
-  const {
-    classes: {
-      countryRow,
-      regularRow,
-      sectionExpandToggleIconContainer,
-      sectionExpansionContainer,
-    },
-  } = useAdvancedTargetingLocationAutocompleteStyles();
-
-  const handleRowClick = (event: React.MouseEvent | React.KeyboardEvent) => {
+/**
+ * Trailing accessory of a region option row. Clicking anywhere on a Foundation
+ * `AutocompleteOption` selects it, so expanding must swallow the event instead of
+ * letting it reach the option. Rows without children still render this component (as
+ * nothing) because supplying a trailing accessory is what suppresses Foundation's own
+ * check indicator, which the row checkbox already stands in for.
+ */
+export const LocationExpandToggle = ({
+  isExpandable,
+  isExpanded,
+  onToggle,
+}: LocationExpandToggleProps) => {
+  const handleToggle = (event: React.KeyboardEvent | React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    onRowToggle();
+    event.nativeEvent.stopImmediatePropagation();
+    onToggle();
   };
+
+  if (!isExpandable) {
+    return null;
+  }
 
   return (
     <div
-      className={`${sectionExpansionContainer} cursor-pointer`}
-      onBlur={() => null} // onMouseOut must be accompanied by onBlur for accessibility
-      onClick={handleRowClick}
-      onFocus={() => null} // onMouseOver must be accompanied by onFocus for accessibility
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault(); // Prevent default scrolling for Space key
-          handleRowClick(e); // Trigger click logic on Enter/Space
+      aria-expanded={isExpanded}
+      className='flex items-center'
+      onClick={handleToggle}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          handleToggle(event);
         }
       }}
-      onMouseOut={() => setTooltipOpen(false)}
-      onMouseOver={() => setTooltipOpen(true)}
       role='button'
       tabIndex={0}>
-      <div>
-        <div
-          className={`flex items-center gap-small ${isRegion || isSuperGroup ? regularRow : countryRow}`}>
-          <AppTooltip
-            open={tooltipOpen && showTooltipOnhover}
-            position='top-center'
-            title={translate('Description.MaxLocationsAllowed')}>
-            <Checkbox
-              aria-labelledby={rowLabelId}
-              isChecked={
-                checkboxState === CheckboxState.PARTIAL
-                  ? 'indeterminate'
-                  : checkboxState === CheckboxState.CHECKED
-              }
-              placement='Start'
-              size='XSmall'
-            />
-          </AppTooltip>
-          <div>
-            <span className='text-body-large content-emphasis' id={rowLabelId}>
-              {locationInfo.title}
-            </span>
-            {locationInfo.parentRegion &&
-              Boolean(GetRegionToCountryMap()[locationInfo.regionCode]?.length) && (
-                <div
-                  className={sectionExpandToggleIconContainer}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.nativeEvent.stopImmediatePropagation();
-                    onCarrotClick(locationInfo);
-                  }}
-                  onKeyDown={() => null}
-                  role='button'
-                  tabIndex={0}>
-                  {carrotExpanded ? (
-                    <Icon
-                      data-testid='expandLessIcon'
-                      name='icon-regular-chevron-small-up'
-                      size='Medium'
-                    />
-                  ) : (
-                    <Icon
-                      data-testid='expandMoreIcon'
-                      name='icon-regular-chevron-small-down'
-                      size='Medium'
-                    />
-                  )}
-                </div>
-              )}
-          </div>
-        </div>
-      </div>
+      {isExpanded ? (
+        <Icon data-testid='expandLessIcon' name='icon-regular-chevron-small-up' size='Medium' />
+      ) : (
+        <Icon data-testid='expandMoreIcon' name='icon-regular-chevron-small-down' size='Medium' />
+      )}
     </div>
   );
 };
-
-export default ExpandingSelectionRow;

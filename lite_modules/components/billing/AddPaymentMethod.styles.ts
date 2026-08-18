@@ -325,18 +325,11 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
   watermarkedInfoAlertIcon: {
     color: '#335FFF',
   },
-  watermarkedInput: {
-    '& .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline': {
-      borderColor: '#335FFF !important',
-    },
-  },
+  // FieldLabelOffset supplies the drop past the field label, so this only has to
+  // keep the column top-anchored and the text centered in its grid cell.
   watermarkedInputOr: {
     alignSelf: 'start',
-    marginTop: '16px',
     textAlign: 'center',
-  },
-  watermarkedInputRobuxAdornment: {
-    marginRight: 8,
   },
   watermarkedStrikethroughRobux: {
     overflow: 'hidden',

@@ -51,8 +51,9 @@ const LandingPage = () => {
     useState<boolean>(false);
   const userIsLoggedIn = useIsLoggedIn();
   const showAutoCreateLanding =
-    isAdAccountAutoCreateEnabled && userIsLoggedIn && !adAccountAttachedToThisRobloxUser;
-  const shouldPollEmailVerification = showAutoCreateLanding && hasVerifiedEmail !== true;
+    !adAccountAttachedToThisRobloxUser && (!userIsLoggedIn || isAdAccountAutoCreateEnabled);
+  const shouldPollEmailVerification =
+    userIsLoggedIn && showAutoCreateLanding && hasVerifiedEmail !== true;
   usePollEmailVerification(shouldPollEmailVerification);
 
   useEffect(() => {
@@ -100,7 +101,7 @@ const LandingPage = () => {
     openForecastEstimator();
   }, [openForecastEstimator]);
 
-  const getStartedDisabled = !userOver13 || hasVerifiedEmail !== true;
+  const getStartedDisabled = userIsLoggedIn && (!userOver13 || hasVerifiedEmail !== true);
 
   return (
     <AdsManagerPageBaseLayout isLoading={pageFetchingEssentialData}>
@@ -110,8 +111,8 @@ const LandingPage = () => {
       {showAutoCreateLanding ? (
         <AutoCreateLandingPage
           getStartedDisabled={getStartedDisabled}
-          hasVerifiedEmail={hasVerifiedEmail === true}
-          onGetStartedClick={onAutoCreateGetStartedClick}
+          hasVerifiedEmail={!userIsLoggedIn || hasVerifiedEmail === true}
+          onGetStartedClick={userIsLoggedIn ? onAutoCreateGetStartedClick : onLegacyButtonClicked}
         />
       ) : (
         <LandingPageComponent

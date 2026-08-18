@@ -8,9 +8,10 @@ import {
   SheetContent,
   SheetRoot,
   SheetTitle,
+  TextInput,
 } from '@rbx/foundation-ui';
 import { AssetThumbnailSize, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
-import { Label, TextField } from '@rbx/ui';
+import { Label } from '@rbx/ui';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -42,10 +43,12 @@ interface AdIntegrationAssetsDrawerProps {
   open: boolean;
   placements: AdIntegrationPlacement[];
   universeId?: number;
+  universeIds?: number[];
   userId?: number;
 }
 
 export interface AdIntegrationAssetsDrawerCampaignInfoHeader {
+  additionalUniverseCount?: number;
   advertiserName: string;
   campaignId: string;
   campaignName: string;
@@ -99,6 +102,7 @@ const AdIntegrationAssetsDrawer = ({
   open,
   placements,
   universeId,
+  universeIds,
   userId,
 }: AdIntegrationAssetsDrawerProps) => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Account);
@@ -142,26 +146,35 @@ const AdIntegrationAssetsDrawer = ({
   const [assetPreview, setAssetPreview] = useState<AssetPreview | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState<boolean>(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [universeCreator, setUniverseCreator] = useState<CreatorIdentity | undefined>(undefined);
+  const [universeCreators, setUniverseCreators] = useState<CreatorIdentity[]>([]);
   const pendingIdSequence = useRef<number>(0);
+  const selectedUniverseIds = useMemo(
+    () => universeIds ?? (universeId === undefined ? [] : [universeId]),
+    [universeId, universeIds],
+  );
+  const isMultiUniverseCampaign =
+    campaignInfoHeader?.additionalUniverseCount !== undefined || universeIds !== undefined;
+  const additionalUniverseCount =
+    campaignInfoHeader?.additionalUniverseCount ?? Math.max(selectedUniverseIds.length - 1, 0);
+  const selectedUniverseIdsKey = selectedUniverseIds.join(',');
+  const previousUniverseIdsKeyRef = useRef<string>(selectedUniverseIdsKey);
 
   useEffect(() => {
     let cancelled = false;
+    setUniverseCreators([]);
 
-    if (!universeId) {
-      setUniverseCreator(undefined);
-    } else {
-      getUniverses([universeId])
+    if (selectedUniverseIds.length > 0) {
+      getUniverses(selectedUniverseIds)
         .then((response) => {
           if (!cancelled) {
-            const creator = response.data?.[0]?.creator;
-            setUniverseCreator(
-              creator == null
-                ? undefined
-                : {
-                    id: creator.id,
-                    type: creator.type,
-                  },
+            setUniverseCreators(
+              response.data
+                ?.map((universe) => universe.creator)
+                .filter((creator) => creator != null)
+                .map((creator) => ({
+                  id: creator.id,
+                  type: creator.type,
+                })) ?? [],
             );
           }
         })
@@ -173,7 +186,7 @@ const AdIntegrationAssetsDrawer = ({
     return () => {
       cancelled = true;
     };
-  }, [universeId]);
+  }, [selectedUniverseIds, selectedUniverseIdsKey]);
 
   const hasPendingChanges = pendingAdditions.length > 0 || pendingRemovals.size > 0;
   const canSave = hasPendingChanges && Boolean(campaignId) && Boolean(onSavePlacements);
@@ -203,7 +216,7 @@ const AdIntegrationAssetsDrawer = ({
         id: number,
         translateFn: (key: string) => string,
         currentUserId: number | undefined,
-        currentUniverseCreator: CreatorIdentity | undefined,
+        currentUniverseCreators: CreatorIdentity[],
       ) => {
         setIsLoadingPreview(true);
         setPreviewError(null);
@@ -216,17 +229,20 @@ const AdIntegrationAssetsDrawer = ({
             const asset = assets[0];
             const assetCreatorId = asset.creator?.targetId;
             const assetCreatorType = normalizeCreatorType(asset.creator?.type);
-            const universeCreatorType = normalizeCreatorType(currentUniverseCreator?.type);
             const matchesUser =
               currentUserId != null &&
               assetCreatorId === currentUserId &&
               (assetCreatorType == null || assetCreatorType === 'user');
-            const matchesUniverseCreator =
-              currentUniverseCreator?.id != null &&
-              universeCreatorType != null &&
-              assetCreatorType != null &&
-              assetCreatorId === currentUniverseCreator.id &&
-              assetCreatorType === universeCreatorType;
+            const matchesUniverseCreator = currentUniverseCreators.some((universeCreator) => {
+              const universeCreatorType = normalizeCreatorType(universeCreator.type);
+              return (
+                universeCreator.id != null &&
+                universeCreatorType != null &&
+                assetCreatorType != null &&
+                assetCreatorId === universeCreator.id &&
+                assetCreatorType === universeCreatorType
+              );
+            });
 
             if (assetCreatorId != null && !matchesUser && !matchesUniverseCreator) {
               setPreviewError(translateFn('Message.AssetCreatorMismatch'));
@@ -252,6 +268,19 @@ const AdIntegrationAssetsDrawer = ({
   );
 
   useEffect(() => {
+    if (previousUniverseIdsKeyRef.current === selectedUniverseIdsKey) {
+      return;
+    }
+
+    previousUniverseIdsKeyRef.current = selectedUniverseIdsKey;
+    setPendingAdditions([]);
+    setAssetIdInput('');
+    setAssetPreview(null);
+    setPreviewError(null);
+    fetchPreviewRef.current.cancel();
+  }, [selectedUniverseIdsKey]);
+
+  useEffect(() => {
     const id = parseAssetId(assetIdInput);
     if (id === null) {
       setAssetPreview(null);
@@ -261,8 +290,8 @@ const AdIntegrationAssetsDrawer = ({
       return;
     }
 
-    fetchPreviewRef.current(id, translate, userId, universeCreator);
-  }, [assetIdInput, translate, userId, universeCreator]);
+    fetchPreviewRef.current(id, translate, userId, universeCreators);
+  }, [assetIdInput, translate, userId, universeCreators]);
 
   useEffect(
     () => () => {
@@ -399,13 +428,24 @@ const AdIntegrationAssetsDrawer = ({
                 </div>
                 <div className={campaignInfoItem}>
                   <span className={`text-body-medium content-default ${campaignInfoLabel}`}>
-                    {translateReport('Label.Experience')}
+                    {isMultiUniverseCampaign
+                      ? translateMisc('Label.Games')
+                      : translateReport('Label.Experience')}
                   </span>
                   <div className={campaignInfoExperienceValue}>
                     <UniverseFilterAvatar src={campaignInfoHeader.experienceThumbnailUrl} />
-                    <span className={`text-body-medium ${campaignInfoExperienceName}`}>
-                      {campaignInfoHeader.experienceName}
-                    </span>
+                    <div className='flex flex-col'>
+                      <span className={`text-body-medium ${campaignInfoExperienceName}`}>
+                        {campaignInfoHeader.experienceName}
+                      </span>
+                      {isMultiUniverseCampaign && additionalUniverseCount > 0 && (
+                        <span className='text-body-small content-muted'>
+                          {translateMisc('Label.AdditionalGames', {
+                            count: String(additionalUniverseCount),
+                          })}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className={campaignInfoItem}>
@@ -477,15 +517,16 @@ const AdIntegrationAssetsDrawer = ({
           )}
           {!disableSave && (mode === 'create' || Boolean(campaignId)) && (
             <div className={addAssetSection}>
-              <TextField
+              <TextInput
                 data-testid='addAssetIdInput'
-                error={Boolean(previewError)}
-                fullWidth
-                helperText={previewError ?? translate('Description.AddAssetIDsHelperText')}
+                error={previewError}
+                hasError={Boolean(previewError)}
+                helperText={translate('Description.AddAssetIDsHelperText')}
                 id='add-asset-ids'
                 label={translate('Label.AddAssetIDs')}
                 onChange={(e) => setAssetIdInput(e.target.value)}
                 placeholder={translate('Label.EnterAssetID')}
+                size='Medium'
                 value={assetIdInput}
               />
               {isLoadingPreview && (

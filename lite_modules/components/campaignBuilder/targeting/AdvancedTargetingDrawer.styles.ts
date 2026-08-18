@@ -34,10 +34,6 @@ const useAdvancedTargetingDrawerStyles = makeStyles()((theme) => ({
     width: '100%',
   },
 
-  genericAutocompleteSelectedListItem: {
-    backgroundColor: '#393a40',
-  },
-
   inputBaseRootOverride: {
     '& .MuiInputBase-root': {
       margin: '0 !important',

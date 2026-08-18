@@ -1,13 +1,15 @@
-import { Autocomplete, FormControl, TextField } from '@rbx/ui';
+import { Autocomplete, AutocompleteOption } from '@rbx/foundation-ui';
 import { useMemo, useState } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
-import useAdvancedTargetingLocationAutocompleteStyles from '@components/campaignBuilder/targeting/AdvancedTargetingLocationAutocomplete.styles';
-import LocationAutocompleteExpandingSelectionRow from '@components/campaignBuilder/targeting/LocationAutocompleteExpandingSelectionRow';
+import {
+  LocationExpandToggle,
+  LocationSelectionCheckbox,
+} from '@components/campaignBuilder/targeting/LocationAutocompleteExpandingSelectionRow';
 import AppTooltip from '@components/common/AppTooltip';
 import { FormField } from '@constants/advancedTargeting';
-import { FlowTypes, FORM_HELPER_TEXT_PROPS, INPUT_LABEL_PROPS } from '@constants/campaignBuilder';
+import { FlowTypes } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import { allNonEULocationsObj, RowType } from '@constants/locationAutocomplete';
 import type { FormType as AdvancedTargetingFormType } from '@hooks/campaignBuilder/advancedTargetingFormSchema';
@@ -22,6 +24,7 @@ import {
   CalculateLocationsTargetingAfterToggle,
   GetCheckboxState,
   GetFlattenedLocationOptions,
+  GetRegionToCountryMap,
   IncludesEUCountry,
 } from '@utils/locationAutocomplete';
 
@@ -35,6 +38,8 @@ const getRowType = (locationInfo: RegionsAndLocationsFormInputObj) => {
   return RowType.COUNTRY;
 };
 
+// Region and country `value`s overlap (for example Africa and Armenia are both 16), so the
+// Foundation option value has to encode the row kind as well to stay unique.
 const getLocationKey = (option: RegionsAndLocationsFormInputObj) => {
   const kind = option.parentRegion || option.superGroup ? 'R' : 'C';
   return `${kind}:${option.regionCode}:${option.countryCode || ''}:${option.value}`;
@@ -42,7 +47,7 @@ const getLocationKey = (option: RegionsAndLocationsFormInputObj) => {
 
 const LocationAutocomplete = () => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Campaign);
-  const [regionInputSearchText, setRegionInputSearchText] = useState<string>('');
+  const [inputValue, setInputValue] = useState<string>('');
   const [expandedRegions, setExpandedRegions] = useState<Record<string, boolean>>({});
   const { control, getValues, trigger } = useFormContext<AdvancedTargetingFormType>();
   const { flowType, getAudienceEstimate } = useCampaignBuilderStore();
@@ -69,10 +74,6 @@ const LocationAutocomplete = () => {
     }
   };
 
-  const {
-    classes: { autocompleteBox, inputBaseRootOverride },
-  } = useAdvancedTargetingLocationAutocompleteStyles();
-
   const EURegionCodeList = useAppStore((state) => state.appMetadataState?.data?.EURegionCodeList);
   const localizedLocations = useLocalizedLocations();
   const regionsAndCountriesSortedAlph = useMemo(
@@ -80,26 +81,43 @@ const LocationAutocomplete = () => {
       localizedLocations.filter((region) => region.regionCode !== allNonEULocationsObj.regionCode),
     [localizedLocations],
   );
-  const localizedTitleByKey = useMemo(() => {
-    const map = new Map<string, string>();
+  const localizedLocationByKey = useMemo(() => {
+    const map = new Map<string, RegionsAndLocationsFormInputObj>();
     localizedLocations.forEach((option) => {
-      if (option.title) {
-        map.set(getLocationKey(option), option.title);
-      }
+      map.set(getLocationKey(option), option);
     });
     return map;
   }, [localizedLocations]);
+
+  // MUI ran this through `filterOptions`; Foundation expects the caller to render the
+  // rows it wants visible. With no query the list is gated to regions plus the countries
+  // of whichever regions the user has expanded.
+  const query = inputValue.trim().toLocaleLowerCase();
+  const visibleOptions = query
+    ? regionsAndCountriesSortedAlph.filter(({ title }) =>
+        (title || '').toLocaleLowerCase().includes(query),
+      )
+    : regionsAndCountriesSortedAlph.filter(
+        ({ parentRegion, regionCode, superGroup }) =>
+          parentRegion || superGroup || expandedRegions[regionCode],
+      );
+  const visibleKeys = new Set(visibleOptions.map(getLocationKey));
 
   return (
     <Controller
       control={control}
       name={FormField.LOCATIONS}
       render={({ field: { onChange, value, ...rest }, fieldState: { error } }) => {
-        const onToggleAttempt = (newValue: RegionsAndLocationsFormInputObj | string): void => {
-          if (typeof newValue === 'string') {
-            // This is a special case where the user hits enter after typing text
-            return;
-          }
+        const selectedLocations = GetFlattenedLocationOptions(value);
+        const selectedKeys = selectedLocations.map(getLocationKey);
+        // Foundation reads multi-select chip text from the `title` of the options it is
+        // currently rendering, so selected countries whose region is collapsed are
+        // rendered hidden purely to supply their label.
+        const unlistedSelectedLocations = selectedLocations.filter(
+          (option) => !visibleKeys.has(getLocationKey(option)),
+        );
+
+        const onToggleAttempt = (newValue: RegionsAndLocationsFormInputObj): void => {
           const targetingAfterToggle: LocationTargetingType =
             CalculateLocationsTargetingAfterToggle({
               newValue,
@@ -129,103 +147,81 @@ const LocationAutocomplete = () => {
         return (
           <AppTooltip
             title={translate(GetEditTooltipTitle({ campaignStatus, editable: false, flowType }))}>
-            <Autocomplete
-              {...rest}
-              classes={{
-                inputRoot: autocompleteBox,
-                root: inputBaseRootOverride,
-              }}
-              data-testid='advancedTargetingLocationAutocomplete'
-              disableCloseOnSelect
-              disabled={editMode}
-              // Render the dropdown inside the Sheet (Radix Dialog) rather than
-              // portaling to <body>, which is inert while the Sheet is open and
-              // would treat a dropdown click as an outside dismiss.
-              disablePortal
-              filterOptions={(options, state) => {
-                const { inputValue } = state;
-                if (inputValue) {
-                  return (options || []).filter(({ title }) => {
-                    const regionContainsSearchText = (title || '')
-                      .toLowerCase()
-                      .includes(regionInputSearchText.toLowerCase());
-                    return regionContainsSearchText;
-                  });
-                }
-                return (options || []).filter(
-                  ({ parentRegion, regionCode, superGroup }) =>
-                    parentRegion || superGroup || expandedRegions[regionCode],
-                );
-              }}
-              freeSolo
-              getOptionLabel={(option) => {
-                if (typeof option === 'string') {
-                  return option;
-                }
-                if (!option) {
-                  return '';
-                }
-                return localizedTitleByKey.get(getLocationKey(option)) || option.title || '';
-              }}
-              isOptionEqualToValue={(option, val) => option?.value === val?.value}
-              limitTags={15}
-              multiple
-              onChange={(_event, _newFlatLocationValues, action, optionToRemove) => {
-                if (action === 'clear') {
-                  onChange({
-                    countries: [],
-                    regions: [],
-                  });
-                  AwaitErrorsThenMaybeGetAudienceEstimate({
-                    formField: FormField.LOCATIONS,
-                    getAudienceEstimate,
-                    getValues,
-                    newSelectedOptions: {
-                      countries: [],
-                      regions: [],
-                    },
-                    trigger,
-                  });
-                }
-                if (optionToRemove) {
-                  onToggleAttempt(optionToRemove.option);
-                }
-              }}
-              onInputChange={(_ev, newVal) => {
-                if (!_ev) {
-                  return;
-                }
-                setRegionInputSearchText(newVal);
-              }}
-              options={regionsAndCountriesSortedAlph}
-              renderInput={(params) => (
-                <FormControl error={!!error} variant='outlined' {...params}>
-                  <TextField
-                    {...params}
-                    error={!!error}
-                    FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                    helperText={error?.message}
-                    InputLabelProps={INPUT_LABEL_PROPS}
-                    label={translate('Label.Locations')}
-                    name='locations'
-                  />
-                </FormControl>
-              )}
-              renderOption={(_el, option) => (
-                <LocationAutocompleteExpandingSelectionRow
-                  carrotExpanded={getExpandedState(option)}
-                  checkboxState={GetCheckboxState(value, option)}
-                  locationInfo={option}
-                  onCarrotClick={toggleExpandedState}
-                  onRowToggle={() => {
-                    onToggleAttempt(option);
-                  }}
-                  rowType={getRowType(option)}
-                  showTooltipOnhover={false}
-                />
-              )}
-              value={GetFlattenedLocationOptions(value)}
-            />
+            <div>
+              <Autocomplete
+                {...rest}
+                // `multiSelectLayout='Expand'` makes the field `width-fit`, which would
+                // collapse it while nothing is selected inside the drawer's stretch column.
+                className='width-full'
+                data-testid='advancedTargetingLocationAutocomplete'
+                error={error?.message}
+                hasError={!!error}
+                inputValue={inputValue}
+                isDisabled={editMode}
+                label={translate('Label.Locations')}
+                multiple
+                multiSelectLayout='Expand'
+                onInputValueChange={setInputValue}
+                onValueChange={(nextValues) => {
+                  // Foundation reports the whole next selection, but the location
+                  // targeting model is driven one row at a time: a click adds a key and
+                  // removing a chip drops one, so the difference identifies the row.
+                  const toggledKey =
+                    nextValues.find((nextValue) => !selectedKeys.includes(nextValue)) ??
+                    selectedKeys.find((selectedKey) => !nextValues.includes(selectedKey));
+                  // Match MUI, which reset the query after each selection.
+                  setInputValue('');
+                  if (!toggledKey) {
+                    return;
+                  }
+                  const toggledLocation = localizedLocationByKey.get(toggledKey);
+                  if (toggledLocation) {
+                    onToggleAttempt(toggledLocation);
+                  }
+                }}
+                size='Medium'
+                value={selectedKeys}>
+                {visibleOptions.map((option) => {
+                  const locationKey = getLocationKey(option);
+                  const isExpandable = Boolean(
+                    option.parentRegion && GetRegionToCountryMap()[option.regionCode]?.length,
+                  );
+                  return (
+                    <AutocompleteOption
+                      key={locationKey}
+                      leading={
+                        <LocationSelectionCheckbox
+                          checkboxState={GetCheckboxState(value, option)}
+                          rowType={getRowType(option)}
+                          title={option.title || ''}
+                        />
+                      }
+                      title={option.title || ''}
+                      trailing={
+                        <LocationExpandToggle
+                          isExpandable={isExpandable}
+                          isExpanded={getExpandedState(option)}
+                          onToggle={() => toggleExpandedState(option)}
+                        />
+                      }
+                      value={locationKey}
+                    />
+                  );
+                })}
+                {unlistedSelectedLocations.map((option) => {
+                  const locationKey = getLocationKey(option);
+                  return (
+                    <AutocompleteOption
+                      className='hidden'
+                      disabled
+                      key={locationKey}
+                      title={localizedLocationByKey.get(locationKey)?.title || option.title || ''}
+                      value={locationKey}
+                    />
+                  );
+                })}
+              </Autocomplete>
+            </div>
           </AppTooltip>
         );
       }}

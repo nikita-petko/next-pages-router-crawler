@@ -17,6 +17,11 @@ export const IMPERSONATION_FLAGS: readonly ImpersonationFlag[] = [
     id: 'custom-date-range',
     label: 'Custom Date Range',
   },
+  {
+    configKey: 'enable_attribution_date_aggregation',
+    id: 'attribution-date-aggregation',
+    label: 'Attribution Date Aggregation',
+  },
 ];
 
 export type FlagValues = Record<string, string>;

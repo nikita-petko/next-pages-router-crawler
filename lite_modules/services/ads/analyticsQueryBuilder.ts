@@ -46,6 +46,8 @@ interface BuildAnalyticsQueryRequestParams {
   /** YYYY-MM-DD, required (with customStartDate) when timePeriod === CUSTOM. */
   customEndDate?: string;
   customStartDate?: string;
+  /** When true (default), extend endTime by the 30-day attribution window. */
+  extendEndTimeByAttributionWindow?: boolean;
   granularity?: AnalyticsQueryGranularity;
   metric: string;
   qualityPolicy?: AnalyticsDataQualityPolicy;
@@ -227,6 +229,7 @@ export const buildAnalyticsQueryRequest = ({
   campaignId,
   customEndDate,
   customStartDate,
+  extendEndTimeByAttributionWindow = true,
   granularity = 'oneDay',
   metric,
   qualityPolicy = 'combined',
@@ -289,7 +292,10 @@ export const buildAnalyticsQueryRequest = ({
                   dimensions: [DIMENSION_ATTRIBUTION_DATE_HOUR],
                 },
               ],
-        endTime: getAttributionQueryEndTime(endTime).toISOString(),
+        endTime: (extendEndTimeByAttributionWindow
+          ? getAttributionQueryEndTime(endTime)
+          : endTime
+        ).toISOString(),
         filter,
         granularity: granularity === 'none' ? METRIC_GRANULARITY_NONE : METRIC_GRANULARITY_ONE_DAY,
         metric: `${metric}${resource.type === 'universe' ? 'ByUniverse' : ''}`,

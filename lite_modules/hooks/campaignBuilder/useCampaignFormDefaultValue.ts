@@ -17,6 +17,7 @@ import {
   DateFormat,
   DEFAULT_REACH_AD_FORMAT,
   DEFAULT_REACH_BID_TYPE,
+  DEFAULT_REACH_CTA_BUTTON_TYPE,
   DefaultBudget,
   DefaultDuration,
   FlowTypes,
@@ -137,6 +138,24 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
     [],
   );
 
+  // Only clickout (brand tile) 1x2 ads carry an attribution thumbnail, so this
+  // is empty for every other campaign shape.
+  const transformAttributionThumbnails = useCallback(
+    ({ sponsored_ads }: SimplifiedCampaignType) =>
+      sponsored_ads
+        ? sponsored_ads
+            .map(({ attribution_thumbnail_asset_id }) => attribution_thumbnail_asset_id)
+            .filter((assetId): assetId is number => assetId !== undefined)
+            .map((assetId) => ({
+              assetId,
+              existing: true,
+              isSelected: true,
+            }))
+            .slice(0, 1)
+        : [],
+    [],
+  );
+
   // if sponsored_ads exists, use it to transform thumbnails, otherwise use asset_ids.
   // For 1x2 video ads the poster lives on thumbnail_asset_id (asset_id is the video).
   const transformThumbnails = useCallback(
@@ -190,6 +209,15 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
   // Transform Sponsored Ads to Click destination (clickout URL) form field value
   const transformClickDestination = useCallback(
     ({ sponsored_ads }: SimplifiedCampaignType) => sponsored_ads?.[0]?.clickout_url,
+    [],
+  );
+
+  // Transform Sponsored Ads to CTA button form field value. An ad saved before
+  // the field existed, or one saved with the unspecified value, comes back as
+  // undefined and the picker falls back to its View default — matching what
+  // ads-root already serves for those ads.
+  const transformCtaButtonType = useCallback(
+    ({ sponsored_ads }: SimplifiedCampaignType) => sponsored_ads?.[0]?.cta_button_type || undefined,
     [],
   );
 
@@ -282,6 +310,7 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
       const frequencyCappingRule = transformFrequencyCappingRules(campaignData);
 
       return {
+        [FormField.ATTRIBUTION_THUMBNAILS]: transformAttributionThumbnails(campaignData),
         [FormField.BID_TYPE]: campaignData.bid_type ?? DEFAULT_REACH_BID_TYPE,
         [FormField.BID_VALUE]: transformBidValue(campaignData),
         [FormField.BUDGET]: MicroUsdToUsd(campaignData.budget_in_micro_usd),
@@ -289,6 +318,7 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
         [FormField.CAMPAIGN_NAME]: campaignData.name,
         [FormField.CLICK_DESTINATION]: transformClickDestination(campaignData),
         [FormField.CREATIVE_FORMAT]: transformCreativeFormat(campaignData),
+        [FormField.CTA_BUTTON_TYPE]: transformCtaButtonType(campaignData),
         [FormField.CUSTOM_BUDGET]: true,
         [FormField.CUSTOM_DURATION]: campaignData.duration_in_days !== 0,
         [FormField.DETAILED_TARGETING_MATCH_TYPE]:
@@ -323,6 +353,7 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
     },
     [
       timezoneDbName,
+      transformAttributionThumbnails,
       transformLogoAssets,
       transformBidValue,
       transformThumbnails,
@@ -332,6 +363,7 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
       transformHeadline,
       transformSubtitle,
       transformClickDestination,
+      transformCtaButtonType,
       transformDetailedTargetingMatchType,
       transformDuration,
       transformDiscount,
@@ -412,6 +444,7 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
     }
 
     return {
+      [FormField.ATTRIBUTION_THUMBNAILS]: [],
       [FormField.BID_TYPE]: DEFAULT_REACH_BID_TYPE,
       [FormField.BID_VALUE]: undefined,
       [FormField.BUDGET]: MicroUsdToUsd(defaultBudget),
@@ -419,6 +452,7 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
       [FormField.CAMPAIGN_NAME]: '',
       [FormField.CLICK_DESTINATION]: undefined,
       [FormField.CREATIVE_FORMAT]: DEFAULT_REACH_AD_FORMAT,
+      [FormField.CTA_BUTTON_TYPE]: DEFAULT_REACH_CTA_BUTTON_TYPE,
       [FormField.CUSTOM_BUDGET]: false,
       [FormField.CUSTOM_DURATION]: false,
       [FormField.DETAILED_TARGETING_MATCH_TYPE]: DefaultServerDetailedTargetingMatchType,

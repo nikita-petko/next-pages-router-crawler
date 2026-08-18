@@ -4,7 +4,7 @@ export enum AdIntegrationFormField {
   CampaignName = 'campaignName',
   EndDate = 'endDate',
   EndTime = 'endTime',
-  Experience = 'experience',
+  ExperienceIds = 'experienceIds',
   HasRewardedPlacements = 'hasRewardedPlacements',
   StartDate = 'startDate',
   StartTime = 'startTime',
@@ -16,6 +16,7 @@ export const AdsCategoryOtherValue = 'OTHER';
 
 export const MaxAdvertiserNameLength = 50;
 export const MaxCampaignNameLength = 50;
+export const MaxUniversesPerCampaign = 20;
 
 // Revenue share costs take effect at the start of Q1 2027. The revenue share
 // estimate numbers are only surfaced for campaigns starting on/after this date;

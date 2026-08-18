@@ -55,6 +55,18 @@ const useCampaignReportingChartsStyles = makeStyles()((theme) => ({
     margin: 0,
   },
 
+  // TabsList passes `className` to its scroll wrapper, not to the element that
+  // lays the triggers out, so a gap utility handed to the component never
+  // reaches a flex container. Triggers also carry no horizontal padding in the
+  // default `Fit` behavior, which leaves the two metric labels touching. The
+  // gap has to go between the triggers rather than inside them so the first
+  // label stays flush with the section heading above it.
+  metricTabList: {
+    '& > [role="tablist"]': {
+      gap: theme.spacing(1.5),
+    },
+  },
+
   metricValue: {
     textAlign: 'left',
   },

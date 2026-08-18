@@ -6,10 +6,10 @@ import {
   Link,
   Menu,
   MenuItem,
+  TextInput,
   Tooltip,
   TooltipTrigger,
 } from '@rbx/foundation-ui';
-import { InputAdornment, TextField } from '@rbx/ui';
 import { useQuery } from '@tanstack/react-query';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -21,6 +21,7 @@ import { BuyAdCreditEnum } from '@components/billing/BuyAdCredit';
 import type { BuyAdCreditProps, PaymentSetupCompletion } from '@components/billing/BuyAdCredit';
 import { openBuyAdCreditSuccessDialog } from '@components/billing/dialogs/BuyAdCreditSuccessDialog';
 import { openImpersonationErrorDialog } from '@components/common/dialog/impersonationErrorDialog';
+import FieldLabelOffset from '@components/common/form/FieldLabelOffset';
 import Skeleton from '@components/common/Skeleton';
 import { AdCreditBalanceScope, AdCreditConversionLearnMoreUrl } from '@constants/billing';
 import { TranslationNamespace } from '@constants/localization';
@@ -89,6 +90,7 @@ export const WatermarkedBuyAdCredit = ({
   onCancel,
   onComplete,
   robuxBalance,
+  showBalanceScopeSelector = true,
   showGroupBalanceOption = false,
 }: BuyAdCreditProps): ReactElement => {
   const { translate: translateAccount } = useNamespacedTranslation(TranslationNamespace.Account);
@@ -136,9 +138,7 @@ export const WatermarkedBuyAdCredit = ({
       watermarkedInfoAlertClose,
       watermarkedInfoAlertContent,
       watermarkedInfoAlertIcon,
-      watermarkedInput,
       watermarkedInputOr,
-      watermarkedInputRobuxAdornment,
       watermarkedStrikethroughRobux,
       watermarkedTierCard,
       watermarkedTierLabelGroup,
@@ -459,28 +459,29 @@ export const WatermarkedBuyAdCredit = ({
   const tierLabelKey = (tier: AdCreditQuoteTierType): string =>
     tier === AdCreditQuoteTierValues.O18 ? 'Label.Us18Rate' : 'Label.StandardRate';
 
-  const balanceScopeSelectorComponent = showGroupBalanceOption ? (
-    <div className={watermarkedBalanceScopeSelectorContainer}>
-      <Dropdown
-        className={watermarkedBalanceScopeSelector}
-        label={translateBilling('Label.PurchasingFor')}
-        onValueChange={(value) => handleBalanceScopeChange(value as AdCreditBalanceScope)}
-        placeholder={translateBilling('Label.PurchasingFor')}
-        size='Medium'
-        value={balanceScope}>
-        <Menu>
-          <MenuItem
-            title={groupName || translateBilling('Label.RobloxAdCredit')}
-            value={AdCreditBalanceScope.Group}
-          />
-          <MenuItem
-            title={translateAccount('Heading.PersonalAccount')}
-            value={AdCreditBalanceScope.Personal}
-          />
-        </Menu>
-      </Dropdown>
-    </div>
-  ) : null;
+  const balanceScopeSelectorComponent =
+    showGroupBalanceOption && showBalanceScopeSelector ? (
+      <div className={watermarkedBalanceScopeSelectorContainer}>
+        <Dropdown
+          className={watermarkedBalanceScopeSelector}
+          label={translateBilling('Label.PurchasingFor')}
+          onValueChange={(value) => handleBalanceScopeChange(value as AdCreditBalanceScope)}
+          placeholder={translateBilling('Label.PurchasingFor')}
+          size='Medium'
+          value={balanceScope}>
+          <Menu>
+            <MenuItem
+              title={groupName || translateBilling('Label.RobloxAdCredit')}
+              value={AdCreditBalanceScope.Group}
+            />
+            <MenuItem
+              title={translateAccount('Heading.PersonalAccount')}
+              value={AdCreditBalanceScope.Personal}
+            />
+          </Menu>
+        </Dropdown>
+      </div>
+    ) : null;
 
   const balanceContainer = (
     <div className={watermarkedBalanceBand} data-testid='watermarkedBalanceBand'>
@@ -517,24 +518,19 @@ export const WatermarkedBuyAdCredit = ({
     <div className={watermarkedDualInputRow} data-testid='watermarkedDualInputRow'>
       <NumericFormat
         allowNegative={false}
-        className={`${fullWidth} ${watermarkedInput}`}
-        color='primary'
-        customInput={TextField}
+        className={fullWidth}
+        customInput={TextInput}
+        data-testid='convertRobuxInput'
         decimalScale={0}
-        error={hasRobuxInputError}
-        helperText={robuxInputHelperText}
+        error={robuxInputHelperText}
+        hasError={hasRobuxInputError}
         id='watermarkedConvertRobux'
-        InputProps={{
-          inputProps: { 'data-testid': 'convertRobuxInput' },
-          startAdornment:
-            isConvertRobuxFocused || robuxFieldValue != null ? (
-              <InputAdornment className={watermarkedInputRobuxAdornment} position='start'>
-                <Icon className={smallRobuxIcon} name='icon-filled-robux' size='Small' />
-              </InputAdornment>
-            ) : undefined,
-        }}
         label={translateBilling('Label.RobuxAmount')}
-        margin='none'
+        leadingIconNode={
+          isConvertRobuxFocused || robuxFieldValue != null ? (
+            <Icon className={smallRobuxIcon} name='icon-filled-robux' size='Small' />
+          ) : undefined
+        }
         onBlur={() => setIsConvertRobuxFocused(false)}
         onFocus={() => setIsConvertRobuxFocused(true)}
         onValueChange={({ floatValue }, sourceInfo) => {
@@ -544,25 +540,25 @@ export const WatermarkedBuyAdCredit = ({
           setSourceField(AdCreditQuoteSourceFieldValues.ROBUX_AMOUNT);
           setRobuxAmount(floatValue);
         }}
+        size='Medium'
         thousandSeparator
         value={robuxFieldValue ?? ''}
-        variant='outlined'
       />
-      <span className={`text-body-large content-default ${watermarkedInputOr}`}>
-        {translateMisc('Label.Or')}
-      </span>
+      <FieldLabelOffset className={watermarkedInputOr}>
+        <span className='flex height-1000 items-center text-body-large content-default'>
+          {translateMisc('Label.Or')}
+        </span>
+      </FieldLabelOffset>
       <NumericFormat
         allowNegative={false}
-        className={`${fullWidth} ${watermarkedInput}`}
-        color='primary'
-        customInput={TextField}
+        className={fullWidth}
+        customInput={TextInput}
+        data-testid='adCreditAmountInput'
         decimalScale={2}
-        error={hasAdCreditInputError}
-        helperText={adCreditInputHelperText}
+        error={adCreditInputHelperText}
+        hasError={hasAdCreditInputError}
         id='watermarkedAdCreditAmount'
-        inputProps={{ 'data-testid': 'adCreditAmountInput' }}
         label={translateBilling('Title.AdCreditAmount')}
-        margin='none'
         onValueChange={({ floatValue, value }, sourceInfo) => {
           if (sourceInfo.source !== 'event') {
             return;
@@ -571,9 +567,9 @@ export const WatermarkedBuyAdCredit = ({
           setAdCreditAmount(floatValue);
           setAdCreditInputValue(value);
         }}
+        size='Medium'
         thousandSeparator
         value={adCreditFieldValue ?? ''}
-        variant='outlined'
       />
     </div>
   );

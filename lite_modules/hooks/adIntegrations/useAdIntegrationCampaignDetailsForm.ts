@@ -8,6 +8,7 @@ import {
   AdIntegrationFormField,
   MaxAdvertiserNameLength,
   MaxCampaignNameLength,
+  MaxUniversesPerCampaign,
 } from '@constants/adIntegrations';
 import { DateFormat, TimeFormat } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
@@ -20,11 +21,20 @@ import {
 export const getIsCampaignInProgress = (
   mode: AdIntegrationFormMode,
   startDate: string,
+  startTime: string,
   timezoneDbName: string,
-): boolean =>
-  mode === 'edit' &&
-  Boolean(startDate) &&
-  moment.tz(startDate, DateFormat, timezoneDbName).isBefore(moment().tz(timezoneDbName), 'day');
+): boolean => {
+  if (mode !== 'edit' || !startDate || !startTime) {
+    return false;
+  }
+
+  const startMoment = moment.tz(
+    `${startDate} ${startTime}`,
+    `${DateFormat} ${TimeFormat}`,
+    timezoneDbName,
+  );
+  return startMoment.isValid() && startMoment.isSameOrBefore(moment().tz(timezoneDbName));
+};
 
 export const getIsCampaignEnded = (
   mode: AdIntegrationFormMode,
@@ -96,14 +106,18 @@ const useAdIntegrationCampaignDetailsSchema = (
               fieldName: translateCampaign('Label.EndTime'),
             }),
           ),
-          [AdIntegrationFormField.Experience]: z
-            .number({
-              error: translate('Validation.FieldRequired', {
+          [AdIntegrationFormField.ExperienceIds]: z
+            .array(z.number().int().positive())
+            .min(
+              1,
+              translate('Validation.FieldRequired', {
                 fieldName: translateCreativeLibrary('Label.Experience'),
               }),
-            })
-            .int()
-            .positive(),
+            )
+            .max(MaxUniversesPerCampaign, translateAccount('Description.ChooseUpTo20Games'))
+            .refine((experienceIds) => new Set(experienceIds).size === experienceIds.length, {
+              message: translateAccount('Description.ChooseUpTo20Games'),
+            }),
           [AdIntegrationFormField.HasRewardedPlacements]: z.boolean(),
           [AdIntegrationFormField.StartDate]: z.string().min(
             1,
@@ -206,7 +220,12 @@ const useAdIntegrationCampaignDetailsForm = (
   timezoneDbName: string = 'UTC',
   minimumStartTimestampMsUtc: number = 0,
 ) => {
-  const campaignInProgress = getIsCampaignInProgress(mode, defaultValues.startDate, timezoneDbName);
+  const campaignInProgress = getIsCampaignInProgress(
+    mode,
+    defaultValues.startDate,
+    defaultValues.startTime,
+    timezoneDbName,
+  );
   const schema = useAdIntegrationCampaignDetailsSchema(
     campaignInProgress,
     timezoneDbName,

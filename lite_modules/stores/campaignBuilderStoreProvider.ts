@@ -51,6 +51,7 @@ interface CampaignBuilderStoreStateType {
   adOpsDrawerOpen: boolean;
   advancedJoinDrawerOpen: boolean;
   advancedTargetingDrawerOpen: boolean;
+  attributionThumbnailDrawerOpen: boolean;
   audienceEstimateByObjective: {
     estimates: Partial<
       Record<ServerCampaignObjectiveType, EmptyRequestStateType<GetAudienceEstimateResponseType>>
@@ -109,6 +110,7 @@ interface CampaignBuilderStoreActionType {
   setAdOpsDrawerOpen: (open: boolean) => void;
   setAdvancedJoinDrawerOpen: (open: boolean) => void;
   setAdvancedTargetingDrawerOpen: (open: boolean) => void;
+  setAttributionThumbnailDrawerOpen: (open: boolean, universeId: number) => void;
   setCalloutBanners: (calloutBanners: CalloutBannerType[]) => void;
   setCreativeLibraryRegistrationInProgress: (inProgress: boolean) => void;
   setDetailedTargetingMatchType: (
@@ -138,6 +140,7 @@ export const useCampaignBuilderStore = create<CampaignBuilderStoreType>()(
     adOpsDrawerOpen: false,
     advancedJoinDrawerOpen: false,
     advancedTargetingDrawerOpen: false,
+    attributionThumbnailDrawerOpen: false,
     audienceEstimateByObjective: {
       estimates: {},
       universeId: 0,
@@ -438,6 +441,16 @@ export const useCampaignBuilderStore = create<CampaignBuilderStoreType>()(
     setAdvancedTargetingDrawerOpen: (open: boolean) => {
       set((draft) => {
         draft.advancedTargetingDrawerOpen = open;
+      });
+    },
+    setAttributionThumbnailDrawerOpen: (open: boolean, universeId: number) => {
+      set((draft) => {
+        draft.attributionThumbnailDrawerOpen = open;
+        logNativeClickEvent(EventName.ToggleAttributionThumbnailDrawer, {
+          flowType: get().flowType,
+          open: open.toString(),
+          universeId: universeId.toString(),
+        });
       });
     },
     setCalloutBanners: (calloutBanners: CalloutBannerType[]) => {

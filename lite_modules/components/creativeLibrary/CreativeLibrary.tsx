@@ -4,6 +4,7 @@ import {
   type EnrichedAdCreativeAsset,
 } from '@rbx/client-ads-management-api/v1';
 import {
+  Alert,
   Button,
   Checkbox,
   Dialog,
@@ -47,7 +48,7 @@ import {
   sanitizeAssetDisplayName,
   updateAssetDisplayName,
 } from '@clients/assetsUpload';
-import { EventName, logNativeImpressionEvent } from '@clients/unifiedLogger';
+import { EventName, logNativeClickEvent, logNativeImpressionEvent } from '@clients/unifiedLogger';
 import CenteredCircularProgress from '@components/common/CenteredCircularProgress';
 import AiCreateDrawer from '@components/common/creative/AiCreateDrawer';
 import GameUniverseDropdown from '@components/common/creative/GameUniverseDropdown';
@@ -60,6 +61,7 @@ import AssetStatusBadge, {
 } from '@components/creativeLibrary/AssetStatusBadge';
 import AssetThumbnail from '@components/creativeLibrary/AssetThumbnail';
 import tileGridStyles from '@components/creativeLibrary/CreativeLibrary.module.css';
+import { openCreativeLibraryFeedbackDialog } from '@components/creativeLibrary/CreativeLibraryFeedbackDialog';
 import CreativeLibraryFilterDrawer, {
   type MediaTypeCheckboxValue,
   type SourceCheckboxValue,
@@ -90,6 +92,7 @@ import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
 import { AdAsset } from '@type/adAsset';
 import { getHttpStatusFromError } from '@type/errorResponse';
 import { type AdvertisedUniverse } from '@type/universe';
+import { GetLocalStorage, SetLocalStorage, StorageKeys } from '@utils/localStorage';
 
 /**
  * Default page size for the table view. Matches the smallest
@@ -391,6 +394,16 @@ const CreativeLibrary = () => {
       context: 'library_page',
     });
   }, []);
+
+  const [isFeedbackBannerDismissed, setIsFeedbackBannerDismissed] = useState<boolean>(
+    () => !!GetLocalStorage(StorageKeys.HAS_CLOSED_CREATIVE_LIBRARY_FEEDBACK_BANNER),
+  );
+
+  useEffect(() => {
+    if (!isFeedbackBannerDismissed) {
+      logNativeImpressionEvent(EventName.CreativeLibraryFeedbackBannerShown);
+    }
+  }, [isFeedbackBannerDismissed]);
 
   // Cached short-date formatter for the table's Date Added column. Memoized
   // so we don't allocate a new `Intl.DateTimeFormat` per row render. Falls back
@@ -2079,6 +2092,30 @@ const CreativeLibrary = () => {
 
   return (
     <div className='flex flex-col gap-large'>
+      {!isFeedbackBannerDismissed ? (
+        <Alert
+          onDismiss={() => {
+            SetLocalStorage(StorageKeys.HAS_CLOSED_CREATIVE_LIBRARY_FEEDBACK_BANNER, true);
+            setIsFeedbackBannerDismissed(true);
+          }}
+          onPrimaryAction={() => {
+            openCreativeLibraryFeedbackDialog((feedback: string) => {
+              logNativeClickEvent(EventName.CreativeLibraryFeedbackSubmitted, {
+                feedbackText: feedback,
+              });
+              setToast({
+                message: translate('Message.FeedbackSubmitted'),
+                severity: 'success',
+              });
+            });
+          }}
+          primaryActionLabel={translate('Action.GiveFeedback')}
+          severity='Info'
+          variant='Feedback'>
+          {translate('Message.CreativeLibraryFeedbackBanner')}
+        </Alert>
+      ) : null}
+
       <div className='flex flex-wrap items-center justify-between gap-medium padding-top-xsmall'>
         <h1 className='margin-[0px] text-heading-large content-emphasis'>
           {translate('Heading.CreativeLibrary')}

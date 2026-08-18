@@ -5,6 +5,7 @@ import { InBrowser } from '@utils/browser';
 export enum StorageKeys {
   AD_ACCOUNT_ID = 'adAccountId',
   HAS_CLOSED_AD_CREDIT_BANNER = 'hasClosedAdCreditBanner',
+  HAS_CLOSED_CREATIVE_LIBRARY_FEEDBACK_BANNER = 'hasClosedCreativeLibraryFeedbackBanner',
   HAS_CLOSED_MODERATED_CAMPAIGN_BANNER = 'hasClosedModeratedCampaignBanner',
   HAS_CLOSED_PLACE_JOIN_RESTRICTED_BANNER = 'hasClosedPlaceJoinRestrictedBanner',
   ORGANIZATION_ID = 'organizationId',

@@ -20,6 +20,7 @@ interface PaymentStepProps {
   groupName?: string;
   groupRobuxBalance?: number;
   initialBalanceScope?: AdCreditBalanceScope;
+  isAdCreditPurchaseOnly?: boolean;
   isDrawer?: boolean;
   isUnlocked: boolean;
   onCancel?: () => void;
@@ -40,6 +41,7 @@ const PaymentStep = ({
   groupName,
   groupRobuxBalance,
   initialBalanceScope,
+  isAdCreditPurchaseOnly = false,
   isDrawer = false,
   isUnlocked,
   onCancel,
@@ -83,7 +85,7 @@ const PaymentStep = ({
 
   return (
     <>
-      {userOver18 && (
+      {userOver18 && !isAdCreditPurchaseOnly && (
         <Tabs
           className={tabs}
           onChange={(_e: ChangeEvent<object>, newValue: unknown) => {
@@ -123,6 +125,7 @@ const PaymentStep = ({
               onCancel={onCancel}
               onComplete={onComplete}
               robuxBalance={robuxBalance}
+              showBalanceScopeSelector={!isAdCreditPurchaseOnly}
               showGroupBalanceOption={showGroupBalanceOption}
             />
           ) : (
@@ -139,27 +142,30 @@ const PaymentStep = ({
               onCancel={onCancel}
               onComplete={onComplete}
               robuxBalance={robuxBalance}
+              showBalanceScopeSelector={!isAdCreditPurchaseOnly}
               showGroupBalanceOption={showGroupBalanceOption}
             />
           )}
         </div>
       </CustomTabPanel>
-      <CustomTabPanel index={1} value={Object.values(ADD_PAYMENT_TABS).indexOf(paymentTab)}>
-        <div className={creditCardFormContainer}>
-          <StripeElementsProvider
-            actionsContainer={
-              paymentTab === ADD_PAYMENT_TABS.CREDIT_CARD ? actionsContainer : undefined
-            }
-            centerButtons={false}
-            onCancel={onCancel}
-            onComplete={
-              onComplete
-                ? () => onComplete({ accountScope: 'user', paymentMethodType: 'card' })
-                : undefined
-            }
-          />
-        </div>
-      </CustomTabPanel>
+      {!isAdCreditPurchaseOnly && (
+        <CustomTabPanel index={1} value={Object.values(ADD_PAYMENT_TABS).indexOf(paymentTab)}>
+          <div className={creditCardFormContainer}>
+            <StripeElementsProvider
+              actionsContainer={
+                paymentTab === ADD_PAYMENT_TABS.CREDIT_CARD ? actionsContainer : undefined
+              }
+              centerButtons={false}
+              onCancel={onCancel}
+              onComplete={
+                onComplete
+                  ? () => onComplete({ accountScope: 'user', paymentMethodType: 'card' })
+                  : undefined
+              }
+            />
+          </div>
+        </CustomTabPanel>
+      )}
     </>
   );
 };

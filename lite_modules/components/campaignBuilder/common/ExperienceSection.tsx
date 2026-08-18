@@ -1,5 +1,5 @@
-import { Button } from '@rbx/foundation-ui';
-import { Alert, TextField } from '@rbx/ui';
+import { Button, TextInput } from '@rbx/foundation-ui';
+import { Alert } from '@rbx/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useFormContext, UseFormReturn, useWatch } from 'react-hook-form';
@@ -12,6 +12,7 @@ import FormAccordion from '@components/campaignBuilder/common/FormAccordion';
 import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
 import { applyObjectiveChange } from '@components/campaignBuilder/common/objectiveHelpers';
 import AppTooltip from '@components/common/AppTooltip';
+import FieldLabelOffset from '@components/common/form/FieldLabelOffset';
 import { defaultTimeZone } from '@constants/app';
 import {
   DefaultServerCampaignObjectiveType,
@@ -24,9 +25,7 @@ import {
   DEFAULT_RECOMMENDATION_RESPONSE,
   experienceNotFoundOption,
   FlowTypes,
-  FORM_HELPER_TEXT_PROPS,
   FormField,
-  INPUT_LABEL_PROPS,
   noExperiencesOption,
   SERVER_CONTINUOUS_VALUE,
   warningUniverseId,
@@ -37,6 +36,7 @@ import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import { useCampaignNameGeneration } from '@hooks/campaignBuilder/useCampaignNameGeneration';
 import useNeedsPaymentSetup from '@hooks/campaignBuilder/useNeedsPaymentSetup';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import useWorkspaceUniverseMemory from '@hooks/useWorkspaceUniverseMemory';
 import { getCampaignRecommendation } from '@services/ads/campaignBuilderService';
 import { useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
@@ -67,6 +67,7 @@ interface ExperienceSectionProps {
 const ExperienceSection = ({ advancedTargetingFormMethods }: ExperienceSectionProps) => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const { clearErrors, control, getValues, setValue, trigger } = useFormContext<FormType>();
+  const { rememberedUniverseId } = useWorkspaceUniverseMemory();
   const { fetchInitialAudienceEstimates, flowType, getAudienceEstimate, getEligibility } =
     useCampaignBuilderStore();
   const editMode = flowType === FlowTypes.EDIT;
@@ -145,12 +146,14 @@ const ExperienceSection = ({ advancedTargetingFormMethods }: ExperienceSectionPr
         // TODO: ADS-7785 intelligently select the default Universe
       } else if (universes.length > 0) {
         let selectedUniverse = universes[0];
-        if (prefilledCampaignFields?.target_universe_id) {
-          const prefillUniverse = universes.find(
-            (universe) => universe.universe_id === prefilledCampaignFields.target_universe_id,
+        const preferredUniverseId =
+          prefilledCampaignFields?.target_universe_id ?? rememberedUniverseId;
+        if (preferredUniverseId) {
+          const preferredUniverse = universes.find(
+            (universe) => universe.universe_id === preferredUniverseId,
           );
-          if (prefillUniverse) {
-            selectedUniverse = prefillUniverse;
+          if (preferredUniverse) {
+            selectedUniverse = preferredUniverse;
           }
         }
         setValue(FormField.EXPERIENCE, selectedUniverse);
@@ -181,6 +184,7 @@ const ExperienceSection = ({ advancedTargetingFormMethods }: ExperienceSectionPr
     getAudienceEstimate,
     fetchInitialAudienceEstimates,
     prefilledCampaignFields?.target_universe_id,
+    rememberedUniverseId,
     translate,
   ]);
 
@@ -520,14 +524,15 @@ const ExperienceSection = ({ advancedTargetingFormMethods }: ExperienceSectionPr
         <div className={inlineSelector}>
           <ExperienceSelect advancedTargetingFormMethods={advancedTargetingFormMethods} />
         </div>
-        <Button
-          className={inlineAction}
-          data-testid='advanced-join-options-button'
-          onClick={() => setAdvancedJoinDrawerOpen(true)}
-          size='Medium'
-          variant='Utility'>
-          {translate('Action.AdvancedOptions')}
-        </Button>
+        <FieldLabelOffset className={inlineAction}>
+          <Button
+            data-testid='advanced-join-options-button'
+            onClick={() => setAdvancedJoinDrawerOpen(true)}
+            size='Medium'
+            variant='Utility'>
+            {translate('Action.AdvancedOptions')}
+          </Button>
+        </FieldLabelOffset>
       </div>
       <Controller
         control={control}
@@ -535,18 +540,15 @@ const ExperienceSection = ({ advancedTargetingFormMethods }: ExperienceSectionPr
         render={({ field, fieldState: { error } }) => (
           <AppTooltip title={getCampaignNameTooltipText()}>
             <div className={`text-body-large ${inlineRow}`}>
-              <TextField
+              <TextInput
                 data-testid='campaign-name-input'
                 {...field}
-                disabled={!!IsEditCampaignDisabled(flowType, campaignStatus)}
-                error={!!error}
-                FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                fullWidth
-                helperText={error?.message}
+                error={error?.message}
+                hasError={!!error}
                 id='campaignName'
-                InputLabelProps={INPUT_LABEL_PROPS}
+                isDisabled={!!IsEditCampaignDisabled(flowType, campaignStatus)}
                 label={translate('Label.CampaignName')}
-                size='medium'
+                size='Medium'
               />
             </div>
           </AppTooltip>

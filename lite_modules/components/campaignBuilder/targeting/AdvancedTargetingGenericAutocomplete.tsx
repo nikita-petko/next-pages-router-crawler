@@ -1,12 +1,11 @@
-import { Autocomplete, FormControl, TextField } from '@rbx/ui';
-import { uniqBy } from 'lodash';
+import { Autocomplete, AutocompleteOption } from '@rbx/foundation-ui';
+import { useState } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
-import useAdvancedTargetingDrawerStyles from '@components/campaignBuilder/targeting/AdvancedTargetingDrawer.styles';
 import AppTooltip from '@components/common/AppTooltip';
 import { FormField } from '@constants/advancedTargeting';
-import { FlowTypes, FORM_HELPER_TEXT_PROPS, INPUT_LABEL_PROPS } from '@constants/campaignBuilder';
+import { FlowTypes } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import type { FormType as AdvancedTargetingFormType } from '@hooks/campaignBuilder/advancedTargetingFormSchema';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -37,81 +36,74 @@ const AdvancedTargetingGenericAutocomplete = ({
     (state) => state.simplifiedCampaign?.data?.display_status,
   );
 
-  const {
-    classes: { genericAutocompleteSelectedListItem },
-    cx,
-  } = useAdvancedTargetingDrawerStyles();
+  const [inputValue, setInputValue] = useState<string>('');
+
+  // MUI filtered options internally from `getOptionLabel`; Foundation expects the
+  // caller to render the filtered set.
+  const query = inputValue.trim().toLocaleLowerCase();
+  const visibleOptions = query
+    ? options.filter((option) => translate(option.label).toLocaleLowerCase().includes(query))
+    : options;
 
   return (
     <Controller
       control={control}
       name={formField}
-      render={({ field: { onChange, value, ...rest }, fieldState: { error } }) => (
-        <AppTooltip
-          title={translate(GetEditTooltipTitle({ campaignStatus, editable: false, flowType }))}>
-          <Autocomplete
-            {...rest}
-            className={className}
-            disabled={editMode}
-            // Render the dropdown inside the Sheet (Radix Dialog) rather than
-            // portaling to <body>, which is inert while the Sheet is open and
-            // would treat a dropdown click as an outside dismiss.
-            disablePortal
-            getOptionLabel={(option) => translate(option.label)}
-            multiple
-            onChange={(_event: React.ChangeEvent<object>, newOptions) => {
-              const newSelectedOptions = GetNewSelectedOptions({
-                availableOptions: options,
-                newSelectedOptions: uniqBy(newOptions, 'value'),
-                selectedOptions: value as GenericAutocompleteOption[],
-              });
-              onChange(newSelectedOptions);
-              logNativeClickEvent(EventName.AudienceTargetingFieldChanged, {
-                field: formField,
-                newValue: JSON.stringify(newSelectedOptions),
-                previousValue: JSON.stringify(value),
-              });
-              AwaitErrorsThenMaybeGetAudienceEstimate({
-                formField,
-                getAudienceEstimate,
-                getValues,
-                newSelectedOptions,
-                trigger,
-              });
-            }}
-            options={options}
-            renderInput={(params) => (
-              <FormControl error={!!error} variant='outlined' {...params}>
-                <TextField
-                  {...params}
-                  error={!!error}
-                  FormHelperTextProps={FORM_HELPER_TEXT_PROPS}
-                  helperText={error?.message}
-                  InputLabelProps={INPUT_LABEL_PROPS}
-                  label={label}
-                />
-              </FormControl>
-            )}
-            renderOption={(props, option) => {
-              const selected: boolean = (value as GenericAutocompleteOption[]).some(
-                (item: GenericAutocompleteOption) => item.value === option.value,
-              );
-              // Set the background color to the default background color of a selected mui autocomplete option
-              // For some reason, introducing the react-hook-form controller broke detecting selected options, and I haven't found a better workaround
-              return (
-                <li
-                  {...props}
-                  className={cx(props.className, {
-                    [genericAutocompleteSelectedListItem]: selected,
-                  })}>
-                  {translate(option.label)}
-                </li>
-              );
-            }}
-            value={value as GenericAutocompleteOption[]}
-          />
-        </AppTooltip>
-      )}
+      render={({ field: { onChange, value, ...rest }, fieldState: { error } }) => {
+        const selectedOptions = value as GenericAutocompleteOption[];
+        return (
+          <AppTooltip
+            title={translate(GetEditTooltipTitle({ campaignStatus, editable: false, flowType }))}>
+            <div className={className}>
+              <Autocomplete
+                {...rest}
+                error={error?.message}
+                hasError={!!error}
+                inputValue={inputValue}
+                isDisabled={editMode}
+                label={label}
+                multiple
+                onInputValueChange={setInputValue}
+                onValueChange={(nextValues) => {
+                  const newSelectedOptions = GetNewSelectedOptions({
+                    availableOptions: options,
+                    newSelectedOptions: nextValues
+                      .map((nextValue) =>
+                        options.find((option) => String(option.value) === nextValue),
+                      )
+                      .filter((option): option is GenericAutocompleteOption => Boolean(option)),
+                    selectedOptions,
+                  });
+                  onChange(newSelectedOptions);
+                  // Match MUI, which reset the query after each selection.
+                  setInputValue('');
+                  logNativeClickEvent(EventName.AudienceTargetingFieldChanged, {
+                    field: formField,
+                    newValue: JSON.stringify(newSelectedOptions),
+                    previousValue: JSON.stringify(value),
+                  });
+                  AwaitErrorsThenMaybeGetAudienceEstimate({
+                    formField,
+                    getAudienceEstimate,
+                    getValues,
+                    newSelectedOptions,
+                    trigger,
+                  });
+                }}
+                size='Medium'
+                value={selectedOptions.map((option) => String(option.value))}>
+                {visibleOptions.map((option) => (
+                  <AutocompleteOption
+                    key={option.value}
+                    title={translate(option.label)}
+                    value={String(option.value)}
+                  />
+                ))}
+              </Autocomplete>
+            </div>
+          </AppTooltip>
+        );
+      }}
     />
   );
 };

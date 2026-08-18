@@ -222,6 +222,21 @@ export const useFormValidation = (): Resolver<FormType> => {
               path: [FormField.VIDEOS],
             });
           }
+
+          // A click destination turns the ad into a brand tile, which renders
+          // an attribution bar in the expanded player. The backend rejects a
+          // clickout ad without the square brand icon.
+          const hasClickDestination = !!data[FormField.CLICK_DESTINATION]?.trim();
+          const hasAttributionThumbnail = data[FormField.ATTRIBUTION_THUMBNAILS].some(
+            ({ isSelected }) => isSelected,
+          );
+          if (hasClickDestination && !hasAttributionThumbnail) {
+            addIssue({
+              code: 'custom',
+              message: translate('Validation.AttributionThumbnailRequired'),
+              path: [FormField.ATTRIBUTION_THUMBNAILS],
+            });
+          }
         }
       }
     })
