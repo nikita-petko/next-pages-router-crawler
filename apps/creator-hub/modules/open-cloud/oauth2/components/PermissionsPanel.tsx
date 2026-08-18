@@ -4,7 +4,6 @@ import { getProductionCreatorHubUrl, resolveUrl } from '@rbx/env-utils';
 import { useTranslation } from '@rbx/intl';
 import { Typography, Grid, Link, Button, Alert } from '@rbx/ui';
 import applicationAuthorizationClient from '@modules/clients/applicationAuthorization';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import useSnackbar from '../../common/hooks/useSnackbar';
 import { IDENTITY_SCOPES } from '../constants/oAuthConstants';
 import type ScopeOption from '../interfaces/ScopeOptions';
@@ -137,8 +136,6 @@ const PermissionsPanel = ({
     [allowedScopes, scopeOptions],
   );
 
-  const { settings } = useSettings();
-
   // ensure that if an identity scope is selected, 'openid' is also selected
   const verifyIdentityScopes = useCallback(
     (scopes: Record<string, Set<string>>) => {
@@ -231,7 +228,7 @@ const PermissionsPanel = ({
           </Typography>
         </Grid>
       </Grid>
-      {isEditActive && settings.enableScopeSelectionCategoryWarning && (
+      {isEditActive && (
         <Alert severity='warning' variant='standard' className={alertMargin}>
           <Typography>
             {translateHTML('Heading.ScopeSelectionCategoryWarning', [
