@@ -8,19 +8,16 @@ import {
 import { precomputedL7Metrics } from './l7MetricMapping';
 
 const getEnabledChartConfiguratorMetrics = ({
-  isClientScriptCPUTimeEnabled,
   isRotraceMetricEnabled,
   isHomeAcquisitionSignalsEnabled,
   isTelemetryMigrationEnabled,
 }: {
-  isClientScriptCPUTimeEnabled: boolean;
   isRotraceMetricEnabled: boolean;
   isHomeAcquisitionSignalsEnabled: boolean;
   isTelemetryMigrationEnabled: boolean;
 }): readonly TChartConfiguratorMetrics[] => {
   const disabledMetrics = [
     ...getChartConfiguratorExcludedMetrics(),
-    ...(!isClientScriptCPUTimeEnabled ? [RAQIV2Metric.ClientCpuTimeAvg] : []),
     ...(!isRotraceMetricEnabled ? [RAQIV2Metric.RotraceTotalCalls] : []),
     ...(!isTelemetryMigrationEnabled
       ? [

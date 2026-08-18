@@ -441,16 +441,6 @@ export const generatedFlags = [
       },
     },
     {
-      flag: creatorAnalyticsFlags.isClientScriptCpuTimeEnabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'isClientScriptCPUTimeEnabled',
-        defaultValue: true,
-        valueType: 'boolean',
-        contextType: 'static',
-      },
-    },
-    {
       flag: creatorAnalyticsFlags.isRotraceMetricEnabled,
       metadata: {
         namespace: 'creator-analytics',

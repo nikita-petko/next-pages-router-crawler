@@ -107,11 +107,6 @@ export const showCreatorRewardsReportingDisclaimer = defineFlag({
     name: 'showCreatorRewardsReportingDisclaimer',
     defaultValue: false,
   });
-export const isClientScriptCpuTimeEnabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'isClientScriptCPUTimeEnabled',
-    defaultValue: true,
-  });
 export const isRotraceMetricEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isRotraceMetricEnabled',

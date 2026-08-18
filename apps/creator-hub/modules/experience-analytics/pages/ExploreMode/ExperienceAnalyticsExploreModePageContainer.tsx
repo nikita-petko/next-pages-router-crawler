@@ -2,7 +2,6 @@ import type { FC } from 'react';
 import { lazy, Suspense, useMemo } from 'react';
 import { useFlag } from '@rbx/flags';
 import {
-  isClientScriptCpuTimeEnabled as isClientScriptCPUTimeEnabledFlag,
   isRotraceMetricEnabled as isRotraceMetricEnabledFlag,
   isTelemetryMigrationEnabled as isTelemetryMigrationEnabledFlag,
 } from '@generated/flags/creatorAnalytics';
@@ -34,9 +33,6 @@ const filterTextThroughGameUpdateNotifications: TextFilterFn = async (text) => {
 const ExperienceAnalyticsExploreModePageWithFlags: FC<{ universeId: number }> = ({
   universeId,
 }) => {
-  const { ready: isClientScriptCPUTimeReady, value: isClientScriptCPUTimeEnabledValue } = useFlag(
-    isClientScriptCPUTimeEnabledFlag,
-  );
   const { ready: isRotraceMetricReady, value: isRotraceMetricEnabledValue } = useFlag(
     isRotraceMetricEnabledFlag,
     {
@@ -49,20 +45,14 @@ const ExperienceAnalyticsExploreModePageWithFlags: FC<{ universeId: number }> = 
     isTelemetryMigrationEnabledFlag,
     { universeId },
   );
-  const isClientScriptCPUTimeEnabled =
-    isClientScriptCPUTimeReady && isClientScriptCPUTimeEnabledValue;
   const isRotraceMetricEnabled = isRotraceMetricReady && isRotraceMetricEnabledValue;
   const isHomeAcquisitionSignalsEnabled =
     isHomeAcquisitionSignalsReady && isHomeAcquisitionSignalsEnabledValue;
   const isTelemetryMigrationEnabled = isTelemetryMigrationReady && isTelemetryMigrationEnabledValue;
   const featureFlagsFetched =
-    isClientScriptCPUTimeReady &&
-    isRotraceMetricReady &&
-    isHomeAcquisitionSignalsReady &&
-    isTelemetryMigrationReady;
+    isRotraceMetricReady && isHomeAcquisitionSignalsReady && isTelemetryMigrationReady;
   const allowedMetrics = useMemo(() => {
     const metrics = getEnabledChartConfiguratorMetrics({
-      isClientScriptCPUTimeEnabled,
       isRotraceMetricEnabled,
       isHomeAcquisitionSignalsEnabled,
       isTelemetryMigrationEnabled,
@@ -71,12 +61,7 @@ const ExperienceAnalyticsExploreModePageWithFlags: FC<{ universeId: number }> = 
       return [...metrics, customEventsMetric];
     }
     return metrics;
-  }, [
-    isClientScriptCPUTimeEnabled,
-    isRotraceMetricEnabled,
-    isHomeAcquisitionSignalsEnabled,
-    isTelemetryMigrationEnabled,
-  ]);
+  }, [isRotraceMetricEnabled, isHomeAcquisitionSignalsEnabled, isTelemetryMigrationEnabled]);
 
   // Do not initialize URL-backed configurator state against the default flag
   // values. Otherwise a gated metric can be treated as unavailable during the

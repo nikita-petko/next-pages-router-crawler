@@ -2,7 +2,6 @@ import { type FC, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useFlag } from '@rbx/flags';
 import {
-  isClientScriptCpuTimeEnabled as isClientScriptCPUTimeEnabledFlag,
   isRotraceMetricEnabled as isRotraceMetricEnabledFlag,
   isTelemetryMigrationEnabled as isTelemetryMigrationEnabledFlag,
 } from '@generated/flags/creatorAnalytics';
@@ -28,17 +27,12 @@ const ChartEditorPage: FC = () => {
   const tileId = typeof tileIdParam === 'string' ? tileIdParam : undefined;
   const draftId = typeof draftIdParam === 'string' ? draftIdParam : undefined;
 
-  const { ready: isClientScriptCPUTimeReady, value: isClientScriptCPUTimeEnabledValue } = useFlag(
-    isClientScriptCPUTimeEnabledFlag,
-  );
   const { ready: isRotraceMetricReady, value: isRotraceMetricEnabledValue } = useFlag(
     isRotraceMetricEnabledFlag,
     {
       universeId,
     },
   );
-  const isClientScriptCPUTimeEnabled =
-    isClientScriptCPUTimeReady && isClientScriptCPUTimeEnabledValue;
   const isRotraceMetricEnabled = isRotraceMetricReady && isRotraceMetricEnabledValue;
   const { ready: isHomeAcquisitionSignalsReady, value: isHomeAcquisitionSignalsEnabledValue } =
     useFlag(isHomeAcquisitionSignalsEnabledFlag, {
@@ -56,7 +50,6 @@ const ChartEditorPage: FC = () => {
 
   const allowedMetrics = useMemo(() => {
     const metrics = getEnabledChartConfiguratorMetrics({
-      isClientScriptCPUTimeEnabled,
       isRotraceMetricEnabled,
       isHomeAcquisitionSignalsEnabled,
       isTelemetryMigrationEnabled,
@@ -65,12 +58,7 @@ const ChartEditorPage: FC = () => {
       return [...metrics, customEventsMetric];
     }
     return metrics;
-  }, [
-    isClientScriptCPUTimeEnabled,
-    isRotraceMetricEnabled,
-    isHomeAcquisitionSignalsEnabled,
-    isTelemetryMigrationEnabled,
-  ]);
+  }, [isRotraceMetricEnabled, isHomeAcquisitionSignalsEnabled, isTelemetryMigrationEnabled]);
 
   const handleBackToEditor = useCallback(
     (nextDraftId?: string) => {

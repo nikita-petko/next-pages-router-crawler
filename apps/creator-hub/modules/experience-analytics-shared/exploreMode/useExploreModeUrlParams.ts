@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useFlag } from '@rbx/flags';
 import {
-  isClientScriptCpuTimeEnabled as isClientScriptCPUTimeEnabledFlag,
   isRotraceMetricEnabled as isRotraceMetricEnabledFlag,
   isTelemetryMigrationEnabled as isTelemetryMigrationEnabledFlag,
 } from '@generated/flags/creatorAnalytics';
@@ -39,9 +38,6 @@ const useExploreModeUrlParams = (
   visibleTimeSeriesAnnotations?: readonly TimeSeriesAnnotation[],
 ): AnalyticsSearchParams | null => {
   const resource = useUniverseResource();
-  const { ready: isClientScriptCPUTimeReady, value: isClientScriptCPUTimeEnabledValue } = useFlag(
-    isClientScriptCPUTimeEnabledFlag,
-  );
   const { ready: isRotraceMetricReady, value: isRotraceMetricEnabledValue } = useFlag(
     isRotraceMetricEnabledFlag,
     {
@@ -54,8 +50,6 @@ const useExploreModeUrlParams = (
     isTelemetryMigrationEnabledFlag,
     { universeId: resource.id ?? 0 },
   );
-  const isClientScriptCPUTimeEnabled =
-    isClientScriptCPUTimeReady && isClientScriptCPUTimeEnabledValue;
   const isRotraceMetricEnabled = isRotraceMetricReady && isRotraceMetricEnabledValue;
   const isHomeAcquisitionSignalsEnabled =
     isHomeAcquisitionSignalsReady && isHomeAcquisitionSignalsEnabledValue;
@@ -63,23 +57,14 @@ const useExploreModeUrlParams = (
   const allowedMetrics = useMemo(
     () =>
       getEnabledExploreModeMetrics({
-        isClientScriptCPUTimeEnabled,
         isRotraceMetricEnabled,
         isHomeAcquisitionSignalsEnabled,
         isTelemetryMigrationEnabled,
       }),
-    [
-      isClientScriptCPUTimeEnabled,
-      isRotraceMetricEnabled,
-      isHomeAcquisitionSignalsEnabled,
-      isTelemetryMigrationEnabled,
-    ],
+    [isRotraceMetricEnabled, isHomeAcquisitionSignalsEnabled, isTelemetryMigrationEnabled],
   );
   const featureFlagsFetched =
-    isClientScriptCPUTimeReady &&
-    isRotraceMetricReady &&
-    isHomeAcquisitionSignalsReady &&
-    isTelemetryMigrationReady;
+    isRotraceMetricReady && isHomeAcquisitionSignalsReady && isTelemetryMigrationReady;
 
   const metric = useMemo(() => {
     if (!preset || !featureFlagsFetched) {

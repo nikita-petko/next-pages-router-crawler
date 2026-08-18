@@ -4,7 +4,6 @@ import { useFlag } from '@rbx/flags';
 import { Button } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import {
-  isClientScriptCpuTimeEnabled as isClientScriptCPUTimeEnabledFlag,
   isRotraceMetricEnabled as isRotraceMetricEnabledFlag,
   isTelemetryMigrationEnabled as isTelemetryMigrationEnabledFlag,
 } from '@generated/flags/creatorAnalytics';
@@ -132,17 +131,12 @@ const EditPageContent: FC<EditPageContentProps> = ({
   const [summaryCardDialogMode, setSummaryCardDialogMode] = useState<
     { readonly type: 'add' } | { readonly type: 'edit'; readonly tileId: TileId } | null
   >(null);
-  const { ready: isClientScriptCPUTimeReady, value: isClientScriptCPUTimeEnabledValue } = useFlag(
-    isClientScriptCPUTimeEnabledFlag,
-  );
   const { ready: isRotraceMetricReady, value: isRotraceMetricEnabledValue } = useFlag(
     isRotraceMetricEnabledFlag,
     {
       universeId,
     },
   );
-  const isClientScriptCPUTimeEnabled =
-    isClientScriptCPUTimeReady && isClientScriptCPUTimeEnabledValue;
   const isRotraceMetricEnabled = isRotraceMetricReady && isRotraceMetricEnabledValue;
   const { ready: isHomeAcquisitionSignalsReady, value: isHomeAcquisitionSignalsEnabledValue } =
     useFlag(isHomeAcquisitionSignalsEnabledFlag, {
@@ -159,7 +153,6 @@ const EditPageContent: FC<EditPageContentProps> = ({
   const isTelemetryMigrationEnabled = isTelemetryMigrationReady && isTelemetryMigrationEnabledValue;
   const allowedMetrics = useMemo(() => {
     const metrics = getEnabledChartConfiguratorMetrics({
-      isClientScriptCPUTimeEnabled,
       isRotraceMetricEnabled,
       isHomeAcquisitionSignalsEnabled,
       isTelemetryMigrationEnabled,
@@ -168,12 +161,7 @@ const EditPageContent: FC<EditPageContentProps> = ({
       return [...metrics, customEventsMetric];
     }
     return metrics;
-  }, [
-    isClientScriptCPUTimeEnabled,
-    isRotraceMetricEnabled,
-    isHomeAcquisitionSignalsEnabled,
-    isTelemetryMigrationEnabled,
-  ]);
+  }, [isRotraceMetricEnabled, isHomeAcquisitionSignalsEnabled, isTelemetryMigrationEnabled]);
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const duplicateNameSuffixes = useMemo(
     () => createDuplicateDashboardNameSuffixes({ tPendingTranslation }),

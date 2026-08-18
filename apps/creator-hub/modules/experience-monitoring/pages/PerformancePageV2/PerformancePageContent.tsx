@@ -3,10 +3,7 @@ import { useMemo } from 'react';
 import { useFlag } from '@rbx/flags';
 import { withTranslation } from '@rbx/intl';
 import { Grid } from '@rbx/ui';
-import {
-  isClientScriptCpuTimeEnabled as isClientScriptCPUTimeEnabledFlag,
-  isExperienceAlertsEnabled,
-} from '@generated/flags/creatorAnalytics';
+import { isExperienceAlertsEnabled } from '@generated/flags/creatorAnalytics';
 import { isBandwidthNetworkTabEnabled as isBandwidthNetworkTabEnabledFlag } from '@generated/flags/engineNetworking';
 import AnalyticsAlertClientProvider from '@modules/experience-alerts/components/AnalyticsAlertClientProvider';
 import { analyticsAlertControlPlaneClient } from '@modules/experience-alerts/constants/types';
@@ -19,12 +16,6 @@ import useGetExtendedServicesComputeInsightConfigs from './insights/useGetExtend
 import getPerformancePageConfig from './performancePageConfig';
 
 const PerformancePageContent: FC = () => {
-  const { ready: isClientScriptCPUTimeReady, value: isClientScriptCPUTimeEnabledValue } = useFlag(
-    isClientScriptCPUTimeEnabledFlag,
-  );
-  const isClientScriptCPUTimeEnabled =
-    isClientScriptCPUTimeReady && isClientScriptCPUTimeEnabledValue;
-
   // Network (bandwidth) tab is gated to the DeveloperAnalyticsAdmin and
   // DeveloperAnalyticsLimited roles while in development.
   const { ready: isNetworkTabReady, value: isNetworkTabEnabledValue } = useFlag(
@@ -44,17 +35,11 @@ const PerformancePageContent: FC = () => {
 
   const performancePageConfig = useMemo(() => {
     return getPerformancePageConfig(
-      isClientScriptCPUTimeEnabled,
       !!isExperienceAlertsEnabledFlag,
       isNetworkTabEnabled,
       extendedServicesComputeInsightConfigs,
     );
-  }, [
-    isClientScriptCPUTimeEnabled,
-    isExperienceAlertsEnabledFlag,
-    isNetworkTabEnabled,
-    extendedServicesComputeInsightConfigs,
-  ]);
+  }, [isExperienceAlertsEnabledFlag, isNetworkTabEnabled, extendedServicesComputeInsightConfigs]);
 
   // Defer mount until the experience-alerts flag has resolved: the layout's
   // annotation provider snapshots `defaultAnnotationTypes` to the URL on first

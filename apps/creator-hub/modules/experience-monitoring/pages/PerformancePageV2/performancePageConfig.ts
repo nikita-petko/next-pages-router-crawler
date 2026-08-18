@@ -78,7 +78,6 @@ const orderedTabKeys = [Category.Client, Category.Server, Category.Network] as c
 type TPerformanceTabKeys = (typeof orderedTabKeys)[number];
 
 const getPerformancePageConfig = (
-  isClientScriptCPUTimeEnabled: boolean,
   isExperienceAlertsEnabled: boolean,
   isNetworkTabEnabled: boolean,
   serverTabPrependedBody: RAQIV2UIComponent[] = [],
@@ -123,9 +122,7 @@ const getPerformancePageConfig = (
           chartConfigPerformanceClientMemoryUsage,
           chartConfigPerformanceClientMemoryUsagePercentage,
           controlledSubcontextConfigPerformanceClientFpsByPercentile,
-          ...(isClientScriptCPUTimeEnabled
-            ? [controlledSubcontextConfigPerformanceClientCpuTimeCategory]
-            : []),
+          controlledSubcontextConfigPerformanceClientCpuTimeCategory,
         ],
         filterDimensions: [
           RAQIV2Dimension.Place,
