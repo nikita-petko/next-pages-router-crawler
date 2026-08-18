@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from 'react';
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from '@rbx/intl';
 import {
   ExpandLessIcon,
@@ -70,6 +70,25 @@ const shouldSkipRowExpansionToggle = (eventTarget: EventTarget | null) => {
     return false;
   }
   return eventTarget.closest(SkipRowExpansionToggleSelector) !== null;
+};
+
+const resolveExpansionToggleColumnIndex = <TColumnKey extends string | number>(
+  unHiddenColumnConfigs: TableColumnConfig<TColumnKey>[],
+  visibleColumnIndices: number[],
+  expansionTogglePlacement: TColumnKey | undefined,
+): number => {
+  const firstVisibleColIndex = visibleColumnIndices[0] ?? 0;
+  const lastVisibleColIndex =
+    visibleColumnIndices[visibleColumnIndices.length - 1] ??
+    Math.max(0, unHiddenColumnConfigs.length - 1);
+  if (expansionTogglePlacement === undefined) {
+    return firstVisibleColIndex;
+  }
+  return (
+    visibleColumnIndices.find(
+      (idx) => unHiddenColumnConfigs[idx]?.columnKey === expansionTogglePlacement,
+    ) ?? lastVisibleColIndex
+  );
 };
 
 const isExpandedRowCellSpec = <TActionType extends string, TActionOn = string>(
@@ -154,35 +173,33 @@ const GenericTableV2 = <
   } = useGenericRAQIV2TableContentStyles();
   const isCompactView = useMediaQuery((t) => t.breakpoints.down('Medium'));
 
-  const initialSort = columnConfigs.find(
-    (config) => config.columnKey === tableConfig?.defaultActiveSort,
-  );
-  const [order, setOrder] = useState<TableSortOrder | undefined>(
-    initialSort?.sort?.direction ?? undefined,
-  );
-  const [orderBy, setOrderBy] = useState<TColumnKey | undefined>(tableConfig?.defaultActiveSort);
-
-  // Sync header state when the parent's `defaultActiveSort` (or that column's
-  // own default direction) actually changes. We intentionally depend on the
-  // primitive `(columnKey, direction)` pair rather than the full
-  // `columnConfigs` array reference so unrelated parent re-renders that
-  // create a fresh `columnConfigs` array don't clobber a user-driven sort
-  // toggle (e.g. clicking the Timestamp header to flip asc<->desc would
-  // otherwise snap back to the column's default direction the next time
-  // upstream state changed, manifesting as "rows reappear / accumulate"
-  // during interactive sorting in time-bucketed explore tables).
   const defaultActiveSortColumnKey = tableConfig?.defaultActiveSort;
-  const defaultActiveSortDirection = useMemo(
-    () =>
-      columnConfigs.find((config) => config.columnKey === defaultActiveSortColumnKey)?.sort
-        ?.direction,
-    [columnConfigs, defaultActiveSortColumnKey],
+  const defaultActiveSortDirection = columnConfigs.find(
+    (config) => config.columnKey === defaultActiveSortColumnKey,
+  )?.sort?.direction;
+  const [order, setOrder] = useState<TableSortOrder | undefined>(
+    defaultActiveSortDirection ?? undefined,
   );
-  useEffect(() => {
-    // oxlint-disable-next-line react/react-compiler
+  const [orderBy, setOrderBy] = useState<TColumnKey | undefined>(defaultActiveSortColumnKey);
+
+  // Adjust order/orderBy during render when defaultActiveSort's primitive
+  // (columnKey, direction) pair changes. Do not key off columnConfigs identity
+  // or a user-driven sort toggle is clobbered on unrelated parent re-renders.
+  const [prevDefaultActiveSortColumnKey, setPrevDefaultActiveSortColumnKey] = useState(
+    defaultActiveSortColumnKey,
+  );
+  const [prevDefaultActiveSortDirection, setPrevDefaultActiveSortDirection] = useState(
+    defaultActiveSortDirection,
+  );
+  if (
+    prevDefaultActiveSortColumnKey !== defaultActiveSortColumnKey ||
+    prevDefaultActiveSortDirection !== defaultActiveSortDirection
+  ) {
+    setPrevDefaultActiveSortColumnKey(defaultActiveSortColumnKey);
+    setPrevDefaultActiveSortDirection(defaultActiveSortDirection);
     setOrder(defaultActiveSortDirection ?? undefined);
     setOrderBy(defaultActiveSortColumnKey);
-  }, [defaultActiveSortColumnKey, defaultActiveSortDirection]);
+  }
 
   const handleGenericSortOnClick = useCallback(
     (key: TColumnKey, sortOrder?: TableSortOrder) => {
@@ -348,20 +365,12 @@ const GenericTableV2 = <
         .map((cfg, idx) => ({ cfg, idx }))
         .filter(({ cfg }) => !rowInfo.get(cfg.columnKey)?.skipCell)
         .map(({ idx }) => idx);
-      const firstVisibleColIndex = visibleColumnIndices[0] ?? 0;
-      const lastVisibleColIndex =
-        visibleColumnIndices[visibleColumnIndices.length - 1] ??
-        Math.max(0, unHiddenColumnConfigs.length - 1);
       const isToggleBeforeContent = expansionTogglePlacement === undefined;
-      let expansionToggleColumnIndex: number;
-      if (expansionTogglePlacement === undefined) {
-        expansionToggleColumnIndex = firstVisibleColIndex;
-      } else {
-        const keyedIndex = visibleColumnIndices.find(
-          (idx) => unHiddenColumnConfigs[idx]?.columnKey === expansionTogglePlacement,
-        );
-        expansionToggleColumnIndex = keyedIndex ?? lastVisibleColIndex;
-      }
+      const expansionToggleColumnIndex = resolveExpansionToggleColumnIndex(
+        unHiddenColumnConfigs,
+        visibleColumnIndices,
+        expansionTogglePlacement,
+      );
 
       const disableRowHover = Array.from(rowInfo.values()).some((cell) => cell?.disableRowHover);
       const isGroupHovered =
@@ -430,7 +439,6 @@ const GenericTableV2 = <
               formattedContent
             );
             const toggleContent =
-              // oxlint-disable-next-line react/react-compiler
               colIndex === expansionToggleColumnIndex && showExpansionToggle ? (
                 <IconButton
                   aria-label={isRowExpanded ? 'Collapse row' : 'Expand row'}

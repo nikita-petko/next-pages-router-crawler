@@ -108,7 +108,7 @@ function JourneysViewPageTitleInner() {
           as='a'
           href={dashboard.getAnalyticsJourneysEditUrl(universeId, journeyName)}>
           {tPendingTranslation(
-            'Edit config',
+            'Edit',
             'Button to navigate to the edit config page for this journey',
             translationKey('Action.EditJourneyConfig', TranslationNamespace.Analytics),
           )}
