@@ -12,9 +12,12 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import {
   useAnswers,
+  useDetailedGuidelinesV2,
   useLatestQuestionnaireId,
   useLatestSubmission,
+  useMetadataStatus,
   useQuestionnaire,
+  useQuestionnairePublishStatusList,
 } from '../../utils/queries';
 import {
   clearQuestionnaireAttemptId,
@@ -67,6 +70,12 @@ const QuestionnaireContainerV2: FunctionComponent<
   const { isLoading: isAnswerLoading } = useAnswers(universeId);
   const { isLoading: isSubmissionLoading } = useLatestSubmission(universeId);
 
+  // Unused here on purpose: these drive banners the overview renders *above* the heading, so
+  // resolving them after first paint shifts the page down. Deduped by key for the overview.
+  const { isLoading: isDetailedGuidelinesLoading } = useDetailedGuidelinesV2(universeId);
+  const { isLoading: isMetadataStatusLoading } = useMetadataStatus(universeId);
+  const { isLoading: isPublishStatusLoading } = useQuestionnairePublishStatusList(universeId);
+
   const handleStartQuestionnaire = useCallback(() => {
     if (!questionnaireId) {
       return;
@@ -109,6 +118,9 @@ const QuestionnaireContainerV2: FunctionComponent<
     isAnswerLoading ||
     isSubmissionLoading ||
     isQuestionnaireLoading ||
+    isDetailedGuidelinesLoading ||
+    isMetadataStatusLoading ||
+    isPublishStatusLoading ||
     !isIXPFetched ||
     !isFetched
   ) {

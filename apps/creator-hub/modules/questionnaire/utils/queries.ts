@@ -3,7 +3,10 @@ import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/reac
 import type { ValidateResponseResponse } from '@rbx/client-experience-questionnaire/v1';
 import { StatusCodes } from '@rbx/core';
 import experienceGuidelinesServiceApiClient from '@modules/clients/experienceGuidelinesService';
-import type { GetDetailedGuidelinesResponseV2 } from '@modules/clients/experienceGuidelinesService';
+import type {
+  GetDetailedGuidelinesResponse,
+  GetDetailedGuidelinesResponseV2,
+} from '@modules/clients/experienceGuidelinesService';
 import experienceQuestionnaireClient, {
   experienceQuestionnaireV2Client,
   type GetLatestAdditionalSubmissionResponse,
@@ -30,6 +33,13 @@ type TUseMutationOptions<D = unknown, T = void> = Omit<
   UseMutationOptions<D, Error, T>,
   'mutationKey' | 'mutationFn'
 >;
+// `number`, not `StatusCodes`: `getResponseFromError` reports a bare status code, and comparing the
+// two types trips `no-unsafe-enum-comparison`.
+const RETRYABLE_STATUSES: readonly number[] = [
+  StatusCodes.BAD_GATEWAY,
+  StatusCodes.GATEWAY_TIMEOUT,
+];
+
 const retry = (failureCount: number, error: Error) => {
   if (failureCount > 1) {
     return false;
@@ -38,13 +48,27 @@ const retry = (failureCount: number, error: Error) => {
   if (status === undefined) {
     return false;
   }
-  return status === StatusCodes.BAD_GATEWAY || status === StatusCodes.GATEWAY_TIMEOUT;
+  return RETRYABLE_STATUSES.includes(status);
 };
 
-export const useUniverseEligibility = (universeId: number) => {
+// Do not pin `staleTime` here. It would not remove a loading state — the page gates on `isPending`,
+// which is false once anything is cached — it would only let one user's answer outlive them in the
+// module-scoped cache.
+export const useQuestionnaireStatus = () => {
+  return useQuery({
+    queryKey: ['experienceQuestionnaire', 'getQuestionnaireStatus'],
+    queryFn: () => experienceQuestionnaireClient.getQuestionnaireStatus(),
+    retry,
+  });
+};
+
+export const useUniverseEligibility = (universeId: number | undefined) => {
   return useQuery({
     queryKey: ['experienceQuestionnaire', 'getUniverseEligibility', universeId],
-    queryFn: () => experienceQuestionnaireClient.getUniverseEligibility(universeId),
+    queryFn:
+      typeof universeId === 'undefined'
+        ? skipToken
+        : () => experienceQuestionnaireClient.getUniverseEligibility(universeId),
     retry,
   });
 };
@@ -214,7 +238,7 @@ export const useAdditionalQuestionnaireAnswers = (
     }
     const response = await experienceQuestionnaireV2Client.getActiveAdditionalResponse(universeId);
     const answers = response.response?.answers ?? [];
-    return validateAnswers(answers as ValidatedAnswer[]);
+    return validateAnswers(answers);
   };
 
   return useQuery({
@@ -318,6 +342,24 @@ export const usePublishQuestionnaires = (
   });
 };
 
+export const useDetailedGuidelines = (universeId: number) => {
+  return useQuery({
+    queryKey: ['experienceGuidelinesService', 'getDetailedGuidelines', universeId],
+    queryFn: async (): Promise<GetDetailedGuidelinesResponse | null> => {
+      try {
+        return await experienceGuidelinesServiceApiClient.getDetailedGuidelines(universeId);
+      } catch (e) {
+        const status = getResponseFromError(e)?.status;
+        if (status === 404) {
+          return null;
+        }
+        throw e;
+      }
+    },
+    retry,
+  });
+};
+
 export const useDetailedGuidelinesV2 = (universeId: number) => {
   return useQuery({
     queryKey: ['experienceGuidelinesService', 'getDetailedGuidelinesV2', universeId],
@@ -378,6 +420,7 @@ const formatActivityTitle = (type: string | undefined): string => {
       return 'Rating authority custom email';
     case 'IARC_ACTIVITY_TYPE_ROBLOX_MODERATION_REJECTION':
       return 'Ratings rejected';
+    case undefined:
     default:
       return 'Activity';
   }
@@ -387,18 +430,22 @@ const isSystemActivity = (type: string | undefined): boolean => {
   return type !== 'IARC_ACTIVITY_TYPE_QUESTIONNAIRE_SUBMITTED';
 };
 
+const normalizeActivityType = (type: string | undefined): string => {
+  return type === undefined || type === '' ? 'IARC_ACTIVITY_TYPE_INVALID' : type;
+};
+
 export const useActivityLog = (universeId: number) => {
   return useQuery({
     queryKey: ['iarcActivityService', 'listIarcActivities', universeId],
     queryFn: async (): Promise<ActivityEvent[]> => {
       try {
         const response = await iarcActivityServiceClient.listIarcActivities(universeId);
-        return (response.iarcActivities || []).map((activity, index) => ({
+        return (response.iarcActivities ?? []).map((activity, index) => ({
           id: `${activity.universeId}-${index}`,
-          type: activity.type || 'IARC_ACTIVITY_TYPE_INVALID',
+          type: normalizeActivityType(activity.type),
           title: formatActivityTitle(activity.type),
-          details: activity.details || '',
-          createTime: activity.createTime || '',
+          details: activity.details ?? '',
+          createTime: activity.createTime ?? '',
           user: isSystemActivity(activity.type) ? 'System' : 'You',
         }));
       } catch (e) {
@@ -433,10 +480,10 @@ export const useActivityLogById = (universeId: number, activityId: string | unde
 
               return {
                 id: activityId,
-                type: activity.type || 'IARC_ACTIVITY_TYPE_INVALID',
+                type: normalizeActivityType(activity.type),
                 title: formatActivityTitle(activity.type),
-                details: activity.details || '',
-                createTime: activity.createTime || '',
+                details: activity.details ?? '',
+                createTime: activity.createTime ?? '',
                 user: isSystemActivity(activity.type) ? 'System' : 'You',
               };
             } catch (e) {

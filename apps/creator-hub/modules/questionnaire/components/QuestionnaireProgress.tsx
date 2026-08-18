@@ -1,17 +1,8 @@
 import type { FunctionComponent } from 'react';
-import React, { useCallback, useEffect, useState } from 'react';
-import type {
-  V1Beta1Moderation as Moderation,
-  V1Beta1ExperienceDescriptor as ExperienceDescriptor,
-  V1Beta1CreatorOverrides as CreatorOverrides,
-} from '@rbx/client-experience-guidelines-service/v1';
+import React, { useMemo } from 'react';
 import { V1Beta1ModerationStatus as ModerationStatus } from '@rbx/client-experience-guidelines-service/v1';
-import type { RestrictedCountry } from '@rbx/client-experience-questionnaire/v1';
 import { withTranslation, useTranslation } from '@rbx/intl';
 import { Button, Grid, Typography } from '@rbx/ui';
-import type { GetDetailedGuidelinesResponse } from '@modules/clients/experienceGuidelinesService';
-import experienceGuidelinesServiceApiClient from '@modules/clients/experienceGuidelinesService';
-import { PageLoading } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import {
   GUIDELINES_TRANSLATION_KEYS,
@@ -20,14 +11,14 @@ import {
 } from '../constants/questionnaireConstants';
 import useExperienceGuidelinesStyles from '../containers/ExperienceGuidelines.styles';
 import ExperienceGuidelinesTables from '../containers/ExperienceGuidelinesTables';
-import useQuestionnaireToast from '../hooks/useQuestionnaireToast';
-import networkRequestManager from '../implementations/QuestionnaireNetworkRequestManager';
+import useQuestionnaireErrorToast from '../hooks/useQuestionnaireErrorToast';
 import type { TranslationKeys } from '../interfaces/types';
 import {
   extractAgeDisplayNameFromEGS,
   extractExperienceDescriptorsFromEGSAgeRecommendation,
   convertRestrictedCountries,
 } from '../utils/experienceRestrictionsUtils';
+import { useDetailedGuidelines } from '../utils/queries';
 import ModerationInformation from './ModerationInformation';
 import useQuestionnaireProgressStyles from './QuestionnaireProgress.styles';
 import QuestionnaireProgressCommonText from './QuestionnaireProgressCommonText';
@@ -56,18 +47,28 @@ const QuestionnaireProgress: FunctionComponent<
   const {
     classes: { title, message, button },
   } = useQuestionnaireProgressStyles();
-  const { showToastNetworkError, showToastUserError } = useQuestionnaireToast();
   const {
     classes: { mainGrid },
   } = useExperienceGuidelinesStyles();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // `QuestionnaireContainer` awaits this same query in its gate, so this is cache-warm on mount.
+  // Deliberately no loading branch here — that would put a second spinner on the page.
+  const { data: guidelines, error } = useDetailedGuidelines(universeId);
+  useQuestionnaireErrorToast(error);
 
-  const [ageContentDescriptors, setAgeContentDescriptors] = useState<ExperienceDescriptor[]>([]);
-  const [ageDisplay, setAgeDisplay] = useState<string | null>(null);
-  const [restrictedCountries, setRestrictedCountries] = useState<RestrictedCountry[]>([]);
-  const [moderation, setModeration] = useState<Moderation | null>(null);
-  const [creatorOverrides, setCreatorOverrides] = useState<CreatorOverrides | null>(null);
-  const [submitBy, setSubmitBy] = useState<string | null>(null);
+  const creatorOverrides = guidelines?.creatorOverrides ?? null;
+  const submitBy = guidelines?.submitBy ?? null;
+  const moderation = guidelines?.moderation ?? null;
+
+  // Memoised because the extractors build fresh objects, and these are props on a subtree.
+  const { ageDisplay, ageContentDescriptors, restrictedCountries } = useMemo(() => {
+    const ageRecommendation = guidelines?.ageRecommendationDetails ?? null;
+    return {
+      ageDisplay: extractAgeDisplayNameFromEGS(ageRecommendation),
+      ageContentDescriptors:
+        extractExperienceDescriptorsFromEGSAgeRecommendation(ageRecommendation),
+      restrictedCountries: convertRestrictedCountries(guidelines?.restrictedCountries ?? []),
+    };
+  }, [guidelines]);
 
   // TODO (UCS-719): Remove PROGRESS_STATES.SUBMITTED when we fully depend on UCS-719
   const getTranslationKeysGuidelines = (): TranslationKeys => {
@@ -137,52 +138,6 @@ const QuestionnaireProgress: FunctionComponent<
   const translationKeys = isContentMaturityEnabled
     ? getTranslationKeysMaturity()
     : getTranslationKeysGuidelines();
-
-  const attemptGetComplianceRestrictions = useCallback(async () => {
-    try {
-      const getDetailedGuidelinesResponse =
-        await networkRequestManager.attemptNetworkRequestWithRetry<GetDetailedGuidelinesResponse>(
-          () => experienceGuidelinesServiceApiClient.getDetailedGuidelines(universeId),
-        );
-
-      setCreatorOverrides(getDetailedGuidelinesResponse.creatorOverrides ?? null);
-      setSubmitBy(getDetailedGuidelinesResponse.submitBy ?? null);
-      setModeration(getDetailedGuidelinesResponse.moderation ?? null);
-
-      const ageRecommendationFound = getDetailedGuidelinesResponse.ageRecommendationDetails ?? null;
-      setAgeDisplay(extractAgeDisplayNameFromEGS(ageRecommendationFound));
-      setAgeContentDescriptors(
-        extractExperienceDescriptorsFromEGSAgeRecommendation(ageRecommendationFound),
-      );
-
-      const restrictedCountriesFound = getDetailedGuidelinesResponse.restrictedCountries ?? [];
-      setRestrictedCountries(convertRestrictedCountries(restrictedCountriesFound));
-    } catch (e) {
-      networkRequestManager.handleNetworkRequestFailure(
-        e,
-        showToastUserError,
-        showToastNetworkError,
-      );
-    }
-  }, [universeId, showToastNetworkError, showToastUserError]);
-
-  useEffect(() => {
-    // Should run once at beginning to call a series of network requests gathering preview data
-    async function beginFetchData() {
-      setIsLoading(true);
-      try {
-        await attemptGetComplianceRestrictions();
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    beginFetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only run once on load
-  }, []);
-
-  if (isLoading) {
-    return <PageLoading />;
-  }
 
   return (
     <section>

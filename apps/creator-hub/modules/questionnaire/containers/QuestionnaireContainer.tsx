@@ -16,6 +16,7 @@ import type { ValidatedAnswer, QuestionnaireResponseErrors } from '../interfaces
 import convertToRobloxLocale from '../utils/localizationHelper';
 import {
   useAnswers,
+  useDetailedGuidelines,
   useLatestQuestionnaireId,
   useLatestSubmission,
   useQuestionnaire,
@@ -91,6 +92,10 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
   );
 
   const { data: submissionData, isLoading: isSubmissionLoading } = useLatestSubmission(universeId);
+
+  // Unused here on purpose: awaiting it in this gate is what runs it alongside the queries above
+  // rather than after them, and leaves `QuestionnaireProgress` with no loading state of its own.
+  const { isLoading: isDetailedGuidelinesLoading } = useDetailedGuidelines(universeId);
   const {
     submissionState,
     progressState,
@@ -268,6 +273,7 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
     isAnswerLoading ||
     isSubmissionLoading ||
     isQuestionnaireLoading ||
+    isDetailedGuidelinesLoading ||
     !isFetched
   ) {
     return <PageLoading />;
