@@ -137,7 +137,6 @@ function ExperienceAccessForm({
   const { user } = useAuthentication();
   const [isCurrentUserGroupOwner, setIsCurrentUserGroupOwner] = useState<boolean | undefined>();
   const { settings, isFetched } = useSettings();
-  const enableCreatorControlsAgeGate = isFetched && settings.enableCreatorControlsAgeGate;
   const enableCreatorControlsGeoGate = isFetched && settings.enableCreatorControlsGeoGate;
   const [fiatProductModerationStatus, setFiatProductModerationStatus] = useState<
     FiatProductModerationStatus | undefined
@@ -172,7 +171,7 @@ function ExperienceAccessForm({
     const responseType = universeAccessConfiguration.placeJoinRestrictionType;
     const isAllowed = universeAccessConfiguration.isSpecificJoinToNonRootPlacesAllowed;
     let joinRestrictionType;
-    if (!responseType || (responseType as number) === 0) {
+    if (!responseType) {
       joinRestrictionType = isAllowed
         ? PlaceJoinRestrictionType.Open
         : PlaceJoinRestrictionType.Legacy;
@@ -222,7 +221,7 @@ function ExperienceAccessForm({
   // Robux toggle-offs since either toggle unmounts (and unregisters) the price field.
   const savedPrivateServerPriceRef = useRef<number | undefined>(
     hasPositivePrivateServerPrice(universeAccessConfiguration.privateServerPrice)
-      ? (universeAccessConfiguration.privateServerPrice as number)
+      ? universeAccessConfiguration.privateServerPrice
       : undefined,
   );
 
@@ -671,10 +670,7 @@ function ExperienceAccessForm({
           )}
         </Grid>
 
-        <ExperienceAccessAge
-          methods={methods}
-          enableCreatorControlsAgeGate={enableCreatorControlsAgeGate}
-        />
+        <ExperienceAccessAge methods={methods} />
 
         <ExperienceAccessRegion
           methods={methods}
