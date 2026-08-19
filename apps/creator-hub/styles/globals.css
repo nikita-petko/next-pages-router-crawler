@@ -2116,6 +2116,9 @@
 .height-\[40px\] {
   height: 40px;
 }
+.height-\[42px\] {
+  height: 42px;
+}
 .height-\[45px\] {
   height: 45px;
 }
@@ -2747,6 +2750,9 @@
 }
 .width-\[36px\] {
   width: 36px;
+}
+.width-\[42px\] {
+  width: 42px;
 }
 .width-\[480px\] {
   width: 480px;
@@ -4683,6 +4689,9 @@
 }
 .\[min-width\:180px\] {
   min-width: 180px;
+}
+.\[min-width\:184px\] {
+  min-width: 184px;
 }
 .\[min-width\:190px\] {
   min-width: 190px;

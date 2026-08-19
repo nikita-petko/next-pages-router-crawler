@@ -307,7 +307,9 @@ const SortableMatchesHeader = ({
 };
 
 /**
- * Table showing experience matches, also know as agreement candidates, to IPH.
+ * Despite its legacy generic name, this table renders Experience matches only.
+ * Collectible matches are rendered by CollectibleMatchesTable; this component will eventually be
+ * renamed to ExperienceMatchesTable.
  */
 const MatchesTable: React.FC<MatchesTableProps> = ({
   dataReq,
