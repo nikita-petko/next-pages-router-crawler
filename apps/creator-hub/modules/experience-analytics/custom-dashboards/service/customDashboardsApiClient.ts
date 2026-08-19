@@ -10,15 +10,23 @@ export type ApiDashboard =
 export type ApiDashboardDocument =
   components['schemas']['Roblox.DeveloperAnalytics.CustomDashboards.V1Beta1.CustomDashboardDocument'];
 
-export type ApiDashboardCapabilities = {
-  readonly canEdit?: boolean;
-};
+export type ApiDashboardCapabilities =
+  components['schemas']['Roblox.DeveloperAnalytics.CustomDashboards.V1Beta1.DashboardCapabilities'];
 
-export type ApiListDashboardsResponse = {
-  readonly dashboards?: ReadonlyArray<ApiDashboardMetadata> | null;
-  readonly nextPageToken?: string | null;
-  readonly capabilities?: ApiDashboardCapabilities;
-};
+export type ApiListDashboardsResponse =
+  components['schemas']['Roblox.DeveloperAnalytics.CustomDashboards.V1Beta1.ListDashboardsResponse'];
+
+export type ApiDashboardMetadataPatch =
+  components['schemas']['Roblox.DeveloperAnalytics.CustomDashboards.V1Beta1.DashboardMetadataPatch'];
+
+export type ApiPublishDashboardRequest =
+  components['schemas']['Roblox.DeveloperAnalytics.CustomDashboards.V1Beta1.PublishDashboardRequest'];
+
+/** Writable patch fields only — omit OpenAPI readOnly `has*` presence flags. */
+export type WritableDashboardMetadataPatch = Pick<
+  ApiDashboardMetadataPatch,
+  'name' | 'description' | 'isPinned'
+>;
 
 export type ApiErrorBody = {
   readonly code?: string | number;
@@ -63,17 +71,14 @@ export type CustomDashboardsApiClient = {
     readonly universeId: number;
     readonly dashboardId: string;
     readonly expectedHeadEtag: string;
-    readonly patch: {
-      readonly name?: string;
-      readonly description?: string;
-      readonly isPinned?: boolean;
-    };
+    readonly patch: WritableDashboardMetadataPatch;
   }): Promise<ApiDashboardMetadata>;
   publishDashboard(input: {
     readonly universeId: number;
     readonly dashboardId: string;
     readonly expectedHeadEtag: string;
     readonly document: ApiDashboardDocument;
+    readonly metadataPatch?: WritableDashboardMetadataPatch;
   }): Promise<ApiDashboard>;
   duplicateDashboard(input: {
     readonly universeId: number;
@@ -87,6 +92,22 @@ export type CustomDashboardsApiClient = {
     readonly expectedHeadEtag: string;
   }): Promise<void>;
 };
+
+function toWritableMetadataPatch(
+  patch: WritableDashboardMetadataPatch,
+): WritableDashboardMetadataPatch {
+  const metadataPatch: WritableDashboardMetadataPatch = {};
+  if (patch.name !== undefined) {
+    metadataPatch.name = patch.name;
+  }
+  if (patch.description !== undefined) {
+    metadataPatch.description = patch.description;
+  }
+  if (patch.isPinned !== undefined) {
+    metadataPatch.isPinned = patch.isPinned;
+  }
+  return metadataPatch;
+}
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -145,11 +166,7 @@ export function createDefaultCustomDashboardsApiClient(
       if (error || !data) {
         throwRequestError(response, error);
       }
-      // `capabilities` was added to the list response after the currently
-      // published generated client. The wire response remains structurally
-      // compatible, so retain the optional field until the client is regenerated.
-      const dashboardListResponse: ApiListDashboardsResponse = data;
-      return dashboardListResponse;
+      return data;
     },
 
     async getDashboard({ universeId, dashboardId }) {
@@ -189,23 +206,6 @@ export function createDefaultCustomDashboardsApiClient(
     },
 
     async updateDashboardMetadata({ universeId, dashboardId, expectedHeadEtag, patch }) {
-      // Omit OpenAPI readOnly `has*` presence flags — protobuf JsonParser
-      // rejects them as unknown fields on the request wire.
-      const metadataPatch: {
-        name?: string;
-        description?: string;
-        isPinned?: boolean;
-      } = {};
-      if (patch.name !== undefined) {
-        metadataPatch.name = patch.name;
-      }
-      if (patch.description !== undefined) {
-        metadataPatch.description = patch.description;
-      }
-      if (patch.isPinned !== undefined) {
-        metadataPatch.isPinned = patch.isPinned;
-      }
-
       const { data, error, response } = await fetchClient.PATCH(
         '/v1/universes/{universeId}/custom-dashboards/{dashboardId}/metadata',
         {
@@ -216,7 +216,7 @@ export function createDefaultCustomDashboardsApiClient(
             universeId,
             dashboardId,
             expectedHeadEtag,
-            patch: metadataPatch,
+            patch: toWritableMetadataPatch(patch),
           },
         },
       );
@@ -226,7 +226,19 @@ export function createDefaultCustomDashboardsApiClient(
       return data.metadata ?? {};
     },
 
-    async publishDashboard({ universeId, dashboardId, expectedHeadEtag, document }) {
+    async publishDashboard({ universeId, dashboardId, expectedHeadEtag, document, metadataPatch }) {
+      const publishMetadataPatch =
+        metadataPatch === undefined ? undefined : toWritableMetadataPatch(metadataPatch);
+      const body: ApiPublishDashboardRequest = {
+        universeId,
+        dashboardId,
+        expectedHeadEtag,
+        document,
+        ...(publishMetadataPatch !== undefined && Object.keys(publishMetadataPatch).length > 0
+          ? { metadataPatch: publishMetadataPatch }
+          : {}),
+      };
+
       const { data, error, response } = await fetchClient.POST(
         // Slash form: colon AIP paths (`:publish`) are not exposed via the gateway.
         '/v1/universes/{universeId}/custom-dashboards/{dashboardId}/publish',
@@ -234,12 +246,7 @@ export function createDefaultCustomDashboardsApiClient(
           params: {
             path: { universeId, dashboardId },
           },
-          body: {
-            universeId,
-            dashboardId,
-            expectedHeadEtag,
-            document,
-          },
+          body,
         },
       );
       if (error || !data) {

@@ -472,9 +472,8 @@ const EditPageContent: FC<EditPageContentProps> = ({
       const baselineVersion = baselineVersionRef.current.get(session.draftId) ?? null;
       const expectedVersion =
         mode === 'overwrite' || baselineVersion === null ? undefined : baselineVersion;
-      // Omit unchanged name so API saves skip the metadata PATCH (content-only
-      // publish). When a rename is included, sequence metadata then content —
-      // ApiCustomDashboardService rejects combined name+config updates.
+      // Omit unchanged name so API saves stay content-only. A rename is sent
+      // with the document in one publish (`metadataPatch` + `expectedHeadEtag`).
       const persistedName = persistedDocument?.name;
       const shouldUpdateName =
         persistedName === undefined || draft.name.trim() !== persistedName.trim();

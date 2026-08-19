@@ -1,8 +1,4 @@
-import {
-  CustomDashboardNotAvailableError,
-  CustomDashboardValidationError,
-  CustomDashboardVersionConflictError,
-} from '../errors';
+import { CustomDashboardNotAvailableError, CustomDashboardVersionConflictError } from '../errors';
 import {
   EMPTY_DASHBOARD_CONFIG,
   type AddChartTileInput,
@@ -163,39 +159,28 @@ class ApiCustomDashboardService implements CustomDashboardService {
       if (!hasMetadataChanges && !hasDocumentChanges) {
         return this.get(universeId, dashboardId);
       }
-      if (hasMetadataChanges && hasDocumentChanges) {
-        throw new CustomDashboardValidationError(
-          'changes',
-          'The API backend cannot atomically update dashboard metadata and content.',
-        );
-      }
 
-      let tokenState = await this.ensureTokens(universeId, dashboardId);
+      const tokenState = await this.ensureTokens(universeId, dashboardId);
       const expectedVersion = options?.expectedVersion;
       let mutationDocument: CustomDashboardDocument | undefined;
-      if (hasMetadataChanges) {
+      if (config !== undefined) {
+        const dashboard = await this.client.publishDashboard({
+          universeId,
+          dashboardId,
+          expectedHeadEtag: this.requireHeadEtag(tokenState, dashboardId, expectedVersion),
+          document: toApiDashboardDocument(config),
+          ...(hasMetadataChanges ? { metadataPatch } : {}),
+        });
+        this.rememberMetadata(universeId, dashboard.metadata);
+        mutationDocument = fromApiDashboard(dashboard);
+      } else if (hasMetadataChanges) {
         const metadata = await this.client.updateDashboardMetadata({
           universeId,
           dashboardId,
           expectedHeadEtag: this.requireHeadEtag(tokenState, dashboardId, expectedVersion),
           patch: metadataPatch,
         });
-        tokenState = this.rememberMetadata(universeId, metadata);
-      }
-
-      if (config !== undefined) {
-        const dashboard = await this.client.publishDashboard({
-          universeId,
-          dashboardId,
-          expectedHeadEtag: this.requireHeadEtag(
-            tokenState,
-            dashboardId,
-            hasMetadataChanges ? undefined : expectedVersion,
-          ),
-          document: toApiDashboardDocument(config),
-        });
-        this.rememberMetadata(universeId, dashboard.metadata);
-        mutationDocument = fromApiDashboard(dashboard);
+        this.rememberMetadata(universeId, metadata);
       }
 
       this.emit({ universeId, dashboardId, eventType: 'update' });

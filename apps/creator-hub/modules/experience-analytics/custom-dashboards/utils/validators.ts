@@ -363,12 +363,6 @@ function hasDisallowedPersistedTextCodepoint(value: string): boolean {
 }
 
 function validatePlainText(value: string, field: string): string {
-  if (value.includes('<') || value.includes('>')) {
-    throw new CustomDashboardValidationError(
-      field,
-      `${field} contains unsupported markup characters.`,
-    );
-  }
   if (hasDisallowedPersistedTextCodepoint(value)) {
     throw new CustomDashboardValidationError(
       field,
