@@ -53,6 +53,7 @@ import type {
   ListingShowcaseContentResponse,
   ListShowcaseEligibleContentResponse,
   ListingsReplaceListingShowcaseContentRequest,
+  AgreementWorkflowImagesResponse,
 } from '@rbx/client-content-licensing-api/v1';
 import {
   AgreementCandidatesApi,
@@ -184,6 +185,45 @@ export class ContentLicensingApiClient {
     return this.agreementsApi.agreementsGetCreatorAgreement({
       accountId,
       agreementId: agreementId.trim(),
+    });
+  }
+
+  /**
+   * Gets pitch image asset IDs for a creator agreement.
+   */
+  async getCreatorPitchImages(
+    accountId: string,
+    agreementId: string,
+  ): Promise<AgreementWorkflowImagesResponse> {
+    if (!agreementId || agreementId.trim().length === 0) {
+      throw new Error('Agreement ID is required');
+    }
+
+    return this.agreementsApi.agreementsGetCreatorPitchImagesByAgreement({
+      accountId,
+      agreementId: agreementId.trim(),
+    });
+  }
+
+  /**
+   * Replaces pitch image asset IDs for a creator agreement.
+   * The request is a full replacement set (omit an asset to remove it).
+   */
+  async updateCreatorPitchImages(
+    accountId: string,
+    agreementId: string,
+    pitchImageAssetIds: number[],
+  ): Promise<AgreementWorkflowImagesResponse> {
+    if (!agreementId || agreementId.trim().length === 0) {
+      throw new Error('Agreement ID is required');
+    }
+
+    return this.agreementsApi.agreementsUpdateCreatorPitchImagesByAgreement({
+      accountId,
+      agreementId: agreementId.trim(),
+      agreementsUpdateCreatorPitchImagesByAgreementRequest: {
+        pitchImageAssetIds,
+      },
     });
   }
 

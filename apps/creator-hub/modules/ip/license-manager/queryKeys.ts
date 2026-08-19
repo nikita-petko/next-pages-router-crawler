@@ -67,6 +67,10 @@ export const GET_CREATOR_AGREEMENT_WITH_DETAILS_QUERY_KEY = (
   accountId?: string,
   agreementId?: string,
 ) => [rootAgreementsKey, 'creatorAgreementWithDetails', accountId, agreementId];
+export const GET_CREATOR_PITCH_IMAGE_ATTACHMENTS_QUERY_KEY = (
+  accountId?: string,
+  agreementId?: string,
+) => [rootAgreementsKey, 'creatorPitchImageAttachments', accountId, agreementId] as const;
 export const GET_REVENUE_TARGETS_BY_AGREEMENT_QUERY_KEY = (
   accountId?: string,
   agreementId?: string,
