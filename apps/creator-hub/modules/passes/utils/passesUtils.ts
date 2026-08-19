@@ -16,7 +16,7 @@ export function hasRegionalPricingEnabled(pass: GamePassConfigV2): boolean {
 }
 
 export function hasManagedPricingEnabled(pass: GamePassConfigV2): boolean {
-  return pass.isManagedPricingEnabled ?? false;
+  return pass.isManagedPricingEnabled;
 }
 
 export function transformGamePassesForTable(passes: GamePassConfigV2[]): GamePass[] {

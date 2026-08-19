@@ -22,7 +22,7 @@ type Props = {
   passId: number;
   isForSale: boolean;
   price?: number | null;
-  isManagedPricingEnabled?: boolean;
+  isManagedPricingEnabled: boolean;
   isInActivePriceOptimizationExperiment?: boolean;
   managedPricingOnboardingStatus: ManagedPricingOnboardingStatus | undefined;
   isPending?: boolean;
@@ -290,7 +290,7 @@ function ConfigurePassSalesFormContainer(props: Props) {
       price: price ?? null,
       // NOTE(@jeminpark): we are temporarily using isRegionalPricingEnabled to match the old form such
       // that components are reused. This should be changed to isManagedPricingEnabled in the future.
-      isRegionalPricingEnabled: isManagedPricingEnabled ?? null,
+      isRegionalPricingEnabled: isManagedPricingEnabled,
     },
   });
 
@@ -301,7 +301,7 @@ function ConfigurePassSalesFormContainer(props: Props) {
       price: price ?? null,
       // NOTE(@jeminpark): we are temporarily using isRegionalPricingEnabled to match the old form such
       // that components are reused. This should be changed to isManagedPricingEnabled in the future.
-      isRegionalPricingEnabled: isManagedPricingEnabled ?? false,
+      isRegionalPricingEnabled: isManagedPricingEnabled,
     });
   }, [isForSale, price, isManagedPricingEnabled, reset]);
 

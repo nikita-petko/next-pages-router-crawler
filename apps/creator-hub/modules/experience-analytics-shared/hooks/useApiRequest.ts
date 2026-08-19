@@ -14,6 +14,12 @@ type TMakeRequest<ResponseType> = () => Promise<ResponseType>;
 
 export type TUseApiRequestOptions = {
   enabled?: boolean;
+  /**
+   * When true, a new `makeRequest` identity reports loading immediately (including
+   * via `refresh()`). `makeRequest` must be referentially stable across renders —
+   * a fresh closure every render would pin `isDataLoading` to true because
+   * `completedMakeRequest` can never catch up.
+   */
   refetchShouldSetLoading?: boolean;
   invalidateCache?: () => void;
   trackRequestVersion?: boolean;
@@ -33,6 +39,16 @@ enum RequestAbortedReason {
 
 const forbiddenStatusCode: number = HttpStatusCodes.FORBIDDEN;
 
+const callRequest = <ResponseType>(
+  makeRequest: TMakeRequest<ResponseType>,
+): Promise<ResponseType> => {
+  try {
+    return makeRequest();
+  } catch (requestError) {
+    return Promise.reject(requestError);
+  }
+};
+
 // NOTE(shumingxu, 09/29/2023): This pattern is repeated a lot in the current code
 // but will try to slowly migrate towards this wrapper.
 // Wrapper for making async requests with standard states and update hooks
@@ -45,13 +61,15 @@ const useApiRequest = <ResponseType>(
   const [isUserForbidden, setUserForbidden] = useState<boolean>(false);
   const [data, setData] = useState<ResponseType | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const [completedMakeRequest, setCompletedMakeRequest] = useState<TMakeRequest<ResponseType>>(
+    () => makeRequest,
+  );
   const abortControllerRef = useRef<AbortController>(new AbortController());
   const hasStartedRequest = useRef(false);
-  // NOTE: the attempt counter is a ref rather than state on purpose. Callers commonly rebuild the
-  // `makeRequest` closure on every render, so the request effect re-runs whenever this hook
-  // re-renders. Storing the counter in state would make every attempt schedule a render, which
-  // re-fires the effect and starts another attempt, looping forever. Attempts always land
-  // alongside a real state change (loading/data/error), so consumers still observe each bump.
+  // NOTE: the attempt counter is a ref rather than state on purpose. A state bump per attempt
+  // would re-render, and a caller that rebuilds `makeRequest` each render would then re-fire
+  // the request effect and loop. Attempts still land alongside a real state change
+  // (loading/data/error), so consumers observe each bump without a dedicated render.
   const requestVersionRef = useRef(0);
 
   const {
@@ -60,7 +78,7 @@ const useApiRequest = <ResponseType>(
     invalidateCache,
     trackRequestVersion = false,
   } = options ?? {};
-  const makeRequestAndUpdateState = useCallback(async () => {
+  const makeRequestAndUpdateState = useCallback(() => {
     if (trackRequestVersion && hasStartedRequest.current) {
       requestVersionRef.current += 1;
     } else {
@@ -72,112 +90,118 @@ const useApiRequest = <ResponseType>(
     const abortControllerForCurrentRequest = new AbortController();
     abortControllerRef.current = abortControllerForCurrentRequest;
 
-    try {
-      if (refetchShouldSetLoading) {
-        setDataLoading(true);
-      }
+    const requestPromise = callRequest(makeRequest);
 
-      const response = await makeRequest();
-      if (abortControllerForCurrentRequest.signal.aborted) {
-        return;
-      }
+    const updateStateFromRequest = async () => {
+      try {
+        const response = await requestPromise;
+        if (abortControllerForCurrentRequest.signal.aborted) {
+          return;
+        }
 
-      setData(response);
-      setResponseFailure(false);
-      setUserForbidden(false);
-      setDataLoading(false);
-      setError(null);
-    } catch (e) {
-      if (abortControllerForCurrentRequest.signal.aborted) {
-        // request was aborted, do nothing
-        return;
-      }
+        setData(response);
+        setResponseFailure(false);
+        setUserForbidden(false);
+        setDataLoading(false);
+        setError(null);
+        if (refetchShouldSetLoading) {
+          setCompletedMakeRequest(() => makeRequest);
+        }
+      } catch (e) {
+        if (abortControllerForCurrentRequest.signal.aborted) {
+          // request was aborted, do nothing
+          return;
+        }
 
-      if (isRAQIV2LoadingException(e)) {
-        // not a failure, actually still loading...
-        return;
-      }
+        if (isRAQIV2LoadingException(e)) {
+          // not a failure, actually still loading...
+          return;
+        }
 
-      setResponseFailure(true);
-      setDataLoading(false);
-      if (e instanceof Error) {
-        setError(e);
-      }
+        setResponseFailure(true);
+        setDataLoading(false);
+        if (refetchShouldSetLoading) {
+          setCompletedMakeRequest(() => makeRequest);
+        }
+        if (e instanceof Error) {
+          setError(e);
+        }
 
-      const resErr = getResponseFromError(e);
-      if (resErr) {
-        const errorCode = resErr?.status ?? 500;
-        setUserForbidden(errorCode === forbiddenStatusCode);
-      } else if (e instanceof RAQIV2ValidationError) {
-        // NOTE(gperkins@20251202): This happens when a request is invalid
-        // (e.g. unsupported filter/breakdown dimension or granularity)
-        // This is somewhat commonplace in e.g. custom dashboards,
-        // where metrics with different supported dimensions are used on a single page.
-        // UI-facing message is picked by genericChartStateToChartAbnormalState.
-        //
-        // TODO(gperkins@20251202): DSA-5144: Handle the various errors more specifically in the UI
-      } else if (isRAQIQueryError(e)) {
-        // UI-facing message is picked by genericChartStateToChartAbnormalState;
-        // we only log to Sentry here. Tags stay bounded-cardinality (safe to
-        // aggregate); identifiers go on `extra`.
-        //
-        // `raqiValidationField` is the bounded classifier for validation
-        // failures: its values are exactly the members of
-        // `RAQIQueryValidationField` (handful of short strings) plus `'none'`
-        // when the backend didn't attribute the failure to a specific field.
-        // This replaces a prior per-case boolean tag; new validation variants
-        // get coverage for free when the proto enum grows.
-        captureException(e, {
-          tags: {
-            module: 'analytics',
-            errorType: 'RAQIQueryError',
-            raqiQueryErrorCode: e.code,
-            raqiQueryErrorCodeKnown: e.isKnownCode,
-            raqiValidationField: e.validationDetails?.field ?? 'none',
-          },
-          extra: {
-            operationPath: e.operationPath,
-            backendMessage: e.message,
-            validationDetails: e.validationDetails,
-          },
-        });
-      } else if (isAceDagExecutionError(e)) {
-        // Known ACE DAG execution failure (computed metric, variant fanout,
-        // TopN / rank, L7 smoothing, or the generic base for callers that
-        // don't specialize). The chart abnormal-state mapper renders
-        // ACE-specific copy; Sentry gets structured fields for triage. Tags
-        // stay bounded-cardinality (safe to aggregate); identifiers go on
-        // `extra`. `errorType` uses the concrete subclass name so the ACE
-        // failure kinds stay distinguishable in Sentry.
-        captureException(e, {
-          tags: {
-            module: 'analytics',
-            errorType: e.name,
-            aceErrorCode: e.code ?? 'none',
-            aceErrorSeverity: e.severity ?? 'none',
-          },
-          extra: {
-            operationId: e.operationId,
-            nodeId: e.nodeId,
-            suggestion: e.suggestion,
-            backendMessage: e.message,
-          },
-        });
-      } else if (e instanceof FetchError) {
-        // Network error - already logged by SentryMiddleware.onError
-        // (It may have been ignored due to the ignoreErrors list in init.ts)
-        // We already set the error state and there is no additional logging needed
-      } else {
-        // This is some remaining unknown issue and we probably want to hear about it
-        logAnalyticsError('Unknown useApiRequest Error:', e);
+        const resErr = getResponseFromError(e);
+        if (resErr) {
+          const errorCode = resErr?.status ?? 500;
+          setUserForbidden(errorCode === forbiddenStatusCode);
+        } else if (e instanceof RAQIV2ValidationError) {
+          // NOTE(gperkins@20251202): This happens when a request is invalid
+          // (e.g. unsupported filter/breakdown dimension or granularity)
+          // This is somewhat commonplace in e.g. custom dashboards,
+          // where metrics with different supported dimensions are used on a single page.
+          // UI-facing message is picked by genericChartStateToChartAbnormalState.
+          //
+          // TODO(gperkins@20251202): DSA-5144: Handle the various errors more specifically in the UI
+        } else if (isRAQIQueryError(e)) {
+          // UI-facing message is picked by genericChartStateToChartAbnormalState;
+          // we only log to Sentry here. Tags stay bounded-cardinality (safe to
+          // aggregate); identifiers go on `extra`.
+          //
+          // `raqiValidationField` is the bounded classifier for validation
+          // failures: its values are exactly the members of
+          // `RAQIQueryValidationField` (handful of short strings) plus `'none'`
+          // when the backend didn't attribute the failure to a specific field.
+          // This replaces a prior per-case boolean tag; new validation variants
+          // get coverage for free when the proto enum grows.
+          captureException(e, {
+            tags: {
+              module: 'analytics',
+              errorType: 'RAQIQueryError',
+              raqiQueryErrorCode: e.code,
+              raqiQueryErrorCodeKnown: e.isKnownCode,
+              raqiValidationField: e.validationDetails?.field ?? 'none',
+            },
+            extra: {
+              operationPath: e.operationPath,
+              backendMessage: e.message,
+              validationDetails: e.validationDetails,
+            },
+          });
+        } else if (isAceDagExecutionError(e)) {
+          // Known ACE DAG execution failure (computed metric, variant fanout,
+          // TopN / rank, L7 smoothing, or the generic base for callers that
+          // don't specialize). The chart abnormal-state mapper renders
+          // ACE-specific copy; Sentry gets structured fields for triage. Tags
+          // stay bounded-cardinality (safe to aggregate); identifiers go on
+          // `extra`. `errorType` uses the concrete subclass name so the ACE
+          // failure kinds stay distinguishable in Sentry.
+          captureException(e, {
+            tags: {
+              module: 'analytics',
+              errorType: e.name,
+              aceErrorCode: e.code ?? 'none',
+              aceErrorSeverity: e.severity ?? 'none',
+            },
+            extra: {
+              operationId: e.operationId,
+              nodeId: e.nodeId,
+              suggestion: e.suggestion,
+              backendMessage: e.message,
+            },
+          });
+        } else if (e instanceof FetchError) {
+          // Network error - already logged by SentryMiddleware.onError
+          // (It may have been ignored due to the ignoreErrors list in init.ts)
+          // We already set the error state and there is no additional logging needed
+        } else {
+          // This is some remaining unknown issue and we probably want to hear about it
+          logAnalyticsError('Unknown useApiRequest Error:', e);
+        }
       }
-    }
+    };
+    void updateStateFromRequest();
   }, [makeRequest, refetchShouldSetLoading, trackRequestVersion]);
 
   useEffect(() => {
     if (enabled) {
-      // oxlint-disable-next-line react/react-compiler -- request state is intentionally initialized from this effect
-      void makeRequestAndUpdateState();
+      makeRequestAndUpdateState();
     }
   }, [enabled, makeRequestAndUpdateState]);
 
@@ -197,15 +221,21 @@ const useApiRequest = <ResponseType>(
     if (invalidateCache) {
       invalidateCache();
     }
-    void makeRequestAndUpdateState();
-  }, [enabled, makeRequestAndUpdateState, invalidateCache]);
+    if (refetchShouldSetLoading) {
+      setDataLoading(true);
+    }
+    makeRequestAndUpdateState();
+  }, [enabled, makeRequestAndUpdateState, invalidateCache, refetchShouldSetLoading]);
 
   // oxlint-disable react/react-compiler -- see requestVersionRef above; a ref-backed counter is
   // what keeps an attempt from scheduling a render and re-firing the request effect.
   const requestVersion = requestVersionRef.current;
 
   return {
-    isDataLoading,
+    isDataLoading:
+      enabled && refetchShouldSetLoading && completedMakeRequest !== makeRequest
+        ? true
+        : isDataLoading,
     isResponseFailed,
     isUserForbidden,
     data,

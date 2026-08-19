@@ -18,7 +18,7 @@ function getChartResourceContext(
       return CreatorResourceContext;
     default: {
       const exhaustiveCheck: never = resourceType;
-      throw new Error(`Invalid resource type ${exhaustiveCheck}`);
+      throw new Error(`Invalid resource type ${String(exhaustiveCheck)}`);
     }
   }
 }
@@ -60,7 +60,7 @@ export function useBestSupportedChartResourceOfTypes(
   resourceTypes: ChartResourceType[],
 ): ChartResource {
   const getChartResource = useGetChartResource(resourceTypes);
-  return useMemo(getChartResource, [getChartResource]);
+  return useMemo(() => getChartResource(), [getChartResource]);
 }
 
 export const useUniverseResource = (): ChartResource => {

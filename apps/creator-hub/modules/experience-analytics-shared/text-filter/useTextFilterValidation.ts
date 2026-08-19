@@ -40,6 +40,12 @@ export type UseTextFilterValidationResult = {
   isBlocked: boolean;
 };
 
+type TextFilterValidationState = {
+  confirmedValue: string;
+  validatedValue: string;
+  result: 'ok' | 'blocked';
+};
+
 /**
  * Run an async text-moderation check on a typed string. The actual moderation
  * call is supplied by the nearest `TextFilterProvider` so callers can swap
@@ -74,8 +80,11 @@ const useTextFilterValidation = (
     filterTextRef.current = filterText;
   }, [filterText]);
 
-  const [confirmedValue, setConfirmedValue] = useState(initialConfirmedValue);
-  const [status, setStatus] = useState<TextFilterStatus>('idle');
+  const [validationState, setValidationState] = useState<TextFilterValidationState>(() => ({
+    confirmedValue: initialConfirmedValue,
+    validatedValue: initialConfirmedValue.trim(),
+    result: 'ok',
+  }));
   const requestIdRef = useRef(0);
 
   const runFilterCheck = useCallback(async (text: string) => {
@@ -92,10 +101,17 @@ const useTextFilterValidation = (
         return;
       }
       if (response.isFiltered) {
-        setStatus('blocked');
+        setValidationState((previousState) => ({
+          ...previousState,
+          validatedValue: text,
+          result: 'blocked',
+        }));
       } else {
-        setConfirmedValue(text);
-        setStatus('ok');
+        setValidationState({
+          confirmedValue: text,
+          validatedValue: text,
+          result: 'ok',
+        });
       }
     } catch {
       if (requestIdRef.current !== requestId) {
@@ -103,8 +119,11 @@ const useTextFilterValidation = (
       }
       // Fail open: promote the typed value as if it had passed moderation so
       // a transient API outage doesn't strand the user.
-      setConfirmedValue(text);
-      setStatus('ok');
+      setValidationState({
+        confirmedValue: text,
+        validatedValue: text,
+        result: 'ok',
+      });
     }
   }, []);
 
@@ -119,18 +138,28 @@ const useTextFilterValidation = (
       cancelDebouncedFilterCheck();
       // Bump the request id so any in-flight response is treated as stale.
       requestIdRef.current += 1;
-      // An empty value is trivially safe; promote immediately so callers
-      // don't have to wait on an API round trip to clear the prior value.
-      setConfirmedValue('');
-      setStatus('idle');
+      // Reset stored confirmation so a value retyped after clearing is
+      // re-checked. Callers already see `confirmedValue: ''` at render time
+      // for empty input; this write exists so the next keystroke does not
+      // compare against the previous confirmed value and skip moderation.
+      // Deferred a microtask so we don't setState synchronously in the effect
+      // (the compiler treats that as a cascading render).
+      void Promise.resolve().then(() => {
+        setValidationState((previousState) =>
+          previousState.confirmedValue === '' &&
+          previousState.validatedValue === '' &&
+          previousState.result === 'ok'
+            ? previousState
+            : { confirmedValue: '', validatedValue: '', result: 'ok' },
+        );
+      });
       return;
     }
-    if (trimmed === confirmedValue.trim()) {
+    if (trimmed === validationState.confirmedValue.trim()) {
       // Typed value already matches the confirmed value (e.g. user reverted
       // an edit). Skip the API call.
       cancelDebouncedFilterCheck();
       requestIdRef.current += 1;
-      setStatus('ok');
       return;
     }
     // Bump the request id so any in-flight response for the previously typed
@@ -141,9 +170,13 @@ const useTextFilterValidation = (
     // slow response for "ab" could land after the user has typed "abc" and
     // overwrite `confirmedValue`.
     requestIdRef.current += 1;
-    setStatus('pending');
     debouncedRunFilterCheck(trimmed);
-  }, [typedValue, confirmedValue, debouncedRunFilterCheck, cancelDebouncedFilterCheck]);
+  }, [
+    typedValue,
+    validationState.confirmedValue,
+    debouncedRunFilterCheck,
+    cancelDebouncedFilterCheck,
+  ]);
 
   useEffect(
     () => () => {
@@ -158,11 +191,21 @@ const useTextFilterValidation = (
     [cancelDebouncedFilterCheck],
   );
 
-  return {
-    confirmedValue,
-    status,
-    isBlocked: status === 'blocked',
-  };
+  const trimmedValue = typedValue.trim();
+  const confirmedValue = trimmedValue ? validationState.confirmedValue : '';
+  let status: TextFilterStatus = 'pending';
+  if (!trimmedValue) {
+    status = 'idle';
+  } else if (trimmedValue === validationState.confirmedValue.trim()) {
+    status = 'ok';
+  } else if (
+    validationState.validatedValue === trimmedValue &&
+    validationState.result === 'blocked'
+  ) {
+    status = 'blocked';
+  }
+
+  return { confirmedValue, status, isBlocked: status === 'blocked' };
 };
 
 export default useTextFilterValidation;

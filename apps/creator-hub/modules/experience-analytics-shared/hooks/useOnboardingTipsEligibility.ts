@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { modelHistoryClient } from '@modules/clients/analytics';
 import { OnboardingFeatureKey } from '../constants/onboardingTipsConfigs';
 import singleToMappedRequest from './singleToMappedRequest';
@@ -10,9 +10,9 @@ const featureToEligibilityDefaultMap = Object.values(OnboardingFeatureKey).reduc
 }, new Map<OnboardingFeatureKey, boolean>());
 
 const useOnboardingTipsEligibility = () => {
-  const [featureOnboardingEligibilityRecord, setFeatureOnboardingEligibilityRecord] = useState<
+  const [eligibilityOverrides, setEligibilityOverrides] = useState<
     Map<OnboardingFeatureKey, boolean>
-  >(featureToEligibilityDefaultMap);
+  >(new Map());
 
   const featureKeys: OnboardingFeatureKey[] = Object.values(OnboardingFeatureKey);
   const makeMappedRequest = useMemo(
@@ -23,21 +23,21 @@ const useOnboardingTipsEligibility = () => {
 
   const revokeOnboardingTipsEligibility = useCallback(async (key: OnboardingFeatureKey) => {
     const updatedVisibility = await modelHistoryClient.recordUserSeenModal(key);
-    setFeatureOnboardingEligibilityRecord((prevRecord) => {
+    setEligibilityOverrides((prevRecord) => {
       const newRecord = new Map(prevRecord);
       newRecord.set(key, updatedVisibility);
       return newRecord;
     });
   }, []);
 
-  useEffect(() => {
-    if (initialDataForAllFeatureKey) {
-      const filteredData = new Map(
-        Array.from(initialDataForAllFeatureKey.entries()).map(([key, value]) => [key, !!value]),
-      );
-      setFeatureOnboardingEligibilityRecord(filteredData);
-    }
-  }, [initialDataForAllFeatureKey]);
+  const featureOnboardingEligibilityRecord = useMemo(() => {
+    const fetchedEligibility = initialDataForAllFeatureKey
+      ? new Map(
+          Array.from(initialDataForAllFeatureKey.entries()).map(([key, value]) => [key, !!value]),
+        )
+      : featureToEligibilityDefaultMap;
+    return new Map([...fetchedEligibility, ...eligibilityOverrides]);
+  }, [eligibilityOverrides, initialDataForAllFeatureKey]);
 
   return {
     featureOnboardingEligibilityRecord,

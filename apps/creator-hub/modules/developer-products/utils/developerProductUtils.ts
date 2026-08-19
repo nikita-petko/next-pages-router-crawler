@@ -24,7 +24,7 @@ export function hasRegionalPricingEnabled(product: DeveloperProductConfigV2): bo
 }
 
 export function hasManagedPricingEnabled(product: DeveloperProductConfigV2): boolean {
-  return product.isManagedPricingEnabled ?? false;
+  return product.isManagedPricingEnabled;
 }
 
 export function parseDeveloperProductConfig(
@@ -43,7 +43,7 @@ export function parseDeveloperProductConfig(
       developerProduct.priceInformation?.enabledFeatures?.includes('RegionalPricing') ?? false,
     isImmutable: developerProduct.isImmutable,
     updatedTimestamp: developerProduct.updatedTimestamp,
-    isManagedPricingEnabled: developerProduct.isManagedPricingEnabled ?? false,
+    isManagedPricingEnabled: developerProduct.isManagedPricingEnabled,
 
     // Derived properties
     isSelectableForRegionalPricing: isSelectableForRegionalPricing(developerProduct),

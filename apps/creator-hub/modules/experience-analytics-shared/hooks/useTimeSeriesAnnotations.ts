@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { TRAQIV2Dimension, TRAQIV2UIMetric } from '@rbx/creator-hub-analytics-config';
 import {
   RAQIV2DateRangeType,
@@ -51,6 +51,12 @@ type RequestContextByUniqueKey = Map<
     sourceMetricConfig: SourceMetricConfigWithSeverityDimension;
   }
 >;
+
+type ChartContextAnnotationsOverride = {
+  annotationRequestKey: string;
+  replacedAnnotationTypes: AnnotationAlertType[];
+  annotations: TimeSeriesAnnotation[];
+};
 
 function getSourceMetricContextsForAnnotationType(
   annotationType: AnnotationType,
@@ -260,15 +266,16 @@ export const useTimeSeriesAnnotations = ({
     isSupportedOverride?: (annotationType: AnnotationType) => boolean | undefined,
     targetingDimensions?: readonly TRAQIV2Dimension[],
   ) => TimeSeriesAnnotation[] | undefined;
-  updateTimeSeriesAnnotationsGivenChartContext: (context: RAQIV2ChartContext) => void;
+  updateTimeSeriesAnnotationsGivenChartContext: (context: RAQIV2ChartContext) => Promise<void>;
 } & GenericChartState => {
   const { translate } = useTranslationWrapper(useTranslation());
   const { client: raqiClient } = useRAQIV2Client(false);
   const { annotationsClient } = useAnnotationsClient(resource.type);
-  const [timeSeriesAnnotations, setTimeSeriesAnnotations] = useState<TimeSeriesAnnotation[] | null>(
-    null,
-  );
-  const lastChartContextRef = useRef<string>('');
+  const [chartContextOverride, setChartContextOverride] =
+    useState<ChartContextAnnotationsOverride | null>(null);
+  const lastChartContextOwnerRef = useRef('');
+  const latestChartContextOwnerRef = useRef('');
+  const chartContextRequestGenerationRef = useRef(0);
   // status-config endpoint is universe-scoped; only forward the id when the resource is a Universe.
   // For Group/User resources, passing the id would be treated as a universeId and 403.
   const statusConfigUniverseId =
@@ -283,6 +290,19 @@ export const useTimeSeriesAnnotations = ({
     });
     return Array.from(new Set([...givenAnnotationTypes, ...notSelectableAnnotationTypes]));
   }, [givenAnnotationTypes]);
+  const annotationRequestKey = useMemo(
+    () =>
+      JSON.stringify({
+        resource: { id: resource.id, type: resource.type },
+        placeId,
+        rootPlaceId,
+        funnelName,
+        annotationTypes: [...annotationTypes].sort(),
+        startUtc: startUtc.toISOString(),
+        endUtc: endUtc.toISOString(),
+      }),
+    [annotationTypes, endUtc, funnelName, placeId, resource, rootPlaceId, startUtc],
+  );
 
   const fetchAnnotationsByTypes = useCallback(
     async (types: AnnotationType[]): Promise<Map<AnnotationType, TimeSeriesAnnotation[]>> => {
@@ -371,25 +391,27 @@ export const useTimeSeriesAnnotations = ({
     orderedData: initialAnnotationData,
   } = useMappedApiRequest(annotationTypes, fetchAnnotationsByTypes);
 
-  useEffect(() => {
-    // Dedupe by content. `initialAnnotationData` can be a fresh array on every
-    // upstream re-render even when the annotation contents are unchanged, and
-    // `flatMap` always allocates. Without this guard, every upstream tick would
-    // schedule a new annotations state, fan out a new context value, and force
-    // every chart consumer to recompute — which, on first-load with computed
-    // metrics, drives a synchronous re-render cascade (DSA-5737 follow-up).
-    if (annotationTypes.length === 0) {
-      setTimeSeriesAnnotations((prev) => (prev !== null && prev.length === 0 ? prev : []));
-      return;
+  const initialTimeSeriesAnnotations = useMemo(
+    () =>
+      isDataLoading ? null : initialAnnotationData.flatMap((annotations) => annotations ?? []),
+    [initialAnnotationData, isDataLoading],
+  );
+  const timeSeriesAnnotations = useMemo(() => {
+    if (
+      initialTimeSeriesAnnotations === null ||
+      chartContextOverride?.annotationRequestKey !== annotationRequestKey
+    ) {
+      return initialTimeSeriesAnnotations;
     }
-    const next = initialAnnotationData.flatMap((annotations) => annotations ?? []);
-    setTimeSeriesAnnotations((prev) => {
-      if (prev && prev.length === next.length && prev.every((ann, i) => ann === next[i])) {
-        return prev;
-      }
-      return next;
-    });
-  }, [initialAnnotationData, annotationTypes]);
+    return [
+      ...initialTimeSeriesAnnotations.filter(
+        (annotation) =>
+          !isAnnotationAlertType(annotation.type) ||
+          !chartContextOverride.replacedAnnotationTypes.includes(annotation.type),
+      ),
+      ...chartContextOverride.annotations,
+    ];
+  }, [annotationRequestKey, chartContextOverride, initialTimeSeriesAnnotations]);
 
   const getCurrentSupportedAnnotations = useCallback(
     (
@@ -450,11 +472,15 @@ export const useTimeSeriesAnnotations = ({
         timeSpec: context.timeSpec,
         limit: context.limit,
       });
-
+      const contextOwner = `${annotationRequestKey}:${contextHash}`;
       if (
-        lastChartContextRef.current === contextHash ||
-        !isValidAlertRAQIRequest(context.breakdown, context.filter)
+        lastChartContextOwnerRef.current === contextOwner ||
+        latestChartContextOwnerRef.current === contextOwner
       ) {
+        return;
+      }
+
+      if (!isValidAlertRAQIRequest(context.breakdown, context.filter)) {
         return;
       }
 
@@ -465,6 +491,10 @@ export const useTimeSeriesAnnotations = ({
             MetricAnnotationType.AlertMetricWithChartContext,
           ).length > 0,
       );
+
+      if (allChartContextAnnotationTypes.length === 0) {
+        return;
+      }
 
       const chartContextAnnotationTypesToFetch = allChartContextAnnotationTypes.filter(
         (annotationType) => {
@@ -480,9 +510,12 @@ export const useTimeSeriesAnnotations = ({
         },
       );
 
-      if (allChartContextAnnotationTypes.length === 0) {
-        return;
-      }
+      // Claim ownership only once the request is going to run. Callers invoke this on every
+      // chart-context change, so bumping the generation for a context that returns early
+      // would cancel an in-flight fetch for a context that is still on screen.
+      chartContextRequestGenerationRef.current += 1;
+      const requestGeneration = chartContextRequestGenerationRef.current;
+      latestChartContextOwnerRef.current = contextOwner;
 
       try {
         const updatedAnnotationsMap = await Promise.allSettled(
@@ -495,37 +528,52 @@ export const useTimeSeriesAnnotations = ({
             return { annotationType, annotations };
           }),
         );
+        if (
+          chartContextRequestGenerationRef.current !== requestGeneration ||
+          latestChartContextOwnerRef.current !== contextOwner
+        ) {
+          return;
+        }
 
-        setTimeSeriesAnnotations((prevAnnotations) => {
-          if (!prevAnnotations) {
-            return prevAnnotations;
-          }
-
-          const filteredAnnotations = prevAnnotations.filter(
-            (ann) =>
-              !isAnnotationAlertType(ann.type) ||
-              !allChartContextAnnotationTypes.includes(ann.type),
-          );
-          const newAnnotations: TimeSeriesAnnotation[] = updatedAnnotationsMap
-            .flatMap((item) => {
-              if (item.status === 'rejected') {
-                logAnalyticsError(`Fail to get annotation with chart context. ${item.reason}`);
-                return null;
-              }
-              return item.value.annotations;
-            })
-            .filter((item) => item !== null);
-
-          return [...filteredAnnotations, ...newAnnotations];
+        const newAnnotations: TimeSeriesAnnotation[] = updatedAnnotationsMap
+          .flatMap((item) => {
+            if (item.status === 'rejected') {
+              logAnalyticsError(`Fail to get annotation with chart context. ${item.reason}`);
+              return null;
+            }
+            return item.value.annotations;
+          })
+          .filter((item) => item !== null);
+        setChartContextOverride({
+          annotationRequestKey,
+          replacedAnnotationTypes: allChartContextAnnotationTypes,
+          annotations: newAnnotations,
         });
 
-        lastChartContextRef.current = contextHash;
+        const everyFetchRejected =
+          chartContextAnnotationTypesToFetch.length > 0 &&
+          updatedAnnotationsMap.every((item) => item.status === 'rejected');
+        if (everyFetchRejected) {
+          // A completed-but-failed fetch must not occupy the owner slot, or the
+          // next chart-context effect for this same hash can never retry.
+          if (latestChartContextOwnerRef.current === contextOwner) {
+            latestChartContextOwnerRef.current = '';
+          }
+        } else {
+          lastChartContextOwnerRef.current = contextOwner;
+        }
       } catch (error) {
+        if (chartContextRequestGenerationRef.current !== requestGeneration) {
+          return;
+        }
+        if (latestChartContextOwnerRef.current === contextOwner) {
+          latestChartContextOwnerRef.current = '';
+        }
         const detail = error instanceof Error ? error.message : String(error);
         logAnalyticsError(`Fail to get annotation with chart context. ${detail}`);
       }
     },
-    [annotationTypes, raqiClient],
+    [annotationRequestKey, annotationTypes, raqiClient],
   );
 
   return useMemo(

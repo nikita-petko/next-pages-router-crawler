@@ -96,13 +96,7 @@ const ConfigurePassContainer = ({ universeId, passId, pageType }: Props) => {
       isArchiveEnabled={!!isProductArchiveEnabled}
       price={pass.priceInformation?.defaultPriceInRobux}
       // TODO: handle "default managed pricing enabled" scenario since it's no longer dependent on price information
-      isManagedPricingEnabled={
-        // Note: isManagedPricingEnabled should always exist on this path as the backend flag is tightly fail-closed on this
-        // Falling back to regional pricing as a default but see above todo
-        pass.isManagedPricingEnabled ??
-        pass.priceInformation?.enabledFeatures.includes('RegionalPricing') ??
-        false
-      }
+      isManagedPricingEnabled={pass.isManagedPricingEnabled}
       isInActivePriceOptimizationExperiment={isInActivePriceOptimizationExperiment}
       managedPricingOnboardingStatus={managedPricingOnboardingStatus}
       isPending={isPassDetailsRefetching}

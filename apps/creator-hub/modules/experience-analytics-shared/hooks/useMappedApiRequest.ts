@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GenericChartState } from '@modules/charts-generic/charts/types/ChartTypes';
 import { getResponseFromError } from '@modules/clients/utils';
 import { HttpStatusCodes } from '@modules/miscellaneous/common';
@@ -11,17 +11,38 @@ type MappedApiRequestResponse<IdType, ResponseType> = {
   requestVersion: number;
 } & GenericChartState;
 
+type MappedApiRequestState<IdType, ResponseType> = {
+  makeRequest: (ids: IdType[]) => Promise<Map<IdType, ResponseType>>;
+  isDataLoading: boolean;
+  isResponseFailed: boolean;
+  isUserForbidden: boolean;
+  data: Map<IdType, ResponseType | null>;
+};
+
 const useMappedApiRequest = <IdType, ResponseType>(
   ids: IdType[],
   makeRequest: (ids: IdType[]) => Promise<Map<IdType, ResponseType>>,
   enabled = true,
   trackRequestVersion = false,
 ): MappedApiRequestResponse<IdType, ResponseType> => {
-  const [isDataLoading, setDataLoading] = useState<boolean>(true);
-  const [isResponseFailed, setResponseFailure] = useState<boolean>(false);
-  const [isUserForbidden, setUserForbidden] = useState<boolean>(false);
-  const [data, setData] = useState<Map<IdType, ResponseType | null>>(new Map());
-  const previousMakeRequest = useRef(makeRequest);
+  const [requestState, setRequestState] = useState<MappedApiRequestState<IdType, ResponseType>>(
+    () => ({
+      makeRequest,
+      isDataLoading: ids.length > 0,
+      isResponseFailed: false,
+      isUserForbidden: false,
+      data: new Map(),
+    }),
+  );
+  const requestOwnerRef = useRef(makeRequest);
+  const resetRequestInFlightRef = useRef(false);
+  const nextRequestIdRef = useRef(0);
+  const latestRequestIdRef = useRef(0);
+  const latestRequestIdByIdRef = useRef(new Map<IdType, number>());
+  const pendingRequestIdByIdRef = useRef(new Map<IdType, number>());
+  const resetData = useMemo(() => new Map<IdType, ResponseType | null>(), []);
+  const ownsRequestState = requestState.makeRequest === makeRequest;
+  const data = ownsRequestState ? requestState.data : resetData;
   const hasStartedRequest = useRef(false);
   // NOTE: ref-backed for the same reason as useApiRequest — a state bump per attempt would
   // re-render, re-run this effect for callers that rebuild `makeRequest` each render, and loop.
@@ -32,24 +53,37 @@ const useMappedApiRequest = <IdType, ResponseType>(
       return;
     }
 
-    const shouldResetData = previousMakeRequest.current !== makeRequest;
-    let newIds: IdType[] = [];
+    // An owner change with no ids to fetch advances `requestOwnerRef` without issuing a
+    // request, leaving `requestState` owned by the previous `makeRequest`. Its data is not
+    // visible to consumers, so it must not count as already fetched — otherwise ids that
+    // the previous owner had resolved would never be requested from the new one.
+    const shouldResetData =
+      requestOwnerRef.current !== makeRequest ||
+      (!ownsRequestState && pendingRequestIdByIdRef.current.size === 0);
     if (shouldResetData) {
-      // makeRequest has changed, clear cached values
-      newIds = ids;
-      setDataLoading(true);
-      setUserForbidden(false);
-      setResponseFailure(false);
-      previousMakeRequest.current = makeRequest;
-    } else {
-      newIds = ids.filter((id) => !data.has(id));
+      requestOwnerRef.current = makeRequest;
+      resetRequestInFlightRef.current = true;
+      latestRequestIdByIdRef.current.clear();
+      pendingRequestIdByIdRef.current.clear();
     }
+    const newIds = shouldResetData
+      ? ids
+      : ids.filter(
+          (id) =>
+            !requestState.data.has(id) &&
+            (resetRequestInFlightRef.current || !pendingRequestIdByIdRef.current.has(id)),
+        );
 
     if (newIds.length === 0) {
-      // oxlint-disable-next-line react/react-compiler -- loading state follows the derived request set
-      setDataLoading(false);
       return;
     }
+    const requestId = nextRequestIdRef.current + 1;
+    nextRequestIdRef.current = requestId;
+    latestRequestIdRef.current = requestId;
+    newIds.forEach((id) => {
+      latestRequestIdByIdRef.current.set(id, requestId);
+      pendingRequestIdByIdRef.current.set(id, requestId);
+    });
 
     if (trackRequestVersion && hasStartedRequest.current) {
       // oxlint-disable-next-line react/react-compiler -- attempt counter is intentionally ref-backed to avoid a render/refetch loop
@@ -61,43 +95,99 @@ const useMappedApiRequest = <IdType, ResponseType>(
     const makeRequestAndUpdateState = async () => {
       try {
         const responseMap = await makeRequest(newIds);
-        setData((prevData) => {
-          return new Map([
-            ...(shouldResetData ? [] : Array.from(prevData)),
-            // fill in ids that did not receive a response with null
-            ...newIds.map((id) => [id, null] as [IdType, null]),
-            ...Array.from(responseMap),
-          ]);
+        if (requestOwnerRef.current !== makeRequest) {
+          return;
+        }
+        const ownedIds = newIds.filter(
+          (id) => latestRequestIdByIdRef.current.get(id) === requestId,
+        );
+        if (ownedIds.length === 0) {
+          return;
+        }
+        resetRequestInFlightRef.current = false;
+        newIds.forEach((id) => {
+          if (pendingRequestIdByIdRef.current.get(id) === requestId) {
+            pendingRequestIdByIdRef.current.delete(id);
+          }
         });
-        setResponseFailure(false);
-        setUserForbidden(false);
+        const ownedResponses = Array.from(responseMap).filter(
+          ([id]) => (latestRequestIdByIdRef.current.get(id) ?? 0) <= requestId,
+        );
+        ownedResponses.forEach(([id]) => latestRequestIdByIdRef.current.set(id, requestId));
+        setRequestState((previousState) => {
+          const previousData =
+            previousState.makeRequest === makeRequest ? Array.from(previousState.data) : [];
+          const isLatestRequest = latestRequestIdRef.current === requestId;
+          return {
+            makeRequest,
+            isDataLoading: pendingRequestIdByIdRef.current.size > 0,
+            isResponseFailed: isLatestRequest ? false : previousState.isResponseFailed,
+            isUserForbidden: isLatestRequest ? false : previousState.isUserForbidden,
+            data: new Map([
+              ...previousData,
+              // fill in ids that did not receive a response with null
+              ...ownedIds.map((id) => [id, null] as [IdType, null]),
+              ...ownedResponses,
+            ]),
+          };
+        });
       } catch (e) {
+        if (requestOwnerRef.current !== makeRequest) {
+          return;
+        }
+        const ownedIds = newIds.filter(
+          (id) => latestRequestIdByIdRef.current.get(id) === requestId,
+        );
+        if (ownedIds.length === 0) {
+          return;
+        }
+        resetRequestInFlightRef.current = false;
+        newIds.forEach((id) => {
+          if (pendingRequestIdByIdRef.current.get(id) === requestId) {
+            pendingRequestIdByIdRef.current.delete(id);
+          }
+        });
+        const isLatestRequest = latestRequestIdRef.current === requestId;
         if (isRAQIV2LoadingException(e)) {
-          // still loading; nothing to do here
+          setRequestState((previousState) => ({
+            makeRequest,
+            isDataLoading: pendingRequestIdByIdRef.current.size > 0,
+            isResponseFailed: isLatestRequest ? false : previousState.isResponseFailed,
+            isUserForbidden: isLatestRequest ? false : previousState.isUserForbidden,
+            data: previousState.data,
+          }));
           return;
         }
 
         const err = getResponseFromError(e);
         const errorCode = err?.status ?? 500;
-        // clear old data on error if we are resetting the state
-        if (shouldResetData) {
-          setData(new Map(newIds.map((id) => [id, null] as [IdType, null])));
-        }
-        setResponseFailure(true);
-        setUserForbidden(errorCode === HttpStatusCodes.FORBIDDEN.valueOf());
-      } finally {
-        setDataLoading(false);
+        setRequestState((previousState) => ({
+          makeRequest,
+          isDataLoading: pendingRequestIdByIdRef.current.size > 0,
+          isResponseFailed: isLatestRequest ? true : previousState.isResponseFailed,
+          isUserForbidden: isLatestRequest
+            ? errorCode === HttpStatusCodes.FORBIDDEN.valueOf()
+            : previousState.isUserForbidden,
+          data: shouldResetData
+            ? new Map([
+                ...(previousState.makeRequest === makeRequest
+                  ? Array.from(previousState.data)
+                  : []),
+                ...ownedIds.map((id) => [id, null] as [IdType, null]),
+              ])
+            : previousState.data,
+        }));
       }
     };
     void makeRequestAndUpdateState();
-  }, [ids, data, enabled, makeRequest, trackRequestVersion]);
+  }, [enabled, ids, makeRequest, ownsRequestState, requestState.data, trackRequestVersion]);
 
   const orderedData = useMemo(() => ids.map((id) => data.get(id) ?? null), [data, ids]);
 
   return {
-    isDataLoading: !enabled || isDataLoading,
-    isResponseFailed,
-    isUserForbidden,
+    isDataLoading: !enabled || (ownsRequestState ? requestState.isDataLoading : ids.length > 0),
+    isResponseFailed: ownsRequestState && requestState.isResponseFailed,
+    isUserForbidden: ownsRequestState && requestState.isUserForbidden,
     data,
     orderedData,
     requestIdentity: makeRequest,

@@ -1,5 +1,13 @@
 import type { FunctionComponent } from 'react';
-import React, { useEffect, useState, createContext, useContext, useCallback, useMemo } from 'react';
+import React, {
+  useState,
+  createContext,
+  useContext,
+  useCallback,
+  useMemo,
+  useRef,
+  useEffect,
+} from 'react';
 import type { Watchlist, WatchlistType } from '@rbx/client-analytics-watchlists/v1';
 import type { GenericChartState } from '@modules/charts-generic/charts/types/ChartTypes';
 import useApiRequest from '../hooks/useApiRequest';
@@ -12,6 +20,13 @@ type AnalyticsWatchlistProviderState = {
   removeItem: (itemId: string) => Promise<void>;
   watchlistContains: (itemId: string) => boolean;
 } & GenericChartState;
+
+type FetchWatchlist = () => Promise<Watchlist>;
+
+type WatchlistMutationState = {
+  requestOwner: FetchWatchlist;
+  watchlist: Watchlist;
+};
 
 const uninitializedFunction = () => {
   throw new Error('Analytics Watchlist context not properly initialized');
@@ -39,38 +54,56 @@ const AnalyticsWatchlistProvider: FunctionComponent<
     () => analyticsWatchlistsClient.getWatchlist({ watchlistType }),
     [analyticsWatchlistsClient, watchlistType],
   );
-  const [currentWatchlist, setCurrentWatchlist] = useState<Watchlist | null>(null);
+  const [watchlistMutation, setWatchlistMutation] = useState<WatchlistMutationState | null>(null);
+  const mutationGenerationRef = useRef(0);
   const {
     data: fetchWatchlistResult,
     isDataLoading,
     isResponseFailed,
     isUserForbidden,
   } = useApiRequest(fetchWatchlist);
+  const fetchWatchlistResultRef = useRef(fetchWatchlistResult);
   useEffect(() => {
-    if (fetchWatchlistResult !== null) {
-      setCurrentWatchlist(fetchWatchlistResult);
-    }
-  }, [fetchWatchlistResult]);
+    fetchWatchlistResultRef.current = fetchWatchlistResult;
+  });
+  const currentWatchlist =
+    watchlistMutation?.requestOwner === fetchWatchlist
+      ? watchlistMutation.watchlist
+      : fetchWatchlistResult;
 
   const upsertWatchlist = useCallback(
     async (itemIds: string[], skipAwaitResponse = false) => {
+      mutationGenerationRef.current += 1;
+      const mutationGeneration = mutationGenerationRef.current;
       // update watchlist first for reorders
       if (skipAwaitResponse) {
-        setCurrentWatchlist((watchlist) => ({
-          id: watchlist?.id,
-          watchlistType: watchlist?.watchlistType,
-          watchlistItems: {
-            itemIds,
-          },
-        }));
+        setWatchlistMutation((previousMutation) => {
+          const previousWatchlist =
+            previousMutation?.requestOwner === fetchWatchlist
+              ? previousMutation.watchlist
+              : fetchWatchlistResultRef.current;
+          return {
+            requestOwner: fetchWatchlist,
+            watchlist: {
+              id: previousWatchlist?.id,
+              watchlistType: previousWatchlist?.watchlistType,
+              watchlistItems: {
+                itemIds,
+              },
+            },
+          };
+        });
       }
       const upsertResult = await analyticsWatchlistsClient.upsertWatchlist({
         watchlistType,
         watchlistItemsItemIds: itemIds,
       });
-      setCurrentWatchlist(upsertResult);
+      if (mutationGenerationRef.current !== mutationGeneration) {
+        return;
+      }
+      setWatchlistMutation({ requestOwner: fetchWatchlist, watchlist: upsertResult });
     },
-    [analyticsWatchlistsClient, watchlistType],
+    [analyticsWatchlistsClient, fetchWatchlist, watchlistType],
   );
 
   const addItem = useCallback(
@@ -81,9 +114,9 @@ const AnalyticsWatchlistProvider: FunctionComponent<
       ) {
         return;
       }
-      upsertWatchlist([...currentWatchlist.watchlistItems.itemIds, itemId]);
+      void upsertWatchlist([...currentWatchlist.watchlistItems.itemIds, itemId]);
     },
-    [currentWatchlist?.watchlistItems?.itemIds, upsertWatchlist],
+    [currentWatchlist, upsertWatchlist],
   );
 
   const removeItem = useCallback(
@@ -94,14 +127,14 @@ const AnalyticsWatchlistProvider: FunctionComponent<
       ) {
         return;
       }
-      upsertWatchlist(currentWatchlist.watchlistItems.itemIds.filter((id) => id !== itemId));
+      void upsertWatchlist(currentWatchlist.watchlistItems.itemIds.filter((id) => id !== itemId));
     },
-    [currentWatchlist?.watchlistItems?.itemIds, upsertWatchlist],
+    [currentWatchlist, upsertWatchlist],
   );
 
   const watchlistContains = useCallback(
     (itemId: string) => currentWatchlist?.watchlistItems?.itemIds?.includes(itemId) ?? false,
-    [currentWatchlist?.watchlistItems?.itemIds],
+    [currentWatchlist],
   );
 
   const context = useMemo(() => {

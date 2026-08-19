@@ -10,7 +10,7 @@ export function isEligibleForManagedPricing(product: {
 }
 
 export function isManagedPricingEnabled(product: GamePassConfigV2 | DeveloperProductConfigV2) {
-  return (product.isManagedPricingEnabled ?? false) && isEligibleForManagedPricing(product);
+  return product.isManagedPricingEnabled && isEligibleForManagedPricing(product);
 }
 
 export function isInActivePriceOptimizationExperiment(
