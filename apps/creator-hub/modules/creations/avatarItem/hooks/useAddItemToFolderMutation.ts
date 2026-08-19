@@ -38,6 +38,12 @@ const useAddItemToFolderMutation = ({ onSuccess, onError }: UseAddItemToFolderMu
         case 6:
           onError(translate('Message.ItemNotFound'));
           break;
+        case 18:
+          onError(translate('Error.TooManyItemsInFolderRequest'));
+          break;
+        case 19:
+          onError(translate('Error.FolderItemLimitReached'));
+          break;
         default:
           onError(translate('Error.AddItemToFolderFailure'));
           break;

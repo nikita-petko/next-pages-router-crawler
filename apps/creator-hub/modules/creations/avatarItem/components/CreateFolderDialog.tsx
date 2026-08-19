@@ -19,6 +19,7 @@ import {
 } from '@modules/react-query/itemConfiguration/itemConfigurationQueries';
 
 const FolderNameModeratedErrorCode = 14;
+const TooManyFoldersErrorCode = 20;
 
 export interface CreateFolderDialogProps {
   open: boolean;
@@ -66,6 +67,10 @@ const CreateFolderDialog: FunctionComponent<React.PropsWithChildren<CreateFolder
       const errorResponse = await tryParseResponseError(error);
       if (errorResponse?.code === FolderNameModeratedErrorCode) {
         showBottomMsg(translate('Error.FolderNameModerated'));
+        return;
+      }
+      if (errorResponse?.code === TooManyFoldersErrorCode) {
+        showBottomMsg(translate('Error.TooManyFolders'));
         return;
       }
       showBottomMsg(fallbackMessage);
