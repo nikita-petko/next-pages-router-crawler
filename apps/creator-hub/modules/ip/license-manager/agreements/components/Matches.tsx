@@ -11,8 +11,10 @@ import {
   AgreementCandidateIndexSortDirection,
   AgreementCandidateType,
 } from '@rbx/client-content-licensing-api/v1';
+import { useFlag } from '@rbx/flags';
 import { useTranslation } from '@rbx/intl';
 import { makeStyles, CircularProgress, Button, Tooltip, FilterListIcon } from '@rbx/ui';
+import { isAvatarItemLicensingEnabled as isAvatarItemLicensingEnabledFlag } from '@generated/flags/contentLicensing';
 import EmptyState from '@modules/miscellaneous/components/EmptyState/EmptyState';
 import EmptyStateBorder from '@modules/miscellaneous/components/EmptyState/EmptyStateBorder';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
@@ -26,6 +28,7 @@ import {
   useLicenseManagerLoggerLogOnce,
 } from '../../utils/logger';
 import { markMatchCandidateIgnored, useMatchesQuery } from '../hooks/useMatchesQuery';
+import CollectibleMatchesTable from './CollectibleMatchesTable';
 import ContentMaturityFilterChip from './ContentMaturityFilterChip';
 import DauRangeFilterChip, { DauRange } from './DauRangeFilterChip';
 import IpFamilyFilterChip from './IpFamilyFilterChip';
@@ -154,6 +157,7 @@ const NoIpFamiliesContent = () => {
 interface MatchesProps {
   openDialog?: () => void;
   maxManualRequestsLimit?: number;
+  candidateType?: AgreementCandidateType;
 }
 
 interface MatchesFilters {
@@ -170,6 +174,7 @@ interface MatchesSort {
 }
 
 type MatchesTableAnalyticsContext = {
+  candidateType: AgreementCandidateType;
   matchesDataSource: 'indexed' | 'legacy';
   hasIpFamilyFilter: boolean;
   dauRangeFilter: string;
@@ -185,6 +190,7 @@ const getMatchesTableAnalyticsContext = (
   filters: MatchesFilters,
   sort: MatchesSort,
   isIndexedMatchesEnabled: boolean,
+  candidateType: AgreementCandidateType,
 ): MatchesTableAnalyticsContext => {
   const hasDauRangeFilter = filters.dauRange != null && filters.dauRange !== DauRange.All;
   const hasLifetimeVisitsRangeFilter =
@@ -197,6 +203,7 @@ const getMatchesTableAnalyticsContext = (
   const hasSort = isIndexedMatchesEnabled && sort.sortBy !== undefined;
 
   return {
+    candidateType,
     matchesDataSource: isIndexedMatchesEnabled ? 'indexed' : 'legacy',
     hasIpFamilyFilter,
     dauRangeFilter: hasDauRangeFilter ? String(filters.dauRange) : 'All',
@@ -222,7 +229,7 @@ const getMatchesTableAnalyticsContext = (
 const serializeMatchesTableAnalyticsContext = (context: MatchesTableAnalyticsContext): string =>
   JSON.stringify(context);
 
-const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog }) => {
+const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, candidateType }) => {
   const { classes } = useStyles();
   const { translate } = useTranslation();
   const { logEvent } = useLicenseManagerLogger();
@@ -230,6 +237,13 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
   const queryClient = useQueryClient();
   const { settings, isFetched: isSettingsFetched } = useSettings();
   const isIndexedMatchesEnabled = settings.enableIpPlatformMatchesTableEsIndexImprovements;
+  const { ready: isAvatarItemLicensingFlagReady, value: isAvatarItemLicensingEnabled } = useFlag(
+    isAvatarItemLicensingEnabledFlag,
+  );
+  const isCollectibleMatchesRequest = candidateType === AgreementCandidateType.Collectible;
+  const analyticsCandidateType = candidateType ?? AgreementCandidateType.Universe;
+  const isCollectibleMatchesEnabled =
+    isAvatarItemLicensingFlagReady && isAvatarItemLicensingEnabled;
   const filterButtonRef = useRef<HTMLButtonElement>(null);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
 
@@ -247,8 +261,14 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
   });
   const sortRef = useRef(sort);
   const analyticsContext = useMemo(
-    () => getMatchesTableAnalyticsContext(filters, sort, isIndexedMatchesEnabled),
-    [filters, sort, isIndexedMatchesEnabled],
+    () =>
+      getMatchesTableAnalyticsContext(
+        filters,
+        sort,
+        isIndexedMatchesEnabled,
+        analyticsCandidateType,
+      ),
+    [analyticsCandidateType, filters, sort, isIndexedMatchesEnabled],
   );
   const analyticsContextDedupeKey = serializeMatchesTableAnalyticsContext(analyticsContext);
 
@@ -275,7 +295,9 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
     sortBy: isIndexedMatchesEnabled ? sort.sortBy : undefined,
     sortDirection:
       isIndexedMatchesEnabled && sort.sortBy !== undefined ? sort.sortDirection : undefined,
+    candidateType,
     loadAgreementStatuses: true,
+    enabled: !isCollectibleMatchesRequest || isCollectibleMatchesEnabled,
   });
 
   const { allAgreementCandidates, agreementStatusesColumn } = candidatesQuery;
@@ -311,7 +333,12 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
     filtersRef.current = nextFilters;
     logEvent(
       LicenseManagerClickEvent.MatchesTableIpFamilyFilterClickEvent,
-      getMatchesTableAnalyticsContext(nextFilters, sortRef.current, isIndexedMatchesEnabled),
+      getMatchesTableAnalyticsContext(
+        nextFilters,
+        sortRef.current,
+        isIndexedMatchesEnabled,
+        analyticsCandidateType,
+      ),
     );
     setFilters(nextFilters);
   };
@@ -321,7 +348,12 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
     filtersRef.current = nextFilters;
     logEvent(
       LicenseManagerClickEvent.MatchesTableDauRangeFilterClickEvent,
-      getMatchesTableAnalyticsContext(nextFilters, sortRef.current, isIndexedMatchesEnabled),
+      getMatchesTableAnalyticsContext(
+        nextFilters,
+        sortRef.current,
+        isIndexedMatchesEnabled,
+        analyticsCandidateType,
+      ),
     );
     setFilters(nextFilters);
   };
@@ -331,7 +363,12 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
     filtersRef.current = nextFilters;
     logEvent(
       LicenseManagerClickEvent.MatchesTableLifetimeVisitsRangeFilterClickEvent,
-      getMatchesTableAnalyticsContext(nextFilters, sortRef.current, isIndexedMatchesEnabled),
+      getMatchesTableAnalyticsContext(
+        nextFilters,
+        sortRef.current,
+        isIndexedMatchesEnabled,
+        analyticsCandidateType,
+      ),
     );
     setFilters(nextFilters);
   };
@@ -341,7 +378,12 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
     filtersRef.current = nextFilters;
     logEvent(
       LicenseManagerClickEvent.MatchesTableContentMaturityFilterClickEvent,
-      getMatchesTableAnalyticsContext(nextFilters, sortRef.current, isIndexedMatchesEnabled),
+      getMatchesTableAnalyticsContext(
+        nextFilters,
+        sortRef.current,
+        isIndexedMatchesEnabled,
+        analyticsCandidateType,
+      ),
     );
     setFilters(nextFilters);
   };
@@ -351,7 +393,12 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
     filtersRef.current = nextFilters;
     logEvent(
       LicenseManagerClickEvent.MatchesTableMatchCandidateStatusFilterClickEvent,
-      getMatchesTableAnalyticsContext(nextFilters, sortRef.current, isIndexedMatchesEnabled),
+      getMatchesTableAnalyticsContext(
+        nextFilters,
+        sortRef.current,
+        isIndexedMatchesEnabled,
+        analyticsCandidateType,
+      ),
     );
     setFilters(nextFilters);
   };
@@ -370,11 +417,16 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
       sortRef.current = nextSort;
       logEvent(
         LicenseManagerClickEvent.MatchesTableSortClickEvent,
-        getMatchesTableAnalyticsContext(filtersRef.current, nextSort, isIndexedMatchesEnabled),
+        getMatchesTableAnalyticsContext(
+          filtersRef.current,
+          nextSort,
+          isIndexedMatchesEnabled,
+          analyticsCandidateType,
+        ),
       );
       setSort(nextSort);
     },
-    [isIndexedMatchesEnabled, logEvent],
+    [analyticsCandidateType, isIndexedMatchesEnabled, logEvent],
   );
 
   const handleResetFilters = () => {
@@ -512,7 +564,7 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
       candidatesQuery.isFetching ||
       candidatesQuery.isPlaceholderData ||
       hasNoMatches ||
-      hasNoIpFamilies
+      (!isCollectibleMatchesRequest && hasNoIpFamilies)
     ) {
       return;
     }
@@ -536,11 +588,13 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
     candidatesQuery.isSuccess,
     hasNoIpFamilies,
     hasNoMatches,
+    isCollectibleMatchesRequest,
     logOnce,
   ]);
 
   useEffect(() => {
     if (
+      isCollectibleMatchesRequest ||
       !candidatesQuery.isSuccess ||
       candidatesQuery.isFetching ||
       candidatesQuery.isPlaceholderData ||
@@ -568,17 +622,33 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
     candidatesQuery.isSuccess,
     hasActiveFilters,
     hasNoMatches,
+    isCollectibleMatchesRequest,
     logOnce,
   ]);
 
   let content;
-  if (candidatesQuery.isPending || ipFamiliesReq.isPending || !isSettingsFetched) {
+  if (isCollectibleMatchesRequest && !isAvatarItemLicensingFlagReady) {
     content = (
       <div className={classes.loading}>
         <CircularProgress />
       </div>
     );
-  } else if (candidatesQuery.error != null || ipFamiliesReq.error != null) {
+  } else if (isCollectibleMatchesRequest && !isAvatarItemLicensingEnabled) {
+    content = null;
+  } else if (
+    candidatesQuery.isPending ||
+    (!isCollectibleMatchesRequest && ipFamiliesReq.isPending) ||
+    !isSettingsFetched
+  ) {
+    content = (
+      <div className={classes.loading}>
+        <CircularProgress />
+      </div>
+    );
+  } else if (
+    candidatesQuery.error != null ||
+    (!isCollectibleMatchesRequest && ipFamiliesReq.error != null)
+  ) {
     const loadError = candidatesQuery.error ?? ipFamiliesReq.error;
     content = <IpLoadError error={loadError} />;
   } else if (hasNoMatches) {
@@ -591,93 +661,109 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog })
         />
       );
     } else {
-      content = (
-        <NoMatchesContent
-          candidateType={AgreementCandidateType.Universe}
-          openDialog={openDialog}
-          maxLimit={maxManualRequestsLimit ?? 0}
-        />
-      );
+      content =
+        candidateType === AgreementCandidateType.Collectible ? (
+          <NoMatchesContent candidateType={AgreementCandidateType.Collectible} />
+        ) : (
+          <NoMatchesContent
+            candidateType={AgreementCandidateType.Universe}
+            openDialog={openDialog}
+            maxLimit={maxManualRequestsLimit ?? 0}
+          />
+        );
     }
-  } else if (hasNoIpFamilies) {
+  } else if (!isCollectibleMatchesRequest && hasNoIpFamilies) {
     logOnce(LicenseManagerImpressionEvent.EmptyStateMatchesTableCreateIpFamilyImpressionEvent);
     content = <NoIpFamiliesContent />;
   } else {
-    content = (
-      <MatchesTable
-        dataReq={candidatesQuery}
-        onSelectMatch={handleSelectCandidate}
-        agreementStatusesColumn={agreementStatusesColumn}
-        selectedMatchId={isMatchPanelOpen ? (selectedCandidate?.id ?? undefined) : undefined}
-        sortingEnabled={isIndexedMatchesEnabled}
-        sortBy={sort.sortBy}
-        sortDirection={sort.sortDirection}
-        onSort={handleSort}
-        onLoadMore={handleLoadMore}
-      />
-    );
+    content =
+      candidateType === AgreementCandidateType.Collectible ? (
+        <CollectibleMatchesTable
+          dataReq={candidatesQuery}
+          agreementStatusesColumn={agreementStatusesColumn}
+          onLoadMore={handleLoadMore}
+        />
+      ) : (
+        <MatchesTable
+          dataReq={candidatesQuery}
+          onSelectMatch={handleSelectCandidate}
+          agreementStatusesColumn={agreementStatusesColumn}
+          selectedMatchId={isMatchPanelOpen ? (selectedCandidate?.id ?? undefined) : undefined}
+          sortingEnabled={isIndexedMatchesEnabled}
+          sortBy={sort.sortBy}
+          sortDirection={sort.sortDirection}
+          onSort={handleSort}
+          onLoadMore={handleLoadMore}
+        />
+      );
   }
 
   return (
     <div>
-      <div className={classes.filtersContainer}>
-        <IpFamilyFilterChip
-          selectedIpFamilyId={filters.ipFamilyId}
-          onFilterChange={handleIpFamilyFilterChange}
-        />
-        <MatchCandidateOfferStatusFilterChip
-          selected={filters.offerStatusFilter}
-          onFilterChange={handleOfferStatusFilterChange}
-        />
-        <DauRangeFilterChip
-          selectedRange={filters.dauRange}
-          onFilterChange={handleDauRangeChange}
-        />
-        <LifetimeVisitsRangeFilterChip
-          selectedRange={filters.lifetimeVisitsRange}
-          onFilterChange={handleLifetimeVisitsRangeChange}
-        />
-        <ContentMaturityFilterChip
-          selectedRatings={filters.contentMaturities}
-          onFilterChange={handleContentMaturityChange}
-        />
-        <div className={classes.filterButtonContainer}>
-          <Button
-            ref={filterButtonRef}
-            onClick={openFilterDrawer}
-            endIcon={<FilterListIcon />}
-            variant='outlined'
-            color='inherit'
-            aria-hidden={isSidePanelOpen ? true : undefined}
-            tabIndex={isSidePanelOpen ? -1 : undefined}
-            classes={{ root: classes.filterButtonRoot }}>
-            {translate('Action.FilterBy')}
-          </Button>
-        </div>
-      </div>
+      {candidateType !== AgreementCandidateType.Collectible && (
+        <>
+          <div className={classes.filtersContainer}>
+            <IpFamilyFilterChip
+              selectedIpFamilyId={filters.ipFamilyId}
+              onFilterChange={handleIpFamilyFilterChange}
+            />
+            <MatchCandidateOfferStatusFilterChip
+              selected={filters.offerStatusFilter}
+              onFilterChange={handleOfferStatusFilterChange}
+            />
+            <DauRangeFilterChip
+              selectedRange={filters.dauRange}
+              onFilterChange={handleDauRangeChange}
+            />
+            <LifetimeVisitsRangeFilterChip
+              selectedRange={filters.lifetimeVisitsRange}
+              onFilterChange={handleLifetimeVisitsRangeChange}
+            />
+            <ContentMaturityFilterChip
+              selectedRatings={filters.contentMaturities}
+              onFilterChange={handleContentMaturityChange}
+            />
+            <div className={classes.filterButtonContainer}>
+              <Button
+                ref={filterButtonRef}
+                onClick={openFilterDrawer}
+                endIcon={<FilterListIcon />}
+                variant='outlined'
+                color='inherit'
+                aria-hidden={isSidePanelOpen ? true : undefined}
+                tabIndex={isSidePanelOpen ? -1 : undefined}
+                classes={{ root: classes.filterButtonRoot }}>
+                {translate('Action.FilterBy')}
+              </Button>
+            </div>
+          </div>
 
-      <MatchesSidePanel
-        open={filterDrawerOpen}
-        onDismiss={closeFilterDrawer}
-        testId='matches-filter-side-panel'
-        ariaLabel={translate('Label.FilterByCategory')}
-        dismissMode='filter'
-        dismissTriggerRef={filterButtonRef}>
-        <MatchesFilterPanel title={translate('Label.FilterByCategory')} onClose={closeFilterDrawer}>
-          <MatchesFilterPanelContent
-            selectedIpFamilyId={filters.ipFamilyId}
-            selectedDauRange={filters.dauRange}
-            selectedLifetimeVisitsRange={filters.lifetimeVisitsRange}
-            selectedContentMaturities={filters.contentMaturities}
-            selectedOfferStatusFilter={filters.offerStatusFilter}
-            onIpFamilyChange={handleIpFamilyFilterChange}
-            onDauRangeChange={handleDauRangeChange}
-            onLifetimeVisitsRangeChange={handleLifetimeVisitsRangeChange}
-            onContentMaturityChange={handleContentMaturityChange}
-            onOfferStatusFilterChange={handleOfferStatusFilterChange}
-          />
-        </MatchesFilterPanel>
-      </MatchesSidePanel>
+          <MatchesSidePanel
+            open={filterDrawerOpen}
+            onDismiss={closeFilterDrawer}
+            testId='matches-filter-side-panel'
+            ariaLabel={translate('Label.FilterByCategory')}
+            dismissMode='filter'
+            dismissTriggerRef={filterButtonRef}>
+            <MatchesFilterPanel
+              title={translate('Label.FilterByCategory')}
+              onClose={closeFilterDrawer}>
+              <MatchesFilterPanelContent
+                selectedIpFamilyId={filters.ipFamilyId}
+                selectedDauRange={filters.dauRange}
+                selectedLifetimeVisitsRange={filters.lifetimeVisitsRange}
+                selectedContentMaturities={filters.contentMaturities}
+                selectedOfferStatusFilter={filters.offerStatusFilter}
+                onIpFamilyChange={handleIpFamilyFilterChange}
+                onDauRangeChange={handleDauRangeChange}
+                onLifetimeVisitsRangeChange={handleLifetimeVisitsRangeChange}
+                onContentMaturityChange={handleContentMaturityChange}
+                onOfferStatusFilterChange={handleOfferStatusFilterChange}
+              />
+            </MatchesFilterPanel>
+          </MatchesSidePanel>
+        </>
+      )}
 
       <MatchesSidePanel
         open={isMatchPanelOpen}

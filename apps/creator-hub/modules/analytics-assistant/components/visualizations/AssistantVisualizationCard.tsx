@@ -21,7 +21,7 @@ import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import useLocale from '@modules/charts-generic/context/useLocale';
 import ChartsGenericXAxisGranularity from '@modules/charts-generic/enums/XAxisGranularity';
 import { ColumnType } from '@modules/charts-generic/tables/types/GenericColumnType';
-import FlagGatedOwnershipWatermark from '@modules/experience-analytics-shared/components/FlagGatedOwnershipWatermark';
+import OwnershipWatermark from '@modules/experience-analytics-shared/components/OwnershipWatermark';
 import {
   formatVisualizationValue,
   type VisualizationFormatDependencies,
@@ -77,7 +77,7 @@ const AssistantVisualizationCard = ({
   const downloadAction = useDownloadAction({ kpiType: element.title, exporter });
   const ownershipWatermarkSlots = useMemo(
     () => ({
-      watermark: <FlagGatedOwnershipWatermark conversationId={conversationId} />,
+      watermark: <OwnershipWatermark conversationId={conversationId} />,
     }),
     [conversationId],
   );

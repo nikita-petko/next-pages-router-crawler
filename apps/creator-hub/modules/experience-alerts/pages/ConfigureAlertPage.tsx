@@ -16,7 +16,7 @@ import AnalyticsAlertClientProvider, {
   useAnalyticsAlertClient,
 } from '../components/AnalyticsAlertClientProvider';
 import ExperienceAlertForm from '../components/ExperienceAlertForm/ExperienceAlertForm';
-import ExperienceAlertsFlagGate from '../components/ExperienceAlertsFlagGate';
+import UniverseResourceGate from '../components/UniverseResourceGate';
 import {
   analyticsAlertControlPlaneClient,
   type ExperienceAlertFormValues,
@@ -141,9 +141,9 @@ const ConfigureAlertPage: FC = () => {
   }
 
   return (
-    <ExperienceAlertsFlagGate>
+    <UniverseResourceGate>
       {(resource) => <ConfigureAlertPageBody resource={resource} alertId={alertId} />}
-    </ExperienceAlertsFlagGate>
+    </UniverseResourceGate>
   );
 };
 

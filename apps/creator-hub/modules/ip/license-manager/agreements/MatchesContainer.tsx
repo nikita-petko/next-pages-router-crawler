@@ -13,7 +13,6 @@ import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../utils/logg
 import IphManualMatchRequestDialog from './components/IphManualMatchRequestDialog';
 import ManualMatchesTable from './components/ManualMatchesTable';
 import Matches from './components/Matches';
-import NoMatchesContent from './components/NoMatchesContent';
 import { useManualMatchesQuery } from './hooks/useManualMatchesQuery';
 
 const useStyles = makeStyles()((theme) => ({
@@ -104,8 +103,10 @@ const MatchesContainer = () => {
   if (activeTab === MatchesTabs.MyMatches) {
     content = (
       <Matches
+        key={AgreementCandidateType.Universe}
         openDialog={shouldDisableManualScan ? undefined : handleOpenManualMatchRequestDialog}
         maxManualRequestsLimit={maxDailyLimit}
+        candidateType={shouldShowAvatarItemsTab ? AgreementCandidateType.Universe : undefined}
       />
     );
   } else if (activeTab === MatchesTabs.MyRequests) {
@@ -115,7 +116,12 @@ const MatchesContainer = () => {
       />
     );
   } else if (shouldShowAvatarItemsTab && activeTab === MatchesTabs.AvatarItems) {
-    content = <NoMatchesContent candidateType={AgreementCandidateType.Collectible} />;
+    content = (
+      <Matches
+        key={AgreementCandidateType.Collectible}
+        candidateType={AgreementCandidateType.Collectible}
+      />
+    );
   }
 
   if (manualScanCandidatesQuery.isPending) {
@@ -192,4 +198,5 @@ const MatchesContainer = () => {
 export default withTranslation(MatchesContainer, [
   TranslationNamespace.Navigation,
   TranslationNamespace.AgreementsManager,
+  TranslationNamespace.Creations,
 ]);

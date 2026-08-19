@@ -91,7 +91,7 @@ const getNewestVersionsByPlace = (
   return newestByPlace;
 };
 
-const useNewestLivePlaceVersion = (enabled = true): NewestLivePlaceVersion | null => {
+const useNewestLivePlaceVersion = (): NewestLivePlaceVersion | null => {
   const resource = useUniverseResource();
   const { rootPlaceId } = useExperienceAnalyticsGameDetails();
   const { client } = useRAQIV2Client(true);
@@ -106,7 +106,7 @@ const useNewestLivePlaceVersion = (enabled = true): NewestLivePlaceVersion | nul
   }, []);
 
   const makeRequest = useCallback(async () => {
-    if (!enabled || !resource || rootPlaceId <= 0) {
+    if (!resource || rootPlaceId <= 0) {
       return null;
     }
 
@@ -156,7 +156,7 @@ const useNewestLivePlaceVersion = (enabled = true): NewestLivePlaceVersion | nul
       }
       return currentNewest;
     }, null);
-  }, [client, current, enabled, oneDayAgo, resource, rootPlaceId, twoDaysAgo]);
+  }, [client, current, oneDayAgo, resource, rootPlaceId, twoDaysAgo]);
 
   const { data, isDataLoading } = useApiRequest(makeRequest);
 

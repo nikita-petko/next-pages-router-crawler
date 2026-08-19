@@ -1,9 +1,7 @@
 import type { FC } from 'react';
 import React, { useEffect, useMemo, useRef } from 'react';
-import { useFlag } from '@rbx/flags';
 import { withTranslation } from '@rbx/intl';
 import { Grid, useTheme } from '@rbx/ui';
-import { isExperienceAlertsEnabled } from '@generated/flags/creatorAnalytics';
 import useComponentSize from '@modules/charts-generic/components/useComponentSize';
 import { isNonEmptyArray } from '@modules/charts-generic/types/NonEmptyArray';
 import { InsightTypeV2 } from '@modules/clients/analytics';
@@ -37,9 +35,6 @@ const InsightsOverviewContent: FC = () => {
   const { unifiedLogger } = useUnifiedLoggerProvider();
   const theme = useTheme();
   const { id: universeId } = useUniverseResource();
-  const { value: isExperienceAlertsEnabledFlag } = useFlag(isExperienceAlertsEnabled, {
-    universeId,
-  });
   // Alerts must additionally be hidden from collaborators who don't have
   // analytics-view permission on this universe, since the underlying
   // metric/dimension queries would otherwise return 403.
@@ -54,11 +49,8 @@ const InsightsOverviewContent: FC = () => {
   const { data } = useGetMostRecentInsightsV2Specs(universeId, insightTypes);
 
   const alerts = useMemo(
-    () =>
-      isExperienceAlertsEnabledFlag && userCanViewAnalyticsForUniverse ? (
-        <OverviewAlertsCard />
-      ) : null,
-    [isExperienceAlertsEnabledFlag, userCanViewAnalyticsForUniverse],
+    () => (userCanViewAnalyticsForUniverse ? <OverviewAlertsCard /> : null),
+    [userCanViewAnalyticsForUniverse],
   );
 
   const achievements = useMemo(

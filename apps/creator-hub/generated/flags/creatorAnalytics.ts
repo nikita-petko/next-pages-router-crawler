@@ -17,16 +17,6 @@ export const visibleAssetIdInPersonalizationEnabled = defineFlag({
     name: 'visibleAssetIdInPersonalizationEnabled',
     defaultValue: false,
   });
-export const isExperienceAlertsEnabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'isExperienceAlertsEnabled',
-    defaultValue: true,
-  });
-export const isOwnershipWatermarkEnabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'isOwnershipWatermarkEnabled',
-    defaultValue: true,
-  });
 export const isExperimentationTemplatesEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isExperimentationTemplatesEnabled',
@@ -35,26 +25,6 @@ export const isExperimentationTemplatesEnabled = defineFlag({
 export const isExperimentTargetingEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isExperimentTargetingEnabled',
-    defaultValue: true,
-  });
-export const isErrorReportV2Enabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'isErrorReportV2Enabled',
-    defaultValue: true,
-  });
-export const isErrorReportNewPlaceVersionLiveBannerEnabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'isErrorReportNewPlaceVersionLiveBannerEnabled',
-    defaultValue: true,
-  });
-export const isErrorReportSuggestedRulesEnabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'isErrorReportSuggestedRulesEnabled',
-    defaultValue: true,
-  });
-export const isFirstSeenColumnEnabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'isFirstSeenColumnEnabled',
     defaultValue: true,
   });
 export const acquisitionMigrationMetricsEnabled = defineFlag({
@@ -151,11 +121,6 @@ export const isCustomDashboardsApiBackendEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isCustomDashboardsApiBackendEnabled',
     defaultValue: false,
-  });
-export const isFunnelCohortCompletionRateEnabled = defineFlag({
-    namespace: 'creator-analytics',
-    name: 'isFunnelCohortCompletionRateEnabled',
-    defaultValue: true,
   });
 export const isJourneyEventsEnabled = defineFlag({
     namespace: 'creator-analytics',

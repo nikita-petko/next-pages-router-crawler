@@ -1,6 +1,4 @@
 import { useMemo } from 'react';
-import { useFlag } from '@rbx/flags';
-import { isExperienceAlertsEnabled } from '@generated/flags/creatorAnalytics';
 import type { AnalyticsSearchParams } from '@modules/charts-generic/utils/analyticsUrlBuilder';
 import {
   getAlertEligibleMetrics,
@@ -23,7 +21,6 @@ import type RAQIV2ChartSpec from '../types/RAQIV2ChartSpec';
  *
  * Eligibility (all required):
  *  - `userCanManageAnalyticsAlertForUniverse` permission for this universe.
- *  - `isExperienceAlertsEnabled` feature flag for this universe.
  *  - The spec's metric (resolved to its canonical alert metric) is in
  *    `getAlertEligibleMetrics()`. Computed (formula) metrics and the
  *    CustomEventsV2 wrapper are never alert-eligible and collapse to `null`.
@@ -40,12 +37,6 @@ const useCreateAlertUrlParams = (spec: RAQIV2ChartSpec | null): AnalyticsSearchP
   const resource = useUniverseResource();
 
   const { userCanManageAnalyticsAlertForUniverse } = useAnalyticsExperiencePermissions(resource.id);
-  const { ready: isExperienceAlertsReady, value: isExperienceAlertsEnabledValue } = useFlag(
-    isExperienceAlertsEnabled,
-    {
-      universeId: resource.id,
-    },
-  );
 
   // The chart's own metric drives granularity/dimension resolution and the
   // canonical alert metric we gate eligibility on. Only a bare atomic UI metric
@@ -67,11 +58,7 @@ const useCreateAlertUrlParams = (spec: RAQIV2ChartSpec | null): AnalyticsSearchP
     return getAlertEligibleMetrics().includes(canonicalAlertMetric);
   }, [canonicalAlertMetric]);
 
-  const isEligible =
-    userCanManageAnalyticsAlertForUniverse &&
-    isExperienceAlertsReady &&
-    isExperienceAlertsEnabledValue &&
-    isMetricEligible;
+  const isEligible = userCanManageAnalyticsAlertForUniverse && isMetricEligible;
 
   const dimensions = useMemo(() => {
     if (!isEligible || !uiMetric) {

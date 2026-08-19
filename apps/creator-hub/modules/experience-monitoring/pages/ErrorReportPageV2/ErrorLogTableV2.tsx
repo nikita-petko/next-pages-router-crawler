@@ -86,15 +86,9 @@ const getNumericFilterValues = (
 
 type Props = {
   chartContext: RAQIV2ChartContext;
-  isErrorReportV2Enabled: boolean;
-  showFirstSeenColumn: boolean;
 };
 
-const ErrorLogTableV2: FC<Props> = ({
-  chartContext,
-  isErrorReportV2Enabled,
-  showFirstSeenColumn,
-}) => {
+const ErrorLogTableV2: FC<Props> = ({ chartContext }) => {
   const universeId = chartContext.resource.id;
   const { translate } = useRAQIV2TranslationDependencies();
   const { enqueue } = useSnackbar();
@@ -128,8 +122,7 @@ const ErrorLogTableV2: FC<Props> = ({
       ...(firstSeenPlaceVersion !== undefined ? { firstSeenPlaceVersion } : {}),
     };
   }, [chartContext.filter]);
-  const showFirstSeenPlaceVersionColumn =
-    isErrorReportV2Enabled && logDetailsFilters.placeId !== undefined;
+  const showFirstSeenPlaceVersionColumn = logDetailsFilters.placeId !== undefined;
 
   const ignoreLabel = translate(
     translationKey('Action.ErrorReportRule.IgnoreError', TranslationNamespace.Analytics),
@@ -199,13 +192,8 @@ const ErrorLogTableV2: FC<Props> = ({
   }, [chartContext]);
 
   const rowExpansion = useMemo(
-    () =>
-      createErrorLogTableV2RowExpansion(
-        showFirstSeenColumn,
-        showFirstSeenPlaceVersionColumn,
-        isErrorReportV2Enabled,
-      ),
-    [isErrorReportV2Enabled, showFirstSeenColumn, showFirstSeenPlaceVersionColumn],
+    () => createErrorLogTableV2RowExpansion(showFirstSeenPlaceVersionColumn),
+    [showFirstSeenPlaceVersionColumn],
   );
 
   const { startTime, endTime } = chartContext.timeSpec;
@@ -237,14 +225,7 @@ const ErrorLogTableV2: FC<Props> = ({
       breakdowns: [RAQIV2Dimension.MessageHash],
       hideBreakdownLabelColumns: true,
       pagination: { initialPageSize: 25, pageSizeOptions: [10, 25, 50, 100] },
-      ...(isErrorReportV2Enabled
-        ? {
-            footerKey: translationKey(
-              'Footnote.ErrorLogTableFirstSeen',
-              TranslationNamespace.Analytics,
-            ),
-          }
-        : {}),
+      footerKey: translationKey('Footnote.ErrorLogTableFirstSeen', TranslationNamespace.Analytics),
       tableConfig: {
         defaultActiveSort: ERROR_LOG_TABLE_V2_COLUMN_KEYS.count,
         stickyHeader: true,
@@ -279,17 +260,10 @@ const ErrorLogTableV2: FC<Props> = ({
             hideSortIcon: true,
           },
         },
-        ...buildErrorLogTableV2CustomColumns(
-          fetcher,
-          showFirstSeenColumn,
-          showFirstSeenPlaceVersionColumn,
-          isErrorReportV2Enabled
-            ? {
-                ignoreLabel,
-                onIgnoreError,
-              }
-            : undefined,
-        ),
+        ...buildErrorLogTableV2CustomColumns(fetcher, showFirstSeenPlaceVersionColumn, {
+          ignoreLabel,
+          onIgnoreError,
+        }),
       ],
     };
   }, [
@@ -298,9 +272,7 @@ const ErrorLogTableV2: FC<Props> = ({
     chartAdjustedEndTime,
     logDetailsFilters,
     countHeaderLabel,
-    showFirstSeenColumn,
     showFirstSeenPlaceVersionColumn,
-    isErrorReportV2Enabled,
     ignoreLabel,
     onIgnoreError,
   ]);

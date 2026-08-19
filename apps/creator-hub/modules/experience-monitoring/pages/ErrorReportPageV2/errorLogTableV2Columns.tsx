@@ -34,6 +34,11 @@ export const ERROR_LOG_TABLE_V2_COLUMN_KEYS = {
   actions: 'errorLogTableV2.actions',
 } as const;
 
+const VARIABLE_COLUMNS_TOTAL_WIDTH_WEIGHT = 72;
+const FIRST_SEEN_WIDTH_WEIGHT = 16;
+const FIRST_SEEN_PLACE_VERSION_WIDTH_WEIGHT = 12;
+const ACTIONS_WIDTH_WEIGHT = 4;
+
 type SecondaryColumnRequest = PaginatedColumnRequest<
   RAQIV2BreakdownValue[],
   RAQIV2TableRowID,
@@ -146,9 +151,7 @@ const expandedRowSkipSibling: GenericTableV2ExpandedRowColumnDefinition<string> 
 };
 
 export const createErrorLogTableV2RowExpansion = (
-  showFirstSeenColumn: boolean,
   showFirstSeenPlaceVersionColumn: boolean,
-  showActionsColumn: boolean,
 ): GenericTableV2RowExpansionConfig<string> => ({
   expandOnRowClick: true,
   expandTogglePlacement: ERROR_LOG_TABLE_V2_COLUMN_KEYS.message,
@@ -175,15 +178,11 @@ export const createErrorLogTableV2RowExpansion = (
     },
     [ERROR_LOG_TABLE_V2_COLUMN_KEYS.severity]: expandedRowSkipSibling,
     [ERROR_LOG_TABLE_V2_COLUMN_KEYS.source]: expandedRowSkipSibling,
-    ...(showFirstSeenColumn
-      ? { [ERROR_LOG_TABLE_V2_COLUMN_KEYS.firstSeen]: expandedRowSkipSibling }
-      : {}),
+    [ERROR_LOG_TABLE_V2_COLUMN_KEYS.firstSeen]: expandedRowSkipSibling,
     ...(showFirstSeenPlaceVersionColumn
       ? { [ERROR_LOG_TABLE_V2_COLUMN_KEYS.firstSeenPlaceVersion]: expandedRowSkipSibling }
       : {}),
-    ...(showActionsColumn
-      ? { [ERROR_LOG_TABLE_V2_COLUMN_KEYS.actions]: expandedRowSkipSibling }
-      : {}),
+    [ERROR_LOG_TABLE_V2_COLUMN_KEYS.actions]: expandedRowSkipSibling,
     [ERROR_LOG_TABLE_V2_COLUMN_KEYS.message]: expandedRowSkipSibling,
   },
 });
@@ -197,9 +196,8 @@ export type ErrorLogActionsConfig = {
 
 export const buildErrorLogTableV2CustomColumns = (
   fetcher: TopErrorLogDetailsFetcher,
-  showFirstSeenColumn: boolean,
   showFirstSeenPlaceVersionColumn: boolean,
-  actionsConfig?: ErrorLogActionsConfig,
+  actionsConfig: ErrorLogActionsConfig,
 ): TAnalyticsCustomTableColumnConfig[] => [
   buildDetailDrivenColumn(fetcher, {
     key: ERROR_LOG_TABLE_V2_COLUMN_KEYS.severity,
@@ -215,20 +213,13 @@ export const buildErrorLogTableV2CustomColumns = (
     widthWeight: 8,
     buildCell: buildSourceCell,
   }),
-  ...(showFirstSeenColumn
-    ? [
-        buildDetailDrivenColumn(fetcher, {
-          key: ERROR_LOG_TABLE_V2_COLUMN_KEYS.firstSeen,
-          titleKey: translationKey(
-            'ErrorLogTable.Header.FirstSeen',
-            TranslationNamespace.Analytics,
-          ),
-          columnType: ColumnType.Timestamp,
-          widthWeight: 16,
-          buildCell: buildFirstSeenCell,
-        }),
-      ]
-    : []),
+  buildDetailDrivenColumn(fetcher, {
+    key: ERROR_LOG_TABLE_V2_COLUMN_KEYS.firstSeen,
+    titleKey: translationKey('ErrorLogTable.Header.FirstSeen', TranslationNamespace.Analytics),
+    columnType: ColumnType.Timestamp,
+    widthWeight: FIRST_SEEN_WIDTH_WEIGHT,
+    buildCell: buildFirstSeenCell,
+  }),
   ...(showFirstSeenPlaceVersionColumn
     ? [
         buildDetailDrivenColumn(fetcher, {
@@ -238,7 +229,7 @@ export const buildErrorLogTableV2CustomColumns = (
             TranslationNamespace.Analytics,
           ),
           columnType: ColumnType.Text,
-          widthWeight: 12,
+          widthWeight: FIRST_SEEN_PLACE_VERSION_WIDTH_WEIGHT,
           buildCell: buildFirstSeenPlaceVersionCell,
         }),
       ]
@@ -248,10 +239,10 @@ export const buildErrorLogTableV2CustomColumns = (
     titleKey: translationKey('ErrorLogTable.Header.Message', TranslationNamespace.Analytics),
     columnType: ColumnType.Text,
     widthWeight:
-      72 -
-      (showFirstSeenColumn ? 16 : 0) -
-      (showFirstSeenPlaceVersionColumn ? 12 : 0) -
-      (actionsConfig ? 4 : 0),
+      VARIABLE_COLUMNS_TOTAL_WIDTH_WEIGHT -
+      FIRST_SEEN_WIDTH_WEIGHT -
+      (showFirstSeenPlaceVersionColumn ? FIRST_SEEN_PLACE_VERSION_WIDTH_WEIGHT : 0) -
+      ACTIONS_WIDTH_WEIGHT,
     buildCell: buildMessageCell,
   }),
   buildDetailDrivenColumn(fetcher, {
@@ -261,31 +252,27 @@ export const buildErrorLogTableV2CustomColumns = (
     hidden: true,
     buildCell: buildStackTraceCell,
   }),
-  ...(actionsConfig
-    ? [
-        buildDetailDrivenColumn(fetcher, {
-          key: ERROR_LOG_TABLE_V2_COLUMN_KEYS.actions,
-          titleKey: translationKey('Title.Table.Actions', TranslationNamespace.Analytics),
-          titleOverride: '',
-          columnType: ColumnType.Actions,
-          widthWeight: 4,
-          buildCell: (detail) => {
-            const message = detail?.message ?? '';
-            return {
-              type: ColumnType.Actions,
-              actions: [
-                {
-                  actionType: 'ignore',
-                  actionOn: message,
-                  onActionInvoked: actionsConfig.onIgnoreError,
-                  renderedAsInNonCompactTable: 'menu-item',
-                  displayLabel: actionsConfig.ignoreLabel,
-                  disabled: !message.trim(),
-                },
-              ],
-            };
+  buildDetailDrivenColumn(fetcher, {
+    key: ERROR_LOG_TABLE_V2_COLUMN_KEYS.actions,
+    titleKey: translationKey('Title.Table.Actions', TranslationNamespace.Analytics),
+    titleOverride: '',
+    columnType: ColumnType.Actions,
+    widthWeight: ACTIONS_WIDTH_WEIGHT,
+    buildCell: (detail) => {
+      const message = detail?.message ?? '';
+      return {
+        type: ColumnType.Actions,
+        actions: [
+          {
+            actionType: 'ignore',
+            actionOn: message,
+            onActionInvoked: actionsConfig.onIgnoreError,
+            renderedAsInNonCompactTable: 'menu-item',
+            displayLabel: actionsConfig.ignoreLabel,
+            disabled: !message.trim(),
           },
-        }),
-      ]
-    : []),
+        ],
+      };
+    },
+  }),
 ];

@@ -10,7 +10,6 @@ import {
   isAnalyticsAssistantChatEnabled as isAnalyticsAssistantChatEnabledFlag,
   isClientSessionsEnabled as isClientSessionsEnabledFlag,
   isCustomDashboardsEnabled as isCustomDashboardsEnabledFlag,
-  isExperienceAlertsEnabled,
   isJourneyEventsEnabled as isJourneysEnabledFlag,
   isLimitedAnalyticsAdminMonitoringNavigationEnabled as isLimitedAnalyticsAdminMonitoringNavigationEnabledFlag,
   showVideoServiceDashboard as showVideoServiceDashboardFlag,
@@ -107,12 +106,6 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
   const { enablePlayerSupport } = useCreatorGameopsFlags('enablePlayerSupport', {
     universeId: gameDetails?.id ?? 0,
   });
-  const { ready: isExperienceAlertsReady, value: isExperienceAlertsEnabledFlag } = useFlag(
-    isExperienceAlertsEnabled,
-    {
-      universeId: gameDetails?.id ?? 0,
-    },
-  );
   const { ready: isClientSessionsReady, value: isClientSessionsEnabledValue } = useFlag(
     isClientSessionsEnabledFlag,
     {
@@ -196,7 +189,6 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
                 isLimitedAnalyticsAdminMonitoringNavigationEnabled),
             showVideoServiceDashboard:
               showVideoServiceDashboardReady && showVideoServiceDashboardValue,
-            isExperienceAlertsEnabled: isExperienceAlertsReady && isExperienceAlertsEnabledFlag,
             isClientSessionsEnabled: isClientSessionsReady && isClientSessionsEnabledValue,
             enablePlayerSupport: enablePlayerSupport ?? false,
             isStudioCompatible: isCompatible,
@@ -285,8 +277,6 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
     isLimitedAnalyticsAdminMonitoringNavigationEnabled,
     showVideoServiceDashboardReady,
     showVideoServiceDashboardValue,
-    isExperienceAlertsReady,
-    isExperienceAlertsEnabledFlag,
     isClientSessionsReady,
     isClientSessionsEnabledValue,
     enablePlayerSupport,

@@ -1,5 +1,4 @@
 import type { TRAQIV2UIMetric } from '@rbx/creator-hub-analytics-config';
-import { useFlag } from '@rbx/flags';
 import {
   teamOwnershipByMetric,
   WatermarkSubjectType,
@@ -7,7 +6,6 @@ import {
   type QuerySummary,
 } from '@rbx/ownership-watermark';
 import { OwnershipWatermarkRoot } from '@rbx/ownership-watermark/react';
-import { isOwnershipWatermarkEnabled } from '@generated/flags/creatorAnalytics';
 
 const warnedMissingMetrics = new Set<string>();
 
@@ -17,26 +15,8 @@ const hasMetricOwnershipEntry = (metricKey: string): metricKey is TRAQIV2UIMetri
 const getTeamIdForMetric = (metricKey: string): number | undefined =>
   hasMetricOwnershipEntry(metricKey) ? teamOwnershipByMetric[metricKey] : undefined;
 
-/**
- * Flag-gated adapter around `<OwnershipWatermark />` from
- * `@rbx/ownership-watermark`.
- *
- * Renders the watermark only when the generated creatorAnalytics
- * `isOwnershipWatermarkEnabled` flag is true and ready. While the flag query is
- * in flight we render nothing, so the watermark never flashes in before the
- * decision is made.
- *
- * Contract: the generated Barista flag runtime must be initialized at app
- * startup. Creator Hub does this in `_app`, and tests use the `@rbx/flags` mock.
- *
- * Employee override: `useFlag` consults the generated flag override store, and
- * the floating widget exposes this flag through its generated-flags bridge.
- *
- * Query ownership: RAQI chart specs encode the metric owner team, queried
- * resource, metric, and first breakdown/filter dimension. Team and conversation
- * subjects remain as fallbacks for callers without query context.
- */
-type FlagGatedOwnershipWatermarkProps = {
+/** Renders an ownership watermark for a metric, query, or assistant conversation. */
+type OwnershipWatermarkProps = {
   metricKey?: TRAQIV2UIMetric | string;
   conversationId?: string;
   query?: Omit<QuerySummary, 'metric'> & {
@@ -45,19 +25,11 @@ type FlagGatedOwnershipWatermarkProps = {
   };
 };
 
-const FlagGatedOwnershipWatermark: React.FC<FlagGatedOwnershipWatermarkProps> = ({
+const OwnershipWatermark: React.FC<OwnershipWatermarkProps> = ({
   metricKey,
   conversationId,
   query,
 }) => {
-  const { ready, value: isOwnershipWatermarkFlagEnabled } = useFlag(isOwnershipWatermarkEnabled);
-  if (!ready) {
-    return null;
-  }
-  if (!isOwnershipWatermarkFlagEnabled) {
-    return null;
-  }
-
   const queryMetric = query?.metric;
   const metricTeamId =
     (metricKey ? getTeamIdForMetric(metricKey) : undefined) ??
@@ -84,7 +56,7 @@ const FlagGatedOwnershipWatermark: React.FC<FlagGatedOwnershipWatermarkProps> = 
     ) {
       const key = metricKey;
       warnedMissingMetrics.add(key);
-      console.warn(`[FlagGatedOwnershipWatermark] No team ownership entry for metric: ${key}`);
+      console.warn(`[OwnershipWatermark] No team ownership entry for metric: ${key}`);
     }
     if (trimmedConversationId) {
       return (
@@ -102,4 +74,4 @@ const FlagGatedOwnershipWatermark: React.FC<FlagGatedOwnershipWatermarkProps> = 
   return <OwnershipWatermarkRoot teamId={metricTeamId} />;
 };
 
-export default FlagGatedOwnershipWatermark;
+export default OwnershipWatermark;

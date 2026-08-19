@@ -22,10 +22,7 @@ import {
   makeStyles,
   useMediaQuery,
 } from '@rbx/ui';
-import {
-  isCustomDashboardsEnabled as isCustomDashboardsEnabledFlag,
-  isExperienceAlertsEnabled,
-} from '@generated/flags/creatorAnalytics';
+import { isCustomDashboardsEnabled as isCustomDashboardsEnabledFlag } from '@generated/flags/creatorAnalytics';
 import type { FormattedText } from '@modules/analytics-translations/types';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import wellKnownAnalyticsTranslationNamespaces from '@modules/analytics-translations/wellKnownAnalyticsTranslationNamespaces';
@@ -339,9 +336,7 @@ const useStyles = makeStyles()(() => ({
   },
 }));
 
-const getExploreSurfaceAnnotationOptions = (
-  isExperienceAlertsFlagEnabled: boolean,
-): AnalyticsPageConfigAnnotationOptions => ({
+const getExploreSurfaceAnnotationOptions = (): AnalyticsPageConfigAnnotationOptions => ({
   supportedAnnotationTypes: [
     AnnotationType.PlaceIcon,
     AnnotationType.PlaceThumbnail,
@@ -353,7 +348,7 @@ const getExploreSurfaceAnnotationOptions = (
     AnnotationType.RetentionCorhortDisclaimer,
     AnnotationType.ConfigVersion,
     AnnotationType.Announcement,
-    ...(isExperienceAlertsFlagEnabled ? [AnnotationType.ConfiguredAlertIncident] : []),
+    AnnotationType.ConfiguredAlertIncident,
   ],
   // `ConfiguredAlertIncident` is intentionally NOT in the default set on
   // Explore Mode: the annotation type is now derived from the cascading
@@ -2527,16 +2522,7 @@ const ExploreModeSidebarPage: FC = () => {
   }, [allowedMetrics]);
 
   const resource = useUniverseResource();
-  const { value: isExperienceAlertsEnabledFlag, ready: isExperienceAlertsFlagReady } = useFlag(
-    isExperienceAlertsEnabled,
-    {
-      universeId: resource.id,
-    },
-  );
-  const surfaceAnnotationOptions = useMemo(
-    () => getExploreSurfaceAnnotationOptions(!!isExperienceAlertsEnabledFlag),
-    [isExperienceAlertsEnabledFlag],
-  );
+  const surfaceAnnotationOptions = useMemo(() => getExploreSurfaceAnnotationOptions(), []);
   const pageConfig: CreatorAnalyticsPageSurfaceConfig = useMemo(
     () => ({
       resourceTypes: [resource.type],
@@ -2548,13 +2534,6 @@ const ExploreModeSidebarPage: FC = () => {
     }),
     [resource.type, dimensions, timeRangeOptions, surfaceAnnotationOptions],
   );
-
-  // Defer mount until the experience-alerts flag has resolved: the layout's
-  // annotation provider snapshots `defaultAnnotationTypes` to the URL on first
-  // render, and a stale `false` would silently drop ConfiguredAlertIncident.
-  if (!isExperienceAlertsFlagReady) {
-    return null;
-  }
 
   const sidebarPageContent = (
     <SidebarPageContent
@@ -2577,36 +2556,11 @@ const ExploreModeSidebarPage: FC = () => {
   return (
     <UniversePerformanceRaqiClientProvider>
       <AnalyticsContextLayerInnerProvider config={pageConfig}>
-        {isExperienceAlertsEnabledFlag ? (
-          // Only mount the alert-selection provider when the
-          // `isExperienceAlertsEnabled` flag is on — this keeps the entire
-          // `?annotation_alertId` reading / cascading sub-menu feature
-          // behind the same flag as the rest of Experience Alerts. When
-          // the flag is off, the context falls back to its
-          // `isExploreModeContext: false` default and Explore Mode
-          // behaves exactly like the other (non-Explore) pages with
-          // respect to configured-alert incidents.
-          //
-          // `AnalyticsAlertClientProvider` is required here for
-          // `useAlertsForMetric` (the hook that populates the cascading
-          // sub-menu's row list) to actually fetch configured alerts —
-          // unlike `ConfiguredAlertIncident` annotations, which come from
-          // the existing `AnnotationsClient`, the alert *configuration*
-          // list goes through the alert control-plane client. Without
-          // this wrapper, `useAnalyticsAlertsListQuery` short-circuits
-          // (its hook reads `useAnalyticsAlertClientOrNull`), the
-          // available-alerts set stays empty, and the parent menu's
-          // Alerts row is hidden by the
-          // `availableAlertsForMetric.length > 0` gate even when the
-          // chart is correctly rendering URL-pre-pinned incidents.
-          <AnalyticsAlertClientProvider client={analyticsAlertControlPlaneClient}>
-            <ExploreModeAlertSelectionProvider displayMetric={displayMetric}>
-              {sidebarPageContent}
-            </ExploreModeAlertSelectionProvider>
-          </AnalyticsAlertClientProvider>
-        ) : (
-          sidebarPageContent
-        )}
+        <AnalyticsAlertClientProvider client={analyticsAlertControlPlaneClient}>
+          <ExploreModeAlertSelectionProvider displayMetric={displayMetric}>
+            {sidebarPageContent}
+          </ExploreModeAlertSelectionProvider>
+        </AnalyticsAlertClientProvider>
       </AnalyticsContextLayerInnerProvider>
     </UniversePerformanceRaqiClientProvider>
   );

@@ -61,7 +61,6 @@ const getPlaceVersionQueryValue = (
 
 const useNewPlaceVersionHasNewError = (
   newPlaceVersion: NewestLivePlaceVersion | null,
-  enabled: boolean,
 ): boolean | null => {
   const resource = useUniverseResource();
   const { client } = useRAQIV2Client(true);
@@ -75,7 +74,7 @@ const useNewPlaceVersionHasNewError = (
   }, []);
 
   const makeRequest = useCallback(async () => {
-    if (!enabled || newPlaceVersion === null) {
+    if (newPlaceVersion === null) {
       return false;
     }
 
@@ -105,7 +104,7 @@ const useNewPlaceVersionHasNewError = (
     );
 
     return hasAnyErrorCount(response);
-  }, [client, current, enabled, newPlaceVersion, oneDayAgo, resource]);
+  }, [client, current, newPlaceVersion, oneDayAgo, resource]);
 
   const { data, isDataLoading } = useApiRequest(makeRequest, { refetchShouldSetLoading: true });
 
@@ -213,11 +212,11 @@ const NewPlaceVersionLiveBannerContent: FC<{
   );
 };
 
-export const useNewPlaceVersionLiveBannerElement = (enabled = true): ReactElement | undefined => {
+export const useNewPlaceVersionLiveBannerElement = (): ReactElement | undefined => {
   const { user } = useAuthentication();
   const { id: universeId } = useUniverseResource();
-  const newPlaceVersion = useNewestLivePlaceVersion(enabled);
-  const hasNewErrorForPlaceVersion = useNewPlaceVersionHasNewError(newPlaceVersion, enabled);
+  const newPlaceVersion = useNewestLivePlaceVersion();
+  const hasNewErrorForPlaceVersion = useNewPlaceVersionHasNewError(newPlaceVersion);
   const dismissalKey =
     newPlaceVersion === null
       ? 'errorReportsNewPlaceVersionLiveBanner.pending'

@@ -65,7 +65,6 @@ export type CreationsFeatureSettings = TSettings &
     shouldUseQuestionnaireV2?: boolean;
     shouldHideSocialLinksSection: boolean;
     canGetSelectEligibilityData: boolean;
-    isExperienceAlertsEnabled: boolean;
     isClientSessionsEnabled: boolean;
     enablePlayerSupport: boolean;
     isAnalyticsAssistantChatEnabled: boolean;
@@ -456,8 +455,7 @@ const alertsFeature: Feature<CreationsFeatureSettings> = {
   path: analyticsAlertsNavigationItem.path,
   altMatchPaths: ['/alerts/create', /\/alerts\/[^/]+\/configure$/],
   isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
-    (settings?.isExperienceAlertsEnabled ?? false) &&
-    (settings?.userCanManageAnalyticsAlertForUniverse ?? false),
+    settings?.userCanManageAnalyticsAlertForUniverse ?? false,
   adornment: <AnalyticsPageNewChip pagePath={analyticsAlertsNavigationItem.path} />,
 };
 

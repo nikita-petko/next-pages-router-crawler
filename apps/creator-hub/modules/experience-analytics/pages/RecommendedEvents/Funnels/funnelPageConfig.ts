@@ -14,7 +14,6 @@ import {
   RAQIV2ControlledSubcontextType,
   RAQIV2DefaultFilterDimensionValueMode,
 } from '@modules/experience-analytics-shared/components/RAQIV2/subcontext/RAQIV2ControlledSubcontextConfig';
-import { tabbedTableConfigFunnelProgressionBySessionAndUserRealtime } from '@modules/experience-analytics-shared/constants/chart-configs/PredefinedTabbedTableConfigLiterals';
 import {
   tableConfigFunnelsProgressionBySessionRealtime,
   tableConfigFunnelsProgressionByUserRealtime,
@@ -107,9 +106,10 @@ const getControlledSubcontextConfigFunnelCohortCompletionRateByStep = (viewKey: 
     ],
   }) as const satisfies AnalyticsControlledSubcontextConfig;
 
-const getFunnelPageConfig = (
-  isFunnelCohortCompletionRateEnabled: boolean,
-): CreatorAnalyticsBreakdownTabPageConfig<RAQIV2Dimension.FunnelName, RAQIV2FunnelName> => ({
+const getFunnelPageConfig = (): CreatorAnalyticsBreakdownTabPageConfig<
+  RAQIV2Dimension.FunnelName,
+  RAQIV2FunnelName
+> => ({
   mode: CreatorAnalyticsPageMode.BreakdownTab,
   debugPageName: 'RecommendedEventsFunnels',
   docLinks: [recommendedEventsFunnelsDocLink],
@@ -135,60 +135,39 @@ const getFunnelPageConfig = (
       filterDimensions: recommendedEventsFunnelsFilterDimensions,
       breakdownDimensions: [],
       granularity: { fixed: RAQIV2MetricGranularity.OneDay },
-      body: isFunnelCohortCompletionRateEnabled
-        ? [
-            arbitraryComponentConfigFunnelLatestDataPointDisclaimer,
-            {
-              type: RAQIV2SpecialLayoutType.RowLayout,
-              items: getFunnelProgressionSummaryCards(FunnelProgressionViewKey.User),
-            },
-            {
-              type: RAQIV2SpecialLayoutType.FullWidthLayout,
-              items: [
-                getFunnelProgressionTableConfig(FunnelProgressionViewKey.User),
-                getControlledSubcontextConfigFunnelCohortCompletionRateByStep(
-                  FunnelProgressionViewKey.User,
-                ),
-              ],
-            },
-          ]
-        : [
-            arbitraryComponentConfigFunnelLatestDataPointDisclaimer,
-            {
-              type: RAQIV2SpecialLayoutType.RowLayout,
-              items: [
-                summaryCardConfigTotalFunnelUsers,
-                summaryCardConfigTotalFunnelSessions,
-                summaryCardConfigTotalUserConversion,
-                summaryCardConfigBiggestFunnelStepUserDrop,
-              ],
-            },
-            {
-              type: RAQIV2SpecialLayoutType.FullWidthLayout,
-              items: [tabbedTableConfigFunnelProgressionBySessionAndUserRealtime],
-            },
+      body: [
+        arbitraryComponentConfigFunnelLatestDataPointDisclaimer,
+        {
+          type: RAQIV2SpecialLayoutType.RowLayout,
+          items: getFunnelProgressionSummaryCards(FunnelProgressionViewKey.User),
+        },
+        {
+          type: RAQIV2SpecialLayoutType.FullWidthLayout,
+          items: [
+            getFunnelProgressionTableConfig(FunnelProgressionViewKey.User),
+            getControlledSubcontextConfigFunnelCohortCompletionRateByStep(
+              FunnelProgressionViewKey.User,
+            ),
           ],
-      ...(isFunnelCohortCompletionRateEnabled
-        ? {
-            surfaceViewSelector: {
-              ...funnelProgressionViewSelectorConfig,
-              getBodyForView: (viewKey: string) => [
-                arbitraryComponentConfigFunnelLatestDataPointDisclaimer,
-                {
-                  type: RAQIV2SpecialLayoutType.RowLayout,
-                  items: getFunnelProgressionSummaryCards(viewKey),
-                },
-                {
-                  type: RAQIV2SpecialLayoutType.FullWidthLayout,
-                  items: [
-                    getFunnelProgressionTableConfig(viewKey),
-                    getControlledSubcontextConfigFunnelCohortCompletionRateByStep(viewKey),
-                  ],
-                },
-              ],
-            },
-          }
-        : {}),
+        },
+      ],
+      surfaceViewSelector: {
+        ...funnelProgressionViewSelectorConfig,
+        getBodyForView: (viewKey: string) => [
+          arbitraryComponentConfigFunnelLatestDataPointDisclaimer,
+          {
+            type: RAQIV2SpecialLayoutType.RowLayout,
+            items: getFunnelProgressionSummaryCards(viewKey),
+          },
+          {
+            type: RAQIV2SpecialLayoutType.FullWidthLayout,
+            items: [
+              getFunnelProgressionTableConfig(viewKey),
+              getControlledSubcontextConfigFunnelCohortCompletionRateByStep(viewKey),
+            ],
+          },
+        ],
+      },
       timeRangeOptions: {
         type: 'dateRange',
         supportedRanges: [

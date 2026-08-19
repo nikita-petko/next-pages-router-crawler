@@ -22,7 +22,6 @@ import {
   type AnalyticsPageConfigDateOptions,
   type CreatorAnalyticsFixedTabPageConfig,
   type CreatorAnalyticsPageSurfaceConfig,
-  type CreatorAnalyticsUntabbedPageConfig,
   type TabbedRAQIV2PageTabConfig,
 } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
 import { RAQIV2SpecialLayoutType } from '@modules/experience-analytics-shared/types/RAQIV2SpecialLayoutConfig';
@@ -61,8 +60,6 @@ const pageHeader = {
 };
 
 const getReportsSurfaceConfig = (
-  isErrorReportV2Enabled: boolean,
-  isFirstSeenColumnEnabled: boolean,
   bannerElements: readonly React.ReactElement[],
 ): CreatorAnalyticsPageSurfaceConfig => ({
   resourceTypes: [RAQIV2ChartResourceType.Universe],
@@ -100,15 +97,13 @@ const getReportsSurfaceConfig = (
   },
   filterDimensions: [
     ...errorReportPageV2BaseFilterDimensions,
-    ...(isErrorReportV2Enabled ? [RAQIV2Dimension.FirstSeenPlaceVersion] : []),
+    RAQIV2Dimension.FirstSeenPlaceVersion,
   ],
-  filterPositionOverrides: isErrorReportV2Enabled
-    ? {
-        [RAQIV2Dimension.Place]: RAQIV2FilterRenderPosition.ControlsRow2,
-        [RAQIV2Dimension.PlaceVersion]: RAQIV2FilterRenderPosition.ControlsRow2,
-        [RAQIV2Dimension.FirstSeenPlaceVersion]: RAQIV2FilterRenderPosition.ControlsRow2,
-      }
-    : undefined,
+  filterPositionOverrides: {
+    [RAQIV2Dimension.Place]: RAQIV2FilterRenderPosition.ControlsRow2,
+    [RAQIV2Dimension.PlaceVersion]: RAQIV2FilterRenderPosition.ControlsRow2,
+    [RAQIV2Dimension.FirstSeenPlaceVersion]: RAQIV2FilterRenderPosition.ControlsRow2,
+  },
   breakdownDimensions: [],
   preControlCharts:
     bannerElements.length > 0
@@ -170,8 +165,6 @@ const getReportsSurfaceConfig = (
             render: (chartContext) =>
               React.createElement(ErrorLogTableV2, {
                 chartContext,
-                isErrorReportV2Enabled,
-                showFirstSeenColumn: isErrorReportV2Enabled && isFirstSeenColumnEnabled,
               }),
           },
         },
@@ -220,25 +213,9 @@ const rulesTabConfig: TabbedRAQIV2PageTabConfig<TErrorReportTabKey> = {
 };
 
 export const getErrorReportPageV2Config = (
-  isErrorReportV2Enabled: boolean,
-  isFirstSeenColumnEnabled: boolean,
   bannerElements: readonly React.ReactElement[] = [],
-): CreatorAnalyticsFixedTabPageConfig<TErrorReportTabKey> | CreatorAnalyticsUntabbedPageConfig => {
-  const reportsSurface = getReportsSurfaceConfig(
-    isErrorReportV2Enabled,
-    isFirstSeenColumnEnabled,
-    bannerElements,
-  );
-
-  // Only render the tabbed (Reports + Rules) layout when Error Report V2 is on.
-  // Otherwise the page is a single, untabbed Reports surface with no tab bar.
-  if (!isErrorReportV2Enabled) {
-    return {
-      ...pageHeader,
-      mode: CreatorAnalyticsPageMode.Untabbed,
-      ...reportsSurface,
-    };
-  }
+): CreatorAnalyticsFixedTabPageConfig<TErrorReportTabKey> => {
+  const reportsSurface = getReportsSurfaceConfig(bannerElements);
 
   return {
     ...pageHeader,

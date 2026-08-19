@@ -1,11 +1,5 @@
 import { useMemo, type FC } from 'react';
-import { useFlag } from '@rbx/flags';
 import { withTranslation } from '@rbx/intl';
-import {
-  isErrorReportNewPlaceVersionLiveBannerEnabled,
-  isErrorReportV2Enabled,
-  isFirstSeenColumnEnabled,
-} from '@generated/flags/creatorAnalytics';
 import CreatorAnalyticsLayout from '@modules/experience-analytics-shared/components/RAQIV2/layout/CreatorAnalyticsLayout';
 import { useUniverseResource } from '@modules/experience-analytics-shared/hooks/useChartResourceProvider';
 import { PageLoading } from '@modules/miscellaneous/components';
@@ -15,33 +9,8 @@ import { useNewPlaceVersionLiveBannerElement } from './NewPlaceVersionLiveBanner
 import { useRobloxOwnedScriptErrorsRemovedBannerElement } from './RobloxOwnedScriptErrorsRemovedBanner';
 
 const ErrorReportPageContent: FC = () => {
-  const { id: universeId, isLoading: isResourceLoading } = useUniverseResource();
-  const { ready: isFlagReady, value: isErrorReportV2EnabledFlag } = useFlag(
-    isErrorReportV2Enabled,
-    {
-      universeId,
-    },
-  );
-  const { ready: isFirstSeenColumnFlagReady, value: isFirstSeenColumnEnabledFlag } = useFlag(
-    isFirstSeenColumnEnabled,
-    {
-      universeId,
-    },
-  );
-  const {
-    ready: isNewPlaceVersionLiveBannerFlagReady,
-    value: isNewPlaceVersionLiveBannerEnabledFlag,
-  } = useFlag(isErrorReportNewPlaceVersionLiveBannerEnabled, {
-    universeId,
-  });
-  const shouldEnableNewPlaceVersionLiveBanner =
-    isFlagReady &&
-    isErrorReportV2EnabledFlag &&
-    isNewPlaceVersionLiveBannerFlagReady &&
-    isNewPlaceVersionLiveBannerEnabledFlag;
-  const newPlaceVersionLiveBannerElement = useNewPlaceVersionLiveBannerElement(
-    shouldEnableNewPlaceVersionLiveBanner,
-  );
+  const { isLoading: isResourceLoading } = useUniverseResource();
+  const newPlaceVersionLiveBannerElement = useNewPlaceVersionLiveBannerElement();
   const robloxOwnedScriptErrorsRemovedBannerElement =
     useRobloxOwnedScriptErrorsRemovedBannerElement();
   const bannerElements = useMemo(
@@ -54,17 +23,9 @@ const ErrorReportPageContent: FC = () => {
     [newPlaceVersionLiveBannerElement, robloxOwnedScriptErrorsRemovedBannerElement],
   );
 
-  const config = useMemo(
-    () =>
-      getErrorReportPageV2Config(
-        Boolean(isErrorReportV2EnabledFlag),
-        Boolean(isFirstSeenColumnEnabledFlag),
-        bannerElements,
-      ),
-    [bannerElements, isErrorReportV2EnabledFlag, isFirstSeenColumnEnabledFlag],
-  );
+  const config = useMemo(() => getErrorReportPageV2Config(bannerElements), [bannerElements]);
 
-  if (isResourceLoading || !isFlagReady || !isFirstSeenColumnFlagReady) {
+  if (isResourceLoading) {
     return <PageLoading />;
   }
 

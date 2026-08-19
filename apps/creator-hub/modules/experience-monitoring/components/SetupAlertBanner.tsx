@@ -13,16 +13,12 @@ import { creatorHub } from '@modules/miscellaneous/urls';
 
 const SETUP_ALERT_BANNER_FEATURE_KEY = 'performance.setupAlertBanner';
 
-type SetupAlertBannerProps = {
-  readonly isExperienceAlertsEnabled: boolean;
-};
-
 /**
  * Prompts the creator to set up an alert when they have manage-alerts
  * permission but haven't configured any alerts for this universe yet.
  * Dismissing it hides it permanently (per user, per universe).
  */
-const SetupAlertBanner: FC<SetupAlertBannerProps> = ({ isExperienceAlertsEnabled }) => {
+const SetupAlertBanner: FC = () => {
   const router = useRouter();
   const { translate } = useRAQIV2TranslationDependencies();
   const { id: universeId } = useUniverseResource();
@@ -39,7 +35,6 @@ const SetupAlertBanner: FC<SetupAlertBannerProps> = ({ isExperienceAlertsEnabled
   const hasNoAlertsConfigured = isAlertsListLoaded && (alerts?.length ?? 0) === 0;
 
   const shouldShow =
-    isExperienceAlertsEnabled &&
     !isPermissionsPending &&
     userCanManageAnalyticsAlertForUniverse &&
     hasNoAlertsConfigured &&
@@ -48,6 +43,7 @@ const SetupAlertBanner: FC<SetupAlertBannerProps> = ({ isExperienceAlertsEnabled
 
   if (shouldShow) {
     return (
+      // oxlint-disable-next-line typescript/no-deprecated -- SystemBanner is the Foundation component for page-level informational banners.
       <SystemBanner
         className='margin-bottom-small width-full'
         title={translate(

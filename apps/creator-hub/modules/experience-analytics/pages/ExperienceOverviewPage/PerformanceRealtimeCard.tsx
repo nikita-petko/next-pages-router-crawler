@@ -6,7 +6,6 @@ import {
   RAQIV2Metric,
   RAQIV2MetricGranularity,
 } from '@rbx/creator-hub-analytics-config';
-import { useFlag } from '@rbx/flags';
 import { Button } from '@rbx/foundation-ui';
 import {
   Card,
@@ -18,7 +17,6 @@ import {
   Skeleton,
   Typography,
 } from '@rbx/ui';
-import { isExperienceAlertsEnabled } from '@generated/flags/creatorAnalytics';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { NumberContext } from '@modules/charts-generic/charts/numberFormatters';
 import { noDataSymbol } from '@modules/charts-generic/components/MetricValue/MetricValue';
@@ -50,7 +48,6 @@ import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLo
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import Section from '../../components/Section';
 import { logClickRealtimeSeeMore } from './logger';
-import NewPlaceVersionLiveAlert from './NewPlaceVersionLiveAlert';
 import usePerformanceRealtimeCardStyles from './PerformanceRealtimeCard.styles';
 
 const chartEventLogging: TChartEventLogging = {
@@ -93,14 +90,6 @@ const PerformanceRealtimeCard: FC = () => {
   const { translate } = translationDependencies;
   const locale = useLocale();
   const { unifiedLogger } = useUnifiedLoggerProvider();
-  // When the Experience Alerts flag is on, the new-place-version banner is
-  // owned by the Alerts card above this one; suppress it here to avoid
-  // rendering the same banner twice.
-  const { value: isExperienceAlertsEnabledFlag } = useFlag(isExperienceAlertsEnabled, {
-    universeId,
-  });
-  const showLegacyNewPlaceVersionBanner = !isExperienceAlertsEnabledFlag;
-
   // event loggers
   const onClickSeeMore = useCallback(() => {
     logClickRealtimeSeeMore(unifiedLogger, universeId);
@@ -179,7 +168,6 @@ const PerformanceRealtimeCard: FC = () => {
 
     return (
       <Container disableGutters>
-        {showLegacyNewPlaceVersionBanner ? <NewPlaceVersionLiveAlert /> : null}
         <Typography variant='smallLabel2' color='secondary'>
           {labelKey ? translate(labelKey) : ''}
         </Typography>
@@ -198,7 +186,6 @@ const PerformanceRealtimeCard: FC = () => {
   }, [
     chartContext,
     isLoading,
-    showLegacyNewPlaceVersionBanner,
     summary,
     summaryItemEventLogging,
     translate,

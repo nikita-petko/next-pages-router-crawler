@@ -7,7 +7,7 @@ import useRAQIV2TranslationDependencies from '@modules/experience-analytics-shar
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import getAlertConfigurationPageConfig from '../components/alertConfigurationPageConfig';
 import AnalyticsAlertClientProvider from '../components/AnalyticsAlertClientProvider';
-import ExperienceAlertsFlagGate from '../components/ExperienceAlertsFlagGate';
+import UniverseResourceGate from '../components/UniverseResourceGate';
 import { analyticsAlertControlPlaneClient } from '../constants/types';
 
 const AlertConfigurationsPage = () => {
@@ -18,7 +18,7 @@ const AlertConfigurationsPage = () => {
   }, [setHasUserSeen]);
 
   return (
-    <ExperienceAlertsFlagGate>
+    <UniverseResourceGate>
       {(resource) => (
         <AnalyticsAlertClientProvider client={analyticsAlertControlPlaneClient}>
           <CreatorAnalyticsLayout
@@ -26,7 +26,7 @@ const AlertConfigurationsPage = () => {
           />
         </AnalyticsAlertClientProvider>
       )}
-    </ExperienceAlertsFlagGate>
+    </UniverseResourceGate>
   );
 };
 

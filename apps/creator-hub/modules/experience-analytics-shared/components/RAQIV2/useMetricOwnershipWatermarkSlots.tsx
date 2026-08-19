@@ -7,7 +7,7 @@ import {
   type QuerySummary,
 } from '@rbx/ownership-watermark';
 import { getUIMetricsFromMetricLike, type MetricLike } from '../../types/ComputedMetric';
-import FlagGatedOwnershipWatermark from '../FlagGatedOwnershipWatermark';
+import OwnershipWatermark from '../OwnershipWatermark';
 
 type WatermarkableQuerySpec = {
   resource: {
@@ -95,7 +95,7 @@ const useMetricOwnershipWatermarkSlots = (input: WatermarkSlotInput): ChartCardS
   const query = useMemo(() => buildQuerySummary(input), [input]);
   return useMemo(
     () => ({
-      watermark: <FlagGatedOwnershipWatermark metricKey={metricKey} query={query} />,
+      watermark: <OwnershipWatermark metricKey={metricKey} query={query} />,
     }),
     [metricKey, query],
   );

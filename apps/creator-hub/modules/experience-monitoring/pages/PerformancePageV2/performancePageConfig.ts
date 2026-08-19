@@ -78,7 +78,6 @@ const orderedTabKeys = [Category.Client, Category.Server, Category.Network] as c
 type TPerformanceTabKeys = (typeof orderedTabKeys)[number];
 
 const getPerformancePageConfig = (
-  isExperienceAlertsEnabled: boolean,
   isNetworkTabEnabled: boolean,
   serverTabPrependedBody: RAQIV2UIComponent[] = [],
 ): CreatorAnalyticsFixedTabPageConfig<TPerformanceTabKeys> => {
@@ -160,14 +159,14 @@ const getPerformancePageConfig = (
             AnnotationType.EngineRelease,
             AnnotationType.Announcement,
             AnnotationType.ExtendedServicesEnablement,
-            ...(isExperienceAlertsEnabled ? [AnnotationType.ConfiguredAlertIncident] : []),
+            AnnotationType.ConfiguredAlertIncident,
           ],
           defaultAnnotationTypes: [
             AnnotationType.PlaceVersion,
             AnnotationType.EngineRelease,
             AnnotationType.ClientCrashRateNotStableAlert,
             AnnotationType.ExtendedServicesEnablement,
-            ...(isExperienceAlertsEnabled ? [AnnotationType.ConfiguredAlertIncident] : []),
+            AnnotationType.ConfiguredAlertIncident,
           ],
           showAnnotationsControl: true,
         } as const satisfies AnalyticsPageConfigAnnotationOptions,

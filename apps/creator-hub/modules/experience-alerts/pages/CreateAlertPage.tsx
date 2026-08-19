@@ -1,4 +1,4 @@
-import { useCallback, useMemo, type FC } from 'react';
+import { useCallback, useMemo, useState, type FC } from 'react';
 import { useRouter } from 'next/router';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
@@ -14,7 +14,7 @@ import AnalyticsAlertClientProvider, {
   useAnalyticsAlertClient,
 } from '../components/AnalyticsAlertClientProvider';
 import ExperienceAlertForm from '../components/ExperienceAlertForm/ExperienceAlertForm';
-import ExperienceAlertsFlagGate from '../components/ExperienceAlertsFlagGate';
+import UniverseResourceGate from '../components/UniverseResourceGate';
 import {
   analyticsAlertControlPlaneClient,
   type ExperienceAlertFormValues,
@@ -98,30 +98,38 @@ const CreateAlertPageBody: FC<{
  * `ExperienceAlertFormValues`). When omitted, the page derives the prefill from
  * the URL query (e.g. the chart "Create alert" deep link) via
  * {@link analyticsAlertPrefillFromQuery}; an explicit `prefill` prop always
- * overrides the URL. The resolved object is memoized so the form's not-dirty
+ * overrides the URL. The resolved object is stored once so the form's not-dirty
  * reset effect doesn't re-apply it on every parent render.
  */
+const GatedCreateAlertPage: FC<{ prefill?: Partial<ExperienceAlertFormValues> }> = ({
+  prefill,
+}) => (
+  <UniverseResourceGate>
+    {(resource) => <CreateAlertPageBody resource={resource} prefill={prefill} />}
+  </UniverseResourceGate>
+);
+
+const CreateAlertPageWithQueryPrefill: FC = () => {
+  const router = useRouter();
+  const [prefill] = useState(() => analyticsAlertPrefillFromQuery(router.query));
+
+  return <GatedCreateAlertPage prefill={prefill} />;
+};
+
 const CreateAlertPage: FC<{ prefill?: Partial<ExperienceAlertFormValues> }> = ({ prefill }) => {
   const router = useRouter();
-  // Deep links are a read-once concern: snapshot the prefill when the router
-  // first becomes ready and keep that object identity stable afterwards.
-  // Depending on `router.query` here would recompute on its per-render identity
-  // churn, re-firing the form's not-dirty `reset` and wiping field state that
-  // mounts asynchronously (e.g. the auto-selected breakdown categories).
-  const resolvedPrefill = useMemo(() => {
-    if (prefill != null) {
-      return prefill;
-    }
-    // oxlint-disable-next-line react/react-compiler -- read the URL query once when the router becomes ready; ignore later router.query identity churn
-    return router.isReady ? analyticsAlertPrefillFromQuery(router.query) : undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- read the URL query once when the router becomes ready; ignore later router.query identity churn
-  }, [prefill, router.isReady]);
 
-  return (
-    <ExperienceAlertsFlagGate>
-      {(resource) => <CreateAlertPageBody resource={resource} prefill={resolvedPrefill} />}
-    </ExperienceAlertsFlagGate>
-  );
+  if (prefill != null) {
+    return <GatedCreateAlertPage prefill={prefill} />;
+  }
+
+  if (!router.isReady) {
+    return <PageLoading />;
+  }
+
+  // Mount only once the router is ready so the state initializer snapshots the
+  // deep-link query exactly once and keeps the form prefill stable afterwards.
+  return <CreateAlertPageWithQueryPrefill />;
 };
 
 export default withTranslation(CreateAlertPage, [

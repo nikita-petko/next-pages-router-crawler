@@ -271,26 +271,6 @@ export const generatedFlags = [
       },
     },
     {
-      flag: creatorAnalyticsFlags.isExperienceAlertsEnabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'isExperienceAlertsEnabled',
-        defaultValue: true,
-        valueType: 'boolean',
-        contextType: 'universe',
-      },
-    },
-    {
-      flag: creatorAnalyticsFlags.isOwnershipWatermarkEnabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'isOwnershipWatermarkEnabled',
-        defaultValue: true,
-        valueType: 'boolean',
-        contextType: 'static',
-      },
-    },
-    {
       flag: creatorAnalyticsFlags.isExperimentationTemplatesEnabled,
       metadata: {
         namespace: 'creator-analytics',
@@ -305,46 +285,6 @@ export const generatedFlags = [
       metadata: {
         namespace: 'creator-analytics',
         name: 'isExperimentTargetingEnabled',
-        defaultValue: true,
-        valueType: 'boolean',
-        contextType: 'universe',
-      },
-    },
-    {
-      flag: creatorAnalyticsFlags.isErrorReportV2Enabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'isErrorReportV2Enabled',
-        defaultValue: true,
-        valueType: 'boolean',
-        contextType: 'universe',
-      },
-    },
-    {
-      flag: creatorAnalyticsFlags.isErrorReportNewPlaceVersionLiveBannerEnabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'isErrorReportNewPlaceVersionLiveBannerEnabled',
-        defaultValue: true,
-        valueType: 'boolean',
-        contextType: 'universe',
-      },
-    },
-    {
-      flag: creatorAnalyticsFlags.isErrorReportSuggestedRulesEnabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'isErrorReportSuggestedRulesEnabled',
-        defaultValue: true,
-        valueType: 'boolean',
-        contextType: 'universe',
-      },
-    },
-    {
-      flag: creatorAnalyticsFlags.isFirstSeenColumnEnabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'isFirstSeenColumnEnabled',
         defaultValue: true,
         valueType: 'boolean',
         contextType: 'universe',
@@ -538,16 +478,6 @@ export const generatedFlags = [
         defaultValue: false,
         valueType: 'boolean',
         contextType: 'universe',
-      },
-    },
-    {
-      flag: creatorAnalyticsFlags.isFunnelCohortCompletionRateEnabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'isFunnelCohortCompletionRateEnabled',
-        defaultValue: true,
-        valueType: 'boolean',
-        contextType: 'static',
       },
     },
     {
