@@ -462,7 +462,8 @@ const AvatarItemsGridContainer: FunctionComponent<
     // The taxonomy and Recents views list by creator across every Avatar Items tab, including the
     // folder-backed "All" tab, so neither uses the folder loader.
     if (isAssetAll && !isTaxonomyView && !isRecentsView && !isAvatarLooksView) {
-      return loadCreationsByFolder;
+      return (creationsParameters: AvatarItemsGridPagingParameters) =>
+        loadCreationsByFolder(creationsParameters, user?.id ?? 0);
     }
     return (creationsParameters: AvatarItemsGridPagingParameters) => {
       if (creationsParameters.avatarItem.lookType !== undefined) {

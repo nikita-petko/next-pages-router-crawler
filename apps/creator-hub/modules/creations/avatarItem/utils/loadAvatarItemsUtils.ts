@@ -348,6 +348,7 @@ export async function getFolderDropdownOptions(groupId?: number): Promise<Avatar
 
 export async function loadCreationsByFolder(
   creationsParameters: AvatarItemsGridPagingParameters,
+  userId: number,
 ): Promise<PageResponse<CreationData>> {
   const { avatarItem } = creationsParameters;
 
@@ -412,6 +413,7 @@ export async function loadCreationsByFolder(
           isSellable: marketplaceItem?.cannotBePublishedReason === 0,
           isCollectible: marketplaceItem?.collectibleItemType !== 0,
           containingFolderId: avatarItem.folderId,
+          userId,
         };
       });
     }
