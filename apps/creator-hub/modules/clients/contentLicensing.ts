@@ -967,6 +967,7 @@ export class ContentLicensingApiClient {
     offerStatus?: AgreementCandidateIndexOfferStatusFilter,
     sortBy?: AgreementCandidateIndexSortBy,
     sortDirection?: AgreementCandidateIndexSortDirection,
+    candidateType?: AgreementCandidateType,
   ): Promise<ListIndexedAgreementCandidatesResponse> {
     return this.agreementCandidatesApi.agreementCandidatesListIndexedAgreementCandidatesByAccount({
       accountId,
@@ -980,6 +981,7 @@ export class ContentLicensingApiClient {
       offerStatus,
       sortBy,
       sortDirection,
+      candidateType,
     });
   }
 

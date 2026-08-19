@@ -14,6 +14,7 @@ import type {
   AgreementCandidateResponse,
   IndexedAgreementCandidateResponse,
   ListAgreementCandidatesResponse,
+  AgreementCandidateType,
   UniverseContentMaturity,
 } from '@rbx/client-content-licensing-api/v1';
 import {
@@ -125,6 +126,8 @@ interface MatchesQueryOptions {
   offerStatusFilter?: MatchCandidateOfferStatusFilter;
   sortBy?: AgreementCandidateIndexSortBy;
   sortDirection?: AgreementCandidateIndexSortDirection;
+  candidateType?: AgreementCandidateType;
+  enabled?: boolean;
   /**
    * When true, batch-loads agreement statuses for loaded candidates and exposes agreementStatusesColumn
    * for the matches table and offer-status filtering.
@@ -237,7 +240,9 @@ export const useMatchesQuery = (options: MatchesQueryOptions): MatchesQueryResul
     offerStatusFilter,
     sortBy,
     sortDirection,
+    candidateType,
     loadAgreementStatuses = false,
+    enabled = true,
   } = options;
 
   const request = useInfiniteQuery({
@@ -253,6 +258,7 @@ export const useMatchesQuery = (options: MatchesQueryOptions): MatchesQueryResul
       useIndexedMatches ? offerStatusFilter : undefined,
       useIndexedMatches ? sortBy : undefined,
       useIndexedMatches ? sortDirection : undefined,
+      useIndexedMatches ? candidateType : undefined,
     ],
     queryFn: async ({ pageParam }: { pageParam: string | undefined }) => {
       if (!accountId) {
@@ -274,6 +280,7 @@ export const useMatchesQuery = (options: MatchesQueryOptions): MatchesQueryResul
           convertOfferStatusFilter(offerStatusFilter),
           sortBy,
           sortDirection,
+          candidateType,
         );
 
         return {
@@ -348,7 +355,7 @@ export const useMatchesQuery = (options: MatchesQueryOptions): MatchesQueryResul
     initialPageParam: undefined,
     // oxlint-disable-next-line typescript/prefer-nullish-coalescing -- API may return `""` when there is no next page; `??` would keep fetching
     getNextPageParam: (lastPage) => lastPage.nextPageToken || undefined,
-    enabled: !!accountId && isSettingsFetched,
+    enabled: enabled && !!accountId && isSettingsFetched,
     // in order to avoid jank when filtering we'll keep the previous data
     // in the table until the new data is loaded
     placeholderData: keepPreviousData,
