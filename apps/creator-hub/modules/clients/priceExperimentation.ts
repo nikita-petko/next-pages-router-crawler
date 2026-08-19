@@ -3,7 +3,6 @@ import {
   PriceExperimentationApiV2Api,
 } from '@rbx/client-price-experimentation-api/v1';
 import type {
-  PriceExperimentationApiGetExperimentEligibilityRequest,
   PriceExperimentationApiGetExperimentResultsRequest,
   PriceExperimentationApiListExperimentsRequest,
   PriceExperimentationApiListHoldoutMetricsRequest,
@@ -27,17 +26,6 @@ export class PriceExperimentationApiClient {
     const configuration = createClientConfiguration('price-experimentation-api', 'bedev2');
     this.api = new PriceExperimentationApiApi(configuration);
     this.apiV2 = new PriceExperimentationApiV2Api(configuration);
-  }
-
-  getExperimentationMetadata(options: RequestInit = {}) {
-    return this.api.priceExperimentationApiGetExperimentationMetadata(options);
-  }
-
-  getExperimentEligibility(
-    request: PriceExperimentationApiGetExperimentEligibilityRequest,
-    options: RequestInit = {},
-  ) {
-    return this.api.priceExperimentationApiGetExperimentEligibility(request, options);
   }
 
   getExperimentResults(
