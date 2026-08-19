@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } fro
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { Button, Typography } from '@rbx/ui';
-import type { Question } from '@modules/clients/experienceQuestionnaire';
 import Flex from '@modules/miscellaneous/components/Flex';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import type {
@@ -14,8 +13,12 @@ import type {
   ValidatedSection,
 } from '../interfaces/types';
 import useMarkdownParser from '../parser/useMarkdownParser';
+import findNextSectionAfterComplete from '../utils/findNextSectionAfterComplete';
 import isSectionComplete from '../utils/isSectionComplete';
-import { isCheckBoxQuestion } from '../utils/questionTypeGuard';
+import {
+  buildUpdatedAnswers,
+  shouldAutoAdvanceAfterAnswer,
+} from '../utils/questionnaireAnswerUpdate';
 import QuestionnaireAccordion from './QuestionnaireAccordion';
 
 type TQuestionnaireAccordionsProps = {
@@ -139,30 +142,17 @@ const QuestionnaireAccordions: FunctionComponent<TQuestionnaireAccordionsProps> 
     (newAnswers?: ValidatedAnswer[]) => {
       const answersToCheck = newAnswers ?? answers;
       const { sections } = questionnaire;
+      const currentIndex = sections.findIndex((section) => section.id === expanded);
+      const nextSection = findNextSectionAfterComplete({
+        sections,
+        currentIndex,
+        answers: answersToCheck,
+        violatedSectionIds,
+      });
 
-      const currentIndex = sections.findIndex((s) => s.id === expanded);
-      const sectionsBelow = sections.slice(currentIndex + 1);
-
-      const nextViolatedBelow = violatedSectionIds?.size
-        ? sectionsBelow.find((s) => violatedSectionIds.has(s.id))
-        : undefined;
-
-      if (nextViolatedBelow) {
-        setExpanded(nextViolatedBelow.id);
-        scrollToSectionAfterAnimation(nextViolatedBelow.id);
-        return;
-      }
-
-      const isIncomplete = (section: ValidatedSection) =>
-        !isSectionComplete(section, answersToCheck);
-
-      const nextIncompleteBelow = sectionsBelow.find(isIncomplete);
-      const nextIncomplete =
-        nextIncompleteBelow ?? sections.slice(0, currentIndex).find(isIncomplete);
-
-      if (nextIncomplete) {
-        setExpanded(nextIncomplete.id);
-        scrollToSectionAfterAnimation(nextIncomplete.id);
+      if (nextSection) {
+        setExpanded(nextSection.id);
+        scrollToSectionAfterAnimation(nextSection.id);
       } else {
         setExpanded(null);
       }
@@ -170,61 +160,27 @@ const QuestionnaireAccordions: FunctionComponent<TQuestionnaireAccordionsProps> 
     [expanded, answers, questionnaire, violatedSectionIds],
   );
 
-  const findQuestionById = useCallback(
-    (questions: Question[] | undefined, targetId: string): Question | null => {
-      if (!questions) {
-        return null;
-      }
-
-      const directMatch = questions.find((q) => q.id === targetId);
-      if (directMatch) {
-        return directMatch;
-      }
-
-      const questionsWithOptions = questions.filter((q) => 'options' in q && q.options);
-
-      const childMatches = questionsWithOptions
-        .flatMap((q) => {
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing filtered questions with options
-          const opts = (q as { options?: Array<{ childQuestions?: Question[] }> }).options ?? [];
-          return opts.filter((opt) => opt.childQuestions);
-        })
-        // oxlint-disable-next-line react/react-compiler -- recursive useCallback is intentional here
-        .map((opt) => findQuestionById(opt.childQuestions, targetId))
-        .find((result) => result !== null);
-
-      return childMatches ?? null;
-    },
-    [],
-  );
-
   const updateAnswerWrapper = useCallback(
     (sectionId: string, questionId: string, value: string, unusedChildrenQuestionIds: string[]) => {
       const section = questionnaire.sections.find((s) => s.id === sectionId);
-      const wasComplete = section ? isSectionComplete(section, answers) : false;
+      const newAnswers = buildUpdatedAnswers(answers, questionId, value, unusedChildrenQuestionIds);
 
-      const otherAnswers = answers.filter((a) => a.questionId !== questionId);
-      const answersWithQuestionsRemoved = otherAnswers.filter(
-        (answer) => !unusedChildrenQuestionIds.includes(answer.questionId),
-      );
-      const newAnswers = [...answersWithQuestionsRemoved, { questionId, value }];
       setAnswers(questionId, newAnswers);
-      const complete = section && isSectionComplete(section, newAnswers);
-
-      const answeredQuestion = section ? findQuestionById(section.questions, questionId) : null;
-
       // Every time there is an update to a question's answer, save that state, so upon revisiting, the updated answers are present
       void save(newAnswers);
 
-      // Auto-close and move to next section only if:
-      // 1. Section is complete, AND
-      // 2. The answered question is NOT a checkbox (to allow multiple selections)
-      // 3. The section was not already complete prior to this interaction (avoid surprise close when revisiting)
-      if (!wasComplete && complete && answeredQuestion && !isCheckBoxQuestion(answeredQuestion)) {
+      if (
+        shouldAutoAdvanceAfterAnswer({
+          section,
+          priorAnswers: answers,
+          newAnswers,
+          questionId,
+        })
+      ) {
         onComplete(newAnswers);
       }
     },
-    [answers, findQuestionById, onComplete, questionnaire.sections, save, setAnswers],
+    [answers, onComplete, questionnaire.sections, save, setAnswers],
   );
 
   const queryClient = useQueryClient();
