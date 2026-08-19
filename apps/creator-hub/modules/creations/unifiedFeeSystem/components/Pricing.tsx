@@ -311,8 +311,6 @@ function Pricing(props: PricingProps) {
               <br />
               <Typography variant='body2' className={styles.description}>
                 {translate('Message.RegionalPricePreviewDescription')}{' '}
-                {!settings.disableJuneNinthLaunchAnnouncementRegionalPricing &&
-                  translate('Message.JuneNinthTesting')}{' '}
                 <Button
                   onClick={() => setIsRegionalPricingPanelOpen(true)}
                   variant='text'
@@ -499,6 +497,7 @@ function Pricing(props: PricingProps) {
                 <Grid item XSmall={12} Large={7}>
                   <TextField
                     id='price'
+                    // oxlint-disable-next-line rbx/no-hardcoded-translation-string -- pre-existing; unrelated to this flag cleanup
                     label='Price'
                     type='Number'
                     value={
@@ -508,7 +507,8 @@ function Pricing(props: PricingProps) {
                     error={!price || price > maxCollectiblePrice || price < priceFloor}
                     helperText={
                       price != null && price < priceFloor
-                        ? `Price cannot be lower than ${priceFloor} `
+                        ? // oxlint-disable-next-line rbx/no-hardcoded-translation-string -- pre-existing; unrelated to this flag cleanup
+                          `Price cannot be lower than ${priceFloor} `
                         : ''
                     }
                     onChange={(event) => {
@@ -576,8 +576,6 @@ function Pricing(props: PricingProps) {
                 <br />
                 <Typography variant='body2' className={styles.description}>
                   {translate('Message.RegionalPricePreviewDescription')}{' '}
-                  {!settings.disableJuneNinthLaunchAnnouncementRegionalPricing &&
-                    translate('Message.JuneNinthTesting')}{' '}
                   <Button
                     onClick={() => setIsRegionalPricingPanelOpen(true)}
                     variant='text'

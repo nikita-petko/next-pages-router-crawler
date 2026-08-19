@@ -2,16 +2,18 @@ import { useMemo } from 'react';
 import type { Locale } from '@rbx/intl';
 import { useTranslation } from '@rbx/intl';
 import { RobuxIcon } from '@rbx/ui';
-import type { TranslationKeyToFormattedText } from '@modules/analytics-translations/types';
+import type {
+  TPendingTranslationFunction,
+  TranslationKeyToFormattedText,
+} from '@modules/analytics-translations/types';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
-import { translationKeyWithoutNamespace } from '@modules/analytics-translations/wrapperFunctions';
 import {
   roughPercentageFormattingSpec,
   wholePercentageFormattingSpec,
 } from '../../constants/analyticsNumberFormattingSpec';
 import useLocale from '../../context/useLocale';
 import type { ChartSummaryItemSpec } from '../ChartSummaryItem';
-import { SummaryValueType, getLabelKeyForSummaryType } from '../ChartSummaryItem';
+import { getChartSummaryDescription, SummaryValueType } from '../ChartSummaryItem';
 import type { NumberContext, TNumberContextMetadata } from '../numberFormatters';
 import { formatNumberWithSpec, NumberIcon } from '../numberFormatters';
 
@@ -27,19 +29,9 @@ const getComparisonChipFormattingSpec = (numberContextMetadata?: TNumberContextM
 const getSummaryDescription = (
   item: ChartSummaryItemSpec,
   translate: TranslationKeyToFormattedText,
+  tPendingTranslation?: TPendingTranslationFunction,
 ): string => {
-  if (item.summaryValueType === SummaryValueType.String) {
-    return item.specificLabel;
-  }
-
-  const { summaryType, specificLabel } = item;
-  const descriptionTranslationKey = getLabelKeyForSummaryType(summaryType);
-
-  return (
-    specificLabel ??
-    (descriptionTranslationKey ? translate(descriptionTranslationKey) : null) ??
-    translate(translationKeyWithoutNamespace('Label.Unknown'))
-  );
+  return getChartSummaryDescription(item, translate, tPendingTranslation);
 };
 
 const getSummaryValue = (
@@ -110,10 +102,12 @@ export const getSummarySpec = ({
   item,
   locale,
   translate,
+  tPendingTranslation,
 }: {
   item: ChartSummaryItemSpec;
   locale: Locale;
   translate: TranslationKeyToFormattedText;
+  tPendingTranslation?: TPendingTranslationFunction;
   summaryValueContext?: NumberContext;
 }) => {
   const key =
@@ -124,7 +118,7 @@ export const getSummarySpec = ({
   return {
     key,
     summaryValue: getSummaryValue(item, translate, locale),
-    description: getSummaryDescription(item, translate),
+    description: getSummaryDescription(item, translate, tPendingTranslation),
     StartSummaryIcon: getSummaryStartIcon(item),
     comparisonChipSpec: getSummaryComparisonChip(item, translate, locale),
     tooltip: getSummaryTooltip(item, translate),
@@ -136,7 +130,7 @@ export const getSummarySpec = ({
  */
 const useChartSummarySpecs = (summaryItems: ChartSummaryItemSpec[]) => {
   const locale = useLocale();
-  const { translate } = useTranslationWrapper(useTranslation());
+  const { translate, tPendingTranslation } = useTranslationWrapper(useTranslation());
 
   return useMemo(
     () =>
@@ -145,9 +139,10 @@ const useChartSummarySpecs = (summaryItems: ChartSummaryItemSpec[]) => {
           item,
           locale,
           translate,
+          tPendingTranslation,
         }),
       ),
-    [locale, summaryItems, translate],
+    [locale, summaryItems, tPendingTranslation, translate],
   );
 };
 

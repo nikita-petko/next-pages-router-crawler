@@ -144,6 +144,7 @@ const summarizeSingleSeries = <T, V extends number>(
     specificLabel: specificLabel
       ? translate(specificLabel.translationKey, specificLabel.arguments)
       : breakdownName,
+    averageLabelGranularity: type === ChartSummaryType.Average ? spec.granularity : undefined,
     correspondingBreakdowns: singleSeries.breakdownValues,
     comparisonChipSpec,
     numberContextMetadata,

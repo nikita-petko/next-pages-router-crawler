@@ -58,7 +58,7 @@ import { SUPPORTED_SUMMARY_CARD_EDITOR_AGGREGATIONS } from '../../chartEditor/ch
 import useEditPageTranslations from '../useEditPageTranslations';
 
 type SummaryAggregationLabelKey =
-  | 'aggregationAverageOverTimePeriod'
+  | 'aggregationAverageOverDailyData'
   | 'aggregationMostRecentDataPoint'
   | 'aggregationCumulative';
 
@@ -67,7 +67,7 @@ type SummaryCardEditorAggregation = (typeof SUPPORTED_SUMMARY_CARD_EDITOR_AGGREG
 const SUMMARY_AGGREGATION_LABEL_KEYS: Readonly<
   Record<SummaryCardEditorAggregation, SummaryAggregationLabelKey>
 > = {
-  AverageOverTimePeriod: 'aggregationAverageOverTimePeriod',
+  AverageOverTimePeriod: 'aggregationAverageOverDailyData',
   MostRecentDataPoint: 'aggregationMostRecentDataPoint',
   Cumulative: 'aggregationCumulative',
 };
@@ -149,13 +149,10 @@ function useSummaryCardDialogTranslations() {
         TranslationNamespace.Analytics,
       ),
     ),
-    aggregationAverageOverTimePeriod: tPendingTranslation(
-      'Average',
-      'Summary aggregation label: Mean value across the selected time range.',
-      translationKey(
-        'Label.CustomDashboards.SummaryEditor.Agg.AverageOverTime',
-        TranslationNamespace.Analytics,
-      ),
+    aggregationAverageOverDailyData: tPendingTranslation(
+      'Daily average over selected period',
+      'Label for an average calculated from daily data across the selected time range.',
+      translationKey('Label.AverageDailyDataSelectedPeriod', TranslationNamespace.Analytics),
     ),
     aggregationMostRecentDataPoint: tPendingTranslation(
       'Latest value',

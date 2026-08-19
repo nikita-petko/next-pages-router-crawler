@@ -1,5 +1,6 @@
 import type { FunctionComponent } from 'react';
 import React, { useMemo } from 'react';
+import { RAQIV2MetricGranularity } from '@rbx/creator-hub-analytics-config';
 import { useTranslation } from '@rbx/intl';
 import {
   Grid,
@@ -14,6 +15,7 @@ import {
 } from '@rbx/ui';
 import type {
   FormattedText,
+  TPendingTranslationFunction,
   TranslationKey,
   TranslationKeyToFormattedText,
 } from '@modules/analytics-translations/types';
@@ -74,6 +76,7 @@ export type NumericChartSummaryItemSpec = BaseChartSummaryItemSpec & {
   value: number;
   formattingSpec: TFormattingSpec;
   summaryType: Exclude<ChartSummaryType, ChartSummaryType.TopBreakdown>;
+  averageLabelGranularity?: RAQIV2MetricGranularity;
 };
 
 export type StringChartSummaryItemSpec = BaseChartSummaryItemSpec & {
@@ -98,6 +101,64 @@ export const filterNumericChartSummaryItemSpecs = (
   return items.filter(isNumericChartSummaryItemSpec);
 };
 
+const getAverageSummaryLabel = (
+  granularity: RAQIV2MetricGranularity | undefined,
+  tPendingTranslation: TPendingTranslationFunction | undefined,
+): FormattedText | undefined => {
+  if (!tPendingTranslation || granularity === undefined) {
+    return undefined;
+  }
+
+  switch (granularity) {
+    case RAQIV2MetricGranularity.OneMinute:
+      return tPendingTranslation(
+        'Minute-by-minute average over selected period',
+        'Label for an average calculated from one-minute data across the selected time range.',
+        translationKey('Label.AverageMinuteDataSelectedPeriod', TranslationNamespace.Analytics),
+      );
+    case RAQIV2MetricGranularity.HalfHour:
+      return tPendingTranslation(
+        'Half-hourly average over selected period',
+        'Label for an average calculated from half-hour data across the selected time range.',
+        translationKey('Label.AverageHalfHourlyDataSelectedPeriod', TranslationNamespace.Analytics),
+      );
+    case RAQIV2MetricGranularity.OneHour:
+      return tPendingTranslation(
+        'Hourly average over selected period',
+        'Label for an average calculated from hourly data across the selected time range.',
+        translationKey('Label.AverageHourlyDataSelectedPeriod', TranslationNamespace.Analytics),
+      );
+    case RAQIV2MetricGranularity.OneDay:
+      return tPendingTranslation(
+        'Daily average over selected period',
+        'Label for an average calculated from daily data across the selected time range.',
+        translationKey('Label.AverageDailyDataSelectedPeriod', TranslationNamespace.Analytics),
+      );
+    case RAQIV2MetricGranularity.OneWeek:
+      return tPendingTranslation(
+        'Weekly average over selected period',
+        'Label for an average calculated from weekly data across the selected time range.',
+        translationKey('Label.AverageWeeklyDataSelectedPeriod', TranslationNamespace.Analytics),
+      );
+    case RAQIV2MetricGranularity.OneMonth:
+      return tPendingTranslation(
+        'Monthly average over selected period',
+        'Label for an average calculated from monthly data across the selected time range.',
+        translationKey('Label.AverageMonthlyDataSelectedPeriod', TranslationNamespace.Analytics),
+      );
+    case RAQIV2MetricGranularity.None:
+      return tPendingTranslation(
+        'Cumulative over selected period',
+        'Label for a cumulative value calculated across the selected time range.',
+        translationKey('Label.CumulativeSelectedPeriod', TranslationNamespace.Analytics),
+      );
+    default: {
+      const exhaustiveCheck: never = granularity;
+      return exhaustiveCheck;
+    }
+  }
+};
+
 const getLabel = (
   item: ChartSummaryItemSpec,
   translate: TranslationKeyToFormattedText,
@@ -111,9 +172,31 @@ const getLabel = (
   );
 };
 
+export const getChartSummaryDescription = (
+  item: ChartSummaryItemSpec,
+  translate: TranslationKeyToFormattedText,
+  tPendingTranslation?: TPendingTranslationFunction,
+): FormattedText => {
+  if (item.summaryValueType === SummaryValueType.String) {
+    return item.specificLabel;
+  }
+
+  const averageSummaryLabel =
+    item.summaryType === ChartSummaryType.Average
+      ? getAverageSummaryLabel(item.averageLabelGranularity, tPendingTranslation)
+      : undefined;
+
+  return (
+    item.specificLabel ??
+    averageSummaryLabel ??
+    getLabel(item, translate) ??
+    translate(translationKeyWithoutNamespace('Label.Unknown'))
+  );
+};
+
 const ChartSummaryItem: FunctionComponent<ChartSummaryItemSpec> = (item) => {
   const { tooltipKey, summaryValueType } = item;
-  const { translate } = useTranslationWrapper(useTranslation());
+  const { translate, tPendingTranslation } = useTranslationWrapper(useTranslation());
   const locale = useLocale();
 
   const { formattedValue, label, tooltip } = useMemo(() => {
@@ -130,7 +213,7 @@ const ChartSummaryItem: FunctionComponent<ChartSummaryItemSpec> = (item) => {
         const { value, formattingSpec } = item;
         return {
           formattedValue: formatNumberWithSpec(value, formattingSpec, { translate, locale }),
-          label: getLabel(item, translate),
+          label: getChartSummaryDescription(item, translate, tPendingTranslation),
           tooltip: tooltipKey ? translate(tooltipKey) : null,
         };
       }
@@ -139,7 +222,7 @@ const ChartSummaryItem: FunctionComponent<ChartSummaryItemSpec> = (item) => {
         throw new Error(`Unhandled summary value type ${String(exhaustiveCheck)}`);
       }
     }
-  }, [item, translate, locale, tooltipKey, summaryValueType]);
+  }, [item, translate, tPendingTranslation, locale, tooltipKey, summaryValueType]);
 
   const {
     classes: {
