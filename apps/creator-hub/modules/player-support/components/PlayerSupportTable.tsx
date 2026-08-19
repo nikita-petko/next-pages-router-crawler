@@ -270,7 +270,9 @@ const MobileTicketCard = ({
       </div>
       <div className='padding-x-xxlarge gap-medium flex flex-col'>
         <div className='items-center justify-between flex'>
-          <span className='content-emphasis text-body-medium'>{translate('Title.Table.Type')}</span>
+          <span className='content-emphasis text-body-medium'>
+            {translate('Label.PlayerSupport.Filter.Category')}
+          </span>
           <Badge label={categoryLabel} variant='Neutral' />
         </div>
         <div className='items-center justify-between flex'>
@@ -362,7 +364,7 @@ const PlayerSupportTable = ({
               </span>
             </th>
             <th className='content-emphasis text-label-medium text-no-wrap text-align-x-left width-[176px] padding-x-medium'>
-              {translate('Title.Table.Type')}
+              {translate('Label.PlayerSupport.Filter.Category')}
             </th>
             <th
               className='content-emphasis text-label-medium text-no-wrap text-align-x-left width-[176px] padding-x-medium'

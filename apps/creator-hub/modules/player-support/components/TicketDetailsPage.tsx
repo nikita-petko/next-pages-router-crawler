@@ -821,7 +821,7 @@ const DetailsSidebar: React.FunctionComponent<{
             className='!height-800 !padding-x-medium'
           />
         </DetailRow>
-        <DetailRow label={translate('Title.Table.Type')}>
+        <DetailRow label={translate('Label.PlayerSupport.Filter.Category')}>
           <Badge
             label={categoryLabel}
             variant='Neutral'
