@@ -1,9 +1,11 @@
 import type { FunctionComponent } from 'react';
 import { useCallback, useState } from 'react';
 import { StatusCodes } from '@rbx/core';
+import { useFlag } from '@rbx/flags';
 import { Divider, Link } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { CircularProgress } from '@rbx/ui';
+import { presetChatEnabled } from '@generated/flags/presetChat';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { PresetChatApiError } from '@modules/clients/presetChatApi';
@@ -11,7 +13,6 @@ import { EmptyGrid } from '@modules/miscellaneous/components/EmptyGrid';
 import { ErrorPage } from '@modules/miscellaneous/error';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import ChatTabOptions from '../enums/ChatTabOptions';
 import { useGetPresetChatState } from '../queries/useGetPresetChatState';
 import ChatNavigation from './ChatNavigation';
@@ -20,20 +21,28 @@ import QuickWordsStatusBadge from './QuickWordsStatusBadge';
 
 const PresetChatPageContent: FunctionComponent = () => {
   const { gameDetails } = useCurrentGame();
-  const { settings } = useSettings();
+  const { ready: flagReady, value: isPresetChatEnabled } = useFlag(presetChatEnabled);
   const { ready, tPendingTranslation } = useTranslationWrapper(useTranslation());
   const [currentTab, setCurrentTab] = useState<ChatTabOptions>(ChatTabOptions.QuickWords);
   const {
     data: presetChatState,
     isLoading: isPresetChatLoading,
     error: presetChatError,
-  } = useGetPresetChatState(gameDetails?.id, settings.enableCustomPresetChat);
+  } = useGetPresetChatState(gameDetails?.id, isPresetChatEnabled ?? false);
 
   const handleSelectTab = useCallback((value: ChatTabOptions) => {
     setCurrentTab(value);
   }, []);
 
-  if (!settings.enableCustomPresetChat) {
+  if (!flagReady) {
+    return (
+      <EmptyGrid>
+        <CircularProgress data-testid='preset-chat-loading' />
+      </EmptyGrid>
+    );
+  }
+
+  if (!isPresetChatEnabled) {
     return <ErrorPage errorCode={StatusCodes.NOT_FOUND} />;
   }
 

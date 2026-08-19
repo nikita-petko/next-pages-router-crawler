@@ -18,6 +18,7 @@ import * as immersiveAdsFlags from './immersiveAds';
 import * as leaderboardsFlags from './leaderboards';
 import * as monetizationFlags from './monetization';
 import * as payoutsFlags from './payouts';
+import * as presetChatFlags from './presetChat';
 
 export const generatedFlags = [
     {
@@ -778,6 +779,16 @@ export const generatedFlags = [
         defaultValue: true,
         valueType: 'boolean',
         contextType: 'group',
+      },
+    },
+    {
+      flag: presetChatFlags.presetChatEnabled,
+      metadata: {
+        namespace: 'preset-chat',
+        name: 'presetChatEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
       },
     },
   ] as const satisfies WidgetProps['flags'];

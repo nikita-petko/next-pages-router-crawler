@@ -70,6 +70,7 @@ export type CreationsFeatureSettings = TSettings &
     isAnalyticsAssistantChatEnabled: boolean;
     isCustomDashboardsEnabled: boolean;
     isLeaderboardConfigsEnabled: boolean;
+    isPresetChatEnabled: boolean;
     showVideoServiceDashboard: boolean;
     isJourneysEnabled: boolean;
     canViewMonitoringNavigation: boolean;
@@ -737,7 +738,7 @@ const chatCategoryFeature: Feature<CreationsFeatureSettings> = {
   nameKey: 'Heading.Chat',
   path: '/chat',
   isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
-    (settings?.enableCustomPresetChat && settings?.canConfigure) || false,
+    (settings?.isPresetChatEnabled && settings?.canConfigure) || false,
 };
 
 const configureCategoryFeature: Feature<CreationsFeatureSettings> = {

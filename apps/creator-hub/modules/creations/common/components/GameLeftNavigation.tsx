@@ -15,6 +15,7 @@ import {
   showVideoServiceDashboard as showVideoServiceDashboardFlag,
 } from '@generated/flags/creatorAnalytics';
 import { isLeaderboardConfigsEnabled as isLeaderboardConfigsEnabledFlag } from '@generated/flags/leaderboards';
+import { presetChatEnabled as presetChatEnabledFlag } from '@generated/flags/presetChat';
 import { useAuthentication } from '@modules/authentication/providers';
 import coreContentClient from '@modules/clients/coreContent';
 import { useAnalyticsExperiencePermissions } from '@modules/experience-analytics-shared/hooks/useAnalyticsPermissions';
@@ -123,6 +124,8 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
   const { ready: isLeaderboardConfigsReady, value: isLeaderboardConfigsEnabledValue } = useFlag(
     isLeaderboardConfigsEnabledFlag,
   );
+  const { ready: isPresetChatReady, value: isPresetChatEnabledValue } =
+    useFlag(presetChatEnabledFlag);
   const { ready: isJourneysReady, value: isJourneysEnabledValue } = useFlag(isJourneysEnabledFlag);
   const {
     ready: isLimitedAnalyticsAdminMonitoringNavigationReady,
@@ -182,6 +185,7 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
             isCustomDashboardsEnabled: isCustomDashboardsReady && isCustomDashboardsEnabledValue,
             isLeaderboardConfigsEnabled:
               isLeaderboardConfigsReady && isLeaderboardConfigsEnabledValue,
+            isPresetChatEnabled: isPresetChatReady && isPresetChatEnabledValue,
             isJourneysEnabled: isJourneysReady && isJourneysEnabledValue,
             canViewMonitoringNavigation:
               analyticsUserPermissions.userCanViewAnalyticsForUniverse ||
@@ -271,6 +275,8 @@ const GameLeftNavigation: FunctionComponent<React.PropsWithChildren<GameLeftNavi
     isCustomDashboardsEnabledValue,
     isLeaderboardConfigsReady,
     isLeaderboardConfigsEnabledValue,
+    isPresetChatReady,
+    isPresetChatEnabledValue,
     isJourneysReady,
     isJourneysEnabledValue,
     isLimitedAnalyticsAdminMonitoringNavigationReady,
