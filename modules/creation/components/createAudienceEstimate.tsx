@@ -22,7 +22,7 @@ export const CreateAudienceEstimate = ({ estimate }: { estimate: AudienceEstimat
     classes: { inner_block, loader, middle_text, outer_block, targetAudienceBlock },
   } = makeStyles()((theme) => ({
     inner_block: {
-      color: 'white',
+      color: theme.palette.content.standard,
     },
 
     loader: {
@@ -30,7 +30,7 @@ export const CreateAudienceEstimate = ({ estimate }: { estimate: AudienceEstimat
     },
 
     middle_text: {
-      color: 'white',
+      color: theme.palette.content.standard,
     },
 
     outer_block: {

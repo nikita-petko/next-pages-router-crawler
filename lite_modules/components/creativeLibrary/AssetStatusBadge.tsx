@@ -1,49 +1,44 @@
 import type { ContentModerationStatus } from '@rbx/client-ads-management-api/v1';
+import { StatusBadge, type TStatusBadgeShape, type TStatusBadgeVariant } from '@rbx/foundation-ui';
 
 type AssetStatusBadgeProps = {
   contentModerationStatus: ContentModerationStatus;
   isArchived: boolean;
   label: string;
+  /** `Box` adds a backplate, for the asset details drawer. Tables use the bare default. */
+  shape?: TStatusBadgeShape;
 };
 
-export const getAssetStatusDotColorClass = (
+const getAssetStatusBadgeVariant = (
   isArchived: boolean,
   contentModerationStatus: ContentModerationStatus,
-): string => {
+): TStatusBadgeVariant => {
   if (isArchived) {
-    return 'bg-system-neutral';
+    return 'Standard';
   }
   switch (contentModerationStatus) {
     case 'approved':
-      return 'bg-system-success';
+      return 'Success';
     case 'pending_review':
-      return 'bg-system-warning';
+      return 'Warning';
     case 'rejected':
-      return 'bg-system-alert';
+      return 'Alert';
     default:
-      return 'bg-system-neutral';
+      return 'Standard';
   }
 };
 
-/**
- * Figma StatusBadge (8px dot + caption on a subtle backplate). Foundation
- * StatusBadge is not exported from @rbx/foundation-ui yet — mirror its layout
- * with design tokens until the primitive ships.
- * TODO(ADS): Replace this component with Foundation `StatusBadge` once it is
- * exported from `@rbx/foundation-ui`.
- */
 const AssetStatusBadge = ({
   contentModerationStatus,
   isArchived,
   label,
+  shape,
 }: AssetStatusBadgeProps) => (
-  <span className='inline-flex items-center gap-xsmall radius-small clip bg-shift-300 padding-x-[var(--size-250)] padding-y-[var(--size-150)]'>
-    <span
-      aria-hidden
-      className={`shrink-0 size-[8px] radius-circle ${getAssetStatusDotColorClass(isArchived, contentModerationStatus)}`}
-    />
-    <span className='text-body-small content-emphasis text-no-wrap'>{label}</span>
-  </span>
+  <StatusBadge
+    label={label}
+    shape={shape}
+    variant={getAssetStatusBadgeVariant(isArchived, contentModerationStatus)}
+  />
 );
 
 export default AssetStatusBadge;

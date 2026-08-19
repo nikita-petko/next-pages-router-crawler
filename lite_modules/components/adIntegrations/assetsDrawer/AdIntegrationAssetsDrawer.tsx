@@ -8,14 +8,14 @@ import {
   SheetContent,
   SheetRoot,
   SheetTitle,
+  StatusBadge,
   TextInput,
+  type TStatusBadgeVariant,
 } from '@rbx/foundation-ui';
 import { AssetThumbnailSize, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
-import { Label } from '@rbx/ui';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import useAdIntegrationStatusLabelStyles from '@components/adIntegrations/adIntegrationStatusLabel.styles';
 import useAdIntegrationAssetsDrawerStyles from '@components/adIntegrations/assetsDrawer/AdIntegrationAssetsDrawer.styles';
 import AdIntegrationAssetsTable, {
   PendingAsset,
@@ -62,7 +62,7 @@ export interface AdIntegrationAssetsDrawerCampaignInfoHeader {
   registrationDate: string;
   startDate: string;
   statusLabel: string;
-  statusTone: 'active' | 'disabled' | 'important' | 'notice';
+  statusVariant: TStatusBadgeVariant;
 }
 
 interface CreatorIdentity {
@@ -128,15 +128,6 @@ const AdIntegrationAssetsDrawer = ({
       previewCardThumbnailImage,
     },
   } = useAdIntegrationAssetsDrawerStyles();
-  const {
-    classes: {
-      labelRoot,
-      statusCircleActive,
-      statusCircleDisabled,
-      statusCircleImportant,
-      statusCircleNotice,
-    },
-  } = useAdIntegrationStatusLabelStyles();
 
   const [assetIdInput, setAssetIdInput] = useState<string>('');
   const [pendingAdditions, setPendingAdditions] = useState<PendingAsset[]>([]);
@@ -367,22 +358,6 @@ const AdIntegrationAssetsDrawer = ({
     onClose();
   }, [mode, onClose]);
 
-  const getStatusCircleClass = (
-    statusTone: AdIntegrationAssetsDrawerCampaignInfoHeader['statusTone'],
-  ) => {
-    switch (statusTone) {
-      case 'active':
-        return statusCircleActive;
-      case 'disabled':
-        return statusCircleDisabled;
-      case 'important':
-        return statusCircleImportant;
-      case 'notice':
-      default:
-        return statusCircleNotice;
-    }
-  };
-
   return (
     <SheetRoot
       onOpenChange={(isOpen) => {
@@ -453,12 +428,10 @@ const AdIntegrationAssetsDrawer = ({
                     {translateReport('Label.Status')}
                   </span>
                   <div className={campaignInfoStatusValue}>
-                    <Label
-                      classes={{ root: labelRoot }}
-                      icon={<div className={getStatusCircleClass(campaignInfoHeader.statusTone)} />}
-                      labelText={campaignInfoHeader.statusLabel}
-                      severity='default'
-                      variant='contained'
+                    <StatusBadge
+                      label={campaignInfoHeader.statusLabel}
+                      shape='Box'
+                      variant={campaignInfoHeader.statusVariant}
                     />
                   </div>
                 </div>

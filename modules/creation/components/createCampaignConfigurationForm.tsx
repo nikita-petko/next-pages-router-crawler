@@ -346,7 +346,7 @@ export const CampaignBudgetAndScheduleFormGroup = ({
       warningContainer,
     },
     cx,
-  } = makeStyles()(() => ({
+  } = makeStyles()((theme) => ({
     '@global': {
       '.cardPaymentMenuItemNoWrap': {
         display: 'none',
@@ -397,7 +397,7 @@ export const CampaignBudgetAndScheduleFormGroup = ({
     },
     configurePaymentMethodInput: {
       '& p:not(.Mui-error)': {
-        color: '#f8d063',
+        color: theme.palette.content.alert.notice,
       },
       marginTop: 20,
       width: '100%',

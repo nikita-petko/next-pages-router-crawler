@@ -15,6 +15,7 @@ import { CardVerificationResultEnum } from '@constants/billing';
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import useResolvedThemeMode from '@hooks/useResolvedThemeMode';
 import {
   startPaymentProfileChallenge,
   verifyPaymentProfileChallenge,
@@ -37,6 +38,7 @@ const CardVerificationDialog = ({
   const { translate: translateBilling, translateHTML: translateBillingHTML } =
     useNamespacedTranslation(TranslationNamespace.Billing);
   const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
+  const themeMode = useResolvedThemeMode();
   const {
     classes: {
       buttonContainer,
@@ -522,7 +524,9 @@ const CardVerificationDialog = ({
     body = pinInputState;
   }
 
-  return <UIThemeProvider>{body}</UIThemeProvider>;
+  // A bare `UIThemeProvider` defaults to dark, which would override the theme the
+  // app root already established and pin this dialog dark in light mode.
+  return <UIThemeProvider theme={themeMode}>{body}</UIThemeProvider>;
 };
 
 export const openCardVerificationDialog = (params: {

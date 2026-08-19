@@ -171,7 +171,7 @@ const CampaignDetails = () => {
     {
       id: 'statusLabel',
       label: translateReport('Label.Status'),
-      value: <StatusLabel status={statusText} tooltipContent={statusTooltipText} />,
+      value: <StatusLabel shape='Box' status={statusText} tooltipContent={statusTooltipText} />,
     },
   ];
   const campaignInfoGridSecondColumnLabels: InfoGridCell[] = [

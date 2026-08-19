@@ -26,11 +26,11 @@ const useGenericTableRowStyles = makeStyles<void, 'actionMenuButton'>()((theme, 
 
   creativeThumbnailContainer: {
     '&:focus': {
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      backgroundColor: theme.palette.states.hover,
       outline: `2px solid ${theme.palette.primary.main}`,
     },
     '&:hover': {
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      backgroundColor: theme.palette.states.hover,
     },
     borderRadius: '4px',
     cursor: 'pointer',
@@ -69,7 +69,8 @@ const useGenericTableRowStyles = makeStyles<void, 'actionMenuButton'>()((theme, 
       // This is the correct color to use, but it is not opaque, which messes with the sticky column.
       backgroundColor: theme.palette.surface[200],
     },
-    backgroundColor: theme.palette.content.static.dark,
+    // Opaque so the sticky column can't show page content through the row.
+    backgroundColor: theme.palette.surface[0],
   },
 
   gaasNoCreativePlaceholder: {

@@ -4,14 +4,14 @@ const adManagerTabHeight = '70px';
 
 const useAdManagerTabsStyles = makeStyles()((theme) => ({
   chipRoot: {
-    backgroundColor: 'rgb(57,57,57)',
-    color: 'rgb(255,255,255)',
+    backgroundColor: theme.palette.surface[300],
+    color: theme.palette.content.standard,
   },
 
-  paperContainer: { backgroundColor: theme.palette.content.static.dark },
+  paperContainer: { backgroundColor: theme.palette.surface[0] },
   tab: {
     '&.Mui-selected': {
-      color: '#F2F2F3', // Active state
+      color: theme.palette.content.standard, // Active state
     },
     height: adManagerTabHeight,
   },

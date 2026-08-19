@@ -54,7 +54,7 @@ interface AdIntegrationCampaignStoreStateType {
   campaignList: RequestStateType<AdIntegrationCampaignListItem[]>;
   campaignModerationStatus?: string;
   campaignPlacements: AdIntegrationPlacement[];
-  campaignSavedRevenueShareSignals?: RevenueShareEstimatePreview;
+  campaignSavedRevenueShareSignals?: RevenueShareEstimatePreview[];
   campaignStartTimestampMs?: number;
   campaignStatus?: string;
   campaignStatusToggleLoadingMap: Record<string, boolean>;

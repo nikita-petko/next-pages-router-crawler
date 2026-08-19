@@ -82,9 +82,14 @@ const FormAccordion = ({
             <AccordionItemContent>
               <div className='flex flex-col gap-xxlarge padding-left-small min-[850px]:flex-row'>
                 <div className='[flex:3_1_0%]'>{children}</div>
+                {/* `surface-100`, not `surface-200`: only the former is a step away from the page
+                    in both modes. `surface-200` is two steps lighter than the page in dark mode but
+                    resolves to the same white as `surface-0` in light mode, which would leave this
+                    panel with no fill at all. A fill is all it needs — the design gives it no
+                    border. */}
                 <div
                   className={`radius-medium [box-sizing:border-box] flex [flex:1_1_0%] flex-col [min-width:240px] [padding:32px] [width:320px]${
-                    rightContent ? ' bg-surface-200' : ''
+                    rightContent ? ' bg-surface-100' : ''
                   }`}>
                   {rightContent}
                 </div>

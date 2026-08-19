@@ -9,8 +9,8 @@ import { MS_PER_DAY } from '@constants/time';
 // the max directly. Keep it byte-for-byte aligned with the Go implementation.
 
 const VISITS_PER_CPTV_UNIT = 1000n;
-const REVENUE_SHARE_BILLING_TIER_DAYS = 28;
-const POST_TIER_CPTV_MICRO_USD = 100_000n;
+export const REVENUE_SHARE_BILLING_TIER_DAYS = 28;
+export const POST_TIER_CPTV_MICRO_USD = 100_000;
 const MAX_REVENUE_SHARE_BILLABLE_DAYS = 365;
 const MICRO_USD_IN_USD = 1_000_000;
 
@@ -52,7 +52,7 @@ export const computeMaxRevenueShareMicroUsd = (
   const weightedCptv = BigInt(weightedCptvMicroUsd);
 
   const tier = visits * weightedCptv * BigInt(tierDays);
-  const tail = visits * POST_TIER_CPTV_MICRO_USD * BigInt(tailDays);
+  const tail = visits * BigInt(POST_TIER_CPTV_MICRO_USD) * BigInt(tailDays);
   const total = (tier + tail) / VISITS_PER_CPTV_UNIT;
 
   return Number(total);

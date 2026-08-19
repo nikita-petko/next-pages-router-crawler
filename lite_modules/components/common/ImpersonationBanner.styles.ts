@@ -1,8 +1,8 @@
 import { makeStyles } from '@rbx/ui';
 
-const useImpersonationBannerStyles = makeStyles()(() => ({
+const useImpersonationBannerStyles = makeStyles()((theme) => ({
   banner: {
-    color: '#F5C73D',
+    color: theme.palette.content.alert.notice,
     fontWeight: 500,
   },
 
@@ -20,9 +20,10 @@ const useImpersonationBannerStyles = makeStyles()(() => ({
 
   impersonationButton: {
     '&:hover': {
-      backgroundColor: 'gray[90]',
+      backgroundColor: theme.palette.surface[400],
     },
-    backgroundColor: 'gray[100]',
+    // Previously `'gray[100]'`, which is not valid CSS and resolved to nothing.
+    backgroundColor: theme.palette.surface[300],
     border: 'none',
     borderRadius: '6px',
     cursor: 'pointer',

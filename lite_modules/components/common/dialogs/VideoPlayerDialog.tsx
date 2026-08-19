@@ -10,6 +10,7 @@ import useVideoPlayerDialogStyles, {
 } from '@components/common/dialogs/VideoPlayerDialog.styles';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import useResolvedThemeMode from '@hooks/useResolvedThemeMode';
 import { GetVideoPlayerEnvEnum } from '@utils/url';
 
 interface VideoPlayerDialogProps extends BaseInjectedDialogProps {
@@ -24,6 +25,7 @@ const VideoPlayerDialog = ({
 }: VideoPlayerDialogProps): ReactElement => {
   const { translate: translateReport } = useNamespacedTranslation(TranslationNamespace.Report);
   const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
+  const themeMode = useResolvedThemeMode();
   const {
     classes: {
       footer,
@@ -137,7 +139,9 @@ const VideoPlayerDialog = ({
   const handleError = (): void => setIsVideoLoading(false);
 
   return (
-    <UIThemeProvider>
+    // A bare `UIThemeProvider` defaults to dark, which would override the theme
+    // the app root already established and pin this dialog dark in light mode.
+    <UIThemeProvider theme={themeMode}>
       <DialogBody className='padding-none'>
         <div className={header}>
           <DialogTitle className='text-heading-medium margin-none'>

@@ -21,7 +21,7 @@ export const CreateCampaignStepper = ({
     },
 
     stepperRoot: {
-      backgroundColor: theme.palette.content.static.dark,
+      backgroundColor: theme.palette.surface[0],
       marginLeft: '-9px',
       marginRight: '-8px',
       paddingRight: '0',

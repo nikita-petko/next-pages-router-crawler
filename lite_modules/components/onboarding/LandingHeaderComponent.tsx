@@ -77,15 +77,17 @@ const LandingHeaderComponent = memo(
           </span>
           <div className={buttonContainer}>{ctaButtons}</div>
         </div>
-        <div className={smallImage} />
+        <div className={`dark-theme ${smallImage}`} />
       </>
     ) : (
-      <div className={cx(headerOverlay, creatorHubLayoutOverlay)}>
+      // `dark-theme` pins the hero to dark tokens: the copy sits directly on a
+      // dark GIF, so it stays light regardless of the user's theme.
+      <div className={cx('dark-theme', headerOverlay, creatorHubLayoutOverlay)}>
         <div className={expandedViewContainer}>
-          <h1 className={`text-heading-large content-inherit ${title}`}>
+          <h1 className={`text-heading-large content-emphasis ${title}`}>
             {translate('Heading.HeroTitle')}
           </h1>
-          <p className={`text-body-large content-inherit ${subtitle}`}>
+          <p className={`text-body-large content-emphasis ${subtitle}`}>
             {translate('Description.HeroSubtitle')}
           </p>
           {ctaButtons}

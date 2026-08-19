@@ -402,7 +402,9 @@ const GenreSelectionAutocompleteRow = ({
           <div className={sectionTitle}>{translate(genreOption.title)}</div>
         </div>
         <div className={expandedGenresRow} key={genreOption.value}>
-          <Typography style={{ color: '#989898', fontSize: '14px' }} variant='body1'>
+          <Typography
+            style={{ color: 'var(--color-content-muted)', fontSize: '14px' }}
+            variant='body1'>
             {translate(genreOption.description)}
           </Typography>
         </div>
@@ -1055,7 +1057,7 @@ export const AdSetGenreTargetingFormGroup = ({
       genreTitle,
       inputBaseRootOverride,
     },
-  } = makeStyles()(() => ({
+  } = makeStyles()((theme) => ({
     autocompleteBox: {
       paddingBottom: 5,
       paddingTop: '30px !important',
@@ -1067,13 +1069,13 @@ export const AdSetGenreTargetingFormGroup = ({
       width: '100%',
     },
     autocompleteTag: {
-      background: 'rgba(255, 255, 255, 0.16)',
-      color: 'white',
+      background: theme.palette.states.selected,
+      color: theme.palette.content.standard,
       // @ts-ignore
       fontWeight: '500',
     },
     chipDeleteIcon: {
-      color: '#FAFAFA',
+      color: theme.palette.content.standard,
     },
     genreTitle: {
       marginBottom: 12,
@@ -1300,7 +1302,7 @@ const ExpandingRegionAndCountrySelectionRow = ({
           label={
             <div>
               <Typography
-                style={isRegion || isSuperGroup ? {} : { color: '#989898' }}
+                style={isRegion || isSuperGroup ? {} : { color: 'var(--color-content-muted)' }}
                 variant='body1'>
                 {locationInfo.title}
               </Typography>
@@ -1397,7 +1399,7 @@ export const AdSetAudienceTargetingFormGroup = ({
       inputBaseRootOverride,
       regionAutoCompleteRow,
     },
-  } = makeStyles()(() => ({
+  } = makeStyles()((theme) => ({
     audienceRowFlexGroup: {
       alignItems: 'center',
       display: 'flex',
@@ -1422,16 +1424,16 @@ export const AdSetAudienceTargetingFormGroup = ({
       width: '100%',
     },
     autocompleteTag: {
-      background: 'rgba(255, 255, 255, 0.16)',
-      color: 'white',
+      background: theme.palette.states.selected,
+      color: theme.palette.content.standard,
       // @ts-ignore
       fontWeight: '500',
     },
     chipDeleteIcon: {
-      color: '#FAFAFA',
+      color: theme.palette.content.standard,
     },
     customErrorHelperText: {
-      color: '#F4645D',
+      color: theme.palette.content.alert.important,
       marginLeft: '14px !important',
       marginTop: '3px !important',
     },
@@ -2388,7 +2390,7 @@ export const AdSetBiddingFormGroup = ({
       frequencyCappingTitle,
       tooltip,
     },
-  } = makeStyles()(() => ({
+  } = makeStyles()((theme) => ({
     auctionTypeRadioContainer: {
       marginRight: 20,
       width: 'fit-content',
@@ -2420,7 +2422,7 @@ export const AdSetBiddingFormGroup = ({
       width: '100%',
     },
     customHelperText: {
-      color: '#f8d063',
+      color: theme.palette.content.alert.notice,
       marginLeft: '14px !important',
       marginTop: '3px !important',
     },

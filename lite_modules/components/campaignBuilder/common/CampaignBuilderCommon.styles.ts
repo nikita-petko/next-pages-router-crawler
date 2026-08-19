@@ -93,7 +93,7 @@ const useCampaignBuilderCommonStyles = makeStyles()((theme) => ({
     marginTop: '8px',
   },
   sectionCardDescriptionContainer: {
-    color: 'rgb(213, 215, 221, 1)',
+    color: theme.palette.content.muted,
     display: 'flex',
     justifyContent: 'space-between',
     marginTop: '8px',

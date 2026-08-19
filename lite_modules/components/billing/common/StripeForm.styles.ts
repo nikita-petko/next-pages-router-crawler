@@ -2,10 +2,10 @@ import { makeStyles } from '@rbx/ui';
 
 import { marginUnit, paddingUnit } from '@constants/styleConstants';
 
-const useStripeFormStyles = makeStyles()(() => ({
+const useStripeFormStyles = makeStyles()((theme) => ({
   backdrop: {
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'var(--color-common-backdrop)',
     display: 'flex',
     inset: 0,
     justifyContent: 'center',
@@ -51,8 +51,8 @@ const useStripeFormStyles = makeStyles()(() => ({
       display: 'block',
       marginBottom: marginUnit * 2,
     },
-    borderColor: '#989898',
-    color: '#989898',
+    borderColor: theme.palette.surface.outline,
+    color: theme.palette.content.muted,
     marginRight: marginUnit,
   },
 
@@ -62,7 +62,7 @@ const useStripeFormStyles = makeStyles()(() => ({
   },
 
   circularProgress: {
-    color: '#2BB1FF',
+    color: theme.palette.content.action,
     marginBottom: marginUnit * 2,
   },
 

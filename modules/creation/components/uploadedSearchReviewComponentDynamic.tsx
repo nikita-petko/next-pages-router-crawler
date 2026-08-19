@@ -37,8 +37,11 @@ export const UploadedSearchReviewComponentDynamic = ({
 
     expandIconContainer: {
       alignItems: 'center',
-      background: 'rgba(17, 18, 20, 0.8)',
+      background: 'var(--color-over-media-0)',
       borderRadius: 4,
+      // Set explicitly rather than inherited: the icon comes from MUI, whose
+      // theme is independent of the `dark-theme` class scoping these tokens.
+      color: 'var(--color-content-emphasis)',
       display: 'flex',
       height: 30,
       justifyContent: 'center',
@@ -98,7 +101,11 @@ export const UploadedSearchReviewComponentDynamic = ({
 
     setModalConfigData({
       completelyCustomModalContents: (
+        // `dark-theme` pins this subtree to dark tokens: it renders a mockup of
+        // the in-experience Roblox client, which is dark regardless of the
+        // user's Ads Manager theme.
         <div
+          className='dark-theme'
           style={{
             left: '50%',
             position: 'fixed',
@@ -114,7 +121,12 @@ export const UploadedSearchReviewComponentDynamic = ({
               width: '100%',
             }}>
             <Typography
-              style={{ color: '#F5BA19', left: '8px', position: 'absolute', top: '8px' }}
+              style={{
+                color: 'var(--color-system-warning)',
+                left: '8px',
+                position: 'absolute',
+                top: '8px',
+              }}
               variant='body1'>
               Actual position will be based on bid price.
             </Typography>
@@ -122,7 +134,12 @@ export const UploadedSearchReviewComponentDynamic = ({
               onClick={() => {
                 setModalOpen(false);
               }}
-              style={{ color: 'white', position: 'absolute', right: 0, top: '8px' }}
+              style={{
+                color: 'var(--color-content-emphasis)',
+                position: 'absolute',
+                right: 0,
+                top: '8px',
+              }}
             />
           </div>
           <div
@@ -155,7 +172,9 @@ export const UploadedSearchReviewComponentDynamic = ({
   };
   return (
     <div className={adAssetReviewContainer}>
-      <div className={tilePreviewContainer}>
+      {/* Creative previews always sit on a dark backdrop, matching how the ad
+          renders in-experience, so this tile is pinned to dark tokens. */}
+      <div className={`dark-theme ${tilePreviewContainer}`}>
         {Boolean(overlayImageStr) && (
           <img
             alt=''

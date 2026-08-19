@@ -30,9 +30,9 @@ export enum EntityTypeEnum {
 const OrDivider = () => {
   const {
     classes: { centeredLine, container },
-  } = makeStyles()(() => ({
+  } = makeStyles()((theme) => ({
     centeredLine: {
-      background: '#CBCBCB',
+      background: theme.palette.surface.outline,
       height: '100%',
       width: 1,
     },

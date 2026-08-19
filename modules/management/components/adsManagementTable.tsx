@@ -24,10 +24,10 @@ import { EventName, unifiedLogger } from '@clients/unifiedLogger';
 import StatusLabel from '@components/reporting/StatusLabel';
 import { AdFormatDisplayType } from '@constants/ad';
 import { getStatusTooltipLinkTags, statusTextToTooltipKey } from '@constants/campaignStatus';
-import { contentStaticDark } from '@constants/colors';
 import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
 import { EntityType } from '@constants/entity';
 import ErrorCodes from '@constants/errorCodes';
+import { stickyCellBackgroundColor } from '@constants/genericManagementTableStyles';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { deleteAd, getUpdatedStatuses, toggleAd, updateAd } from '@modules/clients/ads/adsClient';
@@ -89,7 +89,7 @@ import {
 import TableVideoPreviewCell from './inTableVideoPreviewCell';
 
 const stickyRowStyles = {
-  background: contentStaticDark,
+  background: stickyCellBackgroundColor,
   boxShadow: 'none',
   left: 0,
   paddingLeft: 8,
@@ -967,7 +967,11 @@ const AdsTableRow = ({
   const openInTableCreativePreview = () => {
     setModalConfigData({
       completelyCustomModalContents: (
+        // `dark-theme` pins this subtree to dark tokens: it frames an
+        // in-experience ad preview, which is dark regardless of the user's Ads
+        // Manager theme.
         <div
+          className='dark-theme'
           style={{
             left: '50%',
             position: 'fixed',
@@ -979,7 +983,12 @@ const AdsTableRow = ({
               onClick={() => {
                 setModalOpen(false);
               }}
-              style={{ color: 'white', position: 'absolute', right: 0, top: '-30px' }}
+              style={{
+                color: 'var(--color-content-emphasis)',
+                position: 'absolute',
+                right: 0,
+                top: '-30px',
+              }}
             />
           </div>
           <div>{onClickPreviewComponent}</div>
@@ -1264,7 +1273,7 @@ const AdsTableSummaryRow = ({
     classes: { tableStickyFooter },
   } = makeStyles()((theme) => ({
     tableStickyFooter: {
-      background: theme.palette.content.static.dark,
+      background: theme.palette.surface[0],
       bottom: 0,
       position: 'sticky',
       transform: 'translateZ(0)',
@@ -1434,11 +1443,14 @@ const AdsTableSummaryRow = ({
           // @ts-ignore */}
       <SummaryRowCell
         align='left'
-        style={{ ...creativeRowStyles, background: contentStaticDark }}
+        style={{ ...creativeRowStyles, background: stickyCellBackgroundColor }}
       />
       {/*
           // @ts-ignore */}
-      <SummaryRowCell align='right' style={{ ...nameRowStyles, background: contentStaticDark }} />
+      <SummaryRowCell
+        align='right'
+        style={{ ...nameRowStyles, background: stickyCellBackgroundColor }}
+      />
     </>
   );
 
@@ -1448,7 +1460,7 @@ const AdsTableSummaryRow = ({
         <TableCell
           align='right'
           colSpan={4}
-          style={{ ...nameRowStyles, background: contentStaticDark }}>
+          style={{ ...nameRowStyles, background: stickyCellBackgroundColor }}>
           {firstColumnContent}
         </TableCell>
         <SummaryRowCell align='right' />

@@ -87,7 +87,7 @@ export const GetObjectiveTargetingCriteriaRequestJson = (
     case ServerDetailedTargetingMatchType.DETAILED_TARGETING_MATCH_TYPE_RETENTION:
       return {
         retargeting_criteria: {
-          retargeting_audiences: [ServerRetargetingType.RETARGETING_NEW_USERS_FIRST_30_DAYS],
+          retargeting_audiences: [ServerRetargetingType.RETARGETING_RECENT_USERS_30_DAYS],
         },
       } as TargetingCriteriaType;
     case ServerDetailedTargetingMatchType.DETAILED_TARGETING_MATCH_TYPE_REACTIVATION:

@@ -21,7 +21,9 @@ const CreditCardSummary = ({ paymentProfile }: CreditCardSummaryProps) => {
 
   return (
     <div className='flex shrink-0 flex-col gap-small' data-testid='creditCardContainer'>
-      <div className='flex height-[77px] width-[110px] items-center justify-center radius-small bg-[#ffffff]'>
+      {/* Fixed to the light-mode surface in both themes: the card-brand sprite
+          is drawn with dark glyphs and only reads on a light backdrop. */}
+      <div className='flex height-[77px] width-[110px] items-center justify-center radius-small bg-[var(--light-mode-surface-0)]'>
         <PaymentMethodIcon
           largeIcon
           paymentMethodType={paymentProfile.card_network}

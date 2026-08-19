@@ -5,7 +5,8 @@ const useCampaignBuilderLayoutStyles = makeStyles()((theme) => ({
     backdropFilter: 'blur(25px)',
     // Keep the frosted treatment but make the footer opaque enough to fully mask
     // thumbnail overlays that scroll underneath (e.g. remove "X" controls).
-    backgroundColor: 'rgba(17, 18, 22, 0.96)',
+    // `over-media-0` is the page surface at 92% alpha, so it tracks the theme.
+    backgroundColor: 'var(--color-over-media-0)',
     bottom: 0,
     display: 'flex',
     gap: theme.spacing(1.5),

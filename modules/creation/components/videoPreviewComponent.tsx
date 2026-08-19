@@ -82,7 +82,11 @@ const VideoPreview = ({
 
   const uploadedFileStyles = isCpv15 ? CPV_image_overlay_styles : awareness_image_overlay_styles;
   return (
+    // `dark-theme` pins this subtree to dark tokens: it renders a mockup of the
+    // in-experience Roblox client, which is dark regardless of the user's Ads
+    // Manager theme.
     <div
+      className='dark-theme'
       style={{
         left: '50%',
         position: 'fixed',
@@ -98,13 +102,23 @@ const VideoPreview = ({
           width: '100%',
         }}>
         <Typography
-          style={{ color: '#F5BA19', left: '8px', position: 'absolute', top: '8px' }}
+          style={{
+            color: 'var(--color-system-warning)',
+            left: '8px',
+            position: 'absolute',
+            top: '8px',
+          }}
           variant='body1'>
           Publisher can customize ad container style to best fit their experience.
         </Typography>
         <CloseIcon
           onClick={closeModal}
-          style={{ color: 'white', position: 'absolute', right: 0, top: '8px' }}
+          style={{
+            color: 'var(--color-content-emphasis)',
+            position: 'absolute',
+            right: 0,
+            top: '8px',
+          }}
         />
       </div>
       <div

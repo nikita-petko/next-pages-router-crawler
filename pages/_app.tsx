@@ -38,7 +38,7 @@ import VerifyEmailComponent from '@components/onboarding/VerifyEmailComponent';
 import ErrorCodes from '@constants/errorCodes';
 import Routes from '@constants/routes';
 import { studioResources, StudioResourcesProvider } from '@modules/miscellaneous/hooks/useStudio';
-import ModeResponsiveThemeProvider from '@modules/theme/hooks/ModeResponsiveThemeProvider';
+import AuthenticatedThemeModeProvider from '@modules/theme/hooks/AuthenticatedThemeModeProvider';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
 import { IsLocalDeveloperToolsEnvEnabled, IsMSWMockResponsesEnabled } from '@utils/env';
 import { CaptureException } from '@utils/error';
@@ -531,18 +531,24 @@ function AdsCreationAndManagementApp({
   return (
     <CacheProvider cache={cache}>
       <ErrorBoundary>
-        <ModeResponsiveThemeProvider
-          themeElement={typeof document !== 'undefined' ? document.documentElement : undefined}>
-          <LocaleProvider>
-            <QueryClientProvider client={queryClient}>
-              <TranslationLocalizationProvider>
-                <CookieConsentProvider robloxSiteDomain={GetSitetestBaseUrl()}>
-                  <RobloxAuthenticationProvider>
-                    <UnifiedLoggerProvider
-                      pageLoggerConfig={loggerConfig}
-                      path={path}
-                      unifiedLogger={unifiedLogger}>
-                      <AuthenticationProvider manager={authenticationManager}>
+        <LocaleProvider>
+          <QueryClientProvider client={queryClient}>
+            <TranslationLocalizationProvider>
+              <CookieConsentProvider robloxSiteDomain={GetSitetestBaseUrl()}>
+                <RobloxAuthenticationProvider>
+                  <UnifiedLoggerProvider
+                    pageLoggerConfig={loggerConfig}
+                    path={path}
+                    unifiedLogger={unifiedLogger}>
+                    <AuthenticationProvider manager={authenticationManager}>
+                      {/* Sits below the auth providers because it resolves the
+                          user's shared Creator Hub theme preference, which is
+                          keyed on the authenticated user id. Everything that
+                          renders UI is nested inside it. */}
+                      <AuthenticatedThemeModeProvider
+                        themeElement={
+                          typeof document !== 'undefined' ? document.documentElement : undefined
+                        }>
                         <NavigationConfigsProvider
                           currentProduct='Advertise'
                           environment={process.env.environment}
@@ -564,14 +570,14 @@ function AdsCreationAndManagementApp({
                             <CookieConsentBanner />
                           </StudioResourcesProvider>
                         </NavigationConfigsProvider>
-                      </AuthenticationProvider>
-                    </UnifiedLoggerProvider>
-                  </RobloxAuthenticationProvider>
-                </CookieConsentProvider>
-              </TranslationLocalizationProvider>
-            </QueryClientProvider>
-          </LocaleProvider>
-        </ModeResponsiveThemeProvider>
+                      </AuthenticatedThemeModeProvider>
+                    </AuthenticationProvider>
+                  </UnifiedLoggerProvider>
+                </RobloxAuthenticationProvider>
+              </CookieConsentProvider>
+            </TranslationLocalizationProvider>
+          </QueryClientProvider>
+        </LocaleProvider>
       </ErrorBoundary>
     </CacheProvider>
   );

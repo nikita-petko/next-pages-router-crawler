@@ -142,9 +142,13 @@ const CampaignReportingCharts = () => {
     }
   }, [activeMetricTab, canShowRoas]);
 
+  // Trailing-30d zone previously flagged the window as "Unvalidated" (i.e. no
+  // data yet). The chart is now blended with ML-produced estimates for that
+  // window (see getCampaignTimeSeriesService `mergeRoasPreferValidated`), so
+  // relabel to communicate that dashed segment = estimated, solid = final.
   const zoneLegendItemFormatter = (type: SeriesDataTypes) =>
     type === SeriesDataTypes.Projection
-      ? translateReport('Label.Unvalidated')
+      ? translateReport('Label.Estimated')
       : translateReport('Label.Validated');
 
   const handlePeriodChange = (nextValue: string) => {

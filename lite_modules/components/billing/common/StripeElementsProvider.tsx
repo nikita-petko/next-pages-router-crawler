@@ -93,8 +93,11 @@ const StripeElementsProvider = ({
           fontSize: '12px',
           marginTop: '4px',
         },
+        // The Stripe iframe cannot see our theme class, so every colour here has
+        // to be handed over as a resolved palette value for the embedded card
+        // form to follow the user's light / dark preference.
         '.Input': {
-          backgroundColor: theme.palette.content.static.dark,
+          backgroundColor: theme.palette.surface[0],
           border: `1px solid ${theme.palette.surface.outline}`,
           borderRadius: '8px',
           color: theme.palette.content.standard,
@@ -110,7 +113,7 @@ const StripeElementsProvider = ({
         },
       },
       variables: {
-        colorBackground: theme.palette.content.static.dark,
+        colorBackground: theme.palette.surface[0],
         colorText: theme.palette.content.muted,
       },
     },

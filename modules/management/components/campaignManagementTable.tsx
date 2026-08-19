@@ -34,10 +34,10 @@ import {
   StatusText,
   statusTextToTooltipKey,
 } from '@constants/campaignStatus';
-import { contentStaticDark } from '@constants/colors';
 import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
 import { EntityType } from '@constants/entity';
 import ErrorCodes from '@constants/errorCodes';
+import { stickyCellBackgroundColor } from '@constants/genericManagementTableStyles';
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -109,7 +109,7 @@ import {
 } from './genericManagementTable';
 
 const stickyRowStyles = {
-  background: contentStaticDark,
+  background: stickyCellBackgroundColor,
   boxShadow: 'none',
   left: 0,
   paddingLeft: 8,
@@ -222,10 +222,10 @@ const CampaignTableToggleCell = ({
 }) => {
   const {
     classes: { disabledToggle },
-  } = makeStyles()(() => ({
+  } = makeStyles()((theme) => ({
     disabledToggle: {
       '& .Mui-disabled': {
-        color: '#989898 !important',
+        color: `${theme.palette.content.muted} !important`,
       },
     },
   }))();
@@ -1679,7 +1679,7 @@ const CampaignTableSummaryRow = ({
     classes: { tableStickyFooter },
   } = makeStyles()((theme) => ({
     tableStickyFooter: {
-      background: theme.palette.content.static.dark,
+      background: theme.palette.surface[0],
       bottom: 0,
       position: 'sticky',
       transform: 'translateZ(0)',
@@ -1848,13 +1848,22 @@ const CampaignTableSummaryRow = ({
     <>
       {/*
       // @ts-ignore */}
-      <SummaryRowCell align='left' style={{ ...nameRowStyles, background: contentStaticDark }} />
+      <SummaryRowCell
+        align='left'
+        style={{ ...nameRowStyles, background: stickyCellBackgroundColor }}
+      />
       {/*
       // @ts-ignore */}
-      <SummaryRowCell align='right' style={{ ...toggleRowStyles, background: contentStaticDark }} />
+      <SummaryRowCell
+        align='right'
+        style={{ ...toggleRowStyles, background: stickyCellBackgroundColor }}
+      />
       {/*
       // @ts-ignore */}
-      <SummaryRowCell align='right' style={{ ...statusRowStyles, background: contentStaticDark }} />
+      <SummaryRowCell
+        align='right'
+        style={{ ...statusRowStyles, background: stickyCellBackgroundColor }}
+      />
     </>
   );
 
@@ -1863,7 +1872,7 @@ const CampaignTableSummaryRow = ({
       <TableCell
         align='left'
         colSpan={3}
-        style={{ ...nameRowStyles, background: contentStaticDark }}>
+        style={{ ...nameRowStyles, background: stickyCellBackgroundColor }}>
         {firstColumnContent}
       </TableCell>
     );

@@ -6,14 +6,14 @@
 /* The card owns the prompt's border and error state, so the Foundation TextArea
    nested inside it is stripped flush and transparent (see .promptTextarea). */
 .promptCard {
-  border: 1px solid var(--stroke-default, rgba(208, 217, 251, 0.12));
+  border: 1px solid var(--color-stroke-default);
   padding: var(--padding-medium, 12px);
 }
 
 /* Error state: turn the prompt card border red to match the inline alert copy
    (Foundation system-alert color, same chain as CreativeLibrary.bulkErrorAlert). */
 .promptCardError {
-  border-color: var(--color-system-alert, var(--bg-system-alert, #df281f));
+  border-color: var(--color-system-alert);
 }
 
 .promptInputSection {
@@ -37,7 +37,7 @@
 textarea.promptTextarea {
   background: transparent;
   border: none;
-  color: var(--content-emphasis, #f7f7f8);
+  color: var(--color-content-emphasis);
   font: inherit;
   line-height: 20px;
   margin: 0;
@@ -66,7 +66,7 @@ textarea.promptTextarea:focus {
 }
 
 .promptHintText {
-  color: var(--content-default, #d5d7dd);
+  color: var(--color-content-default);
   display: block;
   /* Match .promptTextarea so the hint sits exactly where typed text/placeholder
      render. */
@@ -100,12 +100,12 @@ textarea.promptTextarea:focus {
    the font back to `inherit` puts the placeholder on the same metrics as the
    caret, which is what makes them line up. */
 textarea.promptTextarea::-moz-placeholder {
-  color: var(--content-muted, #9ca3af);
+  color: var(--color-content-muted);
   font: inherit;
   letter-spacing: inherit;
 }
 textarea.promptTextarea::placeholder {
-  color: var(--content-muted, #9ca3af);
+  color: var(--color-content-muted);
   font: inherit;
   letter-spacing: inherit;
 }
@@ -120,15 +120,13 @@ textarea.promptTextarea::placeholder {
 
 /* Paint the progress arc in Content/Emphasis so the ring reads white at full quota
    and reveals the gray track as it drains. Overriding this inherited CSS var (which
-   ProgressCircle's stroke reads) recolors the arc without touching the component.
-   The #f7f7f8 fallback guards against the token being undefined, which would render
-   an invalid stroke and show only the track. */
+   ProgressCircle's stroke reads) recolors the arc without touching the component. */
 .requestsQuotaIndicator {
-  --fui-future-alpha-color-system-progress: var(--color-content-emphasis, #f7f7f8);
+  --fui-future-alpha-color-system-progress: var(--color-content-emphasis);
 }
 
 .promptDivider {
-  border-top: 1px solid var(--stroke-default, rgba(208, 217, 251, 0.12));
+  border-top: 1px solid var(--color-stroke-default);
   width: 100%;
 }
 

@@ -30,7 +30,7 @@ export const CardRadioInput = ({
       radioChecked,
       radioItem,
     },
-  } = makeStyles()(() => ({
+  } = makeStyles()((theme) => ({
     cardContainer: {
       borderRadius: 4,
       display: 'flex',
@@ -41,16 +41,16 @@ export const CardRadioInput = ({
     },
 
     containerDisabled: {
-      border: '2px solid rgb(94,95,98) !important',
+      border: `2px solid ${theme.palette.surface.outline} !important`,
       opacity: 0.3,
     },
 
     containerHighlighted: {
-      border: '2px solid #2D54FF',
+      border: `2px solid ${theme.palette.content.action}`,
     },
 
     containerUnhighlighted: {
-      border: '2px solid #2C2C2C',
+      border: `2px solid ${theme.palette.surface[300]}`,
     },
 
     filterTextBody: {

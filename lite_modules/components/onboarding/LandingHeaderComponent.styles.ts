@@ -42,8 +42,14 @@ export const useLandingHeaderStyles = makeStyles()((theme) => ({
     margin: '0 6vw',
   },
 
+  /*
+   * Both hero treatments scrim a dark GIF, so the gradients reference the
+   * Foundation surface custom property rather than `theme.palette` — the
+   * elements are scoped with `dark-theme` in LandingHeaderComponent, which
+   * re-points the custom property but leaves the MUI palette untouched.
+   */
   headerOverlay: {
-    backgroundImage: `linear-gradient(180deg, rgba(23, 23, 23, 0) 51.04%, ${theme.palette.content.static.dark} 100%), url(${url})`,
+    backgroundImage: `linear-gradient(180deg, transparent 51.04%, var(--color-surface-0) 100%), url(${url})`,
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
     backgroundSize: 'cover',
@@ -51,7 +57,7 @@ export const useLandingHeaderStyles = makeStyles()((theme) => ({
   },
 
   smallImage: {
-    backgroundImage: `linear-gradient(180deg, ${theme.palette.content.static.dark} 0%, ${theme.palette.content.static.dark} 0.01%, rgba(23, 23, 23, 0) 15.21%, rgba(23, 23, 23, 0) 83.85%, ${theme.palette.content.static.dark} 99.99%, ${theme.palette.content.static.dark} 100%), url(${url})`,
+    backgroundImage: `linear-gradient(180deg, var(--color-surface-0) 0%, var(--color-surface-0) 0.01%, transparent 15.21%, transparent 83.85%, var(--color-surface-0) 99.99%, var(--color-surface-0) 100%), url(${url})`,
     backgroundSize: 'cover',
     marginBottom: '3vh',
     paddingTop: '64.29%' /* (img-height / img-width * container-width) */,

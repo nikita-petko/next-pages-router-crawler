@@ -42,10 +42,18 @@ const AutoCreateLandingPage = memo(
     const { translate: translateReport } = useNamespacedTranslation(TranslationNamespace.Report);
 
     return (
-      <div className='flex flex-col bg-system-contrast'>
+      // Only the regions that sit on the dark hero photograph are pinned to dark
+      // tokens, not the page: pinning the root would also freeze the Resources
+      // section below, which is ordinary page content and has to follow the
+      // user's theme. `bg-surface-0` (not `bg-system-contrast`, which inverts and
+      // resolves to near-white under a dark pin) is the page surface.
+      <div className='flex flex-col bg-surface-0'>
         {!hasVerifiedEmail ? (
+          // `dark-theme` keeps this banner's warning-colored border on the same
+          // side as its fill and text, which are absolute dark-yellow tints
+          // rather than mode-reactive tokens.
           <div
-            className={`flex items-center justify-between gap-medium ${styles.warningBanner}`}
+            className={`dark-theme flex items-center justify-between gap-medium ${styles.warningBanner}`}
             role='alert'>
             <div className={`flex items-center gap-small ${styles.warningContent}`}>
               <Icon className={styles.warningIcon} name='icon-filled-triangle' size='Small' />
@@ -70,8 +78,15 @@ const AutoCreateLandingPage = memo(
             className={`absolute inset-0 ${styles.heroImage}`}
             src={`${process.env.assetPathPrefix}/common/new_hero_ads_Manager_2026.png`}
           />
+          {/* Deliberately NOT pinned: the scrim's bottom edge fades to
+              `--color-surface-0` so the photograph blends into the section below it,
+              which means it has to resolve against the page's theme. Pinning it
+              would fade the hero to dark against a light Resources section and
+              leave a visible seam. */}
           <div className={`absolute inset-0 ${styles.heroOverlay}`} />
-          <div className={`relative flex flex-col gap-large ${styles.heroContent}`}>
+          {/* `dark-theme`: this copy sits directly on the dark photograph, so it
+              needs light content tokens whatever the user's theme is. */}
+          <div className={`dark-theme relative flex flex-col gap-large ${styles.heroContent}`}>
             <h1 className={`content-emphasis ${styles.heroTitle}`}>
               {translateLanding('Heading.HeroTitleV2')}
             </h1>
@@ -106,7 +121,7 @@ const AutoCreateLandingPage = memo(
                   rel='noopener noreferrer'
                   size='Medium'
                   target='_blank'
-                  variant='Utility'>
+                  variant='Standard'>
                   {translateReport('Action.LearnMoreManage')}
                 </Button>
               </div>

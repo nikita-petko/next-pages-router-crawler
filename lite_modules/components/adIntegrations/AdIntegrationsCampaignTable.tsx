@@ -1,5 +1,6 @@
 import {
   IconButton,
+  StatusBadge,
   Table,
   TableBody,
   TableCell,
@@ -7,13 +8,13 @@ import {
   TableHeaderCell,
   TableRow,
   Toggle,
+  type TStatusBadgeVariant,
 } from '@rbx/foundation-ui';
-import { Label, Tooltip } from '@rbx/ui';
 import Link from 'next/link';
 
 import AdIntegrationsCampaignActionMenu from '@components/adIntegrations/AdIntegrationsCampaignActionMenu';
 import useAdIntegrationsCampaignTableStyles from '@components/adIntegrations/AdIntegrationsCampaignTable.styles';
-import useAdIntegrationStatusLabelStyles from '@components/adIntegrations/adIntegrationStatusLabel.styles';
+import AppTooltip from '@components/common/AppTooltip';
 import { openEntitySubmitErrorDialog } from '@components/common/dialog/entitySubmitErrorDialog';
 import { openImpersonationErrorDialog } from '@components/common/dialog/impersonationErrorDialog';
 import UniverseFilterAvatar from '@components/common/UniverseFilterAvatar';
@@ -91,15 +92,6 @@ const AdIntegrationsCampaignTable = ({
       tooltipLink,
     },
   } = useAdIntegrationsCampaignTableStyles();
-  const {
-    classes: {
-      labelRoot,
-      statusCircleActive,
-      statusCircleDisabled,
-      statusCircleImportant,
-      statusCircleNotice,
-    },
-  } = useAdIntegrationStatusLabelStyles();
   const thumbnailsByUniverseId = useThumbnailStore(
     (state: ThumbnailStoreType) => state.thumbnailsByUniverseId,
   );
@@ -119,16 +111,18 @@ const AdIntegrationsCampaignTable = ({
     }
   };
 
-  const getModerationStatusCircleClass = (status?: CampaignModerationStatus): string => {
+  const getModerationStatusBadgeVariant = (
+    status?: CampaignModerationStatus,
+  ): TStatusBadgeVariant => {
     switch (status) {
       case 'APPROVED':
       case 'LIMITED':
-        return statusCircleActive;
+        return 'Success';
       case 'REJECTED':
-        return statusCircleImportant;
+        return 'Alert';
       case 'IN_REVIEW':
       default:
-        return statusCircleNotice;
+        return 'Warning';
     }
   };
 
@@ -229,13 +223,10 @@ const AdIntegrationsCampaignTable = ({
             );
             const campaignTableCell = (
               <TableCell>
-                <Tooltip
-                  placement='top-start'
-                  slotProps={{
-                    popper: {
-                      className: campaignIdTooltipPopper,
-                    },
-                  }}
+                <AppTooltip
+                  ariaLabel={translate('Label.CampaignId', { id: campaign.campaignId })}
+                  contentClassName={campaignIdTooltipPopper}
+                  position='top-start'
                   title={
                     <div className={campaignIdTooltipContent}>
                       <span className='text-title-large'>
@@ -263,7 +254,7 @@ const AdIntegrationsCampaignTable = ({
                       {campaign.campaignName}
                     </span>
                   </Link>
-                </Tooltip>
+                </AppTooltip>
               </TableCell>
             );
 
@@ -306,8 +297,13 @@ const AdIntegrationsCampaignTable = ({
                   />
                 </TableCell>
                 <TableCell>
-                  <Tooltip
-                    placement='top'
+                  <AppTooltip
+                    ariaLabel={
+                      moderationTooltipBodyKey
+                        ? translateAccount(moderationTooltipBodyKey)
+                        : undefined
+                    }
+                    position='top-center'
                     title={
                       moderationTooltipBodyKey && moderationStatusLabelKey ? (
                         <div className={tooltipContent}>
@@ -332,24 +328,15 @@ const AdIntegrationsCampaignTable = ({
                         ''
                       )
                     }>
-                    <div>
-                      <Label
-                        classes={{ root: labelRoot }}
-                        icon={
-                          <div
-                            className={
-                              isArchived || isCompleted
-                                ? statusCircleDisabled
-                                : getModerationStatusCircleClass(moderationStatus)
-                            }
-                          />
-                        }
-                        labelText={getStatusLabelText()}
-                        severity='default'
-                        variant='contained'
-                      />
-                    </div>
-                  </Tooltip>
+                    <StatusBadge
+                      label={getStatusLabelText()}
+                      variant={
+                        isArchived || isCompleted
+                          ? 'Standard'
+                          : getModerationStatusBadgeVariant(moderationStatus)
+                      }
+                    />
+                  </AppTooltip>
                 </TableCell>
                 <TableCell>
                   <span className='text-body-medium'>

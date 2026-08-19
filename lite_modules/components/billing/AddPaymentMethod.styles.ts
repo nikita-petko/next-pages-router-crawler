@@ -7,8 +7,12 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     margin: '24px 0',
     textAlign: 'left',
   },
+  // The two bulbs are the rounded end caps of `adCreditPurchaseContainer`'s left
+  // border, so all three share one token. `content.muted` rather than a literal:
+  // it stays within a few steps of the previous white in dark mode and inverts to
+  // a slate in light mode, where a white rule and white caps were invisible.
   adCreditPurchaseBorderBulbBottom: {
-    backgroundColor: 'white',
+    backgroundColor: theme.palette.content.muted,
     borderRadius: 4,
     bottom: -3.5,
     height: 6,
@@ -17,7 +21,7 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     width: 6,
   },
   adCreditPurchaseBorderBulbTop: {
-    backgroundColor: 'white',
+    backgroundColor: theme.palette.content.muted,
     borderRadius: 4,
     height: 6,
     left: -3.5,
@@ -26,7 +30,7 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     width: 6,
   },
   adCreditPurchaseContainer: {
-    borderLeft: '1px solid white',
+    borderLeft: `1px solid ${theme.palette.content.muted}`,
     flex: '1 0 0',
     flexDirection: 'column',
     marginRight: '6px',
@@ -209,7 +213,7 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
   },
   tab: {
     borderBottom: 'solid',
-    borderBottomColor: '#565656',
+    borderBottomColor: theme.palette.surface.outline,
     borderBottomWidth: '2px',
     opacity: 1,
     textTransform: 'uppercase',
@@ -232,9 +236,13 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
       gridColumn: 'auto',
     },
   },
+  // Wraps the Robux amount, the Robux icon (which inherits this color), and the Ad
+  // Credit amount. The Figma export named a variable that Foundation doesn't
+  // define — the real prefix is `--color-content-*` — so `var()` always fell
+  // through to its literal white and the whole row disappeared in light mode.
   watermarkedBalanceAmount: {
     alignItems: 'center',
-    color: 'var(--Content-Standard, #FFF)',
+    color: theme.palette.content.standard,
     display: 'inline-flex',
     verticalAlign: 'middle',
   },
@@ -275,8 +283,11 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     height: 16,
     width: 16,
   },
+  // Same undefined-variable export as `watermarkedBalanceAmount`, so this always
+  // painted its literal light grey — legible on the dark page, nearly invisible on
+  // the light one. `content.muted` is that same grey in dark mode and inverts.
   watermarkedDisclaimerContent: {
-    color: 'var(--content-default, #D5D7DD)',
+    color: theme.palette.content.muted,
     fontFamily: 'var(--ALPHA-Text-BodySmall-FontFamily, "Builder Sans")',
     fontSize: 'var(--ALPHA-Text-BodySmall-FontSize, 12px)',
     fontStyle: 'normal',
@@ -285,7 +296,7 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     lineHeight: 'var(--ALPHA-Text-BodySmall-LineHeight, 18px)',
   },
   watermarkedDisclaimerHeader: {
-    color: 'var(--content-default, #D5D7DD)',
+    color: theme.palette.content.muted,
     fontFamily: 'var(--Config-Text-Font, "Builder Sans")',
     fontSize: 'var(--FontSize-FontSize_300, 12px)',
     fontStyle: 'normal',
@@ -323,7 +334,7 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     justifyContent: 'space-between',
   },
   watermarkedInfoAlertIcon: {
-    color: '#335FFF',
+    color: theme.palette.content.action,
   },
   // FieldLabelOffset supplies the drop past the field label, so this only has to
   // keep the column top-anchored and the text centered in its grid cell.

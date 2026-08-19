@@ -67,6 +67,9 @@ export interface AppStoreType extends AppStoreStateType, AppStoreActionType {}
 
 const microUsdMultiplier = 1 * 1000 * 1000;
 
+const isImpersonatingAdAccount = (): boolean =>
+  typeof document !== 'undefined' && document.cookie.includes('ad-account-imp-info');
+
 const organizationIsBusiness = (organizationInfo?: OrganizationInfoType): boolean => {
   if (!organizationInfo) {
     return false;
@@ -1195,6 +1198,7 @@ export const useAppStore = create<AppStoreType>()(
 
       return (
         isAdAccountAutoCreateEnabled &&
+        !isImpersonatingAdAccount() &&
         !get().adAccountIsInternalManaged() &&
         !get().adAccountIsExternalManaged()
       );

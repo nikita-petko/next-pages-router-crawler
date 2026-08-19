@@ -37,8 +37,7 @@ export const getPlaysMetricForReportingView = (
   reportingView: ReportingViewType = ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT,
 ): string => PLAYS_METRIC_BY_REPORTING_VIEW[reportingView] ?? METRIC_PLAYS;
 
-export const METRIC_SPEND = 'AdsUATotalSpendMicroUsdDefaultView';
-export const METRIC_REVENUE = 'AdsUARobuxRevenueDefaultView';
+export const METRIC_ROAS_ESTIMATE = 'AdsRoasEstimate';
 
 interface BuildAnalyticsQueryRequestParams {
   breakdownByAttributionDate?: boolean;

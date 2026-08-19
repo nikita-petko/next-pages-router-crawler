@@ -57,7 +57,12 @@ const PromotionBanner = () => {
   };
 
   return hasActivePromotion ? (
-    <div className='flex width-full items-center justify-between clip radius-large bg-surface-200 margin-bottom-medium'>
+    // `shift-200`, not `surface-200`: the latter sits two steps above the page in
+    // dark mode but resolves to the same white as `surface-0` in light mode, which
+    // would leave the banner with no visible fill. `shift-200` is the translucent
+    // fill Foundation's `Card variant='Emphasis'` uses, so this reads as a card
+    // alongside the reporting summary cards in both modes.
+    <div className='flex width-full items-center justify-between clip radius-large bg-shift-200 margin-bottom-medium'>
       {/* 32px overshoots the Foundation padding scale, which stops at 24px, but
           it is what the banner spec calls for. */}
       <div className='flex min-width-0 flex-col justify-center gap-xxlarge padding-[32px] [flex:1_0_0]'>

@@ -2,21 +2,21 @@ import { makeStyles } from '@rbx/ui';
 
 import { marginUnit, paddingUnit } from '@constants/styleConstants';
 
-const useCardVerificationModalStyles = makeStyles()(() => ({
+const useCardVerificationModalStyles = makeStyles()((theme) => ({
   buttonContainer: {
     marginTop: marginUnit * 2,
     textAlign: 'center',
   },
 
   incorrectPin: {
-    color: '#F4645D',
+    color: theme.palette.content.alert.important,
     display: 'block',
     marginTop: marginUnit * 2,
     textAlign: 'center',
   },
 
   incorrectPinInput: {
-    borderColor: '#F4645D',
+    borderColor: theme.palette.content.alert.important,
     marginLeft: marginUnit * 1.5,
     marginRight: marginUnit * 1.5,
     textAlign: 'center',
@@ -24,7 +24,7 @@ const useCardVerificationModalStyles = makeStyles()(() => ({
   },
 
   linkText: {
-    color: '#EDEDED',
+    color: theme.palette.content.standard,
     fontWeight: 'bold',
   },
 
@@ -50,8 +50,8 @@ const useCardVerificationModalStyles = makeStyles()(() => ({
   },
 
   skipButton: {
-    borderColor: '#989898',
-    color: '#EDEDED',
+    borderColor: theme.palette.surface.outline,
+    color: theme.palette.content.standard,
     marginRight: marginUnit,
   },
 
@@ -75,7 +75,7 @@ const useCardVerificationModalStyles = makeStyles()(() => ({
   },
 
   verifyCardModalHelpText: {
-    color: '#CBCBCB',
+    color: theme.palette.content.muted,
     display: 'block',
     marginBottom: marginUnit * 3,
     marginTop: marginUnit * 3,

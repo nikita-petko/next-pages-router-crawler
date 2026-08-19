@@ -59,8 +59,11 @@ export const UploadedVideoReviewComponentDynamic = ({
 
     expandIconContainer: {
       alignItems: 'center',
-      background: 'rgba(17, 18, 20, 0.8)',
+      background: 'var(--color-over-media-0)',
       borderRadius: 4,
+      // Set explicitly rather than inherited: the icon comes from MUI, whose
+      // theme is independent of the `dark-theme` class scoping these tokens.
+      color: 'var(--color-content-emphasis)',
       display: 'flex',
       height: 30,
       justifyContent: 'center',
@@ -76,9 +79,12 @@ export const UploadedVideoReviewComponentDynamic = ({
       marginRight: 8,
     },
 
+    // Deliberately inverted against the page theme, the way MUI light tooltips
+    // read on a dark surface. The inverse tokens keep that inversion correct in
+    // both modes instead of pinning it to white-on-dark.
     livePreviewTooltip: {
-      backgroundColor: 'white',
-      color: 'rgba(0, 0, 0, 0.87)',
+      backgroundColor: 'var(--inverse-surface-0)',
+      color: 'var(--inverse-content-emphasis)',
       fontSize: 14,
     },
 
@@ -97,7 +103,7 @@ export const UploadedVideoReviewComponentDynamic = ({
     },
 
     thumbWithModerationStatus: {
-      backgroundColor: 'rgba(255, 255, 255, 0.09)',
+      backgroundColor: 'var(--color-surface-200)',
       borderRadius: '8px',
       height: 120,
       position: 'relative',
@@ -146,7 +152,9 @@ export const UploadedVideoReviewComponentDynamic = ({
 
   return (
     <div className={adAssetReviewContainer}>
-      <div className={thumbWithModerationStatus}>
+      {/* Creative previews always sit on a dark backdrop, matching how the ad
+          renders in-experience, so this tile is pinned to dark tokens. */}
+      <div className={`dark-theme ${thumbWithModerationStatus}`}>
         {Boolean(uploadedVideoObjectUrl) && !showDegradedExperience && (
           <video style={{ height: '100%', width: '100%' }}>
             <source src={uploadedVideoObjectUrl} type={uploadedFormat} />

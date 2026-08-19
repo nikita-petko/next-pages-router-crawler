@@ -37,7 +37,12 @@ const ForecastResultStatCard = ({
   }
 
   return (
-    <div className='box-border flex min-width-0 grow basis-0 flex-col gap-medium radius-medium bg-surface-200 padding-medium'>
+    // `shift-200` is the fill Foundation's `Card variant='Emphasis'` uses, which is what the
+    // reporting summary cards are built from. Being a translucent overlay rather than a fixed
+    // surface, it reads as one step above whatever it sits on in either mode, where the
+    // `surface-200` this used to carry is only lighter than its parent in dark mode and
+    // collapses to plain white in light mode.
+    <div className='box-border flex min-width-0 grow basis-0 flex-col gap-medium radius-medium bg-shift-200 padding-medium'>
       <span className='text-label-large content-emphasis'>{heading}</span>
       <div className='flex flex-col gap-small'>
         <div className='flex min-width-0 flex-row items-center gap-small no-wrap'>

@@ -36,7 +36,7 @@
  */
 .buttonSelectedOutline {
   border-radius: 8px;
-  outline: 2px solid var(--content-emphasis, #f7f7f8);
+  outline: 2px solid var(--color-content-emphasis);
   outline-offset: 4px;
 }
 
@@ -47,7 +47,7 @@
 
 .mediaWrapper {
   aspect-ratio: 16 / 9;
-  background-color: var(--bg-surface-200, #202227);
+  background-color: var(--color-surface-200);
   border: 1px solid transparent;
   border-radius: 8px;
   box-sizing: border-box;
@@ -57,7 +57,7 @@
 }
 
 .mediaWrapperSelectedBorder {
-  border-color: var(--content-emphasis, #f7f7f8);
+  border-color: var(--color-content-emphasis);
 }
 
 .coverImage {
@@ -93,6 +93,11 @@
   pointer-events: auto;
 }
 
+/* Media chrome: this sits directly on the user's uploaded image to dim it so the
+   overlaid action icons stay legible, so it is deliberately fixed rather than
+   theme-reactive. `--color-state-hover` would lighten the image in dark mode and
+   at 8% alpha is far too weak to read as a hover affordance over arbitrary
+   artwork. */
 .hoverOverlay {
   background: rgb(0 0 0 / 22%);
   border-radius: 8px;

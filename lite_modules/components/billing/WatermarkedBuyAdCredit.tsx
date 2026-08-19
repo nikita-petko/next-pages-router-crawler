@@ -7,8 +7,6 @@ import {
   Menu,
   MenuItem,
   TextInput,
-  Tooltip,
-  TooltipTrigger,
 } from '@rbx/foundation-ui';
 import { useQuery } from '@tanstack/react-query';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
@@ -20,6 +18,7 @@ import useAddPaymentMethodStyles from '@components/billing/AddPaymentMethod.styl
 import { BuyAdCreditEnum } from '@components/billing/BuyAdCredit';
 import type { BuyAdCreditProps, PaymentSetupCompletion } from '@components/billing/BuyAdCredit';
 import { openBuyAdCreditSuccessDialog } from '@components/billing/dialogs/BuyAdCreditSuccessDialog';
+import AppTooltip from '@components/common/AppTooltip';
 import { openImpersonationErrorDialog } from '@components/common/dialog/impersonationErrorDialog';
 import FieldLabelOffset from '@components/common/form/FieldLabelOffset';
 import Skeleton from '@components/common/Skeleton';
@@ -722,15 +721,13 @@ export const WatermarkedBuyAdCredit = ({
             {translateForecast('Label.PeriodTotal')}
           </span>
           {isRobuxAdjustedDown && hasQuoteValues && (
-            <Tooltip
+            <AppTooltip
               position='right-center'
               title={translateBilling('Description.AdjustedForConversion')}>
-              <TooltipTrigger asChild>
-                <span className={watermarkedTooltipIcon} data-testid='adjustedForConversionTooltip'>
-                  <Icon name='icon-regular-circle-i' size='Small' />
-                </span>
-              </TooltipTrigger>
-            </Tooltip>
+              <span className={watermarkedTooltipIcon} data-testid='adjustedForConversionTooltip'>
+                <Icon name='icon-regular-circle-i' size='Small' />
+              </span>
+            </AppTooltip>
           )}
         </div>
         <div className={watermarkedTierRowValues}>

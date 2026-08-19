@@ -128,6 +128,7 @@ const AdIntegrationExperienceSection = ({
         render={({ field }) =>
           isMultiExperienceEnabled ? (
             <Autocomplete
+              className='width-full'
               data-testid='ad-integration-multi-experience-autocomplete'
               error={errorMessage}
               hasError={Boolean(errorMessage)}

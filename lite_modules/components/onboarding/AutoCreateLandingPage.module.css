@@ -12,16 +12,23 @@
   }
 }
 
+/*
+ * The bespoke yellow tints below have no semantic Foundation equivalent, so they
+ * are intentionally fixed rather than theme-reactive: `--color-extended-*` values
+ * are absolute and are not re-pointed by `light-theme` / `dark-theme`. The banner
+ * itself carries a `dark-theme` scope (see AutoCreateLandingPage.tsx) purely so
+ * its `--color-system-warning` border resolves on the same side as these tints.
+ */
 .warningBanner {
-  background: #3a2c05;
-  border-bottom: 1px solid #f2ba2a;
-  border-top: 1px solid #f2ba2a;
-  color: #fff5cc;
+  background: var(--color-extended-yellow-1200);
+  border-bottom: 1px solid var(--color-system-warning);
+  border-top: 1px solid var(--color-system-warning);
+  color: var(--color-extended-yellow-100);
   padding: 8px 24px;
 }
 
 .warningIcon {
-  color: #f5c542;
+  color: var(--color-system-warning);
   flex-shrink: 0;
 }
 
@@ -32,7 +39,7 @@
 }
 
 .verifyEmailLink {
-  color: #fff5cc;
+  color: var(--color-extended-yellow-100);
   font-size: 14px;
   font-weight: 600;
   line-height: 1.2;
@@ -54,10 +61,12 @@
   width: 100%;
 }
 
+/* Black scrim over the hero photograph so the overlaid copy stays legible; it
+   fades into the page surface at the bottom edge. */
 .heroOverlay {
   background:
     linear-gradient(90deg, #000 0%, rgba(0, 0, 0, 0.85) 28%, rgba(0, 0, 0, 0.5) 50%, rgba(0, 0, 0, 0) 100%),
-    linear-gradient(180deg, rgba(0, 0, 0, 0) 62%, #121215 100%);
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 62%, var(--color-surface-0) 100%);
   inset: 0;
   position: absolute;
   z-index: 1;
@@ -82,7 +91,7 @@
 }
 
 .resourceSection {
-  background: #121215;
+  background: var(--color-surface-0);
   padding: 32px 48px 40px;
 }
 

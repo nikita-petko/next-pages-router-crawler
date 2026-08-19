@@ -1,0 +1,24 @@
+/*
+ * Foundation's Table sizes its cells with single-class Tailwind utilities
+ * (`height-800`, `padding-x-medium`, ...) and composes className with clsx, not
+ * tailwind-merge, so a single-class override only ties on specificity and the
+ * winner depends on stylesheet insertion order. Doubling the selector settles
+ * it regardless of order.
+ */
+
+.table {
+  table-layout: fixed;
+}
+
+.headerCell.headerCell {
+  padding: var(--padding-small) var(--padding-large);
+}
+
+.bodyCell.bodyCell {
+  height: auto;
+  padding: var(--padding-large);
+}
+
+.lastEstimateCell.lastEstimateCell {
+  border-bottom-width: var(--stroke-thicker);
+}

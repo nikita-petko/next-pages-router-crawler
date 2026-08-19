@@ -1,7 +1,6 @@
 import { Button, CloseIcon, makeStyles, OpenInFullIcon, Tooltip, Typography } from '@rbx/ui';
 
 import { EventName, unifiedLogger } from '@clients/unifiedLogger';
-import { contentStaticDark } from '@constants/colors';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
 import { useModalStore } from '@stores/modalStoreProvider';
 import { GetLocalStorage, StorageKeys } from '@utils/localStorage';
@@ -51,8 +50,11 @@ export const UploadedImageReviewComponentDynamic = ({
 
     expandIconContainer: {
       alignItems: 'center',
-      background: 'rgba(17, 18, 20, 0.8)',
+      background: 'var(--color-over-media-0)',
       borderRadius: 4,
+      // Set explicitly rather than inherited: the icon comes from MUI, whose
+      // theme is independent of the `dark-theme` class scoping these tokens.
+      color: 'var(--color-content-emphasis)',
       display: 'flex',
       height: 30,
       justifyContent: 'center',
@@ -68,9 +70,12 @@ export const UploadedImageReviewComponentDynamic = ({
       marginRight: 8,
     },
 
+    // Deliberately inverted against the page theme, the way MUI light tooltips
+    // read on a dark surface. The inverse tokens keep that inversion correct in
+    // both modes instead of pinning it to white-on-dark.
     livePreviewTooltip: {
-      backgroundColor: 'white',
-      color: 'rgba(0, 0, 0, 0.87)',
+      backgroundColor: 'var(--inverse-surface-0)',
+      color: 'var(--inverse-content-emphasis)',
       fontSize: 14,
     },
 
@@ -99,7 +104,7 @@ export const UploadedImageReviewComponentDynamic = ({
     },
 
     thumbWithModerationStatus: {
-      backgroundColor: 'rgba(255, 255, 255, 0.09)',
+      backgroundColor: 'var(--color-surface-200)',
       borderRadius: '8px',
       height: 120,
       position: 'relative',
@@ -141,9 +146,13 @@ export const UploadedImageReviewComponentDynamic = ({
     };
 
     const visits_ad_styles = {
-      backgroundColor: contentStaticDark,
+      backgroundColor: 'var(--color-surface-0)',
       borderRadius: 3.5,
       bottom: '52.2%',
+      // Set explicitly rather than inherited: the foreground would come from
+      // MUI's body color, which follows the page theme and goes near-black in
+      // light mode, leaving this label unreadable on the pinned-dark chip.
+      color: 'var(--color-content-emphasis)',
       fontSize: '1.3vh',
       fontWeight: 325,
       height: '2vh',
@@ -169,9 +178,11 @@ export const UploadedImageReviewComponentDynamic = ({
       ...undraggable,
     };
     const awareness_ad_styles = {
-      backgroundColor: contentStaticDark,
+      backgroundColor: 'var(--color-surface-0)',
       borderRadius: 3.5,
       bottom: '41%',
+      // Set explicitly rather than inherited, as in `visits_ad_styles`.
+      color: 'var(--color-content-emphasis)',
       fontSize: '1.3vh',
       fontWeight: 325,
       height: '2vh',
@@ -204,7 +215,11 @@ export const UploadedImageReviewComponentDynamic = ({
 
     setModalConfigData({
       completelyCustomModalContents: (
+        // `dark-theme` pins this subtree to dark tokens: it renders a mockup of
+        // the in-experience Roblox client, which is dark regardless of the
+        // user's Ads Manager theme.
         <div
+          className='dark-theme'
           style={{
             left: '50%',
             position: 'fixed',
@@ -220,7 +235,12 @@ export const UploadedImageReviewComponentDynamic = ({
               width: '100%',
             }}>
             <Typography
-              style={{ color: '#F5BA19', left: '8px', position: 'absolute', top: '8px' }}
+              style={{
+                color: 'var(--color-system-warning)',
+                left: '8px',
+                position: 'absolute',
+                top: '8px',
+              }}
               variant='body1'>
               Publisher can customize ad container style to best fit their experience.
             </Typography>
@@ -228,7 +248,12 @@ export const UploadedImageReviewComponentDynamic = ({
               onClick={() => {
                 setModalOpen(false);
               }}
-              style={{ color: 'white', position: 'absolute', right: 0, top: '8px' }}
+              style={{
+                color: 'var(--color-content-emphasis)',
+                position: 'absolute',
+                right: 0,
+                top: '8px',
+              }}
             />
           </div>
           <div
@@ -270,7 +295,9 @@ export const UploadedImageReviewComponentDynamic = ({
   };
   return (
     <div className={adAssetReviewContainer}>
-      <div className={thumbWithModerationStatus}>
+      {/* Creative previews always sit on a dark backdrop, matching how the ad
+          renders in-experience, so this tile is pinned to dark tokens. */}
+      <div className={`dark-theme ${thumbWithModerationStatus}`}>
         {Boolean(overlayImageStr) && (
           <img alt='uploaded file' className={overlayImagePreview} src={overlayImageStr} />
         )}

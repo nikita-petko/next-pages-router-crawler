@@ -25,7 +25,7 @@
  */
 .selectedRing {
   border-radius: 8px;
-  outline: 2px solid var(--content-emphasis, #f7f7f8);
+  outline: 2px solid var(--color-content-emphasis);
   outline-offset: 4px;
 }
 
@@ -45,7 +45,7 @@
 /* Hover overlay using the Foundation `color/state/hover` token, matching the
    Figma `DrawerTile` hover state (a subtle light wash over the media). */
 .hoverOverlay {
-  background: var(--color-state-hover, rgba(208, 217, 251, 0.08));
+  background: var(--color-state-hover);
   border-radius: 8px;
   inset: 0;
   opacity: 0;

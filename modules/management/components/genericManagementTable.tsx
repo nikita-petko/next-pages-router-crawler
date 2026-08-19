@@ -317,9 +317,9 @@ export const TableNameCell = ({
 }) => {
   const {
     classes: { checkboxRoot, rowCheckbox, textEllipsisTypography, tooltipContent, tooltipText },
-  } = makeStyles()(() => ({
+  } = makeStyles()((theme) => ({
     checkboxRoot: {
-      color: 'rgb(255,255,255) !important',
+      color: `${theme.palette.content.standard} !important`,
     },
 
     rowCheckbox: {
@@ -568,7 +568,7 @@ export const GenericManagementTable = ({
         width: '0.4em',
       },
       '&::-webkit-scrollbar-thumb': {
-        backgroundColor: 'rgba(125,124,125,1)',
+        backgroundColor: theme.palette.content.disabled,
         borderRadius: '8px',
         outline: '1px solid slategrey',
       },
@@ -576,9 +576,9 @@ export const GenericManagementTable = ({
         '-webkit-box-shadow': 'inset 0 0 6px rgba(0,0,0,0.00)',
       },
       '& tr:last-child td': {
-        borderTop: '1px solid rgba(255, 255, 255, 0.12)',
+        borderTop: `1px solid ${theme.palette.states.selected}`,
       },
-      backgroundColor: theme.palette.content.static.dark,
+      backgroundColor: theme.palette.surface[0],
       maxHeight: '100%',
       position: 'relative',
     },
@@ -587,9 +587,9 @@ export const GenericManagementTable = ({
       '& th': {
         // TODO: ADS-3283
         // boxShadow: '60px -13px 33px 13px rgba(0, 0, 0, 0.50)', TODO:
-        backgroundColor: `${theme.palette.content.static.dark} !important`,
+        backgroundColor: `${theme.palette.surface[0]} !important`,
       },
-      backgroundColor: theme.palette.content.static.dark,
+      backgroundColor: theme.palette.surface[0],
     },
   }))();
 

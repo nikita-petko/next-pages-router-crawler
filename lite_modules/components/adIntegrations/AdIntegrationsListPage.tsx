@@ -24,6 +24,7 @@ import Routes from '@constants/routes';
 import { defaultAdvertisedUniverse } from '@constants/universeConstants';
 import useAdAccountAutoCreateCreateAction from '@hooks/account/useAdAccountAutoCreateCreateAction';
 import useAdIntegrationCampaignApi from '@hooks/adIntegrations/useAdIntegrationCampaignApi';
+import useMultiRevenueShareEstimatePreview from '@hooks/adIntegrations/useMultiRevenueShareEstimatePreview';
 import useRevenueShareEstimatePreview from '@hooks/adIntegrations/useRevenueShareEstimatePreview';
 import { useAuthenticatedUser } from '@hooks/useAuthenticatedUser';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -48,7 +49,7 @@ import { formatMicroUsdToUsdDisplay } from '@utils/revenueShareEstimate';
 type PageLoadState = 'loading' | 'loaded';
 type ManagedCampaignStatusPresentation = {
   label: string;
-  tone: AdIntegrationAssetsDrawerCampaignInfoHeader['statusTone'];
+  variant: AdIntegrationAssetsDrawerCampaignInfoHeader['statusVariant'];
 };
 
 // The managed-campaign status label key can resolve from one of several
@@ -87,7 +88,7 @@ const getManagedCampaignStatusPresentation = (
     moderationStatus !== 'REJECTED';
 
   if (isCompleted) {
-    return { label: 'Status.Completed', tone: 'disabled' };
+    return { label: 'Status.Completed', variant: 'Standard' };
   }
 
   switch (moderationStatus) {
@@ -95,18 +96,18 @@ const getManagedCampaignStatusPresentation = (
     case 'LIMITED':
       return {
         label: getCampaignModerationStatusLabelKey(moderationStatus) ?? 'Label.NoAssets',
-        tone: 'active',
+        variant: 'Success',
       };
     case 'REJECTED':
       return {
         label: getCampaignModerationStatusLabelKey(moderationStatus) ?? 'Label.NoAssets',
-        tone: 'important',
+        variant: 'Alert',
       };
     case 'IN_REVIEW':
     default:
       return {
         label: getCampaignModerationStatusLabelKey(moderationStatus) ?? 'Label.NoAssets',
-        tone: 'notice',
+        variant: 'Warning',
       };
   }
 };
@@ -289,8 +290,10 @@ const AdIntegrationsListPage = () => {
   const campaignDetailsExperienceIds = isCampaignDetailsLoading
     ? undefined
     : campaignDetails?.experienceIds;
-  const managedCampaignUniverseIds =
-    managedCampaign?.universeIds ?? campaignDetailsExperienceIds ?? [];
+  const managedCampaignUniverseIds = useMemo<number[]>(
+    () => managedCampaign?.universeIds ?? campaignDetailsExperienceIds ?? [],
+    [campaignDetailsExperienceIds, managedCampaign?.universeIds],
+  );
   const managedCampaignAdditionalUniverseCount = isMultiUniverseEnabled
     ? Math.max(managedCampaignUniverseIds.length - 1, 0)
     : undefined;
@@ -321,20 +324,42 @@ const AdIntegrationsListPage = () => {
     (state) => state.appMetadataState?.data?.isAdIntegrationRevenueShareEstimateEnabled ?? false,
   );
   const managedCampaignUniverseId = managedCampaignPrimaryUniverseId;
+  const managedCampaignRevenueShareUniverseIds = useMemo<number[]>(() => {
+    if (managedCampaignUniverseIds.length > 0) {
+      return managedCampaignUniverseIds;
+    }
+    return managedCampaignUniverseId === undefined ? [] : [managedCampaignUniverseId];
+  }, [managedCampaignUniverseId, managedCampaignUniverseIds]);
   // The detail drawer always fetches fresh signals for the selected campaign's
-  // universe rather than reusing the store-wide saved snapshot: that snapshot is
+  // universes rather than reusing the store-wide saved snapshot: that snapshot is
   // whichever campaign's details loaded last, so reusing it would show stale
-  // numbers when switching between campaigns that share a universe. The preview
-  // fetch is cheap and idempotent, so refetching on open is the simpler, correct
-  // choice. (The edit form still reuses its own campaign's snapshot.)
-  const { maxRevenueShareMicroUsd, weightedCptvMicroUsd } = useRevenueShareEstimatePreview({
-    endTimestampMs: managedCampaign?.endTimestampMs ?? campaignEndTimestampMs,
-    startTimestampMs: managedCampaign?.startTimestampMs ?? campaignStartTimestampMs,
-    // Gated behind the revenue share estimate flag: passing undefined keeps the
-    // hook from issuing any network request while the feature is disabled.
+  // numbers when switching campaigns. The edit form still reuses its own
+  // campaign snapshots because they are loaded for that specific campaign.
+  const managedCampaignEndTimestampMs = managedCampaign?.endTimestampMs ?? campaignEndTimestampMs;
+  const managedCampaignStartTimestampMs =
+    managedCampaign?.startTimestampMs ?? campaignStartTimestampMs;
+  const singleRevenueSharePreview = useRevenueShareEstimatePreview({
+    endTimestampMs: managedCampaignEndTimestampMs,
+    startTimestampMs: managedCampaignStartTimestampMs,
     universeId:
-      isRevenueShareEstimateEnabled && managedCampaignId ? managedCampaignUniverseId : undefined,
+      isRevenueShareEstimateEnabled && managedCampaignId && !isMultiUniverseEnabled
+        ? managedCampaignUniverseId
+        : undefined,
   });
+  const multiRevenueSharePreview = useMultiRevenueShareEstimatePreview({
+    endTimestampMs: managedCampaignEndTimestampMs,
+    startTimestampMs: managedCampaignStartTimestampMs,
+    universeIds:
+      isRevenueShareEstimateEnabled && managedCampaignId && isMultiUniverseEnabled
+        ? managedCampaignRevenueShareUniverseIds
+        : undefined,
+  });
+  const weightedCptvMicroUsd = isMultiUniverseEnabled
+    ? multiRevenueSharePreview.totalWeightedCptvMicroUsd
+    : singleRevenueSharePreview.weightedCptvMicroUsd;
+  const maxRevenueShareMicroUsd = isMultiUniverseEnabled
+    ? multiRevenueSharePreview.totalMaxRevenueShareMicroUsd
+    : singleRevenueSharePreview.maxRevenueShareMicroUsd;
   const managedCampaignCptvDisplay =
     weightedCptvMicroUsd !== undefined
       ? formatMicroUsdToUsdDisplay(weightedCptvMicroUsd)
@@ -385,7 +410,7 @@ const AdIntegrationsListPage = () => {
           ? getDateDisplayValue(managedCampaign.startTimestampMs, locale)
           : campaignDetails?.startDate || getDateDisplayValue(campaignStartTimestampMs, locale),
       statusLabel,
-      statusTone: managedCampaignStatusPresentation.tone,
+      statusVariant: managedCampaignStatusPresentation.variant,
     };
   }, [
     campaignCreatedTimestampMs,
@@ -404,7 +429,7 @@ const AdIntegrationsListPage = () => {
     managedCampaignMaxCostDisplay,
     managedCampaignPrimaryUniverseId,
     managedCampaignStatusPresentation.label,
-    managedCampaignStatusPresentation.tone,
+    managedCampaignStatusPresentation.variant,
     thumbnailsByUniverseId,
     translateAccount,
     translateCreativeLibrary,

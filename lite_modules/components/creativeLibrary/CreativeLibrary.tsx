@@ -56,9 +56,7 @@ import TileMediaOverflowMenu from '@components/common/creative/TileMediaOverflow
 import DismissibleTooltip from '@components/common/DismissibleTooltip';
 import FoundationTablePagination from '@components/common/FoundationTablePagination';
 import GenericSnackBar from '@components/common/GenericSnackBar';
-import AssetStatusBadge, {
-  getAssetStatusDotColorClass,
-} from '@components/creativeLibrary/AssetStatusBadge';
+import AssetStatusBadge from '@components/creativeLibrary/AssetStatusBadge';
 import AssetThumbnail from '@components/creativeLibrary/AssetThumbnail';
 import tileGridStyles from '@components/creativeLibrary/CreativeLibrary.module.css';
 import { openCreativeLibraryFeedbackDialog } from '@components/creativeLibrary/CreativeLibraryFeedbackDialog';
@@ -328,9 +326,6 @@ const applyFilters = (
     return true;
   });
 };
-
-const getStatusDotColorClass = (asset: AdAsset): string =>
-  getAssetStatusDotColorClass(asset.isArchived, asset.contentModerationStatus);
 
 const getUniversesWithSelectedUniverse = (
   universes: ReadonlyArray<AdvertisedUniverse>,
@@ -1094,6 +1089,7 @@ const CreativeLibrary = () => {
           ? translate('Label.Archived')
           : getModerationStatusLabel(asset.contentModerationStatus)
       }
+      shape='Box'
     />
   );
 
@@ -1422,18 +1418,15 @@ const CreativeLibrary = () => {
           </div>
         </TableCell>
         <TableCell>
-          {/* Status column: tinted dot plus label */}
-          <span className='flex min-width-0 items-center gap-small'>
-            <span
-              aria-hidden='true'
-              className={`shrink-0 size-[8px] radius-circle ${getStatusDotColorClass(asset)}`}
-            />
-            <span className='text-body-small content-emphasis margin-[0px] min-width-0 text-no-wrap text-truncate-end'>
-              {asset.isArchived
+          <AssetStatusBadge
+            contentModerationStatus={asset.contentModerationStatus}
+            isArchived={asset.isArchived}
+            label={
+              asset.isArchived
                 ? translate('Label.Archived')
-                : getModerationStatusLabel(asset.contentModerationStatus)}
-            </span>
-          </span>
+                : getModerationStatusLabel(asset.contentModerationStatus)
+            }
+          />
         </TableCell>
         <TableCell className={tileGridStyles.listTableDataCell}>
           <p className='margin-[0px] content-emphasis text-no-wrap text-truncate-end'>

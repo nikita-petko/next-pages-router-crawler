@@ -23,6 +23,7 @@ import {
 } from '@constants/reportDownload';
 import { REPORTING_TIMEZONE_DB_NAME } from '@constants/reportingStatsConstants';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import useResolvedThemeMode from '@hooks/useResolvedThemeMode';
 import {
   createReportDownload,
   getReportCreationStatus,
@@ -139,6 +140,7 @@ const ReportDownloadDialog = ({
 }: ReportDownloadDialogProps): ReactElement => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Report);
   const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
+  const themeMode = useResolvedThemeMode();
   const {
     classes: {
       actionRow,
@@ -330,15 +332,16 @@ const ReportDownloadDialog = ({
     // (CenteredCircularProgress, FormHelperText). It wraps only the inner
     // @rbx/ui content so it doesn't nest a MUI Modal focus trap inside
     // Foundation-UI's <Dialog> (which would cause an infinite focus-event
-    // loop).
-    <UIThemeProvider>
+    // loop). The mode has to be passed explicitly because a bare provider
+    // defaults to dark, overriding the theme the app root established.
+    <UIThemeProvider theme={themeMode}>
       <div className={loadingStyle}>
         <CenteredCircularProgress />
         <span className='text-heading-small'>{translate('Description.ReportBeingPrepared')}</span>
       </div>
     </UIThemeProvider>
   ) : (
-    <UIThemeProvider>
+    <UIThemeProvider theme={themeMode}>
       <div>
         <div className={infoRow}>
           <span className='text-body-medium content-default'>

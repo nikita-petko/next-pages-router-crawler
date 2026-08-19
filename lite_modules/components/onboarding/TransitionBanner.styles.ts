@@ -1,6 +1,6 @@
 import { alertClasses, makeStyles } from '@rbx/ui';
 
-const useTransitionBannerStyles = makeStyles()(() => ({
+const useTransitionBannerStyles = makeStyles()((theme) => ({
   bannerContainer: {
     [`& .${alertClasses.message}`]: {
       padding: 0,
@@ -31,7 +31,7 @@ const useTransitionBannerStyles = makeStyles()(() => ({
     marginTop: '32px',
   },
   closeButton: {
-    color: '#FFFFFF',
+    color: theme.palette.content.standard,
     flexShrink: 0,
   },
   hereText: {

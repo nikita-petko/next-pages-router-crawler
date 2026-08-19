@@ -7,7 +7,7 @@ const useCampaignManagementTableStyles = makeStyles()((theme) => ({
       width: '0.4em',
     },
     '&::-webkit-scrollbar-thumb': {
-      backgroundColor: 'rgba(125,124,125,1)',
+      backgroundColor: theme.palette.content.disabled,
       borderRadius: '8px',
       outline: '1px solid slategrey',
     },

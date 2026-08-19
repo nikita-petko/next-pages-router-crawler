@@ -1480,12 +1480,6 @@
     --inverse-system-warning: var(--light-mode-system-warning);
   }
 }
-.bg-\[\#121215\] {
-  background-color: #121215;
-}
-.bg-\[\#ffffff\] {
-  background-color: #ffffff;
-}
 .bg-\[rgb\(from_var\(--color-system-alert\)_r_g_b_\/_0\.2\)\] {
   background-color: rgb(from var(--color-system-alert) r g b / 0.2);
 }
@@ -1494,9 +1488,6 @@
 }
 .bg-\[rgb\(from_var\(--color-system-warning\)_r_g_b_\/_0\.2\)\] {
   background-color: rgb(from var(--color-system-warning) r g b / 0.2);
-}
-.bg-\[rgba\(0\2c 0\2c 0\2c 0\.6\)\] {
-  background-color: rgba(0,0,0,0.6);
 }
 .bg-\[var\(--color-common-shimmer\)\] {
   background-color: var(--color-common-shimmer);
@@ -1510,11 +1501,20 @@
 .bg-\[var\(--color-stroke-muted\)\] {
   background-color: var(--color-stroke-muted);
 }
+.bg-\[var\(--dark-mode-common-backdrop\)\] {
+  background-color: var(--dark-mode-common-backdrop);
+}
+.bg-\[var\(--dark-mode-surface-0\)\] {
+  background-color: var(--dark-mode-surface-0);
+}
 .bg-\[var\(--dark-mode-system-contrast\)\] {
   background-color: var(--dark-mode-system-contrast);
 }
 .bg-\[var\(--fui-future-alpha-color-system-progress\)\] {
   background-color: var(--fui-future-alpha-color-system-progress);
+}
+.bg-\[var\(--light-mode-surface-0\)\] {
+  background-color: var(--light-mode-surface-0);
 }
 .bg-action-alert {
   background-color: var(--color-action-alert-background);
@@ -1978,6 +1978,9 @@
 .min-width-\[0px\] {
   min-width: 0px;
 }
+.min-width-\[110px\] {
+  min-width: 110px;
+}
 .min-width-\[176px\] {
   min-width: 176px;
 }
@@ -2099,10 +2102,6 @@
   width: 78px;
   height: 78px;
 }
-.size-\[8px\] {
-  width: 8px;
-  height: 8px;
-}
 .size-\[var\(--icon-size-large\)\] {
   width: var(--icon-size-large);
   height: var(--icon-size-large);
@@ -2205,6 +2204,9 @@
 }
 .width-\[240px\] {
   width: 240px;
+}
+.width-\[25\%\] {
+  width: 25%;
 }
 .width-\[28px\] {
   width: 28px;
@@ -2377,10 +2379,6 @@
 }
 .padding-top-xxsmall {
   padding-top: var(--padding-xxsmall);
-}
-.padding-x-\[var\(--size-250\)\] {
-  padding-left: var(--size-250);
-  padding-right: var(--size-250);
 }
 .padding-x-large {
   padding-left: var(--padding-large);
@@ -3190,8 +3188,13 @@ body {
   margin: 0;
   font-family: 'Builder Sans', Helvetica, Arial, san-serif;
   /* Match creator-hub nav (`theme.palette.navigation.default` / NavigationBar).
-     Fallback is dark Surface_0 until Foundation theme vars mount. */
-  background-color: var(--color-common-navigation-bar, #121215) !important;
+     The token is an alias of Surface_0 that the `light-theme` / `dark-theme`
+     class on <html> re-points, so the page background follows the user's shared
+     Creator Hub theme preference. Deliberately no hex fallback: a dark one would
+     pin the page to dark in light mode if the vars ever failed to mount.
+     `!important` keeps this winning over MUI's CssBaseline `body` background,
+     which is injected after this file. */
+  background-color: var(--color-common-navigation-bar) !important;
 }
 
 a {
@@ -3241,9 +3244,10 @@ a {
 
 /*
  * Foundation UI's <Table> always wraps the <table> in a div with a hardcoded
- * `bg-surface-100`, so every migrated table reads as a lighter card sitting on
- * top of our transparent surface-0 page content. Neutralize that wrapper so
- * tables blend with the page background instead. Scoped via :has() to the exact
+ * `bg-surface-100`, so every migrated table reads as a distinct card sitting on
+ * top of our surface-0 page content (lighter in dark mode, greyer in light
+ * mode). Forcing transparency is mode-agnostic and keeps tables blending with
+ * the page background in both themes. Scoped via :has() to the exact
  * wrapper Foundation renders (the direct parent of `.foundation-web-table`); the
  * `className` we pass to <Table> lands on the inner <table>, not this wrapper, so
  * a global rule is the only way to reach it. All our tables use the default

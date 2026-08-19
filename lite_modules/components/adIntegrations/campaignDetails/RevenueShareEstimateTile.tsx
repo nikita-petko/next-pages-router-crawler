@@ -1,4 +1,4 @@
-import { Link } from '@rbx/foundation-ui';
+import { Button, Link } from '@rbx/foundation-ui';
 import { Alert } from '@rbx/ui';
 import { ReactElement } from 'react';
 
@@ -14,16 +14,22 @@ const EMPTY_VALUE_PLACEHOLDER = '--';
 interface RevenueShareEstimateTileProps {
   avgDailyVisits?: number;
   billableDays?: number;
+  isBreakdownLoading?: boolean;
   isError: boolean;
   maxRevenueShareMicroUsd?: number;
+  onViewBreakdown?: () => void;
+  showBreakdownButton?: boolean;
   weightedCptvMicroUsd?: number;
 }
 
 const RevenueShareEstimateTile = ({
   avgDailyVisits,
   billableDays,
+  isBreakdownLoading = false,
   isError,
   maxRevenueShareMicroUsd,
+  onViewBreakdown,
+  showBreakdownButton = false,
   weightedCptvMicroUsd,
 }: RevenueShareEstimateTileProps): ReactElement => {
   const { translate, translateHTML } = useNamespacedTranslation(TranslationNamespace.Misc);
@@ -39,6 +45,7 @@ const RevenueShareEstimateTile = ({
       errorText,
       header,
       heading,
+      headingRow,
       metric,
       metricsRow,
     },
@@ -69,9 +76,21 @@ const RevenueShareEstimateTile = ({
   return (
     <div className={container}>
       <div className={header}>
-        <span className={`text-heading-small ${heading}`}>
-          {translate('Heading.RevenueShareForecast')}
-        </span>
+        <div className={headingRow}>
+          <span className={`text-heading-small ${heading}`}>
+            {translate('Heading.RevenueShareForecast')}
+          </span>
+          {showBreakdownButton && (
+            <Button
+              isDisabled={isBreakdownLoading || !onViewBreakdown}
+              isLoading={isBreakdownLoading}
+              onClick={onViewBreakdown}
+              size='Small'
+              variant='Standard'>
+              {translate('Action.ViewBreakdown')}
+            </Button>
+          )}
+        </div>
         <Alert severity='warning'>{translate('Message.RevenueShareForecastEffectiveDate')}</Alert>
         <span className={`text-body-medium ${description}`}>
           {translateHTML('Description.RevenueShareForecast', [

@@ -15,12 +15,13 @@ import {
   AnalyticsReportingResource,
   buildAnalyticsQueryRequest,
   getPlaysMetricForReportingView,
+  METRIC_ROAS_ESTIMATE,
 } from '@services/ads/analyticsQueryBuilder';
 import {
   aggregateQueryResultToDailyDataPoints,
   queryResultToDailyDirectDataPoints,
 } from '@services/ads/campaignTimeSeriesDataPoints';
-import { CampaignTimeSeries } from '@type/timeSeries';
+import { CampaignTimeSeries, CampaignTimeSeriesDataPoints } from '@type/timeSeries';
 import { CaptureException } from '@utils/error';
 import { GetApiSiteBaseUrl, GetSitetestBaseUrl } from '@utils/url';
 
@@ -82,6 +83,31 @@ const queryMetric = async (
 
 /** Chart bucketing for the plays series: attribution day or raw conversion day. */
 type CampaignTimeSeriesAggregationType = 'attributionDate' | 'default';
+
+/**
+ * Merge validated + estimated daily ROAS into a single series, preferring
+ * validated where present. The ML DAG only writes estimates for the trailing
+ * ~30 days whose attribution windows are still open; validated data lands for
+ * those dates as the window closes. During the overlap either can be non-null,
+ * and validated is authoritative.
+ */
+const mergeRoasPreferValidated = (
+  validated: CampaignTimeSeriesDataPoints,
+  estimated: CampaignTimeSeriesDataPoints,
+): CampaignTimeSeriesDataPoints => {
+  const merged = new Map<number, number | null>();
+  estimated.forEach(([ts, value]) => merged.set(ts, value));
+  validated.forEach(([ts, value]) => {
+    if (value !== null) {
+      merged.set(ts, value);
+      return;
+    }
+    if (!merged.has(ts)) {
+      merged.set(ts, null);
+    }
+  });
+  return Array.from(merged.entries()).sort(([a], [b]) => a - b);
+};
 
 interface GetCampaignTimeSeriesRequest {
   aggregationType: CampaignTimeSeriesAggregationType;
@@ -155,13 +181,28 @@ export const getCampaignTimeSeries = async ({
     ? Promise.all([
         fetchMetric('AdsUARoas', 'oneDay', false),
         fetchMetric('AdsUARoas', 'none', false),
+        // `ByUniverse` suffix is applied automatically by
+        // `buildAnalyticsQueryRequest` for universe resources — mirrors how
+        // `AdsUARoas` routes to `AdsUARoasByUniverse` here.
+        fetchMetric(METRIC_ROAS_ESTIMATE, 'oneDay', false, false).catch((error) => {
+          CaptureException(error as Error, {
+            context: 'getCampaignTimeSeries: estimated ROAS fetch failed',
+          });
+          return undefined;
+        }),
       ])
-        .then(([dailyResult, totalResult]) => {
+        .then(([dailyResult, totalResult, estimateResult]) => {
           const totalRoas = totalResult.values
             ?.flatMap((value) => value.dataPoints ?? [])
             .find((dataPoint) => typeof dataPoint.value === 'number')?.value;
+          const validatedDaily = queryResultToDailyDirectDataPoints(dailyResult);
+          const estimatedDaily = estimateResult
+            ? queryResultToDailyDirectDataPoints(estimateResult)
+            : [];
           return {
-            roas: queryResultToDailyDirectDataPoints(dailyResult),
+            roas: estimatedDaily.length
+              ? mergeRoasPreferValidated(validatedDaily, estimatedDaily)
+              : validatedDaily,
             totalRoas: typeof totalRoas === 'number' ? totalRoas : undefined,
           };
         })

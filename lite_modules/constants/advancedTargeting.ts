@@ -52,6 +52,8 @@ export enum ServerRetargetingType {
   RETARGETING_LAPSED_USERS_30_DAYS = 2,
 
   RETARGETING_EXCLUDE_USERS_180_DAYS = 3,
+
+  RETARGETING_RECENT_USERS_30_DAYS = 4,
 }
 
 export const AllAgesOption: GenericAutocompleteOption = {

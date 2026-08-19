@@ -3,7 +3,11 @@ import { makeStyles } from '@rbx/ui';
 const useGenericNoDataPageStyles = makeStyles()((theme) => ({
   avatarStyles: {
     alignItems: 'center',
-    backgroundColor: '#222328',
+    // The palette's avatar fill, which is a translucent overlay in both modes, so this
+    // badge stays a step off the page either way. `surface[200]` is lighter than the page
+    // in dark mode but resolves to the same white as `surface[0]` in light mode, which
+    // left the circle painted white on a white page.
+    backgroundColor: theme.palette.components.avatar.fill,
     borderRadius: '50%',
     display: 'flex',
     height: '96px',

@@ -118,7 +118,7 @@ const useTransactionHistoryStyles = makeStyles()((theme) => ({
   },
   transactionHistoryRow: {
     border: 'solid',
-    borderColor: '#515151',
+    borderColor: theme.palette.surface.outline,
     borderLeft: 0,
     borderRight: 0,
     borderTop: 0,

@@ -63,11 +63,11 @@
 /* Must live in the module (after .libraryTileButton) so it beats the `border`
    shorthand — an inline utility loses to the shorthand in the cascade. */
 .libraryTileSelectedRing {
-  border-color: var(--content-emphasis, #f7f7f8);
+  border-color: var(--color-content-emphasis);
 }
 
 .libraryTileHoverOverlay {
-  background: var(--color-state-hover, rgba(208, 217, 251, 0.08));
+  background: var(--color-state-hover);
   border-radius: 8px;
   inset: 0;
   opacity: 0;
@@ -127,7 +127,7 @@
 
 /* Divider between each staged item. */
 .stagedRow:not(:last-child) {
-  border-bottom: 1px solid var(--stroke-muted, rgba(208, 217, 251, 0.12));
+  border-bottom: 1px solid var(--color-stroke-muted);
 }
 
 .stagedRowRemove {
@@ -172,7 +172,7 @@
 }
 
 .libraryDialogFooter {
-  border-top: 1px solid var(--stroke-muted, rgba(208, 217, 251, 0.12));
+  border-top: 1px solid var(--color-stroke-muted);
   flex-shrink: 0;
   padding: var(--padding-large, 16px);
 }
@@ -188,7 +188,7 @@
 }
 
 .assetIdDialogFooter {
-  border-top: 1px solid var(--stroke-muted, rgba(208, 217, 251, 0.12));
+  border-top: 1px solid var(--color-stroke-muted);
   flex-shrink: 0;
   padding: var(--padding-medium, 12px) var(--padding-large, 16px) var(--padding-large, 16px);
 }

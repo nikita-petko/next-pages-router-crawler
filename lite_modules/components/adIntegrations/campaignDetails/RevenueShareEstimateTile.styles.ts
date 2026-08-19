@@ -50,6 +50,11 @@ const useRevenueShareEstimateTileStyles = makeStyles()((theme) => ({
   heading: {
     fontWeight: 600,
   },
+  headingRow: {
+    alignItems: 'center',
+    display: 'flex',
+    justifyContent: 'space-between',
+  },
   metric: {
     // Foundation ColorShift100, no outline (per design review).
     backgroundColor: 'var(--color-shift-100)',

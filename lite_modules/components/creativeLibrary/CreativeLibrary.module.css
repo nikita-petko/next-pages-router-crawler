@@ -186,13 +186,13 @@
  * style and the drag-active/error highlights are expressed here.
  */
 .uploadDropzone {
-  border: 1px dashed var(--stroke-muted, rgba(255, 255, 255, 0.16));
+  border: 1px dashed var(--color-stroke-muted);
   transition: border-color 120ms ease-out, background-color 120ms ease-out;
 }
 
 .uploadDropzoneDragActive {
-  border-color: var(--stroke-emphasis, rgb(0, 162, 255));
-  background-color: var(--background-muted, rgba(255, 255, 255, 0.04));
+  border-color: var(--color-stroke-emphasis);
+  background-color: var(--color-state-hover);
 }
 
 /*
@@ -215,9 +215,8 @@
    * Foundation paired action-alert tokens (see `@rbx/foundation-tailwind/dist/variables.js`):
    * `--color-action-alert-background`, `--color-action-alert-border`.
    */
-  background-color: var(--color-action-alert-background, rgb(223 40 31 / 5%));
-  border: 1px solid
-    var(--color-action-alert-border, var(--color-system-alert, var(--bg-system-alert, #df281f)));
+  background-color: var(--color-action-alert-background);
+  border: 1px solid var(--color-action-alert-border);
 }
 
 /*

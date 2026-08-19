@@ -8,20 +8,21 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  StatusBadge,
   Table,
   TableBody,
   TableCell,
   TableHeader,
   TableHeaderCell,
   TableRow,
+  type TStatusBadgeVariant,
 } from '@rbx/foundation-ui';
 import { AssetThumbnailSize, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
-import { Label, Tooltip } from '@rbx/ui';
 import { useState } from 'react';
 
-import useAdIntegrationStatusLabelStyles from '@components/adIntegrations/adIntegrationStatusLabel.styles';
 import useAdIntegrationAssetsDrawerStyles from '@components/adIntegrations/assetsDrawer/AdIntegrationAssetsDrawer.styles';
 import useAdIntegrationAssetsTableStyles from '@components/adIntegrations/assetsDrawer/AdIntegrationAssetsTable.styles';
+import AppTooltip from '@components/common/AppTooltip';
 import { openStatementOfReasonsDialog } from '@components/common/dialogs/StatementOfReasonsDialog';
 import { AdIntegrationsDocsUrl } from '@constants/adIntegrationsUrls';
 import { TranslationNamespace } from '@constants/localization';
@@ -168,15 +169,6 @@ const AdIntegrationAssetsTable = ({
       tooltipLink,
     },
   } = useAdIntegrationAssetsTableStyles();
-  const {
-    classes: {
-      labelRoot,
-      statusCircleActive,
-      statusCircleDisabled,
-      statusCircleImportant,
-      statusCircleNotice,
-    },
-  } = useAdIntegrationStatusLabelStyles();
 
   const hasActions = placements.some((p) => Boolean(p.id)) || Boolean(onRemovePendingAddition);
 
@@ -196,18 +188,18 @@ const AdIntegrationAssetsTable = ({
     }
   };
 
-  const getStatusCircleClass = (status: AdIntegrationPlacementStatus) => {
+  const getStatusBadgeVariant = (status: AdIntegrationPlacementStatus): TStatusBadgeVariant => {
     switch (status) {
       case AdIntegrationPlacementStatus.Approved:
       case AdIntegrationPlacementStatus.Limited:
-        return statusCircleActive;
+        return 'Success';
       case AdIntegrationPlacementStatus.Archived:
-        return statusCircleDisabled;
+        return 'Standard';
       case AdIntegrationPlacementStatus.Rejected:
-        return statusCircleImportant;
+        return 'Alert';
       case AdIntegrationPlacementStatus.InReview:
       default:
-        return statusCircleNotice;
+        return 'Warning';
     }
   };
 
@@ -280,13 +272,7 @@ const AdIntegrationAssetsTable = ({
               <span className='text-body-medium'>{pending.assetId.toString()}</span>
             </TableCell>
             <TableCell>
-              <Label
-                classes={{ root: labelRoot }}
-                icon={<div className={statusCircleDisabled} />}
-                labelText={translateAccount('Label.Pending')}
-                severity='default'
-                variant='contained'
-              />
+              <StatusBadge label={translateAccount('Label.Pending')} variant='Standard' />
             </TableCell>
             {hasActions && (
               <TableCell align='end'>
@@ -348,8 +334,11 @@ const AdIntegrationAssetsTable = ({
                 <span className='text-body-medium'>{placement.assetId?.toString() ?? ''}</span>
               </TableCell>
               <TableCell>
-                <Tooltip
-                  placement='top'
+                <AppTooltip
+                  ariaLabel={
+                    assetTooltipBodyKey ? translateAccount(assetTooltipBodyKey) : undefined
+                  }
+                  position='top-center'
                   title={
                     assetTooltipBodyKey ? (
                       <div className={tooltipContent}>
@@ -370,16 +359,11 @@ const AdIntegrationAssetsTable = ({
                       ''
                     )
                   }>
-                  <div>
-                    <Label
-                      classes={{ root: labelRoot }}
-                      icon={<div className={getStatusCircleClass(status)} />}
-                      labelText={getStatusText(status)}
-                      severity='default'
-                      variant='contained'
-                    />
-                  </div>
-                </Tooltip>
+                  <StatusBadge
+                    label={getStatusText(status)}
+                    variant={getStatusBadgeVariant(status)}
+                  />
+                </AppTooltip>
               </TableCell>
               {hasActions && (
                 <TableCell align='end'>

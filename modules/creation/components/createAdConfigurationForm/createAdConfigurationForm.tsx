@@ -97,11 +97,11 @@ export const GameThumbnailComponent = ({
       summaryViewContainer,
       tileImageContainer,
     },
-  } = makeStyles()(() => ({
+  } = makeStyles()((theme) => ({
     placeholderImageContainer: {
       alignItems: 'center',
-      background: '#1D1D1D',
-      border: '0.845px dashed var(--secondary-states-outlined-resting-border, #989898)',
+      background: theme.palette.surface[200],
+      border: `0.845px dashed ${theme.palette.surface.outline}`,
       borderRadius: 4,
       display: 'flex',
       height: 210,

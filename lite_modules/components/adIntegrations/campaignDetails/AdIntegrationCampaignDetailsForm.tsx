@@ -1,7 +1,16 @@
 import { AdIntegrationPlacement } from '@rbx/client-ads-management-api/v1';
-import { Button, Checkbox, Dropdown, Link, Menu, MenuItem, MenuSection } from '@rbx/foundation-ui';
+import {
+  Button,
+  Checkbox,
+  Dropdown,
+  Link,
+  Menu,
+  MenuItem,
+  MenuSection,
+  TextInput,
+} from '@rbx/foundation-ui';
 import { useLocalization } from '@rbx/intl';
-import { FormLabel, TextField } from '@rbx/ui';
+import { FormLabel } from '@rbx/ui';
 import moment from 'moment-timezone';
 import { useCallback, useId, useMemo, useState } from 'react';
 import { Controller, useWatch } from 'react-hook-form';
@@ -11,6 +20,7 @@ import useAdIntegrationCampaignDetailsFormStyles from '@components/adIntegration
 import AdIntegrationExperienceSection from '@components/adIntegrations/campaignDetails/AdIntegrationExperienceSection';
 import RevenueShareEstimateTile from '@components/adIntegrations/campaignDetails/RevenueShareEstimateTile';
 import { openAdIntegrationRevenueShareIncreaseDialog } from '@components/adIntegrations/dialogs/AdIntegrationRevenueShareIncreaseDialog';
+import { openRevenueShareBreakdownDialog } from '@components/adIntegrations/dialogs/RevenueShareBreakdownDialog';
 import { openErrorDialog } from '@components/common/dialog/errorDialog';
 import DateField from '@components/common/form/DateField';
 import {
@@ -26,6 +36,7 @@ import useAdIntegrationCampaignDetailsForm, {
   getIsCampaignEnded,
   getIsCampaignInProgress,
 } from '@hooks/adIntegrations/useAdIntegrationCampaignDetailsForm';
+import useMultiRevenueShareEstimatePreview from '@hooks/adIntegrations/useMultiRevenueShareEstimatePreview';
 import useRevenueShareEstimatePreview from '@hooks/adIntegrations/useRevenueShareEstimatePreview';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { useAppStore } from '@stores/appStoreProvider';
@@ -61,10 +72,9 @@ interface AdIntegrationCampaignDetailsFormProps {
     pendingAssetIds?: number[],
   ) => Promise<void>;
   placements: AdIntegrationPlacement[];
-  // Persisted revenue share signals snapshot for the campaign being edited (if
-  // any). When present and the experience is unchanged, the preview hook reuses
-  // it instead of calling the Frost backend. Undefined in create mode.
-  savedRevenueShareSignals?: RevenueShareEstimatePreview;
+  // Persisted revenue share snapshots keyed by universe. Undefined in create
+  // mode and for campaigns created before revenue-share forecasting.
+  savedRevenueShareSignals?: RevenueShareEstimatePreview[];
   universes: UniverseShapeType[];
   userId?: number;
 }
@@ -349,23 +359,47 @@ const AdIntegrationCampaignDetailsForm = ({
     [endDate, endTime, toTimestampMs],
   );
   const selectedUniverseId = selectedExperienceIds[0];
-  const {
-    avgDailyVisits,
-    billableDays,
-    isError: isRevenueShareEstimateError,
-    maxRevenueShareMicroUsd,
-    weightedCptvMicroUsd,
-  } = useRevenueShareEstimatePreview({
+  const singleRevenueSharePreview = useRevenueShareEstimatePreview({
     endTimestampMs,
-    // On edit, reuse the campaign's persisted snapshot so we don't re-fetch from
-    // Frost for an experience that already has a saved estimate. The hook ignores
-    // it once the user switches to a different experience.
-    savedSignals: savedRevenueShareSignals,
+    savedSignals: isMultiExperienceEnabled
+      ? undefined
+      : savedRevenueShareSignals?.find((signal) => signal.universeId === selectedUniverseId),
     startTimestampMs,
-    // Gated behind the revenue share estimate flag: passing undefined keeps the
-    // hook from issuing any network request while the feature is disabled.
-    universeId: isRevenueShareEstimateEnabled ? selectedUniverseId : undefined,
+    universeId:
+      isRevenueShareEstimateEnabled && !isMultiExperienceEnabled ? selectedUniverseId : undefined,
   });
+  const multiRevenueSharePreview = useMultiRevenueShareEstimatePreview({
+    endTimestampMs,
+    savedSignals: isMultiExperienceEnabled ? savedRevenueShareSignals : undefined,
+    startTimestampMs,
+    universeIds:
+      isRevenueShareEstimateEnabled && isMultiExperienceEnabled ? selectedExperienceIds : undefined,
+  });
+  const billableDays = isMultiExperienceEnabled
+    ? multiRevenueSharePreview.billableDays
+    : singleRevenueSharePreview.billableDays;
+  const isRevenueShareEstimateError = isMultiExperienceEnabled
+    ? multiRevenueSharePreview.isError
+    : singleRevenueSharePreview.isError;
+  const isRevenueShareEstimateLoading = isMultiExperienceEnabled
+    ? multiRevenueSharePreview.isLoading
+    : singleRevenueSharePreview.isLoading;
+  const avgDailyVisits = isMultiExperienceEnabled
+    ? multiRevenueSharePreview.totalAvgDailyVisits
+    : singleRevenueSharePreview.avgDailyVisits;
+  const maxRevenueShareMicroUsd = isMultiExperienceEnabled
+    ? multiRevenueSharePreview.totalMaxRevenueShareMicroUsd
+    : singleRevenueSharePreview.maxRevenueShareMicroUsd;
+  const weightedCptvMicroUsd = isMultiExperienceEnabled
+    ? multiRevenueSharePreview.totalWeightedCptvMicroUsd
+    : singleRevenueSharePreview.weightedCptvMicroUsd;
+  const universeNameById = useMemo(
+    () =>
+      Object.fromEntries(
+        universes.map((universe) => [universe.universe_id, universe.universe_name]),
+      ) as Record<number, string>,
+    [universes],
+  );
 
   const rewardedPlacementsLabelKey = 'Label.AdIntegrationNoRewardedPlacements';
 
@@ -434,8 +468,32 @@ const AdIntegrationCampaignDetailsForm = ({
     <RevenueShareEstimateTile
       avgDailyVisits={avgDailyVisits}
       billableDays={billableDays}
+      isBreakdownLoading={isRevenueShareEstimateLoading}
       isError={isRevenueShareEstimateError}
       maxRevenueShareMicroUsd={maxRevenueShareMicroUsd}
+      // Only offered once every selected game has an estimate: the aggregate
+      // total is undefined while the batch request is in flight, after a
+      // failure, and when any universe is missing signals, so gating on it
+      // keeps the breakdown from contradicting the total shown in the tile.
+      onViewBreakdown={
+        isMultiExperienceEnabled &&
+        !isRevenueShareEstimateLoading &&
+        !isRevenueShareEstimateError &&
+        multiRevenueSharePreview.perUniverse.length > 0 &&
+        billableDays !== undefined &&
+        maxRevenueShareMicroUsd !== undefined
+          ? () =>
+              openRevenueShareBreakdownDialog({
+                billableDays,
+                estimates: multiRevenueSharePreview.perUniverse,
+                totalAvgDailyVisits: multiRevenueSharePreview.totalAvgDailyVisits,
+                totalMaxRevenueShareMicroUsd: multiRevenueSharePreview.totalMaxRevenueShareMicroUsd,
+                totalWeightedCptvMicroUsd: multiRevenueSharePreview.totalWeightedCptvMicroUsd,
+                universeNameById,
+              })
+          : undefined
+      }
+      showBreakdownButton={isMultiExperienceEnabled}
       weightedCptvMicroUsd={weightedCptvMicroUsd}
     />
   ) : null;
@@ -469,16 +527,21 @@ const AdIntegrationCampaignDetailsForm = ({
                 control={control}
                 name={AdIntegrationFormField.AdvertiserName}
                 render={({ field }) => (
-                  <TextField
+                  <TextInput
                     {...field}
-                    disabled={campaignInProgress || disableEditing}
-                    error={Boolean(errors.advertiserName)}
-                    helperText={
-                      errors.advertiserName?.message ??
-                      `${(advertiserName?.length ?? 0).toString()}/${MaxAdvertiserNameLength.toString()}`
-                    }
+                    // TextInput interpolates `className` into its wrapper without
+                    // a guard, so omitting it renders a literal "undefined" class.
+                    className=''
+                    error={errors.advertiserName?.message}
+                    hasError={Boolean(errors.advertiserName)}
+                    helperText={translate('Label.CharCount', {
+                      current: String(advertiserName?.length ?? 0),
+                      max: String(MaxAdvertiserNameLength),
+                    })}
                     id={AdIntegrationFormField.AdvertiserName}
+                    isDisabled={campaignInProgress || disableEditing}
                     label={translateAccount('Label.AdvertiserName')}
+                    size='Medium'
                   />
                 )}
               />
@@ -628,16 +691,21 @@ const AdIntegrationCampaignDetailsForm = ({
                 control={control}
                 name={AdIntegrationFormField.CampaignName}
                 render={({ field }) => (
-                  <TextField
+                  <TextInput
                     {...field}
-                    disabled={disableEditing}
-                    error={Boolean(errors.campaignName)}
-                    helperText={
-                      errors.campaignName?.message ??
-                      `${(campaignName?.length ?? 0).toString()}/${MaxCampaignNameLength.toString()}`
-                    }
+                    // TextInput interpolates `className` into its wrapper without
+                    // a guard, so omitting it renders a literal "undefined" class.
+                    className=''
+                    error={errors.campaignName?.message}
+                    hasError={Boolean(errors.campaignName)}
+                    helperText={translate('Label.CharCount', {
+                      current: String(campaignName?.length ?? 0),
+                      max: String(MaxCampaignNameLength),
+                    })}
                     id={AdIntegrationFormField.CampaignName}
+                    isDisabled={disableEditing}
                     label={translate('Label.CampaignName')}
+                    size='Medium'
                   />
                 )}
               />

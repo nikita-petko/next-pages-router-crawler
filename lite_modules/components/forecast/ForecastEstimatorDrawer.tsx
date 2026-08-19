@@ -104,7 +104,9 @@ const ForecastEstimatorDrawer = () => {
                   {translateForecast('Description.CampaignForecastDisclaimer')}
                 </div>
               </div>
-              <div className='box-border radius-medium bg-surface-200 padding-medium gap-small flex flex-col wrap'>
+              {/* `shift-200` to match the sibling stat cards and the reporting summary cards —
+                  see the note in ForecastResultStatCard. */}
+              <div className='box-border radius-medium bg-shift-200 padding-medium gap-small flex flex-col wrap'>
                 <div className='text-label-large content-emphasis'>
                   {translateForecast('Heading.CostPerPlay')}
                 </div>

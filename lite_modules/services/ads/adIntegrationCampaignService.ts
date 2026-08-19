@@ -9,6 +9,7 @@ import {
 } from '@rbx/client-ads-management-api/v1';
 import moment from 'moment-timezone';
 
+import adsClient from '@clients/ads';
 import developClient from '@clients/develop';
 import { AD_POLICY_REVIEW_LABEL_PREFIX, AdsCategoryOtherValue } from '@constants/adIntegrations';
 import { DateFormat, TimeFormat } from '@constants/campaignBuilder';
@@ -382,28 +383,51 @@ export const listPublisherEligibleUniverses =
     return { universes };
   };
 
-// Normalizes the persisted revenue share snapshot on a campaign into the raw
-// signals shape the preview hook consumes. Returns undefined when the campaign
-// has no saved estimate (created before the feature) or is missing the universe
-// or any required signal, so callers fall back to fetching from Frost.
+// Normalizes persisted revenue share snapshots by universe ID. Multi-universe
+// campaigns expose one entry per universe; the singular fallback keeps legacy
+// campaigns editable after the rollout flag is enabled.
 const mapCampaignToSavedRevenueShareSignals = (
   campaign?: AdIntegrationCampaign,
-): RevenueShareEstimatePreview | undefined => {
+): RevenueShareEstimatePreview[] | undefined => {
+  const signals = (campaign?.revenueShareEstimates ?? []).flatMap((estimate) => {
+    if (
+      estimate.universeId === undefined ||
+      estimate.avgDailyVisits === undefined ||
+      estimate.weightedCptvMicroUsd === undefined
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        avgDailyVisits: estimate.avgDailyVisits,
+        universeId: estimate.universeId,
+        weightedCptvMicroUsd: estimate.weightedCptvMicroUsd,
+      },
+    ];
+  });
+  if (signals.length > 0) {
+    return signals;
+  }
+
   const estimate = campaign?.revenueShareEstimate;
+  const universeId = estimate?.universeId ?? campaign?.universeId;
   if (
     !estimate ||
-    campaign?.universeId === undefined ||
+    universeId === undefined ||
     estimate.avgDailyVisits === undefined ||
     estimate.weightedCptvMicroUsd === undefined
   ) {
     return undefined;
   }
 
-  return {
-    avgDailyVisits: estimate.avgDailyVisits,
-    universeId: campaign.universeId,
-    weightedCptvMicroUsd: estimate.weightedCptvMicroUsd,
-  };
+  return [
+    {
+      avgDailyVisits: estimate.avgDailyVisits,
+      universeId,
+      weightedCptvMicroUsd: estimate.weightedCptvMicroUsd,
+    },
+  ];
 };
 
 export const getAdIntegrationCampaignDetails = async (
@@ -565,6 +589,86 @@ export const getRevenueShareEstimatePreview = async (
     avgDailyVisits: response.avgDailyVisits,
     universeId: response.universeId ?? universeId,
     weightedCptvMicroUsd: response.weightedCptvMicroUsd,
+  };
+};
+
+// Every numeric field is optional on the wire: like the singular endpoint, the
+// batch endpoint omits signals for universes Frost has no data for.
+interface RevenueShareEstimatePreviewBatchApiResponse {
+  billable_days?: number;
+  breakdown?: Array<{
+    avg_daily_visits?: number;
+    max_revenue_share_micro_usd?: number;
+    universe_id?: number;
+    weighted_cptv_micro_usd?: number;
+  }>;
+  total?: {
+    avg_daily_visits?: number;
+    max_revenue_share_micro_usd?: number;
+  };
+}
+
+export interface RevenueShareEstimatePreviewBatchEntry extends RevenueShareEstimatePreview {
+  maxRevenueShareMicroUsd: number;
+}
+
+export interface RevenueShareEstimatePreviewBatchResult {
+  billableDays?: number;
+  breakdown: RevenueShareEstimatePreviewBatchEntry[];
+  totalAvgDailyVisits?: number;
+  totalMaxRevenueShareMicroUsd?: number;
+}
+
+// The published generated client predates AMA's batch endpoint, so call it
+// through the typed base client until the Grasshopper client is regenerated.
+//
+// Universes whose signals are missing are dropped rather than coerced to 0, for
+// the same reason getRevenueShareEstimatePreview returns undefined: a fabricated
+// "$0.00" max cost is indistinguishable from a real zero. Callers see those
+// universes as having no estimate and fall back to the "--" placeholder.
+export const getRevenueShareEstimatePreviewBatch = async (
+  universeIds: number[],
+  startTimestampMs: number,
+  endTimestampMs: number,
+  signal?: AbortSignal,
+): Promise<RevenueShareEstimatePreviewBatchResult> => {
+  if (universeIds.length === 0) {
+    return { breakdown: [] };
+  }
+
+  const query = [
+    ...universeIds.map((universeId) => `universe_ids=${universeId.toString()}`),
+    `start_timestamp_ms=${startTimestampMs.toString()}`,
+    `end_timestamp_ms=${endTimestampMs.toString()}`,
+  ].join('&');
+  const response = await adsClient.get<RevenueShareEstimatePreviewBatchApiResponse>({
+    abortSignal: signal,
+    url: `/v1/adIntegrations/revenueShareEstimatePreviewBatch?${query}`,
+  });
+
+  return {
+    billableDays: response.data.billable_days,
+    breakdown: (response.data.breakdown ?? []).flatMap((entry) => {
+      if (
+        entry.universe_id === undefined ||
+        entry.avg_daily_visits === undefined ||
+        entry.max_revenue_share_micro_usd === undefined ||
+        entry.weighted_cptv_micro_usd === undefined
+      ) {
+        return [];
+      }
+
+      return [
+        {
+          avgDailyVisits: entry.avg_daily_visits,
+          maxRevenueShareMicroUsd: entry.max_revenue_share_micro_usd,
+          universeId: entry.universe_id,
+          weightedCptvMicroUsd: entry.weighted_cptv_micro_usd,
+        },
+      ];
+    }),
+    totalAvgDailyVisits: response.data.total?.avg_daily_visits,
+    totalMaxRevenueShareMicroUsd: response.data.total?.max_revenue_share_micro_usd,
   };
 };
 

@@ -1,4 +1,4 @@
-import { makeStyles, tooltipClasses } from '@rbx/ui';
+import { makeStyles } from '@rbx/ui';
 
 const useAdIntegrationsCampaignTableStyles = makeStyles()((theme) => ({
   campaignIdCopyIcon: {
@@ -11,10 +11,8 @@ const useAdIntegrationsCampaignTableStyles = makeStyles()((theme) => ({
     whiteSpace: 'nowrap',
   },
   campaignIdTooltipPopper: {
-    [`& .${tooltipClasses.tooltip}`]: {
-      minWidth: 'fit-content',
-      padding: '6px 8px',
-    },
+    minWidth: 'fit-content',
+    padding: '6px 8px',
   },
   campaignLink: {
     color: 'inherit',
@@ -47,7 +45,7 @@ const useAdIntegrationsCampaignTableStyles = makeStyles()((theme) => ({
       width: '0.4em',
     },
     '&::-webkit-scrollbar-thumb': {
-      backgroundColor: 'rgba(125,124,125,1)',
+      backgroundColor: theme.palette.content.disabled,
       borderRadius: '8px',
       outline: '1px solid slategrey',
     },

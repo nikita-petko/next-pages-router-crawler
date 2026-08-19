@@ -47,7 +47,7 @@ const AdImageUploadDisplayComponent = ({
       uploadContainer,
       uploadSubtitle,
     },
-  } = makeStyles()(() => ({
+  } = makeStyles()((theme) => ({
     configureAdRow: {
       alignItems: 'center',
       display: 'flex',
@@ -100,7 +100,8 @@ const AdImageUploadDisplayComponent = ({
     uploadContainer: {
       alignContent: 'flex-start',
       alignItems: 'center',
-      borderColor: 'white',
+      // A white dashed outline is invisible on a light page; this inverts with the theme.
+      borderColor: theme.palette.content.muted,
       borderStyle: 'dashed',
       borderWidth: 1,
       display: 'flex',
