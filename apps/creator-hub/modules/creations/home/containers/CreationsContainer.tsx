@@ -75,6 +75,9 @@ const PluginGridContainer = dynamic(
   () => import('../../developerItem/plugins/list/PluginGridContainer'),
   { ssr: false },
 );
+const ShowcasesPanel = dynamic(() => import('../../showcase/containers/ShowcasesPanel'), {
+  ssr: false,
+});
 const PrimitiveGridContainer = dynamic(
   () => import('../../developerItem/primitives/list/PrimitiveGridContainer'),
   { ssr: false },
@@ -323,6 +326,9 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
     }
     if (assetType === Asset.AssetPermissionRequests) {
       return <UniversalAccessRequestsView />;
+    }
+    if (assetType === Asset.Showcase) {
+      return <ShowcasesPanel groupId={currentGroup?.id} />;
     }
     if (
       assetType === Asset.AllCatalogAsset ||

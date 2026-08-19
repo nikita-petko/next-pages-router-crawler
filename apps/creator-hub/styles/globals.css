@@ -5582,6 +5582,15 @@ html.studio-webview.dark-theme,
   }
 }
 
+@media not all and (min-width: 601px) {
+  .max-medium\:wrap {
+    flex-wrap: wrap;
+  }
+  .max-medium\:gap-y-small {
+    row-gap: var(--gap-small);
+  }
+}
+
 @media (max-width: 600.95px) {
   .max-\[600\.95px\]\:margin-x-none {
     margin-left: var(--margin-none);

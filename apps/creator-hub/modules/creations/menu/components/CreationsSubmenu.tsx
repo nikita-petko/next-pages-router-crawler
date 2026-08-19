@@ -64,6 +64,7 @@ const CreationsSubmenu: FunctionComponent<React.PropsWithChildren<TCreationsSubm
 }) => {
   const {
     classes: { subMenuContainer, subMenu, backButton, nextButton, chip },
+    cx,
   } = useStyles();
   const subMenuRef = useRef<HTMLDivElement>(null);
   const { translate } = useTranslation();
@@ -164,7 +165,11 @@ const CreationsSubmenu: FunctionComponent<React.PropsWithChildren<TCreationsSubm
           </IconButton>
         </div>
       )}
-      <Flex ref={subMenuRef} classes={{ root: subMenu }}>
+      {/* A phone has no room to scroll the row and no visible scrollbar to hint that it can be, so
+          the chips wrap below Medium. Scrolling stays for the case a single chip is still too wide
+          to fit; once the row fits, the prev/next buttons hide themselves on their own. Plain div
+          rather than Flex because Flex also emits `gap: 0`, which would beat the wrapped row gap. */}
+      <div ref={subMenuRef} className={cx(subMenu, 'flex max-medium:wrap max-medium:gap-y-small')}>
         {filteredSubmenuItems?.flatMap((submenuItem) => {
           const isSelectedSubmenuItem = !isOnRecents && menuState.submenuItem === submenuItem;
           const submenuChip = (
@@ -189,7 +194,7 @@ const CreationsSubmenu: FunctionComponent<React.PropsWithChildren<TCreationsSubm
         })}
         {/* No All Asset Types entry to anchor to (a non-Avatar-Items submenu), so append instead. */}
         {canUseTaxonomy && !showRecentsBeforeAllAssetTypes && recentsChip}
-      </Flex>
+      </div>
       {!isEndOfMenu && (
         <div className={nextButton}>
           <IconButton
