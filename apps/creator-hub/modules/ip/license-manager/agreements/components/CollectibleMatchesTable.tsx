@@ -180,8 +180,7 @@ interface CollectibleMatchesTableProps {
 }
 
 /**
- * Renders Collectible matches. The sibling MatchesTable's legacy generic name currently refers to
- * the Experience-only table and will eventually be renamed to ExperienceMatchesTable.
+ * Renders Collectible matches. Universe matches are rendered by UniverseMatchesTable.
  */
 const CollectibleMatchesTable = ({
   dataReq,

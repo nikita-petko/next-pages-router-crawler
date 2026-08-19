@@ -257,7 +257,7 @@ const MatchRow: React.FC<MatchRowProps> = ({
   );
 };
 
-interface MatchesTableProps {
+interface UniverseMatchesTableProps {
   dataReq: UseMatchesQueryResult;
   onSelectMatch: (match: AgreementCandidateResponse) => void;
   agreementStatusesColumn?: AgreementStatusesColumnProps;
@@ -307,11 +307,9 @@ const SortableMatchesHeader = ({
 };
 
 /**
- * Despite its legacy generic name, this table renders Experience matches only.
- * Collectible matches are rendered by CollectibleMatchesTable; this component will eventually be
- * renamed to ExperienceMatchesTable.
+ * Renders Universe matches. Collectible matches are rendered by CollectibleMatchesTable.
  */
-const MatchesTable: React.FC<MatchesTableProps> = ({
+const UniverseMatchesTable: React.FC<UniverseMatchesTableProps> = ({
   dataReq,
   onSelectMatch,
   agreementStatusesColumn,
@@ -404,4 +402,4 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
   );
 };
 
-export default MatchesTable;
+export default UniverseMatchesTable;

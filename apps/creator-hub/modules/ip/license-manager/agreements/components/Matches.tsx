@@ -45,9 +45,9 @@ import MatchDetailsPanelContent, {
 import MatchesFilterPanel from './MatchesFilterPanel';
 import MatchesFilterPanelContent from './MatchesFilterPanelContent';
 import MatchesSidePanel from './MatchesSidePanel';
-import MatchesTable from './MatchesTable';
 import MatchOfferPanelContent from './MatchOfferPanelContent';
 import NoMatchesContent from './NoMatchesContent';
+import UniverseMatchesTable from './UniverseMatchesTable';
 
 enum MatchPanelView {
   None = 'none',
@@ -684,7 +684,7 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
           onLoadMore={handleLoadMore}
         />
       ) : (
-        <MatchesTable
+        <UniverseMatchesTable
           dataReq={candidatesQuery}
           onSelectMatch={handleSelectCandidate}
           agreementStatusesColumn={agreementStatusesColumn}
