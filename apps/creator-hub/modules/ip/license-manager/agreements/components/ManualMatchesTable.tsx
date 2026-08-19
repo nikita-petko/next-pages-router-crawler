@@ -38,6 +38,7 @@ import StatusLabel from '../../../components/StatusLabel';
 import { useIpFamilyQuery } from '../../../ipFamilies/hooks/ipFamily';
 import { IP_FAMILIES_HREF } from '../../../ipFamilies/urls';
 import { IPH_AGREEMENT_DETAILS_HREF } from '../../urls';
+import { getCreatorDisplayName, normalizeCreatorType } from '../../utils/creatorName';
 import {
   LicenseManagerClickEvent,
   LicenseManagerImpressionEvent,
@@ -438,7 +439,10 @@ const MatchRow: React.FC<MatchRowProps> = ({ requestedMatch }) => {
               color='secondary'
               className={classes.authorName}
               component='div'>
-              {creatorName ? `@${creatorName}` : ''}
+              {getCreatorDisplayName(
+                normalizeCreatorType(gameRequest.data?.creator?.type),
+                creatorName,
+              )}
             </Typography>
           </div>
         </div>

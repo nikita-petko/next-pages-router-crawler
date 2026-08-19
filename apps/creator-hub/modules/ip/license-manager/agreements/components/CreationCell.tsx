@@ -2,12 +2,15 @@ import type { FunctionComponent } from 'react';
 import { useTranslation } from '@rbx/intl';
 import { Thumbnail2d, ThumbnailTypes, UniverseThumbnailSize } from '@rbx/thumbnails';
 import { Typography } from '@rbx/ui';
+import type { CreatorType } from '@modules/miscellaneous/common';
+import { getCreatorDisplayName } from '../../utils/creatorName';
 import useSharedAgreementRowStyles from './SharedAgreementRow.styles';
 
 interface CreationCellProps {
   universeId: number;
   universeName: string;
   creatorName: string;
+  creatorType?: CreatorType;
 }
 
 /**
@@ -19,6 +22,7 @@ const CreationCell: FunctionComponent<CreationCellProps> = ({
   universeId,
   universeName,
   creatorName,
+  creatorType,
 }) => {
   const { translate } = useTranslation();
   const {
@@ -42,7 +46,7 @@ const CreationCell: FunctionComponent<CreationCellProps> = ({
           {universeName}
         </Typography>
         <Typography variant='body2' color='primary' component='div' className={truncateSingleLine}>
-          {`@${creatorName}`}
+          {getCreatorDisplayName(creatorType, creatorName)}
         </Typography>
       </div>
     </div>

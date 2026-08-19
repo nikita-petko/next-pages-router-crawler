@@ -44,6 +44,7 @@ import {
   EXTERNAL_EXPERIENCE_HREF,
   ROBLOX_CREATOR_DOCS_REVIEW_LICENSE_OFFER_HREF,
 } from '../../urls';
+import { getCreatorDisplayName, normalizeCreatorType } from '../../utils/creatorName';
 import { getDauLicenseLabelFromEnum, getCreationDauRangeLabelFromEnum } from '../../utils/dauEnum';
 import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../../utils/logger';
 import { getMaturityRatingLabel } from '../../utils/maturityRating';
@@ -368,7 +369,14 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
       {universeNumericId != null && (
         <ContentTile
           header={universeDisplayName}
-          subheader={universe.creator?.name ? `@${universe.creator.name}` : ''}
+          subheader={
+            universe.creator?.name
+              ? getCreatorDisplayName(
+                  normalizeCreatorType(universe.creator.type),
+                  universe.creator.name,
+                )
+              : ''
+          }
           thumbnailTargetId={universeNumericId}
           type={ContentType.Universe}
           link={universeExperienceHref}

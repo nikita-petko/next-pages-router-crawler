@@ -23,6 +23,7 @@ import { formatDate } from '@modules/miscellaneous/utils/dateUtils';
 import CellError from '../../../components/error/CellError';
 import IpTableRow from '../../../components/IpTableRow';
 import { useIpFamilyQuery } from '../../../ipFamilies/hooks/ipFamily';
+import { getCreatorDisplayName, normalizeCreatorType } from '../../utils/creatorName';
 import {
   getCreationDauRangeLabelFromEnum,
   getLifetimeVisitsRangeLabelFromEnum,
@@ -226,7 +227,12 @@ const MatchRow: React.FC<MatchRowProps> = ({
               color='secondary'
               className={classes.authorName}
               component='div'>
-              {creatorName ? `@${creatorName}` : ''}
+              {creatorName
+                ? getCreatorDisplayName(
+                    normalizeCreatorType(gameRequest.data?.creator?.type),
+                    creatorName,
+                  )
+                : ''}
             </Typography>
           </div>
         </div>

@@ -192,6 +192,7 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
         titleOverride: undefined,
         columnType: isEarlyHarmAnalysisPeriod ? ColumnType.TextWithTooltip : ColumnType.Text,
         endAdormentColumnKeyInCompactView: ActionColumnKey,
+        columnAlignment: undefined,
       },
       ...orderedExperimentVariants.map(({ variantId, label }) => ({
         columnKey: variantId,
@@ -203,6 +204,7 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
         titleOverride: label,
         columnType: isEarlyHarmAnalysisPeriod ? ColumnType.Other : ColumnType.Number,
         endAdormentColumnKeyInCompactView: undefined,
+        columnAlignment: 'right' as const,
       })),
       {
         columnKey: ActionColumnKey,
@@ -213,6 +215,7 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
         titleOverride: undefined,
         columnType: ColumnType.Actions,
         endAdormentColumnKeyInCompactView: '',
+        columnAlignment: undefined,
       },
     ];
 
@@ -223,6 +226,7 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
         columnTitleKey,
         columnType,
         endAdormentColumnKeyInCompactView,
+        columnAlignment,
       }) => {
         return {
           titleKey: columnTitleKey,
@@ -230,6 +234,7 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
           columnKey,
           columnType,
           endAdormentColumnKeyInCompactView: endAdormentColumnKeyInCompactView ?? undefined,
+          columnAlignment,
         };
       },
     );

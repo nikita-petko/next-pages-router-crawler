@@ -22,6 +22,7 @@ import useSharedAgreementRowStyles, {
 } from '../../agreements/components/SharedAgreementRow.styles';
 import { NO_GAME_FOUND_FOR_ID, useDebouncedGameDetails } from '../../agreements/hooks/games';
 import { CREATOR_AGREEMENT_DETAILS_HREF } from '../../urls';
+import { normalizeCreatorType } from '../../utils/creatorName';
 import { getLicenseTypeTableLabelKey } from '../../utils/licenseTypeTableLabelKeys';
 import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../../utils/logger';
 import { getRevShareTimingKey } from '../../utils/revShareTiming';
@@ -167,6 +168,7 @@ const CreatorAgreementRow: FunctionComponent<CreateAgreementRowProps> = ({ agree
           universeId={universe.id}
           universeName={universe.name}
           creatorName={universe.creator?.name ?? ''}
+          creatorType={normalizeCreatorType(universe.creator?.type)}
         />
       </TableCell>
       <TableCell>

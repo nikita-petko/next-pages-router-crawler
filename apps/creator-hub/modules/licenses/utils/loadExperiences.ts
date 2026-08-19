@@ -37,6 +37,7 @@ export interface ExperienceData {
 
   // Metadata
   creatorName?: string;
+  creatorType?: CreatorType;
 }
 
 /**

@@ -1,5 +1,6 @@
 import developClient from '@modules/clients/develop';
 import { Audience } from '@modules/creations/common/audiences';
+import { normalizeCreatorType } from '@modules/ip/license-manager/utils/creatorName';
 import { Asset, Item } from '@modules/miscellaneous/common';
 import type { ExperienceData } from './loadExperiences';
 
@@ -27,6 +28,7 @@ export default async function loadExperienceDetails(
     isClickable: true,
     isActive,
     creatorName: universeData.creatorName,
+    creatorType: normalizeCreatorType(universeData.creatorType),
   };
 
   return experienceData;

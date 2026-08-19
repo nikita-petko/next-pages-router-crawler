@@ -16,6 +16,7 @@ import { isNonEmptyString } from '@modules/miscellaneous/utils';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import ReportIpMessageMenu from '../../../components/ReportIpMessageMenu';
 import { EXTERNAL_EXPERIENCE_HREF } from '../../urls';
+import { getCreatorDisplayName, normalizeCreatorType } from '../../utils/creatorName';
 import { getLatestDisputeReasonLabelKey } from '../../utils/disputeReason';
 import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../../utils/logger';
 import AgreementDetailsTabs from '../enums/AgreementDetailsTabs';
@@ -35,6 +36,7 @@ const useStyles = makeStyles()(() => ({
   responsiveTruncatedText: {
     display: '-webkit-box',
     WebkitLineClamp: 2,
+    // oxlint-disable-next-line typescript/no-deprecated -- Required for multi-line truncation.
     WebkitBoxOrient: 'vertical',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -516,8 +518,11 @@ const IphAgreementAlerts: React.FC<IphAgreementAlertsProps> = ({
         date: formatDate(headerDate, alertLocale),
       })
     : undefined;
+  const creatorDisplayName = universe.creatorName
+    ? getCreatorDisplayName(normalizeCreatorType(universe.creatorType), universe.creatorName)
+    : '';
   let bodyText = translate(content.bodyText, {
-    creatorName: universe.creatorName ?? '',
+    creatorName: creatorDisplayName,
     disputeReason: translate(getLatestDisputeReasonLabelKey(agreement)),
     cancelReason: translate(getCancelReasonLabelKey(agreement.activityLog ?? [])),
     listingName,

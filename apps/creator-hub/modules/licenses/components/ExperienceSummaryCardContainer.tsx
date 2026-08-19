@@ -8,6 +8,7 @@ import {
   KeyValuePair,
   KeyValuePairContainer,
 } from '@modules/ip/license-manager/components/KeyValuePair';
+import { getCreatorDisplayName } from '@modules/ip/license-manager/utils/creatorName';
 import useGetExperienceDetails from '../hooks/useGetExperienceDetails';
 import useCommonSummaryCardContainerStyles from './CommonSummaryCardContainer.styles';
 import CommonSummaryCardContainerSkeleton from './CommonSummaryCardContainerSkeleton';
@@ -77,7 +78,11 @@ const ExperienceSummaryCardContainer: FunctionComponent<
       <Grid item>
         <ContentTile
           header={experienceData.name}
-          subheader={experienceData.creatorName ? `@${experienceData.creatorName}` : ''}
+          subheader={
+            experienceData.creatorName
+              ? getCreatorDisplayName(experienceData.creatorType, experienceData.creatorName)
+              : ''
+          }
           thumbnailTargetId={experienceData.universeId}
           type={ContentType.Universe}
         />

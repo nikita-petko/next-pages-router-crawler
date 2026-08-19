@@ -16,10 +16,12 @@ import {
   CircularProgress,
 } from '@rbx/ui';
 import contentLicensingClient from '@modules/clients/contentLicensing';
+import type { CreatorType } from '@modules/miscellaneous/common';
 import EmptyState from '@modules/miscellaneous/components/EmptyState/EmptyState';
 import EmptyStateBorder from '@modules/miscellaneous/components/EmptyState/EmptyStateBorder';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import ReportIpMessageMenu from '../../../components/ReportIpMessageMenu';
+import { getCreatorDisplayName } from '../../utils/creatorName';
 import {
   filterCreatorContentLicensingAgreementActivity,
   filterIphContentLicensingAgreementActivity,
@@ -91,6 +93,7 @@ interface AgreementActivityTabProps {
   agreementId?: string;
   activityLog?: AgreementActivityResponse[];
   creatorName?: string;
+  creatorType?: CreatorType;
   listingName?: string;
   isCreator?: boolean;
 }
@@ -98,6 +101,7 @@ interface AgreementActivityTabProps {
 interface AgreementActivityStepperProps {
   activityLog: AgreementActivityResponse[];
   creatorName?: string;
+  creatorType?: CreatorType;
   listingName?: string;
   isCreator: boolean;
   enableIpPlatformConditionalOffers?: boolean;
@@ -109,6 +113,7 @@ interface AgreementActivityStepperProps {
 const AgreementActivityStepper: FunctionComponent<AgreementActivityStepperProps> = ({
   activityLog,
   creatorName,
+  creatorType,
   listingName,
   isCreator,
   enableIpPlatformConditionalOffers,
@@ -130,7 +135,9 @@ const AgreementActivityStepper: FunctionComponent<AgreementActivityStepperProps>
                 {translate(
                   getLabelFromContentLicensingActivity(activity, enableIpPlatformConditionalOffers),
                   {
-                    creator: creatorName ? `@${creatorName}` : translate('Label.Creator'),
+                    creator: creatorName
+                      ? getCreatorDisplayName(creatorType, creatorName)
+                      : translate('Label.Creator'),
                     ipListing: listingName ?? translate('Label.IpHolder'),
                     date: formatDate(
                       getSpecificActivityExpireDate(activity, enableIpPlatformConditionalOffers),
@@ -210,6 +217,7 @@ interface PaginatedAgreementActivityTabProps {
   agreementId: string;
   activityLog?: AgreementActivityResponse[];
   creatorName?: string;
+  creatorType?: CreatorType;
   listingName?: string;
   isCreator: boolean;
   enableIpPlatformConditionalOffers?: boolean;
@@ -221,6 +229,7 @@ const PaginatedAgreementActivityTab: FunctionComponent<PaginatedAgreementActivit
   agreementId,
   activityLog,
   creatorName,
+  creatorType,
   listingName,
   isCreator,
   enableIpPlatformConditionalOffers,
@@ -318,6 +327,7 @@ const PaginatedAgreementActivityTab: FunctionComponent<PaginatedAgreementActivit
     <AgreementActivityStepper
       activityLog={filteredActivityLog}
       creatorName={creatorName}
+      creatorType={creatorType}
       listingName={listingName}
       isCreator={isCreator}
       enableIpPlatformConditionalOffers={enableIpPlatformConditionalOffers}
@@ -333,6 +343,7 @@ const AgreementActivityTab: FunctionComponent<AgreementActivityTabProps> = ({
   agreementId,
   activityLog,
   creatorName,
+  creatorType,
   listingName,
   isCreator = false,
 }) => {
@@ -358,6 +369,7 @@ const AgreementActivityTab: FunctionComponent<AgreementActivityTabProps> = ({
         agreementId={agreementId}
         activityLog={activityLog}
         creatorName={creatorName}
+        creatorType={creatorType}
         listingName={listingName}
         isCreator={isCreator}
         enableIpPlatformConditionalOffers={enableIpPlatformConditionalOffers}
@@ -381,6 +393,7 @@ const AgreementActivityTab: FunctionComponent<AgreementActivityTabProps> = ({
     <AgreementActivityStepper
       activityLog={filteredActivityLog}
       creatorName={creatorName}
+      creatorType={creatorType}
       listingName={listingName}
       isCreator={isCreator}
       enableIpPlatformConditionalOffers={enableIpPlatformConditionalOffers}

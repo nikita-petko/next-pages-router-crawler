@@ -24,6 +24,7 @@ import {
   IPH_AGREEMENT_DETAILS_HREF,
   IPH_MATCH_DETAILS_TAB_HREF,
 } from '../../urls';
+import { getCreatorDisplayName, normalizeCreatorType } from '../../utils/creatorName';
 import {
   getCreationDauRangeLabelFromEnum,
   getLifetimeVisitsRangeLabelFromEnum,
@@ -502,7 +503,14 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
           <div>
             <ContentTile
               header={game.name ?? ''}
-              subheader={game.creator?.name ? `@${game.creator.name}` : ''}
+              subheader={
+                game.creator?.name
+                  ? getCreatorDisplayName(
+                      normalizeCreatorType(game.creator.type),
+                      game.creator.name,
+                    )
+                  : ''
+              }
               thumbnailTargetId={game.id ?? experienceId}
               type={ContentType.Universe}
               link={

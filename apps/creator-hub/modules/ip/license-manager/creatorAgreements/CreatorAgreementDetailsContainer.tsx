@@ -22,6 +22,7 @@ import { NO_GAME_FOUND_FOR_ID, useDebouncedGameDetails } from '../agreements/hoo
 import { useGetExperienceGuidelines } from '../agreements/hooks/useGetExperienceGuidelines';
 import AmDivider from '../components/AmDivider';
 import { CREATOR_AGREEMENTS_TAB_HREF } from '../urls';
+import { normalizeCreatorType } from '../utils/creatorName';
 import { isNextDisputeFinal } from '../utils/disputeReason';
 import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../utils/logger';
 import CreatorAgreementAlert from './components/CreatorAgreementAlert';
@@ -282,6 +283,7 @@ const CreatorAgreementDetailsContainer: FunctionComponent<
           isCreator
           activityLog={activityLog}
           creatorName={universe.creator?.name ?? undefined}
+          creatorType={normalizeCreatorType(universe.creator?.type)}
           listingName={listing.name ?? undefined}
         />
       )}

@@ -38,6 +38,7 @@ import { useIpFamilyQuery } from '../../../ipFamilies/hooks/ipFamily';
 import { ContentTile, ContentType } from '../../components/ContentTile';
 import { MAX_IPH_CONDITIONAL_OFFER_FEEDBACK_LENGTH } from '../../constants';
 import { IPH_AGREEMENT_DETAILS_HREF, EXTERNAL_EXPERIENCE_HREF, IP_LISTINGS_HREF } from '../../urls';
+import { getCreatorDisplayName, normalizeCreatorType } from '../../utils/creatorName';
 import {
   LicenseManagerClickEvent,
   LicenseManagerImpressionEvent,
@@ -466,7 +467,11 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose, source }: Props
         <div>
           <ContentTile
             header={game.name ?? ''}
-            subheader={game.creator?.name ? `@${game.creator?.name}` : ''}
+            subheader={
+              game.creator?.name
+                ? getCreatorDisplayName(normalizeCreatorType(game.creator.type), game.creator.name)
+                : ''
+            }
             thumbnailTargetId={game.id ?? 0}
             type={ContentType.Universe}
             link={game.rootPlaceId != null ? EXTERNAL_EXPERIENCE_HREF(game.rootPlaceId) : undefined}

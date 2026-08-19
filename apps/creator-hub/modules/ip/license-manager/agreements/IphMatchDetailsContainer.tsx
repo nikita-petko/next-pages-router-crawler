@@ -28,6 +28,7 @@ import IpLoadError from '../../components/error/IpLoadError';
 import { useIpLayoutContext } from '../../IpAppNavigationLayout';
 import AmDivider from '../components/AmDivider';
 import { EXTERNAL_EXPERIENCE_HREF, IP_MATCHES_HREF, IPH_AGREEMENT_DETAILS_HREF } from '../urls';
+import { getCreatorDisplayName, normalizeCreatorType } from '../utils/creatorName';
 import { LicenseManagerImpressionEvent, useLicenseManagerLoggerLogOnce } from '../utils/logger';
 import GalleryTabContent from './components/GalleryTabContent';
 import IgnoreMatchPanelContent from './components/IgnoreMatchPanelContent';
@@ -254,7 +255,9 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
     return <IpLoadError error={candidateQuery.error ?? universeQuery.error} />;
   }
 
-  const creatorName = universe.creatorName ? `@${universe.creatorName}` : '';
+  const creatorName = universe.creatorName
+    ? getCreatorDisplayName(normalizeCreatorType(universe.creatorType), universe.creatorName)
+    : '';
   const rootPlaceId =
     universe.rootPlaceId != null && universe.rootPlaceId > 0 ? universe.rootPlaceId : undefined;
 

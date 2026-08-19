@@ -16,6 +16,7 @@ import IpTableRow from '../../../components/IpTableRow';
 import { useIpFamilyQuery } from '../../../ipFamilies/hooks/ipFamily';
 import { useIpListingQuery } from '../../ipListings/hooks/ipListings';
 import { IPH_AGREEMENT_DETAILS_HREF } from '../../urls';
+import { normalizeCreatorType } from '../../utils/creatorName';
 import { getLifetimeVisitsRangeLabelFromEnum } from '../../utils/dauEnum';
 import { getLicenseTypeTableLabelKey } from '../../utils/licenseTypeTableLabelKeys';
 import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../../utils/logger';
@@ -184,6 +185,7 @@ const IphAgreementRow: FunctionComponent<IphAgreementRowProps> = ({ agreement })
           universeId={gameData.id}
           universeName={gameData.name}
           creatorName={game.creator?.name ?? ''}
+          creatorType={normalizeCreatorType(game.creator?.type)}
         />
       </TableCell>
       <TableCell>

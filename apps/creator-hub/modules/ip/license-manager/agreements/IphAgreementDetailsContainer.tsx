@@ -16,6 +16,7 @@ import { useIpLayoutContext } from '../../IpAppNavigationLayout';
 import AmDivider from '../components/AmDivider';
 import OverviewCard from '../components/OverviewCard';
 import { EXTERNAL_MY_TRANSACTIONS_HREF } from '../urls';
+import { normalizeCreatorType } from '../utils/creatorName';
 import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../utils/logger';
 import AgreementActivityTab from './components/AgreementActivityTab';
 import AgreementBreadcrumbs from './components/AgreementBreadcrumbs';
@@ -344,6 +345,7 @@ const IphAgreementDetailsContainer: React.FunctionComponent<IphAgreementDetailsC
             agreementId={agreementId}
             activityLog={activityLog}
             creatorName={universe.creatorName ?? undefined}
+            creatorType={normalizeCreatorType(universe.creatorType)}
             listingName={listing.name ?? undefined}
           />
         )}

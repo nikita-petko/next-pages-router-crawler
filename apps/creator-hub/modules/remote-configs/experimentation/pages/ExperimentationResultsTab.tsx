@@ -274,7 +274,7 @@ const ExperimentationResultsTab: FC<ExperimentationResultsTabProps> = ({ experim
 
     return (
       <>
-        {isEhdResultsEnabled ? (
+        {isEarlyHarmAnalysisPeriod ? (
           <EarlyHarmBanner
             experiment={experiment}
             experimentVariantsResults={experimentVariantsResults}
@@ -294,7 +294,7 @@ const ExperimentationResultsTab: FC<ExperimentationResultsTabProps> = ({ experim
     experiment,
     experimentVariantsResults,
     isSRMDetected,
-    isEhdResultsEnabled,
+    isEarlyHarmAnalysisPeriod,
     isHarmDetected,
   ]);
 
@@ -350,7 +350,8 @@ const ExperimentationResultsTab: FC<ExperimentationResultsTabProps> = ({ experim
         isSRMDetected={isSRMDetected}
         isEarlyHarmAnalysisPeriod={isEarlyHarmAnalysisPeriod}
       />
-      {isNonEmptyArray(availableMetricOptions) && (
+      {/* TODO (ELO-202): Show chart for EHD when enrolled in CAS */}
+      {!isEarlyHarmAnalysisPeriod && isNonEmptyArray(availableMetricOptions) && (
         <ExperimentMetricsResultChart
           experimentId={experimentId}
           metrics={availableMetricOptions}

@@ -33,6 +33,7 @@ import GuidelinesAndRestrictionsSummaryModal from '../../components/GuidelinesAn
 import { KeyValuePair, KeyValuePairContainer } from '../../components/KeyValuePair';
 import OverviewCard from '../../components/OverviewCard';
 import { EXTERNAL_EXPERIENCE_HREF, IP_LISTING_DETAILS_HREF } from '../../urls';
+import { getCreatorDisplayName, normalizeCreatorType } from '../../utils/creatorName';
 import {
   getDauLicenseLabelFromEnum,
   getCreationDauRangeLabelFromEnum,
@@ -172,7 +173,14 @@ const AgreementDetailsTab: FunctionComponent<AgreementDetailsTabProps> = ({
 
       <ContentTile
         header={universe.name ?? ''}
-        subheader={universe.creatorName ? `@${universe.creatorName}` : ''}
+        subheader={
+          universe.creatorName
+            ? getCreatorDisplayName(
+                normalizeCreatorType(universe.creatorType),
+                universe.creatorName,
+              )
+            : ''
+        }
         thumbnailTargetId={universe.id ?? 0}
         type={ContentType.Universe}
         link={

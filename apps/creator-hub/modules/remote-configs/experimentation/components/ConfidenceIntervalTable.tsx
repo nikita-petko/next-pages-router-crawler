@@ -51,6 +51,8 @@ export type ConfidenceIntervalTableProps = {
   orderedCellDataWithConfidenceInterval: Array<[string, CellDataWithConfidenceInterval]>;
 };
 
+const confidenceIntervalPadding = '56px';
+
 const useStyles = makeStyles()((theme) => ({
   tableHeaderCell: {
     paddingTop: '0',
@@ -64,15 +66,15 @@ const useStyles = makeStyles()((theme) => ({
     width: '80%',
     minWidth: '300px',
     position: 'relative',
-    paddingLeft: '48px',
-    paddingRight: '48px',
+    paddingLeft: confidenceIntervalPadding,
+    paddingRight: confidenceIntervalPadding,
   },
   confidenceIntervalCellZeroIndicatorTrack: {
     position: 'absolute',
     top: '0',
     bottom: '0',
-    left: '48px',
-    right: '48px',
+    left: confidenceIntervalPadding,
+    right: confidenceIntervalPadding,
     pointerEvents: 'none',
   },
   confidenceIntervalCellZeroIndicator: {
