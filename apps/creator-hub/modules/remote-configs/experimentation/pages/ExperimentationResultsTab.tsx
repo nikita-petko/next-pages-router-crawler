@@ -109,7 +109,11 @@ const ExperimentationResultsTab: FC<ExperimentationResultsTabProps> = ({ experim
         ? ExperimentResultsSource.Ehd
         : ExperimentResultsSource.Batch,
       fallbackResultsSource: isEhdResultsEnabled ? ExperimentResultsSource.Ehd : undefined,
-      disabled: isExperimentLoading || experiment == null || !areMetricRequestsEnabled,
+      disabled:
+        !isEhdResultsFlagReady ||
+        isExperimentLoading ||
+        experiment == null ||
+        !areMetricRequestsEnabled,
     });
 
   const isHarmDetected = useMemo(
@@ -145,6 +149,15 @@ const ExperimentationResultsTab: FC<ExperimentationResultsTabProps> = ({ experim
     async (metrics: ExperimentMetric[]) => {
       const responses = await Promise.all(
         metrics.map(async (metric) => {
+          if (!isEhdResultsFlagReady) {
+            return {
+              key: metric,
+              response: {
+                response: null,
+              },
+            };
+          }
+
           if (isEarlyHarmAnalysisPeriod) {
             return {
               key: metric,
@@ -214,6 +227,7 @@ const ExperimentationResultsTab: FC<ExperimentationResultsTabProps> = ({ experim
       isD1RetentionLikelyToBeBlank,
       isD7RetentionLikelyToBeBlank,
       isEarlyHarmAnalysisPeriod,
+      isEhdResultsFlagReady,
       orderedVariants,
       raqiClient,
       resource,

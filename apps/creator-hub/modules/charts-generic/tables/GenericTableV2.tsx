@@ -168,6 +168,7 @@ const GenericTableV2 = <
       withColumnDivider,
       tableContainerBorder,
       tabbedTableContainer,
+      disabledRow,
     },
     cx,
   } = useGenericRAQIV2TableContentStyles();
@@ -341,6 +342,9 @@ const GenericTableV2 = <
   );
 
   const renderedRows = useMemo(() => {
+    const rowHeightStyle =
+      !isCompactView && tableConfig?.rowHeight ? { height: tableConfig?.rowHeight } : undefined;
+
     return effectiveParentRows.flatMap(({ rowInfo, rowIndex, rowKey, isRowSelected }) => {
       const isRowExpandable =
         hasExpandedRowColumnsByColumn &&
@@ -372,24 +376,28 @@ const GenericTableV2 = <
         expansionTogglePlacement,
       );
 
-      const disableRowHover = Array.from(rowInfo.values()).some((cell) => cell?.disableRowHover);
-      const isGroupHovered =
-        !!tableConfig?.hover && !disableRowHover && hoveredParentKey === rowKey;
-      const handleGroupMouseEnter =
-        tableConfig?.hover && !disableRowHover ? () => setHoveredParentKey(rowKey) : undefined;
-      const handleGroupMouseLeave =
-        tableConfig?.hover && !disableRowHover
-          ? () => setHoveredParentKey((prev) => (prev === rowKey ? null : prev))
-          : undefined;
+      const isRowDisabled = Array.from(rowInfo.values()).some((cell) => cell?.rowDisabled);
+      const isRowHoverEnabled = !!tableConfig?.hover && !isRowDisabled;
+      const isGroupHovered = isRowHoverEnabled && hoveredParentKey === rowKey;
+      const handleGroupMouseEnter = isRowHoverEnabled
+        ? () => setHoveredParentKey(rowKey)
+        : undefined;
+      const handleGroupMouseLeave = isRowHoverEnabled
+        ? () => setHoveredParentKey((prev) => (prev === rowKey ? null : prev))
+        : undefined;
 
       const parentRow = (
         <GenericTableRow
           key={rowKey}
-          hover={!!tableConfig?.hover && !disableRowHover}
+          className={isRowDisabled ? disabledRow : undefined}
+          hover={isRowHoverEnabled}
           selected={isRowSelected}
           onMouseEnter={handleGroupMouseEnter}
           onMouseLeave={handleGroupMouseLeave}
-          style={isGroupHovered ? { backgroundColor: theme.palette.states.hover } : undefined}
+          style={{
+            ...rowHeightStyle,
+            ...(isGroupHovered ? { backgroundColor: theme.palette.states.hover } : undefined),
+          }}
           onClick={
             rowExpansion?.expandOnRowClick && isRowExpandable
               ? (event) => {
@@ -627,6 +635,7 @@ const GenericTableV2 = <
           return (
             <GenericTableRow
               key={expandedRowKey}
+              className={isRowDisabled ? disabledRow : undefined}
               selected={isRowSelected}
               onMouseEnter={handleGroupMouseEnter}
               onMouseLeave={handleGroupMouseLeave}
@@ -641,6 +650,7 @@ const GenericTableV2 = <
     });
   }, [
     columnConfigs,
+    disabledRow,
     effectiveParentRows,
     expandedRowColumnsByColumn,
     expandedRowKeySet,
@@ -650,6 +660,7 @@ const GenericTableV2 = <
     locale,
     rowExpansion,
     tableConfig?.hover,
+    tableConfig?.rowHeight,
     theme,
     toggleRowExpansion,
     translate,

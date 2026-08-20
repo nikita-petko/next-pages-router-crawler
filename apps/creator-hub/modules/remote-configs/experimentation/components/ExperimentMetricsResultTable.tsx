@@ -54,6 +54,8 @@ const tableConfig: TableConfig<string> = {
   tableBorder: false,
   hover: true,
   stickyLastColumn: true,
+  // Enforce minimum row height since disabled rows without CI button have shorted height
+  rowHeight: 64,
 };
 const MetricColumnKey = 'metric';
 const ActionColumnKey = 'action';
@@ -86,9 +88,6 @@ const useStyles = makeStyles()(() => ({
     marginBottom: '4px',
     marginLeft: '4px',
   },
-  mutedCell: {
-    opacity: 0.5,
-  },
 }));
 
 type ExperimentMetricsResultTableProps = {
@@ -118,7 +117,7 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
   isEarlyHarmAnalysisPeriod = false,
 }) => {
   const {
-    classes: { tooltipIcon, mutedCell },
+    classes: { tooltipIcon },
   } = useStyles();
   const theme = useTheme();
   const locale = useLocale();
@@ -404,6 +403,9 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
             experimentVariantsResults?.variantResults.values() ?? [],
           ).some((metricResults) => metricResults.has(metric));
           const isUnavailableEarlyHarmMetric = isEarlyHarmAnalysisPeriod && !hasResultsApiMetric;
+          const unavailableEarlyHarmCellProps = isUnavailableEarlyHarmMetric
+            ? { rowDisabled: true }
+            : undefined;
 
           const metricTitle = translate(
             translationKey(
@@ -411,37 +413,6 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
               TranslationNamespace.UniverseConfigAndExperimentation,
             ),
           );
-
-          if (isUnavailableEarlyHarmMetric) {
-            const unavailableEarlyHarmCellProps = {
-              cellOverrideClassName: mutedCell,
-              disableRowHover: true,
-            };
-
-            const row = new Map<string, CellDataType>(
-              Object.keys(variantCellData).map((variantId) => [
-                variantId,
-                {
-                  type: ColumnType.Other,
-                  value: '—',
-                  ...unavailableEarlyHarmCellProps,
-                },
-              ]),
-            );
-            row.set(MetricColumnKey, {
-              type: ColumnType.TextWithTooltip,
-              text: metricTitle,
-              tooltip: translate(
-                translationKey(
-                  'Description.ExperimentResultTable.MetricsUnavailable',
-                  TranslationNamespace.UniverseConfigAndExperimentation,
-                ),
-                { durationHrs: String(DEFAULT_EARLY_HARM_DURATION_HRS) },
-              ),
-              ...unavailableEarlyHarmCellProps,
-            });
-            return row;
-          }
 
           const baselineCellData = variantCellData[baselineVariant.variantId];
           const baselineValue =
@@ -510,10 +481,11 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
                   translate,
                 ),
                 cellOverrideStyle: cellData.cellOverrideStyle,
+                ...unavailableEarlyHarmCellProps,
               });
               return;
             }
-            row.set(variantId, cellData);
+            row.set(variantId, { ...cellData, ...unavailableEarlyHarmCellProps });
           });
 
           row.set(
@@ -522,16 +494,25 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
               ? {
                   type: ColumnType.TextWithTooltip,
                   text: metricTitle,
-                  tooltip: translate(
-                    translationKey(
-                      'Description.ExperimentResultTable.EarlyHarmMetrics',
-                      TranslationNamespace.UniverseConfigAndExperimentation,
-                    ),
-                    {
-                      updateFrequencyMins: String(DEFAULT_EARLY_HARM_UPDATE_FREQUENCY_MINS),
-                      durationHrs: String(DEFAULT_EARLY_HARM_DURATION_HRS),
-                    },
-                  ),
+                  tooltip: isUnavailableEarlyHarmMetric
+                    ? translate(
+                        translationKey(
+                          'Description.ExperimentResultTable.MetricsUnavailable',
+                          TranslationNamespace.UniverseConfigAndExperimentation,
+                        ),
+                        { durationHrs: String(DEFAULT_EARLY_HARM_DURATION_HRS) },
+                      )
+                    : translate(
+                        translationKey(
+                          'Description.ExperimentResultTable.EarlyHarmMetrics',
+                          TranslationNamespace.UniverseConfigAndExperimentation,
+                        ),
+                        {
+                          updateFrequencyMins: String(DEFAULT_EARLY_HARM_UPDATE_FREQUENCY_MINS),
+                          durationHrs: String(DEFAULT_EARLY_HARM_DURATION_HRS),
+                        },
+                      ),
+                  ...unavailableEarlyHarmCellProps,
                 }
               : {
                   type: ColumnType.Text,
@@ -539,8 +520,8 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
                 },
           );
 
-          if (!isSRMDetected) {
-            // only show confidence interval button if srm is NOT detected
+          if (!isSRMDetected && !isUnavailableEarlyHarmMetric) {
+            // only show confidence interval button if metric is available
             row.set(ActionColumnKey, {
               type: ColumnType.Actions,
               actions: [
@@ -574,7 +555,6 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
       isSRMDetected,
       locale,
       metricsSortOrder,
-      mutedCell,
       onViewConfidenceIntervalActionInvoked,
       orderedExperimentVariants,
       shouldShowComparisonChip,

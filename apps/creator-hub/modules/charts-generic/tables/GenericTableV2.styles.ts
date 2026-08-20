@@ -53,6 +53,10 @@ const useGenericRAQIV2TableContentStyles = makeStyles()((theme) => ({
       borderTopRightRadius: 0,
     },
   },
+
+  disabledRow: {
+    opacity: 0.5,
+  },
 }));
 
 export default useGenericRAQIV2TableContentStyles;

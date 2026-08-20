@@ -22,6 +22,8 @@ export type TableConfig<TColumnKey> = {
   hover?: boolean;
   defaultActiveSort?: TColumnKey;
   tableBorder?: boolean;
+  // Minimum row height in pixels
+  rowHeight?: number | string;
 
   // if true, the first row of rowData will be treated as a summary row
   firstDataRowIsSummary?: boolean;
@@ -63,8 +65,8 @@ type BaseCellType = {
   cellOverrideStyle?: React.CSSProperties;
   /** Class names applied to the cell element, overriding the computed background/text styles. */
   cellOverrideClassName?: string;
-  /** When true, row hover background is not applied for the row containing this cell. */
-  disableRowHover?: boolean;
+  /** When true, the row containing this cell is muted and does not respond to hover. */
+  rowDisabled?: boolean;
 };
 
 type TextCellType = BaseCellType & {

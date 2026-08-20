@@ -48,7 +48,7 @@ const ActionColumnCell = <TActionType extends string, TActionOn>({
           break;
         default: {
           const exhaustiveCheck: never = viewAs;
-          throw new Error(`Invalid renderAs: ${exhaustiveCheck}`);
+          throw new Error(`Invalid renderAs: ${String(exhaustiveCheck)}`);
         }
       }
     });
@@ -97,7 +97,7 @@ const ActionColumnCell = <TActionType extends string, TActionOn>({
           href,
           alwaysVisible,
         }) => {
-          const isDisabled = disabled || loading;
+          const isDisabled = disabled ?? loading;
 
           const sx: TIconButtonProps['sx'] = (theme) => {
             const validColor =
@@ -149,10 +149,23 @@ const ActionColumnCell = <TActionType extends string, TActionOn>({
           const actionWrapperClass =
             alwaysVisible || isRowSelected ? 'action-icons' : 'action-icons hover-hide';
 
+          if (tooltipLabel || Icon) {
+            // Only show tooltip if tooltipLabel is provided or button is an Icon Button (has no text)
+            return (
+              <Tooltip
+                title={tooltipLabel ?? displayLabel}
+                key={actionType}
+                placement='bottom'
+                arrow>
+                <span className={actionWrapperClass}>{wrappedButton}</span>
+              </Tooltip>
+            );
+          }
+
           return (
-            <Tooltip title={tooltipLabel ?? displayLabel} key={actionType} placement='bottom' arrow>
-              <span className={actionWrapperClass}>{wrappedButton}</span>
-            </Tooltip>
+            <span className={actionWrapperClass} key={actionType}>
+              {wrappedButton}
+            </span>
           );
         },
       )}
