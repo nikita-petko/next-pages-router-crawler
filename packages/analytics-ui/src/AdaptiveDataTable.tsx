@@ -11,6 +11,7 @@ import type { ExpandedState, Row } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Button,
+  Dropdown,
   IconButton,
   Menu,
   MenuItem,
@@ -26,6 +27,7 @@ import {
   TableRow,
   Tooltip,
   TooltipTrigger,
+  type TDropdownSize,
 } from '@rbx/foundation-ui';
 import {
   getAdaptiveDataTableColumnLayout,
@@ -72,7 +74,10 @@ const RowHeightBySize: Readonly<Record<AdaptiveDataTableSize, number>> = {
 
 const TruncatedCellClassName = 'text-truncate-end';
 const PaginationClassName = 'flex items-center justify-end';
+const PaginationWithRowsPerPageClassName = 'flex items-center justify-end gap-small';
 const PaginationContentClassName = 'flex items-center gap-large';
+const RowsPerPageClassName = 'flex items-center gap-small';
+const RowsPerPageDropdownClassName = 'width-fit';
 const LoadingOverlayClassName = 'absolute inset-[0] flex items-center justify-center';
 const LoadingOverlayStyle: CSSProperties = {
   backgroundColor: 'color-mix(in srgb, var(--color-surface-100) 72%, transparent)',
@@ -102,6 +107,11 @@ const PaginationButtonSizeByTableSize: Readonly<Record<AdaptiveDataTableSize, 'X
     Small: 'XSmall',
     Medium: 'Small',
   };
+const RowsPerPageDropdownSizeByTableSize: Readonly<Record<AdaptiveDataTableSize, TDropdownSize>> = {
+  XSmall: 'XSmall',
+  Small: 'XSmall',
+  Medium: 'Small',
+};
 const MenuGroupClassName = 'padding-small';
 const MenuTriggerTooltipClassName = 'inline-flex';
 const MenuItemTooltipClassName = 'width-full';
@@ -801,6 +811,8 @@ const AdaptiveDataTable = <
   const isTableError = isError && tableRows.length === 0;
   const shouldFrameScrollContainer = variant === 'Framed' && (isInfinite || isSmallScreen);
   const isLoadMoreError = navigation.mode === 'infinite' && navigation.isLoadMoreError === true;
+  const onPageSizeChange =
+    navigation.mode === 'pagination' ? navigation.onPageSizeChange : undefined;
   const getVirtualItemKey = useCallback(
     (index: number): string => {
       const renderItem = tableRenderItems[index];
@@ -900,6 +912,10 @@ const AdaptiveDataTable = <
     requestedCursorRef.current = infiniteNextCursor;
     onLoadMore(infiniteNextCursor);
   }, [infiniteNextCursor, isLoadingMore, onLoadMore]);
+  const handlePageSizeChange = useCallback(
+    (nextValue: string) => onPageSizeChange?.(Number(nextValue)),
+    [onPageSizeChange],
+  );
 
   // Track the scroll viewport width so the table layout and state rows respond to resizes.
   useEffect(() => {
@@ -1206,7 +1222,31 @@ const AdaptiveDataTable = <
         ) : null}
       </div>
       {navigation.mode === 'pagination' ? (
-        <div className={`${PaginationClassName} ${PaginationPaddingClassNameBySize[size]}`}>
+        <div
+          className={`${
+            navigation.rowsPerPageOptions ? PaginationWithRowsPerPageClassName : PaginationClassName
+          } ${PaginationPaddingClassNameBySize[size]}`}>
+          {navigation.rowsPerPageOptions ? (
+            <div className={RowsPerPageClassName}>
+              <span className={`${PaginationTextClassNameBySize[size]} content-default`}>
+                {labels.rowsPerPage}
+              </span>
+              <Dropdown
+                variant='Utility'
+                ariaLabel={labels.rowsPerPage}
+                className={RowsPerPageDropdownClassName}
+                onValueChange={handlePageSizeChange}
+                placeholder={String(navigation.pageSize)}
+                size={RowsPerPageDropdownSizeByTableSize[size]}
+                value={String(navigation.pageSize)}>
+                <Menu>
+                  {navigation.rowsPerPageOptions.map((option) => (
+                    <MenuItem key={option} title={String(option)} value={String(option)} />
+                  ))}
+                </Menu>
+              </Dropdown>
+            </div>
+          ) : null}
           <div className={PaginationContentClassName}>
             <span className={`${PaginationTextClassNameBySize[size]} content-default`}>
               {labels.page(navigation.pageIndex, navigation.pageSize, navigation.totalRowCount)}

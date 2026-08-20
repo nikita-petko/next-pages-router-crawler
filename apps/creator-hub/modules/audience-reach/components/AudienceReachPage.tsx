@@ -4,14 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import { OwnerType } from '@rbx/client-commerce-api/v1';
 import { CreatorTierEnum } from '@rbx/client-core-content-api/v1';
 import { TransactionVariantEnum } from '@rbx/client-core-content-transaction-api/v1';
+import { StatusCodes } from '@rbx/core';
 import { useFlag } from '@rbx/flags';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { enableExpeditedReview } from '@generated/flags/creatorGameops';
-import { useAuthentication } from '@modules/authentication/providers';
 import groupsClient from '@modules/clients/groups';
 import useExperienceOwner from '@modules/commerce/hooks/useExperienceOwner';
 import { PageLoading } from '@modules/miscellaneous/components';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
+import { ErrorPage } from '@modules/miscellaneous/error';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import { useAudienceReachData } from '../hooks/useAudienceReachData';
@@ -26,40 +27,14 @@ import ReachSection from './ReachSection';
 import RestrictedExperienceBanner from './RestrictedExperienceBanner';
 import UnderReviewBanner from './UnderReviewBanner';
 
-const officialGroupOfRobloxId = 1200769;
-
-const useIsEmployee = (): boolean => {
-  const isProductionTarget = process.env.targetEnvironment === 'production';
-  const { user } = useAuthentication();
-
-  const { data: isEmployeeByGroup } = useQuery({
-    queryKey: ['CheckIfSignedInUserIsEmployee', user?.id],
-    queryFn: () =>
-      groupsClient
-        .getGroupMembershipMetadata({
-          groupId: officialGroupOfRobloxId,
-          includeNotificationPreferences: false,
-        })
-        .then((data) => !!data?.userRole?.role?.rank),
-    enabled: !!user?.id,
-    staleTime: Infinity,
-  });
-
-  return isEmployeeByGroup === true || !isProductionTarget;
-};
-
 const AudienceReachPage: FC = () => {
   const intl = useTranslation();
   const { translate } = intl;
   const router = useRouter();
-  const { gameDetails } = useCurrentGame();
+  const { gameDetails, isLoadingGame, isErrorLoadingGame } = useCurrentGame();
   const universeId = gameDetails?.id ?? 0;
 
   const { isExperienceOwner, isFetched: isOwnerFetched, ownerType, ownerId } = useExperienceOwner();
-  const isEmployee = useIsEmployee();
-  const isInternalAnalyticsAdmin = isEmployee;
-  const canActAsCreatorForAudienceReach = isExperienceOwner || isInternalAnalyticsAdmin;
-  const shouldUseEligibilityOverride = isInternalAnalyticsAdmin && !isExperienceOwner;
   const creatorType = (gameDetails?.creator?.type ?? ownerType).toLowerCase();
   const isGroupOwnedExperience = creatorType === OwnerType.Group.toLowerCase();
   const isUserOwnedExperience = creatorType === OwnerType.User.toLowerCase();
@@ -69,7 +44,7 @@ const AudienceReachPage: FC = () => {
       const groupInfoResponse = await groupsClient.getGroupInfo(ownerId);
       return groupInfoResponse.owner?.userId;
     },
-    enabled: shouldUseEligibilityOverride && isGroupOwnedExperience && ownerId > 0,
+    enabled: isGroupOwnedExperience && ownerId > 0,
     retry: false,
   });
   const { ready: areFlagsLoaded, value: isExpeditedReviewEnabled } = useFlag(enableExpeditedReview);
@@ -78,10 +53,6 @@ const AudienceReachPage: FC = () => {
   const isUniverseCreatorUserIdFetched = isUserOwnedExperience
     ? ownerId > 0
     : !isGroupOwnedExperience || isGroupOwnerUserIdFetched;
-  const isEligibilityContextReady = !shouldUseEligibilityOverride || isUniverseCreatorUserIdFetched;
-  const creatorEligibilityOverrideUserId = shouldUseEligibilityOverride
-    ? universeCreatorUserId
-    : undefined;
 
   const { state, isLoading, isError, isRestricted, isDiscoveryBlocked } =
     useAudienceReachData(universeId);
@@ -118,7 +89,7 @@ const AudienceReachPage: FC = () => {
       ? CreatorTierEnum.Everyone
       : state?.creatorTier;
 
-  if (isError) {
+  if (isError || isErrorLoadingGame) {
     return (
       <FailureView
         message={translate('Message.FailedToLoadPage')}
@@ -128,8 +99,16 @@ const AudienceReachPage: FC = () => {
     );
   }
 
-  if (isLoading || !isOwnerFetched || !state) {
+  if (isLoading || isLoadingGame || !isOwnerFetched) {
     return <PageLoading />;
+  }
+
+  if (!state) {
+    // The batch endpoint omits games the user does not have access to.  We call with one universe,
+    // so if the response is empty that means the user doesn't have access.  This should actually be
+    // redundant with the permission checks on audience-reach.tsx, but in case something gets desynced
+    // in the backend this ensures the user doesn't get the endless loading spinner.
+    return <ErrorPage errorCode={StatusCodes.FORBIDDEN} />;
   }
 
   // Hopefully temporary, we'd like to add a more solid check than 'is progress bar at 100%' but do
@@ -168,10 +147,10 @@ const AudienceReachPage: FC = () => {
           universeId={String(universeId)}
         />
         <PublishingFeeCard
-          isCreator={canActAsCreatorForAudienceReach}
+          isCreator={isExperienceOwner}
           isBelowThreshold={isBelowThreshold}
-          creatorEligibilityOverrideUserId={creatorEligibilityOverrideUserId}
-          isEligibilityContextReady={isEligibilityContextReady}
+          creatorId={universeCreatorUserId}
+          isEligibilityContextReady={isUniverseCreatorUserIdFetched}
           audienceReach={state.reachLevel}
           isRated={!state.contentRating.isUnrated}
           is16Plus={state.contentRating.minimumAge >= 16}

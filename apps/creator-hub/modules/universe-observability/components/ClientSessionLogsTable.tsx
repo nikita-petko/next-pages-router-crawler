@@ -13,6 +13,7 @@ import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import withNamespaceSwitchedTranslation from '@modules/analytics-translations/withNamespaceSwitchedTranslation';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import useCommonAdaptiveDataTableLabels from '@modules/charts-generic/constants/useCommonAdaptiveDataTableLabels';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import useClientLogs from '../hooks/useClientLogs';
 import type { ClientSessionLog } from '../types/ClientSession';
@@ -97,7 +98,6 @@ const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ universeId, s
     () => new Intl.DateTimeFormat(locale ?? Locale.English, DATE_TIME_FORMAT_OPTIONS),
     [locale],
   );
-  const numberFormatter = useMemo(() => new Intl.NumberFormat(locale ?? Locale.English), [locale]);
   const columnLabels = useMemo(
     () => ({
       time: tPendingTranslation(
@@ -265,58 +265,20 @@ const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ universeId, s
       };
     });
   }, [columnLabels, expansionLabels, logs, severityLabels, timeFormatter]);
-  const tableLabels = useMemo(
-    () => ({
-      loading: tPendingTranslation(
-        'Loading client logs',
-        'Accessible loading label for the client session logs table.',
-        translationKey('Label.LoadingClientSessionLogs', TranslationNamespace.ServerManagement),
-      ),
-      error: tPendingTranslation(
-        'Client logs could not be loaded.',
-        'Error shown when client session logs fail to load.',
-        translationKey('Message.ClientSessionLogsLoadError', TranslationNamespace.ServerManagement),
-      ),
-      emptyState: tPendingTranslation(
-        'No client logs found.',
-        'Empty state shown when a client session has no logs.',
-        translationKey('Message.NoClientSessionLogs', TranslationNamespace.ServerManagement),
-      ),
-      retry: tPendingTranslation(
-        'Retry',
-        'Action to retry loading client session logs.',
-        translationKey('Action.RetryClientSessionLogs', TranslationNamespace.ServerManagement),
-      ),
-      previousPage: tPendingTranslation(
-        'Previous page',
-        'Accessible label for the previous client session logs page button.',
-        translationKey(
-          'Action.PreviousClientSessionLogsPage',
-          TranslationNamespace.ServerManagement,
-        ),
-      ),
-      nextPage: tPendingTranslation(
-        'Next page',
-        'Accessible label for the next client session logs page button.',
-        translationKey('Action.NextClientSessionLogsPage', TranslationNamespace.ServerManagement),
-      ),
-      page: (currentPageIndex: number, pageSize: number, totalRowCount = 0) => {
-        const start = totalRowCount === 0 ? 0 : currentPageIndex * pageSize + 1;
-        const end = Math.min((currentPageIndex + 1) * pageSize, totalRowCount);
-        return tPendingTranslation(
-          '{start}-{end} of {total}',
-          'Range label below the client session logs table.',
-          translationKey('Label.ClientSessionLogsPageRange', TranslationNamespace.ServerManagement),
-          {
-            start: numberFormatter.format(start),
-            end: numberFormatter.format(end),
-            total: numberFormatter.format(totalRowCount),
-          },
-        );
-      },
-    }),
-    [numberFormatter, tPendingTranslation],
+  const errorLabel = tPendingTranslation(
+    'Client logs could not be loaded.',
+    'Error shown when client session logs fail to load.',
+    translationKey('Message.ClientSessionLogsLoadError', TranslationNamespace.ServerManagement),
   );
+  const emptyStateLabel = tPendingTranslation(
+    'No client logs found.',
+    'Empty state shown when a client session has no logs.',
+    translationKey('Message.NoClientSessionLogs', TranslationNamespace.ServerManagement),
+  );
+  const tableLabels = useCommonAdaptiveDataTableLabels({
+    error: errorLabel,
+    emptyState: emptyStateLabel,
+  });
 
   const handleDateRangeChange = useCallback((selection: DateRangeSelection) => {
     setDateRangeSelection(selection);
@@ -375,4 +337,5 @@ const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ universeId, s
 
 export default withNamespaceSwitchedTranslation(ClientSessionLogsTable, [
   TranslationNamespace.ServerManagement,
+  TranslationNamespace.Table,
 ]);

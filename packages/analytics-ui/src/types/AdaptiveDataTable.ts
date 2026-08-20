@@ -147,7 +147,18 @@ export type AdaptiveDataTablePagination = {
   readonly totalRowCount?: number;
   readonly onPreviousPage: () => void;
   readonly onNextPage: (cursor: string) => void;
-};
+} & (
+  | {
+      /** Renders a page-size selector in the pagination footer with these options. */
+      readonly rowsPerPageOptions: readonly number[];
+      /** Called when the selector changes. Resetting `pageIndex` stays consumer-owned. */
+      readonly onPageSizeChange: (pageSize: number) => void;
+    }
+  | {
+      readonly rowsPerPageOptions?: undefined;
+      readonly onPageSizeChange?: undefined;
+    }
+);
 
 export type AdaptiveDataTableInfiniteScroll = {
   readonly mode: 'infinite';
@@ -182,6 +193,8 @@ export type AdaptiveDataTableLabels = {
   readonly previousPage: string;
   readonly nextPage: string;
   readonly page: (pageIndex: number, pageSize: number, totalRowCount?: number) => string;
+  /** Caption and accessible name for the rows-per-page selector. */
+  readonly rowsPerPage: string;
 };
 
 export type AdaptiveDataTableProps<

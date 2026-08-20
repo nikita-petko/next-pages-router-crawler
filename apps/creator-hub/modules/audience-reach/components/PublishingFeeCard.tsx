@@ -1,13 +1,13 @@
 import { useMemo, useState, type FC } from 'react';
 import { CreatorTierEnum } from '@rbx/client-core-content-api/v1';
 import { TransactionVariantEnum } from '@rbx/client-core-content-transaction-api/v1';
+import { StatusCodes } from '@rbx/core';
 import { useFlag } from '@rbx/flags';
-import { Alert, Button, Snackbar } from '@rbx/foundation-ui';
+import { Alert, Button, Snackbar, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { Skeleton } from '@rbx/ui';
 import { enableExpeditedReview } from '@generated/flags/creatorGameops';
-import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
-import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { getResponseFromError } from '@modules/clients/utils';
 import useUniversePublishStatus from '@modules/creations-overview/hooks/useUniversePublishStatus';
 import CreatorType from '@modules/miscellaneous/common/enums/Creator';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -23,7 +23,7 @@ import TransactionDepositDialog from './TransactionDepositDialog';
 interface PublishingFeeCardProps {
   isCreator: boolean;
   isBelowThreshold: boolean;
-  creatorEligibilityOverrideUserId?: number;
+  creatorId?: number;
   isEligibilityContextReady?: boolean;
   audienceReach: ReachLevel;
   isRated: boolean;
@@ -34,7 +34,7 @@ interface PublishingFeeCardProps {
 const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
   isCreator,
   isBelowThreshold,
-  creatorEligibilityOverrideUserId,
+  creatorId,
   audienceReach,
   isEligibilityContextReady = true,
   isRated,
@@ -42,7 +42,6 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
   isAccountAllAgesTier,
 }) => {
   const { translateWithNamespace } = useTranslation();
-  const { translate } = useTranslationWrapper(useTranslation());
   const { gameDetails } = useCurrentGame();
   const universeId = gameDetails?.id ?? 0;
   const groupId =
@@ -56,13 +55,18 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
   const {
     data: publishingFeeTransactionStatus,
     isLoading: isPublishingFeeTransactionStatusLoading,
+    error: publishingFeeError,
   } = useCoreContentTransactionStatus(universeId, TransactionVariantEnum.PublishFee);
-  const { data: expeditedTransactionStatus, isLoading: isExpeditedTransactionStatusLoading } =
-    useCoreContentTransactionStatus(universeId, TransactionVariantEnum.Expedited);
+  const {
+    data: expeditedTransactionStatus,
+    isLoading: isExpeditedTransactionStatusLoading,
+    error: expeditedFeeError,
+  } = useCoreContentTransactionStatus(universeId, TransactionVariantEnum.Expedited);
+
   const canSubmitPublishingFee = !publishingFeeTransactionStatus?.hasDeposit;
   const { data: creatorEligibilityResponse, isLoading: isCreatorEligibilityLoading } =
     useCreatorEligibility({
-      overrideUserId: creatorEligibilityOverrideUserId,
+      overrideUserId: creatorId,
       isReady: isEligibilityContextReady,
     });
   const { data: groupPermissions, isLoading: isGroupPermissionsLoading } =
@@ -74,6 +78,10 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
     (groupPermissions?.isOwner === true || groupPermissions?.canConfigureRevenueDetails === true);
   // Non-owner group revenue managers may pay, but only from group funds.
   const canPay = isCreator || canConfigureGroupRevenue;
+  const canView = !(
+    getResponseFromError(publishingFeeError)?.status === StatusCodes.FORBIDDEN ||
+    getResponseFromError(expeditedFeeError)?.status === StatusCodes.FORBIDDEN
+  );
   const forceGroupFunds = !isCreator && canConfigureGroupRevenue;
 
   const exemptDueToActiveSubscription =
@@ -92,13 +100,13 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
 
   const [feeStatusText, feeDescriptionText, ctaButton, shouldShowPublishingFeeUpsell] =
     useMemo(() => {
-      // Variant 1: The user cannot pay (not creator and no group-revenue
-      // permission). They have no visibility and cannot take action
-      if (!canPay) {
+      // Variant 1: The user does not have permission to view the publishing fee status
+      if (!canView) {
         return [
-          translate(translationKey('Label.NotAvailable', TranslationNamespace.AudienceReach)),
-          translate(
-            translationKey('Description.DepositOwnerOnly', TranslationNamespace.AudienceReach),
+          translateWithNamespace(TranslationNamespace.AudienceReach, 'Label.NotAvailable'),
+          translateWithNamespace(
+            TranslationNamespace.AudienceReach,
+            'Description.DepositOwnerOnly',
           ),
           null,
           false,
@@ -107,9 +115,10 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
       // Variant 2: The game has already had a deposit paid. No action is needed.
       if (publishingFeeTransactionStatus?.hasDeposit) {
         return [
-          translate(translationKey('Label.Paid', TranslationNamespace.AudienceReach)),
-          translate(
-            translationKey('Description.PublishingFeeReturnV2', TranslationNamespace.AudienceReach),
+          translateWithNamespace(TranslationNamespace.AudienceReach, 'Label.Paid'),
+          translateWithNamespace(
+            TranslationNamespace.AudienceReach,
+            'Description.PublishingFeeReturnV2',
           ),
           null,
           false,
@@ -119,19 +128,15 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
         // Variant 3: The user has an active subscription that exempts them from the deposit, or they have
         // already paid the expedited review fee. No action is needed.
         return [
-          translate(translationKey('Label.Exempt', TranslationNamespace.AudienceReach)),
+          translateWithNamespace(TranslationNamespace.AudienceReach, 'Label.Exempt'),
           expeditedTransactionStatus?.hasDeposit
-            ? translate(
-                translationKey(
-                  'Description.NoPaymentWithExpedited',
-                  TranslationNamespace.AudienceReach,
-                ),
+            ? translateWithNamespace(
+                TranslationNamespace.AudienceReach,
+                'Description.NoPaymentWithExpedited',
               )
-            : translate(
-                translationKey(
-                  'Description.PublishingFeeNotApplicable',
-                  TranslationNamespace.AudienceReach,
-                ),
+            : translateWithNamespace(
+                TranslationNamespace.AudienceReach,
+                'Description.PublishingFeeNotApplicable',
               ),
           <Button
             as='a'
@@ -140,7 +145,7 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
             variant='Standard'
             size='Small'
             className='width-2100'>
-            {translate(translationKey('Action.ViewDetails', TranslationNamespace.AudienceReach))}
+            {translateWithNamespace(TranslationNamespace.AudienceReach, 'Action.ViewDetails')}
           </Button>,
           false,
         ];
@@ -149,25 +154,45 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
       // pay for it.
       // If the game is Public and above the engagement threshold, we add greater emphasis with
       // the button styling and the addition of a banner
-      return [
-        translate(translationKey('Label.NotSubmitted', TranslationNamespace.AudienceReach)),
-        translate(translationKey('Description.PublishingFee', TranslationNamespace.AudienceReach)),
+      const paymentButton = (
         <Button
           key='cta'
           variant={!isBelowThreshold && isPublished ? 'Emphasis' : 'Standard'}
           size='Small'
           onClick={() => setIsDialogOpen(true)}
-          isDisabled={!canSubmitPublishingFee}
+          isDisabled={!canSubmitPublishingFee || !canPay}
           className='width-2100'>
-          {translate(translationKey('Action.Pay', TranslationNamespace.PublicPublish))}
-        </Button>,
-        !isBelowThreshold && isPublished,
+          {translateWithNamespace(TranslationNamespace.AudienceReach, 'Action.Pay')}
+        </Button>
+      );
+      // Tooltip is only for the insufficient permissions case, already having a payment is covered elsewhere in
+      // the copy.
+      const disabledPaymentButtonWithTooltip = (
+        <Tooltip
+          position='top-center'
+          title={translateWithNamespace(
+            TranslationNamespace.AudienceReach,
+            'Label.InsufficientPermission',
+          )}
+          description={translateWithNamespace(
+            TranslationNamespace.AudienceReach,
+            'Tooltip.InsufficientPermissionsPublishingFee',
+          )}>
+          <TooltipTrigger asChild>{paymentButton}</TooltipTrigger>
+        </Tooltip>
+      );
+      return [
+        translateWithNamespace(TranslationNamespace.AudienceReach, 'Label.NotSubmitted'),
+        translateWithNamespace(TranslationNamespace.AudienceReach, 'Description.PublishingFee'),
+        canPay ? paymentButton : disabledPaymentButtonWithTooltip,
+        canPay && !isBelowThreshold && isPublished,
       ];
     }, [
       canPay,
+      canView,
       publishingFeeTransactionStatus,
       exemptDueToActiveSubscription,
-      translate,
+      translateWithNamespace,
       isBelowThreshold,
       canSubmitPublishingFee,
       isPublished,
@@ -190,8 +215,9 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
 
   const paymentModalBody = (
     <p className='text-body-medium margin-none'>
-      {translate(
-        translationKey('Description.PublishingFeeDialogV2', TranslationNamespace.AudienceReach),
+      {translateWithNamespace(
+        TranslationNamespace.AudienceReach,
+        'Description.PublishingFeeDialogV2',
       )}
     </p>
   );
@@ -215,12 +241,14 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
         <Alert variant='Feedback' severity='Warning' hasCloseAffordance={false}>
           <div className='flex min-width-0 items-center gap-xsmall'>
             <span className='text-label-medium'>
-              {translate(
-                translationKey('Heading.ExpandYourReach', TranslationNamespace.PublicPublish),
+              {translateWithNamespace(
+                TranslationNamespace.AudienceReach,
+                'Heading.ExpandYourReach',
               )}
             </span>
-            {translate(
-              translationKey('Description.ExpandYourReach', TranslationNamespace.PublicPublish),
+            {translateWithNamespace(
+              TranslationNamespace.PublicPublish,
+              'Description.ExpandYourReach',
               { number: PublishingFee.toString() },
             )}
           </div>
@@ -230,8 +258,9 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
         <div className='flex items-center'>
           <div className='flex flex-col gap-xsmall grow-1 shrink-1'>
             <span className='text-body-medium content-system-neutral'>
-              {translate(
-                translationKey('Label.RefundablePublishingFee', TranslationNamespace.AudienceReach),
+              {translateWithNamespace(
+                TranslationNamespace.AudienceReach,
+                'Label.RefundablePublishingFee',
               )}
             </span>
             <span className='text-title-large'>

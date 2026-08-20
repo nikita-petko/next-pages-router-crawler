@@ -7,9 +7,11 @@ import getCreationsPageLayout from '@modules/creations/common/implementations/ge
 import { useAnalyticsExperiencePermissions } from '@modules/experience-analytics-shared/hooks/useAnalyticsPermissions';
 import { uninitializedUniverseId } from '@modules/miscellaneous/common';
 import { PageLoading } from '@modules/miscellaneous/components';
+import { PageNotFound } from '@modules/miscellaneous/error';
 import AccessDeniedPage from '@modules/miscellaneous/error/components/AccessDeniedPage';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
+import { useUniversePermissions } from '@modules/react-query/organizations';
 
 const AudienceReachTitle: FC = withTranslation(() => {
   const { translate } = useTranslation();
@@ -17,15 +19,23 @@ const AudienceReachTitle: FC = withTranslation(() => {
 }, [TranslationNamespace.AudienceReach]);
 
 const AudienceReachPageRoute: NextLayoutPage = () => {
-  const { canConfigure, isLoadingGame, gameDetails } = useCurrentGame();
+  const { isLoadingGame, isErrorLoadingGame, gameDetails } = useCurrentGame();
+
   const { userCanViewAnalyticsForUniverse, isPending: isPendingAnalyticsExperiencePermissions } =
     useAnalyticsExperiencePermissions(gameDetails?.id ?? uninitializedUniverseId);
+  const { data: universePermissions, isPending: isPendingUniversePermissions } =
+    useUniversePermissions(gameDetails?.id);
 
-  if (isLoadingGame || isPendingAnalyticsExperiencePermissions) {
+  if (!isLoadingGame && (isErrorLoadingGame || gameDetails === null)) {
+    // this must be checked first because the other querys will never resolve if gameDetails is null
+    return <PageNotFound />;
+  }
+
+  if (isLoadingGame || isPendingAnalyticsExperiencePermissions || isPendingUniversePermissions) {
     return <PageLoading />;
   }
 
-  const canView = canConfigure === true || userCanViewAnalyticsForUniverse;
+  const canView = userCanViewAnalyticsForUniverse || universePermissions?.publish === true;
   if (!canView) {
     return <AccessDeniedPage />;
   }

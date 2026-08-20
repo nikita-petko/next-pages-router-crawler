@@ -877,7 +877,8 @@ const reachFeature: Feature<CreationsFeatureSettings> = {
   nameKey: 'Heading.Reach',
   path: '/audience-reach',
   isEnabledOnSettings: (settings) =>
-    (settings?.canConfigure ?? false) || (settings?.userCanViewAnalyticsForUniverse ?? false),
+    (settings?.userCanViewAnalyticsForUniverse ?? false) ||
+    (settings?.permissions?.publish ?? false),
 };
 
 const audienceCategoryFeature: Feature<CreationsFeatureSettings> = {
