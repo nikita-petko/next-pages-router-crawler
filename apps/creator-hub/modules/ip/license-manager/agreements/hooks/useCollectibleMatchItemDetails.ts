@@ -1,4 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { RobloxCatalogApiCatalogSearchDetailedResponseItemV2 } from '@rbx/client-catalog/v1';
 import { ItemTargetType } from '@rbx/client-marketplace-items-api/v1';
 import catalogClient from '@modules/clients/catalog';
 import marketplaceItemsClient, {
@@ -6,6 +8,12 @@ import marketplaceItemsClient, {
 } from '@modules/clients/marketplaceitems';
 
 const COLLECTIBLE_MATCH_ITEM_DETAILS_QUERY_KEY = ['collectibleMatchItemDetails'];
+const COLLECTIBLE_MATCH_ITEM_DETAILS_STALE_TIME_MS = 5 * 60 * 1000;
+const COLLECTIBLE_MATCH_ITEM_DETAIL_QUERY_KEY = (collectibleItemId: string) => [
+  ...COLLECTIBLE_MATCH_ITEM_DETAILS_QUERY_KEY,
+  'item',
+  collectibleItemId,
+];
 
 const assetSubtypeById: Readonly<Record<number, string>> = {
   2: 'TShirt',
@@ -43,6 +51,7 @@ const bundleSubtypeById: Readonly<Record<number, string>> = {
 
 export interface CollectibleMatchItemDetails {
   collectible: CollectibleItemDetail;
+  catalogItem?: RobloxCatalogApiCatalogSearchDetailedResponseItemV2;
   subtype?: string;
 }
 
@@ -75,21 +84,27 @@ const getCollectibleMatchItemDetails = async (
       : undefined,
   ]);
 
+  const catalogItemByTargetId = new Map<
+    number,
+    RobloxCatalogApiCatalogSearchDetailedResponseItemV2
+  >();
   const subtypeByTargetId = new Map<number, string>();
   assetDetailsResponse?.data?.forEach((asset) => {
-    if (asset.id == null || asset.assetType == null) {
+    if (asset.id == null) {
       return;
     }
-    const subtype = assetSubtypeById[asset.assetType];
+    catalogItemByTargetId.set(asset.id, asset);
+    const subtype = asset.assetType == null ? undefined : assetSubtypeById[asset.assetType];
     if (subtype) {
       subtypeByTargetId.set(asset.id, subtype);
     }
   });
   bundleDetailsResponse?.data?.forEach((bundle) => {
-    if (bundle.id == null || bundle.bundleType == null) {
+    if (bundle.id == null) {
       return;
     }
-    const subtype = bundleSubtypeById[bundle.bundleType];
+    catalogItemByTargetId.set(bundle.id, bundle);
+    const subtype = bundle.bundleType == null ? undefined : bundleSubtypeById[bundle.bundleType];
     if (subtype) {
       subtypeByTargetId.set(bundle.id, subtype);
     }
@@ -100,11 +115,16 @@ const getCollectibleMatchItemDetails = async (
       if (!collectible.collectibleItemId) {
         return [];
       }
+      const catalogItem =
+        collectible.itemTargetId == null
+          ? undefined
+          : catalogItemByTargetId.get(collectible.itemTargetId);
       return [
         [
           collectible.collectibleItemId,
           {
             collectible,
+            ...(catalogItem ? { catalogItem } : {}),
             subtype:
               collectible.itemTargetId == null
                 ? undefined
@@ -116,11 +136,84 @@ const getCollectibleMatchItemDetails = async (
   );
 };
 
-const useCollectibleMatchItemDetails = (collectibleItemIds: string[]) =>
-  useQuery({
-    queryKey: [...COLLECTIBLE_MATCH_ITEM_DETAILS_QUERY_KEY, collectibleItemIds],
-    queryFn: () => getCollectibleMatchItemDetails(collectibleItemIds),
-    enabled: collectibleItemIds.length > 0,
+const useCollectibleMatchItemDetails = (collectibleItemIds: string[]) => {
+  const queryClient = useQueryClient();
+  const normalizedCollectibleItemIds = useMemo(
+    () => [...new Set(collectibleItemIds)].sort(),
+    [collectibleItemIds],
+  );
+
+  const getCachedDetails = () => {
+    if (normalizedCollectibleItemIds.length === 0) {
+      return undefined;
+    }
+    const entries = normalizedCollectibleItemIds.flatMap((collectibleItemId) => {
+      const details = queryClient.getQueryData<CollectibleMatchItemDetails>(
+        COLLECTIBLE_MATCH_ITEM_DETAIL_QUERY_KEY(collectibleItemId),
+      );
+      return details ? [[collectibleItemId, details] as const] : [];
+    });
+    if (entries.length !== normalizedCollectibleItemIds.length) {
+      return undefined;
+    }
+
+    const oldestDataUpdatedAt = Math.min(
+      ...normalizedCollectibleItemIds.map(
+        (collectibleItemId) =>
+          queryClient.getQueryState(COLLECTIBLE_MATCH_ITEM_DETAIL_QUERY_KEY(collectibleItemId))
+            ?.dataUpdatedAt ?? 0,
+      ),
+    );
+    return {
+      data: Object.fromEntries(entries),
+      dataUpdatedAt: oldestDataUpdatedAt,
+    };
+  };
+
+  return useQuery({
+    queryKey: [...COLLECTIBLE_MATCH_ITEM_DETAILS_QUERY_KEY, 'batch', normalizedCollectibleItemIds],
+    queryFn: async () => {
+      const now = Date.now();
+      const cachedDetails: Record<string, CollectibleMatchItemDetails> = {};
+      const collectibleItemIdsToFetch = normalizedCollectibleItemIds.filter((collectibleItemId) => {
+        const state = queryClient.getQueryState<CollectibleMatchItemDetails>(
+          COLLECTIBLE_MATCH_ITEM_DETAIL_QUERY_KEY(collectibleItemId),
+        );
+        if (
+          state?.data != null &&
+          now - state.dataUpdatedAt < COLLECTIBLE_MATCH_ITEM_DETAILS_STALE_TIME_MS
+        ) {
+          cachedDetails[collectibleItemId] = state.data;
+          return false;
+        }
+        return true;
+      });
+      const fetchedDetails =
+        collectibleItemIdsToFetch.length > 0
+          ? await getCollectibleMatchItemDetails(collectibleItemIdsToFetch)
+          : {};
+      const fetchedAt = Date.now();
+
+      collectibleItemIdsToFetch.forEach((collectibleItemId) => {
+        const details = fetchedDetails[collectibleItemId];
+        const queryKey = COLLECTIBLE_MATCH_ITEM_DETAIL_QUERY_KEY(collectibleItemId);
+        if (details) {
+          queryClient.setQueryData(queryKey, details, { updatedAt: fetchedAt });
+        } else {
+          queryClient.removeQueries({ queryKey, exact: true });
+        }
+      });
+
+      return {
+        ...cachedDetails,
+        ...fetchedDetails,
+      };
+    },
+    enabled: normalizedCollectibleItemIds.length > 0,
+    staleTime: COLLECTIBLE_MATCH_ITEM_DETAILS_STALE_TIME_MS,
+    initialData: () => getCachedDetails()?.data,
+    initialDataUpdatedAt: () => getCachedDetails()?.dataUpdatedAt,
   });
+};
 
 export default useCollectibleMatchItemDetails;

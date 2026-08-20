@@ -1,8 +1,9 @@
-import type { FunctionComponent } from 'react';
+import type { FunctionComponent, ReactNode } from 'react';
 import { Icon } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import {
   AssetThumbnailSize,
+  BundleThumbnailSize,
   Thumbnail2d,
   ThumbnailTypes,
   UniverseThumbnailSize,
@@ -44,6 +45,9 @@ const useStyles = makeStyles()((theme) => ({
     overflow: 'hidden',
     marginBottom: theme.spacing(1),
   },
+  squareThumbnailContainer: {
+    aspectRatio: '1',
+  },
 
   truncateText: {
     overflow: 'hidden',
@@ -60,12 +64,15 @@ const useStyles = makeStyles()((theme) => ({
 export enum ContentType {
   Universe = 'Universe',
   License = 'License',
+  Asset = 'Asset',
+  Bundle = 'Bundle',
 }
 
 interface ThumbnailInfo {
   altText: string;
   type: ThumbnailTypes;
-  size: AssetThumbnailSize | UniverseThumbnailSize;
+  size: AssetThumbnailSize | BundleThumbnailSize | UniverseThumbnailSize;
+  isSquare?: boolean;
 }
 
 const typeToThumbnailInfo: { [key in ContentType]: ThumbnailInfo } = {
@@ -81,6 +88,20 @@ const typeToThumbnailInfo: { [key in ContentType]: ThumbnailInfo } = {
     // eslint-disable-next-line no-underscore-dangle -- Swagger generated enum has underscore
     size: AssetThumbnailSize._256x144,
   },
+  [ContentType.Asset]: {
+    altText: 'Label.CreationThumbnail',
+    type: ThumbnailTypes.assetThumbnail,
+    // eslint-disable-next-line no-underscore-dangle -- Swagger generated enum has underscore
+    size: AssetThumbnailSize._420x420,
+    isSquare: true,
+  },
+  [ContentType.Bundle]: {
+    altText: 'Label.CreationThumbnail',
+    type: ThumbnailTypes.bundleThumbnail,
+    // eslint-disable-next-line no-underscore-dangle -- Swagger generated enum has underscore
+    size: BundleThumbnailSize._420x420,
+    isSquare: true,
+  },
 };
 
 interface ContentTileProps {
@@ -89,6 +110,7 @@ interface ContentTileProps {
   thumbnailTargetId: number;
   type: ContentType;
   link?: string;
+  footer?: ReactNode;
 }
 
 /**
@@ -121,6 +143,7 @@ export const ContentTile: FunctionComponent<ContentTileProps> = ({
   subheader,
   type,
   link,
+  footer,
 }) => {
   const { translate } = useTranslation();
   const {
@@ -129,6 +152,7 @@ export const ContentTile: FunctionComponent<ContentTileProps> = ({
       contentContainerWithHover,
       thumbnail,
       thumbnailContainer,
+      squareThumbnailContainer,
       truncateText,
       externalLinkIcon,
     },
@@ -137,7 +161,8 @@ export const ContentTile: FunctionComponent<ContentTileProps> = ({
 
   const content = (
     <div>
-      <div className={thumbnailContainer}>
+      <div
+        className={`${thumbnailContainer} ${thumbnailInfo.isSquare ? squareThumbnailContainer : ''}`}>
         <Thumbnail2d
           targetId={thumbnailTargetId}
           containerClass={thumbnail}
@@ -167,6 +192,8 @@ export const ContentTile: FunctionComponent<ContentTileProps> = ({
           {subheader}
         </Typography>
       )}
+
+      {footer}
     </div>
   );
 
