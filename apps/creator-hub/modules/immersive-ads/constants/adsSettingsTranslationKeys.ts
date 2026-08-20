@@ -7,6 +7,7 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
  * - `Tooltip.RewardedAdsServingEnabled` — tooltip for the serving toggle
  * - `Description.RewardedAdsIneligibleSettingsBanner` — settings tab banner with
  *   `eligibilityTabLinkStart` / `eligibilityTabLinkEnd` tags.
+ * - `Description.RewardedAdsAdTypeInfoBanner` — info banner for ad types removal
  *
  * Help link (`Label.HowTo`) is shown in the Serving settings accordion subheading (AdServingSettings).
  */
@@ -22,5 +23,10 @@ export const RewardedAdsServingEnabledTooltipKey = translationKey(
 
 export const RewardedAdsIneligibleSettingsBannerKey = translationKey(
   'Description.RewardedAdsIneligibleSettingsBanner',
+  TranslationNamespace.ImmersiveAdsAnalytics,
+);
+
+export const RewardedAdsAdTypeInfoBannerKey = translationKey(
+  'Description.RewardedAdsAdTypeInfoBanner',
   TranslationNamespace.ImmersiveAdsAnalytics,
 );

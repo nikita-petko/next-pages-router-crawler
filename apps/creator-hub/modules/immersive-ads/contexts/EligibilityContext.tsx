@@ -21,8 +21,6 @@ export interface EligibilityCriteriaState {
   isUniverseSuspendedFromRewardedAds: boolean;
   showRewardedAdsToggle: boolean;
   showPwRSettings: boolean;
-  showClickOutToggle: boolean;
-  showAppPromoToggle: boolean;
   defaultPwRFrequencyCap: number;
 }
 
@@ -51,8 +49,6 @@ const initialEligibilityState: EligibilityCriteriaState = {
   isUniverseSuspendedFromRewardedAds: false,
   showRewardedAdsToggle: false,
   showPwRSettings: false,
-  showClickOutToggle: false,
-  showAppPromoToggle: false,
   defaultPwRFrequencyCap: 3,
 };
 
@@ -120,6 +116,7 @@ export const EligibilityProvider: React.FC<EligibilityProviderProps> = ({
   // Auto-fetch when universeId changes
   useEffect(() => {
     if (universeId && universeId > 0) {
+      // oxlint-disable-next-line react/react-compiler -- intentional dependency-driven fetch that sets loading state
       void fetchEligibilityCriteria();
     }
   }, [universeId, fetchEligibilityCriteria]);

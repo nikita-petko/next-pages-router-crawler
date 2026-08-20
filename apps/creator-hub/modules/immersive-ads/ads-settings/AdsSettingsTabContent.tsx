@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation, withTranslation } from '@rbx/intl';
+import { useLocalStorage } from '@rbx/react-utilities';
 import {
   Alert,
   Typography,
@@ -16,17 +17,20 @@ import {
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { RewardedAdsIneligibleSettingsBannerKey } from '../constants/adsSettingsTranslationKeys';
+import {
+  RewardedAdsAdTypeInfoBannerKey,
+  RewardedAdsIneligibleSettingsBannerKey,
+} from '../constants/adsSettingsTranslationKeys';
 import { useEligibility } from '../contexts/EligibilityContext';
 import { useUniverseAdsSettings } from '../contexts/UniverseAdsSettingsContext';
 import useImmersiveAdsPageStyles from '../pages/ImmersiveAdsPage.styles';
 import AdServingSettings from './AdServingSettings';
-import AdTypeSettings from './AdTypeSettings';
 import type { AdSettingsFormData } from './interfaces';
 import type { SettingsStatusType } from './SettingsStatusMessage';
 import TranslatedSettingsStatusMessage from './SettingsStatusMessage';
 
 const AD_SERVING_NOT_ENABLED_STATUS_CODE = 400;
+export const AD_TYPE_INFO_BANNER_STORAGE_KEY = 'showRewardedAdsAdTypeInfoBanner';
 
 const AdsSettingsTabContent = () => {
   const router = useRouter();
@@ -39,6 +43,10 @@ const AdsSettingsTabContent = () => {
   } = useImmersiveAdsPageStyles();
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [status, setStatus] = useState<SettingsStatusType>(null);
+  const [showAdTypeInfoBanner, setShowAdTypeInfoBanner] = useLocalStorage(
+    AD_TYPE_INFO_BANNER_STORAGE_KEY,
+    true,
+  );
   const {
     state: {
       isRewardedAdsEnabled,
@@ -122,6 +130,7 @@ const AdsSettingsTabContent = () => {
   ]);
 
   // Update status based on form state
+  /* oxlint-disable react/react-compiler -- status is derived from the form's dirty state; syncing it via effect is intentional */
   useEffect(() => {
     if (hasChanges && status !== 'error' && status !== 'success') {
       setStatus('unsaved');
@@ -129,6 +138,7 @@ const AdsSettingsTabContent = () => {
       setStatus(null);
     }
   }, [hasChanges, status]);
+  /* oxlint-enable react/react-compiler */
 
   const handleCancel = useCallback(() => {
     reset({
@@ -168,17 +178,13 @@ const AdsSettingsTabContent = () => {
 
   const onSubmit = useCallback(
     (data: AdSettingsFormData) => {
-      if (
-        (isRewardedAdsEnabled && !data.isRewardedAdsEnabled) ||
-        (isAppPromoEnabled && !data.isAppPromoEnabled) ||
-        (isClickOutEnabled && !data.isClickOutEnabled)
-      ) {
+      if (isRewardedAdsEnabled && !data.isRewardedAdsEnabled) {
         setIsConfirmModalOpen(true);
       } else {
         void handleConfirmSave(data);
       }
     },
-    [isRewardedAdsEnabled, isAppPromoEnabled, isClickOutEnabled, handleConfirmSave],
+    [isRewardedAdsEnabled, handleConfirmSave],
   );
 
   const handleSaveChangesClick = useCallback(() => {
@@ -189,13 +195,17 @@ const AdsSettingsTabContent = () => {
     setIsConfirmModalOpen(false);
   }, []);
 
+  const handleDismissAdTypeInfoBanner = useCallback(() => {
+    setShowAdTypeInfoBanner(false);
+  }, [setShowAdTypeInfoBanner]);
+
   return (
     <div
       style={{
         padding: 16,
       }}>
       {hasSettingsFetchError && (
-        <Alert severity='error' className='mb-4'>
+        <Alert severity='error' className='margin-bottom-medium'>
           {translate(translationKey('Message.FailedToLoadPage', TranslationNamespace.Error))}
         </Alert>
       )}
@@ -210,6 +220,14 @@ const AdsSettingsTabContent = () => {
           ])}
         </Alert>
       )}
+      {showAdTypeInfoBanner && (
+        <Alert
+          severity='info'
+          className='margin-bottom-medium'
+          onClose={handleDismissAdTypeInfoBanner}>
+          {translate(RewardedAdsAdTypeInfoBannerKey)}
+        </Alert>
+      )}
       <div className={settingsContainer}>
         <Typography variant='h3'>
           {translate(
@@ -221,7 +239,6 @@ const AdsSettingsTabContent = () => {
           disabled={areSettingsDisabled || !servingEnabled}
           servingEnabledToggleDisabled={areSettingsDisabled}
         />
-        <AdTypeSettings control={control} disabled={areSettingsDisabled || !servingEnabled} />
       </div>
       <Divider />
       <div style={{ display: 'flex', justifyContent: 'flex-start', gap: 16, marginTop: 32 }}>
