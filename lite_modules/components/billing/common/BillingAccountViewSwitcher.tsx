@@ -1,11 +1,13 @@
 import { Dropdown, Menu, MenuItem, MenuLabel, MenuSection } from '@rbx/foundation-ui';
 
+import AppTooltip from '@components/common/AppTooltip';
 import { AdCreditBalanceScope } from '@constants/billing';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 
 interface BillingAccountViewSwitcherProps {
   groupName: string;
+  isGroupOptionDisabled?: boolean;
   onAccountViewChange: (accountView: AdCreditBalanceScope) => void;
   personalAccountName: string;
   value: AdCreditBalanceScope;
@@ -13,6 +15,7 @@ interface BillingAccountViewSwitcherProps {
 
 const BillingAccountViewSwitcher = ({
   groupName,
+  isGroupOptionDisabled = false,
   onAccountViewChange,
   personalAccountName,
   value,
@@ -26,7 +29,11 @@ const BillingAccountViewSwitcher = ({
       <Dropdown
         label={translateBilling('Label.SelectAccountView')}
         onValueChange={(selectedValue) => {
-          onAccountViewChange(selectedValue as AdCreditBalanceScope);
+          const selectedAccountView = selectedValue as AdCreditBalanceScope;
+          if (isGroupOptionDisabled && selectedAccountView === AdCreditBalanceScope.Group) {
+            return;
+          }
+          onAccountViewChange(selectedAccountView);
         }}
         placeholder={translateBilling('Label.SelectAccountView')}
         size='Medium'
@@ -37,11 +44,27 @@ const BillingAccountViewSwitcher = ({
               className='text-label-medium content-muted'
               title={translateMisc('Label.Group')}
             />
-            <MenuItem
-              data-testid='accountViewGroupOption'
-              title={groupName || translateBilling('Label.RobloxAdCredit')}
-              value={AdCreditBalanceScope.Group}
-            />
+            {isGroupOptionDisabled ? (
+              <AppTooltip
+                delayDurationMs={0}
+                position='right-center'
+                title={translateMisc('Description.GroupSpendPermissionDenied')}>
+                <span className='block width-full'>
+                  <MenuItem
+                    data-testid='accountViewGroupOption'
+                    disabled
+                    title={groupName || translateBilling('Label.RobloxAdCredit')}
+                    value={AdCreditBalanceScope.Group}
+                  />
+                </span>
+              </AppTooltip>
+            ) : (
+              <MenuItem
+                data-testid='accountViewGroupOption'
+                title={groupName || translateBilling('Label.RobloxAdCredit')}
+                value={AdCreditBalanceScope.Group}
+              />
+            )}
           </MenuSection>
           <MenuSection>
             <MenuLabel

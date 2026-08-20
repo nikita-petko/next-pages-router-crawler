@@ -27,6 +27,7 @@ import {
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
 import { useBillingAccountView } from '@hooks/useBillingAccountView';
+import useGroupSpendPermission from '@hooks/useGroupSpendPermission';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { adAccountCurrentBalance } from '@services/ads/adAccountFinanceService';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
@@ -75,6 +76,8 @@ const PaymentSettings = () => {
   );
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspaces();
   const groupId = getSelectedGroupId(currentWorkspace, isAdAccountAutoCreateEnabled);
+  const { isGroupSpendPermissionDenied, isLoading: groupSpendPermissionLoading } =
+    useGroupSpendPermission(groupId);
   const showAccountViewSwitcher = Boolean(groupId);
   const groupAdCreditState = useAppStore((state: AppStoreType) =>
     groupId ? state.groupScopedAccountStateByGroupId[groupId]?.adCreditState : undefined,
@@ -99,6 +102,7 @@ const PaymentSettings = () => {
   }
 
   const { accountView, changeAccountView, isGroupAccountView } = useBillingAccountView({
+    isGroupAccountViewDisabled: isGroupSpendPermissionDenied,
     router,
     shouldSyncUrl: !isWorkspaceLoading,
     showAccountViewSwitcher,
@@ -192,32 +196,63 @@ const PaymentSettings = () => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (isWorkspaceLoading || !groupId) {
+    if (isWorkspaceLoading || groupSpendPermissionLoading || !groupId) {
+      return;
+    }
+    if (isGroupSpendPermissionDenied) {
       return;
     }
 
     getAutoReloadData(groupId);
-  }, [getAutoReloadData, groupId, isWorkspaceLoading]);
+  }, [
+    getAutoReloadData,
+    groupId,
+    groupSpendPermissionLoading,
+    isGroupSpendPermissionDenied,
+    isWorkspaceLoading,
+  ]);
 
   useEffect(() => {
-    if (isWorkspaceLoading || !groupId) {
+    if (
+      isWorkspaceLoading ||
+      groupSpendPermissionLoading ||
+      isGroupSpendPermissionDenied ||
+      !groupId
+    ) {
       return;
     }
 
     getAdvertiser(false, groupId).catch((error) => {
       CaptureException(error as Error);
     });
-  }, [getAdvertiser, groupId, isWorkspaceLoading]);
+  }, [
+    getAdvertiser,
+    groupId,
+    groupSpendPermissionLoading,
+    isGroupSpendPermissionDenied,
+    isWorkspaceLoading,
+  ]);
 
   useEffect(() => {
-    if (isWorkspaceLoading || !groupId) {
+    if (
+      isWorkspaceLoading ||
+      groupSpendPermissionLoading ||
+      isGroupSpendPermissionDenied ||
+      !groupId
+    ) {
       return;
     }
 
     getAdCredit(groupId).catch((error) => {
       CaptureException(error as Error);
     });
-  }, [getAdCredit, groupId, isWorkspaceLoading]);
+  }, [
+    getAdCredit,
+    groupId,
+    groupSpendPermissionLoading,
+    isGroupSpendPermissionDenied,
+    isWorkspaceLoading,
+  ]);
 
   // Display banners based on account status
   let unifiedPaymentStatusToast: ReactNode;
@@ -292,6 +327,7 @@ const PaymentSettings = () => {
           isLoading={isGroupAdCreditLoading}
           onReloadBalanceClick={handleGroupReloadBalanceClick}
           reloadBalanceScope={AdCreditBalanceScope.Group}
+          workspace={currentWorkspace}
         />
       </BillingPaymentMethodSection>
     );
@@ -316,6 +352,7 @@ const PaymentSettings = () => {
             adCreditBalance={adCreditBalance}
             heading={showAccountViewSwitcher ? translate('Heading.AvailableBalance') : undefined}
             reloadBalanceScope={AdCreditBalanceScope.Personal}
+            workspace={currentWorkspace}
           />
         </BillingPaymentMethodSection>
       );
@@ -332,7 +369,7 @@ const PaymentSettings = () => {
     );
   }
 
-  if (loadingBalance || loadingPaymentProfile) {
+  if (loadingBalance || loadingPaymentProfile || groupSpendPermissionLoading) {
     return <CenteredCircularProgress />;
   }
 
@@ -350,6 +387,7 @@ const PaymentSettings = () => {
       {showAccountViewSwitcher ? (
         <BillingAccountViewSwitcher
           groupName={currentWorkspace?.creatorName || translate('Label.RobloxAdCredit')}
+          isGroupOptionDisabled={isGroupSpendPermissionDenied}
           onAccountViewChange={changeAccountView}
           personalAccountName={
             currentUser?.name || currentUser?.displayName || translate('Heading.PersonalFunds')

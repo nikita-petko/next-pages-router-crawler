@@ -50,7 +50,7 @@ const GroupAdAccountSetupDialog = ({
       [FormFields.LAST_NAME]: '',
       [FormFields.NICKNAME]: groupName,
       [FormFields.TAX_ID]: '',
-      [FormFields.TERMS_CHECKBOX]: false,
+      [FormFields.TERMS_CHECKBOX]: true,
       [FormFields.TIME_ZONE]: localizedDefaultTimeZone,
       [FormFields.TYPE]: OrganizationType.ORGANIZATION_TYPE_INDIVIDUAL,
     },
@@ -79,7 +79,7 @@ const GroupAdAccountSetupDialog = ({
                 time_zone: data[FormFields.TIME_ZONE].value,
                 type: OrganizationType.ORGANIZATION_TYPE_INDIVIDUAL,
               },
-              signed_terms_of_service: data[FormFields.TERMS_CHECKBOX],
+              signed_terms_of_service: true,
             },
             { groupId },
           );
@@ -138,6 +138,7 @@ const GroupAdAccountSetupDialog = ({
             localizedTimezones={localizedTimezones}
             onCreateAccount={onCreateAccount}
             shouldRenderSubmitButton={false}
+            shouldRenderTermsCheckbox={false}
           />
         </div>
       }

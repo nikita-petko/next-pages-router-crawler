@@ -82,6 +82,18 @@ const noValidPaymentMethodTooltip = 'Tooltip.ValidPaymentRequired';
 const invalidBusinessNameTooltip = 'Tooltip.InvalidBusinessName';
 const paymentFailureTooltip = 'Tooltip.UpdatePaymentMethod';
 
+const resolveMetadataForWorkspace = (
+  baseMetadata: GetAdsMetadataResponseType,
+  isAdAccountAutoCreateEnabled?: boolean,
+): GetAdsMetadataResponseType =>
+  applyMetadataBooleanOverrides({
+    ...baseMetadata,
+    // Preserve the user result during workspace startup, then replace it with
+    // the final workspace-aware /v1/metadata response.
+    isAdAccountAutoCreateEnabled:
+      isAdAccountAutoCreateEnabled ?? baseMetadata.isAdAccountAutoCreateEnabled,
+  });
+
 const DEFAULT_ESSENTIAL_APP_DATA_FETCH_FUNCTION_NAMES_ORDERED: string[] = [
   // ORDER MATTERS HERE
   'getAccountMetadata',
@@ -338,7 +350,10 @@ export const useAppStore = create<AppStoreType>()(
         return;
       }
 
-      const resolvedMetadata = applyMetadataBooleanOverrides(baseMetadata);
+      const resolvedMetadata = resolveMetadataForWorkspace(
+        baseMetadata,
+        get().workspaceAdAccountAutoCreateEnabled,
+      );
 
       set((draft) => {
         draft.appMetadataState.data = resolvedMetadata;
@@ -436,7 +451,10 @@ export const useAppStore = create<AppStoreType>()(
 
             if (metaDataResponse) {
               const baseMetadata = mergeMetadataDefaultsWithResponse(metaDataResponse);
-              const resolvedMetadata = applyMetadataBooleanOverrides(baseMetadata);
+              const resolvedMetadata = resolveMetadataForWorkspace(
+                baseMetadata,
+                get().workspaceAdAccountAutoCreateEnabled,
+              );
 
               draft.appMetadataBaseData = baseMetadata;
               draft.appMetadataState.data = resolvedMetadata;
@@ -1192,6 +1210,20 @@ export const useAppStore = create<AppStoreType>()(
         draft.appData.selectedCampaignsLoading = newSelectedCampaignsLoading;
       });
     },
+    setWorkspaceAdAccountAutoCreateEnabled: (isEnabled?: boolean) => {
+      const baseMetadata = get().appMetadataBaseData ?? get().appMetadataState.data;
+      const resolvedMetadata = baseMetadata
+        ? resolveMetadataForWorkspace(baseMetadata, isEnabled)
+        : undefined;
+
+      set((draft) => {
+        draft.workspaceAdAccountAutoCreateEnabled = isEnabled;
+        if (resolvedMetadata) {
+          draft.appMetadataState.data = resolvedMetadata;
+          draft.appData = applyMetadataToAppData(get().appData, resolvedMetadata);
+        }
+      });
+    },
     shouldUseWorkspaceUniverseFiltering: () => {
       const isAdAccountAutoCreateEnabled =
         get().appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false;
@@ -1207,5 +1239,6 @@ export const useAppStore = create<AppStoreType>()(
     userHasValidDisplayNameState:
       GetEmptyRequestState<Awaited<ReturnType<typeof getValidateDisplayName>>>(),
     verifiedEmailState: GetEmptyRequestState<Awaited<V1EmailGetResponse>>(),
+    workspaceAdAccountAutoCreateEnabled: undefined,
   })),
 );

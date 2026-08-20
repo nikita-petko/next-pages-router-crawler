@@ -97,8 +97,16 @@ export enum PURCHASE_RESPONSE_CODE_ENUM {
 }
 
 export interface AutoReloadData {
+  campaigns?: AutoReloadCampaign[];
   num_auto_reload_campaigns: number;
   total_daily_reload_amount: number;
+}
+
+export interface AutoReloadCampaign {
+  daily_reload_amount: number;
+  id: string;
+  name: string;
+  universe_id?: number;
 }
 
 /**

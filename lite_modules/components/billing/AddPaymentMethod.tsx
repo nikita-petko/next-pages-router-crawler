@@ -20,6 +20,7 @@ import {
 } from '@constants/billing';
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
+import useGroupSpendPermission from '@hooks/useGroupSpendPermission';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { getGroupRobuxBalance, getRobuxBalance } from '@services/economy/robuxService';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
@@ -33,6 +34,7 @@ const AddPaymentMethodTabsNavigation = ({
   groupName,
   groupRobuxBalance,
   initialBalanceScope,
+  isGroupSpendPermissionDenied,
   robuxBalance,
   showGroupBalanceOption,
 }: BuyAdCreditProps) => {
@@ -96,6 +98,7 @@ const AddPaymentMethodTabsNavigation = ({
               groupName={groupName}
               groupRobuxBalance={groupRobuxBalance}
               initialBalanceScope={initialBalanceScope}
+              isGroupSpendPermissionDenied={isGroupSpendPermissionDenied}
               robuxBalance={robuxBalance}
               showGroupBalanceOption={showGroupBalanceOption}
             />
@@ -107,6 +110,7 @@ const AddPaymentMethodTabsNavigation = ({
               groupName={groupName}
               groupRobuxBalance={groupRobuxBalance}
               initialBalanceScope={initialBalanceScope}
+              isGroupSpendPermissionDenied={isGroupSpendPermissionDenied}
               robuxBalance={robuxBalance}
               showGroupBalanceOption={showGroupBalanceOption}
             />
@@ -139,6 +143,8 @@ const AddPaymentMethod = () => {
     (state: AppStoreType) => state.appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false,
   );
   const groupId = getSelectedGroupId(currentWorkspace, isAdAccountAutoCreateEnabled);
+  const { isGroupSpendPermissionDenied, isLoading: groupSpendPermissionLoading } =
+    useGroupSpendPermission(groupId);
 
   const getAdCredit = useAppStore((state: AppStoreType) => state.getAdCredit);
 
@@ -174,6 +180,14 @@ const AddPaymentMethod = () => {
       setGroupBalanceLoading(false);
       return;
     }
+    if (isGroupSpendPermissionDenied) {
+      setGroupBalanceError(false);
+      setGroupAdCreditBalance(0);
+      setGroupRobuxBalance(0);
+      setGroupBalanceLoaded(true);
+      setGroupBalanceLoading(false);
+      return;
+    }
 
     setGroupBalanceError(false);
     setGroupBalanceLoaded(false);
@@ -201,7 +215,7 @@ const AddPaymentMethod = () => {
 
     setGroupBalanceLoaded(true);
     setGroupBalanceLoading(false);
-  }, [getAdCredit, groupId]);
+  }, [getAdCredit, groupId, isGroupSpendPermissionDenied]);
 
   // On page load, retrieve balance, payment activity, and any account issues that require a banner
   useEffect(() => {
@@ -223,17 +237,18 @@ const AddPaymentMethod = () => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (isWorkspaceLoading) {
+    if (isWorkspaceLoading || groupSpendPermissionLoading) {
       return;
     }
 
     fetchGroupBalances();
-  }, [fetchGroupBalances, isWorkspaceLoading]);
+  }, [fetchGroupBalances, groupSpendPermissionLoading, isWorkspaceLoading]);
 
   if (
     adCreditBalanceLoading ||
     robuxBalanceLoading ||
     isWorkspaceLoading ||
+    groupSpendPermissionLoading ||
     groupBalanceLoading ||
     (Boolean(groupId) && !groupBalanceLoaded)
   ) {
@@ -241,7 +256,8 @@ const AddPaymentMethod = () => {
   }
 
   const initialBalanceScope = parseAdCreditBalanceScopeFromQuery(router.query.balanceScope);
-  const showGroupBalanceOption = Boolean(groupId) && !groupBalanceError;
+  const showGroupBalanceOption =
+    Boolean(groupId) && (!groupBalanceError || isGroupSpendPermissionDenied);
 
   return (
     <div data-testid='addPaymentMethodContainer'>
@@ -252,6 +268,7 @@ const AddPaymentMethod = () => {
         groupName={currentWorkspace.creatorName}
         groupRobuxBalance={groupRobuxBalance}
         initialBalanceScope={initialBalanceScope}
+        isGroupSpendPermissionDenied={isGroupSpendPermissionDenied}
         robuxBalance={robuxBalance}
         showGroupBalanceOption={showGroupBalanceOption}
       />

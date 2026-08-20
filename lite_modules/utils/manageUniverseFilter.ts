@@ -51,6 +51,9 @@ export const mapAdvertisedUniverseToUniverseShape = (
 ): UniverseShapeType => ({
   privacy_type: PUBLIC_UNIVERSE_PRIVACY_TYPE,
   root_place_id: 0,
+  ...(universe.suggested_creatives !== undefined && {
+    suggested_creatives: universe.suggested_creatives,
+  }),
   universe_id: universe.universe_id,
   universe_name: universe.universe_name,
 });

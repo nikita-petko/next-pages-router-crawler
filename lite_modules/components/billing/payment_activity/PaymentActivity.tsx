@@ -17,6 +17,7 @@ import {
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
 import { useBillingAccountView } from '@hooks/useBillingAccountView';
+import useGroupSpendPermission from '@hooks/useGroupSpendPermission';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { adAccountCurrentBalance } from '@services/ads/adAccountFinanceService';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
@@ -33,6 +34,8 @@ const PaymentActivity = () => {
     (state: AppStoreType) => state.appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false,
   );
   const groupId = getSelectedGroupId(currentWorkspace, isAdAccountAutoCreateEnabled);
+  const { isGroupSpendPermissionDenied, isLoading: groupSpendPermissionLoading } =
+    useGroupSpendPermission(groupId);
   const showAccountViewSwitcher = Boolean(groupId);
 
   const changeTabCb = useCallback(
@@ -137,33 +140,60 @@ const PaymentActivity = () => {
   }, [resolvePaymentProfile, resolvePaymentStatus]);
 
   useEffect(() => {
-    if (isWorkspaceLoading || !groupId) {
+    if (
+      isWorkspaceLoading ||
+      groupSpendPermissionLoading ||
+      isGroupSpendPermissionDenied ||
+      !groupId
+    ) {
       return;
     }
 
     getAdCredit(groupId).catch((error) => {
       CaptureException(error as Error);
     });
-  }, [getAdCredit, groupId, isWorkspaceLoading]);
+  }, [
+    getAdCredit,
+    groupId,
+    groupSpendPermissionLoading,
+    isGroupSpendPermissionDenied,
+    isWorkspaceLoading,
+  ]);
 
   useEffect(() => {
-    if (isWorkspaceLoading || !groupId) {
+    if (
+      isWorkspaceLoading ||
+      groupSpendPermissionLoading ||
+      isGroupSpendPermissionDenied ||
+      !groupId
+    ) {
       return;
     }
 
     getAdvertiser(false, groupId).catch((error) => {
       CaptureException(error as Error);
     });
-  }, [getAdvertiser, groupId, isWorkspaceLoading]);
+  }, [
+    getAdvertiser,
+    groupId,
+    groupSpendPermissionLoading,
+    isGroupSpendPermissionDenied,
+    isWorkspaceLoading,
+  ]);
 
   const requestedTab = parsePaymentActivityTab(router.query.tab);
   const isLegacyGroupTab =
     requestedTab === PaymentActivityTabType.GROUP_AD_CREDIT_PAYMENT_ACTIVITY_TAB;
 
   const { accountView, changeAccountView, isGroupAccountView } = useBillingAccountView({
+    isGroupAccountViewDisabled: isGroupSpendPermissionDenied,
     preferGroupFromLegacyTab: isLegacyGroupTab,
     router,
-    shouldSyncUrl: !isWorkspaceLoading && !loadingPaymentProfile && !isLoadingPaymentStatus,
+    shouldSyncUrl:
+      !isWorkspaceLoading &&
+      !groupSpendPermissionLoading &&
+      !loadingPaymentProfile &&
+      !isLoadingPaymentStatus,
     showAccountViewSwitcher,
   });
 
@@ -204,6 +234,7 @@ const PaymentActivity = () => {
       loadingPaymentProfile ||
       isLoadingPaymentStatus ||
       isWorkspaceLoading ||
+      groupSpendPermissionLoading ||
       visibleTabValues.length === 0
     ) {
       return;
@@ -227,6 +258,7 @@ const PaymentActivity = () => {
     isLegacyGroupTab,
     isLoadingPaymentStatus,
     isWorkspaceLoading,
+    groupSpendPermissionLoading,
     loadingPaymentProfile,
     router,
     selectedTab,
@@ -278,7 +310,7 @@ const PaymentActivity = () => {
     router.push(Routes.ADD_PAYMENT);
   };
 
-  if (loadingPaymentProfile || isLoadingPaymentStatus) {
+  if (loadingPaymentProfile || isLoadingPaymentStatus || groupSpendPermissionLoading) {
     return <CustomCircularProgress />;
   }
 
@@ -299,6 +331,7 @@ const PaymentActivity = () => {
       {showAccountViewSwitcher ? (
         <BillingAccountViewSwitcher
           groupName={currentWorkspace?.creatorName || translate('Label.RobloxAdCredit')}
+          isGroupOptionDisabled={isGroupSpendPermissionDenied}
           onAccountViewChange={changeAccountView}
           personalAccountName={
             currentUser?.name || currentUser?.displayName || translate('Heading.PersonalFunds')

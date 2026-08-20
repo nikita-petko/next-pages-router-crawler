@@ -518,6 +518,7 @@ const AdIntegrationCampaignDetailsForm = ({
                 control={control}
                 disabled={campaignInProgress || disableEditing}
                 errorMessage={errors.experienceIds?.message}
+                isCampaignInProgress={campaignInProgress}
                 isMultiExperienceEnabled={isMultiExperienceEnabled}
                 mode={mode}
                 universes={universes}

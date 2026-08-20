@@ -11,6 +11,7 @@ import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { disableAutoReload } from '@services/ads/disableAutoReloadService';
 import { usePaymentSettingsStore } from '@stores/paymentSettingsStoreProvider';
 import { useToastStore } from '@stores/toastStoreProvider';
+import type { CreatorWorkspace } from '@type/groupScopedAccount';
 import {
   MicroUsdToUsdStringRoundedDown,
   MicroUsdToUsdStringRoundedUpNoDecimals,
@@ -26,6 +27,7 @@ interface AdCreditBalanceProps {
   reloadBalanceScope?: AdCreditBalanceScope;
   showAutoReloadSection?: boolean;
   showReloadButton?: boolean;
+  workspace?: CreatorWorkspace;
 }
 
 const AdCreditBalance = ({
@@ -38,6 +40,7 @@ const AdCreditBalance = ({
   reloadBalanceScope,
   showAutoReloadSection = true,
   showReloadButton = true,
+  workspace,
 }: AdCreditBalanceProps) => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Billing);
 
@@ -78,14 +81,18 @@ const AdCreditBalance = ({
     isAutoReloadLoading || isAutoReloadError || !hasAutoReloadCampaigns;
 
   const handleDisableAllClicked = () => {
-    openDisableAutoReloadConfirmDialog(async () => {
-      try {
-        await disableAutoReload(groupId);
-        getAutoReloadData(groupId);
-        setShowDisableAllAutoReloadSuccessful(true);
-      } catch (_error) {
-        setShowDisableAllAutoReloadError(true);
-      }
+    openDisableAutoReloadConfirmDialog({
+      autoReloadCampaigns: autoReloadData?.campaigns ?? [],
+      onConfirm: async () => {
+        try {
+          await disableAutoReload(groupId);
+          getAutoReloadData(groupId);
+          setShowDisableAllAutoReloadSuccessful(true);
+        } catch (_error) {
+          setShowDisableAllAutoReloadError(true);
+        }
+      },
+      workspace,
     });
   };
 
@@ -187,7 +194,7 @@ const AdCreditBalance = ({
               </span>
               <AppTooltip
                 position='bottom-center'
-                title={translate('Description.AutoReloadBalanceTooltip')}>
+                title={translate('Description.AutoReloadBalanceScopeTooltip')}>
                 <Icon
                   className='content-default'
                   data-testid='balanceChargeReminderTooltip'

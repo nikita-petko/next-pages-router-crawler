@@ -7,36 +7,48 @@ import DateFilteringTimePeriod from '@constants/dateFilteringTimePeriod';
 import ReportingViewType from '@constants/reportingViewType';
 import { getDateFilteredCampaigns } from '@services/ads/getEntitiesService';
 import { Campaign } from '@type/campaign';
-import { AutoReloadData } from '@type/payment';
+import { AutoReloadCampaign, AutoReloadData } from '@type/payment';
 import { NUMBER_OF_MS_IN_A_DAY } from '@utils/date';
 import { CaptureException } from '@utils/error';
 import { GetInitialRequestState, RequestStateType } from '@utils/zustandUtils';
 
-const computeAutoReloadData = (campaigns: Campaign[]): AutoReloadData =>
-  campaigns.reduce(
-    (acc: AutoReloadData, campaign: Campaign) => {
-      if (
-        campaign.is_auto_reload_ad_credit_enabled &&
-        campaign.status === ServerCampaignStatusType.ENABLED &&
-        (campaign.end_timestamp_ms === 0 || campaign.end_timestamp_ms > Date.now())
-      ) {
-        let effectiveDailyBudget = 0;
-        if (campaign.budget.daily_budget_micro_usd) {
-          effectiveDailyBudget = campaign.budget.daily_budget_micro_usd;
-        } else if (campaign.budget.lifetime_budget_micro_usd) {
-          const durationInDays =
-            (campaign.end_timestamp_ms - campaign.start_timestamp_ms) / NUMBER_OF_MS_IN_A_DAY;
-          effectiveDailyBudget = campaign.budget.lifetime_budget_micro_usd / durationInDays;
-        }
-        return {
-          num_auto_reload_campaigns: acc.num_auto_reload_campaigns + 1,
-          total_daily_reload_amount: acc.total_daily_reload_amount + effectiveDailyBudget,
-        };
-      }
-      return acc;
-    },
-    { num_auto_reload_campaigns: 0, total_daily_reload_amount: 0 },
-  );
+export const computeAutoReloadData = (campaigns: Campaign[]): AutoReloadData => {
+  const autoReloadCampaigns: AutoReloadCampaign[] = [];
+  let totalDailyReloadAmount = 0;
+
+  campaigns.forEach((campaign: Campaign) => {
+    if (
+      !campaign.is_auto_reload_ad_credit_enabled ||
+      campaign.status !== ServerCampaignStatusType.ENABLED ||
+      (campaign.end_timestamp_ms !== 0 && campaign.end_timestamp_ms <= Date.now())
+    ) {
+      return;
+    }
+
+    let effectiveDailyBudget = 0;
+    if (campaign.budget.daily_budget_micro_usd) {
+      effectiveDailyBudget = campaign.budget.daily_budget_micro_usd;
+    } else if (campaign.budget.lifetime_budget_micro_usd) {
+      const durationInDays =
+        (campaign.end_timestamp_ms - campaign.start_timestamp_ms) / NUMBER_OF_MS_IN_A_DAY;
+      effectiveDailyBudget = campaign.budget.lifetime_budget_micro_usd / durationInDays;
+    }
+
+    autoReloadCampaigns.push({
+      daily_reload_amount: effectiveDailyBudget,
+      id: campaign.id,
+      name: campaign.name,
+      universe_id: campaign.universe_id,
+    });
+    totalDailyReloadAmount += effectiveDailyBudget;
+  });
+
+  return {
+    campaigns: autoReloadCampaigns,
+    num_auto_reload_campaigns: autoReloadCampaigns.length,
+    total_daily_reload_amount: totalDailyReloadAmount,
+  };
+};
 
 interface PaymentSettingsStoreStateType {
   autoReloadData: RequestStateType<AutoReloadData>;
@@ -75,6 +87,7 @@ export const usePaymentSettingsStore = create<PaymentSettingsStoreType>()(
 
         const fetchedCampaigns = await getDateFilteredCampaigns({
           groupId,
+          includePerformance: false,
           reportingView: ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT,
           requestTimestamp,
           timePeriod: DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_TODAY,
@@ -87,6 +100,7 @@ export const usePaymentSettingsStore = create<PaymentSettingsStoreType>()(
         while (nextSerialCursor) {
           const nextFetchedCampaigns = await getDateFilteredCampaigns({
             groupId,
+            includePerformance: false,
             paginationOptions: { cursor: nextSerialCursor },
             reportingView: ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT,
             requestTimestamp,

@@ -1,0 +1,18 @@
+__turbopack_context__.v({
+  "getStartedButton": "LandingPage2026-module__jnnxsa__getStartedButton",
+  "heroContent": "LandingPage2026-module__jnnxsa__heroContent",
+  "heroImage": "LandingPage2026-module__jnnxsa__heroImage",
+  "heroOverlay": "LandingPage2026-module__jnnxsa__heroOverlay",
+  "heroSection": "LandingPage2026-module__jnnxsa__heroSection",
+  "heroTitle": "LandingPage2026-module__jnnxsa__heroTitle",
+  "learnMoreButton": "LandingPage2026-module__jnnxsa__learnMoreButton",
+  "resourceCardGrid": "LandingPage2026-module__jnnxsa__resourceCardGrid",
+  "resourceHeading": "LandingPage2026-module__jnnxsa__resourceHeading",
+  "resourceSection": "LandingPage2026-module__jnnxsa__resourceSection",
+  "resourceTitle": "LandingPage2026-module__jnnxsa__resourceTitle",
+  "verifyEmailLink": "LandingPage2026-module__jnnxsa__verifyEmailLink",
+  "warningBanner": "LandingPage2026-module__jnnxsa__warningBanner",
+  "warningContent": "LandingPage2026-module__jnnxsa__warningContent",
+  "warningIcon": "LandingPage2026-module__jnnxsa__warningIcon",
+  "warningText": "LandingPage2026-module__jnnxsa__warningText",
+});

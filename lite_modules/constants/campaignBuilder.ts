@@ -36,6 +36,7 @@ export enum FormField {
   START_TIME = 'startTime',
   SUBTITLE = 'subtitle',
   THUMBNAILS = 'thumbnails',
+  VIDEO_CONFIG_ENABLED = 'videoConfigEnabled',
   VIDEOS = 'videos',
 }
 

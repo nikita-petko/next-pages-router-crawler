@@ -2,6 +2,7 @@ import { Autocomplete, AutocompleteOption } from '@rbx/foundation-ui';
 import { useEffect, useState } from 'react';
 import { Control, Controller, useWatch } from 'react-hook-form';
 
+import styles from '@components/adIntegrations/campaignDetails/AdIntegrationExperienceSection.module.css';
 import useCampaignBuilderCommonStyles from '@components/campaignBuilder/common/CampaignBuilderCommon.styles';
 import UniverseFilterAvatar from '@components/common/UniverseFilterAvatar';
 import { AdIntegrationFormField, MaxUniversesPerCampaign } from '@constants/adIntegrations';
@@ -21,6 +22,7 @@ interface AdIntegrationExperienceSectionProps {
   control: Control<AdIntegrationCampaignDetailsFormValues>;
   disabled?: boolean;
   errorMessage?: string;
+  isCampaignInProgress: boolean;
   isMultiExperienceEnabled: boolean;
   mode: AdIntegrationFormMode;
   universes: UniverseShapeType[];
@@ -30,6 +32,7 @@ const AdIntegrationExperienceSection = ({
   control,
   disabled = false,
   errorMessage,
+  isCampaignInProgress,
   isMultiExperienceEnabled,
   mode,
   universes,
@@ -112,6 +115,9 @@ const AdIntegrationExperienceSection = ({
       )
     : universes;
   const hasReachedSelectionLimit = selectedExperienceIds.length >= MaxUniversesPerCampaign;
+  const multiExperienceHelperText = isCampaignInProgress
+    ? translateCampaign('Description.GamesCannotBeAddedAfterCampaignStarts')
+    : translateAccount('Description.ChooseUpTo20Games');
   // Foundation reads multi-select chip text from the `title` of the options it is
   // currently rendering, so a selected experience the filter leaves out is rendered
   // hidden purely to supply its label.
@@ -128,13 +134,11 @@ const AdIntegrationExperienceSection = ({
         render={({ field }) =>
           isMultiExperienceEnabled ? (
             <Autocomplete
-              className='width-full'
+              className={`width-full ${styles.preserveSelectedGameContrast}`}
               data-testid='ad-integration-multi-experience-autocomplete'
               error={errorMessage}
               hasError={Boolean(errorMessage)}
-              helperText={
-                errorMessage ? undefined : translateAccount('Description.ChooseUpTo20Games')
-              }
+              helperText={errorMessage ? undefined : multiExperienceHelperText}
               inputValue={multiInputValue}
               isDisabled={disabled || !hasEligibleExperiences}
               label={translateCreativeLibrary('Label.Game')}

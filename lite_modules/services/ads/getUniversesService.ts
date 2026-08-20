@@ -65,8 +65,23 @@ const intersectOwnedUniverses = async (
     creatorTargetId: params.creatorTargetId,
     creatorType: params.creatorType,
   });
-  const eligibleUniverseIds = new Set(universes.map((universe) => universe.universe_id));
-  return ownedUniverses.filter((universe) => eligibleUniverseIds.has(universe.universe_id));
+  const eligibleUniverseById = new Map(
+    universes.map((universe) => [universe.universe_id, universe]),
+  );
+  return ownedUniverses.flatMap((universe) => {
+    const eligibleUniverse = eligibleUniverseById.get(universe.universe_id);
+    if (eligibleUniverse === undefined) {
+      return [];
+    }
+    return [
+      {
+        ...universe,
+        ...(eligibleUniverse.suggested_creatives !== undefined && {
+          suggested_creatives: eligibleUniverse.suggested_creatives,
+        }),
+      },
+    ];
+  });
 };
 
 export const listAdvertisedUniverses = async () => {

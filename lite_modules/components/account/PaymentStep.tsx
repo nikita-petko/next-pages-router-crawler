@@ -22,6 +22,7 @@ interface PaymentStepProps {
   initialBalanceScope?: AdCreditBalanceScope;
   isAdCreditPurchaseOnly?: boolean;
   isDrawer?: boolean;
+  isGroupSpendPermissionDenied?: boolean;
   isUnlocked: boolean;
   onCancel?: () => void;
   onComplete?: (completion: PaymentSetupCompletion) => void;
@@ -43,6 +44,7 @@ const PaymentStep = ({
   initialBalanceScope,
   isAdCreditPurchaseOnly = false,
   isDrawer = false,
+  isGroupSpendPermissionDenied = false,
   isUnlocked,
   onCancel,
   onComplete,
@@ -59,6 +61,9 @@ const PaymentStep = ({
     (state: AppStoreType) =>
       state.appMetadataState?.data?.isWatermarkedRobuxConversionEnabled ?? false,
   );
+  const showBalanceScopeSelector =
+    !isAdCreditPurchaseOnly ||
+    (initialBalanceScope === AdCreditBalanceScope.Group && isGroupSpendPermissionDenied);
   const {
     classes: {
       buyAdCreditFormContainer,
@@ -122,10 +127,11 @@ const PaymentStep = ({
               groupName={groupName}
               groupRobuxBalance={groupRobuxBalance}
               initialBalanceScope={initialBalanceScope}
+              isGroupSpendPermissionDenied={isGroupSpendPermissionDenied}
               onCancel={onCancel}
               onComplete={onComplete}
               robuxBalance={robuxBalance}
-              showBalanceScopeSelector={!isAdCreditPurchaseOnly}
+              showBalanceScopeSelector={showBalanceScopeSelector}
               showGroupBalanceOption={showGroupBalanceOption}
             />
           ) : (
@@ -139,10 +145,11 @@ const PaymentStep = ({
               groupName={groupName}
               groupRobuxBalance={groupRobuxBalance}
               initialBalanceScope={initialBalanceScope}
+              isGroupSpendPermissionDenied={isGroupSpendPermissionDenied}
               onCancel={onCancel}
               onComplete={onComplete}
               robuxBalance={robuxBalance}
-              showBalanceScopeSelector={!isAdCreditPurchaseOnly}
+              showBalanceScopeSelector={showBalanceScopeSelector}
               showGroupBalanceOption={showGroupBalanceOption}
             />
           )}

@@ -1,14 +1,14 @@
 import { Button, Icon, Link } from '@rbx/foundation-ui';
 import { memo } from 'react';
 
-import styles from '@components/onboarding/AutoCreateLandingPage.module.css';
+import styles from '@components/onboarding/LandingPage2026.module.css';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { GetSitetestBaseUrl } from '@utils/url';
 
 const ADS_MANAGER_DOCS_URL = 'https://create.roblox.com/docs/production/promotion/ads-manager';
 
-interface AutoCreateLandingPageProps {
+interface LandingPage2026Props {
   getStartedDisabled: boolean;
   hasVerifiedEmail: boolean;
   onGetStartedClick: () => void;
@@ -32,8 +32,8 @@ const resourceData = [
   },
 ] as const;
 
-const AutoCreateLandingPage = memo(
-  ({ getStartedDisabled, hasVerifiedEmail, onGetStartedClick }: AutoCreateLandingPageProps) => {
+const LandingPage2026 = memo(
+  ({ getStartedDisabled, hasVerifiedEmail, onGetStartedClick }: LandingPage2026Props) => {
     const { translate: translateAccount } = useNamespacedTranslation(TranslationNamespace.Account);
     const { translate: translateLanding } = useNamespacedTranslation(TranslationNamespace.Landing);
     const { translate: translateNavigation } = useNamespacedTranslation(
@@ -111,7 +111,7 @@ const AutoCreateLandingPage = memo(
                 <h3 className={`content-emphasis ${styles.resourceTitle}`}>
                   {translateLanding(resource.titleKey)}
                 </h3>
-                <p className={`grow content-muted ${styles.resourceBody}`}>
+                <p className='grow text-body-medium content-muted'>
                   {translateLanding(resource.bodyKey)}
                 </p>
                 <Button
@@ -133,4 +133,4 @@ const AutoCreateLandingPage = memo(
   },
 );
 
-export default AutoCreateLandingPage;
+export default LandingPage2026;

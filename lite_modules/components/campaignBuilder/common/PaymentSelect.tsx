@@ -34,6 +34,7 @@ import {
 } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
+import useGroupSpendPermission from '@hooks/useGroupSpendPermission';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
@@ -50,6 +51,7 @@ interface ZodFormIssue {
 const ADD_CREDIT_CARD_OPTION_VALUE = 'add-credit-card';
 
 interface PaymentTypeSelectOption {
+  disabled?: boolean;
   /** Optional accessory rendered before the title inside the open menu only. */
   leading?: ReactNode;
   shouldShow: boolean;
@@ -61,6 +63,7 @@ interface PaymentTypeSelectOption {
 const PaymentSelect = () => {
   const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const { translate: translateBilling } = useNamespacedTranslation(TranslationNamespace.Billing);
+  const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
   const { currentWorkspace } = useWorkspaces();
   const { control, getValues, setValue } = useFormContext<FormType>();
   const isAutoReloadEnabled = useWatch<FormType, typeof FormField.IS_AUTO_RELOAD_ENABLED>({
@@ -118,6 +121,8 @@ const PaymentSelect = () => {
     (state) => state.appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false,
   );
   const selectedGroupId = getSelectedGroupId(currentWorkspace, isAdAccountAutoCreateEnabled);
+  const { isGroupSpendPermissionDenied, isLoading: groupSpendPermissionLoading } =
+    useGroupSpendPermission(selectedGroupId);
   const groupAdvertiserState = useAppStore((state) =>
     selectedGroupId
       ? state.groupScopedAccountStateByGroupId[selectedGroupId]?.advertiserState
@@ -132,12 +137,18 @@ const PaymentSelect = () => {
   const shouldShowGroupAdCredit = Boolean(selectedGroupId);
   const adCreditIsLoading = useAppStore((state) => state.adCreditState.isLoading);
   const groupAdCreditIsLoading = Boolean(
-    selectedGroupId && groupAdAccountId && (groupAdCreditState?.isLoading ?? true),
+    selectedGroupId &&
+    !isGroupSpendPermissionDenied &&
+    groupAdAccountId &&
+    (groupAdCreditState?.isLoading ?? true),
   );
   const paymentProfilesIsLoading = usePaymentStore((state) => state.paymentProfiles.isLoading);
   const adCreditIsError = useAppStore((state) => state.adCreditState.isError);
   const groupAdCreditIsError = Boolean(
-    selectedGroupId && groupAdAccountId && groupAdCreditState?.isError,
+    selectedGroupId &&
+    !isGroupSpendPermissionDenied &&
+    groupAdAccountId &&
+    groupAdCreditState?.isError,
   );
   const paymentProfilesIsError = usePaymentStore((state) => state.paymentProfiles.isError);
   const rawGroupAdCreditBalance = groupAdCreditState?.data?.ad_credit_balance_in_micro || 0;
@@ -152,14 +163,14 @@ const PaymentSelect = () => {
   });
 
   useEffect(() => {
-    if (!selectedGroupId) {
+    if (!selectedGroupId || isGroupSpendPermissionDenied) {
       return;
     }
 
     Promise.all([getAdvertiser(false, selectedGroupId), getAdCredit(selectedGroupId)]).catch(
       () => undefined,
     );
-  }, [getAdCredit, getAdvertiser, selectedGroupId]);
+  }, [getAdCredit, getAdvertiser, isGroupSpendPermissionDenied, selectedGroupId]);
 
   useEffect(() => {
     if (!shouldShowInvoice && creditCardAdded && shouldShowCreditCard) {
@@ -171,6 +182,7 @@ const PaymentSelect = () => {
   useEffect(() => {
     if (
       shouldShowGroupAdCredit &&
+      !isGroupSpendPermissionDenied &&
       groupAdAccountId &&
       !shouldShowInvoice &&
       !editMode &&
@@ -180,7 +192,15 @@ const PaymentSelect = () => {
         shouldValidate: true,
       });
     }
-  }, [shouldShowGroupAdCredit, groupAdAccountId, shouldShowInvoice, editMode, setValue, getValues]);
+  }, [
+    shouldShowGroupAdCredit,
+    isGroupSpendPermissionDenied,
+    groupAdAccountId,
+    shouldShowInvoice,
+    editMode,
+    setValue,
+    getValues,
+  ]);
 
   useEffect(() => {
     // Only auto-select the card when it is actually selectable (i.e. not a
@@ -193,7 +213,7 @@ const PaymentSelect = () => {
       isAdAccountAutoCreateEnabled &&
       !shouldShowInvoice &&
       shouldShowCreditCard &&
-      !groupAdAccountId &&
+      (!groupAdAccountId || isGroupSpendPermissionDenied) &&
       !editMode &&
       getValues(FormField.PAYMENT_TYPE) === ServerPaymentType.PAYMENT_TYPE_UNSPECIFIED
     ) {
@@ -204,6 +224,7 @@ const PaymentSelect = () => {
     shouldShowCreditCard,
     shouldShowInvoice,
     groupAdAccountId,
+    isGroupSpendPermissionDenied,
     setValue,
     editMode,
     getValues,
@@ -214,7 +235,7 @@ const PaymentSelect = () => {
     if (
       !shouldShowInvoice &&
       !shouldShowCreditCard &&
-      !groupAdAccountId &&
+      (!groupAdAccountId || isGroupSpendPermissionDenied) &&
       !editMode &&
       getValues(FormField.PAYMENT_TYPE) === ServerPaymentType.PAYMENT_TYPE_UNSPECIFIED
     ) {
@@ -222,7 +243,43 @@ const PaymentSelect = () => {
         shouldValidate: true,
       });
     }
-  }, [editMode, groupAdAccountId, shouldShowCreditCard, shouldShowInvoice, setValue, getValues]);
+  }, [
+    editMode,
+    groupAdAccountId,
+    isGroupSpendPermissionDenied,
+    shouldShowCreditCard,
+    shouldShowInvoice,
+    setValue,
+    getValues,
+  ]);
+
+  useEffect(() => {
+    if (
+      !isGroupSpendPermissionDenied ||
+      editMode ||
+      getValues(FormField.PAYMENT_TYPE) !== ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT
+    ) {
+      return;
+    }
+
+    // Invoice-billed advertisers never see the ad credit options, so falling
+    // back to ad credit there would select a value with no matching menu item.
+    let fallbackPaymentType = ServerPaymentType.PAYMENT_TYPE_ADS_CREDIT;
+    if (shouldShowInvoice) {
+      fallbackPaymentType = ServerPaymentType.PAYMENT_TYPE_INVOICE;
+    } else if (shouldShowCreditCard) {
+      fallbackPaymentType = ServerPaymentType.PAYMENT_TYPE_CARD;
+    }
+
+    setValue(FormField.PAYMENT_TYPE, fallbackPaymentType, { shouldValidate: true });
+  }, [
+    editMode,
+    getValues,
+    isGroupSpendPermissionDenied,
+    setValue,
+    shouldShowCreditCard,
+    shouldShowInvoice,
+  ]);
 
   const {
     classes: { inputHelperText, linkInHelperText },
@@ -266,10 +323,15 @@ const PaymentSelect = () => {
 
   const groupPaymentTypeSelects: PaymentTypeSelectOption[] = [
     {
+      disabled: isGroupSpendPermissionDenied,
       shouldShow: shouldShowAdCredit && (shouldShowGroupAdCredit || isGroupAdCreditSelected),
-      title: translateCampaign('Label.GroupAdCreditBalance', {
-        balance: formattedGroupAdCreditBalance,
-      }),
+      // Without spend permission the group balance is never fetched, so showing
+      // the amount would render a misleading zero.
+      title: isGroupSpendPermissionDenied
+        ? translateCampaign('Label.GroupAdCredit')
+        : translateCampaign('Label.GroupAdCreditBalance', {
+            balance: formattedGroupAdCreditBalance,
+          }),
       value: ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT,
     },
   ];
@@ -310,6 +372,28 @@ const PaymentSelect = () => {
     (visiblePersonalPaymentTypeSelects.length > 0 || shouldShowAddCreditCardAction);
   const visiblePaymentTypeSelectCount =
     visibleGroupPaymentTypeSelects.length + visiblePersonalPaymentTypeSelects.length;
+
+  const renderPaymentTypeMenuItem = ({
+    disabled,
+    leading,
+    title,
+    value: val,
+  }: PaymentTypeSelectOption): ReactNode => {
+    const item = (
+      <MenuItem disabled={disabled} key={val} leading={leading} title={title} value={String(val)} />
+    );
+    return disabled ? (
+      <AppTooltip
+        delayDurationMs={0}
+        key={val}
+        position='right-center'
+        title={translateMisc('Description.GroupSpendPermissionDenied')}>
+        <span className='block width-full'>{item}</span>
+      </AppTooltip>
+    ) : (
+      item
+    );
+  };
 
   const openAddCreditCardDrawer = () => {
     refreshAdCreditAndRobuxBalances();
@@ -416,7 +500,12 @@ const PaymentSelect = () => {
     );
   };
 
-  if (adCreditIsLoading || groupAdCreditIsLoading || paymentProfilesIsLoading) {
+  if (
+    adCreditIsLoading ||
+    groupAdCreditIsLoading ||
+    groupSpendPermissionLoading ||
+    paymentProfilesIsLoading
+  ) {
     return <Skeleton className={halfWidthSkeleton} variant='rectangular' />;
   }
 
@@ -453,6 +542,7 @@ const PaymentSelect = () => {
                   const newPaymentType = parseInt(nextValue, 10);
                   if (
                     newPaymentType === ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT &&
+                    !isGroupSpendPermissionDenied &&
                     selectedGroupId &&
                     !groupAdAccountId
                   ) {
@@ -507,9 +597,7 @@ const PaymentSelect = () => {
                     <MenuSection>
                       <>
                         {shouldShowSectionHeaders && <MenuLabel title={groupSectionName} />}
-                        {visibleGroupPaymentTypeSelects.map(({ leading, title, value: val }) => (
-                          <MenuItem key={val} leading={leading} title={title} value={String(val)} />
-                        ))}
+                        {visibleGroupPaymentTypeSelects.map(renderPaymentTypeMenuItem)}
                       </>
                     </MenuSection>
                   )}
@@ -521,9 +609,7 @@ const PaymentSelect = () => {
                           shouldShowAddCreditCardAction) && (
                           <MenuLabel title={individualSectionName} />
                         )}
-                      {visiblePersonalPaymentTypeSelects.map(({ leading, title, value: val }) => (
-                        <MenuItem key={val} leading={leading} title={title} value={String(val)} />
-                      ))}
+                      {visiblePersonalPaymentTypeSelects.map(renderPaymentTypeMenuItem)}
                       {shouldShowAddCreditCardAction && (
                         <MenuItem
                           leading={<Icon name='icon-regular-plus-large' size='Small' />}

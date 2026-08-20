@@ -27,6 +27,7 @@ import {
 import { getThumbnailsByUniverseId } from '@services/games/getGameInfoService';
 import { getThumbnailByAssetId as fetchThumbnailByAssetId } from '@services/thumbnails/getThumbnailService';
 import { useAppStore } from '@stores/appStoreProvider';
+import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
 import { useThumbnailStore } from '@stores/thumbnailStoreProvider';
 import { getHttpStatusFromError } from '@type/errorResponse';
 import { countSelectedCreatives } from '@utils/campaignBuilder';
@@ -174,20 +175,36 @@ const CreativeImportTab = ({
     staleTime: 0,
   });
 
+  const selectedUniverse = useCampaignBuilderStore((state) =>
+    state.universesCanAdvertise.data.find(
+      (universe) => universe.universe_id === campaignUniverseId,
+    ),
+  );
+  const homepageThumbnailAssetIds =
+    selectedUniverse?.suggested_creatives?.active_homepage_thumbnail_asset_ids;
+
   // Auto-imported EDP thumbnails: the campaign's experience exposes its own
   // preview images, which resolve to real catalog asset IDs — the same source
-  // CreativeSection used to force-prepopulate before the library flag. We
-  // surface them here as opt-in tiles instead, so the drawer is the single
-  // place they enter the campaign. Shares the ['thumbnails', universeId]
-  // cache key with CreativeSection so this is a cache hit, not a re-fetch.
-  const { data: autoImportedAssetIds, isFetching: isFetchingAutoImported } = useQuery({
+  // CreativeSection used to force-prepopulate before the library flag. Shares
+  // the ['thumbnails', universeId] cache key with CreativeSection so this is a
+  // cache hit, not a re-fetch.
+  const { data: edpThumbnailAssetIds, isFetching: isFetchingAutoImported } = useQuery({
     enabled: isThumbnailField && campaignUniverseId != null,
     queryFn: () => getThumbnailsByUniverseId(campaignUniverseId as number),
     queryKey: ['thumbnails', campaignUniverseId],
     select: (response) => response.assetIds.map(Number),
   });
+
+  // Homepage thumbnails arrive with the selected universe from AMA. Feed them
+  // through the same virtual-tile and registration path as EDP thumbnails,
+  // preserving EDP ordering while removing overlap between the two sources.
+  const autoImportedAssetIds = useMemo(
+    () =>
+      Array.from(new Set([...(edpThumbnailAssetIds ?? []), ...(homepageThumbnailAssetIds ?? [])])),
+    [edpThumbnailAssetIds, homepageThumbnailAssetIds],
+  );
   const autoImportedAssetIdSet = useMemo(
-    () => new Set(autoImportedAssetIds ?? []),
+    () => new Set(autoImportedAssetIds),
     [autoImportedAssetIds],
   );
 
@@ -338,7 +355,7 @@ const CreativeImportTab = ({
     if (!isThumbnailField) {
       return [];
     }
-    return (autoImportedAssetIds ?? []).flatMap((assetId) => {
+    return autoImportedAssetIds.flatMap((assetId) => {
       // Hide previews already registered in the library or already on the
       // draft so they disappear once added.
       if (libraryAssetById.has(assetId) || draftItemByAssetId.has(assetId)) {

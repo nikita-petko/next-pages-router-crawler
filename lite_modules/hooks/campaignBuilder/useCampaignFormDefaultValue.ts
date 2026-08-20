@@ -68,6 +68,9 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
   const hasCreditCard = usePaymentStore((state) => (state.paymentProfiles?.data || []).length > 0);
   const paymentFailure = useAppStore((state) => state.appData?.paymentFailure);
   const { isGaasEnabled } = useAppStore((state) => state.appMetadataState.data || {});
+  const isSponsoredVideoTilesEnabled = useAppStore(
+    (state) => state.appMetadataState.data?.isSponsoredVideoTilesEnabled ?? false,
+  );
   const { timezoneDbName: rawTimezoneDbName } = useAppStore((state) =>
     GetTimezoneObjFromEnum(
       state.advertiserState?.data?.organization?.time_zone || defaultTimeZone.value,
@@ -348,6 +351,7 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
         [FormField.START_TIME]: startMoment.format(TimeFormat),
         [FormField.SUBTITLE]: transformSubtitle(campaignData),
         [FormField.THUMBNAILS]: transformThumbnails(campaignData),
+        [FormField.VIDEO_CONFIG_ENABLED]: !!campaignData.video_config?.organic_gpv,
         [FormField.VIDEOS]: transformVideos(campaignData),
       };
     },
@@ -472,6 +476,7 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
       [FormField.START_TIME]: defaultStartTime,
       [FormField.SUBTITLE]: undefined,
       [FormField.THUMBNAILS]: [],
+      [FormField.VIDEO_CONFIG_ENABLED]: isSponsoredVideoTilesEnabled,
       [FormField.VIDEOS]: [],
       ...getOverridePrefilledFields(),
     };
@@ -485,6 +490,7 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
     getDefaultStartDateTime,
     fallbackUniverse,
     isGaasEnabled,
+    isSponsoredVideoTilesEnabled,
     transformCampaignToFormFields,
     getOverridePrefilledFields,
   ]);

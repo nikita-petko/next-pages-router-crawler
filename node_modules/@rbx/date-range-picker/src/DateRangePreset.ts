@@ -13,7 +13,6 @@ export enum DateRangePreset {
   Last30Days = 'Last30Days',
   Last56Days = 'Last56Days',
   Last90Days = 'Last90Days',
-  Last365Days = 'Last365Days',
   Today = 'Today',
   Yesterday = 'Yesterday',
   ThisMonth = 'ThisMonth',

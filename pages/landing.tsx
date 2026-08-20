@@ -6,7 +6,7 @@ import AdsManagerPageBaseLayout from '@components/common/AdsManagerDefaultLayout
 import { getCreatorHubPageLayout } from '@components/common/CreatorHubPageLayout';
 import { openErrorDialog } from '@components/common/dialog/errorDialog';
 import GenericSnackBar from '@components/common/GenericSnackBar';
-import AutoCreateLandingPage from '@components/onboarding/AutoCreateLandingPage';
+import LandingPage2026 from '@components/onboarding/LandingPage2026';
 import LandingPageComponent from '@components/onboarding/LandingPageComponent';
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
@@ -109,7 +109,7 @@ const LandingPage = () => {
         <GenericSnackBar message={translate('Message.EmailVerified')} severity='success' />
       )}
       {showAutoCreateLanding ? (
-        <AutoCreateLandingPage
+        <LandingPage2026
           getStartedDisabled={getStartedDisabled}
           hasVerifiedEmail={!userIsLoggedIn || hasVerifiedEmail === true}
           onGetStartedClick={userIsLoggedIn ? onAutoCreateGetStartedClick : onLegacyButtonClicked}

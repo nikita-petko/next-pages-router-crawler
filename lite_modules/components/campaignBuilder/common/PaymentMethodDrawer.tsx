@@ -15,6 +15,7 @@ import PaymentStep from '@components/account/PaymentStep';
 import { type PaymentSetupCompletion } from '@components/billing/BuyAdCredit';
 import { ADD_PAYMENT_TABS } from '@constants/billing';
 import { TranslationNamespace } from '@constants/localization';
+import useGroupSpendPermission from '@hooks/useGroupSpendPermission';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { getGroupRobuxBalance, getRobuxBalance } from '@services/economy/robuxService';
 import { useAppStore } from '@stores/appStoreProvider';
@@ -31,6 +32,8 @@ const PaymentMethodDrawer = () => {
     (state) => state.appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false,
   );
   const groupId = getSelectedGroupId(currentWorkspace, isAdAccountAutoCreateEnabled);
+  const { isGroupSpendPermissionDenied, isLoading: groupSpendPermissionLoading } =
+    useGroupSpendPermission(groupId);
   const isOpen = useCampaignBuilderStore((state) => state.paymentMethodDrawerOpen);
   const initialPaymentTab = useCampaignBuilderStore(
     (state) => state.paymentMethodDrawerInitialPaymentTab,
@@ -69,7 +72,7 @@ const PaymentMethodDrawer = () => {
       return undefined;
     }
 
-    if (isWorkspaceLoading) {
+    if (isWorkspaceLoading || groupSpendPermissionLoading) {
       return undefined;
     }
 
@@ -89,8 +92,12 @@ const PaymentMethodDrawer = () => {
         const balancePromises = [
           refreshAdCredit(),
           getRobuxBalance(),
-          groupId ? refreshAdCredit(groupId) : Promise.resolve(undefined),
-          groupId ? getGroupRobuxBalance(groupId) : Promise.resolve(undefined),
+          groupId && !isGroupSpendPermissionDenied
+            ? refreshAdCredit(groupId)
+            : Promise.resolve(undefined),
+          groupId && !isGroupSpendPermissionDenied
+            ? getGroupRobuxBalance(groupId)
+            : Promise.resolve(undefined),
         ] as const;
         const [adCreditResult, robuxResult, groupAdCreditResult, groupRobuxResult] =
           await Promise.allSettled(balancePromises);
@@ -139,7 +146,16 @@ const PaymentMethodDrawer = () => {
     return () => {
       ignoreResponse = true;
     };
-  }, [groupId, initialPaymentTab, isOpen, isWorkspaceLoading, refreshAdCredit, userOver18]);
+  }, [
+    groupId,
+    groupSpendPermissionLoading,
+    initialPaymentTab,
+    isGroupSpendPermissionDenied,
+    isOpen,
+    isWorkspaceLoading,
+    refreshAdCredit,
+    userOver18,
+  ]);
 
   useEffect(() => {
     if (!userOver18) {
@@ -157,25 +173,26 @@ const PaymentMethodDrawer = () => {
       groupId: completion?.groupId !== undefined ? String(completion.groupId) : undefined,
       paymentMethodType: completion?.paymentMethodType,
     });
-    const refreshGroupBalances = groupId
-      ? Promise.allSettled([refreshAdCredit(groupId), getGroupRobuxBalance(groupId)]).then(
-          ([groupAdCreditResult, groupRobuxResult]) => {
-            setGroupBalanceError(false);
-            if (groupAdCreditResult.status === 'fulfilled') {
-              setGroupAdCreditBalance(groupAdCreditResult.value?.ad_credit_balance_in_micro || 0);
-            } else {
-              CaptureException(groupAdCreditResult.reason as Error);
-              setGroupBalanceError(true);
-            }
-            if (groupRobuxResult.status === 'fulfilled') {
-              setGroupRobuxBalance(groupRobuxResult.value?.robux || 0);
-            } else {
-              CaptureException(groupRobuxResult.reason as Error);
-              setGroupBalanceError(true);
-            }
-          },
-        )
-      : Promise.resolve();
+    const refreshGroupBalances =
+      groupId && !isGroupSpendPermissionDenied
+        ? Promise.allSettled([refreshAdCredit(groupId), getGroupRobuxBalance(groupId)]).then(
+            ([groupAdCreditResult, groupRobuxResult]) => {
+              setGroupBalanceError(false);
+              if (groupAdCreditResult.status === 'fulfilled') {
+                setGroupAdCreditBalance(groupAdCreditResult.value?.ad_credit_balance_in_micro || 0);
+              } else {
+                CaptureException(groupAdCreditResult.reason as Error);
+                setGroupBalanceError(true);
+              }
+              if (groupRobuxResult.status === 'fulfilled') {
+                setGroupRobuxBalance(groupRobuxResult.value?.robux || 0);
+              } else {
+                CaptureException(groupRobuxResult.reason as Error);
+                setGroupBalanceError(true);
+              }
+            },
+          )
+        : Promise.resolve();
     await Promise.all([
       refreshPaymentProfiles(true),
       refreshAppPaymentProfiles(true),
@@ -212,6 +229,7 @@ const PaymentMethodDrawer = () => {
             initialBalanceScope={initialBalanceScope ?? undefined}
             isAdCreditPurchaseOnly={isAdCreditPurchaseOnly}
             isDrawer
+            isGroupSpendPermissionDenied={isGroupSpendPermissionDenied}
             isUnlocked
             onCancel={handleClose}
             onComplete={handleComplete}
@@ -219,7 +237,9 @@ const PaymentMethodDrawer = () => {
             paymentDataLoading={paymentDataLoading}
             paymentTab={paymentTab}
             robuxBalance={robuxBalance}
-            showGroupBalanceOption={Boolean(groupId) && !groupBalanceError}
+            showGroupBalanceOption={
+              Boolean(groupId) && (!groupBalanceError || isGroupSpendPermissionDenied)
+            }
             userOver18={!!userOver18}
           />
         </SheetBody>

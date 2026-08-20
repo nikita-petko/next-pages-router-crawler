@@ -5,6 +5,7 @@ import { AdCreditBalanceScope, parseAdCreditBalanceScopeFromQuery } from '@const
 
 interface UseBillingAccountViewParams {
   defaultScopeWhenSwitcherVisible?: AdCreditBalanceScope;
+  isGroupAccountViewDisabled?: boolean;
   preferGroupFromLegacyTab?: boolean;
   router: NextRouter;
   /** When false, skip URL sync (e.g. while workspace is still loading). */
@@ -26,6 +27,7 @@ const getQueryParam = (value: string | string[] | undefined): string | undefined
  */
 export const useBillingAccountView = ({
   defaultScopeWhenSwitcherVisible = AdCreditBalanceScope.Group,
+  isGroupAccountViewDisabled = false,
   preferGroupFromLegacyTab = false,
   router,
   shouldSyncUrl = true,
@@ -37,6 +39,9 @@ export const useBillingAccountView = ({
     if (!showAccountViewSwitcher) {
       return AdCreditBalanceScope.Personal;
     }
+    if (isGroupAccountViewDisabled) {
+      return AdCreditBalanceScope.Personal;
+    }
     if (requestedBalanceScope) {
       return requestedBalanceScope;
     }
@@ -46,6 +51,7 @@ export const useBillingAccountView = ({
     return defaultScopeWhenSwitcherVisible;
   }, [
     defaultScopeWhenSwitcherVisible,
+    isGroupAccountViewDisabled,
     preferGroupFromLegacyTab,
     requestedBalanceScope,
     showAccountViewSwitcher,
@@ -55,6 +61,9 @@ export const useBillingAccountView = ({
 
   const changeAccountView = useCallback(
     (nextAccountView: AdCreditBalanceScope) => {
+      if (isGroupAccountViewDisabled && nextAccountView === AdCreditBalanceScope.Group) {
+        return;
+      }
       router.push({
         pathname: router.pathname,
         query: {
@@ -63,7 +72,7 @@ export const useBillingAccountView = ({
         },
       });
     },
-    [router],
+    [isGroupAccountViewDisabled, router],
   );
 
   useEffect(() => {

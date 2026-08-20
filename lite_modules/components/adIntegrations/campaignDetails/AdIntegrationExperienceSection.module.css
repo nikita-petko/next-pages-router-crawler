@@ -1,0 +1,10 @@
+/*
+ * Foundation dims a disabled Autocomplete's wrapper and dims each selected chip
+ * again, so a locked picker renders its game names at 0.5 * 0.5 opacity. Cancel
+ * the chip-level treatment so the wrapper's single dim carries the disabled
+ * state. `:global(...)` is required in a CSS Module — without it the Foundation
+ * class name gets hashed and the override never matches.
+ */
+.preserveSelectedGameContrast :global(.foundation-web-autocomplete-chip) {
+  opacity: 1;
+}

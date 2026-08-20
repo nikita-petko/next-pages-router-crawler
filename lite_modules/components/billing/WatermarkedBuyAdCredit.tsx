@@ -86,6 +86,7 @@ export const WatermarkedBuyAdCredit = ({
   groupName,
   groupRobuxBalance = 0,
   initialBalanceScope,
+  isGroupSpendPermissionDenied = false,
   onCancel,
   onComplete,
   robuxBalance,
@@ -149,8 +150,9 @@ export const WatermarkedBuyAdCredit = ({
     },
   } = useAddPaymentMethodStyles();
 
+  const canUseGroupBalance = showGroupBalanceOption && !isGroupSpendPermissionDenied;
   const [balanceScope, setBalanceScope] = useState<AdCreditBalanceScope>(() =>
-    resolveInitialBalanceScope(showGroupBalanceOption, initialBalanceScope),
+    resolveInitialBalanceScope(canUseGroupBalance, initialBalanceScope),
   );
   const [sourceField, setSourceField] = useState<AdCreditQuoteSourceField>(
     AdCreditQuoteSourceFieldValues.AD_CREDIT_AMOUNT,
@@ -164,6 +166,17 @@ export const WatermarkedBuyAdCredit = ({
   const [isPurchasing, setIsPurchasing] = useState<boolean>(false);
   const [isInfoAlertDismissed, setIsInfoAlertDismissed] = useState<boolean>(false);
   const [isConvertRobuxFocused, setIsConvertRobuxFocused] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (isGroupSpendPermissionDenied && balanceScope === AdCreditBalanceScope.Group) {
+      setBalanceScope(AdCreditBalanceScope.Personal);
+      setSourceField(AdCreditQuoteSourceFieldValues.AD_CREDIT_AMOUNT);
+      setRobuxAmount(undefined);
+      setAdCreditAmount(undefined);
+      setAdCreditInputValue('');
+      setDebouncedInput(undefined);
+    }
+  }, [balanceScope, isGroupSpendPermissionDenied]);
 
   const hasVerifiedPaymentProfiles = paymentProfiles.some(
     (paymentProfile) => paymentProfile?.is_verified,
@@ -442,7 +455,10 @@ export const WatermarkedBuyAdCredit = ({
   };
 
   const handleBalanceScopeChange = (value: AdCreditBalanceScope): void => {
-    if (value === balanceScope) {
+    if (
+      value === balanceScope ||
+      (value === AdCreditBalanceScope.Group && isGroupSpendPermissionDenied)
+    ) {
       return;
     }
     // Switching accounts resets the form so the previous account's amounts are
@@ -469,10 +485,25 @@ export const WatermarkedBuyAdCredit = ({
           size='Medium'
           value={balanceScope}>
           <Menu>
-            <MenuItem
-              title={groupName || translateBilling('Label.RobloxAdCredit')}
-              value={AdCreditBalanceScope.Group}
-            />
+            {isGroupSpendPermissionDenied ? (
+              <AppTooltip
+                delayDurationMs={0}
+                position='right-center'
+                title={translateMisc('Description.GroupSpendPermissionDenied')}>
+                <span className='block width-full'>
+                  <MenuItem
+                    disabled
+                    title={groupName || translateBilling('Label.RobloxAdCredit')}
+                    value={AdCreditBalanceScope.Group}
+                  />
+                </span>
+              </AppTooltip>
+            ) : (
+              <MenuItem
+                title={groupName || translateBilling('Label.RobloxAdCredit')}
+                value={AdCreditBalanceScope.Group}
+              />
+            )}
             <MenuItem
               title={translateAccount('Heading.PersonalAccount')}
               value={AdCreditBalanceScope.Personal}

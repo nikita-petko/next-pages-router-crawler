@@ -20,6 +20,7 @@ interface AccountInfoStepProps {
   localizedTimezones: TimezoneType[];
   onCreateAccount: () => void;
   shouldRenderSubmitButton?: boolean;
+  shouldRenderTermsCheckbox?: boolean;
 }
 
 const AccountInfoStep = ({
@@ -32,6 +33,7 @@ const AccountInfoStep = ({
   localizedTimezones,
   onCreateAccount,
   shouldRenderSubmitButton = true,
+  shouldRenderTermsCheckbox = true,
 }: AccountInfoStepProps) => {
   const { translate, translateHTML } = useNamespacedTranslation(TranslationNamespace.Account);
   const termsLabelId = useId();
@@ -81,48 +83,68 @@ const AccountInfoStep = ({
           )}
         />
 
-        <Controller
-          control={control}
-          name={FormFields.TERMS_CHECKBOX}
-          render={({ field }) => (
-            <>
-              <div className='flex items-start gap-small'>
-                <Checkbox
-                  aria-labelledby={termsLabelId}
-                  id={termsCheckboxId}
-                  isChecked={field.value === true}
-                  name={FormFields.TERMS_CHECKBOX}
-                  onCheckedChange={(checked) => field.onChange(checked === true)}
-                  placement='Start'
-                  size='Small'
-                />
-                <label
-                  className={`${isCompactTermsLabel ? 'text-body-medium' : 'text-body-large'} cursor-pointer`}
-                  htmlFor={termsCheckboxId}
-                  id={termsLabelId}>
-                  {translateHTML('Description.TermsAgreementV2', [
-                    {
-                      closing: 'linkEnd',
-                      content: (chunks) => (
-                        <Link
-                          href='https://en.help.roblox.com/hc/articles/15494846263060'
-                          rel='noopener noreferrer'
-                          target='_blank'
-                          underline='always'>
-                          {chunks}
-                        </Link>
-                      ),
-                      opening: 'linkStart',
-                    },
-                  ])}
-                </label>
-              </div>
-              {errors[FormFields.TERMS_CHECKBOX] && (
-                <FormLabel error>{errors[FormFields.TERMS_CHECKBOX]?.message}</FormLabel>
-              )}
-            </>
-          )}
-        />
+        {shouldRenderTermsCheckbox ? (
+          <Controller
+            control={control}
+            name={FormFields.TERMS_CHECKBOX}
+            render={({ field }) => (
+              <>
+                <div className='flex items-start gap-small'>
+                  <Checkbox
+                    aria-labelledby={termsLabelId}
+                    id={termsCheckboxId}
+                    isChecked={field.value === true}
+                    name={FormFields.TERMS_CHECKBOX}
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
+                    placement='Start'
+                    size='Small'
+                  />
+                  <label
+                    className={`${isCompactTermsLabel ? 'text-body-medium' : 'text-body-large'} cursor-pointer`}
+                    htmlFor={termsCheckboxId}
+                    id={termsLabelId}>
+                    {translateHTML('Description.TermsAgreementV2', [
+                      {
+                        closing: 'linkEnd',
+                        content: (chunks) => (
+                          <Link
+                            href='https://en.help.roblox.com/hc/articles/15494846263060'
+                            rel='noopener noreferrer'
+                            target='_blank'
+                            underline='always'>
+                            {chunks}
+                          </Link>
+                        ),
+                        opening: 'linkStart',
+                      },
+                    ])}
+                  </label>
+                </div>
+                {errors[FormFields.TERMS_CHECKBOX] && (
+                  <FormLabel error>{errors[FormFields.TERMS_CHECKBOX]?.message}</FormLabel>
+                )}
+              </>
+            )}
+          />
+        ) : (
+          <div className={isCompactTermsLabel ? 'text-body-medium' : 'text-body-large'}>
+            {translateHTML('Description.TermsAgreementV2', [
+              {
+                closing: 'linkEnd',
+                content: (chunks) => (
+                  <Link
+                    href='https://en.help.roblox.com/hc/articles/15494846263060'
+                    rel='noopener noreferrer'
+                    target='_blank'
+                    underline='always'>
+                    {chunks}
+                  </Link>
+                ),
+                opening: 'linkStart',
+              },
+            ])}
+          </div>
+        )}
 
         {shouldRenderSubmitButton && (
           <div>

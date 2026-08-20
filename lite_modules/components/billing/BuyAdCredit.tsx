@@ -18,6 +18,7 @@ import { z } from 'zod';
 import { EventName, logNativeClickEvent, logNativeImpressionEvent } from '@clients/unifiedLogger';
 import useAddPaymentMethodStyles from '@components/billing/AddPaymentMethod.styles';
 import { openBuyAdCreditSuccessDialog } from '@components/billing/dialogs/BuyAdCreditSuccessDialog';
+import AppTooltip from '@components/common/AppTooltip';
 import { openImpersonationErrorDialog } from '@components/common/dialog/impersonationErrorDialog';
 import { AdCreditBalanceScope } from '@constants/billing';
 import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
@@ -51,6 +52,7 @@ export interface BuyAdCreditProps {
   groupName?: string;
   groupRobuxBalance?: number;
   initialBalanceScope?: AdCreditBalanceScope;
+  isGroupSpendPermissionDenied?: boolean;
   onCancel?: () => void;
   onComplete?: (completion: PaymentSetupCompletion) => void | Promise<void>;
   robuxBalance: number;
@@ -85,6 +87,7 @@ export const BuyAdCredit = ({
   groupName,
   groupRobuxBalance = 0,
   initialBalanceScope,
+  isGroupSpendPermissionDenied = false,
   onCancel,
   onComplete,
   robuxBalance,
@@ -95,8 +98,9 @@ export const BuyAdCredit = ({
     useNamespacedTranslation(TranslationNamespace.Billing);
   const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
   const [isPurchasing, setIsPurchasing] = useState<boolean>(false);
+  const canUseGroupBalance = showGroupBalanceOption && !isGroupSpendPermissionDenied;
   const [balanceScope, setBalanceScope] = useState<AdCreditBalanceScope>(() =>
-    resolveInitialBalanceScope(showGroupBalanceOption, initialBalanceScope),
+    resolveInitialBalanceScope(canUseGroupBalance, initialBalanceScope),
   );
   const userSelectedBalanceScope = useRef<AdCreditBalanceScope | undefined>(undefined);
   const previousInitialBalanceScope = useRef<AdCreditBalanceScope | undefined>(initialBalanceScope);
@@ -111,9 +115,9 @@ export const BuyAdCredit = ({
 
     setBalanceScope((currentBalanceScope) => {
       if (initialBalanceScopeChanged) {
-        return resolveInitialBalanceScope(showGroupBalanceOption, initialBalanceScope);
+        return resolveInitialBalanceScope(canUseGroupBalance, initialBalanceScope);
       }
-      if (!showGroupBalanceOption) {
+      if (!canUseGroupBalance) {
         return currentBalanceScope === AdCreditBalanceScope.Group
           ? AdCreditBalanceScope.Personal
           : currentBalanceScope;
@@ -121,9 +125,9 @@ export const BuyAdCredit = ({
       if (userSelectedBalanceScope.current) {
         return userSelectedBalanceScope.current;
       }
-      return resolveInitialBalanceScope(showGroupBalanceOption, initialBalanceScope);
+      return resolveInitialBalanceScope(canUseGroupBalance, initialBalanceScope);
     });
-  }, [initialBalanceScope, showGroupBalanceOption]);
+  }, [canUseGroupBalance, initialBalanceScope]);
 
   const {
     adCreditActivated,
@@ -318,6 +322,12 @@ export const BuyAdCredit = ({
           label={translateBilling('Label.BalanceScope')}
           onValueChange={(value) => {
             const selectedBalanceScope = value as AdCreditBalanceScope;
+            if (
+              selectedBalanceScope === AdCreditBalanceScope.Group &&
+              isGroupSpendPermissionDenied
+            ) {
+              return;
+            }
             userSelectedBalanceScope.current = selectedBalanceScope;
             setBalanceScope(selectedBalanceScope);
           }}
@@ -325,10 +335,25 @@ export const BuyAdCredit = ({
           size='Medium'
           value={balanceScope}>
           <Menu>
-            <MenuItem
-              title={groupName || translateBilling('Label.RobloxAdCredit')}
-              value={AdCreditBalanceScope.Group}
-            />
+            {isGroupSpendPermissionDenied ? (
+              <AppTooltip
+                delayDurationMs={0}
+                position='right-center'
+                title={translateMisc('Description.GroupSpendPermissionDenied')}>
+                <span className='block width-full'>
+                  <MenuItem
+                    disabled
+                    title={groupName || translateBilling('Label.RobloxAdCredit')}
+                    value={AdCreditBalanceScope.Group}
+                  />
+                </span>
+              </AppTooltip>
+            ) : (
+              <MenuItem
+                title={groupName || translateBilling('Label.RobloxAdCredit')}
+                value={AdCreditBalanceScope.Group}
+              />
+            )}
             <MenuItem
               title={translateBilling('Heading.PersonalFunds')}
               value={AdCreditBalanceScope.Personal}

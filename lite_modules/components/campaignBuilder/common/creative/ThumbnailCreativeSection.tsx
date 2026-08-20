@@ -1,6 +1,7 @@
-import { IconButton } from '@rbx/foundation-ui';
+import { Checkbox, Icon, IconButton, Link } from '@rbx/foundation-ui';
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useFormContext } from 'react-hook-form';
+import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
 import AssetTileImage from '@components/campaignBuilder/common/creative/AssetTileImage';
 import CreativeLockBadge from '@components/campaignBuilder/common/creative/CreativeLockBadge';
@@ -15,10 +16,12 @@ import { AssetSource, FlowTypes, FormField } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import { getUniverses } from '@services/ads/getUniversesService';
 import { useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
 import { ThumbnailType } from '@type/campaignBuilder';
 import { GetEditCampaignDisabledTooltipText } from '@utils/campaignBuilder';
+import { GetSitetestBaseUrl } from '@utils/url';
 
 interface ThumbnailCreativeSectionProps {
   formThumbnails: FormType[typeof FormField.THUMBNAILS];
@@ -33,7 +36,7 @@ const ThumbnailSection = ({
     TranslationNamespace.CreativeLibrary,
   );
   const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
-  const { getFieldState, getValues, setValue } = useFormContext<FormType>();
+  const { control, getFieldState, getValues, setValue } = useFormContext<FormType>();
   const campaignStatus = useCampaignBuilderStore(
     (state) => state.simplifiedCampaign?.data?.display_status,
   );
@@ -91,6 +94,23 @@ const ThumbnailSection = ({
   const isGenAiCreativesEnabled = useAppStore(
     (state) => state.appMetadataState?.data?.isGenAiCreativesEnabled ?? false,
   );
+  const isSponsoredVideoTilesEnabled = useAppStore(
+    (state) => state.appMetadataState?.data?.isSponsoredVideoTilesEnabled ?? false,
+  );
+
+  const selectedUniverseId = useWatch<FormType, typeof FormField.EXPERIENCE>({
+    control,
+    name: FormField.EXPERIENCE,
+  })?.universe_id;
+
+  const { data: rootPlaceId } = useQuery({
+    enabled: isSponsoredVideoTilesEnabled && !!selectedUniverseId,
+    queryFn: () => getUniverses([selectedUniverseId!]),
+    queryKey: ['universeRootPlaceId', selectedUniverseId],
+    select: (response) => response.data?.[0]?.rootPlaceId,
+    staleTime: Infinity,
+  });
+
   const [aiCreateDrawerOpen, setAiCreateDrawerOpen] = useState<boolean>(false);
 
   const { maximumAdsPerTrafficDrivingCampaignCount: maxAllowedThumbnails } = useAppStore(
@@ -179,12 +199,50 @@ const ThumbnailSection = ({
 
   return (
     <div className='flex flex-col gap-medium width-full'>
-      {/* Bold "Image assets" via boldStart/boldEnd placeholders so the
-          whole phrase is one translation key. Count reflects the committed
-          form value, so it only updates after the user clicks Add. Sized
-          one step above the Figma's 12px sub-header per product feedback —
-          14px (body/label-medium) reads as a proper section label without
-          competing with the parent accordion header. */}
+      {isSponsoredVideoTilesEnabled ? (
+        <div className='flex flex-col gap-small'>
+          <div className='flex items-center gap-small'>
+            <Controller
+              control={control}
+              name={FormField.VIDEO_CONFIG_ENABLED}
+              render={({ field: { onChange, value } }) => (
+                <Checkbox
+                  data-testid='video-config-checkbox'
+                  isChecked={value ?? false}
+                  isDisabled={editMode}
+                  label={translateCampaign('Label.IncludeGameDetailsPageVideo')}
+                  onCheckedChange={(checked) => {
+                    if (editMode) {
+                      return;
+                    }
+                    onChange(checked === true);
+                  }}
+                  placement='Start'
+                  size='Small'
+                />
+              )}
+            />
+            <AppTooltip
+              contentClassName={FOUNDATION_TOOLTIP_BODY_SMALL_CLASS}
+              position='top-center'
+              title={translateCampaign('Description.IncludeGameDetailsPageVideo')}>
+              <span className='flex items-center'>
+                <Icon name='icon-regular-circle-i' size='Small' />
+              </span>
+            </AppTooltip>
+          </div>
+          {selectedUniverseId && rootPlaceId ? (
+            <Link
+              color='Standard'
+              href={`https://create.${GetSitetestBaseUrl()}/dashboard/creations/experiences/${selectedUniverseId}/places/${rootPlaceId}/videos`}
+              rel='noopener noreferrer'
+              size='Small'
+              target='_blank'>
+              {translateCampaign('Action.UploadVideo')}
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
       <p
         className='margin-[0px] text-body-medium content-default'
         data-testid='thumbnail-asset-count'>

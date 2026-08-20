@@ -124,6 +124,7 @@ const useFormSchema = () => {
             source: z.enum(AssetSource).optional(),
           }),
         ),
+        [FormField.VIDEO_CONFIG_ENABLED]: z.boolean().optional(),
         [FormField.VIDEOS]: z.array(
           z.object({
             assetId: z.string().optional(),

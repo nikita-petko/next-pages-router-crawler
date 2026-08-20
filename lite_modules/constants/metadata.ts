@@ -65,6 +65,7 @@ export const appMetadataDefaults: GetAdsMetadataResponseType = {
   isOneByTwoTileCreationEnabled: false,
   isPaymentsPagesForLOCEnabled: false,
   isSpendObjectiveEnabled: false,
+  isSponsoredVideoTilesEnabled: false,
   isUniverseOwnershipBypassEnabled: false,
   isWatermarkedRobuxConversionEnabled: false,
   lifetimeBudgetDecreaseBufferRatio: DEFAULT_LIFETIME_BUDGET_DECREASE_BUFFER_RATIO,

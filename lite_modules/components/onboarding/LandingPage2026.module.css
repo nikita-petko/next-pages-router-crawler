@@ -16,7 +16,7 @@
  * The bespoke yellow tints below have no semantic Foundation equivalent, so they
  * are intentionally fixed rather than theme-reactive: `--color-extended-*` values
  * are absolute and are not re-pointed by `light-theme` / `dark-theme`. The banner
- * itself carries a `dark-theme` scope (see AutoCreateLandingPage.tsx) purely so
+ * itself carries a `dark-theme` scope (see LandingPage2026.tsx) purely so
  * its `--color-system-warning` border resolves on the same side as these tints.
  */
 .warningBanner {
@@ -73,14 +73,14 @@
 }
 
 .heroContent {
-  max-width: 600px;
+  max-width: 680px;
   padding: 96px 32px;
   position: relative;
   z-index: 2;
 }
 
 .heroTitle {
-  font-size: 48px;
+  font-size: 64px;
   font-weight: 700;
   line-height: 1.2;
 }
@@ -92,7 +92,7 @@
 
 .resourceSection {
   background: var(--color-surface-0);
-  padding: 32px 48px 40px;
+  padding: 0px 48px 40px;
 }
 
 .resourceHeading {
@@ -106,11 +106,6 @@
   font-weight: 700;
   margin-top: 10px;
   margin-bottom: 0;
-}
-
-.resourceBody {
-  font-size: 18px;
-  line-height: 1.4;
 }
 
 @media (max-width: 600px) {
@@ -150,7 +145,7 @@
 
   .resourceSection {
     gap: 20px;
-    padding: 32px 24px 48px;
+    padding: 24px 24px 48px;
   }
 
   .resourceHeading {
@@ -161,7 +156,4 @@
     font-size: 20px;
   }
 
-  .resourceBody {
-    font-size: 16px;
-  }
 }

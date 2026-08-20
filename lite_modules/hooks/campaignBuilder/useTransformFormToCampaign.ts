@@ -60,6 +60,9 @@ export const useTransformFormToCampaign = ({
   const adCreditBalance = useAppStore(
     (state) => state.adCreditState?.data?.ad_credit_balance_in_micro || 0,
   );
+  const isSponsoredVideoTilesEnabled = useAppStore(
+    (state) => state.appMetadataState?.data?.isSponsoredVideoTilesEnabled ?? false,
+  );
 
   // Get campaign builder store values for logging
   const flowType = useCampaignBuilderStore((state) => state.flowType);
@@ -265,6 +268,17 @@ export const useTransformFormToCampaign = ({
     [advancedTargetingFormMethods],
   );
 
+  const transformVideoConfig = useCallback(
+    (data: FormType) =>
+      isSponsoredVideoTilesEnabled &&
+      data[FormField.VIDEO_CONFIG_ENABLED] &&
+      data[FormField.GOAL] !== ServerCampaignObjectiveType.REACH &&
+      !data[FormField.IS_EXTEND_TO_OFF_PLATFORM_ENABLED]
+        ? { organic_gpv: {} }
+        : undefined,
+    [isSponsoredVideoTilesEnabled],
+  );
+
   const transformEndTimestampMs = useCallback(
     (data: FormType) => {
       if (data[FormField.END_DATE] && data[FormField.END_TIME]) {
@@ -305,6 +319,7 @@ export const useTransformFormToCampaign = ({
       start_timestamp_ms: transformStartTime(data),
       target_universe_id: transformTargetUniverseId(data),
       targeting_criteria: transformTargetingCriteria(data),
+      video_config: transformVideoConfig(data),
     }),
     [
       transformAssetIds,
@@ -319,6 +334,7 @@ export const useTransformFormToCampaign = ({
       transformSponsoredAds,
       transformTargetUniverseId,
       transformTargetingCriteria,
+      transformVideoConfig,
       transformEndTimestampMs,
     ],
   );
