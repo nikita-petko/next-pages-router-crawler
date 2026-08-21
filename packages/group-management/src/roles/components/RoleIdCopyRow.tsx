@@ -18,29 +18,24 @@ const RoleIdCopyRow: FunctionComponent<RoleIdCopyRowProps> = ({ roleId }) => {
   const { translateWithNamespace } = useTranslation();
   const { showToast } = useCurrentGroup();
 
-  // Placeholder English text is shown until these keys are registered in Translations Hub;
-  // translateWithNamespace returns '' for an unregistered key, so `|| <english>` provides the fallback.
-  // The id is passed as an interpolation arg (single key) so translators control separator/ordering.
-  const copyRoleIdLabel =
-    translateWithNamespace(TranslationNamespace.GroupManagement, 'Action.CopyRoleId') ||
-    'Copy role ID';
-  const roleIdDisplay =
-    translateWithNamespace(TranslationNamespace.GroupManagement, 'Label.RoleIdWithValue', {
-      id: roleId.toString(),
-    }) || `Role ID: ${roleId}`;
-  const roleIdCopiedMessage =
-    translateWithNamespace(TranslationNamespace.GroupManagement, 'Message.RoleIdCopied') ||
-    'Role ID copied to clipboard';
+  const copyRoleIdLabel = translateWithNamespace(
+    TranslationNamespace.GroupManagement,
+    'Action.CopyRoleId',
+  );
 
   const handleCopyRoleId = useCallback(() => {
     void navigator.clipboard.writeText(roleId.toString()).then(() => {
-      showToast(roleIdCopiedMessage);
+      showToast(
+        translateWithNamespace(TranslationNamespace.GroupManagement, 'Message.RoleIdCopied'),
+      );
     });
-  }, [roleId, showToast, roleIdCopiedMessage]);
+  }, [roleId, showToast, translateWithNamespace]);
 
   return (
     <Grid container item XSmall={12} alignItems='center' gap={1}>
-      <span className='text-caption-medium content-emphasis'>{roleIdDisplay}</span>
+      <span className='text-caption-medium content-emphasis'>
+        {translateWithNamespace(TranslationNamespace.GroupManagement, 'Label.RoleId')}: {roleId}
+      </span>
       <Tooltip title={copyRoleIdLabel}>
         <IconButton
           aria-label={copyRoleIdLabel}
