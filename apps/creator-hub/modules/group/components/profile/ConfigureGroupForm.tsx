@@ -22,8 +22,6 @@ import {
   FormControlLabel,
   Switch,
 } from '@rbx/ui';
-import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
-import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import type { GroupSocialLink } from '@modules/clients/groups';
 import groupsClient from '@modules/clients/groups';
 import type { User } from '@modules/clients/users';
@@ -31,7 +29,6 @@ import tryParseResponseError from '@modules/clients/utils/tryParseResponseError'
 import { FormMode, toastDurationTime } from '@modules/miscellaneous/common';
 import { ASSET_ACCESS_PRIVACY } from '@modules/miscellaneous/common/constants/linkConstants';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
-import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { getEnumKeyByValue } from '@modules/miscellaneous/utils';
 import { useUpdateGroupAssetPrivacyDefault } from '@modules/react-query/assetPermissions';
 import useSocialLinksBehavior from '@modules/social-links/hooks/useSocialLinksBehavior';
@@ -176,9 +173,7 @@ const ConfigureGroupForm: FunctionComponent<React.PropsWithChildren<ConfigureGro
     },
   } = useConfigureGroupFormStyles();
 
-  const translation = useTranslation();
-  const { translate } = translation;
-  const { tPendingTranslation } = useTranslationWrapper(translation);
+  const { translate } = useTranslation();
   const { enqueue, close } = useSnackbar();
   const { unifiedLogger } = useUnifiedLoggerProvider();
   const { refreshPermission, permissions } = useCurrentOrganization();
@@ -257,30 +252,14 @@ const ConfigureGroupForm: FunctionComponent<React.PropsWithChildren<ConfigureGro
     [enqueue, close],
   );
 
-  const copyGroupIdLabel = tPendingTranslation(
-    'Copy group ID',
-    'Copy-button tooltip/aria label',
-    translationKey('Action.CopyGroupId', TranslationNamespace.Organization),
-  );
-  const groupIdLabel = tPendingTranslation(
-    'Group ID',
-    'Label before the numeric ID',
-    translationKey('Label.GroupId', TranslationNamespace.Organization),
-  );
-  const groupIdCopiedMessage = tPendingTranslation(
-    'Group ID copied to clipboard',
-    'Copy-confirmation toast',
-    translationKey('Message.GroupIdCopied', TranslationNamespace.Organization),
-  );
-
   const handleCopyGroupId = useCallback(() => {
     if (!groupConfiguration.id) {
       return;
     }
     void navigator.clipboard.writeText(groupConfiguration.id.toString()).then(() => {
-      showBottomToast(groupIdCopiedMessage);
+      showBottomToast(translate('Message.GroupIdCopied'));
     });
-  }, [groupConfiguration.id, showBottomToast, groupIdCopiedMessage]);
+  }, [groupConfiguration.id, showBottomToast, translate]);
 
   const handleIconChange = useCallback(
     (newValue: GroupIcon, fieldOnChange: ControllerRenderProps['onChange']) => {
@@ -916,12 +895,12 @@ const ConfigureGroupForm: FunctionComponent<React.PropsWithChildren<ConfigureGro
         {!!groupConfiguration.id && (
           <Grid container item XSmall={12} alignItems='center' gap={0.5}>
             <Typography variant='captionBody' color='primary'>
-              {groupIdLabel}: {groupConfiguration.id}
+              {translate('Label.GroupId')}: {groupConfiguration.id}
             </Typography>
-            <Tooltip arrow placement='top' title={copyGroupIdLabel}>
+            <Tooltip arrow placement='top' title={translate('Action.CopyGroupId')}>
               <IconButton
                 data-testid='copy-group-id-button'
-                aria-label={copyGroupIdLabel}
+                aria-label={translate('Action.CopyGroupId')}
                 size='small'
                 color='default'
                 onClick={handleCopyGroupId}>
