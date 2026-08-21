@@ -155,6 +155,7 @@ const AudienceReachPage: FC = () => {
           isRated={!state.contentRating.isUnrated}
           is16Plus={state.contentRating.minimumAge >= 16}
           isAccountAllAgesTier={effectiveCreatorTier === CreatorTierEnum.Everyone}
+          activeAllowlists={state.activeAllowlists}
         />
         <HighlyEngagedPlayersCard
           selectStatus={state.selectStatus}

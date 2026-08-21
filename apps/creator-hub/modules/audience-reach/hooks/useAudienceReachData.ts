@@ -117,6 +117,7 @@ export const useAudienceReachData = (universeId: number) => {
       isPublishedToGatedAudience,
       thresholdTrigger: universeEligibility.thresholdTrigger,
       thresholdReset: universeEligibility.thresholdReset,
+      activeAllowlists: universeEligibility.activeAllowlists ?? null,
     };
   }, [creatorTierData, contentRating, universeEligibility, isPrivate, shouldHonorReasons]);
 

@@ -1,5 +1,5 @@
 import { useMemo, useState, type FC } from 'react';
-import { CreatorTierEnum } from '@rbx/client-core-content-api/v1';
+import { AllowlistTypeEnum, CreatorTierEnum } from '@rbx/client-core-content-api/v1';
 import { TransactionVariantEnum } from '@rbx/client-core-content-transaction-api/v1';
 import { StatusCodes } from '@rbx/core';
 import { useFlag } from '@rbx/flags';
@@ -29,6 +29,7 @@ interface PublishingFeeCardProps {
   isRated: boolean;
   is16Plus: boolean;
   isAccountAllAgesTier: boolean;
+  activeAllowlists?: AllowlistTypeEnum[] | null;
 }
 
 const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
@@ -40,6 +41,7 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
   isRated,
   is16Plus,
   isAccountAllAgesTier,
+  activeAllowlists,
 }) => {
   const { translateWithNamespace } = useTranslation();
   const { gameDetails } = useCurrentGame();
@@ -88,8 +90,13 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
     !creatorEligibilityResponse?.everyoneTierWithoutSubscription &&
     creatorEligibilityResponse?.creatorTier === CreatorTierEnum.Everyone;
 
+  const isAllowlistedExempt =
+    Boolean(activeAllowlists?.includes(AllowlistTypeEnum.UniverseBypass)) ||
+    Boolean(activeAllowlists?.includes(AllowlistTypeEnum.TemporaryExpeditedFeeBypass));
+
   const shouldShowExpediteUpsell =
     isExpeditedReviewEnabled &&
+    !isAllowlistedExempt &&
     // Eligible to pay expedited fee:
     ((isBelowThreshold && // Creators above threshold can just pay the normal fee
       canPay &&
@@ -124,9 +131,14 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
           false,
         ];
       }
-      if (exemptDueToActiveSubscription || expeditedTransactionStatus?.hasDeposit) {
-        // Variant 3: The user has an active subscription that exempts them from the deposit, or they have
-        // already paid the expedited review fee. No action is needed.
+      if (
+        exemptDueToActiveSubscription ||
+        expeditedTransactionStatus?.hasDeposit ||
+        isAllowlistedExempt
+      ) {
+        // Variant 3: The user has an active subscription that exempts them from the deposit, they
+        // have already paid the expedited review fee, or the universe is on a fee-bypass allowlist.
+        // No action is needed.
         return [
           translateWithNamespace(TranslationNamespace.AudienceReach, 'Label.Exempt'),
           expeditedTransactionStatus?.hasDeposit
@@ -192,6 +204,7 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
       canView,
       publishingFeeTransactionStatus,
       exemptDueToActiveSubscription,
+      isAllowlistedExempt,
       translateWithNamespace,
       isBelowThreshold,
       canSubmitPublishingFee,

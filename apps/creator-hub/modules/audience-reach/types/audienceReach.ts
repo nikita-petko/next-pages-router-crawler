@@ -1,4 +1,5 @@
 import type {
+  AllowlistTypeEnum,
   CreatorTierEnum,
   ReasonEnum,
   SelectStatusEnum,
@@ -54,4 +55,5 @@ export interface AudienceReachState {
   isPublishedToGatedAudience: boolean;
   thresholdTrigger: number;
   thresholdReset: number;
+  activeAllowlists: AllowlistTypeEnum[] | null;
 }
