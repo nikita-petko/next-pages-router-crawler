@@ -1,5 +1,6 @@
 import type { FunctionComponent, PropsWithChildren } from 'react';
 import { useCallback, useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
 import { withTranslation, useLocalization } from '@rbx/intl';
 import { Grid } from '@rbx/ui';
 import { SCROLL_CONTAINER_ID } from '@modules/creator-hub-layout/CreatorHubLayoutInner';
@@ -10,6 +11,10 @@ import QuestionnaireAccordions from '../components/QuestionnaireAccordions';
 import QuestionnaireProgress from '../components/QuestionnaireProgress';
 import QuestionnaireSubmissionState from '../components/SubmissionState';
 import { QUESTIONNAIRE_TRANSLATION_KEYS } from '../constants/questionnaireConstants';
+import { QuestionnaireTelemetryProvider } from '../contexts/QuestionnaireTelemetryContext';
+import useQuestionnaireAttemptTiming from '../hooks/useQuestionnaireAttemptTiming';
+import useQuestionnaireFunnelAttempt from '../hooks/useQuestionnaireFunnelAttempt';
+import useQuestionnaireTelemetry from '../hooks/useQuestionnaireTelemetry';
 import useQuestionnaireToast from '../hooks/useQuestionnaireToast';
 import networkRequestManager from '../implementations/QuestionnaireNetworkRequestManager';
 import type { ValidatedAnswer, QuestionnaireResponseErrors } from '../interfaces/types';
@@ -44,6 +49,7 @@ enum SubPage {
 const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireContainerProps>> = ({
   universeId,
 }) => {
+  const router = useRouter();
   const { showToastNetworkError, showToastUserError, showToastSuccess } = useQuestionnaireToast();
   const [errors, setErrors] = useState<QuestionnaireResponseErrors>({});
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -51,6 +57,8 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
   const [subPage, setSubPage] = useState<SubPage>(SubPage.Landing);
   const { locale } = useLocalization();
   const localeCode = convertToRobloxLocale(locale);
+  const explicitEntryPoint =
+    typeof router.query.entryPoint === 'string' ? router.query.entryPoint : undefined;
   const { settings, isFetched } = useSettings();
   const { enableContentMaturity18Plus } = settings;
 
@@ -73,6 +81,12 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
     isLoading: isLatestQuestionnaireIdLoading,
   } = useLatestQuestionnaireId(universeId);
   const questionnaireId = questionnaireIdData?.questionnaireId;
+  const { attemptId, completeAttempt, entryPoint, startAttempt } = useQuestionnaireFunnelAttempt({
+    explicitEntryPoint,
+    locale,
+    questionnaireId,
+    universeId,
+  });
 
   const { data: questionnaireData, isLoading: isQuestionnaireLoading } = useQuestionnaire(
     questionnaireId,
@@ -127,6 +141,17 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
   const { mutateAsync: submitAnswers } = useSubmitAnswers(universeId);
   const { mutateAsync: saveAnswers } = useSaveAnswers(universeId);
   const { mutateAsync: validateAnswers } = useValidateAnswers();
+
+  const isAttemptActive = subPage === SubPage.Questionnaire || subPage === SubPage.Preview;
+  useQuestionnaireAttemptTiming(universeId, questionnaireId, isAttemptActive);
+
+  const telemetry = useQuestionnaireTelemetry({
+    attemptId,
+    entryPoint,
+    locale,
+    questionnaireId,
+    universeId,
+  });
 
   const attemptSave = useCallback(
     async (answersToSave?: ValidatedAnswer[]): Promise<boolean> => {
@@ -216,6 +241,15 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
     }
   }, [questionnaireId, showToastUserError, validateAnswers, pendingAnswers, showToastNetworkError]);
 
+  const goToQuestionnaire = useCallback(() => {
+    setSubPage(SubPage.Questionnaire);
+    document.getElementById(SCROLL_CONTAINER_ID)?.scrollTo(0, 0);
+  }, []);
+
+  const handleStartQuestionnaire = useCallback(() => {
+    startAttempt({ onStarted: goToQuestionnaire });
+  }, [goToQuestionnaire, startAttempt]);
+
   const attemptSubmit = async () => {
     const currQuestionnaireId = await getLatestQuestionnaireId();
     if (currQuestionnaireId !== questionnaireId) {
@@ -236,6 +270,7 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
     try {
       setIsSaving(true);
       await submitAnswers({ questionnaireId, answers: pendingAnswers });
+      completeAttempt();
       setEditedAnswers(null);
       showToastSuccess(true);
       setSubPage(SubPage.Landing);
@@ -259,13 +294,7 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
       );
       return;
     }
-    setSubPage(SubPage.Questionnaire);
-    document.getElementById(SCROLL_CONTAINER_ID)?.scrollTo(0, 0);
-  };
-
-  const handleStartQuestionnaire = () => {
-    setSubPage(SubPage.Questionnaire);
-    document.getElementById(SCROLL_CONTAINER_ID)?.scrollTo(0, 0);
+    goToQuestionnaire();
   };
 
   if (
@@ -293,16 +322,18 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
       )}
 
       {subPage === SubPage.Questionnaire && questionnaireData && (
-        <QuestionnaireAccordions
-          questionnaire={questionnaireData}
-          answers={pendingAnswers}
-          errors={errors}
-          isSaving={isSaving}
-          setAnswers={setAnswers}
-          send={attemptShowPreview}
-          save={attemptSave}
-          goToLanding={() => setSubPage(SubPage.Landing)}
-        />
+        <QuestionnaireTelemetryProvider value={telemetry}>
+          <QuestionnaireAccordions
+            questionnaire={questionnaireData}
+            answers={pendingAnswers}
+            errors={errors}
+            isSaving={isSaving}
+            setAnswers={setAnswers}
+            send={attemptShowPreview}
+            save={attemptSave}
+            goToLanding={() => setSubPage(SubPage.Landing)}
+          />
+        </QuestionnaireTelemetryProvider>
       )}
 
       {subPage === SubPage.Preview && questionnaireId && (
@@ -315,7 +346,7 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
           onEdit={attemptEdit}
           attemptSubmit={attemptSubmit}
           isSaving={isSaving}
-          moveBackAScreen={() => setSubPage(SubPage.Questionnaire)}
+          moveBackAScreen={goToQuestionnaire}
           isContentMaturityEnabled
           isIncreaseMaturityEnabled={false}
           enableContentMaturity18Plus={enableContentMaturity18Plus}
