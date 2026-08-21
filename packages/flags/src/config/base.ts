@@ -109,12 +109,21 @@ async function enableOverrides(options: TOverrideOptions): Promise<boolean> {
   return false;
 }
 
+// `URL.canParse` is Safari 17+, so we use a try/catch to support older browsers.
+function canParseUrl(url: string): boolean {
+  try {
+    return Boolean(new URL(url));
+  } catch {
+    return false;
+  }
+}
+
 export function initFlags({ baseUrl, applicationId }: TInitFlagsConfig): TInitFlagsReturn {
   if (config !== null) {
     throw new Error('@rbx/flags: config has already been initialized!');
   }
 
-  if (!URL.canParse(baseUrl)) {
+  if (!canParseUrl(baseUrl)) {
     throw new Error('@rbx/flags: base URL is invalid!');
   }
 

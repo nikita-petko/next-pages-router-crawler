@@ -34,7 +34,6 @@ export default class CreationsCustomSettingsManager implements CustomSettingsMan
       isExperienceCreatedByCurrentUserOrGroup: false,
       isCommercePilotEnabled: false,
       isScheduledPublishingEnabled: false,
-      isFreeAvatarSystemEnabled: false,
       isCustomMatchmakingEnabled: true,
       isCustomMatchmakingTextChatSignalEnabled: true,
       isExperienceWebhooksEnabled: false,
@@ -91,9 +90,6 @@ export default class CreationsCustomSettingsManager implements CustomSettingsMan
       isScheduledPublishingEnabled:
         getCollectiblesMetadata.status === 'fulfilled' &&
         (getCollectiblesMetadata.value?.isScheduledPublishingEnabled ?? false),
-      isFreeAvatarSystemEnabled:
-        getCollectiblesMetadata.status === 'fulfilled' &&
-        (getCollectiblesMetadata.value?.isFreeAvatarSystemEnabled ?? false),
       isCustomMatchmakingEnabled: true,
       isCustomMatchmakingTextChatSignalEnabled: true,
       isExperienceWebhooksEnabled:

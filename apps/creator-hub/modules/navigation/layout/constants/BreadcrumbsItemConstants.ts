@@ -328,15 +328,6 @@ export const RouterParseItemToBreadcrumbItemDetails: { [key: string]: Breadcrumb
     },
     breadcrumbType: BreadcrumbItemType.AnalyticsMonetization,
   },
-  'free-avatars': {
-    displayName: ({ translate }) => {
-      return createNameWithTranslate({ key: 'Label.FreeAvatars' }, translate);
-    },
-    breadcrumbType: BreadcrumbItemType.FreeAvatars,
-    getLinkPath: (getLinkPathParams) => {
-      return creatorHub.dashboard.getFreeAvatarsUrl(Number(getLinkPathParams.baseId));
-    },
-  },
   'avatar-creation-tokens': {
     displayName: ({ translate }) => {
       return createNameWithTranslate({ key: 'Heading.AvatarCreationTokens' }, translate);

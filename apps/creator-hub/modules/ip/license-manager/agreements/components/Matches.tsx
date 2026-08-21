@@ -28,6 +28,7 @@ import {
   useLicenseManagerLoggerLogOnce,
 } from '../../utils/logger';
 import { markMatchCandidateIgnored, useMatchesQuery } from '../hooks/useMatchesQuery';
+import CollectibleMatchDetailsPanelContent from './CollectibleMatchDetailsPanelContent';
 import CollectibleMatchesTable from './CollectibleMatchesTable';
 import ContentMaturityFilterChip from './ContentMaturityFilterChip';
 import DauRangeFilterChip, { DauRange } from './DauRangeFilterChip';
@@ -38,14 +39,12 @@ import LifetimeVisitsRangeFilterChip, {
 import MatchCandidateOfferStatusFilterChip, {
   MatchCandidateOfferStatusFilter,
 } from './MatchCandidateOfferStatusFilterChip';
-import MatchDetailsPanelContent, {
-  type MatchPanelAgreementStatus,
-  type MatchDetailsPanelNavigation,
-} from './MatchDetailsPanelContent';
+import MatchDetailsPanelContent from './MatchDetailsPanelContent';
 import MatchesFilterPanel from './MatchesFilterPanel';
 import MatchesFilterPanelContent from './MatchesFilterPanelContent';
 import MatchesSidePanel from './MatchesSidePanel';
 import MatchOfferPanelContent from './MatchOfferPanelContent';
+import type { MatchDetailsPanelNavigation, MatchPanelAgreementStatus } from './matchPanelTypes';
 import NoMatchesContent from './NoMatchesContent';
 import UniverseMatchesTable from './UniverseMatchesTable';
 
@@ -680,7 +679,9 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
       candidateType === AgreementCandidateType.Collectible ? (
         <CollectibleMatchesTable
           dataReq={candidatesQuery}
+          onSelectMatch={handleSelectCandidate}
           agreementStatusesColumn={agreementStatusesColumn}
+          selectedMatchId={isMatchPanelOpen ? (selectedCandidate?.id ?? undefined) : undefined}
           onLoadMore={handleLoadMore}
         />
       ) : (
@@ -771,16 +772,25 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
         testId='matches-side-panel'
         ariaLabel={matchPanelAriaLabel}
         dismissMode='match'>
-        {selectedCandidate && currentMatchPanelView === MatchPanelView.Details && (
-          <MatchDetailsPanelContent
-            candidate={selectedCandidate}
-            onClose={handleCloseMatchPanel}
-            onOfferLicense={handleOfferLicense}
-            agreementStatusFromList={matchPanelAgreementStatus}
-            navigation={matchDetailsNavigation}
-            onIgnored={handleMatchIgnored}
-          />
-        )}
+        {selectedCandidate &&
+          currentMatchPanelView === MatchPanelView.Details &&
+          (isCollectibleMatchesRequest ? (
+            <CollectibleMatchDetailsPanelContent
+              candidate={selectedCandidate}
+              onClose={handleCloseMatchPanel}
+              agreementStatusFromList={matchPanelAgreementStatus}
+              navigation={matchDetailsNavigation}
+            />
+          ) : (
+            <MatchDetailsPanelContent
+              candidate={selectedCandidate}
+              onClose={handleCloseMatchPanel}
+              onOfferLicense={handleOfferLicense}
+              agreementStatusFromList={matchPanelAgreementStatus}
+              navigation={matchDetailsNavigation}
+              onIgnored={handleMatchIgnored}
+            />
+          ))}
         {selectedCandidate && currentMatchPanelView === MatchPanelView.Offer && (
           <MatchOfferPanelContent
             candidate={selectedCandidate}

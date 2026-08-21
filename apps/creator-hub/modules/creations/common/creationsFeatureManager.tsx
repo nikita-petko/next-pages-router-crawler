@@ -17,7 +17,6 @@ import {
   analyticsHttpServiceNavigationItem,
   analyticsImmersiveAdsNavigationItem,
   analyticsItemMonetizationAvatarItemsNavigationItem,
-  analyticsItemFreeAvatarsNavigationItem,
   analyticsItemMonetizationDeveloperProductsNavigationItem,
   analyticsItemMonetizationPassesNavigationItem,
   analyticsMatchmakingNavigationItem,
@@ -524,17 +523,6 @@ const monetizationAvatarItemsFeature: Feature<CreationsFeatureSettings> = {
     (settings?.userCanViewAnalyticsForUniverse ?? false),
 };
 
-const freeAvatarsFeature: Feature<CreationsFeatureSettings> = {
-  key: 'freeAvatars',
-  nameKey: analyticsItemFreeAvatarsNavigationItem.title.key,
-  path: '/free-avatars',
-  sectionTitleKey: 'Heading.Engagement',
-  isEnabledOnSettings: (settings?: CreationsFeatureSettings) =>
-    (settings?.canConfigure ?? false) &&
-    (settings?.userCanViewAnalyticsForUniverse ?? false) &&
-    (settings?.isFreeAvatarSystemEnabled ?? false),
-};
-
 const monetizationImmersiveAdsFeature: Feature<CreationsFeatureSettings> = {
   key: 'monetizationImmersiveAds',
   nameKey: analyticsImmersiveAdsNavigationItem.title.key,
@@ -925,7 +913,6 @@ const engagementCategoryFeature: Feature<CreationsFeatureSettings> = {
   nameKey: 'Heading.Engagement',
   subFeatures: [
     eventsAndUpdatesFeature,
-    freeAvatarsFeature,
     socialLinkFeature,
     notificationsFeature,
     badgesFeature,

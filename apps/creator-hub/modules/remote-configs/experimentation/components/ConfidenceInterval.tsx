@@ -32,13 +32,13 @@ const useStyles = makeStyles()((theme) => ({
     minWidth: '4px',
   },
   intervalTrackGreen: {
-    backgroundColor: '#44DA87',
+    backgroundColor: theme.palette.content.alert.active,
   },
   intervalTrackRed: {
-    backgroundColor: '#F45B52',
+    backgroundColor: theme.palette.content.alert.important,
   },
   intervalTrackYellow: {
-    backgroundColor: '#F2F2F3',
+    backgroundColor: theme.palette.content.muted,
   },
   intervalMetricValueLabel: {
     color: theme.palette.content.standard,

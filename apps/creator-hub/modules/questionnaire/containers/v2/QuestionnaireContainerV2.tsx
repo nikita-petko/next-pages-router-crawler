@@ -10,6 +10,7 @@ import { useIXPParameters } from '@modules/miscellaneous/hooks';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
+import useQuestionnaireAttemptTiming from '../../hooks/useQuestionnaireAttemptTiming';
 import {
   useAnswers,
   useDetailedGuidelinesV2,
@@ -23,6 +24,7 @@ import {
   clearQuestionnaireAttemptId,
   getOrCreateQuestionnaireAttemptId,
   getQuestionnaireEntryPoint,
+  logQuestionnaireCompleted,
   logQuestionnaireStarted,
 } from '../../utils/questionnaireEvents';
 import QuestionnaireOverviewV2 from './QuestionnaireOverviewV2';
@@ -70,6 +72,8 @@ const QuestionnaireContainerV2: FunctionComponent<
   const { isLoading: isAnswerLoading } = useAnswers(universeId);
   const { isLoading: isSubmissionLoading } = useLatestSubmission(universeId);
 
+  useQuestionnaireAttemptTiming(universeId, questionnaireId, viewState === ViewState.Stepper);
+
   // Unused here on purpose: these drive banners the overview renders *above* the heading, so
   // resolving them after first paint shifts the page down. Deduped by key for the overview.
   const { isLoading: isDetailedGuidelinesLoading } = useDetailedGuidelinesV2(universeId);
@@ -106,6 +110,13 @@ const QuestionnaireContainerV2: FunctionComponent<
 
   const handleCompleteQuestionnaire = () => {
     if (questionnaireId) {
+      logQuestionnaireCompleted(unifiedLogger, {
+        attemptId,
+        entryPoint,
+        locale,
+        questionnaireId,
+        universeId,
+      });
       clearQuestionnaireAttemptId(universeId, questionnaireId);
     }
     setAttemptId('');

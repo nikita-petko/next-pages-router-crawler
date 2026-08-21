@@ -1,7 +1,7 @@
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from '@rbx/intl';
-import { Grid, IconButton, Menu, MenuItem, SettingsIcon, Typography } from '@rbx/ui';
+import { Grid, IconButton, Menu, MenuItem, MoreHorizIcon, Typography } from '@rbx/ui';
 import AddItemToFolderDialog from './AddItemToFolderDialog';
 import DeleteFolderDialog from './DeleteFolderDialog';
 import RenameFolderDialog from './RenameFolderDialog';
@@ -63,7 +63,7 @@ const FolderActionsMenu: FunctionComponent<FolderActionsMenuProps> = ({
         color='inherit'
         size='large'
         onClick={openMenu}>
-        <SettingsIcon fontSize='large' />
+        <MoreHorizIcon fontSize='large' />
       </IconButton>
       <Menu
         open={Boolean(menuAnchorEl)}

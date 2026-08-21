@@ -22,26 +22,6 @@ import * as presetChatFlags from './presetChat';
 
 export const generatedFlags = [
     {
-      flag: avatarMarketplaceFlags.freeAvatarModuleStorePageLink,
-      metadata: {
-        namespace: 'avatar-marketplace',
-        name: 'freeAvatarModuleStorePageLink',
-        defaultValue: "#",
-        valueType: 'string',
-        contextType: 'static',
-      },
-    },
-    {
-      flag: avatarMarketplaceFlags.freeAvatarModuleDocsPageLink,
-      metadata: {
-        namespace: 'avatar-marketplace',
-        name: 'freeAvatarModuleDocsPageLink',
-        defaultValue: "#",
-        valueType: 'string',
-        contextType: 'static',
-      },
-    },
-    {
       flag: avatarMarketplaceFlags.enableUgcFolders,
       metadata: {
         namespace: 'avatar-marketplace',

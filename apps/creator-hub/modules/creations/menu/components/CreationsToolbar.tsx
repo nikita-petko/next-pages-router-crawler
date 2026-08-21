@@ -25,7 +25,8 @@ import { Asset } from '@modules/miscellaneous/common';
 import { Flex } from '@modules/miscellaneous/components/Flex';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
-import { useCurrentGroup } from '@modules/providers/groups/GroupsProvider';
+import { normalizeSingleQueryParam } from '@modules/miscellaneous/hooks/useQueryParams';
+import { useCurrentGroup, useGroups } from '@modules/providers/groups/GroupsProvider';
 import { AvatarMenuMap } from '../../avatarItem/constants/avatarItemConstants';
 import useTaxonomyView from '../../avatarItem/hooks/useTaxonomyView';
 import { buildTaxonomyActiveTab } from '../../avatarItem/utils/taxonomyRoutingUtils';
@@ -52,12 +53,15 @@ const isSearchSortParameterValue = (value: string): value is SearchSortParameter
 const isEventSortByValue = (value: string): value is EventSortBy =>
   eventSortByValues.includes(value);
 
+const publishSettingsParamKeys = ['publishSettings'] as const;
+
 const CreationsToolbar: FunctionComponent<React.PropsWithChildren<CreationsToolbarProps>> = ({
   menuState,
 }) => {
   const { translate } = useTranslation();
   const { unifiedLogger } = useUnifiedLoggerProvider();
   const { value: autoPublishEnabled } = useFlag(isAutoPublishPreferencesEnabled);
+  const { isFetched: isGroupContextFetched } = useGroups();
 
   const {
     classes: { toolbarContainer, sortContainer, timedOptionsButton, timedOptionsButtonDivider },
@@ -65,6 +69,7 @@ const CreationsToolbar: FunctionComponent<React.PropsWithChildren<CreationsToolb
   const [isTimedOptionsDialogOpen, setIsTimedOptionsDialogOpen] = useState(false);
   const [isPublishSettingsOpen, setIsPublishSettingsOpen] = useState(false);
   const [publishSettingsKey, setPublishSettingsKey] = useState(0);
+  const [hasDismissedUrlPublishSettings, setHasDismissedUrlPublishSettings] = useState(false);
   const [timedOptionsTypesLoaded, setTimedOptionsTypesLoaded] = useState(false);
   const [settingsMenuAnchor, setSettingsMenuAnchor] = useState<HTMLElement | null>(null);
   const isSettingsMenuOpen = settingsMenuAnchor != null;
@@ -90,9 +95,48 @@ const CreationsToolbar: FunctionComponent<React.PropsWithChildren<CreationsToolb
     setIsOnMarketplace,
   } = useCreationsFilters();
 
-  const [{ filterIndex }] = useQueryParams(['filterIndex']);
+  const [{ filterIndex, publishSettings }] = useQueryParams(['filterIndex', 'publishSettings']);
   const [, setViewParams] = useQueryParams(['activeTab', 'filterIndex']);
+  const [, setPublishSettingsParam] = useQueryParams(publishSettingsParamKeys);
   const assetType = useMemo(() => creationsMenuManager.getAssetType(menuState), [menuState]);
+
+  const isAvatarItemTab = assetType in AvatarMenuMap;
+  const isAvatarItemSettings = isAvatarItemTab && autoPublishEnabled;
+
+  const requestedPublishSettings = normalizeSingleQueryParam(publishSettings);
+  // Held until the group context resolves, because the modal keys its preferences fetch on the
+  // current group and its 404 branch leaves whatever the previous fetch loaded on screen. Opening
+  // first would show the personal creator's values and let Save write them as the group's.
+  // Clearing the param is an async router.replace, so it is still set on the render after close.
+  const isPublishSettingsRequestedByUrl =
+    !!isAvatarItemSettings &&
+    isGroupContextFetched &&
+    !hasDismissedUrlPublishSettings &&
+    (requestedPublishSettings === 'true' || requestedPublishSettings === '1');
+
+  // Tab switching spreads the current query, so an unhonoured param would ride along and pop the
+  // modal open on the first avatar item tab the creator visits, long after they followed the link.
+  useEffect(() => {
+    if (!isGroupContextFetched || requestedPublishSettings === undefined) {
+      return;
+    }
+    if (!isPublishSettingsRequestedByUrl) {
+      setPublishSettingsParam({ publishSettings: null }, { skipHistory: true });
+    }
+  }, [
+    isGroupContextFetched,
+    isPublishSettingsRequestedByUrl,
+    requestedPublishSettings,
+    setPublishSettingsParam,
+  ]);
+
+  const handlePublishSettingsClose = useCallback(() => {
+    setIsPublishSettingsOpen(false);
+    if (isPublishSettingsRequestedByUrl) {
+      setHasDismissedUrlPublishSettings(true);
+      setPublishSettingsParam({ publishSettings: null }, { skipHistory: true });
+    }
+  }, [isPublishSettingsRequestedByUrl, setPublishSettingsParam]);
 
   // Taxonomy is the default view for the Avatar Items tabs it replaces; the URL only records an
   // explicit opt-out back to the legacy item-type view.
@@ -262,9 +306,6 @@ const CreationsToolbar: FunctionComponent<React.PropsWithChildren<CreationsToolb
   const shouldShowOnCreatorStoreToggle = assetType === Asset.Decal || assetType === Asset.MeshPart;
 
   const shouldShowRentablesBulkUpdateButton = isRentableType;
-
-  const isAvatarItemTab = assetType in AvatarMenuMap;
-  const isAvatarItemSettings = isAvatarItemTab && autoPublishEnabled;
 
   const isShowingExperienceFilters =
     !isAvatarItemSettings &&
@@ -454,8 +495,8 @@ const CreationsToolbar: FunctionComponent<React.PropsWithChildren<CreationsToolb
       />
       <StudioPublishSettingsModal
         key={publishSettingsKey}
-        open={isPublishSettingsOpen}
-        onClose={() => setIsPublishSettingsOpen(false)}
+        open={isPublishSettingsOpen || isPublishSettingsRequestedByUrl}
+        onClose={handlePublishSettingsClose}
       />
     </Flex>
   );

@@ -1,10 +1,7 @@
 import type { FunctionComponent } from 'react';
 import React, { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import {
-  AgreementStatus,
-  type AgreementCandidateResponse,
-} from '@rbx/client-content-licensing-api/v1';
+import type { AgreementCandidateResponse } from '@rbx/client-content-licensing-api/v1';
 import { useFlag } from '@rbx/flags';
 import { Icon, IconButton, Link as FoundationLink } from '@rbx/foundation-ui';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
@@ -40,7 +37,6 @@ import useDebouncedContentMaturity, {
   NO_CONTENT_MATURITY_FOUND_FOR_ID,
 } from '../hooks/experienceGuidelines';
 import { NO_GAME_FOUND_FOR_ID, useDebouncedGameDetails } from '../hooks/games';
-import type { AgreementStatusBatchItemError } from '../hooks/useAgreementStatusesByIdsQuery';
 import { useGetPlacefileImagesQuery } from '../hooks/useGetPlacefileImagesQuery';
 import { usePlacefileImageUrlsQuery } from '../hooks/usePlacefileImageUrlsQuery';
 import { BUTTON_SPINNER_SIZE } from '../utils/constants';
@@ -56,33 +52,13 @@ import {
   AgreementStatusFromBatchMaps,
   type AgreementStatusesColumnProps,
 } from './IphMatchStatusLabel';
+import { canViewAgreement } from './matchPanelAgreementStatus';
 import MatchPanelLayout from './MatchPanelLayout';
+import type { MatchDetailsPanelNavigation, MatchPanelAgreementStatus } from './matchPanelTypes';
 import type { InspectorImage } from './ScreenshotInspector';
 import ScreenshotInspector from './ScreenshotInspector';
 
-const AGREEMENT_STATUSES_FOR_VIEW_AGREEMENT = new Set<AgreementStatus>([
-  AgreementStatus.ConditionalOffer,
-  AgreementStatus.Disputed,
-  AgreementStatus.Inquired,
-  AgreementStatus.Accepted,
-]);
-
-/** Agreement status for this candidate from the same batch query as {@link MatchesTable} (React Query cache). */
-export interface MatchPanelAgreementStatus {
-  status: AgreementStatus | undefined;
-  /** Per-agreement error from batch status API (e.g. agreement not found). */
-  rowError?: AgreementStatusBatchItemError;
-  isPending: boolean;
-  isError: boolean;
-}
-
-/** Controls prev/next navigation within the matches table while the details panel is open. */
-export interface MatchDetailsPanelNavigation {
-  onPrevious: () => void;
-  onNext: () => void;
-  canGoPrevious: boolean;
-  canGoNext: boolean;
-}
+export type { MatchDetailsPanelNavigation, MatchPanelAgreementStatus } from './matchPanelTypes';
 
 interface MatchDetailsPanelContentProps {
   candidate: AgreementCandidateResponse;
@@ -357,11 +333,11 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
   const statusFromList = agreementStatusFromList?.status;
   const waitingOnAgreementStatus = !!agreementId && !!agreementStatusFromList?.isPending;
 
-  const showViewAgreement =
-    !!agreementId &&
-    !rowError &&
-    statusFromList !== undefined &&
-    AGREEMENT_STATUSES_FOR_VIEW_AGREEMENT.has(statusFromList);
+  const showViewAgreement = canViewAgreement({
+    agreementId,
+    rowError,
+    status: statusFromList,
+  });
 
   const agreementCandidateId = candidate.id;
   const matchDetailsPageHref =
@@ -426,7 +402,7 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
         fullWidth={!useFillFooter}
         className={ctaClassName}
         component={Link}
-        href={IPH_AGREEMENT_DETAILS_HREF(agreementId)}>
+        href={IPH_AGREEMENT_DETAILS_HREF(agreementId ?? '')}>
         {translate('Action.ViewAgreement')}
       </Button>
     );

@@ -12,7 +12,6 @@ enum BreadcrumbItemType {
   ActivityHistory = 'activity-history',
   Notifications = 'notifications',
   SocialLinks = 'social-links',
-  FreeAvatars = 'free-avatars',
   Translation = 'translation',
   Overview = 'overview',
   ContributionReport = 'contribution-report',

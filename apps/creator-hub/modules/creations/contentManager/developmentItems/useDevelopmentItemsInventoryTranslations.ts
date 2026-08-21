@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useTranslation } from '@rbx/intl';
+import formatEnglishWithArgs from '@modules/analytics-translations/formatEnglishWithArgs';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -7,7 +8,14 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 const useDevelopmentItemsInventoryTranslations = () => {
   const intl = useTranslation();
   const { translate } = intl;
-  const { tPendingTranslation } = useTranslationWrapper(intl);
+  const { tPendingTranslation: translatePending } = useTranslationWrapper(intl);
+  const tPendingTranslation = useCallback<typeof translatePending>(
+    (english, description, key, args) => {
+      const translated = translatePending(english, description, key, args);
+      return translated.length > 0 ? translated : formatEnglishWithArgs(english, args);
+    },
+    [translatePending],
+  );
 
   const assetIdWithValue = useCallback(
     (assetId: number) =>

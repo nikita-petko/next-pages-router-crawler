@@ -1,10 +1,19 @@
-import { useContext, useEffect, useMemo } from 'react';
-import type { ChartColor } from '@rbx/analytics-ui';
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useSyncExternalStore,
+} from 'react';
+import { OrderedChartColors, type ChartColor } from '@rbx/analytics-ui';
 import type { TRAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
 import type { RAQIV2BreakdownValue } from '@modules/clients/analytics';
 import {
   BreakdownColorConsistencyContext,
+  type BreakdownColorSnapshot,
   type BreakdownValueKey,
+  EMPTY_BREAKDOWN_COLOR_SNAPSHOT,
   getBreakdownValueKey,
   getDimensionSetKey,
 } from '../context/BreakdownColorConsistencyContext';
@@ -14,6 +23,7 @@ export type BreakdownColorLookup = (
 ) => ChartColor | undefined;
 
 const noopLookup: BreakdownColorLookup = () => {};
+const noopSubscribe = (): (() => void) => () => {};
 
 /**
  * Returns true when every dimension in `breakdownValues` is a member of
@@ -53,46 +63,63 @@ const useBreakdownColors = (
   seriesBreakdownValues: ReadonlyArray<readonly RAQIV2BreakdownValue[]>,
 ): BreakdownColorLookup => {
   const colorContext = useContext(BreakdownColorConsistencyContext);
-  const getOrAssignColor = colorContext?.getOrAssignColor;
-  const registerBatch = colorContext?.registerBatch;
+  const store = colorContext?.store;
   const recordSeriesOrder = colorContext?.recordSeriesOrder;
   const dimensionSetKey = useMemo(
     () => getDimensionSetKey(breakdownDimensions),
     [breakdownDimensions],
+  );
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => {
+      if (!store || !dimensionSetKey) {
+        return noopSubscribe();
+      }
+      return store.subscribe(dimensionSetKey, onStoreChange);
+    },
+    [dimensionSetKey, store],
+  );
+  const getDimensionSetSnapshot = useCallback((): BreakdownColorSnapshot => {
+    if (!store || !dimensionSetKey) {
+      return EMPTY_BREAKDOWN_COLOR_SNAPSHOT;
+    }
+    return store.getSnapshot(dimensionSetKey);
+  }, [dimensionSetKey, store]);
+  const snapshot = useSyncExternalStore(
+    subscribe,
+    getDimensionSetSnapshot,
+    getDimensionSetSnapshot,
   );
   const dimensionSet = useMemo(
     () => new Set<string>(breakdownDimensions ?? []),
     [breakdownDimensions],
   );
 
-  // Eagerly register all breakdown values as a batch so that co-visible values
-  // are guaranteed distinct colors (when the palette is large enough).
-  // Skip any series whose dimensions don't match the current breakdownDimensions —
-  // this prevents stale API response data from polluting a newly-selected dimension
-  // set's color map during the transition window while fresh data loads.
-  useMemo(() => {
-    if (!dimensionSetKey || !registerBatch) {
-      return;
-    }
-
-    const batchKeys: BreakdownValueKey[] = [];
+  const batchKeys = useMemo(() => {
+    const collectedKeys: BreakdownValueKey[] = [];
     seriesBreakdownValues.forEach((breakdownValues) => {
       if (!seriesMatchesDimensions(breakdownValues, dimensionSet)) {
         return;
       }
       const valueKey = getBreakdownValueKey([...breakdownValues]);
       if (valueKey) {
-        batchKeys.push(valueKey);
+        collectedKeys.push(valueKey);
       }
     });
+    return collectedKeys;
+  }, [dimensionSet, seriesBreakdownValues]);
 
-    if (batchKeys.length > 0) {
-      registerBatch(dimensionSetKey, batchKeys);
+  // Unassigned keys return undefined so the chart keeps its default Blue
+  // (the total-series color) until the layout effect commits the
+  // collision-aware batch and subscribers refresh against one snapshot.
+  useLayoutEffect(() => {
+    if (!dimensionSetKey || !store || batchKeys.length === 0) {
+      return;
     }
-  }, [dimensionSetKey, dimensionSet, seriesBreakdownValues, registerBatch]);
+    store.registerBatch(dimensionSetKey, batchKeys);
+  }, [batchKeys, dimensionSetKey, store]);
 
   const lookup: BreakdownColorLookup = useMemo(() => {
-    if (!dimensionSetKey || !getOrAssignColor) {
+    if (!dimensionSetKey || !store) {
       return noopLookup;
     }
 
@@ -104,9 +131,12 @@ const useBreakdownColors = (
       if (!valueKey) {
         return undefined;
       }
-      return getOrAssignColor(dimensionSetKey, valueKey);
+      const latestSnapshot = store.getSnapshot(dimensionSetKey);
+      const lookupSnapshot = latestSnapshot === snapshot ? snapshot : latestSnapshot;
+      const colorIndex = store.getColorIndex(lookupSnapshot, valueKey);
+      return colorIndex === undefined ? undefined : OrderedChartColors[colorIndex];
     };
-  }, [dimensionSetKey, dimensionSet, getOrAssignColor]);
+  }, [dimensionSetKey, dimensionSet, snapshot, store]);
 
   useEffect(() => {
     if (!dimensionSetKey || !recordSeriesOrder) {

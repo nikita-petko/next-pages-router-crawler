@@ -1,17 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import type {
   AgreementCandidateResponse,
   IndexedAgreementCandidateResponse,
 } from '@rbx/client-content-licensing-api/v1';
-import { ItemTargetType } from '@rbx/client-marketplace-items-api/v1';
 import { useFlag } from '@rbx/flags';
 import { Locale, useLocalization, useTranslation, useTranslationWithNamespace } from '@rbx/intl';
-import {
-  AssetThumbnailSize,
-  BundleThumbnailSize,
-  Thumbnail2d,
-  ThumbnailTypes,
-} from '@rbx/thumbnails';
+import { Thumbnail2d } from '@rbx/thumbnails';
 import {
   Button,
   RobuxIcon,
@@ -35,6 +29,7 @@ import useCollectibleMatchItemDetails, {
   type CollectibleMatchItemDetails,
 } from '../hooks/useCollectibleMatchItemDetails';
 import type { UseMatchesQueryResult } from '../hooks/useMatchesQuery';
+import { getCollectibleMatchPresentation } from './collectibleMatchPresentation';
 import getCollectibleItemTypeLabel from './getCollectibleItemTypeLabel';
 import {
   AgreementStatusFromBatchMaps,
@@ -46,7 +41,7 @@ const ITEM_COLUMN_MIN_WIDTH_CLASS = '[min-width:184px]';
 const COLLECTIBLE_MATCHES_TABLE_COLUMN_COUNT = 6;
 
 type CollectibleMatchCandidate = AgreementCandidateResponse &
-  Pick<IndexedAgreementCandidateResponse, 'ipFamilyName'>;
+  Pick<IndexedAgreementCandidateResponse, 'ipFamilyName' | 'candidateContentCreatorType'>;
 
 interface CollectibleMatchRowProps {
   match: CollectibleMatchCandidate;
@@ -70,18 +65,20 @@ const CollectibleMatchRow = ({
   const { translate: translateCreations } = useTranslationWithNamespace(
     TranslationNamespace.Creations,
   );
-  const { collectible } = details;
-  const isBundle = collectible.itemTargetType === ItemTargetType.NUMBER_2;
+  const presentation = getCollectibleMatchPresentation(
+    details,
+    match.candidateContentCreatorType ?? undefined,
+  );
   let priceContent: React.ReactNode;
-  if (collectible.price == null) {
+  if (presentation.price == null) {
     priceContent = translate('Label.Unknown');
-  } else if (collectible.price === 0) {
+  } else if (presentation.price === 0) {
     priceContent = translateCreations('Label.Free');
   } else {
     priceContent = (
       <div className='flex items-center gap-xsmall'>
         <RobuxIcon fontSize='small' />
-        <span>{String(collectible.price)}</span>
+        <span>{String(presentation.price)}</span>
       </div>
     );
   }
@@ -91,24 +88,23 @@ const CollectibleMatchRow = ({
       <TableCell className={ITEM_COLUMN_MIN_WIDTH_CLASS}>
         <div className='flex items-center gap-small'>
           <Thumbnail2d
-            alt={collectible.name ?? ''}
-            targetId={collectible.itemTargetId ?? 0}
-            // eslint-disable-next-line no-underscore-dangle -- Swagger generated enum has underscore
-            size={isBundle ? BundleThumbnailSize._150x150 : AssetThumbnailSize._50x50}
+            alt={presentation.thumbnailAlt}
+            targetId={presentation.thumbnailTargetId}
+            size={presentation.size}
             skeletonVariant='square'
             containerClass='block height-[42px] width-[42px] shrink-0 padding-none'
-            type={isBundle ? ThumbnailTypes.bundleThumbnail : ThumbnailTypes.assetThumbnail}
+            type={presentation.type}
           />
           <div className='min-width-0'>
             <Typography component='div' variant='body2'>
-              {collectible.name ?? translate('Label.Unknown')}
+              {presentation.name ?? translate('Label.Unknown')}
             </Typography>
             <Typography
               variant='caption'
               color='secondary'
               className='[margin-top:4px]'
               component='div'>
-              {collectible.creatorName ? `@${collectible.creatorName}` : ''}
+              {presentation.creatorDisplayName}
             </Typography>
           </div>
         </div>
@@ -177,6 +173,8 @@ interface CollectibleMatchesTableProps {
   };
   agreementStatusesColumn?: AgreementStatusesColumnProps;
   onLoadMore?: () => void;
+  onSelectMatch: (match: CollectibleMatchCandidate) => void;
+  selectedMatchId?: string;
 }
 
 /**
@@ -186,6 +184,8 @@ const CollectibleMatchesTable = ({
   dataReq,
   agreementStatusesColumn,
   onLoadMore,
+  onSelectMatch,
+  selectedMatchId,
 }: CollectibleMatchesTableProps) => {
   const translation = useTranslation();
   const { translate } = translation;
@@ -198,7 +198,6 @@ const CollectibleMatchesTable = ({
   );
   const isCollectibleMatchesEnabled =
     isAvatarItemLicensingFlagReady && isAvatarItemLicensingEnabled;
-  const [selectedMatchId, setSelectedMatchId] = useState<string>();
   const itemLabel = tPendingTranslation(
     'Item',
     'Column header text to designate items like avatar items, bundles, or other assets',
@@ -253,10 +252,7 @@ const CollectibleMatchesTable = ({
           details={details}
           agreementStatusesColumn={agreementStatusesColumn}
           isSelected={match.id != null && match.id === selectedMatchId}
-          onActivate={() => {
-            setSelectedMatchId(match.id ?? undefined);
-            // TODO(MUS-2656): Add the Collectible match row action once its details experience is defined.
-          }}
+          onActivate={() => onSelectMatch(match)}
         />
       );
     });

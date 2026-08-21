@@ -1,20 +1,28 @@
-import { useRef } from 'react';
+import { useMemo } from 'react';
+
+const parseStringArray = <T extends string>(signature: string): readonly T[] => {
+  const parsed: unknown = JSON.parse(signature);
+  if (
+    !Array.isArray(parsed) ||
+    !parsed.every((value: unknown): value is T => typeof value === 'string')
+  ) {
+    throw new Error('Stable array signature must contain only strings');
+  }
+  return parsed;
+};
 
 /**
- * Returns a referentially-stable version of the given array.
- * If every element in `next` is the same reference as the corresponding
- * element in the previously returned array, the previous array is returned
- * instead — preserving identity for downstream dependency checks.
+ * Returns a referentially-stable `readonly T[]` for a sequence of string
+ * primitives (chart-configurator enums). Equivalent sequences share identity
+ * even when the caller passes a new array each render.
  *
- * Comparison is element-wise by `Object.is` (reference equality).
+ * Stability is keyed on `JSON.stringify(next)`, not element-wise `Object.is`.
+ * `T extends string` is required: a non-string or sparse hole makes the parsed
+ * signature invalid and throws.
  */
-function useStableArray<T>(next: readonly T[]): readonly T[] {
-  const ref = useRef<readonly T[]>(next);
-  const prev = ref.current;
-  const stable =
-    prev.length === next.length && prev.every((item, i) => Object.is(item, next[i])) ? prev : next;
-  ref.current = stable;
-  return stable;
+function useStableArray<T extends string>(next: readonly T[]): readonly T[] {
+  const signature = JSON.stringify(next);
+  return useMemo(() => parseStringArray<T>(signature), [signature]);
 }
 
 export default useStableArray;

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { isComputedMetric, type ComputedMetric, type MetricLike } from '../types/ComputedMetric';
 
 export type UseActiveMetricForQueryArgs = {
@@ -41,6 +41,60 @@ export type UseActiveMetricForQueryResult = {
   computedMetricChartTitleLabel: string | undefined;
 };
 
+const getComputedMetricForQuerySignature = (metric: ComputedMetric): string =>
+  JSON.stringify({
+    ...metric,
+    name: undefined,
+  });
+
+const isSerializedComputedMetricSource = (
+  source: unknown,
+): source is ComputedMetric['sources'][number] => {
+  if (!source || typeof source !== 'object' || !('key' in source) || !('metric' in source)) {
+    return false;
+  }
+  if (typeof source.key !== 'string') {
+    return false;
+  }
+  const { metric } = source;
+  if (typeof metric === 'string') {
+    return true;
+  }
+  return (
+    metric !== null &&
+    typeof metric === 'object' &&
+    'metric' in metric &&
+    typeof metric.metric === 'string'
+  );
+};
+
+const isSerializedComputedMetric = (value: unknown): value is ComputedMetric => {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    !('sources' in value) ||
+    !Array.isArray(value.sources) ||
+    value.sources.length === 0 ||
+    !value.sources.every(isSerializedComputedMetricSource) ||
+    !('formula' in value) ||
+    typeof value.formula !== 'string'
+  ) {
+    return false;
+  }
+  return true;
+};
+
+const parseComputedMetricForQuerySignature = (signature: string): ComputedMetric => {
+  const parsed: unknown = JSON.parse(signature);
+  if (!isSerializedComputedMetric(parsed)) {
+    throw new Error('Invalid computed metric query signature');
+  }
+  return {
+    ...parsed,
+    name: undefined,
+  };
+};
+
 /**
  * Resolves the metric the chart should query against, given the page's
  * computed-metric / operations-toggle state.
@@ -56,8 +110,8 @@ export type UseActiveMetricForQueryResult = {
  * Stability of `activeMetricForQuery` is critical: chart query keys are
  * derived from this value, so re-emitting a fresh object on every render
  * (e.g. because the user typed in the formula name) would refetch the chart
- * unnecessarily. The hook caches the last emitted reference and returns it
- * whenever the underlying signature is unchanged.
+ * unnecessarily. A canonical primitive signature drives a pure memo producer,
+ * so equivalent query payloads reconstruct only when that signature changes.
  */
 export function useActiveMetricForQuery({
   executionMetric,
@@ -68,61 +122,26 @@ export function useActiveMetricForQuery({
   const effectiveComputedMetric =
     isOperationsToggleOn && operationsDraftMetric ? operationsDraftMetric : computedMetric;
 
-  const cacheRef = useRef<{
-    signature: string | null;
-    metric: ComputedMetric | null;
-  }>({
-    signature: null,
-    metric: null,
-  });
+  const computedMetricForQuery =
+    isOperationsToggleOn && effectiveComputedMetric
+      ? effectiveComputedMetric
+      : executionMetric && isComputedMetric(executionMetric)
+        ? executionMetric
+        : null;
+  const computedMetricForQuerySignature = computedMetricForQuery
+    ? getComputedMetricForQuerySignature(computedMetricForQuery)
+    : null;
+  const stableComputedMetricForQuery = useMemo(
+    () =>
+      computedMetricForQuerySignature
+        ? parseComputedMetricForQuerySignature(computedMetricForQuerySignature)
+        : null,
+    [computedMetricForQuerySignature],
+  );
 
-  const activeMetricForQuery = useMemo<MetricLike | null>(() => {
-    if (isOperationsToggleOn) {
-      if (!effectiveComputedMetric) {
-        return null;
-      }
-      const computedMetricForQuery: ComputedMetric = {
-        ...effectiveComputedMetric,
-        name: undefined,
-      };
-      const signature = JSON.stringify(computedMetricForQuery);
-      const cached = cacheRef.current;
-      if (cached.signature === signature && cached.metric) {
-        return cached.metric;
-      }
-      return computedMetricForQuery;
-    }
-    if (!executionMetric) {
-      return null;
-    }
-    if (!isComputedMetric(executionMetric)) {
-      return executionMetric;
-    }
-
-    const computedMetricForQuery: ComputedMetric = {
-      ...executionMetric,
-      name: undefined,
-    };
-    const signature = JSON.stringify(computedMetricForQuery);
-    const cached = cacheRef.current;
-    if (cached.signature === signature && cached.metric) {
-      return cached.metric;
-    }
-    return computedMetricForQuery;
-  }, [effectiveComputedMetric, executionMetric, isOperationsToggleOn]);
-
-  // Sync the cache after render. Done in a layout effect (not during the
-  // memo) so we never mutate during render.
-  useLayoutEffect(() => {
-    if (!activeMetricForQuery || !isComputedMetric(activeMetricForQuery)) {
-      cacheRef.current = { signature: null, metric: null };
-      return;
-    }
-    cacheRef.current = {
-      signature: JSON.stringify(activeMetricForQuery),
-      metric: activeMetricForQuery,
-    };
-  }, [activeMetricForQuery]);
+  const activeMetricForQuery: MetricLike | null = isOperationsToggleOn
+    ? stableComputedMetricForQuery
+    : (stableComputedMetricForQuery ?? executionMetric);
 
   const isActiveMetricComputed = useMemo(
     () => Boolean(activeMetricForQuery && isComputedMetric(activeMetricForQuery)),

@@ -1,6 +1,6 @@
 import type { FunctionComponent, MouseEvent } from 'react';
 import { memo, useCallback, useState } from 'react';
-import { getFormattedDateTime } from '@rbx/core';
+import { getInternationalizedFormattedDate } from '@rbx/core';
 import { useVisibleImpression } from '@modules/licenses/hooks/useVisibleImpression';
 import {
   logDevelopmentItemClick,
@@ -117,7 +117,7 @@ const DevelopmentItemsGridItem: FunctionComponent<DevelopmentItemsGridItemProps>
             </span>
             {timestamp != null && (
               <span className='text-body-small content-default text-no-wrap text-truncate-split width-full'>
-                {getFormattedDateTime(timestamp)}
+                {getInternationalizedFormattedDate(timestamp)}
               </span>
             )}
           </div>

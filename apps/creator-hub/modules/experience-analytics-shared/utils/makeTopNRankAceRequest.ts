@@ -49,7 +49,6 @@ import {
   type DagGraph as AceDagGraph,
   type DagNode as AceDagNode,
   type DynamicFilterBinding,
-  type QueryBreakdown,
   type QueryFilter,
 } from '@rbx/client-analytics-query-gateway/v1';
 import type {
@@ -141,11 +140,6 @@ type MakeTopNRankAceRequestParams = {
   comparison?: ComparisonRangeSpec;
   legacyOnlyFeatures: LegacyTopNOnlyFeatures;
 };
-
-const toAceQueryBreakdowns = (
-  breakdown: readonly RAQIV2Dimension[],
-): QueryBreakdown[] | undefined =>
-  breakdown.length > 0 ? breakdown.map((dimension) => ({ dimensions: [dimension] })) : undefined;
 
 // Maps field by field rather than spreading: the RAQI filter and the gateway's
 // generated filter are independently generated types, and a spread would
@@ -345,7 +339,7 @@ const buildStandardRankDagRequest = ({
   const mainQueryConfig: RankQueryNodeConfig = useDynamicFilterBindings
     ? {
         metric,
-        breakdown: toAceQueryBreakdowns(apiBreakdown),
+        breakdownSpecs: apiBreakdown.map(dimensionToRankBreakdownSpec),
         filters,
         dynamicFilterBindings: buildDynamicRankFilterBindings(
           topNConfigs,
@@ -383,11 +377,15 @@ const buildStandardRankDagRequest = ({
   const otherRemainderDimensions = getOtherRemainderDimensions(topNConfigs);
   if (useDynamicFilterBindings && otherRemainderDimensions.length > 0) {
     const remainderDimensions = new Set<RAQIV2Dimension>(otherRemainderDimensions);
+    const otherBreakdownDimensions = apiBreakdown.filter(
+      (dimension) => !remainderDimensions.has(dimension),
+    );
     const otherQueryConfig: RankQueryNodeConfig = {
       metric,
-      breakdown: toAceQueryBreakdowns(
-        apiBreakdown.filter((dimension) => !remainderDimensions.has(dimension)),
-      ),
+      breakdownSpecs:
+        otherBreakdownDimensions.length > 0
+          ? otherBreakdownDimensions.map(dimensionToRankBreakdownSpec)
+          : undefined,
       filters,
       dynamicFilterBindings: buildDynamicOtherRankFilterBindings(topNConfigs),
     };

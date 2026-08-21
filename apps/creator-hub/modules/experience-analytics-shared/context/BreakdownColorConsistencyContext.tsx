@@ -1,7 +1,8 @@
 import type { FC } from 'react';
 import React, { useRef, useMemo, useState, useCallback, useEffect } from 'react';
-import type { ChartColor } from '@rbx/analytics-ui';
 import { OrderedChartColors } from '@rbx/analytics-ui';
+import type { Branded } from '@modules/charts-generic/types/Branded';
+import { brandNumber, brandString } from '@modules/charts-generic/types/Branded';
 
 /**
  * Assigns consistent colors to breakdown values across multiple charts on the same page.
@@ -28,14 +29,20 @@ const REBALANCE_DEBOUNCE_MS = 100;
 const MAX_REBALANCE_ITERATIONS = 10;
 
 // Pipe-separated sorted "dimension:value" pairs, e.g. "AgeRange:13-15|Gender:Male"
-export type BreakdownValueKey = string & { __brand: 'BreakdownValueKey' };
+export type BreakdownValueKey = Branded<string, 'BreakdownValueKey'>;
 // Pipe-separated sorted dimension names, e.g. "AgeRange|Gender"
-export type DimensionSetKey = string & { __brand: 'DimensionSetKey' };
+export type DimensionSetKey = Branded<string, 'DimensionSetKey'>;
 
 // 0-indexed color palette index, e.g. 0 for Blue, 1 for Red, etc.
-type ColorIndex = number & { __brand: 'ColorIndex' };
+type ColorIndex = Branded<number, 'ColorIndex'>;
 // Integer adjacency weight, e.g. 1 for adjacent series, 2 for two series apart, etc.
-type AdjacencyWeight = number & { __brand: 'AdjacencyWeight' };
+type AdjacencyWeight = Branded<number, 'AdjacencyWeight'>;
+
+const toColorIndex = (value: number): ColorIndex => brandNumber<ColorIndex>(value);
+
+export type BreakdownColorSnapshot = ReadonlyMap<BreakdownValueKey, ColorIndex>;
+
+export const EMPTY_BREAKDOWN_COLOR_SNAPSHOT: BreakdownColorSnapshot = new Map();
 
 /**
  * Computes a stable key for a set of breakdown dimensions.
@@ -48,7 +55,7 @@ export const getDimensionSetKey = (
   if (!dimensions?.length) {
     return null;
   }
-  return [...dimensions].sort().join('|') as DimensionSetKey;
+  return brandString<DimensionSetKey>([...dimensions].sort().join('|'));
 };
 
 /**
@@ -62,14 +69,20 @@ export const getBreakdownValueKey = (
   if (breakdownValues.length === 0) {
     return null;
   }
-  return breakdownValues
-    .map((bv) => `${bv.dimension ?? ''}:${bv.value ?? ''}`)
-    .sort()
-    .join('|') as BreakdownValueKey;
+  return brandString<BreakdownValueKey>(
+    breakdownValues
+      .map((bv) => `${bv.dimension ?? ''}:${bv.value ?? ''}`)
+      .sort()
+      .join('|'),
+  );
 };
 
 class BreakdownColorStore {
   private colorMaps = new Map<DimensionSetKey, Map<BreakdownValueKey, ColorIndex>>();
+
+  private snapshots = new Map<DimensionSetKey, BreakdownColorSnapshot>();
+
+  private listenersByDimensionSet = new Map<DimensionSetKey, Set<() => void>>();
 
   /**
    * Tracks how often two breakdown values appear adjacent in series ordering
@@ -103,9 +116,39 @@ class BreakdownColorStore {
       return existing;
     }
 
-    const colorIndex = ((map.size + 1) % OrderedChartColors.length) as ColorIndex;
+    const colorIndex = toColorIndex((map.size + 1) % OrderedChartColors.length);
     map.set(breakdownValueKey, colorIndex);
+    this.publishSnapshot(dimensionSetKey);
     return colorIndex;
+  }
+
+  getSnapshot = (dimensionSetKey: DimensionSetKey): BreakdownColorSnapshot =>
+    this.snapshots.get(dimensionSetKey) ?? EMPTY_BREAKDOWN_COLOR_SNAPSHOT;
+
+  /**
+   * Subscribe to a single dimension set. Charts on other breakdowns are not
+   * notified when this set's colors change.
+   */
+  subscribe = (dimensionSetKey: DimensionSetKey, listener: () => void): (() => void) => {
+    let listeners = this.listenersByDimensionSet.get(dimensionSetKey);
+    if (!listeners) {
+      listeners = new Set();
+      this.listenersByDimensionSet.set(dimensionSetKey, listeners);
+    }
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+      if (listeners.size === 0) {
+        this.listenersByDimensionSet.delete(dimensionSetKey);
+      }
+    };
+  };
+
+  getColorIndex(
+    snapshot: BreakdownColorSnapshot,
+    breakdownValueKey: BreakdownValueKey,
+  ): ColorIndex | undefined {
+    return snapshot.get(breakdownValueKey);
   }
 
   /**
@@ -190,6 +233,9 @@ class BreakdownColorStore {
       }
     }
 
+    if (changed) {
+      this.publishSnapshot(dimensionSetKey);
+    }
     return changed;
   }
 
@@ -205,7 +251,11 @@ class BreakdownColorStore {
         return;
       }
 
-      const currentColor = colorMap.get(valueKey)!;
+      // Index 0 is a valid palette slot, so this must be an explicit undefined check.
+      const currentColor = colorMap.get(valueKey);
+      if (currentColor === undefined) {
+        return;
+      }
 
       let currentConflictWeight = 0;
       neighbors.forEach((weight, neighborKey) => {
@@ -240,7 +290,7 @@ class BreakdownColorStore {
     neighbors: Map<BreakdownValueKey, AdjacencyWeight>,
     colorMap: Map<BreakdownValueKey, ColorIndex>,
   ): { color: ColorIndex; weight: number } {
-    let bestColor: number = currentColor;
+    let bestColor: ColorIndex = currentColor;
     let bestWeight = currentWeight;
 
     for (let c = 0; c < OrderedChartColors.length; c += 1) {
@@ -256,12 +306,12 @@ class BreakdownColorStore {
       });
 
       if (candidateWeight < bestWeight) {
-        bestColor = c;
+        bestColor = toColorIndex(c);
         bestWeight = candidateWeight;
       }
     }
 
-    return { color: bestColor as ColorIndex, weight: bestWeight };
+    return { color: bestColor, weight: bestWeight };
   }
 
   /**
@@ -278,6 +328,16 @@ class BreakdownColorStore {
       this.colorMaps.set(dimensionSetKey, map);
     }
 
+    if (BreakdownColorStore.registerBatchInMap(map, batchKeys)) {
+      this.publishSnapshot(dimensionSetKey);
+    }
+  }
+
+  private static registerBatchInMap(
+    map: Map<BreakdownValueKey, ColorIndex>,
+    batchKeys: BreakdownValueKey[],
+  ): boolean {
+    let changed = false;
     const usedInBatch = new Set<ColorIndex>();
     const conflicts: BreakdownValueKey[] = [];
     const newKeys: BreakdownValueKey[] = [];
@@ -301,23 +361,28 @@ class BreakdownColorStore {
     //
     // We don't use 0 as the start index because that's the default color for the total series.
     conflicts.forEach((key) => {
-      const altColor = BreakdownColorStore.findUnusedColor(usedInBatch, 1 as ColorIndex);
+      const altColor = BreakdownColorStore.findUnusedColor(usedInBatch, toColorIndex(1));
       if (altColor !== null) {
         map.set(key, altColor);
+        changed = true;
         usedInBatch.add(altColor);
-      } else {
-        usedInBatch.add(map.get(key)!);
+        return;
+      }
+      // Palette exhausted: keep the existing color and let the duplicate stand.
+      const existingColor = map.get(key);
+      if (existingColor !== undefined) {
+        usedInBatch.add(existingColor);
       }
     });
 
     newKeys.forEach((key) => {
-      const baseIndex = ((map.size + 1) % OrderedChartColors.length) as ColorIndex;
+      const baseIndex = toColorIndex((map.size + 1) % OrderedChartColors.length);
       let colorIndex = baseIndex;
 
       if (usedInBatch.has(colorIndex)) {
         const alt = BreakdownColorStore.findUnusedColor(
           usedInBatch,
-          ((baseIndex + 1) % OrderedChartColors.length) as ColorIndex,
+          toColorIndex((baseIndex + 1) % OrderedChartColors.length),
         );
         if (alt !== null) {
           colorIndex = alt;
@@ -325,8 +390,10 @@ class BreakdownColorStore {
       }
 
       map.set(key, colorIndex);
+      changed = true;
       usedInBatch.add(colorIndex);
     });
+    return changed;
   }
 
   getDimensionSetKeys(): DimensionSetKey[] {
@@ -366,7 +433,7 @@ class BreakdownColorStore {
     startFrom: ColorIndex,
   ): ColorIndex | null {
     for (let offset = 0; offset < OrderedChartColors.length; offset += 1) {
-      const candidate = ((startFrom + offset) % OrderedChartColors.length) as ColorIndex;
+      const candidate = toColorIndex((startFrom + offset) % OrderedChartColors.length);
       if (!usedColors.has(candidate)) {
         return candidate;
       }
@@ -384,16 +451,21 @@ class BreakdownColorStore {
       neighbors = new Map();
       adjMap.set(from, neighbors);
     }
-    neighbors.set(to, ((neighbors.get(to) ?? 0) + 1) as AdjacencyWeight);
+    neighbors.set(to, brandNumber<AdjacencyWeight>((neighbors.get(to) ?? 0) + 1));
+  }
+
+  private publishSnapshot(dimensionSetKey: DimensionSetKey): void {
+    const colorMap = this.colorMaps.get(dimensionSetKey);
+    this.snapshots.set(
+      dimensionSetKey,
+      colorMap ? new Map(colorMap) : EMPTY_BREAKDOWN_COLOR_SNAPSHOT,
+    );
+    this.listenersByDimensionSet.get(dimensionSetKey)?.forEach((listener) => listener());
   }
 }
 
 type BreakdownColorConsistencyContextValue = {
-  getOrAssignColor: (
-    dimensionSetKey: DimensionSetKey,
-    breakdownValueKey: BreakdownValueKey,
-  ) => ChartColor | undefined;
-  registerBatch: (dimensionSetKey: DimensionSetKey, batchKeys: BreakdownValueKey[]) => void;
+  store: BreakdownColorStore;
   recordSeriesOrder: (
     dimensionSetKey: DimensionSetKey,
     orderedValueKeys: (BreakdownValueKey | null)[],
@@ -404,8 +476,7 @@ export const BreakdownColorConsistencyContext =
   React.createContext<BreakdownColorConsistencyContextValue | null>(null);
 
 export const BreakdownColorConsistencyProvider: FC<React.PropsWithChildren> = ({ children }) => {
-  const storeRef = useRef(new BreakdownColorStore());
-  const [generation, setGeneration] = useState(0);
+  const [store] = useState(() => new BreakdownColorStore());
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scheduleRebalance = useCallback(() => {
@@ -414,20 +485,13 @@ export const BreakdownColorConsistencyProvider: FC<React.PropsWithChildren> = ({
     }
     debounceTimerRef.current = setTimeout(() => {
       debounceTimerRef.current = null;
-      const store = storeRef.current;
-      let anyChanged = false;
       store.getDimensionSetKeys().forEach((dimSetKey) => {
         if (store.needsRebalance(dimSetKey)) {
-          if (store.rebalance(dimSetKey)) {
-            anyChanged = true;
-          }
+          store.rebalance(dimSetKey);
         }
       });
-      if (anyChanged) {
-        setGeneration((g) => g + 1);
-      }
     }, REBALANCE_DEBOUNCE_MS);
-  }, []);
+  }, [store]);
 
   useEffect(() => {
     return () => {
@@ -439,36 +503,20 @@ export const BreakdownColorConsistencyProvider: FC<React.PropsWithChildren> = ({
 
   const recordSeriesOrder = useCallback(
     (dimensionSetKey: DimensionSetKey, orderedValueKeys: (BreakdownValueKey | null)[]) => {
-      storeRef.current.recordAdjacency(dimensionSetKey, orderedValueKeys);
-      if (storeRef.current.needsRebalance(dimensionSetKey)) {
+      store.recordAdjacency(dimensionSetKey, orderedValueKeys);
+      if (store.needsRebalance(dimensionSetKey)) {
         scheduleRebalance();
       }
     },
-    [scheduleRebalance],
-  );
-
-  const registerBatch = useCallback(
-    (dimensionSetKey: DimensionSetKey, batchKeys: BreakdownValueKey[]) => {
-      storeRef.current.registerBatch(dimensionSetKey, batchKeys);
-    },
-    [],
+    [scheduleRebalance, store],
   );
 
   const contextValue = useMemo<BreakdownColorConsistencyContextValue>(
     () => ({
-      getOrAssignColor: (
-        dimensionSetKey: DimensionSetKey,
-        breakdownValueKey: BreakdownValueKey,
-      ) => {
-        const index = storeRef.current.getOrAssignColorIndex(dimensionSetKey, breakdownValueKey);
-        return OrderedChartColors[index];
-      },
-      registerBatch,
+      store,
       recordSeriesOrder,
     }),
-    // generation nonce forces new getOrAssignColor reference so consumers re-derive colors after rebalance
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- generation nonce
-    [generation, registerBatch, recordSeriesOrder],
+    [recordSeriesOrder, store],
   );
 
   return (

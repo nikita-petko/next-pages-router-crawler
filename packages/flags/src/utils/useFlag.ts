@@ -40,7 +40,10 @@ export default function useFlag<T, C extends TFlagContext>(
           result = await flag();
         }
 
-        controller.signal.throwIfAborted();
+        // Use aborted here instead of throwIfAborted to support Safari < 16
+        if (controller.signal.aborted) {
+          return;
+        }
         setValue(result);
         setReady(true);
       } catch {
@@ -52,6 +55,7 @@ export default function useFlag<T, C extends TFlagContext>(
     return () => {
       controller.abort();
     };
+    // oxlint-disable-next-line react/react-compiler -- the curated deps array below is deliberate; see the note on the suppression it reports.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- NOTE(@zwang, 04/24/26): hand pick deps array to avoid unstable `context` object causing re-render when all that matters is the value
   }, [flagReference, contextValue, overrideVersion]);
 

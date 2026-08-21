@@ -3,7 +3,6 @@ import { SearchCreatorType } from '@rbx/client-universes-api/v1';
 import { useTranslation } from '@rbx/intl';
 import { Typography, Grid, IconButton, DeleteOutlinedIcon, Divider, Switch } from '@rbx/ui';
 import type { ScopeInfo } from '@modules/clients/cloudAuthentication';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import { WildcardTargetPart } from '../constants/openCloudConstants';
 import TargetPartNames from '../enums/TargetPartNames';
 import useScopeFormState from '../hooks/useScopeFormState';
@@ -39,7 +38,6 @@ const ProductForm = ({
   setIsDirty,
   staleUniverseIds,
 }: ProductFormProps) => {
-  const { settings, isFetched } = useSettings();
   const {
     classes: { divider, firstScopeTargetSubLevel, searchDropdown },
   } = useProductFormStyles();
@@ -63,12 +61,7 @@ const ProductForm = ({
   const firstTargetPartName = getNthSharedTargetPart(productName, 0);
   const [firstTargets, setFirstTargets] = useState<string[]>(() => {
     const targets = getAllTargetValuesAtPath(productName);
-    if (
-      targets.length === 0 &&
-      isFetched &&
-      settings?.enableTargetPartWildcards &&
-      creatorType === SearchCreatorType.User
-    ) {
+    if (targets.length === 0 && creatorType === SearchCreatorType.User) {
       return [WildcardTargetPart];
     }
     return targets;
@@ -107,6 +100,7 @@ const ProductForm = ({
 
   useEffect(() => {
     if (firstTargets.length <= 1) {
+      // oxlint-disable-next-line react/react-compiler -- pre-existing: syncs derived state from targets
       setSelectScopesPerResource(false);
       return;
     }
@@ -137,6 +131,7 @@ const ProductForm = ({
     };
     // if TargetType is not provided by the scope
     if (firstTargetPartName === (TargetPartNames.Undefined as string)) {
+      // oxlint-disable-next-line react/react-compiler -- pre-existing: syncs target state on mount
       setFirstTargets([WildcardTargetPart]);
     } else if (firstTargetPartName === (TargetPartNames.Creator as string)) {
       // Only auto-select creator for group API keys
@@ -221,29 +216,26 @@ const ProductForm = ({
               alignItems='center'
               justifyContent={compact ? 'flex-start' : 'flex-end'}
               Medium={7}>
-              {isFetched &&
-                settings?.enableTargetPartWildcards &&
-                creatorType === SearchCreatorType.User && (
-                  <>
-                    <Grid item>
-                      <Switch
-                        id='restrict-to-specific-universes'
-                        aria-label='Restrict by Experience'
-                        checked={!enableWildcards}
-                        onChange={() => {
-                          openToggleWildcardsConfirmDialog();
-                        }}
-                      />
-                    </Grid>
-                    <Grid item>
-                      <Typography variant='body2' style={{ marginRight: '10px' }}>
-                        {translate('Message.RestrictToSpecificUniverses') ||
-                          'Restrict by Experience'}
-                      </Typography>
-                    </Grid>
-                  </>
-                )}
-              {(!enableWildcards || !settings?.enableTargetPartWildcards) && (
+              {creatorType === SearchCreatorType.User && (
+                <>
+                  <Grid item>
+                    <Switch
+                      id='restrict-to-specific-universes'
+                      aria-label='Restrict by Experience'
+                      checked={!enableWildcards}
+                      onChange={() => {
+                        openToggleWildcardsConfirmDialog();
+                      }}
+                    />
+                  </Grid>
+                  <Grid item>
+                    <Typography variant='body2' style={{ marginRight: '10px' }}>
+                      {translate('Message.RestrictToSpecificUniverses')}
+                    </Typography>
+                  </Grid>
+                </>
+              )}
+              {!enableWildcards && (
                 <TargetPartSearch
                   targetPartName={firstTargetPartName}
                   creatorType={creatorType}
@@ -263,26 +255,22 @@ const ProductForm = ({
               alignItems='center'
               justifyContent={compact ? 'flex-start' : 'flex-end'}
               Medium={7}>
-              {isFetched && settings?.enableTargetPartWildcards && (
-                <>
-                  <Grid item>
-                    <Switch
-                      id='restrict-to-specific-creators'
-                      aria-label='Restrict by Creator'
-                      checked={!enableWildcards}
-                      onChange={() => {
-                        openToggleWildcardsConfirmDialog();
-                      }}
-                    />
-                  </Grid>
-                  <Grid item>
-                    <Typography variant='body2' style={{ marginRight: '10px' }}>
-                      {translate('Message.RestrictToSpecificCreators')}
-                    </Typography>
-                  </Grid>
-                </>
-              )}
-              {(!enableWildcards || !settings?.enableTargetPartWildcards) && (
+              <Grid item>
+                <Switch
+                  id='restrict-to-specific-creators'
+                  aria-label='Restrict by Creator'
+                  checked={!enableWildcards}
+                  onChange={() => {
+                    openToggleWildcardsConfirmDialog();
+                  }}
+                />
+              </Grid>
+              <Grid item>
+                <Typography variant='body2' style={{ marginRight: '10px' }}>
+                  {translate('Message.RestrictToSpecificCreators')}
+                </Typography>
+              </Grid>
+              {!enableWildcards && (
                 <TargetPartSearch
                   targetPartName={TargetPartNames.Creator}
                   creatorType={creatorType}

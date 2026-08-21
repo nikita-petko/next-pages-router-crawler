@@ -179,8 +179,6 @@ export const dashboard = {
     `/dashboard/creations/experiences/${universeId}/monetization/passes?tab=Analytics` as const,
   getMonetizationAvatarItemsUrl: (universeId: number) =>
     `/dashboard/creations/experiences/${universeId}/monetization/avatar-items`,
-  getFreeAvatarsUrl: (universeId: number) =>
-    `/dashboard/creations/experiences/${universeId}/free-avatars`,
   getMonetizationAvatarItemsAnalyticsTabUrl: (universeId: number) =>
     `/dashboard/creations/experiences/${universeId}/monetization/avatar-items?tab=Analytics`,
   getMonetizationSubscriptionsUrl: (universeId: number) =>

@@ -26,13 +26,36 @@ const resolveSingleMetric = (rawMetric: unknown): TRAQIV2APIMetric | null => {
   return null;
 };
 
+const resolveComputedMetrics = (
+  rawComputedMetric: string | undefined,
+): Array<TRAQIV2APIMetric> | null => {
+  if (rawComputedMetric === undefined) {
+    return null;
+  }
+  const parsed = deserializeComputedMetricFromQueryParam(rawComputedMetric);
+  if (!parsed?.sources.length) {
+    return null;
+  }
+  const seen = new Set<TRAQIV2APIMetric>();
+  const resolved: TRAQIV2APIMetric[] = [];
+  parsed.sources.forEach((source) => {
+    const apiMetric = resolveSingleMetric(source.metric);
+    if (apiMetric && !seen.has(apiMetric)) {
+      seen.add(apiMetric);
+      resolved.push(apiMetric);
+    }
+  });
+  return resolved.length > 0 ? resolved : null;
+};
+
 const useCurrentAnalyticsPageContextMetrics = (): Array<TRAQIV2APIMetric> | null => {
-  const [
-    {
-      [AnalyticsQueryParams.Metric]: exploreModeQueryMetric,
-      [AnalyticsQueryParams.ComputedMetric]: exploreModeQueryComputedMetric,
-    },
-  ] = useQueryParams(metricParams);
+  const [queryParams] = useQueryParams(metricParams);
+  const exploreModeQueryMetric = queryParams[AnalyticsQueryParams.Metric];
+  const rawExploreModeQueryComputedMetric = queryParams[AnalyticsQueryParams.ComputedMetric];
+  const exploreModeQueryComputedMetric =
+    typeof rawExploreModeQueryComputedMetric === 'string'
+      ? rawExploreModeQueryComputedMetric
+      : undefined;
   const contextResult = useRAQIV2ConfigurablePageSurfaceContextMetricsOrNull();
 
   // The computed metric URL param encodes a formula whose `sources` carry the
@@ -41,25 +64,10 @@ const useCurrentAnalyticsPageContextMetrics = (): Array<TRAQIV2APIMetric> | null
   // for its options query when the user is in operations / equation-builder
   // mode — without the chart needing to wrap the drawer in a dedicated
   // SourceMetricContextProvider.
-  const computedMetricResult = useMemo((): Array<TRAQIV2APIMetric> | null => {
-    if (typeof exploreModeQueryComputedMetric !== 'string') {
-      return null;
-    }
-    const parsed = deserializeComputedMetricFromQueryParam(exploreModeQueryComputedMetric);
-    if (!parsed?.sources.length) {
-      return null;
-    }
-    const seen = new Set<TRAQIV2APIMetric>();
-    const resolved: TRAQIV2APIMetric[] = [];
-    parsed.sources.forEach((source) => {
-      const apiMetric = resolveSingleMetric(source.metric);
-      if (apiMetric && !seen.has(apiMetric)) {
-        seen.add(apiMetric);
-        resolved.push(apiMetric);
-      }
-    });
-    return resolved.length > 0 ? resolved : null;
-  }, [exploreModeQueryComputedMetric]);
+  const computedMetricResult = useMemo(
+    () => resolveComputedMetrics(exploreModeQueryComputedMetric),
+    [exploreModeQueryComputedMetric],
+  );
 
   const exploreModeResult = useMemo((): Array<TRAQIV2APIMetric> | null => {
     const apiMetric = resolveSingleMetric(exploreModeQueryMetric);

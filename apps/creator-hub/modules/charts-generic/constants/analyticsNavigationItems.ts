@@ -64,12 +64,6 @@ export const analyticsItemMonetizationAvatarItemsNavigationItem = {
   group: analyticsMonetizationNavigationItem,
 } as const satisfies AnalyticsNavigationItem;
 
-export const analyticsItemFreeAvatarsNavigationItem = {
-  path: '/free-avatars',
-  pathPattern: /\/free-avatars$/,
-  title: translationKey('Label.FreeAvatars', TranslationNamespace.Navigation),
-} as const satisfies AnalyticsNavigationItem;
-
 export const analyticsItemAnalyticsNavigationItem = {
   path: '/creations/catalog',
   pathPattern: /\/creations\/catalog/,
@@ -402,7 +396,6 @@ const allNavigationItems: AnalyticsNavigationItem[] = [
   analyticsItemMonetizationDeveloperProductsNavigationItem,
   analyticsItemMonetizationPassesNavigationItem,
   analyticsItemMonetizationAvatarItemsNavigationItem,
-  analyticsItemFreeAvatarsNavigationItem,
   analyticsItemAnalyticsNavigationItem,
   analyticsImmersiveAdsNavigationItem,
   analyticsSubscriptionsNavigationItem,

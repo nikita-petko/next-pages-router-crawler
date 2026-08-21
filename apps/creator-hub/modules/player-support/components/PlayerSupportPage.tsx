@@ -76,6 +76,12 @@ const QUERY_PARAM_KEYS = [
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
+let selectedTicketIdsToRestore = new Set<string>();
+
+const clearSelectedTicketIdsToRestore = () => {
+  selectedTicketIdsToRestore = new Set();
+};
+
 const getPrevTokensStorageKey = (universeId: number, status: TicketStatus) =>
   `playerSupport:prevTokens:${universeId}:${status}`;
 
@@ -283,6 +289,19 @@ const PlayerSupportPage: React.FunctionComponent = () => {
     selectionStore.reset();
   }, [selectionStore, ticketPageKey]);
 
+  const restoredPageKeyRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (tickets.length === 0 || restoredPageKeyRef.current === ticketPageKey) {
+      return;
+    }
+    restoredPageKeyRef.current = ticketPageKey;
+    tickets.forEach((ticket) => {
+      if (ticket.creatorTicketId && selectedTicketIdsToRestore.has(ticket.creatorTicketId)) {
+        selectionStore.toggleItem(ticket, true);
+      }
+    });
+  }, [tickets, selectionStore, ticketPageKey]);
+
   // ES can return a nextPageToken even when the following page has no results.
   // Prefetch that page and only enable forward pagination when it has results.
   const { data: nextPageData } = usePlayerSupportTicketsQuery({
@@ -302,6 +321,7 @@ const PlayerSupportPage: React.FunctionComponent = () => {
   const hasNextPage = !!nextPageToken && (nextPageData?.creatorTicketSummaries ?? []).length > 0;
 
   const resetPagination = useCallback(() => {
+    clearSelectedTicketIdsToRestore();
     writePrevTokens(universeId, selectedStatus, []);
     setPrevTokens([]);
   }, [selectedStatus, universeId]);
@@ -324,6 +344,7 @@ const PlayerSupportPage: React.FunctionComponent = () => {
     if (!nextPageToken) {
       return;
     }
+    clearSelectedTicketIdsToRestore();
     setPrevTokens((prev) => {
       const next = [...prev, pageToken ?? ''];
       writePrevTokens(universeId, selectedStatus, next);
@@ -333,6 +354,7 @@ const PlayerSupportPage: React.FunctionComponent = () => {
   }, [nextPageToken, pageToken, setQueryParams, universeId, selectedStatus]);
 
   const handlePrevPage = useCallback(() => {
+    clearSelectedTicketIdsToRestore();
     setPrevTokens((prev) => {
       const next = [...prev];
       const token = next.pop();
@@ -454,6 +476,7 @@ const PlayerSupportPage: React.FunctionComponent = () => {
 
   const handleTicketClick = useCallback(
     (ticketId: string, ticketCategory?: string) => {
+      selectedTicketIdsToRestore = new Set(selectedTicketIds);
       unifiedLoggerClient.logClickEvent({
         eventName: 'playerSupport.openTicket',
         parameters: {
@@ -469,7 +492,7 @@ const PlayerSupportPage: React.FunctionComponent = () => {
         `/dashboard/creations/experiences/${pathUniverseId}/player-support/${ticketId}`,
       );
     },
-    [router, universeId, selectedStatus, isMobile],
+    [router, universeId, selectedStatus, isMobile, selectedTicketIds],
   );
 
   // Exporting mid-debounce would send a query the visible rows don't reflect yet.

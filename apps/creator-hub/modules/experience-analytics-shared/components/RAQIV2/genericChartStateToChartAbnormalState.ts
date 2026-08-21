@@ -82,6 +82,23 @@ const noDataForSelectedTimeInterval = (tPendingTranslation: TPendingTranslationF
   ),
 });
 
+const incompleteDataOnSelectedInterval = (tPendingTranslation: TPendingTranslationFunction) => ({
+  status: ChartAbnormalStatus.NoData as const,
+  description: tPendingTranslation(
+    'Incomplete data on selected interval',
+    'Chart empty-state title when part of the selected interval predates metric retention',
+    translationKey('Message.IncompleteDataOnSelectedIntervalTitle', TranslationNamespace.Analytics),
+  ),
+  secondaryDescription: tPendingTranslation(
+    'Try selecting a shorter interval',
+    'Chart empty-state secondary guidance when part of the selected interval predates metric retention',
+    translationKey(
+      'Message.IncompleteDataOnSelectedIntervalSecondary',
+      TranslationNamespace.Analytics,
+    ),
+  ),
+});
+
 const requestFailed = (tPendingTranslation: TPendingTranslationFunction) => ({
   status: ChartAbnormalStatus.Error as const,
   description: tPendingTranslation(
@@ -194,6 +211,12 @@ const genericChartStateToChartAbnormalState = ({
           // for zero-round-trip feedback, and the backend stays the source
           // of truth for anything dynamic or config-lagging.
           const field = error.validationDetails?.field;
+          // Retention validation currently arrives as an unstructured 2001,
+          // but its gateway message has a stable, user-actionable prefix.
+          // Keep this narrow until the backend sends TimeRange details.
+          if (error.message.includes('exceeds the data retention period')) {
+            return incompleteDataOnSelectedInterval(tPendingTranslation);
+          }
           switch (field) {
             case RAQIQueryValidationField.Filter:
               return noDataForSelectedFilter(tPendingTranslation);
