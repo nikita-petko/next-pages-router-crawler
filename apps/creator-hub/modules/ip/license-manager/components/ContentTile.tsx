@@ -111,6 +111,7 @@ interface ContentTileProps {
   type: ContentType;
   link?: string;
   footer?: ReactNode;
+  onLinkClick?: () => void;
 }
 
 /**
@@ -144,6 +145,7 @@ export const ContentTile: FunctionComponent<ContentTileProps> = ({
   type,
   link,
   footer,
+  onLinkClick,
 }) => {
   const { translate } = useTranslation();
   const {
@@ -202,7 +204,7 @@ export const ContentTile: FunctionComponent<ContentTileProps> = ({
       flexDirection='column'
       classes={{ root: link ? contentContainerWithHover : contentContainer }}>
       {link ? (
-        <Link href={link} target='_blank' style={{ textDecoration: 'none' }}>
+        <Link href={link} target='_blank' style={{ textDecoration: 'none' }} onClick={onLinkClick}>
           {content}
         </Link>
       ) : (

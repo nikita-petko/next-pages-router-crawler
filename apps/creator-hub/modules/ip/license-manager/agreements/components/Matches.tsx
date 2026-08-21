@@ -43,8 +43,13 @@ import MatchDetailsPanelContent from './MatchDetailsPanelContent';
 import MatchesFilterPanel from './MatchesFilterPanel';
 import MatchesFilterPanelContent from './MatchesFilterPanelContent';
 import MatchesSidePanel from './MatchesSidePanel';
+import type { MatchesSidePanelDismissReason } from './MatchesSidePanel';
 import MatchOfferPanelContent from './MatchOfferPanelContent';
-import type { MatchDetailsPanelNavigation, MatchPanelAgreementStatus } from './matchPanelTypes';
+import type {
+  MatchDetailsPanelNavigation,
+  MatchPanelAgreementStatus,
+  MatchPanelState,
+} from './matchPanelTypes';
 import NoMatchesContent from './NoMatchesContent';
 import UniverseMatchesTable from './UniverseMatchesTable';
 
@@ -278,6 +283,9 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
   const [currentMatchPanelView, setCurrentMatchPanelView] = useState<MatchPanelView>(
     MatchPanelView.None,
   );
+  const panelOpenedAtRef = useRef<number | null>(null);
+  const panelNavigationCountRef = useRef(0);
+  const panelStateRef = useRef<MatchPanelState>('loading');
 
   const isMatchPanelOpen = currentMatchPanelView !== MatchPanelView.None;
   const isSidePanelOpen = isMatchPanelOpen || filterDrawerOpen;
@@ -466,6 +474,9 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
         });
       }
       setFilterDrawerOpen(false);
+      panelOpenedAtRef.current = Date.now();
+      panelNavigationCountRef.current = 0;
+      panelStateRef.current = 'loading';
       setSelectedCandidate(candidate);
       setCurrentMatchPanelView(MatchPanelView.Details);
     },
@@ -480,6 +491,35 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
     return allAgreementCandidates.findIndex((match) => match.id === selectedId);
   }, [allAgreementCandidates, selectedCandidate?.id]);
 
+  const handleNavigateCandidate = useCallback(
+    (
+      direction: 'previous' | 'next',
+      candidate: AgreementCandidateResponse,
+      fromRowPosition: number,
+      toRowPosition: number,
+    ) => {
+      panelNavigationCountRef.current += 1;
+      logEvent(LicenseManagerClickEvent.MatchDetailsPanelNavigationClickEvent, {
+        candidateType: analyticsCandidateType,
+        direction,
+        fromRowPosition,
+        toRowPosition,
+        navigationCount: panelNavigationCountRef.current,
+      });
+      if (candidate.id) {
+        logEvent(LicenseManagerClickEvent.ViewAgreementCandidateClickEvent, {
+          candidate: candidate.id,
+          ...analyticsContext,
+          rowPosition: toRowPosition,
+        });
+      }
+      panelStateRef.current = 'loading';
+      setSelectedCandidate(candidate);
+      setCurrentMatchPanelView(MatchPanelView.Details);
+    },
+    [analyticsCandidateType, analyticsContext, logEvent],
+  );
+
   const matchDetailsNavigation = useMemo((): MatchDetailsPanelNavigation | undefined => {
     if (selectedMatchIndex < 0) {
       return undefined;
@@ -489,22 +529,62 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
       onPrevious: () => {
         const previousMatch = allAgreementCandidates[selectedMatchIndex - 1];
         if (previousMatch) {
-          handleSelectCandidate(previousMatch);
+          handleNavigateCandidate(
+            'previous',
+            previousMatch,
+            selectedMatchIndex + 1,
+            selectedMatchIndex,
+          );
         }
       },
       onNext: () => {
         const nextMatch = allAgreementCandidates[selectedMatchIndex + 1];
         if (nextMatch) {
-          handleSelectCandidate(nextMatch);
+          handleNavigateCandidate(
+            'next',
+            nextMatch,
+            selectedMatchIndex + 1,
+            selectedMatchIndex + 2,
+          );
         }
       },
       canGoPrevious: selectedMatchIndex > 0,
       canGoNext: selectedMatchIndex < allAgreementCandidates.length - 1,
     };
-  }, [allAgreementCandidates, handleSelectCandidate, selectedMatchIndex]);
+  }, [allAgreementCandidates, handleNavigateCandidate, selectedMatchIndex]);
 
-  const handleCloseMatchPanel = useCallback(() => {
+  const handleCloseMatchPanelProgrammatically = useCallback(() => {
     setCurrentMatchPanelView(MatchPanelView.None);
+    panelOpenedAtRef.current = null;
+  }, []);
+
+  const handleDismissMatchPanel = useCallback(
+    (dismissMethod: MatchesSidePanelDismissReason | 'closeButton') => {
+      if (currentMatchPanelView === MatchPanelView.None) {
+        return;
+      }
+      const openedAt = panelOpenedAtRef.current;
+      logEvent(LicenseManagerClickEvent.MatchDetailsPanelDismissClickEvent, {
+        candidateType: analyticsCandidateType,
+        panelView: currentMatchPanelView,
+        panelState:
+          currentMatchPanelView === MatchPanelView.Details ? panelStateRef.current : 'unknown',
+        dismissMethod,
+        timeSincePanelOpenedMs: openedAt === null ? 0 : Math.max(0, Date.now() - openedAt),
+        navigationCount: panelNavigationCountRef.current,
+      });
+      setCurrentMatchPanelView(MatchPanelView.None);
+      panelOpenedAtRef.current = null;
+    },
+    [analyticsCandidateType, currentMatchPanelView, logEvent],
+  );
+
+  const handleCloseButtonClick = useCallback(() => {
+    handleDismissMatchPanel('closeButton');
+  }, [handleDismissMatchPanel]);
+
+  const handlePanelStateChange = useCallback((state: MatchPanelState) => {
+    panelStateRef.current = state;
   }, []);
 
   const handleMatchIgnored = useCallback(() => {
@@ -520,12 +600,18 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
       setSelectedCandidate(nextCandidate);
       setCurrentMatchPanelView(MatchPanelView.Details);
     } else {
-      handleCloseMatchPanel();
+      handleCloseMatchPanelProgrammatically();
     }
-  }, [allAgreementCandidates, handleCloseMatchPanel, queryClient, selectedCandidate?.id]);
+  }, [
+    allAgreementCandidates,
+    handleCloseMatchPanelProgrammatically,
+    queryClient,
+    selectedCandidate?.id,
+  ]);
 
   const openFilterDrawer = useCallback(() => {
     setCurrentMatchPanelView(MatchPanelView.None);
+    panelOpenedAtRef.current = null;
     setFilterDrawerOpen(true);
   }, []);
 
@@ -541,6 +627,7 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
   const handleAgreementSuccess = useCallback(
     (agreement: AgreementResponse) => {
       setCurrentMatchPanelView(MatchPanelView.None);
+      panelOpenedAtRef.current = null;
       const agreementId = agreement.id?.trim();
       if (selectedCandidate && agreementId) {
         setSelectedCandidate({
@@ -609,7 +696,6 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
       eventName,
       {
         ...analyticsContext,
-        candidateType: AgreementCandidateType.Universe,
       },
       analyticsContextDedupeKey,
     );
@@ -768,7 +854,7 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
 
       <MatchesSidePanel
         open={isMatchPanelOpen}
-        onDismiss={handleCloseMatchPanel}
+        onDismiss={handleDismissMatchPanel}
         testId='matches-side-panel'
         ariaLabel={matchPanelAriaLabel}
         dismissMode='match'>
@@ -777,25 +863,29 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
           (isCollectibleMatchesRequest ? (
             <CollectibleMatchDetailsPanelContent
               candidate={selectedCandidate}
-              onClose={handleCloseMatchPanel}
+              onClose={handleCloseButtonClick}
               agreementStatusFromList={matchPanelAgreementStatus}
               navigation={matchDetailsNavigation}
+              rowPosition={selectedMatchIndex + 1}
+              onPanelStateChange={handlePanelStateChange}
             />
           ) : (
             <MatchDetailsPanelContent
               candidate={selectedCandidate}
-              onClose={handleCloseMatchPanel}
+              onClose={handleCloseButtonClick}
               onOfferLicense={handleOfferLicense}
               agreementStatusFromList={matchPanelAgreementStatus}
               navigation={matchDetailsNavigation}
               onIgnored={handleMatchIgnored}
+              rowPosition={selectedMatchIndex + 1}
+              onPanelStateChange={handlePanelStateChange}
             />
           ))}
         {selectedCandidate && currentMatchPanelView === MatchPanelView.Offer && (
           <MatchOfferPanelContent
             candidate={selectedCandidate}
             onSuccess={handleAgreementSuccess}
-            onClose={handleCloseMatchPanel}
+            onClose={handleCloseButtonClick}
             source='sidebar'
           />
         )}

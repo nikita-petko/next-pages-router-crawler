@@ -1,8 +1,9 @@
-import { useMemo, type FunctionComponent, type ReactNode } from 'react';
+import { useEffect, useMemo, type FunctionComponent, type ReactNode } from 'react';
 import Link from 'next/link';
-import type {
-  AgreementCandidateResponse,
-  IndexedAgreementCandidateResponse,
+import {
+  AgreementCandidateType,
+  type AgreementCandidateResponse,
+  type IndexedAgreementCandidateResponse,
 } from '@rbx/client-content-licensing-api/v1';
 import { useFlag } from '@rbx/flags';
 import { IconButton } from '@rbx/foundation-ui';
@@ -14,6 +15,12 @@ import Flex from '@modules/miscellaneous/components/Flex';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { KeyValuePair, KeyValuePairContainer } from '../../components/KeyValuePair';
 import { IPH_AGREEMENT_DETAILS_HREF } from '../../urls';
+import {
+  LicenseManagerClickEvent,
+  LicenseManagerImpressionEvent,
+  useLicenseManagerLogger,
+  useLicenseManagerLoggerLogOnce,
+} from '../../utils/logger';
 import useCollectibleMatchItemDetails from '../hooks/useCollectibleMatchItemDetails';
 import { BUTTON_SPINNER_SIZE } from '../utils/constants';
 import CollectibleMatchContentTile from './CollectibleMatchContentTile';
@@ -25,7 +32,11 @@ import {
 } from './IphMatchStatusLabel';
 import { canViewAgreement } from './matchPanelAgreementStatus';
 import MatchPanelLayout from './MatchPanelLayout';
-import type { MatchDetailsPanelNavigation, MatchPanelAgreementStatus } from './matchPanelTypes';
+import type {
+  MatchDetailsPanelNavigation,
+  MatchPanelAgreementStatus,
+  MatchPanelState,
+} from './matchPanelTypes';
 
 type CollectibleMatchCandidate = AgreementCandidateResponse &
   Pick<IndexedAgreementCandidateResponse, 'ipFamilyName' | 'candidateContentCreatorType'>;
@@ -35,17 +46,28 @@ interface CollectibleMatchDetailsPanelContentProps {
   onClose: () => void;
   agreementStatusFromList?: MatchPanelAgreementStatus;
   navigation?: MatchDetailsPanelNavigation;
+  rowPosition?: number;
+  onPanelStateChange?: (state: MatchPanelState) => void;
 }
 
 const CollectibleMatchDetailsPanelContent: FunctionComponent<
   CollectibleMatchDetailsPanelContentProps
-> = ({ candidate, onClose, agreementStatusFromList, navigation }) => {
+> = ({
+  candidate,
+  onClose,
+  agreementStatusFromList,
+  navigation,
+  rowPosition,
+  onPanelStateChange,
+}) => {
   const translation = useTranslation();
   const { translate } = translation;
   const { translate: translateCreations } = useTranslationWithNamespace(
     TranslationNamespace.Creations,
   );
   const { tPendingTranslation } = useTranslationWrapper(translation);
+  const { logEvent } = useLicenseManagerLogger();
+  const { logOnce } = useLicenseManagerLoggerLogOnce();
   const { ready: isIgnoreMatchFlagReady, value: isIgnoreMatchEnabled } =
     useFlag(isIgnoreMatchEnabledFlag);
   const collectibleItemId = candidate.candidateId;
@@ -66,6 +88,64 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
   });
   const isIgnoreMatchAllowed = isIgnoreMatchFlagReady && isIgnoreMatchEnabled;
   const showIgnoreButton = isIgnoreMatchAllowed && !waitingOnAgreementStatus && !showViewAgreement;
+  const isLoading = itemDetailsQuery.isPending || !isIgnoreMatchFlagReady;
+  const hasLoadFailure = !isLoading && (itemDetailsQuery.isError || !details);
+  const panelState: MatchPanelState = isLoading ? 'loading' : hasLoadFailure ? 'error' : 'ready';
+  const presentation = details
+    ? getCollectibleMatchPresentation(details, candidate.candidateContentCreatorType ?? undefined)
+    : undefined;
+  const itemType = presentation?.isBundle ? 'Bundle' : presentation ? 'Asset' : 'Unknown';
+  const agreementState = rowError
+    ? 'error'
+    : waitingOnAgreementStatus
+      ? 'pending'
+      : showViewAgreement
+        ? 'viewable'
+        : 'notViewable';
+  const analyticsContext = useMemo(
+    () => ({
+      candidateType: AgreementCandidateType.Collectible,
+      itemType,
+      agreementState,
+      ...(rowPosition === undefined ? {} : { rowPosition }),
+    }),
+    [agreementState, itemType, rowPosition],
+  );
+  const analyticsDedupeKey = candidate.id ?? candidate.candidateId ?? 'unknown';
+
+  useEffect(() => {
+    if (panelState !== 'ready') {
+      return;
+    }
+    onPanelStateChange?.('ready');
+    logOnce(
+      LicenseManagerImpressionEvent.MatchDetailsPanelImpressionEvent,
+      analyticsContext,
+      `${analyticsDedupeKey}:ready`,
+    );
+  }, [analyticsContext, analyticsDedupeKey, logOnce, onPanelStateChange, panelState]);
+
+  useEffect(() => {
+    if (panelState !== 'error') {
+      return;
+    }
+    onPanelStateChange?.('error');
+    logOnce(
+      LicenseManagerImpressionEvent.MatchDetailsPanelLoadFailureImpressionEvent,
+      {
+        ...analyticsContext,
+        failureReason: itemDetailsQuery.isError ? 'requestError' : 'missingItem',
+      },
+      `${analyticsDedupeKey}:error`,
+    );
+  }, [
+    analyticsContext,
+    analyticsDedupeKey,
+    itemDetailsQuery.isError,
+    logOnce,
+    onPanelStateChange,
+    panelState,
+  ]);
 
   const headerControls = (
     <>
@@ -92,7 +172,7 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
     </>
   );
 
-  if (itemDetailsQuery.isPending || !isIgnoreMatchFlagReady) {
+  if (isLoading) {
     return (
       <MatchPanelLayout
         title={translate('Heading.ViewMatch')}
@@ -103,7 +183,7 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
     );
   }
 
-  if (itemDetailsQuery.isError || !details) {
+  if (hasLoadFailure || !details || !presentation) {
     return (
       <MatchPanelLayout
         title={translate('Heading.ViewMatch')}
@@ -134,7 +214,13 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
         size='large'
         className='fill [white-space:nowrap] text-align-x-center'
         component={Link}
-        href={IPH_AGREEMENT_DETAILS_HREF(agreementId ?? '')}>
+        href={IPH_AGREEMENT_DETAILS_HREF(agreementId ?? '')}
+        onClick={() =>
+          logEvent(LicenseManagerClickEvent.MatchDetailsPanelViewAgreementClickEvent, {
+            ...analyticsContext,
+            agreementStatus: statusFromList ?? 'unknown',
+          })
+        }>
         {translate('Action.ViewAgreement')}
       </Button>
     );
@@ -173,10 +259,6 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
     </>
   );
 
-  const presentation = getCollectibleMatchPresentation(
-    details,
-    candidate.candidateContentCreatorType ?? undefined,
-  );
   const description = presentation.description?.trim()
     ? presentation.description
     : translate('Label.NoDescriptionAvailable');
@@ -200,6 +282,12 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
         <CollectibleMatchContentTile
           details={details}
           creatorType={candidate.candidateContentCreatorType ?? undefined}
+          onLinkClick={() =>
+            logEvent(LicenseManagerClickEvent.MatchDetailsPanelViewCreationClickEvent, {
+              ...analyticsContext,
+              destination: presentation.isBundle ? 'bundleDetails' : 'catalogDetails',
+            })
+          }
         />
         <KeyValuePairContainer>
           <KeyValuePair

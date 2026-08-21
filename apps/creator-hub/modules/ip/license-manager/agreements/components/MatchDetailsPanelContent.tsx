@@ -1,7 +1,10 @@
 import type { FunctionComponent } from 'react';
 import React, { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import type { AgreementCandidateResponse } from '@rbx/client-content-licensing-api/v1';
+import {
+  AgreementCandidateType,
+  type AgreementCandidateResponse,
+} from '@rbx/client-content-licensing-api/v1';
 import { useFlag } from '@rbx/flags';
 import { Icon, IconButton, Link as FoundationLink } from '@rbx/foundation-ui';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
@@ -54,7 +57,11 @@ import {
 } from './IphMatchStatusLabel';
 import { canViewAgreement } from './matchPanelAgreementStatus';
 import MatchPanelLayout from './MatchPanelLayout';
-import type { MatchDetailsPanelNavigation, MatchPanelAgreementStatus } from './matchPanelTypes';
+import type {
+  MatchDetailsPanelNavigation,
+  MatchPanelAgreementStatus,
+  MatchPanelState,
+} from './matchPanelTypes';
 import type { InspectorImage } from './ScreenshotInspector';
 import ScreenshotInspector from './ScreenshotInspector';
 
@@ -69,6 +76,8 @@ interface MatchDetailsPanelContentProps {
   navigation?: MatchDetailsPanelNavigation;
   /** Called after a match is successfully ignored (post-200) so the parent can prune + advance. */
   onIgnored?: () => void;
+  rowPosition?: number;
+  onPanelStateChange?: (state: MatchPanelState) => void;
 }
 
 /**
@@ -81,6 +90,8 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
   agreementStatusFromList,
   navigation,
   onIgnored,
+  rowPosition,
+  onPanelStateChange,
 }) => {
   const { translate } = useTranslation();
   const { locale } = useLocalization();
@@ -216,24 +227,96 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
     (gameRequest.error ?? maturityRequest.error ?? ipFamilyRequest.error) != null ||
     gameRequest.data === NO_GAME_FOUND_FOR_ID;
 
+  const isPanelLoading =
+    isPending || !isFetched || !isExperiencePreviewFlagReady || !isIgnoreMatchFlagReady;
+  const hasLoadFailure =
+    !isPanelLoading &&
+    (hasError || gameRequest.data == null || gameRequest.data === NO_GAME_FOUND_FOR_ID);
+  const panelState: MatchPanelState = isPanelLoading
+    ? 'loading'
+    : hasLoadFailure
+      ? 'error'
+      : 'ready';
   const isPanelContentReady =
-    !isPending &&
-    isFetched &&
-    !hasError &&
-    gameRequest.data != null &&
-    gameRequest.data !== NO_GAME_FOUND_FOR_ID;
+    panelState === 'ready' && gameRequest.data != null && gameRequest.data !== NO_GAME_FOUND_FOR_ID;
+  const rowError = agreementStatusFromList?.rowError;
+  const statusFromList = agreementStatusFromList?.status;
+  const waitingOnAgreementStatus = !!agreementId && !!agreementStatusFromList?.isPending;
+  const showViewAgreement = canViewAgreement({
+    agreementId,
+    rowError,
+    status: statusFromList,
+  });
+  const agreementState = rowError
+    ? 'error'
+    : waitingOnAgreementStatus
+      ? 'pending'
+      : showViewAgreement
+        ? 'viewable'
+        : 'notViewable';
+  const matchPanelAnalyticsContext = useMemo(
+    () => ({
+      candidateType: AgreementCandidateType.Universe,
+      itemType: 'Universe',
+      agreementState,
+      ...(rowPosition === undefined ? {} : { rowPosition }),
+    }),
+    [agreementState, rowPosition],
+  );
 
   useEffect(() => {
     if (!isPanelContentReady) {
       return;
     }
+    onPanelStateChange?.('ready');
     logExperiencePreviewEvent(
       logOnce,
       LicenseManagerImpressionEvent.ExperiencePreviewMatchDetailsPanelImpressionEvent,
       analyticsContext,
       analyticsContextDedupeKey,
     );
-  }, [isPanelContentReady, logOnce, analyticsContext, analyticsContextDedupeKey]);
+    logOnce(
+      LicenseManagerImpressionEvent.MatchDetailsPanelImpressionEvent,
+      matchPanelAnalyticsContext,
+      `${analyticsContextDedupeKey}:match-panel`,
+    );
+  }, [
+    isPanelContentReady,
+    logOnce,
+    analyticsContext,
+    analyticsContextDedupeKey,
+    matchPanelAnalyticsContext,
+    onPanelStateChange,
+  ]);
+
+  useEffect(() => {
+    if (panelState !== 'error') {
+      return;
+    }
+    onPanelStateChange?.('error');
+    const failureReason =
+      gameRequest.error != null
+        ? 'experienceRequestError'
+        : maturityRequest.error != null
+          ? 'maturityRequestError'
+          : ipFamilyRequest.error != null
+            ? 'ipFamilyRequestError'
+            : 'missingExperience';
+    logOnce(
+      LicenseManagerImpressionEvent.MatchDetailsPanelLoadFailureImpressionEvent,
+      { ...matchPanelAnalyticsContext, failureReason },
+      `${analyticsContextDedupeKey}:match-panel-error`,
+    );
+  }, [
+    analyticsContextDedupeKey,
+    gameRequest.error,
+    ipFamilyRequest.error,
+    logOnce,
+    matchPanelAnalyticsContext,
+    maturityRequest.error,
+    onPanelStateChange,
+    panelState,
+  ]);
 
   const isScreenshotDataSettled =
     isExperiencePreviewFlagReady &&
@@ -291,7 +374,7 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
     </>
   );
 
-  if (isPending || !isFetched || !isExperiencePreviewFlagReady || !isIgnoreMatchFlagReady) {
+  if (isPanelLoading) {
     return (
       <MatchPanelLayout title={title} onClose={onClose} headerControls={headerControls} loading />
     );
@@ -328,16 +411,6 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
   const gameDescription = game.description?.trim()
     ? game.description
     : translate('Label.NoDescriptionAvailable');
-
-  const rowError = agreementStatusFromList?.rowError;
-  const statusFromList = agreementStatusFromList?.status;
-  const waitingOnAgreementStatus = !!agreementId && !!agreementStatusFromList?.isPending;
-
-  const showViewAgreement = canViewAgreement({
-    agreementId,
-    rowError,
-    status: statusFromList,
-  });
 
   const agreementCandidateId = candidate.id;
   const matchDetailsPageHref =
@@ -402,7 +475,13 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
         fullWidth={!useFillFooter}
         className={ctaClassName}
         component={Link}
-        href={IPH_AGREEMENT_DETAILS_HREF(agreementId ?? '')}>
+        href={IPH_AGREEMENT_DETAILS_HREF(agreementId ?? '')}
+        onClick={() =>
+          logEvent(LicenseManagerClickEvent.MatchDetailsPanelViewAgreementClickEvent, {
+            ...matchPanelAnalyticsContext,
+            agreementStatus: statusFromList ?? 'unknown',
+          })
+        }>
         {translate('Action.ViewAgreement')}
       </Button>
     );
@@ -491,6 +570,12 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
               type={ContentType.Universe}
               link={
                 game.rootPlaceId != null ? EXTERNAL_EXPERIENCE_HREF(game.rootPlaceId) : undefined
+              }
+              onLinkClick={() =>
+                logEvent(LicenseManagerClickEvent.MatchDetailsPanelViewCreationClickEvent, {
+                  ...matchPanelAnalyticsContext,
+                  destination: 'experienceDetails',
+                })
               }
             />
           </div>

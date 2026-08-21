@@ -12,11 +12,13 @@ import { getCollectibleMatchPresentation } from './collectibleMatchPresentation'
 interface CollectibleMatchContentTileProps {
   details: CollectibleMatchItemDetails;
   creatorType?: string | number;
+  onLinkClick?: () => void;
 }
 
 const CollectibleMatchContentTile: FunctionComponent<CollectibleMatchContentTileProps> = ({
   details,
   creatorType,
+  onLinkClick,
 }) => {
   const translation = useTranslation();
   const { translate } = translation;
@@ -63,6 +65,7 @@ const CollectibleMatchContentTile: FunctionComponent<CollectibleMatchContentTile
       thumbnailTargetId={presentation.targetId ?? 0}
       type={presentation.isBundle ? ContentType.Bundle : ContentType.Asset}
       link={link}
+      onLinkClick={onLinkClick}
       footer={
         <Typography variant='captionBody' color='primary' component='div'>
           {priceContent}

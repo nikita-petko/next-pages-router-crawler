@@ -12,10 +12,11 @@ const PANEL_MIN_WIDTH_PX = 320;
 const PANEL_WIDTH_PX = 440;
 
 export type MatchesSidePanelDismissMode = 'match' | 'filter';
+export type MatchesSidePanelDismissReason = 'outsideClick' | 'escapeKey';
 
 export interface MatchesSidePanelProps {
   open: boolean;
-  onDismiss: () => void;
+  onDismiss: (reason: MatchesSidePanelDismissReason) => void;
   testId: string;
   ariaLabel: string;
   dismissMode: MatchesSidePanelDismissMode;
@@ -111,7 +112,7 @@ const MatchesSidePanel: FunctionComponent<MatchesSidePanelProps> = ({
           : shouldDismissFilterSidePanel(event, panel, dismissTriggerRef?.current ?? null);
 
       if (shouldDismiss) {
-        onDismiss();
+        onDismiss('outsideClick');
       }
     };
 
@@ -128,7 +129,7 @@ const MatchesSidePanel: FunctionComponent<MatchesSidePanelProps> = ({
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onDismiss();
+        onDismiss('escapeKey');
       }
     };
 
