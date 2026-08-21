@@ -354,6 +354,7 @@ interface Props {
   handleCompleteChangeRequest?: () => void;
   handleCompleteConditionalChangeRequest?: () => void;
   handleCompleteIpRemoval?: () => void;
+  handlePitchImageRejectedTakeAction?: () => void;
 }
 
 const CreatorAgreementAlert: React.FC<Props> = ({
@@ -363,6 +364,7 @@ const CreatorAgreementAlert: React.FC<Props> = ({
   handleCompleteChangeRequest,
   handleCompleteConditionalChangeRequest,
   handleCompleteIpRemoval,
+  handlePitchImageRejectedTakeAction,
 }) => {
   const { locale } = useLocalization();
   const { translate } = useTranslation();
@@ -432,10 +434,6 @@ const CreatorAgreementAlert: React.FC<Props> = ({
   const openActivityTab = useCallback(() => {
     handleTabChange?.(null, AgreementDetailsTabs.Activity);
   }, [handleTabChange]);
-
-  const handlePitchImageRejectedTakeAction = useCallback(() => {
-    // TODO - aathreya - Implement PitchImageRejected "Take Action" CTA behavior
-  }, []);
 
   const alertClasses = useMemo(() => ({ action: alertAction }), [alertAction]);
   const isDismissable = alertType ? !isNonDismissableAlert(alertType) : false;
