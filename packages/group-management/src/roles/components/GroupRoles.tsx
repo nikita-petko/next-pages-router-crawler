@@ -221,8 +221,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
     if (isErrorFetchingRoles) {
       showToast(translate('Error.GroupRoles'), true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isErrorFetchingRoles]);
+  }, [isErrorFetchingRoles, showToast, translate]);
 
   const [prevLocalRolesForAutoSelect, setPrevLocalRolesForAutoSelect] = useState(localRoles);
   const accessibleRoleIds = useMemo(
@@ -290,8 +289,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
     if (pendingNavigationId !== undefined) {
       navigation?.navigateToRole?.(pendingNavigationId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingNavigationId]);
+  }, [navigation, pendingNavigationId]);
 
   const handleCreateRole = useCallback(
     async (role: RoleMetadataForNewRole) => {
@@ -660,7 +658,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
             onClose={() => setIsCreateModalOpen(false)}
             onConfirm={handleCreateRoleSubmit}
             saving={isRoleSaving}
-            canSetVisibility={isOwner === true}
+            canSetVisibility={permissions?.canCreateRoles === true}
           />
         </>
       );
@@ -843,7 +841,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
         onClose={() => setIsCreateModalOpen(false)}
         onConfirm={handleCreateRoleSubmit}
         saving={isRoleSaving}
-        canSetVisibility={isOwner === true}
+        canSetVisibility={permissions?.canCreateRoles === true}
       />
     </Grid>
   );

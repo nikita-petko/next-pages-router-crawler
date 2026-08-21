@@ -24,6 +24,7 @@ import {
   RoleVisibility,
 } from '../../utils/constants';
 import { OrganizationsEventName, logOrganizationsEvent } from '../../utils/eventUtils';
+import { canEditRoleMetadata } from '../../utils/groupPermissions';
 import RoleIdCopyRow from './RoleIdCopyRow';
 
 export type RoleSettingsProps = {
@@ -43,7 +44,8 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
 }) => {
   const { translate, translateWithNamespace } = useTranslation();
   const { palette } = useTheme();
-  const { group, isOwner, organization, permissions, unifiedLogger } = useCurrentGroup();
+  const { group, isOwner, organization, permissions, rolePermissions, unifiedLogger } =
+    useCurrentGroup();
   const { configure: configureDialog, open: openDialog, close: closeDialog } = useDialog();
 
   const { data: configMetadata } = useGetGroupConfigurationMetadata();
@@ -207,7 +209,11 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
   const showDeleteRole =
     (isOwner === true || permissions?.canDeleteRoles === true) && !isBaseMemberRole;
 
-  const showVisibility = isOwner === true && !isBaseMemberRole;
+  const permissionsForRole =
+    role.id === undefined ? undefined : rolePermissions?.[role.id.toString()];
+  const canEditVisibility = canEditRoleMetadata(permissionsForRole);
+
+  const showVisibility = canEditVisibility && !isBaseMemberRole;
 
   return (
     <Grid
