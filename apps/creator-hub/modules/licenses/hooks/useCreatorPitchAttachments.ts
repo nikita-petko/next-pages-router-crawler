@@ -4,7 +4,7 @@ import { useFlag } from '@rbx/flags';
 import { isImageAttachmentEnabledInLicenseApplication } from '@generated/flags/contentLicensing';
 import {
   type CreatorPitchAttachment,
-  isCreatorPitchAttachmentBlocking,
+  hasBlockingCreatorPitchAttachments,
 } from '../utils/creatorPitchAttachmentTypes';
 
 interface UseCreatorPitchAttachmentsParams {
@@ -39,9 +39,7 @@ const useCreatorPitchAttachments = ({
       return true;
     }
 
-    const canProceed = !attachments.some((attachment) =>
-      isCreatorPitchAttachmentBlocking(attachment),
-    );
+    const canProceed = !hasBlockingCreatorPitchAttachments(attachments);
 
     if (!canProceed) {
       setShowErrors(true);

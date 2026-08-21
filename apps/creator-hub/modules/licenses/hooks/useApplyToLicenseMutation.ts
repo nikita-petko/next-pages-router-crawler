@@ -28,6 +28,7 @@ export interface ApplyToPublicLicenseParams {
   pitch: string;
   dateRange: { startDate: Date | null; endDate: Date | null } | undefined;
   collaborationSalesAvenues?: CollaborationSalesAvenues;
+  pitchImageAssetIds?: number[];
 }
 
 const useApplyToPublicLicenseMutation = (
@@ -44,6 +45,7 @@ const useApplyToPublicLicenseMutation = (
       pitch,
       dateRange,
       collaborationSalesAvenues,
+      pitchImageAssetIds,
     }: ApplyToPublicLicenseParams) => {
       const startDate = dateRange?.startDate ?? null;
       const endDate = dateRange?.endDate ? toEndOfSelectedCalendarDayUtc(dateRange.endDate) : null;
@@ -62,6 +64,7 @@ const useApplyToPublicLicenseMutation = (
         startDate,
         endDate,
         revenueTargets,
+        pitchImageAssetIds,
       );
     },
     onSuccess: () => {

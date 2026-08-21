@@ -580,6 +580,7 @@ export class ContentLicensingApiClient {
     startTime: Date | null,
     endTime: Date | null,
     revenueTargets?: RevenueTargetReference[] | null,
+    pitchImageAssetIds?: number[] | null,
   ): Promise<AgreementResponse> {
     if (!licenseId || licenseId.trim().length === 0) {
       throw new Error('License ID is required');
@@ -599,6 +600,7 @@ export class ContentLicensingApiClient {
           },
         ],
         revenueTargets: revenueTargets ?? undefined,
+        pitchImageAssetIds: pitchImageAssetIds ?? undefined,
       },
     });
   }

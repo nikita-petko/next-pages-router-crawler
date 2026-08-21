@@ -144,9 +144,6 @@ const ApplyToLicenseContainer: FunctionComponent<ApplyToLicenseContainerProps> =
     boolean | undefined
   >(undefined);
   const [creatorPitch, setCreatorPitch] = useState<string>('');
-  // TODO - aathreya - Pass uploaded pitch attachment asset IDs to applyToLicense once the API
-  // supports pitch media attachments. Attachments are already passed to SubmitApplicationStep
-  // for review display.
   const [creatorPitchAttachments, setCreatorPitchAttachments] = useState<CreatorPitchAttachment[]>(
     [],
   );

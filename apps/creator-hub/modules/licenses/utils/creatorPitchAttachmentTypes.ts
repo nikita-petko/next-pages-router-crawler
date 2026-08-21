@@ -27,3 +27,24 @@ export function isCreatorPitchAttachmentBlocking(attachment: CreatorPitchAttachm
     attachment.status === CreatorPitchAttachmentStatus.Error
   );
 }
+
+export function hasBlockingCreatorPitchAttachments(attachments: CreatorPitchAttachment[]): boolean {
+  return attachments.some(isCreatorPitchAttachmentBlocking);
+}
+
+/**
+ * Asset IDs safe to submit with a license application. An asset ID can exist on an attachment that
+ * is still uploading or was rejected by moderation, so status — not just the presence of an ID —
+ * decides what gets sent.
+ */
+export function getSubmittableCreatorPitchAttachmentAssetIds(
+  attachments: CreatorPitchAttachment[],
+): number[] {
+  const assetIds = attachments.flatMap((attachment) =>
+    attachment.assetId != null && !isCreatorPitchAttachmentBlocking(attachment)
+      ? [attachment.assetId]
+      : [],
+  );
+
+  return Array.from(new Set(assetIds));
+}

@@ -2,8 +2,10 @@ import type { FunctionComponent } from 'react';
 import React, { useCallback, useContext } from 'react';
 import type { LicenseResponse } from '@rbx/client-content-licensing-api/v1';
 import { LicenseDurationType, LicenseType } from '@rbx/client-content-licensing-api/v1';
+import { useFlag } from '@rbx/flags';
 import { useTranslation, useLocalization, Locale } from '@rbx/intl';
 import { Button, Grid, Typography } from '@rbx/ui';
+import { isImageAttachmentEnabledInLicenseApplication } from '@generated/flags/contentLicensing';
 import {
   KeyValuePair,
   KeyValuePairContainer,
@@ -20,7 +22,11 @@ import Flex from '@modules/miscellaneous/components/Flex';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import SelectedExperienceContext from '../context/SelectedExperienceContext';
 import useApplyToPublicLicenseMutation from '../hooks/useApplyToLicenseMutation';
-import type { CreatorPitchAttachment } from '../utils/creatorPitchAttachmentTypes';
+import {
+  type CreatorPitchAttachment,
+  hasBlockingCreatorPitchAttachments,
+  getSubmittableCreatorPitchAttachmentAssetIds,
+} from '../utils/creatorPitchAttachmentTypes';
 import { getApplyFlowRevShareOnActivation } from '../utils/getApplyFlowRevShareOnActivation';
 import type { CollaborationSalesAvenues } from '../utils/salesAvenue';
 import ApplicationSubmissionModal from './ApplicationSubmissionModal';
@@ -64,6 +70,13 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
   const { translate } = useTranslation();
   const { locale } = useLocalization();
   const { isFetched } = useSettings();
+  const { ready: isImageAttachmentFlagReady, value: isImageAttachmentEnabled } = useFlag(
+    isImageAttachmentEnabledInLicenseApplication,
+  );
+  const isSubmitBlockedByAttachments =
+    isImageAttachmentFlagReady &&
+    isImageAttachmentEnabled &&
+    hasBlockingCreatorPitchAttachments(creatorPitchAttachments);
 
   const context = useContext(SelectedExperienceContext);
   const { selectedExperienceId } = context;
@@ -96,12 +109,16 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
   }
 
   const onClickSubmit = useCallback(async () => {
+    if (isSubmitBlockedByAttachments) {
+      return;
+    }
     if (logClickEvent) {
       logClickEvent(LicenseManagerClickEvent.SubmitLicenseRequestClickEvent);
     }
     if (selectedExperienceId) {
       const pitch = creatorPitch.trim();
-      // TODO - aathreya - Include pitch attachment asset IDs when applyToLicense supports pitch media.
+      const pitchImageAssetIds =
+        getSubmittableCreatorPitchAttachmentAssetIds(creatorPitchAttachments);
       await applyToLicenseMutation.mutateAsync({
         universeId: selectedExperienceId,
         pitch,
@@ -112,12 +129,15 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
         collaborationSalesAvenues: showCollaborationSalesAvenueFields
           ? collaborationSalesAvenues
           : undefined,
+        pitchImageAssetIds: pitchImageAssetIds.length > 0 ? pitchImageAssetIds : undefined,
       });
     }
   }, [
+    isSubmitBlockedByAttachments,
     logClickEvent,
     selectedExperienceId,
     creatorPitch,
+    creatorPitchAttachments,
     applyToLicenseMutation,
     license.licenseDuration,
     dateRange,
@@ -231,7 +251,7 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
               variant='contained'
               onClick={onClickSubmit}
               loading={applyToLicenseMutation.isPending}
-              disabled={applyToLicenseMutation.isPending}
+              disabled={applyToLicenseMutation.isPending || isSubmitBlockedByAttachments}
               data-testid='apply-to-license-submit'>
               {translate('Action.Submit')}
             </Button>
