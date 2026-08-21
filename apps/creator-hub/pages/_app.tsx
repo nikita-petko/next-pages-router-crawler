@@ -1,4 +1,7 @@
+import '@modules/compatibility/BigInt/polyfill';
+import '@modules/compatibility/MediaQueryList/polyfill';
 import 'promise-polyfill/src/polyfill';
+import '@formatjs/intl-locale/polyfill';
 import '@formatjs/intl-relativetimeformat/polyfill';
 import '@rbx/webfont';
 import '../styles/globals.css';
