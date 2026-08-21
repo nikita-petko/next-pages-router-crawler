@@ -18,6 +18,7 @@ import type {
 } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
 import { CreatorAnalyticsPageMode } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { CLOUD_SERVICES_METRIC_RETENTION_DAYS } from '../constants/cloudServicesDateRange';
 import {
   chartConfigHttpServiceRequestCountExtended,
   chartConfigHttpServiceResponseTimeExtended,
@@ -49,6 +50,8 @@ const httpServiceAnalyticsConfig: CreatorAnalyticsUntabbedPageConfig = {
     ],
     defaultRange: RAQIV2DateRangeType.Last1Day,
     minStartDate: new Date('11/11/2025'),
+    maxRangeDays: CLOUD_SERVICES_METRIC_RETENTION_DAYS,
+    maxStartDateOffsetDays: CLOUD_SERVICES_METRIC_RETENTION_DAYS,
   } as const satisfies AnalyticsPageConfigDateOptions,
   surfaceAnnotationOptions: {
     supportedAnnotationTypes: [

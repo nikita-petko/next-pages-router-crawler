@@ -19,6 +19,7 @@ import type {
 import { CreatorAnalyticsPageMode } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { CLOUD_SERVICES_METRIC_RETENTION_DAYS } from '../constants/cloudServicesDateRange';
 import {
   chartConfigMessagingServiceFanoutRatio,
   chartConfigMessagingServiceFanoutRatioExtended,
@@ -57,6 +58,8 @@ const getPageConfig = (
         RAQIV2DateRangeType.Custom,
       ],
       defaultRange: RAQIV2DateRangeType.Last1Day,
+      maxRangeDays: CLOUD_SERVICES_METRIC_RETENTION_DAYS,
+      maxStartDateOffsetDays: CLOUD_SERVICES_METRIC_RETENTION_DAYS,
     } as const satisfies AnalyticsPageConfigDateOptions,
     surfaceAnnotationOptions: {
       supportedAnnotationTypes: [

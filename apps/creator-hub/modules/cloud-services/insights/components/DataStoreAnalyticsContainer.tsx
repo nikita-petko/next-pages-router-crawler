@@ -28,6 +28,7 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { creatorHub } from '@modules/miscellaneous/urls';
 import { FeatureFlagName } from '@modules/settings/SettingsProvider/featureFlags';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
+import { CLOUD_SERVICES_METRIC_RETENTION_DAYS } from '../constants/cloudServicesDateRange';
 import {
   chartConfigDataStoreRequestsByEndpoint,
   chartConfigDataStoreRequestsByStatus,
@@ -172,6 +173,8 @@ const getPageConfig = (
         RAQIV2DateRangeType.Custom,
       ],
       defaultRange: RAQIV2DateRangeType.Last1Day,
+      maxRangeDays: CLOUD_SERVICES_METRIC_RETENTION_DAYS,
+      maxStartDateOffsetDays: CLOUD_SERVICES_METRIC_RETENTION_DAYS,
     } as const satisfies AnalyticsPageConfigDateOptions,
     surfaceAnnotationOptions: {
       supportedAnnotationTypes: [
