@@ -853,23 +853,53 @@ export const UploadVideo = ({
 
       videoEl.remove();
 
+      const videoDurationInSeconds = videoEl.duration;
+      if (videoDurationInSeconds > VIDEO_DURATION_MAX_IN_SECONDS) {
+        setVideoUploadError(`Video can be at most ${VIDEO_DURATION_MAX_IN_SECONDS} seconds.`);
+        setVideoUploading(false);
+        localVideoUploading = false;
+        setVideoUploadProgress(0);
+        return;
+      }
+
+      if (transport.uploadVideo) {
+        const abortController = new AbortController();
+        setVideoUploading(true);
+        localVideoUploading = true;
+        setVideoUploadProgress(25);
+        setCancelVideoUpload({
+          cancelCb: () => {
+            localVideoUploading = false;
+            abortController.abort();
+            setVideoUploading(false);
+            setVideoUploadProgress(0);
+          },
+        });
+
+        try {
+          const { operationPath } = await transport.uploadVideo(video, abortController.signal);
+          if (!localVideoUploading) {
+            return;
+          }
+          if (!operationPath) {
+            encounteredErrorUploadingVideo();
+            return;
+          }
+          setVideoUploadProgress(50);
+          fetchTranscodingStatusPoll(operationPath);
+        } catch (err) {
+          if (!abortController.signal.aborted) {
+            encounteredErrorUploadingVideo(err as Error);
+          }
+        }
+        return;
+      }
+
       const reader = new FileReader();
 
       reader.onload = async (event) => {
         setVideoUploading(true);
         localVideoUploading = true;
-        if (event?.target && event.target?.result) {
-          const videoDurationInSeconds = videoEl?.duration;
-
-          if (videoDurationInSeconds > VIDEO_DURATION_MAX_IN_SECONDS) {
-            setVideoUploadError(`Video can be at most ${VIDEO_DURATION_MAX_IN_SECONDS} seconds.`);
-            setVideoUploading(false);
-
-            localVideoUploading = false;
-            setVideoUploadProgress(0);
-            return;
-          }
-        }
 
         if (!event?.target?.result || !(event.target.result instanceof ArrayBuffer)) {
           setVideoUploadError('Failed to read video file');

@@ -213,11 +213,12 @@ const ReachCreativeSection = ({
     );
   };
 
-  // 1x2 vertical reach allows a single video asset, uploaded via the internal
-  // ads-management-api proxy (EnhancedVideoExperience bypass). Hide the add
-  // button once a video is uploaded or while editing.
+  // 1x2 vertical reach allows a single video asset at a time, uploaded via the
+  // internal ads-management-api proxy (EnhancedVideoExperience bypass). Keep
+  // the add button available so the user can reopen the drawer to replace the
+  // selection; the drawer itself enforces maxVideosOverride={1}.
   const maybeRenderVideoUploadButton = () => {
-    if (editMode || finishedVideos.length > 0) {
+    if (editMode) {
       return null;
     }
 

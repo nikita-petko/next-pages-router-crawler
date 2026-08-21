@@ -3,17 +3,13 @@ import { makeStyles } from '@rbx/ui';
 import { textEllipsisTypographyStyles } from '@constants/genericManagementTableStyles';
 import { paddingUnit } from '@constants/styleConstants';
 
-const useTableNameCellStyles = makeStyles<{ minWidthPx?: number }>()((theme, { minWidthPx }) => ({
+const useTableNameCellStyles = makeStyles<{ minWidthPx?: number }>()((_, { minWidthPx }) => ({
   autoReloadIcon: {
     paddingRight: paddingUnit,
   },
 
   autoReloadIconTooltip: {
     width: '171px',
-  },
-
-  copyIcon: {
-    color: theme.palette.content.inverse,
   },
 
   nameCellMinWidth: minWidthPx != null && minWidthPx > 0 ? { minWidth: minWidthPx } : {},
@@ -42,24 +38,6 @@ const useTableNameCellStyles = makeStyles<{ minWidthPx?: number }>()((theme, { m
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
-  },
-
-  tooltipContent: {
-    alignSelf: 'center',
-    display: 'flex',
-    gap: '4px',
-    justifyContent: 'center',
-    padding: 0,
-    whiteSpace: 'nowrap',
-  },
-
-  tooltipPopper: {
-    minWidth: 'fit-content',
-  },
-
-  tooltipText: {
-    marginBottom: 'auto',
-    marginTop: 'auto',
   },
 }));
 

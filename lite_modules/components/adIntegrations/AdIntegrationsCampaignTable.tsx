@@ -15,9 +15,9 @@ import Link from 'next/link';
 import AdIntegrationsCampaignActionMenu from '@components/adIntegrations/AdIntegrationsCampaignActionMenu';
 import useAdIntegrationsCampaignTableStyles from '@components/adIntegrations/AdIntegrationsCampaignTable.styles';
 import AppTooltip from '@components/common/AppTooltip';
+import UniverseThumbnailImage from '@components/common/creative/UniverseThumbnailImage';
 import { openEntitySubmitErrorDialog } from '@components/common/dialog/entitySubmitErrorDialog';
 import { openImpersonationErrorDialog } from '@components/common/dialog/impersonationErrorDialog';
-import UniverseFilterAvatar from '@components/common/UniverseFilterAvatar';
 import GeneralTableTooltip from '@components/reporting/GenericTableTooltip';
 import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
 import { TranslationNamespace } from '@constants/localization';
@@ -205,7 +205,7 @@ const AdIntegrationsCampaignTable = ({
             const experienceTableCell = (
               <TableCell>
                 <div className={experienceCell}>
-                  <UniverseFilterAvatar src={universeThumbnailUrl} />
+                  <UniverseThumbnailImage size={24} src={universeThumbnailUrl} />
                   <div className='flex flex-col'>
                     <span className={`text-body-medium ${experienceName}`}>
                       {primaryUniverseName}

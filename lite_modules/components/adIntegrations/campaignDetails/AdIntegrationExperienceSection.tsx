@@ -4,7 +4,7 @@ import { Control, Controller, useWatch } from 'react-hook-form';
 
 import styles from '@components/adIntegrations/campaignDetails/AdIntegrationExperienceSection.module.css';
 import useCampaignBuilderCommonStyles from '@components/campaignBuilder/common/CampaignBuilderCommon.styles';
-import UniverseFilterAvatar from '@components/common/UniverseFilterAvatar';
+import UniverseThumbnailImage from '@components/common/creative/UniverseThumbnailImage';
 import { AdIntegrationFormField, MaxUniversesPerCampaign } from '@constants/adIntegrations';
 import { warningUniverseId } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
@@ -163,7 +163,8 @@ const AdIntegrationExperienceSection = ({
                   }
                   key={option.universe_id}
                   leading={
-                    <UniverseFilterAvatar
+                    <UniverseThumbnailImage
+                      size={24}
                       src={thumbnailsByUniverseId[option.universe_id]?.data?.imageUrl}
                     />
                   }
@@ -191,7 +192,7 @@ const AdIntegrationExperienceSection = ({
               label={translateCreativeLibrary('Label.Experience')}
               leadingIconNode={
                 selectedExperienceId > warningUniverseId ? (
-                  <UniverseFilterAvatar src={selectedThumbnailUrl} />
+                  <UniverseThumbnailImage size={24} src={selectedThumbnailUrl} />
                 ) : undefined
               }
               // Foundation keeps edited text on blur, so restore the selected name

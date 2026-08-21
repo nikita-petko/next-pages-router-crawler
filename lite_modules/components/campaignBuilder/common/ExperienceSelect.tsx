@@ -5,7 +5,7 @@ import { Controller, useFormContext, UseFormReturn, useWatch } from 'react-hook-
 
 import { EventName, logNativeClickEvent, logNativeImpressionEvent } from '@clients/unifiedLogger';
 import AppTooltip from '@components/common/AppTooltip';
-import UniverseFilterAvatar from '@components/common/UniverseFilterAvatar';
+import UniverseThumbnailImage from '@components/common/creative/UniverseThumbnailImage';
 import { FormField as AdvancedTargetingFormField } from '@constants/advancedTargeting';
 import {
   AllDetailedTargetingMatchTypes,
@@ -41,7 +41,8 @@ const maybeGetUniverseFilterThumbnail = (
   thumbnailsByUniverseId: Record<number, EmptyRequestStateType<ThumbnailType>>,
 ) =>
   universeFilter && universeFilter.universe_id !== 0 ? (
-    <UniverseFilterAvatar
+    <UniverseThumbnailImage
+      size={24}
       src={thumbnailsByUniverseId[universeFilter.universe_id]?.data?.imageUrl}
     />
   ) : undefined;

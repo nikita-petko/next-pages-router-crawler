@@ -3,10 +3,18 @@ import { ReactElement } from 'react';
 import CopyToClipboard from 'react-copy-to-clipboard';
 
 import AppTooltip from '@components/common/AppTooltip';
-import useTableNameCellStyles from '@components/reporting/TableNameCell.styles';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 
+/**
+ * Hover tooltip that reveals an entity's ID alongside a button to copy it.
+ *
+ * `pointer-events-auto` on the tooltip content is load-bearing. The content is portaled to
+ * `document.body`, which Foundation's Sheet sets to `pointer-events: none` while open, and
+ * Foundation bundles Tooltip and Sheet with separate copies of Radix's dismissable-layer
+ * context — so the tooltip never learns to re-enable itself as a hit target. Without it the
+ * copy button is visible but unclickable inside the campaign details drawer.
+ */
 const EntityIdTooltip = ({
   children,
   copyToClipboardContent,
@@ -15,17 +23,14 @@ const EntityIdTooltip = ({
   copyToClipboardContent: string;
 }) => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Report);
-  const {
-    classes: { tooltipContent, tooltipPopper, tooltipText },
-  } = useTableNameCellStyles({});
 
   return (
     <AppTooltip
-      contentClassName={tooltipPopper}
+      contentClassName='min-width-fit pointer-events-auto'
       position='top-start'
       title={
-        <div className={tooltipContent}>
-          <span className={tooltipText}>{copyToClipboardContent}</span>
+        <div className='self-center flex gap-xsmall justify-center whitespace-nowrap'>
+          <span className='margin-y-auto'>{copyToClipboardContent}</span>
           <CopyToClipboard text={copyToClipboardContent}>
             <IconButton
               ariaLabel={translate('Description.CopyToClipboard')}

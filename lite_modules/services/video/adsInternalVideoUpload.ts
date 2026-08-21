@@ -6,15 +6,23 @@ import {
   VideoUploadTransport,
 } from '@type/fileUpload';
 
-// Internal-only multipart video upload control plane, proxied through
-// ads-management-api. These endpoints mirror the public assets-upload-api
-// multipart flow, but ads-management-api injects the EnhancedVideoExperience
-// InternalCreationContextLabels so uploads by INTERNAL ad accounts bypass
-// moderation and the upload fee. Unlike the public assets client (which takes
-// the operation resource path as a colon-suffixed URL), the AMA proxy takes the
-// operationPath in the request body/query, so this transport is intentionally
-// separate from services/video/uploadVideo.ts.
+// Internal-only video upload flow proxied through ads-management-api. Raw
+// uploads use assets-upload-api's direct UploadOperation path so AssetPrivacy
+// and the EnhancedVideoExperience label are applied to the created asset.
 const VIDEO_UPLOAD_BASE = '/v1/videoUpload';
+
+const uploadVideo = async (video: File, abortSignal?: AbortSignal) => {
+  const body = new FormData();
+  body.append('fileContent', video, video.name);
+
+  const response = await adsClient.post<{ path: string }>({
+    abortSignal,
+    body,
+    headers: { 'Content-Type': 'multipart/form-data' },
+    url: `${VIDEO_UPLOAD_BASE}/raw`,
+  });
+  return { operationPath: response.data.path };
+};
 
 const startMultipartVideoUpload = async (
   data: Partial<GetMultipartVideoUploadOperationDataRequest>,
@@ -57,12 +65,13 @@ const abortMultipartUpload = async (operationPath: string) => {
   return response.data;
 };
 
-// Transport passed to UploadVideo() so the shared orchestration (chunking, md5,
-// direct-to-S3 PUT, transcode polling, cancel/abort) drives the AMA proxy.
+// The multipart methods remain available for the existing control-plane
+// endpoints, while UploadVideo uses uploadVideo when it is present.
 export const adsInternalVideoTransport: VideoUploadTransport = {
   abortMultipartUpload,
   getMultipartVideoUploadOperationData: startMultipartVideoUpload,
   getVideoAssetId,
   markChunkComplete,
   markUploadComplete,
+  uploadVideo,
 };

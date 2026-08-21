@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
 import AppTooltip from '@components/common/AppTooltip';
-import UniverseFilterAvatar from '@components/common/UniverseFilterAvatar';
+import UniverseThumbnailImage from '@components/common/creative/UniverseThumbnailImage';
 import useExperienceFilterPickerStyles from '@components/reporting/ExperienceFilterPicker.styles';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -20,7 +20,10 @@ const getUniverseAvatar = (
   thumbnailsByUniverseId: Record<number, EmptyRequestStateType<ThumbnailType>>,
 ) =>
   universe && universe.universe_id !== 0 ? (
-    <UniverseFilterAvatar src={thumbnailsByUniverseId[universe.universe_id]?.data?.imageUrl} />
+    <UniverseThumbnailImage
+      size={24}
+      src={thumbnailsByUniverseId[universe.universe_id]?.data?.imageUrl}
+    />
   ) : undefined;
 
 const ExperienceFilterPicker = () => {

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 
+import UniverseThumbnailImage from '@components/common/creative/UniverseThumbnailImage';
 import { type ThumbnailStoreType, useThumbnailStore } from '@stores/thumbnailStoreProvider';
 
 interface UniverseThumbnailProps {
@@ -19,19 +20,7 @@ const UniverseThumbnail = ({ universeId }: UniverseThumbnailProps) => {
     }
   }, [data, getThumbnail, universeId]);
 
-  // Foundation Avatar is always circular (`radius-circle` on root + inner wrapper).
-  // Figma specifies a 20×20 rounded square for game/experience menu rows.
-  return (
-    <span className='inline-flex shrink-0 !size-[20px] radius-small clip bg-shift-200'>
-      {data?.imageUrl ? (
-        <img
-          alt='universe-thumbnail'
-          className='size-full object-cover object-center'
-          src={data.imageUrl}
-        />
-      ) : null}
-    </span>
-  );
+  return <UniverseThumbnailImage src={data?.imageUrl} />;
 };
 
 export default UniverseThumbnail;

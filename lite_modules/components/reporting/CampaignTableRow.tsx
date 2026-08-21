@@ -27,6 +27,7 @@ import ReportingViewType from '@constants/reportingViewType';
 import Routes from '@constants/routes';
 import { Tooltips } from '@constants/tooltips';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import { useAppStore } from '@stores/appStoreProvider';
 import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider';
 import { GenericTableRowProps, RowCell, SortableHeadCell } from '@type/genericManagementTable';
 import { GetAudienceLabelKey, GetEndUserObjectiveString } from '@utils/campaignDetails';
@@ -44,6 +45,9 @@ const CampaignTableRow = ({
   const { translate, translateHTML } = useNamespacedTranslation(TranslationNamespace.Report);
   const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const router = useRouter();
+  const isCustomDateRangeEnabled = useAppStore(
+    (state) => state.appMetadataState.data?.isCustomDateRangeEnabled ?? false,
+  );
   const {
     classes: {
       actionMenuButton,
@@ -148,9 +152,13 @@ const CampaignTableRow = ({
           minWidthPx={firstColumnMinWidthPx}
           name={row.name}
           onNameClicked={() => {
-            router.push(GetUrlWithParams(Routes.MANAGE, { campaignId: row.id }), undefined, {
-              scroll: false,
-            });
+            const campaignDetailsUrl = isCustomDateRangeEnabled
+              ? {
+                  pathname: Routes.MANAGE,
+                  query: { ...router.query, campaignId: row.id },
+                }
+              : GetUrlWithParams(Routes.MANAGE, { campaignId: row.id });
+            router.push(campaignDetailsUrl, undefined, { scroll: false });
             getAdsAndOpenDrawer(row.id);
             logNativeClickEvent(EventName.CampaignDetailsOpened);
           }}

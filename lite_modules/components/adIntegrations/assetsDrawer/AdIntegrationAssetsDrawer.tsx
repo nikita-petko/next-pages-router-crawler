@@ -20,8 +20,8 @@ import useAdIntegrationAssetsDrawerStyles from '@components/adIntegrations/asset
 import AdIntegrationAssetsTable, {
   PendingAsset,
 } from '@components/adIntegrations/assetsDrawer/AdIntegrationAssetsTable';
+import UniverseThumbnailImage from '@components/common/creative/UniverseThumbnailImage';
 import { openErrorDialog } from '@components/common/dialog/errorDialog';
-import UniverseFilterAvatar from '@components/common/UniverseFilterAvatar';
 import { isSupportedAdIntegrationAssetType } from '@constants/adIntegrations';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -408,7 +408,10 @@ const AdIntegrationAssetsDrawer = ({
                       : translateReport('Label.Experience')}
                   </span>
                   <div className={campaignInfoExperienceValue}>
-                    <UniverseFilterAvatar src={campaignInfoHeader.experienceThumbnailUrl} />
+                    <UniverseThumbnailImage
+                      size={24}
+                      src={campaignInfoHeader.experienceThumbnailUrl}
+                    />
                     <div className='flex flex-col'>
                       <span className={`text-body-medium ${campaignInfoExperienceName}`}>
                         {campaignInfoHeader.experienceName}

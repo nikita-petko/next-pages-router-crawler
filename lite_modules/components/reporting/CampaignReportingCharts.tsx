@@ -142,14 +142,19 @@ const CampaignReportingCharts = () => {
     }
   }, [activeMetricTab, canShowRoas]);
 
-  // Trailing-30d zone previously flagged the window as "Unvalidated" (i.e. no
-  // data yet). The chart is now blended with ML-produced estimates for that
-  // window (see getCampaignTimeSeriesService `mergeRoasPreferValidated`), so
-  // relabel to communicate that dashed segment = estimated, solid = final.
-  const zoneLegendItemFormatter = (type: SeriesDataTypes) =>
-    type === SeriesDataTypes.Projection
+  // Only ROAS is blended with ML-produced estimates for the trailing
+  // attribution window (see getCampaignTimeSeriesService
+  // `mergeRoasPreferValidated`), so its dashed segment reads as "Estimated".
+  // Plays have no estimate to fall back on, so that window is still just
+  // unattributed data and keeps the "Unvalidated" label.
+  const zoneLegendItemFormatter = (type: SeriesDataTypes) => {
+    if (type !== SeriesDataTypes.Projection) {
+      return translateReport('Label.Validated');
+    }
+    return activeMetricTab === 'roas'
       ? translateReport('Label.Estimated')
-      : translateReport('Label.Validated');
+      : translateReport('Label.Unvalidated');
+  };
 
   const handlePeriodChange = (nextValue: string) => {
     const newPeriod = Number(nextValue);

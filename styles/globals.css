@@ -927,6 +927,9 @@
 .self-end {
   align-self: flex-end;
 }
+.self-center {
+  align-self: center;
+}
 .self-stretch {
   align-self: stretch;
 }
@@ -1800,6 +1803,10 @@
   width: 20px !important;
   height: 20px !important;
 }
+.\!size-\[24px\] {
+  width: 24px !important;
+  height: 24px !important;
+}
 .\!size-\[72px\] {
   width: 72px !important;
   height: 72px !important;
@@ -2013,6 +2020,10 @@
 }
 .min-width-\[var\(--size-1200\)\] {
   min-width: var(--size-1200);
+}
+.min-width-fit {
+  min-width: -moz-fit-content;
+  min-width: fit-content;
 }
 .min-width-max {
   min-width: -moz-max-content;
@@ -2472,6 +2483,10 @@
 }
 .margin-top-small {
   margin-top: var(--margin-small);
+}
+.margin-y-auto {
+  margin-top: auto;
+  margin-bottom: auto;
 }
 .margin-y-large {
   margin-top: var(--margin-large);

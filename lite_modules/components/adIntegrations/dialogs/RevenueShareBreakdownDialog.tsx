@@ -10,10 +10,10 @@ import {
 import { type ReactElement } from 'react';
 
 import styles from '@components/adIntegrations/dialogs/RevenueShareBreakdownDialog.module.css';
+import UniverseThumbnailImage from '@components/common/creative/UniverseThumbnailImage';
 import { openDialog } from '@components/common/dialog/actions';
 import BaseDialog from '@components/common/dialog/BaseDialog';
 import type { BaseInjectedDialogProps } from '@components/common/dialog/types';
-import UniverseFilterAvatar from '@components/common/UniverseFilterAvatar';
 import { TranslationNamespace } from '@constants/localization';
 import { PerUniverseRevenueShareEstimate } from '@hooks/adIntegrations/useMultiRevenueShareEstimatePreview';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -100,7 +100,8 @@ const RevenueShareBreakdownDialog = ({
                     <TableCell className={cellClassName}>
                       <div className='flex width-full min-width-0 items-center gap-small'>
                         <span className='flex shrink-0'>
-                          <UniverseFilterAvatar
+                          <UniverseThumbnailImage
+                            size={24}
                             src={thumbnailsByUniverseId[estimate.universeId]?.data?.imageUrl}
                           />
                         </span>
