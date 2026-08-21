@@ -1,19 +1,10 @@
 import type { FunctionComponent } from 'react';
 import React from 'react';
-import { Icon } from '@rbx/foundation-ui';
+import { Button } from '@rbx/foundation-ui';
 import { ReturnPolicy, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
-import {
-  Avatar,
-  Button,
-  buttonClasses,
-  ChevronRightIcon,
-  Chip,
-  Grid,
-  makeStyles,
-  Typography,
-  useTheme,
-} from '@rbx/ui';
-import { getRoleStyle } from '../../utils/groupUtils';
+import { Avatar, ChevronRightIcon, Chip, Grid, makeStyles, Typography } from '@rbx/ui';
+import RoleIcon from '../../members/components/common/RoleIcon';
+import { DefaultMemberRoleIdNumber } from '../../utils/constants';
 import { usePermissionsTranslation } from '../providers/TranslationProvider';
 import { usePermissionsUiConfig } from '../providers/UIConfigProvider';
 import type { CreatorDetails } from '../utils/types';
@@ -26,19 +17,6 @@ export type CreatorProps = CreatorDetails & {
 };
 
 const useCreatorStyles = makeStyles()((theme) => ({
-  creatorButton: {
-    textAlign: 'left',
-    [`& > .${buttonClasses.startIcon}`]: {
-      flex: '0 0 auto',
-    },
-    [`& > span`]: {
-      flex: '1 1 0',
-      overflow: 'hidden',
-    },
-    [`& > .${buttonClasses.endIcon}`]: {
-      flex: '0 0 auto',
-    },
-  },
   clipText: {
     display: 'block',
     width: '100%',
@@ -56,10 +34,6 @@ const useCreatorStyles = makeStyles()((theme) => ({
       color: theme.palette.content.standard,
     },
   },
-  buttonContent: {
-    marginRight: theme.spacing(0.5),
-    overflow: 'hidden',
-  },
 }));
 
 export const Creator: FunctionComponent<CreatorProps> = ({
@@ -69,47 +43,35 @@ export const Creator: FunctionComponent<CreatorProps> = ({
   ...creatorDetails
 }) => {
   const {
-    classes: { creatorButton, selectedClass, clipText, ownerClass, subText, buttonContent },
+    classes: { clipText, ownerClass, selectedClass, subText },
     cx,
   } = useCreatorStyles();
   const { translate } = usePermissionsTranslation();
   const { showMobileView } = usePermissionsUiConfig();
-  const { palette } = useTheme();
 
   let startIcon;
 
   switch (creatorDetails.type) {
     case CreatorTypes.MEMBER_ROLE:
-      startIcon = (
-        <Icon
-          name='icon-filled-square-person'
-          style={{
-            width: 36,
-            height: 36,
-            margin: 2,
-            ...getRoleStyle(creatorDetails.color, palette.mode, 'color'),
-          }}
-        />
-      );
-      break;
     case CreatorTypes.LEGACY_ROLE:
     case CreatorTypes.GUEST_ROLE:
     case CreatorTypes.ROLE:
       startIcon = (
-        <Icon
-          name='icon-filled-person-rectangle-horizontal-line'
-          style={{
-            width: 36,
-            height: 36,
-            margin: 2,
-            ...getRoleStyle(creatorDetails.color, palette.mode, 'color'),
-          }}
+        <RoleIcon
+          roleId={
+            creatorDetails.type === CreatorTypes.MEMBER_ROLE
+              ? DefaultMemberRoleIdNumber
+              : Number(creatorDetails.id)
+          }
+          color={creatorDetails.color}
+          isPrivate={creatorDetails.isPrivate}
+          size='Medium'
         />
       );
       break;
     case CreatorTypes.USER:
       startIcon = (
-        <Avatar variant='circular' alt={creatorDetails.name}>
+        <Avatar variant='circular' alt={creatorDetails.name} className='size-500'>
           <Thumbnail2d
             type={ThumbnailTypes.avatar}
             targetId={Number(creatorDetails.id)}
@@ -122,7 +84,7 @@ export const Creator: FunctionComponent<CreatorProps> = ({
       break;
     case CreatorTypes.GROUP:
       startIcon = (
-        <Avatar variant='rounded' alt={creatorDetails.name}>
+        <Avatar variant='rounded' alt={creatorDetails.name} className='size-500'>
           <Thumbnail2d
             type={ThumbnailTypes.groupIcon}
             targetId={Number(creatorDetails.id)}
@@ -139,36 +101,43 @@ export const Creator: FunctionComponent<CreatorProps> = ({
 
   return (
     <Button
-      size='large'
-      color='primary'
-      className={cx(creatorButton, { [selectedClass]: selected, [ownerClass]: isOwner })}
-      fullWidth
-      variant='text'
+      variant={selected ? 'Standard' : 'Utility'}
+      size='Small'
+      className={cx(
+        'flex width-full !height-fit !grow-1 justify-start text-align-x-left [text-transform:none] [&>span:nth-child(2)]:grow-1 [&>span:nth-child(2)]:max-width-full [&>span:nth-child(2)]:min-width-0 [&>span:nth-child(2)>span:nth-child(1)]:width-full',
+        { [selectedClass]: selected, [ownerClass]: isOwner },
+      )}
       data-testid={`creator-button-${creatorDetails.id}`}
       aria-selected={selected}
-      disabled={creatorDetails.disabled === true || isOwner}
-      onClick={() => onCreatorSelect?.(creatorDetails)}
-      startIcon={startIcon}
-      endIcon={showMobileView && !isOwner ? <ChevronRightIcon /> : null}>
-      <Grid container direction='row' alignItems='center' wrap='nowrap'>
-        <Grid item flex='1 1 0' className={buttonContent}>
-          <Typography variant='largeLabel1' className={clipText}>
-            {creatorDetails.name}
-          </Typography>
-          <Typography variant='body2' className={cx(clipText, subText)}>
-            {creatorDetails.subtext}
-          </Typography>
-        </Grid>
-        {isOwner && (
-          <Grid item flex='0 0 auto' data-testid='owner-chip'>
-            <Chip
-              color='secondary'
-              label={translate('Chip.Owner.Label')}
-              size='small'
-              variant='filled'
-            />
-          </Grid>
-        )}
+      isDisabled={creatorDetails.disabled === true || isOwner}
+      onClick={() => onCreatorSelect?.(creatorDetails)}>
+      <Grid
+        container
+        className='flex width-full max-width-full no-wrap justify-between items-center padding-y-xsmall'>
+        <div className='flex grow-1 flex-row items-center width-full'>
+          <span className='flex grow-0 shrink-0'>{startIcon}</span>
+          <span className='block text-no-wrap clip text-truncate-end grow-1 shrink-1 text-align-x-left padding-left-small'>
+            <span className={clipText}>{creatorDetails.name}</span>
+            <Typography variant='body2' className={cx(clipText, subText)}>
+              {creatorDetails.subtext}
+            </Typography>
+          </span>
+          {isOwner && (
+            <span className='flex grow-0 shrink-0' data-testid='owner-chip'>
+              <Chip
+                color='secondary'
+                label={translate('Chip.Owner.Label')}
+                size='small'
+                variant='filled'
+              />
+            </span>
+          )}
+          {showMobileView && !isOwner && (
+            <span className='flex grow-0 shrink-0'>
+              <ChevronRightIcon />
+            </span>
+          )}
+        </div>
       </Grid>
     </Button>
   );

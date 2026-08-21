@@ -2,8 +2,10 @@ import type { FunctionComponent } from 'react';
 import React, { useCallback, useState } from 'react';
 import creatorsDark from '@rbx/foundation-images/pictograms/two_people_dark.svg';
 import creatorsLight from '@rbx/foundation-images/pictograms/two_people_light.svg';
-import { NavigateBeforeIcon, Button, Grid, makeStyles } from '@rbx/ui';
+import { NavigateBeforeIcon, Button, Grid } from '@rbx/ui';
 import EmptyState from '../../components/EmptyState';
+import RoleIcon from '../../members/components/common/RoleIcon';
+import { DefaultMemberRoleIdNumber } from '../../utils/constants';
 import { CreatorGroupList } from '../components/CreatorGroupList';
 import { PermissionGroupList } from '../components/PermissionGroupList';
 import {
@@ -11,12 +13,8 @@ import {
   usePermissionsTranslation,
 } from '../providers/TranslationProvider';
 import { PermissionsUIConfigProvider, usePermissionsUiConfig } from '../providers/UIConfigProvider';
-import type {
-  CreatorDetails,
-  CreatorTypes,
-  EntityDetails,
-  PermissionsUIConfig,
-} from '../utils/types';
+import type { CreatorDetails, EntityDetails, PermissionsUIConfig } from '../utils/types';
+import { CreatorTypes } from '../utils/types';
 
 export type PermissionsContainerProps = {
   entity: EntityDetails;
@@ -29,27 +27,28 @@ type PermissionsContainerInternalProps = Omit<PermissionsContainerProps, 'uiConf
   selectedCreator?: CreatorDetails | null;
 };
 
-const usePermissionsContainerStyles = makeStyles()((theme) => ({
-  creatorGridClass: {
-    [theme.breakpoints.up('Medium')]: {
-      borderRight: `1px solid ${theme.palette.components.divider}`,
-    },
-    overflow: 'auto',
-  },
-  fullPage: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: theme.palette.surface[0],
-    width: '100%',
-    zIndex: 1,
-  },
-  mobileBackButton: {
-    margin: theme.spacing(3),
-    marginBottom: 0,
-  },
-}));
+const ROLE_CREATOR_TYPES = new Set([
+  CreatorTypes.MEMBER_ROLE,
+  CreatorTypes.GUEST_ROLE,
+  CreatorTypes.LEGACY_ROLE,
+  CreatorTypes.ROLE,
+]);
+
+const renderCreatorHeaderLabel = (creator: CreatorDetails) => (
+  <span className='inline-flex items-center gap-small'>
+    {ROLE_CREATOR_TYPES.has(creator.type) && (
+      <RoleIcon
+        roleId={
+          creator.type === CreatorTypes.MEMBER_ROLE ? DefaultMemberRoleIdNumber : Number(creator.id)
+        }
+        color={creator.color}
+        isPrivate={creator.isPrivate}
+        size='Small'
+      />
+    )}
+    {creator.name}
+  </span>
+);
 
 const DefaultEmptyState: FunctionComponent<{ creatorType?: CreatorTypes }> = ({ creatorType }) => {
   const { translate } = usePermissionsTranslation();
@@ -75,11 +74,6 @@ const PermissionsContainerInternal: FunctionComponent<PermissionsContainerIntern
   const { showMobileView, singleCreatorExperience } = usePermissionsUiConfig();
   const [mobileStep, setMobileStep] = useState<number>(1);
 
-  const {
-    classes: { creatorGridClass, fullPage, mobileBackButton },
-    cx,
-  } = usePermissionsContainerStyles();
-
   const onCreatorSelect = useCallback(
     (creator: CreatorDetails | null) => {
       setSelectedCreator(creator);
@@ -94,46 +88,46 @@ const PermissionsContainerInternal: FunctionComponent<PermissionsContainerIntern
   }
 
   return (
-    <Grid container data-testid='permissions-container' alignItems='stretch'>
-      {!singleCreatorExperience && (
+    <Grid container className='width-full' data-testid='permissions-container' alignItems='stretch'>
+      <Grid container className='flex-col medium:flex-row medium:gap-medium'>
+        {!singleCreatorExperience && (
+          <Grid
+            item
+            className='max-medium:width-full medium:grow-1 medium:shrink-1 medium:basis-0 medium:min-width-0 medium:max-width-[216px]'
+            hidden={showMobileView && mobileStep !== 1}
+            data-testid='creator-group-list'>
+            <CreatorGroupList
+              entity={entity}
+              creatorFilter={creatorFilter}
+              selectedCreator={selectedCreator ?? undefined}
+              onCreatorSelect={onCreatorSelect}
+            />
+          </Grid>
+        )}
         <Grid
           item
-          XSmall={12}
-          Medium={4}
-          XLarge={3}
-          pt={2}
-          pb={2}
-          className={creatorGridClass}
-          hidden={showMobileView && mobileStep !== 1}
-          data-testid='creator-group-list'>
-          <CreatorGroupList
+          hidden={showMobileView && mobileStep !== 2}
+          className={`max-medium:width-full medium:grow-2 medium:shrink-1 medium:basis-0 medium:min-width-0 ${
+            showMobileView ? 'absolute [top:0] [left:0] [right:0] bg-surface-0 [z-index:1]' : ''
+          }`}>
+          {showMobileView && (
+            <Button
+              startIcon={<NavigateBeforeIcon />}
+              onClick={() => setMobileStep(1)}
+              color='primary'
+              className='padding-y-small padding-x-xsmall'
+              data-testid='mobile-back-button'>
+              {selectedCreator
+                ? renderCreatorHeaderLabel(selectedCreator)
+                : translate('Action.MobileBackButton')}
+            </Button>
+          )}
+          <PermissionGroupList
             entity={entity}
-            creatorFilter={creatorFilter}
-            selectedCreator={selectedCreator ?? undefined}
-            onCreatorSelect={onCreatorSelect}
+            creator={selectedCreator}
+            key={selectedCreator?.id}
           />
         </Grid>
-      )}
-      <Grid
-        item
-        XSmall={12}
-        Medium={singleCreatorExperience ? 12 : 8}
-        XLarge={singleCreatorExperience ? 12 : 9}
-        hidden={showMobileView && mobileStep !== 2}
-        className={cx({ [fullPage]: showMobileView })}>
-        {showMobileView && (
-          <Button
-            color='inherit'
-            size='small'
-            startIcon={<NavigateBeforeIcon />}
-            variant='text'
-            onClick={() => setMobileStep(1)}
-            className={mobileBackButton}
-            data-testid='mobile-back-button'>
-            {translate('Action.MobileBackButton')}
-          </Button>
-        )}
-        <PermissionGroupList entity={entity} creator={selectedCreator} key={selectedCreator?.id} />
       </Grid>
     </Grid>
   );

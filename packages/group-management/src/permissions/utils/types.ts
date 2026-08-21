@@ -59,6 +59,7 @@ export type CreatorDetails = {
   id: string;
   name: string;
   color?: GroupRoleColorType;
+  isPrivate?: boolean;
   disabled?: boolean;
   type: CreatorTypes;
   subtext?: string;
@@ -80,7 +81,6 @@ export type CreatorGroupDetails = {
 };
 
 export type PermissionsUIConfig = {
-  showRevokeAllButton?: boolean;
   showMobileView?: boolean;
   singleCreatorExperience?: boolean;
   showConfirmationOnSave?: boolean;

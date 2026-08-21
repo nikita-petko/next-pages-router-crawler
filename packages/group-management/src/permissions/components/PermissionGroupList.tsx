@@ -2,15 +2,7 @@ import type { FunctionComponent } from 'react';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Chip } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import {
-  Alert,
-  Button,
-  CircularProgress,
-  Grid,
-  makeStyles,
-  StickyFooter,
-  Typography,
-} from '@rbx/ui';
+import { Alert, Button, CircularProgress, Grid, makeStyles, StickyFooter } from '@rbx/ui';
 import ErrorState from '../../components/ErrorState';
 import TranslationNamespace from '../../constants/TranslationNamespace';
 import useCurrentGroup from '../../hooks/useCurrentGroup';
@@ -69,7 +61,7 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
   const {
     classes: { rootClass, footerButton, stickyFooter },
   } = usePermissionsContainerStyles();
-  const { showRevokeAllButton, showConfirmationOnSave } = usePermissionsUiConfig();
+  const { showConfirmationOnSave } = usePermissionsUiConfig();
   const { translate, displayMessage } = usePermissionsTranslation();
   const { translateWithNamespace } = useTranslation();
   const { organization, surface, isOrganizationLoading } = useCurrentGroup();
@@ -176,25 +168,6 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
     persistPermissions(permissionData);
   }, [setShowSaveConfirmation, persistPermissions, permissionData, displayMessage, translate]);
 
-  const revokeAllPermissions = useCallback(() => {
-    const newPermissionsData: Record<string, PermissionRequest> = {};
-
-    if (!permissionData || !initialPermissions) {
-      displayMessage(translate('Messages.ErrorSavingPermissions'), true);
-      return;
-    }
-
-    Object.keys(permissionData).forEach((permissionId) => {
-      if (canPermissionChange(initialPermissions[permissionId])) {
-        newPermissionsData[permissionId] = { isGranted: false };
-      } else {
-        newPermissionsData[permissionId] = permissionData[permissionId];
-      }
-    });
-    setExplicitGrants(deriveExplicitGrants(newPermissionsData, metadata));
-    persistPermissions(newPermissionsData);
-  }, [permissionData, initialPermissions, metadata, persistPermissions, displayMessage, translate]);
-
   if (isError) {
     return <ErrorState onRetry={refetchPermissions} />;
   }
@@ -215,19 +188,11 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
     );
   }
 
-  const isNoneChecked = Object.keys(permissionData).every(
-    (permissionId) =>
-      !(
-        permissionData[permissionId].isGranted ||
-        initialPermissions[permissionId].isInherited === true
-      ) || !initialPermissions[permissionId].canEdit,
-  );
   const isAnyEditable = Object.values(initialPermissions).some((permission) =>
     canPermissionChange(permission),
   );
   const { selected, unselected } = findUpdatedPermissions(initialPermissions, permissionData);
 
-  const title = translate('Title');
   let info;
   if (entity?.type === EntityTypes.GROUP && creator.type === CreatorTypes.MEMBER_ROLE) {
     info = memberCount
@@ -238,7 +203,6 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
   } else {
     info = translate(`PermissionGroup.${creator.type}.Info`);
   }
-  const revokeAccessLabel = translate('Action.RevokeAccess');
   const cancelActionLabel = translate('Action.Cancel');
   const saveActionLabel = translate('Action.Save');
 
@@ -262,28 +226,6 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
 
   return (
     <Grid className={rootClass} data-testid='permission-group-list'>
-      <Grid
-        container
-        wrap='nowrap'
-        justifyContent={title ? 'space-between' : 'flex-end'}
-        alignItems='center'>
-        {title && (
-          <Typography component='h2' variant='h2' marginBottom={2} marginTop={2}>
-            {title}
-          </Typography>
-        )}
-        {showRevokeAllButton && isAnyEditable && revokeAccessLabel && (
-          <Button
-            variant='text'
-            color='primary'
-            size='small'
-            onClick={revokeAllPermissions}
-            disabled={isNoneChecked}
-            data-testid='permission-revoke-button'>
-            {revokeAccessLabel}
-          </Button>
-        )}
-      </Grid>
       {info && (
         <Alert severity='info' variant='standard'>
           {info}

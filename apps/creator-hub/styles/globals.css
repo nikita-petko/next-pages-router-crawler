@@ -1808,6 +1808,9 @@
 .fill {
   flex: 1 1 auto;
 }
+.\!grow-1 {
+  flex-grow: 1 !important;
+}
 .grow-0 {
   flex-grow: 0;
 }
@@ -1997,6 +2000,10 @@
 }
 .\!height-800 {
   height: var(--size-800) !important;
+}
+.\!height-fit {
+  height: -moz-fit-content !important;
+  height: fit-content !important;
 }
 .\!height-full {
   height: 100% !important;
@@ -4824,6 +4831,9 @@
 .\[text-overflow\:ellipsis\] {
   text-overflow: ellipsis;
 }
+.\[text-transform\:none\] {
+  text-transform: none;
+}
 .\[top\:0\] {
   top: 0;
 }
@@ -5567,6 +5577,9 @@ html.studio-webview.dark-theme,
   .max-medium\:gap-y-small {
     row-gap: var(--gap-small);
   }
+  .max-medium\:width-full {
+    width: 100%;
+  }
 }
 
 @media (max-width: 600.95px) {
@@ -5741,6 +5754,9 @@ html.studio-webview.dark-theme,
   .medium\:gap-large {
     gap: var(--gap-large);
   }
+  .medium\:gap-medium {
+    gap: var(--gap-medium);
+  }
   .medium\:gap-xlarge {
     gap: var(--gap-xlarge);
   }
@@ -5755,6 +5771,9 @@ html.studio-webview.dark-theme,
   }
   .medium\:grow-1 {
     flex-grow: 1;
+  }
+  .medium\:grow-2 {
+    flex-grow: 2;
   }
   .medium\:shrink-0 {
     flex-shrink: 0;
@@ -5774,6 +5793,9 @@ html.studio-webview.dark-theme,
   .medium\:max-width-\[200px\] {
     max-width: 200px;
   }
+  .medium\:max-width-\[216px\] {
+    max-width: 216px;
+  }
   .medium\:max-width-\[250px\] {
     max-width: 250px;
   }
@@ -5785,6 +5807,9 @@ html.studio-webview.dark-theme,
   }
   .medium\:max-width-\[calc\(50\%_-_var\(--gap-xxlarge\)\/2\)\] {
     max-width: calc(50% - var(--gap-xxlarge) / 2);
+  }
+  .medium\:min-width-0 {
+    min-width: var(--size-0);
   }
   .medium\:min-width-\[180px\] {
     min-width: 180px;
@@ -6117,6 +6142,22 @@ html.studio-webview.dark-theme,
 .\[\&\>label\>span\]\:text-body-small>label>span {
   font: var(--typography-body-small-font);
   letter-spacing: var(--typography-body-small-letter-spacing);
+}
+
+.\[\&\>span\:nth-child\(2\)\>span\:nth-child\(1\)\]\:width-full>span:nth-child(2)>span:nth-child(1) {
+  width: 100%;
+}
+
+.\[\&\>span\:nth-child\(2\)\]\:grow-1>span:nth-child(2) {
+  flex-grow: 1;
+}
+
+.\[\&\>span\:nth-child\(2\)\]\:max-width-full>span:nth-child(2) {
+  max-width: 100%;
+}
+
+.\[\&\>span\:nth-child\(2\)\]\:min-width-0>span:nth-child(2) {
+  min-width: var(--size-0);
 }
 
 .\[\&\>span\>span\]\:\!padding-none>span>span {

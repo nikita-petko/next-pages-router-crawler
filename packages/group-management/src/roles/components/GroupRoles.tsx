@@ -516,7 +516,6 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
           uiConfig={{
             singleCreatorExperience: true,
             showConfirmationOnSave: isDefaultMemberRole,
-            showRevokeAllButton: false,
           }}
           key={selectedRole?.metadata?.id}
         />
@@ -813,6 +812,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
               {selectedRole && (
                 <Grid
                   container
+                  className='padding-top-large'
                   style={{
                     display: selectedTab !== ConfigureRoleTab.Permissions ? 'none' : 'block',
                   }}>

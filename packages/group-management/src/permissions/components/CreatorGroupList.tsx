@@ -1,6 +1,7 @@
 import type { FunctionComponent } from 'react';
 import React, { useEffect, useState } from 'react';
-import { Grid, Chip, makeStyles, Alert, CircularProgress } from '@rbx/ui';
+import { Chip } from '@rbx/foundation-ui';
+import { Grid, Alert, CircularProgress } from '@rbx/ui';
 import useCurrentGroup from '../../hooks/useCurrentGroup';
 import { usePermissionsTranslation } from '../providers/TranslationProvider';
 import { usePermissionsUiConfig } from '../providers/UIConfigProvider';
@@ -17,11 +18,6 @@ export type CreatorGroupListProps = {
   entity: EntityDetails;
   onCreatorSelect: (creator: CreatorDetails | null) => void;
 };
-
-// min height avoids the page height from jumping when the permissions UI reloads for a new creator
-const PERMISSIONS_UI_MIN_HEIGHT = 550;
-// This value is used to set the min height of the container so that it doesn't lead to 2 scrollbars on page.
-const ACCOMMODATION_FOR_LAYOUT = 550;
 
 const ALL_CHIPS: { labelKey: CreatorFilterChipTypes; creatorTypes: Set<CreatorTypes> }[] = [
   {
@@ -43,25 +39,12 @@ const ALL_CHIPS: { labelKey: CreatorFilterChipTypes; creatorTypes: Set<CreatorTy
   },
 ];
 
-const useCreatorGroupListStyles = makeStyles()((theme) => ({
-  creatorGroupList: {
-    [theme.breakpoints.up('Medium')]: {
-      paddingRight: theme.spacing(3),
-      height: `calc(100vh - ${ACCOMMODATION_FOR_LAYOUT}px)`,
-      minHeight: PERMISSIONS_UI_MIN_HEIGHT,
-    },
-  },
-}));
-
 const CreatorGroupList: FunctionComponent<CreatorGroupListProps> = ({
   creatorFilter,
   entity,
   selectedCreator,
   onCreatorSelect,
 }) => {
-  const {
-    classes: { creatorGroupList },
-  } = useCreatorGroupListStyles();
   const { showMobileView } = usePermissionsUiConfig();
   const { translate } = usePermissionsTranslation();
   const { isOwner, organization, rolePermissions } = useCurrentGroup();
@@ -108,21 +91,24 @@ const CreatorGroupList: FunctionComponent<CreatorGroupListProps> = ({
       {/* the first chip is the "all" chip. If there are only 2 chips, both will show the same data. */}
       {chipsToShow.length > 2 && (
         <Grid container justifyContent='left' mb={3}>
-          {chipsToShow.map((chip, index) => (
-            <Grid pr={1} key={chip.labelKey}>
-              <Chip
-                color={selectedChip === index ? 'primary' : 'secondary'}
-                label={translate(`Chip.${chip.labelKey}.Label`)}
-                onClick={() => setSelectedChip(index)}
-                size='medium'
-                variant='filled'
-                data-testid={`chip-${chip.labelKey}`}
-              />
-            </Grid>
-          ))}
+          {chipsToShow.map((chip, index) => {
+            const label = translate(`Chip.${chip.labelKey}.Label`);
+            return (
+              <Grid pr={1} key={chip.labelKey}>
+                <Chip
+                  isChecked={selectedChip === index}
+                  text={typeof label === 'string' ? label : ''}
+                  onCheckedChange={() => setSelectedChip(index)}
+                  size='Medium'
+                  variant='Standard'
+                  data-testid={`chip-${chip.labelKey}`}
+                />
+              </Grid>
+            );
+          })}
         </Grid>
       )}
-      <Grid className={creatorGroupList}>
+      <Grid>
         {entity.owner && <Creator {...entity.owner} isOwner />}
         {creatorData &&
           creatorData.map(

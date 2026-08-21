@@ -44,7 +44,12 @@ const PermissionsTranslationProviderWithoutTranslation: FunctionComponent<
         closing: 'gridEnd',
         content(chunks: React.ReactNode) {
           return (
-            <Grid container direction='row'>
+            <Grid
+              container
+              direction='row'
+              alignItems='center'
+              wrap='nowrap'
+              className='width-full gap-medium'>
               {chunks}
             </Grid>
           );
@@ -55,7 +60,7 @@ const PermissionsTranslationProviderWithoutTranslation: FunctionComponent<
         closing: 'contentEnd',
         content(chunks: React.ReactNode) {
           return (
-            <Grid container direction='column' className='flex-1'>
+            <Grid container direction='column' className='grow-1 shrink-1 basis-0 min-width-0'>
               {chunks}
             </Grid>
           );
@@ -65,7 +70,7 @@ const PermissionsTranslationProviderWithoutTranslation: FunctionComponent<
         opening: 'actionStart',
         closing: 'actionEnd',
         content(chunks: React.ReactNode) {
-          return <Grid className='flex-none'>{chunks}</Grid>;
+          return <Grid className='grow-0 shrink-0'>{chunks}</Grid>;
         },
       },
       {

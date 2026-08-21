@@ -40,6 +40,7 @@ function buildOrganizationRolesGroup(
       id: role.id?.toString() ?? '',
       name: role.name ?? '',
       color: role.color,
+      isPrivate: role.isPrivate,
       disabled: !isOwner && !canEditRolePermissions(rolePermissions?.[role.id?.toString() ?? '']),
       type: CreatorTypes.ROLE,
     }));
