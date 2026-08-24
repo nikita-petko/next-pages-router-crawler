@@ -1,5 +1,5 @@
 import type { FunctionComponent } from 'react';
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { useTranslation } from '@rbx/intl';
 import {
   Autocomplete,
@@ -48,9 +48,23 @@ const UserSelect: FunctionComponent<UserSelectProps> = ({
   } = useStyles();
   const { translate } = useTranslation();
   const logState = useRef<UserSelectLogState>({});
-  const [, setIsFocused] = useState(false);
-
   const inputValue = useRef('');
+
+  const renderPaper = useCallback(
+    ({ children }: { children?: React.ReactNode }) => (
+      <Paper>
+        {children}
+        {bottomText && (
+          <div className={bottomTextWrapper}>
+            <Typography variant='body2' color='secondary'>
+              {bottomText}
+            </Typography>
+          </div>
+        )}
+      </Paper>
+    ),
+    [bottomText, bottomTextWrapper],
+  );
 
   const handleAutocompleteChange = (_event: unknown, selectedUser: User | null) => {
     if (selectedUser && onSelect) {
@@ -73,9 +87,7 @@ const UserSelect: FunctionComponent<UserSelectProps> = ({
           numCharsInSearchbarOnFocus: inputValue.current.length,
           searchbarFocusedTimestampMilliseconds: Date.now(),
         };
-        setIsFocused(true);
       }}
-      onBlur={() => setIsFocused(false)}
       onChange={handleAutocompleteChange}
       value={null}
       onInputChange={(event, value) => {
@@ -133,18 +145,7 @@ const UserSelect: FunctionComponent<UserSelectProps> = ({
 
         return <li {...props}>{defaultRender()}</li>;
       }}
-      PaperComponent={({ children }) => (
-        <Paper>
-          {children}
-          {bottomText && (
-            <div className={bottomTextWrapper}>
-              <Typography variant='body2' color='secondary'>
-                {bottomText}
-              </Typography>
-            </div>
-          )}
-        </Paper>
-      )}
+      PaperComponent={renderPaper}
       renderInput={(params) => (
         <TextField
           {...params}
