@@ -3,6 +3,7 @@ import React, { useCallback } from 'react';
 import { useRobloxAuthentication } from '@rbx/auth';
 import type { LicenseResponse } from '@rbx/client-content-licensing-api/v1';
 import { LicenseDurationType } from '@rbx/client-content-licensing-api/v1';
+import { useFlag } from '@rbx/flags';
 import { useTranslation } from '@rbx/intl';
 import {
   InfoOutlinedIcon,
@@ -16,6 +17,10 @@ import {
   makeStyles,
 } from '@rbx/ui';
 import {
+  isAvatarItemLicensingEnabled as isAvatarItemLicensingEnabledFlag,
+  isInGameSalesLicensingEnabled as isInGameSalesLicensingEnabledFlag,
+} from '@generated/flags/contentLicensing';
+import {
   LicenseManagerClickEvent,
   LicenseManagerImpressionEvent,
   useLicenseManagerLogger,
@@ -24,8 +29,6 @@ import { getMaturityRatingLabel } from '@modules/ip/license-manager/utils/maturi
 import { getDurationRangeLabel } from '@modules/ip/license-manager/utils/timeLimitedLicense';
 import { Link, PageLoading } from '@modules/miscellaneous/components';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
-import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
 import { useVisibleImpression } from '../hooks/useVisibleImpression';
 import { LICENSE_APPLY_HREF } from '../urls';
 import { formatRoyaltyRate } from '../utils/format';
@@ -69,14 +72,19 @@ const LicenseAccordion: FunctionComponent<LicenseAccordionProps> = ({
   const { translate } = useTranslation();
   const { classes } = useStyles();
   const { isFetched } = useSettings();
-  const { frontendFlags, loadingFrontendFlags } = useToolboxServiceApiProvider();
+  const { ready: isInGameSalesLicensingFlagReady, value: inGameSalesLicensingFlagValue } = useFlag(
+    isInGameSalesLicensingEnabledFlag,
+  );
+  const { ready: isAvatarItemLicensingFlagReady, value: avatarItemLicensingFlagValue } = useFlag(
+    isAvatarItemLicensingEnabledFlag,
+  );
   const { status, login } = useRobloxAuthentication();
   const { logEvent } = useLicenseManagerLogger();
 
   const isAuthenticated = status === 'success';
   const isAuthenticationResolved = status !== 'loading';
-  const enableCollaborationLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
+  const isInGameSalesLicensingEnabled = inGameSalesLicensingFlagValue ?? false;
+  const isAvatarItemLicensingEnabled = avatarItemLicensingFlagValue ?? false;
   const licenseId = license.id ?? '';
   const listingId = license.listingId ?? '';
 
@@ -90,7 +98,11 @@ const LicenseAccordion: FunctionComponent<LicenseAccordionProps> = ({
   }, [isAuthenticated, licenseId, licensePosition, listingId, logEvent]);
   const accordionRef = useVisibleImpression<HTMLDivElement>(
     logLicenseImpression,
-    licenseId !== '' && isAuthenticationResolved && isFetched && !loadingFrontendFlags,
+    licenseId !== '' &&
+      isAuthenticationResolved &&
+      isFetched &&
+      isInGameSalesLicensingFlagReady &&
+      isAvatarItemLicensingFlagReady,
   );
 
   const handleChange = useCallback(
@@ -111,12 +123,16 @@ const LicenseAccordion: FunctionComponent<LicenseAccordionProps> = ({
     return null;
   }
 
-  if (!isFetched || loadingFrontendFlags) {
+  if (!isFetched || !isInGameSalesLicensingFlagReady || !isAvatarItemLicensingFlagReady) {
     return <PageLoading />;
   }
 
   const licenseTypeLabels = getLicenseTypeTranslationKeys(
-    getEffectiveLicenseTypeForDisplay(license.licenseType, enableCollaborationLicensing),
+    getEffectiveLicenseTypeForDisplay(
+      license.licenseType,
+      isInGameSalesLicensingEnabled,
+      isAvatarItemLicensingEnabled,
+    ),
   );
   const showRevShareInSummary = isAuthenticated && license.royaltyRate !== undefined;
   const showDurationInSummary = isAuthenticated;

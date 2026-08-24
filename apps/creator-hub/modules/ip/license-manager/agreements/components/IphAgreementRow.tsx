@@ -4,13 +4,13 @@ import {
   LicenseDurationType,
   type HydratedListAgreementResponse,
 } from '@rbx/client-content-licensing-api/v1';
+import { useFlag } from '@rbx/flags';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import { Skeleton, TableCell, Typography } from '@rbx/ui';
+import { isInGameSalesLicensingEnabled as isInGameSalesLicensingEnabledFlag } from '@generated/flags/contentLicensing';
 import { formatRoyaltyRate } from '@modules/licenses/utils/format';
 import { formatDate } from '@modules/miscellaneous/utils/dateUtils';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
-import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
 import CellError from '../../../components/error/CellError';
 import IpTableRow from '../../../components/IpTableRow';
 import { useIpFamilyQuery } from '../../../ipFamilies/hooks/ipFamily';
@@ -48,11 +48,10 @@ const IphAgreementRow: FunctionComponent<IphAgreementRowProps> = ({ agreement })
   } = useSharedAgreementRowStyles();
   const { logEvent } = useLicenseManagerLogger();
   const { isFetched } = useSettings();
-  const { frontendFlags } = useToolboxServiceApiProvider();
-  const enableCollaborationLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
+  const { value: inGameSalesLicensingFlagValue } = useFlag(isInGameSalesLicensingEnabledFlag);
+  const isInGameSalesLicensingEnabled = inGameSalesLicensingFlagValue ?? false;
   const columnCount =
-    IPH_AGREEMENTS_TABLE_BASE_COLUMN_COUNT + (enableCollaborationLicensing ? 1 : 0);
+    IPH_AGREEMENTS_TABLE_BASE_COLUMN_COUNT + (isInGameSalesLicensingEnabled ? 1 : 0);
 
   const handleActivate = () => {
     const agreementId = agreement.id;
@@ -126,7 +125,7 @@ const IphAgreementRow: FunctionComponent<IphAgreementRowProps> = ({ agreement })
         <TableCell>
           <Skeleton variant='text' animate width='50%' className={cx(ipFamilyName)} />
         </TableCell>
-        {enableCollaborationLicensing && (
+        {isInGameSalesLicensingEnabled && (
           <TableCell>
             <Skeleton variant='text' animate width='50%' />
           </TableCell>
@@ -196,7 +195,7 @@ const IphAgreementRow: FunctionComponent<IphAgreementRowProps> = ({ agreement })
           {ipFamily.name}
         </Typography>
       </TableCell>
-      {enableCollaborationLicensing && (
+      {isInGameSalesLicensingEnabled && (
         <TableCell>
           <Typography variant='body2' color='primary'>
             {translate(getLicenseTypeTableLabelKey(license.licenseType))}

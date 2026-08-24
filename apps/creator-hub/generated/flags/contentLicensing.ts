@@ -37,6 +37,11 @@ export const isAvatarItemLicensingEnabled = defineFlag({
     name: 'isAvatarItemLicensingEnabled',
     defaultValue: false,
   });
+export const isInGameSalesLicensingEnabled = defineFlag({
+    namespace: 'content-licensing',
+    name: 'isInGameSalesLicensingEnabled',
+    defaultValue: false,
+  });
 export const isIphInGameSalesAvatarMarketplaceSalesLicenseCreationEnabled = defineFlag({
     namespace: 'content-licensing',
     name: 'isIphInGameSalesAvatarMarketplaceSalesLicenseCreationEnabled',

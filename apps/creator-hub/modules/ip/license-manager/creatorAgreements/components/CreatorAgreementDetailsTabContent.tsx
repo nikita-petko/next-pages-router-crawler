@@ -12,6 +12,7 @@ import {
   LicenseVisibility,
 } from '@rbx/client-content-licensing-api/v1';
 import type { RobloxGamesApiModelsResponseGameDetailResponse } from '@rbx/client-games/v1';
+import { useFlag } from '@rbx/flags';
 import { Locale, useLocalization, useTranslation, withTranslation } from '@rbx/intl';
 import {
   AccessTimeIcon,
@@ -24,6 +25,7 @@ import {
   CircularProgress,
   CalendarMonthOutlinedIcon,
 } from '@rbx/ui';
+import { isInGameSalesLicensingEnabled as isInGameSalesLicensingEnabledFlag } from '@generated/flags/contentLicensing';
 import { EXPLORE_LISTING_DETAILS } from '@modules/licenses/urls';
 import { formatRoyaltyRate } from '@modules/licenses/utils/format';
 import { getLicenseTypeTranslationKeys } from '@modules/licenses/utils/licenseTypeTranslationKeys';
@@ -31,8 +33,6 @@ import { Flex } from '@modules/miscellaneous/components/Flex';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { isNonEmptyString } from '@modules/miscellaneous/utils';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
-import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
 import LinkButton from '../../../components/LinkButton';
 import AgreementRevenueTargetsSection from '../../agreements/components/AgreementRevenueTargetsSection';
 import AmDivider from '../../components/AmDivider';
@@ -86,9 +86,8 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
   const { locale } = useLocalization();
   const { logEvent } = useLicenseManagerLogger();
   const { isFetched, settings } = useSettings();
-  const { frontendFlags } = useToolboxServiceApiProvider();
-  const enableCollaborationLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
+  const { value: inGameSalesLicensingFlagValue } = useFlag(isInGameSalesLicensingEnabledFlag);
+  const isInGameSalesLicensingEnabled = inGameSalesLicensingFlagValue ?? false;
   const licenseTypeLabels = getLicenseTypeTranslationKeys(license.licenseType);
   const isTimeLimitedLicense =
     license.licenseDuration?.durationType === LicenseDurationType.TimeLimited;
@@ -310,7 +309,7 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
       )}
 
       <KeyValuePairContainer>
-        {enableCollaborationLicensing && (
+        {isInGameSalesLicensingEnabled && (
           <KeyValuePair
             label={translate('Label.LicenseType')}
             value={translate(licenseTypeLabels.detail)}
@@ -386,7 +385,7 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
         />
       )}
 
-      {enableCollaborationLicensing &&
+      {isInGameSalesLicensingEnabled &&
         license.licenseType === LicenseType.CollaborationInExperienceSale && (
           <AgreementRevenueTargetsSection
             agreementId={agreement.id ?? undefined}

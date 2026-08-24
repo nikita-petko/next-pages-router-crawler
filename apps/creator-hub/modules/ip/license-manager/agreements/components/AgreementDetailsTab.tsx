@@ -11,6 +11,7 @@ import {
   LicenseType,
 } from '@rbx/client-content-licensing-api/v1';
 import type { RobloxApiDevelopModelsUniverseModel } from '@rbx/client-develop/v1';
+import { useFlag } from '@rbx/flags';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import {
   CalendarMonthOutlinedIcon,
@@ -20,12 +21,11 @@ import {
   RobuxIcon,
   Typography,
 } from '@rbx/ui';
+import { isInGameSalesLicensingEnabled as isInGameSalesLicensingEnabledFlag } from '@generated/flags/contentLicensing';
 import { formatRoyaltyRate } from '@modules/licenses/utils/format';
 import { getLicenseTypeTranslationKeys } from '@modules/licenses/utils/licenseTypeTranslationKeys';
 import { Flex } from '@modules/miscellaneous/components/Flex';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
-import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
 import LinkButton from '../../../components/LinkButton';
 import AmDivider from '../../components/AmDivider';
 import { ContentTile, ContentType } from '../../components/ContentTile';
@@ -77,9 +77,8 @@ const AgreementDetailsTab: FunctionComponent<AgreementDetailsTabProps> = ({
   const { locale } = useLocalization();
   const { translate } = useTranslation();
   const { isFetched } = useSettings();
-  const { frontendFlags } = useToolboxServiceApiProvider();
-  const enableCollaborationLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
+  const { value: inGameSalesLicensingFlagValue } = useFlag(isInGameSalesLicensingEnabledFlag);
+  const isInGameSalesLicensingEnabled = inGameSalesLicensingFlagValue ?? false;
   const licenseTypeLabels = getLicenseTypeTranslationKeys(license.licenseType);
   const isTimeLimitedLicense =
     license.licenseDuration?.durationType === LicenseDurationType.TimeLimited;
@@ -188,7 +187,7 @@ const AgreementDetailsTab: FunctionComponent<AgreementDetailsTabProps> = ({
         }
       />
 
-      {enableCollaborationLicensing &&
+      {isInGameSalesLicensingEnabled &&
         license.licenseType === LicenseType.CollaborationInExperienceSale && (
           <AgreementRevenueTargetsSection
             agreementId={agreement.id ?? undefined}
@@ -245,7 +244,7 @@ const AgreementDetailsTab: FunctionComponent<AgreementDetailsTabProps> = ({
       />
 
       <KeyValuePairContainer>
-        {enableCollaborationLicensing && (
+        {isInGameSalesLicensingEnabled && (
           <KeyValuePair
             label={translate('Label.LicenseType')}
             value={translate(licenseTypeLabels.detail)}

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useFlag } from '@rbx/flags';
 import { useTranslation } from '@rbx/intl';
 import {
   Button,
@@ -11,11 +12,10 @@ import {
   TableHead,
   TableRow,
 } from '@rbx/ui';
+import { isInGameSalesLicensingEnabled as isInGameSalesLicensingEnabledFlag } from '@generated/flags/contentLicensing';
 import EmptyState from '@modules/miscellaneous/components/EmptyState/EmptyState';
 import EmptyStateBorder from '@modules/miscellaneous/components/EmptyState/EmptyStateBorder';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
-import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
 import IpLoadError from '../../../components/error/IpLoadError';
 import type { EmptyStateKeys } from '../../creatorAgreements/constants';
 import { useIpListingsQuery } from '../../ipListings/hooks/ipListings';
@@ -111,9 +111,10 @@ const IphAgreementsTable = () => {
   const { logEvent } = useLicenseManagerLogger();
   const { logOnce } = useLicenseManagerLoggerLogOnce();
   const { isFetched } = useSettings();
-  const { frontendFlags, loadingFrontendFlags } = useToolboxServiceApiProvider();
-  const enableCollaborationLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
+  const { ready: isInGameSalesLicensingFlagReady, value: inGameSalesLicensingFlagValue } = useFlag(
+    isInGameSalesLicensingEnabledFlag,
+  );
+  const isInGameSalesLicensingEnabled = inGameSalesLicensingFlagValue ?? false;
 
   const ipListingsReq = useIpListingsQuery();
   const iphAgreementsRequest = useGetIphAgreementsByStatus({
@@ -143,7 +144,7 @@ const IphAgreementsTable = () => {
   const emptyTableKeys = filterToEmptyTableKeys[resolvedFilter];
 
   // Check if only the agreements table is loading (filters can stay visible)
-  const isTableContentLoading = iphAgreementsRequest.isPending || loadingFrontendFlags;
+  const isTableContentLoading = iphAgreementsRequest.isPending || !isInGameSalesLicensingFlagReady;
 
   if (isDataReady) {
     if (ipListings.length === 0) {
@@ -231,7 +232,7 @@ const IphAgreementsTable = () => {
               <TableCell width={`${IP_AGREEMENTS_TABLE_IP_FAMILY_COL_WIDTH_PX}px`}>
                 {translate('Label.IpFamily')}
               </TableCell>
-              {enableCollaborationLicensing && (
+              {isInGameSalesLicensingEnabled && (
                 <TableCell width={`${IP_AGREEMENTS_TABLE_LICENSE_TYPE_COL_WIDTH_PX}px`}>
                   {translate(LICENSE_TYPE_TABLE_HEADER_KEY)}
                 </TableCell>

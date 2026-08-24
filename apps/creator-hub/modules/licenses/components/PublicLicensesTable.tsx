@@ -2,6 +2,7 @@ import type { FunctionComponent, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { LicenseResponse } from '@rbx/client-content-licensing-api/v1';
 import { LicenseDurationType, LicenseType } from '@rbx/client-content-licensing-api/v1';
+import { useFlag } from '@rbx/flags';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import {
   Button,
@@ -14,6 +15,10 @@ import {
   TableRow,
   makeStyles,
 } from '@rbx/ui';
+import {
+  isAvatarItemLicensingEnabled as isAvatarItemLicensingEnabledFlag,
+  isInGameSalesLicensingEnabled as isInGameSalesLicensingEnabledFlag,
+} from '@generated/flags/contentLicensing';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { useAuthentication } from '@modules/authentication/providers';
@@ -27,8 +32,6 @@ import {
 import { getMaturityRatingLabel } from '@modules/ip/license-manager/utils/maturityRating';
 import TranslatedFailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
-import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
 import { useListPublicLicenses, type PublicCatalogLicense } from '../hooks/useListPublicLicenses';
 import { useVisibleImpression } from '../hooks/useVisibleImpression';
 import { LicenseRequestCancelReturnTo } from '../urls';
@@ -211,11 +214,14 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
   const authentication = useAuthentication();
   const { user, isFetched: isAuthenticationFetched } = authentication;
   const isAuthenticated = user !== null;
-  const { frontendFlags, loadingFrontendFlags } = useToolboxServiceApiProvider();
-  const enableCollaborationLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
-  const enableMarketplaceSalesLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableMarketplaceSalesLicensing] ?? false;
+  const { ready: isInGameSalesLicensingFlagReady, value: inGameSalesLicensingFlagValue } = useFlag(
+    isInGameSalesLicensingEnabledFlag,
+  );
+  const { ready: isAvatarItemLicensingFlagReady, value: avatarItemLicensingFlagValue } = useFlag(
+    isAvatarItemLicensingEnabledFlag,
+  );
+  const isInGameSalesLicensingEnabled = inGameSalesLicensingFlagValue ?? false;
+  const isAvatarItemLicensingEnabled = avatarItemLicensingFlagValue ?? false;
 
   const [isLicenseDetailsModalOpen, setIsLicenseDetailsModalOpen] = useState(false);
   const [isGuidelinesAndRestrictionsModalOpen, setIsGuidelinesAndRestrictionsModalOpen] =
@@ -224,7 +230,7 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
   const [durationFilter, setDurationFilter] = useState<PublicLicenseDurationFilter>('all');
   const [licenseTypeFilter, setLicenseTypeFilter] = useState<PublicLicenseTypeFilter>('all');
   const effectiveLicenseTypeFilter =
-    licenseTypeFilter === LicenseType.MarketplaceSale && !enableMarketplaceSalesLicensing
+    licenseTypeFilter === LicenseType.MarketplaceSale && !isAvatarItemLicensingEnabled
       ? 'all'
       : licenseTypeFilter;
   const licenseTypeFilterOptions =
@@ -233,14 +239,14 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
         value: option.value,
         label: translate(option.label),
       }));
-      if (enableMarketplaceSalesLicensing) {
+      if (isAvatarItemLicensingEnabled) {
         options.push({
           value: MARKETPLACE_SALE_FILTER_OPTION.value,
           label: translate(MARKETPLACE_SALE_FILTER_OPTION.label),
         });
       }
       return options;
-    }, [translate, enableMarketplaceSalesLicensing]);
+    }, [translate, isAvatarItemLicensingEnabled]);
   const durationFilterOptions = useMemo(
     (): PublicLicensesFilterOption<PublicLicenseDurationFilter>[] =>
       DURATION_FILTER_OPTIONS.map((option) => ({
@@ -274,15 +280,15 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
     () =>
       buildPublicLicensesCatalogFilter({
         durationType: durationFilter,
-        licenseType: enableCollaborationLicensing ? effectiveLicenseTypeFilter : 'all',
+        licenseType: isInGameSalesLicensingEnabled ? effectiveLicenseTypeFilter : 'all',
       }),
-    [durationFilter, effectiveLicenseTypeFilter, enableCollaborationLicensing],
+    [durationFilter, effectiveLicenseTypeFilter, isInGameSalesLicensingEnabled],
   );
 
   const hasActiveFilters = hasActivePublicLicenseCatalogFilters({
     durationType: durationFilter,
     licenseType: effectiveLicenseTypeFilter,
-    enableLicenseTypeFilter: enableCollaborationLicensing,
+    enableLicenseTypeFilter: isInGameSalesLicensingEnabled,
   });
 
   const analyticsContext = useMemo(
@@ -290,9 +296,9 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
       getPublicLicensesTableAnalyticsContext({
         durationType: durationFilter,
         licenseType: effectiveLicenseTypeFilter,
-        enableLicenseTypeFilter: enableCollaborationLicensing,
+        enableLicenseTypeFilter: isInGameSalesLicensingEnabled,
       }),
-    [durationFilter, effectiveLicenseTypeFilter, enableCollaborationLicensing],
+    [durationFilter, effectiveLicenseTypeFilter, isInGameSalesLicensingEnabled],
   );
   const analyticsContextDedupeKey = JSON.stringify(analyticsContext);
 
@@ -361,7 +367,7 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
   const controlsToolbar = (
     <div className={classes.controlsBar}>
       <div className={classes.controlsBarLeading}>
-        {enableCollaborationLicensing ? (
+        {isInGameSalesLicensingEnabled ? (
           <>
             <PublicLicensesFilterChip
               filterLabel={translate('Label.LicenseType')}
@@ -402,7 +408,12 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
     </div>
   );
 
-  if (!isAuthenticationFetched || loadingFrontendFlags || isPending) {
+  if (
+    !isAuthenticationFetched ||
+    !isInGameSalesLicensingFlagReady ||
+    !isAvatarItemLicensingFlagReady ||
+    isPending
+  ) {
     return (
       <>
         {controlsToolbar}
@@ -440,7 +451,7 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
                     {translate('Label.RevenueShare')}
                   </TableCell>
                 )}
-                {enableCollaborationLicensing && (
+                {isInGameSalesLicensingEnabled && (
                   <TableCell className={classes.headerCell}>
                     {translate('Label.LicenseType')}
                   </TableCell>
@@ -473,7 +484,7 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
                   {isAuthenticated && 'royaltyRate' in license && (
                     <TableCell>{formatRoyaltyRate(license.royaltyRate)}</TableCell>
                   )}
-                  {enableCollaborationLicensing && (
+                  {isInGameSalesLicensingEnabled && (
                     <TableCell>
                       {translate(
                         LICENSE_TYPE_LABEL_KEYS[license.licenseType ?? LicenseType.FullExperience],

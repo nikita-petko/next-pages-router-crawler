@@ -1,6 +1,7 @@
 import type { FunctionComponent } from 'react';
 import Link from 'next/link';
 import type { AgreementStatus } from '@rbx/client-content-licensing-api/v1';
+import { useFlag } from '@rbx/flags';
 import { useTranslation } from '@rbx/intl';
 import {
   Button,
@@ -13,11 +14,10 @@ import {
   TableHead,
   TableRow,
 } from '@rbx/ui';
+import { isInGameSalesLicensingEnabled as isInGameSalesLicensingEnabledFlag } from '@generated/flags/contentLicensing';
 import EmptyState from '@modules/miscellaneous/components/EmptyState/EmptyState';
 import EmptyStateBorder from '@modules/miscellaneous/components/EmptyState/EmptyStateBorder';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
-import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
 import IpLoadError from '../../../components/error/IpLoadError';
 import {
   IP_AGREEMENTS_TABLE_CREATION_COL_WIDTH_PX,
@@ -86,15 +86,16 @@ const CreatorAgreementsTable: FunctionComponent<CreatorAgreementsTableProps> = (
   const { classes } = useStyles();
   const { logOnce } = useLicenseManagerLoggerLogOnce();
   const { isFetched } = useSettings();
-  const { frontendFlags, loadingFrontendFlags } = useToolboxServiceApiProvider();
-  const enableCollaborationLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
+  const { ready: isInGameSalesLicensingFlagReady, value: inGameSalesLicensingFlagValue } = useFlag(
+    isInGameSalesLicensingEnabledFlag,
+  );
+  const isInGameSalesLicensingEnabled = inGameSalesLicensingFlagValue ?? false;
 
   const creatorAgreementsRequest = useGetCreatorAgreementsByStatus({
     agreementStatus: getAgreementEnumsForTab(selectedTab),
   });
 
-  if (!isFetched || creatorAgreementsRequest.isPending || loadingFrontendFlags) {
+  if (!isFetched || creatorAgreementsRequest.isPending || !isInGameSalesLicensingFlagReady) {
     return (
       <div className={classes.loading}>
         <CircularProgress />
@@ -149,7 +150,7 @@ const CreatorAgreementsTable: FunctionComponent<CreatorAgreementsTableProps> = (
             <TableCell width={`${IP_AGREEMENTS_TABLE_LICENSE_COL_WIDTH_PX}px`}>
               {translate('Label.License')}
             </TableCell>
-            {enableCollaborationLicensing && (
+            {isInGameSalesLicensingEnabled && (
               <TableCell width={`${IP_AGREEMENTS_TABLE_LICENSE_TYPE_COL_WIDTH_PX}px`}>
                 {translate(LICENSE_TYPE_TABLE_HEADER_KEY)}
               </TableCell>

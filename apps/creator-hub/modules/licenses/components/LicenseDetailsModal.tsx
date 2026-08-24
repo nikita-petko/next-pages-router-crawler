@@ -4,9 +4,14 @@ import {
   LicenseDurationType,
   type LicenseResponse,
 } from '@rbx/client-content-licensing-api/v1';
+import { useFlag } from '@rbx/flags';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogTitle } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { Button, Grid, Typography, Tooltip, makeStyles, InfoOutlinedIcon } from '@rbx/ui';
+import {
+  isAvatarItemLicensingEnabled as isAvatarItemLicensingEnabledFlag,
+  isInGameSalesLicensingEnabled as isInGameSalesLicensingEnabledFlag,
+} from '@generated/flags/contentLicensing';
 import LinkButton from '@modules/ip/components/LinkButton';
 import AmDivider from '@modules/ip/license-manager/components/AmDivider';
 import { getDauLicenseLabelFromEnum } from '@modules/ip/license-manager/utils/dauEnum';
@@ -18,8 +23,6 @@ import { getMaturityRatingLabel } from '@modules/ip/license-manager/utils/maturi
 import { getDurationRangeLabel } from '@modules/ip/license-manager/utils/timeLimitedLicense';
 import { Link, PageLoading } from '@modules/miscellaneous/components';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
-import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
 import { LICENSE_APPLY_HREF, type LicenseRequestCancelReturnToValue } from '../urls';
 import { formatRoyaltyRate } from '../utils/format';
 import {
@@ -146,20 +149,29 @@ const LicenseDetailsModal: FunctionComponent<LicenseDetailsModalProps> = ({
   const { classes } = useStyles();
   const { logEvent } = useLicenseManagerLogger();
   const { isFetched } = useSettings();
-  const { frontendFlags, loadingFrontendFlags } = useToolboxServiceApiProvider();
+  const { ready: isInGameSalesLicensingFlagReady, value: inGameSalesLicensingFlagValue } = useFlag(
+    isInGameSalesLicensingEnabledFlag,
+  );
+  const { ready: isAvatarItemLicensingFlagReady, value: avatarItemLicensingFlagValue } = useFlag(
+    isAvatarItemLicensingEnabledFlag,
+  );
 
   if (!license) {
     return null;
   }
 
-  if (!isFetched || loadingFrontendFlags) {
+  if (!isFetched || !isInGameSalesLicensingFlagReady || !isAvatarItemLicensingFlagReady) {
     return <PageLoading />;
   }
 
-  const enableCollaborationLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
+  const isInGameSalesLicensingEnabled = inGameSalesLicensingFlagValue ?? false;
+  const isAvatarItemLicensingEnabled = avatarItemLicensingFlagValue ?? false;
   const licenseTypeLabels = getLicenseTypeTranslationKeys(
-    getEffectiveLicenseTypeForDisplay(license.licenseType, enableCollaborationLicensing),
+    getEffectiveLicenseTypeForDisplay(
+      license.licenseType,
+      isInGameSalesLicensingEnabled,
+      isAvatarItemLicensingEnabled,
+    ),
   );
 
   const listingId = license.listingId;

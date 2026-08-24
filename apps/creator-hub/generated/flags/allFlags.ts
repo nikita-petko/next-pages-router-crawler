@@ -202,6 +202,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: contentLicensingFlags.isInGameSalesLicensingEnabled,
+      metadata: {
+        namespace: 'content-licensing',
+        name: 'isInGameSalesLicensingEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: contentLicensingFlags.isIphInGameSalesAvatarMarketplaceSalesLicenseCreationEnabled,
       metadata: {
         namespace: 'content-licensing',

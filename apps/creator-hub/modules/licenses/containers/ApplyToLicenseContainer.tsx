@@ -2,9 +2,14 @@ import type { FunctionComponent } from 'react';
 import React, { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import type { Theme } from '@mui/material/styles';
+import { useFlag } from '@rbx/flags';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogTitle } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { Button, Grid, Step, StepLabel, Stepper } from '@rbx/ui';
+import {
+  isAvatarItemLicensingEnabled as isAvatarItemLicensingEnabledFlag,
+  isInGameSalesLicensingEnabled as isInGameSalesLicensingEnabledFlag,
+} from '@generated/flags/contentLicensing';
 import {
   useLicenseManagerLogger,
   LicenseManagerClickEvent,
@@ -13,8 +18,6 @@ import { PageLoading } from '@modules/miscellaneous/components';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
-import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
 import type { ReviewTermsState } from '../components/ReviewTermsStep';
 import ReviewTermsStep from '../components/ReviewTermsStep';
 import SelectCreationReadinessStep from '../components/SelectCreationReadinessStep';
@@ -128,11 +131,14 @@ const ApplyToLicenseContainer: FunctionComponent<ApplyToLicenseContainerProps> =
   const { translate } = useTranslation();
   const { logEvent } = useLicenseManagerLogger();
   const { isFetched } = useSettings();
-  const { frontendFlags, loadingFrontendFlags } = useToolboxServiceApiProvider();
-  const enableCollaborationLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
-  const enableMarketplaceSalesLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableMarketplaceSalesLicensing] ?? false;
+  const { ready: isInGameSalesLicensingFlagReady, value: inGameSalesLicensingFlagValue } = useFlag(
+    isInGameSalesLicensingEnabledFlag,
+  );
+  const { ready: isAvatarItemLicensingFlagReady, value: avatarItemLicensingFlagValue } = useFlag(
+    isAvatarItemLicensingEnabledFlag,
+  );
+  const isInGameSalesLicensingEnabled = inGameSalesLicensingFlagValue ?? false;
+  const isAvatarItemLicensingEnabled = avatarItemLicensingFlagValue ?? false;
 
   const [activeStep, setActiveStep] = useState(0);
   const [selectedExperienceId, setSelectedExperienceId] = useState<number | null>(
@@ -168,7 +174,7 @@ const ApplyToLicenseContainer: FunctionComponent<ApplyToLicenseContainerProps> =
 
   const { isPending, isError, data: license } = useGetPublicLicenseById({ licenseId });
 
-  const showSetLicenseRequirementsStep = enableCollaborationLicensing;
+  const showSetLicenseRequirementsStep = isInGameSalesLicensingEnabled;
 
   const stepKeys = useMemo(
     () => getApplyToLicenseStepKeys(showSetLicenseRequirementsStep),
@@ -258,7 +264,12 @@ const ApplyToLicenseContainer: FunctionComponent<ApplyToLicenseContainerProps> =
     setIsCancelConfirmationModalOpen(false);
   }, [activeStep, activeStepKey, licenseId, logEvent, selectedExperienceId]);
 
-  if (!isFetched || loadingFrontendFlags || isPending) {
+  if (
+    !isFetched ||
+    !isInGameSalesLicensingFlagReady ||
+    !isAvatarItemLicensingFlagReady ||
+    isPending
+  ) {
     return <PageLoading />;
   }
 
@@ -300,8 +311,8 @@ const ApplyToLicenseContainer: FunctionComponent<ApplyToLicenseContainerProps> =
             setCreatorPitchAttachments={setCreatorPitchAttachments}
             licenseDuration={license.licenseDuration ?? undefined}
             licenseType={license.licenseType}
-            enableCollaborationLicensing={enableCollaborationLicensing}
-            enableMarketplaceSalesLicensing={enableMarketplaceSalesLicensing}
+            enableCollaborationLicensing={isInGameSalesLicensingEnabled}
+            enableMarketplaceSalesLicensing={isAvatarItemLicensingEnabled}
             collaborationSalesAvenues={collaborationSalesAvenues}
             setCollaborationSalesAvenues={setCollaborationSalesAvenues}
             dateRange={dateRange}
@@ -322,8 +333,8 @@ const ApplyToLicenseContainer: FunctionComponent<ApplyToLicenseContainerProps> =
             setRevShareNowTimingPreference={setRevShareNowTimingPreference}
             licenseDuration={license.licenseDuration ?? undefined}
             licenseType={license.licenseType}
-            enableCollaborationLicensing={enableCollaborationLicensing}
-            enableMarketplaceSalesLicensing={enableMarketplaceSalesLicensing}
+            enableCollaborationLicensing={isInGameSalesLicensingEnabled}
+            enableMarketplaceSalesLicensing={isAvatarItemLicensingEnabled}
             dateRange={dateRange}
             setDateRange={setDateRange}
             collaborationSalesAvenues={collaborationSalesAvenues}
@@ -351,8 +362,8 @@ const ApplyToLicenseContainer: FunctionComponent<ApplyToLicenseContainerProps> =
             creatorPitch={creatorPitch}
             creatorPitchAttachments={creatorPitchAttachments}
             dateRange={dateRange}
-            enableCollaborationLicensing={enableCollaborationLicensing}
-            enableMarketplaceSalesLicensing={enableMarketplaceSalesLicensing}
+            enableCollaborationLicensing={isInGameSalesLicensingEnabled}
+            enableMarketplaceSalesLicensing={isAvatarItemLicensingEnabled}
             collaborationSalesAvenues={collaborationSalesAvenues}
             enableMonetization={isRevShareNowTimingPreferred}
             onCancel={onClickCancel}

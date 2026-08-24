@@ -30,12 +30,16 @@ export function getLicenseTypeTranslationKeys(
   return LICENSE_TYPE_TRANSLATION_KEYS[licenseType ?? LicenseType.FullExperience];
 }
 
-/** When collaboration licensing is off, UI always presents Full Experience; otherwise use API value. */
+/** Falls back to Full Experience when the runtime flag for the API license type is disabled. */
 export function getEffectiveLicenseTypeForDisplay(
   licenseType: LicenseType | undefined,
-  enableCollaborationLicensing: boolean,
+  enableInGameSalesLicensing: boolean,
+  enableMarketplaceSalesLicensing: boolean,
 ): LicenseType {
-  if (!enableCollaborationLicensing) {
+  if (
+    (licenseType === LicenseType.CollaborationInExperienceSale && !enableInGameSalesLicensing) ||
+    (licenseType === LicenseType.MarketplaceSale && !enableMarketplaceSalesLicensing)
+  ) {
     return LicenseType.FullExperience;
   }
   return licenseType ?? LicenseType.FullExperience;

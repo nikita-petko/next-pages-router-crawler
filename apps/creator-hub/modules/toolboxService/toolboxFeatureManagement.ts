@@ -17,8 +17,6 @@ export enum FrontendFlagName {
   FrontendFlagTaxonomyExperiment = 'PublicFrontendTE',
   FrontendFlagUniverseBansManagerLabelUpdate = 'PublicFrontendUBMLU',
   FrontendFlagEnableHiddenFromSearchVisibilityAlert = 'PublicFrontendHFS',
-  FrontendFlagEnableCreatorCollaborationLicensing = 'PublicFrontendCCL',
-  FrontendFlagEnableMarketplaceSalesLicensing = 'PublicFrontendMSL',
 }
 export type FrontendFlags = Record<FrontendFlagName, boolean>;
 
