@@ -27,10 +27,13 @@ import {
   AccordionDetails,
 } from '@rbx/ui';
 import { isIphInGameSalesAvatarMarketplaceSalesLicenseCreationEnabled } from '@generated/flags/contentLicensing';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { CONTENT_STANDARDS_HREF } from '@modules/licenses/urls';
 import downloadPdf from '@modules/licenses/utils/downloadPdf';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { Flex } from '@modules/miscellaneous/components/Flex';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import {
   TextFieldWithEnhancedHelperText,
@@ -91,8 +94,16 @@ export interface LicenseFormData {
   durationType?: LicenseDurationType;
   minDuration?: LicenseDurationBucket;
   maxDuration?: LicenseDurationBucket;
-  licenseType?: LicenseType;
+  licenseType?: LicenseType | null;
+  licenseCategory?: LicenseCategory;
 }
+
+const LICENSE_CATEGORY = {
+  FullGame: 'FullGame',
+  Collab: 'Collab',
+} as const;
+
+type LicenseCategory = (typeof LICENSE_CATEGORY)[keyof typeof LICENSE_CATEGORY];
 
 type LicenseFormMode = { type: 'create' } | { type: 'edit'; hasAgreements: boolean };
 
@@ -185,31 +196,121 @@ const DurationOptions: React.FC<DurationOptionsProps> = ({ isPerpetual, simple }
   );
 };
 
-interface LicenseTypeOptionsProps {
+interface LicenseCategoryOptionsProps {
+  licenseCategory: LicenseCategory;
+  simple?: boolean;
+}
+
+const LicenseCategoryOptions: React.FC<LicenseCategoryOptionsProps> = ({
+  licenseCategory,
+  simple,
+}) => {
+  const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+
+  if (licenseCategory === LICENSE_CATEGORY.FullGame) {
+    return (
+      <DropdownOptionContent
+        simple={simple}
+        title={tPendingTranslation(
+          'Full game',
+          'Title for the license type that applies IP usage and revenue share to a full game.',
+          translationKey('Label.FullGame', TranslationNamespace.AgreementsManager),
+        )}
+        description={tPendingTranslation(
+          'Use of your IP must be central to the gameplay, storyline, or other crucial parts of the game. Revenue share applies to total game earnings.',
+          'Description for the full-game license type option.',
+          translationKey('Description.LicenseTypeFullGame', TranslationNamespace.AgreementsManager),
+        )}
+      />
+    );
+  }
+
+  return (
+    <DropdownOptionContent
+      simple={simple}
+      title={tPendingTranslation(
+        'Collab',
+        'Title for the license type that permits limited IP collaboration.',
+        translationKey('Label.Collab', TranslationNamespace.AgreementsManager),
+      )}
+      description={tPendingTranslation(
+        'Creators can use your IP in a limited way alongside their own IP. Revenue share applies only to items that use your IP.',
+        'Description for the collaboration license type option.',
+        translationKey('Description.LicenseTypeCollab', TranslationNamespace.AgreementsManager),
+      )}
+    />
+  );
+};
+
+interface SaleLocationOptionsProps {
   licenseType: LicenseType;
   simple?: boolean;
 }
 
-const LICENSE_TYPE_TITLE_KEYS: Record<LicenseType, string> = {
-  FullExperience: 'Label.FullExperienceLicense',
-  CollaborationInExperienceSale: 'Label.CollaborationLicense',
-  MarketplaceSale: 'Label.MarketplaceSaleLicense',
+const SaleLocationOptions: React.FC<SaleLocationOptionsProps> = ({ licenseType, simple }) => {
+  const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+
+  if (licenseType === LicenseType.CollaborationInExperienceSale) {
+    return (
+      <DropdownOptionContent
+        simple={simple}
+        title={tPendingTranslation(
+          'In-game',
+          'Title for the sale location where IP-based items are sold inside a game.',
+          translationKey('Label.InGame', TranslationNamespace.AgreementsManager),
+        )}
+        description={tPendingTranslation(
+          'Creators can sell IP-based items in-game with a game pass or developer product.',
+          'Description for the in-game sale location option.',
+          translationKey('Description.SaleLocationInGame', TranslationNamespace.AgreementsManager),
+        )}
+      />
+    );
+  }
+
+  return (
+    <DropdownOptionContent
+      simple={simple}
+      title={tPendingTranslation(
+        'Avatar marketplace',
+        'Title for the sale location where IP-based items are sold on Avatar Marketplace.',
+        translationKey('Label.AvatarMarketplace', TranslationNamespace.AgreementsManager),
+      )}
+      description={tPendingTranslation(
+        'Creators can sell IP-based items on Avatar Marketplace or in games that include a marketplace.',
+        'Description for the Avatar Marketplace sale location option.',
+        translationKey(
+          'Description.SaleLocationAvatarMarketplace',
+          TranslationNamespace.AgreementsManager,
+        ),
+      )}
+    />
+  );
 };
 
-const LICENSE_TYPE_DESCRIPTION_KEYS: Record<LicenseType, string> = {
-  FullExperience: 'Description.LicenseTypeFullExperience',
-  CollaborationInExperienceSale: 'Description.LicenseTypeCollaboration',
-  MarketplaceSale: 'Description.LicenseTypeMarketplaceSale',
+interface VisibilityOptionsProps {
+  visibility: LicenseVisibility;
+  simple?: boolean;
+}
+
+const VISIBILITY_TITLE_KEYS: Record<LicenseVisibility, string> = {
+  [LicenseVisibility.Public]: 'Label.Public',
+  [LicenseVisibility.Private]: 'Label.Private',
 };
 
-const LicenseTypeOptions: React.FC<LicenseTypeOptionsProps> = ({ licenseType, simple }) => {
+const VISIBILITY_DESCRIPTION_KEYS: Record<LicenseVisibility, string> = {
+  [LicenseVisibility.Public]: 'Description.PublicLicense',
+  [LicenseVisibility.Private]: 'Description.PrivateLicense',
+};
+
+const VisibilityOptions: React.FC<VisibilityOptionsProps> = ({ visibility, simple }) => {
   const { translate } = useTranslation();
 
   return (
     <DropdownOptionContent
       simple={simple}
-      title={translate(LICENSE_TYPE_TITLE_KEYS[licenseType])}
-      description={translate(LICENSE_TYPE_DESCRIPTION_KEYS[licenseType])}
+      title={translate(VISIBILITY_TITLE_KEYS[visibility])}
+      description={translate(VISIBILITY_DESCRIPTION_KEYS[visibility])}
     />
   );
 };
@@ -235,20 +336,55 @@ const renderDurationValue = (value: unknown) => {
   return <DurationOptions isPerpetual={value === LicenseDurationType.Perpetual} simple />;
 };
 
-function isLicenseType(value: unknown): value is LicenseType {
-  return (
-    value === LicenseType.FullExperience ||
-    value === LicenseType.CollaborationInExperienceSale ||
-    value === LicenseType.MarketplaceSale
-  );
+function isLicenseCategory(value: unknown): value is LicenseCategory {
+  return value === LICENSE_CATEGORY.FullGame || value === LICENSE_CATEGORY.Collab;
 }
 
-const renderLicenseTypeValue = (value: unknown) => {
-  if (!isLicenseType(value)) {
+const renderLicenseCategoryValue = (value: unknown) => {
+  if (!isLicenseCategory(value)) {
     return null;
   }
 
-  return <LicenseTypeOptions licenseType={value} simple />;
+  return <LicenseCategoryOptions licenseCategory={value} simple />;
+};
+
+function isSaleLocationLicenseType(value: unknown): value is LicenseType {
+  return (
+    value === LicenseType.CollaborationInExperienceSale || value === LicenseType.MarketplaceSale
+  );
+}
+
+const renderSaleLocationValue = (value: unknown) => {
+  if (!isSaleLocationLicenseType(value)) {
+    return null;
+  }
+
+  return <SaleLocationOptions licenseType={value} simple />;
+};
+
+function getLicenseCategory(licenseType: LicenseType | undefined): LicenseCategory | undefined {
+  if (
+    licenseType === LicenseType.CollaborationInExperienceSale ||
+    licenseType === LicenseType.MarketplaceSale
+  ) {
+    return LICENSE_CATEGORY.Collab;
+  }
+  if (licenseType === LicenseType.FullExperience) {
+    return LICENSE_CATEGORY.FullGame;
+  }
+  return undefined;
+}
+
+function isLicenseVisibility(value: unknown): value is LicenseVisibility {
+  return value === LicenseVisibility.Public || value === LicenseVisibility.Private;
+}
+
+const renderVisibilityValue = (value: unknown) => {
+  if (!isLicenseVisibility(value)) {
+    return null;
+  }
+
+  return <VisibilityOptions visibility={value} simple />;
 };
 
 /**
@@ -266,7 +402,9 @@ const LicenseForm = ({
   hasPendingEdits = false,
   onBeforeSubmitModeratedChanges,
 }: Props) => {
-  const { translate, translateHTML } = useTranslation();
+  const translation = useTranslation();
+  const { translate, translateHTML } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
   const { classes } = useLicenseFormStyles();
   const { enqueueErrorSnackbar } = useIpSnackbar();
   const { logEvent } = useLicenseManagerLogger();
@@ -279,7 +417,10 @@ const LicenseForm = ({
 
   const { control, handleSubmit, setValue, register, formState, getValues, setError, clearErrors } =
     useForm<LicenseFormData>({
-      defaultValues,
+      defaultValues: {
+        ...defaultValues,
+        licenseCategory: getLicenseCategory(defaultValues.licenseType ?? undefined),
+      },
       mode: 'onSubmit',
     });
 
@@ -316,6 +457,7 @@ const LicenseForm = ({
     maxDuration,
     revenueShare,
     licenseType,
+    licenseCategory,
     deleteContentStandardsDocument,
   ] = useWatch({
     control,
@@ -325,15 +467,16 @@ const LicenseForm = ({
       'maxDuration',
       'revenueShare',
       'licenseType',
+      'licenseCategory',
       'deleteContentStandardsDocument',
     ],
   });
   const isTimeLimitedLicense = durationType === LicenseDurationType.TimeLimited;
   const isCollaborationLicense =
-    isLicenseCreationEnabled && licenseType === LicenseType.CollaborationInExperienceSale;
+    isLicenseCreationEnabled && licenseCategory === LICENSE_CATEGORY.Collab;
   const shouldEnforceRevShareOnActivation = shouldRevShareOnActivation({
     durationType,
-    licenseType,
+    licenseType: licenseType ?? undefined,
     enableCollaborationLicensing: isLicenseCreationEnabled,
     enableMarketplaceSalesLicensing: isLicenseCreationEnabled,
   });
@@ -465,19 +608,6 @@ const LicenseForm = ({
             {translate('Description.LicenseDetails')}
           </Typography>
 
-          {!isLicenseCreationEnabled && (
-            <FormControl fullWidth>
-              <Select
-                className={classes.semanticGapLargerBottom}
-                id='license-type-select'
-                value='Experiences'
-                disabled
-                label={translate('Label.LicenseType')}>
-                <MenuItem value='Experiences'>{translate('Label.FullExperienceLicense')}</MenuItem>
-              </Select>
-            </FormControl>
-          )}
-
           <Controller
             name='name'
             control={control}
@@ -510,7 +640,7 @@ const LicenseForm = ({
             control={control}
             render={({ field, fieldState: { error } }) => (
               <TextFieldWithEnhancedHelperText
-                className={isLicenseCreationEnabled ? classes.semanticGapLargerBottom : ''}
+                className={isLicenseCreationEnabled ? '' : classes.semanticGapLargerBottom}
                 {...field}
                 id='license-create-description'
                 label={translate('Label.Description')}
@@ -534,10 +664,43 @@ const LicenseForm = ({
             }}
           />
 
-          {isLicenseCreationEnabled && (
+          {!isLicenseCreationEnabled && (
             <FormControl fullWidth>
+              <Select
+                id='license-type-select'
+                value='Experiences'
+                disabled
+                label={translate('Label.LicenseType')}>
+                <MenuItem value='Experiences'>{translate('Label.FullExperienceLicense')}</MenuItem>
+              </Select>
+            </FormControl>
+          )}
+        </Grid>
+        {isLicenseCreationEnabled && (
+          <Grid item>
+            <Typography variant='h5' component='h2' gutterBottom>
+              {tPendingTranslation(
+                'License terms',
+                'Heading for the section where a rights holder sets the terms of a license.',
+                translationKey('Heading.LicenseTerms', TranslationNamespace.AgreementsManager),
+              )}
+            </Typography>
+            <Typography color='secondary' component='p' className={classes.semanticGapLargerBottom}>
+              {tPendingTranslation(
+                'Set the terms of the license you are granting to Creators.',
+                'Description for the section where a rights holder sets the terms of a license.',
+                translationKey('Description.LicenseTerms', TranslationNamespace.AgreementsManager),
+              )}
+            </Typography>
+            <FormControl
+              fullWidth
+              className={
+                licenseCategory === LICENSE_CATEGORY.Collab
+                  ? classes.semanticGapLargerBottom
+                  : undefined
+              }>
               <Controller
-                name='licenseType'
+                name='licenseCategory'
                 control={control}
                 render={({ field, fieldState: { error } }) => (
                   <LicenseFormControlledSelect
@@ -546,38 +709,107 @@ const LicenseForm = ({
                     error={!!error}
                     helperText={error?.message}
                     label={translate('Label.SelectLicenseType')}
-                    renderValue={renderLicenseTypeValue}
+                    renderValue={renderLicenseCategoryValue}
                     disabled={isEditMode}
                     onChange={(event) => {
                       field.onChange(event);
-                      if (mode.type === 'create') {
+                      const selectedCategory = event.target.value;
+                      if (selectedCategory === LICENSE_CATEGORY.FullGame) {
+                        setValue('licenseType', LicenseType.FullExperience);
+                        clearErrors('licenseType');
+                      } else if (selectedCategory === LICENSE_CATEGORY.Collab) {
+                        setValue('licenseType', null);
+                        clearErrors('licenseType');
+                      }
+                      if (
+                        mode.type === 'create' &&
+                        selectedCategory === LICENSE_CATEGORY.FullGame
+                      ) {
                         logEvent(LicenseManagerClickEvent.IphLicenseCreateLicenseTypeClickEvent, {
-                          licenseType: String(event.target.value),
+                          licenseType: LicenseType.FullExperience,
                         });
                       }
                     }}>
                     <MenuItem
-                      value={LicenseType.FullExperience}
-                      data-testId='full-experience-option'>
-                      <LicenseTypeOptions licenseType={LicenseType.FullExperience} />
+                      value={LICENSE_CATEGORY.FullGame}
+                      data-testid='full-experience-option'>
+                      <LicenseCategoryOptions licenseCategory={LICENSE_CATEGORY.FullGame} />
                     </MenuItem>
-                    <MenuItem
-                      value={LicenseType.CollaborationInExperienceSale}
-                      data-testId='collaboration-option'>
-                      <LicenseTypeOptions licenseType={LicenseType.CollaborationInExperienceSale} />
-                    </MenuItem>
-                    <MenuItem
-                      value={LicenseType.MarketplaceSale}
-                      data-testId='marketplace-sale-option'>
-                      <LicenseTypeOptions licenseType={LicenseType.MarketplaceSale} />
+                    <MenuItem value={LICENSE_CATEGORY.Collab} data-testid='collaboration-option'>
+                      <LicenseCategoryOptions licenseCategory={LICENSE_CATEGORY.Collab} />
                     </MenuItem>
                   </LicenseFormControlledSelect>
                 )}
                 rules={{ required: translate('Label.FieldIsRequired') }}
               />
             </FormControl>
-          )}
-        </Grid>
+            {licenseCategory === LICENSE_CATEGORY.Collab && (
+              <>
+                <Typography
+                  color='secondary'
+                  component='p'
+                  className={classes.semanticGapLargerBottom}>
+                  {tPendingTranslation(
+                    'Where can Creators sell IP-based content to players?',
+                    'Prompt shown above the sale location dropdown for collaboration licenses.',
+                    translationKey(
+                      'Description.SelectSaleLocation',
+                      TranslationNamespace.AgreementsManager,
+                    ),
+                  )}
+                </Typography>
+                <FormControl fullWidth>
+                  <Controller
+                    name='licenseType'
+                    control={control}
+                    render={({ field, fieldState: { error } }) => (
+                      <LicenseFormControlledSelect
+                        field={field}
+                        id='sale-location-select'
+                        error={!!error}
+                        helperText={error?.message}
+                        label={tPendingTranslation(
+                          'Select sale location',
+                          'Label for the dropdown used to choose where IP-based content may be sold.',
+                          translationKey(
+                            'Label.SelectSaleLocation',
+                            TranslationNamespace.AgreementsManager,
+                          ),
+                        )}
+                        renderValue={renderSaleLocationValue}
+                        disabled={isEditMode}
+                        onChange={(event) => {
+                          field.onChange(event);
+                          if (mode.type === 'create') {
+                            logEvent(
+                              LicenseManagerClickEvent.IphLicenseCreateLicenseTypeClickEvent,
+                              {
+                                licenseType: String(event.target.value),
+                              },
+                            );
+                          }
+                        }}>
+                        <MenuItem
+                          value={LicenseType.CollaborationInExperienceSale}
+                          data-testid='in-game-sale-location-option'>
+                          <SaleLocationOptions
+                            licenseType={LicenseType.CollaborationInExperienceSale}
+                          />
+                        </MenuItem>
+                        <MenuItem
+                          value={LicenseType.MarketplaceSale}
+                          data-testid='avatar-marketplace-sale-location-option'>
+                          <SaleLocationOptions licenseType={LicenseType.MarketplaceSale} />
+                        </MenuItem>
+                      </LicenseFormControlledSelect>
+                    )}
+                    rules={{ required: translate('Label.FieldIsRequired') }}
+                  />
+                </FormControl>
+              </>
+            )}
+          </Grid>
+        )}
         <Grid item>
           <Typography variant='h5' component='h2' className={classes.paddingMediumBtm}>
             {translate('Label.Duration')}
@@ -608,10 +840,10 @@ const LicenseForm = ({
                   }}>
                   <MenuItem
                     value={LicenseDurationType.TimeLimited}
-                    data-testId='time-limited-option'>
+                    data-testid='time-limited-option'>
                     <DurationOptions isPerpetual={false} />
                   </MenuItem>
-                  <MenuItem value={LicenseDurationType.Perpetual} data-testId='perpetual-option'>
+                  <MenuItem value={LicenseDurationType.Perpetual} data-testid='perpetual-option'>
                     <DurationOptions isPerpetual />
                   </MenuItem>
                 </LicenseFormControlledSelect>
@@ -1087,60 +1319,97 @@ const LicenseForm = ({
           </div>
         </Grid>
         <Grid item>
-          <Typography variant='h5' component='h2' className={classes.semanticGapLargerBottom}>
+          <Typography variant='h5' component='h2' gutterBottom>
             {translate('Heading.Privacy')}
+          </Typography>
+          <Typography color='secondary' component='p' className={classes.semanticGapLargerBottom}>
+            {tPendingTranslation(
+              'Choose whether Creators can find this license or you offer it directly.',
+              'Description for the privacy section where a rights holder chooses public or private license visibility.',
+              translationKey('Description.Privacy', TranslationNamespace.AgreementsManager),
+            )}
           </Typography>
           <Controller
             name='visibility'
             control={control}
             rules={{ required: translate('Label.FieldIsRequired') }}
-            render={({ field, fieldState: { error } }) => (
-              <FormControl error={!!error}>
-                <RadioGroup
-                  value={field.value ?? ''}
-                  onValueChange={(value) => {
-                    const next = licenseVisibilityFromRadioValue(value);
-                    if (next !== undefined) {
-                      field.onChange(next);
-                    }
-                  }}
-                  size='Medium'>
-                  <Grid container direction='column' spacing={2}>
-                    <Grid item>
-                      <Radio
-                        value={LicenseVisibility.Public}
-                        label={foundationRadioLabel(
-                          <>
-                            <Typography variant='largeLabel2' component='div' gutterBottom>
-                              {translate('Label.Public')}
-                            </Typography>
-                            <Typography variant='largeLabel1' component='div' color='secondary'>
-                              {translate('Description.PublicLicense')}
-                            </Typography>
-                          </>,
-                        )}
-                      />
+            render={({ field, fieldState: { error } }) =>
+              isLicenseCreationEnabled ? (
+                <FormControl fullWidth>
+                  <LicenseFormControlledSelect
+                    field={field}
+                    id='visibility-select'
+                    error={!!error}
+                    helperText={error?.message}
+                    label={tPendingTranslation(
+                      'Select visibility',
+                      'Label for the dropdown used to choose whether a license is public or private.',
+                      translationKey(
+                        'Label.SelectVisibility',
+                        TranslationNamespace.AgreementsManager,
+                      ),
+                    )}
+                    renderValue={renderVisibilityValue}>
+                    <MenuItem
+                      value={LicenseVisibility.Public}
+                      data-testid='public-visibility-option'>
+                      <VisibilityOptions visibility={LicenseVisibility.Public} />
+                    </MenuItem>
+                    <MenuItem
+                      value={LicenseVisibility.Private}
+                      data-testid='private-visibility-option'>
+                      <VisibilityOptions visibility={LicenseVisibility.Private} />
+                    </MenuItem>
+                  </LicenseFormControlledSelect>
+                </FormControl>
+              ) : (
+                <FormControl error={!!error}>
+                  <RadioGroup
+                    value={field.value ?? ''}
+                    onValueChange={(value) => {
+                      const next = licenseVisibilityFromRadioValue(value);
+                      if (next !== undefined) {
+                        field.onChange(next);
+                      }
+                    }}
+                    size='Medium'>
+                    <Grid container direction='column' spacing={2}>
+                      <Grid item>
+                        <Radio
+                          value={LicenseVisibility.Public}
+                          label={foundationRadioLabel(
+                            <>
+                              <Typography variant='largeLabel2' component='div' gutterBottom>
+                                {translate('Label.Public')}
+                              </Typography>
+                              <Typography variant='largeLabel1' component='div' color='secondary'>
+                                {translate('Description.PublicLicense')}
+                              </Typography>
+                            </>,
+                          )}
+                        />
+                      </Grid>
+                      <Grid item>
+                        <Radio
+                          value={LicenseVisibility.Private}
+                          label={foundationRadioLabel(
+                            <>
+                              <Typography variant='largeLabel2' component='div' gutterBottom>
+                                {translate('Label.Private')}
+                              </Typography>
+                              <Typography variant='largeLabel1' component='div' color='secondary'>
+                                {translate('Description.PrivateLicense')}
+                              </Typography>
+                            </>,
+                          )}
+                        />
+                      </Grid>
                     </Grid>
-                    <Grid item>
-                      <Radio
-                        value={LicenseVisibility.Private}
-                        label={foundationRadioLabel(
-                          <>
-                            <Typography variant='largeLabel2' component='div' gutterBottom>
-                              {translate('Label.Private')}
-                            </Typography>
-                            <Typography variant='largeLabel1' component='div' color='secondary'>
-                              {translate('Description.PrivateLicense')}
-                            </Typography>
-                          </>,
-                        )}
-                      />
-                    </Grid>
-                  </Grid>
-                </RadioGroup>
-                {error && <FormHelperText error>{error.message}</FormHelperText>}
-              </FormControl>
-            )}
+                  </RadioGroup>
+                  {error && <FormHelperText error>{error.message}</FormHelperText>}
+                </FormControl>
+              )
+            }
           />
         </Grid>
         <Grid item container spacing={2}>

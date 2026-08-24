@@ -156,6 +156,10 @@ const LicenseCreateContainer = () => {
       }
     }
 
+    const licenseType = isLicenseCreationEnabled
+      ? (data.licenseType ?? undefined)
+      : LicenseType.FullExperience;
+
     addLicenseMutation.mutate({
       listingId: ipListingId,
       royaltyRate: data.revenueShare,
@@ -166,7 +170,7 @@ const LicenseCreateContainer = () => {
       visibility: data.visibility ?? LicenseVisibility.Private,
       enableMonetization: resolveEnableMonetization({
         durationType: data.durationType,
-        licenseType: isLicenseCreationEnabled ? data.licenseType : LicenseType.FullExperience,
+        licenseType,
         monitorType: data.monitorType,
         enableCollaborationLicensing: isLicenseCreationEnabled,
         enableMarketplaceSalesLicensing: isLicenseCreationEnabled,
@@ -186,7 +190,7 @@ const LicenseCreateContainer = () => {
           maxDays: data.maxDuration,
         },
       ),
-      licenseType: isLicenseCreationEnabled ? data.licenseType : LicenseType.FullExperience,
+      licenseType,
     });
   };
 
