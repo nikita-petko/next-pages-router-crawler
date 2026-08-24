@@ -274,7 +274,7 @@ const ExperienceDataTileV2: FunctionComponent<
         translate('Label.D1Retention'),
         buildExperienceAnalyticsUrlWithParams(
           analyticsExploreNavigationItem,
-          { [AnalyticsQueryParams.Metric]: 'D1Retention' },
+          { [AnalyticsQueryParams.Metric]: 'ForwardD1Retention' },
           id,
         ),
         analytics?.d1Retention,
@@ -404,6 +404,7 @@ const ExperienceDataTileV2: FunctionComponent<
           flex: 1,
           display: '-webkit-box',
           WebkitLineClamp: 2,
+          // oxlint-disable-next-line typescript/no-deprecated -- Required for multi-line truncation.
           WebkitBoxOrient: 'vertical' as const,
           overflow: 'hidden',
         }}>

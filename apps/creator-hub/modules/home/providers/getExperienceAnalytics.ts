@@ -108,7 +108,7 @@ export const getRAQIV2ExperienceAnalytics = async (
     timeAxisBounds: null,
   });
   const dauSpec = makeSpec(RAQIV2Metric.DailyActiveUsers);
-  const d1RetentionSpec = makeSpec(RAQIV2Metric.D1Retention);
+  const d1RetentionSpec = makeSpec(RAQIV2Metric.ForwardD1Retention);
   const playTimeSpec = makeSpec(RAQIV2Metric.AveragePlayTimeMinutesPerDAU);
   const revenueSpec = makeSpec(RAQIV2Metric.DailyRevenue);
   const specs = [dauSpec, d1RetentionSpec, playTimeSpec, revenueSpec];
