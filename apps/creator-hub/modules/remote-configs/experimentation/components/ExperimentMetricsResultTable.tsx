@@ -1,10 +1,9 @@
-import type { CSSProperties, FC } from 'react';
+import type { FC } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { dateTimeFormatter } from '@rbx/core';
 import { RAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
 import { useTranslation } from '@rbx/intl';
-import { Grid, InfoOutlinedIcon, makeStyles, Tooltip, Typography, useTheme } from '@rbx/ui';
-import type { TTheme } from '@rbx/ui';
+import { Grid, InfoOutlinedIcon, makeStyles, Tooltip, Typography } from '@rbx/ui';
 import type { TranslationKey } from '@modules/analytics-translations/types';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
@@ -12,10 +11,8 @@ import {
   formatNumberWithSpec,
   NumberContext,
 } from '@modules/charts-generic/charts/numberFormatters';
-import { getTableCellBackgroundRgbTuple } from '@modules/charts-generic/charts/options';
 import type { GenericChartState } from '@modules/charts-generic/charts/types/ChartTypes';
 import useLocale from '@modules/charts-generic/context/useLocale';
-import formatCellContent from '@modules/charts-generic/tables/formatCellContent';
 import GenericTableV2 from '@modules/charts-generic/tables/GenericTableV2';
 import {
   CellBackgroundType,
@@ -60,28 +57,6 @@ const tableConfig: TableConfig<string> = {
 const MetricColumnKey = 'metric';
 const ActionColumnKey = 'action';
 
-const getStatSigCellBackground = (color: TableCellBackgroundColor, theme: TTheme): string => {
-  switch (color) {
-    case TableCellBackgroundColor.Positive:
-      return theme.palette.components.alert.activeFill;
-    case TableCellBackgroundColor.Negative:
-      return theme.palette.components.alert.importantFill;
-    case TableCellBackgroundColor.Progression:
-    case TableCellBackgroundColor.Highlight:
-      return `rgba(${getTableCellBackgroundRgbTuple(color, theme)}, 0.16)`;
-    default: {
-      return color;
-    }
-  }
-};
-
-const getStatSigCellOverrideStyle = (
-  color: TableCellBackgroundColor,
-  theme: TTheme,
-): CSSProperties => ({
-  background: getStatSigCellBackground(color, theme),
-});
-
 const useStyles = makeStyles()(() => ({
   tooltipIcon: {
     verticalAlign: 'middle',
@@ -119,7 +94,6 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
   const {
     classes: { tooltipIcon },
   } = useStyles();
-  const theme = useTheme();
   const locale = useLocale();
   const { translate } = useTranslationWrapper(useTranslation());
 
@@ -201,7 +175,7 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
         ),
         // use titleOverride if column is a variant
         titleOverride: label,
-        columnType: isEarlyHarmAnalysisPeriod ? ColumnType.Other : ColumnType.Number,
+        columnType: ColumnType.Number,
         endAdormentColumnKeyInCompactView: undefined,
         columnAlignment: 'right' as const,
       })),
@@ -452,9 +426,6 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
                   ...cellData,
                   comparisonChipSpec,
                   cellBackground,
-                  cellOverrideStyle: cellBackground
-                    ? getStatSigCellOverrideStyle(cellBackground.color, theme)
-                    : undefined,
                 };
                 return [variantId, variantCellDataWithComparisonSpec] as const;
               }
@@ -464,27 +435,6 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
 
           const row = new Map<string, CellDataType>();
           cellDataWithComparisonSpec.forEach(([variantId, cellData]) => {
-            if (isEarlyHarmAnalysisPeriod && cellData.type === ColumnType.Number) {
-              row.set(variantId, {
-                type: ColumnType.Other,
-                value: formatCellContent(
-                  cellData,
-                  {
-                    columnKey: '',
-                    columnType: ColumnType.Number,
-                    titleKey: translationKey(
-                      'Title.Column.Metric',
-                      TranslationNamespace.UniverseConfigAndExperimentation,
-                    ),
-                  },
-                  locale,
-                  translate,
-                ),
-                cellOverrideStyle: cellData.cellOverrideStyle,
-                ...unavailableEarlyHarmCellProps,
-              });
-              return;
-            }
             row.set(variantId, { ...cellData, ...unavailableEarlyHarmCellProps });
           });
 
@@ -553,12 +503,10 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
       experimentVariantsResults,
       isEarlyHarmAnalysisPeriod,
       isSRMDetected,
-      locale,
       metricsSortOrder,
       onViewConfidenceIntervalActionInvoked,
       orderedExperimentVariants,
       shouldShowComparisonChip,
-      theme,
       translate,
       updateCellValue,
     ],

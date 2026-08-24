@@ -9,11 +9,13 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  useTheme,
 } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import useLocale from '@modules/charts-generic/context/useLocale';
 import formatCellContent from '@modules/charts-generic/tables/formatCellContent';
+import { formatCellBackgroundStyle } from '@modules/charts-generic/tables/formatCellStyles';
 import {
   ColumnType,
   type TableColumnConfig,
@@ -101,6 +103,7 @@ const ConfidenceIntervalTable: FC<ConfidenceIntervalTableProps> = ({
   } = useStyles();
   const { translate } = useTranslationWrapper(useTranslation());
   const locale = useLocale();
+  const theme = useTheme();
 
   const marks = useMemo(() => {
     let globalMax = 0;
@@ -202,7 +205,7 @@ const ConfidenceIntervalTable: FC<ConfidenceIntervalTableProps> = ({
             <TableCell data-testid={`variant-name-${variantId}`}>{variantName}</TableCell>
             <TableCell
               data-testid={`metric-value-${variantId}`}
-              style={cellData.cellOverrideStyle}
+              style={formatCellBackgroundStyle(cellData, MetricColumnConfig, theme)}
               align='right'>
               {formatCellContent(cellData, MetricColumnConfig, locale, translate)}
             </TableCell>
@@ -224,6 +227,7 @@ const ConfidenceIntervalTable: FC<ConfidenceIntervalTableProps> = ({
     );
   }, [
     orderedCellDataWithConfidenceInterval,
+    theme,
     locale,
     translate,
     confidenceIntervalCell,

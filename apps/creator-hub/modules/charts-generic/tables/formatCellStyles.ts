@@ -74,7 +74,7 @@ export const formatCellBackgroundStyle = <
     }
     case CellBackgroundType.ConstantFill: {
       return {
-        background: `rgba(${bgColor}, 0.4)`,
+        background: `rgba(${bgColor}, 0.16)`,
       };
     }
     default:
