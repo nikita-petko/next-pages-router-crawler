@@ -3,10 +3,10 @@ import React, { useCallback, useState, useEffect, useContext } from 'react';
 import { useRouter } from 'next/router';
 import type { SubmitHandler } from 'react-hook-form';
 import { useForm, Controller } from 'react-hook-form';
-import type { V1ItemsUploadFeeGetAssetTypeEnum } from '@rbx/client-itemconfiguration/v1';
 import { HubMeta, buildBreadcrumb, buildTitle } from '@rbx/creator-hub-history';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import {
+  Alert,
   Grid,
   Button,
   TextField,
@@ -72,8 +72,8 @@ import AssetSelection from './AssetSelection';
 import AssetUploader from './AssetUploader';
 import useCreateAssetFormStyles from './CreateAssetForm.styles';
 import createAssetFormContext from './providers/CreateAssetFormContext';
-import type { AssetUploadFormType } from './type';
-import { CreateAssetRegisterOptions } from './type';
+import type { AssetUploadFormType, AssetUploadPollResult } from './type';
+import { AssetUploadPollStatus, CreateAssetRegisterOptions } from './type';
 
 export type configureAssetUpload = {
   targetType: string;
@@ -103,10 +103,10 @@ const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetForm
   const { trackerClient } = useEventTrackerProvider();
   const { user } = useAuthentication();
   const intl = useTranslation();
-  const { translate, translateHTML } = intl;
+  const { translate, translateHTML, translateWithNamespace } = intl;
   const { tPendingTranslation } = useTranslationWrapper(intl);
   const locale = useLocalization().locale ?? Locale.English;
-  const { enqueue } = useSnackbar();
+  const { enqueue, close: closeSnackbar } = useSnackbar();
 
   const { droppedFile, updateDroppedFile } = useContext(createAssetFormContext);
   const [selectAssetType, setAssetType] = useState<Asset>(assetType);
@@ -271,10 +271,9 @@ const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetForm
     return () => {
       setQuotaMessage('');
     };
-    // NOTE (jcountryman, 2/6/24): Turned off to check in @rbx/ui upgrade. Codeowners is
-    // responsible for triaging issue.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- router should not be included in dependency array
-  }, [selectAssetType]);
+    // `translate` is memoized on the localization context, so this refetches on asset-type change
+    // and once more when translations finish loading -- not on every render.
+  }, [selectAssetType, translate]);
 
   useEffect(() => {
     // oxlint-disable-next-line react/react-compiler -- intentional reset of transient error/disabled state when the selected asset type changes; paired with the upload-fee refetch below
@@ -286,9 +285,7 @@ const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetForm
         if (selectAssetType === Asset.Video) {
           setUploadFee(2000);
         } else {
-          const translatedAssetType = translateAssetType(
-            selectAssetType,
-          ) as V1ItemsUploadFeeGetAssetTypeEnum;
+          const translatedAssetType = translateAssetType(selectAssetType);
           const response = await itemConfigurationClient.getItemUploadFee(
             translatedAssetType,
             undefined,
@@ -319,8 +316,9 @@ const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetForm
       const creatorId = isGroup ? parseInt(groupId.toString(), 10) : user?.id;
       void fetchData(creatorId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- @ts-ignore known issue with `react-hook-form`'s typing
-  }, [selectAssetType, trackerClient]);
+    // The fee and affordability are per-creator, so this intentionally re-runs when the acting
+    // user or group changes; every dependency here is stable or a primitive.
+  }, [selectAssetType, trackerClient, translate, assetType, getGroupId, user?.id]);
 
   const handleFileChange = useCallback(
     (file: File | null) => {
@@ -500,7 +498,7 @@ const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetForm
     creatorId: number | undefined,
     currentAttempt: number,
     consecutivePollErrors = 0,
-  ): Promise<number | null> => {
+  ): Promise<AssetUploadPollResult> => {
     let operation: Awaited<ReturnType<typeof assetsUploadApiClient.getOperationStatus>>;
     try {
       operation = await assetsUploadApiClient.getOperationStatus(operationId);
@@ -530,25 +528,43 @@ const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetForm
 
     const isOperationDone = operation?.done ?? false;
 
-    if (
-      currentAttempt > assetUploadOperationStatusPollingMaxRetries ||
-      (isOperationDone && operation?.error == null)
-    ) {
-      return operation?.response?.assetId ?? null;
+    if (isOperationDone) {
+      if (operation?.error != null) {
+        const errorCode = operation?.error?.code ?? HttpStatusCodes.INTERNAL_SERVER_ERROR;
+        const message = operation?.error?.message ?? 'AssetCreationFailed';
+        processErrorMessage(message, errorCode, creatorId);
+        return { status: AssetUploadPollStatus.Failed };
+      }
+      const assetId = operation?.response?.assetId;
+      // A done-without-error operation that carries no asset id still succeeded server-side, so
+      // report it as pending rather than as a failure the creator should pay to retry.
+      return assetId == null
+        ? { status: AssetUploadPollStatus.Pending }
+        : { status: AssetUploadPollStatus.Succeeded, assetId };
     }
-    if (isOperationDone && operation?.error != null) {
-      const errorCode = operation?.error?.code ?? HttpStatusCodes.INTERNAL_SERVER_ERROR;
-      const message = operation?.error?.message ?? 'AssetCreationFailed';
-      processErrorMessage(message, errorCode, creatorId);
-      return null;
+
+    if (currentAttempt > assetUploadOperationStatusPollingMaxRetries) {
+      // Out of polling budget while the operation is still running. The upload was accepted (and
+      // any fee already charged) and keeps processing server-side, so this is not a failure.
+      return { status: AssetUploadPollStatus.Pending };
     }
+
     await new Promise((r) => {
       setTimeout(r, assetUploadOperationStatusPollingIntervalMs);
     });
     return pollForCompletedOperation(operationId, creatorId, currentAttempt + 1, 0);
   };
 
-  /* oxlint-disable react/react-compiler -- dependency array is intentionally curated to keep uploadAsset stable; the flagged helpers (getGroupId, pollForCompletedOperation, getErrorMessageFromAssetUploadAPI, redirectBack, enqueue, translate, settings.enableAudioUploadRevamp) close over current state, and listing them would recreate the callback every render. See adjacent exhaustive-deps note. */
+  // Declared above uploadAsset because the upload flow closes over it, and listed in that
+  // callback's dependency array: translation resources arrive after the first render, so a
+  // callback holding the pre-load lookup would show an empty snackbar. This key lives in the
+  // AssetUpload namespace rather than this component's default one, so it is read explicitly.
+  const uploadStillProcessingMessage = translateWithNamespace(
+    TranslationNamespace.AssetUpload,
+    'Message.AssetUploadStillProcessing',
+  );
+
+  /* oxlint-disable react/react-compiler -- dependency array is intentionally curated to keep uploadAsset stable; the flagged helpers (getGroupId, pollForCompletedOperation, getErrorMessageFromAssetUploadAPI, redirectBack, enqueue, closeSnackbar, translate, settings.enableAudioUploadRevamp) close over current state, and listing them would recreate the callback every render. See adjacent exhaustive-deps note. */
   const uploadAsset = useCallback(
     async (file: File, name: string, description: string) => {
       setAssetCreationErrorMsg('');
@@ -574,17 +590,48 @@ const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetForm
       try {
         const assetUploadOperationId = await assetsUploadApiClient.createAssetAndGetOperationId(
           req,
-          file as Blob,
+          file,
         );
-        const createdAssetId = await pollForCompletedOperation(
+        const pollResult = await pollForCompletedOperation(
           assetUploadOperationId,
           creatorId ?? undefined,
           0,
         );
 
-        if (createdAssetId == null) {
+        if (pollResult.status === AssetUploadPollStatus.Failed) {
+          // processErrorMessage already surfaced the reason and closed the confirmation dialog.
           return;
         }
+
+        if (pollResult.status === AssetUploadPollStatus.Pending) {
+          // The upload was accepted and any fee already charged, so leaving the confirmation
+          // dialog open would invite a retry that charges the creator a second time and creates a
+          // duplicate asset. Close it, explain that the asset is still processing, and navigate
+          // away from the form.
+          setIsConfirmDialogShown(false);
+          // Bottom-centre and non-dismissing: the creator is being redirected mid-task, and a
+          // 4s toast in the bottom-left corner (the Snackbar default) is easy to miss entirely.
+          // `autoHide: false` is the only way to outlast 4s -- @rbx/ui's Snackbar hardcodes
+          // autoHideDuration to 4000 whenever autoHide is set, ignoring any value passed in.
+          enqueue(
+            {
+              anchorOrigin: { vertical: 'bottom', horizontal: 'center' },
+              autoHide: false,
+              children: (
+                <Alert variant='filled' severity='info' onClose={closeSnackbar}>
+                  {uploadStillProcessingMessage}
+                </Alert>
+              ),
+            },
+            // No timeout to honour, so this only blocks click-away/escape from discarding a
+            // message the creator still needs; the Alert's close button calls close() directly.
+            (reason) => reason === 'timeout',
+          );
+          redirectBack();
+          return;
+        }
+
+        const createdAssetId = pollResult.assetId;
 
         if (settings.enableAudioUploadRevamp && thumbnailFile) {
           try {
@@ -628,7 +675,7 @@ const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetForm
     // NOTE (jcountryman, 2/6/24): Turned off to check in @rbx/ui upgrade. Codeowners is
     // responsible for triaging issue.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- TODO: Codeowners should check this
-    [selectAssetType, user, uploadFee, assetsUploadApiClient, trackerClient, thumbnailFile],
+    [selectAssetType, user, uploadFee, trackerClient, thumbnailFile, uploadStillProcessingMessage],
   );
   /* oxlint-enable react/react-compiler */
 

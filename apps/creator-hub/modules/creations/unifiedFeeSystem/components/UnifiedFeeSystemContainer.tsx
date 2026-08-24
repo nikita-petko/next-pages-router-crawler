@@ -143,6 +143,7 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
   const [originalSaleStatus, setOriginalSaleStatus] = useState<boolean>(true);
   const [scheduledSaleChanged, setScheduledSaleChanged] = useState<boolean>(false);
   const [priceFloor, setPriceFloor] = useState<number>(0);
+  const [priceFloorDisplayName, setPriceFloorDisplayName] = useState<string>('');
 
   const [wearTime, setWearTime] = useState<DurationOptionsEnum>(getDefaultWearTime()); // TODO @mryumae: durables - replace with itemDetails?.item?.wearTime once BE is ready
   const [showTimedOptionsDialog, setShowTimedOptionsDialog] = useState<boolean>(false);
@@ -214,6 +215,7 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
         isLimited,
       );
       setPriceFloor(priceFloorResponse?.priceFloorInRobux ?? 0);
+      setPriceFloorDisplayName(priceFloorResponse?.displayName ?? '');
     };
     void getPriceFloor();
   }, [targetId, isLimited, collectiblesMetadata?.isGetPriceFloorEnabled, isBundle]);
@@ -505,6 +507,7 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
             itemTypeString={itemType}
             collectiblesMetadata={collectiblesMetadata}
             priceFloor={priceFloor}
+            priceFloorDisplayName={priceFloorDisplayName}
             targetId={targetId}
             itemDetails={itemDetails}
             name={name}
@@ -648,6 +651,7 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
     optionalPriceFloor,
     itemType,
     priceFloor,
+    priceFloorDisplayName,
     rentalPricingData,
     regionalRentalPricingData,
     saleLocation,

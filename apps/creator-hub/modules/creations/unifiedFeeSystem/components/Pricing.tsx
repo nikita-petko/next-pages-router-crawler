@@ -28,7 +28,6 @@ import {
   DefaultMaxCollectiblePrice,
   PurchasePlatformEnum,
 } from '../helper/UnifiedFeeSystemConstants';
-import { getTaxonomyDisplayName } from '../helper/UnifiedFeeSystemHelper';
 import RegionalPricingPreviewPanel from './RegionalPricingPreviewPanel';
 
 const useStyles = makeStyles()((theme) => ({
@@ -59,6 +58,7 @@ interface PricingProps {
   itemTypeString: string;
   collectiblesMetadata?: ItemConfigurationCollectiblesMetadataResponse;
   priceFloor: number;
+  priceFloorDisplayName: string;
   targetId: number;
   itemDetails?: RobloxItemConfigurationApiGetItemResponse;
   name: string;
@@ -86,6 +86,7 @@ function Pricing(props: PricingProps) {
     itemTypeString,
     collectiblesMetadata,
     priceFloor,
+    priceFloorDisplayName,
     targetId,
     itemDetails,
     name,
@@ -110,20 +111,8 @@ function Pricing(props: PricingProps) {
   // todo: MKTPL-12007 - replace the regex with translated strings.
   const getPriceFloorType = () => {
     const formattedItemType = itemTypeString.replaceAll(/([A-Z])/g, ' $1').trim();
-    if (collectiblesMetadata?.isGetPriceFloorEnabled) {
-      // If taxonomy is changed, return the formatted item type with the taxonomy name in parentheses
-      const taxonomyDisplayName = getTaxonomyDisplayName(
-        itemDetails?.item?.taxonomyDetails?.dpfTaxonomyName ?? '',
-        translate,
-      );
-      if (
-        itemDetails?.item?.taxonomyDetails?.dpfTaxonomyIsDefaultTaxonomy === false &&
-        taxonomyDisplayName
-      ) {
-        return `${formattedItemType} (${taxonomyDisplayName})`;
-      }
-      // Just return the formatted item type.
-      return formattedItemType;
+    if (collectiblesMetadata?.isGetPriceFloorEnabled && priceFloorDisplayName) {
+      return priceFloorDisplayName;
     }
     return formattedItemType;
   };
