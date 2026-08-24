@@ -4,7 +4,6 @@ import { useAuthentication } from '@modules/authentication/providers';
 import type { User } from '@modules/clients/users';
 import usersClient from '@modules/clients/users';
 import { useGetLikelyCollaborators } from '@modules/react-query/likelyCollaborator';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import { useDebouncedFunction } from '../../../hooks/useDebouncedFunction';
 import useCurrentGroupUtils from '../serviceHook/useCurrentGroupUtils';
 import type { UserStatus, UserOptionsHook } from '../types';
@@ -12,7 +11,6 @@ import type { UserStatus, UserOptionsHook } from '../types';
 const MAX_PREFETCHED_SUGGESTIONS = 5;
 
 const useUserOptionsForOrgInvites: UserOptionsHook = () => {
-  const { settings, isFetched: isSettingsFetched } = useSettings();
   const {
     isUserInGroup,
     isUserInvited,
@@ -106,8 +104,6 @@ const useUserOptionsForOrgInvites: UserOptionsHook = () => {
     }
   };
 
-  const shouldFetchFriends = isSettingsFetched && settings.enableGroupInvitationsTelemetry;
-
   useEffect(() => {
     if (isGroupUtilsFetching) {
       return;
@@ -120,7 +116,7 @@ const useUserOptionsForOrgInvites: UserOptionsHook = () => {
       const [isMember, isInvited, isFriend] = await Promise.all([
         isUserInGroup(userId),
         isUserInvited(userId),
-        shouldFetchFriends && isUserFriend(userId),
+        isUserFriend(userId),
       ]);
       setUserStatus((prevStatus) => {
         const newStatus = new Map(prevStatus);
@@ -136,14 +132,7 @@ const useUserOptionsForOrgInvites: UserOptionsHook = () => {
         return newStatus;
       });
     });
-  }, [
-    userOptions,
-    shouldFetchFriends,
-    isGroupUtilsFetching,
-    isUserInGroup,
-    isUserInvited,
-    isUserFriend,
-  ]);
+  }, [userOptions, isGroupUtilsFetching, isUserInGroup, isUserInvited, isUserFriend]);
 
   return { userOptions, userStatus, isFetching, noOptionsText, updateUserSuggestions, bottomText };
 };

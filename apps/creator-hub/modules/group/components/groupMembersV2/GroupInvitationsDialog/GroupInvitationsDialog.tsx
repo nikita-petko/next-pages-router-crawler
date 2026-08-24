@@ -1,5 +1,5 @@
 import type { FunctionComponent, ComponentProps } from 'react';
-import React, { useState, Fragment, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTranslation } from '@rbx/intl';
 import {
   Button,
@@ -22,14 +22,14 @@ import type {
   UserCategory,
 } from '@modules/miscellaneous/components/UserSelect/types';
 import UserSelect from '@modules/miscellaneous/components/UserSelect/UserSelect';
+import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 import { useGetGroupInfo } from '@modules/react-query/groupMembers/groupMembersQueries';
 import { useCreateInvitation } from '@modules/react-query/groupMembers/invitationsQueries';
 import { InviteQueryKey } from '../../../constants/groupConstants';
 import useBottomToast from '../../../hooks/useBottomToast';
 import useCurrentOrganization from '../../../hooks/useCurrentOrganization';
-import { OrganizationsEventName } from '../../../utils/eventUtils';
+import { OrganizationsEventName, logOrganizationsEvent } from '../../../utils/eventUtils';
 import { SelectedUserList } from './SelectedUserList';
-import useFlaggedGroupInvitationsLog from './useFlaggedGroupInvitationsLog';
 
 export interface GroupInvitationsDialogProps {
   open: boolean;
@@ -110,6 +110,7 @@ export const GroupInvitationsDialog: FunctionComponent<
   const { mutateAsync: createInvitation } = useCreateInvitation();
   const { showBottomToast } = useBottomToast();
   const { translate } = useTranslation();
+  const { unifiedLogger } = useUnifiedLoggerProvider();
   const userSelectParams = useUserOptionsForOrgInvites();
   const {
     classes: { responsiveFullScreen, toast },
@@ -119,20 +120,25 @@ export const GroupInvitationsDialog: FunctionComponent<
 
   const shareLinkUrl = `https://create.${process.env.robloxSiteDomain}/dashboard/group/members?${InviteQueryKey}=${organization?.id}`;
 
-  const flaggedLog = useFlaggedGroupInvitationsLog();
-
   type OnCloseParams = Parameters<Exclude<ComponentProps<typeof Dialog>['onClose'], undefined>>;
   const logCancel = useCallback(
     (reason: OnCloseParams[1] | 'cancelButtonClick') => {
-      flaggedLog(OrganizationsEventName.ClickOrgsGroupInvitationsDialogCancel, { reason });
+      logOrganizationsEvent(
+        unifiedLogger,
+        OrganizationsEventName.ClickOrgsGroupInvitationsDialogCancel,
+        {
+          reason,
+        },
+      );
       selectedUsers.forEach((userInvite) =>
-        flaggedLog(
+        logOrganizationsEvent(
+          unifiedLogger,
           OrganizationsEventName.ClickOrgsGroupInvitationsDialogSearchResult,
           createLogParams(userInvite, 'canceled'),
         ),
       );
     },
-    [flaggedLog, selectedUsers],
+    [unifiedLogger, selectedUsers],
   );
 
   const closeDialog = () => {
@@ -155,7 +161,8 @@ export const GroupInvitationsDialog: FunctionComponent<
   const removeUserFromInvite = (userId: number) => {
     const userInvite = selectedUsers.find((invite) => invite.user.id === userId);
     if (userInvite) {
-      flaggedLog(
+      logOrganizationsEvent(
+        unifiedLogger,
         OrganizationsEventName.ClickOrgsGroupInvitationsDialogSearchResult,
         createLogParams(userInvite, 'removed'),
       );
@@ -188,7 +195,7 @@ export const GroupInvitationsDialog: FunctionComponent<
         selectedUsers.map((userInvite) => {
           return createInvitation({
             organizationId,
-            recipientUserId: `${userInvite.user.id!}`,
+            recipientUserId: `${userInvite.user.id}`,
             roleIds: userInvite.roles.map((role) => role.id),
           });
         }),
@@ -197,11 +204,14 @@ export const GroupInvitationsDialog: FunctionComponent<
         severity: 'success',
         className: toast,
       });
-      flaggedLog(OrganizationsEventName.ClickOrgsGroupInvitationsDialogInviteSelectedUsers, {
-        numUsers: `${selectedUsers.length}`,
-      });
+      logOrganizationsEvent(
+        unifiedLogger,
+        OrganizationsEventName.ClickOrgsGroupInvitationsDialogInviteSelectedUsers,
+        { numUsers: `${selectedUsers.length}` },
+      );
       selectedUsers.forEach((userInvite) =>
-        flaggedLog(
+        logOrganizationsEvent(
+          unifiedLogger,
           OrganizationsEventName.ClickOrgsGroupInvitationsDialogSearchResult,
           createLogParams(userInvite, 'invited'),
         ),
