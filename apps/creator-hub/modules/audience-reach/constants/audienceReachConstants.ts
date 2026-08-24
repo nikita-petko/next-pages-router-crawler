@@ -1,11 +1,3 @@
-/**
- * Maximum number of days a universe can remain below the eligibility threshold
- * before losing Select status. The API's `reasonsMetadata.Threshold` value is
- * the number of days the universe has been below threshold so far, so the
- * grace period remaining = `ThresholdEligibilityWindowDays - daysBelowThreshold`.
- */
-export const ThresholdEligibilityWindowDays = 60;
-
 /** Age boundary below which content qualifies as "All Ages" for reach purposes. */
 export const AllAgesThreshold = 9;
 /** Age boundary at and above which reach is capped at 16+. */

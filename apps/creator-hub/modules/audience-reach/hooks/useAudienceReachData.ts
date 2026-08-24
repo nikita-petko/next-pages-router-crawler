@@ -7,7 +7,6 @@ import {
 import placeSafetyStatusApi from '@modules/clients/placeSafetyStatus';
 import useIXPParameters from '@modules/miscellaneous/hooks/useIXPParameters';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
-import { ThresholdEligibilityWindowDays } from '../constants/audienceReachConstants';
 import type { AudienceReachState } from '../types/audienceReach';
 import { calculateReachState } from '../utils/reachCalculation';
 import { useContentRatingDetails } from './useContentRatingDetails';
@@ -99,8 +98,13 @@ export const useAudienceReachData = (universeId: number) => {
       isUnderReview: universeEligibility.underReview ?? null,
     });
 
+    // reasonsMetadata.Threshold is days spent below threshold so far; remaining grace =
+    // API gracePeriodDays minus that count.
     const daysBelowThreshold = Number(universeEligibility.reasonsMetadata?.Threshold) || 0;
-    const thresholdDaysRemaining = Math.max(0, ThresholdEligibilityWindowDays - daysBelowThreshold);
+    const thresholdDaysRemaining = Math.max(
+      0,
+      universeEligibility.gracePeriodDays - daysBelowThreshold,
+    );
 
     return {
       ...calculationResult,
@@ -117,6 +121,7 @@ export const useAudienceReachData = (universeId: number) => {
       isPublishedToGatedAudience,
       thresholdTrigger: universeEligibility.thresholdTrigger,
       thresholdReset: universeEligibility.thresholdReset,
+      gracePeriodDays: universeEligibility.gracePeriodDays,
       activeAllowlists: universeEligibility.activeAllowlists ?? null,
     };
   }, [creatorTierData, contentRating, universeEligibility, isPrivate, shouldHonorReasons]);

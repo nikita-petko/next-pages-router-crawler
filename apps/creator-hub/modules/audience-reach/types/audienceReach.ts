@@ -55,5 +55,6 @@ export interface AudienceReachState {
   isPublishedToGatedAudience: boolean;
   thresholdTrigger: number;
   thresholdReset: number;
+  gracePeriodDays: number;
   activeAllowlists: AllowlistTypeEnum[] | null;
 }
