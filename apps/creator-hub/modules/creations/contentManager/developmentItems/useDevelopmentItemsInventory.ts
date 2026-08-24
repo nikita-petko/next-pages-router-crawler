@@ -4,6 +4,7 @@ import type { CreatorInventoryScope } from '@modules/clients/creatorInventory';
 import {
   DEVELOPMENT_ITEMS_INVENTORY_QUERY_KEY,
   reconcileDevelopmentItemsInventoryMetadata,
+  reconcileDevelopmentItemsInventoryUploads,
 } from '../../common/utils/developmentItemsInventoryCache';
 import {
   buildCreatorInventorySearchFilter,
@@ -99,12 +100,20 @@ const useDevelopmentItemsInventory = ({
         return mappedItem == null ? [] : [mappedItem];
       });
 
+      const reconciledItems = reconcileDevelopmentItemsInventoryMetadata(
+        queryClient,
+        items,
+        serverMetadataByAssetId,
+      );
+
       return {
-        items: reconcileDevelopmentItemsInventoryMetadata(
-          queryClient,
-          items,
-          serverMetadataByAssetId,
-        ),
+        items: reconcileDevelopmentItemsInventoryUploads(queryClient, reconciledItems, {
+          assetType,
+          pageToken,
+          query,
+          scope,
+          source,
+        }),
         nextPageToken: response.nextPageToken,
       };
     },

@@ -1,6 +1,7 @@
 import type { FunctionComponent, ChangeEvent } from 'react';
 import React, { useCallback, useState, useEffect, useContext } from 'react';
 import { useRouter } from 'next/router';
+import { useQueryClient } from '@tanstack/react-query';
 import type { SubmitHandler } from 'react-hook-form';
 import { useForm, Controller } from 'react-hook-form';
 import { HubMeta, buildBreadcrumb, buildTitle } from '@rbx/creator-hub-history';
@@ -29,11 +30,16 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import { useAuthentication } from '@modules/authentication/providers';
 import type { Creator, CreationContext } from '@modules/clients/assetsupload';
 import assetsUploadApiClient from '@modules/clients/assetsupload';
+import {
+  CreatorInventoryAssetType,
+  CreatorInventoryScopeType,
+} from '@modules/clients/creatorInventory';
 import itemConfigurationClient from '@modules/clients/itemconfiguration';
 import { setAudioAttestation } from '@modules/clients/musicDiscovery';
 import publishClient from '@modules/clients/publish';
 import { getResponseFromError } from '@modules/clients/utils';
 import AttestationSection from '@modules/creations/common/components/AttestationSection/AttestationSection';
+import { cacheDevelopmentItemUpload } from '@modules/creations/common/utils/developmentItemsInventoryCache';
 import { uploadAudioThumbnail } from '@modules/creations/developerItem/media/utils/audioThumbnailHelper';
 import { translateAssetType } from '@modules/creations/unifiedFeeSystem/helper/UnifiedFeeSystemHelper';
 import { useEventTrackerProvider } from '@modules/eventStream/eventTrackerProvider';
@@ -90,12 +96,34 @@ const pageHeadingByAsset: Partial<Record<Asset, string>> = {
   [Asset.AvatarBackground]: 'Heading.CreateBackgrounds',
 };
 
+const creatorInventoryAssetTypeByAsset: Partial<Record<Asset, CreatorInventoryAssetType>> = {
+  [Asset.Animation]: CreatorInventoryAssetType.Animation,
+  [Asset.Audio]: CreatorInventoryAssetType.Audio,
+  [Asset.Decal]: CreatorInventoryAssetType.Decal,
+  [Asset.Image]: CreatorInventoryAssetType.Image,
+  [Asset.Mesh]: CreatorInventoryAssetType.Mesh,
+  [Asset.MeshPart]: CreatorInventoryAssetType.MeshPart,
+  [Asset.Model]: CreatorInventoryAssetType.Model,
+  [Asset.Plugin]: CreatorInventoryAssetType.Plugin,
+  [Asset.Video]: CreatorInventoryAssetType.Video,
+};
+
 // Asset types whose upload page is locked to a single type (no Asset Type picker shown).
 const singleAssetTypeUploads: Asset[] = [Asset.AvatarBackground];
 
 const isGroupAssetCreationAuthorizationError = (msg: string, errorCode: number | string) =>
   Number(errorCode) === forbiddenStatusCode &&
   /unauthorized to create an? .+ asset as Group/i.test(msg);
+
+const parseUploadedAssetId = (assetId: unknown): number | null => {
+  const parsedAssetId =
+    typeof assetId === 'number'
+      ? assetId
+      : typeof assetId === 'string'
+        ? Number.parseInt(assetId, 10)
+        : Number.NaN;
+  return Number.isSafeInteger(parsedAssetId) && parsedAssetId > 0 ? parsedAssetId : null;
+};
 
 const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetFormProps>> = ({
   assetType,
@@ -126,6 +154,7 @@ const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetForm
   const hasBackgroundAccess = useAvatarBackgroundAccess();
 
   const router = useRouter();
+  const queryClient = useQueryClient();
   const {
     register,
     handleSubmit,
@@ -535,7 +564,7 @@ const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetForm
         processErrorMessage(message, errorCode, creatorId);
         return { status: AssetUploadPollStatus.Failed };
       }
-      const assetId = operation?.response?.assetId;
+      const assetId = parseUploadedAssetId(operation?.response?.assetId);
       // A done-without-error operation that carries no asset id still succeeded server-side, so
       // report it as pending rather than as a failure the creator should pay to retry.
       return assetId == null
@@ -667,6 +696,20 @@ const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetForm
           }
         }
 
+        const creatorInventoryAssetType = creatorInventoryAssetTypeByAsset[selectAssetType];
+        if (creatorId != null && creatorInventoryAssetType != null) {
+          cacheDevelopmentItemUpload(queryClient, {
+            assetId: createdAssetId,
+            assetType: creatorInventoryAssetType,
+            name,
+            scope: {
+              id: creatorId,
+              type: isGroupUpload
+                ? CreatorInventoryScopeType.Group
+                : CreatorInventoryScopeType.User,
+            },
+          });
+        }
         redirectBack();
       } catch (e) {
         await getErrorMessageFromAssetUploadAPI(e, creatorId ?? undefined);
@@ -675,7 +718,15 @@ const CreateAssetForm: FunctionComponent<React.PropsWithChildren<CreateAssetForm
     // NOTE (jcountryman, 2/6/24): Turned off to check in @rbx/ui upgrade. Codeowners is
     // responsible for triaging issue.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- TODO: Codeowners should check this
-    [selectAssetType, user, uploadFee, trackerClient, thumbnailFile, uploadStillProcessingMessage],
+    [
+      selectAssetType,
+      user,
+      uploadFee,
+      trackerClient,
+      thumbnailFile,
+      queryClient,
+      uploadStillProcessingMessage,
+    ],
   );
   /* oxlint-enable react/react-compiler */
 

@@ -96,7 +96,6 @@ const assetTypeLabelKeys: Record<CreatorInventoryAssetType, string> = {
 
 const FILTER_DROPDOWN_CLASS = '[width:192px]';
 const EMPTY_ARCHIVABLE_ASSET_IDS: ReadonlySet<number> = new Set();
-const EMPTY_THUMBNAIL_URLS: ReadonlyMap<number, string> = new Map();
 const PAGE_SIZE_OPTION_SET = new Set<number>(PAGE_SIZE_OPTIONS);
 const LEGACY_ARCHIVED_PAGE_SIZE_OPTION_SET = new Set<number>(LEGACY_ARCHIVED_PAGE_SIZE_OPTIONS);
 
@@ -418,7 +417,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
   const archivableAssetIds = isArchived
     ? (archivedInventoryQuery.data?.archivableAssetIds ?? EMPTY_ARCHIVABLE_ASSET_IDS)
     : (activeArchivableAssetIds ?? EMPTY_ARCHIVABLE_ASSET_IDS);
-  const { data: thumbnailUrls = EMPTY_THUMBNAIL_URLS } = useDevelopmentItemThumbnailUrls(assetIds);
+  const { data: thumbnailUrls } = useDevelopmentItemThumbnailUrls(assetIds);
   const { data: toolboxIdsByAssetId = EMPTY_TOOLBOX_IDS } = useDevelopmentItemToolboxIds(items);
 
   const getSourceLabel = useCallback(
