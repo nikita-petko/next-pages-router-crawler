@@ -252,6 +252,11 @@ const WorkplaceSelector: React.FunctionComponent<TWorkplaceSelectorProps> = ({
               <Typography variant='smallLabel2'>{translate('Label.Members')}</Typography>
             </Link>
           </ListItem>
+          <ListItem classes={{ root: listItem }}>
+            <Link href={Dashboard.groupRoles} className={link}>
+              <Typography variant='smallLabel2'>{translate('Label.Roles')}</Typography>
+            </Link>
+          </ListItem>
           {enableGroupModeration && (
             <ListItem classes={{ root: listItem }}>
               <Link href={Dashboard.groupModeration} className={link}>
@@ -348,8 +353,10 @@ const WorkplaceSelector: React.FunctionComponent<TWorkplaceSelectorProps> = ({
             setIsMenuOpen(true);
           },
           MenuProps: {
-            PaperProps: {
-              className: cx(paper, selectMenu),
+            slotProps: {
+              paper: {
+                className: cx(paper, selectMenu),
+              },
             },
             MenuListProps: {
               classes: { root: menuList },
