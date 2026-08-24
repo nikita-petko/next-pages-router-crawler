@@ -50,6 +50,7 @@ import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../../utils/l
 import { getMaturityRatingLabel } from '../../utils/maturityRating';
 import { getRevShareTimingKeys } from '../../utils/revShareTiming';
 import { getDateRangeLabel } from '../../utils/timeLimitedLicense';
+import CreatorIntent from './CreatorIntent';
 
 const useStyles = makeStyles()(() => ({
   iconContainer: {
@@ -361,6 +362,8 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
           <Typography variant='body1'>{actionsYouCanTakeBody}</Typography>
         </Flex>
       )}
+
+      <CreatorIntent agreement={agreement} />
 
       <AmDivider />
 
