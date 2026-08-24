@@ -9,7 +9,7 @@ import { withTranslation } from '@rbx/intl';
 import AnalyticsComponentType from '@modules/analytics-configurations/AnalyticsComponentType';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import type { AnalyticsDocLink } from '@modules/charts-generic/types/AnalyticsDocLink';
-import { getCurrentDate, subHours } from '@modules/charts-generic/utils/dateUtils';
+import { getCurrentDate } from '@modules/charts-generic/utils/dateUtils';
 import { AnnotationType, RAQIV2ChartResourceType } from '@modules/clients/analytics';
 import AnalyticsConfigChart from '@modules/experience-analytics-shared/components/RAQIV2/AnalyticsConfigChart';
 import CreatorAnalyticsLayout from '@modules/experience-analytics-shared/components/RAQIV2/layout/CreatorAnalyticsLayout';
@@ -29,6 +29,7 @@ import { creatorHub } from '@modules/miscellaneous/urls';
 import { FeatureFlagName } from '@modules/settings/SettingsProvider/featureFlags';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import { CLOUD_SERVICES_METRIC_RETENTION_DAYS } from '../constants/cloudServicesDateRange';
+import getDataStoreStorageUsageWindow from '../utils/getDataStoreStorageUsageWindow';
 import {
   chartConfigDataStoreRequestsByEndpoint,
   chartConfigDataStoreRequestsByStatus,
@@ -231,9 +232,10 @@ const getPageConfig = (
             renderer: {
               type: 'withChartContext',
               render: (chartContext, onSelectChartRegion) => {
-                const currentTime = getCurrentDate();
-                const { startTime } = chartContext.timeSpec;
-                const endTime = subHours(currentTime, 4);
+                const { startTime, endTime } = getDataStoreStorageUsageWindow(
+                  chartContext.timeSpec,
+                  getCurrentDate(),
+                );
                 const overrideContext: RAQIV2ChartContext = {
                   ...chartContext,
                   timeSpec: {
