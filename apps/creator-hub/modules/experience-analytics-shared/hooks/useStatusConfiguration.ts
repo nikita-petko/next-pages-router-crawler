@@ -71,7 +71,7 @@ const getRelevantConfigurations = <
   configs?.forEach((config) => {
     const { targets, key } = config;
     if (key && !!targets?.some((target) => currentTargets.includes(target))) {
-      relevantConfigs.push({ ...config, key } as T);
+      relevantConfigs.push({ ...config, key });
     }
   });
   return relevantConfigs;
@@ -171,7 +171,12 @@ const parseStartTime = (startTime: string | undefined): Date | null => {
 type AnnotationConfigurationResult = {
   announcementAnnotations: TimeSeriesAnnotation[];
   isAnnotationTargetingMetric: (annotationId: TAnnotationId, metric: TRAQIV2UIMetric) => boolean;
-  isAnnotationTargetingDimension: (
+  /**
+   * Whether the annotation applies to a chart showing the given dimensions.
+   * True when the annotation targets one of them, or when it declares no
+   * dimension targets at all and is therefore dimension-agnostic.
+   */
+  isAnnotationRelevantToDimensions: (
     annotationId: TAnnotationId,
     dimensions: readonly TRAQIV2Dimension[],
   ) => boolean;
@@ -244,11 +249,17 @@ export const useAnnotationConfiguration = (universeId?: number): AnnotationConfi
     [annotationTargetsMap],
   );
 
-  const isAnnotationTargetingDimension = useCallback(
+  const isAnnotationRelevantToDimensions = useCallback(
     (annotationId: TAnnotationId, dimensions: readonly TRAQIV2Dimension[]): boolean => {
       const targets = annotationTargetsMap.get(annotationId)?.dimensionTargets;
-      if (!targets || dimensions.length === 0) {
+      if (!targets) {
         return false;
+      }
+      // Configured dimension targets narrow the annotation to charts that slice
+      // the metric by one of them. Declaring none means the change applies to
+      // the whole metric, so it stays relevant however the chart is sliced.
+      if (targets.size === 0) {
+        return true;
       }
       return dimensions.some((dimension) => targets.has(dimension));
     },
@@ -259,9 +270,9 @@ export const useAnnotationConfiguration = (universeId?: number): AnnotationConfi
     () => ({
       announcementAnnotations,
       isAnnotationTargetingMetric,
-      isAnnotationTargetingDimension,
+      isAnnotationRelevantToDimensions,
     }),
-    [announcementAnnotations, isAnnotationTargetingMetric, isAnnotationTargetingDimension],
+    [announcementAnnotations, isAnnotationTargetingMetric, isAnnotationRelevantToDimensions],
   );
 };
 

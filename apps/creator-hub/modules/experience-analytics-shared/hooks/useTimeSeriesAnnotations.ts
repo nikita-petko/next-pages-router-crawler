@@ -280,7 +280,7 @@ export const useTimeSeriesAnnotations = ({
   // For Group/User resources, passing the id would be treated as a universeId and 403.
   const statusConfigUniverseId =
     resource.type === ChartResourceType.Universe ? resource.id : undefined;
-  const { announcementAnnotations, isAnnotationTargetingMetric, isAnnotationTargetingDimension } =
+  const { announcementAnnotations, isAnnotationTargetingMetric, isAnnotationRelevantToDimensions } =
     useAnnotationConfiguration(statusConfigUniverseId);
 
   const annotationTypes = useMemo(() => {
@@ -432,7 +432,7 @@ export const useTimeSeriesAnnotations = ({
           if (!targetingDimensions) {
             return matchesMetricTarget;
           }
-          const matchesDimensionTarget = isAnnotationTargetingDimension(
+          const matchesDimensionTarget = isAnnotationRelevantToDimensions(
             annotation.id,
             targetingDimensions,
           );
@@ -459,7 +459,7 @@ export const useTimeSeriesAnnotations = ({
         return true;
       });
     },
-    [timeSeriesAnnotations, isAnnotationTargetingMetric, isAnnotationTargetingDimension],
+    [timeSeriesAnnotations, isAnnotationTargetingMetric, isAnnotationRelevantToDimensions],
   );
 
   const updateTimeSeriesAnnotationsGivenChartContext = useCallback(
