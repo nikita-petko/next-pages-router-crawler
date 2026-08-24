@@ -9,3 +9,8 @@ export const MAX_LIST_CARD_THUMBNAILS = 3;
 export const ITEM_PICKER_PAGE_SIZE = 10;
 
 export const TRANSLATION_NAMESPACE = 'CreatorDashboard.Showcase';
+
+export const CREATE_SHOWCASE_ROUTE = '/dashboard/creations/showcases/create';
+
+/** Deep link back to the Showcases pill on the Creations page. */
+export const SHOWCASES_LIST_ROUTE = '/dashboard/creations?activeTab=Showcase';

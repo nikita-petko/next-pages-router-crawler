@@ -1,8 +1,11 @@
+import { useCallback } from 'react';
+import { useRouter } from 'next/router';
 import { ProgressCircle } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import LoadError from '@modules/miscellaneous/error/LoadError';
 import ShowcaseCard from '../components/ShowcaseCard';
 import ShowcasesEmptyState from '../components/ShowcasesEmptyState';
+import { CREATE_SHOWCASE_ROUTE } from '../constants';
 import useShowcasesGate from '../hooks/useShowcasesGate';
 import useShowcases from '../queries/useShowcases';
 
@@ -15,9 +18,14 @@ const centered = 'flex grow-1 flex-col items-center justify-center self-stretch 
 
 const ShowcasesPanel = ({ groupId }: ShowcasesPanelProps) => {
   const { translate } = useTranslation();
+  const router = useRouter();
   const isShowcasesEnabled = useShowcasesGate();
 
   const { data: showcases, isPending, isError, refetch } = useShowcases(groupId);
+
+  const goToCreate = useCallback(() => {
+    void router.push(CREATE_SHOWCASE_ROUTE);
+  }, [router]);
 
   // The flag is still resolving; hold rather than flashing an empty state.
   if (isShowcasesEnabled === undefined) {
@@ -61,7 +69,7 @@ const ShowcasesPanel = ({ groupId }: ShowcasesPanelProps) => {
   if (!showcases || showcases.length === 0) {
     return (
       <div className={centered}>
-        <ShowcasesEmptyState isCreateDisabled={!groupId} />
+        <ShowcasesEmptyState isCreateDisabled={!groupId} onCreateClick={goToCreate} />
       </div>
     );
   }

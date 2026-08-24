@@ -1960,6 +1960,14 @@
   width: 48px;
   height: 48px;
 }
+.size-\[80px\] {
+  width: 80px;
+  height: 80px;
+}
+.size-\[88px\] {
+  width: 88px;
+  height: 88px;
+}
 .size-\[8px\] {
   width: 8px;
   height: 8px;
@@ -2766,6 +2774,9 @@
 }
 .width-\[80px\] {
   width: 80px;
+}
+.width-\[88px\] {
+  width: 88px;
 }
 .width-\[8px\] {
   width: 8px;
@@ -4644,6 +4655,9 @@
 }
 .\!\[max-width\:480px\] {
   max-width: 480px !important;
+}
+.\[max-width\:643px\] {
+  max-width: 643px;
 }
 .\[max-width\:720px\] {
   max-width: 720px;
