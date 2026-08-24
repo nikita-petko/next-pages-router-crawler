@@ -100,6 +100,7 @@ export enum AnnotationKey {
   AgeGroupUpdate20251020 = 'AgeGroupUpdate20251020',
   AgeGroupUpdate20260116 = 'AgeGroupUpdate20260116',
   ErrorReportClean20260810 = 'ErrorReportClean20260810',
+  OOMBotTrafficExcluded20260824 = 'OOMBotTrafficExcluded20260824',
 }
 
 export const annotationConfig: Record<
@@ -151,6 +152,13 @@ export const annotationConfig: Record<
   [AnnotationKey.ErrorReportClean20260810]: {
     translationKey: translationKey(
       'Label.Annotation.MetricChange.ErrorReportClean20260810',
+      TranslationNamespace.Analytics,
+    ),
+    links: [],
+  },
+  [AnnotationKey.OOMBotTrafficExcluded20260824]: {
+    translationKey: translationKey(
+      'Label.Annotation.MetricChange.BotTrafficExcluded',
       TranslationNamespace.Analytics,
     ),
     links: [],
