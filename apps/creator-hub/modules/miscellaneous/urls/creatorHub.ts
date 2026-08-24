@@ -262,6 +262,8 @@ export const dashboard = {
     `/dashboard/creations/experiences/${universeId}/server-management`,
   getClientSessionsUrl: (universeId: number) =>
     `/dashboard/creations/experiences/${universeId}/client-sessions`,
+  getClientSessionDetailsUrl: (universeId: number, sessionId: string) =>
+    `/dashboard/creations/experiences/${universeId}/client-sessions/${sessionId}`,
   getPlayerSupportUrl: (universeId: number) =>
     `/dashboard/creations/experiences/${universeId}/player-support`,
 };

@@ -13,6 +13,7 @@ import {
   type ComputedMetric,
   type ComputedMetricSource,
 } from '@modules/experience-analytics-shared/types/ComputedMetric';
+import { resolveCustomDashboardSupportedAnnotationTypes } from './constants/customDashboardSurfaceAnnotationOptions';
 import {
   CUSTOM_DASHBOARD_CURRENT_SCHEMA_VERSION,
   CustomDashboardSummaryCardAggregation,
@@ -807,8 +808,10 @@ function fromProtoControls(raw: unknown, field: string): DashboardSurfaceControl
             isDefaultAnnotationType,
           ) ?? [];
         return {
-          // Proto only persists defaults; restore the FE allowlist from those.
-          supportedAnnotationTypes: defaultAnnotationTypes,
+          // Proto only persists selected defaults. Rebuild the picker catalog
+          // at runtime so unselected types are not dropped after save/reload.
+          supportedAnnotationTypes:
+            resolveCustomDashboardSupportedAnnotationTypes(defaultAnnotationTypes),
           defaultAnnotationTypes,
           showAnnotationsControl:
             typeof annotationOptionsRaw.showAnnotationsControl === 'boolean'

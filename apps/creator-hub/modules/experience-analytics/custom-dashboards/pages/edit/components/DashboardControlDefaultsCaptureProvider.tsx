@@ -10,6 +10,7 @@ import { AnalyticsCurrentFilterBundleContext } from '@modules/experience-analyti
 import { AnalyticsCurrentGranularityBundleContext } from '@modules/experience-analytics-shared/context/AnalyticsCurrentGranularityProvider';
 import { ExperienceAnalyticsCurrentAnnotationsBundleContext } from '@modules/experience-analytics-shared/context/ExperienceAnalyticsCurrentAnnotationsBundleProvider';
 import type { CreatorAnalyticsUntabbedPageConfig } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
+import { resolveCustomDashboardSupportedAnnotationTypes } from '../../../constants/customDashboardSurfaceAnnotationOptions';
 import {
   getChartRows,
   getDashboardSurface,
@@ -308,21 +309,16 @@ const DashboardControlDefaultsCaptureProvider: FC<DashboardControlDefaultsCaptur
         }
         persistConfigDefaults({
           annotationOptions: {
-            supportedAnnotationTypes:
-              controls.annotationOptions?.supportedAnnotationTypes ??
-              pageConfig.surfaceAnnotationOptions.supportedAnnotationTypes,
+            supportedAnnotationTypes: resolveCustomDashboardSupportedAnnotationTypes(
+              nextDefaultAnnotationTypes,
+            ),
             showAnnotationsControl: controls.annotationOptions?.showAnnotationsControl ?? true,
             defaultAnnotationTypes: nextDefaultAnnotationTypes,
           },
         });
       },
     }),
-    [
-      annotationBundle,
-      controls.annotationOptions,
-      pageConfig.surfaceAnnotationOptions.supportedAnnotationTypes,
-      persistConfigDefaults,
-    ],
+    [annotationBundle, controls.annotationOptions, persistConfigDefaults],
   );
 
   return (

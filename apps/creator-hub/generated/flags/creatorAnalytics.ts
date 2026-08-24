@@ -132,6 +132,11 @@ export const isClientSessionsEnabled = defineFlag({
     name: 'isClientSessionsEnabled',
     defaultValue: false,
   });
+export const isClientSessionsRealDataEnabled = defineFlag({
+    namespace: 'creator-analytics',
+    name: 'isClientSessionsRealDataEnabled',
+    defaultValue: false,
+  });
 export const isEhdResultsEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isEhdResultsEnabled',

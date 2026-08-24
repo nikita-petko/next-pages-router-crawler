@@ -1,61 +1,44 @@
 import { useQuery } from '@tanstack/react-query';
-import { clientSessionMetadataApi } from '../clients/clientSessionMetadataApi';
-import type { GetClientSessionMetadataResponse } from '../mockData/clientSessionMetadata';
-import { ClientSessionSchema, type ClientSession } from '../types/ClientSession';
-
-type ClientSessionMetadata = {
-  readonly session: ClientSession;
-};
-
-const mapClientSessionMetadata = (
-  response: GetClientSessionMetadataResponse,
-): ClientSessionMetadata => {
-  const apiSession = response.session;
-  const parseResult = ClientSessionSchema.safeParse({
-    id: apiSession?.sessionId,
-    device: apiSession?.device,
-    status: apiSession?.status,
-    startTime: apiSession?.startTime,
-    durationMinute: apiSession?.durationMinute,
-    placeVersion: apiSession?.placeVersion,
-    placeName: apiSession?.placeName,
-    averageFps: apiSession?.averageFps,
-    memoryUsageMB: apiSession?.memoryUsageMB,
-    dataAvailability: apiSession?.dataAvailability,
-  });
-
-  if (!parseResult.success) {
-    console.error('Failed to parse client session metadata response.', {
-      error: parseResult.error,
-    });
-    throw parseResult.error;
-  }
-
-  return { session: parseResult.data };
-};
+import { useUniverseSessionMetadataClient } from '../components/UniverseSessionMetadataClientProvider';
 
 export type UseClientSessionMetadataParams = {
+  readonly universeId: number | undefined;
   readonly sessionId: string | undefined;
 };
 
-export const getClientSessionMetadataQueryKey = ({ sessionId }: UseClientSessionMetadataParams) =>
-  ['universe-observability', 'client-session-metadata', sessionId] as const;
+export const getClientSessionMetadataQueryKey = ({
+  universeId,
+  sessionId,
+}: UseClientSessionMetadataParams) =>
+  ['universe-observability', 'client-session-metadata', { universeId, sessionId }] as const;
 
-const useClientSessionMetadata = ({ sessionId }: UseClientSessionMetadataParams) =>
-  useQuery({
-    queryKey: getClientSessionMetadataQueryKey({ sessionId }),
+const useClientSessionMetadata = ({ universeId, sessionId }: UseClientSessionMetadataParams) => {
+  const client = useUniverseSessionMetadataClient();
+
+  return useQuery({
+    queryKey: getClientSessionMetadataQueryKey({ universeId, sessionId }),
     queryFn: async ({ signal }) => {
+      if (!universeId) {
+        throw new Error('A universe ID is required to load client session metadata.');
+      }
       if (!sessionId) {
         throw new Error('A session ID is required to load client session metadata.');
       }
 
-      const response = await clientSessionMetadataApi.clientSessionsGetClientSessionMetadata(
-        { sessionId },
-        { signal },
+      const sessions = await client.getPlaySessions(
+        universeId,
+        { playSessionIds: [sessionId] },
+        signal,
       );
-      return mapClientSessionMetadata(response);
+      const session = sessions[0];
+      if (session == null) {
+        throw new Error('No client session metadata was returned for the requested session.');
+      }
+
+      return session;
     },
-    enabled: sessionId != null && sessionId.length > 0,
+    enabled: universeId != null && universeId > 0 && sessionId != null && sessionId.length > 0,
   });
+};
 
 export default useClientSessionMetadata;

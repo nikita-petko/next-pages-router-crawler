@@ -1,6 +1,5 @@
-import { useMemo } from 'react';
 import { useFlag } from '@rbx/flags';
-import { StatusBadge, type TStatusBadgeVariant } from '@rbx/foundation-ui';
+import { StatusBadge } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { isClientSessionsEnabled as isClientSessionsEnabledFlag } from '@generated/flags/creatorAnalytics';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
@@ -10,18 +9,13 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import BreadcrumbItemType from '@modules/navigation/layout/enums/BreadcrumbsItemType';
 import useBreadcrumbRegistration from '@modules/navigation/layout/hooks/useBreadcrumbRegistration';
 import useClientSessionMetadata from '../hooks/useClientSessionMetadata';
+import useClientSessionStatusLabels from '../hooks/useClientSessionStatusLabels';
 import useUniverseRelatedSession from '../hooks/useUniverseRelatedSession';
-import { ClientSessionStatus } from '../types/ClientSession';
+import { CLIENT_SESSION_STATUS_BADGE_VARIANTS } from '../utils/clientSessionStatusBadgeVariants';
 import ClientSessionMetadata from './ClientSessionMetadata';
+import ClientSessionsMetadataClientProvider from './ClientSessionsMetadataClientProvider';
 
-const STATUS_BADGE_VARIANTS = {
-  [ClientSessionStatus.Unspecified]: 'Standard',
-  [ClientSessionStatus.Active]: 'Success',
-  [ClientSessionStatus.Ended]: 'Standard',
-  [ClientSessionStatus.Crashed]: 'Alert',
-} as const satisfies Record<ClientSessionStatus, TStatusBadgeVariant>;
-
-const ClientSessionsPageTitle = () => {
+const ClientSessionsPageTitleInner = () => {
   const { isErrorLoadingUniverse, isLoadingUniverse, sessionId, universeId } =
     useUniverseRelatedSession();
   const { ready, value: isClientSessionsEnabled } = useFlag(isClientSessionsEnabledFlag, {
@@ -32,35 +26,8 @@ const ClientSessionsPageTitle = () => {
     data: metadata,
     isError: isMetadataError,
     isLoading: isMetadataLoading,
-  } = useClientSessionMetadata({ sessionId });
-  const statusLabels = useMemo(
-    () => ({
-      [ClientSessionStatus.Unspecified]: tPendingTranslation(
-        'Unspecified',
-        'Client session status when the status is unknown.',
-        translationKey(
-          'Label.ClientSessionStatus.Unspecified',
-          TranslationNamespace.ServerManagement,
-        ),
-      ),
-      [ClientSessionStatus.Active]: tPendingTranslation(
-        'Active',
-        'Client session status when the session is ongoing.',
-        translationKey('Label.ClientSessionStatus.Active', TranslationNamespace.ServerManagement),
-      ),
-      [ClientSessionStatus.Ended]: tPendingTranslation(
-        'Ended',
-        'Client session status when the session has finished.',
-        translationKey('Label.ClientSessionStatus.Ended', TranslationNamespace.ServerManagement),
-      ),
-      [ClientSessionStatus.Crashed]: tPendingTranslation(
-        'Crashed',
-        'Client session status when the session crashed.',
-        translationKey('Label.ClientSessionStatus.Crashed', TranslationNamespace.ServerManagement),
-      ),
-    }),
-    [tPendingTranslation],
-  );
+  } = useClientSessionMetadata({ universeId, sessionId });
+  const statusLabels = useClientSessionStatusLabels();
   const title = sessionId
     ? tPendingTranslation(
         'Session ID {sessionId}',
@@ -87,8 +54,8 @@ const ClientSessionsPageTitle = () => {
   const status =
     sessionId && !isMetadataLoading && !isMetadataError && metadata
       ? {
-          label: statusLabels[metadata.session.status],
-          variant: STATUS_BADGE_VARIANTS[metadata.session.status],
+          label: statusLabels[metadata.exitReason],
+          variant: CLIENT_SESSION_STATUS_BADGE_VARIANTS[metadata.exitReason],
         }
       : undefined;
 
@@ -111,12 +78,26 @@ const ClientSessionsPageTitle = () => {
           <span className='text-body-large content-default padding-top-xsmall'>{description}</span>
         )}
       </div>
-      <ClientSessionMetadata sessionId={sessionId} />
+      <ClientSessionMetadata universeId={universeId} sessionId={sessionId} />
     </div>
   );
 };
 
-export default withNamespaceSwitchedTranslation(ClientSessionsPageTitle, [
-  TranslationNamespace.Analytics,
-  TranslationNamespace.ServerManagement,
-]);
+const TranslatedClientSessionsPageTitleInner = withNamespaceSwitchedTranslation(
+  ClientSessionsPageTitleInner,
+  [TranslationNamespace.Analytics, TranslationNamespace.ServerManagement],
+);
+
+// The page title renders in the layout's title slot, a separate React tree from the page body,
+// so it provides its own session metadata client rather than inheriting one from page content.
+const ClientSessionsPageTitle = () => {
+  const { universeId } = useUniverseRelatedSession();
+
+  return (
+    <ClientSessionsMetadataClientProvider universeId={universeId}>
+      <TranslatedClientSessionsPageTitleInner />
+    </ClientSessionsMetadataClientProvider>
+  );
+};
+
+export default ClientSessionsPageTitle;

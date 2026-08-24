@@ -1,7 +1,6 @@
 import type { NextLayoutPage } from 'next';
 import { useFlag } from '@rbx/flags';
 import { isClientSessionsEnabled as isClientSessionsEnabledFlag } from '@generated/flags/creatorAnalytics';
-import Authenticated from '@modules/authentication/Authenticated';
 import getCreationsPageLayout from '@modules/creations/common/implementations/getCreationsPageLayout';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { PageNotFound } from '@modules/miscellaneous/error';
@@ -23,11 +22,7 @@ const ClientSession: NextLayoutPage = () => {
     return <PageNotFound />;
   }
 
-  return (
-    <Authenticated>
-      <ClientSessionDetailsPageContent />
-    </Authenticated>
-  );
+  return <ClientSessionDetailsPageContent />;
 };
 
 ClientSession.getPageLayout = (page) =>

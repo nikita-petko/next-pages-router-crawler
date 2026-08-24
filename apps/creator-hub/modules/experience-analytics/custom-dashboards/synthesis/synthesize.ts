@@ -10,7 +10,6 @@ import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import ChartSummaryType from '@modules/charts-generic/enums/ChartSummaryType';
 import { RAQIV2ChartResourceType } from '@modules/clients/analytics';
 import type { TQueryFilter } from '@modules/clients/analytics/analyticsRAQIShared';
-import { AnnotationType } from '@modules/clients/analytics/annotations/annotations';
 import buildChartConfiguratorTableConfig, {
   type ExploreModeTableMetricColumnInput,
 } from '@modules/experience-analytics-shared/chartConfigurator/buildChartConfiguratorTableConfig';
@@ -52,6 +51,10 @@ import { RAQIV2SpecialLayoutType } from '@modules/experience-analytics-shared/ty
 import { getPageSurfaceMetrics } from '@modules/experience-analytics-shared/utils/getPredefinedComponentMetrics';
 import { brandUserSuppliedText } from '@modules/experience-analytics-shared/utils/metricLikeSemantics';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import {
+  CUSTOM_DASHBOARD_SURFACE_ANNOTATION_OPTIONS,
+  resolveCustomDashboardSupportedAnnotationTypes,
+} from '../constants/customDashboardSurfaceAnnotationOptions';
 import { getChartRows, getDashboardSurface, getSummaryCards } from '../layout/dashboardLayout';
 import {
   MAX_SUMMARY_CARDS_PER_DASHBOARD,
@@ -182,23 +185,6 @@ const tileSynthesisFingerprint = (tile: ChartTileConfig | SummaryCardTileConfig)
 // `''` is treated as a no-op by the renderer. Reused for fields the renderer
 // requires structurally but the editor's chrome owns.
 const EMPTY_TRANSLATION_KEY = translationKey('', TranslationNamespace.Analytics);
-const CUSTOM_DASHBOARD_SURFACE_ANNOTATION_OPTIONS: AnalyticsPageConfigAnnotationOptions = {
-  supportedAnnotationTypes: [
-    AnnotationType.PlaceIcon,
-    AnnotationType.PlaceThumbnail,
-    AnnotationType.PlaceVideo,
-    AnnotationType.PlaceVersion,
-    AnnotationType.Benchmark,
-    AnnotationType.LiveEvent,
-    AnnotationType.CustomMatchmaking,
-    AnnotationType.RetentionCorhortDisclaimer,
-    AnnotationType.ConfigVersion,
-    AnnotationType.Announcement,
-  ],
-  defaultAnnotationTypes: [],
-  showAnnotationsControl: true,
-};
-
 function tryResolveMetric(metricKey: string): TRAQIV2NumericUIMetric | null {
   return isNumericUIMetric(metricKey) ? metricKey : null;
 }
@@ -388,15 +374,15 @@ function buildSurfaceAnnotationOptions(
   controls: DashboardSurfaceControls,
 ): AnalyticsPageConfigAnnotationOptions {
   const annotationOptions = controls.annotationOptions;
+  const defaultAnnotationTypes = annotationOptions?.defaultAnnotationTypes
+    ? [...annotationOptions.defaultAnnotationTypes]
+    : CUSTOM_DASHBOARD_SURFACE_ANNOTATION_OPTIONS.defaultAnnotationTypes;
   return {
     ...CUSTOM_DASHBOARD_SURFACE_ANNOTATION_OPTIONS,
-    supportedAnnotationTypes: annotationOptions?.supportedAnnotationTypes
-      ? [...annotationOptions.supportedAnnotationTypes]
-      : CUSTOM_DASHBOARD_SURFACE_ANNOTATION_OPTIONS.supportedAnnotationTypes,
+    supportedAnnotationTypes:
+      resolveCustomDashboardSupportedAnnotationTypes(defaultAnnotationTypes),
     showAnnotationsControl: annotationOptions?.showAnnotationsControl ?? true,
-    defaultAnnotationTypes: annotationOptions?.defaultAnnotationTypes
-      ? [...annotationOptions.defaultAnnotationTypes]
-      : CUSTOM_DASHBOARD_SURFACE_ANNOTATION_OPTIONS.defaultAnnotationTypes,
+    defaultAnnotationTypes,
   };
 }
 

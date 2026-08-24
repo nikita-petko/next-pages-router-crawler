@@ -14,8 +14,15 @@ import useTranslationWrapper from '@modules/analytics-translations/useTranslatio
 import withNamespaceSwitchedTranslation from '@modules/analytics-translations/withNamespaceSwitchedTranslation';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import useClientSessionDataAvailabilityLabels from '../hooks/useClientSessionDataAvailabilityLabels';
 import useClientSessionMetadata from '../hooks/useClientSessionMetadata';
-import { ClientSessionDataAvailability } from '../types/ClientSession';
+import { durationMillisecondsToMinutes } from '../utils/durationMillisecondsToMinutes';
+import {
+  formatMissingValue,
+  formatOperatingSystem,
+  formatPlatform,
+  MISSING_VALUE_PLACEHOLDER,
+} from '../utils/formatMissingValue';
 
 // Session timestamps are stored in UTC; render them in UTC with a "UTC" suffix
 // (via timeZoneName) so the value is unambiguous regardless of the viewer's zone.
@@ -36,13 +43,14 @@ type MetadataEntry = {
 type ClientSessionMetadataData = NonNullable<ReturnType<typeof useClientSessionMetadata>['data']>;
 
 type ClientSessionMetadataProps = {
+  readonly universeId: number | undefined;
   readonly sessionId: string | undefined;
 };
 
-const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ sessionId }) => {
+const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ universeId, sessionId }) => {
   const { locale } = useLocalization();
   const { translate, tPendingTranslation } = useTranslationWrapper(useTranslation());
-  const { data, isError, isLoading } = useClientSessionMetadata({ sessionId });
+  const { data, isError, isLoading } = useClientSessionMetadata({ universeId, sessionId });
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat(locale ?? Locale.English), [locale]);
   const startTimeFormatter = useMemo(
@@ -71,6 +79,7 @@ const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ sessionId }) =>
     ),
   );
   const closeDrawerLabel = translate(translationKey('Action.Close', TranslationNamespace.Controls));
+  const dataAvailabilityLabels = useClientSessionDataAvailabilityLabels();
 
   const labels = useMemo(
     () => ({
@@ -106,13 +115,10 @@ const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ sessionId }) =>
           TranslationNamespace.ServerManagement,
         ),
       ),
-      averageFps: tPendingTranslation(
-        'Average FPS',
-        'Label for the average frames per second during a client session.',
-        translationKey(
-          'Label.ClientSessionMetadataAverageFps',
-          TranslationNamespace.ServerManagement,
-        ),
+      minFps: tPendingTranslation(
+        'Min FPS',
+        'Label for the lowest frames per second during a client session.',
+        translationKey('Label.ClientSessionMetadataMinFps', TranslationNamespace.ServerManagement),
       ),
       memoryUsage: tPendingTranslation(
         'Memory Usage',
@@ -158,36 +164,6 @@ const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ sessionId }) =>
     [tPendingTranslation],
   );
 
-  const dataAvailabilityLabels = useMemo(
-    () => ({
-      [ClientSessionDataAvailability.MicroProfiler]: tPendingTranslation(
-        'MicroProfiler',
-        'Debug data type: MicroProfiler capture for a client session.',
-        translationKey(
-          'Label.ClientSessionDataAvailability.MicroProfiler',
-          TranslationNamespace.ServerManagement,
-        ),
-      ),
-      [ClientSessionDataAvailability.DMR]: tPendingTranslation(
-        'DMR',
-        'Debug data type: DMR (data model replay) for a client session.',
-        translationKey(
-          'Label.ClientSessionDataAvailability.DMR',
-          TranslationNamespace.ServerManagement,
-        ),
-      ),
-      [ClientSessionDataAvailability.MemoryDump]: tPendingTranslation(
-        'Memory Dump',
-        'Debug data type: memory dump for a client session.',
-        translationKey(
-          'Label.ClientSessionDataAvailability.MemoryDump',
-          TranslationNamespace.ServerManagement,
-        ),
-      ),
-    }),
-    [tPendingTranslation],
-  );
-
   const buildEntries = (
     metadata: ClientSessionMetadataData | undefined,
   ): readonly MetadataEntry[] => {
@@ -195,40 +171,75 @@ const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ sessionId }) =>
       return [];
     }
 
-    const { session } = metadata;
-    const durationValue = tPendingTranslation(
-      '{duration} min',
-      'Client session duration in minutes; {duration} is the number of minutes.',
-      translationKey('Value.ClientSessionMetadataDuration', TranslationNamespace.ServerManagement),
-      { duration: numberFormatter.format(session.durationMinute) },
+    const durationMinutes = durationMillisecondsToMinutes(metadata.durationMilliseconds);
+    const durationValue =
+      durationMinutes == null
+        ? MISSING_VALUE_PLACEHOLDER
+        : tPendingTranslation(
+            '{duration} min',
+            'Client session duration in minutes; {duration} is the number of minutes.',
+            translationKey(
+              'Value.ClientSessionMetadataDuration',
+              TranslationNamespace.ServerManagement,
+            ),
+            { duration: numberFormatter.format(durationMinutes) },
+          );
+    const memoryUsageValue = formatMissingValue(
+      metadata.clientUsedMemoryMegabytes,
+      MISSING_VALUE_PLACEHOLDER,
+      (memory) =>
+        tPendingTranslation(
+          '{memory} MB',
+          'Memory amount in megabytes; {memory} is the number of megabytes.',
+          translationKey(
+            'Value.ClientSessionMetadataMemoryMB',
+            TranslationNamespace.ServerManagement,
+          ),
+          { memory: numberFormatter.format(memory) },
+        ),
     );
-    const memoryUsageValue = tPendingTranslation(
-      '{memory} MB',
-      'Memory amount in megabytes; {memory} is the number of megabytes.',
-      translationKey('Value.ClientSessionMetadataMemoryMB', TranslationNamespace.ServerManagement),
-      { memory: numberFormatter.format(session.memoryUsageMB) },
-    );
-    const deviceMemoryValue = tPendingTranslation(
-      '{memory} MB',
-      'Memory amount in megabytes; {memory} is the number of megabytes.',
-      translationKey('Value.ClientSessionMetadataMemoryMB', TranslationNamespace.ServerManagement),
-      { memory: numberFormatter.format(session.device.memoryMB) },
+    const deviceMemoryValue = formatMissingValue(
+      metadata.clientDeviceRamMegabytes,
+      MISSING_VALUE_PLACEHOLDER,
+      (memory) =>
+        tPendingTranslation(
+          '{memory} MB',
+          'Memory amount in megabytes; {memory} is the number of megabytes.',
+          translationKey(
+            'Value.ClientSessionMetadataMemoryMB',
+            TranslationNamespace.ServerManagement,
+          ),
+          { memory: numberFormatter.format(memory) },
+        ),
     );
 
     return [
-      { label: labels.placeName, value: session.placeName },
-      { label: labels.placeVersion, value: session.placeVersion },
-      { label: labels.startTime, value: startTimeFormatter.format(session.startTime) },
+      { label: labels.placeName, value: metadata.placeName },
+      {
+        label: labels.placeVersion,
+        value: formatMissingValue(metadata.placeVersion, MISSING_VALUE_PLACEHOLDER),
+      },
+      {
+        label: labels.startTime,
+        value: formatMissingValue(metadata.startedTime, MISSING_VALUE_PLACEHOLDER, (startedTime) =>
+          startTimeFormatter.format(startedTime),
+        ),
+      },
       { label: labels.duration, value: durationValue },
-      { label: labels.averageFps, value: numberFormatter.format(session.averageFps) },
+      {
+        label: labels.minFps,
+        value: formatMissingValue(metadata.minFps, MISSING_VALUE_PLACEHOLDER, (minFps) =>
+          numberFormatter.format(minFps),
+        ),
+      },
       { label: labels.memoryUsage, value: memoryUsageValue },
-      { label: labels.platform, value: session.device.platform },
-      { label: labels.operatingSystem, value: session.device.operatingSystem },
+      { label: labels.platform, value: formatPlatform(metadata.platform) },
+      { label: labels.operatingSystem, value: formatOperatingSystem(metadata.os) },
       { label: labels.deviceMemory, value: deviceMemoryValue },
       {
         label: labels.dataAvailability,
         value: listFormatter.format(
-          session.dataAvailability.map((availability) => dataAvailabilityLabels[availability]),
+          metadata.dataAvailability.map((availability) => dataAvailabilityLabels[availability]),
         ),
       },
     ];

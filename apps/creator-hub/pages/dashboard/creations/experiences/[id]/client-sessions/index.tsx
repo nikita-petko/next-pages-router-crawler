@@ -1,10 +1,10 @@
 import type { NextLayoutPage } from 'next';
 import { useFlag } from '@rbx/flags';
 import { isClientSessionsEnabled as isClientSessionsEnabledFlag } from '@generated/flags/creatorAnalytics';
-import Authenticated from '@modules/authentication/Authenticated';
 import getCreationsPageLayout from '@modules/creations/common/implementations/getCreationsPageLayout';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { PageNotFound } from '@modules/miscellaneous/error';
+import ClientSessionBrowserPageContent from '@modules/universe-observability/components/ClientSessionBrowserPageContent';
 import ClientSessionsPageTitle from '@modules/universe-observability/components/ClientSessionsPageTitle';
 import useUniverseRelatedSession from '@modules/universe-observability/hooks/useUniverseRelatedSession';
 
@@ -14,15 +14,17 @@ const ClientSessions: NextLayoutPage = () => {
     universeId,
   });
 
-  if (isLoadingUniverse || !ready) {
-    return <PageLoading />;
+  const isLoading = isLoadingUniverse || !ready;
+
+  if (!isLoading && isClientSessionsEnabled && universeId > 0) {
+    return <ClientSessionBrowserPageContent universeId={universeId} />;
   }
 
-  if (isErrorLoadingUniverse || !isClientSessionsEnabled) {
+  if (!isLoading && (isErrorLoadingUniverse || !isClientSessionsEnabled)) {
     return <PageNotFound />;
   }
 
-  return <Authenticated />;
+  return <PageLoading />;
 };
 
 ClientSessions.getPageLayout = (page) =>

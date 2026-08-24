@@ -9,7 +9,6 @@ import {
 } from '@rbx/creator-hub-analytics-config';
 import { Button, IconButton } from '@rbx/foundation-ui';
 import { useAnalyticsCurrentDateRangeBundle } from '@modules/charts-generic/context/AnalyticsQueryDateRangeBundleContext';
-import { AnnotationType } from '@modules/clients/analytics/annotations/annotations';
 import {
   getChartConfiguratorDimensions,
   getSharedChartConfiguratorDimensions,
@@ -38,13 +37,13 @@ import {
   type MetricLike,
 } from '@modules/experience-analytics-shared/types/ComputedMetric';
 import type {
-  AnalyticsPageConfigAnnotationOptions,
   AnalyticsPageConfigDateOptions,
   CreatorAnalyticsPageSurfaceConfig,
 } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
 import { getAPIMetricFromUIMetric } from '@modules/experience-analytics-shared/utils/getAPIMetricFromUIMetric';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
 import CustomDashboardBreadcrumbRegistration from '../../components/CustomDashboardBreadcrumbRegistration';
+import { CUSTOM_DASHBOARD_SURFACE_ANNOTATION_OPTIONS } from '../../constants/customDashboardSurfaceAnnotationOptions';
 import { CustomDashboardNotFoundError } from '../../errors';
 import { getChartRows, withChartRows } from '../../layout/dashboardLayout';
 import { appendTileAsRow, flattenRows, replaceTile } from '../../layout/rowLayout';
@@ -70,23 +69,6 @@ import {
 } from './chartTileDraft';
 import useChartEditorSidebarState from './useChartEditorSidebarState';
 import styles from './ChartEditorPageContent.module.css';
-
-const exploreSurfaceAnnotationOptions: AnalyticsPageConfigAnnotationOptions = {
-  supportedAnnotationTypes: [
-    AnnotationType.PlaceIcon,
-    AnnotationType.PlaceThumbnail,
-    AnnotationType.PlaceVideo,
-    AnnotationType.PlaceVersion,
-    AnnotationType.Benchmark,
-    AnnotationType.LiveEvent,
-    AnnotationType.CustomMatchmaking,
-    AnnotationType.RetentionCorhortDisclaimer,
-    AnnotationType.ConfigVersion,
-    AnnotationType.Announcement,
-  ],
-  defaultAnnotationTypes: [],
-  showAnnotationsControl: true,
-};
 
 const resolveApiMetric = (
   sourceMetric: TChartConfiguratorMetrics,
@@ -218,7 +200,7 @@ const ChartEditorPageContent: FC<ChartEditorPageContentProps> = ({
       filterDimensions: dimensions,
       breakdownDimensions,
       timeRangeOptions,
-      surfaceAnnotationOptions: exploreSurfaceAnnotationOptions,
+      surfaceAnnotationOptions: CUSTOM_DASHBOARD_SURFACE_ANNOTATION_OPTIONS,
       body: [],
     }),
     [breakdownDimensions, dimensions, resource.type, timeRangeOptions],
