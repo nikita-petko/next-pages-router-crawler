@@ -20,7 +20,6 @@ export enum FeatureFlagName {
   rentablesPostLaunchWhitelist = 'rentablesPostLaunchWhitelist',
   enableContentMaturity18Plus = 'enableContentMaturity18Plus',
   enableMakeupAssets = 'enableMakeupAssets',
-  enableFirstPayoutWarning = 'enableFirstPayoutWarning',
   enableQuestionnaireHelpDialog = 'enableQuestionnaireHelpDialog',
   ageVerificationUpsellBannerStartDate = 'ageVerificationUpsellBannerStartDate',
   ageVerificationUpsellBannerEndDate = 'ageVerificationUpsellBannerEndDate',
@@ -91,7 +90,6 @@ export const featureFlagDefaults = defineFeatureFlagDefaults({
   [FeatureFlagName.rentablesPostLaunchWhitelist]: '',
   [FeatureFlagName.enableContentMaturity18Plus]: false,
   [FeatureFlagName.enableMakeupAssets]: false,
-  [FeatureFlagName.enableFirstPayoutWarning]: false,
   [FeatureFlagName.enableQuestionnaireHelpDialog]: false,
 
   [FeatureFlagName.ageVerificationUpsellBannerStartDate]: new Date('2025-12-03').toISOString(),

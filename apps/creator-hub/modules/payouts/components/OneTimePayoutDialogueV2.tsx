@@ -21,7 +21,6 @@ import { FormMode } from '@modules/miscellaneous/common';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 import { useCurrentGroup } from '@modules/providers/groups/GroupsProvider';
 import { suggestedPayoutsQueryKey } from '@modules/react-query/payouts';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import { MaxDialogueHeightPx } from '../constants/payoutsConstants';
 import useFirstTimePayoutCheck from '../hooks/useFirstTimePayoutCheck';
 import useGroupDevExWatermarks, { groupWatermarksQueryKey } from '../hooks/useGroupDevExWatermarks';
@@ -78,7 +77,6 @@ const OneTimePayoutDialogueV2: FunctionComponent<OneTimePayoutDialogueProps> = (
     classes: { dialogActionButton },
   } = useOneTimePayoutDialogueStyles();
 
-  const { settings } = useSettings();
   const { translate } = useTranslation();
   const { value: isWatermarkContributionsEnabled } = useFlag(enablePayoutWatermarkContributions, {
     groupId: Number(organization.groupId),
@@ -122,9 +120,7 @@ const OneTimePayoutDialogueV2: FunctionComponent<OneTimePayoutDialogueProps> = (
   const { firstTimePayouts, isLoading: isCheckingFirstTimePayouts } = useFirstTimePayoutCheck({
     organizationId: organization.id,
     payouts,
-    enabled:
-      payoutDialogueStage === PayoutDialogueStage.Confirm &&
-      (settings?.enableFirstPayoutWarning ?? false),
+    enabled: payoutDialogueStage === PayoutDialogueStage.Confirm,
   });
 
   const { handleCsvUpload, isCsvUploading, csvErrors, csvWarnings, clearCsvMessages } =
@@ -203,6 +199,7 @@ const OneTimePayoutDialogueV2: FunctionComponent<OneTimePayoutDialogueProps> = (
     [getValues, setValue],
   );
 
+  /* oxlint-disable react/react-compiler -- annotation-mode compiler skips this file; manual useCallback deps are intentional (specific organization.groupId/id, not the inferred `organization`) */
   const handleFormSubmit: SubmitHandler<OneTimePayoutFormType> = useCallback(
     async (data) => {
       setFormSubmissionErrorMsg(undefined);
@@ -286,6 +283,7 @@ const OneTimePayoutDialogueV2: FunctionComponent<OneTimePayoutDialogueProps> = (
       normalizedWatermarks,
     ],
   );
+  /* oxlint-enable react/react-compiler */
 
   const nextAction = useCallback(() => {
     if (payoutDialogueStage === PayoutDialogueStage.Input) {
@@ -293,7 +291,7 @@ const OneTimePayoutDialogueV2: FunctionComponent<OneTimePayoutDialogueProps> = (
       setPayoutDialogueStage(PayoutDialogueStage.Confirm);
     }
     if (payoutDialogueStage === PayoutDialogueStage.Confirm) {
-      if (settings?.enableFirstPayoutWarning && firstTimePayouts.length > 0) {
+      if (firstTimePayouts.length > 0) {
         setPayoutDialogueStage(PayoutDialogueStage.FirstPayoutWarning);
         return;
       }
@@ -302,14 +300,7 @@ const OneTimePayoutDialogueV2: FunctionComponent<OneTimePayoutDialogueProps> = (
     if (payoutDialogueStage === PayoutDialogueStage.FirstPayoutWarning) {
       handleFormSubmit(getValues());
     }
-  }, [
-    payoutDialogueStage,
-    handleFormSubmit,
-    getValues,
-    clearCsvMessages,
-    settings?.enableFirstPayoutWarning,
-    firstTimePayouts,
-  ]);
+  }, [payoutDialogueStage, handleFormSubmit, getValues, clearCsvMessages, firstTimePayouts]);
 
   const isNextDisabled = useCallback(() => {
     if (payoutDialogueStage === PayoutDialogueStage.Input) {
