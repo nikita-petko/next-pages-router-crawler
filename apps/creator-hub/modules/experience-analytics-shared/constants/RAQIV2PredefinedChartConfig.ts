@@ -4,6 +4,7 @@ import type { TranslationKey } from '@modules/analytics-translations/types';
 import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import { mapNonEmptyArray, type NonEmptyArray } from '@modules/charts-generic/types/NonEmptyArray';
 import { isValidEnumValue, isValidArrayEnumValue } from '@modules/miscellaneous/utils/enumUtils';
+import type { MetricLike } from '../types/ComputedMetric';
 import type { ChartDisplayContext, QuotaConfig } from '../types/RAQIV2ChartConfig';
 import {
   type ChartConfigDisplayOptions,
@@ -359,6 +360,26 @@ export const getMetricRelatedConfigFromPredefinedChart = (
     return config.metricsConfig;
   }
   return [{ metric: config.metric, overrides: config.overrides }];
+};
+
+/**
+ * Metric the chart should query. Custom-dashboard synthesis keeps the atomic
+ * `metric` for titles/quota and stores the formula on `computedMetric`; preview
+ * and persisted tiles must execute that formula when present.
+ *
+ * The authored `name` is omitted so renaming a formula does not change query
+ * identity (same contract as `useActiveMetricForQuery`).
+ */
+export const getChartConfigExecutionMetric = (
+  chartKeyOrConfig: ChartConfigOrPredefinedKey,
+  atomicMetric: TRAQIV2NumericUIMetric,
+): MetricLike => {
+  const config = getConfigFromKeyOrConfig(chartKeyOrConfig);
+  if (!isMultiMetricChartConfig(config) && config.computedMetric) {
+    const { name: _name, ...computedMetricForQuery } = config.computedMetric;
+    return computedMetricForQuery;
+  }
+  return atomicMetric;
 };
 
 type PartialPredefinedChartConfig = Omit<ChartConfig, 'metric' | 'metricConfig' | 'overrides'>;
