@@ -11,6 +11,27 @@
 
 type BigIntValue = bigint | boolean | number | string;
 
+// `globalThis` only exists from Safari 12.1 / Chrome 71 / Opera 58, but
+// `.browserslistrc` declares safari 12 / chrome 64 / opera 51. Resolve the
+// global safely so these browsers still reach the unsupported-browser page.
+// `self` has been available in all browsers since IE4.
+interface PolyfillTarget {
+  BigInt?: unknown;
+}
+function resolveGlobal(): PolyfillTarget | undefined {
+  if (typeof globalThis !== 'undefined') {
+    return globalThis;
+  }
+  if (typeof self !== 'undefined') {
+    return self;
+  }
+  if (typeof window !== 'undefined') {
+    return window;
+  }
+  return undefined;
+}
+const polyfillTarget = resolveGlobal();
+
 // Not an arrow: it has to be callable without `new`, and needs the implicit
 // `.prototype` object so `BigInt.prototype.*` access doesn't throw.
 function bigIntPolyfill(value: BigIntValue): number {
@@ -26,13 +47,11 @@ bigIntPolyfill.asUintN = unsupported('asUintN');
 
 // Runs on import; exported so tests can drive it directly.
 export const installBigIntPolyfill = (): void => {
-  if (typeof globalThis.BigInt !== 'undefined') {
+  if (!polyfillTarget || typeof polyfillTarget.BigInt !== 'undefined') {
     return;
   }
 
-  // `defineProperty` avoids the unsafe cast a plain assignment would need, and
-  // matches the native descriptor.
-  Object.defineProperty(globalThis, 'BigInt', {
+  Object.defineProperty(polyfillTarget, 'BigInt', {
     value: bigIntPolyfill,
     writable: true,
     configurable: true,

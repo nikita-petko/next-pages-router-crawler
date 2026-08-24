@@ -7,9 +7,11 @@ import {
   LicenseDurationType,
 } from '@rbx/client-content-licensing-api/v1';
 import type { RobloxApiDevelopModelsUniverseModel as Universe } from '@rbx/client-develop/v1';
+import { useFlag } from '@rbx/flags';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import { useLocalStorage } from '@rbx/react-utilities';
 import { Alert, AlertTitle, Button, makeStyles, OpenInNewIcon, Typography } from '@rbx/ui';
+import { isImageAttachmentEnabledInLicenseApplication } from '@generated/flags/contentLicensing';
 import { Link } from '@modules/miscellaneous/components';
 import { useDebouncedFunction } from '@modules/miscellaneous/hooks/useDebouncedFunction';
 import { isNonEmptyString } from '@modules/miscellaneous/utils';
@@ -358,6 +360,15 @@ const IphAgreementAlerts: React.FC<IphAgreementAlertsProps> = ({
   const { logEvent } = useLicenseManagerLogger();
   const { isFetched, settings } = useSettings();
   const { enableIpPlatformConditionalOffers } = settings;
+  const { ready: isImageAttachmentFlagReady, value: isImageAttachmentEnabled } = useFlag(
+    isImageAttachmentEnabledInLicenseApplication,
+  );
+  // The Creator Intent section on the Details tab replaces this alert's pitch text
+  // for creator-initiated (Apply) agreements.
+  const hideNoteFromCreatorAlert =
+    isImageAttachmentFlagReady &&
+    isImageAttachmentEnabled &&
+    getAgreementActivityByTransition(agreement.activityLog, AgreementTransition.Apply) != null;
   const isTimelimitedLicense =
     agreement.license?.licenseDuration?.durationType === LicenseDurationType.TimeLimited;
 
@@ -449,7 +460,7 @@ const IphAgreementAlerts: React.FC<IphAgreementAlertsProps> = ({
     !isFetched ||
     !alertType ||
     isDismissed ||
-    (alertType === AlertType.Inquired && creatorNote === '')
+    (alertType === AlertType.Inquired && (creatorNote === '' || hideNoteFromCreatorAlert))
   ) {
     return null;
   }

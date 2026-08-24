@@ -1,6 +1,6 @@
-import '@modules/compatibility/BigInt/polyfill';
-import '@modules/compatibility/MediaQueryList/polyfill';
-import 'promise-polyfill/src/polyfill';
+// Must stay first: `BigInt` has to be installed before any module that evaluates zod.
+import '@rbx/polyfills';
+// Intl shims are app-owned (~116KB gzipped); `intl-locale` must precede the next import.
 import '@formatjs/intl-locale/polyfill';
 import '@formatjs/intl-relativetimeformat/polyfill';
 import '@rbx/webfont';

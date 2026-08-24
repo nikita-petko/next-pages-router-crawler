@@ -78,7 +78,7 @@ const findPrototypeNeedingShim = (): object | undefined => {
   }
 
   const probe = window.matchMedia('all');
-  // oxlint-disable-next-line typescript/no-deprecated -- the deprecated pair is all Safari 13 has
+  // oxlint-disable-next-line typescript/no-deprecated -- the deprecated pair is all Safari < 14 has
   const hasLegacyApi = typeof probe.addListener === 'function';
   if (typeof probe.addEventListener === 'function' || !hasLegacyApi) {
     return undefined;

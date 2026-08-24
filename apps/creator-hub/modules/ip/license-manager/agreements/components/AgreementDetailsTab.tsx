@@ -43,6 +43,7 @@ import { getMaturityRatingLabel } from '../../utils/maturityRating';
 import { getRevShareTimingKeys } from '../../utils/revShareTiming';
 import { getDateRangeLabel } from '../../utils/timeLimitedLicense';
 import AgreementRevenueTargetsSection from './AgreementRevenueTargetsSection';
+import IphViewOfCreatorIntent from './IphViewOfCreatorIntent';
 
 const useStyles = makeStyles()(() => ({
   iconContainer: {
@@ -165,6 +166,12 @@ const AgreementDetailsTab: FunctionComponent<AgreementDetailsTabProps> = ({
           </Grid>
         )}
       </Grid>
+
+      <IphViewOfCreatorIntent
+        agreement={agreement}
+        creatorName={universe.creatorName ?? ''}
+        listingName={listing.name ?? ''}
+      />
 
       <AmDivider />
 
