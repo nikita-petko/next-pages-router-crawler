@@ -54,7 +54,6 @@ export const getEligibility = async (): Promise<UpsellEligibility> => {
 export const AgeVerificationUpsellProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const {
     settings: {
-      enableAgeVerificationUpsellBanner,
       ageVerificationUpsellBannerStartDate,
       ageVerificationUpsellBannerEndDate,
       ageVerificationUpsellBannerHighPriorityDate,
@@ -73,14 +72,13 @@ export const AgeVerificationUpsellProvider: React.FC<React.PropsWithChildren> = 
 
     const isHighPriority = highPriorityDate <= now;
     const isInWindow = startDate <= now && now < endDate;
-    const isEnabled = enableAgeVerificationUpsellBanner && isInWindow;
+    const isEnabled = isInWindow;
 
     return {
       isHighPriority,
       isEnabled,
     };
   }, [
-    enableAgeVerificationUpsellBanner,
     ageVerificationUpsellBannerEndDate,
     ageVerificationUpsellBannerStartDate,
     ageVerificationUpsellBannerHighPriorityDate,

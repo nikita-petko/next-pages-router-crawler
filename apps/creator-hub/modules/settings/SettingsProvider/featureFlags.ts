@@ -22,7 +22,6 @@ export enum FeatureFlagName {
   enableMakeupAssets = 'enableMakeupAssets',
   enableFirstPayoutWarning = 'enableFirstPayoutWarning',
   enableQuestionnaireHelpDialog = 'enableQuestionnaireHelpDialog',
-  enableAgeVerificationUpsellBanner = 'enableAgeVerificationUpsellBanner',
   ageVerificationUpsellBannerStartDate = 'ageVerificationUpsellBannerStartDate',
   ageVerificationUpsellBannerEndDate = 'ageVerificationUpsellBannerEndDate',
   ageVerificationUpsellBannerHighPriorityDate = 'ageVerificationUpsellBannerHighPriorityDate',
@@ -96,7 +95,6 @@ export const featureFlagDefaults = defineFeatureFlagDefaults({
   [FeatureFlagName.enableFirstPayoutWarning]: false,
   [FeatureFlagName.enableQuestionnaireHelpDialog]: false,
 
-  [FeatureFlagName.enableAgeVerificationUpsellBanner]: false,
   [FeatureFlagName.ageVerificationUpsellBannerStartDate]: new Date('2025-12-03').toISOString(),
   [FeatureFlagName.ageVerificationUpsellBannerEndDate]: new Date('2026-06-01').toISOString(),
   [FeatureFlagName.ageVerificationUpsellBannerHighPriorityDate]: new Date(
