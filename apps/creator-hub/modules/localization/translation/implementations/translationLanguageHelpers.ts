@@ -3,10 +3,7 @@ import { chineseSimplifiedLanguageCode } from '../constants';
 import type { TranslationLanguage } from '../types/TranslationLanguage';
 import type TranslationTarget from '../types/TranslationTarget';
 
-export function parseTranslationTargets(
-  areChildLocalesSupported: boolean,
-  languageWithLocales: SupportedLanguagesDataResponse,
-): {
+export function parseTranslationTargets(languageWithLocales: SupportedLanguagesDataResponse): {
   defaultTarget: TranslationTarget;
   childTargets: TranslationTarget[];
 } {
@@ -22,20 +19,16 @@ export function parseTranslationTargets(
   // child locales
   let childTargets: TranslationTarget[] = [];
   if (
-    areChildLocalesSupported &&
     languageWithLocales.childLocales &&
     languageWithLocales.childLocales.length > 1 &&
     languageCode !== chineseSimplifiedLanguageCode
   ) {
-    childTargets = languageWithLocales.childLocales?.map(
-      (locale) =>
-        ({
-          isDefaultTarget: false,
-          languageCode: locale.language?.languageCode ?? '',
-          translationKey: locale.localeCode,
-          displayName: locale.name,
-        }) as TranslationTarget,
-    );
+    childTargets = languageWithLocales.childLocales?.map((locale): TranslationTarget => ({
+      isDefaultTarget: false,
+      languageCode: locale.language?.languageCode ?? '',
+      translationKey: locale.localeCode ?? '',
+      displayName: locale.name ?? '',
+    }));
   }
 
   return {
@@ -58,10 +51,7 @@ export function parseTranslationLanguage(
   };
 }
 
-export function parseSupportedLanguageList(
-  areChildLocalesSupported: boolean,
-  responseData: Array<SupportedLanguagesDataResponse>,
-): {
+export function parseSupportedLanguageList(responseData: Array<SupportedLanguagesDataResponse>): {
   languageList: Array<TranslationLanguage>;
   translationTargetMap: Map<string, TranslationTarget>;
 } {
@@ -77,7 +67,7 @@ export function parseSupportedLanguageList(
     ) {
       throw new Error('Missing or incomplete language response.');
     }
-    const { defaultTarget, childTargets } = parseTranslationTargets(areChildLocalesSupported, item);
+    const { defaultTarget, childTargets } = parseTranslationTargets(item);
 
     translationTargetMap.set(defaultTarget.translationKey, defaultTarget);
     childTargets.forEach((target) => translationTargetMap.set(target.translationKey, target));

@@ -5,6 +5,7 @@ import {
   LicenseVisibility,
   type LicenseResponse,
 } from '@rbx/client-content-licensing-api/v1';
+import { useFlag } from '@rbx/flags';
 import { useTranslation } from '@rbx/intl';
 import {
   Table,
@@ -20,11 +21,10 @@ import {
   MenuItem,
   MoreVertIcon,
 } from '@rbx/ui';
+import { isIphInGameSalesAvatarMarketplaceSalesLicenseCreationEnabled } from '@generated/flags/contentLicensing';
 import { formatRoyaltyRate } from '@modules/licenses/utils/format';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
-import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
 import useIpSnackbar from '../../../hooks/useIpSnackbar';
 import GuidelinesAndRestrictionsSummaryModal from '../../components/GuidelinesAndRestrictionsSummaryModal';
 import { LICENSE_CREATE_HREF, LICENSE_EDIT_HREF } from '../../urls';
@@ -245,9 +245,10 @@ const LicenseTable = ({ licenses, ipListingId }: LicenseTableProps) => {
   const { logEvent } = useLicenseManagerLogger();
   const [openMenuLicenseId, setOpenMenuLicenseId] = React.useState<string | undefined>();
   const { isFetched } = useSettings();
-  const { frontendFlags, loadingFrontendFlags } = useToolboxServiceApiProvider();
-  const enableCollaborationLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
+  const { ready: isLicenseCreationFlagReady, value: licenseCreationFlagValue } = useFlag(
+    isIphInGameSalesAvatarMarketplaceSalesLicenseCreationEnabled,
+  );
+  const isLicenseCreationEnabled = licenseCreationFlagValue ?? false;
   const editLicenseLabel = translate('Action.Edit');
 
   const sortedLicenses = useMemo(() => {
@@ -258,7 +259,7 @@ const LicenseTable = ({ licenses, ipListingId }: LicenseTableProps) => {
     });
   }, [licenses]);
 
-  if (!isFetched || loadingFrontendFlags) {
+  if (!isFetched || !isLicenseCreationFlagReady) {
     return <PageLoading />;
   }
 
@@ -272,7 +273,7 @@ const LicenseTable = ({ licenses, ipListingId }: LicenseTableProps) => {
             <TableCell>{translate('Label.RevenueShare')}</TableCell>
             <TableCell>{translate('Label.MinimumAverageL7DAU')}</TableCell>
             <TableCell>{translate('Label.MaxMaturityRating')}</TableCell>
-            {enableCollaborationLicensing && (
+            {isLicenseCreationEnabled && (
               <TableCell>{translate(LICENSE_TYPE_TABLE_HEADER_KEY)}</TableCell>
             )}
             <TableCell width='15%'>{translate('Label.Duration')}</TableCell>
@@ -310,7 +311,7 @@ const LicenseTable = ({ licenses, ipListingId }: LicenseTableProps) => {
                   {translate(getDauLicenseLabelFromEnum(license.dau7DayThreshold))}
                 </TableCell>
                 <TableCell>{translate(getMaturityRatingLabel(license.maxAgeRating))}</TableCell>
-                {enableCollaborationLicensing && (
+                {isLicenseCreationEnabled && (
                   <TableCell>
                     {translate(getLicenseTypeTableLabelKey(license.licenseType))}
                   </TableCell>

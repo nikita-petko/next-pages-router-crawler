@@ -9,6 +9,7 @@ import {
   LicenseVisibility,
   LicenseDurationType,
 } from '@rbx/client-content-licensing-api/v1';
+import { useFlag } from '@rbx/flags';
 import { Radio, RadioGroup } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import {
@@ -25,13 +26,12 @@ import {
   ExpandMoreIcon,
   AccordionDetails,
 } from '@rbx/ui';
+import { isIphInGameSalesAvatarMarketplaceSalesLicenseCreationEnabled } from '@generated/flags/contentLicensing';
 import { CONTENT_STANDARDS_HREF } from '@modules/licenses/urls';
 import downloadPdf from '@modules/licenses/utils/downloadPdf';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { Flex } from '@modules/miscellaneous/components/Flex';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
-import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
 import {
   TextFieldWithEnhancedHelperText,
   getMaxLengthValidationRule,
@@ -271,12 +271,11 @@ const LicenseForm = ({
   const { enqueueErrorSnackbar } = useIpSnackbar();
   const { logEvent } = useLicenseManagerLogger();
   const { isFetched } = useSettings();
-  const { frontendFlags, loadingFrontendFlags } = useToolboxServiceApiProvider();
+  const { ready: isLicenseCreationFlagReady, value: licenseCreationFlagValue } = useFlag(
+    isIphInGameSalesAvatarMarketplaceSalesLicenseCreationEnabled,
+  );
+  const isLicenseCreationEnabled = licenseCreationFlagValue ?? false;
   const unknownDurationLabel = translate('Label.Unknown');
-  const enableCollaborationLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
-  const enableMarketplaceSalesLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableMarketplaceSalesLicensing] ?? false;
 
   const { control, handleSubmit, setValue, register, formState, getValues, setError, clearErrors } =
     useForm<LicenseFormData>({
@@ -331,12 +330,12 @@ const LicenseForm = ({
   });
   const isTimeLimitedLicense = durationType === LicenseDurationType.TimeLimited;
   const isCollaborationLicense =
-    enableCollaborationLicensing && licenseType === LicenseType.CollaborationInExperienceSale;
+    isLicenseCreationEnabled && licenseType === LicenseType.CollaborationInExperienceSale;
   const shouldEnforceRevShareOnActivation = shouldRevShareOnActivation({
     durationType,
     licenseType,
-    enableCollaborationLicensing,
-    enableMarketplaceSalesLicensing,
+    enableCollaborationLicensing: isLicenseCreationEnabled,
+    enableMarketplaceSalesLicensing: isLicenseCreationEnabled,
   });
 
   useEffect(() => {
@@ -442,7 +441,7 @@ const LicenseForm = ({
     [mode.type, hasPendingEdits, dirtyFields, onBeforeSubmitModeratedChanges, onSubmit],
   );
 
-  if (!isFetched || loadingFrontendFlags) {
+  if (!isFetched || !isLicenseCreationFlagReady) {
     return <PageLoading />;
   }
 
@@ -466,7 +465,7 @@ const LicenseForm = ({
             {translate('Description.LicenseDetails')}
           </Typography>
 
-          {!enableCollaborationLicensing && (
+          {!isLicenseCreationEnabled && (
             <FormControl fullWidth>
               <Select
                 className={classes.semanticGapLargerBottom}
@@ -511,7 +510,7 @@ const LicenseForm = ({
             control={control}
             render={({ field, fieldState: { error } }) => (
               <TextFieldWithEnhancedHelperText
-                className={enableCollaborationLicensing ? classes.semanticGapLargerBottom : ''}
+                className={isLicenseCreationEnabled ? classes.semanticGapLargerBottom : ''}
                 {...field}
                 id='license-create-description'
                 label={translate('Label.Description')}
@@ -535,7 +534,7 @@ const LicenseForm = ({
             }}
           />
 
-          {enableCollaborationLicensing && (
+          {isLicenseCreationEnabled && (
             <FormControl fullWidth>
               <Controller
                 name='licenseType'
@@ -567,13 +566,11 @@ const LicenseForm = ({
                       data-testId='collaboration-option'>
                       <LicenseTypeOptions licenseType={LicenseType.CollaborationInExperienceSale} />
                     </MenuItem>
-                    {enableMarketplaceSalesLicensing && (
-                      <MenuItem
-                        value={LicenseType.MarketplaceSale}
-                        data-testId='marketplace-sale-option'>
-                        <LicenseTypeOptions licenseType={LicenseType.MarketplaceSale} />
-                      </MenuItem>
-                    )}
+                    <MenuItem
+                      value={LicenseType.MarketplaceSale}
+                      data-testId='marketplace-sale-option'>
+                      <LicenseTypeOptions licenseType={LicenseType.MarketplaceSale} />
+                    </MenuItem>
                   </LicenseFormControlledSelect>
                 )}
                 rules={{ required: translate('Label.FieldIsRequired') }}
@@ -644,7 +641,7 @@ const LicenseForm = ({
                     label={translate('Action.SelectDurationMinimum')}
                     onChange={(e) => {
                       field.onChange(e);
-                      const newMin = Number(e.target.value) as LicenseDurationBucket;
+                      const newMin = Number(e.target.value);
                       applyDurationBucketErrors(newMin, getValues('maxDuration'));
                     }}>
                     {minimumDurationBuckets.map((value) => (
@@ -676,7 +673,7 @@ const LicenseForm = ({
                     label={translate('Action.SelectDurationMaximum')}
                     onChange={(e) => {
                       field.onChange(e);
-                      const newMax = Number(e.target.value) as LicenseDurationBucket;
+                      const newMax = Number(e.target.value);
                       applyDurationBucketErrors(getValues('minDuration'), newMax);
                     }}>
                     {maximumDurationBuckets.map((value) => (

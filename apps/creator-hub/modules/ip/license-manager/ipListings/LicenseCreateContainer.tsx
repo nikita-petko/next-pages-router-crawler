@@ -7,12 +7,12 @@ import {
   LicenseVisibility,
   UniverseContentMaturity,
 } from '@rbx/client-content-licensing-api/v1';
+import { useFlag } from '@rbx/flags';
 import { withTranslation, useTranslation } from '@rbx/intl';
 import { Grid, Typography, CircularProgress } from '@rbx/ui';
+import { isIphInGameSalesAvatarMarketplaceSalesLicenseCreationEnabled } from '@generated/flags/contentLicensing';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
-import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
 import useIpSnackbar from '../../hooks/useIpSnackbar';
 import { useIpLayoutContext } from '../../IpAppNavigationLayout';
 import useConfirmation from '../agreements/hooks/useConfirmation';
@@ -48,11 +48,10 @@ const LicenseCreateContainer = () => {
   const { enqueueErrorSnackbar } = useIpSnackbar();
   const { confirm, confirmationContent } = useConfirmation();
   const { isFetched } = useSettings();
-  const { frontendFlags, loadingFrontendFlags } = useToolboxServiceApiProvider();
-  const enableCollaborationLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
-  const enableMarketplaceSalesLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableMarketplaceSalesLicensing] ?? false;
+  const { ready: isLicenseCreationFlagReady, value: licenseCreationFlagValue } = useFlag(
+    isIphInGameSalesAvatarMarketplaceSalesLicenseCreationEnabled,
+  );
+  const isLicenseCreationEnabled = licenseCreationFlagValue ?? false;
 
   const rawCopyFrom = router.query.copyFrom;
   const copyFromLicenseId: string | undefined = (() => {
@@ -103,16 +102,10 @@ const LicenseCreateContainer = () => {
     }
     return mapLicenseResponseToFormDefaults(
       licenseQuery.data,
-      enableCollaborationLicensing,
-      enableMarketplaceSalesLicensing,
+      isLicenseCreationEnabled,
+      isLicenseCreationEnabled,
     );
-  }, [
-    copyFromLicenseId,
-    licenseQuery.data,
-    ipListingId,
-    enableCollaborationLicensing,
-    enableMarketplaceSalesLicensing,
-  ]);
+  }, [copyFromLicenseId, licenseQuery.data, ipListingId, isLicenseCreationEnabled]);
 
   const licenseFormKey = `${ipListingId}-${copyFromLicenseId ?? 'new'}`;
 
@@ -173,13 +166,10 @@ const LicenseCreateContainer = () => {
       visibility: data.visibility ?? LicenseVisibility.Private,
       enableMonetization: resolveEnableMonetization({
         durationType: data.durationType,
-        licenseType:
-          enableCollaborationLicensing || enableMarketplaceSalesLicensing
-            ? data.licenseType
-            : LicenseType.FullExperience,
+        licenseType: isLicenseCreationEnabled ? data.licenseType : LicenseType.FullExperience,
         monitorType: data.monitorType,
-        enableCollaborationLicensing,
-        enableMarketplaceSalesLicensing,
+        enableCollaborationLicensing: isLicenseCreationEnabled,
+        enableMarketplaceSalesLicensing: isLicenseCreationEnabled,
       }),
       contentStandardsDocument: data.contentStandardsFile,
       ...contentStandardsDocumentIdField,
@@ -196,7 +186,7 @@ const LicenseCreateContainer = () => {
           maxDays: data.maxDuration,
         },
       ),
-      licenseType: enableCollaborationLicensing ? data.licenseType : LicenseType.FullExperience,
+      licenseType: isLicenseCreationEnabled ? data.licenseType : LicenseType.FullExperience,
     });
   };
 
@@ -204,7 +194,7 @@ const LicenseCreateContainer = () => {
     void router.push(IP_LISTING_DETAILS_HREF(ipListingId));
   };
 
-  if (!isFetched || loadingFrontendFlags || isIpListingLoading || isCopyLoading) {
+  if (!isFetched || !isLicenseCreationFlagReady || isIpListingLoading || isCopyLoading) {
     return <CircularProgress />;
   }
 

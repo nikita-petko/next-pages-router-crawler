@@ -1,13 +1,12 @@
-import { useRouter } from 'next/router';
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
 import { useLocalization } from '@rbx/intl';
 import gameInternationalizationClient from '@modules/clients/gameInternationalization';
 import type { UserRoleType } from '@modules/clients/translationRoles';
 import translationRoleClient from '@modules/clients/translationRoles';
 import { useMetricsMonitoring } from '@modules/miscellaneous/metricsMonitoring';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import useLocalizationToasts from '../../common/hooks/useLocalizationToasts';
 import { localizationTranslationPath } from '../constants';
 import {
@@ -22,7 +21,6 @@ import TranslationLogicContext from './TranslationLogicContext';
 const TranslationLogicProvider: FunctionComponent<React.PropsWithChildren> = ({ children }) => {
   const { error } = useMetricsMonitoring();
   const { locale } = useLocalization();
-  const { settings, isFetched } = useSettings();
   const [roleLoading, setRoleLoading] = useState<boolean>(false);
   const [supportedLanguageLoading, setSupportedLanguageLoading] = useState<boolean>(false);
   const [sourceTranslationLanguage, setSourceTranslationLanguage] =
@@ -68,13 +66,12 @@ const TranslationLogicProvider: FunctionComponent<React.PropsWithChildren> = ({ 
           if (response.data) {
             try {
               const { languageList, translationTargetMap } = parseSupportedLanguageList(
-                settings?.enableChildLocaleSupport,
                 response.data,
               );
               setSupportedLanguages(languageList);
               setTranslationKeyMap(translationTargetMap);
             } catch (e) {
-              const catchedError = e as Error;
+              const catchedError = e instanceof Error ? e : new Error(String(e));
               error(catchedError.message);
               showToastUnknownError(catchedError.message);
             }
@@ -82,10 +79,10 @@ const TranslationLogicProvider: FunctionComponent<React.PropsWithChildren> = ({ 
             showToastUnknownError('getSupportedLanguages get empty response');
           }
         })
-        .catch((e) => showToastNetworkError(e.status))
+        .catch((e: Response) => showToastNetworkError(e.status))
         .finally(() => setSupportedLanguageLoading(false));
     },
-    [error, settings?.enableChildLocaleSupport, showToastNetworkError, showToastUnknownError],
+    [error, showToastNetworkError, showToastUnknownError],
   );
   const setActiveTranslationTarget = useCallback(
     async (newTarget: TranslationTarget) => {
@@ -116,10 +113,7 @@ const TranslationLogicProvider: FunctionComponent<React.PropsWithChildren> = ({ 
           const { languageCode, name } = sourceLanguageResponse.languageFamily;
           setSourceLanguageCode(languageCode ?? 'en');
           setDefaultSourceLocaleCode(sourceLanguageResponse?.defaultLocale?.localeCode ?? null);
-          const { defaultTarget, childTargets } = parseTranslationTargets(
-            settings?.enableChildLocaleSupport,
-            sourceLanguageResponse,
-          );
+          const { defaultTarget, childTargets } = parseTranslationTargets(sourceLanguageResponse);
           const translationLanguage = parseTranslationLanguage(
             languageCode ?? 'en',
             name ?? '',
@@ -129,26 +123,28 @@ const TranslationLogicProvider: FunctionComponent<React.PropsWithChildren> = ({ 
           setSourceTranslationLanguage(translationLanguage);
         }
       } catch (e) {
-        const catchedError = e as Error;
+        const catchedError = e instanceof Error ? e : new Error(String(e));
         error(catchedError.message);
         setSourceLanguageCode('en');
       } finally {
         setSourceLanguageCodeLoading(false);
       }
     },
-    [error, settings?.enableChildLocaleSupport],
+    [error],
   );
 
+  /* oxlint-disable react/react-compiler -- fetch helpers set loading state synchronously (intentional cascading render); deps intentionally limited to gameDetails so fetches only re-run on game change */
   useEffect(() => {
     const currentGameId = gameDetails?.id;
-    if (!currentGameId || !isFetched) {
+    if (!currentGameId) {
       return;
     }
-    getSourceLanguage(currentGameId);
+    void getSourceLanguage(currentGameId);
     getUserRoles(currentGameId);
     fetchSupportedLanguages(currentGameId);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- add disable comment here since we only need trigger data fetch when game id change
-  }, [gameDetails, isFetched]);
+  }, [gameDetails]);
+  /* oxlint-enable react/react-compiler */
 
   const sortedAndFilteredSupportedLanguages = useMemo(() => {
     if (supportedLanguages && sourceLanguageCode && locale) {
@@ -161,7 +157,10 @@ const TranslationLogicProvider: FunctionComponent<React.PropsWithChildren> = ({ 
 
   const activeTranslationTarget = useMemo(() => {
     if (activeTranslationKey) {
-      return translationKeyMap?.get(activeTranslationKey as string) || null;
+      const key = Array.isArray(activeTranslationKey)
+        ? activeTranslationKey[0]
+        : activeTranslationKey;
+      return translationKeyMap?.get(key ?? '') ?? null;
     }
     if (
       router.pathname === localizationTranslationPath &&

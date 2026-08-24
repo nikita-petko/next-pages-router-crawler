@@ -7,13 +7,13 @@ import {
   LicenseVisibility,
   UniverseContentMaturity,
 } from '@rbx/client-content-licensing-api/v1';
+import { useFlag } from '@rbx/flags';
 import { withTranslation, useTranslation } from '@rbx/intl';
 import { Grid, Typography } from '@rbx/ui';
+import { isIphInGameSalesAvatarMarketplaceSalesLicenseCreationEnabled } from '@generated/flags/contentLicensing';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import { FrontendFlagName } from '@modules/toolboxService/toolboxFeatureManagement';
-import { useToolboxServiceApiProvider } from '@modules/toolboxService/ToolboxServiceApiProvider';
 import IpLoadError from '../../components/error/IpLoadError';
 import useIpSnackbar from '../../hooks/useIpSnackbar';
 import { useIpLayoutContext } from '../../IpAppNavigationLayout';
@@ -46,11 +46,10 @@ const LicenseEditContainer = ({ licenseId }: Props) => {
   const { enqueueErrorSnackbar, enqueueSuccessSnackbar } = useIpSnackbar();
   const { confirm, confirmationContent } = useConfirmation();
   const { isFetched } = useSettings();
-  const { frontendFlags, loadingFrontendFlags } = useToolboxServiceApiProvider();
-  const enableCollaborationLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableCreatorCollaborationLicensing] ?? false;
-  const enableMarketplaceSalesLicensing =
-    frontendFlags[FrontendFlagName.FrontendFlagEnableMarketplaceSalesLicensing] ?? false;
+  const { ready: isLicenseCreationFlagReady, value: licenseCreationFlagValue } = useFlag(
+    isIphInGameSalesAvatarMarketplaceSalesLicenseCreationEnabled,
+  );
+  const isLicenseCreationEnabled = licenseCreationFlagValue ?? false;
 
   const licenseReq = useLicenseQuery(licenseId);
   const ipListingReq = useIpListingQuery(licenseReq.data?.listingId ?? undefined);
@@ -91,7 +90,7 @@ const LicenseEditContainer = ({ licenseId }: Props) => {
 
   if (
     !isFetched ||
-    loadingFrontendFlags ||
+    !isLicenseCreationFlagReady ||
     licenseReq.isPending ||
     ipListingReq.isPending ||
     agreementsReq.isPending
@@ -142,8 +141,8 @@ const LicenseEditContainer = ({ licenseId }: Props) => {
             defaultValues={{
               ...mapLicenseResponseToFormDefaults(
                 license,
-                enableCollaborationLicensing,
-                enableMarketplaceSalesLicensing,
+                isLicenseCreationEnabled,
+                isLicenseCreationEnabled,
               ),
               contentStandardsFile: undefined, // Rely on contentStandardsDocumentId for existing PDF UI
             }}
@@ -169,13 +168,12 @@ const LicenseEditContainer = ({ licenseId }: Props) => {
                       data.durationType ??
                       license.licenseDuration?.durationType ??
                       LicenseDurationType.Perpetual,
-                    licenseType:
-                      enableCollaborationLicensing || enableMarketplaceSalesLicensing
-                        ? (data.licenseType ?? license.licenseType)
-                        : license.licenseType,
+                    licenseType: isLicenseCreationEnabled
+                      ? (data.licenseType ?? license.licenseType)
+                      : license.licenseType,
                     monitorType: data.monitorType,
-                    enableCollaborationLicensing,
-                    enableMarketplaceSalesLicensing,
+                    enableCollaborationLicensing: isLicenseCreationEnabled,
+                    enableMarketplaceSalesLicensing: isLicenseCreationEnabled,
                   }),
                   contentStandardsDocumentId: getContentStandardsDocumentId(),
                   countries: license.countries ?? [],
@@ -204,7 +202,7 @@ const LicenseEditContainer = ({ licenseId }: Props) => {
                     },
                   ),
                   // TODO - ASSE-56 - aquach - Consume LicenseType and append to API request when backend is ready
-                  // licenseType: enableCollaborationLicensing ? data.licenseType : LicenseType.FullExperience,
+                  // licenseType: isLicenseCreationEnabled ? data.licenseType : license.licenseType,
                 },
                 {
                   onSuccess: () => {
