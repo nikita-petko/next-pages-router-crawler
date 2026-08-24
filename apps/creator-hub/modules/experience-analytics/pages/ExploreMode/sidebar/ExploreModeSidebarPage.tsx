@@ -2079,7 +2079,7 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
       metricVariant: customEventFiltersToMetricVariant(filters),
       computedMetric: isActiveMetricComputed ? effectiveComputedMetric : null,
       chartType: selectedChartType,
-      breakdownDimension: breakdown[0],
+      breakdownDimensions: breakdown,
       granularity: chartContext.granularity,
       overlayOption,
       benchmarkType: benchmarkOverlayType,

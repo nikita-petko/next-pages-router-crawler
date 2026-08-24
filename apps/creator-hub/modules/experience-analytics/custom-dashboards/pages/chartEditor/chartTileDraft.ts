@@ -387,7 +387,7 @@ export type BuildChartTileFromEditorArgs = {
   readonly metricVariant?: TRAQIV2UIMetricFanoutDimensionValues;
   readonly computedMetric?: ComputedMetric | null;
   readonly chartType: ChartConfiguratorChartType;
-  readonly breakdownDimension?: string;
+  readonly breakdownDimensions?: readonly string[];
   readonly granularity: TUIGranularity;
   readonly title?: string;
   readonly overlayOption?: OverlayOption;
@@ -418,7 +418,7 @@ export function buildChartTileFromEditor({
   metricVariant,
   computedMetric,
   chartType,
-  breakdownDimension,
+  breakdownDimensions,
   granularity,
   title,
   overlayOption,
@@ -495,9 +495,10 @@ export function buildChartTileFromEditor({
       metrics: [primaryMetric, ...persistedTableAdditionalMetrics],
       aggregation:
         existing?.dataSpec.aggregation ?? resolveDefaultChartAggregation(primaryMetricReference),
-      ...(breakdownDimension
-        ? { breakdownDimensions: [breakdownDimension] }
-        : { breakdownDimensions: undefined }),
+      breakdownDimensions:
+        breakdownDimensions && breakdownDimensions.length > 0
+          ? [...breakdownDimensions]
+          : undefined,
       granularity: timeInterval ?? existing?.dataSpec.granularity ?? DEFAULT_CHART_GRANULARITY,
       filters: persistedFilters,
     },

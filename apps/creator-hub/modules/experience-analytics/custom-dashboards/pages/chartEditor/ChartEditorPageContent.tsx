@@ -326,7 +326,7 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
     metricVariant,
     computedMetric,
     selectedChartType,
-    breakdownDimension,
+    breakdownDimensions,
     effectiveGranularity,
     overlayOption,
     benchmarkType,
@@ -431,7 +431,7 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
       metricVariant,
       computedMetric,
       chartType: selectedChartType,
-      breakdownDimension,
+      breakdownDimensions,
       granularity: effectiveGranularity,
       title: confirmedChartTitle,
       overlayOption,
@@ -445,7 +445,7 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
     });
   }, [
     benchmarkType,
-    breakdownDimension,
+    breakdownDimensions,
     comparisonCustomStartDate,
     comparisonOffset,
     confirmedChartTitle,

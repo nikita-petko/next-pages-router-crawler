@@ -135,7 +135,7 @@ function toTileQueryFilters(filters: UIFilters): readonly TQueryFilter[] {
     if (!isValidEnumValue(RAQIV2Dimension, filter.dimension)) {
       return [];
     }
-    return [{ dimension: filter.dimension as RAQIV2Dimension, values: [...filter.values] }];
+    return [{ dimension: filter.dimension, values: [...filter.values] }];
   });
 }
 
@@ -187,9 +187,10 @@ export type UseControlledChartConfiguratorResult = {
   readonly selectedChartType: ChartConfiguratorChartType;
   readonly breakdownDimensions: readonly TRAQIV2Dimension[];
   /**
-   * First seeded/selected breakdown dimension, or `undefined` when none. Editor
-   * surfaces persist a single breakdown dimension per tile, so this is the
-   * convenience projection of `breakdownDimensions[0]`.
+   * First seeded/selected breakdown dimension, or `undefined` when none.
+   * Convenience projection of `breakdownDimensions[0]`. Persist
+   * `breakdownDimensions` when saving so additional selections and order
+   * are not dropped.
    */
   readonly breakdownDimension: TRAQIV2Dimension | undefined;
   readonly granularity: TUIGranularity;

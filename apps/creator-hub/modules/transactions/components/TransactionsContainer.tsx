@@ -10,6 +10,7 @@ import { www } from '@modules/miscellaneous/urls';
 import { useCurrentGroup } from '@modules/providers/groups/GroupsProvider';
 import CreatorStoreTransactions from '../creatorStore/components/CreatorStoreTransactions';
 import PaidAccessTransactions from '../paidAccess/components/PaidAccessTransactions/PaidAccessTransactions';
+import RobloxSelectTransactions from '../robloxSelectTransactions/components/RobloxSelectTransactions';
 import type { TransactionTabType } from '../types';
 import { TransactionTab } from '../types';
 import VirtualTransactions from '../virtualTransactions/components/VirtualTransactions';
@@ -116,6 +117,12 @@ const TransactionsContainer: FunctionComponent<
           return (
             <div>
               <VirtualTransactions />
+            </div>
+          );
+        case TransactionTab.AudienceReach:
+          return (
+            <div>
+              <RobloxSelectTransactions />
             </div>
           );
         case TransactionTab.Legacy:

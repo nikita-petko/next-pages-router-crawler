@@ -30,6 +30,10 @@ const Transactions: NextLayoutPage = () => {
         translationKey: 'Label.PaidAccess',
       },
       {
+        key: TransactionTab.AudienceReach,
+        translationKey: 'Heading.AudienceReach',
+      },
+      {
         key: TransactionTab.Legacy,
         translationKey: 'Heading.OtherTransactions',
         icon: <LaunchIcon fontSize='small' />,

@@ -10,9 +10,14 @@ import type {
 } from '@modules/clients/transactionRecords';
 import { TransactionEntityType } from '@modules/clients/transactionRecords';
 import usersClient from '@modules/clients/users';
-import type { PublishSalesReportDownloadParams } from './transactionRecordsRequests';
+import type {
+  PublishSalesReportDownloadParams,
+  RobloxSelectTransactionsPage,
+} from './transactionRecordsRequests';
 import {
+  getGroupRobloxSelectTransactions,
   getGroupTransactions,
+  getUserRobloxSelectTransactions,
   getUserTransactions,
   publishSalesReportDownload,
 } from './transactionRecordsRequests';
@@ -90,6 +95,57 @@ export function useFetchTransactions({
     // Keep the current page visible while a page-size or cursor change refetches, so the table
     // refreshes in place instead of collapsing to the loading state (which scrolls to the top).
     placeholderData: keepPreviousData,
+  });
+}
+
+export type UseFetchRobloxSelectTransactionsArgs = {
+  // Exactly one of userId / groupId. groupId takes precedence.
+  userId?: number;
+  groupId?: number;
+  limit: number;
+  // Opaque v1 nextPageCursor for the current block. Empty/undefined = first page.
+  cursor?: string;
+  enabled?: boolean;
+};
+
+/**
+ * Fetches a page of Roblox Select transfers from the v1 history endpoints on
+ * `transaction-records` (user or group, based on creator context).
+ */
+export function useFetchRobloxSelectTransactions({
+  userId,
+  groupId,
+  limit,
+  cursor,
+  enabled = true,
+}: UseFetchRobloxSelectTransactionsArgs): UseQueryResult<RobloxSelectTransactionsPage> {
+  const target =
+    groupId != null
+      ? ({ kind: 'group', id: groupId } as const)
+      : userId != null
+        ? ({ kind: 'user', id: userId } as const)
+        : null;
+
+  return useQuery({
+    queryKey: [
+      'robloxSelectTransactions',
+      target?.kind ?? null,
+      target?.id ?? null,
+      limit,
+      cursor ?? '',
+    ],
+    queryFn: () => {
+      if (target?.kind === 'group') {
+        return getGroupRobloxSelectTransactions({ groupId: target.id, limit, cursor });
+      }
+      if (target?.kind === 'user') {
+        return getUserRobloxSelectTransactions({ userId: target.id, limit, cursor });
+      }
+      throw new Error('useFetchRobloxSelectTransactions requires either userId or groupId');
+    },
+    // No keepPreviousData: a new cursor must clear the prior page so the range label (e.g. 11–20)
+    // never sits on top of the previous rows.
+    enabled: enabled && target != null,
   });
 }
 

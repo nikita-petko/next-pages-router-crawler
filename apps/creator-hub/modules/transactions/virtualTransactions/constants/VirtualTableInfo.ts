@@ -1,3 +1,5 @@
+import { ROBLOX_SELECT_DISPLAY_REASON } from '../../robloxSelectTransactions/utils/mapV1TransactionToRecord';
+
 export enum VirtualColumnType {
   Date = 'Date',
   TransactionType = 'TransactionType',
@@ -37,15 +39,22 @@ const REFUNDED_HOLD_STATUSES = new Set(['cancelled', 'canceled']);
 // everything else (hold still active — Active/Held — or unknown) is Pending. Explicit rather than
 // "not pending ⇒ paid", so cancelled/unknown values never render as Paid. holdStatus is compared
 // case-insensitively since serialization casing varies (Active/ACTIVE/…).
+//
+// Roblox Select fees invert the amount rule: negative is the fee charge (Paid), positive is a
+// refund credit (Refunded). Amount column still uses the same sign convention (negative = outflow).
 export const getTransactionStatus = (
   holdStatus?: string | null,
   amount?: string | null,
+  ledgerReason?: string | null,
 ): VirtualTransactionStatus => {
   const normalizedHoldStatus = holdStatus?.toLowerCase();
   const numericAmount = amount != null && amount !== '' ? Number(amount) : Number.NaN;
+  const isSelectFee = ledgerReason === ROBLOX_SELECT_DISPLAY_REASON;
+  // Virtual sales: debit (negative) = refund. Select fees: credit (positive) = refund.
+  const isRefundAmount = isSelectFee ? numericAmount > 0 : numericAmount < 0;
 
   if (
-    numericAmount < 0 ||
+    isRefundAmount ||
     (normalizedHoldStatus != null && REFUNDED_HOLD_STATUSES.has(normalizedHoldStatus))
   ) {
     return VirtualTransactionStatus.Refunded;

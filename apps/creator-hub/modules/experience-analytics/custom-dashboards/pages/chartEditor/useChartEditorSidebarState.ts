@@ -110,10 +110,8 @@ export default function useChartEditorSidebarState({
       // `selectedChartType` below) so an unchanged Area tile keeps its type.
       return explore === ChartType.Area ? ChartType.Spline : explore;
     })();
-    const breakdownDimension =
-      initialTile?.type === 'Chart'
-        ? (initialTile.dataSpec.breakdownDimensions?.[0] ?? null)
-        : null;
+    const breakdownDimensions =
+      initialTile?.type === 'Chart' ? (initialTile.dataSpec.breakdownDimensions ?? null) : null;
     // Seed any persisted metric-variant selection into the working filters so it
     // survives the round-trip even when it was only stored on `variantSelections`.
     const persistedVariant =
@@ -125,7 +123,7 @@ export default function useChartEditorSidebarState({
       metric: resolveInitialEditorMetric(initialTile, allowedMetrics),
       computedMetric: initialMetric?.metric.computedMetric ?? null,
       chartType,
-      breakdownDimensions: breakdownDimension ? [breakdownDimension] : null,
+      breakdownDimensions,
       granularity:
         initialTile?.type === 'Chart'
           ? timeIntervalToGranularity(initialTile.dataSpec.granularity)

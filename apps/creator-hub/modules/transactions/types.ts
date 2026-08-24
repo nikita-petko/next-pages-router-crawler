@@ -4,6 +4,7 @@ export enum TransactionTab {
   CreatorStore = 'store',
   PaidAccess = 'paidAccess',
   Virtual = 'virtual',
+  AudienceReach = 'audienceReach',
   Legacy = 'Redirect',
 }
 

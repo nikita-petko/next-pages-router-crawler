@@ -7,6 +7,8 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import type { TransactionRecord } from '@modules/clients/transactionRecords';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { formatDate, formatTime, parseDateOrNull } from '@modules/miscellaneous/utils/dateUtils';
+import RobloxSelectTypeCell from '../../robloxSelectTransactions/components/RobloxSelectTypeCell';
+import { isRobloxSelectDisplayReason } from '../../robloxSelectTransactions/utils/mapV1TransactionToRecord';
 import {
   getTransactionStatus,
   isCanceledHold,
@@ -55,6 +57,9 @@ const VirtualTransactionCell: FunctionComponent<
       }
 
       case VirtualColumnType.TransactionType:
+        if (isRobloxSelectDisplayReason(record.ledgerReason)) {
+          return <RobloxSelectTypeCell record={record} />;
+        }
         return <VirtualTypeCell record={record} />;
 
       case VirtualColumnType.Source:
@@ -62,7 +67,7 @@ const VirtualTransactionCell: FunctionComponent<
 
       case VirtualColumnType.Status: {
         // Pending / Paid / Refunded, matching the exported V2 sales report (see getTransactionStatus).
-        const status = getTransactionStatus(record.holdStatus, record.amount);
+        const status = getTransactionStatus(record.holdStatus, record.amount, record.ledgerReason);
         if (status === VirtualTransactionStatus.Refunded) {
           return (
             <Badge
