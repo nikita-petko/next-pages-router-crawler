@@ -25,7 +25,7 @@ export default function getRouteToAvatarItemCreationsPage(
   groupId?: number,
 ): string {
   if (itemType === Look.Avatar) {
-    return getCreationsRouteString(Asset.AvatarLooks, undefined, groupId);
+    return getCreationsRouteString(Asset.AvatarLooks, 0, groupId);
   }
   if (itemType) {
     // Find the matching dropdown and item

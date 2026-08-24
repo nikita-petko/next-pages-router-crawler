@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from '@rbx/intl';
+import type { LookType } from '@modules/clients/look';
 import LookDeleteDialog from '../../look/components/LookDeleteDialog';
 import TrackedMenuItem from './TrackedMenuItem';
 
 export interface ItemCardDeleteLookButtonProps {
   lookId: string;
+  lookType?: LookType;
 }
 
 const ItemCardDeleteLookButton: React.FunctionComponent<
   React.PropsWithChildren<ItemCardDeleteLookButtonProps>
-> = ({ lookId }) => {
+> = ({ lookId, lookType }) => {
   const [showDeleteLookDialog, setShowDeleteLookDialog] = useState(false);
   const [deleteCompleted, setDeleteCompleted] = useState<boolean | null>(null);
   const { translate } = useTranslation();
@@ -34,6 +36,7 @@ const ItemCardDeleteLookButton: React.FunctionComponent<
       </TrackedMenuItem>
       <LookDeleteDialog
         lookId={lookId}
+        lookType={lookType}
         showDeleteLookDialog={showDeleteLookDialog}
         setShowDeleteLookDialog={setShowDeleteLookDialog}
         setDeleteCompleted={setDeleteCompleted}

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useTranslation } from '@rbx/intl';
 import { Dialog, DialogTemplate } from '@rbx/ui';
-import lookClient from '@modules/clients/look';
+import lookClient, { type LookType } from '@modules/clients/look';
 import tryParseResponseError from '@modules/clients/utils/tryParseResponseError';
 import Look from '@modules/miscellaneous/common/enums/Look';
 import getRouteToAvatarItemCreationsPage from '../../avatarItem/utils/avatarMenuNavigationUtils';
@@ -13,10 +13,12 @@ interface LookDeleteDialogProps {
   showDeleteLookDialog: boolean;
   setShowDeleteLookDialog: (show: boolean) => void;
   setDeleteCompleted?: (completed: boolean) => void;
+  lookType?: LookType;
 }
 
 function LookDeleteDialog(props: LookDeleteDialogProps) {
-  const { lookId, showDeleteLookDialog, setShowDeleteLookDialog, setDeleteCompleted } = props;
+  const { lookId, showDeleteLookDialog, setShowDeleteLookDialog, setDeleteCompleted, lookType } =
+    props;
   const { translate } = useTranslation();
   const { lookDetail } = useCurrentLook();
 
@@ -26,8 +28,8 @@ function LookDeleteDialog(props: LookDeleteDialogProps) {
   const [showDeleteErrorDialog, setShowDeleteErrorDialog] = useState(false);
 
   const backToCreationsPageLink = useMemo(() => {
-    return getRouteToAvatarItemCreationsPage(lookDetail?.lookType ?? Look.Makeup);
-  }, [lookDetail?.lookType]);
+    return getRouteToAvatarItemCreationsPage(lookType ?? lookDetail?.lookType ?? Look.Makeup);
+  }, [lookType, lookDetail?.lookType]);
 
   const handleDelete = async () => {
     setShowDeleteLookDialog(false);

@@ -572,7 +572,10 @@ const ItemCardContextMenu: FunctionComponent<React.PropsWithChildren<ItemCardCon
         />
       )}
       {itemType === Item.Look && (
-        <ItemCardDeleteLookButton lookId={creation.lookId?.toString() ?? ''} />
+        <ItemCardDeleteLookButton
+          lookId={creation.lookId?.toString() ?? ''}
+          lookType={creation.lookType}
+        />
       )}
     </Menu>
   );
