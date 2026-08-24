@@ -29,7 +29,10 @@ import { normalizeSingleQueryParam } from '@modules/miscellaneous/hooks/useQuery
 import { useCurrentGroup, useGroups } from '@modules/providers/groups/GroupsProvider';
 import { AvatarMenuMap } from '../../avatarItem/constants/avatarItemConstants';
 import useTaxonomyView from '../../avatarItem/hooks/useTaxonomyView';
-import { buildTaxonomyActiveTab } from '../../avatarItem/utils/taxonomyRoutingUtils';
+import {
+  buildTaxonomyActiveTab,
+  TAXONOMY_HOST_ASSET,
+} from '../../avatarItem/utils/taxonomyRoutingUtils';
 import useCreationsFilters from '../../common/hooks/useCreationsFilters';
 import { getSortForAssetType } from '../../common/interfaces/CreationsFilters';
 import { getValidTimedOptionsTypes } from '../../unifiedFeeSystem/helper/UnifiedFeeSystemConstants';
@@ -98,9 +101,19 @@ const CreationsToolbar: FunctionComponent<React.PropsWithChildren<CreationsToolb
   const [{ filterIndex, publishSettings }] = useQueryParams(['filterIndex', 'publishSettings']);
   const [, setViewParams] = useQueryParams(['activeTab', 'filterIndex']);
   const [, setPublishSettingsParam] = useQueryParams(publishSettingsParamKeys);
-  const assetType = useMemo(() => creationsMenuManager.getAssetType(menuState), [menuState]);
+  const assetType = useMemo(() => {
+    const raw = creationsMenuManager.getAssetType(menuState);
+    // The Recents option is index 0 of the All tab's folder dropdown and behaves like the former
+    // Recents tab (it lists every avatar item type), so resolve it to the taxonomy host asset type to
+    // surface the same toolbar controls (Show Archived, settings, sort). Folders (index > 0) keep the
+    // All-tab asset type, which intentionally has no Show Archived toggle.
+    const isRecentsInAllTab = raw === Asset.AllCatalogAsset && !(Number(filterIndex) > 0);
+    return isRecentsInAllTab ? TAXONOMY_HOST_ASSET : raw;
+  }, [menuState, filterIndex]);
 
-  const isAvatarItemTab = assetType in AvatarMenuMap;
+  // The All tab (folder view) is not in AvatarMenuMap but is still an avatar-item surface, so its
+  // settings gear stays available alongside folders.
+  const isAvatarItemTab = assetType in AvatarMenuMap || assetType === Asset.AllCatalogAsset;
   const isAvatarItemSettings = isAvatarItemTab && autoPublishEnabled;
 
   const requestedPublishSettings = normalizeSingleQueryParam(publishSettings);

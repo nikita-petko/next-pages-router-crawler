@@ -14,8 +14,6 @@ import {
   buildTaxonomyActiveTab,
   isAllAssetTypesActiveTab,
   isAvatarLooksActiveTab,
-  isRecentsActiveTab,
-  RECENTS_L1_KEY,
 } from '../utils/taxonomyRoutingUtils';
 
 const useStyles = makeStyles()({
@@ -49,7 +47,6 @@ const TaxonomyL1Chips: FunctionComponent = () => {
   const { l1Options, activeL1Key } = useTaxonomySelection(true);
 
   const isAllTab = isAllAssetTypesActiveTab(activeTab);
-  const isRecentsTab = isRecentsActiveTab(activeTab);
   const isAvatarLooksTab = isAvatarLooksActiveTab(activeTab);
 
   const handleSelect = useCallback(
@@ -71,14 +68,6 @@ const TaxonomyL1Chips: FunctionComponent = () => {
     });
   }, [setActiveTabParams]);
 
-  // Recents is likewise not a category: it lists the creator's newest items across every type.
-  const handleSelectRecents = useCallback(() => {
-    setActiveTabParams({
-      activeTab: buildTaxonomyActiveTab(RECENTS_L1_KEY),
-      filterIndex: 0,
-    });
-  }, [setActiveTabParams]);
-
   // Avatar looks have no taxonomy category, but they stay in this namespace so selecting them keeps
   // the category view rather than dropping back to the item-type one.
   const handleSelectAvatarLooks = useCallback(() => {
@@ -89,12 +78,11 @@ const TaxonomyL1Chips: FunctionComponent = () => {
   }, [setActiveTabParams]);
 
   const categoriesLabel = translate('Label.Categories');
-  const recentsLabel = translate('Label.Recents');
 
   // Categories are still loading or failed to load. Hiding the row is fine for a category tab, but on
-  // Recents or All Asset Types — neither of which needs the taxonomy tree — it would leave the page
-  // with no sub-navigation at all, since this row replaces the item-type submenu in taxonomy mode.
-  if (l1Options.length === 0 && !isRecentsTab && !isAllTab) {
+  // All Asset Types — which does not need the taxonomy tree — it would leave the page with no
+  // sub-navigation at all, since this row replaces the item-type submenu in taxonomy mode.
+  if (l1Options.length === 0 && !isAllTab) {
     return null;
   }
 
@@ -122,13 +110,6 @@ const TaxonomyL1Chips: FunctionComponent = () => {
           onCheckedChange={() => handleSelect(option.taxonomyKey)}
         />
       ))}
-      <Chip
-        text={recentsLabel}
-        size='Medium'
-        variant='Standard'
-        isChecked={isRecentsTab}
-        onCheckedChange={handleSelectRecents}
-      />
       {/* Folder-backed, so it follows the folders flag exactly as the item-type submenu does. */}
       {isUGCFoldersEnabled && (
         <Chip

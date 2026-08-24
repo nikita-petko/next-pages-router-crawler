@@ -126,15 +126,10 @@ export const AvatarMenuMap: Partial<Record<Asset, AvatarItemDropdown[]>> = {
   [Asset.AvatarBackground]: [{ assetType: Asset.AvatarBackground, nameKey: 'Label.Backgrounds' }],
 };
 
-export const UnfolderedDropdownOption: AvatarItemDropdown = {
-  nameKey: 'Label.Unfoldered',
-  isFolder: true,
-  skipTranslation: false,
-};
-
 /**
- * Grid selection for the Recents tab. It carries no asset type, bundle type or taxonomy id, which is
- * what makes the by-creator listing unfiltered.
+ * Grid selection for the Recents option. It carries no asset type, bundle type or taxonomy id, which
+ * is what makes the by-creator listing unfiltered. Lives as the first option in the All tab's folder
+ * dropdown.
  */
 export const RecentsDropdownOption: AvatarItemDropdown = {
   nameKey: 'Label.Recents',

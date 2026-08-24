@@ -35,7 +35,6 @@ import {
   AvatarItemDropdownTitles,
   AvatarMenuMap,
   RecentsDropdownOption,
-  UnfolderedDropdownOption,
 } from '../constants/avatarItemConstants';
 import avatarItemTypeConstants from '../constants/avatarItemTypeConstants';
 import useTaxonomySelection from '../hooks/useTaxonomySelection';
@@ -388,7 +387,7 @@ const AvatarItemsGridContainer: FunctionComponent<
 
   const handleFolderDeleted = useCallback(async () => {
     if (isAssetAll) {
-      setSelectedAvatarItemDropdown(UnfolderedDropdownOption);
+      setSelectedAvatarItemDropdown(RecentsDropdownOption);
       setFilterIndexParams({ filterIndex: 0 });
     }
   }, [isAssetAll, setFilterIndexParams]);
@@ -406,7 +405,7 @@ const AvatarItemsGridContainer: FunctionComponent<
             setSelectedAvatarItemDropdown(folders[newIndex]);
           }
         } catch {
-          setSelectedAvatarItemDropdown(UnfolderedDropdownOption);
+          setSelectedAvatarItemDropdown(RecentsDropdownOption);
         }
       }
     },
@@ -430,7 +429,7 @@ const AvatarItemsGridContainer: FunctionComponent<
             setSelectedAvatarItemDropdown(updatedFolder);
           }
         } catch {
-          setSelectedAvatarItemDropdown(UnfolderedDropdownOption);
+          setSelectedAvatarItemDropdown(RecentsDropdownOption);
         }
       }
     },
@@ -462,8 +461,12 @@ const AvatarItemsGridContainer: FunctionComponent<
     // The taxonomy and Recents views list by creator across every Avatar Items tab, including the
     // folder-backed "All" tab, so neither uses the folder loader.
     if (isAssetAll && !isTaxonomyView && !isRecentsView && !isAvatarLooksView) {
+      // Within the All tab the folder dropdown's first option is Recents, which lists the creator's
+      // items across every type (like the old Recents tab) rather than a folder's contents.
       return (creationsParameters: AvatarItemsGridPagingParameters) =>
-        loadCreationsByFolder(creationsParameters, user?.id ?? 0);
+        creationsParameters.avatarItem.isRecents
+          ? loadCreationsByCreator(creationsParameters, user?.id ?? 0)
+          : loadCreationsByFolder(creationsParameters, user?.id ?? 0);
     }
     return (creationsParameters: AvatarItemsGridPagingParameters) => {
       if (creationsParameters.avatarItem.lookType !== undefined) {

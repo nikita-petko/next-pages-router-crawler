@@ -22,7 +22,9 @@ import UgcUploadPublishBlockBanner from '../../avatarItem/components/UgcUploadPu
 import Unification2D3DBanner from '../../avatarItem/components/Unification2D3DBanner';
 import { isOnItemTab } from '../../avatarItem/utils/avatarMenuMapUtils';
 import {
+  ALL_ASSET_TYPES_L1_KEY,
   AVATAR_ITEMS_ACTIVE_TAB,
+  buildTaxonomyActiveTab,
   isAllAssetTypesActiveTab,
   isAvatarLooksActiveTab,
   isRecentsActiveTab,
@@ -162,6 +164,22 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
       filteredTypes,
     );
   }, [query.activeTab, filteredTypes, isHostedTab]);
+
+  // Recents no longer has its own tab — it is the first option of the All tab's folder dropdown.
+  // Migrate any legacy `?activeTab=Recents` deep link to the All tab at filterIndex 0 (preserving the
+  // view) so it resolves to Recents there. Left as-is, the stale tab renders through the host asset
+  // type and would highlight and lock an item-type chip; the redirect also routes it through normal
+  // tab validation, so Recents is not reachable when the folders flag is off.
+  useEffect(() => {
+    if (isRecentsActiveTab(query.activeTab)) {
+      setQueryParams({
+        activeTab: isTaxonomyTab
+          ? buildTaxonomyActiveTab(ALL_ASSET_TYPES_L1_KEY)
+          : Asset.AllCatalogAsset,
+        filterIndex: 0,
+      });
+    }
+  }, [query.activeTab, isTaxonomyTab, setQueryParams]);
 
   const filteredMenuItems = useMemo(
     () => menuItems.filter((item) => !filteredTypes.includes(item.type)),

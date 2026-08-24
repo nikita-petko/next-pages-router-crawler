@@ -25,7 +25,7 @@ import {
   BundleType,
   FolderItemsApiLimit,
   GetItemsByCreatorApiLimit,
-  UnfolderedDropdownOption,
+  RecentsDropdownOption,
 } from '../constants/avatarItemConstants';
 import type { AvatarItemsGridPagingParameters } from '../containers/AvatarItemsGridContainer';
 
@@ -340,9 +340,9 @@ export async function getFolderDropdownOptions(groupId?: number): Promise<Avatar
         }))
         .filter((folder) => folder.nameKey !== '') ?? [];
 
-    return [UnfolderedDropdownOption, ...folders];
+    return [RecentsDropdownOption, ...folders];
   } catch {
-    return [UnfolderedDropdownOption];
+    return [RecentsDropdownOption];
   }
 }
 

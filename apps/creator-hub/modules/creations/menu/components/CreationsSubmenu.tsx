@@ -1,17 +1,11 @@
 import type { FunctionComponent } from 'react';
-import React, { useCallback, useMemo, useEffect, useRef, useState } from 'react';
+import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { useTranslation } from '@rbx/intl';
 import { Chip, IconButton, NavigateBeforeIcon, NavigateNextIcon, makeStyles } from '@rbx/ui';
 import type { TGroup } from '@modules/authentication/types';
-import { Asset } from '@modules/miscellaneous/common';
 import { Flex } from '@modules/miscellaneous/components';
-import { useQueryParams } from '@modules/miscellaneous/hooks';
 import TaxonomyL1Chips from '../../avatarItem/components/TaxonomyL1Chips';
 import useTaxonomyView from '../../avatarItem/hooks/useTaxonomyView';
-import {
-  buildRecentsActiveTab,
-  isRecentsActiveTab,
-} from '../../avatarItem/utils/taxonomyRoutingUtils';
 import useEnabledSubmenuItems from '../hooks/useEnabledSubmenuItems';
 import creationsMenuManager from '../implementations/CreationsMenuManager';
 import type MenuItem from '../interfaces/MenuItem';
@@ -73,49 +67,14 @@ const CreationsSubmenu: FunctionComponent<React.PropsWithChildren<TCreationsSubm
   const [offsetWidth, setOffsetWidth] = useState<number>(0);
 
   // The taxonomy chip row replaces this item-type submenu, so only one of them is ever shown.
-  // Guarded here rather than in the callers so both menu layouts stay in sync. `canUseTaxonomy` is
-  // true whenever the feature is on for an Avatar Items tab, in either view, which is what makes the
-  // Recents chip independent of the Taxonomy/Item-Type toggle.
-  const { isTaxonomyMode, canUseTaxonomy } = useTaxonomyView(
-    creationsMenuManager.getAssetType(menuState),
-  );
-  const [{ activeTab }, setRecentsTabParams] = useQueryParams(['activeTab', 'filterIndex']);
-  const recentsLabel = translate('Label.Recents');
-
-  // Recents is a top-level tab rather than part of either view, so it is offered here as well as in
-  // the taxonomy chip row — the feature flag decides whether it exists, not the Taxonomy/Item-Type
-  // toggle.
-  const isOnRecents = isRecentsActiveTab(activeTab);
-  const handleSelectRecents = useCallback(() => {
-    setRecentsTabParams({
-      activeTab: buildRecentsActiveTab(isTaxonomyMode),
-      filterIndex: 0,
-    });
-  }, [isTaxonomyMode, setRecentsTabParams]);
-  const recentsChip = (
-    <Chip
-      key='recents'
-      classes={{ root: chip }}
-      color={isOnRecents ? 'primary' : 'secondary'}
-      onClick={isOnRecents ? undefined : handleSelectRecents}
-      label={recentsLabel}
-      clickable
-      tabIndex={0}
-      aria-selected={isOnRecents}
-      role='tab'
-    />
-  );
+  // Guarded here rather than in the callers so both menu layouts stay in sync.
+  const { isTaxonomyMode } = useTaxonomyView(creationsMenuManager.getAssetType(menuState));
 
   const onSubmenuChange = (value: MenuItem) => {
     onMenuStateChange({ menuItem: menuState.menuItem, submenuItem: value });
   };
 
   const filteredSubmenuItems = useEnabledSubmenuItems(menuState, group);
-
-  const showRecentsBeforeAllAssetTypes =
-    canUseTaxonomy &&
-    (filteredSubmenuItems?.some((submenuItem) => submenuItem.type === Asset.AllCatalogAsset) ??
-      false);
 
   const isStartOfMenu = useMemo(() => scrollLeft <= 0, [scrollLeft]);
   const isEndOfMenu = useMemo(
@@ -170,14 +129,12 @@ const CreationsSubmenu: FunctionComponent<React.PropsWithChildren<TCreationsSubm
           to fit; once the row fits, the prev/next buttons hide themselves on their own. Plain div
           rather than Flex because Flex also emits `gap: 0`, which would beat the wrapped row gap. */}
       <div ref={subMenuRef} className={cx(subMenu, 'flex max-medium:wrap max-medium:gap-y-small')}>
-        {filteredSubmenuItems?.flatMap((submenuItem) => {
-          const isSelectedSubmenuItem = !isOnRecents && menuState.submenuItem === submenuItem;
-          const submenuChip = (
+        {filteredSubmenuItems?.map((submenuItem) => {
+          const isSelectedSubmenuItem = menuState.submenuItem === submenuItem;
+          return (
             <Chip
               key={submenuItem.type}
               classes={{ root: chip }}
-              // Recents carries no asset type, so it resolves through the host tab and would
-              // otherwise light up whichever item type hosts it.
               color={isSelectedSubmenuItem ? 'primary' : 'secondary'}
               onClick={isSelectedSubmenuItem ? undefined : () => onSubmenuChange(submenuItem)}
               label={translate(submenuItem.nameKey)}
@@ -187,13 +144,7 @@ const CreationsSubmenu: FunctionComponent<React.PropsWithChildren<TCreationsSubm
               role='tab'
             />
           );
-          // Recents sits immediately before All Asset Types, matching the taxonomy chip row.
-          return showRecentsBeforeAllAssetTypes && submenuItem.type === Asset.AllCatalogAsset
-            ? [recentsChip, submenuChip]
-            : [submenuChip];
         })}
-        {/* No All Asset Types entry to anchor to (a non-Avatar-Items submenu), so append instead. */}
-        {canUseTaxonomy && !showRecentsBeforeAllAssetTypes && recentsChip}
       </div>
       {!isEndOfMenu && (
         <div className={nextButton}>
