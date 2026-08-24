@@ -91,9 +91,7 @@ const BasicLayout: FunctionComponent<React.PropsWithChildren<BasicLayoutProps>> 
               <PublicFooter />
               <PrivateFooter
                 behavior={footerBehavior}
-                additionalLinks={
-                  settings.enableGPCFooter ? <PrivacyChoicesFooterLink inline /> : undefined
-                }
+                additionalLinks={<PrivacyChoicesFooterLink inline />}
               />
             </footer>
           </Grid>

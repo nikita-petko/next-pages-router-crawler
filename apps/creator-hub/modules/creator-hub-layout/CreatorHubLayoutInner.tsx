@@ -12,7 +12,6 @@ import { EStudioTaskType, useStudio } from '@modules/miscellaneous/hooks';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import PrivacyChoicesFooterLink from '@modules/navigation/components/PrivacyChoicesFooterLink';
 import AppBreadcrumbs from '@modules/navigation/layout/components/AppBreadcrumbs';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import CreatorWorkspaceContainer from './CreatorWorkspaceContainer';
 export const SCROLL_CONTAINER_ID = 'applayout-scroll-container';
 
@@ -44,7 +43,6 @@ const CreatorHubLayoutInner: React.FunctionComponent<
 }) => {
   const { open, dialog } = useStudio();
   const { translate } = useTranslation();
-  const { settings } = useSettings();
 
   const openStudio = useCallback(() => {
     open({ task: EStudioTaskType.Default });
@@ -85,9 +83,7 @@ const CreatorHubLayoutInner: React.FunctionComponent<
       <CreatorHubLayoutBase.PageContent
         id={SCROLL_CONTAINER_ID}
         banner={pageBanner}
-        additionalLinks={
-          settings.enableGPCFooter ? <PrivacyChoicesFooterLinkDynamic inline /> : undefined
-        }>
+        additionalLinks={<PrivacyChoicesFooterLinkDynamic inline />}>
         <div className='width-full height-full'>
           {useBreadcrumbs && ((!omitPageTitle && pageTitle) ?? beta) && (
             <div className='flex items-center gap-small padding-bottom-large'>

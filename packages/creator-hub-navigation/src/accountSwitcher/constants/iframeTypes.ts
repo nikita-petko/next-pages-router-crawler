@@ -35,7 +35,7 @@ type LoadedResponse = {
 type LocalStorageValueResponse = {
   type: IframeResponseType.LocalStorageValue;
   key: string;
-  value: string;
+  value: string | null;
 };
 type SetLocalStorageValueAckResponse = {
   type: IframeResponseType.SetLocalStorageValueAck;

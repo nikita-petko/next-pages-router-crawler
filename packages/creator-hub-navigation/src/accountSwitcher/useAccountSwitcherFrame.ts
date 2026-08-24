@@ -12,6 +12,9 @@ import {
 } from './constants/iframeTypes';
 import { withTimeout } from './utils/withTimeout';
 
+const getAccountSwitcherOrigin = (target: TBuildTarget, environment: TTargetEnvironment): string =>
+  `https://www.${getRobloxSiteDomain(target, environment)}`;
+
 const constructAccountSwitcherFrame = (
   target: TBuildTarget,
   environment: TTargetEnvironment,
@@ -19,7 +22,7 @@ const constructAccountSwitcherFrame = (
   const iframe: HTMLIFrameElement = document.createElement('iframe');
   iframe.id = 'account-switcher-frame';
   iframe.style.cssText = 'position: fixed; top: 0; left: 0; width: 0; height: 0; border: none;';
-  iframe.src = `https://www.${getRobloxSiteDomain(target, environment)}/account-switcher/iframe`;
+  iframe.src = `${getAccountSwitcherOrigin(target, environment)}/account-switcher/iframe`;
   iframe.sandbox = 'allow-scripts allow-same-origin allow-popups';
   return iframe;
 };
@@ -41,18 +44,18 @@ const getOrCreateAccountSwitcherFrame = (
   environment: TTargetEnvironment,
 ): GetOrCreateFrameResult => {
   if (document) {
-    let accountSwitcherFrame = document.getElementById(
-      'account-switcher-frame',
-    ) as HTMLIFrameElement | null;
-    if (accountSwitcherFrame === null) {
-      accountSwitcherFrame = appendFrameToDOM(constructAccountSwitcherFrame(target, environment));
+    const existingElement = document.getElementById('account-switcher-frame');
+    if (existingElement === null) {
+      const accountSwitcherFrame = appendFrameToDOM(
+        constructAccountSwitcherFrame(target, environment),
+      );
       return {
         accountSwitcherFrame,
         wasCreated: true,
       };
     }
     return {
-      accountSwitcherFrame,
+      accountSwitcherFrame: existingElement instanceof HTMLIFrameElement ? existingElement : null,
       wasCreated: false,
     };
   }
@@ -70,24 +73,33 @@ function postMessage<T extends IframeRequest['msg']>(
 ): void {
   accountSwitcherFrame?.contentWindow?.postMessage(
     message,
-    `https://www.${getRobloxSiteDomain(target, environment)}`,
+    getAccountSwitcherOrigin(target, environment),
   );
 }
 
-function addMessageListener<T extends IframeResponse['type']>(
-  eventType: T,
-  callback: (
-    data: Extract<IframeResponse, { type: T }>,
-    self: (event: MessageEvent<EventResponse>) => void,
-  ) => void,
-): (event: MessageEvent<EventResponse>) => void {
-  const listener = (event: MessageEvent<EventResponse>) => {
-    const eventData = event.data;
+type MessageListener = (event: MessageEvent<EventResponse>) => void;
 
+function addMessageListener<T extends IframeResponse['type']>(
+  accountSwitcherFrame: HTMLIFrameElement | null,
+  target: TBuildTarget,
+  environment: TTargetEnvironment,
+  eventType: T,
+  callback: (data: Extract<IframeResponse, { type: T }>, self: MessageListener) => void,
+): MessageListener {
+  const expectedOrigin = getAccountSwitcherOrigin(target, environment);
+  const expectedSource = accountSwitcherFrame?.contentWindow;
+
+  const listener: MessageListener = (event) => {
+    if (event.origin !== expectedOrigin || event.source !== expectedSource) {
+      return;
+    }
+
+    const eventData = event.data;
     if (eventData?.msg === DATA_FROM_ACCOUNT_SWITCHER_FRAME) {
       const accountSwitcherData = eventData.data;
       if (accountSwitcherData?.type === eventType) {
-        callback(accountSwitcherData as Extract<IframeResponse, { type: T }>, listener); // add listener as second arg so it can be removed inside callback
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `type` is checked above
+        callback(accountSwitcherData as Extract<IframeResponse, { type: T }>, listener); // pass listener so the callback can remove itself
       }
     }
   };
@@ -106,15 +118,21 @@ export function useLoadAccountSwitcherFrame(isSupported: boolean) {
       return;
     }
 
-    addMessageListener(IframeResponseType.Loaded, ({ enabled }, self) => {
-      setIsLoaded(true);
-      setIsEnabled(enabled);
-      window.removeEventListener('message', self);
-    });
-
     const { accountSwitcherFrame, wasCreated } = getOrCreateAccountSwitcherFrame(
       target,
       environment,
+    );
+
+    addMessageListener(
+      accountSwitcherFrame,
+      target,
+      environment,
+      IframeResponseType.Loaded,
+      ({ enabled }, self) => {
+        setIsLoaded(true);
+        setIsEnabled(enabled);
+        window.removeEventListener('message', self);
+      },
     );
 
     // implicitly if wasCreated is true, iframe will automatically post a message when it finishes loading
@@ -146,10 +164,16 @@ async function checkAccountSwitcherFrameReady(
   return withTimeout<HTMLIFrameElement | null>(
     'checkAccountSwitcherFrameReady',
     ({ onSuccess, onTimeout }) => {
-      const listener = addMessageListener(IframeResponseType.Loaded, (data, self) => {
-        window.removeEventListener('message', self);
-        onSuccess(accountSwitcherFrame);
-      });
+      const listener = addMessageListener(
+        accountSwitcherFrame,
+        target,
+        environment,
+        IframeResponseType.Loaded,
+        (data, self) => {
+          window.removeEventListener('message', self);
+          onSuccess(accountSwitcherFrame);
+        },
+      );
       onTimeout(() => {
         window.removeEventListener('message', listener);
       });
@@ -162,16 +186,22 @@ export async function readRBXASBlob(target: TBuildTarget, environment: TTargetEn
   const accountSwitcherFrame = await checkAccountSwitcherFrameReady(target, environment);
 
   return withTimeout<string>('readRBXASBlob', ({ onSuccess, onTimeout }) => {
-    const listener = addMessageListener(IframeResponseType.LocalStorageValue, (data, self) => {
-      if (data.key === RBXASBlob) {
-        const sanitizedValue =
-          data.value !== null
-            ? data.value.replaceAll(/"/g, '') // value inside localStorage is wrapped with quotes
-            : ''; // if value is null, treat it as empty string to handle gracefully
-        window.removeEventListener('message', self);
-        onSuccess(sanitizedValue);
-      }
-    });
+    const listener = addMessageListener(
+      accountSwitcherFrame,
+      target,
+      environment,
+      IframeResponseType.LocalStorageValue,
+      (data, self) => {
+        if (data.key === RBXASBlob) {
+          const sanitizedValue =
+            data.value !== null
+              ? data.value.replaceAll('"', '') // value inside localStorage is wrapped with quotes
+              : ''; // if value is null, treat it as empty string to handle gracefully
+          window.removeEventListener('message', self);
+          onSuccess(sanitizedValue);
+        }
+      },
+    );
     onTimeout(() => {
       window.removeEventListener('message', listener);
     });
@@ -194,6 +224,9 @@ export async function syncRBXASBlob(
     let rbxAsBlobSyncedAck = false;
 
     const listener = addMessageListener(
+      accountSwitcherFrame,
+      target,
+      environment,
       IframeResponseType.SetLocalStorageValueAck,
       (data, self) => {
         if (data.key === RBXASBlob) {

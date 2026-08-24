@@ -28,7 +28,6 @@ export enum FeatureFlagName {
   ageVerificationUpsellGetStartedUrl = 'ageVerificationUpsellGetStartedUrl',
   ageVerificationUpsellViewDetailsUrl = 'ageVerificationUpsellViewDetailsUrl',
   serverManagementDevAllowlist = 'serverManagementDevAllowlist',
-  enableGPCFooter = 'enableGPCFooter',
   enableSignalRCrossTab = 'enableSignalRCrossTab',
   enableImageTranslationEnrollment = 'enableImageTranslationEnrollment',
   showTaxonomyOnAvatarItemAnalyticsTab = 'showTaxonomyOnAvatarItemAnalyticsTab',
@@ -105,7 +104,6 @@ export const featureFlagDefaults = defineFeatureFlagDefaults({
   [FeatureFlagName.ageVerificationUpsellViewDetailsUrl]:
     'https://devforum.roblox.com/t/age-check-notifications-in-studio-and-creator-hub/4117693',
   [FeatureFlagName.serverManagementDevAllowlist]: '',
-  [FeatureFlagName.enableGPCFooter]: false,
   [FeatureFlagName.enableSignalRCrossTab]: false,
   [FeatureFlagName.enableImageTranslationEnrollment]: false,
   [FeatureFlagName.showTaxonomyOnAvatarItemAnalyticsTab]: false,
