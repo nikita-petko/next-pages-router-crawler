@@ -20,10 +20,10 @@ import ThumbnailCreativeAddButton from '@components/campaignBuilder/common/creat
 import ThumbnailUploadDrawer from '@components/campaignBuilder/common/creative/thumbnailSection/ThumbnailUploadDrawer';
 import VideoUploadDrawer from '@components/campaignBuilder/common/creative/videoSection/VideoUploadDrawer';
 import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
+import { applyReachCreativeFormatChange } from '@components/campaignBuilder/common/objectiveHelpers';
 import Creative from '@components/common/Creative';
 import {
   DEFAULT_HEADLINE_MAX_LENGTH,
-  DEFAULT_REACH_BID_TYPE,
   DEFAULT_REACH_CTA_BUTTON_TYPE,
   DEFAULT_SUBTITLE_MAX_LENGTH,
   FlowTypes,
@@ -33,11 +33,11 @@ import {
   REACH_CTA_OPTIONS,
   ReachAdFormat,
   ReachCtaButtonLabelKey,
+  VIDEO_ONLY_REACH_BID_TYPES,
 } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
-import { adsInternalVideoTransport } from '@services/video/adsInternalVideoUpload';
 import { useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
 import { ThumbnailType } from '@type/campaignBuilder';
@@ -117,7 +117,9 @@ const ReachCreativeSection = ({
     name: FormField.CREATIVE_FORMAT,
   });
   const videos = useWatch<FormType, typeof FormField.VIDEOS>({ name: FormField.VIDEOS });
+  const bidType = useWatch<FormType, typeof FormField.BID_TYPE>({ name: FormField.BID_TYPE });
   const isVerticalFormat = creativeFormat === ReachAdFormat.VERTICAL_1X2;
+  const isVideoOnlyBidType = !!bidType && VIDEO_ONLY_REACH_BID_TYPES.includes(bidType);
   // 1x2 uses a single poster image for the video ad; 2x1 can select more.
   const maxAllowedThumbnails = isVerticalFormat ? 1 : maxAllowedThumbnailsFromMetadata;
 
@@ -213,10 +215,11 @@ const ReachCreativeSection = ({
     );
   };
 
-  // 1x2 vertical reach allows a single video asset at a time, uploaded via the
-  // internal ads-management-api proxy (EnhancedVideoExperience bypass). Keep
-  // the add button available so the user can reopen the drawer to replace the
-  // selection; the drawer itself enforces maxVideosOverride={1}.
+  // 1x2 vertical reach allows a single video asset at a time. Keep the add
+  // button available so the user can reopen the drawer to replace the
+  // selection; the drawer itself enforces maxVideosOverride={1}. Hiding it at
+  // capacity also stranded every clone from its first render, since a cloned
+  // video arrives already finished.
   const maybeRenderVideoUploadButton = () => {
     if (editMode) {
       return null;
@@ -281,7 +284,6 @@ const ReachCreativeSection = ({
       )}
       {isVerticalFormat && (
         <VideoUploadDrawer
-          assetType='Video'
           maxVideosOverride={1}
           onClose={() => {
             // set touched and dirty to true; shouldValidate clears VideoRequired
@@ -293,7 +295,6 @@ const ReachCreativeSection = ({
               shouldValidate: true,
             });
           }}
-          uploadTransport={adsInternalVideoTransport}
         />
       )}
       <div className={`text-body-large ${formColumn}`}>
@@ -307,27 +308,21 @@ const ReachCreativeSection = ({
                 onBlur={onBlur}
                 onValueChange={(nextFormat) => {
                   onChange(nextFormat);
-                  // 2x1 (image) only supports CPM and rejects a clickout URL, so
-                  // drop any CPV2 selection and clear the click destination.
-                  if (nextFormat === ReachAdFormat.HORIZONTAL_2X1) {
-                    setValue(FormField.BID_TYPE, DEFAULT_REACH_BID_TYPE);
-                    setValue(FormField.CLICK_DESTINATION, undefined);
-                    // Only the clickout attribution bar uses it, and the
-                    // backend rejects it on 2x1 image ads.
-                    setValue(FormField.ATTRIBUTION_THUMBNAILS, []);
-                    // 2x1 CTA text comes from the max-reach tile-variant
-                    // experiment, not from an advertiser choice.
-                    setValue(FormField.CTA_BUTTON_TYPE, undefined);
-                  } else {
-                    setValue(FormField.CTA_BUTTON_TYPE, DEFAULT_REACH_CTA_BUTTON_TYPE);
-                  }
+                  applyReachCreativeFormatChange({
+                    nextFormat: nextFormat as ReachAdFormat,
+                    setValue,
+                  });
                 }}
                 ref={ref}
                 size='Small'
                 value={value ?? ReachAdFormat.HORIZONTAL_2X1}>
                 <div className='flex flex-row gap-large'>
                   <Radio
-                    isDisabled={editMode}
+                    // CPV2 charges per 2-second video view, so it has nothing to
+                    // measure on the 2x1 image format. The bid-type picker offers
+                    // both types unconditionally and this is the side that gives,
+                    // letting an advertiser lead with how they want to be charged.
+                    isDisabled={editMode || isVideoOnlyBidType}
                     label={translateCampaign('Label.Reach2x1Horizontal')}
                     value={ReachAdFormat.HORIZONTAL_2X1}
                   />
@@ -572,6 +567,21 @@ const ReachCreativeSection = ({
                     {...field}
                     error={shouldShowError ? error?.message : undefined}
                     hasError={shouldShowError}
+                    // A click destination turns the ad into a clickout that
+                    // drives off-platform, so the experience selected earlier in
+                    // the form stops being the ad's destination. Carried as
+                    // helper text rather than a sibling node so it lands in the
+                    // input's aria-describedby, and so an invalid-URL error
+                    // supersedes it instead of stacking two messages.
+                    helperText={
+                      field.value?.trim() ? (
+                        <span
+                          className='content-system-warning'
+                          data-testid='click-destination-experience-warning'>
+                          {translateCampaign('Description.ClickDestinationExperienceNotTargeted')}
+                        </span>
+                      ) : undefined
+                    }
                     id='clickDestination'
                     isDisabled={editMode}
                     label={translateCampaign('Label.ClickDestination')}

@@ -442,6 +442,8 @@ const AdIntegrationsListPage = () => {
   const handleCreateClick = useAdAccountAutoCreateCreateAction(
     navigateToCreate,
     'adIntegrationsList',
+    currentWorkspace?.creatorType === 'Group' ? currentWorkspace.creatorId : undefined,
+    currentWorkspace?.creatorType === 'Group' ? currentWorkspace.creatorName : undefined,
   );
 
   const closeManagedCampaignDrawer = useCallback(() => {

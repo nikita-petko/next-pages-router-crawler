@@ -31,8 +31,6 @@ enum VerticalPreviewTab {
  * satisfies this shape.
  */
 interface ReachCreativePreviewData {
-  /** 1x2 only — shown beside the attribution thumbnail in the expanded view. */
-  advertiserName?: string;
   /** Only the campaign builder has age-rating data (via `useAgeRecommendationLabel`). */
   ageRating?: string;
   /** 1x2 only — the ad's 1:1 attribution thumbnail. */
@@ -104,7 +102,6 @@ const ReachCreativePreviewDialog = ({
           </Tabs>
           <div className={styles.verticalTileStage}>
             <ReachVerticalTilePreview
-              advertiserName={reachPreview.advertiserName}
               attributionThumbnailAssetId={reachPreview.attributionThumbnailAssetId}
               backgroundAssetId={reachPreview.backgroundAssetId}
               ctaButtonType={reachPreview.ctaButtonType}

@@ -14,7 +14,6 @@ import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { GetVideoPlayerEnvEnum } from '@utils/url';
 
 interface ReachVerticalTilePreviewProps {
-  advertiserName?: string;
   /** The ad's 1:1 attribution thumbnail. Only rendered in the `expanded` view. */
   attributionThumbnailAssetId?: number;
   /** Poster image for the 1x2 video ad (the ad's `thumbnail_asset_id`). */
@@ -46,7 +45,6 @@ interface ReachVerticalTilePreviewProps {
  * translations the same way.
  */
 const ReachVerticalTilePreview = ({
-  advertiserName,
   attributionThumbnailAssetId,
   backgroundAssetId,
   className,
@@ -99,7 +97,6 @@ const ReachVerticalTilePreview = ({
   return (
     <div className={cx(root, className)}>
       <OneByTwoTile
-        advertiserName={advertiserName}
         attributionThumbnailImage={
           attributionThumbnailAssetId !== undefined ? (
             <Creative assetId={attributionThumbnailAssetId} className={attributionCreative} />
@@ -110,7 +107,6 @@ const ReachVerticalTilePreview = ({
         buttonText={translateAdsServing(
           ReachCtaButtonLabelKey[ctaButtonType ?? DEFAULT_REACH_CTA_BUTTON_TYPE],
         )}
-        clickoutLabel={translateCampaign('Label.GoToWebsite')}
         headline={headline || translateCampaign('Label.Headline')}
         logoImage={
           logoAssetId !== undefined ? (

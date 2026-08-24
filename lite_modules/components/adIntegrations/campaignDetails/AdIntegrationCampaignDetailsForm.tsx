@@ -26,6 +26,7 @@ import DateField from '@components/common/form/DateField';
 import {
   AdIntegrationFormField,
   MaxAdvertiserNameLength,
+  MaxAdvertiserUrlLength,
   MaxCampaignNameLength,
 } from '@constants/adIntegrations';
 import { AdIntegrationsDocsUrl } from '@constants/adIntegrationsUrls';
@@ -155,6 +156,7 @@ const AdIntegrationCampaignDetailsForm = ({
     mode,
     timezoneDbName,
     adIntegrationCampaignMinimumStartTimestampMsUtc,
+    isMultiExperienceEnabled,
   );
   const {
     classes: {
@@ -165,6 +167,7 @@ const AdIntegrationCampaignDetailsForm = ({
       container,
       datePickerError,
       dateTimeRow,
+      fieldRow,
       formColumn,
       halfWidth,
       inlineTile,
@@ -189,6 +192,10 @@ const AdIntegrationCampaignDetailsForm = ({
   const advertiserName = useWatch({
     control,
     name: AdIntegrationFormField.AdvertiserName,
+  });
+  const advertiserUrl = useWatch({
+    control,
+    name: AdIntegrationFormField.AdvertiserUrl,
   });
   const campaignName = useWatch({
     control,
@@ -411,6 +418,7 @@ const AdIntegrationCampaignDetailsForm = ({
     async (values: AdIntegrationCampaignDetailsFormValues) => {
       const changedFields: AdIntegrationCampaignDetailsChangedFields = {
         advertiserName: Boolean(dirtyFields.advertiserName),
+        advertiserUrl: Boolean(dirtyFields.advertiserUrl),
         campaignName: Boolean(dirtyFields.campaignName),
         endDate: Boolean(dirtyFields.endDate),
         endTime: Boolean(dirtyFields.endTime),
@@ -524,28 +532,56 @@ const AdIntegrationCampaignDetailsForm = ({
                 universes={universes}
               />
 
-              <Controller
-                control={control}
-                name={AdIntegrationFormField.AdvertiserName}
-                render={({ field }) => (
-                  <TextInput
-                    {...field}
-                    // TextInput interpolates `className` into its wrapper without
-                    // a guard, so omitting it renders a literal "undefined" class.
-                    className=''
-                    error={errors.advertiserName?.message}
-                    hasError={Boolean(errors.advertiserName)}
-                    helperText={translate('Label.CharCount', {
-                      current: String(advertiserName?.length ?? 0),
-                      max: String(MaxAdvertiserNameLength),
-                    })}
-                    id={AdIntegrationFormField.AdvertiserName}
-                    isDisabled={campaignInProgress || disableEditing}
-                    label={translateAccount('Label.AdvertiserName')}
-                    size='Medium'
+              <div className={fieldRow}>
+                <Controller
+                  control={control}
+                  name={AdIntegrationFormField.AdvertiserName}
+                  render={({ field }) => (
+                    <TextInput
+                      {...field}
+                      // TextInput interpolates `className` into its wrapper without
+                      // a guard, so omitting it renders a literal "undefined" class.
+                      className=''
+                      error={errors.advertiserName?.message}
+                      hasError={Boolean(errors.advertiserName)}
+                      helperText={translate('Label.CharCount', {
+                        current: String(advertiserName?.length ?? 0),
+                        max: String(MaxAdvertiserNameLength),
+                      })}
+                      id={AdIntegrationFormField.AdvertiserName}
+                      isDisabled={campaignInProgress || disableEditing}
+                      label={translateAccount('Label.AdvertiserName')}
+                      size='Medium'
+                    />
+                  )}
+                />
+
+                {isMultiExperienceEnabled && (
+                  <Controller
+                    control={control}
+                    name={AdIntegrationFormField.AdvertiserUrl}
+                    render={({ field }) => (
+                      <TextInput
+                        {...field}
+                        className=''
+                        error={errors.advertiserUrl?.message}
+                        hasError={Boolean(errors.advertiserUrl)}
+                        helperText={translate('Label.CharCount', {
+                          current: String(advertiserUrl?.length ?? 0),
+                          max: String(MaxAdvertiserUrlLength),
+                        })}
+                        id={AdIntegrationFormField.AdvertiserUrl}
+                        isDisabled={campaignInProgress || disableEditing}
+                        label={translateMisc('Label.AdvertiserUrl')}
+                        labelTooltip={{
+                          title: translate('Description.AdvertiserUrlTooltip'),
+                        }}
+                        size='Medium'
+                      />
+                    )}
                   />
                 )}
-              />
+              </div>
 
               <div className={dateTimeRow}>
                 <div className={cx(halfWidth, startDateRangeErrorMessage && datePickerError)}>

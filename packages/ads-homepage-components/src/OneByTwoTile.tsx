@@ -22,8 +22,6 @@ export interface OneByTwoTilePreviewProps {
 }
 
 export interface OneByTwoTileProps {
-  /** Advertiser display name, shown in the attribution bar. `expanded` view only. */
-  advertiserName?: string;
   /**
    * Square brand icon for the attribution bar, rendered from the ad's
    * `attributionThumbnailAssetId`. `expanded` view only.
@@ -32,8 +30,6 @@ export interface OneByTwoTileProps {
   backgroundImage: React.ReactElement | null;
   badgeText?: string;
   buttonText?: string;
-  /** Muted line under the advertiser name (e.g. "Go to website"). `expanded` view only. */
-  clickoutLabel?: string;
   headline: string;
   logoImage: React.ReactElement | null;
   /** Accessible name for the overflow menu button. `tile` view only. */
@@ -48,12 +44,17 @@ export interface OneByTwoTileProps {
  * `OneByTwoTile` mirrors the lua-apps 1x2 vertical-video home-feed creative. It renders
  * two states off the same media: the `tile` grid cell (badge, 3:1 logo, headline,
  * subtitle, CTA) and the `expanded` video player, whose attribution bar shows the
- * square `attributionThumbnailAssetId` brand icon, the advertiser name, a clickout
- * label, and a View button.
+ * square `attributionThumbnailAssetId` brand icon, the headline, the subtitle, and a
+ * View button.
  *
  * The attribution bar only exists on brand tiles (ads with a clickout URL), which is
  * why the attribution thumbnail is invisible in the `tile` view — advertisers need the
  * `expanded` view to see what they uploaded.
+ *
+ * Both views carry the same headline and subtitle so this stays a preview of the
+ * advertiser's own copy. The bar deliberately does not show the advertiser name or a
+ * "Go to website" line: neither is authored in the creative form, so surfacing them
+ * here told an advertiser nothing about the ad they were assembling.
  *
  * Like `TwoByOneTile`, the grid CTA is a native `<button>` rather than Foundation
  * `<Button>` so the rendered DOM stays identical to the lua-apps client. The
@@ -61,12 +62,10 @@ export interface OneByTwoTileProps {
  * uses the real component.
  */
 export default function OneByTwoTile({
-  advertiserName,
   attributionThumbnailImage,
   backgroundImage,
   badgeText = 'Ad',
   buttonText = 'View',
-  clickoutLabel,
   headline,
   logoImage,
   overflowMenuLabel = 'More options',
@@ -100,22 +99,35 @@ export default function OneByTwoTile({
           <div className='flex'>
             <Badge label={badgeText} variant='OverMedia' />
           </div>
-          <div className='flex items-center gap-medium width-full max-width-[600px]'>
-            <div className='flex flex-1 items-center gap-medium min-width-[0px]'>
+          {/* justify-between, not a grow utility on the copy: the Foundation
+              Tailwind preset allowlists corePlugins and leaves flexGrow,
+              flexShrink and flexBasis out, so `flex-1` compiles to nothing and
+              the CTA ends up hugging the text instead of sitting at the edge.
+
+              max-width must stay an arbitrary value. Foundation maps it to the
+              size-token scale, so `max-width-600` is token 600 — 24px — which
+              collapses the copy to zero width and spills the CTA out the left. */}
+          <div className='flex items-center justify-between gap-medium width-full max-width-[600px]'>
+            <div className='flex items-center gap-medium min-width-0'>
               {attributionThumbnailImage && (
                 <div className='size-1000 radius-medium clip shrink-0'>
                   {attributionThumbnailImage}
                 </div>
               )}
-              <div className='flex flex-1 flex-col justify-center min-width-[0px]'>
-                {advertiserName && (
-                  <p className='text-label-medium content-emphasis [margin:0] truncate'>
-                    {advertiserName}
+              {/* The advertiser's own copy, not brand attribution. This is a
+                  preview surface: the headline and subtitle are the two fields
+                  they just filled in, and showing anything else here leaves
+                  them with no way to check what they typed against the video
+                  it sits on. */}
+              <div className='flex flex-col justify-center min-width-0'>
+                {headline && (
+                  <p className='text-label-medium content-emphasis [margin:0] text-no-wrap text-truncate-end'>
+                    {headline}
                   </p>
                 )}
-                {clickoutLabel && (
-                  <p className='text-body-medium content-default [margin:0] truncate'>
-                    {clickoutLabel}
+                {subtitle && (
+                  <p className='text-body-medium content-default [margin:0] text-no-wrap text-truncate-end'>
+                    {subtitle}
                   </p>
                 )}
               </div>

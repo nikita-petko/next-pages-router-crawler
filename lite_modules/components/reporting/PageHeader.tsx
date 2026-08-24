@@ -46,6 +46,8 @@ const PageHeader = () => {
     shouldUseWorkspaceUniverseFiltering && currentWorkspace?.creatorType === 'Group'
       ? currentWorkspace.creatorName
       : undefined;
+  const groupId =
+    currentWorkspace?.creatorType === 'Group' ? currentWorkspace.creatorId : undefined;
   const reportUniverseId =
     shouldUseWorkspaceUniverseFiltering && selectedUniverseId !== 0
       ? selectedUniverseId
@@ -57,6 +59,8 @@ const PageHeader = () => {
   const handleCreateClick = useAdAccountAutoCreateCreateAction(
     navigateToCreateCampaign,
     'reportingPageHeader',
+    groupId,
+    currentWorkspace?.creatorType === 'Group' ? currentWorkspace.creatorName : undefined,
   );
 
   useEffect(() => {

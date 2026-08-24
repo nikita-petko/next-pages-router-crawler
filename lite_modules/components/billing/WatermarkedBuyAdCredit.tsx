@@ -81,14 +81,17 @@ const resolveInitialBalanceScope = (
 export const WatermarkedBuyAdCredit = ({
   actionsContainer,
   adCreditBalance,
+  controlledBalanceScope,
   groupAdCreditBalance = 0,
   groupId,
   groupName,
   groupRobuxBalance = 0,
   initialBalanceScope,
   isGroupSpendPermissionDenied = false,
+  onBalanceScopeChange,
   onCancel,
   onComplete,
+  onPurchaseStateChange,
   robuxBalance,
   showBalanceScopeSelector = true,
   showGroupBalanceOption = false,
@@ -151,9 +154,10 @@ export const WatermarkedBuyAdCredit = ({
   } = useAddPaymentMethodStyles();
 
   const canUseGroupBalance = showGroupBalanceOption && !isGroupSpendPermissionDenied;
-  const [balanceScope, setBalanceScope] = useState<AdCreditBalanceScope>(() =>
+  const [internalBalanceScope, setInternalBalanceScope] = useState<AdCreditBalanceScope>(() =>
     resolveInitialBalanceScope(canUseGroupBalance, initialBalanceScope),
   );
+  const balanceScope = controlledBalanceScope ?? internalBalanceScope;
   const [sourceField, setSourceField] = useState<AdCreditQuoteSourceField>(
     AdCreditQuoteSourceFieldValues.AD_CREDIT_AMOUNT,
   );
@@ -164,19 +168,26 @@ export const WatermarkedBuyAdCredit = ({
     { sourceField: AdCreditQuoteSourceField; value: number } | undefined
   >(undefined);
   const [isPurchasing, setIsPurchasing] = useState<boolean>(false);
+  const updatePurchaseState = (nextIsPurchasing: boolean): void => {
+    setIsPurchasing(nextIsPurchasing);
+    onPurchaseStateChange?.(nextIsPurchasing);
+  };
   const [isInfoAlertDismissed, setIsInfoAlertDismissed] = useState<boolean>(false);
   const [isConvertRobuxFocused, setIsConvertRobuxFocused] = useState<boolean>(false);
 
   useEffect(() => {
     if (isGroupSpendPermissionDenied && balanceScope === AdCreditBalanceScope.Group) {
-      setBalanceScope(AdCreditBalanceScope.Personal);
+      onBalanceScopeChange?.(AdCreditBalanceScope.Personal);
+      if (onBalanceScopeChange == null) {
+        setInternalBalanceScope(AdCreditBalanceScope.Personal);
+      }
       setSourceField(AdCreditQuoteSourceFieldValues.AD_CREDIT_AMOUNT);
       setRobuxAmount(undefined);
       setAdCreditAmount(undefined);
       setAdCreditInputValue('');
       setDebouncedInput(undefined);
     }
-  }, [balanceScope, isGroupSpendPermissionDenied]);
+  }, [balanceScope, isGroupSpendPermissionDenied, onBalanceScopeChange]);
 
   const hasVerifiedPaymentProfiles = paymentProfiles.some(
     (paymentProfile) => paymentProfile?.is_verified,
@@ -394,7 +405,7 @@ export const WatermarkedBuyAdCredit = ({
     if (isPurchasing || quote === undefined || !canBuy) {
       return;
     }
-    setIsPurchasing(true);
+    updatePurchaseState(true);
     logNativeClickEvent(EventName.BuyAdCreditAttempted, {});
     try {
       const { purchase_status: purchaseStatus } = await convertRobuxToAdCredit({
@@ -413,7 +424,6 @@ export const WatermarkedBuyAdCredit = ({
           adCreditAmount: MicroUsdToUsdString(quote.ad_credit_quantity_micros),
         });
         if (showSuccessDialog) {
-          setIsPurchasing(false);
           openBuyAdCreditSuccessDialog(
             MicroUsdToUsdString(quote.ad_credit_quantity_micros),
             quote.robux_charge.toLocaleString(),
@@ -450,12 +460,14 @@ export const WatermarkedBuyAdCredit = ({
         CaptureException(error as Error);
       }
       logNativeImpressionEvent(EventName.BuyAdCreditFailed, { errorMessage });
-      setIsPurchasing(false);
+    } finally {
+      updatePurchaseState(false);
     }
   };
 
   const handleBalanceScopeChange = (value: AdCreditBalanceScope): void => {
     if (
+      isPurchasing ||
       value === balanceScope ||
       (value === AdCreditBalanceScope.Group && isGroupSpendPermissionDenied)
     ) {
@@ -463,7 +475,10 @@ export const WatermarkedBuyAdCredit = ({
     }
     // Switching accounts resets the form so the previous account's amounts are
     // never reused to fire a quote request against the newly selected account.
-    setBalanceScope(value);
+    onBalanceScopeChange?.(value);
+    if (onBalanceScopeChange == null) {
+      setInternalBalanceScope(value);
+    }
     setSourceField(AdCreditQuoteSourceFieldValues.AD_CREDIT_AMOUNT);
     setRobuxAmount(undefined);
     setAdCreditAmount(undefined);
@@ -479,6 +494,7 @@ export const WatermarkedBuyAdCredit = ({
       <div className={watermarkedBalanceScopeSelectorContainer}>
         <Dropdown
           className={watermarkedBalanceScopeSelector}
+          isDisabled={isPurchasing}
           label={translateBilling('Label.PurchasingFor')}
           onValueChange={(value) => handleBalanceScopeChange(value as AdCreditBalanceScope)}
           placeholder={translateBilling('Label.PurchasingFor')}

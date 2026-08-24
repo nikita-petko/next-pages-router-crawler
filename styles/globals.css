@@ -1898,6 +1898,9 @@
 .max-height-\[calc\(var\(--size-800\)\*3\+var\(--gap-small\)\*2\)\] {
   max-height: calc(var(--size-800) * 3 + var(--gap-small) * 2);
 }
+.max-width-600 {
+  max-width: var(--size-600);
+}
 .max-width-\[200px\] {
   max-width: 200px;
 }
@@ -3631,6 +3634,15 @@ a {
 
 .\[\&\>\*\]\:basis-0>* {
   flex-basis: 0%;
+}
+
+@media (min-width: 601px) {
+  .medium\:\[\&\>\*\]\:grow>* {
+    flex: 1 0 auto;
+  }
+  .medium\:\[\&\>\*\]\:basis-0>* {
+    flex-basis: 0%;
+  }
 }
 
 @media (min-width: 1141px) {

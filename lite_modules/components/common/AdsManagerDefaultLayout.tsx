@@ -17,6 +17,7 @@ import ImpersonationBanner from '@components/common/ImpersonationBanner';
 import ForecastEstimatorDrawer from '@components/forecast/ForecastEstimatorDrawer';
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
+import useGroupWorkspacePersonalAccountSetup from '@hooks/account/useGroupWorkspacePersonalAccountSetup';
 import useCurrentWorkspaceMetadata from '@hooks/useCurrentWorkspaceMetadata';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
@@ -45,16 +46,15 @@ const AdsManagerPageBaseLayout = memo(
     const router = useRouter();
     const { translate } = useNamespacedTranslation(TranslationNamespace.Misc);
     const { currentWorkspace } = useWorkspaces();
-    const workspaceAdAccountAutoCreateEnabled = useCurrentWorkspaceMetadata();
+    const { isResolved: isWorkspaceMetadataResolved, metadata: workspaceMetadata } =
+      useCurrentWorkspaceMetadata();
     const currentPath = router.pathname;
     const isSplashPage = currentPath === Routes.LANDING;
     const isEmailVerifiedPage = currentPath === Routes.VERIFY_EMAIL;
     const isAdAccountAutoCreateEnabled = useAppStore(
       (state: AppStoreType) => state.appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false,
     );
-    const setWorkspaceAdAccountAutoCreateEnabled = useAppStore(
-      (state: AppStoreType) => state.setWorkspaceAdAccountAutoCreateEnabled,
-    );
+    const setWorkspaceMetadata = useAppStore((state: AppStoreType) => state.setWorkspaceMetadata);
     const selectedGroupId = getSelectedGroupId(currentWorkspace, isAdAccountAutoCreateEnabled);
     const activeGroupId = isAdAccountAutoCreateEnabled ? (groupId ?? selectedGroupId) : undefined;
     const adAccountStatusGroupId = isAdAccountAutoCreateEnabled ? groupId : undefined;
@@ -93,8 +93,8 @@ const AdsManagerPageBaseLayout = memo(
     const loggedMissingGroupAccountPageKeys = useRef<Set<string>>(new Set());
 
     useEffect(() => {
-      setWorkspaceAdAccountAutoCreateEnabled(workspaceAdAccountAutoCreateEnabled);
-    }, [setWorkspaceAdAccountAutoCreateEnabled, workspaceAdAccountAutoCreateEnabled]);
+      setWorkspaceMetadata(workspaceMetadata);
+    }, [setWorkspaceMetadata, workspaceMetadata]);
 
     useEffect(() => {
       if (adBlockDetected) {
@@ -191,6 +191,10 @@ const AdsManagerPageBaseLayout = memo(
       setAdCreditBalance,
       setAdCreditActivated,
     ]);
+
+    useGroupWorkspacePersonalAccountSetup(
+      currentPath === Routes.MANAGE && isWorkspaceMetadataResolved,
+    );
 
     const {
       classes: { creatorHubLayoutPageContent, systemWideAlertToast },

@@ -207,12 +207,16 @@ export enum ReachAdFormat {
 export const DEFAULT_REACH_AD_FORMAT = ReachAdFormat.HORIZONTAL_2X1;
 export const DEFAULT_REACH_BID_TYPE = ServerAdSetBidType.CPM_CHARGE;
 
-// Bid types offered per Max Reach format. 2x1 (image) only supports CPM;
-// 1x2 (video) additionally supports CPV2 (cost per 2-second video view).
-export const REACH_BID_TYPE_OPTIONS_BY_FORMAT: Record<ReachAdFormat, ServerAdSetBidType[]> = {
-  [ReachAdFormat.HORIZONTAL_2X1]: [ServerAdSetBidType.CPM_CHARGE],
-  [ReachAdFormat.VERTICAL_1X2]: [ServerAdSetBidType.CPM_CHARGE, ServerAdSetBidType.CPV2],
-};
+// Bid types offered on Max Reach, in the order the picker lists them. Both are
+// always selectable; the constraint runs the other way, since CPV2 (cost per
+// 2-second video view) is only meaningful on a video ad. Picking it therefore
+// restricts the format to 1x2 rather than the format restricting the bid type,
+// so an advertiser who knows they want to buy on CPV2 can start from that
+// choice instead of having to discover it behind the format selector.
+export const REACH_BID_TYPE_OPTIONS = [ServerAdSetBidType.CPM_CHARGE, ServerAdSetBidType.CPV2];
+
+// Bid types that can only run on the 1x2 vertical (video) format.
+export const VIDEO_ONLY_REACH_BID_TYPES: ServerAdSetBidType[] = [ServerAdSetBidType.CPV2];
 
 // Call-to-action button the advertiser picks for a 1x2 vertical (video) reach ad,
 // in the order the picker lists them. 2x1 ads have no picker — their CTA is driven

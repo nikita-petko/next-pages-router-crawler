@@ -286,6 +286,33 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
     isLoading: isUniversesLoading,
     universeOptions: advertisableUniverses,
   } = useUniverseOptionsForAdCreation({ enabled: showGameSelector });
+  const workspaceGroupId =
+    currentWorkspace?.creatorType === 'Group' ? currentWorkspace.creatorId : undefined;
+  const workspaceGroupAdvertiser = useAppStore((state: AppStoreType) =>
+    workspaceGroupId !== undefined
+      ? state.groupScopedAccountStateByGroupId[workspaceGroupId]?.advertiserState.data
+      : undefined,
+  );
+  const workspaceGroupTimeZone = workspaceGroupAdvertiser?.organization?.time_zone;
+  const existingGroupAccount = useMemo(
+    () =>
+      workspaceGroupAdvertiser?.ad_account?.id && workspaceGroupTimeZone !== undefined
+        ? {
+            name:
+              currentWorkspace?.creatorName ??
+              workspaceGroupAdvertiser.ad_account.name ??
+              translateMisc('Label.Group'),
+            timeZone: workspaceGroupTimeZone,
+          }
+        : undefined,
+    [
+      currentWorkspace?.creatorName,
+      translateMisc,
+      workspaceGroupAdvertiser?.ad_account?.id,
+      workspaceGroupAdvertiser?.ad_account?.name,
+      workspaceGroupTimeZone,
+    ],
+  );
   const groupAdvertiserState = useAppStore((state: AppStoreType) =>
     creativeLibraryGroupId
       ? state.groupScopedAccountStateByGroupId[creativeLibraryGroupId]?.advertiserState
@@ -784,6 +811,7 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
     if (creativeLibraryGroupId === undefined && !adAccountId) {
       openAdAccountAutoCreateDialog({
         entryPoint: 'aiCreativeAddToLibrary',
+        existingGroupAccount,
         onSuccess: addToLibrary,
       });
       return;
@@ -794,6 +822,7 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
     addToLibrary,
     creativeLibraryGroupId,
     currentWorkspace?.creatorName,
+    existingGroupAccount,
     groupAdAccountNeedsSetup,
     translateMisc,
   ]);
@@ -902,6 +931,7 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
     if (creativeLibraryGroupId === undefined && !adAccountId) {
       openAdAccountAutoCreateDialog({
         entryPoint: 'aiCreativeAddToCampaign',
+        existingGroupAccount,
         onSuccess: addToCampaign,
       });
       return;
@@ -912,6 +942,7 @@ const AiCreateContent: FC<AiCreateContentProps> = ({
     addToCampaign,
     creativeLibraryGroupId,
     currentWorkspace?.creatorName,
+    existingGroupAccount,
     groupAdAccountNeedsSetup,
     translateMisc,
   ]);

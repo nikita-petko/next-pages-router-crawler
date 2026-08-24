@@ -11,7 +11,7 @@ import { openErrorDialogWithMessage } from '@components/common/dialog/errorDialo
 import type { BaseInjectedDialogProps } from '@components/common/dialog/types';
 import TitleValueAutocomplete from '@components/common/form/TitleValueAutocomplete';
 import { FormFields } from '@constants/account';
-import { OrganizationType } from '@constants/app';
+import { OrganizationType, ServerTimeZoneMappings } from '@constants/app';
 import ErrorCodes from '@constants/errorCodes';
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
@@ -30,12 +30,17 @@ import { ROBLOX_ACCOUNT_COUNTRIES } from '@utils/location';
 
 interface AdAccountAutoCreateDialogProps extends BaseInjectedDialogProps {
   entryPoint?: string;
+  existingGroupAccount?: {
+    name: string;
+    timeZone: ServerTimeZoneMappings;
+  };
   groupId?: number;
   onSuccess: () => void;
 }
 
 const AdAccountAutoCreateDialog = ({
   entryPoint = 'unknown',
+  existingGroupAccount,
   groupId,
   onClose,
   onSuccess,
@@ -58,7 +63,7 @@ const AdAccountAutoCreateDialog = ({
 
   const getSupportedLocales = useGetSupportedLocales();
   const { getCountryByCode } = useCountries();
-  const { localizedDefaultTimeZone, localizedTimezones } = useTimezones();
+  const { getTimezoneByEnum, localizedDefaultTimeZone, localizedTimezones } = useTimezones();
   const {
     classes: { setupFormColumn },
   } = useAccountFormStyles();
@@ -68,6 +73,13 @@ const AdAccountAutoCreateDialog = ({
       : 'Description.PersonalAccountTimezoneSetup';
   const accountSetupTitleKey =
     groupId !== undefined ? 'Heading.GroupAccountSetup' : 'Heading.AdditionalInformation';
+  const isExistingGroupAccountSetup = existingGroupAccount !== undefined;
+  const resolvedAccountSetupTitleKey = isExistingGroupAccountSetup
+    ? 'Heading.BeforeYouAdvertise'
+    : accountSetupTitleKey;
+  const initialTimeZone = existingGroupAccount
+    ? getTimezoneByEnum(existingGroupAccount.timeZone)
+    : localizedDefaultTimeZone;
 
   useEffect(() => {
     getSupportedLocales().then((locales) => {
@@ -85,7 +97,7 @@ const AdAccountAutoCreateDialog = ({
       [FormFields.NICKNAME]: currentUser?.name || '',
       [FormFields.TAX_ID]: '',
       [FormFields.TERMS_CHECKBOX]: true,
-      [FormFields.TIME_ZONE]: localizedDefaultTimeZone,
+      [FormFields.TIME_ZONE]: initialTimeZone,
       [FormFields.TYPE]: OrganizationType.ORGANIZATION_TYPE_INDIVIDUAL,
     },
     isAdAccountAutoCreateEnabled: true,
@@ -204,7 +216,7 @@ const AdAccountAutoCreateDialog = ({
             {translateMisc('Action.Cancel')}
           </Button>
         }
-        dialogTitle={translateAccount(accountSetupTitleKey)}
+        dialogTitle={translateAccount(resolvedAccountSetupTitleKey)}
       />
     );
   }
@@ -231,28 +243,41 @@ const AdAccountAutoCreateDialog = ({
               )}
             />
 
-            <div className='text-body-large'>
-              {translateAccountHTML('Description.TermsAgreementV2', [
-                {
-                  closing: 'linkEnd',
-                  content: (chunks) => (
-                    <Link
-                      href='https://en.help.roblox.com/hc/articles/15494846263060'
-                      rel='noopener noreferrer'
-                      target='_blank'
-                      underline='always'>
-                      {chunks}
-                    </Link>
-                  ),
-                  opening: 'linkStart',
-                },
-              ])}
+            <div className={isExistingGroupAccountSetup ? 'text-body-medium' : 'text-body-large'}>
+              {translateAccountHTML(
+                isExistingGroupAccountSetup
+                  ? 'Description.TermsAgreementAcceptAndContinue'
+                  : 'Description.TermsAgreementV2',
+                [
+                  {
+                    closing: 'linkEnd',
+                    content: (chunks) => (
+                      <Link
+                        href='https://en.help.roblox.com/hc/articles/15494846263060'
+                        rel='noopener noreferrer'
+                        target='_blank'
+                        underline='always'>
+                        {chunks}
+                      </Link>
+                    ),
+                    opening: 'linkStart',
+                  },
+                ],
+              )}
             </div>
           </div>
         </FormProvider>
       }
       dialogDescription={
-        <div className='padding-bottom-medium'>{translateAccount(accountSetupDescriptionKey)}</div>
+        existingGroupAccount !== undefined ? (
+          translateAccount('Description.PersonalAccountGroupTimezoneDefault', {
+            groupName: existingGroupAccount.name,
+          })
+        ) : (
+          <div className='padding-bottom-medium'>
+            {translateAccount(accountSetupDescriptionKey)}
+          </div>
+        )
       }
       dialogFooter={
         <>
@@ -262,20 +287,27 @@ const AdAccountAutoCreateDialog = ({
             onClick={handleSave}
             size='Medium'
             variant='Emphasis'>
-            {translateMisc('Action.Save')}
+            {isExistingGroupAccountSetup
+              ? translateMisc('Action.AcceptAndContinue')
+              : translateMisc('Action.Save')}
           </Button>
           <Button isDisabled={isPending} onClick={onClose} size='Medium' variant='Standard'>
             {translateMisc('Action.Cancel')}
           </Button>
         </>
       }
-      dialogTitle={translateAccount(accountSetupTitleKey)}
+      dialogTitle={translateAccount(resolvedAccountSetupTitleKey)}
+      stackFooterOnMobile={isExistingGroupAccountSetup}
     />
   );
 };
 
 export const openAdAccountAutoCreateDialog = (props: {
   entryPoint?: string;
+  existingGroupAccount?: {
+    name: string;
+    timeZone: ServerTimeZoneMappings;
+  };
   groupId?: number;
   onSuccess: () => void;
 }): void => {

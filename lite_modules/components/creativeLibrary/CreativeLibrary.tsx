@@ -465,12 +465,14 @@ const CreativeLibrary = () => {
       setUploadDrawerOpen(true);
     }, []),
     'creativeLibraryUpload',
+    creativeLibraryGroupId,
   );
   const openAiCreateDrawer = useAdAccountAutoCreateCreateAction(
     useCallback(() => {
       setAiCreateDrawerOpen(true);
     }, []),
     'creativeLibraryAiCreate',
+    creativeLibraryGroupId,
   );
 
   // Table-view pagination state. The tile view keeps its own independent

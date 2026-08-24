@@ -17,6 +17,7 @@ import {
   DEFAULT_REACH_FREQUENCY_CAPPING_DURATION_DAYS,
   DEFAULT_REACH_FREQUENCY_CAPPING_VALUE,
   FormField,
+  ReachAdFormat,
 } from '@constants/campaignBuilder';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import { GetRecommendationResponse } from '@type/campaignBuilder';
@@ -44,6 +45,29 @@ export const applyOnPlatformSpendFormValues = ({
       shouldShowInvoice,
     }),
   );
+};
+
+// Fields that only exist on one of the two Max Reach formats, reset whenever the
+// format changes. Shared by the format radios and by the bid-type picker, which
+// can force the format to 1x2 when a video-only bid type is chosen.
+export const applyReachCreativeFormatChange = ({
+  nextFormat,
+  setValue,
+}: {
+  nextFormat: ReachAdFormat;
+  setValue: UseFormSetValue<FormType>;
+}) => {
+  if (nextFormat === ReachAdFormat.HORIZONTAL_2X1) {
+    // 2x1 (image) rejects a clickout URL, so drop the click destination and the
+    // attribution bar assets that only the clickout experience renders.
+    setValue(FormField.CLICK_DESTINATION, undefined);
+    setValue(FormField.ATTRIBUTION_THUMBNAILS, []);
+    // 2x1 CTA text comes from the max-reach tile-variant experiment, not from an
+    // advertiser choice.
+    setValue(FormField.CTA_BUTTON_TYPE, undefined);
+    return;
+  }
+  setValue(FormField.CTA_BUTTON_TYPE, DEFAULT_REACH_CTA_BUTTON_TYPE);
 };
 
 export const applyOffPlatformSpendFormValues = ({
@@ -74,6 +98,7 @@ export const applyOffPlatformSpendFormValues = ({
 // and ExperienceSection's eligibility-driven auto-default.
 interface ApplyObjectiveChangeOptions {
   // ResetFormRecommendations inputs.
+  currentPaymentType: ServerPaymentType | undefined;
   detailedTargetingMatchType: ServerDetailedTargetingMatchType;
   hasPaymentProfile: boolean;
   isAdAccountAutoCreateEnabled: boolean;
@@ -96,6 +121,7 @@ interface ApplyObjectiveChangeOptions {
 }
 
 export const applyObjectiveChange = ({
+  currentPaymentType,
   detailedTargetingMatchType,
   hasPaymentProfile,
   isAdAccountAutoCreateEnabled,
@@ -113,13 +139,23 @@ export const applyObjectiveChange = ({
   trigger,
 }: ApplyObjectiveChangeOptions) => {
   const defaultOnPlatform = () => {
+    const shouldKeepCurrentPaymentType =
+      currentPaymentType === ServerPaymentType.PAYMENT_TYPE_ADS_CREDIT ||
+      currentPaymentType === ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT ||
+      (currentPaymentType === ServerPaymentType.PAYMENT_TYPE_CARD && shouldShowCreditCard) ||
+      (currentPaymentType === ServerPaymentType.PAYMENT_TYPE_INVOICE && shouldShowInvoice);
+
     if (!needsAccountSetup) {
-      applyOnPlatformSpendFormValues({
-        hasPaymentProfile,
-        setValue,
-        shouldShowCreditCard,
-        shouldShowInvoice,
-      });
+      if (shouldKeepCurrentPaymentType) {
+        setValue(FormField.IS_EXTEND_TO_OFF_PLATFORM_ENABLED, false);
+      } else {
+        applyOnPlatformSpendFormValues({
+          hasPaymentProfile,
+          setValue,
+          shouldShowCreditCard,
+          shouldShowInvoice,
+        });
+      }
     }
 
     setValue(FormField.END_DATE, undefined);

@@ -15,7 +15,7 @@ import { useAuthenticatedUser } from '@hooks/useAuthenticatedUser';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
-import { UploadedVideoType, VideoUploadState, VideoUploadTransport } from '@type/fileUpload';
+import { UploadedVideoType, VideoUploadState } from '@type/fileUpload';
 import { UploadVideo, VideoURLManager } from '@utils/fileUpload';
 import { GetLocalStorage, StorageKeys } from '@utils/localStorage';
 import {
@@ -28,19 +28,11 @@ import {
 } from '@utils/videoStateHelpers';
 
 interface VideoUploadDragAndDropZoneProps {
-  // Asset type sent on the multipart start request (defaults to 'AdsVideo').
-  assetType?: string;
   // Caps the number of videos (defaults to the off-platform raw-video limit).
   maxVideosOverride?: number;
-  // Control-plane transport (defaults to the public assets-upload-api).
-  uploadTransport?: VideoUploadTransport;
 }
 
-const VideoUploadDragAndDropZone = ({
-  assetType,
-  maxVideosOverride,
-  uploadTransport,
-}: VideoUploadDragAndDropZoneProps) => {
+const VideoUploadDragAndDropZone = ({ maxVideosOverride }: VideoUploadDragAndDropZoneProps) => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const theme = useTheme();
   const {
@@ -228,7 +220,6 @@ const VideoUploadDragAndDropZone = ({
           new Promise<void>((resolve, reject) => {
             UploadVideo({
               adAccountId,
-              assetType,
               authenticatedUser,
               setCancelVideoUpload: ({ cancelCb }) => {
                 setVideos((prev) => {
@@ -329,7 +320,6 @@ const VideoUploadDragAndDropZone = ({
                   return UpdateVideoInMap(prev, stagedVideo.id, updatedVideo);
                 });
               },
-              transport: uploadTransport,
               video: stagedVideo.file as File,
             });
           }),
@@ -348,8 +338,6 @@ const VideoUploadDragAndDropZone = ({
   }, [
     stagedVideos,
     adAccountId,
-    assetType,
-    uploadTransport,
     authenticatedUser,
     isImpersonating,
     updateFormWithVideo,

@@ -1,11 +1,11 @@
 import { Tab, Tabs } from '@rbx/ui';
 import { ChangeEvent } from 'react';
 
+import AccountScopedBuyAdCredit from '@components/billing/AccountScopedBuyAdCredit';
 import useAddPaymentMethodStyles from '@components/billing/AddPaymentMethod.styles';
-import { BuyAdCredit, type PaymentSetupCompletion } from '@components/billing/BuyAdCredit';
+import type { PaymentSetupCompletion } from '@components/billing/BuyAdCredit';
 import CustomTabPanel from '@components/billing/common/CustomTabPanel';
 import StripeElementsProvider from '@components/billing/common/StripeElementsProvider';
-import { WatermarkedBuyAdCredit } from '@components/billing/WatermarkedBuyAdCredit';
 import CenteredCircularProgress from '@components/common/CenteredCircularProgress';
 import { AdCreditBalanceScope, ADD_PAYMENT_TABS } from '@constants/billing';
 import { TranslationNamespace } from '@constants/localization';
@@ -24,6 +24,7 @@ interface PaymentStepProps {
   isDrawer?: boolean;
   isGroupSpendPermissionDenied?: boolean;
   isUnlocked: boolean;
+  isWorkspaceMetadataResolved?: boolean;
   onCancel?: () => void;
   onComplete?: (completion: PaymentSetupCompletion) => void;
   onPaymentTabChange: (tab: ADD_PAYMENT_TABS) => void;
@@ -46,6 +47,7 @@ const PaymentStep = ({
   isDrawer = false,
   isGroupSpendPermissionDenied = false,
   isUnlocked,
+  isWorkspaceMetadataResolved = true,
   onCancel,
   onComplete,
   onPaymentTabChange,
@@ -57,9 +59,15 @@ const PaymentStep = ({
 }: PaymentStepProps) => {
   const { translate: translateAccount } = useNamespacedTranslation(TranslationNamespace.Account);
   const { translate: translateBilling } = useNamespacedTranslation(TranslationNamespace.Billing);
-  const isWatermarkedRobuxConversionEnabled = useAppStore(
+  const personalWatermarkedRobuxConversionEnabled = useAppStore(
     (state: AppStoreType) =>
-      state.appMetadataState?.data?.isWatermarkedRobuxConversionEnabled ?? false,
+      state.appMetadataState?.data?.isWatermarkedRobuxConversionEnabled ??
+      state.appMetadataBaseData?.isWatermarkedRobuxConversionEnabled ??
+      false,
+  );
+  const groupWatermarkedRobuxConversionEnabled = useAppStore(
+    (state: AppStoreType) =>
+      state.appMetadataState?.data?.isWatermarkedRobuxConversionEnabledForAdGroup ?? false,
   );
   const showBalanceScopeSelector =
     !isAdCreditPurchaseOnly ||
@@ -85,6 +93,16 @@ const PaymentStep = ({
   }
 
   if (paymentDataLoading) {
+    return <CenteredCircularProgress />;
+  }
+
+  const isGroupMetadataPending =
+    groupId !== undefined &&
+    showGroupBalanceOption &&
+    !isGroupSpendPermissionDenied &&
+    !isWorkspaceMetadataResolved;
+
+  if (isGroupMetadataPending) {
     return <CenteredCircularProgress />;
   }
 
@@ -116,43 +134,25 @@ const PaymentStep = ({
       )}
       <CustomTabPanel index={0} value={Object.values(ADD_PAYMENT_TABS).indexOf(paymentTab)}>
         <div className={isDrawer ? buyAdCreditFormContainerCentered : buyAdCreditFormContainer}>
-          {isWatermarkedRobuxConversionEnabled ? (
-            <WatermarkedBuyAdCredit
-              actionsContainer={
-                paymentTab === ADD_PAYMENT_TABS.ADS_CREDIT ? actionsContainer : undefined
-              }
-              adCreditBalance={adCreditBalance}
-              groupAdCreditBalance={groupAdCreditBalance}
-              groupId={groupId}
-              groupName={groupName}
-              groupRobuxBalance={groupRobuxBalance}
-              initialBalanceScope={initialBalanceScope}
-              isGroupSpendPermissionDenied={isGroupSpendPermissionDenied}
-              onCancel={onCancel}
-              onComplete={onComplete}
-              robuxBalance={robuxBalance}
-              showBalanceScopeSelector={showBalanceScopeSelector}
-              showGroupBalanceOption={showGroupBalanceOption}
-            />
-          ) : (
-            <BuyAdCredit
-              actionsContainer={
-                paymentTab === ADD_PAYMENT_TABS.ADS_CREDIT ? actionsContainer : undefined
-              }
-              adCreditBalance={adCreditBalance}
-              groupAdCreditBalance={groupAdCreditBalance}
-              groupId={groupId}
-              groupName={groupName}
-              groupRobuxBalance={groupRobuxBalance}
-              initialBalanceScope={initialBalanceScope}
-              isGroupSpendPermissionDenied={isGroupSpendPermissionDenied}
-              onCancel={onCancel}
-              onComplete={onComplete}
-              robuxBalance={robuxBalance}
-              showBalanceScopeSelector={showBalanceScopeSelector}
-              showGroupBalanceOption={showGroupBalanceOption}
-            />
-          )}
+          <AccountScopedBuyAdCredit
+            actionsContainer={
+              paymentTab === ADD_PAYMENT_TABS.ADS_CREDIT ? actionsContainer : undefined
+            }
+            adCreditBalance={adCreditBalance}
+            groupAdCreditBalance={groupAdCreditBalance}
+            groupId={groupId}
+            groupName={groupName}
+            groupRobuxBalance={groupRobuxBalance}
+            groupWatermarkedRobuxConversionEnabled={groupWatermarkedRobuxConversionEnabled}
+            initialBalanceScope={initialBalanceScope}
+            isGroupSpendPermissionDenied={isGroupSpendPermissionDenied}
+            onCancel={onCancel}
+            onComplete={onComplete}
+            personalWatermarkedRobuxConversionEnabled={personalWatermarkedRobuxConversionEnabled}
+            robuxBalance={robuxBalance}
+            showBalanceScopeSelector={showBalanceScopeSelector}
+            showGroupBalanceOption={showGroupBalanceOption}
+          />
         </div>
       </CustomTabPanel>
       {!isAdCreditPurchaseOnly && (

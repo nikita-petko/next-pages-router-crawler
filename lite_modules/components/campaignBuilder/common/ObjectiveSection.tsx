@@ -87,6 +87,9 @@ const ObjectiveSection = () => {
   const objective = useWatch<FormType, typeof FormField.GOAL>({
     name: FormField.GOAL,
   });
+  const paymentType = useWatch<FormType, typeof FormField.PAYMENT_TYPE>({
+    name: FormField.PAYMENT_TYPE,
+  });
   const experience = useWatch<FormType, typeof FormField.EXPERIENCE>({
     name: FormField.EXPERIENCE,
   });
@@ -291,6 +294,7 @@ const ObjectiveSection = () => {
   const handleObjectiveChange = useCallback(
     (nextObjective: ServerCampaignObjectiveType) => {
       applyObjectiveChange({
+        currentPaymentType: paymentType,
         detailedTargetingMatchType,
         hasPaymentProfile,
         isAdAccountAutoCreateEnabled,
@@ -317,6 +321,7 @@ const ObjectiveSection = () => {
       offPlatformRequestMinimumDaysFromStartDate,
       offPlatformRequestMinimumDurationDays,
       offPlatformRequestMinimumLifetimeBudgetMicroUsd,
+      paymentType,
       recommendation,
       setValue,
       shouldShowCreditCard,

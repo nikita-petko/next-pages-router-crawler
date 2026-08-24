@@ -203,6 +203,7 @@ const mapCampaignResponseToFormValues = (
   campaign:
     | {
         advertiserDisclosureName?: string;
+        advertiserDisclosureUrl?: string;
         declaredLabels?: string[];
         endTimestampMs?: number;
         name?: string;
@@ -230,6 +231,7 @@ const mapCampaignResponseToFormValues = (
       getAdsCategoryDeclaredLabel(campaign?.declaredLabels),
     ),
     advertiserName: campaign?.advertiserDisclosureName ?? '',
+    advertiserUrl: campaign?.advertiserDisclosureUrl ?? '',
     campaignName: campaign?.name ?? '',
     endDate: end.date,
     endTime: end.time,
@@ -251,6 +253,7 @@ const mapFormToCreateRequest = (
 
   return {
     advertiserDisclosureName: payload.advertiserName.trim(),
+    ...(isMultiUniverseEnabled ? { advertiserDisclosureUrl: payload.advertiserUrl.trim() } : {}),
     ...(declaredLabels.length > 0 ? { declaredLabels } : {}),
     endTimestampMs: formatDateTimeToApiTimestamp(payload.endDate, payload.endTime, timezoneDbName),
     name: payload.campaignName.trim(),
@@ -283,6 +286,10 @@ const mapFormToUpdateRequest = (
 
   if (shouldIncludeField('advertiserName')) {
     updateRequest.advertiserDisclosureName = payload.advertiserName.trim();
+  }
+
+  if (isMultiUniverseEnabled && shouldIncludeField('advertiserUrl')) {
+    updateRequest.advertiserDisclosureUrl = payload.advertiserUrl.trim();
   }
 
   if (shouldIncludeField('endDate') || shouldIncludeField('endTime')) {
@@ -437,16 +444,17 @@ export const getAdIntegrationCampaignDetails = async (
   const response = await adIntegrationsClient.getAdIntegrationCampaignById({
     id: campaignId,
   });
+  const { campaign } = response;
 
   return {
-    campaignCreatedTimestampMs: response.campaign?.createdTimestampMs,
-    campaignEndTimestampMs: response.campaign?.endTimestampMs,
-    campaignModerationStatus: response.campaign?.moderationStatus,
-    campaignStartTimestampMs: response.campaign?.startTimestampMs,
-    campaignStatus: response.campaign?.status,
-    formValues: mapCampaignResponseToFormValues(response.campaign, timezoneDbName),
+    campaignCreatedTimestampMs: campaign?.createdTimestampMs,
+    campaignEndTimestampMs: campaign?.endTimestampMs,
+    campaignModerationStatus: campaign?.moderationStatus,
+    campaignStartTimestampMs: campaign?.startTimestampMs,
+    campaignStatus: campaign?.status,
+    formValues: mapCampaignResponseToFormValues(campaign, timezoneDbName),
     placements: response.placements ?? [],
-    savedRevenueShareSignals: mapCampaignToSavedRevenueShareSignals(response.campaign),
+    savedRevenueShareSignals: mapCampaignToSavedRevenueShareSignals(campaign),
   };
 };
 
@@ -460,13 +468,13 @@ export const createAdIntegrationCampaignDetails = async (
   timezoneDbName: string,
   isMultiUniverseEnabled: boolean,
 ): Promise<CreateAdIntegrationCampaignResult> => {
-  const response = await adIntegrationsClient.createAdIntegrationCampaign({
-    request: mapFormToCreateRequest(payload, timezoneDbName, isMultiUniverseEnabled),
-  });
+  const request = mapFormToCreateRequest(payload, timezoneDbName, isMultiUniverseEnabled);
+  const response = await adIntegrationsClient.createAdIntegrationCampaign({ request });
+  const { campaign } = response;
 
   return {
-    campaignId: response.campaign?.id,
-    formValues: mapCampaignResponseToFormValues(response.campaign, timezoneDbName, {
+    campaignId: campaign?.id,
+    formValues: mapCampaignResponseToFormValues(campaign, timezoneDbName, {
       hasRewardedPlacements: payload.hasRewardedPlacements,
       termsAndAdsStandardsAcknowledgement: payload.termsAndAdsStandardsAcknowledgement,
     }),
@@ -494,8 +502,9 @@ export const updateAdIntegrationCampaignDetails = async (
     id: campaignId,
     request: updateRequest,
   });
+  const { campaign } = response;
 
-  return mapCampaignResponseToFormValues(response.campaign, timezoneDbName, {
+  return mapCampaignResponseToFormValues(campaign, timezoneDbName, {
     hasRewardedPlacements: payload.hasRewardedPlacements,
     termsAndAdsStandardsAcknowledgement: payload.termsAndAdsStandardsAcknowledgement,
   });

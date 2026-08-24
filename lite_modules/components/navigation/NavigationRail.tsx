@@ -7,9 +7,10 @@ import {
 import { Badge, Divider } from '@rbx/foundation-ui';
 import { makeStyles } from '@rbx/ui';
 import { useRouter } from 'next/router';
-import { useCallback, useMemo } from 'react';
+import { type MouseEvent as ReactMouseEvent, useCallback, useMemo } from 'react';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
+import { openAdAccountAutoCreateDialog } from '@components/account/dialogs/AdAccountAutoCreateDialog';
 import DismissibleTooltip from '@components/common/DismissibleTooltip';
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
@@ -137,6 +138,7 @@ const NavigationRail = () => {
     (state: AppStoreType) => state.appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false,
   );
   const hasAdAccount = !!useAppStore((state: AppStoreType) => state.appData.adAccountId);
+  const userOver13 = useAppStore((state: AppStoreType) => state.appData.userOver13);
   const userAdvertiserState = useAppStore((state: AppStoreType) => state.advertiserState);
   const userAdvertiserLoaded =
     userAdvertiserState?.data != null &&
@@ -171,7 +173,8 @@ const NavigationRail = () => {
     useForecastEstimatorDrawerUrl();
   const { drawerVariant, setPrimaryRailOpen } = useRailContext();
 
-  const { pathname } = useRouter();
+  const router = useRouter();
+  const { pathname } = router;
   const selectedNodeId = useMemo(() => getSelectedNodeId(pathname), [pathname]);
 
   // The nav-rail coachmark points users *to* the Creative Library link, so it
@@ -189,8 +192,58 @@ const NavigationRail = () => {
     }
   }, [drawerVariant, openForecastEstimator, setPrimaryRailOpen]);
 
+  const onNavigationClickCapture = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      const groupAdvertiser = selectedGroupAdvertiserState?.data;
+      const groupTimeZone = groupAdvertiser?.organization?.time_zone;
+      const groupName = currentWorkspace?.creatorName ?? groupAdvertiser?.ad_account?.name;
+      const renderedDestination = (event.target as HTMLElement).closest('a')?.getAttribute('href');
+      const destination =
+        router.basePath && renderedDestination?.startsWith(`${router.basePath}/`)
+          ? renderedDestination.slice(router.basePath.length)
+          : renderedDestination;
+
+      if (
+        !isAdAccountAutoCreateEnabled ||
+        hasAdAccount ||
+        userOver13 !== true ||
+        !groupAdvertiser?.ad_account?.id ||
+        groupTimeZone === undefined ||
+        groupName === undefined ||
+        destination === null ||
+        destination === undefined ||
+        !destination.startsWith('/') ||
+        destination === pathname
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      openAdAccountAutoCreateDialog({
+        entryPoint: 'navigationRail',
+        existingGroupAccount: {
+          name: groupName,
+          timeZone: groupTimeZone,
+        },
+        onSuccess: () => {
+          router.push(destination);
+        },
+      });
+    },
+    [
+      currentWorkspace?.creatorName,
+      hasAdAccount,
+      isAdAccountAutoCreateEnabled,
+      pathname,
+      router,
+      selectedGroupAdvertiserState?.data,
+      userOver13,
+    ],
+  );
+
   return (
-    <div className={container}>
+    <div className={container} onClickCapture={onNavigationClickCapture}>
       <div className={header}>
         <span className={cx(headerLabel, 'text-label-large')}>
           {translateCreatorNav('Heading.AdsManager')}

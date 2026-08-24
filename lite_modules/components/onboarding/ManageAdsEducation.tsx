@@ -1,3 +1,4 @@
+import { useWorkspaces } from '@rbx/creator-hub-navigation';
 import { Button } from '@rbx/foundation-ui';
 import { useRouter } from 'next/router';
 import { memo, useCallback } from 'react';
@@ -24,16 +25,22 @@ const AdsIcon = ({ className }: { className: string }) => (
 const ManageAdsEducation = memo(() => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Report);
   const router = useRouter();
+  const { currentWorkspace } = useWorkspaces();
   const { advertisingShouldBeEnabled } = useAppStore((state) => state.advertisingShouldBeEnabled());
 
   const {
     classes: { outerContainer },
   } = useManageAdsEducationStyles();
 
-  const primaryButtonClick = useAdAccountAutoCreateCreateAction(() => {
-    logNativeClickEvent(EventName.CreateCampaignButtonInEducationClicked);
-    router.push(Routes.NEW_CREATE_CAMPAIGN);
-  }, 'manageAdsEducation');
+  const primaryButtonClick = useAdAccountAutoCreateCreateAction(
+    () => {
+      logNativeClickEvent(EventName.CreateCampaignButtonInEducationClicked);
+      router.push(Routes.NEW_CREATE_CAMPAIGN);
+    },
+    'manageAdsEducation',
+    currentWorkspace?.creatorType === 'Group' ? currentWorkspace.creatorId : undefined,
+    currentWorkspace?.creatorType === 'Group' ? currentWorkspace.creatorName : undefined,
+  );
 
   const secondaryButtonClick = useCallback(() => {
     window.open(

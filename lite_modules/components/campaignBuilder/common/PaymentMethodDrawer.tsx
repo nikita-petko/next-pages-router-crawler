@@ -15,6 +15,7 @@ import PaymentStep from '@components/account/PaymentStep';
 import { type PaymentSetupCompletion } from '@components/billing/BuyAdCredit';
 import { ADD_PAYMENT_TABS } from '@constants/billing';
 import { TranslationNamespace } from '@constants/localization';
+import useCurrentWorkspaceMetadata from '@hooks/useCurrentWorkspaceMetadata';
 import useGroupSpendPermission from '@hooks/useGroupSpendPermission';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { getGroupRobuxBalance, getRobuxBalance } from '@services/economy/robuxService';
@@ -28,6 +29,7 @@ const PaymentMethodDrawer = () => {
   const { translate: translateAccount } = useNamespacedTranslation(TranslationNamespace.Account);
   const { translate: translateBilling } = useNamespacedTranslation(TranslationNamespace.Billing);
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspaces();
+  const { isResolved: isWorkspaceMetadataResolved } = useCurrentWorkspaceMetadata();
   const isAdAccountAutoCreateEnabled = useAppStore(
     (state) => state.appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false,
   );
@@ -231,6 +233,7 @@ const PaymentMethodDrawer = () => {
             isDrawer
             isGroupSpendPermissionDenied={isGroupSpendPermissionDenied}
             isUnlocked
+            isWorkspaceMetadataResolved={isWorkspaceMetadataResolved}
             onCancel={handleClose}
             onComplete={handleComplete}
             onPaymentTabChange={setPaymentTab}

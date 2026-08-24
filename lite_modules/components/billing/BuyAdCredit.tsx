@@ -47,14 +47,17 @@ export interface PaymentSetupCompletion {
 export interface BuyAdCreditProps {
   actionsContainer?: HTMLElement | null;
   adCreditBalance: number;
+  controlledBalanceScope?: AdCreditBalanceScope;
   groupAdCreditBalance?: number;
   groupId?: number;
   groupName?: string;
   groupRobuxBalance?: number;
   initialBalanceScope?: AdCreditBalanceScope;
   isGroupSpendPermissionDenied?: boolean;
+  onBalanceScopeChange?: (balanceScope: AdCreditBalanceScope) => void;
   onCancel?: () => void;
   onComplete?: (completion: PaymentSetupCompletion) => void | Promise<void>;
+  onPurchaseStateChange?: (isPurchasing: boolean) => void;
   robuxBalance: number;
   showBalanceScopeSelector?: boolean;
   showGroupBalanceOption?: boolean;
@@ -82,14 +85,17 @@ const resolveInitialBalanceScope = (
 export const BuyAdCredit = ({
   actionsContainer,
   adCreditBalance,
+  controlledBalanceScope,
   groupAdCreditBalance = 0,
   groupId,
   groupName,
   groupRobuxBalance = 0,
   initialBalanceScope,
   isGroupSpendPermissionDenied = false,
+  onBalanceScopeChange,
   onCancel,
   onComplete,
+  onPurchaseStateChange,
   robuxBalance,
   showBalanceScopeSelector = true,
   showGroupBalanceOption = false,
@@ -98,22 +104,31 @@ export const BuyAdCredit = ({
     useNamespacedTranslation(TranslationNamespace.Billing);
   const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
   const [isPurchasing, setIsPurchasing] = useState<boolean>(false);
+  const updatePurchaseState = (nextIsPurchasing: boolean): void => {
+    setIsPurchasing(nextIsPurchasing);
+    onPurchaseStateChange?.(nextIsPurchasing);
+  };
   const canUseGroupBalance = showGroupBalanceOption && !isGroupSpendPermissionDenied;
-  const [balanceScope, setBalanceScope] = useState<AdCreditBalanceScope>(() =>
+  const [internalBalanceScope, setInternalBalanceScope] = useState<AdCreditBalanceScope>(() =>
     resolveInitialBalanceScope(canUseGroupBalance, initialBalanceScope),
   );
+  const balanceScope = controlledBalanceScope ?? internalBalanceScope;
   const userSelectedBalanceScope = useRef<AdCreditBalanceScope | undefined>(undefined);
   const previousInitialBalanceScope = useRef<AdCreditBalanceScope | undefined>(initialBalanceScope);
   const { setShowPurchaseAdCreditError } = useToastStore();
 
   useEffect(() => {
+    if (controlledBalanceScope !== undefined) {
+      return;
+    }
+
     const initialBalanceScopeChanged = previousInitialBalanceScope.current !== initialBalanceScope;
     previousInitialBalanceScope.current = initialBalanceScope;
     if (initialBalanceScopeChanged) {
       userSelectedBalanceScope.current = undefined;
     }
 
-    setBalanceScope((currentBalanceScope) => {
+    setInternalBalanceScope((currentBalanceScope) => {
       if (initialBalanceScopeChanged) {
         return resolveInitialBalanceScope(canUseGroupBalance, initialBalanceScope);
       }
@@ -127,7 +142,7 @@ export const BuyAdCredit = ({
       }
       return resolveInitialBalanceScope(canUseGroupBalance, initialBalanceScope);
     });
-  }, [canUseGroupBalance, initialBalanceScope]);
+  }, [canUseGroupBalance, controlledBalanceScope, initialBalanceScope]);
 
   const {
     adCreditActivated,
@@ -246,7 +261,7 @@ export const BuyAdCredit = ({
     if (isPurchasing) {
       return;
     }
-    setIsPurchasing(true);
+    updatePurchaseState(true);
     logNativeClickEvent(EventName.BuyAdCreditAttempted, {});
     try {
       const { purchaseStatus } = await purchaseAdCredit(
@@ -265,7 +280,6 @@ export const BuyAdCredit = ({
         });
         if (onComplete) {
           if (showSuccessDialog) {
-            setIsPurchasing(false);
             openBuyAdCreditSuccessDialog(
               data[AD_CREDIT_AMOUNT_FORM_FIELD].toLocaleString(),
               costInRobux().toLocaleString(),
@@ -295,7 +309,8 @@ export const BuyAdCredit = ({
       }
 
       logNativeImpressionEvent(EventName.BuyAdCreditFailed, { errorMessage });
-      setIsPurchasing(false);
+    } finally {
+      updatePurchaseState(false);
     }
   };
 
@@ -319,17 +334,21 @@ export const BuyAdCredit = ({
       <div className={balanceScopeSelectorContainer}>
         <Dropdown
           className={balanceScopeSelector}
+          isDisabled={isPurchasing}
           label={translateBilling('Label.BalanceScope')}
           onValueChange={(value) => {
             const selectedBalanceScope = value as AdCreditBalanceScope;
             if (
-              selectedBalanceScope === AdCreditBalanceScope.Group &&
-              isGroupSpendPermissionDenied
+              isPurchasing ||
+              (selectedBalanceScope === AdCreditBalanceScope.Group && isGroupSpendPermissionDenied)
             ) {
               return;
             }
             userSelectedBalanceScope.current = selectedBalanceScope;
-            setBalanceScope(selectedBalanceScope);
+            onBalanceScopeChange?.(selectedBalanceScope);
+            if (onBalanceScopeChange == null) {
+              setInternalBalanceScope(selectedBalanceScope);
+            }
           }}
           placeholder={translateBilling('Label.BalanceScope')}
           size='Medium'

@@ -4,12 +4,12 @@ import { Tab, Tabs } from '@rbx/ui';
 import { useRouter } from 'next/router';
 import { ChangeEvent, useCallback, useEffect, useState } from 'react';
 
+import AccountScopedBuyAdCredit from '@components/billing/AccountScopedBuyAdCredit';
 import useAddPaymentMethodStyles from '@components/billing/AddPaymentMethod.styles';
-import { BuyAdCredit, BuyAdCreditProps } from '@components/billing/BuyAdCredit';
+import type { BuyAdCreditProps } from '@components/billing/BuyAdCredit';
 import AddCreditCardIcon from '@components/billing/common/AddCreditCardIcon';
 import CustomTabPanel from '@components/billing/common/CustomTabPanel';
 import StripeElementsProvider from '@components/billing/common/StripeElementsProvider';
-import { WatermarkedBuyAdCredit } from '@components/billing/WatermarkedBuyAdCredit';
 import CenteredCircularProgress from '@components/common/CenteredCircularProgress';
 import { openErrorDialog } from '@components/common/dialog/errorDialog';
 import { openImpersonationErrorDialog } from '@components/common/dialog/impersonationErrorDialog';
@@ -20,6 +20,7 @@ import {
 } from '@constants/billing';
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
+import useCurrentWorkspaceMetadata from '@hooks/useCurrentWorkspaceMetadata';
 import useGroupSpendPermission from '@hooks/useGroupSpendPermission';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { getGroupRobuxBalance, getRobuxBalance } from '@services/economy/robuxService';
@@ -45,10 +46,17 @@ const AddPaymentMethodTabsNavigation = ({
 
   const router = useRouter();
   const userOver18 = useAppStore((state: AppStoreType) => state.appData.userOver18);
-  const isWatermarkedRobuxConversionEnabled = useAppStore(
+  const personalWatermarkedRobuxConversionEnabled = useAppStore(
     (state: AppStoreType) =>
-      state.appMetadataState?.data?.isWatermarkedRobuxConversionEnabled ?? false,
+      state.appMetadataState?.data?.isWatermarkedRobuxConversionEnabled ??
+      state.appMetadataBaseData?.isWatermarkedRobuxConversionEnabled ??
+      false,
   );
+  const groupWatermarkedRobuxConversionEnabled = useAppStore(
+    (state: AppStoreType) =>
+      state.appMetadataState?.data?.isWatermarkedRobuxConversionEnabledForAdGroup ?? false,
+  );
+  const { isResolved: isWorkspaceMetadataResolved } = useCurrentWorkspaceMetadata();
 
   const [value, setValue] = useState<ADD_PAYMENT_TABS>(
     router.query.action === PaymentMethodActionEnum.RELOAD_AD_CREDIT || !userOver18
@@ -65,6 +73,16 @@ const AddPaymentMethodTabsNavigation = ({
   };
 
   const isTabSelected = (tabValue: ADD_PAYMENT_TABS) => tabValue === value;
+
+  const isGroupMetadataPending =
+    groupId !== undefined &&
+    showGroupBalanceOption &&
+    !isGroupSpendPermissionDenied &&
+    !isWorkspaceMetadataResolved;
+
+  if (isGroupMetadataPending) {
+    return <CenteredCircularProgress />;
+  }
 
   return (
     <>
@@ -90,31 +108,20 @@ const AddPaymentMethodTabsNavigation = ({
       )}
       <CustomTabPanel index={0} value={Object.values(ADD_PAYMENT_TABS).indexOf(value)}>
         <div className={buyAdCreditFormContainer}>
-          {isWatermarkedRobuxConversionEnabled ? (
-            <WatermarkedBuyAdCredit
-              adCreditBalance={adCreditBalance}
-              groupAdCreditBalance={groupAdCreditBalance}
-              groupId={groupId}
-              groupName={groupName}
-              groupRobuxBalance={groupRobuxBalance}
-              initialBalanceScope={initialBalanceScope}
-              isGroupSpendPermissionDenied={isGroupSpendPermissionDenied}
-              robuxBalance={robuxBalance}
-              showGroupBalanceOption={showGroupBalanceOption}
-            />
-          ) : (
-            <BuyAdCredit
-              adCreditBalance={adCreditBalance}
-              groupAdCreditBalance={groupAdCreditBalance}
-              groupId={groupId}
-              groupName={groupName}
-              groupRobuxBalance={groupRobuxBalance}
-              initialBalanceScope={initialBalanceScope}
-              isGroupSpendPermissionDenied={isGroupSpendPermissionDenied}
-              robuxBalance={robuxBalance}
-              showGroupBalanceOption={showGroupBalanceOption}
-            />
-          )}
+          <AccountScopedBuyAdCredit
+            adCreditBalance={adCreditBalance}
+            groupAdCreditBalance={groupAdCreditBalance}
+            groupId={groupId}
+            groupName={groupName}
+            groupRobuxBalance={groupRobuxBalance}
+            groupWatermarkedRobuxConversionEnabled={groupWatermarkedRobuxConversionEnabled}
+            initialBalanceScope={initialBalanceScope}
+            isGroupSpendPermissionDenied={isGroupSpendPermissionDenied}
+            personalWatermarkedRobuxConversionEnabled={personalWatermarkedRobuxConversionEnabled}
+            robuxBalance={robuxBalance}
+            showBalanceScopeSelector
+            showGroupBalanceOption={showGroupBalanceOption}
+          />
         </div>
       </CustomTabPanel>
       <CustomTabPanel index={1} value={Object.values(ADD_PAYMENT_TABS).indexOf(value)}>

@@ -48,7 +48,11 @@ import {
 import { ServerGetCampaignRowResponse } from '@type/campaign';
 import { TableSummaryRowData } from '@type/classicTables';
 import { getHttpStatusFromError } from '@type/errorResponse';
-import { GenAiCreativesQuotaType, GetAdsMetadataResponseType } from '@type/metadata';
+import {
+  GenAiCreativesQuotaType,
+  GetAdsMetadataResponseType,
+  WorkspaceMetadataOverrides,
+} from '@type/metadata';
 import {
   GetAdCreditBalanceResponseType,
   GetRobuxBalanceResponse,
@@ -84,14 +88,20 @@ const paymentFailureTooltip = 'Tooltip.UpdatePaymentMethod';
 
 const resolveMetadataForWorkspace = (
   baseMetadata: GetAdsMetadataResponseType,
-  isAdAccountAutoCreateEnabled?: boolean,
+  workspaceMetadata?: WorkspaceMetadataOverrides,
 ): GetAdsMetadataResponseType =>
   applyMetadataBooleanOverrides({
     ...baseMetadata,
     // Preserve the user result during workspace startup, then replace it with
     // the final workspace-aware /v1/metadata response.
     isAdAccountAutoCreateEnabled:
-      isAdAccountAutoCreateEnabled ?? baseMetadata.isAdAccountAutoCreateEnabled,
+      workspaceMetadata?.isAdAccountAutoCreateEnabled ?? baseMetadata.isAdAccountAutoCreateEnabled,
+    isWatermarkedRobuxConversionEnabled:
+      workspaceMetadata?.isWatermarkedRobuxConversionEnabled ??
+      baseMetadata.isWatermarkedRobuxConversionEnabled,
+    isWatermarkedRobuxConversionEnabledForAdGroup:
+      workspaceMetadata?.isWatermarkedRobuxConversionEnabledForAdGroup ??
+      baseMetadata.isWatermarkedRobuxConversionEnabledForAdGroup,
   });
 
 const DEFAULT_ESSENTIAL_APP_DATA_FETCH_FUNCTION_NAMES_ORDERED: string[] = [
@@ -352,7 +362,7 @@ export const useAppStore = create<AppStoreType>()(
 
       const resolvedMetadata = resolveMetadataForWorkspace(
         baseMetadata,
-        get().workspaceAdAccountAutoCreateEnabled,
+        get().workspaceMetadataOverrides,
       );
 
       set((draft) => {
@@ -453,7 +463,7 @@ export const useAppStore = create<AppStoreType>()(
               const baseMetadata = mergeMetadataDefaultsWithResponse(metaDataResponse);
               const resolvedMetadata = resolveMetadataForWorkspace(
                 baseMetadata,
-                get().workspaceAdAccountAutoCreateEnabled,
+                get().workspaceMetadataOverrides,
               );
 
               draft.appMetadataBaseData = baseMetadata;
@@ -1210,14 +1220,14 @@ export const useAppStore = create<AppStoreType>()(
         draft.appData.selectedCampaignsLoading = newSelectedCampaignsLoading;
       });
     },
-    setWorkspaceAdAccountAutoCreateEnabled: (isEnabled?: boolean) => {
+    setWorkspaceMetadata: (workspaceMetadata?: WorkspaceMetadataOverrides) => {
       const baseMetadata = get().appMetadataBaseData ?? get().appMetadataState.data;
       const resolvedMetadata = baseMetadata
-        ? resolveMetadataForWorkspace(baseMetadata, isEnabled)
+        ? resolveMetadataForWorkspace(baseMetadata, workspaceMetadata)
         : undefined;
 
       set((draft) => {
-        draft.workspaceAdAccountAutoCreateEnabled = isEnabled;
+        draft.workspaceMetadataOverrides = workspaceMetadata;
         if (resolvedMetadata) {
           draft.appMetadataState.data = resolvedMetadata;
           draft.appData = applyMetadataToAppData(get().appData, resolvedMetadata);
@@ -1239,6 +1249,6 @@ export const useAppStore = create<AppStoreType>()(
     userHasValidDisplayNameState:
       GetEmptyRequestState<Awaited<ReturnType<typeof getValidateDisplayName>>>(),
     verifiedEmailState: GetEmptyRequestState<Awaited<V1EmailGetResponse>>(),
-    workspaceAdAccountAutoCreateEnabled: undefined,
+    workspaceMetadataOverrides: undefined,
   })),
 );

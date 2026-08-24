@@ -68,6 +68,7 @@ export const appMetadataDefaults: GetAdsMetadataResponseType = {
   isSponsoredVideoTilesEnabled: false,
   isUniverseOwnershipBypassEnabled: false,
   isWatermarkedRobuxConversionEnabled: false,
+  isWatermarkedRobuxConversionEnabledForAdGroup: false,
   lifetimeBudgetDecreaseBufferRatio: DEFAULT_LIFETIME_BUDGET_DECREASE_BUFFER_RATIO,
   livePreviewCpmPlaceUrl:
     'https://www.roblox.com/games/start?placeId=16970181235&launchData=%7B%22room%22%3A%22VideoAds%22%7D',

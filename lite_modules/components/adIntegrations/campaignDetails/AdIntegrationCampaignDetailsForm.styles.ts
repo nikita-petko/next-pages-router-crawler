@@ -41,9 +41,12 @@ const useAdIntegrationCampaignDetailsFormStyles = makeStyles()((theme) => ({
     flexWrap: 'wrap',
     gap: theme.spacing(2),
   },
+  // Two-up row for full-width field components. The children size themselves to
+  // 100% of the row, so they need a zero flex basis to share it instead of each
+  // claiming the full width and wrapping.
   fieldRow: {
     '& > *': {
-      flex: '1 1 auto',
+      flex: '1 1 0',
       minWidth: '280px',
     },
     display: 'flex',

@@ -70,23 +70,3 @@ export interface GetVideoAssetIdResponse {
     assetId?: number;
   };
 }
-
-interface DirectVideoUploadResponse {
-  operationPath: string;
-}
-
-/**
- * Pluggable video-upload transport. The default transport uses the public
- * assets-upload-api multipart flow. The internal ads-management-api transport
- * provides uploadVideo to proxy the complete file through UploadOperation.
- */
-export interface VideoUploadTransport {
-  abortMultipartUpload: (operationPath: string) => Promise<unknown>;
-  getMultipartVideoUploadOperationData: (
-    data: Partial<GetMultipartVideoUploadOperationDataRequest>,
-  ) => Promise<GetMultipartVideoUploadOperationDataResponse>;
-  getVideoAssetId: (operationPath: string) => Promise<GetVideoAssetIdResponse>;
-  markChunkComplete: (operationPath: string, chunkNum: number, eTag: string) => Promise<unknown>;
-  markUploadComplete: (operationPath: string) => Promise<unknown>;
-  uploadVideo?: (video: File, abortSignal?: AbortSignal) => Promise<DirectVideoUploadResponse>;
-}

@@ -22,6 +22,7 @@ import DurationSelect from '@components/campaignBuilder/common/DurationSelect';
 import EndTimePicker from '@components/campaignBuilder/common/EndTimePicker';
 import FormAccordion from '@components/campaignBuilder/common/FormAccordion';
 import useFormLayoutStyles from '@components/campaignBuilder/common/FormLayout.styles';
+import { applyReachCreativeFormatChange } from '@components/campaignBuilder/common/objectiveHelpers';
 import PaymentMethodDrawer from '@components/campaignBuilder/common/PaymentMethodDrawer';
 import PaymentSelect from '@components/campaignBuilder/common/PaymentSelect';
 import StartTimePicker from '@components/campaignBuilder/common/StartTimePicker';
@@ -40,8 +41,9 @@ import {
   FlowTypes,
   FormField,
   HIGH_BUDGET_WARNING_TEXT,
-  REACH_BID_TYPE_OPTIONS_BY_FORMAT,
+  REACH_BID_TYPE_OPTIONS,
   ReachAdFormat,
+  VIDEO_ONLY_REACH_BID_TYPES,
 } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import { PaymentUnit } from '@constants/payment';
@@ -150,6 +152,9 @@ const BudgetSection = () => {
     (state) => !!state.simplifiedCampaign?.data?.off_platform_request_id,
   );
   const isFullDaysEnabled = useAppStore((state) => state.appMetadataState.data?.isFullDaysEnabled);
+  const isOneByTwoTileCreationEnabled = useAppStore(
+    (state) => state.appMetadataState.data?.isOneByTwoTileCreationEnabled ?? false,
+  );
   const recommendation = useCampaignBuilderStore((state) => state.recommendation);
   const adCreditBalance = useAppStore(
     (state) => state.adCreditState.data?.ad_credit_balance_in_micro || 0,
@@ -623,35 +628,53 @@ const BudgetSection = () => {
           <Controller
             control={control}
             name={FormField.BID_TYPE}
-            render={({ field: { onChange, value } }) => {
-              const bidTypeOptions =
-                REACH_BID_TYPE_OPTIONS_BY_FORMAT[creativeFormat ?? ReachAdFormat.HORIZONTAL_2X1];
-              return (
-                <div className={halfWidth} data-testid='reach-bid-type-select'>
-                  <Dropdown
-                    isDisabled={editMode}
-                    label={translate('Label.BidType')}
-                    onValueChange={(newValue) => {
-                      onChange(Number(newValue));
-                    }}
-                    placeholder={translate('Label.BidType')}
-                    size='Medium'
-                    value={String(value ?? ServerAdSetBidType.CPM_CHARGE)}>
-                    <Menu>
-                      <MenuSection>
-                        {bidTypeOptions.map((option) => (
-                          <MenuItem
-                            key={option}
-                            title={translate(ReachBidTypeShortLabelKey[option] ?? 'Label.CPM')}
-                            value={String(option)}
-                          />
-                        ))}
-                      </MenuSection>
-                    </Menu>
-                  </Dropdown>
-                </div>
-              );
-            }}
+            render={({ field: { onChange, value } }) => (
+              <div className={halfWidth} data-testid='reach-bid-type-select'>
+                <Dropdown
+                  isDisabled={editMode}
+                  label={translate('Label.BidType')}
+                  onValueChange={(newValue) => {
+                    const nextBidType = Number(newValue) as ServerAdSetBidType;
+                    onChange(nextBidType);
+                    // CPV2 charges per 2-second video view, so it can only run on
+                    // the 1x2 video format. Switch the format over rather than
+                    // leaving the form in a combination the backend rejects; the
+                    // 2x1 radio is disabled for as long as CPV2 stays selected.
+                    if (
+                      isOneByTwoTileCreationEnabled &&
+                      VIDEO_ONLY_REACH_BID_TYPES.includes(nextBidType) &&
+                      creativeFormat !== ReachAdFormat.VERTICAL_1X2
+                    ) {
+                      setValue(FormField.CREATIVE_FORMAT, ReachAdFormat.VERTICAL_1X2, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                      applyReachCreativeFormatChange({
+                        nextFormat: ReachAdFormat.VERTICAL_1X2,
+                        setValue,
+                      });
+                    }
+                  }}
+                  placeholder={translate('Label.BidType')}
+                  size='Medium'
+                  value={String(value ?? ServerAdSetBidType.CPM_CHARGE)}>
+                  <Menu>
+                    <MenuSection>
+                      {(isOneByTwoTileCreationEnabled
+                        ? REACH_BID_TYPE_OPTIONS
+                        : [ServerAdSetBidType.CPM_CHARGE]
+                      ).map((option) => (
+                        <MenuItem
+                          key={option}
+                          title={translate(ReachBidTypeShortLabelKey[option] ?? 'Label.CPM')}
+                          value={String(option)}
+                        />
+                      ))}
+                    </MenuSection>
+                  </Menu>
+                </Dropdown>
+              </div>
+            )}
           />
           <Controller
             control={control}

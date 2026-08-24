@@ -32,7 +32,6 @@ import {
   AspectRatioValidation,
   GetMultipartVideoUploadOperationDataRequest,
   SetUploadedImageParams,
-  VideoUploadTransport,
 } from '@type/fileUpload';
 import { InBrowser } from '@utils/browser';
 import { findMatchingAspectRatio } from '@utils/creativeFormat';
@@ -557,23 +556,8 @@ const createUploadChunkPlan = (videoSize: number) => {
   }
   return chunkPlan;
 };
-// Default transport: talk directly to the public assets-upload-api (moderated,
-// upload-fee-charged path). Callers that need the internal EnhancedVideoExperience
-// bypass pass the ads-management-api transport instead.
-const assetsVideoUploadTransport: VideoUploadTransport = {
-  abortMultipartUpload,
-  getMultipartVideoUploadOperationData,
-  getVideoAssetId,
-  markChunkComplete,
-  markUploadComplete,
-};
-
 interface UploadVideoParams {
   adAccountId: string;
-  // Asset type sent on the multipart start request. Defaults to 'AdsVideo'
-  // (public moderated path); the internal EnhancedVideoExperience path uses
-  // 'Video' so the created asset registers as ASSET_TYPE_VIDEO.
-  assetType?: string;
   authenticatedUser: UserType | null;
   maxRetries?: number;
   setCancelVideoUpload: (params: { cancelCb: () => void }) => void;
@@ -584,14 +568,11 @@ interface UploadVideoParams {
   setVideoUploading: (uploading: boolean) => void;
   setVideoUploadProgress: (progress: number) => void;
   setVideoWidth?: (width: number) => void;
-  // Control-plane transport (defaults to the public assets-upload-api).
-  transport?: VideoUploadTransport;
   video: File;
 }
 
 export const UploadVideo = ({
   adAccountId,
-  assetType = 'AdsVideo',
   authenticatedUser,
   maxRetries = MAX_VIDEO_UPLOAD_RETRIES,
   setCancelVideoUpload,
@@ -602,7 +583,6 @@ export const UploadVideo = ({
   setVideoUploading,
   setVideoUploadProgress,
   setVideoWidth,
-  transport = assetsVideoUploadTransport,
   video,
 }: UploadVideoParams) => {
   const URLUtil = window?.URL || window?.webkitURL;
@@ -646,8 +626,7 @@ export const UploadVideo = ({
     uploadData: Partial<GetMultipartVideoUploadOperationDataRequest>,
   ) => {
     try {
-      const multipartUploadInfoRes =
-        await transport.getMultipartVideoUploadOperationData(uploadData);
+      const multipartUploadInfoRes = await getMultipartVideoUploadOperationData(uploadData);
       const { operationPath, uploadUrls = [] } = multipartUploadInfoRes;
       return { operationPath, uploadUrls };
     } catch {
@@ -681,9 +660,7 @@ export const UploadVideo = ({
   };
 
   const markChunksComplete = async (etags: Array<string>, operationPath: string) => {
-    const promises = etags.map((eTag, index) =>
-      transport.markChunkComplete(operationPath, index + 1, eTag),
-    );
+    const promises = etags.map((eTag, index) => markChunkComplete(operationPath, index + 1, eTag));
     return Promise.all(promises);
   };
 
@@ -693,7 +670,7 @@ export const UploadVideo = ({
 
     const videoAssetIdResolved = async () => {
       try {
-        const getVideoAssetIdRes = await transport.getVideoAssetId(operationPath);
+        const getVideoAssetIdRes = await getVideoAssetId(operationPath);
         const { done, metadata = {}, response = {} } = getVideoAssetIdRes;
         const { progress } = metadata;
 
@@ -796,7 +773,7 @@ export const UploadVideo = ({
         setVideoUploadProgress(0);
       });
       if (operationPath) {
-        transport.abortMultipartUpload(operationPath);
+        abortMultipartUpload(operationPath);
       }
     };
 
@@ -862,39 +839,6 @@ export const UploadVideo = ({
         return;
       }
 
-      if (transport.uploadVideo) {
-        const abortController = new AbortController();
-        setVideoUploading(true);
-        localVideoUploading = true;
-        setVideoUploadProgress(25);
-        setCancelVideoUpload({
-          cancelCb: () => {
-            localVideoUploading = false;
-            abortController.abort();
-            setVideoUploading(false);
-            setVideoUploadProgress(0);
-          },
-        });
-
-        try {
-          const { operationPath } = await transport.uploadVideo(video, abortController.signal);
-          if (!localVideoUploading) {
-            return;
-          }
-          if (!operationPath) {
-            encounteredErrorUploadingVideo();
-            return;
-          }
-          setVideoUploadProgress(50);
-          fetchTranscodingStatusPoll(operationPath);
-        } catch (err) {
-          if (!abortController.signal.aborted) {
-            encounteredErrorUploadingVideo(err as Error);
-          }
-        }
-        return;
-      }
-
       const reader = new FileReader();
 
       reader.onload = async (event) => {
@@ -915,7 +859,7 @@ export const UploadVideo = ({
           const md5CheckSum = md5(data);
           const uploadData = {
             asset: {
-              assetType,
+              assetType: 'AdsVideo',
               creationContext: {
                 creator: {
                   userId: authenticatedUser!.id,
@@ -968,7 +912,7 @@ export const UploadVideo = ({
             });
             // This will be set to false if the user clicks cancel - so we check for this at misc points cause that can happen async
             if (!localVideoUploading) {
-              transport.abortMultipartUpload(operationPath);
+              abortMultipartUpload(operationPath);
               return;
             }
             setVideoUploadProgress(45);
@@ -978,12 +922,12 @@ export const UploadVideo = ({
               await markChunksComplete(etags, operationPath);
             } catch {
               encounteredErrorUploadingVideo();
-              transport.abortMultipartUpload(operationPath);
+              abortMultipartUpload(operationPath);
               return;
             }
             // This will be set to false if the user clicks cancel - so we check for this at misc points cause that can happen async
             if (!localVideoUploading) {
-              transport.abortMultipartUpload(operationPath);
+              abortMultipartUpload(operationPath);
               return;
             }
 
@@ -992,7 +936,7 @@ export const UploadVideo = ({
             PollWithRetryLimitAndCancelCallback({
               fn: async (): Promise<number | undefined> => {
                 try {
-                  await transport.markUploadComplete(operationPath);
+                  await markUploadComplete(operationPath);
                   return 200;
                 } catch (err) {
                   CaptureException(err as Error);
@@ -1003,7 +947,7 @@ export const UploadVideo = ({
               maxRetries: 5, // for 5 times
               onMaxRetriesReached: () => {
                 encounteredErrorUploadingVideo();
-                transport.abortMultipartUpload(operationPath);
+                abortMultipartUpload(operationPath);
               },
               successCb: () => {
                 // 5. Get the video asset id and polling for transcodeing

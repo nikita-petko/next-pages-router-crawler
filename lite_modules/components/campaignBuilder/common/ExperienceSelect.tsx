@@ -59,10 +59,18 @@ const ExperienceSelect = ({ advancedTargetingFormMethods }: ExperienceSelectProp
   const { fetchInitialAudienceEstimates, flowType, getAudienceEstimate } =
     useCampaignBuilderStore();
   const editMode = flowType === FlowTypes.EDIT;
-  const cloneMode = flowType === FlowTypes.CLONE;
   const campaignStatus = useCampaignBuilderStore(
     (state) => state.simplifiedCampaign?.data?.display_status,
   );
+  const clonedTargetUniverseId = useCampaignBuilderStore(
+    (state) => state.simplifiedCampaign?.data?.target_universe_id,
+  );
+  // Cloning normally reuses the source campaign's experience, so the picker is
+  // locked. A 1x2 clickout campaign is stored without a target universe though,
+  // leaving nothing to lock in — the advertiser has to choose one, both to
+  // satisfy the schema and to give the asset drawers a library to read from.
+  const cloneMode = flowType === FlowTypes.CLONE;
+  const isClonedExperienceLocked = cloneMode && !!clonedTargetUniverseId;
   const {
     data: universes,
     isError: fetchUniversesCanAdvertiseIsError,
@@ -300,6 +308,9 @@ const ExperienceSelect = ({ advancedTargetingFormMethods }: ExperienceSelectProp
     if (editCampaignDisabledTooltip) {
       return translate(editCampaignDisabledTooltip);
     }
+    if (cloneMode && !isClonedExperienceLocked) {
+      return '';
+    }
     const text = TooltipTextMapping[flowType ?? FlowTypes.CREATE];
     return text ? translate(text) : '';
   };
@@ -327,7 +338,7 @@ const ExperienceSelect = ({ advancedTargetingFormMethods }: ExperienceSelectProp
                 fetchUniversesCanAdvertiseIsLoading ||
                 !hasEligibleUniverses ||
                 editMode ||
-                cloneMode
+                isClonedExperienceLocked
               }
               label={translate('Heading.Experience')}
               leadingIconNode={

@@ -26,6 +26,8 @@ interface BaseDialogProps {
   dialogFooter: ReactNode;
   /** Title content. Wrapped by BaseDialog in a styled `<DialogTitle>`. */
   dialogTitle: ReactNode;
+  /** Stack footer actions on phones when labels need more horizontal room. */
+  stackFooterOnMobile?: boolean;
 }
 
 /**
@@ -42,6 +44,7 @@ const BaseDialog = ({
   dialogDescription,
   dialogFooter,
   dialogTitle,
+  stackFooterOnMobile = false,
 }: BaseDialogProps): ReactElement => (
   <>
     <DialogBody className='flex flex-col gap-y-small'>
@@ -51,13 +54,16 @@ const BaseDialog = ({
       )}
       {dialogBody !== undefined && <div className='flex flex-col gap-y-medium'>{dialogBody}</div>}
     </DialogBody>
-    {/* Below the Foundation `large` breakpoint (< 1141px — i.e. when the outlet
-        renders the dialog at Small or Medium size) each footer child grows
-        equally from a zero basis so two buttons split the row 50/50 and fill
-        the available width. At `large:` (desktop) the reset lets buttons fall
-        back to their natural width and `justify-end` right-aligns the action
-        group while preserving child order (primary stays leftmost). */}
-    <DialogFooter className='flex gap-x-small [&>*]:grow [&>*]:basis-0 large:justify-end large:[&>*]:grow-0 large:[&>*]:basis-auto'>
+    {/* The default layout splits two actions 50/50 below the Foundation `large`
+        breakpoint. Long-label consent dialogs can instead stack on phones and
+        switch to the split row at `medium`. At `large:` (desktop), both layouts
+        reset to natural button widths and right-align the action group. */}
+    <DialogFooter
+      className={
+        stackFooterOnMobile
+          ? 'flex flex-col gap-small medium:flex-row medium:[&>*]:grow medium:[&>*]:basis-0 large:justify-end large:[&>*]:grow-0 large:[&>*]:basis-auto'
+          : 'flex gap-x-small [&>*]:grow [&>*]:basis-0 large:justify-end large:[&>*]:grow-0 large:[&>*]:basis-auto'
+      }>
       {dialogFooter}
     </DialogFooter>
   </>

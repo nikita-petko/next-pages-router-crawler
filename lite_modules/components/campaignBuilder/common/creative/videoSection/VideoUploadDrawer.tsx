@@ -7,24 +7,14 @@ import { TranslationNamespace } from '@constants/localization';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
-import { VideoUploadTransport } from '@type/fileUpload';
 
 interface VideoUploadDrawerProps {
-  // Asset type sent on the multipart start request (defaults to 'AdsVideo').
-  assetType?: string;
   // Caps the number of videos (defaults to the off-platform raw-video limit).
   maxVideosOverride?: number;
   onClose: () => void;
-  // Control-plane transport (defaults to the public assets-upload-api).
-  uploadTransport?: VideoUploadTransport;
 }
 
-const VideoUploadDrawer = ({
-  assetType,
-  maxVideosOverride,
-  onClose,
-  uploadTransport,
-}: VideoUploadDrawerProps) => {
+const VideoUploadDrawer = ({ maxVideosOverride, onClose }: VideoUploadDrawerProps) => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Campaign);
 
   const { getValues } = useFormContext<FormType>();
@@ -63,11 +53,7 @@ const VideoUploadDrawer = ({
         }}
         onInteractOutside={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}>
-        <VideoUploadDrawerContent
-          assetType={assetType}
-          maxVideosOverride={maxVideosOverride}
-          uploadTransport={uploadTransport}
-        />
+        <VideoUploadDrawerContent maxVideosOverride={maxVideosOverride} />
       </SheetContent>
     </SheetRoot>
   );

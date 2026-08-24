@@ -1,6 +1,7 @@
 export enum AdIntegrationFormField {
   AdsCategory = 'adsCategory',
   AdvertiserName = 'advertiserName',
+  AdvertiserUrl = 'advertiserUrl',
   CampaignName = 'campaignName',
   EndDate = 'endDate',
   EndTime = 'endTime',
@@ -15,6 +16,7 @@ export const AD_POLICY_REVIEW_LABEL_PREFIX = 'AD_POLICY_REVIEW_LABEL_';
 export const AdsCategoryOtherValue = 'OTHER';
 
 export const MaxAdvertiserNameLength = 50;
+export const MaxAdvertiserUrlLength = 128;
 export const MaxCampaignNameLength = 50;
 export const MaxUniversesPerCampaign = 20;
 

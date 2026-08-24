@@ -8,7 +8,6 @@ import { TranslationNamespace } from '@constants/localization';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import useAgeRecommendationLabel from '@hooks/campaignBuilder/useAgeRecommendationLabel';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
-import { useAppStore } from '@stores/appStoreProvider';
 import { ThumbnailType } from '@type/campaignBuilder';
 import { UploadedVideoType, VideoUploadState } from '@type/fileUpload';
 
@@ -46,9 +45,6 @@ const ReachCreativePreview = () => {
     name: FormField.VIDEOS,
   });
 
-  const advertiserName = useAppStore(
-    (state) => state.advertiserState?.data?.organization?.business_name?.name,
-  );
   const ageRating = useAgeRecommendationLabel(experience?.universe_id);
 
   const selectedThumbnails = formThumbnails?.filter(
@@ -79,7 +75,6 @@ const ReachCreativePreview = () => {
             // `isVerticalFormat`; the management table never sets these and so
             // always gets the 2x1 preview.
             ...(isVerticalFormat && {
-              advertiserName,
               attributionThumbnailAssetId: firstAttributionThumbnail?.assetId,
               ctaButtonType,
               isVerticalFormat: true,

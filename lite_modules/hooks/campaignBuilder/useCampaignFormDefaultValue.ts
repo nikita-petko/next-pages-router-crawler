@@ -117,6 +117,17 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
     (state) => state.universesCanAdvertise.data?.[0] || noExperiencesOption,
   );
 
+  // `existing` means "already published on this campaign", which the creative
+  // library reads as a hard lock: the tile renders with a lock badge and its
+  // click handler no-ops, so the asset can't be deselected. A clone has
+  // published nothing yet, so carrying the flag over locks assets that are only
+  // drafts. It bites hardest wherever the selection cap is 1 — the logo on every
+  // objective, and the poster image and attribution thumbnail on 1x2 — because
+  // the drawer is then simultaneously at capacity and unable to free a slot.
+  // Only the edit path reads the flag on submit (to skip re-sending assets that
+  // are already attached), so a clone can safely start from false.
+  const clonedAssetExisting = !isCloneMode;
+
   // Transform Sponsored Ads to Logo Assets form field values.
   // We must preserve `logo_asset_aspect_width` from the source campaign as
   // an `aspectRatio` string on the form item — `useTransformFormToCampaign`
@@ -131,14 +142,14 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
             .filter(({ logo_asset_id }) => logo_asset_id !== undefined)
             .map(({ logo_asset_aspect_width, logo_asset_id }) => ({
               assetId: logo_asset_id!,
-              existing: true,
+              existing: clonedAssetExisting,
               isSelected: true,
               ...(logo_asset_aspect_width === 1 && { aspectRatio: '1:1' }),
               ...(logo_asset_aspect_width === 3 && { aspectRatio: '3:1' }),
             }))
             .slice(0, 1)
         : [],
-    [],
+    [clonedAssetExisting],
   );
 
   // Only clickout (brand tile) 1x2 ads carry an attribution thumbnail, so this
@@ -151,12 +162,12 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
             .filter((assetId): assetId is number => assetId !== undefined)
             .map((assetId) => ({
               assetId,
-              existing: true,
+              existing: clonedAssetExisting,
               isSelected: true,
             }))
             .slice(0, 1)
         : [],
-    [],
+    [clonedAssetExisting],
   );
 
   // if sponsored_ads exists, use it to transform thumbnails, otherwise use asset_ids.
@@ -169,20 +180,20 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
           .filter((assetId): assetId is number => assetId !== undefined)
           .map((assetId) => ({
             assetId,
-            existing: true,
+            existing: clonedAssetExisting,
             isSelected: true,
           }));
       }
       if (asset_ids) {
         return asset_ids.map((assetId: number) => ({
           assetId,
-          existing: true,
+          existing: clonedAssetExisting,
           isSelected: true,
         }));
       }
       return [];
     },
-    [],
+    [clonedAssetExisting],
   );
 
   // Transform Frequency Capping Rules to form field values
@@ -330,11 +341,22 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
         [FormField.DURATION]: transformDuration(campaignData),
         [FormField.END_DATE]: endMoment?.format(DateFormat),
         [FormField.END_TIME]: endMoment?.format(TimeFormat),
-        [FormField.EXPERIENCE]: {
-          paid_access: undefined,
-          universe_id: campaignData.target_universe_id ?? 0,
-          universe_name: 'Loading',
-        },
+        // A 1x2 clickout campaign is stored without a target universe (see
+        // transformTargetUniverseId), so a clone has nothing to carry over and
+        // has to start from a universe the advertiser can actually advertise on.
+        // Left at 0 the flow dead-ends: the schema requires universe_id > 0 so
+        // the form never submits, and every asset drawer keys its library off
+        // the selected universe so no creative can be swapped either. Edit keeps
+        // the raw value because its universe is immutable — inventing one there
+        // would claim the ad targets an experience it does not.
+        [FormField.EXPERIENCE]:
+          !campaignData.target_universe_id && isCloneMode
+            ? fallbackUniverse
+            : {
+                paid_access: undefined,
+                universe_id: campaignData.target_universe_id ?? 0,
+                universe_name: 'Loading',
+              },
         [FormField.FREQUENCY_CAPPING_DURATION_DAYS]: frequencyCappingRule?.duration_days,
         [FormField.FREQUENCY_CAPPING_ON]: !!frequencyCappingRule,
         [FormField.FREQUENCY_CAPPING_VALUE]: frequencyCappingRule?.value,
@@ -356,6 +378,8 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
       };
     },
     [
+      fallbackUniverse,
+      isCloneMode,
       timezoneDbName,
       transformAttributionThumbnails,
       transformLogoAssets,

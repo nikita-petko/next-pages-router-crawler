@@ -279,6 +279,7 @@ const ExperienceSection = ({ advancedTargetingFormMethods }: ExperienceSectionPr
   const callApplyObjectiveChange = useCallback(
     (nextObjective: ServerCampaignObjectiveType) => {
       applyObjectiveChange({
+        currentPaymentType: getValues(FormField.PAYMENT_TYPE),
         detailedTargetingMatchType,
         hasPaymentProfile: hasCreditCard,
         isAdAccountAutoCreateEnabled,
@@ -298,6 +299,7 @@ const ExperienceSection = ({ advancedTargetingFormMethods }: ExperienceSectionPr
     },
     [
       detailedTargetingMatchType,
+      getValues,
       hasCreditCard,
       hasValidCreditCard,
       isAdAccountAutoCreateEnabled,

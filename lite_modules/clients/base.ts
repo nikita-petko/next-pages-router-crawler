@@ -47,9 +47,6 @@ export interface PatchOptions {
 }
 
 export interface DeleteOptions {
-  // Optional request body. Some control-plane DELETEs (e.g. aborting a
-  // multipart upload) identify the resource in the body rather than the URL.
-  body?: BodyType;
   headers?: HeaderType;
   // Be careful with the retries when api calls are not idempotent
   // Retries won't count CSRF retries
@@ -159,11 +156,10 @@ class BaseClient {
   }
 
   async delete<T>(options: DeleteOptions): Promise<AxiosResponse<T>> {
-    const { body, headers = {}, retries = 0, url } = options;
+    const { headers = {}, retries = 0, url } = options;
     const send = () =>
       axios.delete<T>(url, {
         baseURL: this.baseURL,
-        data: body,
         headers: this.buildHeaders(headers),
         withCredentials: this.getSendCredentials(),
       });

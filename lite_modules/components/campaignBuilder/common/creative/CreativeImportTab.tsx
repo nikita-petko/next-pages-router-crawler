@@ -255,6 +255,18 @@ const CreativeImportTab = ({
     return (
       libraryAssets
         .filter((asset) => {
+          // Anything already on the form draft is shown unconditionally. The
+          // filters below decide what is worth *discovering*, which is a
+          // different question from what the user is allowed to see and undo:
+          // hiding a draft asset leaves no tile to deselect, and where the cap
+          // is 1 (logo, and the 1x2 poster and attribution thumbnail) that
+          // strands the slot — every other tile is disabled at capacity and the
+          // upload tab is locked for the same reason. Cloning hits this the
+          // hardest, since the clone's assets stay tagged with the source
+          // campaign's universe and the universe gate below drops them all.
+          if (asset.assetId != null && draftItemByAssetId.has(Number(asset.assetId))) {
+            return true;
+          }
           if (asset.isArchived) {
             return false;
           }

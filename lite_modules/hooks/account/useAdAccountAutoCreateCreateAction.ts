@@ -3,7 +3,13 @@ import { useCallback } from 'react';
 import { openAdAccountAutoCreateDialog } from '@components/account/dialogs/AdAccountAutoCreateDialog';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
 
-const useAdAccountAutoCreateCreateAction = (onNavigate: () => void, entryPoint = 'unknown') => {
+const useAdAccountAutoCreateCreateAction = (
+  onNavigate: () => void,
+  entryPoint?: string,
+  groupId?: number,
+  groupName?: string,
+) => {
+  const resolvedEntryPoint = entryPoint ?? 'unknown';
   const isAdAccountAutoCreateEnabled = useAppStore(
     (state: AppStoreType) => state.appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false,
   );
@@ -11,14 +17,37 @@ const useAdAccountAutoCreateCreateAction = (onNavigate: () => void, entryPoint =
 
   const handleCreateClick = useCallback(() => {
     if (isAdAccountAutoCreateEnabled && !adAccountId) {
+      const groupAdvertiser =
+        groupId !== undefined
+          ? useAppStore.getState().groupScopedAccountStateByGroupId[groupId]?.advertiserState.data
+          : undefined;
+      const groupTimeZone = groupAdvertiser?.ad_account?.id
+        ? groupAdvertiser.organization?.time_zone
+        : undefined;
+      const resolvedGroupName = groupName ?? groupAdvertiser?.ad_account?.name;
       openAdAccountAutoCreateDialog({
-        entryPoint,
+        entryPoint: resolvedEntryPoint,
+        ...(groupTimeZone !== undefined && resolvedGroupName !== undefined
+          ? {
+              existingGroupAccount: {
+                name: resolvedGroupName,
+                timeZone: groupTimeZone,
+              },
+            }
+          : {}),
         onSuccess: onNavigate,
       });
       return;
     }
     onNavigate();
-  }, [adAccountId, entryPoint, isAdAccountAutoCreateEnabled, onNavigate]);
+  }, [
+    adAccountId,
+    groupId,
+    groupName,
+    isAdAccountAutoCreateEnabled,
+    onNavigate,
+    resolvedEntryPoint,
+  ]);
 
   return handleCreateClick;
 };

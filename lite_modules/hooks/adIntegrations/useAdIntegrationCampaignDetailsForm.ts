@@ -7,6 +7,7 @@ import { z } from 'zod';
 import {
   AdIntegrationFormField,
   MaxAdvertiserNameLength,
+  MaxAdvertiserUrlLength,
   MaxCampaignNameLength,
   MaxUniversesPerCampaign,
 } from '@constants/adIntegrations';
@@ -47,6 +48,7 @@ export const getIsCampaignEnded = (
 
 const useAdIntegrationCampaignDetailsSchema = (
   campaignInProgress: boolean,
+  isMultiUniverseEnabled: boolean,
   timezoneDbName: string,
   minimumStartTimestampMsUtc: number,
 ) => {
@@ -79,6 +81,7 @@ const useAdIntegrationCampaignDetailsSchema = (
                 fieldName: translateAccount('Label.AdvertiserName'),
               }),
             ),
+          [AdIntegrationFormField.AdvertiserUrl]: z.string(),
           [AdIntegrationFormField.CampaignName]: z
             .string()
             .min(
@@ -138,6 +141,30 @@ const useAdIntegrationCampaignDetailsSchema = (
             }),
         })
         .superRefine((values, ctx) => {
+          if (
+            isMultiUniverseEnabled &&
+            !campaignInProgress &&
+            values.advertiserUrl.trim().length === 0
+          ) {
+            ctx.addIssue({
+              code: 'custom',
+              message: translate('Validation.FieldRequired', {
+                fieldName: translate('Label.AdvertiserUrl'),
+              }),
+              path: [AdIntegrationFormField.AdvertiserUrl],
+            });
+          }
+          if (isMultiUniverseEnabled && values.advertiserUrl.length > MaxAdvertiserUrlLength) {
+            ctx.addIssue({
+              code: 'custom',
+              message: translate('Validation.FieldMaxLength', {
+                fieldMaxLength: String(MaxAdvertiserUrlLength),
+                fieldName: translate('Label.AdvertiserUrl'),
+              }),
+              path: [AdIntegrationFormField.AdvertiserUrl],
+            });
+          }
+
           const now = moment().tz(timezoneDbName);
           const minimumAllowedStartMoment = moment.tz(
             minimumStartTimestampMsUtc > 0
@@ -204,6 +231,7 @@ const useAdIntegrationCampaignDetailsSchema = (
         }),
     [
       campaignInProgress,
+      isMultiUniverseEnabled,
       minimumStartTimestampMsUtc,
       timezoneDbName,
       translate,
@@ -219,6 +247,7 @@ const useAdIntegrationCampaignDetailsForm = (
   mode: AdIntegrationFormMode = 'create',
   timezoneDbName: string = 'UTC',
   minimumStartTimestampMsUtc: number = 0,
+  isMultiUniverseEnabled: boolean = false,
 ) => {
   const campaignInProgress = getIsCampaignInProgress(
     mode,
@@ -228,6 +257,7 @@ const useAdIntegrationCampaignDetailsForm = (
   );
   const schema = useAdIntegrationCampaignDetailsSchema(
     campaignInProgress,
+    isMultiUniverseEnabled,
     timezoneDbName,
     minimumStartTimestampMsUtc,
   );

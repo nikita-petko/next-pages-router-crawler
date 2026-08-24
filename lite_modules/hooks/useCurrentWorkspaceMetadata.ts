@@ -1,8 +1,9 @@
 import { useWorkspaces } from '@rbx/creator-hub-navigation';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { getAdsMetadata } from '@services/ads/getMetadataService';
+import { WorkspaceMetadataOverrides } from '@type/metadata';
 
 const STALE_TIME_MS = 5 * 60 * 1000;
 const GC_TIME_MS = 15 * 60 * 1000;
@@ -10,6 +11,11 @@ const GC_TIME_MS = 15 * 60 * 1000;
 interface WorkspaceIdentity {
   creatorId: number;
   creatorType: 'Group' | 'User';
+}
+
+interface CurrentWorkspaceMetadataState {
+  isResolved: boolean;
+  metadata?: WorkspaceMetadataOverrides;
 }
 
 export const getWorkspaceIdentity = (
@@ -31,9 +37,9 @@ export const getWorkspaceIdentity = (
   };
 };
 
-// Returns the backend-resolved ad-account auto-create value for the selected
-// workspace. The frontend must not recompute the decision.
-const useCurrentWorkspaceMetadata = (): boolean | undefined => {
+// Returns the backend-resolved workspace flags and whether metadata loading has
+// completed for the selected workspace.
+const useCurrentWorkspaceMetadata = (): CurrentWorkspaceMetadataState => {
   const { currentWorkspace, isLoading: isWorkspaceLoading, workspaces } = useWorkspaces();
   const previousWorkspaceType = useRef<WorkspaceIdentity['creatorType'] | undefined>(undefined);
   const [personalRequestVersion, setPersonalRequestVersion] = useState<number>(0);
@@ -45,6 +51,7 @@ const useCurrentWorkspaceMetadata = (): boolean | undefined => {
   const isWorkspaceResolved = !isWorkspaceLoading && workspaces != null && workspace !== undefined;
   const groupId = workspaceType === 'Group' ? workspaceId : undefined;
   const isGroupWorkspaceResolved = isWorkspaceResolved && groupId !== undefined;
+  const isGroupWorkspace = workspaceType === 'Group';
   const shouldRefreshPersonalWorkspace =
     isWorkspaceResolved && workspaceType === 'User' && personalRequestVersion > 0;
 
@@ -73,13 +80,30 @@ const useCurrentWorkspaceMetadata = (): boolean | undefined => {
     staleTime: STALE_TIME_MS,
   });
 
-  if (!isGroupWorkspaceResolved && !shouldRefreshPersonalWorkspace) {
-    return undefined;
-  }
+  const resolvedWorkspaceMetadata = useMemo(
+    () =>
+      query.data == null
+        ? undefined
+        : {
+            isAdAccountAutoCreateEnabled: query.data.isAdAccountAutoCreateEnabled,
+            isWatermarkedRobuxConversionEnabled: query.data.isWatermarkedRobuxConversionEnabled,
+            isWatermarkedRobuxConversionEnabledForAdGroup:
+              query.data.isWatermarkedRobuxConversionEnabledForAdGroup,
+          },
+    [query.data],
+  );
+
+  const isMetadataRequestRequired =
+    isGroupWorkspace || isGroupWorkspaceResolved || shouldRefreshPersonalWorkspace;
+  const isResolved = !isMetadataRequestRequired || !query.isPending;
+
   // TanStack Query retains the last successful data when a background refetch
   // fails. Continue using that workspace decision instead of reverting to the
   // user baseline.
-  return query.data?.isAdAccountAutoCreateEnabled;
+  return {
+    isResolved,
+    metadata: resolvedWorkspaceMetadata,
+  };
 };
 
 export default useCurrentWorkspaceMetadata;

@@ -59,6 +59,7 @@ const CreateAdIntegrationCampaignDetails = () => {
     return {
       adsCategory: AdsCategoryOtherValue,
       advertiserName: '',
+      advertiserUrl: '',
       campaignName: '',
       endDate: '',
       endTime: '',
