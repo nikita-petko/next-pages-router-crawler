@@ -88,7 +88,7 @@ export const ExperiencesTableMetricKeyConfig: Record<ExperiencesTableMetricKeys,
     metric: RAQIV2Metric.AverageSessionLengthMinutes,
   },
   [ExperiencesTableMetricKeys.d1Retention]: {
-    metric: RAQIV2Metric.D1Retention,
+    metric: RAQIV2Metric.ForwardD1Retention,
   },
   [ExperiencesTableMetricKeys.dailyRevenue]: {
     metric: RAQIV2Metric.DailyRevenue,

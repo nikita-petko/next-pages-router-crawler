@@ -76,7 +76,7 @@ export const WatchlistExperienceTileMetricKeyConfig: Record<
     metric: RAQIV2Metric.AveragePlayTimeMinutesPerDAU,
   },
   [WatchlistExperienceTileMetricKeys.d1Retention]: {
-    metric: RAQIV2Metric.D1Retention,
+    metric: RAQIV2Metric.ForwardD1Retention,
   },
   [WatchlistExperienceTileMetricKeys.dailyRevenue]: {
     metric: RAQIV2Metric.DailyRevenue,
