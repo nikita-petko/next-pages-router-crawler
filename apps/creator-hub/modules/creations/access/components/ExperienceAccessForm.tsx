@@ -136,8 +136,7 @@ function ExperienceAccessForm({
   const { gameDetails, refreshGameDetails } = useCurrentGame();
   const { user } = useAuthentication();
   const [isCurrentUserGroupOwner, setIsCurrentUserGroupOwner] = useState<boolean | undefined>();
-  const { settings, isFetched } = useSettings();
-  const enableCreatorControlsGeoGate = isFetched && settings.enableCreatorControlsGeoGate;
+  const { settings } = useSettings();
   const [fiatProductModerationStatus, setFiatProductModerationStatus] = useState<
     FiatProductModerationStatus | undefined
   >(universeAccessConfiguration.fiatProductModerationStatus);
@@ -672,11 +671,7 @@ function ExperienceAccessForm({
 
         <ExperienceAccessAge methods={methods} />
 
-        <ExperienceAccessRegion
-          methods={methods}
-          enableCreatorControlsGeoGate={enableCreatorControlsGeoGate}
-          allCountries={allCountries}
-        />
+        <ExperienceAccessRegion methods={methods} allCountries={allCountries} />
 
         <Grid classes={{ root: section }}>
           <FormLabel error={!!errors.devices} sx={{ color: 'text.primary' }}>
