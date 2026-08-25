@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { IPFamilyOwnershipTypesEnum } from '@rbx/client-rights/v1';
+import { ErrorResponseAppErrorCodeEnum, IPFamilyOwnershipTypesEnum } from '@rbx/client-rights/v1';
 import { Radio, RadioGroup, Button, Stepper, ProgressCircle } from '@rbx/foundation-ui';
 import type { TStepperStep } from '@rbx/foundation-ui';
 import { withTranslation, useTranslation } from '@rbx/intl';
@@ -12,6 +12,7 @@ import IpLoadError from '../../components/error/IpLoadError';
 import useIpSnackbar from '../../hooks/useIpSnackbar';
 import { useIpLayoutContext } from '../../IpAppNavigationLayout';
 import getApprovedPendingOrBlockedImages from '../common/getApprovedOrPendingImages';
+import parseRightsAppErrorCode from '../common/parseRightsAppErrorCode';
 import IpContentsCreateForm, { type FormStore } from '../components/IpContentsCreateForm';
 import IpFamiliesBreadcrumbs from '../components/IpFamiliesBreadcrumbs';
 import TrademarkCreateForm, { type TrademarkFormStore } from '../components/TrademarkCreateForm';
@@ -131,6 +132,20 @@ const IpContentsCreateContainer = () => {
   const createIpContentsAndAddToIpFamilyMutation = useCreateIpContentsAndAddToIpFamily();
   const createTrademarkMutation = useCreateTrademarkMutation();
 
+  // Show a specific message when the IP reference checker rejects an image, and the generic
+  // error toast for everything else.
+  const handleCreateError = useCallback(
+    async (error: unknown) => {
+      const appErrorCode = await parseRightsAppErrorCode(error);
+      if (appErrorCode === ErrorResponseAppErrorCodeEnum.NoEligibleContents) {
+        enqueueErrorSnackbar('Error.ContentNotEligible');
+      } else {
+        enqueueErrorSnackbar();
+      }
+    },
+    [enqueueErrorSnackbar],
+  );
+
   const handleSave = async (data: FormStore) => {
     // Filter out the empty primary keywords
     const primaryKeywords = data.primaryKeywords
@@ -174,8 +189,8 @@ const IpContentsCreateContainer = () => {
           void router.push(IP_FAMILY_DETAILS_HREF(id));
           enqueueSuccessSnackbar('Message.IpContentSubmitted');
         },
-        onError: () => {
-          enqueueErrorSnackbar();
+        onError: (error) => {
+          void handleCreateError(error);
         },
       },
     );
@@ -198,8 +213,8 @@ const IpContentsCreateContainer = () => {
           void router.push(IP_FAMILY_DETAILS_HREF(id));
           enqueueSuccessSnackbar('Message.IpContentSubmitted');
         },
-        onError: () => {
-          enqueueErrorSnackbar();
+        onError: (error) => {
+          void handleCreateError(error);
         },
       },
     );

@@ -1,8 +1,12 @@
 import type { FunctionComponent } from 'react';
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import type { IPContent } from '@rbx/client-rights/v1';
-import { IPContentContentTypeEnum, IPContentStatusEnum } from '@rbx/client-rights/v1';
+import {
+  ErrorResponseAppErrorCodeEnum,
+  IPContentContentTypeEnum,
+  IPContentStatusEnum,
+} from '@rbx/client-rights/v1';
 import { useLocalization, useTranslation } from '@rbx/intl';
 import { AssetThumbnailSize, ReturnPolicy, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
 import {
@@ -29,6 +33,7 @@ import canArchiveIpContent from '../common/canArchiveIpContent';
 import getApprovedPendingOrBlockedImages from '../common/getApprovedOrPendingImages';
 import getIpContentStatusReason from '../common/getIpContentStatusReason';
 import getIpContentTypeTranslationKey from '../common/getIpContentTypeTranslationKey';
+import parseRightsAppErrorCode from '../common/parseRightsAppErrorCode';
 import validateIpContentImage from '../common/validateIpContentImage';
 import {
   MAX_IP_CONTENT_IMAGES,
@@ -506,6 +511,20 @@ const EditIpContentDetails = ({
   const updateIpContentMutation = useUpdateIpContentMutation();
   const isSubmitting = updateIpContentMutation.isPending;
 
+  // Show a specific message when the IP reference checker rejects an image, and the generic
+  // error toast for everything else.
+  const handleUpdateError = useCallback(
+    async (error: unknown) => {
+      const appErrorCode = await parseRightsAppErrorCode(error);
+      if (appErrorCode === ErrorResponseAppErrorCodeEnum.NoEligibleContents) {
+        enqueueErrorSnackbar('Error.ContentNotEligible');
+      } else {
+        enqueueErrorSnackbar();
+      }
+    },
+    [enqueueErrorSnackbar],
+  );
+
   const handleSave = async (data: EditIpContentForm) => {
     let updateBody;
     switch (ipContent.contentType) {
@@ -539,8 +558,8 @@ const EditIpContentDetails = ({
         onSuccess: () => {
           onSubmitSuccess();
         },
-        onError: () => {
-          enqueueErrorSnackbar();
+        onError: (error) => {
+          void handleUpdateError(error);
         },
       },
     );
