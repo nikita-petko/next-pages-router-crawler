@@ -28,7 +28,7 @@ export const AssignSameRolePermission = 'Organization.AssignSameRole';
 // TODO: Swap for unification devforum post
 export const DEVFORUM_URL = 'https://devforum.roblox.com';
 
-export const SNOOZE_DURATION_MS = 5 * 60 * 1000;
+export const SNOOZE_DURATION_MS = 18 * 60 * 60 * 1000;
 
 export function isUnificationModalSuppressed(): boolean {
   if (typeof window === 'undefined') {
@@ -39,7 +39,7 @@ export function isUnificationModalSuppressed(): boolean {
 }
 
 export function getSnoozeKey(groupId: number): string {
-  return `group-unification-snoozed-${groupId}`;
+  return `group-unification-snoozed-at-${groupId}`;
 }
 
 export function isSnoozed(groupId: number): boolean {
@@ -50,13 +50,13 @@ export function isSnoozed(groupId: number): boolean {
   if (!raw) {
     return false;
   }
-  const expiresAt = Number(raw);
-  return Date.now() < expiresAt;
+  const snoozedAt = Number(raw);
+  return Date.now() < snoozedAt + SNOOZE_DURATION_MS;
 }
 
 export function snooze(groupId: number): void {
   if (typeof window === 'undefined') {
     return;
   }
-  window.localStorage.setItem(getSnoozeKey(groupId), String(Date.now() + SNOOZE_DURATION_MS));
+  window.localStorage.setItem(getSnoozeKey(groupId), String(Date.now()));
 }
