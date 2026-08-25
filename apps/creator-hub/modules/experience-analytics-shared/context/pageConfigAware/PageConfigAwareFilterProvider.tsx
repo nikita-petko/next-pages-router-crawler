@@ -12,6 +12,7 @@ import type { TRAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
 import legacyFiltersToRAQIV2 from '../../adapters/legacyFiltersToRAQIV2';
 import { getFilterBarDimensionForRAQIV2Dimension } from '../../constants/FilterDimensionConfig';
 import type {
+  UIFilterChangeOptions,
   UIFilters,
   UIFilterDimension,
 } from '../../layout/ExperienceAnalyticsPageControlBar/filterUtils';
@@ -141,8 +142,8 @@ export const usePageConfigAwareFilterBundle = (
   return useMemo(() => {
     const knownDimensionSet = new Set<UIFilterDimension>(knownDimensions);
     const filters = knownFilters.filter(({ dimension }) => knownDimensionSet.has(dimension));
-    const onFiltersChange = (newFilters: UIFilters) =>
-      onKnownFiltersChange(newFilters, knownDimensions);
+    const onFiltersChange = (newFilters: UIFilters, options?: UIFilterChangeOptions) =>
+      onKnownFiltersChange(newFilters, knownDimensions, options);
     return {
       filters,
       onFiltersChange,

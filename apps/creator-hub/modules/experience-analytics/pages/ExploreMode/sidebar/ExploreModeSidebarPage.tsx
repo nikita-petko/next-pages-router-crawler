@@ -125,7 +125,7 @@ import { useUniverseResource } from '@modules/experience-analytics-shared/hooks/
 import useOnSelectChartRegion from '@modules/experience-analytics-shared/hooks/useOnSelectChartRegion';
 import useRAQIV2TranslationDependencies from '@modules/experience-analytics-shared/hooks/useRAQIV2TranslationDependencies';
 import useStableArray from '@modules/experience-analytics-shared/hooks/useStableArray';
-import ExperienceAnalyticsFilterChips from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsFilterChips';
+import ExperienceAnalyticsFilterChipsWithPlaceLock from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsFilterChipsWithPlaceLock';
 import { getFilterValueForDimension } from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/filterUtils';
 import { logGranularityChange } from '@modules/experience-analytics-shared/logging/experienceAnalyticsUnifiedLogger';
 import {
@@ -2308,12 +2308,14 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
   const preview = (
     <>
       {filterDrawerDimensions.length > 0 && (
-        <div className='padding-top-small'>
-          <ExperienceAnalyticsFilterChips
-            dimensions={filterDrawerDimensions}
-            knownRAQIDimensionsShownElsewhere={sourceOwnedFilterDimensions}
-          />
-        </div>
+        <SourceMetricContextProvider metrics={chartContextApiMetrics}>
+          <div className='padding-top-small'>
+            <ExperienceAnalyticsFilterChipsWithPlaceLock
+              dimensions={filterDrawerDimensions}
+              knownRAQIDimensionsShownElsewhere={sourceOwnedFilterDimensions}
+            />
+          </div>
+        </SourceMetricContextProvider>
       )}
 
       <div className={`${chartBody} padding-bottom-xxlarge`}>

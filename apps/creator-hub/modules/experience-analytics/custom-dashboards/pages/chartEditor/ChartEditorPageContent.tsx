@@ -28,7 +28,10 @@ import { AnalyticsContextLayerInnerProvider } from '@modules/experience-analytic
 import { UniversePerformanceRaqiClientProvider } from '@modules/experience-analytics-shared/context/UniversePerformanceRaqiClientProvider';
 import { useUniverseResource } from '@modules/experience-analytics-shared/hooks/useChartResourceProvider';
 import ExperienceAnalyticsPageFilterDrawerButton from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/ExperienceAnalyticsPageFilterDrawerButton';
-import type { UIFilters } from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/filterUtils';
+import type {
+  UIFilterChangeOptions,
+  UIFilters,
+} from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/filterUtils';
 import useTextFilterValidation from '@modules/experience-analytics-shared/text-filter/useTextFilterValidation';
 import {
   getUIMetricFromAtomicMetricLike,
@@ -63,6 +66,7 @@ import {
   buildChartTileFromEditor,
   createDefaultChartTileDraft,
   hasChartTileEditorChanges,
+  hydrateChartTilePlaceFilter,
   findChartTileInConfig,
   isNewChartTileRoute,
   mintChartTileIdForSave,
@@ -302,6 +306,15 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
   const dateRange = useAnalyticsCurrentDateRangeBundle();
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<unknown>(null);
+  const [hydratedExistingByTileId, setHydratedExistingByTileId] = useState<{
+    readonly tileId: string;
+    readonly tile: ChartTileConfig;
+  } | null>(null);
+  const hydratedExistingTile =
+    hydratedExistingByTileId !== null &&
+    hydratedExistingByTileId.tileId === existingChartTile?.tileId
+      ? hydratedExistingByTileId.tile
+      : null;
   const {
     sidebarProps,
     metric,
@@ -369,10 +382,18 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
   }, [metric]);
 
   const onTileFiltersChange = useCallback(
-    (filters: UIFilters) => {
+    (filters: UIFilters, options?: UIFilterChangeOptions) => {
       sidebarProps.dispatch({ type: 'set-custom-event-filters', filters });
+      if (!options?.hydrate || !existingChartTile) {
+        return;
+      }
+      const placeFilter = filters.find((filter) => filter.dimension === RAQIV2Dimension.Place);
+      setHydratedExistingByTileId({
+        tileId: existingChartTile.tileId,
+        tile: hydrateChartTilePlaceFilter(existingChartTile, placeFilter?.values ?? []),
+      });
     },
-    [sidebarProps],
+    [existingChartTile, sidebarProps],
   );
 
   const chartContextApiMetrics = useMemo<TRAQIV2APIMetric[]>(
@@ -447,10 +468,10 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
     () =>
       hasChartTileEditorChanges({
         isNewTile,
-        existingTile: existingChartTile,
+        existingTile: hydratedExistingTile ?? existingChartTile,
         draftTile,
       }),
-    [draftTile, existingChartTile, isNewTile],
+    [draftTile, existingChartTile, hydratedExistingTile, isNewTile],
   );
 
   const handleSave = useCallback(async () => {

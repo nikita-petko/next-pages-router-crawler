@@ -12,6 +12,7 @@ import useRAQIV2TranslationDependencies from '@modules/experience-analytics-shar
 import ExperienceAnalyticsPageFilterChoice from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/ExperienceAnalyticsPageFilterChoice';
 import {
   updateFilterValues,
+  type UIFilterChangeOptions,
   type UIFilters,
 } from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/filterUtils';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -21,7 +22,7 @@ type ExplorePageFilterButtonProps = {
   resource: RAQIV2ChartResource;
   dimensions: readonly TSupportedFilterBarDimensions[];
   filters: UIFilters;
-  onFiltersChange: (filters: UIFilters) => void;
+  onFiltersChange: (filters: UIFilters, options?: UIFilterChangeOptions) => void;
   /**
    * Called when the user clicks "Reset All" in the drawer. Expected to clear
    * every filter (supported + orphan) from the URL. The drawer will be closed
@@ -59,13 +60,17 @@ const ExplorePageFilterButton: FC<ExplorePageFilterButtonProps> = ({
   }, [onResetAllFilters]);
 
   const onFilterValueChange = useCallback(
-    (newFilterValue: string[] | null, dimension: TSupportedFilterBarDimensions) => {
+    (
+      newFilterValue: string[] | null,
+      dimension: TSupportedFilterBarDimensions,
+      options?: UIFilterChangeOptions,
+    ) => {
       pendingFiltersRef.current = updateFilterValues(
         pendingFiltersRef.current,
         dimension,
         newFilterValue,
       );
-      onFiltersChange(pendingFiltersRef.current);
+      onFiltersChange(pendingFiltersRef.current, options);
     },
     [onFiltersChange],
   );

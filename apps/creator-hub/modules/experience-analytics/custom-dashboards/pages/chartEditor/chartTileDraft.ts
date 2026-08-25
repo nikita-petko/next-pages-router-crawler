@@ -1,5 +1,6 @@
 import {
   RAQIV2AggregationType,
+  RAQIV2Dimension,
   RAQIV2Metric,
   RAQIV2PercentileType,
   RAQIV2UIPseudoDimension,
@@ -71,6 +72,7 @@ const SUPPORTED_SUMMARY_CARD_EDITOR_AGGREGATION_SET: ReadonlySet<string> = new S
 );
 const PERCENTILE_TYPE_PSEUDO_DIMENSION_KEY: string = RAQIV2UIPseudoDimension.PercentileType;
 const AGGREGATION_TYPE_PSEUDO_DIMENSION_KEY: string = RAQIV2UIPseudoDimension.AggregationType;
+const PLACE_FILTER_DIMENSION: string = RAQIV2Dimension.Place;
 
 export function isNewChartTileRoute(tileIdParam: string | undefined): boolean {
   return tileIdParam === NEW_CHART_TILE_ROUTE_ID;
@@ -589,6 +591,41 @@ export function hasChartTileEditorChanges({
     JSON.stringify(chartTileEditorComparisonPayload(existingTile)) !==
     JSON.stringify(chartTileEditorComparisonPayload(draftTile))
   );
+}
+
+const areReadonlyStringArraysEqual = (left: readonly string[], right: readonly string[]): boolean =>
+  left.length === right.length && left.every((value, index) => value === right[index]);
+
+/**
+ * Rebase a loaded chart tile's Place filter to the hydrated live values so a
+ * missing-place coerce does not look like an editor edit. Remote is corrected
+ * on the next explicit Save.
+ */
+export function hydrateChartTilePlaceFilter(
+  tile: ChartTileConfig,
+  placeValues: readonly string[],
+): ChartTileConfig {
+  const existingPlace = tile.dataSpec.filters.find(
+    (filter) => filter.dimension === PLACE_FILTER_DIMENSION,
+  );
+  const existingPlaceValues = existingPlace?.values ?? [];
+  if (areReadonlyStringArraysEqual(existingPlaceValues, placeValues)) {
+    return tile;
+  }
+  const otherFilters = tile.dataSpec.filters.filter(
+    (filter) => filter.dimension !== PLACE_FILTER_DIMENSION,
+  );
+  const nextFilters =
+    placeValues.length === 0
+      ? otherFilters
+      : [...otherFilters, { dimension: PLACE_FILTER_DIMENSION, values: [...placeValues] }];
+  return {
+    ...tile,
+    dataSpec: {
+      ...tile.dataSpec,
+      filters: nextFilters,
+    },
+  };
 }
 
 export function resolveInitialEditorMetric(

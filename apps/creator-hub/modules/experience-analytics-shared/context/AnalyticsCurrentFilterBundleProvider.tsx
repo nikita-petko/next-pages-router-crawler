@@ -12,6 +12,7 @@ import emptyFunction from '../constants/emptyFunction';
 import { getFilterBarDimensionForRAQIV2Dimension } from '../constants/FilterDimensionConfig';
 import type {
   NonRAQIUIFilterDimension,
+  UIFilterChangeOptions,
   UIFilters,
   UIFilterDimension,
 } from '../layout/ExperienceAnalyticsPageControlBar/filterUtils';
@@ -37,6 +38,7 @@ type AnalyticsCurrentFilterBundleRaw = {
   onKnownFiltersChange: (
     filters: UIFilters,
     knownDimensions: Readonly<Array<UIFilterDimension>>,
+    options?: UIFilterChangeOptions,
   ) => void;
   onUnsupportedDimensionFilterDelete: (dimension: TRAQIV2Dimension) => void;
   clearFilterDimensions: (dimensions: ReadonlyArray<TRAQIV2Dimension>) => void;
@@ -50,7 +52,7 @@ AnalyticsCurrentFilterBundleContext.displayName = 'ExperienceAnalyticsCurrentFil
 
 export type ExperienceAnalyticsCurrentFilterBundle = {
   filters: UIFilters;
-  onFiltersChange: (filters: UIFilters) => void;
+  onFiltersChange: (filters: UIFilters, options?: UIFilterChangeOptions) => void;
   onUnsupportedDimensionFilterDelete: (dimension: TRAQIV2Dimension) => void;
   clearFilterDimensions: (dimensions: ReadonlyArray<TRAQIV2Dimension>) => void;
   raqiFilters: RAQIV2QueryFilter[];
@@ -105,8 +107,8 @@ const useAnalyticsCurrentFilterBundleInternal = (
   return useMemo(() => {
     const knownDimensionSet = new Set<UIFilterDimension>(knownDimensions);
     const filters = knownFilters.filter(({ dimension }) => knownDimensionSet.has(dimension));
-    const onFiltersChange = (newFilters: UIFilters) =>
-      onKnownFiltersChange(newFilters, knownDimensions);
+    const onFiltersChange = (newFilters: UIFilters, options?: UIFilterChangeOptions) =>
+      onKnownFiltersChange(newFilters, knownDimensions, options);
     return {
       filters,
       onFiltersChange,

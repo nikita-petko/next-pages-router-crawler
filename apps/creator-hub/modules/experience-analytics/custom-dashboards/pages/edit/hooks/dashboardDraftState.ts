@@ -1,5 +1,9 @@
-import type { CustomDashboardConfig } from '../../../types';
+import { RAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
+import { getDashboardSurface, withDashboardSurface } from '../../../layout/dashboardLayout';
+import type { CustomDashboardConfig, TileFilter } from '../../../types';
 import { EMPTY_DASHBOARD_CONFIG } from '../../../types';
+
+const PLACE_FILTER_DIMENSION: string = RAQIV2Dimension.Place;
 
 export type DashboardDraft = {
   readonly name: string;
@@ -27,6 +31,37 @@ function stableStringify(value: unknown): string {
     .filter(([, v]) => v !== undefined)
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
   return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`).join(',')}}`;
+}
+
+function withPlaceFilterValues(
+  filters: ReadonlyArray<TileFilter> | undefined,
+  placeValues: readonly string[],
+): ReadonlyArray<TileFilter> {
+  const existing = filters ?? [];
+  const withoutPlace = existing.filter((filter) => filter.dimension !== PLACE_FILTER_DIMENSION);
+  if (placeValues.length === 0) {
+    return withoutPlace;
+  }
+  return [...withoutPlace, { dimension: PLACE_FILTER_DIMENSION, values: [...placeValues] }];
+}
+
+/**
+ * Writes a hydrated Place selection into the in-memory dashboard config
+ * (`defaultFilters`). Title-only Save persists this working copy. Callers
+ * rebase the dirty baseline to the same config so hydrate itself is not dirty.
+ */
+export function withHydratedPlaceDefaultFilter(
+  config: CustomDashboardConfig,
+  placeValues: readonly string[],
+): CustomDashboardConfig {
+  const surface = getDashboardSurface(config);
+  return withDashboardSurface(config, {
+    ...surface,
+    controls: {
+      ...surface.controls,
+      defaultFilters: withPlaceFilterValues(surface.controls.defaultFilters, placeValues),
+    },
+  });
 }
 
 export function getDashboardDraftSignature(draft: DashboardDraft): string {

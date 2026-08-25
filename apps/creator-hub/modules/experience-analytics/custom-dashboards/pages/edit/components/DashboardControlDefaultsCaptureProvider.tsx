@@ -9,6 +9,7 @@ import { AnalyticsCurrentBreakdownContext } from '@modules/experience-analytics-
 import { AnalyticsCurrentFilterBundleContext } from '@modules/experience-analytics-shared/context/AnalyticsCurrentFilterBundleProvider';
 import { AnalyticsCurrentGranularityBundleContext } from '@modules/experience-analytics-shared/context/AnalyticsCurrentGranularityProvider';
 import { ExperienceAnalyticsCurrentAnnotationsBundleContext } from '@modules/experience-analytics-shared/context/ExperienceAnalyticsCurrentAnnotationsBundleProvider';
+import type { UIFilterChangeOptions } from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/filterUtils';
 import type { CreatorAnalyticsUntabbedPageConfig } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
 import { resolveCustomDashboardSupportedAnnotationTypes } from '../../../constants/customDashboardSurfaceAnnotationOptions';
 import {
@@ -34,7 +35,10 @@ import {
 type DashboardControlDefaultsCaptureProviderProps = {
   readonly config: CustomDashboardConfig;
   readonly pageConfig: CreatorAnalyticsUntabbedPageConfig;
-  readonly onConfigChange: (nextConfig: CustomDashboardConfig) => void;
+  readonly onConfigChange: (
+    nextConfig: CustomDashboardConfig,
+    options?: UIFilterChangeOptions,
+  ) => void;
   readonly children: ReactNode;
 };
 
@@ -144,7 +148,11 @@ const DashboardControlDefaultsCaptureProvider: FC<DashboardControlDefaultsCaptur
   const annotationBundle = useContext(ExperienceAnalyticsCurrentAnnotationsBundleContext);
 
   const persistConfigDefaults = useCallback(
-    (defaults: Partial<DashboardSurfaceControls>, nextConfig = config) => {
+    (
+      defaults: Partial<DashboardSurfaceControls>,
+      nextConfig = config,
+      options?: UIFilterChangeOptions,
+    ) => {
       const surface = getDashboardSurface(nextConfig);
       onConfigChange(
         withDashboardSurface(nextConfig, {
@@ -154,6 +162,7 @@ const DashboardControlDefaultsCaptureProvider: FC<DashboardControlDefaultsCaptur
             ...defaults,
           },
         }),
+        options,
       );
     },
     [config, onConfigChange],
@@ -226,7 +235,12 @@ const DashboardControlDefaultsCaptureProvider: FC<DashboardControlDefaultsCaptur
       onKnownFiltersChange: (
         filters: Parameters<typeof filterBundle.onKnownFiltersChange>[0],
         knownDimensions: Parameters<typeof filterBundle.onKnownFiltersChange>[1],
+        options?: UIFilterChangeOptions,
       ) => {
+        // Preserve the live bundle exactly as emitted. Hydrate also writes the
+        // working copy so the next explicit Save persists the coerced Place.
+        // The editor rebases its dirty baseline when `options.hydrate` is set.
+        filterBundle.onKnownFiltersChange(filters, knownDimensions, options);
         const nextDefaultFilters = filters
           .filter((filter) => knownDimensions.includes(filter.dimension))
           .filter(
@@ -249,9 +263,6 @@ const DashboardControlDefaultsCaptureProvider: FC<DashboardControlDefaultsCaptur
             dimension: filter.dimension,
             values: [...filter.values],
           }));
-        // Preserve the live bundle exactly as emitted. Only the persisted
-        // dashboard defaults are normalized to supported shared dimensions.
-        filterBundle.onKnownFiltersChange(filters, knownDimensions);
         const configWithMetricFilters = syncMetricScopedFiltersToTiles(config, filters);
         if (
           areTileFiltersEqual(controls.defaultFilters, nextDefaultFilters) &&
@@ -259,7 +270,11 @@ const DashboardControlDefaultsCaptureProvider: FC<DashboardControlDefaultsCaptur
         ) {
           return;
         }
-        persistConfigDefaults({ defaultFilters: nextDefaultFilters }, configWithMetricFilters);
+        persistConfigDefaults(
+          { defaultFilters: nextDefaultFilters },
+          configWithMetricFilters,
+          options,
+        );
       },
     }),
     [config, controls.defaultFilters, filterBundle, pageConfig.body, persistConfigDefaults],

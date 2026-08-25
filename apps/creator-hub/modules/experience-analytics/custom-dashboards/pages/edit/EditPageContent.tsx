@@ -13,6 +13,7 @@ import getEnabledChartConfiguratorMetrics from '@modules/experience-analytics-sh
 import { customEventsMetric } from '@modules/experience-analytics-shared/components/chartConfigurator/useChartConfiguratorSourceSelection';
 import {
   filterBarDimensionToQueryKey,
+  type UIFilterChangeOptions,
   type UIFilterDimension,
 } from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/filterUtils';
 import DiscardChangesDialog from '@modules/miscellaneous/discard-dialog/DiscardChangesDialog';
@@ -41,6 +42,7 @@ import {
 import { createTileId } from '../../utils/createTileId';
 import { createDuplicateDashboardNameSuffixes } from '../../utils/duplicateDashboardNameSuffixes';
 import { buildDuplicateDashboardName } from '../../utils/suggestDefaultName';
+import { validateCustomDashboardConfig } from '../../utils/validators';
 import {
   attachDashboardIdToWorkingCopy,
   deleteEditorWorkingCopy,
@@ -127,6 +129,10 @@ const EditPageContent: FC<EditPageContentProps> = ({
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<unknown>(null);
+  const [hydratedBaselineByDraftId, setHydratedBaselineByDraftId] = useState<{
+    readonly draftId: string;
+    readonly config: CustomDashboardConfig;
+  } | null>(null);
   const [isConflictDialogOpen, setIsConflictDialogOpen] = useState(false);
   const [isCancelDiscardDialogOpen, setIsCancelDiscardDialogOpen] = useState(false);
   const [summaryCardDialogMode, setSummaryCardDialogMode] = useState<
@@ -200,16 +206,24 @@ const EditPageContent: FC<EditPageContentProps> = ({
     persistedDraft,
   });
 
+  const hydratedBaselineConfig =
+    hydratedBaselineByDraftId !== null &&
+    hydratedBaselineByDraftId.draftId === activeSession?.draftId
+      ? hydratedBaselineByDraftId.config
+      : null;
   const hasUnsavedChanges = useMemo(
     () =>
       isDashboardDraftDirty({
         currentDraft,
         isNewDashboard,
         persistedDraft: persistedDocument
-          ? { name: persistedDocument.name, config: persistedDocument.config }
+          ? {
+              name: persistedDocument.name,
+              config: hydratedBaselineConfig ?? persistedDocument.config,
+            }
           : null,
       }),
-    [currentDraft, isNewDashboard, persistedDocument],
+    [currentDraft, hydratedBaselineConfig, isNewDashboard, persistedDocument],
   );
   const shouldPromptForEditorRoute = useCallback(
     (url: string) => shouldPromptBeforeLeavingEditor(url, dashboardId),
@@ -387,7 +401,7 @@ const EditPageContent: FC<EditPageContentProps> = ({
     [handleOpenChartEditor],
   );
   const handleConfigChange = useCallback(
-    (nextConfig: CustomDashboardConfig) => {
+    (nextConfig: CustomDashboardConfig, options?: UIFilterChangeOptions) => {
       const currentName = draftDashboardName ?? renderedActiveSession?.name;
       if (!renderedActiveSession || !currentName) {
         return;
@@ -396,6 +410,12 @@ const EditPageContent: FC<EditPageContentProps> = ({
         name: currentName,
         config: nextConfig,
       });
+      if (options?.hydrate) {
+        setHydratedBaselineByDraftId({
+          draftId: renderedActiveSession.draftId,
+          config: validateCustomDashboardConfig(nextConfig),
+        });
+      }
     },
     [renderedActiveSession, commitDraft, draftDashboardName],
   );

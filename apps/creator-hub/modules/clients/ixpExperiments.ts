@@ -116,11 +116,11 @@ export type CreatorHubNavigationUserParameterResults = {
 };
 
 export enum CreatorHubPublishingParameters {
-  EnablePublishingConsolidation = 'enablePublishingConsolidation',
+  EnableBulkAssetUpload = 'enableBulkAssetUpload',
 }
 
 export type CreatorHubPublishingParameterResults = {
-  [CreatorHubPublishingParameters.EnablePublishingConsolidation]: boolean | null;
+  [CreatorHubPublishingParameters.EnableBulkAssetUpload]: boolean | null;
 };
 
 export enum CreatorHubCreationsPermissionParameters {

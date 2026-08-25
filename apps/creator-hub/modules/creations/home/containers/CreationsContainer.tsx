@@ -33,7 +33,6 @@ import {
   TAXONOMY_HOST_ASSET,
 } from '../../avatarItem/utils/taxonomyRoutingUtils';
 import useCreationsFilters from '../../common/hooks/useCreationsFilters';
-import useEnablePublishingConsolidation from '../../common/hooks/useEnablePublishingConsolidation';
 import { isDevelopmentItemAsset } from '../../contentManager/developmentItems/developmentItemsInventoryUtils';
 import { isPrimitiveAssetType } from '../../developerItem/primitives/types';
 import menuItems from '../../menu/constants/MenuConstants';
@@ -131,7 +130,6 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
   const isShowcasesEnabled = useShowcasesGate();
   const { translate } = useTranslation();
   const isTaxonomyEnabled = useTaxonomyDashboardGate();
-  const enablePublishingConsolidation = useEnablePublishingConsolidation();
   const previousAssetTypeRef = useRef<Asset | undefined>(undefined);
 
   const filteredTypes = useMemo(() => {
@@ -285,14 +283,12 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
     if (previousAssetType !== assetType) {
       previousAssetTypeRef.current = assetType;
       const isConsolidatedDevelopmentItemChange =
-        enablePublishingConsolidation &&
-        isDevelopmentItemAsset(previousAssetType) &&
-        isDevelopmentItemAsset(assetType);
+        isDevelopmentItemAsset(previousAssetType) && isDevelopmentItemAsset(assetType);
       if (!isConsolidatedDevelopmentItemChange) {
         resetAllFilters();
       }
     }
-  }, [assetType, enablePublishingConsolidation, resetAllFilters]);
+  }, [assetType, resetAllFilters]);
 
   const shouldRenderGrowthBannerOnTab =
     assetType === Asset.MyExperiences || assetType === Asset.SharedExperiences;
@@ -305,11 +301,10 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
   // without this they would also appear over Avatars, where the item-type tab hides them.
   const showMarketplaceItemBanners =
     isMarketplaceAssetType && !isAvatarLooksActiveTab(query.activeTab);
-  const showPublishingConsolidation =
-    enablePublishingConsolidation && isDevelopmentItemAsset(assetType);
+  const showDevelopmentItemsInventory = isDevelopmentItemAsset(assetType);
 
   const assetsGridContainer = useMemo(() => {
-    if (showPublishingConsolidation) {
+    if (showDevelopmentItemsInventory) {
       return (
         <DevelopmentItemsInventory
           groupId={currentGroup?.id}
@@ -375,7 +370,7 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
     currentGroup?.id,
     currentUser?.id,
     isMarketplaceAssetType,
-    showPublishingConsolidation,
+    showDevelopmentItemsInventory,
   ]);
 
   return (
@@ -397,7 +392,7 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
       <section className={section}>
         <Grid container direction='column' className={container}>
           <AgeVerificationUpsellBanner trackingPage={AgeVerificationUpsellPage.Creations} />
-          {!showPublishingConsolidation && (
+          {!showDevelopmentItemsInventory && (
             <CreationsIANavigationControls
               menuState={validatedMenuState}
               onMenuStateChange={onMenuStateChange}

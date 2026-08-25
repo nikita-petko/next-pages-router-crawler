@@ -3,7 +3,7 @@ import {
   getFilterBarDimensionForRAQIV2Dimension,
   type TSupportedFilterBarDimensions,
 } from '@modules/experience-analytics-shared/constants/FilterDimensionConfig';
-import ExperienceAnalyticsFilterChips from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsFilterChips';
+import ExperienceAnalyticsFilterChipsWithPlaceLock from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsFilterChipsWithPlaceLock';
 import type { CreatorAnalyticsUntabbedPageConfig } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
 
 type DashboardFilterChipsProps = {
@@ -28,7 +28,7 @@ const DashboardFilterChips: FC<DashboardFilterChipsProps> = ({ pageConfig }) => 
     return null;
   }
 
-  return <ExperienceAnalyticsFilterChips dimensions={filterChipDimensions} />;
+  return <ExperienceAnalyticsFilterChipsWithPlaceLock dimensions={filterChipDimensions} />;
 };
 
 export default DashboardFilterChips;

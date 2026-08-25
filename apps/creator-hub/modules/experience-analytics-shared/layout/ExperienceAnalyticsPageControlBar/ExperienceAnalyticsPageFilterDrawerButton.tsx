@@ -22,14 +22,18 @@ import {
 import type { LoggingTarget } from '../../logging/LoggingTarget';
 import useAnalyticsPageControlBarStyles from './ExperienceAnalyticsPageControlBar.styles';
 import ExperienceAnalyticsPageFilterChoice from './ExperienceAnalyticsPageFilterChoice';
-import type { UIFilters } from './filterUtils';
-import { clearDependentFiltersOnDimensionChange, updateFilterValues } from './filterUtils';
+import {
+  clearDependentFiltersOnDimensionChange,
+  updateFilterValues,
+  type UIFilterChangeOptions,
+  type UIFilters,
+} from './filterUtils';
 
 type ExperienceAnalyticsFilterDrawerButtonProps = {
   resource: RAQIV2ChartResource;
   dimensions: readonly TSupportedFilterBarDimensions[];
   filters: UIFilters;
-  onFiltersChange: (filters: UIFilters) => void;
+  onFiltersChange: (filters: UIFilters, options?: UIFilterChangeOptions) => void;
   loggingTarget?: LoggingTarget;
   triggerVariant?: 'default' | 'utilityPlus' | 'standard' | 'plain';
   triggerLabel?: string;
@@ -57,12 +61,16 @@ const ExperienceAnalyticsFilterDrawerButton: FC<ExperienceAnalyticsFilterDrawerB
   }, [filters]);
 
   const onFilterValueChange = useCallback(
-    (newFilterValue: string[] | null, dimension: TSupportedFilterBarDimensions) => {
+    (
+      newFilterValue: string[] | null,
+      dimension: TSupportedFilterBarDimensions,
+      options?: UIFilterChangeOptions,
+    ) => {
       filtersOnSubmitRef.current = clearDependentFiltersOnDimensionChange(
         updateFilterValues(filtersOnSubmitRef.current, dimension, newFilterValue),
         dimension,
       );
-      onFiltersChange(filtersOnSubmitRef.current);
+      onFiltersChange(filtersOnSubmitRef.current, options);
     },
     [onFiltersChange],
   );

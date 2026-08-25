@@ -23,8 +23,12 @@ import type { FilterBarControlProps } from './ExperienceAnalyticsPageFilterBarCo
 import ExperienceAnalyticsPageFilterChoice from './ExperienceAnalyticsPageFilterChoice';
 import ExperienceAnalyticsPageFilterDrawerButton from './ExperienceAnalyticsPageFilterDrawerButton';
 import ExperienceAnalyticsRAQIV2RightSideControls from './ExperienceAnalyticsRAQIV2RightSideControls';
-import { clearDependentFiltersOnDimensionChange, updateFilterValues } from './filterUtils';
-import type { NonRAQIUIDimension } from './filterUtils';
+import {
+  clearDependentFiltersOnDimensionChange,
+  updateFilterValues,
+  type NonRAQIUIDimension,
+  type UIFilterChangeOptions,
+} from './filterUtils';
 
 type ExperienceAnalyticsFilterDrawerControlsProps = {
   controls: Array<ExperienceAnalyticsPageControl>;
@@ -107,16 +111,17 @@ const ExperienceAnalyticsRAQIV2FilterDrawerControls = ({
     return Array.from(new Set(fd));
   }, [legacyFilterDimensions, raqiDimensions]);
 
-  const {
-    [RAQIV2FilterRenderPosition.FilterDrawer]: filterDimensionsInDrawer,
-    [RAQIV2FilterRenderPosition.Controls]: filterDimensionsInControls,
-    [RAQIV2FilterRenderPosition.ControlsRight]: filterDimensionsInControlsRight,
-    [RAQIV2FilterRenderPosition.ControlsRow2]: filterDimensionsInControlsRow2,
-    [RAQIV2FilterRenderPosition.PreControl]: filterDimensionsInPreControls,
-  } = useMemo(
+  const dimensionsByPosition = useMemo(
     () => getFilterDimensionsByPosition(filterDimensions, filterPositionOverrides),
     [filterDimensions, filterPositionOverrides],
   );
+  const filterDimensionsInDrawer = dimensionsByPosition[RAQIV2FilterRenderPosition.FilterDrawer];
+  const filterDimensionsInControls = dimensionsByPosition[RAQIV2FilterRenderPosition.Controls];
+  const filterDimensionsInControlsRight =
+    dimensionsByPosition[RAQIV2FilterRenderPosition.ControlsRight];
+  const filterDimensionsInControlsRow2 =
+    dimensionsByPosition[RAQIV2FilterRenderPosition.ControlsRow2];
+  const filterDimensionsInPreControls = dimensionsByPosition[RAQIV2FilterRenderPosition.PreControl];
 
   const raqiFilterDimensionsShownElsewhere = useMemo(() => {
     return [
@@ -148,12 +153,16 @@ const ExperienceAnalyticsRAQIV2FilterDrawerControls = ({
   ]);
 
   const onFilterValueChange = useCallback(
-    (newFilterValue: string[] | null, dimension: TSupportedFilterBarDimensions) => {
+    (
+      newFilterValue: string[] | null,
+      dimension: TSupportedFilterBarDimensions,
+      options?: UIFilterChangeOptions,
+    ) => {
       const updatedFilters = clearDependentFiltersOnDimensionChange(
         updateFilterValues(filters, dimension, newFilterValue),
         dimension,
       );
-      onFiltersChange(updatedFilters);
+      onFiltersChange(updatedFilters, options);
     },
     [filters, onFiltersChange],
   );

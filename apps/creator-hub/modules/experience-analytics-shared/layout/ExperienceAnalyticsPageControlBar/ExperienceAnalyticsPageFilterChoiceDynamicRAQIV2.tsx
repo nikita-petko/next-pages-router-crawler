@@ -21,8 +21,10 @@ import RAQIV2FilterRenderPosition from '../../types/RAQIV2FilterRenderPosition';
 import filterPositionOnPageByDimension, {
   SearchableControlsFilterBarDimensions,
 } from '../../utils/filterPositionOnPageByDimension';
+import { coercePlaceFilterValues, isForcedSinglePlaceFilter } from '../../utils/placeFilterLock';
 import sortPlaceVersionFilterOptionsDescending from '../../utils/sortPlaceVersionFilterOptionsDescending';
 import type ExperienceAnalyticsPageFilterChoiceProps from './ExperienceAnalyticsPageFilterChoiceProps';
+import type { UIFilterChangeOptions } from './filterUtils';
 
 const REQUIRED_PREREQUISITE_DIMENSIONS: Partial<
   Record<TRAQIV2Dimension, readonly TRAQIV2Dimension[]>
@@ -132,7 +134,13 @@ const ExperienceAnalyticsPageFilterChoiceDynamicRAQIV2 = ({
     });
   }, [filtersV2, raqiDimension]);
   const onChangeSubmit = useCallback(
-    (value: Array<string>) => onUIFilterValueChange(value, filterBarDimension),
+    (value: Array<string>, options?: UIFilterChangeOptions) => {
+      if (options === undefined) {
+        onUIFilterValueChange(value, filterBarDimension);
+        return;
+      }
+      onUIFilterValueChange(value, filterBarDimension, options);
+    },
     [filterBarDimension, onUIFilterValueChange],
   );
   const {
@@ -203,12 +211,15 @@ const ExperienceAnalyticsPageFilterChoiceDynamicRAQIV2 = ({
   const effectiveIsLoading =
     arePrerequisitesSatisfied && (isDataLoading || isContextMetricsUnresolved);
 
-  // A single-place experience has exactly one Place option. In that case we
-  // auto-select it and hide the blank "Experience" (all places) choice, since
-  // there's nothing to aggregate across.
-  const isSinglePlaceExperience =
-    raqiDimension === RAQIV2Dimension.Place && enumOptions.length === 1;
+  // A single-place experience has exactly one Place option. Auto-select it
+  // for queries (Place Version still needs a parent), hide Experience / All
+  // Places, and do not render the control.
+  const isSinglePlaceExperience = isForcedSinglePlaceFilter(raqiDimension, enumOptions.length);
   const blankValue = renderEmpty && renderEmpty(translationDependencies);
+  const tooltipOnDisabled =
+    !enumOptions.length && !effectiveIsLoading
+      ? getEmptyFilterValuesTooltip?.(translationDependencies)
+      : undefined;
 
   const blankHandling =
     blankValue && !isSinglePlaceExperience
@@ -218,14 +229,26 @@ const ExperienceAnalyticsPageFilterChoiceDynamicRAQIV2 = ({
   const values = useMemo(() => filter?.values ?? [], [filter?.values]);
 
   useEffect(() => {
-    if (
-      (effectiveSingular || isSinglePlaceExperience) &&
-      values.length === 0 &&
-      enumOptions.length > 0
-    ) {
+    if (raqiDimension === RAQIV2Dimension.Place) {
+      const result = coercePlaceFilterValues(values, enumOptions);
+      if (result.kind === 'unchanged') {
+        return;
+      }
+      if (result.kind === 'hydrate') {
+        onChangeSubmit([...result.values], { hydrate: true });
+        return;
+      }
+      onChangeSubmit([...result.values]);
+      return;
+    }
+    if (effectiveSingular && values.length === 0 && enumOptions.length > 0) {
       onChangeSubmit([enumOptions[0]]);
     }
-  }, [effectiveSingular, enumOptions, isSinglePlaceExperience, onChangeSubmit, values.length]);
+  }, [effectiveSingular, enumOptions, onChangeSubmit, raqiDimension, values]);
+
+  if (isSinglePlaceExperience) {
+    return null;
+  }
 
   const position = filterPositionOnPageByDimension(filterBarDimension);
   switch (position) {
@@ -262,11 +285,7 @@ const ExperienceAnalyticsPageFilterChoiceDynamicRAQIV2 = ({
               isLoading={effectiveIsLoading}
               blankHandling={blankHandling}
               className={className}
-              tooltipOnDisabled={
-                !enumOptions.length && !effectiveIsLoading
-                  ? getEmptyFilterValuesTooltip?.(translationDependencies)
-                  : undefined
-              }
+              tooltipOnDisabled={tooltipOnDisabled}
             />
             <ErrorReportNewErrorsSinceOnboardingAnchor />
           </div>
@@ -305,11 +324,7 @@ const ExperienceAnalyticsPageFilterChoiceDynamicRAQIV2 = ({
           blankHandling={blankHandling}
           className={className}
           showOptionIdAsDescription={raqiDimension === RAQIV2Dimension.Place}
-          tooltipOnDisabled={
-            !enumOptions.length && !effectiveIsLoading
-              ? getEmptyFilterValuesTooltip?.(translationDependencies)
-              : undefined
-          }
+          tooltipOnDisabled={tooltipOnDisabled}
         />
       );
     default: {

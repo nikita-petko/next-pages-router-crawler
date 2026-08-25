@@ -21,6 +21,15 @@ export type UIFilterDimension = NonRAQIUIFilterDimension | TRAQIV2Dimension;
 export type UIFilter = RAQIMetricFilter<UIFilterDimension>;
 export type UIFilters = UIFilter[];
 
+/**
+ * `hydrate` remaps live query state on load (invalid Place ids) without
+ * treating the write as an editor edit. Persist that remap on the next
+ * explicit Save; do not mark the working copy dirty solely because of it.
+ */
+export type UIFilterChangeOptions = {
+  readonly hydrate?: boolean;
+};
+
 export function getCurrentDimensionValues<T extends string>(
   filters: Readonly<UIFilters>,
   target: UIFilterDimension,

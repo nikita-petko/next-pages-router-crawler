@@ -157,7 +157,10 @@ import styles from './EditPageCanvas.module.css';
  */
 type EditPageCanvasProps = {
   readonly config: CustomDashboardConfig;
-  readonly onConfigChange: (nextConfig: CustomDashboardConfig) => void;
+  readonly onConfigChange: (
+    nextConfig: CustomDashboardConfig,
+    options?: { readonly hydrate?: boolean },
+  ) => void;
   readonly onAddSummaryCard: () => void;
   readonly onAddChart: () => void;
   readonly onEditSummaryCard: (tileId: TileId) => void;
