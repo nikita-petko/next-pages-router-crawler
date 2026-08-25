@@ -61,6 +61,12 @@ const CONFIGURE_ROLE_TABS: ConfigureRoleTab[] = [
   ConfigureRoleTab.Settings,
 ];
 
+export const getSelectedConfigureRoleTab = (
+  currentTab: ConfigureRoleTab | undefined,
+  availableTabs: ConfigureRoleTab[],
+): ConfigureRoleTab | undefined =>
+  currentTab !== undefined && availableTabs.includes(currentTab) ? currentTab : availableTabs[0];
+
 const getConfigureRoleTabs = (
   roleId: number | undefined,
   roleRank: number | undefined,
@@ -457,16 +463,15 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
         navigation?.navigateToRole?.(role.id.toString());
         setSelectedRole({ metadata: role });
         if (autoSelectTab) {
-          setSelectedTab(
-            getConfigureRoleTabs(
-              role.id,
-              role.rank,
-              false,
-              permissions,
-              rolePermissions,
-              isOwner,
-            )[0],
+          const availableTabs = getConfigureRoleTabs(
+            role.id,
+            role.rank,
+            false,
+            permissions,
+            rolePermissions,
+            isOwner,
           );
+          setSelectedTab((currentTab) => getSelectedConfigureRoleTab(currentTab, availableTabs));
         }
       } else {
         setIsCreateModalOpen(true);
