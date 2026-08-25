@@ -1,7 +1,12 @@
 import { Button, TextInput, Toggle } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import type { ShowcaseDraft, ShowcasePublishQuota } from '../types';
-import { canPublishShowcase } from '../utils/showcaseValidation';
+import {
+  bringToFront,
+  canPublishShowcase,
+  removeItem,
+  sendToBack,
+} from '../utils/showcaseValidation';
 import ShowcaseBackgroundSelector from './ShowcaseBackgroundSelector';
 import ShowcaseFeaturedItems from './ShowcaseFeaturedItems';
 import ShowcaseWidgetPreview from './ShowcaseWidgetPreview';
@@ -58,7 +63,19 @@ const CreateShowcaseForm = ({
           coverPhotoUploadHref={coverPhotoUploadHref}
         />
 
-        <ShowcaseFeaturedItems items={draft.items} onAddItem={onAddItem} />
+        <ShowcaseFeaturedItems
+          items={draft.items}
+          onAddItem={onAddItem}
+          onBringToFront={(assetId) =>
+            onDraftChange({ ...draft, items: bringToFront(draft.items, assetId) })
+          }
+          onSendToBack={(assetId) =>
+            onDraftChange({ ...draft, items: sendToBack(draft.items, assetId) })
+          }
+          onRemove={(assetId) =>
+            onDraftChange({ ...draft, items: removeItem(draft.items, assetId) })
+          }
+        />
 
         {/* Per-viewer ordering (FR-C5) is still pending decision D2; kept as one
             self-contained row so it can be removed without touching the form. */}
