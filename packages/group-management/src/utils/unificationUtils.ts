@@ -25,8 +25,8 @@ export enum ModalState {
 
 export const LINKED_OUT_MODAL_SUPPRESSION_QUERY_PARAM = 'suppressUnificationModal';
 export const AssignSameRolePermission = 'Organization.AssignSameRole';
-// TODO: Swap for unification devforum post
-export const DEVFORUM_URL = 'https://devforum.roblox.com';
+export const DEVFORUM_URL =
+  'https://devforum.roblox.com/t/private-beta-unified-roles-permissions-for-communities-and-creator-hub/4667049';
 
 export const SNOOZE_DURATION_MS = 18 * 60 * 60 * 1000;
 

@@ -10,6 +10,7 @@ import {
 } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import TranslationNamespace from '../constants/TranslationNamespace';
+import { DEVFORUM_URL } from '../utils/unificationUtils';
 
 type MigrationCompleteModalProps = {
   isOpen: boolean;
@@ -39,7 +40,7 @@ const MigrationCompleteModal: FC<MigrationCompleteModalProps> = ({ isOpen, onAck
               variant='Standard'
               size='Medium'
               as='a'
-              href='https://devforum.roblox.com'
+              href={DEVFORUM_URL}
               target='_blank'
               rel='noopener noreferrer'>
               {translate('Action.LearnMore')}
