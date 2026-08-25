@@ -183,21 +183,37 @@ const RoleSettings: FunctionComponent<React.PropsWithChildren<RoleSettingsProps>
   }, [closeDialog, onDelete, role]);
 
   const confirmRemoveUserDialog = useMemo(() => {
+    const memberCount = role.memberCount ?? 0;
+    const deleteDialogContent =
+      memberCount === 1
+        ? translateWithNamespace(
+            TranslationNamespace.GroupManagement,
+            'Message.RoleWithUserAllowDeletion',
+            { role: role.name ?? '' },
+          )
+        : memberCount > 1
+          ? translateWithNamespace(
+              TranslationNamespace.GroupManagement,
+              'Message.RoleWithUsersAllowDeletion',
+              { numUsers: memberCount.toString(), role: role.name ?? '' },
+            )
+          : translateWithNamespace(TranslationNamespace.Groups, 'Message.DeleteRoleset', {
+              role: role.name ?? '',
+            });
+
     return (
       <DialogTemplate
         variant='alert'
         color='destructive'
         title={translate('Action.DeleteRole')}
-        content={translate('Message.DeleteRole', {
-          roleName: role.name ?? '',
-        })}
+        content={deleteDialogContent}
         cancelText={translate('Action.Cancel')}
         confirmText={translate('Action.Delete')}
         onCancel={handleCancelDialog}
         onConfirm={handleConfirmDialog}
       />
     );
-  }, [handleCancelDialog, handleConfirmDialog, translate, role]);
+  }, [handleCancelDialog, handleConfirmDialog, translate, translateWithNamespace, role]);
 
   const handleOpenDialog = useCallback(() => {
     configureDialog(confirmRemoveUserDialog);
