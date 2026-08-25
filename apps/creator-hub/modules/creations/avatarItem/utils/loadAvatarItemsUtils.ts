@@ -8,6 +8,7 @@ import { CollectibleItemType } from '@rbx/client-marketplace-items-api/v1';
 import type { PageResponse } from '@rbx/core';
 import itemConfigurationApi, {
   BundleModerationStatus,
+  type GetFoldersResponse,
   ItemStatus,
 } from '@modules/clients/itemconfiguration';
 import lookClient from '@modules/clients/look';
@@ -327,23 +328,20 @@ export async function loadLooksByGroup(
   return { nextPageCursor: nextCursorResponse, items: formattedData };
 }
 
-export async function getFolderDropdownOptions(groupId?: number): Promise<AvatarItemDropdown[]> {
-  try {
-    const response = await itemConfigurationApi.getFolders(groupId);
-    const folders =
-      response.folders
-        ?.map((folder) => ({
-          nameKey: folder.name ?? '',
-          folderId: folder.folderId,
-          isFolder: true,
-          skipTranslation: true,
-        }))
-        .filter((folder) => folder.nameKey !== '') ?? [];
+export function mapFoldersResponseToDropdownOptions(
+  response: GetFoldersResponse | undefined,
+): AvatarItemDropdown[] {
+  const folders =
+    response?.folders
+      ?.map((folder) => ({
+        nameKey: folder.name ?? '',
+        folderId: folder.folderId,
+        isFolder: true,
+        skipTranslation: true,
+      }))
+      .filter((folder) => folder.nameKey !== '') ?? [];
 
-    return [RecentsDropdownOption, ...folders];
-  } catch {
-    return [RecentsDropdownOption];
-  }
+  return [RecentsDropdownOption, ...folders];
 }
 
 export async function loadCreationsByFolder(

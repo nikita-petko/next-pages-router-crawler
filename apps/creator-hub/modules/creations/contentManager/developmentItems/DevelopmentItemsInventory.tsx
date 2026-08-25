@@ -1,6 +1,7 @@
 import type { FunctionComponent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
+import { StatusCodes } from '@rbx/core';
 import { Alert, clsx, ProgressCircle, SegmentedControl } from '@rbx/foundation-ui';
 import type { TSegmentedControlIconItem } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
@@ -9,6 +10,8 @@ import {
   CreatorInventoryAssetType,
   CreatorInventorySourceType,
 } from '@modules/clients/creatorInventory';
+import { getResponseFromError } from '@modules/clients/utils';
+import AccessDeniedPage from '@modules/miscellaneous/error/components/AccessDeniedPage';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { creatorHub } from '@modules/miscellaneous/urls';
@@ -98,6 +101,10 @@ const FILTER_DROPDOWN_CLASS = '[width:192px]';
 const EMPTY_ARCHIVABLE_ASSET_IDS: ReadonlySet<number> = new Set();
 const PAGE_SIZE_OPTION_SET = new Set<number>(PAGE_SIZE_OPTIONS);
 const LEGACY_ARCHIVED_PAGE_SIZE_OPTION_SET = new Set<number>(LEGACY_ARCHIVED_PAGE_SIZE_OPTIONS);
+
+export const isDevelopmentItemsInventoryAccessDenied = (error: unknown) =>
+  getResponseFromError(error)?.status === StatusCodes.FORBIDDEN ||
+  (typeof error === 'object' && error !== null && 'status' in error && error.status === 403);
 
 const DEFAULT_SHEET_FILTERS: DevelopmentItemsSheetFilters = {
   showArchived: false,
@@ -724,6 +731,10 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
       updateQuery,
     ],
   );
+
+  if (inventoryQuery.isError && isDevelopmentItemsInventoryAccessDenied(inventoryQuery.error)) {
+    return <AccessDeniedPage />;
+  }
 
   return (
     <div

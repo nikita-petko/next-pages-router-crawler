@@ -1,14 +1,22 @@
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { PagingParameters, SortOrder } from '@rbx/core';
 import { useTranslation } from '@rbx/intl';
 import { CircularProgress, Grid } from '@rbx/ui';
 import AssetCreationEntryway from '@modules/asset-creation/components/AssetCreationEntryway';
 import { isCreateAssetAvailable } from '@modules/asset-creation/constants/AssetTypeConstants';
 import { useAuthentication } from '@modules/authentication/providers';
+import itemconfigurationClient, {
+  type GetFoldersResponse,
+} from '@modules/clients/itemconfiguration';
 import { Asset, Item } from '@modules/miscellaneous/common';
 import Look from '@modules/miscellaneous/common/enums/Look';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
+import {
+  getFoldersQueryKey,
+  useGetFolders,
+} from '@modules/react-query/itemConfiguration/itemConfigurationQueries';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import CreationsGridEmptyState from '../../common/components/CreationsGridEmptyState/CreationsGridEmptyState';
 import ItemCardContainer from '../../common/containers/ItemCardContainer';
@@ -48,7 +56,7 @@ import { mapAssetTypeIdToAsset } from '../utils/loadAvatarItemsUtils';
 import {
   loadCreationsByCreator,
   loadCreationsByFolder,
-  getFolderDropdownOptions,
+  mapFoldersResponseToDropdownOptions,
   loadLooksByCreator,
   loadLooksByGroup,
 } from '../utils/loadAvatarItemsUtils';
@@ -98,7 +106,7 @@ const AvatarItemsGridContainer: FunctionComponent<
     hasItems: false,
   }));
   const [fromUtc] = useState<Date | undefined>(() => new Date());
-  const [folderDropdownOptions, setFolderDropdownOptions] = useState<AvatarItemDropdown[]>([]);
+  const queryClient = useQueryClient();
   const [allowedAssetTypes, setAllowedAssetTypes] = useState<Set<Asset>>(() => new Set());
   const [allowedBundleTypes, setAllowedBundleTypes] = useState<Set<BundleType>>(() => new Set());
   // Used to trigger a refresh of the grid when folder contents are updated
@@ -109,6 +117,16 @@ const AvatarItemsGridContainer: FunctionComponent<
   const isAssetAll = assetType === Asset.AllCatalogAsset;
   const isAvatarLooksTab = assetType === Asset.AvatarLooks;
   const isAvatarBackgroundsTab = assetType === Asset.AvatarBackground;
+
+  const { data: foldersResponse, isPending: areFoldersPending } = useGetFolders(
+    itemconfigurationClient,
+    groupId,
+    isAssetAll,
+  );
+  const folderDropdownOptions = useMemo(
+    () => (areFoldersPending ? [] : mapFoldersResponseToDropdownOptions(foldersResponse)),
+    [areFoldersPending, foldersResponse],
+  );
 
   // `activeTab=AvatarItems` selects the category view, and `AvatarItems-{key}` additionally selects
   // which L1 is active.
@@ -183,17 +201,6 @@ const AvatarItemsGridContainer: FunctionComponent<
       cancelled = true;
     };
   }, [isAssetAll, isAvatarLooksTab, isAvatarBackgroundsTab]);
-
-  useEffect(() => {
-    if (isAssetAll) {
-      void getFolderDropdownOptions(groupId).then((folders) => {
-        setFolderDropdownOptions(folders);
-        if (folders.length > 0 && !selectedAvatarItemDropdown.nameKey) {
-          setSelectedAvatarItemDropdown(folders[0]);
-        }
-      });
-    }
-  }, [isAssetAll, groupId, selectedAvatarItemDropdown.nameKey]);
 
   useEffect(() => {
     if (menuOptions && menuOptions[initialIndex] !== undefined) {
@@ -389,27 +396,25 @@ const AvatarItemsGridContainer: FunctionComponent<
     if (isAssetAll) {
       setSelectedAvatarItemDropdown(RecentsDropdownOption);
       setFilterIndexParams({ filterIndex: 0 });
+      await queryClient.invalidateQueries({ queryKey: getFoldersQueryKey(groupId) });
     }
-  }, [isAssetAll, setFilterIndexParams]);
+  }, [isAssetAll, groupId, queryClient, setFilterIndexParams]);
 
   const handleFolderCreated = useCallback(
     async (newFolderId: string) => {
       if (isAssetAll && newFolderId) {
-        try {
-          const folders = await getFolderDropdownOptions(groupId);
-          setFolderDropdownOptions(folders);
-
-          const newIndex = folders.findIndex((folder) => folder.folderId === newFolderId);
-          if (newIndex >= 0) {
-            setFilterIndexParams({ filterIndex: newIndex });
-            setSelectedAvatarItemDropdown(folders[newIndex]);
-          }
-        } catch {
-          setSelectedAvatarItemDropdown(RecentsDropdownOption);
+        await queryClient.invalidateQueries({ queryKey: getFoldersQueryKey(groupId) });
+        const folders = mapFoldersResponseToDropdownOptions(
+          queryClient.getQueryData<GetFoldersResponse>(getFoldersQueryKey(groupId)),
+        );
+        const newIndex = folders.findIndex((folder) => folder.folderId === newFolderId);
+        if (newIndex >= 0) {
+          setFilterIndexParams({ filterIndex: newIndex });
+          setSelectedAvatarItemDropdown(folders[newIndex]);
         }
       }
     },
-    [isAssetAll, groupId, setFilterIndexParams],
+    [isAssetAll, groupId, queryClient, setFilterIndexParams],
   );
 
   const handleFolderContentsUpdated = useCallback(() => {
@@ -419,21 +424,18 @@ const AvatarItemsGridContainer: FunctionComponent<
   const handleFolderUpdated = useCallback(
     async (updatedFolderId: string) => {
       if (isAssetAll && updatedFolderId) {
-        try {
-          const folders = await getFolderDropdownOptions(groupId);
-          setFolderDropdownOptions(folders);
-
-          // Find the updated folder and update the selected dropdown
-          const updatedFolder = folders.find((folder) => folder.folderId === updatedFolderId);
-          if (updatedFolder) {
-            setSelectedAvatarItemDropdown(updatedFolder);
-          }
-        } catch {
-          setSelectedAvatarItemDropdown(RecentsDropdownOption);
+        await queryClient.invalidateQueries({ queryKey: getFoldersQueryKey(groupId) });
+        const folders = mapFoldersResponseToDropdownOptions(
+          queryClient.getQueryData<GetFoldersResponse>(getFoldersQueryKey(groupId)),
+        );
+        // Find the updated folder and update the selected dropdown
+        const updatedFolder = folders.find((folder) => folder.folderId === updatedFolderId);
+        if (updatedFolder) {
+          setSelectedAvatarItemDropdown(updatedFolder);
         }
       }
     },
-    [isAssetAll, groupId],
+    [isAssetAll, groupId, queryClient],
   );
 
   const onMenuStateChange = useCallback(
