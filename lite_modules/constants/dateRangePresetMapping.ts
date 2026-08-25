@@ -42,7 +42,7 @@ export const dateRangePresetToBackend = (preset: DateRangePreset): DateFiltering
 
 /**
  * Presets that map 1:1 to a backend `DateFilteringTimePeriod` enum. Surfaced
- * as the picker menu when `isCustomDateRangeEnabled` is off and used by the
+ * as the picker menu when `shouldUseCustomDateRange` is false and used by the
  * URL-sync layer to distinguish backend-enum dispatches from synthetic
  * (client-resolved) presets like `Last{28,56,90}Days`. Slated for removal
  * once the flag reaches 100% and `DATE_RANGE_PRESETS` becomes the sole

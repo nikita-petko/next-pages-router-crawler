@@ -21,6 +21,7 @@ import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import useShouldUseWorkspaceUniverseFiltering from '@hooks/useShouldUseWorkspaceUniverseFiltering';
 import { useAppStore } from '@stores/appStoreProvider';
 import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider';
+import { shouldUseCustomDateRange } from '@utils/customDateRange';
 
 const PageHeader = () => {
   const { translate, translateHTML } = useNamespacedTranslation(TranslationNamespace.Report);
@@ -31,9 +32,7 @@ const PageHeader = () => {
   const { advertisingShouldBeEnabled, disabledTooltip } = useAppStore((state) =>
     state.advertisingShouldBeEnabled(),
   );
-  const isCustomDateRangeEnabled = useAppStore(
-    (state) => state.appMetadataState.data?.isCustomDateRangeEnabled ?? false,
-  );
+  const isCustomDateRangeEnabled = useAppStore(shouldUseCustomDateRange);
   const { isError: summaryStatsIsError, isLoading: summaryStatsIsLoading } = useNewFlowStore(
     (state: NewFlowStoreType) => state.summaryStatsState,
   );

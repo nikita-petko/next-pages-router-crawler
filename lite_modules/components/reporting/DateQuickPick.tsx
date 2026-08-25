@@ -18,8 +18,9 @@ import {
 } from '@constants/dateRangePresetMapping';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
-import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
+import { useAppStore } from '@stores/appStoreProvider';
 import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider';
+import { shouldUseCustomDateRange } from '@utils/customDateRange';
 import { ConvertDateFilteringEnumToString } from '@utils/enumToString';
 import { CaptureException } from '@utils/error';
 
@@ -85,9 +86,7 @@ const DateQuickPick = () => {
   const handleDateSelectionChange = useNewFlowStore(
     (state: NewFlowStoreType) => state.handleDateSelectionChange,
   );
-  const isCustomDateRangeEnabled = useAppStore(
-    (state: AppStoreType) => state.appMetadataState.data?.isCustomDateRangeEnabled ?? false,
-  );
+  const isCustomDateRangeEnabled = useAppStore(shouldUseCustomDateRange);
 
   const isDisabled = campaignsIsLoading || summaryStatsIsLoading;
 

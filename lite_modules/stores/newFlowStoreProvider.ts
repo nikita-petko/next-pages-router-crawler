@@ -66,6 +66,7 @@ import {
 import { CampaignTimeSeries } from '@type/timeSeries';
 import { AdvertisedUniverse } from '@type/universe';
 import { SimplifiedUploadedCreative } from '@type/uploadedCreative';
+import { shouldUseCustomDateRange } from '@utils/customDateRange';
 import {
   parseDateSelectionFromWindowLocation,
   resolveDefaultTreatmentSelection,
@@ -227,8 +228,7 @@ const getShouldUseWorkspaceUniverseFiltering = (): boolean =>
 const getShouldUseCaaSReportingStats = (): boolean =>
   shouldUseCaaSReportingStats(useAppStore.getState());
 
-const getIsCustomDateRangeEnabled = (): boolean =>
-  useAppStore.getState().appMetadataState.data?.isCustomDateRangeEnabled ?? false;
+const getShouldUseCustomDateRange = (): boolean => shouldUseCustomDateRange(useAppStore.getState());
 
 const getIsCampaignRoasEnabled = (): boolean =>
   useAppStore.getState().appMetadataState.data?.isCampaignRoasEnabled ?? false;
@@ -768,7 +768,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       const shouldUseWorkspaceUniverseFiltering = getShouldUseWorkspaceUniverseFiltering();
       // Treatment: honor bookmarked URL, else fall back to the default.
       // Control: ignore URL, use the slice's own SEVEN_DAYS default.
-      const treatmentSelection = getIsCustomDateRangeEnabled()
+      const treatmentSelection = getShouldUseCustomDateRange()
         ? (parseDateSelectionFromWindowLocation() ?? resolveDefaultTreatmentSelection())
         : undefined;
       const initialDateSelection =

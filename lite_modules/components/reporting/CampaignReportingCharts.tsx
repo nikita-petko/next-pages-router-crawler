@@ -27,6 +27,7 @@ import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
 import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider';
 import { CampaignTimeSeriesDataPoints } from '@type/timeSeries';
+import { shouldUseCustomDateRange } from '@utils/customDateRange';
 import {
   formatTimestampLabel,
   makePlaysValueFormatter,
@@ -109,9 +110,7 @@ const CampaignReportingCharts = () => {
   // page-level date selection (the store already re-fetches it on page-level
   // date changes and on drawer open), so the drawer's own picker is redundant
   // and is hidden to prevent divergence.
-  const isCustomDateRangeEnabled = useAppStore(
-    (state: AppStoreType) => state.appMetadataState?.data?.isCustomDateRangeEnabled ?? false,
-  );
+  const isCustomDateRangeEnabled = useAppStore(shouldUseCustomDateRange);
 
   const [activeMetricTab, setActiveMetricTab] = useState<MetricTab>('plays');
 

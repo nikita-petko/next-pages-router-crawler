@@ -31,6 +31,7 @@ import { useAppStore } from '@stores/appStoreProvider';
 import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider';
 import { GenericTableRowProps, RowCell, SortableHeadCell } from '@type/genericManagementTable';
 import { GetAudienceLabelKey, GetEndUserObjectiveString } from '@utils/campaignDetails';
+import { shouldUseCustomDateRange } from '@utils/customDateRange';
 import { IsCompletedStatus } from '@utils/displayStatus';
 import { GetLocalStorage } from '@utils/localStorage';
 import { GetUrlWithParams } from '@utils/url';
@@ -45,9 +46,7 @@ const CampaignTableRow = ({
   const { translate, translateHTML } = useNamespacedTranslation(TranslationNamespace.Report);
   const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const router = useRouter();
-  const isCustomDateRangeEnabled = useAppStore(
-    (state) => state.appMetadataState.data?.isCustomDateRangeEnabled ?? false,
-  );
+  const isCustomDateRangeEnabled = useAppStore(shouldUseCustomDateRange);
   const {
     classes: {
       actionMenuButton,

@@ -70,7 +70,7 @@ type SyncedDateRangePickerProps = {
 };
 
 /**
- * URL-driven date-range picker used under the `isCustomDateRangeEnabled`
+ * URL-driven date-range picker used under the `shouldUseCustomDateRange`
  * treatment arm. The URL (`?rangeType=...&minTime=...&maxTime=...`) is the
  * source of truth; selection changes write the URL and call
  * `refetchForDateSelection` (fetches only, no store write). Two instances
