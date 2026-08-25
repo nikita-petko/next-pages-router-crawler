@@ -26,14 +26,7 @@ import { useWorkspaces, CreatorType } from '../../providers/WorkspaceProvider';
 import type { TProductKey } from '../../types';
 import { ProductKey } from '../../types';
 import useProductUrls from '../../utils/useProductUrls';
-import {
-  TempAdsFillIcon,
-  TempAdsIcon,
-  TempFinanceFillIcon,
-  TempFinanceIcon,
-  TempUpdatesFillIcon,
-  TempUpdatesIcon,
-} from '../icons/TempNavIcons';
+import { FinanceFillIcon, FinanceIcon } from '../icons/FinanceIcon';
 import useRailStyles from './Rail.styles';
 import RailHeader from './RailHeader';
 import RailItem from './RailItem';
@@ -305,8 +298,8 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
       <RailItem
         enableAnimation={isReady && shouldAnimate}
         compact={compact}
-        icon={<TempUpdatesIcon />}
-        activeIcon={<TempUpdatesFillIcon />}
+        icon={<Icon name='icon-regular-megaphone-cheer' size='Medium' />}
+        activeIcon={<Icon name='icon-filled-megaphone-cheer' size='Medium' />}
         active={active === ProductKey.Updates}
         label={translate('Heading.Updates')}
         onClick={() => selectItem(ProductKey.Updates, ProductKey.Updates)}
@@ -322,8 +315,8 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
           <RailItem
             enableAnimation={isReady && shouldAnimate}
             compact={compact}
-            icon={<TempFinanceIcon />}
-            activeIcon={<TempFinanceFillIcon />}
+            icon={<FinanceIcon />}
+            activeIcon={<FinanceFillIcon />}
             active={active === 'Finances'}
             label={translate('Heading.Finances')}
             onClick={() => selectItem('Finances', 'Finances')}
@@ -355,8 +348,8 @@ export const PrimaryRailContent: React.FC<TPrimaryRailContentProps> = ({
             enableAnimation={isReady && shouldAnimate}
             compact={compact}
             active={active === ProductKey.Advertise}
-            icon={<TempAdsIcon />}
-            activeIcon={<TempAdsFillIcon />}
+            icon={<Icon name='icon-regular-circle-line-target-cursor' size='Medium' />}
+            activeIcon={<Icon name='icon-filled-circle-line-target-cursor' size='Medium' />}
             label={translate('Heading.Ads')}
             onClick={() => selectItem('Ads', ProductKey.Advertise)}
             href={Ads.home}
