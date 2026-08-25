@@ -413,23 +413,47 @@ function useEditPageTranslations() {
       translationKey('Action.CustomDashboards.EditConflict.Close', TranslationNamespace.Analytics),
     ),
     conflictDialogRevertLabel: tPendingTranslation(
-      'Revert my changes',
-      'Secondary action that discards the local edit draft and reloads the latest saved dashboard.',
+      'Revert',
+      'Conflict-dialog action that discards local edits and loads the latest saved dashboard.',
       translationKey('Action.CustomDashboards.EditConflict.Revert', TranslationNamespace.Analytics),
     ),
+    conflictDialogRevertDescription: tPendingTranslation(
+      'Discard local edits and load the latest saved version.',
+      'Hover and focus tooltip explaining the Revert action in the edit-conflict dialog.',
+      translationKey(
+        'Description.CustomDashboards.EditConflict.Revert',
+        TranslationNamespace.Analytics,
+      ),
+    ),
     conflictDialogSaveAsNewLabel: tPendingTranslation(
-      'Save as new dashboard',
-      'Action that publishes the local edit draft as a separate dashboard copy.',
+      'Save as new',
+      'Conflict-dialog action that keeps both versions by saving local edits as a separate dashboard.',
       translationKey(
         'Action.CustomDashboards.EditConflict.SaveAsNew',
         TranslationNamespace.Analytics,
       ),
     ),
+    conflictDialogSaveAsNewDescription: tPendingTranslation(
+      'Keep both versions by saving local edits as a separate dashboard.',
+      'Hover and focus tooltip explaining the Save as new action in the edit-conflict dialog.',
+      translationKey(
+        'Description.CustomDashboards.EditConflict.SaveAsNew',
+        TranslationNamespace.Analytics,
+      ),
+    ),
     conflictDialogOverwriteLabel: tPendingTranslation(
-      'Overwrite saved version',
-      'Primary action that replaces the latest saved dashboard with the local edit draft.',
+      'Overwrite',
+      'Conflict-dialog action that replaces the saved dashboard with local edits.',
       translationKey(
         'Action.CustomDashboards.EditConflict.Overwrite',
+        TranslationNamespace.Analytics,
+      ),
+    ),
+    conflictDialogOverwriteDescription: tPendingTranslation(
+      'Replace the saved dashboard with local edits.',
+      'Hover and focus tooltip explaining the Overwrite action in the edit-conflict dialog.',
+      translationKey(
+        'Description.CustomDashboards.EditConflict.Overwrite',
         TranslationNamespace.Analytics,
       ),
     ),

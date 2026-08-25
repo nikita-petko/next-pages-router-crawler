@@ -140,7 +140,7 @@ const IpListingDetailsContainer = () => {
     translationKey('Label.SpotlightedCreations', TranslationNamespace.AgreementsManager),
   );
   const spotlightedCreationsDescription = tPendingTranslation(
-    'Add creations to feature for Creators browsing your license listing.',
+    'Add creations to feature for creators browsing your license listing.',
     'Description of the spotlighted / featured creations section on an IP listing details page',
     translationKey('Description.SpotlightedCreations', TranslationNamespace.AgreementsManager),
   );

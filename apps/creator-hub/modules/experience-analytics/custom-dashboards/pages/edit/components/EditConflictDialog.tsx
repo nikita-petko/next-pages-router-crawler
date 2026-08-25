@@ -1,5 +1,15 @@
 import type { FC } from 'react';
-import { Button, Dialog, DialogBody, DialogContent, DialogTitle } from '@rbx/foundation-ui';
+import {
+  Button,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogTitle,
+  Tooltip,
+  TooltipTrigger,
+  type TButtonVariant,
+} from '@rbx/foundation-ui';
 import useEditPageTranslations from '../useEditPageTranslations';
 
 /**
@@ -14,6 +24,38 @@ type EditConflictDialogProps = {
   readonly onSaveAsNew: () => void;
   readonly onOverwrite: () => void;
 };
+
+type ConflictActionButtonProps = {
+  readonly label: string;
+  readonly description: string;
+  readonly variant: TButtonVariant;
+  readonly isDisabled: boolean;
+  readonly isLoading?: boolean;
+  readonly onClick: () => void;
+};
+
+const ConflictActionButton: FC<ConflictActionButtonProps> = ({
+  label,
+  description,
+  variant,
+  isDisabled,
+  isLoading,
+  onClick,
+}) => (
+  <Tooltip title={description} position='top-center'>
+    <TooltipTrigger asChild>
+      <Button
+        variant={variant}
+        className='shrink-0'
+        isDisabled={isDisabled}
+        isLoading={isLoading}
+        aria-description={description}
+        onClick={onClick}>
+        {label}
+      </Button>
+    </TooltipTrigger>
+  </Tooltip>
+);
 
 const EditConflictDialog: FC<EditConflictDialogProps> = ({
   open,
@@ -46,21 +88,30 @@ const EditConflictDialog: FC<EditConflictDialogProps> = ({
             </p>
           </div>
         </DialogBody>
-        <div className='flex flex-col small:flex-row small:justify-end gap-xsmall padding-medium padding-top-small'>
-          <Button variant='Standard' isDisabled={isSubmitting} onClick={onRevert}>
-            {t.conflictDialogRevertLabel}
-          </Button>
-          <Button variant='Standard' isDisabled={isSubmitting} onClick={onSaveAsNew}>
-            {t.conflictDialogSaveAsNewLabel}
-          </Button>
-          <Button
+        <DialogFooter className='flex flex-col small:flex-row small:justify-end small:wrap gap-xsmall'>
+          <ConflictActionButton
+            label={t.conflictDialogRevertLabel}
+            description={t.conflictDialogRevertDescription}
+            variant='Standard'
+            isDisabled={isSubmitting}
+            onClick={onRevert}
+          />
+          <ConflictActionButton
+            label={t.conflictDialogSaveAsNewLabel}
+            description={t.conflictDialogSaveAsNewDescription}
+            variant='Standard'
+            isDisabled={isSubmitting}
+            onClick={onSaveAsNew}
+          />
+          <ConflictActionButton
+            label={t.conflictDialogOverwriteLabel}
+            description={t.conflictDialogOverwriteDescription}
             variant='Emphasis'
             isDisabled={isSubmitting}
             isLoading={isSubmitting}
-            onClick={onOverwrite}>
-            {t.conflictDialogOverwriteLabel}
-          </Button>
-        </div>
+            onClick={onOverwrite}
+          />
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

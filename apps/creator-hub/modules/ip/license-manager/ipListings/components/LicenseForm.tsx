@@ -750,7 +750,7 @@ const LicenseForm = ({
                   component='p'
                   className={classes.semanticGapLargerBottom}>
                   {tPendingTranslation(
-                    'Where can Creators sell IP-based content to players?',
+                    'Where can creators sell IP-based content to players?',
                     'Prompt shown above the sale location dropdown for collaboration licenses.',
                     translationKey(
                       'Description.SelectSaleLocation',
@@ -1324,7 +1324,7 @@ const LicenseForm = ({
           </Typography>
           <Typography color='secondary' component='p' className={classes.semanticGapLargerBottom}>
             {tPendingTranslation(
-              'Choose whether Creators can find this license or you offer it directly.',
+              'Choose whether creators can find this license or you offer it directly.',
               'Description for the privacy section where a rights holder chooses public or private license visibility.',
               translationKey('Description.Privacy', TranslationNamespace.AgreementsManager),
             )}

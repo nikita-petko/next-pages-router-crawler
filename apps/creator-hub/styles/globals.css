@@ -5687,6 +5687,9 @@ html.studio-webview.dark-theme,
   .small\:flex-row {
     flex-direction: row;
   }
+  .small\:wrap {
+    flex-wrap: wrap;
+  }
   .small\:justify-end {
     justify-content: flex-end;
   }
