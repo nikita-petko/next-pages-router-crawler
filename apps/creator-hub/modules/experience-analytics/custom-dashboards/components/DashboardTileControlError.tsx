@@ -102,9 +102,13 @@ export type DashboardControlOverrideState = {
 };
 
 /**
- * Derive the dashboard-level override state from synthesis output. Breakdown
- * and filter are overridden when the resolved dashboard control carries a
- * value (an empty page-level breakdown/filter is the inherit state).
+ * Derive the dashboard-level override state from the live page chartContext.
+ * Breakdown and filter are overridden when the resolved page control carries a
+ * value (an empty page-level breakdown/filter is the inherit state — DSA-6141).
+ * Granularity is not an override here: custom dashboards hide the page grain
+ * control, synthesis does not copy `defaultGranularity` onto pageConfig, and
+ * surface grain is always present on chartContext so it cannot be distinguished
+ * from inherit.
  */
 export function getDashboardControlOverrideState(
   chartContext: RAQIV2ChartContext,

@@ -13,7 +13,10 @@ import type { TQueryFilter } from '@modules/clients/analytics/analyticsRAQIShare
 import buildChartConfiguratorTableConfig, {
   type ExploreModeTableMetricColumnInput,
 } from '@modules/experience-analytics-shared/chartConfigurator/buildChartConfiguratorTableConfig';
-import { getChartConfiguratorDimensions } from '@modules/experience-analytics-shared/chartConfigurator/ChartConfiguratorDimensions';
+import {
+  getChartConfiguratorDimensions,
+  toSelectableBreakdownDimensions,
+} from '@modules/experience-analytics-shared/chartConfigurator/ChartConfiguratorDimensions';
 import {
   getBaseMetricFromL7,
   getMetricForL7Smoothing,
@@ -366,7 +369,9 @@ function buildDefaultBreakdown(
     return undefined;
   }
   const sharedChartDimensionSet = new Set(sharedChartDimensions);
-  const validBreakdown = breakdown.filter((dimension) => sharedChartDimensionSet.has(dimension));
+  const validBreakdown = toSelectableBreakdownDimensions(breakdown).filter((dimension) =>
+    sharedChartDimensionSet.has(dimension),
+  );
   return validBreakdown.length > 0 ? validBreakdown : undefined;
 }
 
@@ -485,6 +490,9 @@ function synthesizeTableTile(
       },
     };
   }
+  // Pin the *tile* axes. Dashboard-level breakdown is not baked in here —
+  // empty page context is not an override (DSA-6141). An active page
+  // breakdown replaces this pin at render (`applyActiveDashboardOverridesToTable`).
   const granularity =
     tile.dataSpec.granularity !== undefined
       ? (TIME_INTERVAL_TO_GRANULARITY[tile.dataSpec.granularity] ?? RAQIV2MetricGranularity.OneDay)

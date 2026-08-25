@@ -29,6 +29,31 @@ export const ChartConfiguratorFilterOnlyDimensions = [
 ] as const satisfies readonly TRAQIV2Dimension[];
 
 /**
+ * Raw PlaceVersion is unbounded. Selectable breakdowns use LatestPlaceVersion,
+ * the existing Top-N pseudo-dimension from the analytics config.
+ */
+export const toSelectableBreakdownDimension = (dimension: TRAQIV2Dimension): TRAQIV2Dimension =>
+  dimension === RAQIV2Dimension.PlaceVersion
+    ? RAQIV2UIPseudoDimension.LatestPlaceVersion
+    : dimension;
+
+export const toSelectableBreakdownDimensions = (
+  dimensions: readonly TRAQIV2Dimension[],
+): TRAQIV2Dimension[] => {
+  const seen = new Set<TRAQIV2Dimension>();
+  const result: TRAQIV2Dimension[] = [];
+  for (const dimension of dimensions) {
+    const selectable = toSelectableBreakdownDimension(dimension);
+    if (seen.has(selectable)) {
+      continue;
+    }
+    seen.add(selectable);
+    result.push(selectable);
+  }
+  return result;
+};
+
+/**
  * Some dimensions are supported as breakdowns in general, but may not be suitable or provide
  * any value for specific chart types. i.e. percentile breakdowns don't make sense for stacked area charts
  * This function allows us to filter out those dimensions

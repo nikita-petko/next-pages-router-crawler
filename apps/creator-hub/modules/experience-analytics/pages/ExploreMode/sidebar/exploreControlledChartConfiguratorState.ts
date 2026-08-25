@@ -8,6 +8,7 @@ import {
 import AnalyticsQueryParams from '@modules/charts-generic/enums/AnalyticsQueryParams';
 import { AnnotationType, type RAQIV2QueryFilter } from '@modules/clients/analytics';
 import type { ChartConfiguratorChartType } from '@modules/experience-analytics-shared/chartConfigurator/ChartConfiguratorChartTypes';
+import { toSelectableBreakdownDimensions } from '@modules/experience-analytics-shared/chartConfigurator/ChartConfiguratorDimensions';
 import {
   type TChartConfiguratorMetrics,
   isChartConfiguratorMetric,
@@ -277,7 +278,7 @@ export function deserializeExploreBreakdownParam(
       : Array.isArray(queryBreakdown)
         ? queryBreakdown
         : [];
-  return values.filter(isSupportedBreakdownDimension);
+  return toSelectableBreakdownDimensions(values.filter(isSupportedBreakdownDimension));
 }
 
 export function deserializeExploreL7SmoothingParam(queryL7Smoothing: QueryParamValue): boolean {

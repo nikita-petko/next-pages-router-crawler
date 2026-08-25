@@ -7,9 +7,11 @@ import {
   type TRAQIV2Dimension,
 } from '@rbx/creator-hub-analytics-config';
 import type { TQueryFilter } from '@modules/clients/analytics/analyticsRAQIShared';
+import { toSelectableBreakdownDimensions } from '@modules/experience-analytics-shared/chartConfigurator/ChartConfiguratorDimensions';
 import type { SpecOverride } from '@modules/experience-analytics-shared/utils/computeRAQIV2SpecOverride';
 import extractPseudoDimensionsFromFilters from '@modules/experience-analytics-shared/utils/extractPseudoDimensionsFromFilters';
 import type { ChartTileConfig, DashboardMetricReference, TileFilter } from '../types';
+import { isPersistableBreakdownDimension } from '../utils/validators';
 import { TIME_INTERVAL_TO_GRANULARITY } from './granularityMapping';
 
 /**
@@ -192,15 +194,13 @@ export function buildTileBreakdownDimensions(
   if (!breakdownDimensions || breakdownDimensions.length === 0) {
     return [];
   }
-  const seen = new Set<TRAQIV2Dimension>();
   const dimensions: TRAQIV2Dimension[] = [];
   breakdownDimensions.forEach((dimension) => {
-    if (isRAQIV2Dimension(dimension) && !seen.has(dimension)) {
-      seen.add(dimension);
+    if (isPersistableBreakdownDimension(dimension)) {
       dimensions.push(dimension);
     }
   });
-  return dimensions;
+  return toSelectableBreakdownDimensions(dimensions);
 }
 
 export function buildSpecOverride(

@@ -49,6 +49,7 @@ import type { CreatorAnalyticsUntabbedPageConfig } from '@modules/experience-ana
 import { RAQIV2SpecialLayoutType } from '@modules/experience-analytics-shared/types/RAQIV2SpecialLayoutConfig';
 import computeRAQIV2SpecOverride from '@modules/experience-analytics-shared/utils/computeRAQIV2SpecOverride';
 import { getClosestAllowedGranularity } from '@modules/experience-analytics-shared/utils/seriesGranularities';
+import { applyActiveDashboardOverridesToTable } from '../../../components/applyActiveDashboardOverridesToTable';
 import DashboardCanvasControlBar from '../../../components/DashboardCanvasControlBar';
 import DashboardFilterChips from '../../../components/DashboardFilterChips';
 import DashboardsEmptyStateIllustration from '../../../components/DashboardsEmptyStateIllustration';
@@ -902,6 +903,10 @@ function getRenderableChartEntry(
   entry: SynthesizedChartEntry,
   chartContext: RAQIV2ChartContext,
 ): SynthesizedChartEntry {
+  if (entry.component.type === AnalyticsComponentType.Table) {
+    const component = applyActiveDashboardOverridesToTable(entry.component, chartContext);
+    return component === entry.component ? entry : { ...entry, component };
+  }
   if (
     entry.component.type !== AnalyticsComponentType.Chart ||
     !('metric' in entry.component) ||

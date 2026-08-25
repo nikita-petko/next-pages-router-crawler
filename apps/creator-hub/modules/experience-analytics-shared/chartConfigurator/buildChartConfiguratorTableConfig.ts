@@ -17,6 +17,7 @@ import {
   isCustomEventsAtomicMetricLike,
   type MetricLike,
 } from '../types/ComputedMetric';
+import type { SpecOverride } from '../utils/computeRAQIV2SpecOverride';
 import { brandUserSuppliedText } from '../utils/metricLikeSemantics';
 
 /**
@@ -75,18 +76,13 @@ export type BuildExploreModeTableConfigArgs = {
    */
   pageLevelFilter?: readonly RAQIV2QueryFilter[];
   /**
-   * The active time granularity from the chart context. Required because it
-   * drives table-level decisions that must stay in sync with the same
-   * granularity flowing into the underlying RAQI queries via the table
-   * context — passing it independently would invite drift.
-   *
-   * Currently used to pick `defaultActiveSort`:
-   *   - non-`None` → time-bucketed table → default to chronological
-   *     (Timestamp asc), matching how time-series charts are read.
-   *   - `None` (cumulative) → default to the primary metric column (desc, via
-   *     `computeRAQIV2MetricColumnConfigOverride`'s direction), preserving
-   *     the pre-sort behavior callers had before breakdown columns became
-   *     sortable.
+   * Tile/Explore time granularity. Pinned onto every metric column so an
+   * empty/default dashboard `tableContext` cannot replace it (DSA-6141).
+   * An active dashboard *breakdown* override is applied later at render.
+   * Also picks `defaultActiveSort`:
+   *   - non-`None` → time-bucketed table → chronological (Timestamp asc)
+   *   - `None` (cumulative) → primary metric column (desc, via
+   *     `computeRAQIV2MetricColumnConfigOverride`'s direction)
    */
   granularity: RAQIV2MetricGranularity;
 };
@@ -220,6 +216,8 @@ const TABLE_PAGE_SIZE_OPTIONS: readonly number[] = [10, 25, 50, 100];
 const toMetricColumnConfig = (
   input: ExploreModeTableMetricColumnInput,
   pageLevelFilter: readonly RAQIV2QueryFilter[] | undefined,
+  breakdown: readonly TRAQIV2Dimension[],
+  granularity: RAQIV2MetricGranularity,
 ): TAnalyticsMetricTableColumnConfig => {
   // Resolve the *effective* filter for this column up-front: the per-column
   // `input.filter` merged on top of the page-level filter (per-dimension
@@ -247,16 +245,33 @@ const toMetricColumnConfig = (
   //     stripped — inheritance can't drop entries.
   //   - Otherwise the override would be byte-identical to inheritance, so we
   //     skip it to avoid an unnecessary identity copy on every column.
-  let shouldMaterializeOverride = false;
+  let shouldMaterializeFilterOverride = false;
   if (isNonEmpty(input.filter)) {
-    shouldMaterializeOverride = true;
+    shouldMaterializeFilterOverride = true;
   } else if (!isCustomEventsColumn && pageLevelFilter !== undefined) {
-    shouldMaterializeOverride = effectiveFilter.length !== pageLevelFilter.length;
+    shouldMaterializeFilterOverride = effectiveFilter.length !== pageLevelFilter.length;
   }
 
-  const overrides = shouldMaterializeOverride
-    ? { filter: { override: effectiveFilter } }
-    : undefined;
+  // Pin tile breakdown and granularity on every metric column. Dashboard
+  // canvas passes a page-level `tableContext` whose breakdown/granularity are
+  // the surface defaults when those controls are not active overrides.
+  // Without the pin, the timestamp/age seed uses `config.breakdowns` while
+  // the metric follow-up uses empty page context, hashes miss, and every
+  // metric cell is N/A (DSA-6141). Explore already passes a matching context,
+  // so the override is a no-op there.
+  //
+  // Empty breakdown is still an override so a no-breakdown table does not
+  // inherit page context at this merge layer. When a dashboard-level
+  // breakdown *is* an active override, view/edit replace this pin with that
+  // breakdown (`applyActiveDashboardOverridesToTable`) — override, not
+  // intersect. Granularity stays pinned: custom dashboards hide the page
+  // grain control, and `getDashboardControlOverrideState` does not treat
+  // surface grain as an override.
+  const overrides: SpecOverride = {
+    breakdown: { override: [...breakdown] },
+    granularity: { override: granularity },
+    ...(shouldMaterializeFilterOverride ? { filter: { override: effectiveFilter } } : {}),
+  };
 
   // For CustomEventsV2 columns, surface the selected event name (e.g.
   // "HOUSING") as the column header. The atomic-metric label ("Custom
@@ -295,10 +310,13 @@ const toMetricColumnConfig = (
  *   derive the header from the metric (atomic label or computed metric
  *   name), so URL-driven sharing produces identical labels regardless of
  *   who built the config.
- * - `breakdown` flows through unchanged. When the table context (constructed
- *   by the caller) sets a non-`None` granularity, the adapter will
- *   automatically inject a synthetic Timestamp column and emit one row per
- *   `(breakdown, timestamp)` tuple.
+ * - `breakdown` is copied onto the table for display columns and pinned on
+ *   every metric column as `overrides.breakdown` / `overrides.granularity`
+ *   so the RAQI query matches those columns when `tableContext` is an
+ *   empty/default page-level dashboard context (DSA-6141). An active
+ *   dashboard breakdown override replaces that pin at render. When the
+ *   table is time-bucketed, the adapter injects a synthetic Timestamp
+ *   column and emits one row per `(breakdown, timestamp)` tuple.
  */
 const buildChartConfiguratorTableConfig = ({
   breakdown,
@@ -311,13 +329,13 @@ const buildChartConfiguratorTableConfig = ({
   const dataColumns: TAnalyticsMetricTableColumnConfig[] = [];
 
   if (primaryMetric) {
-    dataColumns.push(toMetricColumnConfig(primaryMetric, pageLevelFilter));
+    dataColumns.push(toMetricColumnConfig(primaryMetric, pageLevelFilter, breakdown, granularity));
   }
   derivedSourceColumns?.forEach((col) => {
-    dataColumns.push(toMetricColumnConfig(col, pageLevelFilter));
+    dataColumns.push(toMetricColumnConfig(col, pageLevelFilter, breakdown, granularity));
   });
   additionalMetricColumns?.forEach((col) => {
-    dataColumns.push(toMetricColumnConfig(col, pageLevelFilter));
+    dataColumns.push(toMetricColumnConfig(col, pageLevelFilter, breakdown, granularity));
   });
 
   if (dataColumns.length === 0) {

@@ -49,6 +49,7 @@ import {
   getChartConfiguratorDimensions,
   getChartConfiguratorFilterOnlyDimensions,
   getSharedChartConfiguratorDimensions,
+  toSelectableBreakdownDimensions,
 } from '@modules/experience-analytics-shared/chartConfigurator/ChartConfiguratorDimensions';
 import type { TChartConfiguratorMetrics } from '@modules/experience-analytics-shared/chartConfigurator/chartConfiguratorMetricsConfig';
 import {
@@ -1586,9 +1587,11 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
   ]);
 
   const breakdownDimensions = useMemo(() => {
-    const filtered = dimensions.filter(
-      (dimension): dimension is TRAQIV2Dimension =>
-        !getChartConfiguratorFilterOnlyDimensions(selectedChartType).includes(dimension),
+    const filtered = toSelectableBreakdownDimensions(
+      dimensions.filter(
+        (dimension): dimension is TRAQIV2Dimension =>
+          !getChartConfiguratorFilterOnlyDimensions(selectedChartType).includes(dimension),
+      ),
     );
     if (!isTableMode || tableConstraintMetrics.length === 0) {
       return filtered;
@@ -2527,7 +2530,7 @@ const ExploreModeSidebarPage: FC = () => {
     () => ({
       resourceTypes: [resource.type],
       filterDimensions: dimensions,
-      breakdownDimensions: dimensions,
+      breakdownDimensions: toSelectableBreakdownDimensions(dimensions),
       timeRangeOptions,
       surfaceAnnotationOptions,
       body: [],

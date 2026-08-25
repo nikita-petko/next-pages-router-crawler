@@ -1,4 +1,5 @@
 import { type FC, useMemo } from 'react';
+import AnalyticsComponentType from '@modules/analytics-configurations/AnalyticsComponentType';
 import getGranularityOptionsForMetric from '@modules/experience-analytics-shared/chartConfigurator/getGranularityOptionsForMetric';
 import AnalyticsComponent from '@modules/experience-analytics-shared/components/RAQIV2/layout/AnalyticsComponent';
 import useRAQIV2PredefinedSurfaceControlsBundle from '@modules/experience-analytics-shared/components/RAQIV2/layout/useRAQIV2PredefinedSurfaceControlsBundle';
@@ -12,6 +13,7 @@ import { getClosestAllowedGranularity } from '@modules/experience-analytics-shar
 import type { SynthesizeResult } from '../synthesis/synthesize';
 import type { CustomDashboardConfig, DashboardLayoutNode, TileId } from '../types';
 import { isSummaryCardLayoutNode } from '../utils/dashboardLayoutNodes';
+import { applyActiveDashboardOverridesToTable } from './applyActiveDashboardOverridesToTable';
 import DashboardFilterChips from './DashboardFilterChips';
 import {
   DASHBOARD_BODY_COMPONENT_NODE_CLASSES,
@@ -33,6 +35,9 @@ function getRenderableComponent(
   component: AnalyticsComponentConfig,
   chartContext: RAQIV2ChartContext,
 ): AnalyticsComponentConfig {
+  if (typeof component !== 'string' && component.type === AnalyticsComponentType.Table) {
+    return applyActiveDashboardOverridesToTable(component, chartContext);
+  }
   // The config package and app enum are structurally compatible but come from separate declarations.
   // oxlint-disable-next-line typescript/no-unsafe-enum-comparison
   if (typeof component === 'string' || component.type !== 'Chart' || !('overrides' in component)) {

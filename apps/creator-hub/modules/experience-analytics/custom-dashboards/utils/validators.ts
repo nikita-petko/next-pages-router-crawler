@@ -145,6 +145,7 @@ const RAQIV2_GRANULARITY_VALUES: readonly string[] = Object.values(RAQIV2MetricG
 const ANNOTATION_TYPE_VALUES: readonly string[] = Object.values(AnnotationType);
 const PERCENTILE_TYPE_PSEUDO_DIMENSION_KEY: string = RAQIV2UIPseudoDimension.PercentileType;
 const AGGREGATION_TYPE_PSEUDO_DIMENSION_KEY: string = RAQIV2UIPseudoDimension.AggregationType;
+const LATEST_PLACE_VERSION_KEY: string = RAQIV2UIPseudoDimension.LatestPlaceVersion;
 const RAQIV2_AGGREGATION_TYPES: ReadonlySet<RAQIV2AggregationType> = new Set(
   Object.values(RAQIV2AggregationType),
 );
@@ -167,12 +168,17 @@ export function isDefaultBreakdownDimension(value: string): value is TRAQIV2Dime
 
 /**
  * Canonical RAQI dimensions only (no UI pseudo-dimensions). Persisted
- * dashboard-level filter/breakdown allowlists and tile-level breakdowns must be
- * real query dimensions because they are wired straight into the rendered page
- * config's filter/breakdown controls and chart spec overrides.
+ * dashboard-level filter/breakdown allowlists must be real query dimensions
+ * because they are wired straight into the rendered page config's filter
+ * controls. Tile breakdowns use {@link isPersistableBreakdownDimension}.
  */
 export function isCanonicalRAQIV2Dimension(value: string): value is TRAQIV2Dimension {
   return RAQIV2_DIMENSION_VALUES.includes(value);
+}
+
+/** Tile breakdowns may persist LatestPlaceVersion, the Top-N stand-in for raw PlaceVersion. */
+export function isPersistableBreakdownDimension(value: string): value is TRAQIV2Dimension {
+  return isCanonicalRAQIV2Dimension(value) || value === LATEST_PLACE_VERSION_KEY;
 }
 
 function isDefaultGranularity(value: string): value is RAQIV2MetricGranularity {
@@ -794,10 +800,10 @@ function validateChartTile(tile: Record<string, unknown>, field: string): ChartT
           `${field}.dataSpec.breakdownDimensions`,
           (item, itemField) => {
             const dimension = asOptionalNonEmptyString(item, itemField) ?? '';
-            if (dimension.length > 0 && !isCanonicalRAQIV2Dimension(dimension)) {
+            if (dimension.length > 0 && !isPersistableBreakdownDimension(dimension)) {
               throw new CustomDashboardValidationError(
                 itemField,
-                `${itemField} must be a canonical RAQI dimension.`,
+                `${itemField} must be a persistable breakdown dimension.`,
               );
             }
             return dimension;

@@ -19,6 +19,8 @@ import type { ChartConfiguratorChartType } from '../../chartConfigurator/ChartCo
 import {
   getChartConfiguratorFilterOnlyDimensions,
   getSharedChartConfiguratorDimensions,
+  toSelectableBreakdownDimension,
+  toSelectableBreakdownDimensions,
 } from '../../chartConfigurator/ChartConfiguratorDimensions';
 import type { TChartConfiguratorMetrics } from '../../chartConfigurator/chartConfiguratorMetricsConfig';
 import {
@@ -231,11 +233,18 @@ function resolveBreakdownDimensions(
   const seen = new Set<string>();
   const resolved: TRAQIV2Dimension[] = [];
   for (const requested of requestedDimensions) {
-    if (seen.has(requested) || !isValidArrayEnumValue(dimensions, requested)) {
+    if (
+      !isValidEnumValue(RAQIV2Dimension, requested) &&
+      !isValidEnumValue(RAQIV2UIPseudoDimension, requested)
+    ) {
       continue;
     }
-    seen.add(requested);
-    resolved.push(requested);
+    const selectable = toSelectableBreakdownDimension(requested);
+    if (seen.has(selectable) || !isValidArrayEnumValue(dimensions, selectable)) {
+      continue;
+    }
+    seen.add(selectable);
+    resolved.push(selectable);
     if (resolved.length === MAX_BREAKDOWNS) {
       break;
     }
@@ -381,6 +390,13 @@ export default function useControlledChartConfigurator({
   const dimensions = useMemo(
     () => getSharedChartConfiguratorDimensions(displaySourceMetrics),
     [displaySourceMetrics],
+  );
+  // OPTIONS go through the shared mapper so a catalog change that re-enables
+  // raw PlaceVersion cannot surface the unbounded breakdown again. Filters
+  // still use `dimensions` unmapped.
+  const selectableBreakdownDimensions = useMemo(
+    () => toSelectableBreakdownDimensions(dimensions),
+    [dimensions],
   );
 
   // Breakdown is intentionally hook-local state rather than part of
@@ -614,8 +630,10 @@ export default function useControlledChartConfigurator({
       metric: resolvedMetricForQuery,
     };
     const filterOnlyDimensions = getChartConfiguratorFilterOnlyDimensions(selectedChartType);
-    if (spec.breakdown?.length && filterOnlyDimensions.length) {
-      spec.breakdown = spec.breakdown.filter((dim) => !filterOnlyDimensions.includes(dim));
+    if (spec.breakdown?.length) {
+      spec.breakdown = toSelectableBreakdownDimensions(spec.breakdown).filter(
+        (dim) => !filterOnlyDimensions.includes(dim),
+      );
     }
     return spec;
   }, [
@@ -828,7 +846,7 @@ export default function useControlledChartConfigurator({
         granularitySelection,
       },
       breakdownControls: {
-        breakdownDimensions: dimensions,
+        breakdownDimensions: selectableBreakdownDimensions,
         breakdown,
         getBreakdownLabel,
       },
@@ -852,7 +870,7 @@ export default function useControlledChartConfigurator({
       breakdown,
       chartTypeSupport,
       customEventFilters,
-      dimensions,
+      selectableBreakdownDimensions,
       displaySourceMetrics,
       dispatchSidebarAction,
       effectiveComputedMetric,

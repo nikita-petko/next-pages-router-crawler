@@ -8,6 +8,7 @@ import type { FC } from 'react';
  */
 import React, { useMemo, useCallback, useContext, useEffect, useRef } from 'react';
 import type { TRAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
+import { toSelectableBreakdownDimension } from '../../chartConfigurator/ChartConfiguratorDimensions';
 import type { CreatorAnalyticsPageSurfaceConfig } from '../../types/RAQIV2PageConfig';
 import { AnalyticsCurrentBreakdownContext } from '../AnalyticsCurrentBreakdownBundleProvider';
 import { useRawAnalyticsQueryParams } from '../rawQueryParams/RawAnalyticsQueryParamsProvider';
@@ -32,7 +33,9 @@ export const PageConfigAwareBreakdownProvider: FC<PageConfigAwareBreakdownProvid
   const supportedDimensions = useMemo(() => config?.breakdownDimensions ?? [], [config]);
   const defaultBreakdown = useMemo(() => config?.defaultBreakdown ?? [], [config]);
 
-  // Derive the effective breakdown (pure computation — no side effects)
+  // Derive the effective breakdown (pure computation — no side effects).
+  // Map raw PlaceVersion to LatestPlaceVersion when the page OPTIONS include
+  // the Top-N stand-in; keep the raw dim when a predefined page still lists it.
   const breakdown = useMemo<TRAQIV2Dimension[]>(() => {
     const rawBreakdown = rawParams.breakdown;
 
@@ -43,7 +46,19 @@ export const PageConfigAwareBreakdownProvider: FC<PageConfigAwareBreakdownProvid
       return [];
     }
 
-    return rawBreakdown.filter((dim) => supportedDimensions.includes(dim));
+    const supported = new Set(supportedDimensions);
+    const resolved: TRAQIV2Dimension[] = [];
+    const seen = new Set<TRAQIV2Dimension>();
+    for (const dimension of rawBreakdown) {
+      const mapped = toSelectableBreakdownDimension(dimension);
+      const kept = supported.has(mapped) ? mapped : supported.has(dimension) ? dimension : null;
+      if (kept === null || seen.has(kept)) {
+        continue;
+      }
+      seen.add(kept);
+      resolved.push(kept);
+    }
+    return resolved;
   }, [rawParams, supportedDimensions, defaultBreakdown]);
 
   // Sync defaults to the URL query params as a side effect
@@ -57,6 +72,24 @@ export const PageConfigAwareBreakdownProvider: FC<PageConfigAwareBreakdownProvid
       hasAppliedDefaultsRef.current = true;
     }
   }, [rawParams, defaultBreakdown]);
+
+  // Canonicalize shareable URLs: when the resolved breakdown differs from the
+  // raw param (e.g. an old `breakdown=PlaceVersion` link mapping to
+  // LatestPlaceVersion, or unsupported dims that were dropped), write the
+  // resolved value back once so the URL converges. One-shot on load; later
+  // user edits are honored without re-canonicalizing.
+  const hasCanonicalizedRef = useRef(false);
+  useEffect(() => {
+    if (hasCanonicalizedRef.current || rawParams.breakdown === undefined) {
+      return;
+    }
+    const raw = rawParams.breakdown;
+    if (breakdown.length === raw.length && breakdown.every((dim, i) => dim === raw[i])) {
+      return;
+    }
+    rawParams.setBreakdown(breakdown);
+    hasCanonicalizedRef.current = true;
+  }, [rawParams, breakdown]);
 
   const setBreakdown = useCallback(
     (newBreakdown: TRAQIV2Dimension[]) => {

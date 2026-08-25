@@ -7,6 +7,7 @@ import {
 import type { TRAQIV2UIMetricFanoutDimensionValues } from '@rbx/creator-hub-analytics-config';
 import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import type { ChartConfiguratorChartType } from '@modules/experience-analytics-shared/chartConfigurator/ChartConfiguratorChartTypes';
+import { toSelectableBreakdownDimensions } from '@modules/experience-analytics-shared/chartConfigurator/ChartConfiguratorDimensions';
 import type { TChartConfiguratorMetrics } from '@modules/experience-analytics-shared/chartConfigurator/chartConfiguratorMetricsConfig';
 import {
   chartConfiguratorDefaultMetric,
@@ -55,6 +56,7 @@ import { exploreChartTypeToTileChartType } from '../../utils/chartTypeMapping';
 import { createTileId } from '../../utils/createTileId';
 import { resolveDefaultChartAggregation } from '../../utils/resolveDefaultChartAggregation';
 import { isSummaryCardAggregationSupported } from '../../utils/summaryCardAggregation';
+import { isPersistableBreakdownDimension } from '../../utils/validators';
 
 export const NEW_CHART_TILE_ROUTE_ID = 'new' as const;
 
@@ -497,7 +499,9 @@ export function buildChartTileFromEditor({
         existing?.dataSpec.aggregation ?? resolveDefaultChartAggregation(primaryMetricReference),
       breakdownDimensions:
         breakdownDimensions && breakdownDimensions.length > 0
-          ? [...breakdownDimensions]
+          ? toSelectableBreakdownDimensions(
+              breakdownDimensions.filter(isPersistableBreakdownDimension),
+            )
           : undefined,
       granularity: timeInterval ?? existing?.dataSpec.granularity ?? DEFAULT_CHART_GRANULARITY,
       filters: persistedFilters,
