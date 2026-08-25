@@ -12,3 +12,8 @@ export const questionnaireV2Q1Release = defineFlag({
     name: 'questionnaireV2Q1Release',
     defaultValue: false,
   });
+export const questionnaireSectionStepperEnabled = defineFlag({
+    namespace: 'content-suitability',
+    name: 'questionnaireSectionStepperEnabled',
+    defaultValue: false,
+  });

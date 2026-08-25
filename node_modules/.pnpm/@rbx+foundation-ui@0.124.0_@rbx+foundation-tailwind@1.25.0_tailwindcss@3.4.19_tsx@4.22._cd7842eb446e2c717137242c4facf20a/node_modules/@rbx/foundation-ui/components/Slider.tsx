@@ -1,0 +1,169 @@
+import React from 'react';
+
+import clsx from 'clsx';
+import { Root, Track, Range, Thumb } from '@radix-ui/react-slider';
+import type {
+  TTailwindHeightClass,
+  TTailwindSizeClass,
+  TTailwindWidthClass
+} from '@rbx/foundation-tailwind/classes';
+import { interactable, StateLayer } from './internal/StateLayer';
+import './internal/Common.css';
+import { disabledOpacity } from '../utils/styles';
+
+type TSliderSize = 'XSmall' | 'Small' | 'Medium' | 'Large';
+
+export interface TSliderProps {
+  size?: TSliderSize;
+  className?: string;
+  /** When having multiple thumbs it is useful to provide a unique aria label for each thumb */
+  thumbAriaNames?: string[];
+  /** The input form name for the slider */
+  name?: string;
+  isDisabled?: boolean;
+  orientation?: React.AriaAttributes['aria-orientation'];
+  /** The minimum value of the slider */
+  min?: number;
+  /** The maximum value of the slider */
+  max?: number;
+  /** The step value of the slider */
+  step?: number;
+  /** The minimum number of steps between thumbs (when having multiple thumbs) */
+  minStepsBetweenThumbs?: number;
+  value?: number[];
+  defaultValue?: number[];
+  /** Called when the value changes, including intermediate values when dragging */
+  onValueChange?: (value: number[]) => void;
+  /** Called when the value is committed, e.g. when the user releases the thumb */
+  onValueCommit?: (value: number[]) => void;
+  /** Whether the slider is inverted */
+  inverted?: boolean;
+}
+
+interface SliderOrientationDimension {
+  horizontal: Record<TSliderSize, TTailwindWidthClass | TTailwindHeightClass>;
+  vertical: Record<TSliderSize, TTailwindWidthClass | TTailwindHeightClass>;
+}
+
+const SLIDER_THICKNESS: SliderOrientationDimension = {
+  horizontal: {
+    XSmall: 'height-300',
+    Small: 'height-400',
+    Medium: 'height-500',
+    Large: 'height-600'
+  },
+  vertical: {
+    XSmall: 'width-300',
+    Small: 'width-400',
+    Medium: 'width-500',
+    Large: 'width-600'
+  }
+};
+
+const THUMB_SIZE: Record<TSliderSize, TTailwindSizeClass> = {
+  XSmall: 'size-300',
+  Small: 'size-400',
+  Medium: 'size-500',
+  Large: 'size-600'
+};
+
+const TRACK_THICKNESS: SliderOrientationDimension = {
+  horizontal: {
+    XSmall: 'height-100',
+    Small: 'height-150',
+    Medium: 'height-200',
+    Large: 'height-250'
+  },
+  vertical: {
+    XSmall: 'width-100',
+    Small: 'width-150',
+    Medium: 'width-200',
+    Large: 'width-250'
+  }
+};
+
+const NO_VALUE: never[] = [];
+
+/**
+ * Slider input component.
+ * Supports one or multiple values.
+ * Value is an array of numbers, each number representing a value for a thumb.
+ * Will fill the size of the parent element (either width or height, depending on the orientation).
+ */
+const Slider: React.FC<TSliderProps> = ({
+  size = 'Medium',
+  className,
+  thumbAriaNames,
+  isDisabled,
+  orientation = 'horizontal',
+  name,
+  min,
+  max,
+  step,
+  minStepsBetweenThumbs,
+  value,
+  defaultValue,
+  onValueChange,
+  onValueCommit,
+  inverted
+}) => {
+  const actualValue = value ?? defaultValue ?? NO_VALUE;
+  const isVertical = orientation === 'vertical';
+
+  return (
+    <Root
+      className={clsx(
+        'foundation-web-slider flex gap-none relative',
+        isDisabled ? 'opacity-[50%] cursor-not-allowed' : 'cursor-pointer',
+        isVertical ? 'flex-col items-center height-full' : 'items-center ',
+        SLIDER_THICKNESS[orientation][size],
+        className
+      )}
+      disabled={isDisabled}
+      name={name}
+      orientation={orientation}
+      min={min}
+      max={max}
+      step={step}
+      minStepsBetweenThumbs={minStepsBetweenThumbs}
+      value={value}
+      defaultValue={defaultValue}
+      onValueChange={onValueChange}
+      onValueCommit={onValueCommit}
+      inverted={inverted}>
+      <Track
+        className={clsx(
+          'relative bg-shift-200 radius-large',
+          isVertical ? 'height-full' : 'width-full',
+          TRACK_THICKNESS[orientation][size]
+        )}>
+        <Range
+          className={clsx(
+            'absolute radius-large',
+            isDisabled
+              ? 'bg-system-contrast'
+              : 'bg-[var(--fui-future-alpha-color-system-progress)]',
+            isVertical ? 'width-full' : 'height-full'
+          )}
+        />
+      </Track>
+      {actualValue.map((_, index) => (
+        <Thumb
+          // eslint-disable-next-line react/no-array-index-key -- no other id to use
+          key={index}
+          className={clsx(
+            'radius-circle stroke-emphasis stroke-thin block fui-future-shadow-affixed-low bg-[var(--dark-mode-system-contrast)]',
+            interactable,
+            isDisabled && disabledOpacity,
+            isDisabled && 'hidden',
+            THUMB_SIZE[size]
+          )}
+          aria-label={thumbAriaNames?.[index] ?? 'Slider thumb'}>
+          <StateLayer />
+        </Thumb>
+      ))}
+    </Root>
+  );
+};
+
+export default Slider;

@@ -1,0 +1,1030 @@
+/* eslint-disable react/destructuring-assignment -- narrowing types for discriminated-union props */
+/**
+ * Keep in line with the lua implementation.
+ * https://foundation.roblox.com/components/DateTimePicker/
+ * https://sourcegraph.rbx.com/github.rbx.com/GameEngine/game-engine/-/blob/Client/LuaApps/content/LuaPackages/Packages/_Index/Foundation/Foundation/Components/DateTimePicker/DateTimePicker.lua
+ */
+import clsx from 'clsx';
+import React, { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { IconButton } from './IconButton';
+import { Button } from './Button';
+import { Chip } from './Chip';
+import { interactable, StateLayer } from './internal/StateLayer';
+import { TForwardRefComponent } from './types/TForwardRefComponent';
+import { disabledOpacity } from '../utils/styles';
+import {
+  toMidnight,
+  monthKey,
+  getDaysInMonth,
+  isSameDay,
+  isDateInRange,
+  normalizeRange,
+  isDateOutOfBounds,
+  isDateInSelectableRanges,
+  isRangeFullySelectable,
+  mergeAdjacentRanges,
+  snapToNearestSelectable,
+  clipRangesToWindow,
+  addDays,
+  stepToNextSelectableDate,
+  clampLeftMonth,
+  buildWeeks
+} from '../utils/dateUtils';
+import type { TDateRange } from '../utils/dateUtils';
+import {
+  getLocaleFirstDay,
+  getMonthNames,
+  getDayNamesShort,
+  formatDate
+} from '../utils/localeUtils';
+import type { TSupportedLocale } from '../utils/localeUtils';
+import './internal/Common.css';
+
+export const dateTimePickerVariants = ['Single', 'Dual'] as const;
+export type TDateTimePickerVariant = (typeof dateTimePickerVariants)[number];
+
+export type TDateTimePickerLabelsNav = {
+  previousMonth: string;
+  nextMonth: string;
+};
+
+export type TDateTimePickerLabelsSingleActions = TDateTimePickerLabelsNav & {
+  apply: string;
+  cancel: string;
+};
+
+export type TDateTimePickerLabelsDualActions = TDateTimePickerLabelsSingleActions & {
+  resetAll: string;
+};
+
+export type TDateTimePickerLabels =
+  | TDateTimePickerLabelsNav
+  | TDateTimePickerLabelsSingleActions
+  | TDateTimePickerLabelsDualActions;
+
+export type TDateRangePresetOption = {
+  key: string;
+  label: string;
+  getPresetRange: () => [Date | null, Date | null];
+};
+
+export type { TDateRange };
+
+/**
+ * Describes which dates the picker should treat as selectable.
+ *
+ * Accepts one of three shapes:
+ * - A single `TDateRange` — all dates between `startDate` and `endDate`
+ *   (inclusive) are selectable. Equivalent to passing `[range]`.
+ * - An array of `TDateRange` — selectable dates are the union of the
+ *   ranges. Useful for disjoint windows (e.g. `4/11–4/17` plus
+ *   `4/22–4/30`). Dates in the gaps between ranges are disabled.
+ * - An array of `Date` — only these specific calendar dates are
+ *   selectable. Equivalent to passing one `TDateRange` per date with
+ *   `startDate === endDate`. Consecutive days are merged into a single
+ *   multi-day window, so `[Apr 11, Apr 12, Apr 13]` behaves the same as
+ *   `{ startDate: Apr 11, endDate: Apr 13 }`.
+ *
+ * All dates are compared after being normalized to midnight.
+ */
+export type TSelectableDateRange = TDateRange | ReadonlyArray<TDateRange> | ReadonlyArray<Date>;
+
+type TDateTimePickerBaseProps = {
+  /** Localized labels for all UI text in the picker. */
+  labels: TDateTimePickerLabels;
+  /**
+   * BCP 47 locale tag (e.g. 'en-US', 'ja-JP'). Drives month names, day-of-week
+   * names, first day of the week, and date formatting. Falls back to the
+   * browser default when omitted.
+   */
+  locale?: TSupportedLocale;
+  /** Whether the picker is disabled. */
+  isDisabled?: boolean;
+  /**
+   * Dates that should be selectable. Accepts one of:
+   * - A single `{ startDate, endDate }` range (inclusive).
+   * - An array of ranges, to allow disjoint selectable windows with gaps
+   *   in between (e.g. `[{ 4/11, 4/17 }, { 4/22, 4/30 }]`). Dates that
+   *   fall in the gaps are disabled.
+   * - An array of individual `Date` values, to allow only those exact
+   *   calendar days. Consecutive days in the array are merged into a
+   *   single multi-day window.
+   *
+   * All endpoints are rounded to the start of the day for comparison. When
+   * omitted, any date up to today is selectable.
+   */
+  selectableDateRange?: TSelectableDateRange;
+  /** Called when the user clicks Cancel. */
+  onCancel?: () => void;
+  /**
+   * Whether to show the footer with Apply, Cancel, and Reset buttons.
+   * When false, selection changes fire `onChanged` immediately.
+   * @default true
+   */
+  hasActions?: boolean;
+  /** Additional CSS class name. */
+  className?: string;
+};
+
+export type TDateTimePickerSingleProps = TDateTimePickerBaseProps & {
+  /** Single date selection mode (default). */
+  variant?: 'Single';
+  /** Default date selected. */
+  defaultDates?: Date | null;
+  /** Called when the selected date changes. */
+  onChanged?: (dateTime: Date | null) => void;
+  presets?: never;
+} & (
+    | { hasActions: false; labels: TDateTimePickerLabelsNav }
+    | { hasActions?: true; labels: TDateTimePickerLabelsSingleActions }
+  );
+
+export type TDateTimePickerDualProps = TDateTimePickerBaseProps & {
+  /** Dual date range selection mode. */
+  variant: 'Dual';
+  /** Default dates selected. First element is start date, second (if provided) is end date. */
+  defaultDates?: [Date] | [Date, Date] | null;
+  /** Called when the selected date range changes. */
+  onChanged?: (startDateTime: Date | null, endDateTime: Date | null) => void;
+  /** Quick-select preset chips. Each entry needs a unique key, a display label, and a function returning the date range. */
+  presets?: TDateRangePresetOption[];
+  /**
+   * Maximum number of calendar days in a manually selected range, inclusive.
+   * After the first date is selected, dates that would exceed this limit are
+   * disabled. Must be a positive integer; invalid values are ignored.
+   */
+  maxRangeDays?: number;
+} & (
+    | { hasActions: false; labels: TDateTimePickerLabelsNav }
+    | { hasActions?: true; labels: TDateTimePickerLabelsDualActions }
+  );
+
+export type TDateTimePickerProps = TDateTimePickerSingleProps | TDateTimePickerDualProps;
+
+function parseDefaultDates(
+  defaultDates: TDateTimePickerProps['defaultDates']
+): [Date | null, Date | null] {
+  if (!defaultDates) return [null, null];
+  if (defaultDates instanceof Date) return [defaultDates, null];
+  return [defaultDates[0] ?? null, defaultDates[1] ?? null];
+}
+
+/**
+ * Type predicate: narrows a `TSelectableDateRange` to its array arm (`ReadonlyArray<TDateRange> | ReadonlyArray<Date>`).
+ * Note `Array.isArray`'s built-in narrowing narrows to `any[]`.
+ */
+function isSelectableRangeArray(
+  value: TSelectableDateRange
+): value is ReadonlyArray<TDateRange> | ReadonlyArray<Date> {
+  return Array.isArray(value);
+}
+
+/**
+ * Normalizes any supported `selectableDateRange` shape into an array of midnight-aligned, disjoint date ranges.
+ * Contiguous/overlapping entries are collapsed via `mergeAdjacentRanges`, so a list of individual days like
+ * `[Apr 11, Apr 12, Apr 13]` becomes a single `{ Apr 11, Apr 13 }` window. Without this collapse, each individual-date
+ * entry would be treated as its own isolated single-day window and the dual-mode auto-complete path would fire on
+ * every click, even when the user expected to drag a range across contiguous days.
+ *
+ * Returns `undefined` when the caller didn't pass a constraint at all (meaning "no range constraint"), and returns an
+ * empty array when the caller explicitly passed an empty list (meaning "nothing is selectable").
+ */
+function toSelectableRanges(input: TSelectableDateRange | undefined): TDateRange[] | undefined {
+  if (input === undefined) return undefined;
+  if (!isSelectableRangeArray(input)) {
+    return [
+      {
+        startDate: toMidnight(input.startDate),
+        endDate: toMidnight(input.endDate)
+      }
+    ];
+  }
+  const normalized = input.map(item => {
+    if (item instanceof Date) {
+      const midnight = toMidnight(item);
+      return { startDate: midnight, endDate: midnight };
+    }
+    return {
+      startDate: toMidnight(item.startDate),
+      endDate: toMidnight(item.endDate)
+    };
+  });
+  return mergeAdjacentRanges(normalized);
+}
+
+// Disallow eyboard navigation through long disabled stretches never busy-loops beyond a bounded horizon.
+const MAX_ARROW_STEP_ATTEMPTS = 365;
+
+// --- CalendarCell ---
+
+type TCalendarCellProps = {
+  date: number;
+  month: number;
+  year: number;
+  monthNames: readonly string[];
+  isDisabled: boolean;
+  isSelected: boolean;
+  isRangeStart: boolean;
+  isRangeEnd: boolean;
+  isInRange: boolean;
+  isFirstOfMonth: boolean;
+  isLastOfMonth: boolean;
+  hasCompleteRange: boolean;
+  isFocused: boolean;
+  onClick: (date: Date) => void;
+};
+
+function CalendarCell({
+  date,
+  month,
+  year,
+  monthNames,
+  isDisabled,
+  isSelected,
+  isRangeStart,
+  isRangeEnd,
+  isInRange: inRange,
+  isFirstOfMonth,
+  isLastOfMonth,
+  hasCompleteRange,
+  isFocused,
+  onClick
+}: TCalendarCellProps) {
+  const handleClick = useCallback(() => {
+    if (!isDisabled) {
+      onClick(new Date(year, month, date));
+    }
+  }, [date, month, year, isDisabled, onClick]);
+
+  const showBand =
+    hasCompleteRange &&
+    !isDisabled &&
+    (inRange || ((isRangeStart || isRangeEnd) && isRangeStart !== isRangeEnd));
+
+  function getBandStyle(): React.CSSProperties {
+    const base: React.CSSProperties = { position: 'absolute', top: 0, bottom: 0 };
+    if (isRangeStart) return { ...base, left: '50%', right: 0 };
+    if (isRangeEnd) return { ...base, left: 0, right: '50%' };
+    if (isFirstOfMonth) return { ...base, left: 0, right: 0, borderRadius: '9999px 0 0 9999px' };
+    if (isLastOfMonth) return { ...base, left: 0, right: 0, borderRadius: '0 9999px 9999px 0' };
+    return { ...base, left: 0, right: 0 };
+  }
+
+  return (
+    <div role='gridcell' className='relative size-1000'>
+      {showBand && <div className='bg-shift-300' style={getBandStyle()} />}
+      <button
+        type='button'
+        disabled={isDisabled}
+        onClick={handleClick}
+        tabIndex={isFocused ? 0 : -1}
+        data-date-key={`${year}-${month}-${date}`}
+        className={clsx(
+          'relative flex items-center justify-center size-1000 radius-circle padding-none stroke-none',
+          isDisabled
+            ? `cursor-default bg-none ${disabledOpacity}`
+            : [interactable, 'cursor-pointer'],
+          isSelected && !isDisabled ? 'bg-inverse-surface-0' : 'bg-none'
+        )}
+        aria-label={`${monthNames[month]} ${date}, ${year}`}
+        aria-pressed={isSelected}>
+        {!isDisabled && <StateLayer />}
+        <span
+          className={clsx(
+            'text-label-medium relative',
+            // eslint-disable-next-line no-nested-ternary
+            isDisabled
+              ? 'content-muted'
+              : isSelected
+                ? 'content-inverse-emphasis'
+                : 'content-emphasis'
+          )}>
+          {date}
+        </span>
+      </button>
+    </div>
+  );
+}
+
+// --- CalendarGrid ---
+
+type TCalendarGridProps = {
+  month: number;
+  year: number;
+  monthNames: readonly string[];
+  dayNamesShort: readonly string[];
+  localeFirstDayOfWeek: number;
+  rangeStart: Date | null;
+  rangeEnd: Date | null;
+  firstAvailableDate?: Date;
+  lastAvailableDate: Date;
+  /**
+   * If provided, a date is only selectable when it falls within one of the
+   * ranges (inclusive). Used to support disjoint selectable windows and
+   * individual-date allow-lists.
+   */
+  selectableRanges?: readonly TDateRange[];
+  focusedDate: Date;
+  onDateClick: (date: Date) => void;
+};
+
+function CalendarGrid({
+  month,
+  year,
+  monthNames,
+  dayNamesShort,
+  localeFirstDayOfWeek,
+  rangeStart,
+  rangeEnd,
+  firstAvailableDate,
+  lastAvailableDate,
+  selectableRanges,
+  focusedDate,
+  onDateClick
+}: TCalendarGridProps) {
+  const weeks = useMemo(
+    () => buildWeeks(month, year, localeFirstDayOfWeek),
+    [month, year, localeFirstDayOfWeek]
+  );
+  const hasCompleteRange = rangeEnd != null;
+
+  return (
+    <div
+      role='grid'
+      aria-label={`${monthNames[month]} ${year}`}
+      className='flex flex-col items-center overflow-clip'
+      style={{ width: 280 }}>
+      <div role='row' className='flex items-center justify-center w-full'>
+        {dayNamesShort.map(day => (
+          <div
+            role='columnheader'
+            key={day}
+            className='flex items-center justify-center size-1000 text-label-small content-emphasis'>
+            {day}
+          </div>
+        ))}
+      </div>
+      {weeks.map(week => (
+        <div
+          role='row'
+          key={`week-${week[0].year}-${week[0].month}-${week[0].date}`}
+          className='flex items-center justify-center w-full'>
+          {week.map(cell => {
+            const cellDate = new Date(cell.year, cell.month, cell.date);
+            const disabled =
+              cell.isOutsideMonth ||
+              isDateOutOfBounds(cellDate, firstAvailableDate, lastAvailableDate) ||
+              !isDateInSelectableRanges(cellDate, selectableRanges);
+            const isStart = !disabled && isSameDay(cellDate, rangeStart);
+            const isEnd = !disabled && isSameDay(cellDate, rangeEnd);
+            const selected = isStart || isEnd;
+            const inRange = !disabled && !selected && isDateInRange(cellDate, rangeStart, rangeEnd);
+            const cellIsFocused = !disabled && isSameDay(cellDate, focusedDate);
+
+            return (
+              <CalendarCell
+                key={`day-${cell.year}-${cell.month}-${cell.date}`}
+                date={cell.date}
+                month={cell.month}
+                year={cell.year}
+                monthNames={monthNames}
+                isDisabled={disabled}
+                isSelected={selected}
+                isRangeStart={isStart}
+                isRangeEnd={isEnd}
+                isInRange={inRange}
+                isFirstOfMonth={cell.date === 1 && !cell.isOutsideMonth}
+                isLastOfMonth={
+                  cell.date === getDaysInMonth(cell.year, cell.month) && !cell.isOutsideMonth
+                }
+                hasCompleteRange={hasCompleteRange}
+                isFocused={cellIsFocused}
+                onClick={onDateClick}
+              />
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// --- DateTimePicker ---
+
+const DateTimePickerComponent = (
+  props: TDateTimePickerProps,
+  ref: React.ForwardedRef<HTMLDivElement>
+) => {
+  const {
+    labels,
+    locale,
+    defaultDates,
+    isDisabled = false,
+    selectableDateRange,
+    onCancel,
+    hasActions = true,
+    className
+  } = props;
+
+  const { variant = 'Single' } = props;
+  const presets = props.variant === 'Dual' ? props.presets : undefined;
+  const maxRangeDays = props.variant === 'Dual' ? props.maxRangeDays : undefined;
+
+  const resolvedLocale = useMemo(
+    () => locale ?? (new Intl.DateTimeFormat().resolvedOptions().locale as TSupportedLocale),
+    [locale]
+  );
+  const localeFirstDayOfWeek = useMemo(() => getLocaleFirstDay(resolvedLocale), [resolvedLocale]);
+  const monthNames = useMemo(() => getMonthNames(resolvedLocale), [resolvedLocale]);
+  const dayNamesShort = useMemo(
+    () => getDayNamesShort(resolvedLocale, localeFirstDayOfWeek),
+    [resolvedLocale, localeFirstDayOfWeek]
+  );
+
+  const selectableRanges = useMemo(
+    () => toSelectableRanges(selectableDateRange),
+    [selectableDateRange]
+  );
+
+  // Mount-time initial selection: snap defaultDates to the nearest selectable day if they happen to land in a disabled
+  // gap betweendisjoint windows, so the initial selection (and therefore an immediate Apply) is always valid.
+  const [initialStart, initialEnd] = useMemo(() => {
+    const [start, end] = parseDefaultDates(defaultDates);
+    const snap = (d: Date | null) =>
+      d ? snapToNearestSelectable(toMidnight(d), selectableRanges) : d;
+    return [snap(start), snap(end)];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only used for initial state
+  }, []);
+
+  const resolvedLastAvailable = useMemo(() => {
+    if (!selectableRanges || selectableRanges.length === 0) return toMidnight(new Date());
+    const maxTime = selectableRanges.reduce(
+      (acc, range) => Math.max(acc, range.endDate.getTime()),
+      Number.NEGATIVE_INFINITY
+    );
+    return new Date(maxTime);
+  }, [selectableRanges]);
+
+  const resolvedFirstAvailable = useMemo(() => {
+    if (!selectableRanges || selectableRanges.length === 0) return undefined;
+    const minTime = selectableRanges.reduce(
+      (acc, range) => Math.min(acc, range.startDate.getTime()),
+      Number.POSITIVE_INFINITY
+    );
+    return new Date(minTime);
+  }, [selectableRanges]);
+
+  const isSingleMonth =
+    resolvedFirstAvailable != null &&
+    resolvedFirstAvailable.getFullYear() === resolvedLastAvailable.getFullYear() &&
+    resolvedFirstAvailable.getMonth() === resolvedLastAvailable.getMonth();
+
+  const showSingleCalendar = variant === 'Single' || isSingleMonth;
+
+  const [initMonth, initYear] = useMemo(
+    () =>
+      clampLeftMonth(
+        (initialStart ?? new Date()).getMonth(),
+        (initialStart ?? new Date()).getFullYear(),
+        resolvedFirstAvailable,
+        resolvedLastAvailable,
+        showSingleCalendar
+      ),
+    // Only used for initial state
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  const [leftMonth, setLeftMonth] = useState(initMonth);
+  const [leftYear, setLeftYear] = useState(initYear);
+
+  const rightMonth = leftMonth === 11 ? 0 : leftMonth + 1;
+  const rightYear = leftMonth === 11 ? leftYear + 1 : leftYear;
+
+  const canNavigateBack = resolvedFirstAvailable
+    ? monthKey(leftMonth, leftYear) >
+      monthKey(resolvedFirstAvailable.getMonth(), resolvedFirstAvailable.getFullYear())
+    : true;
+
+  const canNavigateForward = showSingleCalendar
+    ? monthKey(leftMonth, leftYear) <
+      monthKey(resolvedLastAvailable.getMonth(), resolvedLastAvailable.getFullYear())
+    : monthKey(rightMonth, rightYear) <
+      monthKey(resolvedLastAvailable.getMonth(), resolvedLastAvailable.getFullYear());
+
+  const [selectionStart, setSelectionStart] = useState<Date | null>(initialStart);
+  const [selectionEnd, setSelectionEnd] = useState<Date | null>(initialEnd);
+  const [activePreset, setActivePreset] = useState<string | null>(null);
+
+  const effectiveSelectableRanges = useMemo(() => {
+    if (
+      variant !== 'Dual' ||
+      !Number.isInteger(maxRangeDays) ||
+      (maxRangeDays ?? 0) <= 0 ||
+      selectionStart == null ||
+      selectionEnd != null
+    ) {
+      return selectableRanges;
+    }
+
+    const maximumCalendarDayOffset = (maxRangeDays ?? 1) - 1;
+    const maxRangeStart = addDays(selectionStart, -maximumCalendarDayOffset);
+    const maxRangeEnd = addDays(selectionStart, maximumCalendarDayOffset);
+    if (selectableRanges === undefined) {
+      return [{ startDate: maxRangeStart, endDate: maxRangeEnd }];
+    }
+    return clipRangesToWindow(selectableRanges, maxRangeStart, maxRangeEnd);
+  }, [variant, maxRangeDays, selectionStart, selectionEnd, selectableRanges]);
+
+  const [focusedDate, setFocusedDate] = useState<Date>(() => {
+    const init = initialStart ?? toMidnight(new Date());
+    let clamped: Date;
+    if (resolvedFirstAvailable && init < resolvedFirstAvailable) {
+      clamped = resolvedFirstAvailable;
+    } else if (init > resolvedLastAvailable) {
+      clamped = resolvedLastAvailable;
+    } else {
+      clamped = init;
+    }
+    // If `clamped` lands in a disabled gap (e.g., today happens to fall
+    // between two disjoint ranges) snap it to the nearest selectable
+    // day so at least one grid cell is tabbable.
+    return snapToNearestSelectable(clamped, selectableRanges);
+  });
+  const calendarRef = useRef<HTMLDivElement>(null);
+  const shouldFocusRef = useRef(false);
+
+  const [rangeStart, rangeEnd] = useMemo(
+    () =>
+      variant === 'Dual' ? normalizeRange(selectionStart, selectionEnd) : [selectionStart, null],
+    [variant, selectionStart, selectionEnd]
+  );
+
+  const effectiveFocusedDate = useMemo(() => {
+    const inBounds = !isDateOutOfBounds(focusedDate, resolvedFirstAvailable, resolvedLastAvailable);
+    let candidate: Date;
+    if (inBounds) {
+      const fKey = monthKey(focusedDate.getMonth(), focusedDate.getFullYear());
+      const lKey = monthKey(leftMonth, leftYear);
+      const isVisible = showSingleCalendar
+        ? fKey === lKey
+        : fKey === lKey || fKey === monthKey(rightMonth, rightYear);
+      if (isVisible) {
+        candidate = focusedDate;
+      } else {
+        candidate = new Date(leftYear, leftMonth, 1);
+      }
+    } else {
+      candidate = new Date(leftYear, leftMonth, 1);
+    }
+    if (resolvedFirstAvailable && candidate < resolvedFirstAvailable) {
+      candidate = new Date(resolvedFirstAvailable);
+    } else if (candidate > resolvedLastAvailable) {
+      candidate = new Date(resolvedLastAvailable);
+    }
+
+    // Snap only against ranges visible in the current month(s); if none, leave `candidate` unchanged so no
+    // off-screen cell ends up holding the roving tabindex.
+    const visibleWindowStart = new Date(leftYear, leftMonth, 1);
+    const visibleWindowEnd = showSingleCalendar
+      ? new Date(leftYear, leftMonth + 1, 0)
+      : new Date(rightYear, rightMonth + 1, 0);
+    const visibleRanges = clipRangesToWindow(
+      effectiveSelectableRanges,
+      visibleWindowStart,
+      visibleWindowEnd
+    );
+    return snapToNearestSelectable(candidate, visibleRanges);
+  }, [
+    focusedDate,
+    leftMonth,
+    leftYear,
+    rightMonth,
+    rightYear,
+    showSingleCalendar,
+    resolvedFirstAvailable,
+    resolvedLastAvailable,
+    effectiveSelectableRanges
+  ]);
+
+  useEffect(() => {
+    if (shouldFocusRef.current && calendarRef.current) {
+      shouldFocusRef.current = false;
+      const d = effectiveFocusedDate;
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      const btn = calendarRef.current.querySelector(`[data-date-key="${key}"]`) as HTMLElement;
+      btn?.focus();
+    }
+  }, [effectiveFocusedDate]);
+
+  const navigateBack = useCallback(() => {
+    setLeftMonth(prev => {
+      if (prev === 0) {
+        setLeftYear(y => y - 1);
+        return 11;
+      }
+      return prev - 1;
+    });
+  }, []);
+
+  const navigateForward = useCallback(() => {
+    setLeftMonth(prev => {
+      if (prev === 11) {
+        setLeftYear(y => y + 1);
+        return 0;
+      }
+      return prev + 1;
+    });
+  }, []);
+
+  /* Helper callback for type inference */
+  const handleDateChange = useCallback(
+    (start: Date | null, end: Date | null = null) => {
+      if (props.variant === 'Dual') {
+        props.onChanged?.(start, end);
+      } else {
+        props.onChanged?.(start);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- props.variant and props.onChanged are the only accessed fields
+    [props.variant, props.onChanged]
+  );
+
+  const handleDateClick = useCallback(
+    (date: Date) => {
+      if (isDisabled) return;
+      if (isDateOutOfBounds(date, resolvedFirstAvailable, resolvedLastAvailable)) return;
+      if (!isDateInSelectableRanges(date, effectiveSelectableRanges)) return;
+      setActivePreset(null);
+      setFocusedDate(date);
+      if (variant !== 'Dual') {
+        setSelectionStart(date);
+        setSelectionEnd(null);
+        if (!hasActions) {
+          handleDateChange(date);
+        }
+        return;
+      }
+
+      // Auto-complete the selection when the clicked date is in a single-day selectable window, since there's no
+      // other day to pair it with. Contiguous dates are merged into multi-day windows by `toSelectableRanges`,
+      // so only truly isolated days reach this path.
+      const containingRange = effectiveSelectableRanges?.find(
+        r => date.getTime() >= r.startDate.getTime() && date.getTime() <= r.endDate.getTime()
+      );
+      const isIsolatedDate =
+        containingRange !== undefined &&
+        containingRange.startDate.getTime() === containingRange.endDate.getTime();
+
+      const startNewDualSelection = () => {
+        setSelectionStart(date);
+        if (isIsolatedDate) {
+          setSelectionEnd(date);
+          if (!hasActions) {
+            handleDateChange(date, date);
+          }
+        } else {
+          setSelectionEnd(null);
+        }
+      };
+
+      if (selectionStart == null || selectionEnd != null) {
+        startNewDualSelection();
+        return;
+      }
+
+      const [startRange, endRange] = normalizeRange(selectionStart, date);
+
+      // If the range would span a disabled gap between selectable windows, restart the selection from this click
+      // instead of completing it, so the user can recover without an explicit reset.
+      if (
+        startRange != null &&
+        endRange != null &&
+        !isRangeFullySelectable(startRange, endRange, effectiveSelectableRanges)
+      ) {
+        startNewDualSelection();
+        return;
+      }
+      setSelectionEnd(date);
+      if (!hasActions) {
+        handleDateChange(startRange, endRange);
+      }
+    },
+    [
+      isDisabled,
+      selectionStart,
+      selectionEnd,
+      hasActions,
+      variant,
+      handleDateChange,
+      resolvedFirstAvailable,
+      resolvedLastAvailable,
+      effectiveSelectableRanges
+    ]
+  );
+
+  const handlePresetClick = useCallback(
+    (preset: TDateRangePresetOption) => {
+      const [start, end] = preset.getPresetRange();
+      setSelectionStart(start);
+      setSelectionEnd(end);
+      setActivePreset(preset.key);
+      if (start) setFocusedDate(start);
+      const navDate = start ?? end;
+      if (navDate) {
+        const [m, y] = clampLeftMonth(
+          navDate.getMonth(),
+          navDate.getFullYear(),
+          resolvedFirstAvailable,
+          resolvedLastAvailable,
+          showSingleCalendar
+        );
+        setLeftMonth(m);
+        setLeftYear(y);
+      }
+      if (!hasActions && variant === 'Dual') {
+        const [startRange, endRange] = normalizeRange(start, end);
+        handleDateChange(startRange, endRange);
+      }
+    },
+    [
+      resolvedFirstAvailable,
+      resolvedLastAvailable,
+      showSingleCalendar,
+      hasActions,
+      variant,
+      handleDateChange
+    ]
+  );
+
+  const handleReset = useCallback(() => {
+    setSelectionStart(null);
+    setSelectionEnd(null);
+    setActivePreset(null);
+    const today = toMidnight(new Date());
+    let target: Date;
+    if (resolvedFirstAvailable && today < resolvedFirstAvailable) {
+      target = resolvedFirstAvailable;
+    } else if (today > resolvedLastAvailable) {
+      target = resolvedLastAvailable;
+    } else {
+      target = today;
+    }
+    setFocusedDate(snapToNearestSelectable(target, selectableRanges));
+  }, [resolvedFirstAvailable, resolvedLastAvailable, selectableRanges]);
+
+  const handleApply = useCallback(() => {
+    if (variant === 'Dual') {
+      const [start, end] = normalizeRange(selectionStart, selectionEnd);
+      handleDateChange(start, end);
+    } else {
+      handleDateChange(selectionStart);
+    }
+  }, [selectionStart, selectionEnd, variant, handleDateChange]);
+
+  const handleCalendarKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const current = effectiveFocusedDate;
+      let stepDelta: number;
+
+      switch (e.key) {
+        case 'ArrowRight':
+          stepDelta = 1; // 1 day right
+          break;
+        case 'ArrowLeft':
+          stepDelta = -1; // 1 day left
+          break;
+        case 'ArrowDown':
+          stepDelta = 7; // 1 week down
+          break;
+        case 'ArrowUp':
+          stepDelta = -7; // 1 week up
+          break;
+        case 'Enter':
+        case ' ':
+          e.preventDefault();
+          handleDateClick(current);
+          return;
+        default:
+          return;
+      }
+
+      e.preventDefault();
+
+      // Step past disabled cells in the chosen direction; ±7 keeps ↑/↓ on the same column-of-week (see utility doc).
+      // `null` means no further selectable date in this direction → no-op.
+      const next = stepToNextSelectableDate(
+        current,
+        stepDelta,
+        effectiveSelectableRanges,
+        resolvedFirstAvailable,
+        resolvedLastAvailable,
+        MAX_ARROW_STEP_ATTEMPTS
+      );
+      if (next === null) return;
+
+      setFocusedDate(next);
+      shouldFocusRef.current = true;
+
+      const nKey = monthKey(next.getMonth(), next.getFullYear());
+      const lKey = monthKey(leftMonth, leftYear);
+
+      if (showSingleCalendar) {
+        if (nKey < lKey) navigateBack();
+        else if (nKey > lKey) navigateForward();
+      } else {
+        const rKey = monthKey(rightMonth, rightYear);
+        if (nKey < lKey) navigateBack();
+        else if (nKey > rKey) navigateForward();
+      }
+    },
+    [
+      effectiveFocusedDate,
+      handleDateClick,
+      leftMonth,
+      leftYear,
+      rightMonth,
+      rightYear,
+      showSingleCalendar,
+      resolvedFirstAvailable,
+      resolvedLastAvailable,
+      effectiveSelectableRanges,
+      navigateBack,
+      navigateForward
+    ]
+  );
+
+  const isApplyDisabled = useMemo(() => {
+    if (variant === 'Single') {
+      return selectionStart == null;
+    }
+    return selectionStart == null || selectionEnd == null;
+  }, [variant, selectionStart, selectionEnd]);
+
+  return (
+    <div
+      ref={ref}
+      style={{ width: 'fit-content' }}
+      aria-disabled={isDisabled || undefined}
+      className={clsx(
+        'bg-surface-200 stroke-default stroke-standard radius-large overflow-clip flex flex-col shadow-transient-high',
+        isDisabled && 'opacity-[50%] pointer-events-none select-none cursor-not-allowed',
+        className
+      )}>
+      {/* Header */}
+      <div
+        className='flex items-center gap-xsmall padding-x-large padding-y-medium'
+        style={{ borderBottom: '1px solid var(--color-stroke-default)' }}>
+        <IconButton
+          icon='icon-filled-chevron-large-left'
+          ariaLabel={labels.previousMonth}
+          variant='Utility'
+          size='Small'
+          isDisabled={!canNavigateBack}
+          onClick={navigateBack}
+        />
+        <div className='grow-1 basis-0 flex items-center'>
+          {showSingleCalendar ? (
+            <div className='grow-1 basis-0 flex items-center justify-center'>
+              <span className='text-title-medium content-default'>
+                {monthNames[leftMonth]} {leftYear}
+              </span>
+            </div>
+          ) : (
+            <React.Fragment>
+              <div className='grow-1 basis-0 flex items-center justify-center'>
+                <span className='text-title-medium content-default'>
+                  {monthNames[leftMonth]} {leftYear}
+                </span>
+              </div>
+              <div className='grow-1 basis-0 flex items-center justify-center'>
+                <span className='text-title-medium content-default'>
+                  {monthNames[rightMonth]} {rightYear}
+                </span>
+              </div>
+            </React.Fragment>
+          )}
+        </div>
+        <IconButton
+          icon='icon-filled-chevron-large-right'
+          ariaLabel={labels.nextMonth}
+          variant='Utility'
+          size='Small'
+          isDisabled={!canNavigateForward}
+          onClick={navigateForward}
+        />
+      </div>
+
+      {/* Calendars */}
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- keyboard event delegation for roving tabindex */}
+      <div
+        ref={calendarRef}
+        onKeyDown={handleCalendarKeyDown}
+        className={clsx(
+          'flex padding-x-large padding-y-small',
+          !showSingleCalendar && 'gap-large'
+        )}>
+        <CalendarGrid
+          month={leftMonth}
+          year={leftYear}
+          monthNames={monthNames}
+          dayNamesShort={dayNamesShort}
+          localeFirstDayOfWeek={localeFirstDayOfWeek}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          firstAvailableDate={resolvedFirstAvailable}
+          lastAvailableDate={resolvedLastAvailable}
+          selectableRanges={effectiveSelectableRanges}
+          focusedDate={effectiveFocusedDate}
+          onDateClick={handleDateClick}
+        />
+        {!showSingleCalendar && (
+          <CalendarGrid
+            month={rightMonth}
+            year={rightYear}
+            monthNames={monthNames}
+            dayNamesShort={dayNamesShort}
+            localeFirstDayOfWeek={localeFirstDayOfWeek}
+            rangeStart={rangeStart}
+            rangeEnd={rangeEnd}
+            firstAvailableDate={resolvedFirstAvailable}
+            lastAvailableDate={resolvedLastAvailable}
+            selectableRanges={effectiveSelectableRanges}
+            focusedDate={effectiveFocusedDate}
+            onDateClick={handleDateClick}
+          />
+        )}
+      </div>
+
+      {/* Selection Display (Dual) */}
+      {variant === 'Dual' && (
+        <div
+          className='flex items-center justify-center padding-y-small padding-x-large gap-xsmall text-body-medium content-default'
+          style={{ borderTop: '1px solid var(--color-stroke-default)' }}>
+          <span>{rangeStart ? formatDate(rangeStart, resolvedLocale) : '—'}</span>
+          <span className='content-muted'>–</span>
+          <span>{rangeEnd ? formatDate(rangeEnd, resolvedLocale) : '—'}</span>
+        </div>
+      )}
+
+      {/* Presets (Dual variant only) */}
+      {presets && presets.length > 0 && variant === 'Dual' && (
+        <div
+          style={
+            showSingleCalendar
+              ? {
+                  borderTop: '1px solid var(--color-stroke-default)',
+                  maxWidth: 'calc(280px + 2 * var(--padding-large))'
+                }
+              : { borderTop: '1px solid var(--color-stroke-default)' }
+          }
+          className='flex flex-wrap items-center gap-xsmall padding-x-large padding-y-medium'>
+          {presets.map(preset => (
+            <Chip
+              key={preset.key}
+              text={preset.label}
+              size='Small'
+              isChecked={activePreset === preset.key}
+              onCheckedChange={() => handlePresetClick(preset)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Footer -- note intentionally not destructuring to achieve type narrowing */}
+      {props.hasActions !== false && (
+        <div
+          className='flex items-center justify-between padding-large'
+          style={{ borderTop: '1px solid var(--color-stroke-default)' }}>
+          {props.variant === 'Dual' && (
+            <Button variant='Utility' size='Medium' onClick={handleReset}>
+              {props.labels.resetAll}
+            </Button>
+          )}
+          <div
+            className={clsx('flex items-center gap-small', props.variant !== 'Dual' && 'grow-1')}>
+            <Button
+              variant='Emphasis'
+              size='Medium'
+              isDisabled={isApplyDisabled}
+              onClick={handleApply}
+              className='grow-1'>
+              {props.labels.apply}
+            </Button>
+            <Button variant='Standard' size='Medium' onClick={onCancel} className='grow-1'>
+              {props.labels.cancel}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const DateTimePicker = forwardRef(
+  DateTimePickerComponent
+) as TForwardRefComponent<TDateTimePickerProps>;
+
+DateTimePicker.displayName = 'DateTimePicker';
+
+export default DateTimePicker;

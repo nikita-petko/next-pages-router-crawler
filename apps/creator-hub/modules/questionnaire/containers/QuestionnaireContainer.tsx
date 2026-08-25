@@ -1,19 +1,26 @@
 import type { FunctionComponent, PropsWithChildren } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
+import { useFlag } from '@rbx/flags';
 import { withTranslation, useLocalization } from '@rbx/intl';
 import { Grid } from '@rbx/ui';
+import { questionnaireSectionStepperEnabled } from '@generated/flags/contentSuitability';
 import { SCROLL_CONTAINER_ID } from '@modules/creator-hub-layout/CreatorHubLayoutInner';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import QuestionnaireAccordions from '../components/QuestionnaireAccordions';
 import QuestionnaireProgress from '../components/QuestionnaireProgress';
+import QuestionnaireSectionStepper from '../components/QuestionnaireSectionStepper';
 import QuestionnaireSubmissionState from '../components/SubmissionState';
 import { QUESTIONNAIRE_TRANSLATION_KEYS } from '../constants/questionnaireConstants';
 import { QuestionnaireTelemetryProvider } from '../contexts/QuestionnaireTelemetryContext';
 import useQuestionnaireAttemptTiming from '../hooks/useQuestionnaireAttemptTiming';
 import useQuestionnaireFunnelAttempt from '../hooks/useQuestionnaireFunnelAttempt';
+import {
+  QuestionnaireSectionStepperIxpCache,
+  QuestionnaireSectionStepperIxpEnrollment,
+} from '../hooks/useQuestionnaireSectionStepperGate';
 import useQuestionnaireTelemetry from '../hooks/useQuestionnaireTelemetry';
 import useQuestionnaireToast from '../hooks/useQuestionnaireToast';
 import networkRequestManager from '../implementations/QuestionnaireNetworkRequestManager';
@@ -55,12 +62,19 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [editedAnswers, setEditedAnswers] = useState<ValidatedAnswer[] | null>(null);
   const [subPage, setSubPage] = useState<SubPage>(SubPage.Landing);
+  const [hasExistingAnswersAtEntry, setHasExistingAnswersAtEntry] = useState(false);
+  const [isEditingFromPreview, setIsEditingFromPreview] = useState(false);
+  const priorSubPageRef = useRef(subPage);
   const { locale } = useLocalization();
   const localeCode = convertToRobloxLocale(locale);
   const explicitEntryPoint =
     typeof router.query.entryPoint === 'string' ? router.query.entryPoint : undefined;
   const { settings, isFetched } = useSettings();
   const { enableContentMaturity18Plus } = settings;
+  const { ready: isSectionStepperFlagReady, value: isSectionStepperFlagEnabled } = useFlag(
+    questionnaireSectionStepperEnabled,
+  );
+  const isStepperExperimentEnabled = isSectionStepperFlagReady && isSectionStepperFlagEnabled;
 
   const setAnswers = useCallback(
     (questionId: string, answers: ValidatedAnswer[]) => {
@@ -104,6 +118,14 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
     () => editedAnswers ?? answersData ?? [],
     [editedAnswers, answersData],
   );
+
+  useLayoutEffect(() => {
+    if (subPage === SubPage.Questionnaire && priorSubPageRef.current !== SubPage.Questionnaire) {
+      setHasExistingAnswersAtEntry(pendingAnswers.length > 0);
+      setIsEditingFromPreview(priorSubPageRef.current === SubPage.Preview);
+    }
+    priorSubPageRef.current = subPage;
+  }, [subPage, pendingAnswers]);
 
   const { data: submissionData, isLoading: isSubmissionLoading } = useLatestSubmission(universeId);
 
@@ -246,6 +268,10 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
     document.getElementById(SCROLL_CONTAINER_ID)?.scrollTo(0, 0);
   }, []);
 
+  const goToLanding = useCallback(() => {
+    setSubPage(SubPage.Landing);
+  }, []);
+
   const handleStartQuestionnaire = useCallback(() => {
     startAttempt({ onStarted: goToQuestionnaire });
   }, [goToQuestionnaire, startAttempt]);
@@ -297,18 +323,26 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
     goToQuestionnaire();
   };
 
-  if (
-    isLatestQuestionnaireIdLoading ||
-    isAnswerLoading ||
-    isSubmissionLoading ||
-    isQuestionnaireLoading ||
-    isDetailedGuidelinesLoading ||
-    !isFetched
-  ) {
-    return <PageLoading />;
-  }
+  const questionnaireFormProps = useMemo(
+    () => ({
+      answers: pendingAnswers,
+      errors,
+      isSaving,
+      setAnswers,
+      send: attemptShowPreview,
+      save: attemptSave,
+      goToLanding,
+    }),
+    [pendingAnswers, errors, isSaving, setAnswers, attemptShowPreview, attemptSave, goToLanding],
+  );
 
-  return (
+  const showSectionStepper = (isIxpStepperEnabled: boolean, isIxpFetched: boolean): boolean =>
+    isStepperExperimentEnabled && !isEditingFromPreview && isIxpFetched && isIxpStepperEnabled;
+
+  const isWaitingForIxpAssignment = (isIxpFetched: boolean): boolean =>
+    isStepperExperimentEnabled && !hasExistingAnswersAtEntry && !isIxpFetched;
+
+  const renderQuestionnaireContent = (isIxpStepperEnabled: boolean, isIxpFetched: boolean) => (
     <Grid container flexDirection='column' gap='var(--gap-xxlarge)' maxWidth='700px'>
       {subPage === SubPage.Landing && (
         <QuestionnaireProgress
@@ -321,20 +355,25 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
         />
       )}
 
-      {subPage === SubPage.Questionnaire && questionnaireData && (
-        <QuestionnaireTelemetryProvider value={telemetry}>
-          <QuestionnaireAccordions
-            questionnaire={questionnaireData}
-            answers={pendingAnswers}
-            errors={errors}
-            isSaving={isSaving}
-            setAnswers={setAnswers}
-            send={attemptShowPreview}
-            save={attemptSave}
-            goToLanding={() => setSubPage(SubPage.Landing)}
-          />
-        </QuestionnaireTelemetryProvider>
-      )}
+      {subPage === SubPage.Questionnaire &&
+        questionnaireData &&
+        (isWaitingForIxpAssignment(isIxpFetched) ? (
+          <PageLoading />
+        ) : (
+          <QuestionnaireTelemetryProvider value={telemetry}>
+            {showSectionStepper(isIxpStepperEnabled, isIxpFetched) ? (
+              <QuestionnaireSectionStepper
+                questionnaire={questionnaireData}
+                {...questionnaireFormProps}
+              />
+            ) : (
+              <QuestionnaireAccordions
+                questionnaire={questionnaireData}
+                {...questionnaireFormProps}
+              />
+            )}
+          </QuestionnaireTelemetryProvider>
+        ))}
 
       {subPage === SubPage.Preview && questionnaireId && (
         <QuestionnairePreviewContainer
@@ -354,6 +393,46 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
       )}
     </Grid>
   );
+
+  if (
+    isLatestQuestionnaireIdLoading ||
+    isAnswerLoading ||
+    isSubmissionLoading ||
+    isQuestionnaireLoading ||
+    isDetailedGuidelinesLoading ||
+    !isFetched ||
+    !isSectionStepperFlagReady
+  ) {
+    return <PageLoading />;
+  }
+
+  const shouldEnrollInSectionStepperExperiment =
+    isStepperExperimentEnabled && subPage === SubPage.Questionnaire && !hasExistingAnswersAtEntry;
+
+  const shouldReadSectionStepperIxpFromCache =
+    isStepperExperimentEnabled && subPage === SubPage.Questionnaire && hasExistingAnswersAtEntry;
+
+  if (shouldEnrollInSectionStepperExperiment) {
+    return (
+      <QuestionnaireSectionStepperIxpEnrollment>
+        {({ isSectionStepperEnabled: isIxpStepperEnabled, isFetched: isIxpFetched }) =>
+          renderQuestionnaireContent(isIxpStepperEnabled, isIxpFetched)
+        }
+      </QuestionnaireSectionStepperIxpEnrollment>
+    );
+  }
+
+  if (shouldReadSectionStepperIxpFromCache) {
+    return (
+      <QuestionnaireSectionStepperIxpCache>
+        {({ isSectionStepperEnabled: isIxpStepperEnabled, isFetched: isIxpFetched }) =>
+          renderQuestionnaireContent(isIxpStepperEnabled, isIxpFetched)
+        }
+      </QuestionnaireSectionStepperIxpCache>
+    );
+  }
+
+  return renderQuestionnaireContent(false, true);
 };
 
 export default withTranslation(QuestionnaireContainer, [

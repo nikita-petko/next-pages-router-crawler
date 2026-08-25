@@ -1,0 +1,169 @@
+/**
+ * Locale-related utilities for the DateTimePicker and similar components.
+ *
+ * The `TSupportedLocale` type restricts the accepted BCP 47 tags to the
+ * subset the design system actively supports, giving consumers compile-time
+ * feedback instead of silently falling back at runtime.
+ */
+
+export const supportedLocales = [
+  'en-US',
+  'en-GB',
+  'ja-JP',
+  'de-DE',
+  'fr-FR',
+  'zh-CN',
+  'zh-TW',
+  'ko-KR',
+  'pt-BR',
+  'es-ES',
+  'es-MX',
+  'it-IT',
+  'ar-SA',
+  'id-ID',
+  'th-TH',
+  'tr-TR',
+  'vi-VN',
+  'ru-RU',
+  'pl-PL',
+  'uk-UA',
+  'hi-IN',
+  'ms-MY',
+  'fil-PH',
+  'km-KH',
+  'my-MM',
+  'bn-BD',
+  'ro-RO'
+] as const;
+
+export type TSupportedLocale = (typeof supportedLocales)[number];
+
+// CLDR-derived region sets for week-start fallback when Intl.Locale.weekInfo
+// is unavailable. Source: https://unicode.org/cldr/charts/latest/supplemental/territory_information.html
+const SATURDAY_START_REGIONS = new Set([
+  'AE',
+  'AF',
+  'BH',
+  'DJ',
+  'DZ',
+  'EG',
+  'IQ',
+  'IR',
+  'JO',
+  'KW',
+  'LY',
+  'OM',
+  'QA',
+  'SA',
+  'SD',
+  'SY'
+]);
+const SUNDAY_START_REGIONS = new Set([
+  'AG',
+  'AS',
+  'AU',
+  'BD',
+  'BR',
+  'BS',
+  'BT',
+  'BW',
+  'BZ',
+  'CA',
+  'CN',
+  'CO',
+  'DM',
+  'DO',
+  'ET',
+  'GT',
+  'GU',
+  'HK',
+  'HN',
+  'ID',
+  'IL',
+  'IN',
+  'JM',
+  'JP',
+  'KE',
+  'KH',
+  'KR',
+  'LA',
+  'MH',
+  'MM',
+  'MO',
+  'MX',
+  'MZ',
+  'NI',
+  'NP',
+  'PA',
+  'PE',
+  'PH',
+  'PK',
+  'PR',
+  'PT',
+  'PY',
+  'SG',
+  'SV',
+  'TH',
+  'TT',
+  'TW',
+  'UM',
+  'US',
+  'VE',
+  'VI',
+  'WS',
+  'YE',
+  'ZA',
+  'ZW'
+]);
+
+/**
+ * Returns the ISO weekday (1=Mon … 7=Sun) that the locale considers the first
+ * day of the week. Tries `Intl.Locale.weekInfo` / `getWeekInfo()` first, then
+ * falls back to a CLDR-derived region lookup. Defaults to Monday (1).
+ */
+export function getLocaleFirstDay(locale: TSupportedLocale): number {
+  try {
+    const loc = new Intl.Locale(locale);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const info: { firstDay?: number } | undefined =
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (loc as any).weekInfo ?? (loc as any).getWeekInfo?.();
+    if (info?.firstDay != null) return info.firstDay;
+
+    const { region } = loc.maximize();
+    if (region) {
+      if (SATURDAY_START_REGIONS.has(region)) return 6;
+      if (SUNDAY_START_REGIONS.has(region)) return 7;
+    }
+  } catch {
+    /* ignore */
+  }
+  // Default to Monday
+  return 1;
+}
+
+export function getMonthNames(locale: TSupportedLocale): string[] {
+  const fmt = new Intl.DateTimeFormat(locale, { month: 'long' });
+  return Array.from({ length: 12 }, (_, i) => fmt.format(new Date(2000, i, 1)));
+}
+
+/**
+ * @param localeFirstDayOfWeek ISO weekday the week starts on (1=Mon … 7=Sun)
+ */
+export function getDayNamesShort(locale: TSupportedLocale, localeFirstDayOfWeek: number): string[] {
+  const fmt = new Intl.DateTimeFormat(locale, { weekday: 'short' });
+  // Jan 5 2004 is a Monday (ISO day 1)
+  return Array.from({ length: 7 }, (_, i) => {
+    const isoDay = ((localeFirstDayOfWeek - 1 + i) % 7) + 1;
+    return fmt.format(new Date(2004, 0, 4 + isoDay));
+  });
+}
+
+export function formatDate(date: Date, locale: TSupportedLocale): string {
+  return new Intl.DateTimeFormat(locale, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(date);
+}

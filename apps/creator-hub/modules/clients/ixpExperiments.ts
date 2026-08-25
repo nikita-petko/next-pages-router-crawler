@@ -189,6 +189,14 @@ export type CreatorHubChangelogParameterResults = {
   [CreatorHubChangelogParameters.EnableChangelogCMS]: boolean | null;
 };
 
+export enum ContentSuitabilityQuestionnaireParameters {
+  EnableSectionStepper = 'enableSectionStepper',
+}
+
+export type ContentSuitabilityQuestionnaireParameterResults = {
+  [ContentSuitabilityQuestionnaireParameters.EnableSectionStepper]: boolean | number | null;
+};
+
 export enum IXPLayers {
   CreatorDashboard = 'CreatorDashboard',
   CreatorHubHomePage = 'CreatorHub.HomePage.UserId',
@@ -209,6 +217,7 @@ export enum IXPLayers {
   CreatorHubExperienceWebhooks = 'CreatorHub.ExperienceWebhooks.UserId',
   CreatorHubChangelog = 'CreatorHub.Changelog',
   TalentHub = 'CreatorHub.TalentHub.UserId',
+  ContentSuitabilityQuestionnaire = 'ContentSuitability.Questionnaire.UserId',
 }
 
 export enum IXPUniverseLayers {
@@ -268,6 +277,7 @@ export const IXPParameters: Record<IXPLayers, IXPParamEnum> = {
   [IXPLayers.CreatorHubHomePageExperienceTile]: CreatorHubHomePageExperienceTileParameters,
   [IXPLayers.CreatorHubChangelog]: CreatorHubChangelogParameters,
   [IXPLayers.TalentHub]: TalentHubParameters,
+  [IXPLayers.ContentSuitabilityQuestionnaire]: ContentSuitabilityQuestionnaireParameters,
 };
 
 export type TIXPParameterResults = {
@@ -291,6 +301,7 @@ export type TIXPParameterResults = {
   [IXPLayers.CreatorHubHomePageExperienceTile]: CreatorHubHomePageExperienceTileParameterResults;
   [IXPLayers.CreatorHubChangelog]: CreatorHubChangelogParameterResults;
   [IXPLayers.TalentHub]: TalentHubParameterResults;
+  [IXPLayers.ContentSuitabilityQuestionnaire]: ContentSuitabilityQuestionnaireParameterResults;
 };
 
 async function fetchIXPParametersForCurrentUserUncached<Layer extends IXPLayers>(

@@ -242,6 +242,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: contentSuitabilityFlags.questionnaireSectionStepperEnabled,
+      metadata: {
+        namespace: 'content-suitability',
+        name: 'questionnaireSectionStepperEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: creatorAnalyticsFlags.analyticsChartLoadEventstreamEnabled,
       metadata: {
         namespace: 'creator-analytics',

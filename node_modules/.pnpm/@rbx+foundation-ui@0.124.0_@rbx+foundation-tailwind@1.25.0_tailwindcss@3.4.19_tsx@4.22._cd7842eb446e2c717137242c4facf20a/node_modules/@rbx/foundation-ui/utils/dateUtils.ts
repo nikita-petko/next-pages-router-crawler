@@ -1,0 +1,324 @@
+/**
+ * Pure date-math utilities for the DateTimePicker and calendar components.
+ * None of these depend on Intl or locale — they operate on numeric
+ * year/month/date values.
+ */
+
+export function toMidnight(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+export function monthKey(month: number, year: number): number {
+  return year * 12 + month;
+}
+
+export function getDaysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+/**
+ * Returns the column offset (0-6) for the first day of the given month in a
+ * calendar grid whose week starts on `localeFirstDayOfWeek` (ISO 1=Mon … 7=Sun).
+ */
+export function getFirstDayOfWeek(
+  year: number,
+  month: number,
+  localeFirstDayOfWeek: number
+): number {
+  const jsDay = new Date(year, month, 1).getDay(); // 0=Sun … 6=Sat
+  const localeFirstDayOfWeekJs = localeFirstDayOfWeek % 7; // ISO 7 (Sun) → JS 0
+  return (jsDay - localeFirstDayOfWeekJs + 7) % 7;
+}
+
+export function isSameDay(a: Date | null, b: Date | null): boolean {
+  if (!a || !b) return false;
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+export function isDateInRange(date: Date, start: Date | null, end: Date | null): boolean {
+  if (!end) return false;
+  const time = date.getTime();
+  if (!start) return time <= end.getTime();
+  return time >= start.getTime() && time <= end.getTime();
+}
+
+export function normalizeRange(start: Date | null, end: Date | null): [Date | null, Date | null] {
+  if (!start || !end) return [start, end];
+  if (end.getTime() < start.getTime()) return [end, start];
+  return [start, end];
+}
+
+export function isDateOutOfBounds(
+  date: Date,
+  firstAvailable: Date | undefined,
+  lastAvailable: Date
+): boolean {
+  if (firstAvailable && date.getTime() < firstAvailable.getTime()) return true;
+  return date.getTime() > lastAvailable.getTime();
+}
+
+/**
+ * A half-open interval of selectable dates, inclusive on both ends.
+ * Both endpoints should already be normalized to midnight before being
+ * passed into the range-matching helpers below.
+ */
+export type TDateRange = {
+  startDate: Date;
+  endDate: Date;
+};
+
+/**
+ * Returns true if `date` is included in at least one of the given ranges. Ranges are treated as inclusive on both ends.
+ *
+ * Passing `undefined` means "no selectability constraint"; all dates are considered selectable. Passing an empty array
+ * means "nothing is selectable" and returns false.
+ */
+export function isDateInSelectableRanges(
+  date: Date,
+  ranges: readonly TDateRange[] | undefined
+): boolean {
+  if (ranges === undefined) return true;
+  if (ranges.length === 0) return false;
+  const t = date.getTime();
+  return ranges.some(r => t >= r.startDate.getTime() && t <= r.endDate.getTime());
+}
+
+/**
+ * Returns true if every day in the inclusive interval `[start, end]` is selectable — i.e., the entire interval
+ * fits within at least one of the given ranges. This is used to prevent dual-mode selections that would span a
+ * disabled gap between disjoint selectable windows.
+ *
+ * The caller is expected to pass an already-normalized pair where `start <= end`. Ranges are assumed to be disjoint
+ * (which is the shape the DateTimePicker produces from its `selectableDateRange` prop), so a continuous interval can
+ * only be "fully selectable" if it lies entirely within one of the ranges.
+ *
+ * Passing `undefined` for `ranges` means "no selectability constraint" and returns true.
+ */
+export function isRangeFullySelectable(
+  start: Date,
+  end: Date,
+  ranges: readonly TDateRange[] | undefined
+): boolean {
+  if (ranges === undefined) return true;
+  const s = start.getTime();
+  const e = end.getTime();
+  return ranges.some(r => s >= r.startDate.getTime() && e <= r.endDate.getTime());
+}
+
+/**
+ * Snaps `date` to the nearest selectable date under `ranges`. If `date` already lands inside a range it is returned
+ * unchanged; otherwise the closest range endpoint (by absolute distance) wins. Returns `date` untouched when `ranges`
+ * is `undefined` (no constraint) or empty (no valid snap target).
+ *
+ * Used to recover a valid focus/selection when an input like `defaultDates` or `Date.now()` falls in a disabled gap.
+ */
+export function snapToNearestSelectable(
+  date: Date,
+  ranges: readonly TDateRange[] | undefined
+): Date {
+  if (ranges === undefined || ranges.length === 0) return date;
+  const t = date.getTime();
+  // Early exit if the date already falls inside a range — no snap needed.
+  if (ranges.some(r => t >= r.startDate.getTime() && t <= r.endDate.getTime())) {
+    return date;
+  }
+  const best = ranges.reduce<{ diff: number; candidate: Date } | null>((acc, r) => {
+    const s = r.startDate.getTime();
+    const candidate = t < s ? r.startDate : r.endDate;
+    const diff = Math.abs(t - candidate.getTime());
+    if (acc === null || diff < acc.diff) {
+      return { diff, candidate };
+    }
+    return acc;
+  }, null);
+  return best ? best.candidate : date;
+}
+
+/**
+ * Collapses overlapping or calendar-day-adjacent ranges into a minimal set of disjoint ranges.
+ * Consecutive calendar days count as adjacent (e.g. `{Apr 11, Apr 11}` and `{Apr 12, Apr 12}`
+ * merge into `{Apr 11, Apr 12}`), so consumers can pass an array of individual `Date`s that happen
+ * to be contiguous and still treat them as a single multi-day window.
+ *
+ * All endpoints are expected to already be at local midnight. Uses `setDate(+1)` rather than millisecond
+ * arithmetic so the adjacency check is correct across DST transitions.
+ */
+export function mergeAdjacentRanges(ranges: readonly TDateRange[]): TDateRange[] {
+  if (ranges.length <= 1) return ranges.slice();
+  const sorted = [...ranges].sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  const merged: TDateRange[] = [sorted[0]];
+  for (let i = 1; i < sorted.length; i += 1) {
+    const current = sorted[i];
+    const previous = merged[merged.length - 1];
+    const dayAfterPrevious = new Date(previous.endDate);
+    dayAfterPrevious.setDate(dayAfterPrevious.getDate() + 1);
+    if (current.startDate.getTime() <= dayAfterPrevious.getTime()) {
+      if (current.endDate.getTime() > previous.endDate.getTime()) {
+        merged.splice(merged.length - 1, 1, {
+          startDate: previous.startDate,
+          endDate: current.endDate
+        });
+      }
+    } else {
+      merged.push(current);
+    }
+  }
+  return merged;
+}
+
+/**
+ * Returns a new Date offset from `date` by `days` calendar days.
+ */
+export function addDays(date: Date, days: number): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+}
+
+/**
+ * Clips each range in `ranges` to the inclusive window `[windowStart, windowEnd]` and drops ones that don't intersect.
+ * Used to constrain range-aware searches (e.g. nearest-selectable snap) to a viewport so an out-of-view range can't
+ * win a nearest-neighbor contest against an in-view one and leave focus pointing at an unrendered cell.
+ *
+ * `undefined` ranges → `undefined`. An empty result means "nothing selectable in the window"; callers must handle
+ * it explicitly since downstream helpers typically treat an empty list as "nothing is selectable".
+ */
+export function clipRangesToWindow(
+  ranges: readonly TDateRange[] | undefined,
+  windowStart: Date,
+  windowEnd: Date
+): TDateRange[] | undefined {
+  if (ranges === undefined) return undefined;
+  const ws = windowStart.getTime();
+  const we = windowEnd.getTime();
+  const clipped: TDateRange[] = [];
+  for (let i = 0; i < ranges.length; i += 1) {
+    const r = ranges[i];
+    const s = Math.max(r.startDate.getTime(), ws);
+    const e = Math.min(r.endDate.getTime(), we);
+    if (s <= e) {
+      clipped.push({
+        startDate: s === r.startDate.getTime() ? r.startDate : new Date(s),
+        endDate: e === r.endDate.getTime() ? r.endDate : new Date(e)
+      });
+    }
+  }
+  return clipped;
+}
+
+/**
+ * Repeatedly steps from `from` by `stepDelta` calendar days until landing on a selectable date inside the inclusive
+ * envelope `[firstAvailable, lastAvailable]`. Returns the resolved date, or `null` if the search exits the envelope
+ * or hits `maxAttempts` first.
+ *
+ * Stride encodes both direction and grid axis:
+ *  - `±1` (ArrowLeft/Right) walks day-by-day across a horizontal gap.
+ *  - `±7` (ArrowUp/Down) matches the calendar's row stride, so every probe lands on the *same column-of-week* as
+ *    `from`. Vertical navigation therefore stays anchored to the original day-of-week — pressing ↓ from a Tuesday
+ *    always lands on a Tuesday, even when the search skips multiple disabled rows.
+ *
+ * `stepDelta` must be non-zero (the loop relies on monotonic progression toward an envelope edge to terminate).
+ * `maxAttempts` is a defensive cap; the envelope check is the usual terminator.
+ */
+export function stepToNextSelectableDate(
+  from: Date,
+  stepDelta: number,
+  ranges: readonly TDateRange[] | undefined,
+  firstAvailable: Date | undefined,
+  lastAvailable: Date,
+  maxAttempts: number
+): Date | null {
+  let next = addDays(from, stepDelta);
+  for (let i = 0; i < maxAttempts; i += 1) {
+    if (firstAvailable && next.getTime() < firstAvailable.getTime()) return null;
+    if (next.getTime() > lastAvailable.getTime()) return null;
+    if (isDateInSelectableRanges(next, ranges)) return next;
+    next = addDays(next, stepDelta);
+  }
+  return null;
+}
+
+export function clampLeftMonth(
+  month: number,
+  year: number,
+  firstAvailable: Date | undefined,
+  lastAvailable: Date,
+  singleCalendar: boolean
+): [number, number] {
+  let mk = monthKey(month, year);
+  const lastMk = monthKey(lastAvailable.getMonth(), lastAvailable.getFullYear());
+  const maxMk = singleCalendar ? lastMk : lastMk - 1;
+
+  if (mk > maxMk) {
+    mk = maxMk;
+  }
+
+  if (firstAvailable) {
+    const firstMk = monthKey(firstAvailable.getMonth(), firstAvailable.getFullYear());
+    if (mk < firstMk) {
+      mk = firstMk;
+    }
+  }
+
+  return [mk % 12, Math.floor(mk / 12)];
+}
+
+export type TCalendarDay = {
+  date: number;
+  month: number;
+  year: number;
+  isOutsideMonth: boolean;
+};
+
+export function buildWeeks(
+  month: number,
+  year: number,
+  localeFirstDayOfWeek: number
+): TCalendarDay[][] {
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDayOfWeek = getFirstDayOfWeek(year, month, localeFirstDayOfWeek);
+
+  const prevMonth = month === 0 ? 11 : month - 1;
+  const prevYear = month === 0 ? year - 1 : year;
+  const daysInPrevMonth = getDaysInMonth(prevYear, prevMonth);
+  const nextMonth = month === 11 ? 0 : month + 1;
+  const nextYear = month === 11 ? year + 1 : year;
+
+  const rows: TCalendarDay[][] = [];
+  let currentRow: TCalendarDay[] = [];
+
+  for (let i = firstDayOfWeek - 1; i >= 0; i -= 1) {
+    currentRow.push({
+      date: daysInPrevMonth - i,
+      month: prevMonth,
+      year: prevYear,
+      isOutsideMonth: true
+    });
+  }
+
+  for (let d = 1; d <= daysInMonth; d += 1) {
+    currentRow.push({ date: d, month, year, isOutsideMonth: false });
+    if (currentRow.length === 7) {
+      rows.push(currentRow);
+      currentRow = [];
+    }
+  }
+
+  if (currentRow.length > 0) {
+    let nextDay = 1;
+    while (currentRow.length < 7) {
+      currentRow.push({
+        date: nextDay,
+        month: nextMonth,
+        year: nextYear,
+        isOutsideMonth: true
+      });
+      nextDay += 1;
+    }
+    rows.push(currentRow);
+  }
+
+  return rows;
+}

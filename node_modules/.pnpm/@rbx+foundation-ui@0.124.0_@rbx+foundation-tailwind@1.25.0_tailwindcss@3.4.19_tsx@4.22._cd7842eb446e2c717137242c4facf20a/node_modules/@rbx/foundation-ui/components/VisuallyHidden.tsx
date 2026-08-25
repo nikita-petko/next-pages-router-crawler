@@ -1,0 +1,6 @@
+import type { ComponentProps } from 'react';
+import { VisuallyHidden as RadixVisuallyHidden } from '@radix-ui/react-visually-hidden';
+
+export type TVisuallyHiddenProps = ComponentProps<typeof RadixVisuallyHidden>;
+
+export const VisuallyHidden = RadixVisuallyHidden;
