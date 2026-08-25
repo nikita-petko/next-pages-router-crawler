@@ -1,4 +1,11 @@
-import { useEffect, useMemo, type FunctionComponent, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FunctionComponent,
+  type ReactNode,
+} from 'react';
 import Link from 'next/link';
 import {
   AgreementCandidateType,
@@ -26,6 +33,7 @@ import { BUTTON_SPINNER_SIZE } from '../utils/constants';
 import CollectibleMatchContentTile from './CollectibleMatchContentTile';
 import { getCollectibleMatchPresentation } from './collectibleMatchPresentation';
 import getCollectibleItemTypeLabel from './getCollectibleItemTypeLabel';
+import IgnoreMatchPanelContent from './IgnoreMatchPanelContent';
 import {
   AgreementStatusFromBatchMaps,
   type AgreementStatusesColumnProps,
@@ -44,6 +52,8 @@ type CollectibleMatchCandidate = AgreementCandidateResponse &
 interface CollectibleMatchDetailsPanelContentProps {
   candidate: CollectibleMatchCandidate;
   onClose: () => void;
+  /** Called after a match is successfully ignored so the parent can prune and advance. */
+  onIgnored?: () => void;
   agreementStatusFromList?: MatchPanelAgreementStatus;
   navigation?: MatchDetailsPanelNavigation;
   rowPosition?: number;
@@ -55,6 +65,7 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
 > = ({
   candidate,
   onClose,
+  onIgnored,
   agreementStatusFromList,
   navigation,
   rowPosition,
@@ -68,6 +79,9 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
   const { tPendingTranslation } = useTranslationWrapper(translation);
   const { logEvent } = useLicenseManagerLogger();
   const { logOnce } = useLicenseManagerLoggerLogOnce();
+  const [ignoreReasonViewCandidateId, setIgnoreReasonViewCandidateId] = useState<string | null>(
+    null,
+  );
   const { ready: isIgnoreMatchFlagReady, value: isIgnoreMatchEnabled } =
     useFlag(isIgnoreMatchEnabledFlag);
   const collectibleItemId = candidate.candidateId;
@@ -88,6 +102,24 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
   });
   const isIgnoreMatchAllowed = isIgnoreMatchFlagReady && isIgnoreMatchEnabled;
   const showIgnoreButton = isIgnoreMatchAllowed && !waitingOnAgreementStatus && !showViewAgreement;
+  const isIgnoreReasonViewOpen =
+    ignoreReasonViewCandidateId != null && ignoreReasonViewCandidateId === candidate.id;
+
+  const handleIgnoreClick = useCallback(() => {
+    if (isIgnoreMatchAllowed) {
+      setIgnoreReasonViewCandidateId(candidate.id ?? null);
+    }
+  }, [candidate.id, isIgnoreMatchAllowed]);
+  const handleIgnoreBack = useCallback(() => {
+    setIgnoreReasonViewCandidateId(null);
+  }, []);
+  const handleMatchIgnored = useCallback(() => {
+    if (!isIgnoreMatchAllowed) {
+      return;
+    }
+    setIgnoreReasonViewCandidateId(null);
+    onIgnored?.();
+  }, [isIgnoreMatchAllowed, onIgnored]);
   const isLoading = itemDetailsQuery.isPending || !isIgnoreMatchFlagReady;
   const hasLoadFailure = !isLoading && (itemDetailsQuery.isError || !details);
   const panelState: MatchPanelState = isLoading ? 'loading' : hasLoadFailure ? 'error' : 'ready';
@@ -194,6 +226,17 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
     );
   }
 
+  if (isIgnoreReasonViewOpen) {
+    return (
+      <IgnoreMatchPanelContent
+        candidateId={candidate.id}
+        onBack={handleIgnoreBack}
+        onClose={onClose}
+        onIgnored={handleMatchIgnored}
+      />
+    );
+  }
+
   let primaryCta: ReactNode;
   if (waitingOnAgreementStatus) {
     primaryCta = (
@@ -251,8 +294,7 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
         {translate('Action.ViewDetails')}
       </Button>
       {showIgnoreButton && (
-        // TODO(MUS-2673): Implement ignoring Collectible matches.
-        <Button variant='contained' color='secondary' size='large'>
+        <Button variant='contained' color='secondary' size='large' onClick={handleIgnoreClick}>
           {translate('Action.Ignore')}
         </Button>
       )}

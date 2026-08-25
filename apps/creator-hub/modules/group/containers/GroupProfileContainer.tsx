@@ -21,12 +21,14 @@ import PermissionDeniedPage from '../components/PermissionDeniedPage';
 import ConfigureGroupForm from '../components/profile/ConfigureGroupForm';
 import GroupOwnershipTransferAlert from '../components/profile/GroupOwnershipTransferAlert';
 import type { GroupConfiguration } from '../ConfigureGroupTypes';
+import useBottomToast from '../hooks/useBottomToast';
 import useCanAccessGroupProfile from '../hooks/useCanAccessGroupProfile';
 import useCurrentOrganization from '../hooks/useCurrentOrganization';
 
 const GroupProfileContainer: FunctionComponent<React.PropsWithChildren> = () => {
   const { translate } = useTranslation();
   const currentGroup = useCurrentGroup();
+  const { showBottomToast } = useBottomToast();
   const { user } = useAuthentication();
   const { canAccess, isLoading: isLoadingAccess } = useCanAccessGroupProfile(currentGroup?.id);
   const { permissions } = useCurrentOrganization();
@@ -115,6 +117,7 @@ const GroupProfileContainer: FunctionComponent<React.PropsWithChildren> = () => 
           userId={user.id}
           getCreatorHubRoleUrl={creatorHub.getGroupRoleUrl}
           getLegacyRolesUrl={www.getConfigureGroupRolesUrl}
+          showToast={showBottomToast}
         />
       )}
       {canAccess ? (

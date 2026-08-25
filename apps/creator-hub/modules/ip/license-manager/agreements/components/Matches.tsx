@@ -864,6 +864,7 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
             <CollectibleMatchDetailsPanelContent
               candidate={selectedCandidate}
               onClose={handleCloseButtonClick}
+              onIgnored={handleMatchIgnored}
               agreementStatusFromList={matchPanelAgreementStatus}
               navigation={matchDetailsNavigation}
               rowPosition={selectedMatchIndex + 1}

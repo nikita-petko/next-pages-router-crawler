@@ -100,7 +100,9 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
   const { enqueueWithDefaults } = useIpSnackbar();
   const { logEvent } = useLicenseManagerLogger();
 
-  const [isIgnoreReasonViewOpen, setIsIgnoreReasonViewOpen] = useState(false);
+  const [ignoreReasonViewCandidateId, setIgnoreReasonViewCandidateId] = useState<string | null>(
+    null,
+  );
   const { logOnce } = useLicenseManagerLoggerLogOnce();
 
   const analyticsContext = useMemo(
@@ -136,16 +138,18 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
   const { ready: isIgnoreMatchFlagReady, value: isIgnoreMatchEnabled } =
     useFlag(isIgnoreMatchEnabledFlag);
   const isIgnoreMatchAllowed = isIgnoreMatchFlagReady && isIgnoreMatchEnabled;
+  const isIgnoreReasonViewOpen =
+    ignoreReasonViewCandidateId != null && ignoreReasonViewCandidateId === candidate.id;
 
   const handleIgnoreClick = useCallback(() => {
     if (!isIgnoreMatchAllowed) {
       return;
     }
-    setIsIgnoreReasonViewOpen(true);
-  }, [isIgnoreMatchAllowed]);
+    setIgnoreReasonViewCandidateId(candidate.id ?? null);
+  }, [candidate.id, isIgnoreMatchAllowed]);
 
   const handleIgnoreBack = useCallback(() => {
-    setIsIgnoreReasonViewOpen(false);
+    setIgnoreReasonViewCandidateId(null);
   }, []);
 
   const candidateId = candidate.id;
@@ -154,7 +158,7 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
     if (!isIgnoreMatchAllowed) {
       return;
     }
-    setIsIgnoreReasonViewOpen(false);
+    setIgnoreReasonViewCandidateId(null);
     onIgnored?.();
   }, [isIgnoreMatchAllowed, onIgnored]);
 

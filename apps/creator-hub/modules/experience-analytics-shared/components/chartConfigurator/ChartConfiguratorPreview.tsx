@@ -325,7 +325,7 @@ const ChartConfiguratorPreview: FC<ChartConfiguratorPreviewProps> = ({
 
   return (
     <div className='flex flex-col [flex:1_1_0%] width-full min-width-0 gap-medium'>
-      <div className='width-full flex flex-row items-end [flex-wrap:wrap] gap-medium padding-bottom-medium [border-bottom:var(--stroke-standard)_solid_var(--color-stroke-default)]'>
+      <div className='width-full flex flex-row items-start [flex-wrap:wrap] gap-medium padding-bottom-medium'>
         <ChartConfiguratorDateRangeControl dateRangeOptions={dateRangeOptions} />
         {filterControlSlot}
       </div>

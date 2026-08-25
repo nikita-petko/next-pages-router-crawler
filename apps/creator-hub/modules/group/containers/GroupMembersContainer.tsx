@@ -8,11 +8,13 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { creatorHub, www } from '@modules/miscellaneous/urls';
 import { useGetGroupProductFeatures } from '@modules/react-query/groups/groupQueries';
 import GroupMembersV2 from '../components/groupMembersV2/GroupMembersV2';
+import useBottomToast from '../hooks/useBottomToast';
 import useCurrentOrganization from '../hooks/useCurrentOrganization';
 
 const GroupMembersContainer: FunctionComponent<React.PropsWithChildren> = () => {
   const { organization, permissions } = useCurrentOrganization();
   const { user } = useAuthentication();
+  const { showBottomToast } = useBottomToast();
   const groupId = organization?.groupId ? Number(organization.groupId) : undefined;
   const { data: productFeatures, isLoading: isProductFeaturesLoading } =
     useGetGroupProductFeatures(groupId);
@@ -35,6 +37,7 @@ const GroupMembersContainer: FunctionComponent<React.PropsWithChildren> = () => 
           userId={user.id}
           getCreatorHubRoleUrl={creatorHub.getGroupRoleUrl}
           getLegacyRolesUrl={www.getConfigureGroupRolesUrl}
+          showToast={showBottomToast}
         />
       )}
       <GroupMembersV2 />

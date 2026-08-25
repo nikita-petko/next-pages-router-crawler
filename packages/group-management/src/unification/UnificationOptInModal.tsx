@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import TranslationNamespace from '../constants/TranslationNamespace';
 import type { UseUnificationOptInOptions } from '../hooks/useUnificationOptIn';
@@ -12,16 +12,25 @@ import { MigrationCompleteModal } from './UnificationCompleteModal';
 export type UnificationOptInModalProps = UseUnificationOptInOptions & {
   getCreatorHubRoleUrl?: (roleId: string) => string;
   getLegacyRolesUrl?: (groupId: string) => string;
+  showToast?: (message: string) => void;
 };
 
 const UnificationOptInModalInner: FC<UnificationOptInModalProps> = ({
   getCreatorHubRoleUrl,
   getLegacyRolesUrl,
+  showToast,
   ...unificationOptions
 }) => {
-  const { ready } = useTranslation();
+  const { ready, translateWithNamespace } = useTranslation();
   const { modalState, onContinue, onAskLater, onAcknowledge, breakingChanges } =
     useUnificationOptIn(unificationOptions);
+
+  const handleContinue = useCallback(() => {
+    onContinue();
+    showToast?.(
+      translateWithNamespace(TranslationNamespace.GroupManagement, 'Message.UnificationStarted'),
+    );
+  }, [onContinue, showToast, translateWithNamespace]);
 
   if (!ready) {
     return null;
@@ -29,7 +38,7 @@ const UnificationOptInModalInner: FC<UnificationOptInModalProps> = ({
 
   switch (modalState) {
     case ModalState.NonBreaking:
-      return <NoBreakingChangesModal isOpen onContinue={onContinue} onAskLater={onAskLater} />;
+      return <NoBreakingChangesModal isOpen onContinue={handleContinue} onAskLater={onAskLater} />;
     case ModalState.Breaking:
       return (
         <BreakingChangesModal
@@ -38,7 +47,7 @@ const UnificationOptInModalInner: FC<UnificationOptInModalProps> = ({
           groupId={unificationOptions.groupId}
           getCreatorHubRoleUrl={getCreatorHubRoleUrl}
           getLegacyRolesUrl={getLegacyRolesUrl}
-          onContinue={onContinue}
+          onContinue={handleContinue}
           onAskLater={onAskLater}
         />
       );
