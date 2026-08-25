@@ -26,6 +26,10 @@ import {
   CustomDashboardVersionConflictError,
 } from '../../errors';
 import { customDashboardQueryKeys } from '../../hooks/customDashboardsQueryConfig';
+import {
+  type UserDisplayNamesById,
+  useUserDisplayNamesQuery,
+} from '../../hooks/useUserDisplayNamesQuery';
 import { getSummaryCards, withSummaryCards } from '../../layout/dashboardLayout';
 import {
   useCanMutateCustomDashboards,
@@ -41,6 +45,7 @@ import {
 } from '../../types';
 import { createTileId } from '../../utils/createTileId';
 import { createDuplicateDashboardNameSuffixes } from '../../utils/duplicateDashboardNameSuffixes';
+import { resolveCreatedByDisplayName } from '../../utils/resolveCreatedByDisplayName';
 import { buildDuplicateDashboardName } from '../../utils/suggestDefaultName';
 import { validateCustomDashboardConfig } from '../../utils/validators';
 import {
@@ -75,6 +80,8 @@ import { persistExistingDashboardUpdate } from './persistExistingDashboardUpdate
 import { resolveActiveSession } from './resolveActiveSession';
 import { shouldPromptBeforeLeavingEditor } from './shouldPromptBeforeLeavingEditor';
 import useEditPageTranslations from './useEditPageTranslations';
+
+const EMPTY_USER_DISPLAY_NAMES: UserDisplayNamesById = new Map();
 
 /**
  * Editor render-state machine: Loading / NotFound / NotAvailable / generic
@@ -265,6 +272,24 @@ const EditPageContent: FC<EditPageContentProps> = ({
   }
   const activeSessionDashboardId = renderedActiveSession?.dashboardId;
   const activeSessionDraftId = renderedActiveSession?.draftId;
+  const createdByUserId = renderedActiveSession?.createdByUserId;
+  const attributionUserIds = useMemo(
+    () => (createdByUserId !== undefined && createdByUserId > 0 ? [createdByUserId] : []),
+    [createdByUserId],
+  );
+  const userDisplayNamesQuery = useUserDisplayNamesQuery(attributionUserIds);
+  const userDisplayNamesById = userDisplayNamesQuery.isSuccess
+    ? userDisplayNamesQuery.data
+    : EMPTY_USER_DISPLAY_NAMES;
+  const createdByDisplayName = renderedActiveSession
+    ? resolveCreatedByDisplayName({
+        createdByUserId: renderedActiveSession.createdByUserId,
+        createdByUsername: renderedActiveSession.createdByUsername,
+        displayNamesById: userDisplayNamesById,
+        isLookupPending: userDisplayNamesQuery.isPending,
+        unknownCreatorLabel: t.unknownCreatorLabel,
+      })
+    : null;
 
   useEffect(() => {
     if (
@@ -841,11 +866,7 @@ const EditPageContent: FC<EditPageContentProps> = ({
         <InternalSandboxBanner />
         <EditPageHeaderStack
           dashboardName={draftDashboardName}
-          createdByUsername={
-            renderedActiveSession
-              ? renderedActiveSession.createdByUsername || t.unknownCreatorLabel
-              : null
-          }
+          createdByUsername={createdByDisplayName}
           hasUnsavedChanges={canMutateDashboards && hasUnsavedChanges}
           isSaving={isSaving}
           saveError={saveError}
