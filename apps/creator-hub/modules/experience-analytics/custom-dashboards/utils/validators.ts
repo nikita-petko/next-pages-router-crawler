@@ -374,8 +374,9 @@ function validatePlainText(value: string, field: string): string {
 
 /**
  * Validate a user-provided dashboard name, returning the trimmed value. The
- * service should call this on every create/update before persisting; UI code
- * may call it pre-submit to surface inline errors. Throws
+ * local persistence services call this before writing; API-backed writes
+ * delegate policy validation to the authoritative service. UI code may call it
+ * pre-submit to surface inline errors. Throws
  * `CustomDashboardValidationError('name', ...)` when empty or longer than
  * `MAX_DASHBOARD_NAME_LENGTH`.
  */
@@ -1058,7 +1059,8 @@ export type ValidateCustomDashboardConfigOptions = {
   /**
    * When true (default), reject configs that exceed summary/chart tile caps.
    * Read paths should pass `false` so previously saved over-cap dashboards
-   * remain loadable; write/save paths keep the default so new caps still bind.
+   * remain loadable; local write paths keep the default so new caps still bind.
+   * API-backed writes serialize typed candidates for authoritative validation.
    */
   readonly enforceTileCaps?: boolean;
 };
@@ -1195,7 +1197,7 @@ export function validateCustomDashboardDocument(raw: unknown): CustomDashboardDo
     updatedByUserId: optional(asNumber)(record.updatedByUserId, 'updatedByUserId'),
     updatedByUsername: optional(asNonEmptyString)(record.updatedByUsername, 'updatedByUsername'),
     // Read path: accept previously saved over-cap layouts so lowering caps
-    // does not quarantine existing dashboards. Write paths call
+    // does not quarantine existing dashboards. Local write paths call
     // `validateCustomDashboardConfig` directly and keep enforcing caps.
     config: validateCustomDashboardConfig(record.config, { enforceTileCaps: false }),
   };

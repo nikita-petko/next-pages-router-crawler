@@ -1307,11 +1307,13 @@ function fromProtoPage(raw: unknown, field: string): CustomDashboardConfig['page
 export function customDashboardConfigToBackendDocument(
   config: CustomDashboardConfig,
 ): BackendCustomDashboardDocument {
-  const validated = validateCustomDashboardConfig(config);
+  // Serialize the typed candidate without applying frontend policy checks so
+  // create/publish remains the acceptance authority. The `toProto*` adapters
+  // still reject shapes that cannot be represented as valid protobuf JSON.
   return {
     schemaVersion: CUSTOM_DASHBOARD_CURRENT_SCHEMA_VERSION,
     config: {
-      page: toProtoPage(validated.page),
+      page: toProtoPage(config.page),
     },
   };
 }
@@ -1331,8 +1333,7 @@ export function backendDocumentToCustomDashboardConfig(document: unknown): Custo
     fail('config.page must be an object.');
   }
   // Read path: skip tile caps so previously saved over-cap dashboards remain
-  // loadable. Writes go through `customDashboardConfigToBackendDocument`, which
-  // keeps the default write-time enforcement.
+  // loadable. Write policy is enforced by the authoritative API.
   return validateCustomDashboardConfig(
     {
       page: fromProtoPage(document.config.page, 'config.page'),

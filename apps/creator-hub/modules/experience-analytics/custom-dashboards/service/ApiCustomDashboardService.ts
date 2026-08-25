@@ -19,11 +19,6 @@ import {
   suggestDefaultName,
 } from '../utils/suggestDefaultName';
 import {
-  validateCustomDashboardConfig,
-  validateDashboardDescription,
-  validateDashboardName,
-} from '../utils/validators';
-import {
   createDefaultCustomDashboardsApiClient,
   type ApiDashboardMetadata,
   type CustomDashboardsApiClient,
@@ -114,17 +109,12 @@ class ApiCustomDashboardService implements CustomDashboardService {
   async create(input: CreateCustomDashboardInput): Promise<CustomDashboardDocument> {
     return this.withApiErrors(input.universeId, undefined, async () => {
       this.ensureAvailable();
-      const name = validateDashboardName(input.name);
-      const description = validateDashboardDescription(input.description);
-      const config =
-        input.config !== undefined
-          ? validateCustomDashboardConfig(input.config)
-          : EMPTY_DASHBOARD_CONFIG;
+      const config = input.config ?? EMPTY_DASHBOARD_CONFIG;
 
       const dashboard = await this.client.createDashboard({
         universeId: input.universeId,
-        name,
-        description,
+        name: input.name,
+        description: input.description,
         document: toApiDashboardDocument(config),
       });
       this.rememberMetadata(input.universeId, dashboard.metadata);
@@ -144,14 +134,13 @@ class ApiCustomDashboardService implements CustomDashboardService {
       this.ensureAvailable();
       const metadataPatch: { name?: string; description?: string } = {};
       if (changes.name !== undefined) {
-        metadataPatch.name = validateDashboardName(changes.name);
+        metadataPatch.name = changes.name;
       }
       if (changes.description !== undefined) {
-        metadataPatch.description = validateDashboardDescription(changes.description) ?? '';
+        metadataPatch.description = changes.description;
       }
 
-      const config =
-        changes.config !== undefined ? validateCustomDashboardConfig(changes.config) : undefined;
+      const { config } = changes;
 
       const hasMetadataChanges =
         metadataPatch.name !== undefined || metadataPatch.description !== undefined;
