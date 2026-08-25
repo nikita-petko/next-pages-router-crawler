@@ -1,6 +1,7 @@
-import { type FC, type ReactNode, useCallback } from 'react';
+import { type FC, type MouseEvent, type ReactNode, useCallback } from 'react';
 import { Button, TableCell, TableRow, Toggle, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
 import LocalCopyBadge from '../../../components/LocalCopyBadge';
+import { UNRESOLVED_CREATED_BY_USERNAME } from '../../../constants/unresolvedCreatedByUsername';
 import type { UserDisplayNamesById } from '../../../hooks/useUserDisplayNamesQuery';
 import type { CustomDashboardListItem } from '../../../types';
 import type { DashboardActionHandlers } from '../hooks/useDashboardActions';
@@ -43,6 +44,14 @@ const DashboardsTableRow: FC<DashboardsTableRowProps> = ({
     onOpen(dashboard);
   };
 
+  const handleNameLinkClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    handleNameClick();
+  };
+
   const handleViewClick = useCallback(() => {
     onOpen(dashboard);
   }, [dashboard, onOpen]);
@@ -55,11 +64,17 @@ const DashboardsTableRow: FC<DashboardsTableRowProps> = ({
   );
 
   const lastModified = formatLastModifiedDate(dashboard.updatedAt);
-  const createdByFallback = dashboard.createdByUsername || t.unknownCreatorLabel;
+  const createdByFallback =
+    !dashboard.createdByUsername || dashboard.createdByUsername === UNRESOLVED_CREATED_BY_USERNAME
+      ? t.unknownCreatorLabel
+      : dashboard.createdByUsername;
   const createdByDisplay = userDisplayNamesById.get(dashboard.createdByUserId) ?? createdByFallback;
   const modifiedByUserId = dashboard.updatedByUserId ?? dashboard.createdByUserId;
+  const modifiedBySource = dashboard.updatedByUsername ?? dashboard.createdByUsername;
   const modifiedByFallback =
-    (dashboard.updatedByUsername ?? dashboard.createdByUsername) || t.unknownCreatorLabel;
+    !modifiedBySource || modifiedBySource === UNRESOLVED_CREATED_BY_USERNAME
+      ? t.unknownCreatorLabel
+      : modifiedBySource;
   const modifiedByDisplay = userDisplayNamesById.get(modifiedByUserId) ?? modifiedByFallback;
   const isHybridServerRow = dashboard.hybridOrigin === 'server';
   const isHybridLocalCopy = dashboard.hybridOrigin === 'localCopy';
@@ -88,12 +103,12 @@ const DashboardsTableRow: FC<DashboardsTableRowProps> = ({
   const cellsByColumn: Record<(typeof MANAGE_TABLE_COLUMNS)[number], ReactNode> = {
     name: (
       <div className='flex items-center gap-small min-width-0'>
-        <button
-          type='button'
-          onClick={handleNameClick}
+        <a
+          href={`/dashboard/creations/experiences/${dashboard.universeId}/analytics/dashboards/${dashboard.id}`}
+          onClick={handleNameLinkClick}
           className='text-body-medium content-emphasis hover:underline focus-visible:underline text-truncate-end inline-block max-width-full text-align-x-left bg-none stroke-none padding-none cursor-pointer'>
           {dashboard.name}
-        </button>
+        </a>
         {isHybridLocalCopy ? <LocalCopyBadge /> : null}
       </div>
     ),
@@ -101,6 +116,10 @@ const DashboardsTableRow: FC<DashboardsTableRowProps> = ({
     modifiedBy: <span className='text-body-medium content-default'>{modifiedByDisplay}</span>,
     lastModified: (
       <span className='text-body-medium content-muted text-no-wrap'>{lastModified}</span>
+    ),
+    // Placeholder: v1 ships a static "Private" stub until the sharing flag lands.
+    permissions: (
+      <span className='text-body-medium content-default'>{t.permissionsPrivateLabel}</span>
     ),
     pinToSidebar: pinDisabledTooltip ? (
       <Tooltip title={pinDisabledTooltip} position='top-center'>
@@ -134,6 +153,7 @@ const DashboardsTableRow: FC<DashboardsTableRowProps> = ({
     createdBy: t.columnCreatedBy,
     modifiedBy: t.columnModifiedBy,
     lastModified: t.columnLastModified,
+    permissions: t.columnPermissions,
     pinToSidebar: t.columnPinToSidebar,
   };
 
@@ -142,6 +162,7 @@ const DashboardsTableRow: FC<DashboardsTableRowProps> = ({
     createdBy: tableStyles.createdByCell,
     modifiedBy: tableStyles.modifiedByCell,
     lastModified: tableStyles.lastModifiedCell,
+    permissions: tableStyles.permissionsCell,
     pinToSidebar: tableStyles.pinToSidebarCell,
     actions: tableStyles.actionsCell,
   };

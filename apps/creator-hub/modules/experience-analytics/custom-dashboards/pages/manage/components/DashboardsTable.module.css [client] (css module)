@@ -9,6 +9,7 @@ __turbopack_context__.v({
   "mobileCellLabel": "DashboardsTable-module__dtaVla__mobileCellLabel",
   "modifiedByCell": "DashboardsTable-module__dtaVla__modifiedByCell",
   "nameCell": "DashboardsTable-module__dtaVla__nameCell",
+  "permissionsCell": "DashboardsTable-module__dtaVla__permissionsCell",
   "pinToSidebarCell": "DashboardsTable-module__dtaVla__pinToSidebarCell",
   "skeletonRow": "DashboardsTable-module__dtaVla__skeletonRow",
   "table": "DashboardsTable-module__dtaVla__table",

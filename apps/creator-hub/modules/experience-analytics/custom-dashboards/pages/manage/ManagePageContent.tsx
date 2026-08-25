@@ -80,16 +80,44 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
   const nextPageToken = listQuery.data?.nextPageToken;
   const { isStale: isListStale } = listQuery;
 
+  // Resolve display names for the full loaded set before filtering so the
+  // search can match the creator name the row actually displays. API-backed
+  // rows carry an unresolved username sentinel (or a blank username); their
+  // visible creator name is the display name resolved from `createdByUserId`,
+  // so the lookup must span the unfiltered list — not just the rendered page.
+  const attributionUserIds = useMemo(
+    () =>
+      [...(serverItems ?? []), ...(localItems ?? [])].flatMap((dashboard) => [
+        dashboard.createdByUserId,
+        dashboard.updatedByUserId ?? dashboard.createdByUserId,
+      ]),
+    [serverItems, localItems],
+  );
+  const userDisplayNamesQuery = useUserDisplayNamesQuery(attributionUserIds);
+  // Attribution names enhance the persisted metadata. While they load, or if
+  // the lookup fails, rows (and the search filter) fall back to the stored
+  // username.
+  const userDisplayNamesById = userDisplayNamesQuery.isSuccess
+    ? userDisplayNamesQuery.data
+    : EMPTY_USER_DISPLAY_NAMES;
+
   const { pagedItems: serverPagedItems, filteredCount: serverFilteredCount } =
     useFilteredAndPagedDashboards(
       serverItems,
       pageState.searchQuery,
       isApiBacked ? 1 : pageState.page,
       pageState.pageSize,
+      userDisplayNamesById,
     );
 
   const { pagedItems: localPagedItems, filteredCount: localFilteredCount } =
-    useFilteredAndPagedDashboards(localItems, pageState.searchQuery, 1, Number.MAX_SAFE_INTEGER);
+    useFilteredAndPagedDashboards(
+      localItems,
+      pageState.searchQuery,
+      1,
+      Number.MAX_SAFE_INTEGER,
+      userDisplayNamesById,
+    );
   const displayedItems = useMemo(
     () => [...localPagedItems, ...serverPagedItems],
     [localPagedItems, serverPagedItems],
@@ -104,20 +132,6 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
     const fullList = isApiBacked ? rootListQuery.data?.items : serverItems;
     return (fullList ?? []).filter((d) => d.isPinned && d.hybridOrigin !== 'localCopy').length;
   }, [isApiBacked, rootListQuery.data?.items, serverItems]);
-  const attributionUserIds = useMemo(
-    () =>
-      displayedItems.flatMap((dashboard) => [
-        dashboard.createdByUserId,
-        dashboard.updatedByUserId ?? dashboard.createdByUserId,
-      ]),
-    [displayedItems],
-  );
-  const userDisplayNamesQuery = useUserDisplayNamesQuery(attributionUserIds);
-  // Attribution names enhance the persisted metadata. While they load, or if
-  // the lookup fails, rows continue to render their stored username fallback.
-  const userDisplayNamesById = userDisplayNamesQuery.isSuccess
-    ? userDisplayNamesQuery.data
-    : EMPTY_USER_DISPLAY_NAMES;
 
   const hasNextPage = Boolean(nextPageToken);
   let totalPages = Math.max(1, Math.ceil(serverFilteredCount / pageState.pageSize));
@@ -299,6 +313,7 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
                 value={pageState.searchQuery}
                 onChange={pageState.setSearchQuery}
                 onClear={pageState.clearSearchQuery}
+                disabled={isLoading}
               />
             ) : null}
 

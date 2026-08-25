@@ -25,7 +25,7 @@ function LocalCopyBadge(): ReactElement {
     <Tooltip title={tooltip} position='top-center'>
       <TooltipTrigger asChild>
         <span
-          className='shrink-0 radius-small bg-surface-200 padding-x-xsmall padding-y-xxsmall text-caption-small content-muted cursor-help'
+          className='shrink-0 radius-small bg-surface-200 stroke-none padding-x-xsmall padding-y-xxsmall text-caption-small content-muted cursor-help'
           aria-label={tooltip}>
           {label}
         </span>

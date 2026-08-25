@@ -28,6 +28,9 @@ const DashboardsTableHeader: FC = () => {
           if (columnKey === 'lastModified') {
             return <TableHeaderCell key={columnKey}>{t.columnLastModified}</TableHeaderCell>;
           }
+          if (columnKey === 'permissions') {
+            return <TableHeaderCell key={columnKey}>{t.columnPermissions}</TableHeaderCell>;
+          }
           if (columnKey === 'pinToSidebar') {
             return (
               <TableHeaderCell key={columnKey}>

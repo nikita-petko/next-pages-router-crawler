@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import { UNRESOLVED_CREATED_BY_USERNAME } from '../../../constants/unresolvedCreatedByUsername';
+import type { UserDisplayNamesById } from '../../../hooks/useUserDisplayNamesQuery';
 import type { CustomDashboardListItem } from '../../../types';
 
 export type FilteredAndPagedDashboards = {
@@ -14,7 +16,11 @@ export type FilteredAndPagedDashboards = {
   readonly rangeEnd: number;
 };
 
-function matchesSearch(item: CustomDashboardListItem, normalizedQuery: string): boolean {
+function matchesSearch(
+  item: CustomDashboardListItem,
+  normalizedQuery: string,
+  userDisplayNamesById: UserDisplayNamesById,
+): boolean {
   if (!normalizedQuery) {
     return true;
   }
@@ -23,28 +29,43 @@ function matchesSearch(item: CustomDashboardListItem, normalizedQuery: string): 
     return true;
   }
   const description = item.description?.toLowerCase() ?? '';
-  return description.includes(normalizedQuery);
+  if (description.includes(normalizedQuery)) {
+    return true;
+  }
+  const creatorName = userDisplayNamesById.get(item.createdByUserId) ?? item.createdByUsername;
+  if (!creatorName || creatorName === UNRESOLVED_CREATED_BY_USERNAME) {
+    return false;
+  }
+  return creatorName.toLowerCase().includes(normalizedQuery);
 }
 
 /**
- * Filter (name + description, case-insensitive) → slice. The list returned
- * by the service is already sorted by `sortDashboardsForList` (pinned-first
- * → updatedAt desc → id), and `Array.prototype.filter` preserves that
- * order, so the manage page must NOT resort here — re-sorting by
- * `updatedAt` alone would drop pinned dashboards out of the leading rows.
+ * Filter (name + description + visible creator name, case-insensitive) → slice.
+ * The visible creator name is the display name resolved from
+ * `createdByUserId` (API-backed rows carry an unresolved username sentinel or
+ * a blank username), falling back to the persisted username only while
+ * display names are still loading. `userDisplayNamesById` must span the
+ * unfiltered `allItems` — not just the rendered page — so a row that matches
+ * only by its resolved creator name isn't filtered out before its display
+ * name is available. The list returned by the service is already sorted by
+ * `sortDashboardsForList` (pinned-first → updatedAt desc → id), and
+ * `Array.prototype.filter` preserves that order, so the manage page must NOT
+ * resort here — re-sorting by `updatedAt` alone would drop pinned dashboards
+ * out of the leading rows.
  */
 export function useFilteredAndPagedDashboards(
   allItems: ReadonlyArray<CustomDashboardListItem> | undefined,
   searchQuery: string,
   page: number,
   pageSize: number,
+  userDisplayNamesById: UserDisplayNamesById,
 ): FilteredAndPagedDashboards {
   return useMemo<FilteredAndPagedDashboards>(() => {
     const items = allItems ?? [];
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
     const filtered = normalizedQuery
-      ? items.filter((item) => matchesSearch(item, normalizedQuery))
+      ? items.filter((item) => matchesSearch(item, normalizedQuery, userDisplayNamesById))
       : items;
 
     const filteredCount = filtered.length;
@@ -63,5 +84,5 @@ export function useFilteredAndPagedDashboards(
       rangeStart: filteredCount === 0 ? 0 : startIndex + 1,
       rangeEnd: endIndex,
     };
-  }, [allItems, searchQuery, page, pageSize]);
+  }, [allItems, searchQuery, page, pageSize, userDisplayNamesById]);
 }

@@ -55,6 +55,7 @@
       'created-by created-by'
       'modified-by modified-by'
       'last-modified last-modified'
+      'permissions permissions'
       'pin-to-sidebar pin-to-sidebar';
     width: 100%;
   }
@@ -85,6 +86,10 @@
     grid-area: last-modified;
   }
 
+  .permissionsCell {
+    grid-area: permissions;
+  }
+
   .pinToSidebarCell {
     grid-area: pin-to-sidebar;
   }
@@ -102,6 +107,7 @@
   .createdByCell,
   .modifiedByCell,
   .lastModifiedCell,
+  .permissionsCell,
   .pinToSidebarCell {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

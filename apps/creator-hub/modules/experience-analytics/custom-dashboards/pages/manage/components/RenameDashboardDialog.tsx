@@ -64,10 +64,6 @@ const RenameDashboardDialog: FC<RenameDashboardDialogProps> = ({
       setValidationError(t.renameValidationRequired);
       return;
     }
-    if (trimmed.length > MAX_DASHBOARD_NAME_LENGTH) {
-      setValidationError(t.renameValidationTooLong({ max: String(MAX_DASHBOARD_NAME_LENGTH) }));
-      return;
-    }
     if (isNameBlocked) {
       setValidationError(t.renameValidationBlocked);
       return;

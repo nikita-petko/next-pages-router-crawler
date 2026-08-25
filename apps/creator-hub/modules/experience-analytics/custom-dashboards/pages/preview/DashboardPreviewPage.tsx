@@ -256,7 +256,7 @@ const DashboardPreviewPage: FC<DashboardPreviewPageProps> = ({ draftId, onBackTo
 
   if (!workingCopy) {
     return (
-      <div className='flex flex-col gap-small'>
+      <output className='flex flex-col gap-small'>
         <p className='text-heading-small content-emphasis margin-none'>{t.notAvailableTitle}</p>
         <p className='text-body-medium content-muted margin-none'>{t.notAvailableDescription}</p>
         <div className='flex flex-row'>
@@ -264,7 +264,7 @@ const DashboardPreviewPage: FC<DashboardPreviewPageProps> = ({ draftId, onBackTo
             {t.editLabel}
           </Button>
         </div>
-      </div>
+      </output>
     );
   }
 

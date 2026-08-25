@@ -83,6 +83,16 @@ export function useManagePageTranslations() {
         TranslationNamespace.Analytics,
       ),
     ),
+    columnPermissions: tPendingTranslation(
+      'Permissions',
+      'Column header for the dashboard permissions/sharing column. Placeholder for a future sharing flag; v1 ships a static Private stub for every row.',
+      translationKey('Column.CustomDashboards.Permissions', TranslationNamespace.Analytics),
+    ),
+    permissionsPrivateLabel: tPendingTranslation(
+      'Private',
+      'Static permissions label shown for every dashboard row while sharing is not yet supported. Placeholder for a future sharing flag.',
+      translationKey('Label.CustomDashboards.PermissionsPrivate', TranslationNamespace.Analytics),
+    ),
 
     pinToggleAriaLabel: (args: { name: string }) =>
       tPendingTranslation(
@@ -205,7 +215,7 @@ export function useManagePageTranslations() {
       translationKey('Heading.CustomDashboards.EmptyState', TranslationNamespace.Analytics),
     ),
     emptyStateDescription: tPendingTranslation(
-      'Get started by building a dashboard from scratch or browsing existing templates.',
+      'Get started by building a dashboard from scratch.',
       'Description shown in the manage-page empty state below the headline.',
       translationKey('Description.CustomDashboards.EmptyState', TranslationNamespace.Analytics),
     ),
@@ -362,16 +372,6 @@ export function useManagePageTranslations() {
       'Inline validation message under the rename-dashboard text input when the field is empty after trimming.',
       translationKey('Validation.CustomDashboards.Rename.Required', TranslationNamespace.Analytics),
     ),
-    renameValidationTooLong: (args: { max: string }) =>
-      tPendingTranslation(
-        'Dashboard name cannot exceed {max} characters.',
-        'Inline validation message under the rename-dashboard text input when the value exceeds the maximum length. {max} is the integer length cap.',
-        translationKey(
-          'Validation.CustomDashboards.Rename.TooLong',
-          TranslationNamespace.Analytics,
-        ),
-        args,
-      ),
     renameValidationBlocked: tPendingTranslation(
       'This name contains words that aren’t allowed. Please choose a different name.',
       'Error shown below the formula name input when the entered name fails text moderation (e.g. profanity).',

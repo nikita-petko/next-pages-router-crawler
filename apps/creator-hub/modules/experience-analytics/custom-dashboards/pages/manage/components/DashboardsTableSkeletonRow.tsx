@@ -20,6 +20,7 @@ const DashboardsTableSkeletonRow: FC = () => {
     createdBy: <ShimmerBar widthClass='width-[70%]' />,
     modifiedBy: <ShimmerBar widthClass='width-[50%]' />,
     lastModified: <ShimmerBar widthClass='width-[60%]' />,
+    permissions: <ShimmerBar widthClass='width-[40%]' />,
     pinToSidebar: <div className='height-300 width-[36px] radius-circle bg-surface-200' />,
     actions: null,
   };
@@ -28,6 +29,7 @@ const DashboardsTableSkeletonRow: FC = () => {
     createdBy: t.columnCreatedBy,
     modifiedBy: t.columnModifiedBy,
     lastModified: t.columnLastModified,
+    permissions: t.columnPermissions,
     pinToSidebar: t.columnPinToSidebar,
   };
 
@@ -36,6 +38,7 @@ const DashboardsTableSkeletonRow: FC = () => {
     createdBy: styles.createdByCell,
     modifiedBy: styles.modifiedByCell,
     lastModified: styles.lastModifiedCell,
+    permissions: styles.permissionsCell,
     pinToSidebar: styles.pinToSidebarCell,
     actions: styles.actionsCell,
   };
