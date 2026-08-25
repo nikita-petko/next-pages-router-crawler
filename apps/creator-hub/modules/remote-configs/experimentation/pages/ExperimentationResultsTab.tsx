@@ -251,6 +251,18 @@ const ExperimentationResultsTab: FC<ExperimentationResultsTabProps> = ({ experim
     return Array.from(new Set([...orederedGoalMetrics, ...orederedLearningMetrics]));
   }, [orederedGoalMetrics, orederedLearningMetrics]);
 
+  const chartTimeSpec = useMemo(() => {
+    const resultsTime = experimentVariantsResults?.resultsTime;
+    if (!resultsTime || resultsTime.getTime() >= timeSpec.endTime.getTime()) {
+      return timeSpec;
+    }
+
+    return {
+      ...timeSpec,
+      endTime: resultsTime,
+    };
+  }, [experimentVariantsResults?.resultsTime, timeSpec]);
+
   const actionInNotificationArea = useMemo(() => {
     if (
       !experiment ||
@@ -369,7 +381,7 @@ const ExperimentationResultsTab: FC<ExperimentationResultsTabProps> = ({ experim
         <ExperimentMetricsResultChart
           experimentId={experimentId}
           metrics={availableMetricOptions}
-          timeSpec={timeSpec}
+          timeSpec={chartTimeSpec}
           isSRMDetected={isSRMDetected}
         />
       )}
