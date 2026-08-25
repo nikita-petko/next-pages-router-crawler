@@ -6,15 +6,6 @@ const useAdIntegrationAssetsDrawerStyles = makeStyles()((theme) => ({
     flexDirection: 'column',
     gap: theme.spacing(1),
   },
-  campaignIdCopyIcon: {
-    fontSize: '14px',
-  },
-  campaignIdRow: {
-    alignItems: 'center',
-    display: 'flex',
-    gap: theme.spacing(0.5),
-    marginTop: theme.spacing(0.5),
-  },
   campaignInfoColumn: {
     display: 'flex',
     flexDirection: 'column',

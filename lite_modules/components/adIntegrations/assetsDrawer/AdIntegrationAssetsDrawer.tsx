@@ -50,17 +50,17 @@ interface AdIntegrationAssetsDrawerProps {
 export interface AdIntegrationAssetsDrawerCampaignInfoHeader {
   additionalUniverseCount?: number;
   advertiserName: string;
+  advertiserUrl: string;
   campaignId: string;
   campaignName: string;
   /** Formatted weighted CPTV (e.g. "$0.49"). Undefined when revenue share is disabled/unavailable. */
   cptvDisplay?: string;
-  endDate: string;
+  dateRange: string;
   experienceName: string;
   experienceThumbnailUrl?: string;
   /** Formatted maximum revenue share cost (e.g. "$6,837.00"). Undefined when revenue share is disabled/unavailable. */
   maxCostDisplay?: string;
   registrationDate: string;
-  startDate: string;
   statusLabel: string;
   statusVariant: TStatusBadgeVariant;
 }
@@ -108,11 +108,9 @@ const AdIntegrationAssetsDrawer = ({
   const { translate } = useNamespacedTranslation(TranslationNamespace.Account);
   const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
   const { translate: translateReport } = useNamespacedTranslation(TranslationNamespace.Report);
-  const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const {
     classes: {
       addAssetSection,
-      campaignIdRow,
       campaignInfoColumn,
       campaignInfoExperienceName,
       campaignInfoExperienceValue,
@@ -374,22 +372,6 @@ const AdIntegrationAssetsDrawer = ({
           {campaignInfoHeader ? campaignInfoHeader.campaignName : translate('Heading.ManageAssets')}
         </SheetTitle>
         <SheetBody className='flex flex-col gap-xlarge'>
-          {campaignInfoHeader && (
-            <div className={campaignIdRow}>
-              <span className='text-body-medium content-default'>
-                {translateReport('Label.CampaignId', { id: campaignInfoHeader.campaignId })}
-              </span>
-              <IconButton
-                ariaLabel={translateReport('Description.CopyToClipboard')}
-                icon='icon-regular-two-stacked-squares'
-                onClick={() => {
-                  navigator.clipboard.writeText(campaignInfoHeader.campaignId).catch(() => {});
-                }}
-                size='XSmall'
-                variant='Utility'
-              />
-            </div>
-          )}
           {campaignInfoHeader ? (
             <div className={campaignInfoGrid}>
               <div className={campaignInfoColumn}>
@@ -399,6 +381,14 @@ const AdIntegrationAssetsDrawer = ({
                   </span>
                   <span className={`text-body-medium ${campaignInfoValue}`}>
                     {campaignInfoHeader.advertiserName}
+                  </span>
+                </div>
+                <div className={campaignInfoItem}>
+                  <span className={`text-body-medium content-default ${campaignInfoLabel}`}>
+                    {translateMisc('Label.AdvertiserUrl')}
+                  </span>
+                  <span className={`text-body-medium ${campaignInfoValue}`}>
+                    {campaignInfoHeader.advertiserUrl}
                   </span>
                 </div>
                 <div className={campaignInfoItem}>
@@ -450,18 +440,10 @@ const AdIntegrationAssetsDrawer = ({
                 </div>
                 <div className={campaignInfoItem}>
                   <span className={`text-body-medium content-default ${campaignInfoLabel}`}>
-                    {translateCampaign('Label.CampaignStartDate')}
+                    {translateReport('Label.DateRange')}
                   </span>
                   <span className={`text-body-medium ${campaignInfoValue}`}>
-                    {campaignInfoHeader.startDate}
-                  </span>
-                </div>
-                <div className={campaignInfoItem}>
-                  <span className={`text-body-medium content-default ${campaignInfoLabel}`}>
-                    {translateCampaign('Label.EndDate')}
-                  </span>
-                  <span className={`text-body-medium ${campaignInfoValue}`}>
-                    {campaignInfoHeader.endDate}
+                    {campaignInfoHeader.dateRange}
                   </span>
                 </div>
                 {campaignInfoHeader.cptvDisplay !== undefined && (
@@ -477,13 +459,27 @@ const AdIntegrationAssetsDrawer = ({
                 {campaignInfoHeader.maxCostDisplay !== undefined && (
                   <div className={campaignInfoItem}>
                     <span className={`text-body-medium content-default ${campaignInfoLabel}`}>
-                      {translateMisc('Label.RevenueShare')}
+                      {translateMisc('Label.MaxCost')}
                     </span>
                     <span className={`text-body-medium ${campaignInfoValue}`}>
                       {campaignInfoHeader.maxCostDisplay}
                     </span>
                   </div>
                 )}
+                <div className={campaignInfoItem}>
+                  <span className={`text-body-medium content-default ${campaignInfoValue}`}>
+                    {translateReport('Label.CampaignId', { id: campaignInfoHeader.campaignId })}
+                  </span>
+                  <IconButton
+                    ariaLabel={translateReport('Description.CopyToClipboard')}
+                    icon='icon-regular-two-stacked-squares'
+                    onClick={() => {
+                      navigator.clipboard.writeText(campaignInfoHeader.campaignId).catch(() => {});
+                    }}
+                    size='XSmall'
+                    variant='Utility'
+                  />
+                </div>
               </div>
             </div>
           ) : (

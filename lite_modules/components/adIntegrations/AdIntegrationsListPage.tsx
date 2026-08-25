@@ -75,6 +75,22 @@ const getDateDisplayValue = (timestampMs?: number, locale?: string | null): stri
   });
 };
 
+const getDateRangeDisplayValue = (
+  startTimestampMs?: number,
+  endTimestampMs?: number,
+  locale?: string | null,
+): string => {
+  if (!startTimestampMs || !endTimestampMs) {
+    return UNAVAILABLE_VALUE_DISPLAY;
+  }
+
+  return new Intl.DateTimeFormat(locale || undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).formatRange(new Date(startTimestampMs), new Date(endTimestampMs));
+};
+
 const getManagedCampaignStatusPresentation = (
   campaign: AdIntegrationCampaignListItem | undefined,
   fallbackModerationStatus?: string,
@@ -394,13 +410,15 @@ const AdIntegrationsListPage = () => {
     return {
       additionalUniverseCount: managedCampaignAdditionalUniverseCount,
       advertiserName: campaignDetails?.advertiserName || UNAVAILABLE_VALUE_DISPLAY,
+      advertiserUrl: campaignDetails?.advertiserUrl || UNAVAILABLE_VALUE_DISPLAY,
       campaignId: managedCampaignId,
       campaignName: managedCampaign?.campaignName ?? campaignDetails?.campaignName ?? '',
       cptvDisplay: managedCampaignCptvDisplay,
-      endDate:
-        managedCampaign?.endTimestampMs != null
-          ? getDateDisplayValue(managedCampaign.endTimestampMs, locale)
-          : campaignDetails?.endDate || getDateDisplayValue(campaignEndTimestampMs, locale),
+      dateRange: getDateRangeDisplayValue(
+        managedCampaignStartTimestampMs,
+        managedCampaignEndTimestampMs,
+        locale,
+      ),
       experienceName: managedCampaignExperienceName,
       experienceThumbnailUrl:
         thumbnailsByUniverseId[managedCampaignPrimaryUniverseId ?? 0]?.data?.imageUrl,
@@ -409,10 +427,6 @@ const AdIntegrationsListPage = () => {
         managedCampaign?.createdTimestampMs ?? campaignCreatedTimestampMs,
         locale,
       ),
-      startDate:
-        managedCampaign?.startTimestampMs != null
-          ? getDateDisplayValue(managedCampaign.startTimestampMs, locale)
-          : campaignDetails?.startDate || getDateDisplayValue(campaignStartTimestampMs, locale),
       statusLabel,
       statusVariant: managedCampaignStatusPresentation.variant,
     };
@@ -420,10 +434,7 @@ const AdIntegrationsListPage = () => {
     campaignCreatedTimestampMs,
     campaignDetails?.campaignName,
     campaignDetails?.advertiserName,
-    campaignDetails?.endDate,
-    campaignDetails?.startDate,
-    campaignEndTimestampMs,
-    campaignStartTimestampMs,
+    campaignDetails?.advertiserUrl,
     locale,
     managedCampaignId,
     managedCampaign,
@@ -432,6 +443,8 @@ const AdIntegrationsListPage = () => {
     managedCampaignExperienceName,
     managedCampaignMaxCostDisplay,
     managedCampaignPrimaryUniverseId,
+    managedCampaignEndTimestampMs,
+    managedCampaignStartTimestampMs,
     managedCampaignStatusPresentation.label,
     managedCampaignStatusPresentation.variant,
     thumbnailsByUniverseId,

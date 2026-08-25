@@ -180,18 +180,23 @@ export const buildReportingAnalyticsQueryRequest = ({
   } else if (entityType === 'ad') {
     entityDimension = DIMENSION_AD_ID;
   }
-  const filter: QueryFilter[] = [
-    {
-      dimension: DIMENSION_ATTRIBUTION_DATE_HOUR,
-      operation: FilterOperation.Lt,
-      values: [String(endTime.getTime())],
-    },
-    {
-      dimension: DIMENSION_ATTRIBUTION_DATE_HOUR,
-      operation: FilterOperation.Gte,
-      values: [String(startTime.getTime())],
-    },
-  ];
+  // AdsRoasEstimate's cube keys __time by attribution_date (not conversion
+  // date), so it doesn't need the 30-day  attribution-window pad.
+  const isRoasEstimate = metric === 'roasEstimate';
+  const filter: QueryFilter[] = !isRoasEstimate
+    ? [
+        {
+          dimension: DIMENSION_ATTRIBUTION_DATE_HOUR,
+          operation: FilterOperation.Lt,
+          values: [String(endTime.getTime())],
+        },
+        {
+          dimension: DIMENSION_ATTRIBUTION_DATE_HOUR,
+          operation: FilterOperation.Gte,
+          values: [String(startTime.getTime())],
+        },
+      ]
+    : [];
   if (entityDimension && entityIds?.length) {
     filter.push({
       dimension: entityDimension,
@@ -214,7 +219,10 @@ export const buildReportingAnalyticsQueryRequest = ({
       ...resourceFields,
       query: {
         breakdown: breakdownDimensions.length ? [{ dimensions: breakdownDimensions }] : [],
-        endTime: getAttributionQueryEndTime(endTime).toISOString(),
+        endTime: (isRoasEstimate
+          ? endTime
+          : getAttributionQueryEndTime(endTime)
+        ).toISOString(),
         filter,
         granularity: METRIC_GRANULARITY_NONE,
         metric: getReportingMetricName(metric, reportingView, resource.type),
@@ -266,21 +274,29 @@ export const buildAnalyticsQueryRequest = ({
     resourceId: String(resource.id),
     resourceType: resource.type === 'universe' ? ResourceType.Universe : ResourceType.AdAccountId,
   };
+  // AdsRoasEstimate's metric definition does not declare AttributionDateHour
+  // as a supported dimension, so filter/breakdown on it would fail AQG
+  // validation. Time bounds still travel via query.startTime/endTime.
+  const supportsAttributionDateHour = metric !== METRIC_ROAS_ESTIMATE;
   const filter: QueryFilter[] = [
     // AttributionDateHour filter values must be epoch-ms strings (parsed as
     // int64 server-side by RoCubeFilterValueParser.ParseOrThrow in
     // developer-analytics/services/analytics-query-engine), even though the
     // top-level query.startTime/query.endTime are ISO 8601 strings.
-    {
-      dimension: DIMENSION_ATTRIBUTION_DATE_HOUR,
-      operation: FilterOperation.Lt,
-      values: [String(endTime.getTime())],
-    },
-    {
-      dimension: DIMENSION_ATTRIBUTION_DATE_HOUR,
-      operation: FilterOperation.Gte,
-      values: [String(startTime.getTime())],
-    },
+    ...(supportsAttributionDateHour
+      ? [
+          {
+            dimension: DIMENSION_ATTRIBUTION_DATE_HOUR,
+            operation: FilterOperation.Lt,
+            values: [String(endTime.getTime())],
+          },
+          {
+            dimension: DIMENSION_ATTRIBUTION_DATE_HOUR,
+            operation: FilterOperation.Gte,
+            values: [String(startTime.getTime())],
+          },
+        ]
+      : []),
     {
       dimension: DIMENSION_CAMPAIGN_ID,
       operation: FilterOperation.Equals,
@@ -301,7 +317,7 @@ export const buildAnalyticsQueryRequest = ({
       ...resourceFields,
       query: {
         breakdown:
-          granularity === 'none' || !breakdownByAttributionDate
+          granularity === 'none' || !breakdownByAttributionDate || !supportsAttributionDateHour
             ? []
             : [
                 {
