@@ -37,8 +37,9 @@ import { useLineChartYAxisOptions } from './highchart-options/yAxisOptions';
 import getLineChartZonesOptions from './highchart-options/zonesOptions';
 import showLocalizedTime from './showLocalizedTimeForGranularity';
 import { ChartStyleMode, ChartType, SeriesDataTypes } from './types/BaseChart';
-import type { ChartUpdatePolicy } from './types/BaseChart';
+import type { ChartDependencyStatus, ChartUpdatePolicy } from './types/BaseChart';
 import type { SingleLineSeries, LineRange } from './types/LineChart';
+import useCombinedChartRenderCallback from './useCombinedChartRenderCallback';
 import useCyclingTimeSeriesLegendItemClickHandler from './useCyclingTimeSeriesLegendItemClickHandler';
 import type { SelectionCallback } from './useOnSelectChartRegion';
 
@@ -92,6 +93,8 @@ type LineChartProps<X extends number, Y extends number, RangeTag> = {
 
   onSelectChartRegion?: SelectionCallback<X>;
   onChartLoad?: () => void;
+  onChartRender?: () => void;
+  onChartDependencyStatus?: (status: ChartDependencyStatus) => void;
   chartUpdatePolicy?: ChartUpdatePolicy;
 } & AnnotationProps;
 
@@ -104,6 +107,8 @@ const LineChart = <X extends number, Y extends number, RangeTag>({
   yAxisConfigs,
   onSelectChartRegion,
   onChartLoad,
+  onChartRender: onChartRenderCallback,
+  onChartDependencyStatus,
   onAnnotationsPositionsUpdated,
   annotations,
   height,
@@ -141,7 +146,7 @@ const LineChart = <X extends number, Y extends number, RangeTag>({
     const { series: givenSeries, range } = data;
 
     let minDataPoint = Infinity;
-    let zoneTypes: Set<SeriesDataTypes> | undefined;
+    const zoneTypes = new Set<SeriesDataTypes>();
     const results: Array<SeriesSplineOptions | SeriesAreasplinerangeOptions> = [];
 
     givenSeries.forEach(
@@ -221,10 +226,9 @@ const LineChart = <X extends number, Y extends number, RangeTag>({
 
         // 2. If zones are defined, gather all zone types from the series that will be included in the final results.
         zones?.forEach(({ type: zoneType }) => {
-          zoneTypes ??= new Set();
           zoneTypes.add(zoneType);
         });
-        if (zoneTypes?.size) {
+        if (zoneTypes.size) {
           zoneTypes.add(type);
         }
       },
@@ -235,7 +239,7 @@ const LineChart = <X extends number, Y extends number, RangeTag>({
     // legends with their respective zone line style and color. They don't show up in tooltips
     // either because we skip tooltip for points with no data
     let zoneSeriesResults: SeriesSplineOptions[] = [];
-    if (zoneTypes?.size) {
+    if (zoneTypes.size) {
       const dedupedZoneTypesWithLegends = Array.from(
         new Set(
           Array.from(zoneTypes).map((type) => {
@@ -329,10 +333,14 @@ const LineChart = <X extends number, Y extends number, RangeTag>({
     isAnnotationOn: !!annotations?.length,
   });
 
-  const onChartRender = useAnnotationsCallback({
+  const onAnnotationsChartRender = useAnnotationsCallback({
     annotations,
     onAnnotationsPositionsUpdated,
   });
+  const onChartRender = useCombinedChartRenderCallback(
+    onAnnotationsChartRender,
+    onChartRenderCallback,
+  );
   const chartOptions = useLineChartChartOptions({
     onSelectChartRegion,
     onChartLoad,
@@ -390,6 +398,7 @@ const LineChart = <X extends number, Y extends number, RangeTag>({
   return (
     <GenericSeriesChart
       options={highchartsOptions}
+      onChartDependencyStatus={onChartDependencyStatus}
       showLocalizedTime={xAxisType.type === 'datetime' && showLocalizedTime(xAxisType.granularity)}
       chartUpdatePolicy={chartUpdatePolicy}
     />

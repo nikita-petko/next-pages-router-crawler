@@ -1,5 +1,5 @@
-import type { Options, SeriesColumnOptions, SeriesSplineOptions } from 'highcharts';
 import React, { useMemo } from 'react';
+import type { Options, SeriesColumnOptions, SeriesSplineOptions } from 'highcharts';
 import { useTheme } from '@rbx/ui';
 import type { AnnotationProps } from './annotations/WithAnnnotations';
 import WithAnnotations from './annotations/WithAnnnotations';
@@ -30,11 +30,13 @@ import { useColumnChartXAxisOptions } from './highchart-options/xAxisOptions';
 import type { YAxisConfig } from './highchart-options/yAxisOptions';
 import { useColumnChartYAxisOptions } from './highchart-options/yAxisOptions';
 import showLocalizedTime from './showLocalizedTimeForGranularity';
+import type { ChartDependencyStatus } from './types/BaseChart';
 import { ChartStyleMode, ChartType, SeriesDataTypes } from './types/BaseChart';
 import type {
   CategoricalSingleColumnSeries,
   NonCategoricalSingleColumnSeries,
 } from './types/ColumnChart';
+import useCombinedChartRenderCallback from './useCombinedChartRenderCallback';
 import useCyclingTimeSeriesLegendItemClickHandler from './useCyclingTimeSeriesLegendItemClickHandler';
 import type { SelectionCallback } from './useOnSelectChartRegion';
 
@@ -75,6 +77,8 @@ type ColumnChartProps<CategoricalX extends string, X extends number, Y extends n
 
   onSelectChartRegion?: SelectionCallback<X>;
   onChartLoad?: () => void;
+  onChartRender?: () => void;
+  onChartDependencyStatus?: (status: ChartDependencyStatus) => void;
 } & AnnotationProps;
 
 const ColumnChart = <CategoricalX extends string, X extends number, Y extends number>({
@@ -88,6 +92,8 @@ const ColumnChart = <CategoricalX extends string, X extends number, Y extends nu
   height,
   onSelectChartRegion,
   onChartLoad,
+  onChartRender: onChartRenderCallback,
+  onChartDependencyStatus,
   tooltipFormatters,
   stacking = true,
   chartStyleMode = ChartStyleMode.Normal,
@@ -130,74 +136,76 @@ const ColumnChart = <CategoricalX extends string, X extends number, Y extends nu
   const {
     series,
     categories,
-  }: { series: Array<SeriesColumnOptions | SeriesSplineOptions>; categories?: string[] } =
-    useMemo(() => {
-      if (isChartInAbnormalState) {
-        return { series: [] };
-      }
-      const isCategorical = 'orderedCategories' in data;
-      if (isCategorical) {
-        const orderedCategories = new Map(
-          data.orderedCategories.map((category, index) => [category, index]),
-        );
-        return {
-          series: data.series.map(({ id, name, dataPoints, custom, color }) => {
-            const sortedDataPoints = [...dataPoints].sort(
-              (pointA, pointB) =>
-                (orderedCategories.get(pointA[0]) ?? Infinity) -
-                (orderedCategories.get(pointB[0]) ?? Infinity),
-            );
-            return {
-              id,
-              name,
-              data: sortedDataPoints,
-              type: ChartType.Column,
-              custom,
-              color: color ? getChartColorHexString(color, theme) : undefined,
-              point: seriesPointOptions,
-              // NOTE(shumingxu, 2024-12-10): softThreshold allows highcharts to have a >0 y-axis max even if all data points are negative
-              // This allows us to apply maxPadding for annotations without manually overriding the y-axis max.
-              // See: https://api.highcharts.com/highcharts/yAxis.maxPadding and y-axis options for column chart
-              // TLDR; set softThreshold to false when there are no positive columns
-              softThreshold: hasPositiveAltitude,
-            };
-          }),
-          categories: data.orderedCategories,
-        };
-      }
-
+  }: {
+    series: Array<SeriesColumnOptions | SeriesSplineOptions>;
+    categories?: string[];
+  } = useMemo(() => {
+    if (isChartInAbnormalState) {
+      return { series: [] };
+    }
+    const isCategorical = 'orderedCategories' in data;
+    if (isCategorical) {
+      const orderedCategories = new Map(
+        data.orderedCategories.map((category, index) => [category, index]),
+      );
       return {
-        series: data.series.map(({ id, name, dataPoints, type, custom, color }) => {
-          // Non-categorical series might have a 'Total' series, need to render it as a line instead of a column
-          const isTotalSeries = type === SeriesDataTypes.Total;
+        series: data.series.map(({ id, name, dataPoints, custom, color }) => {
+          const sortedDataPoints = [...dataPoints].sort(
+            (pointA, pointB) =>
+              (orderedCategories.get(pointA[0]) ?? Infinity) -
+              (orderedCategories.get(pointB[0]) ?? Infinity),
+          );
           return {
             id,
             name,
-            data: dataPoints,
-            type: isTotalSeries ? ChartType.Spline : ChartType.Column,
-            custom: {
-              ...custom,
-              seriesType: type, // Add series type to custom metadata
-            },
-            // Total series is always on top
-            zIndex: isTotalSeries ? 2 : 1,
+            data: sortedDataPoints,
+            type: ChartType.Column,
+            custom,
+            color: color ? getChartColorHexString(color, theme) : undefined,
             point: seriesPointOptions,
-            ...getColumnStyleOptionsByDataType(theme, type, color),
+            // NOTE(shumingxu, 2024-12-10): softThreshold allows highcharts to have a >0 y-axis max even if all data points are negative
+            // This allows us to apply maxPadding for annotations without manually overriding the y-axis max.
+            // See: https://api.highcharts.com/highcharts/yAxis.maxPadding and y-axis options for column chart
+            // TLDR; set softThreshold to false when there are no positive columns
             softThreshold: hasPositiveAltitude,
-            tooltip: {
-              pointFormatter: perSeriesPointFormatter,
-            },
           };
         }),
+        categories: data.orderedCategories,
       };
-    }, [
-      data,
-      hasPositiveAltitude,
-      isChartInAbnormalState,
-      perSeriesPointFormatter,
-      seriesPointOptions,
-      theme,
-    ]);
+    }
+
+    return {
+      series: data.series.map(({ id, name, dataPoints, type, custom, color }) => {
+        // Non-categorical series might have a 'Total' series, need to render it as a line instead of a column
+        const isTotalSeries = type === SeriesDataTypes.Total;
+        return {
+          id,
+          name,
+          data: dataPoints,
+          type: isTotalSeries ? ChartType.Spline : ChartType.Column,
+          custom: {
+            ...custom,
+            seriesType: type, // Add series type to custom metadata
+          },
+          // Total series is always on top
+          zIndex: isTotalSeries ? 2 : 1,
+          point: seriesPointOptions,
+          ...getColumnStyleOptionsByDataType(theme, type, color),
+          softThreshold: hasPositiveAltitude,
+          tooltip: {
+            pointFormatter: perSeriesPointFormatter,
+          },
+        };
+      }),
+    };
+  }, [
+    data,
+    hasPositiveAltitude,
+    isChartInAbnormalState,
+    perSeriesPointFormatter,
+    seriesPointOptions,
+    theme,
+  ]);
 
   const { annotationOptions, plotBandsOptions } = useAnnotationsOptions(
     isChartInAbnormalState ? undefined : annotations,
@@ -205,10 +213,14 @@ const ColumnChart = <CategoricalX extends string, X extends number, Y extends nu
 
   const plotOptions = useColumnChartPlotOptions({ stacking });
 
-  const onChartRender = useAnnotationsCallback({
+  const onAnnotationsChartRender = useAnnotationsCallback({
     annotations,
     onAnnotationsPositionsUpdated,
   });
+  const onChartRender = useCombinedChartRenderCallback(
+    onAnnotationsChartRender,
+    onChartRenderCallback,
+  );
   const chartOptions = useColumnChartChartOptions({
     onSelectChartRegion,
     onChartLoad,
@@ -237,7 +249,9 @@ const ColumnChart = <CategoricalX extends string, X extends number, Y extends nu
     formatX: tooltipFormatters.formatXForPoint,
   });
 
-  const legendTitleAndCreditOptions = useLegendTitleAndCreditOptions({ chartStyleMode });
+  const legendTitleAndCreditOptions = useLegendTitleAndCreditOptions({
+    chartStyleMode,
+  });
   const smallHeightResponsiveRulesOptions = useSmallHeightResponsiveRulesOptions();
   const narrowWidthResponsiveRulesOptions = useNarrowWidthResponsiveRulesOptions();
 
@@ -250,7 +264,9 @@ const ColumnChart = <CategoricalX extends string, X extends number, Y extends nu
       xAxis: xAxisOptions,
       yAxis: yAxisOptions,
       tooltip: tooltipOptions,
-      responsive: { rules: [smallHeightResponsiveRulesOptions, narrowWidthResponsiveRulesOptions] },
+      responsive: {
+        rules: [smallHeightResponsiveRulesOptions, narrowWidthResponsiveRulesOptions],
+      },
       ...legendTitleAndCreditOptions,
     };
 
@@ -274,6 +290,7 @@ const ColumnChart = <CategoricalX extends string, X extends number, Y extends nu
   return (
     <GenericSeriesChart
       options={highchartsOptions}
+      onChartDependencyStatus={onChartDependencyStatus}
       showLocalizedTime={xAxisType.type === 'datetime' && showLocalizedTime(xAxisType.granularity)}
     />
   );

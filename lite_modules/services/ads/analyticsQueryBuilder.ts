@@ -63,6 +63,7 @@ export type UniverseReportingMetric =
   | 'plays'
   | 'playtime'
   | 'roas'
+  | 'roasEstimate'
   | 'revenue'
   | 'spend';
 
@@ -127,16 +128,32 @@ const getReportingMetricName = (
     playtime: `AdsUAPlaytime${suffix.view}`,
     revenue: `AdsUARobuxRevenue${suffix.view}`,
     roas: 'AdsUARoas',
+    roasEstimate: METRIC_ROAS_ESTIMATE,
     spend: `AdsUATotalSpendMicroUsd${suffix.user}`,
   };
-  if (metric === 'roas' && reportingView !== ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT) {
-    throw new Error('AdsUARoas is only available for the default reporting view');
+  if (
+    (metric === 'roas' || metric === 'roasEstimate') &&
+    reportingView !== ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT
+  ) {
+    throw new Error(`${metricPrefix[metric]} is only available for the default reporting view`);
   }
   return `${metricPrefix[metric]}${resourceType === 'universe' ? 'ByUniverse' : ''}`;
 };
 
 export const getAttributionQueryEndTime = (attributionEndTime: Date): Date =>
   new Date(attributionEndTime.getTime() + ATTRIBUTION_WINDOW_DAYS * MS_PER_DAY);
+
+// Validated AdsUARoas is considered final one day after the 30-day attribution
+// window closes. Windows younger than this show the ML AdsRoasEstimate instead.
+export const ROAS_VALIDATED_MIN_AGE_DAYS = ATTRIBUTION_WINDOW_DAYS + 1;
+
+/**
+ * True when the AQG request's end time is old enough that AdsUARoas is treated
+ * as final. Absolute-time comparison; timezone-agnostic (AQG reporting queries
+ * are UTC-normalized via REPORTING_TIMEZONE_DB_NAME).
+ */
+export const isValidatedRoasEligible = (endTime: Date, now: Date = new Date()): boolean =>
+  now.getTime() - endTime.getTime() >= ROAS_VALIDATED_MIN_AGE_DAYS * MS_PER_DAY;
 
 /**
  * Builds the universe-authorized CAaaS request used by page-scoped reporting.

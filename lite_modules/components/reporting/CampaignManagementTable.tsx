@@ -104,8 +104,11 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
   const visibleCampaignStatsState = useNewFlowStore(
     (state: NewFlowStoreType) => state.visibleCampaignStatsState,
   );
-  const fetchVisibleCampaignStats = useNewFlowStore(
-    (state: NewFlowStoreType) => state.fetchVisibleCampaignStats,
+  const visibleCampaignRoasState = useNewFlowStore(
+    (state: NewFlowStoreType) => state.visibleCampaignRoasState,
+  );
+  const fetchVisibleCampaignReporting = useNewFlowStore(
+    (state: NewFlowStoreType) => state.fetchVisibleCampaignReporting,
   );
   const currentDateSelection = useNewFlowStore(
     (state: NewFlowStoreType) => state.dateSelectionState.currentSelection,
@@ -119,10 +122,13 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
     classes: { campaignTable, nameMeasureAnchor, nameMeasureText },
   } = useCampaignManagementTableStyles();
 
+  const isRoasColumnVisible =
+    isCampaignRoasEnabled && currentReportingView === ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT;
   const headCells = getCampaignTableHeadCells({
-    includeRoas:
-      isCampaignRoasEnabled &&
-      currentReportingView === ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT,
+    includeRoas: isRoasColumnVisible,
+    // ROAS is loaded per-viewport, so we only expose sorting when CaaS also
+    // page-scopes the other perf metrics; otherwise the header is not sortable.
+    roasSortable: useCaaSReportingStats,
     showCreatorColumn,
   });
   const isLoading = campaignsState.isLoading || filteredIdsState.isLoading;
@@ -225,6 +231,7 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
     const performance = useCaaSReportingStats
       ? visibleCampaignStatsState.data?.[campaign.id]?.performance
       : campaign.performance;
+    const roasEntry = visibleCampaignRoasState.data?.[campaign.id];
     const creatorProfile =
       campaign.creator_user_id === undefined
         ? undefined
@@ -251,6 +258,11 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
       is_auto_reload_ad_credit_enabled: campaign.is_auto_reload_ad_credit_enabled || false,
       is_off_platform_request: campaign.is_off_platform_request || false,
       is_reporting_enabled: campaign.is_reporting_enabled || false,
+      is_roas_loading:
+        isRoasColumnVisible &&
+        !visibleCampaignRoasState.isError &&
+        visibleCampaignRoasState.isLoading &&
+        roasEntry === undefined,
       is_stats_loading:
         useCaaSReportingStats &&
         !visibleCampaignStatsState.isError &&
@@ -258,10 +270,10 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
       name: campaign.name,
       objective: campaign.objective,
       play_count: performance?.play_count || 0,
-      // Preserve undefined so missing ROAS (zero-spend / failed metrics) stays
-      // distinct from a real 0.0 (spend with no revenue). AMSv2 leaves Roas unset
-      // in the former case and sets 0 in the latter.
-      roas: performance?.roas,
+      // Preserve undefined so missing ROAS (zero-spend / failed AQG query) stays
+      // distinct from a real 0.0 (spend with no revenue).
+      roas: roasEntry?.value,
+      roas_source: roasEntry?.source,
       status_text: GetBackendCampaignStatusText(campaignStatuses, campaign.id),
       total_play_time_hours_7d: performance?.total_play_time_hours_7d || 0,
       total_robux_revenue_30d: performance?.total_robux_revenue_30d || 0,
@@ -356,7 +368,7 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
       firstColumnMeasurement={firstColumnMeasurement}
       getTooltipAnchorRowId={getRetentionTooltipAnchorRowId}
       headCells={headCells}
-      onVisibleEntityIdsChange={useCaaSReportingStats ? fetchVisibleCampaignStats : undefined}
+      onVisibleEntityIdsChange={fetchVisibleCampaignReporting}
       pageLocalSortKeys={useCaaSReportingStats ? PAGE_LOCAL_PERFORMANCE_SORT_KEYS : undefined}
       RowElement={CampaignTableRow}
       showFooter

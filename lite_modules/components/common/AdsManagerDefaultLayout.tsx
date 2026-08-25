@@ -222,7 +222,6 @@ const AdsManagerPageBaseLayout = memo(
     ) : (
       children
     );
-
     return (
       <div className={creatorHubLayoutPageContent}>
         {isForecastEstimatorEnabled ? <ForecastEstimatorDrawer /> : null}

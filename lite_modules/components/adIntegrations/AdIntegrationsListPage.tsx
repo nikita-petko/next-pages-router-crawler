@@ -159,6 +159,7 @@ const AdIntegrationsListPage = () => {
     universesCanAdvertise,
   } = useAdIntegrationCampaignApi({ loadUniversesOnMount: false });
   const [showArchivedCampaigns, setShowArchivedCampaigns] = useState<boolean>(false);
+  const [isUniverseSelectionLoading, setIsUniverseSelectionLoading] = useState<boolean>(false);
   const isMultiUniverseEnabled = useAppStore(
     (state) => state.appMetadataState?.data?.isMultiUniverseAdIntegrationsEnabled ?? false,
   );
@@ -218,7 +219,6 @@ const AdIntegrationsListPage = () => {
           ),
     [campaignList, shouldShowArchivedCampaigns],
   );
-
   const archivedCampaignCount = useMemo(
     () =>
       campaignList.filter((campaign) => isAdIntegrationCampaignStatusArchived(campaign.status))
@@ -248,7 +248,11 @@ const AdIntegrationsListPage = () => {
       if (Number.isNaN(universeId)) {
         return;
       }
+      if (universeId === selectedUniverseId) {
+        return;
+      }
 
+      setIsUniverseSelectionLoading(true);
       setSelectedUniverseId(universeId);
       const query = { ...router.query };
       if (universeId === defaultAdvertisedUniverse.universe_id) {
@@ -260,7 +264,7 @@ const AdIntegrationsListPage = () => {
         shallow: true,
       });
     },
-    [router, setSelectedUniverseId],
+    [router, selectedUniverseId, setSelectedUniverseId],
   );
 
   const campaignIdFromQuery = router.query.campaignId;
@@ -509,7 +513,8 @@ const AdIntegrationsListPage = () => {
   const showNoUniversesState =
     pageLoadState === 'loaded' && !isUniversesLoading && !hasUniverseOptions;
   const showCampaignListLoadingState =
-    hasUniverseOptions && isCampaignListLoading && !hasAnyCampaigns;
+    hasUniverseOptions &&
+    (isUniverseSelectionLoading || (isCampaignListLoading && !hasAnyCampaigns));
   const showLandingEmptyState =
     !showNoUniversesState &&
     !showCampaignListLoadingState &&
@@ -592,16 +597,25 @@ const AdIntegrationsListPage = () => {
 
   useEffect(() => {
     if (pageLoadState !== 'loaded') {
-      return;
+      return undefined;
     }
 
     if (prevSelectedUniverseIdRef.current === selectedUniverseId) {
       prevSelectedUniverseIdRef.current = selectedUniverseId;
-      return;
+      return undefined;
     }
     prevSelectedUniverseIdRef.current = selectedUniverseId;
 
-    getCampaignListBySelectedUniverse(true);
+    let isMounted = true;
+    getCampaignListBySelectedUniverse(true).finally(() => {
+      if (isMounted) {
+        setIsUniverseSelectionLoading(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, [getCampaignListBySelectedUniverse, pageLoadState, selectedUniverseId]);
 
   useEffect(() => {
@@ -654,7 +668,7 @@ const AdIntegrationsListPage = () => {
                   </div>
                 </Grid>
               )}
-              {!isCampaignListError && hasAnyCampaigns && (
+              {!showCampaignListLoadingState && !isCampaignListError && hasAnyCampaigns && (
                 <Grid item>
                   <div className={archivedCampaignsFilter}>
                     <Checkbox
@@ -745,6 +759,7 @@ const AdIntegrationsListPage = () => {
       )}
 
       {!showNoUniversesState &&
+        !showCampaignListLoadingState &&
         !isCampaignListError &&
         !showLandingEmptyState &&
         !showNoCampaignsEmptyState &&

@@ -52,6 +52,13 @@ export enum AdCreditBalanceScope {
   Personal = 'personal',
 }
 
+// Reported on buyAdCreditSuccess so a pending grant can be separated from an
+// immediate grant without splitting the event into two names.
+export enum AdCreditPurchaseStatusParameter {
+  Granted = 'granted',
+  GrantPending = 'grantPending',
+}
+
 export const parseAdCreditBalanceScopeFromQuery = (
   value: string | string[] | undefined,
 ): AdCreditBalanceScope | undefined => {

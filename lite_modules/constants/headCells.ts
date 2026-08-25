@@ -103,20 +103,28 @@ const getSharedHeadCells = (): (SortableHeadCell | UnsortableHeadCell)[] => [
   },
 ];
 
-const roasHeadCell: SortableHeadCell = {
+const roasHeadCellBase = {
   align: 'end',
   classNameKey: HeadCellName.SharedRoas,
   disabled: false,
   label: 'Label.ROAS',
   renderTooltip: true,
-  sortKey: 'roas',
   tooltipText: 'Tooltip.ROASDescription',
-};
+} as const;
+
+const sortableRoasHeadCell: SortableHeadCell = { ...roasHeadCellBase, sortKey: 'roas' };
+// AMA loads other perf metrics eagerly for the whole dataset but ROAS is
+// viewport-only via visibleCampaignRoasState, so we drop sortability there
+// rather than expose an unstable page-local sort.
+const unsortableRoasHeadCell: UnsortableHeadCell = { ...roasHeadCellBase, id: 'roas' };
 
 interface CampaignTableHeadCellOptions {
   // When true, append the ROAS column. Gated by AMA's enable_campaign_roas
   // dynamic config flag surfaced through /metadata as isCampaignRoasEnabled.
   includeRoas?: boolean;
+  // When false, the ROAS column is rendered but its header is not sortable.
+  // Defaults to true.
+  roasSortable?: boolean;
   showCreatorColumn?: boolean;
 }
 
@@ -164,7 +172,7 @@ export const getCampaignTableHeadCells = (
     ...getSharedHeadCells(),
   ];
   if (options.includeRoas) {
-    cells.push(roasHeadCell);
+    cells.push(options.roasSortable === false ? unsortableRoasHeadCell : sortableRoasHeadCell);
   }
   if (options.showCreatorColumn) {
     cells.push(

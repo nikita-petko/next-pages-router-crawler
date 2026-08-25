@@ -1,4 +1,5 @@
 import { CampaignTimeSeriesDataPoints } from '@type/timeSeries';
+import { ROAS_NUMBER_FORMAT_OPTIONS } from '@utils/reportingStats';
 
 export type MetricValueFormatter = (value: number) => string;
 
@@ -30,11 +31,10 @@ export const makePlaysValueFormatter =
   (value) =>
     value.toLocaleString(locale ?? undefined);
 
-// Matches the campaign-table ROAS cell: unitless ratio, 2 fraction digits, no "x".
+// Matches the campaign-table ROAS cell; shares ROAS_NUMBER_FORMAT_OPTIONS with
+// REPORTING_STAT_ROAS. Locale is pluggable here so the drawer can honor the app
+// locale, while the table stays hardcoded to 'en-US' via getStatString.
 export const makeRoasValueFormatter =
   (locale: string | null): MetricValueFormatter =>
   (value) =>
-    value.toLocaleString(locale ?? undefined, {
-      maximumFractionDigits: 2,
-      minimumFractionDigits: 2,
-    });
+    value.toLocaleString(locale ?? undefined, ROAS_NUMBER_FORMAT_OPTIONS);

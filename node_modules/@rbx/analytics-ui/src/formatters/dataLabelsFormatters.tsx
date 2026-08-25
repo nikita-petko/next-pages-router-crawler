@@ -1,9 +1,10 @@
+import React, { useCallback } from 'react';
 import type { DataLabelsFormatterCallbackFunction, Point } from 'highcharts';
 import Highcharts from 'highcharts';
-import React, { useCallback } from 'react';
 import type { TIconProps } from '@rbx/ui';
 import { makeStyles, useTheme } from '@rbx/ui';
 import { getTreemapLabelColor } from '../color';
+import { escapeHtmlString } from '../utils/escape-html';
 import { getTextStyleFromThemeInHTML } from '../utils/getTextStyleFromTheme';
 import useReactRenderedRawHtml from '../utils/useReactRenderedRawHtml';
 import UnicodeTokensForChartFormatters from './unicodeTokensForChartFormatters';
@@ -72,13 +73,20 @@ const useCommonDataLabelFormatter = ({
         return highchartsSkipDataLabelToken;
       }
 
-      const formattedValue = formatDataLabel
+      const rawFormattedValue = formatDataLabel
         ? formatDataLabel({ y, ...pointMetadata, seriesName: series.name })
         : `${y}`;
+      // `formatDataLabel` receives `category` (from `point.name`) and
+      // `seriesName`, both of which can originate from untrusted data. The
+      // result is rendered via Highcharts' `useHTML: true` in plotOptions, so
+      // HTML-escape before interpolation to prevent stored XSS. `view` is the
+      // developer-controlled leading-icon SVG produced by React; it is
+      // intentionally left un-escaped.
+      const safeFormattedValue = escapeHtmlString(String(rawFormattedValue));
 
       return view
-        ? `${view}${UnicodeTokensForChartFormatters.WhiteSpace}${formattedValue}`
-        : formattedValue;
+        ? `${view}${UnicodeTokensForChartFormatters.WhiteSpace}${safeFormattedValue}`
+        : safeFormattedValue;
     },
     [formatDataLabel, view, getPointMetadata],
   );
@@ -156,27 +164,35 @@ export const useTreemapDataLabelsFormatter = ({
           : getTreemapLabelColor(theme, 'standard');
       const colorStyle = `color: ${textColor};`;
 
+      // `name`, `value`, and `series.name` can all originate from untrusted
+      // data (e.g. experience names surfaced as treemap categories), and the
+      // output of this formatter is injected into the DOM via Highcharts'
+      // `useHTML: true`. Escape every dynamic value interpolated into the
+      // returned HTML to prevent stored XSS.
+      const safeName = escapeHtmlString(name);
+
       // Leaf node - show name + value (treemap points use `value` instead of `y`)
       if (isLeaf && value !== undefined && value !== null) {
-        const formattedValue = formatDataLabel
+        const rawFormattedValue = formatDataLabel
           ? formatDataLabel({
               y: value,
               category: name,
               seriesName: series.name,
             })
           : `${value}`;
+        const safeFormattedValue = escapeHtmlString(String(rawFormattedValue));
 
         const commonStyles = `${colorStyle} text-overflow: ellipsis; width: 100%; display: inline-block; overflow: hidden;`;
 
         const nameHtml =
           name !== 'Other'
-            ? `<span style="${commonStyles} ${getTextStyleFromThemeInHTML(theme, 'chip')}">${name}</span><br>`
+            ? `<span style="${commonStyles} ${getTextStyleFromThemeInHTML(theme, 'chip')}">${safeName}</span><br>`
             : '';
-        return `${nameHtml}<span style="${commonStyles} ${getTextStyleFromThemeInHTML(theme, 'caption')} ">${formattedValue}</span>`;
+        return `${nameHtml}<span style="${commonStyles} ${getTextStyleFromThemeInHTML(theme, 'caption')} ">${safeFormattedValue}</span>`;
       }
 
       // Parent node - show name only as header
-      return `<div style="padding-top: 4px; ${getTextStyleFromThemeInHTML(theme, 'chip')}">${name}</div>`;
+      return `<div style="padding-top: 4px; ${getTextStyleFromThemeInHTML(theme, 'chip')}">${safeName}</div>`;
     },
     [formatDataLabel, theme],
   );

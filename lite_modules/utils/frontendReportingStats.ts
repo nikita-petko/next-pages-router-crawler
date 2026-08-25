@@ -61,7 +61,6 @@ export const buildFrontendReportingStats = ({
   const rawStats: RawReportingStats = { ...caas.stats };
   const roundedSpendMicroUsd = roundSpendUpToCentMicroUsd(rawStats.spendMicroUsd);
   const displaySpendUsd = getDisplaySpendUsd(rawStats.spendMicroUsd);
-  const roas = hasFailed(failedMetrics, 'roas') ? undefined : caas.roas;
 
   const performance: EntityPerformance = {
     click_count: hasFailed(failedMetrics, 'clickCount') ? undefined : rawStats.clickCount,
@@ -102,7 +101,6 @@ export const buildFrontendReportingStats = ({
       hasFailed(failedMetrics, 'playCount') || hasFailed(failedMetrics, 'impressionCount')
         ? undefined
         : divideWhenAvailable(rawStats.playCount, rawStats.impressionCount),
-    roas,
     spend_micro_usd: hasFailed(failedMetrics, 'spendMicroUsd') ? undefined : rawStats.spendMicroUsd,
     total_play_time_hours_7d: hasFailed(failedMetrics, 'playTimeSeconds7d')
       ? undefined

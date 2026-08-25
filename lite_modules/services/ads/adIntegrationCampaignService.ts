@@ -65,6 +65,24 @@ type AdIntegrationCampaignEnumPrefix = (typeof AD_INTEGRATION_CAMPAIGN_ENUM_PREF
 type AdIntegrationCampaignStatusKey = 'ENABLED' | 'STOPPED' | 'ARCHIVED';
 type AdIntegrationCampaignModerationStatusKey = 'APPROVED' | 'IN_REVIEW' | 'LIMITED' | 'REJECTED';
 
+interface AdIntegrationCampaignListApiItem {
+  asset_count?: number;
+  created_timestamp_ms?: number;
+  end_timestamp_ms?: number;
+  id?: string;
+  moderation_status?: string;
+  name?: string;
+  start_timestamp_ms?: number;
+  status?: string;
+  universe_id?: number;
+  universe_ids?: number[];
+}
+
+interface ListAdIntegrationCampaignsApiResponse {
+  campaigns?: AdIntegrationCampaignListApiItem[];
+  next_cursor?: string;
+}
+
 const buildAdIntegrationCampaignStatus = (
   status: AdIntegrationCampaignStatusKey,
   prefix: AdIntegrationCampaignEnumPrefix = DEFAULT_AD_INTEGRATION_CAMPAIGN_ENUM_PREFIX,
@@ -332,25 +350,30 @@ const listAdIntegrationCampaignsByUniverse = async (
   universeId: number,
   cursor?: string,
 ): Promise<{
-  campaigns: AdIntegrationCampaign[];
+  campaigns: AdIntegrationCampaignListApiItem[];
   nextCursor?: string;
 }> => {
-  const response = await adIntegrationsClient.listAdIntegrationCampaigns({
-    cursor,
-    pageSize: AD_INTEGRATIONS_LIST_PAGE_SIZE,
-    universeId: universeId.toString(),
+  const query = new URLSearchParams({
+    page_size: String(AD_INTEGRATIONS_LIST_PAGE_SIZE),
+    universe_id: String(universeId),
+  });
+  if (cursor) {
+    query.set('cursor', cursor);
+  }
+  const response = await adsClient.get<ListAdIntegrationCampaignsApiResponse>({
+    url: `/v1/adIntegrations?${query.toString()}`,
   });
 
   return {
-    campaigns: response.campaigns ?? [],
-    nextCursor: response.nextCursor,
+    campaigns: response.data.campaigns ?? [],
+    nextCursor: response.data.next_cursor,
   };
 };
 
 const listAllAdIntegrationCampaignsByUniverse = async (
   universeId: number,
-): Promise<AdIntegrationCampaign[]> => {
-  const campaigns: AdIntegrationCampaign[] = [];
+): Promise<AdIntegrationCampaignListApiItem[]> => {
+  const campaigns: AdIntegrationCampaignListApiItem[] = [];
   let nextCursor: string | undefined;
 
   do {
@@ -515,23 +538,25 @@ export const listAdIntegrationCampaignListItemsByUniverse = async (
   universeName: string,
 ): Promise<AdIntegrationCampaignListItem[]> => {
   const campaigns = (await listAllAdIntegrationCampaignsByUniverse(universeId)).filter(
-    (campaign): campaign is AdIntegrationCampaign & { id: string } => Boolean(campaign.id),
+    (campaign): campaign is AdIntegrationCampaignListApiItem & { id: string } =>
+      Boolean(campaign.id),
   );
 
   return campaigns.map((campaign) => {
     const universeIds =
-      campaign.universeIds && campaign.universeIds.length > 0
-        ? campaign.universeIds
-        : [campaign.universeId ?? universeId];
-    const primaryUniverseId = campaign.universeId ?? universeIds[0] ?? universeId;
+      campaign.universe_ids && campaign.universe_ids.length > 0
+        ? campaign.universe_ids
+        : [campaign.universe_id ?? universeId];
+    const primaryUniverseId = campaign.universe_id ?? universeIds[0] ?? universeId;
 
     return {
+      assetCount: campaign.asset_count,
       campaignId: campaign.id,
       campaignName: campaign.name ?? '',
-      createdTimestampMs: campaign.createdTimestampMs,
-      endTimestampMs: campaign.endTimestampMs,
-      moderationStatus: campaign.moderationStatus,
-      startTimestampMs: campaign.startTimestampMs,
+      createdTimestampMs: campaign.created_timestamp_ms,
+      endTimestampMs: campaign.end_timestamp_ms,
+      moderationStatus: campaign.moderation_status,
+      startTimestampMs: campaign.start_timestamp_ms,
       status: campaign.status,
       universeId: primaryUniverseId,
       universeIds,

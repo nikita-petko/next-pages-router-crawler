@@ -1,4 +1,4 @@
-import { LineChart, SeriesDataTypes, XAxisGranularity } from '@rbx/analytics-ui';
+import { ChartSummary, LineChart, SeriesDataTypes, XAxisGranularity } from '@rbx/analytics-ui';
 import type { LineChartZones } from '@rbx/analytics-ui';
 import {
   Dropdown,
@@ -215,20 +215,15 @@ const CampaignReportingCharts = () => {
     return formatRoasValue(totalRoas);
   }, [formatRoasValue, timeSeriesState.isError, timeSeriesState.isLoading, totalRoas]);
 
+  // Delegates description-over-value styling to @rbx/analytics-ui so this tab
+  // summary stays in sync with the one creator analytics uses in its own chart
+  // cards. ChartSummary has no loading state of its own; while the query is in
+  // flight the memoized display value is already UNAVAILABLE_VALUE_DISPLAY, and
+  // the chart body still renders its own spinner.
   const renderMetricTabLabel = (label: string, displayValue: string, testId: string) => (
-    <span className={classes.metricDisplay} data-testid={testId}>
-      <span className='text-body-medium'>{label}</span>
-      {timeSeriesState.isLoading ? (
-        <ProgressCircle
-          ariaLabel={translateMisc('Label.Loading')}
-          className={classes.metricValue}
-          size='Small'
-          variant='Indeterminate'
-        />
-      ) : (
-        <span className={`text-title-large ${classes.metricValue}`}>{displayValue}</span>
-      )}
-    </span>
+    <div data-testid={testId}>
+      <ChartSummary description={label} summaryValue={displayValue} />
+    </div>
   );
 
   const playsTabLabel = renderMetricTabLabel(

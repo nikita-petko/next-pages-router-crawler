@@ -96,7 +96,10 @@ const SharedTableCells = ({ headCells, row, unsortableData }: SharedTableCellsPr
   // ROAS column is only rendered when the campaign table opted in via headCells (which
   // itself is gated on the enable_campaign_roas dynamic config flag). The ads table does
   // not include a ROAS head cell, so this stays absent for ads even though SharedTableCells
-  // is shared. Missing ROAS (undefined) renders as em-dash; a real 0.0 renders as 0.00.
+  // is shared. Missing ROAS (undefined) renders as em-dash; a real 0.0 renders as 0.00%.
+  // The single value comes from either AdsUARoas (validated) or AdsRoasEstimate — the
+  // store picks based on request end-time age (see isValidatedRoasEligible); estimated
+  // rows get an `est.` prefix.
   const showRoasCell = headCells.some((cell) => cell.classNameKey === HeadCellName.SharedRoas);
   const roasDisplayValue = GetTableDisplayValue({
     isReportingDisabled,
@@ -198,10 +201,26 @@ const SharedTableCells = ({ headCells, row, unsortableData }: SharedTableCellsPr
     },
   ];
   if (showRoasCell) {
+    const isRoasLoading = Boolean(row.is_roas_loading) && !isReportingDisabled;
+    const isEstimated = row.roas_source === 'estimated';
+    const hasRoas = roasDisplayValue !== UNAVAILABLE_VALUE_DISPLAY;
     rowCells.push({
       cell: (
         <TableCell align='end' className={centerAlignedContentRow}>
-          {renderMetric(roasDisplayValue)}
+          {isRoasLoading && !shouldShowStatsSkeleton ? (
+            <Skeleton
+              className='height-[20px] margin-left-auto width-[60px]'
+              data-testid='table-stat-skeleton'
+            />
+          ) : (
+            <>
+              {!shouldShowStatsSkeleton &&
+                isEstimated &&
+                hasRoas &&
+                `${translate('Label.EstimatePrefix')} `}
+              {renderMetric(roasDisplayValue)}
+            </>
+          )}
         </TableCell>
       ),
       id: 'roas',

@@ -34,25 +34,16 @@ const useCampaignReportingChartsStyles = makeStyles()((theme) => ({
     color: theme.palette.content.muted,
   },
 
-  metricDisplay: {
-    alignSelf: 'flex-start',
-    display: 'flex',
-    flexDirection: 'column',
-    margin: 0,
-    padding: 0,
-  },
-
+  // Foundation's TabsTrigger locks the button and its inner content wrapper to
+  // fixed single-line heights. ChartSummary is a two-line description-over-value
+  // block, so both need to grow to avoid clipping the top of the label.
   metricTab: {
     '&&': {
-      height: theme.spacing(8),
-      minHeight: theme.spacing(8),
-      padding: theme.spacing(0.5, 0),
-    },
-    '&& > div:last-child': {
-      alignSelf: 'flex-start',
       height: 'auto',
     },
-    margin: 0,
+    '&& > div:last-child': {
+      height: 'auto',
+    },
   },
 
   // TabsList passes `className` to its scroll wrapper, not to the element that
@@ -65,10 +56,6 @@ const useCampaignReportingChartsStyles = makeStyles()((theme) => ({
     '& > [role="tablist"]': {
       gap: theme.spacing(1.5),
     },
-  },
-
-  metricValue: {
-    textAlign: 'left',
   },
 
   periodSelect: {

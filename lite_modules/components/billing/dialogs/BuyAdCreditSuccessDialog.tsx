@@ -11,12 +11,14 @@ import { CaptureException } from '@utils/error';
 
 interface BuyAdCreditSuccessDialogProps extends BaseInjectedDialogProps {
   adCreditAmount: string;
+  isPending?: boolean;
   onAcknowledge?: () => void | Promise<void>;
   robuxAmount: string;
 }
 
 const BuyAdCreditSuccessDialog = ({
   adCreditAmount,
+  isPending = false,
   onAcknowledge,
   onClose,
   robuxAmount,
@@ -53,15 +55,21 @@ const BuyAdCreditSuccessDialog = ({
       dialogBody={
         <div className='flex flex-col gap-y-large content-muted'>
           <p className='margin-none text-body-large'>
-            {translateBillingHTML('Description.AdCreditPurchaseSuccessSummary', null, {
-              adCreditAmount,
-              robuxAmount,
-              robuxIcon: (
-                <span className={styles.inlineRobuxIcon}>
-                  <Icon name='icon-filled-robux' size='Medium' />
-                </span>
-              ),
-            })}
+            {translateBillingHTML(
+              isPending
+                ? 'Description.AdCreditPurchasePendingSummary'
+                : 'Description.AdCreditPurchaseSuccessSummary',
+              null,
+              {
+                adCreditAmount,
+                robuxAmount,
+                robuxIcon: (
+                  <span className={styles.inlineRobuxIcon}>
+                    <Icon name='icon-filled-robux' size='Medium' />
+                  </span>
+                ),
+              },
+            )}
           </p>
           <p className='margin-none text-body-small'>
             {translateBilling('Description.AdCreditPurchaseFinalUse')}
@@ -78,7 +86,9 @@ const BuyAdCreditSuccessDialog = ({
           {translateCreativeLibrary('Action.OK')}
         </Button>
       }
-      dialogTitle={translateBilling('Heading.BuyAdCreditSuccess')}
+      dialogTitle={translateBilling(
+        isPending ? 'Heading.BuyAdCreditPending' : 'Heading.BuyAdCreditSuccess',
+      )}
     />
   );
 };
@@ -87,9 +97,10 @@ export const openBuyAdCreditSuccessDialog = (
   adCreditAmount: string,
   robuxAmount: string,
   onAcknowledge?: () => void | Promise<void>,
+  isPending = false,
 ): void => {
   openDialog({
     component: BuyAdCreditSuccessDialog,
-    props: { adCreditAmount, onAcknowledge, robuxAmount },
+    props: { adCreditAmount, isPending, onAcknowledge, robuxAmount },
   });
 };

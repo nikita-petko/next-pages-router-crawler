@@ -176,6 +176,7 @@ const AdIntegrationsCampaignTable = ({
             const additionalUniverseCount = Math.max(universeIds.length - 1, 0);
             const universeThumbnailUrl =
               thumbnailsByUniverseId[primaryUniverseId]?.data?.imageUrl ?? undefined;
+            const { assetCount } = campaign;
             const toggleLoading = toggleLoadingMap[campaign.campaignId] ?? false;
             const isEnabled = isAdIntegrationCampaignStatusEnabled(campaign.status);
             const isArchived = isAdIntegrationCampaignStatusArchived(campaign.status);
@@ -245,7 +246,7 @@ const AdIntegrationsCampaignTable = ({
                     </div>
                   }>
                   <Link
-                    className={campaignLink}
+                    className={`${campaignLink} flex flex-col`}
                     href={{
                       pathname: Routes.AD_INTEGRATIONS_CAMPAIGN,
                       query: { campaignId: campaign.campaignId },
@@ -253,6 +254,16 @@ const AdIntegrationsCampaignTable = ({
                     <span className={`text-body-medium ${campaignName}`}>
                       {campaign.campaignName}
                     </span>
+                    {isMultiUniverseEnabled && assetCount !== undefined && (
+                      <span className='text-body-small content-muted'>
+                        {translateMisc(
+                          // @rbx/intl only does plain {var} substitution (no ICU plural), so
+                          // pick the singular/plural key explicitly based on the asset count.
+                          assetCount === 1 ? 'Label.AssetCountSingular' : 'Label.AssetCountPlural',
+                          { count: String(assetCount) },
+                        )}
+                      </span>
+                    )}
                   </Link>
                 </AppTooltip>
               </TableCell>

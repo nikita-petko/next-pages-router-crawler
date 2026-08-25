@@ -22,7 +22,11 @@ import AppTooltip from '@components/common/AppTooltip';
 import { openImpersonationErrorDialog } from '@components/common/dialog/impersonationErrorDialog';
 import FieldLabelOffset from '@components/common/form/FieldLabelOffset';
 import Skeleton from '@components/common/Skeleton';
-import { AdCreditBalanceScope, AdCreditConversionLearnMoreUrl } from '@constants/billing';
+import {
+  AdCreditBalanceScope,
+  AdCreditConversionLearnMoreUrl,
+  AdCreditPurchaseStatusParameter,
+} from '@constants/billing';
 import { TranslationNamespace } from '@constants/localization';
 import {
   AdCreditQuoteSourceField as AdCreditQuoteSourceFieldValues,
@@ -413,15 +417,23 @@ export const WatermarkedBuyAdCredit = ({
         robux_amount: quote.robux_charge,
         ...(selectedGroupId !== undefined ? { groupId: selectedGroupId } : {}),
       });
+      const isPurchasePending =
+        purchaseStatus ===
+        PURCHASE_RESPONSE_CODE_ENUM.AdCreditPurchaseStatus_AD_CREDIT_PURCHASE_STATUS_GRANT_PENDING;
       if (
         purchaseStatus ===
           PURCHASE_RESPONSE_CODE_ENUM.AdCreditPurchaseStatus_AD_CREDIT_PURCHASE_STATUS_SUCCESS ||
-        purchaseStatus ===
-          PURCHASE_RESPONSE_CODE_ENUM.AdCreditPurchaseStatus_AD_CREDIT_PURCHASE_STATUS_GRANT_PENDING
+        isPurchasePending
       ) {
+        // Pending grants still emit the terminal event so the funnel stays
+        // comparable with the non-watermarked flow; purchaseStatus is what
+        // separates the two outcomes downstream.
         logNativeClickEvent(EventName.BuyAdCreditSuccess, {
           adCreditActivated: adCreditActivated.toString(),
           adCreditAmount: MicroUsdToUsdString(quote.ad_credit_quantity_micros),
+          purchaseStatus: isPurchasePending
+            ? AdCreditPurchaseStatusParameter.GrantPending
+            : AdCreditPurchaseStatusParameter.Granted,
         });
         if (showSuccessDialog) {
           openBuyAdCreditSuccessDialog(
@@ -438,6 +450,7 @@ export const WatermarkedBuyAdCredit = ({
                       : undefined,
                   );
                 },
+            isPurchasePending,
           );
         } else if (onComplete) {
           await onComplete(paymentSetupCompletion);

@@ -1,5 +1,5 @@
-import type { Options, SeriesAreaOptions, SeriesOptionsType } from 'highcharts';
 import React, { useMemo } from 'react';
+import type { Options, SeriesAreaOptions, SeriesOptionsType } from 'highcharts';
 import { useTheme } from '@rbx/ui';
 import type { AnnotationProps } from './annotations/WithAnnnotations';
 import WithAnnotations from './annotations/WithAnnnotations';
@@ -26,7 +26,9 @@ import type { YAxisConfig } from './highchart-options/yAxisOptions';
 import { useAreaChartYAxisOptions } from './highchart-options/yAxisOptions';
 import showLocalizedTime from './showLocalizedTimeForGranularity';
 import type { SingleAreaSeries } from './types/AreaChart';
+import type { ChartDependencyStatus } from './types/BaseChart';
 import { ChartStyleMode, ChartType } from './types/BaseChart';
+import useCombinedChartRenderCallback from './useCombinedChartRenderCallback';
 import useCyclingTimeSeriesLegendItemClickHandler from './useCyclingTimeSeriesLegendItemClickHandler';
 import type { SelectionCallback } from './useOnSelectChartRegion';
 
@@ -61,6 +63,8 @@ type AreaChartProps<X extends number, Y extends number> = {
 
   onSelectChartRegion?: SelectionCallback<X>;
   onChartLoad?: () => void;
+  onChartRender?: () => void;
+  onChartDependencyStatus?: (status: ChartDependencyStatus) => void;
 } & AnnotationProps;
 
 const AreaChart = <X extends number, Y extends number>({
@@ -71,6 +75,8 @@ const AreaChart = <X extends number, Y extends number>({
   onAnnotationsPositionsUpdated,
   onSelectChartRegion,
   onChartLoad,
+  onChartRender: onChartRenderCallback,
+  onChartDependencyStatus,
   xAxisType,
   xAxisFormatter,
   xAxisTickPositions,
@@ -148,10 +154,14 @@ const AreaChart = <X extends number, Y extends number>({
     isAnnotationOn: !!annotations?.length,
   });
 
-  const onChartRender = useAnnotationsCallback({
+  const onAnnotationsChartRender = useAnnotationsCallback({
     annotations,
     onAnnotationsPositionsUpdated,
   });
+  const onChartRender = useCombinedChartRenderCallback(
+    onAnnotationsChartRender,
+    onChartRenderCallback,
+  );
   const chartOptions = useAreaChartChartOptions({
     onSelectChartRegion,
     onChartLoad,
@@ -201,6 +211,7 @@ const AreaChart = <X extends number, Y extends number>({
   return (
     <GenericSeriesChart
       options={highchartsOptions}
+      onChartDependencyStatus={onChartDependencyStatus}
       showLocalizedTime={xAxisType.type === 'datetime' && showLocalizedTime(xAxisType.granularity)}
     />
   );

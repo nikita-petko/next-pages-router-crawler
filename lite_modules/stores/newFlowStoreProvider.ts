@@ -19,11 +19,19 @@ import { EntityType } from '@constants/entity';
 import { REPORTING_TIMEZONE_DB_NAME } from '@constants/reportingStatsConstants';
 import ReportingViewType from '@constants/reportingViewType';
 import { defaultAdvertisedUniverse } from '@constants/universeConstants';
-import { AnalyticsReportingResource } from '@services/ads/analyticsQueryBuilder';
-import { FRONTEND_REPORTING_CAAS_START_DATE } from '@services/ads/campaignTimeSeriesDateRange';
+import {
+  AnalyticsReportingResource,
+  isValidatedRoasEligible,
+} from '@services/ads/analyticsQueryBuilder';
+import {
+  FRONTEND_REPORTING_CAAS_START_DATE,
+  getFrontendReportingTimeSeriesRange,
+} from '@services/ads/campaignTimeSeriesDateRange';
 import { getFilteredCampaignIds } from '@services/ads/filterService';
 import {
+  CampaignRoas,
   getAdAccountCaaSReportingStats,
+  getCampaignRoas,
   getUniverseCaaSReportingStats,
 } from '@services/ads/frontendReportingStatsService';
 import { getCampaignTimeSeries } from '@services/ads/getCampaignTimeSeriesService';
@@ -105,6 +113,13 @@ interface VisibleStatsState extends RequestStateType<FrontendReportingStatsById>
   requestKey?: string;
 }
 
+// Stores validated + estimated ROAS for the currently-visible campaigns.
+// Populated by fetchVisibleCampaignRoas; consumed by CampaignManagementTable.
+type CampaignRoasById = Record<string, CampaignRoas>;
+interface VisibleCampaignRoasState extends RequestStateType<CampaignRoasById> {
+  requestKey?: string;
+}
+
 interface CampaignFetchResult {
   campaigns: Campaign[];
   requestTimestamp: string;
@@ -160,6 +175,7 @@ interface SponsoredAdsPageStateType {
   summaryStatsState: EmptyRequestStateType<AdAccountSummary>;
   tableRowsState: TableRowsStateType;
   universePickerFilterState: UniversePickerFilterState;
+  visibleCampaignRoasState: VisibleCampaignRoasState;
   visibleCampaignStatsState: VisibleStatsState;
 }
 
@@ -214,6 +230,9 @@ const getShouldUseCaaSReportingStats = (): boolean =>
 const getIsCustomDateRangeEnabled = (): boolean =>
   useAppStore.getState().appMetadataState.data?.isCustomDateRangeEnabled ?? false;
 
+const getIsCampaignRoasEnabled = (): boolean =>
+  useAppStore.getState().appMetadataState.data?.isCampaignRoasEnabled ?? false;
+
 const getSummaryUniverseId = (universe: AdvertisedUniverse): number | undefined =>
   universe.universe_id === 0 ? undefined : universe.universe_id;
 
@@ -242,6 +261,8 @@ interface SponsoredAdsPageActionType {
     options?: FetchInitialDataOptions,
   ) => Promise<void>;
   fetchVisibleAdStats: (adIds: string[]) => Promise<void>;
+  fetchVisibleCampaignReporting: (campaignIds: string[]) => Promise<void>;
+  fetchVisibleCampaignRoas: (campaignIds: string[]) => Promise<void>;
   fetchVisibleCampaignStats: (campaignIds: string[]) => Promise<void>;
   getAdsAndOpenDrawer: (
     campaignId: string,
@@ -338,13 +359,13 @@ const initialBackendSummaryRequestManager = createRequestManager();
 const campaignTimeSeriesRequestManager = createRequestManager();
 const visibleAdStatsRequestManager = createRequestManager();
 const visibleCampaignStatsRequestManager = createRequestManager();
+const visibleCampaignRoasRequestManager = createRequestManager();
 
 const fetchFrontendStatsForEntities = async ({
   customEndDate,
   customStartDate,
   entities,
   entityType,
-  includeRoas,
   reportingView,
   requestTimestamp,
   timePeriod,
@@ -353,7 +374,6 @@ const fetchFrontendStatsForEntities = async ({
   customStartDate?: string;
   entities: { id: string; paymentType: ServerPaymentType; universeId?: number }[];
   entityType: 'ad' | 'campaign';
-  includeRoas?: boolean;
   reportingView: ReportingViewType;
   requestTimestamp: string;
   timePeriod: DateFilteringTimePeriod;
@@ -384,7 +404,6 @@ const fetchFrontendStatsForEntities = async ({
             customStartDate,
             entityIds: groupedEntities.map(({ id }) => id),
             entityType,
-            includeRoas,
             reportingView,
             requestTimestamp,
             timePeriod,
@@ -400,7 +419,6 @@ const fetchFrontendStatsForEntities = async ({
           customStartDate,
           entityIds: entities.map(({ id }) => id),
           entityType,
-          includeRoas,
           reportingView,
           requestTimestamp,
           timePeriod,
@@ -1132,6 +1150,147 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         CaptureException(error, { context: 'fetchVisibleAdStats' });
       }
     },
+    // Composite viewport loader for CampaignManagementTable. Each callee
+    // self-gates on its feature flag, so this is safe to invoke unconditionally.
+    fetchVisibleCampaignReporting: async (campaignIds: string[]) => {
+      await Promise.all([
+        get().fetchVisibleCampaignStats(campaignIds),
+        get().fetchVisibleCampaignRoas(campaignIds),
+      ]);
+    },
+    fetchVisibleCampaignRoas: async (campaignIds: string[]) => {
+      // ROAS always sources from analytics-query-gateway regardless of the CAaaS
+      // reporting flag; this is the sole loader for the ROAS column.
+      const reportingView = get().reportingViewState.currentSelection;
+      const isRoasColumnVisible =
+        getIsCampaignRoasEnabled() &&
+        reportingView === ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT;
+      if (!isRoasColumnVisible || campaignIds.length === 0) {
+        return;
+      }
+      // Build one AQG batch per resource: workspace mode fans out per universe
+      // (mirrors fetchFrontendStatsForEntities); otherwise one ad-account batch.
+      const shouldUseWorkspaceUniverseFiltering = getShouldUseWorkspaceUniverseFiltering();
+      const adAccountId = useAppStore.getState().appData?.adAccountId;
+      const campaigns = get().campaignsState.data ?? [];
+      const campaignsById = new Map(campaigns.map((campaign) => [campaign.id, campaign]));
+      let batches: { entityIds: string[]; resource: AnalyticsReportingResource }[] = [];
+      if (shouldUseWorkspaceUniverseFiltering) {
+        const idsByUniverse = new Map<number, string[]>();
+        campaignIds.forEach((id) => {
+          const universeId = campaignsById.get(id)?.universe_id;
+          if (universeId === undefined) {
+            return;
+          }
+          const bucket = idsByUniverse.get(universeId) ?? [];
+          bucket.push(id);
+          idsByUniverse.set(universeId, bucket);
+        });
+        batches = Array.from(idsByUniverse.entries()).map(([universeId, ids]) => ({
+          entityIds: ids,
+          resource: { id: universeId, type: 'universe' },
+        }));
+      } else if (adAccountId) {
+        batches = [{ entityIds: campaignIds, resource: { id: adAccountId, type: 'adAccount' } }];
+      }
+      if (batches.length === 0) {
+        // Clear isLoading; otherwise is_roas_loading stays true on every row
+        // and the ROAS cell shows a skeleton forever (workspace-mode with no
+        // campaign.universe_id, or ad-account mode with no adAccountId).
+        set((draft) => {
+          draft.visibleCampaignRoasState = {
+            data: draft.visibleCampaignRoasState.data ?? {},
+            isError: false,
+            isLoading: false,
+          };
+        });
+        return;
+      }
+      const {
+        currentSelection: timePeriod,
+        customEndDate: storedCustomEndDate,
+        customStartDate: storedCustomStartDate,
+      } = get().dateSelectionState;
+      const isCustom = timePeriod === DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM;
+      const customEndDate = isCustom ? storedCustomEndDate : undefined;
+      const customStartDate = isCustom ? storedCustomStartDate : undefined;
+      const requestTimestamp = get().reportingRequestTimestamp;
+      const { endTime } = getFrontendReportingTimeSeriesRange(
+        requestTimestamp,
+        timePeriod,
+        customStartDate,
+        customEndDate,
+      );
+      const source = isValidatedRoasEligible(endTime) ? 'validated' : 'estimated';
+      const requestKey = JSON.stringify({
+        batches,
+        customEndDate,
+        customStartDate,
+        reportingView,
+        requestTimestamp,
+        source,
+        timePeriod,
+      });
+      if (get().visibleCampaignRoasState.requestKey === requestKey) {
+        return;
+      }
+      set((draft) => {
+        draft.visibleCampaignRoasState = {
+          data: draft.visibleCampaignRoasState.data ?? {},
+          isError: false,
+          isLoading: true,
+          requestKey,
+        };
+      });
+      try {
+        const result = await visibleCampaignRoasRequestManager.executeRequest(async () => {
+          const batchResults = await Promise.all(
+            batches.map((batch) =>
+              getCampaignRoas({
+                customEndDate,
+                customStartDate,
+                entityIds: batch.entityIds,
+                reportingView,
+                requestTimestamp,
+                resource: batch.resource,
+                source,
+                timePeriod,
+              }),
+            ),
+          );
+          return Object.assign({}, ...batchResults) as Record<string, CampaignRoas>;
+        });
+        if (result === null) {
+          return;
+        }
+        // Guard against a reset (date/view change) that happened while this
+        // request was in flight: the manager only invalidates the callback when
+        // a *newer* request supersedes it, but a bare reset leaves the promise
+        // to resolve into fresh state. Compare against the current requestKey.
+        if (get().visibleCampaignRoasState.requestKey !== requestKey) {
+          return;
+        }
+        set((draft) => {
+          // Merge into any existing rows so scrolling doesn't clobber values
+          // for entities that fell out of the visible window.
+          draft.visibleCampaignRoasState = {
+            data: { ...(draft.visibleCampaignRoasState.data ?? {}), ...result },
+            isError: false,
+            isLoading: false,
+            requestKey,
+          };
+        });
+      } catch (error) {
+        if (get().visibleCampaignRoasState.requestKey !== requestKey) {
+          return;
+        }
+        set((draft) => {
+          draft.visibleCampaignRoasState.isError = true;
+          draft.visibleCampaignRoasState.isLoading = false;
+        });
+        CaptureException(error, { context: 'fetchVisibleCampaignRoas' });
+      }
+    },
     fetchVisibleCampaignStats: async (campaignIds: string[]) => {
       if (!getShouldUseCaaSReportingStats() || campaignIds.length === 0) {
         return;
@@ -1145,14 +1304,10 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       const customEndDate = isCustom ? storedCustomEndDate : undefined;
       const customStartDate = isCustom ? storedCustomStartDate : undefined;
       const reportingView = get().reportingViewState.currentSelection;
-      const includeRoas =
-        Boolean(useAppStore.getState().appMetadataState.data?.isCampaignRoasEnabled) &&
-        reportingView === ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT;
       const requestKey = JSON.stringify({
         campaignIds,
         customEndDate,
         customStartDate,
-        includeRoas,
         reportingView,
         requestTimestamp: get().reportingRequestTimestamp,
         timePeriod,
@@ -1184,7 +1339,6 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
                 universeId: campaign.universe_id,
               })),
             entityType: 'campaign',
-            includeRoas,
             reportingView,
             requestTimestamp: get().reportingRequestTimestamp,
             timePeriod,
@@ -1501,6 +1655,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         draft.reportingRequestTimestamp = requestTimestamp;
         draft.summaryRequestTimestamp = requestTimestamp;
         draft.visibleCampaignStatsState = GetInitialRequestState<FrontendReportingStatsById>({});
+        draft.visibleCampaignRoasState = GetInitialRequestState<CampaignRoasById>({});
       });
       try {
         const fetchCampaignPages = async (fetchPerformance: boolean): Promise<Campaign[]> => {
@@ -1712,6 +1867,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
           };
           draft.summaryStatsState.isLoading = true;
           draft.visibleCampaignStatsState = GetInitialRequestState<FrontendReportingStatsById>({});
+          draft.visibleCampaignRoasState = GetInitialRequestState<CampaignRoasById>({});
         });
 
         dateReportingViewRequestManager
@@ -2426,6 +2582,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
           });
         });
     },
+    visibleCampaignRoasState: GetInitialRequestState<CampaignRoasById>({}),
     visibleCampaignStatsState: GetInitialRequestState<FrontendReportingStatsById>({}),
   })),
 );

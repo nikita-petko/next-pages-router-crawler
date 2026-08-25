@@ -28,7 +28,7 @@ export const canPieLabelFit = (
   chart: Chart,
   formattedText: string | number,
   fontSize: number,
-  borderWidth: number = 0,
+  borderWidth = 0,
   textMeasurer: TextMeasurer = defaultTextMeasurer,
 ): boolean => {
   if (!point || !point.y || !point.percentage || !chart || !formattedText) {
@@ -49,12 +49,16 @@ export const canPieLabelFit = (
   // point.percentage is the percentage of the total pie this slice represents
   // Convert percentage to radians: (percentage/100) * 2π
   const sliceAngleRad = (point.percentage / 100) * 2 * Math.PI;
+  // Slices larger than a semicircle have at least as much usable label space
+  // as a 50% slice. Without this cap, sin(angle / 2) decreases past π and
+  // incorrectly hides labels on dominant slices.
+  const labelSpaceAngleRad = Math.min(sliceAngleRad, Math.PI);
 
   // Calculate available width for text at the label radius
   // This is the chord length at the label radius, which represents the maximum
   // horizontal space available for text within this slice
   // Formula: 2 * radius * sin(angle/2) gives chord length
-  const availableWidth = labelRadius * Math.sin(sliceAngleRad / 2) * 1;
+  const availableWidth = labelRadius * Math.sin(labelSpaceAngleRad / 2) * 1;
 
   // Account for border width - borders take up space and reduce available width
   const borderSpace = borderWidth * 2; // Border on both sides of the slice

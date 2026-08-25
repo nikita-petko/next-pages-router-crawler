@@ -1,10 +1,11 @@
+import { useCallback, useMemo } from 'react';
 import type {
   BreadcrumbOptions,
   BreadcrumbsFormatterCallbackFunction,
   PlotTreemapBreadcrumbsOptions,
 } from 'highcharts';
-import { useCallback, useMemo } from 'react';
 import { useTheme } from '@rbx/ui';
+import { escapeHtmlString } from '../utils/escape-html';
 import {
   getTextStyleFromTheme,
   getTextStyleWithoutWeightFromThemeInHTML,
@@ -16,7 +17,11 @@ export const useTreemapBreadcrumbOptions = (): PlotTreemapBreadcrumbsOptions => 
     function formatter(options: BreadcrumbOptions) {
       const { levelOptions } = options;
       const { name } = levelOptions;
-      return `<span style="color: ${theme.palette.content.standard}; ${getTextStyleWithoutWeightFromThemeInHTML(theme, 'body2')}">${name}</span>`;
+      // `levelOptions.name` mirrors the treemap point name, which can
+      // originate from untrusted data (e.g. experience names). The breadcrumb
+      // is rendered via `useHTML: true`, so HTML-escape before interpolating
+      // to prevent stored XSS.
+      return `<span style="color: ${theme.palette.content.standard}; ${getTextStyleWithoutWeightFromThemeInHTML(theme, 'body2')}">${escapeHtmlString(name ?? '')}</span>`;
     },
     [theme],
   );

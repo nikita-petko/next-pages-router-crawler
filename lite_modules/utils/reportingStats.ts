@@ -13,6 +13,14 @@ const TRUNCATE_VALUE_THRESHOLD_MILLIONS = 1000000;
 const TRUNCATE_VALUE_THRESHOLD_BILLIONS = 1000000000;
 const TRUNCATE_VALUE_THRESHOLD_TRILLIONS = 1000000000000;
 
+// Shared with makeRoasValueFormatter (drawer scorecard + chart). ROAS is a
+// ratio: 1.0 = break-even, rendered as 100.00%.
+export const ROAS_NUMBER_FORMAT_OPTIONS: Intl.NumberFormatOptions = {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 2,
+  style: 'percent',
+};
+
 const getEndUserPaymentUnit = (paymentType: ServerPaymentType) => {
   switch (paymentType) {
     case ServerPaymentType.PAYMENT_TYPE_ADS_CREDIT:
@@ -52,12 +60,13 @@ const getStatString = (reportingStatType: ReportingStatType, value: number | und
       });
       break;
     case ReportingStatType.REPORTING_STAT_SPEND:
-    case ReportingStatType.REPORTING_STAT_ROAS:
-      // ROAS is a unitless ratio (robux revenue / spend USD). No multiplier suffix.
       valueString = value.toLocaleString('en-US', {
         maximumFractionDigits: 2,
         minimumFractionDigits: 2,
       });
+      break;
+    case ReportingStatType.REPORTING_STAT_ROAS:
+      valueString = value.toLocaleString('en-US', ROAS_NUMBER_FORMAT_OPTIONS);
       break;
     case ReportingStatType.REPORTING_STAT_COST_PER_PLAY:
       valueString = value.toLocaleString('en-US', {

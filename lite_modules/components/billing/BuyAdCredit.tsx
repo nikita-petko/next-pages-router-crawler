@@ -20,7 +20,7 @@ import useAddPaymentMethodStyles from '@components/billing/AddPaymentMethod.styl
 import { openBuyAdCreditSuccessDialog } from '@components/billing/dialogs/BuyAdCreditSuccessDialog';
 import AppTooltip from '@components/common/AppTooltip';
 import { openImpersonationErrorDialog } from '@components/common/dialog/impersonationErrorDialog';
-import { AdCreditBalanceScope } from '@constants/billing';
+import { AdCreditBalanceScope, AdCreditPurchaseStatusParameter } from '@constants/billing';
 import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
@@ -268,15 +268,20 @@ export const BuyAdCredit = ({
         UsdToMicroUsd(data[AD_CREDIT_AMOUNT_FORM_FIELD]),
         selectedGroupId,
       );
+      const isPurchasePending =
+        purchaseStatus ===
+        PURCHASE_RESPONSE_CODE_ENUM.AdCreditPurchaseStatus_AD_CREDIT_PURCHASE_STATUS_GRANT_PENDING;
       if (
         purchaseStatus ===
           PURCHASE_RESPONSE_CODE_ENUM.AdCreditPurchaseStatus_AD_CREDIT_PURCHASE_STATUS_SUCCESS ||
-        purchaseStatus ===
-          PURCHASE_RESPONSE_CODE_ENUM.AdCreditPurchaseStatus_AD_CREDIT_PURCHASE_STATUS_GRANT_PENDING
+        isPurchasePending
       ) {
         logNativeClickEvent(EventName.BuyAdCreditSuccess, {
           adCreditActivated: adCreditActivated.toString(),
           adCreditAmount: data[AD_CREDIT_AMOUNT_FORM_FIELD].toString(),
+          purchaseStatus: isPurchasePending
+            ? AdCreditPurchaseStatusParameter.GrantPending
+            : AdCreditPurchaseStatusParameter.Granted,
         });
         if (onComplete) {
           if (showSuccessDialog) {

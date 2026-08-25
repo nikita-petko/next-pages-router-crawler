@@ -43,7 +43,6 @@ interface BaseReportingQueryContext {
   customStartDate?: string;
   entityIds?: string[];
   entityType?: ReportingEntityType;
-  includeRoas?: boolean;
   reportingView: ReportingViewType;
   requestTimestamp: string;
   timePeriod: DateFilteringTimePeriod;
@@ -77,6 +76,26 @@ const NON_QUERYABLE_METRICS = new Set<CaaSReportingMetric>([
   'twoSecVideoViewCount',
 ]);
 
+const runAnalyticsQuery = async (
+  request: ReturnType<typeof buildReportingAnalyticsQueryRequest>,
+  pollingOptions: RAQIClientOptions,
+  abortSignal?: AbortSignal,
+): Promise<QueryResult> =>
+  pollAnalyticsOperation(
+    async () => {
+      const { operation } =
+        await analyticsQueryGatewayApi.v1MetricsResourceResourceTypeIdResourceIdPost(request, {
+          signal: abortSignal,
+        });
+      if (!operation) {
+        throw new Error('analytics-query-gateway: no operation in query response');
+      }
+      return operation;
+    },
+    (operation) => operation.queryResult,
+    pollingOptions,
+  );
+
 const queryMetric = async (
   context: ReportingQueryContext,
   query: MetricQuery,
@@ -97,21 +116,7 @@ const queryMetric = async (
     resource: queryContext.resource,
     startTime: query.startTime,
   });
-
-  return pollAnalyticsOperation(
-    async () => {
-      const { operation } =
-        await analyticsQueryGatewayApi.v1MetricsResourceResourceTypeIdResourceIdPost(request, {
-          signal: abortSignal,
-        });
-      if (!operation) {
-        throw new Error('analytics-query-gateway: no operation in query response');
-      }
-      return operation;
-    },
-    (operation) => operation.queryResult,
-    pollingOptions,
-  );
+  return runAnalyticsQuery(request, pollingOptions, abortSignal);
 };
 
 const getEntityId = (queryResultValue: NonNullable<QueryResult['values']>[number]): string =>
@@ -166,74 +171,62 @@ export const buildMetricQueries = (context: ReportingQueryContext): MetricQuery[
   );
   const qualityPolicy: AnalyticsDataQualityPolicy = 'combined';
 
-  const queries = [
-    {
-      endTime,
-      failureMetric: 'impressionCount',
-      metric: 'impressions',
-      qualityPolicy,
-      startTime,
-      target: 'impressionCount',
-    },
-    {
-      endTime,
-      failureMetric: 'clickCount',
-      metric: 'clicks',
-      qualityPolicy,
-      startTime,
-      target: 'clickCount',
-    },
-    {
-      endTime,
-      failureMetric: 'spendMicroUsd',
-      metric: 'spend',
-      qualityPolicy,
-      startTime,
-      target: 'spendMicroUsd',
-    },
-    {
-      endTime,
-      failureMetric: 'playCount',
-      metric: 'plays',
-      qualityPolicy,
-      startTime,
-      target: 'playCount',
-    },
-    {
-      endTime,
-      failureMetric: 'playTimeSeconds7d',
-      metric: 'playtime',
-      qualityPolicy,
-      startTime,
-      target: 'playTimeSeconds7d',
-    },
-    {
-      endTime,
-      failureMetric: 'robuxRevenue30d',
-      metric: 'revenue',
-      qualityPolicy,
-      startTime,
-      target: 'robuxRevenue30d',
-    },
-  ].filter(
+  return (
+    [
+      {
+        endTime,
+        failureMetric: 'impressionCount',
+        metric: 'impressions',
+        qualityPolicy,
+        startTime,
+        target: 'impressionCount',
+      },
+      {
+        endTime,
+        failureMetric: 'clickCount',
+        metric: 'clicks',
+        qualityPolicy,
+        startTime,
+        target: 'clickCount',
+      },
+      {
+        endTime,
+        failureMetric: 'spendMicroUsd',
+        metric: 'spend',
+        qualityPolicy,
+        startTime,
+        target: 'spendMicroUsd',
+      },
+      {
+        endTime,
+        failureMetric: 'playCount',
+        metric: 'plays',
+        qualityPolicy,
+        startTime,
+        target: 'playCount',
+      },
+      {
+        endTime,
+        failureMetric: 'playTimeSeconds7d',
+        metric: 'playtime',
+        qualityPolicy,
+        startTime,
+        target: 'playTimeSeconds7d',
+      },
+      {
+        endTime,
+        failureMetric: 'robuxRevenue30d',
+        metric: 'revenue',
+        qualityPolicy,
+        startTime,
+        target: 'robuxRevenue30d',
+      },
+    ] as MetricQuery[]
+  ).filter(
     (query) =>
       context.entityType !== undefined ||
       (query.target !== 'clickCount' && query.target !== 'robuxRevenue30d'),
-  ) as MetricQuery[];
-  if (
-    context.includeRoas &&
-    context.entityType === 'campaign' &&
-    context.reportingView === ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT
-  ) {
-    queries.push({
-      endTime,
-      failureMetric: 'roas',
-      metric: 'roas',
-      qualityPolicy,
-      startTime,
-    });
-  }
-  return queries;
+  );
 };
 
 const fetchCaaSStats = async (
@@ -247,14 +240,9 @@ const fetchCaaSStats = async (
   const settledQueries = await Promise.allSettled(
     metricQueries.map(async (query) => ({
       query,
-      totals:
-        query.metric === 'roas'
-          ? aggregateDirectMetricQueryResult(
-              await queryMetric(context, query, pollingOptions, abortSignal),
-            )
-          : aggregateReportingQueryResult(
-              await queryMetric(context, query, pollingOptions, abortSignal),
-            ),
+      totals: aggregateReportingQueryResult(
+        await queryMetric(context, query, pollingOptions, abortSignal),
+      ),
     })),
   );
 
@@ -280,14 +268,10 @@ const fetchCaaSStats = async (
     }
     settled.value.totals.forEach((value, id) => {
       const result = results[id];
-      if (!result) {
+      if (!result || !query.target) {
         return;
       }
-      if (query.metric === 'roas') {
-        result.roas = value;
-      } else if (query.target) {
-        result.stats[query.target] += value;
-      }
+      result.stats[query.target] += value;
     });
   });
   return results;
@@ -350,3 +334,57 @@ export const getAdAccountCaaSReportingStats = (
     },
     pollingOptions,
   );
+
+export interface CampaignRoas {
+  source: 'validated' | 'estimated';
+  value: number;
+}
+
+/**
+ * Fetch ROAS for a set of campaigns from analytics-query-gateway. Issues one
+ * query — validated AdsUARoas or ML-estimated AdsRoasEstimate — based on the
+ * `source` chosen by the caller. The `resource` picks whether the query is
+ * ad-account-scoped or universe-scoped (workspace mode); universe scoping
+ * transparently swaps in the ByUniverse-suffixed metric name.
+ */
+export const getCampaignRoas = async (
+  context: Omit<BaseReportingQueryContext, 'entityType'> & {
+    resource: AnalyticsReportingResource;
+    source: 'validated' | 'estimated';
+  },
+  pollingOptions: RAQIClientOptions = ANALYTICS_POLLING_DEFAULTS,
+): Promise<Record<string, CampaignRoas>> => {
+  if (
+    context.reportingView !== ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT ||
+    !context.entityIds?.length
+  ) {
+    return {};
+  }
+  const { endTime, startTime } = getFrontendReportingTimeSeriesRange(
+    context.requestTimestamp,
+    context.timePeriod,
+    context.customStartDate,
+    context.customEndDate,
+  );
+  const metric: UniverseReportingMetric = context.source === 'validated' ? 'roas' : 'roasEstimate';
+  const request = buildReportingAnalyticsQueryRequest({
+    endTime,
+    entityIds: context.entityIds,
+    entityType: 'campaign',
+    metric,
+    qualityPolicy: 'combined',
+    reportingView: context.reportingView,
+    resource: context.resource,
+    startTime,
+  });
+  const queryResult = await runAnalyticsQuery(request, pollingOptions, context.abortSignal);
+  const valueById = aggregateDirectMetricQueryResult(queryResult);
+  const roasById: Record<string, CampaignRoas> = {};
+  context.entityIds.forEach((id) => {
+    const value = valueById.get(id);
+    if (value !== undefined) {
+      roasById[id] = { source: context.source, value };
+    }
+  });
+  return roasById;
+};

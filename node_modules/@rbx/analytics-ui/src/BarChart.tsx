@@ -1,5 +1,5 @@
-import type { Options, SeriesBarOptions } from 'highcharts';
 import React, { useMemo, memo } from 'react';
+import type { Options, SeriesBarOptions } from 'highcharts';
 import type { TIconProps } from '@rbx/ui';
 import { useTheme } from '@rbx/ui';
 import { getChartColorHexString } from './color';
@@ -20,6 +20,7 @@ import { useBarChartTooltipOptions } from './highchart-options/tooltipOptions';
 import { useBarChartXAxisOptions } from './highchart-options/xAxisOptions';
 import { useBarChartYAxisOptions } from './highchart-options/yAxisOptions';
 import type { SingleBarSeries } from './types/BarChart';
+import type { ChartDependencyStatus } from './types/BaseChart';
 import { ChartStyleMode, ChartType } from './types/BaseChart';
 
 type BarChartProps<Category extends string, Value extends number> = {
@@ -48,6 +49,8 @@ type BarChartProps<Category extends string, Value extends number> = {
   height?: number;
 
   onChartLoad?: () => void;
+  onChartRender?: () => void;
+  onChartDependencyStatus?: (status: ChartDependencyStatus) => void;
 };
 
 const BarChart = <Category extends string, Value extends number>({
@@ -58,6 +61,8 @@ const BarChart = <Category extends string, Value extends number>({
   DataLabelLeadingIcon,
   height,
   onChartLoad,
+  onChartRender,
+  onChartDependencyStatus,
   chartStyleMode = ChartStyleMode.Normal,
 }: BarChartProps<Category, Value>) => {
   const theme = useTheme();
@@ -136,6 +141,7 @@ const BarChart = <Category extends string, Value extends number>({
   const chartOptions = useBarChartChartOptions({
     chartStyleMode,
     onChartLoad,
+    onChartRender,
     height,
     longestDataLabelLength,
   });
@@ -174,7 +180,12 @@ const BarChart = <Category extends string, Value extends number>({
     yAxisOptions,
   ]);
 
-  return <GenericSeriesChart options={highchartsOptions} />;
+  return (
+    <GenericSeriesChart
+      options={highchartsOptions}
+      onChartDependencyStatus={onChartDependencyStatus}
+    />
+  );
 };
 
 export default memo(BarChart);
