@@ -83,14 +83,6 @@ export function isRecentsActiveTab(value: string | string[] | undefined | null):
 }
 
 /**
- * Builds the `activeTab` for Recents in whichever view the user is currently in. Selecting Recents
- * is not a choice about the view, so it must leave the toggle where the user set it.
- */
-export function buildRecentsActiveTab(isTaxonomyMode: boolean): string {
-  return isTaxonomyMode ? buildTaxonomyActiveTab(RECENTS_L1_KEY) : RECENTS_ACTIVE_TAB;
-}
-
-/**
  * L1 key for Avatars. Avatar looks are curated outfits rather than marketplace items, so the taxonomy
  * tree has no category for them — but that is a reason for them to have no category, not a reason for
  * the category view to make them unreachable. Keeping them in this namespace means selecting Avatars

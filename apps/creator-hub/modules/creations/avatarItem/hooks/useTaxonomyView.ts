@@ -21,11 +21,6 @@ export interface TaxonomyViewState {
   /** The grid should filter by taxonomy category. */
   isTaxonomyView: boolean;
   /**
-   * The grid should list the creator's most recent items across every type they may upload. Mutually
-   * exclusive with {@link TaxonomyViewState.isTaxonomyView}: Recents applies no category filter.
-   */
-  isRecentsView: boolean;
-  /**
    * The grid should list the creator's avatar looks. Also mutually exclusive with
    * {@link TaxonomyViewState.isTaxonomyView}: looks are served by the look system, not by category.
    */
@@ -44,9 +39,8 @@ const useTaxonomyView = (assetType: Asset): TaxonomyViewState => {
 
   const isFlagEnabled = useTaxonomyDashboardGate();
   const isTaxonomyMode = isFlagEnabled && isTaxonomyActiveTab(activeTab);
-  // Recents and Avatars exist in both views, so they follow the flag rather than the toggle. Reading
-  // them off isTaxonomyMode would make selecting Recents from the item-type view turn the toggle on.
-  const isRecentsView = isFlagEnabled && isRecentsActiveTab(activeTab);
+  // Avatars exist in both views, so it follows the flag rather than the toggle. Reading it off
+  // isTaxonomyMode would make selecting Avatars from the item-type view turn the toggle on.
   const isAvatarLooksView = isFlagEnabled && isAvatarLooksActiveTab(activeTab);
 
   return {
@@ -59,7 +53,6 @@ const useTaxonomyView = (assetType: Asset): TaxonomyViewState => {
       !isAllAssetTypesActiveTab(activeTab) &&
       !isRecentsActiveTab(activeTab) &&
       !isAvatarLooksActiveTab(activeTab),
-    isRecentsView,
     isAvatarLooksView,
   };
 };

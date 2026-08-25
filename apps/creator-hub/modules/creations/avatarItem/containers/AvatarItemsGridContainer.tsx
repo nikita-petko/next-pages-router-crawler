@@ -133,7 +133,6 @@ const AvatarItemsGridContainer: FunctionComponent<
   const {
     canUseTaxonomy: taxonomyFlagEnabled,
     isTaxonomyView,
-    isRecentsView,
     isAvatarLooksView,
   } = useTaxonomyView(assetType);
   // `filterIndex` addresses the sub-category here, mirroring the item-type view, so a category and
@@ -223,13 +222,11 @@ const AvatarItemsGridContainer: FunctionComponent<
 
   const pagingParameters = useMemo(() => {
     return {
-      avatarItem: isRecentsView
-        ? RecentsDropdownOption
-        : isAvatarLooksView
-          ? AVATAR_LOOKS_GRID_SELECTION
-          : isTaxonomyView
-            ? (effectiveTaxonomySelection ?? selectedAvatarItemDropdown)
-            : selectedAvatarItemDropdown,
+      avatarItem: isAvatarLooksView
+        ? AVATAR_LOOKS_GRID_SELECTION
+        : isTaxonomyView
+          ? (effectiveTaxonomySelection ?? selectedAvatarItemDropdown)
+          : selectedAvatarItemDropdown,
       groupId,
       isArchived,
       isActive: isPublicOnly ? true : undefined,
@@ -242,7 +239,6 @@ const AvatarItemsGridContainer: FunctionComponent<
   }, [
     selectedAvatarItemDropdown,
     isTaxonomyView,
-    isRecentsView,
     isAvatarLooksView,
     effectiveTaxonomySelection,
     groupId,
@@ -283,12 +279,10 @@ const AvatarItemsGridContainer: FunctionComponent<
     }
     // In the taxonomy view the legacy item-type selection no longer describes what is on screen, so
     // the create/upload entry point follows the selected category instead. Categories that span
-    // several asset types have no single entry point, and neither does Recents.
-    const currentAssetType = isRecentsView
-      ? undefined
-      : isTaxonomyView
-        ? taxonomyCreateAssetType
-        : (selectedAvatarItemDropdown.assetType ?? assetType);
+    // several asset types have no single entry point.
+    const currentAssetType = isTaxonomyView
+      ? taxonomyCreateAssetType
+      : (selectedAvatarItemDropdown.assetType ?? assetType);
 
     if (currentAssetType !== undefined && isCreateAssetAvailable(currentAssetType)) {
       if (!hasData) {
@@ -305,7 +299,6 @@ const AvatarItemsGridContainer: FunctionComponent<
     hasData,
     selectedAvatarItemDropdown,
     isTaxonomyView,
-    isRecentsView,
     taxonomyCreateAssetType,
   ]);
 
@@ -315,29 +308,14 @@ const AvatarItemsGridContainer: FunctionComponent<
   // sub-category, whose name comes from the taxonomy service already localized rather than as a
   // translation key.
   const loadErrorItemLabel = useMemo(() => {
-    // Recents spans every type, so it names the section rather than one item type. Reuses the menu's
-    // existing label instead of registering a second copy of the chip's pending translation.
-    if (isRecentsView) {
-      return translate('Label.AvatarItems');
-    }
     const selection =
       isTaxonomyView && effectiveTaxonomySelection
         ? effectiveTaxonomySelection
         : selectedAvatarItemDropdown;
     return selection.skipTranslation ? selection.nameKey : translate(selection.nameKey);
-  }, [
-    isRecentsView,
-    isTaxonomyView,
-    effectiveTaxonomySelection,
-    selectedAvatarItemDropdown,
-    translate,
-  ]);
+  }, [isTaxonomyView, effectiveTaxonomySelection, selectedAvatarItemDropdown, translate]);
 
   const errorContent = useMemo(() => {
-    // Recents spans every type, so there is no type-specific empty state to show.
-    if (isRecentsView) {
-      return <CreationsGridEmptyState assetType={Asset.AllCatalogAsset} />;
-    }
     if (isAssetAll) {
       return <CreationsGridEmptyState assetType={Asset.AllCatalogAsset} lookType={lookType} />;
     }
@@ -369,7 +347,6 @@ const AvatarItemsGridContainer: FunctionComponent<
     lookType,
     assetType,
     isTaxonomyView,
-    isRecentsView,
     effectiveTaxonomySelection,
   ]);
 
@@ -462,7 +439,7 @@ const AvatarItemsGridContainer: FunctionComponent<
   const loadCreations = useMemo(() => {
     // The taxonomy and Recents views list by creator across every Avatar Items tab, including the
     // folder-backed "All" tab, so neither uses the folder loader.
-    if (isAssetAll && !isTaxonomyView && !isRecentsView && !isAvatarLooksView) {
+    if (isAssetAll && !isTaxonomyView && !isAvatarLooksView) {
       // Within the All tab the folder dropdown's first option is Recents, which lists the creator's
       // items across every type (like the old Recents tab) rather than a folder's contents.
       return (creationsParameters: AvatarItemsGridPagingParameters) =>
@@ -491,7 +468,6 @@ const AvatarItemsGridContainer: FunctionComponent<
   }, [
     isAssetAll,
     isTaxonomyView,
-    isRecentsView,
     isAvatarLooksView,
     settings.enableMakeupAssets,
     isAvatarLooksEnabled,
@@ -501,74 +477,69 @@ const AvatarItemsGridContainer: FunctionComponent<
 
   return (
     <>
-      {/* Recents has no sub-filter, so the whole selector row is omitted for it. */}
-      {!isRecentsView &&
-        !isAvatarLooksView &&
-        (isTaxonomyView || (!isAvatarLooksTab && !isAvatarBackgroundsTab)) && (
-          <Grid
-            container
-            item
-            className={gridContainer}
-            alignItems='center'
-            justifyContent='flex-start'
-            wrap='nowrap'
-            direction='row'>
-            <Grid item className={folderActionContainer}>
-              {isTaxonomyView ? (
-                <TaxonomyCategorySelector
-                  l2Options={l2Options}
-                  categoryName={activeL1Node?.name}
-                  selectedOptionValue={
-                    effectiveTaxonomySelection === undefined
-                      ? undefined
-                      : taxonomyOptionValue(effectiveTaxonomySelection)
-                  }
-                  onSelectL2={handleSelectL2}
-                  isLoading={isTaxonomyLoading}
-                />
-              ) : (
-                <AvatarItemsDropdownCategorySubmenu
-                  dropdownTitle={AvatarItemDropdownTitles[assetType] ?? ''}
-                  dropdownOptions={menuOptions}
-                  isFolderMode={isAssetAll}
-                  filterIndex={filterIndex ? parseInt(filterIndex.toString(), 10) : 0}
-                  onMenuStateChange={onMenuStateChange}
-                  allowedAssetTypes={allowedAssetTypes}
-                  allowedBundleTypes={allowedBundleTypes}
-                />
-              )}
-            </Grid>
-            {isAssetAll && !isTaxonomyView && (
-              <Grid item className={folderActionContainer}>
-                <Grid container item direction='row' spacing={2} justifyContent='flex-end'>
-                  {selectedAvatarItemDropdown.folderId ? (
-                    // Inside a folder: rename / add / delete collapse into one folder-level gear menu.
-                    <FolderActionsMenu
-                      selectedFolderId={selectedAvatarItemDropdown.folderId}
-                      selectedFolderName={
-                        selectedAvatarItemDropdown.isFolder
-                          ? selectedAvatarItemDropdown.nameKey
-                          : ''
-                      }
-                      onFolderUpdated={handleFolderUpdated}
-                      onFolderContentsUpdated={handleFolderContentsUpdated}
-                      onFolderDeleted={handleFolderDeleted}
-                    />
-                  ) : (
-                    <CreateFolderButton
-                      selectedFolderId=''
-                      selectedFolderName={undefined}
-                      onFolderCreated={handleFolderCreated}
-                      onFolderUpdated={handleFolderUpdated}
-                      onFolderContentsUpdated={handleFolderContentsUpdated}
-                      groupId={groupId}
-                    />
-                  )}
-                </Grid>
-              </Grid>
+      {!isAvatarLooksView && (isTaxonomyView || (!isAvatarLooksTab && !isAvatarBackgroundsTab)) && (
+        <Grid
+          container
+          item
+          className={gridContainer}
+          alignItems='center'
+          justifyContent='flex-start'
+          wrap='nowrap'
+          direction='row'>
+          <Grid item className={folderActionContainer}>
+            {isTaxonomyView ? (
+              <TaxonomyCategorySelector
+                l2Options={l2Options}
+                categoryName={activeL1Node?.name}
+                selectedOptionValue={
+                  effectiveTaxonomySelection === undefined
+                    ? undefined
+                    : taxonomyOptionValue(effectiveTaxonomySelection)
+                }
+                onSelectL2={handleSelectL2}
+                isLoading={isTaxonomyLoading}
+              />
+            ) : (
+              <AvatarItemsDropdownCategorySubmenu
+                dropdownTitle={AvatarItemDropdownTitles[assetType] ?? ''}
+                dropdownOptions={menuOptions}
+                isFolderMode={isAssetAll}
+                filterIndex={filterIndex ? parseInt(filterIndex.toString(), 10) : 0}
+                onMenuStateChange={onMenuStateChange}
+                allowedAssetTypes={allowedAssetTypes}
+                allowedBundleTypes={allowedBundleTypes}
+              />
             )}
           </Grid>
-        )}
+          {isAssetAll && !isTaxonomyView && (
+            <Grid item className={folderActionContainer}>
+              <Grid container item direction='row' spacing={2} justifyContent='flex-end'>
+                {selectedAvatarItemDropdown.folderId ? (
+                  // Inside a folder: rename / add / delete collapse into one folder-level gear menu.
+                  <FolderActionsMenu
+                    selectedFolderId={selectedAvatarItemDropdown.folderId}
+                    selectedFolderName={
+                      selectedAvatarItemDropdown.isFolder ? selectedAvatarItemDropdown.nameKey : ''
+                    }
+                    onFolderUpdated={handleFolderUpdated}
+                    onFolderContentsUpdated={handleFolderContentsUpdated}
+                    onFolderDeleted={handleFolderDeleted}
+                  />
+                ) : (
+                  <CreateFolderButton
+                    selectedFolderId=''
+                    selectedFolderName={undefined}
+                    onFolderCreated={handleFolderCreated}
+                    onFolderUpdated={handleFolderUpdated}
+                    onFolderContentsUpdated={handleFolderContentsUpdated}
+                    groupId={groupId}
+                  />
+                )}
+              </Grid>
+            </Grid>
+          )}
+        </Grid>
+      )}
       <Grid container item className={gridContainer} wrap='nowrap' direction='column'>
         {hasData && createButton && (
           <Grid item className={createButtonContainer}>
