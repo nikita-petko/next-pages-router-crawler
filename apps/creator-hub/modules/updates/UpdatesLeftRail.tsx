@@ -4,6 +4,18 @@ import { useTranslation, withTranslation } from '@rbx/intl';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import LeftNavigationMenuV2 from '@modules/navigation/leftNavigation/components/LeftNavigationMenuV2';
 
+export type UpdatesNavigationItem = {
+  key: string;
+  href: string;
+  label: string;
+};
+
+export const UPDATES_NAVIGATION_NAMESPACES = [
+  TranslationNamespace.Home,
+  TranslationNamespace.Navigation,
+  TranslationNamespace.RoadMap,
+];
+
 const UPDATES_NAV_ITEMS = [
   {
     key: 'changelog',
@@ -19,7 +31,11 @@ const UPDATES_NAV_ITEMS = [
   },
 ] as const;
 
-const UpdatesLeftRail: React.FC = () => {
+export function useUpdatesNavigation(): {
+  activeItem: UpdatesNavigationItem | undefined;
+  activeKey: string;
+  items: UpdatesNavigationItem[];
+} {
   const { translateWithNamespace } = useTranslation();
   const pathname = usePathname();
 
@@ -37,6 +53,18 @@ const UpdatesLeftRail: React.FC = () => {
     [translateWithNamespace],
   );
 
+  const activeItem = useMemo(
+    () => items.find((item) => item.key === activeKey),
+    [activeKey, items],
+  );
+
+  return { activeItem, activeKey, items };
+}
+
+const UpdatesLeftRail: React.FC = () => {
+  const { translateWithNamespace } = useTranslation();
+  const { activeKey, items } = useUpdatesNavigation();
+
   return (
     <LeftNavigationMenuV2
       activeKey={activeKey}
@@ -46,8 +74,4 @@ const UpdatesLeftRail: React.FC = () => {
   );
 };
 
-export default withTranslation(UpdatesLeftRail, [
-  TranslationNamespace.Home,
-  TranslationNamespace.Navigation,
-  TranslationNamespace.RoadMap,
-]);
+export default withTranslation(UpdatesLeftRail, UPDATES_NAVIGATION_NAMESPACES);

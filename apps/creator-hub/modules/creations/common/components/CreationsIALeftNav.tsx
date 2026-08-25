@@ -14,6 +14,7 @@ import { useCurrentGroup } from '@modules/providers/groups/GroupsProvider';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import {
   AVATAR_ITEMS_ACTIVE_TAB,
+  isRecentsActiveTab,
   isTaxonomyActiveTab,
   TAXONOMY_HOST_ASSET,
 } from '../../avatarItem/utils/taxonomyRoutingUtils';
@@ -37,7 +38,11 @@ const parseActiveTabQueryParam = (value: string | string[] | undefined): Asset |
   return raw !== undefined && isValidEnumValue(Asset, raw) ? raw : undefined;
 };
 
-const CreationsIALeftNav: FunctionComponent = () => {
+export function useCreationsNavigation(): {
+  activeItem: TMenuItem | undefined;
+  activeKey: string;
+  items: TMenuItem[];
+} {
   const router = useRouter();
   const { translate } = useTranslation();
   const { settings } = useSettings();
@@ -68,8 +73,8 @@ const CreationsIALeftNav: FunctionComponent = () => {
     [router.query.groupId],
   );
 
-  const creationMenuItems = useMemo<TMenuItem[]>(() => {
-    const items = menuItems
+  const items = useMemo<TMenuItem[]>(() => {
+    return menuItems
       .filter((menuItem) => menuItem.type !== Asset.AssetPermissionRequests || isAAREnabled)
       .filter((menuItem) =>
         creationsMenuManager.isMenuItemEnabled(
@@ -102,7 +107,6 @@ const CreationsIALeftNav: FunctionComponent = () => {
                 ),
         };
       });
-    return items;
   }, [
     creationHref,
     currentGroup,
@@ -114,22 +118,32 @@ const CreationsIALeftNav: FunctionComponent = () => {
   ]);
 
   const activeKey = useMemo(() => {
-    // A taxonomy activeTab carries no asset type, so resolve it through the Avatar Items host tab
-    // instead of falling back to the default (Experiences) menu item.
+    const isHostedTab =
+      isTaxonomyActiveTab(router.query.activeTab) || isRecentsActiveTab(router.query.activeTab);
     const activeMenuState = creationsMenuManager.getMenuState(
-      isTaxonomyActiveTab(router.query.activeTab)
-        ? TAXONOMY_HOST_ASSET
-        : parseActiveTabQueryParam(router.query.activeTab),
+      isHostedTab ? TAXONOMY_HOST_ASSET : parseActiveTabQueryParam(router.query.activeTab),
       [],
     );
     return `${CREATION_MENU_ITEM_PREFIX}${activeMenuState.menuItem.type}`;
   }, [router.query.activeTab]);
 
+  const activeItem = useMemo(
+    () => items.find((item) => item.key === activeKey),
+    [activeKey, items],
+  );
+
+  return { activeItem, activeKey, items };
+}
+
+const CreationsIALeftNav: FunctionComponent = () => {
+  const { translate } = useTranslation();
+  const { activeKey, items } = useCreationsNavigation();
+
   return (
     <LeftNavigationMenuV2
       header={translate('Heading.Creations')}
       activeKey={activeKey}
-      items={creationMenuItems}
+      items={items}
     />
   );
 };

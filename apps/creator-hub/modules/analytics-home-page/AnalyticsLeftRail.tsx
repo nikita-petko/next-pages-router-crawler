@@ -12,6 +12,21 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import LeftNavigationMenuV2 from '@modules/navigation/leftNavigation/components/LeftNavigationMenuV2';
 import { useCurrentGroup } from '@modules/providers/groups/GroupsProvider';
 
+export type AnalyticsRailItem = {
+  key: string;
+  href: string;
+  label: string;
+};
+
+export const ANALYTICS_NAVIGATION_NAMESPACES = [
+  TranslationNamespace.Analytics,
+  TranslationNamespace.AvatarAnalytics,
+  TranslationNamespace.Community,
+  TranslationNamespace.Navigation,
+  TranslationNamespace.ShareLinkAnalytics,
+  TranslationNamespace.StoreAnalytics,
+];
+
 const ANALYTICS_BASE_PATH = '/dashboard/analytics';
 const IP_EARNINGS_PATH = `${ANALYTICS_BASE_PATH}/ip-earnings`;
 const missingGroupFlagContext = { groupId: 0 };
@@ -43,7 +58,11 @@ function buildAnalyticsTabHref(tabKey: string): string {
   return `${ANALYTICS_BASE_PATH}?${AnalyticsQueryParams.Tab}=${tabKey}`;
 }
 
-const AnalyticsLeftRail: React.FC = () => {
+export function useAnalyticsNavigation(): {
+  activeItem: AnalyticsRailItem | undefined;
+  activeKey: string;
+  items: AnalyticsRailItem[];
+} {
   const { translateWithNamespace } = useTranslation();
   const pathname = usePathname();
   const currentGroup = useCurrentGroup();
@@ -63,25 +82,22 @@ const AnalyticsLeftRail: React.FC = () => {
   const showIpLicensingTab =
     isIpLicensingFlagReady && isIpLicensingEnabled && accountFeatures.enableAgreements;
 
-  const activeKey = useMemo(() => {
+  const selectedKey = useMemo(() => {
     if (pathname === IP_EARNINGS_PATH || pathname.endsWith('/ip-earnings')) {
       return 'IpLicensing';
     }
     const raw = Array.isArray(query.tab) ? query.tab[0] : query.tab;
-    if (typeof raw === 'string' && raw.length > 0) {
-      return raw;
-    }
-    return AnalyticsHomeTab.Experience;
+    return typeof raw === 'string' && raw.length > 0 ? raw : undefined;
   }, [pathname, query.tab]);
 
+  const activeKey = selectedKey ?? AnalyticsHomeTab.Experience;
+
   const items = useMemo(() => {
-    const navItems: Array<{ key: string; href: string; label: string }> = ANALYTICS_NAV_ITEMS.map(
-      (item) => ({
-        key: item.key,
-        href: buildAnalyticsTabHref(item.key),
-        label: translateWithNamespace(item.namespace, item.labelKey),
-      }),
-    );
+    const navItems: AnalyticsRailItem[] = ANALYTICS_NAV_ITEMS.map((item) => ({
+      key: item.key,
+      href: buildAnalyticsTabHref(item.key),
+      label: translateWithNamespace(item.namespace, item.labelKey),
+    }));
 
     if (showCommunitiesTab) {
       navItems.push({
@@ -102,6 +118,18 @@ const AnalyticsLeftRail: React.FC = () => {
     return navItems;
   }, [showCommunitiesTab, showIpLicensingTab, translateWithNamespace]);
 
+  const activeItem = useMemo(
+    () => (selectedKey === undefined ? undefined : items.find((item) => item.key === selectedKey)),
+    [items, selectedKey],
+  );
+
+  return { activeItem, activeKey, items };
+}
+
+const AnalyticsLeftRail: React.FC = () => {
+  const { translateWithNamespace } = useTranslation();
+  const { activeKey, items } = useAnalyticsNavigation();
+
   return (
     <LeftNavigationMenuV2
       activeKey={activeKey}
@@ -111,11 +139,4 @@ const AnalyticsLeftRail: React.FC = () => {
   );
 };
 
-export default withTranslation(AnalyticsLeftRail, [
-  TranslationNamespace.Analytics,
-  TranslationNamespace.AvatarAnalytics,
-  TranslationNamespace.Community,
-  TranslationNamespace.Navigation,
-  TranslationNamespace.ShareLinkAnalytics,
-  TranslationNamespace.StoreAnalytics,
-]);
+export default withTranslation(AnalyticsLeftRail, ANALYTICS_NAVIGATION_NAMESPACES);
