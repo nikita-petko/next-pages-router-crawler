@@ -5,8 +5,8 @@ import { Button } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import DiscardChangesDialog from '@modules/miscellaneous/discard-dialog/DiscardChangesDialog';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { openDiscardChangesDialog } from '@modules/monetization-shared/discard-dialog/DiscardChangesDialog';
 import CustomDashboardBreadcrumbRegistration from '../../components/CustomDashboardBreadcrumbRegistration';
 import ReadOnlyDashboardSurface from '../../components/ReadOnlyDashboardSurface';
 import {
@@ -160,18 +160,25 @@ const DashboardPreviewPage: FC<DashboardPreviewPageProps> = ({ draftId, onBackTo
   const universeId = workingCopy?.universeId;
   const synthesis = useDashboardSynthesis(config);
 
+  const [isDiscardChangesDialogOpen, setIsDiscardChangesDialogOpen] = useState(false);
+  const handleCloseDiscardChangesDialog = useCallback(() => {
+    setIsDiscardChangesDialogOpen(false);
+  }, []);
   const handleCancel = useCallback(() => {
     if (!workingCopy) {
       return;
     }
-    openDiscardChangesDialog({
-      onConfirm: () => {
-        deleteEditorWorkingCopy(workingCopy.draftId);
-        void router.push(
-          `/dashboard/creations/experiences/${workingCopy.universeId}/analytics/dashboards`,
-        );
-      },
-    });
+    setIsDiscardChangesDialogOpen(true);
+  }, [workingCopy]);
+  const handleConfirmDiscard = useCallback(() => {
+    if (!workingCopy) {
+      return;
+    }
+    setIsDiscardChangesDialogOpen(false);
+    deleteEditorWorkingCopy(workingCopy.draftId);
+    void router.push(
+      `/dashboard/creations/experiences/${workingCopy.universeId}/analytics/dashboards`,
+    );
   }, [router, workingCopy]);
 
   const handlePublish = useCallback(() => {
@@ -269,45 +276,52 @@ const DashboardPreviewPage: FC<DashboardPreviewPageProps> = ({ draftId, onBackTo
   }
 
   return (
-    <ReadOnlyDashboardSurface
-      config={config}
-      synthesis={synthesis}
-      header={
-        <header className='flex flex-col gap-small width-full'>
-          <CustomDashboardBreadcrumbRegistration dashboardName={workingCopy.name} />
-          <div className='flex flex-col gap-small width-full'>
-            <div className='flex flex-col gap-xsmall min-width-0'>
-              <h1 className='text-heading-large content-emphasis margin-none text-truncate-end'>
-                {workingCopy.name}
-              </h1>
-              <span className='text-body-medium content-muted text-truncate-end'>
-                {workingCopy.createdByUsername}
-              </span>
+    <>
+      <ReadOnlyDashboardSurface
+        config={config}
+        synthesis={synthesis}
+        header={
+          <header className='flex flex-col gap-small width-full'>
+            <CustomDashboardBreadcrumbRegistration dashboardName={workingCopy.name} />
+            <div className='flex flex-col gap-small width-full'>
+              <div className='flex flex-col gap-xsmall min-width-0'>
+                <h1 className='text-heading-large content-emphasis margin-none text-truncate-end'>
+                  {workingCopy.name}
+                </h1>
+                <span className='text-body-medium content-muted text-truncate-end'>
+                  {workingCopy.createdByUsername}
+                </span>
+              </div>
+              <div className='flex wrap items-center gap-small'>
+                <Button variant='Standard' size='Medium' onClick={onBackToEditor}>
+                  {t.editLabel}
+                </Button>
+                <Button variant='Standard' size='Medium' onClick={handleCancel}>
+                  {t.cancelLabel}
+                </Button>
+                <Button
+                  variant='Emphasis'
+                  size='Medium'
+                  isDisabled={universeId === undefined || !canMutateDashboards || isSaving}
+                  onClick={handlePublish}>
+                  {workingCopy.dashboardId === null ? t.publishLabel : t.saveLabel}
+                </Button>
+              </div>
+              {saveErrorLabel ? (
+                <p role='alert' className='text-body-small content-system-alert margin-none'>
+                  {saveErrorLabel}
+                </p>
+              ) : null}
             </div>
-            <div className='flex wrap items-center gap-small'>
-              <Button variant='Standard' size='Medium' onClick={onBackToEditor}>
-                {t.editLabel}
-              </Button>
-              <Button variant='Standard' size='Medium' onClick={handleCancel}>
-                {t.cancelLabel}
-              </Button>
-              <Button
-                variant='Emphasis'
-                size='Medium'
-                isDisabled={universeId === undefined || !canMutateDashboards || isSaving}
-                onClick={handlePublish}>
-                {workingCopy.dashboardId === null ? t.publishLabel : t.saveLabel}
-              </Button>
-            </div>
-            {saveErrorLabel ? (
-              <p role='alert' className='text-body-small content-system-alert margin-none'>
-                {saveErrorLabel}
-              </p>
-            ) : null}
-          </div>
-        </header>
-      }
-    />
+          </header>
+        }
+      />
+      <DiscardChangesDialog
+        open={isDiscardChangesDialogOpen}
+        onConfirm={handleConfirmDiscard}
+        onClose={handleCloseDiscardChangesDialog}
+      />
+    </>
   );
 };
 

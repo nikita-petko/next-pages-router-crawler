@@ -15,8 +15,8 @@ import {
   filterBarDimensionToQueryKey,
   type UIFilterDimension,
 } from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/filterUtils';
-import { openDiscardChangesDialog } from '@modules/monetization-shared/discard-dialog/DiscardChangesDialog';
-import { useDiscardChangesPrompt } from '@modules/monetization-shared/discard-dialog/useDiscardChangesPrompt';
+import DiscardChangesDialog from '@modules/miscellaneous/discard-dialog/DiscardChangesDialog';
+import { useDiscardChangesPrompt } from '@modules/miscellaneous/discard-dialog/useDiscardChangesPrompt';
 import CustomDashboardBreadcrumbRegistration from '../../components/CustomDashboardBreadcrumbRegistration';
 import InternalSandboxBanner from '../../components/InternalSandboxBanner';
 import {
@@ -128,6 +128,7 @@ const EditPageContent: FC<EditPageContentProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<unknown>(null);
   const [isConflictDialogOpen, setIsConflictDialogOpen] = useState(false);
+  const [isCancelDiscardDialogOpen, setIsCancelDiscardDialogOpen] = useState(false);
   const [summaryCardDialogMode, setSummaryCardDialogMode] = useState<
     { readonly type: 'add' } | { readonly type: 'edit'; readonly tileId: TileId } | null
   >(null);
@@ -214,10 +215,12 @@ const EditPageContent: FC<EditPageContentProps> = ({
     (url: string) => shouldPromptBeforeLeavingEditor(url, dashboardId),
     [dashboardId],
   );
-  const bypassUnsavedChangesPrompt = useDiscardChangesPrompt(
-    hasUnsavedChanges,
-    shouldPromptForEditorRoute,
-  );
+  const {
+    bypass: bypassUnsavedChangesPrompt,
+    isOpen: isRouteDiscardDialogOpen,
+    confirm: confirmRouteDiscard,
+    dismiss: dismissRouteDiscard,
+  } = useDiscardChangesPrompt(hasUnsavedChanges, shouldPromptForEditorRoute);
 
   const activeSessionDraftSignature = useMemo(
     () =>
@@ -682,10 +685,12 @@ const EditPageContent: FC<EditPageContentProps> = ({
       leaveEditorWithoutPrompt();
       return;
     }
-    openDiscardChangesDialog({
-      onConfirm: leaveEditorWithoutPrompt,
-    });
+    setIsCancelDiscardDialogOpen(true);
   }, [hasUnsavedChanges, leaveEditorWithoutPrompt]);
+
+  const dismissCancelDiscard = useCallback(() => {
+    setIsCancelDiscardDialogOpen(false);
+  }, []);
 
   // Disabled queries report `isLoading: false` in RQ v5; `isPending` stays
   // true until the query is enabled. Treat unresolved route ids and pending
@@ -847,6 +852,16 @@ const EditPageContent: FC<EditPageContentProps> = ({
           onConfirm={handleConfirmSummaryCardDialog}
         />
       ) : null}
+      <DiscardChangesDialog
+        open={isRouteDiscardDialogOpen}
+        onConfirm={confirmRouteDiscard}
+        onClose={dismissRouteDiscard}
+      />
+      <DiscardChangesDialog
+        open={isCancelDiscardDialogOpen}
+        onConfirm={leaveEditorWithoutPrompt}
+        onClose={dismissCancelDiscard}
+      />
       <EditConflictDialog
         open={isConflictDialogOpen}
         isSubmitting={isSaving}
