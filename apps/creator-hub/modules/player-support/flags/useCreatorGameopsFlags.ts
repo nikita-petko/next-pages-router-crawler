@@ -1,14 +1,9 @@
 import { useFlag } from '@rbx/flags';
-import {
-  enableExpeditedReview,
-  enablePlayerHostedEvents,
-  enablePlayerSupport,
-} from '@generated/flags/creatorGameops';
+import { enablePlayerHostedEvents, enablePlayerSupport } from '@generated/flags/creatorGameops';
 
 const creatorGameopsFlags = {
   enablePlayerHostedEvents,
   enablePlayerSupport,
-  enableExpeditedReview,
 } as const;
 
 type CreatorGameopsFlagName = keyof typeof creatorGameopsFlags;
@@ -34,12 +29,10 @@ function useCreatorGameopsFlags<TFlagName extends CreatorGameopsFlagName>(
   const playerSupportResult = useFlag(enablePlayerSupport, {
     universeId: context?.universeId ?? 0,
   });
-  const expeditedReviewResult = useFlag(enableExpeditedReview);
   const playerHostedEventsResult = useFlag(enablePlayerHostedEvents);
 
   const results = {
     enablePlayerSupport: playerSupportResult,
-    enableExpeditedReview: expeditedReviewResult,
     enablePlayerHostedEvents: playerHostedEventsResult,
   } as const;
 

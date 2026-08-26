@@ -5,9 +5,7 @@ import { OwnerType } from '@rbx/client-commerce-api/v1';
 import { CreatorTierEnum } from '@rbx/client-core-content-api/v1';
 import { TransactionVariantEnum } from '@rbx/client-core-content-transaction-api/v1';
 import { StatusCodes } from '@rbx/core';
-import { useFlag } from '@rbx/flags';
 import { useTranslation, withTranslation } from '@rbx/intl';
-import { enableExpeditedReview } from '@generated/flags/creatorGameops';
 import groupsClient from '@modules/clients/groups';
 import useExperienceOwner from '@modules/commerce/hooks/useExperienceOwner';
 import { PageLoading } from '@modules/miscellaneous/components';
@@ -47,7 +45,6 @@ const AudienceReachPage: FC = () => {
     enabled: isGroupOwnedExperience && ownerId > 0,
     retry: false,
   });
-  const { ready: areFlagsLoaded, value: isExpeditedReviewEnabled } = useFlag(enableExpeditedReview);
 
   const universeCreatorUserId = isUserOwnedExperience ? ownerId : groupOwnerUserId;
   const isUniverseCreatorUserIdFetched = isUserOwnedExperience
@@ -63,10 +60,10 @@ const AudienceReachPage: FC = () => {
 
   // Banner that displays your review status whenever the user has reached select eligibility
   const confirmationBanner = useMemo(() => {
-    if (isTransactionsLoading || !areFlagsLoaded || !state) {
+    if (isTransactionsLoading || !state) {
       return null;
     }
-    if (expeditedIsPaid && isExpeditedReviewEnabled) {
+    if (expeditedIsPaid) {
       return (
         <AudienceReachExpediteConfirmationBanner
           universeId={universeId}
@@ -75,14 +72,7 @@ const AudienceReachPage: FC = () => {
       );
     }
     return <UnderReviewBanner selectStatus={state.selectStatus} underReview={state.underReview} />;
-  }, [
-    isTransactionsLoading,
-    expeditedIsPaid,
-    state,
-    universeId,
-    isExpeditedReviewEnabled,
-    areFlagsLoaded,
-  ]);
+  }, [isTransactionsLoading, expeditedIsPaid, state, universeId]);
 
   const effectiveCreatorTier =
     state?.creatorTier === CreatorTierEnum.Trusted && state?.creatorEveryoneWithoutSubscription

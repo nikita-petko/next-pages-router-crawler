@@ -8,6 +8,7 @@ import GroupedComboboxSelect, {
 } from '@modules/charts-generic/components/GroupedComboboxSelect';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import type { TChartConfiguratorMetrics } from '../../chartConfigurator/chartConfiguratorMetricsConfig';
+import useChartConfiguratorMetricOptionState from '../../chartConfigurator/useChartConfiguratorMetricOptionState';
 import useRAQIV2TranslationDependencies from '../../hooks/useRAQIV2TranslationDependencies';
 import { groupMetricsByCategory } from './utils/chartConfiguratorMetricGrouping';
 
@@ -42,18 +43,31 @@ const ChartConfiguratorMetricSelector: FC<ChartConfiguratorMetricSelectorProps> 
     'Placeholder text in the metric dropdown before a metric is selected.',
     translationKey('Placeholder.ExploreMode.SelectMetric', TranslationNamespace.Analytics),
   );
+  const performanceIneligibleReason = translate(
+    translationKey('Message.PerformanceChartsNoPermission', TranslationNamespace.Analytics),
+  );
+  const optionStateByMetric = useChartConfiguratorMetricOptionState(options);
 
   const groups = useMemo<GroupedComboboxGroup[]>(
     () =>
       groupMetricsByCategory(options, translate).map((group) => ({
         id: group.groupKey.key,
         label: group.groupLabel,
-        options: group.metrics.map(({ metric, label: metricLabel }) => ({
-          value: metric,
-          label: metricLabel,
-        })),
+        options: group.metrics.map(({ metric, label: metricLabel }) => {
+          const optionState = optionStateByMetric.get(metric);
+          const isDisabled = optionState?.disabled === true;
+          return {
+            value: metric,
+            label: metricLabel,
+            disabled: isDisabled,
+            tooltip:
+              isDisabled && optionState?.disabledReason === 'performanceIneligible'
+                ? performanceIneligibleReason
+                : undefined,
+          };
+        }),
       })),
-    [options, translate],
+    [optionStateByMetric, options, performanceIneligibleReason, translate],
   );
 
   // Map the string option value the combobox reports back to the typed metric.
@@ -62,8 +76,14 @@ const ChartConfiguratorMetricSelector: FC<ChartConfiguratorMetricSelectorProps> 
     [options],
   );
   const handleChange = useCallback(
-    (next: string) => onChange(metricByValue.get(next) ?? null),
-    [metricByValue, onChange],
+    (next: string) => {
+      const metric = metricByValue.get(next) ?? null;
+      if (metric && optionStateByMetric.get(metric)?.disabled) {
+        return;
+      }
+      onChange(metric);
+    },
+    [metricByValue, onChange, optionStateByMetric],
   );
 
   return (

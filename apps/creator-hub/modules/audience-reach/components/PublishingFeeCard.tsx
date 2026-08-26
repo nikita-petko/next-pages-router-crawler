@@ -2,11 +2,9 @@ import { useMemo, useState, type FC } from 'react';
 import { AllowlistTypeEnum, CreatorTierEnum } from '@rbx/client-core-content-api/v1';
 import { TransactionVariantEnum } from '@rbx/client-core-content-transaction-api/v1';
 import { StatusCodes } from '@rbx/core';
-import { useFlag } from '@rbx/flags';
 import { Alert, Button, Snackbar, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { Skeleton } from '@rbx/ui';
-import { enableExpeditedReview } from '@generated/flags/creatorGameops';
 import { getResponseFromError } from '@modules/clients/utils';
 import useUniversePublishStatus from '@modules/creations-overview/hooks/useUniversePublishStatus';
 import CreatorType from '@modules/miscellaneous/common/enums/Creator';
@@ -73,7 +71,6 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
     });
   const { data: groupPermissions, isLoading: isGroupPermissionsLoading } =
     useGetOrganizationPermissionsByGroupId(groupId);
-  const { value: isExpeditedReviewEnabled } = useFlag(enableExpeditedReview);
 
   const canConfigureGroupRevenue =
     Boolean(groupId) &&
@@ -95,15 +92,14 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
     Boolean(activeAllowlists?.includes(AllowlistTypeEnum.TemporaryExpeditedFeeBypass));
 
   const shouldShowExpediteUpsell =
-    isExpeditedReviewEnabled &&
-    !isAllowlistedExempt &&
     // Eligible to pay expedited fee:
-    ((isBelowThreshold && // Creators above threshold can just pay the normal fee
+    (isBelowThreshold && // Creators above threshold can just pay the normal fee
+      !isAllowlistedExempt &&
       canPay &&
       audienceReach !== ReachLevel.AllAges &&
       !(isRated && is16Plus)) ||
-      // Or already paid fee
-      expeditedTransactionStatus?.hasDeposit);
+    // Or already paid fee
+    expeditedTransactionStatus?.hasDeposit;
 
   const [feeStatusText, feeDescriptionText, ctaButton, shouldShowPublishingFeeUpsell] =
     useMemo(() => {

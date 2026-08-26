@@ -1,7 +1,7 @@
 import type { FC } from 'react';
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { TextInput, Icon } from '@rbx/foundation-ui';
+import { TextInput, Icon, VisuallyHidden } from '@rbx/foundation-ui';
 import type { TLabelTooltipConfig, TTextInputSize } from '@rbx/foundation-ui';
 
 const VIEWPORT_BOTTOM_PADDING = 16;
@@ -392,6 +392,8 @@ export type ComboboxTypeaheadOptionProps = {
    * navigation skips it (see `getOptions`, which excludes `aria-disabled`).
    */
   disabled?: boolean;
+  /** Accessible description, e.g. why a disabled option cannot be chosen. */
+  description?: string;
 };
 
 const DISABLED_OPTION_CLASS_NAME =
@@ -402,26 +404,34 @@ export const ComboboxTypeaheadOption: FC<ComboboxTypeaheadOptionProps> = ({
   isSelected,
   onClick,
   disabled = false,
-}) => (
-  <div
-    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a listbox option with rich content (label + check icon) cannot use a native <option>; this is the standard WAI-ARIA listbox option pattern paired with the role="listbox" container above.
-    role='option'
-    aria-selected={isSelected}
-    aria-disabled={disabled || undefined}
-    tabIndex={-1}
-    className={disabled ? DISABLED_OPTION_CLASS_NAME : OPTION_CLASS_NAME}
-    onClick={disabled ? undefined : onClick}
-    onKeyDown={
-      disabled
-        ? undefined
-        : (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              onClick();
-            }
-          }
-    }>
-    <span className='text-truncate-split'>{optionLabel}</span>
-    {isSelected && <Icon name='icon-filled-check' size='Medium' />}
-  </div>
-);
+  description,
+}) => {
+  const descriptionId = useId();
+  return (
+    <>
+      <div
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a listbox option with rich content (label + check icon) cannot use a native <option>; this is the standard WAI-ARIA listbox option pattern paired with the role="listbox" container above.
+        role='option'
+        aria-selected={isSelected}
+        aria-disabled={disabled || undefined}
+        aria-describedby={description ? descriptionId : undefined}
+        tabIndex={-1}
+        className={disabled ? DISABLED_OPTION_CLASS_NAME : OPTION_CLASS_NAME}
+        onClick={disabled ? undefined : onClick}
+        onKeyDown={
+          disabled
+            ? undefined
+            : (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onClick();
+                }
+              }
+        }>
+        <span className='text-truncate-split'>{optionLabel}</span>
+        {isSelected && <Icon name='icon-filled-check' size='Medium' />}
+      </div>
+      {description ? <VisuallyHidden id={descriptionId}>{description}</VisuallyHidden> : null}
+    </>
+  );
+};

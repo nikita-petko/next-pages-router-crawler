@@ -1,6 +1,6 @@
 import type { FC } from 'react';
 import React, { useCallback, useMemo } from 'react';
-import { Divider } from '@rbx/foundation-ui';
+import { Divider, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
 import type { TTextInputSize } from '@rbx/foundation-ui';
 import ComboboxTypeahead, { ComboboxTypeaheadOption } from './ComboboxTypeahead';
 
@@ -8,6 +8,8 @@ export type GroupedComboboxOption = {
   value: string;
   label: string;
   disabled?: boolean;
+  /** Disabled reason. Shown on hover and exposed to assistive tech on the option. */
+  tooltip?: string;
 };
 
 export type GroupedComboboxGroup = {
@@ -127,15 +129,27 @@ const GroupedComboboxSelect: FC<GroupedComboboxSelectProps> = ({
                   {group.label}
                 </div>
               )}
-              {group.options.map((option) => (
-                <ComboboxTypeaheadOption
-                  key={option.value}
-                  label={option.label}
-                  isSelected={value === option.value}
-                  disabled={option.disabled}
-                  onClick={() => handleSelect(option.value, close)}
-                />
-              ))}
+              {group.options.map((option) => {
+                const optionNode = (
+                  <ComboboxTypeaheadOption
+                    label={option.label}
+                    isSelected={value === option.value}
+                    disabled={option.disabled}
+                    description={option.disabled ? option.tooltip : undefined}
+                    onClick={() => handleSelect(option.value, close)}
+                  />
+                );
+                if (!option.disabled || !option.tooltip) {
+                  return <React.Fragment key={option.value}>{optionNode}</React.Fragment>;
+                }
+                return (
+                  <Tooltip key={option.value} title={option.tooltip} position='top-start'>
+                    <TooltipTrigger asChild>
+                      <span className='block'>{optionNode}</span>
+                    </TooltipTrigger>
+                  </Tooltip>
+                );
+              })}
             </div>
           </React.Fragment>
         ));

@@ -612,16 +612,6 @@ export const generatedFlags = [
       },
     },
     {
-      flag: creatorGameopsFlags.enableExpeditedReview,
-      metadata: {
-        namespace: 'creator-gameops',
-        name: 'enableExpeditedReview',
-        defaultValue: false,
-        valueType: 'boolean',
-        contextType: 'static',
-      },
-    },
-    {
       flag: creatorGameopsFlags.enablePlayerHostedEvents,
       metadata: {
         namespace: 'creator-gameops',
