@@ -176,9 +176,19 @@ export function isCanonicalRAQIV2Dimension(value: string): value is TRAQIV2Dimen
   return RAQIV2_DIMENSION_VALUES.includes(value);
 }
 
-/** Tile breakdowns may persist LatestPlaceVersion, the Top-N stand-in for raw PlaceVersion. */
+/**
+ * Tile breakdowns may persist LatestPlaceVersion (the Top-N stand-in for raw
+ * PlaceVersion) and metric-fanout pseudo-dimensions (PercentileType /
+ * AggregationType) so Explore Mode "Add to Dashboard" can round-trip
+ * first-class fanout until dashboards own that model.
+ */
 export function isPersistableBreakdownDimension(value: string): value is TRAQIV2Dimension {
-  return isCanonicalRAQIV2Dimension(value) || value === LATEST_PLACE_VERSION_KEY;
+  return (
+    isCanonicalRAQIV2Dimension(value) ||
+    value === LATEST_PLACE_VERSION_KEY ||
+    value === PERCENTILE_TYPE_PSEUDO_DIMENSION_KEY ||
+    value === AGGREGATION_TYPE_PSEUDO_DIMENSION_KEY
+  );
 }
 
 function isDefaultGranularity(value: string): value is RAQIV2MetricGranularity {

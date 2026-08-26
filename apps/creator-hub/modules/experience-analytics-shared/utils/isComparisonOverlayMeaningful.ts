@@ -1,6 +1,7 @@
 import type { TRAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
 import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import { isComparisonCompatibleDurationBucketDimension } from '../constants/RAQIV2DurationBucketDimensions';
+import { mergeMetricVariantIntoBreakdown, type MetricVariant } from './metricVariant';
 
 /** Chart types that can render a period-over-period comparison series. */
 export const COMPARISON_SUPPORTED_CHART_TYPES: ReadonlySet<ChartType> = new Set([
@@ -31,18 +32,23 @@ export const DURATION_CHART_TYPES: ReadonlySet<ChartType> = new Set([
 const isComparisonOverlayMeaningful = ({
   chartType,
   breakdown,
+  metricVariant,
 }: {
   chartType?: ChartType;
   breakdown?: readonly TRAQIV2Dimension[];
+  metricVariant?: MetricVariant | null;
 }): boolean => {
   if (chartType !== undefined && !COMPARISON_SUPPORTED_CHART_TYPES.has(chartType)) {
     return false;
   }
-  if (!breakdown?.length) {
+  const effectiveBreakdown = mergeMetricVariantIntoBreakdown(breakdown ?? [], metricVariant);
+  if (!effectiveBreakdown.length) {
     return true;
   }
   const isDurationChartType = chartType !== undefined && DURATION_CHART_TYPES.has(chartType);
-  return isDurationChartType && breakdown.every(isComparisonCompatibleDurationBucketDimension);
+  return (
+    isDurationChartType && effectiveBreakdown.every(isComparisonCompatibleDurationBucketDimension)
+  );
 };
 
 export default isComparisonOverlayMeaningful;

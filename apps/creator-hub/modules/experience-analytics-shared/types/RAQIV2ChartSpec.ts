@@ -8,6 +8,7 @@ import type { RAQIV2QueryFilter, RAQIV2ChartResource } from '@modules/clients/an
 import type { TRAQIV2NumericUIMetric } from '../constants/AnalyticsMetricDisplayConfig';
 import type { BenchmarkType } from '../constants/BenchmarkType';
 import type { TComparisonOffset } from '../constants/comparisonOffset';
+import type { MetricVariant } from '../utils/metricVariant';
 import type { MetricLike } from './ComputedMetric';
 
 interface OverlayVariants {
@@ -87,6 +88,13 @@ type RAQIV2ChartSpec = {
   timeSpec: TExplicitTimeRangeSpec;
   metric: MetricLike;
   breakdown?: readonly TRAQIV2Dimension[];
+  /**
+   * First-class metric variant selection. Fanout (`mode: 'fanout'`) is the
+   * page-level percentile/aggregation breakdown; it must not also appear in
+   * `breakdown[]`. Single-variant selections still live on filters / source
+   * `pseudoDimensionValues` until a later migration.
+   */
+  metricVariant?: MetricVariant;
   filter?: readonly RAQIV2QueryFilter[];
   granularity: RAQIV2MetricGranularity;
   timeAxisBounds: [Date, Date] | null | 'disabled';

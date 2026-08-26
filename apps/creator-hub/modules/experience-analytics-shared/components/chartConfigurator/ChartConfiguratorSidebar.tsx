@@ -23,6 +23,7 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import type { BenchmarkOverlayType } from '../../hooks/useAnalyticsBenchmarks';
 import useRAQIV2TranslationDependencies from '../../hooks/useRAQIV2TranslationDependencies';
 import type RAQIV2ChartContext from '../../types/RAQIV2ChartContext';
+import type { MetricVariant } from '../../utils/metricVariant';
 import ChartConfiguratorChartTypeSelector from './ChartConfiguratorChartTypeSelector';
 import ChartConfiguratorCustomEventControls from './ChartConfiguratorCustomEventControls';
 import ChartConfiguratorEquationBuilder from './ChartConfiguratorEquationBuilder';
@@ -117,6 +118,7 @@ type MetricSectionProps = {
   readonly equationBuilderDefaultMetric: SidebarModel['equationBuilderDefaultMetric'];
   readonly equationBuilderMetrics: SidebarModel['equationBuilderMetrics'];
   readonly handleToggleOperations: SidebarModel['handleToggleOperations'];
+  readonly metricVariant?: MetricVariant | null;
 };
 
 const MetricSection = memo<MetricSectionProps>(
@@ -129,6 +131,7 @@ const MetricSection = memo<MetricSectionProps>(
     equationBuilderDefaultMetric,
     equationBuilderMetrics,
     handleToggleOperations,
+    metricVariant,
   }) => {
     const {
       metric,
@@ -190,6 +193,7 @@ const MetricSection = memo<MetricSectionProps>(
             }
             initialComputedMetric={computedMetric}
             chartContext={equationBuilderChartContext}
+            metricVariant={metricVariant}
           />
         )}
       </div>
@@ -645,6 +649,7 @@ const ChartConfiguratorSidebar: FC<ChartConfiguratorSidebarProps> = ({
         equationBuilderDefaultMetric={equationBuilderDefaultMetric}
         equationBuilderMetrics={equationBuilderMetrics}
         handleToggleOperations={handleToggleOperations}
+        metricVariant={breakdownControls.metricVariant}
       />
 
       <Divider variant='Standard' />

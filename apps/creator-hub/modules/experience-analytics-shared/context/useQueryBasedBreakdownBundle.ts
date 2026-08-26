@@ -2,6 +2,8 @@ import { RAQIV2Dimension, RAQIV2UIPseudoDimension } from '@rbx/creator-hub-analy
 import type { TRAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
 import AnalyticsQueryParams from '@modules/charts-generic/enums/AnalyticsQueryParams';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
+import useMetricVariantChartStateEnabled from '../hooks/useMetricVariantChartStateEnabled';
+import isMetricFanoutDimension from '../utils/isMetricFanoutDimension';
 import type { TQueryParamResult } from './useQueryBasedAnalyticsBundle';
 import useQueryBasedAnalyticsBundle from './useQueryBasedAnalyticsBundle';
 
@@ -50,6 +52,7 @@ const legacyBreakdownToRAQIV2 = (
 const useQueryBasedBreakdownBundle = (
   log: (oldBreakdown: TRAQIV2Dimension[], newBreakdown: TRAQIV2Dimension[]) => void,
 ): ExperienceAnalyticsBreakdownBundle => {
+  const isMetricVariantChartStateEnabled = useMetricVariantChartStateEnabled();
   const { value: breakdown, setValue: setBreakdown } = useQueryBasedAnalyticsBundle({
     current: {
       key: AnalyticsQueryParams.Breakdown,
@@ -58,11 +61,16 @@ const useQueryBasedBreakdownBundle = (
           return [];
         }
         if (Array.isArray(value)) {
-          return value.filter((dimension): dimension is TRAQIV2Dimension =>
-            isSupportedDimension(dimension),
+          return value.filter(
+            (dimension): dimension is TRAQIV2Dimension =>
+              isSupportedDimension(dimension) &&
+              (!isMetricVariantChartStateEnabled || !isMetricFanoutDimension(dimension)),
           );
         }
-        if (isSupportedDimension(value)) {
+        if (
+          isSupportedDimension(value) &&
+          (!isMetricVariantChartStateEnabled || !isMetricFanoutDimension(value))
+        ) {
           return [value];
         }
         return [];

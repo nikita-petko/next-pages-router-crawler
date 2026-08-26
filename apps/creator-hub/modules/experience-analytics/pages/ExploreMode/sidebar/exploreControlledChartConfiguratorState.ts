@@ -54,6 +54,7 @@ import type { BenchmarkOverlayType } from '@modules/experience-analytics-shared/
 import type { ComputedMetric } from '@modules/experience-analytics-shared/types/ComputedMetric';
 import { serializeComputedMetricToQueryParam } from '@modules/experience-analytics-shared/types/ComputedMetricQueryParam';
 import type { OverlayType } from '@modules/experience-analytics-shared/types/RAQIV2ChartSpec';
+import { splitMetricVariantFromBreakdown } from '@modules/experience-analytics-shared/utils/metricVariant';
 import type { TUIGranularity } from '@modules/experience-analytics-shared/utils/seriesGranularities';
 import { isValidArrayEnumValue, isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
 
@@ -92,6 +93,7 @@ export type ExploreControlledCoreUrlInput = {
   readonly availableChartTypes: readonly ChartConfiguratorChartType[];
   readonly defaultGranularity?: TUIGranularity;
   readonly featureFlagsFetched?: boolean;
+  readonly isMetricVariantChartStateEnabled?: boolean;
 };
 
 export type ExploreControlledPageStateInput = {
@@ -271,6 +273,7 @@ export function deserializeExploreGranularityParam(
 
 export function deserializeExploreBreakdownParam(
   queryBreakdown: QueryParamValue,
+  isMetricVariantChartStateEnabled = false,
 ): readonly TRAQIV2Dimension[] {
   const values =
     typeof queryBreakdown === 'string'
@@ -278,7 +281,13 @@ export function deserializeExploreBreakdownParam(
       : Array.isArray(queryBreakdown)
         ? queryBreakdown
         : [];
-  return toSelectableBreakdownDimensions(values.filter(isSupportedBreakdownDimension));
+  const supported = values.filter(isSupportedBreakdownDimension);
+  if (!isMetricVariantChartStateEnabled) {
+    return toSelectableBreakdownDimensions(supported);
+  }
+  return toSelectableBreakdownDimensions(
+    splitMetricVariantFromBreakdown(undefined, supported).breakdown,
+  );
 }
 
 export function deserializeExploreL7SmoothingParam(queryL7Smoothing: QueryParamValue): boolean {
@@ -352,6 +361,7 @@ export function buildExploreControlledSeedFromUrlInput({
   availableChartTypes,
   defaultGranularity = RAQIV2MetricGranularity.OneDay,
   featureFlagsFetched = true,
+  isMetricVariantChartStateEnabled = false,
 }: ExploreControlledCoreUrlInput): ExploreControlledConfiguratorSeed {
   const { metric, computedMetric, cleanupQueryParams, l7SmoothingFromUrl } =
     resolveExploreModeQueryState({
@@ -373,7 +383,7 @@ export function buildExploreControlledSeedFromUrlInput({
     computedMetric,
     chartType: deserializeExploreChartTypeParam(queryChartType, availableChartTypes),
     granularity: deserializeExploreGranularityParam(queryGranularity, defaultGranularity),
-    breakdown: deserializeExploreBreakdownParam(queryBreakdown),
+    breakdown: deserializeExploreBreakdownParam(queryBreakdown, isMetricVariantChartStateEnabled),
     l7Smoothing:
       computedMetric?.l7Smoothing ?? (!computedMetricOwnsSmoothing && topLevelSmoothingFromUrl),
   });

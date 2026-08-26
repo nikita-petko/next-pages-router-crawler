@@ -7,6 +7,7 @@ import {
 import type { TRAQIV2Dimension, TRAQIV2UIMetric } from '@rbx/creator-hub-analytics-config';
 import { getUIMetricFromAtomicMetricLike, isComputedMetric } from '../types/ComputedMetric';
 import type { RAQIV2UIQueryRequest } from '../types/RAQIV2UIQueryRequest';
+import { getFanoutOwnedDimension, splitMetricVariantFromBreakdown } from './metricVariant';
 
 /**
  * Client-side RAQI validation errors.
@@ -110,7 +111,11 @@ const getEnumFilterSupport = (dimension: TRAQIV2Dimension): Map<string, boolean>
 
 export const validateRAQIV2Request = (request: RAQIV2UIQueryRequest): RAQIV2ValidationError[] => {
   const errors: RAQIV2ValidationError[] = [];
-  const { metric, granularity, breakdown, filter } = request;
+  const { metric, granularity, filter } = request;
+  const { metricVariant, breakdown } = splitMetricVariantFromBreakdown(
+    request.metricVariant,
+    request.breakdown,
+  );
 
   // Computed metrics are validated by ACE DAG validation.
   if (isComputedMetric(metric)) {
@@ -151,6 +156,20 @@ export const validateRAQIV2Request = (request: RAQIV2UIQueryRequest): RAQIV2Vali
         );
       }
     });
+  }
+
+  const fanoutDimension = getFanoutOwnedDimension(metricVariant);
+  if (metricDimensions && fanoutDimension && !metricDimensions.includes(fanoutDimension)) {
+    errors.push(
+      new RAQIV2ValidationError(
+        RAQIV2ValidationErrorType.UnsupportedBreakdown,
+        `Metric ${uiMetric} does not support breakdown dimension ${fanoutDimension}. Supported dimensions: ${metricDimensions.join(
+          ', ',
+        )}`,
+        uiMetric,
+        fanoutDimension,
+      ),
+    );
   }
 
   // Validate filter dimensions

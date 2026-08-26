@@ -19,7 +19,7 @@ import {
   getUniqueKeyForKeyOrConfig,
   type UniqueKeyForAnalyticsComponent,
 } from '../utils/getUniqueKeyForKeyOrConfig';
-import isMetricFanoutDimension from '../utils/isMetricFanoutDimension';
+import { hasMetricFanoutBreakdown } from '../utils/isMetricFanoutDimension';
 import getAnalyticsMetricDisplayConfig, {
   type TRAQIV2NumericUIMetric,
 } from './AnalyticsMetricDisplayConfig';
@@ -471,7 +471,7 @@ export const getExploreModeChartType = (
       : ChartType.Bar;
   }
 
-  if (breakdown && breakdown.some(isMetricFanoutDimension)) {
+  if (hasMetricFanoutBreakdown(breakdown, chartContext.metricVariant)) {
     return ChartType.Spline;
   }
   return chartTypeFromPresetOrMetric ?? ChartType.Spline;

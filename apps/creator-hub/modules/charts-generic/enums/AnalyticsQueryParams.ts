@@ -35,6 +35,8 @@ enum AnalyticsQueryParams {
   LegacyBreakdownType = 'breakdownType',
   /** RAQIv2 breakdown (TRAQIV2Dimension[]) */
   Breakdown = 'breakdown',
+  /** Explore Mode metric-variant fanout (`percentile` | `aggregation`) */
+  MetricVariant = 'metricVariant',
 
   /** These are used in recommendationTypeToInsightsLinkSpec */
   FilterPlace = 'filter_Place',

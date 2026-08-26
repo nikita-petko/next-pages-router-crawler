@@ -25,6 +25,7 @@ import {
 } from '@modules/experience-analytics-shared/exploreMode/l7SmoothingEligibility';
 import { isComputedMetricAllowedForExploreMode } from '@modules/experience-analytics-shared/exploreMode/resolveExploreModeQueryState';
 import type { BenchmarkOverlayType } from '@modules/experience-analytics-shared/hooks/useAnalyticsBenchmarks';
+import useMetricVariantChartStateEnabled from '@modules/experience-analytics-shared/hooks/useMetricVariantChartStateEnabled';
 import type { ComputedMetric } from '@modules/experience-analytics-shared/types/ComputedMetric';
 import type { TUIGranularity } from '@modules/experience-analytics-shared/utils/seriesGranularities';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
@@ -126,6 +127,7 @@ export default function useExploreControlledChartConfiguratorCoreUrlSync({
   defaultGranularity = RAQIV2MetricGranularity.OneDay,
   featureFlagsFetched = true,
 }: UseExploreControlledChartConfiguratorCoreUrlSyncArgs) {
+  const isMetricVariantChartStateEnabled = useMetricVariantChartStateEnabled();
   const [queryParams, setQueryParams] = useQueryParams(exploreControlledCoreQueryKeys);
   const seed = useMemo(
     () =>
@@ -140,8 +142,16 @@ export default function useExploreControlledChartConfiguratorCoreUrlSync({
         availableChartTypes,
         defaultGranularity,
         featureFlagsFetched,
+        isMetricVariantChartStateEnabled,
       }),
-    [allowedMetrics, availableChartTypes, defaultGranularity, featureFlagsFetched, queryParams],
+    [
+      allowedMetrics,
+      availableChartTypes,
+      defaultGranularity,
+      featureFlagsFetched,
+      isMetricVariantChartStateEnabled,
+      queryParams,
+    ],
   );
   const overlayState = useMemo(
     () =>

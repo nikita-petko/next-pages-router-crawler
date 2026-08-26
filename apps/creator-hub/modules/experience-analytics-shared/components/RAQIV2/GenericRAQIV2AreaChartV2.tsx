@@ -107,7 +107,7 @@ const GenericRAQIV2AreaChartV2: FC<GenericRAQIV2ChartProps> = ({
 
   const RAQIV2RequestOptions: MakeRAQIV2RequestOptions = useMemo(
     () => ({
-      fetchTotalSeries: !hasMetricFanoutBreakdown(breakdown),
+      fetchTotalSeries: !hasMetricFanoutBreakdown(breakdown, spec.metricVariant),
       fetchComparison: getFetchComparison(
         showComparisonChip,
         granularity,
@@ -117,7 +117,13 @@ const GenericRAQIV2AreaChartV2: FC<GenericRAQIV2ChartProps> = ({
       // summary renders a period-over-period chip so it is not lost.
       allowComparisonWithBreakdown: showComparisonChip,
     }),
-    [breakdown, granularity, resolvedComparison.rangePolicy, showComparisonChip],
+    [
+      breakdown,
+      granularity,
+      resolvedComparison.rangePolicy,
+      showComparisonChip,
+      spec.metricVariant,
+    ],
   );
   const {
     data: raqiData,

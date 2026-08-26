@@ -1,7 +1,6 @@
 import {
   NodeType as AceNodeType,
   ResourceType as AceResourceType,
-  VariantKind,
 } from '@rbx/client-analytics-query-gateway/v1';
 import type {
   TRAQIV2APIMetric,
@@ -18,6 +17,7 @@ import {
   RAQIV2DimensionDisplayConfig,
   RAQIV2Metric,
   RAQIV2MetricGranularity,
+  RAQIV2MetricToSupportedDimensions,
   RAQIV2MetricValueType,
   RAQIV2PercentileType,
   RAQIV2UIPseudoDimension,
@@ -83,9 +83,19 @@ import { getUIMetric } from './getUIMetric';
 import isComparisonRangeAllowed from './isComparisonRangeAllowed';
 import makeACERequest from './makeACERequest';
 import makeTopNRankAceRequest from './makeTopNRankAceRequest';
+import {
+  buildVariantBreakdownSpec,
+  getMetricFanoutDimensionInfo,
+  getStableVariantKey,
+  getVariantKind,
+  isMetricVariantFanout,
+  splitMetricVariantFromBreakdown,
+  type MetricFanoutDimensionInfo,
+} from './metricVariant';
 import sliceRAQIV2QueryResultByTimeRange from './sliceRAQIV2QueryResultByTimeRange';
 import { snapToLatestEndTime, snapToLatestStartTime } from './snapToLatestTimestep';
 import { processUngroupedOtherResponse } from './topNResponseUtils';
+import { RAQIV2ValidationError, RAQIV2ValidationErrorType } from './validateRAQIV2Request';
 import VariantFanoutDagExecutionError from './VariantFanoutDagExecutionError';
 
 export const enum FetchComparisonSeriesMode {
@@ -309,47 +319,8 @@ type TopNPseudoBreakdownDimensionInfo = {
   dimension: RAQIV2UIPseudoDimension;
   config: TUIPseudoDimensionTopNBreakdownConfig;
 };
-type MetricFanoutPseudoDimensionInfo = {
-  dimension: RAQIV2UIPseudoDimension;
-  config: TUIPseudoDimensionMetricFanoutConfig<string>;
-};
+type MetricFanoutPseudoDimensionInfo = MetricFanoutDimensionInfo;
 type MetricFanoutPseudoFilter = MetricFanoutPseudoDimensionInfo & { values: string[] };
-
-const averagePercentileValue: string = RAQIV2PercentileType.AVG;
-
-const toScreamingSnakeCase = (value: string): string =>
-  value
-    .replaceAll(/([a-z0-9])([A-Z])/g, '$1_$2')
-    .replaceAll(/[^A-Za-z0-9]+/g, '_')
-    .toUpperCase()
-    .replaceAll(/^_+|_+$/g, '');
-
-const getStableVariantKey = (dimension: RAQIV2UIPseudoDimension, value: string): string => {
-  const normalized = toScreamingSnakeCase(value);
-  if (normalized === averagePercentileValue || normalized === 'AVERAGE') {
-    return 'AVERAGE';
-  }
-
-  if (dimension === RAQIV2UIPseudoDimension.PercentileType) {
-    const percentileMatch = /^P?(\d+)$/.exec(normalized);
-    if (percentileMatch) {
-      return `P${percentileMatch[1]}`;
-    }
-    return normalized;
-  }
-
-  return normalized;
-};
-
-const getVariantKind = (dimension: RAQIV2UIPseudoDimension): VariantKind | null => {
-  if (dimension === RAQIV2UIPseudoDimension.PercentileType) {
-    return VariantKind.Percentile;
-  }
-  if (dimension === RAQIV2UIPseudoDimension.AggregationType) {
-    return VariantKind.Aggregation;
-  }
-  return null;
-};
 
 type VariantDisplayMap = Map<RAQIV2UIPseudoDimension, Map<string, string>>;
 
@@ -1639,7 +1610,18 @@ const makeComputedMetricRequest = async ({
     });
   };
 
-  return executeAceDagComparison(executeForTimeSpec, snappedTimeSpec, comparison);
+  const responses = await executeAceDagComparison(executeForTimeSpec, snappedTimeSpec, comparison);
+  const { metricVariant } = splitMetricVariantFromBreakdown(
+    queryRequest.metricVariant,
+    queryRequest.breakdown,
+  );
+  const fanoutInfo = isMetricVariantFanout(metricVariant)
+    ? getMetricFanoutDimensionInfo(metricVariant)
+    : undefined;
+  if (!fanoutInfo) {
+    return responses;
+  }
+  return normalizeVariantBreakdownValues(responses, buildVariantDisplayMap([fanoutInfo]));
 };
 
 const buildStandardMetricVariantFanoutDag = (
@@ -1650,8 +1632,7 @@ const buildStandardMetricVariantFanoutDag = (
   metricFanoutPseudoBreakdown: MetricFanoutPseudoDimensionInfo[],
 ): AnalyticsQueryGatewayExecuteDagRequest => {
   const variantBreakdown = metricFanoutPseudoBreakdown[0];
-  const variantKind = variantBreakdown ? getVariantKind(variantBreakdown.dimension) : null;
-  if (!variantBreakdown || variantKind == null) {
+  if (!variantBreakdown || getVariantKind(variantBreakdown.dimension) == null) {
     throw new Error('Expected a supported metric fanout pseudo-dimension for ACE variant fanout');
   }
 
@@ -1661,14 +1642,7 @@ const buildStandardMetricVariantFanoutDag = (
         dimension,
       },
     })),
-    {
-      variant: {
-        kind: variantKind,
-        keys: variantBreakdown.config.supportedDimensionValues.map((value) =>
-          getStableVariantKey(variantBreakdown.dimension, value),
-        ),
-      },
-    },
+    buildVariantBreakdownSpec(variantBreakdown),
   ];
 
   const dagRequest = {
@@ -1811,6 +1785,7 @@ const makeRAQIV2Request = async (
   const {
     metric: givenMetric,
     breakdown: givenBreakdown,
+    metricVariant: givenMetricVariant,
     filter: givenFilters,
     timeSpec: givenTimeSpec,
     resource,
@@ -1850,13 +1825,40 @@ const makeRAQIV2Request = async (
   const uiMetric = getUIMetricFromAtomicMetricLike(metric);
   const queryFilters = resolveAtomicMetricFilters(metric, givenFilters);
 
-  // Handle pseudo-metrics and pseudo-dimensions
+  const { metricVariant, breakdown: resolvedBreakdown } = splitMetricVariantFromBreakdown(
+    givenMetricVariant,
+    givenBreakdown,
+  );
+  const metricFanoutFromVariant = isMetricVariantFanout(metricVariant)
+    ? getMetricFanoutDimensionInfo(metricVariant)
+    : undefined;
+  const metricDimensions = RAQIV2MetricToSupportedDimensions[uiMetric];
+  if (
+    metricFanoutFromVariant &&
+    metricDimensions &&
+    !metricDimensions.includes(metricFanoutFromVariant.dimension)
+  ) {
+    throw new RAQIV2ValidationError(
+      RAQIV2ValidationErrorType.UnsupportedBreakdown,
+      `Metric ${uiMetric} does not support breakdown dimension ${metricFanoutFromVariant.dimension}. Supported dimensions: ${metricDimensions.join(
+        ', ',
+      )}`,
+      uiMetric,
+      metricFanoutFromVariant.dimension,
+    );
+  }
+
+  // Handle pseudo-metrics and pseudo-dimensions. Fanout axes are resolved from
+  // `metricVariant` (including leftover breakdown entries lifted by
+  // `splitMetricVariantFromBreakdown`), so `resolvedBreakdown` has none left.
   const {
     apiBreakdown: apiBreakdownBase,
     topNPseudoBreakdown,
-    metricFanoutPseudoBreakdown,
     otherSeriesBreakdown,
-  } = processBreakdownPseudoDimensions(givenBreakdown);
+  } = processBreakdownPseudoDimensions(resolvedBreakdown);
+  const metricFanoutPseudoBreakdown: MetricFanoutPseudoDimensionInfo[] = metricFanoutFromVariant
+    ? [metricFanoutFromVariant]
+    : [];
   const {
     apiFilters,
     metricFanoutPseudoFilters,

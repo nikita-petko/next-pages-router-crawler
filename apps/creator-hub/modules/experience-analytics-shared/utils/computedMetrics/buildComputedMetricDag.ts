@@ -8,6 +8,7 @@ import {
   ResourceType as AceResourceType,
   WindowReducer,
   WindowAvgMode,
+  type BreakdownSpec,
   type ConstantNodeConfig,
   type MathNodeConfig,
   type OutputConfig,
@@ -40,8 +41,13 @@ import {
   type ComputedMetricSource,
 } from '../../types/ComputedMetric';
 import type { RAQIV2UIQueryRequest } from '../../types/RAQIV2UIQueryRequest';
-import isMetricFanoutDimension, { hasMetricFanoutBreakdown } from '../isMetricFanoutDimension';
+import isMetricFanoutDimension from '../isMetricFanoutDimension';
 import { getTopNBreakdownConfig, isTopNBreakdownDimension } from '../isTopNBreakdownDimension';
+import {
+  buildVariantBreakdownSpec,
+  getMetricFanoutDimensionInfo,
+  isMetricVariantFanout,
+} from '../metricVariant';
 import { RAQIV2ValidationError, RAQIV2ValidationErrorType } from '../validateRAQIV2Request';
 import getReferencedComputedMetricSources from './getReferencedComputedMetricSources';
 import {
@@ -49,12 +55,7 @@ import {
   type BinaryOperator,
   type FormulaAstNode,
 } from './parseComputedMetricFormula';
-import {
-  dimensionToRankBreakdownSpec,
-  topNConfigToRankBreakdownSpec,
-  type RankBreakdownSpec,
-  type RankQueryNodeConfig,
-} from './rankBreakdownSpec';
+import { dimensionToRankBreakdownSpec, topNConfigToRankBreakdownSpec } from './rankBreakdownSpec';
 import {
   topNPseudoDimensionToAceConfig,
   type RankTopNConfig,
@@ -450,7 +451,8 @@ type BranchBuildArgs = {
   preparedSources: readonly PreparedComputedMetricSource[];
   ast: FormulaAstNode;
   globalFilters: readonly RAQIV2QueryFilter[] | undefined;
-  breakdownSpecs: RankBreakdownSpec[] | undefined;
+  breakdownSpecs: BreakdownSpec[] | undefined;
+  omitSourcePseudoDimensionValues: boolean;
   outputNodeId: string;
   outputAlias: string;
   // Suffix to append to every generated node id so two branches can coexist in
@@ -476,6 +478,7 @@ const buildBranch = (args: BranchBuildArgs): void => {
     ast,
     globalFilters,
     breakdownSpecs,
+    omitSourcePseudoDimensionValues,
     outputNodeId,
     outputAlias,
     nodeIdSuffix,
@@ -495,13 +498,16 @@ const buildBranch = (args: BranchBuildArgs): void => {
 
     const queryNodeId = `query_${source.key}${nodeIdSuffix}`;
     nodeByVariable.set(source.key, queryNodeId);
-    const queryConfig: RankQueryNodeConfig = {
+    const queryConfig: QueryNodeConfig = {
       metric: queryMetric,
       breakdown: undefined,
       filters: mergeSourceAndDagLevelFilters(queryFilters, globalFilters),
       topN: undefined,
       breakdownSpecs: breakdownSpecs?.length ? breakdownSpecs : undefined,
-      pseudoDimensionValues: acePseudoDimensionValue ? [acePseudoDimensionValue] : undefined,
+      pseudoDimensionValues:
+        !omitSourcePseudoDimensionValues && acePseudoDimensionValue
+          ? [acePseudoDimensionValue]
+          : undefined,
     };
 
     nodes.push({
@@ -564,11 +570,13 @@ export type BuildComputedMetricDagOptions = {
    * surfaces would round-trip into `combineRAQIV2QueryResponses` and prepend
    * a `Label.Total` row/series the caller never asked for.
    *
-   * Additionally, the duplicate branch is never emitted when the UI breakdown
-   * includes a metric-fanout pseudo-dimension (`AggregationType`,
-   * `PercentileType`), matching {@link hasMetricFanoutBreakdown} / chart
-   * surfaces that pass `fetchTotalSeries: false` in that case: the no-breakdown
-   * series would repeat one fanout line rather than a meaningful aggregate.
+   * A metric-variant fanout does not create a duplicate Total branch, matching
+   * {@link hasMetricFanoutBreakdown} / chart surfaces that pass
+   * `fetchTotalSeries: false` in that case. ACE variant fanout also cannot
+   * model totals yet (`canUseAceVariantFanout` requires `!fetchTotalSeries`).
+   * When a real axis is present alongside fanout, a no-breakdown companion
+   * would use each UI metric's default variant rather than aggregating the
+   * fanout lines — skip it rather than showing a misleading Total.
    *
    * When the only real breakdown dimensions are duration buckets, no duplicate
    * is emitted — same gate as `buildTotalRequestIfNecessary` (nothing to strip
@@ -606,26 +614,36 @@ export const buildComputedMetricDag = (
   // query node's `pseudoDimensionValues`, and CustomEventName is synthesized
   // per-source from the atomic identity. Strip them from the global filter
   // set so they never leak onto ACE query nodes.
-  const { topNBreakdowns, passthroughBreakdowns } = splitTopNBreakdownDimensions(request.breakdown);
+  const metricVariant = request.metricVariant;
+  const resolvedBreakdown = request.breakdown;
+  const { topNBreakdowns, passthroughBreakdowns } = splitTopNBreakdownDimensions(resolvedBreakdown);
   const topNConfigs = getSupportedTopNBreakdownConfigs(topNBreakdowns, sharedSupportedDimensions);
   const realBreakdowns = getUniqueBreakdowns([
     ...passthroughBreakdowns.filter(
-      (d) =>
-        !isMetricFanoutDimension(d) &&
-        (sharedSupportedDimensions.has(d) || isDurationBucketDimension(d)),
+      (d) => sharedSupportedDimensions.has(d) || isDurationBucketDimension(d),
     ),
     ...topNConfigs.map((config) => config.dimension),
   ]);
+  const metricFanoutBreakdown = isMetricVariantFanout(metricVariant)
+    ? getMetricFanoutDimensionInfo(metricVariant)
+    : undefined;
+  if (metricFanoutBreakdown && !sharedSupportedDimensions.has(metricFanoutBreakdown.dimension)) {
+    throw new RAQIV2ValidationError(
+      RAQIV2ValidationErrorType.UnsupportedBreakdown,
+      `Not every computed metric source supports ${metricFanoutBreakdown.dimension}.`,
+      getUIMetricFromAtomicMetricLike(computedMetric.sources[0].metric),
+      metricFanoutBreakdown.dimension,
+    );
+  }
   const rankedDimensions = new Set<TRAQIV2Dimension>(topNConfigs.map((config) => config.dimension));
-  const rankBreakdownSpecs = [
-    // Pseudo-dimensions cannot carry a wire breakdown spec, so they are
-    // dropped here rather than widening `RankBreakdownSpec.dimension`.
+  const breakdownSpecs: BreakdownSpec[] = [
     ...realBreakdowns.flatMap((dimension) =>
       !rankedDimensions.has(dimension) && isValidEnumValue(RAQIV2Dimension, dimension)
         ? [dimensionToRankBreakdownSpec(dimension)]
         : [],
     ),
     ...topNConfigs.map(topNConfigToRankBreakdownSpec),
+    ...(metricFanoutBreakdown ? [buildVariantBreakdownSpec(metricFanoutBreakdown)] : []),
   ];
 
   const durationBucketBreakdowns = realBreakdowns.filter(isDurationBucketDimension);
@@ -649,7 +667,8 @@ export const buildComputedMetricDag = (
     preparedSources,
     ast: parseResult.ast,
     globalFilters,
-    breakdownSpecs: rankBreakdownSpecs,
+    breakdownSpecs,
+    omitSourcePseudoDimensionValues: metricFanoutBreakdown !== undefined,
     outputNodeId: MAIN_OUTPUT_NODE_ID,
     outputAlias: outputAliasBase,
     nodeIdSuffix: '',
@@ -661,15 +680,13 @@ export const buildComputedMetricDag = (
   // keep duration bucket dimensions so duration adapters still receive bucketed
   // rows. Gates:
   //   - Caller opt-in (`includeTotalBranch`).
-  //   - Real ACE breakdown present (`rankBreakdownSpecs`).
   //   - Non-duration segmentation exists to strip (`nonDurationBreakdowns`), or
   //     we would only duplicate the duration axes (standard flow skips total).
-  //   - No metric-fanout pseudo-dimension in the UI breakdown (see above).
+  //   - No metric-variant fanout (see includeTotalBranch docs).
   const shouldEmitTotalBranch =
     options.includeTotalBranch &&
-    rankBreakdownSpecs.length > 0 &&
     nonDurationBreakdowns.length > 0 &&
-    !hasMetricFanoutBreakdown(request.breakdown);
+    metricFanoutBreakdown === undefined;
 
   if (shouldEmitTotalBranch) {
     buildBranch({
@@ -678,6 +695,7 @@ export const buildComputedMetricDag = (
       ast: parseResult.ast,
       globalFilters,
       breakdownSpecs: totalBreakdownSpecs,
+      omitSourcePseudoDimensionValues: metricFanoutBreakdown !== undefined,
       outputNodeId: TOTAL_OUTPUT_NODE_ID,
       outputAlias: `${outputAliasBase}_total`,
       nodeIdSuffix: TOTAL_BRANCH_SUFFIX,

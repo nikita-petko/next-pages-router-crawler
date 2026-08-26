@@ -19,6 +19,7 @@ import type RAQIV2ChartSpec from '../types/RAQIV2ChartSpec';
 import type { RAQIV2TranslationDependencies } from '../types/RAQIV2DimensionRenderer';
 import type { FetchComparisonOptions } from '../utils/makeRAQIV2Request';
 import makeRAQIV2Request from '../utils/makeRAQIV2Request';
+import { hasChartBreakdown } from '../utils/metricVariant';
 import { maybeThrowRAQIV2InternalException } from '../utils/RAQIV2InternalException';
 import { applyStaticQuotaToChart, type StaticQuotaConfig } from './applyStaticQuotaToChart';
 import useApiRequest from './useApiRequest';
@@ -89,7 +90,7 @@ export const useAnalyticsQuota = ({
     if (
       !quotaMetric ||
       mainChart.series.length === 0 ||
-      (!showQuotaWithBreakdown && mainSpec.breakdown && mainSpec.breakdown.length > 0)
+      (!showQuotaWithBreakdown && hasChartBreakdown(mainSpec.breakdown, mainSpec.metricVariant))
     ) {
       // By default, mirror benchmark behavior and suppress aggregate quotas
       // for breakdown charts. Explicit opt-in supports charts where one

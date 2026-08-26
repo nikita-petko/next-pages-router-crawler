@@ -7,8 +7,10 @@ import type { TChartConfiguratorMetrics } from '../chartConfigurator/chartConfig
 import getSharedGranularityOptionsForMetrics from '../chartConfigurator/getSharedGranularityOptionsForMetrics';
 import { useAnalyticsCurrentBreakdownBundle } from '../context/AnalyticsCurrentBreakdownBundleProvider';
 import { useAnalyticsCurrentGranularityNullable } from '../context/AnalyticsCurrentGranularityProvider';
+import useQueryBasedMetricVariant from '../context/useQueryBasedMetricVariant';
 import { useFilterBreakdownConstraintForExplore } from '../hooks/useFilterBreakdownCorrelation';
 import type RAQIV2ChartContext from '../types/RAQIV2ChartContext';
+import { supportedMetricVariantForDimensions } from '../utils/metricVariant';
 
 const useCurrentChartContext = ({
   metric,
@@ -30,6 +32,9 @@ const useCurrentChartContext = ({
   chartContextOverride?: RAQIV2ChartContext;
 }): RAQIV2ChartContext => {
   const { breakdown: supportedBreakdown } = useAnalyticsCurrentBreakdownBundle(dimensions);
+  // Read-only: ExploreModeSidebarPage is the single owner of URL canonicalization.
+  const { metricVariant } = useQueryBasedMetricVariant();
+  const supportedMetricVariant = supportedMetricVariantForDimensions(metricVariant, dimensions);
 
   const { breakdown, filter: legacyFilters } = useFilterBreakdownConstraintForExplore({
     breakdown: supportedBreakdown,
@@ -94,6 +99,7 @@ const useCurrentChartContext = ({
       granularity,
       filter: legacyFiltersToRAQIV2(legacyFilters),
       breakdown,
+      metricVariant: supportedMetricVariant,
       timeAxisBounds: null,
       ...chartContextOverride,
     };
@@ -103,6 +109,7 @@ const useCurrentChartContext = ({
     endDate,
     granularity,
     legacyFilters,
+    supportedMetricVariant,
     rangeType,
     resource,
     startDate,

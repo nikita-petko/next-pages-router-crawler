@@ -5,6 +5,7 @@ import {
 } from '@rbx/creator-hub-analytics-config';
 import type { TRAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
+import { hasMetricVariantFanout, type MetricVariant } from './metricVariant';
 
 const isMetricFanoutDimension = (dimension: TRAQIV2Dimension): boolean =>
   isValidEnumValue(RAQIV2UIPseudoDimension, dimension) &&
@@ -13,6 +14,7 @@ const isMetricFanoutDimension = (dimension: TRAQIV2Dimension): boolean =>
 
 export const hasMetricFanoutBreakdown = (
   breakdown: readonly TRAQIV2Dimension[] | undefined,
-): boolean => breakdown?.some(isMetricFanoutDimension) ?? false;
+  metricVariant?: MetricVariant | null,
+): boolean => hasMetricVariantFanout(metricVariant, breakdown);
 
 export default isMetricFanoutDimension;

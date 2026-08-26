@@ -63,17 +63,20 @@ const useQueryParams = <T extends string>(
   (values: TQueryParamsInput<T>, options?: { skipHistory: boolean }) => void,
 ] => {
   const router = useRouter();
+  const query = router.query;
   const queryParamValues = useMemo<TQueryParams<T>>(() => {
+    const currentQuery = query ?? {};
     const result: TQueryParams<T> = {};
     for (const key of queryParamKeys) {
-      result[key] = router.query[key];
+      result[key] = currentQuery[key];
     }
     return result;
-  }, [queryParamKeys, router.query]);
+  }, [queryParamKeys, query]);
 
   const setQueryParamValues = useCallback(
     (newParamValues: TQueryParamsInput<T>, options = { skipHistory: false }) => {
-      const newQuery = { ...router.query };
+      const currentQuery = router.query ?? {};
+      const newQuery = { ...currentQuery };
 
       queryParamKeys.forEach((key) => {
         if (!Object.hasOwn(newParamValues, key)) {
@@ -89,7 +92,7 @@ const useQueryParams = <T extends string>(
         }
       });
 
-      if (isQueryEquivalent(router.query, newQuery)) {
+      if (isQueryEquivalent(currentQuery, newQuery)) {
         return;
       }
 

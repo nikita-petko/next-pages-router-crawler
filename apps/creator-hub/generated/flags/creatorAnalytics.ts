@@ -142,3 +142,8 @@ export const isEhdResultsAlwaysFetched = defineFlag({
     name: 'isEhdResultsAlwaysFetched',
     defaultValue: false,
   });
+export const isMetricVariantChartStateEnabled = defineFlag({
+    namespace: 'creator-analytics',
+    name: 'isMetricVariantChartStateEnabled',
+    defaultValue: false,
+  });

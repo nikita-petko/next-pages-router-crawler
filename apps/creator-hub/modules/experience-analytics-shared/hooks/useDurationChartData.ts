@@ -65,6 +65,7 @@ const useDurationChartData = (
   const resolvedOverlays = useResolvedOverlays(overlays, {
     chartType,
     breakdown,
+    metricVariant: spec.metricVariant,
   });
   const showComparisonInChart = resolvedOverlays.comparison;
   const resolvedComparison = useMemo(() => resolveComparisonConfig(comparison), [comparison]);
@@ -78,11 +79,12 @@ const useDurationChartData = (
   const allowComparisonWithBreakdown = isComparisonOverlayMeaningful({
     chartType,
     breakdown,
+    metricVariant: spec.metricVariant,
   });
 
   const RAQIV2RequestOptions: MakeRAQIV2RequestOptions = useMemo(
     () => ({
-      fetchTotalSeries: !hasMetricFanoutBreakdown(breakdown),
+      fetchTotalSeries: !hasMetricFanoutBreakdown(breakdown, spec.metricVariant),
       fetchComparison: getDurationFetchComparisonOptions({
         showComparisonChip,
         showComparisonInChart,
@@ -95,6 +97,7 @@ const useDurationChartData = (
     [
       allowComparisonWithBreakdown,
       breakdown,
+      spec.metricVariant,
       resolvedOverlays.comparisonOffset,
       resolvedOverlays.comparisonCustomStartDate,
       resolvedComparison.rangePolicy,

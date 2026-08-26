@@ -112,6 +112,7 @@ import { useAnalyticsCurrentBreakdownBundle } from '@modules/experience-analytic
 import { useRAQIAnalyticsCurrentFilterBundle } from '@modules/experience-analytics-shared/context/AnalyticsCurrentFilterBundleProvider';
 import { uiGranularityToQueryGranularity } from '@modules/experience-analytics-shared/context/AnalyticsCurrentGranularityProvider';
 import { UniversePerformanceRaqiClientProvider } from '@modules/experience-analytics-shared/context/UniversePerformanceRaqiClientProvider';
+import useQueryBasedMetricVariant from '@modules/experience-analytics-shared/context/useQueryBasedMetricVariant';
 import useCreateAlertAction from '@modules/experience-analytics-shared/createAlert/useCreateAlertAction';
 import { useExperienceAnalyticsExploreModeContext } from '@modules/experience-analytics-shared/exploreMode/ExperienceAnalyticsExploreModeContextProvider';
 import { ExploreModeAlertSelectionProvider } from '@modules/experience-analytics-shared/exploreMode/ExploreModeAlertSelectionContext';
@@ -158,6 +159,12 @@ import getOverlayAvailability, {
 } from '@modules/experience-analytics-shared/utils/getOverlayAvailability';
 import { getQuotaConfigForMetric } from '@modules/experience-analytics-shared/utils/getQuotaConfigForMetric';
 import isMetricFanoutDimension from '@modules/experience-analytics-shared/utils/isMetricFanoutDimension';
+import {
+  hasChartBreakdown,
+  mergeMetricVariantIntoBreakdown,
+  metricVariantAllowedForFilterOnlyDimensions,
+  supportedMetricVariantForDimensions,
+} from '@modules/experience-analytics-shared/utils/metricVariant';
 import type { TUIGranularity } from '@modules/experience-analytics-shared/utils/seriesGranularities';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -1053,14 +1060,35 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
     if (isActiveMetricComputed || !resolvedMetricForQuery) {
       return null;
     }
-    const baseSpec = { ...chartContext, metric: resolvedMetricForQuery };
+    const overlayMetricVariant = metricVariantAllowedForFilterOnlyDimensions(
+      chartContext.metricVariant,
+      getChartConfiguratorFilterOnlyDimensions(selectedChartType),
+    );
+    const baseSpec = {
+      ...chartContext,
+      metric: resolvedMetricForQuery,
+      // Overlay gates (`allowBenchmarks`, quota, comparison) still key off
+      // `breakdown[]`. Merge fanout back so a percentile-only chart disables
+      // them the same way a Place breakdown does.
+      breakdown: mergeMetricVariantIntoBreakdown(
+        chartContext.breakdown ?? [],
+        overlayMetricVariant,
+      ),
+      metricVariant: overlayMetricVariant,
+    };
     const exploreModeSpecOverride = displayMetric
       ? getAnalyticsMetricDisplayConfig(displayMetric).exploreModeSpecOverride
       : undefined;
     return exploreModeSpecOverride
       ? computeRAQIV2SpecOverride(baseSpec, exploreModeSpecOverride)
       : baseSpec;
-  }, [chartContext, displayMetric, isActiveMetricComputed, resolvedMetricForQuery]);
+  }, [
+    chartContext,
+    displayMetric,
+    isActiveMetricComputed,
+    resolvedMetricForQuery,
+    selectedChartType,
+  ]);
 
   const quotaConfigForDisplayMetric = useMemo(() => {
     if (isActiveMetricComputed || !displayMetric) {
@@ -1082,10 +1110,10 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
 
   const hasQuota = quotaConfigForDisplayMetric !== undefined;
 
-  const hasOverlayEligibilityBreakdown =
-    benchmarkEligibilitySpec?.breakdown !== undefined
-      ? benchmarkEligibilitySpec.breakdown.length > 0
-      : Boolean(chartContext.breakdown?.length);
+  const hasOverlayEligibilityBreakdown = hasChartBreakdown(
+    benchmarkEligibilitySpec?.breakdown ?? chartContext.breakdown,
+    benchmarkEligibilitySpec?.metricVariant ?? chartContext.metricVariant,
+  );
 
   const overlayAvailability = useMemo(
     () =>
@@ -1305,6 +1333,14 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
     if (spec.breakdown?.length && filterOnlyDimensions.length) {
       spec.breakdown = spec.breakdown.filter((dim) => !filterOnlyDimensions.includes(dim));
     }
+    spec.metricVariant = metricVariantAllowedForFilterOnlyDimensions(
+      spec.metricVariant,
+      filterOnlyDimensions,
+    );
+    // Charts still key colors/CSV headers off `spec.breakdown`. Merge fanout
+    // back for presentation; `makeRAQIV2Request` lifts it out again so the
+    // request breakdown stays real dimensions only.
+    spec.breakdown = mergeMetricVariantIntoBreakdown(spec.breakdown ?? [], spec.metricVariant);
     return spec;
   }, [
     resolvedMetricForQuery,
@@ -1616,7 +1652,18 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
     );
   }, [dimensions, selectedChartType, isTableMode, tableConstraintMetrics]);
 
-  const { breakdown, setBreakdown } = useAnalyticsCurrentBreakdownBundle(breakdownDimensions);
+  const { breakdown } = useAnalyticsCurrentBreakdownBundle(breakdownDimensions);
+  const { metricVariant, setBreakdownAndMetricVariant } = useQueryBasedMetricVariant({
+    canonicalize: true,
+  });
+  const supportedMetricVariant = supportedMetricVariantForDimensions(
+    metricVariant,
+    breakdownDimensions,
+  );
+  const breakdownForPicker = useMemo(
+    () => mergeMetricVariantIntoBreakdown(breakdown, supportedMetricVariant),
+    [breakdown, supportedMetricVariant],
+  );
 
   // In table mode, restrict the metrics shown in source/additional selectors
   // to those that support both:
@@ -1633,9 +1680,9 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
     }
     const chartConfiguratorDims = getChartConfiguratorDimensions();
     return availableMetrics.filter((m) => {
-      if (breakdown.length > 0) {
+      if (breakdownForPicker.length > 0) {
         const supported = chartConfiguratorDims[m] || [];
-        if (!breakdown.every((b) => supported.includes(b))) {
+        if (!breakdownForPicker.every((b) => supported.includes(b))) {
           return false;
         }
       }
@@ -1648,7 +1695,7 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
       }
       return true;
     });
-  }, [availableMetrics, breakdown, isTableMode, tableGranularity]);
+  }, [availableMetrics, breakdownForPicker, isTableMode, tableGranularity]);
 
   // Drop any chosen additional-column metric that no longer supports the
   // currently selected breakdowns OR the active granularity. Resets it to
@@ -1672,7 +1719,7 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
           return col;
         }
         const supported = chartConfiguratorDims[col.metric] || [];
-        const breakdownOk = breakdown.every((b) => supported.includes(b));
+        const breakdownOk = breakdownForPicker.every((b) => supported.includes(b));
         const supportedGranularities = RAQIV2MetricToSupportedGranularities[col.metric];
         const granularityOk = supportedGranularities?.includes(tableGranularity) ?? false;
         if (breakdownOk && granularityOk) {
@@ -1683,7 +1730,7 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
       });
       return changed ? next : prev;
     });
-  }, [breakdown, isTableMode, setTableAdditionalColumns, tableGranularity]);
+  }, [breakdownForPicker, isTableMode, setTableAdditionalColumns, tableGranularity]);
 
   const handleTableExporterReady = useCallback(
     (getTableExporter: (() => GenericCsvExporter) | null) => {
@@ -1773,7 +1820,7 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
     const tableContextFilter = chartContextWithPresentation.filter;
 
     const tableConfig = buildChartConfiguratorTableConfig({
-      breakdown,
+      breakdown: breakdownForPicker,
       primaryMetric,
       derivedSourceColumns: derivedSourceColumns
         .map(toInput)
@@ -1801,7 +1848,8 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
     const tableContext: RAQIV2TableContext = {
       resource,
       timeSpec: chartContextWithPresentation.timeSpec,
-      breakdown,
+      breakdown: breakdownForPicker,
+      metricVariant: chartContextWithPresentation.metricVariant,
       granularity: chartContextWithPresentation.granularity,
       filter: tableContextFilter ?? [],
     };
@@ -1824,7 +1872,8 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
     chartContextWithPresentation.timeSpec,
     chartContextWithPresentation.filter,
     chartContextWithPresentation.granularity,
-    breakdown,
+    chartContextWithPresentation.metricVariant,
+    breakdownForPicker,
     derivedSourceColumns,
     tableAdditionalColumns,
     handleTableExporterReady,
@@ -1884,9 +1933,10 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
         case 'select-granularity':
           setGranularity(action.granularity);
           return;
-        case 'set-breakdown':
-          setBreakdown(action.breakdown);
+        case 'set-breakdown': {
+          setBreakdownAndMetricVariant(action.breakdown);
           return;
+        }
         case 'set-overlay-option':
           setOverlayOption(action.overlayOption);
           return;
@@ -1914,7 +1964,7 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
       handleSourceChange,
       onFiltersChange,
       setBenchmarkOverlayType,
-      setBreakdown,
+      setBreakdownAndMetricVariant,
       setChartTypeOverride,
       setChartTypeWithGranularity,
       setComparisonCustomStartDate,
@@ -1972,7 +2022,8 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
       },
       breakdownControls: {
         breakdownDimensions,
-        breakdown,
+        breakdown: breakdownForPicker,
+        metricVariant: supportedMetricVariant,
         getBreakdownLabel,
       },
       overlayControls: {
@@ -2002,7 +2053,7 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
       availableChartTypes,
       availableMetrics,
       benchmarkOverlayType,
-      breakdown,
+      breakdownForPicker,
       breakdownDimensions,
       chartTypeSupport,
       comparisonCustomStartDate,
@@ -2023,6 +2074,7 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
       isTableMode,
       l7SmoothingDisabledReason,
       metric,
+      supportedMetricVariant,
       overlayOption,
       resource,
       selectedChartType,
@@ -2082,7 +2134,7 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
       metricVariant: customEventFiltersToMetricVariant(filters),
       computedMetric: isActiveMetricComputed ? effectiveComputedMetric : null,
       chartType: selectedChartType,
-      breakdownDimensions: breakdown,
+      breakdownDimensions: breakdownForPicker.length > 0 ? breakdownForPicker : undefined,
       granularity: chartContext.granularity,
       overlayOption,
       benchmarkType: benchmarkOverlayType,
@@ -2094,7 +2146,7 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
     });
   }, [
     benchmarkOverlayType,
-    breakdown,
+    breakdownForPicker,
     chartContext.granularity,
     comparisonCustomStartDate,
     comparisonOffset,

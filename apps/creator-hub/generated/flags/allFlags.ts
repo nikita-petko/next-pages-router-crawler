@@ -532,6 +532,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: creatorAnalyticsFlags.isMetricVariantChartStateEnabled,
+      metadata: {
+        namespace: 'creator-analytics',
+        name: 'isMetricVariantChartStateEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: creatorBusinessFlags.isRevenueShareAgreementsEnabled,
       metadata: {
         namespace: 'creator-business',

@@ -1,5 +1,6 @@
 import type { RAQIV2UIQueryRequest } from '../types/RAQIV2UIQueryRequest';
 import type { MakeRAQIV2RequestOptions } from './makeRAQIV2Request';
+import { hasChartBreakdown } from './metricVariant';
 
 /**
  * Breakdown charts do not support period-over-period comparison in the UI unless the
@@ -7,13 +8,13 @@ import type { MakeRAQIV2RequestOptions } from './makeRAQIV2Request';
  * at the request layer so all chart types get consistent behavior.
  */
 const stripFetchComparisonForBreakdown = (
-  request: Pick<RAQIV2UIQueryRequest, 'breakdown'>,
+  request: Pick<RAQIV2UIQueryRequest, 'breakdown' | 'metricVariant'>,
   options?: MakeRAQIV2RequestOptions,
 ): MakeRAQIV2RequestOptions | undefined => {
   if (!options?.fetchComparison) {
     return options;
   }
-  const hasBreakdown = (request.breakdown?.length ?? 0) > 0;
+  const hasBreakdown = hasChartBreakdown(request.breakdown, request.metricVariant);
   if (hasBreakdown && !options.allowComparisonWithBreakdown) {
     return {
       ...options,

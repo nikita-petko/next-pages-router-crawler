@@ -200,7 +200,7 @@ const GenericRAQIV2SplineChartV2: FC<GenericRAQIV2SplineChartV2Props> = ({
           .fillMissingDatapoints;
     return {
       fetchTotalSeries:
-        !hasMetricFanoutBreakdown(breakdown) &&
+        !hasMetricFanoutBreakdown(breakdown, spec.metricVariant) &&
         shouldFetchTotalSeries(summarySpecOrDefault, hideTotalSeriesInChart),
       fetchComparison: getFetchComparison(
         fetchComparison,
@@ -217,6 +217,7 @@ const GenericRAQIV2SplineChartV2: FC<GenericRAQIV2SplineChartV2Props> = ({
     fetchComparison,
     granularity,
     breakdown,
+    spec.metricVariant,
     comparisonRelativeOffset,
     comparisonCustomStartDate,
     allowComparisonWithBreakdown,
@@ -232,10 +233,11 @@ const GenericRAQIV2SplineChartV2: FC<GenericRAQIV2SplineChartV2Props> = ({
       granularity,
       filter,
       breakdown,
+      metricVariant: spec.metricVariant,
       metric,
       limit,
     };
-  }, [breakdown, filter, granularity, metric, spec.resource, timeSpec, limit]);
+  }, [breakdown, filter, granularity, metric, spec.metricVariant, spec.resource, timeSpec, limit]);
 
   const {
     data: raqiData,

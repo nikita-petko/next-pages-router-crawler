@@ -9,6 +9,7 @@ import {
   getOverlay,
 } from '../types/RAQIV2ChartSpec';
 import isComparisonOverlayMeaningful from '../utils/isComparisonOverlayMeaningful';
+import type { MetricVariant } from '../utils/metricVariant';
 
 export type ResolvedOverlays = {
   comparison: boolean;
@@ -21,6 +22,7 @@ export type ResolvedOverlays = {
 export type OverlayChartContext = {
   chartType?: ChartType;
   breakdown?: readonly TRAQIV2Dimension[];
+  metricVariant?: MetricVariant | null;
 };
 
 /**
@@ -39,12 +41,12 @@ const useResolvedOverlays = (
   overlays: ChartOverlays | undefined,
   context: OverlayChartContext,
 ): ResolvedOverlays => {
-  const { chartType, breakdown } = context;
+  const { chartType, breakdown, metricVariant } = context;
   return useMemo(
     () => ({
       comparison:
         overlays === undefined
-          ? isComparisonOverlayMeaningful({ chartType, breakdown })
+          ? isComparisonOverlayMeaningful({ chartType, breakdown, metricVariant })
           : hasOverlay(overlays, 'comparison'),
       comparisonOffset: getOverlay(overlays, 'comparison')?.relativeOffset,
       comparisonCustomStartDate: getOverlay(overlays, 'comparison')?.customStartDate,
@@ -53,7 +55,7 @@ const useResolvedOverlays = (
         benchmarkType: getOverlay(overlays, 'benchmark')?.benchmarkType,
       },
     }),
-    [overlays, chartType, breakdown],
+    [overlays, chartType, breakdown, metricVariant],
   );
 };
 

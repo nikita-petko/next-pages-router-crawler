@@ -33,7 +33,6 @@ import {
 } from '../../constants/AnalyticsMetricDisplayConfig';
 import {
   getFilterValueForDimension,
-  type UIFilterDimension,
   type UIFilters,
 } from '../../layout/ExperienceAnalyticsPageControlBar/filterUtils';
 import useTextFilterValidation from '../../text-filter/useTextFilterValidation';
@@ -56,6 +55,7 @@ import {
 import extractPseudoDimensionsFromFilters, {
   hasPseudoDimensionValues,
 } from '../../utils/extractPseudoDimensionsFromFilters';
+import { getFanoutOwnedDimension, type MetricVariant } from '../../utils/metricVariant';
 import ChartConfiguratorFormulaCard from './ChartConfiguratorFormulaCard';
 import ChartConfiguratorMetricSourceCard, {
   type ExploreModeMetricSourceFilterDrawerConfig,
@@ -145,6 +145,7 @@ type ChartConfiguratorEquationBuilderProps = {
   initialComputedMetric?: ComputedMetric | null;
   defaultMetric?: TChartConfiguratorMetrics | null;
   chartContext?: ComputedMetricSemanticsChartContext;
+  metricVariant?: MetricVariant | null;
 };
 
 const nextVariableKey = (sources: MetricSource[]): string | null => {
@@ -172,6 +173,7 @@ const ChartConfiguratorEquationBuilder: FC<ChartConfiguratorEquationBuilderProps
   initialComputedMetric,
   defaultMetric,
   chartContext,
+  metricVariant,
 }) => {
   const {
     classes: { root, addButton },
@@ -311,7 +313,7 @@ const ChartConfiguratorEquationBuilder: FC<ChartConfiguratorEquationBuilderProps
     ): UIFilters => {
       const uiFilters: UIFilters =
         source.filters?.map((filter) => ({
-          dimension: filter.dimension as UIFilterDimension,
+          dimension: filter.dimension,
           values: [...filter.values],
         })) ?? [];
       if (source.customEventName) {
@@ -322,13 +324,13 @@ const ChartConfiguratorEquationBuilder: FC<ChartConfiguratorEquationBuilderProps
       }
       if (source.pseudoDimensionValues?.aggregationType) {
         uiFilters.push({
-          dimension: RAQIV2UIPseudoDimension.AggregationType as UIFilterDimension,
+          dimension: RAQIV2UIPseudoDimension.AggregationType,
           values: [source.pseudoDimensionValues.aggregationType],
         });
       }
       if (source.pseudoDimensionValues?.percentile) {
         uiFilters.push({
-          dimension: RAQIV2UIPseudoDimension.PercentileType as UIFilterDimension,
+          dimension: RAQIV2UIPseudoDimension.PercentileType,
           values: [source.pseudoDimensionValues.percentile],
         });
       }
@@ -377,7 +379,10 @@ const ChartConfiguratorEquationBuilder: FC<ChartConfiguratorEquationBuilderProps
       if (!sourceMetric || !sourceFilterResource) {
         return undefined;
       }
-      const dimensions = sourceFilterDimensionsByMetric?.[sourceMetric];
+      const fanoutOwnedDimension = getFanoutOwnedDimension(metricVariant);
+      const dimensions = sourceFilterDimensionsByMetric?.[sourceMetric]?.filter(
+        (dimension) => dimension !== fanoutOwnedDimension,
+      );
       if (!dimensions || dimensions.length === 0) {
         return undefined;
       }
@@ -386,7 +391,7 @@ const ChartConfiguratorEquationBuilder: FC<ChartConfiguratorEquationBuilderProps
         dimensions,
       };
     },
-    [sourceFilterDimensionsByMetric, sourceFilterResource],
+    [metricVariant, sourceFilterDimensionsByMetric, sourceFilterResource],
   );
 
   const handleClearSourceFilters = useCallback((index: number) => {

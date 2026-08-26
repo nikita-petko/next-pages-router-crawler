@@ -16,6 +16,7 @@ import type { UIFilters } from '../../layout/ExperienceAnalyticsPageControlBar/f
 import type { ComputedMetric } from '../../types/ComputedMetric';
 import type RAQIV2ChartContext from '../../types/RAQIV2ChartContext';
 import type { OverlayAvailability } from '../../utils/getOverlayAvailability';
+import type { MetricVariant } from '../../utils/metricVariant';
 import type { TUIGranularity } from '../../utils/seriesGranularities';
 import type { SourceFilterDimensionsByMetric } from './ChartConfiguratorEquationBuilder';
 import type { ExploreModeMetricSourceFilterDrawerConfig } from './ChartConfiguratorMetricSourceCard';
@@ -126,6 +127,7 @@ export type ChartConfiguratorGranularityControlsProps = {
 export type ChartConfiguratorBreakdownControlsProps = {
   breakdownDimensions: readonly TRAQIV2Dimension[];
   breakdown: readonly TRAQIV2Dimension[];
+  metricVariant?: MetricVariant | null;
   getBreakdownLabel: (dimension: TRAQIV2Dimension) => FormattedText;
 };
 
