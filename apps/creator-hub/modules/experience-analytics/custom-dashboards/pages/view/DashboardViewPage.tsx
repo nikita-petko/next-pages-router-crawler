@@ -1,4 +1,5 @@
 import { type FC, useCallback, useState } from 'react';
+import { OverflowTitle } from '@rbx/analytics-ui';
 import { Button } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
@@ -129,9 +130,11 @@ const DashboardViewPage: FC<DashboardViewPageProps> = ({
           <DashboardTitleActionHeader
             title={
               <div className='flex items-center gap-small min-width-0'>
-                <h1 className='text-heading-large content-emphasis margin-none text-truncate-end'>
-                  {document.name}
-                </h1>
+                <OverflowTitle
+                  as='h1'
+                  text={document.name}
+                  className='text-heading-large content-emphasis margin-none text-truncate-end'
+                />
                 {document.hybridOrigin === 'localCopy' ? <LocalCopyBadge /> : null}
               </div>
             }

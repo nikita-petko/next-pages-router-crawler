@@ -1,6 +1,7 @@
 import { type FC, useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useQueryClient } from '@tanstack/react-query';
+import { OverflowTitle } from '@rbx/analytics-ui';
 import { Button } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
@@ -287,9 +288,11 @@ const DashboardPreviewPage: FC<DashboardPreviewPageProps> = ({ draftId, onBackTo
             <DashboardTitleActionHeader
               title={
                 <>
-                  <h1 className='text-heading-large content-emphasis margin-none text-truncate-end'>
-                    {workingCopy.name}
-                  </h1>
+                  <OverflowTitle
+                    as='h1'
+                    text={workingCopy.name}
+                    className='text-heading-large content-emphasis margin-none text-truncate-end'
+                  />
                   <span className='text-body-medium content-muted text-truncate-end'>
                     {workingCopy.createdByUsername}
                   </span>

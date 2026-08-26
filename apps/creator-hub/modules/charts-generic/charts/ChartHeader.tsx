@@ -1,5 +1,6 @@
 import type { FunctionComponent, ReactElement, ReactNode } from 'react';
 import { useCallback } from 'react';
+import { OverflowTitle } from '@rbx/analytics-ui';
 import { InfoOutlinedIcon, Tooltip, Typography } from '@rbx/ui';
 import type { FormattedText } from '@modules/analytics-translations/types';
 import useChartStyles from './Chart.styles';
@@ -26,11 +27,16 @@ const ChartHeader: FunctionComponent<ChartHeaderProps> = ({
     classes: { headerContainer, chartTitle, tooltipIconPadding, chartHeaderRightSideContainer },
   } = useChartStyles();
 
-  const title = (
-    <Typography align='left' className={chartTitle} variant='h5'>
-      {titleText}
-    </Typography>
-  );
+  const title =
+    typeof titleText === 'string' ? (
+      <Typography align='left' className={`${chartTitle} min-width-0`} variant='h5' component='div'>
+        <OverflowTitle text={titleText} />
+      </Typography>
+    ) : (
+      <Typography align='left' className={chartTitle} variant='h5'>
+        {titleText}
+      </Typography>
+    );
 
   const onTooltipClose = useCallback(() => {
     if (onChartTooltipViewed) {

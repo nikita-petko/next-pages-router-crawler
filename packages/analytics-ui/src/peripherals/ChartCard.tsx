@@ -20,6 +20,7 @@ import ChartCardHeaderActions, { type ChartCardHeaderAction } from './ChartCardH
 import { useChartCardSlots, type ChartCardSlots } from './ChartCardSlotsContext';
 import type { ChartPlaceholderProps } from './ChartPlaceholder';
 import ChartPlaceholder from './ChartPlaceholder';
+import OverflowTitle from './OverflowTitle';
 
 const useStyles = makeStyles()((theme) => ({
   titleContainer: {
@@ -215,7 +216,7 @@ const ChartCard: FC<React.PropsWithChildren<ChartCardProps>> = ({
     return (
       <Container disableGutters classes={{ root: titleContainer }} maxWidth={false}>
         <Typography variant='subtitle1' classes={{ root: titleContent }}>
-          <span className={titleLabelClass}>{titleLabel}</span>
+          <OverflowTitle text={titleLabel} className={titleLabelClass} />
           {titleTooltipLabel ? (
             <Tooltip title={titleTooltipLabel} arrow>
               <InfoOutlinedIcon classes={{ root: tooltipIcon }} />
@@ -285,6 +286,7 @@ const ChartCard: FC<React.PropsWithChildren<ChartCardProps>> = ({
         subheader={subTitle}
       />
       {mobileControls}
+      {/* oxlint-disable-next-line typescript/no-deprecated -- SystemBanner is the shape of the public `chartBanner` prop; migrating to Alert is a breaking API change tracked separately. */}
       {chartBanner && <SystemBanner {...chartBanner} />}
       <CardContent classes={{ root: cardContent }}>
         <ChartIsInAbnormalStateProvider value={!!abnormalState}>

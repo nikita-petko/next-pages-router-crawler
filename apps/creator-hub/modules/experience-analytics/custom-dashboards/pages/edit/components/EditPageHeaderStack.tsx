@@ -1,4 +1,5 @@
 import { type FC, type KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { OverflowTitle } from '@rbx/analytics-ui';
 import { Button, IconButton } from '@rbx/foundation-ui';
 import useTextFilterValidation from '@modules/experience-analytics-shared/text-filter/useTextFilterValidation';
 import DashboardTitleActionHeader from '../../../components/DashboardTitleActionHeader';
@@ -246,10 +247,14 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
                     finishTitleEdit({ shouldCommit: true, shouldCloseOnPendingOrBlocked: true })
                   }
                 />
+              ) : dashboardName !== null ? (
+                <OverflowTitle
+                  as='h1'
+                  text={dashboardName}
+                  className='text-heading-large content-emphasis margin-none text-truncate-end'
+                />
               ) : (
-                <h1 className='text-heading-large content-emphasis margin-none text-truncate-end'>
-                  {dashboardName ?? '\u00A0'}
-                </h1>
+                <h1 className='text-heading-large content-emphasis margin-none'>{'\u00A0'}</h1>
               )}
               {dashboardName !== null && canRename ? (
                 <IconButton

@@ -1,4 +1,5 @@
 import type { FC } from 'react';
+import { OverflowTitle } from '@rbx/analytics-ui';
 import { Button, Link } from '@rbx/foundation-ui';
 import { useManagePageTranslations } from '../useManagePageTranslations';
 import ManagePageOverflowMenu from './ManagePageOverflowMenu';
@@ -33,9 +34,11 @@ const ManagePageHeaderStack: FC<ManagePageHeaderStackProps> = ({
   return (
     <header className='flex flex-col small:flex-row small:items-start small:justify-between gap-medium'>
       <div className='flex flex-col gap-xsmall min-width-0'>
-        <h1 className='text-heading-large content-emphasis margin-none text-truncate-end'>
-          {t.pageTitle}
-        </h1>
+        <OverflowTitle
+          as='h1'
+          text={t.pageTitle}
+          className='text-heading-large content-emphasis margin-none text-truncate-end'
+        />
         <p className='text-body-medium content-default margin-none'>
           {t.pageSubtitle}{' '}
           <Link href={learnMoreHref} target='_blank' rel='noreferrer' size='Medium'>

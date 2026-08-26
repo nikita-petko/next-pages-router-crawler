@@ -1,4 +1,5 @@
 import { type FC, type MouseEvent, type ReactNode, useCallback } from 'react';
+import { OverflowTitle } from '@rbx/analytics-ui';
 import { Button, TableCell, TableRow, Toggle, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
 import LocalCopyBadge from '../../../components/LocalCopyBadge';
 import { UNRESOLVED_CREATED_BY_USERNAME } from '../../../constants/unresolvedCreatedByUsername';
@@ -103,12 +104,13 @@ const DashboardsTableRow: FC<DashboardsTableRowProps> = ({
   const cellsByColumn: Record<(typeof MANAGE_TABLE_COLUMNS)[number], ReactNode> = {
     name: (
       <div className='flex items-center gap-small min-width-0'>
-        <a
+        <OverflowTitle
+          as='a'
           href={`/dashboard/creations/experiences/${dashboard.universeId}/analytics/dashboards/${dashboard.id}`}
           onClick={handleNameLinkClick}
-          className='text-body-medium content-emphasis hover:underline focus-visible:underline text-truncate-end inline-block max-width-full text-align-x-left bg-none stroke-none padding-none cursor-pointer'>
-          {dashboard.name}
-        </a>
+          text={dashboard.name}
+          className='text-body-medium content-emphasis hover:underline focus-visible:underline text-truncate-end inline-block max-width-full text-align-x-left bg-none stroke-none padding-none cursor-pointer'
+        />
         {isHybridLocalCopy ? <LocalCopyBadge /> : null}
       </div>
     ),
