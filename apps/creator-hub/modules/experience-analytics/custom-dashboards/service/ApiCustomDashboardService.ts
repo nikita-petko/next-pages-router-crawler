@@ -48,6 +48,8 @@ function tokenKey(universeId: number, dashboardId: string): string {
   return `${universeId}:${dashboardId}`;
 }
 
+const PIN_REBASE_ATTEMPTS = 3;
+
 class ApiCustomDashboardService implements CustomDashboardService {
   private readonly client: CustomDashboardsApiClient;
 
@@ -227,12 +229,9 @@ class ApiCustomDashboardService implements CustomDashboardService {
   async delete(universeId: number, dashboardId: string): Promise<void> {
     return this.withApiErrors(universeId, dashboardId, async () => {
       this.ensureAvailable();
-      const tokens = await this.ensureTokens(universeId, dashboardId);
-      await this.client.deleteDashboard({
-        universeId,
-        dashboardId,
-        expectedHeadEtag: this.requireHeadEtag(tokens, dashboardId),
-      });
+      // Delete is unconditional: no etag precondition, so a concurrent edit
+      // can't turn a terminal delete into a "refresh and try again".
+      await this.client.deleteDashboard({ universeId, dashboardId });
       this.tokens.delete(tokenKey(universeId, dashboardId));
       this.emit({ universeId, dashboardId, eventType: 'delete' });
     });
@@ -328,19 +327,37 @@ class ApiCustomDashboardService implements CustomDashboardService {
     dashboardId: string,
     isPinned: boolean,
   ): Promise<CustomDashboardDocument> {
-    return this.withApiErrors(universeId, dashboardId, async () => {
-      this.ensureAvailable();
-      const tokens = await this.ensureTokens(universeId, dashboardId);
-      const metadata = await this.client.updateDashboardMetadata({
-        universeId,
-        dashboardId,
-        expectedHeadEtag: this.requireHeadEtag(tokens, dashboardId),
-        patch: { isPinned },
-      });
-      this.rememberMetadata(universeId, metadata);
-      this.emit({ universeId, dashboardId, eventType: isPinned ? 'pin' : 'unpin' });
-      return this.get(universeId, dashboardId);
-    });
+    this.ensureAvailable();
+    // Pin-only metadata patches rebase on the server (is_pinned last-write-wins).
+    // Retry here so a Hub still talking to an older backend also treats a stale
+    // ETag as "refresh and apply the pin bit" instead of a user-facing conflict.
+    let lastError: unknown;
+    for (let attempt = 0; attempt < PIN_REBASE_ATTEMPTS; attempt += 1) {
+      try {
+        return await this.withApiErrors(universeId, dashboardId, async () => {
+          this.ensureAvailable();
+          const tokens = await this.ensureTokens(universeId, dashboardId);
+          const metadata = await this.client.updateDashboardMetadata({
+            universeId,
+            dashboardId,
+            expectedHeadEtag: this.requireHeadEtag(tokens, dashboardId),
+            patch: { isPinned },
+          });
+          this.rememberMetadata(universeId, metadata);
+          this.emit({ universeId, dashboardId, eventType: isPinned ? 'pin' : 'unpin' });
+          return this.get(universeId, dashboardId);
+        });
+      } catch (error) {
+        lastError = error;
+        if (
+          !(error instanceof CustomDashboardVersionConflictError) ||
+          attempt === PIN_REBASE_ATTEMPTS - 1
+        ) {
+          throw error;
+        }
+      }
+    }
+    throw lastError;
   }
 
   private async ensureTokens(universeId: number, dashboardId: string): Promise<TokenState> {

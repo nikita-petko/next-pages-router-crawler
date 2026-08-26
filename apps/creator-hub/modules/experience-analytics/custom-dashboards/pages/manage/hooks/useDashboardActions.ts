@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthentication } from '@modules/authentication/providers';
+import { CustomDashboardVersionConflictError } from '../../../errors';
 import { customDashboardQueryKeys } from '../../../hooks/customDashboardsQueryConfig';
 import { useCustomDashboardService } from '../../../service/CustomDashboardServiceProvider';
 import type { CustomDashboardListItem, CustomDashboardListResult } from '../../../types';
@@ -10,20 +11,35 @@ import {
   createNewEditorWorkingCopy,
   type EditorWorkingCopy,
 } from '../../../workingCopy/editorWorkingCopy';
+import {
+  createSerializedIntentWriter,
+  type SerializedIntentWriter,
+} from './createSerializedIntentWriter';
 
 /**
  * Composes every row-level mutation the manage page exposes into a single hook.
  *
  * Optimistic: pin / unpin / rename mutate the cache before the service call
  * resolves, then invalidate the list on failure so a stale snapshot cannot
- * clobber a newer optimistic update. The service-subscription bridge
- * invalidates the list on success so the canonical truth always wins on the
- * next refetch.
+ * clobber a newer optimistic update. Pin toggles are coalesced per dashboard
+ * and written one at a time so 20 clicks become at most two requests and the
+ * last click is the last write. The service-subscription bridge invalidates
+ * the list on success so the canonical truth always wins on the next refetch.
  *
  * Pessimistic: duplicate / delete / create wait for the service call. Create
  * only allocates an in-memory editor working copy; first save in the editor
  * persists it via `createAndPublish`.
+ *
+ * Write failures stay in this hook's local state (they do not live in the
+ * list query), so a Manage All banner cannot leak onto edit/preview routes.
  */
+
+export type DashboardWriteOperation = 'pin' | 'rename' | 'delete' | 'duplicate' | 'create' | 'edit';
+
+type DashboardWriteFailure = {
+  readonly error: unknown;
+  readonly operation: DashboardWriteOperation;
+};
 type ConfirmingDelete =
   | { readonly status: 'idle' }
   | { readonly status: 'awaiting'; readonly dashboard: CustomDashboardListItem }
@@ -63,6 +79,7 @@ type UseDashboardActionsResult = {
   readonly confirmRenameSubmit: (nextName: string) => Promise<void>;
   readonly handleCreate: () => Promise<void>;
   readonly writeError: unknown;
+  readonly writeOperation: DashboardWriteOperation | null;
   readonly clearWriteError: () => void;
 };
 
@@ -79,9 +96,11 @@ export function useDashboardActions({
 
   const [confirmDelete, setConfirmDelete] = useState<ConfirmingDelete>({ status: 'idle' });
   const [confirmRename, setConfirmRename] = useState<ConfirmingRename>({ status: 'idle' });
-  const [writeError, setWriteError] = useState<unknown>(null);
+  const [writeFailure, setWriteFailure] = useState<DashboardWriteFailure | null>(null);
 
   const listQueryKey = customDashboardQueryKeys.list(universeId);
+  const pinWritersRef = useRef(new Map<string, SerializedIntentWriter<boolean>>());
+  const pinWritersUniverseRef = useRef(universeId);
 
   const invalidateList = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: listQueryKey });
@@ -139,22 +158,41 @@ export function useDashboardActions({
     [queryClient, listQueryKey],
   );
 
-  const optimisticUpdate = useCallback(
-    async (
-      dashboardId: string,
-      patch: (item: CustomDashboardListItem) => CustomDashboardListItem,
-      run: () => Promise<unknown>,
-      resort = true,
-    ): Promise<void> => {
-      replaceItemInCache(dashboardId, patch, resort);
-      try {
-        await run();
-      } catch (error) {
-        invalidateList();
-        setWriteError(error);
+  const getPinWriter = useCallback(
+    (dashboardId: string): SerializedIntentWriter<boolean> => {
+      if (pinWritersUniverseRef.current !== universeId) {
+        pinWritersUniverseRef.current = universeId;
+        pinWritersRef.current.clear();
       }
+      const existing = pinWritersRef.current.get(dashboardId);
+      if (existing) {
+        return existing;
+      }
+      const writer = createSerializedIntentWriter<boolean>({
+        write: async (isPinned) => {
+          if (isPinned) {
+            await service.pin(universeId, dashboardId);
+          } else {
+            await service.unpin(universeId, dashboardId);
+          }
+        },
+        onSuccess: () => {
+          setWriteFailure((prev) => (prev?.operation === 'pin' ? null : prev));
+        },
+        onError: (error) => {
+          invalidateList();
+          // Pin last-write-wins: a leftover 409 is recovered by refetch, not a
+          // "refresh and try again" banner.
+          if (error instanceof CustomDashboardVersionConflictError) {
+            return;
+          }
+          setWriteFailure({ error, operation: 'pin' });
+        },
+      });
+      pinWritersRef.current.set(dashboardId, writer);
+      return writer;
     },
-    [invalidateList, replaceItemInCache],
+    [service, universeId, invalidateList],
   );
 
   const handlePinToggle = useCallback(
@@ -173,27 +211,21 @@ export function useDashboardActions({
       // bridge marks the list stale (without refetching) on pin success,
       // so the reorder lands on the next page switch, remount, or manual
       // refresh rather than while the user is looking at the page.
-      optimisticUpdate(
-        dashboard.id,
-        (item) => ({ ...item, isPinned: nextPinned }),
-        () =>
-          nextPinned
-            ? service.pin(universeId, dashboard.id)
-            : service.unpin(universeId, dashboard.id),
-        false,
-      ).catch(() => undefined);
+      replaceItemInCache(dashboard.id, (item) => ({ ...item, isPinned: nextPinned }), false);
+      getPinWriter(dashboard.id).submit(nextPinned);
     },
-    [optimisticUpdate, pinnedCount, service, universeId],
+    [getPinWriter, pinnedCount, replaceItemInCache],
   );
 
   const handleDuplicate = useCallback(
     (dashboard: CustomDashboardListItem) => {
       if (!user) {
-        setWriteError(
-          new Error(
+        setWriteFailure({
+          error: new Error(
             "Can't duplicate this dashboard yet — user information hasn't finished loading.",
           ),
-        );
+          operation: 'duplicate',
+        });
         return;
       }
       service
@@ -202,7 +234,7 @@ export function useDashboardActions({
           createdByUsername: user.name,
         })
         .catch((error: unknown) => {
-          setWriteError(error);
+          setWriteFailure({ error, operation: 'duplicate' });
         });
     },
     [service, universeId, user],
@@ -215,9 +247,12 @@ export function useDashboardActions({
         return;
       }
       if (!user) {
-        setWriteError(
-          new Error("Can't create a local copy yet — user information hasn't finished loading."),
-        );
+        setWriteFailure({
+          error: new Error(
+            "Can't create a local copy yet — user information hasn't finished loading.",
+          ),
+          operation: 'edit',
+        });
         return;
       }
       service
@@ -227,7 +262,7 @@ export function useDashboardActions({
         })
         .then(onEditDashboard)
         .catch((error: unknown) => {
-          setWriteError(error);
+          setWriteFailure({ error, operation: 'edit' });
         });
     },
     [onEditDashboard, service, universeId, user],
@@ -251,10 +286,11 @@ export function useDashboardActions({
     try {
       await service.delete(universeId, dashboard.id);
       setConfirmDelete({ status: 'idle' });
+      setWriteFailure(null);
     } catch (error) {
       invalidateList();
       setConfirmDelete({ status: 'idle' });
-      setWriteError(error);
+      setWriteFailure({ error, operation: 'delete' });
     }
   }, [confirmDelete, invalidateList, removeItemFromCache, service, universeId]);
 
@@ -285,10 +321,11 @@ export function useDashboardActions({
       try {
         await service.update(universeId, dashboard.id, { name: trimmed });
         setConfirmRename({ status: 'idle' });
+        setWriteFailure(null);
       } catch (error) {
         invalidateList();
         setConfirmRename({ status: 'idle' });
-        setWriteError(error);
+        setWriteFailure({ error, operation: 'rename' });
       }
     },
     [confirmRename, invalidateList, replaceItemInCache, service, universeId],
@@ -296,9 +333,12 @@ export function useDashboardActions({
 
   const handleCreate = useCallback(async () => {
     if (!user) {
-      setWriteError(
-        new Error("Can't create a dashboard yet — user information hasn't finished loading."),
-      );
+      setWriteFailure({
+        error: new Error(
+          "Can't create a dashboard yet — user information hasn't finished loading.",
+        ),
+        operation: 'create',
+      });
       return;
     }
     try {
@@ -311,12 +351,12 @@ export function useDashboardActions({
       });
       onDashboardCreated(workingCopy);
     } catch (error) {
-      setWriteError(error);
+      setWriteFailure({ error, operation: 'create' });
     }
   }, [service, universeId, user, onDashboardCreated]);
 
   const clearWriteError = useCallback(() => {
-    setWriteError(null);
+    setWriteFailure(null);
   }, []);
 
   const handlers: DashboardActionHandlers = useMemo(
@@ -340,7 +380,8 @@ export function useDashboardActions({
     cancelRename,
     confirmRenameSubmit,
     handleCreate,
-    writeError,
+    writeError: writeFailure?.error ?? null,
+    writeOperation: writeFailure?.operation ?? null,
     clearWriteError,
   };
 }

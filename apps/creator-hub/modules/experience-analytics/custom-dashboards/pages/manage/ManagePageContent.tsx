@@ -156,6 +156,7 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
     confirmRenameSubmit,
     handleCreate,
     writeError,
+    writeOperation,
     clearWriteError,
   } = useDashboardActions({
     universeId,
@@ -312,6 +313,7 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
           migrationFailedCount={migrationFailedCount}
           listError={listQuery.error}
           writeError={writeError}
+          writeOperation={writeOperation}
           onClearWriteError={clearWriteError}
         />
 

@@ -9,6 +9,7 @@ import {
   CustomDashboardValidationError,
   CustomDashboardVersionConflictError,
 } from '../../../errors';
+import type { DashboardWriteOperation } from '../hooks/useDashboardActions';
 import { useManagePageTranslations } from '../useManagePageTranslations';
 
 const NOOP_CLEAR_WRITE_ERROR = (): void => undefined;
@@ -25,6 +26,7 @@ type StorageFailureToastSlotProps = {
   readonly migrationFailedCount: number;
   readonly listError: unknown;
   readonly writeError?: unknown;
+  readonly writeOperation?: DashboardWriteOperation | null;
   readonly onClearWriteError?: () => void;
 };
 
@@ -160,6 +162,7 @@ function readCauseMessage(
 function writeCauseMessage(
   cause: WriteCause,
   t: ReturnType<typeof useManagePageTranslations>,
+  operation?: DashboardWriteOperation | null,
 ): string {
   switch (cause) {
     case 'quotaExceeded':
@@ -171,6 +174,9 @@ function writeCauseMessage(
     case 'notAvailable':
       return t.storageNoticeUnavailable;
     case 'versionConflict':
+      if (operation === 'rename') {
+        return t.storageNoticeRenameVersionConflict;
+      }
       return t.storageNoticeVersionConflict;
     case 'validationFailed':
       return t.storageNoticeValidationFailed;
@@ -187,6 +193,7 @@ const StorageFailureToastSlot: FC<StorageFailureToastSlotProps> = ({
   migrationFailedCount,
   listError,
   writeError,
+  writeOperation,
   onClearWriteError,
 }) => {
   const t = useManagePageTranslations();
@@ -268,16 +275,18 @@ const StorageFailureToastSlot: FC<StorageFailureToastSlotProps> = ({
     <div className='flex flex-col gap-xsmall'>
       {writeCause !== null ? (
         // Write notices are higher priority than read notices ("did my click go through?").
+        // oxlint-disable-next-line typescript/no-deprecated -- FeedbackBanner migration to Alert tracked separately
         <FeedbackBanner
           layout='Stacked'
           variant='Standard'
           severity={WRITE_CAUSE_SEVERITY[writeCause]}
-          title={writeCauseMessage(writeCause, t)}
+          title={writeCauseMessage(writeCause, t, writeOperation)}
           dismissIconAriaLabel={t.storageNoticeDismissLabel}
           onDismiss={onClearWriteError ?? NOOP_CLEAR_WRITE_ERROR}
         />
       ) : null}
       {visibleReadCauses.map((cause) => (
+        // oxlint-disable-next-line typescript/no-deprecated -- FeedbackBanner migration to Alert tracked separately
         <FeedbackBanner
           key={cause}
           layout='Stacked'

@@ -260,6 +260,14 @@ export function useManagePageTranslations() {
       'Write-failure notice shown on the manage page when a custom dashboard mutation loses an optimistic-concurrency race.',
       translationKey('Message.CustomDashboards.VersionConflict', TranslationNamespace.Analytics),
     ),
+    storageNoticeRenameVersionConflict: tPendingTranslation(
+      'This dashboard was renamed elsewhere. Refresh and try again.',
+      'Write-failure notice shown on the manage page when a rename mutation loses an optimistic-concurrency race.',
+      translationKey(
+        'Message.CustomDashboards.RenameVersionConflict',
+        TranslationNamespace.Analytics,
+      ),
+    ),
     storageNoticeValidationFailed: tPendingTranslation(
       "That dashboard couldn't be saved. Check the fields and try again.",
       'Write-failure notice shown on the manage page when the backend rejects custom dashboard validation.',

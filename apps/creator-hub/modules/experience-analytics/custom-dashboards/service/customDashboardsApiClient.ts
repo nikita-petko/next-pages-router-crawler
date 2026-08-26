@@ -98,7 +98,6 @@ export type CustomDashboardsApiClient = {
   deleteDashboard(input: {
     readonly universeId: number;
     readonly dashboardId: string;
-    readonly expectedHeadEtag: string;
   }): Promise<void>;
   filterDashboardText(input: {
     readonly universeId: number;
@@ -288,7 +287,7 @@ export function createDefaultCustomDashboardsApiClient(
       return data.dashboard ?? {};
     },
 
-    async deleteDashboard({ universeId, dashboardId, expectedHeadEtag }) {
+    async deleteDashboard({ universeId, dashboardId }) {
       const { error, response } = await fetchClient.POST(
         '/v1/universes/{universeId}/custom-dashboards/{dashboardId}/delete',
         {
@@ -298,7 +297,6 @@ export function createDefaultCustomDashboardsApiClient(
           body: {
             universeId,
             dashboardId,
-            expectedHeadEtag,
           },
         },
       );
