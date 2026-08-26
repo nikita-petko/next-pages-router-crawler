@@ -145,8 +145,11 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
     if (!isIgnoreMatchAllowed) {
       return;
     }
+    logEvent(LicenseManagerClickEvent.IgnoreMatchPanelOpenClickEvent, {
+      candidateType: AgreementCandidateType.Universe,
+    });
     setIgnoreReasonViewCandidateId(candidate.id ?? null);
-  }, [candidate.id, isIgnoreMatchAllowed]);
+  }, [candidate.id, isIgnoreMatchAllowed, logEvent]);
 
   const handleIgnoreBack = useCallback(() => {
     setIgnoreReasonViewCandidateId(null);
@@ -542,6 +545,7 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
     return (
       <IgnoreMatchPanelContent
         candidateId={candidateId}
+        candidateType={AgreementCandidateType.Universe}
         onBack={handleIgnoreBack}
         onClose={onClose}
         onIgnored={handlePanelIgnored}

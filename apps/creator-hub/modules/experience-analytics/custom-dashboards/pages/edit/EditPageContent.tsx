@@ -723,8 +723,20 @@ const EditPageContent: FC<EditPageContentProps> = ({
   const leaveEditorWithoutPrompt = useCallback(() => {
     bypassUnsavedChangesPrompt();
     deleteEditorWorkingCopy(activeSessionDraftId);
+    const persistedId = renderedActiveSession?.dashboardId ?? persistedDocument?.id;
+    if (persistedId) {
+      onOpenView(persistedId);
+      return;
+    }
     onBackToManage();
-  }, [activeSessionDraftId, bypassUnsavedChangesPrompt, onBackToManage]);
+  }, [
+    activeSessionDraftId,
+    bypassUnsavedChangesPrompt,
+    onBackToManage,
+    onOpenView,
+    persistedDocument?.id,
+    renderedActiveSession?.dashboardId,
+  ]);
   const handleCancel = useCallback(() => {
     if (!hasUnsavedChanges) {
       leaveEditorWithoutPrompt();

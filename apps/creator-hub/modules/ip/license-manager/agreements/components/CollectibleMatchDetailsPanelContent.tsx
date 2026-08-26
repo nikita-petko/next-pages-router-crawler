@@ -107,9 +107,12 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
 
   const handleIgnoreClick = useCallback(() => {
     if (isIgnoreMatchAllowed) {
+      logEvent(LicenseManagerClickEvent.IgnoreMatchPanelOpenClickEvent, {
+        candidateType: AgreementCandidateType.Collectible,
+      });
       setIgnoreReasonViewCandidateId(candidate.id ?? null);
     }
-  }, [candidate.id, isIgnoreMatchAllowed]);
+  }, [candidate.id, isIgnoreMatchAllowed, logEvent]);
   const handleIgnoreBack = useCallback(() => {
     setIgnoreReasonViewCandidateId(null);
   }, []);
@@ -230,6 +233,7 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
     return (
       <IgnoreMatchPanelContent
         candidateId={candidate.id}
+        candidateType={AgreementCandidateType.Collectible}
         onBack={handleIgnoreBack}
         onClose={onClose}
         onIgnored={handleMatchIgnored}

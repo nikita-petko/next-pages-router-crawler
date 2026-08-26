@@ -1,8 +1,10 @@
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useState } from 'react';
+import type { AgreementCandidateType } from '@rbx/client-content-licensing-api/v1';
 import { useTranslation } from '@rbx/intl';
 import { Typography, Button, CircularProgress, Radio, RadioGroup, FormControlLabel } from '@rbx/ui';
 import useIpSnackbar from '../../../hooks/useIpSnackbar';
+import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../../utils/logger';
 import IgnoreReason, { isIgnoreReason } from '../enums/IgnoreReason';
 import { useIgnoreAgreementCandidateMutation } from '../hooks/agreements';
 import { BUTTON_SPINNER_SIZE } from '../utils/constants';
@@ -11,6 +13,7 @@ import MatchPanelLayout from './MatchPanelLayout';
 interface IgnoreMatchPanelContentProps {
   /** Agreement candidate id to ignore. */
   candidateId: string | null | undefined;
+  candidateType: AgreementCandidateType;
   /** Return to the previous view (e.g. the match details) without ignoring. */
   onBack: () => void;
   /** Dismiss the whole side panel (the header close button). */
@@ -22,11 +25,13 @@ interface IgnoreMatchPanelContentProps {
 /** Shared reason-selection view for dismissing a match (matches-table side panel + preview page). */
 const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> = ({
   candidateId,
+  candidateType,
   onBack,
   onClose,
   onIgnored,
 }) => {
   const { translate } = useTranslation();
+  const { logEvent } = useLicenseManagerLogger();
   const { enqueueWithDefaults, enqueueErrorSnackbar } = useIpSnackbar();
   const ignoreMatchMutation = useIgnoreAgreementCandidateMutation();
   const [selectedIgnoreReason, setSelectedIgnoreReason] = useState<IgnoreReason | null>(null);
@@ -35,10 +40,28 @@ const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> =
     (_event: React.ChangeEvent<HTMLInputElement>, value: string) => {
       if (isIgnoreReason(value)) {
         setSelectedIgnoreReason(value);
+        logEvent(LicenseManagerClickEvent.IgnoreMatchPanelSelectReasonClickEvent, {
+          candidateType,
+          ignoreReason: value,
+        });
       }
     },
-    [],
+    [candidateType, logEvent],
   );
+
+  const handleBack = useCallback(() => {
+    logEvent(LicenseManagerClickEvent.IgnoreMatchPanelBackClickEvent, {
+      candidateType,
+    });
+    onBack();
+  }, [candidateType, logEvent, onBack]);
+
+  const handleClose = useCallback(() => {
+    logEvent(LicenseManagerClickEvent.IgnoreMatchPanelCloseClickEvent, {
+      candidateType,
+    });
+    onClose();
+  }, [candidateType, logEvent, onClose]);
 
   const notifyMatchIgnored = useCallback(() => {
     enqueueWithDefaults({
@@ -57,6 +80,10 @@ const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> =
     if (candidateId == null || selectedIgnoreReason == null) {
       return;
     }
+    logEvent(LicenseManagerClickEvent.IgnoreMatchPanelConfirmClickEvent, {
+      candidateType,
+      ignoreReason: selectedIgnoreReason,
+    });
     ignoreMatchMutation.mutate(
       { agreementCandidateId: candidateId, reason: selectedIgnoreReason },
       {
@@ -71,10 +98,12 @@ const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> =
     );
   }, [
     candidateId,
+    candidateType,
     selectedIgnoreReason,
     ignoreMatchMutation,
     notifyMatchIgnored,
     enqueueErrorSnackbar,
+    logEvent,
     onIgnored,
   ]);
 
@@ -115,7 +144,7 @@ const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> =
         size='large'
         className='fill [white-space:nowrap] text-align-x-center'
         disabled={ignoreMatchMutation.isPending}
-        onClick={onBack}>
+        onClick={handleBack}>
         {translate('Action.Back')}
       </Button>
     </>
@@ -124,7 +153,7 @@ const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> =
   return (
     <MatchPanelLayout
       title={translate('Heading.IgnoreMatch')}
-      onClose={onClose}
+      onClose={handleClose}
       buttons={ignoreReasonFooter}>
       <div className='flex flex-col gap-medium'>
         <Typography variant='body1'>{ignoreMatchDescription}</Typography>

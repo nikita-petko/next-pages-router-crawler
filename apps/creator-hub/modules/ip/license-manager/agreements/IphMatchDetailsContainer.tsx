@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NextLink from 'next/link';
 import { useRouter } from 'next/router';
 import { useQueryClient } from '@tanstack/react-query';
-import { AgreementStatus } from '@rbx/client-content-licensing-api/v1';
+import { AgreementCandidateType, AgreementStatus } from '@rbx/client-content-licensing-api/v1';
 import { useFlag } from '@rbx/flags';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import {
@@ -29,7 +29,12 @@ import { useIpLayoutContext } from '../../IpAppNavigationLayout';
 import AmDivider from '../components/AmDivider';
 import { EXTERNAL_EXPERIENCE_HREF, IP_MATCHES_HREF, IPH_AGREEMENT_DETAILS_HREF } from '../urls';
 import { getCreatorDisplayName, normalizeCreatorType } from '../utils/creatorName';
-import { LicenseManagerImpressionEvent, useLicenseManagerLoggerLogOnce } from '../utils/logger';
+import {
+  LicenseManagerClickEvent,
+  LicenseManagerImpressionEvent,
+  useLicenseManagerLogger,
+  useLicenseManagerLoggerLogOnce,
+} from '../utils/logger';
 import GalleryTabContent from './components/GalleryTabContent';
 import IgnoreMatchPanelContent from './components/IgnoreMatchPanelContent';
 import {
@@ -75,6 +80,7 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
   const { translate } = useTranslation();
   const { isFetched } = useSettings();
   const { setPageTitle } = useIpLayoutContext();
+  const { logEvent } = useLicenseManagerLogger();
   const { logOnce } = useLicenseManagerLoggerLogOnce();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -167,8 +173,11 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
     if (!isIgnoreMatchAllowed) {
       return;
     }
+    logEvent(LicenseManagerClickEvent.IgnoreMatchPanelOpenClickEvent, {
+      candidateType: candidate?.candidateType ?? AgreementCandidateType.Universe,
+    });
     setIsIgnorePanelOpen(true);
-  }, [isIgnoreMatchAllowed]);
+  }, [candidate?.candidateType, isIgnoreMatchAllowed, logEvent]);
 
   const handleCloseIgnorePanel = useCallback(() => {
     setIsIgnorePanelOpen(false);
@@ -417,6 +426,7 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
         {isIgnorePanelOpen && (
           <IgnoreMatchPanelContent
             candidateId={candidate.id}
+            candidateType={candidate.candidateType ?? AgreementCandidateType.Universe}
             onBack={handleCloseIgnorePanel}
             onClose={handleCloseIgnorePanel}
             onIgnored={handleMatchIgnored}
