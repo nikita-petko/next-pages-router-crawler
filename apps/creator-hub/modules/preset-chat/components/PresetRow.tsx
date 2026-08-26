@@ -14,13 +14,15 @@ import {
   MinPresetLength,
   VALID_PRESET_TEXT_REGEX,
 } from '../constants/presetChatConstants';
-import type { Preset } from '../types';
+import type { Preset, PresetStatus } from '../types';
 import QuickWordsStatusBadge from './QuickWordsStatusBadge';
 
 type PresetRowProps = {
   preset: Preset;
   index: number;
   canDelete: boolean;
+  isDisabled?: boolean;
+  overrideStatus?: PresetStatus;
   getContainerElement: () => HTMLElement | null;
   onTextChange: (id: string, text: string) => void;
   onDelete: (id: string) => void;
@@ -30,6 +32,8 @@ const PresetRow: FunctionComponent<PresetRowProps> = ({
   preset,
   index,
   canDelete,
+  isDisabled,
+  overrideStatus,
   getContainerElement,
   onTextChange,
   onDelete,
@@ -44,6 +48,7 @@ const PresetRow: FunctionComponent<PresetRowProps> = ({
   const { handleRef, isDragging, ref } = useSortable({
     id: preset.id,
     index,
+    disabled: isDisabled,
     collisionDetector: closestCenter,
     modifiers,
   });
@@ -79,6 +84,7 @@ const PresetRow: FunctionComponent<PresetRowProps> = ({
             'Accessible label for a preset text input row',
             translationKey('Label.PresetTextInput', TranslationNamespace.PresetChat),
           )}
+          isDisabled={isDisabled}
           maxLength={MaxPresetLength}
           value={preset.text}
           onChange={handleChange}
@@ -96,7 +102,7 @@ const PresetRow: FunctionComponent<PresetRowProps> = ({
         />
       </TableCell>
       <TableCell>
-        <QuickWordsStatusBadge status={preset.state} />
+        <QuickWordsStatusBadge status={preset.state} overrideStatus={overrideStatus} />
       </TableCell>
       <TableCell className='[text-align:right]'>
         <div className='flex items-center justify-end gap-small'>
@@ -105,6 +111,7 @@ const PresetRow: FunctionComponent<PresetRowProps> = ({
               variant='Utility'
               size='Medium'
               icon='icon-regular-trash-can'
+              isDisabled={isDisabled}
               ariaLabel={tPendingTranslation(
                 'Delete preset',
                 'Accessible label for the delete preset button',
@@ -118,6 +125,7 @@ const PresetRow: FunctionComponent<PresetRowProps> = ({
               variant='Utility'
               size='Medium'
               icon='icon-regular-three-bars-horizontal-triangles-vertical'
+              isDisabled={isDisabled}
               ariaLabel={tPendingTranslation(
                 'Reorder preset',
                 'Accessible label for the drag handle to reorder presets',

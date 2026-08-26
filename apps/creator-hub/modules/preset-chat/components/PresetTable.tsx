@@ -20,7 +20,7 @@ import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import type { Preset } from '../types';
+import type { Preset, PresetStatus } from '../types';
 import PresetRow from './PresetRow';
 
 const DRAG_ACTIVATION_DISTANCE_PX = 5;
@@ -43,6 +43,8 @@ type PresetTableProps = {
   onReorderPresets: (presetIds: string[]) => void;
   onDeleteCategory: () => void;
   canAddPreset: boolean;
+  isDisabled?: boolean;
+  overrideStatus?: PresetStatus;
 };
 
 const PresetTable: FunctionComponent<PresetTableProps> = ({
@@ -55,6 +57,8 @@ const PresetTable: FunctionComponent<PresetTableProps> = ({
   onReorderPresets,
   onDeleteCategory,
   canAddPreset,
+  isDisabled,
+  overrideStatus,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const containerRef = useRef<HTMLTableSectionElement>(null);
@@ -144,6 +148,8 @@ const PresetTable: FunctionComponent<PresetTableProps> = ({
                   preset={preset}
                   index={index}
                   canDelete={canDelete}
+                  isDisabled={isDisabled}
+                  overrideStatus={overrideStatus}
                   getContainerElement={getContainerElement}
                   onTextChange={onUpdatePresetText}
                   onDelete={onDeletePreset}
@@ -155,7 +161,11 @@ const PresetTable: FunctionComponent<PresetTableProps> = ({
       </div>
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-medium'>
-          <Button variant='Standard' size='Small' isDisabled={!canAddPreset} onClick={onAddPreset}>
+          <Button
+            variant='Standard'
+            size='Small'
+            isDisabled={!canAddPreset || isDisabled}
+            onClick={onAddPreset}>
             {tPendingTranslation(
               'Add',
               'Button to add a new preset to the category',
@@ -175,6 +185,7 @@ const PresetTable: FunctionComponent<PresetTableProps> = ({
           className='!padding-x-medium'
           variant='Standard'
           size='Small'
+          isDisabled={isDisabled}
           onClick={onDeleteCategory}>
           {tPendingTranslation(
             'Delete category',

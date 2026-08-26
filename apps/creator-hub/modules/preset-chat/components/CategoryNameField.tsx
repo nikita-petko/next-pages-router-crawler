@@ -13,6 +13,7 @@ type CategoryNameFieldProps = {
   state: PresetStatus;
   onChange: (value: string) => void;
   isDisabled?: boolean;
+  overrideStatus?: PresetStatus;
 };
 
 const CategoryNameField: FunctionComponent<CategoryNameFieldProps> = ({
@@ -20,6 +21,7 @@ const CategoryNameField: FunctionComponent<CategoryNameFieldProps> = ({
   state,
   onChange,
   isDisabled,
+  overrideStatus,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
 
@@ -45,7 +47,7 @@ const CategoryNameField: FunctionComponent<CategoryNameFieldProps> = ({
         />
       </div>
       <div className='height-1000 flex items-center'>
-        <QuickWordsStatusBadge status={state} />
+        <QuickWordsStatusBadge status={state} overrideStatus={overrideStatus} />
       </div>
     </div>
   );

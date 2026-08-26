@@ -13,6 +13,7 @@ import PresetTable from './PresetTable';
 type QuickWordsContentProps = {
   categoryGroups?: CategoryGroupResponse[];
   overallStatus?: PresetStatus;
+  isPublishPending?: boolean;
 };
 
 const DEFAULT_MIN_PRESETS = 3;
@@ -23,6 +24,8 @@ type CategoryItemProps = {
   categoryIndex: number;
   minPresetsPerCategory: number;
   maxPresetsPerCategory: number;
+  isDisabled?: boolean;
+  overrideStatus?: PresetStatus;
   removeCategory: (id: string) => void;
   updateCategoryName: (id: string, name: string) => void;
   addPreset: (categoryId: string) => void;
@@ -36,6 +39,8 @@ const CategoryItem: FunctionComponent<CategoryItemProps> = ({
   categoryIndex,
   minPresetsPerCategory,
   maxPresetsPerCategory,
+  isDisabled,
+  overrideStatus,
   removeCategory,
   updateCategoryName,
   addPreset,
@@ -69,7 +74,9 @@ const CategoryItem: FunctionComponent<CategoryItemProps> = ({
     <CategoryGroup
       categoryIndex={categoryIndex}
       category={category}
-      onNameChange={updateCategoryName}>
+      onNameChange={updateCategoryName}
+      isDisabled={isDisabled}
+      overrideStatus={overrideStatus}>
       <PresetTable
         presets={category.presets}
         minPresetsPerCategory={minPresetsPerCategory}
@@ -80,6 +87,8 @@ const CategoryItem: FunctionComponent<CategoryItemProps> = ({
         onReorderPresets={handleReorderPresets}
         onDeleteCategory={handleDeleteCategory}
         canAddPreset={category.presets.length < maxPresetsPerCategory}
+        isDisabled={isDisabled}
+        overrideStatus={overrideStatus}
       />
     </CategoryGroup>
   );
@@ -88,9 +97,12 @@ const CategoryItem: FunctionComponent<CategoryItemProps> = ({
 const QuickWordsContent: FunctionComponent<QuickWordsContentProps> = ({
   categoryGroups,
   overallStatus,
+  isPublishPending,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const { settings } = useSettings();
+  const isPublishing = overallStatus === 'PUBLISHING' || (isPublishPending ?? false);
+  const statusOverride: PresetStatus | undefined = isPublishing ? 'PUBLISHING' : undefined;
   const {
     categories,
     addCategory,
@@ -131,7 +143,7 @@ const QuickWordsContent: FunctionComponent<QuickWordsContentProps> = ({
             )}
           </p>
         </div>
-        <Button variant='Emphasis' size='Medium' onClick={addCategory}>
+        <Button variant='Emphasis' size='Medium' isDisabled={isPublishing} onClick={addCategory}>
           {tPendingTranslation(
             'Add category',
             'Button to add a new preset category',
@@ -151,6 +163,8 @@ const QuickWordsContent: FunctionComponent<QuickWordsContentProps> = ({
           category={category}
           minPresetsPerCategory={minPresetsPerCategory}
           maxPresetsPerCategory={maxPresetsPerCategory}
+          isDisabled={isPublishing}
+          overrideStatus={statusOverride}
           removeCategory={removeCategory}
           updateCategoryName={updateCategoryName}
           addPreset={addPreset}
@@ -163,7 +177,7 @@ const QuickWordsContent: FunctionComponent<QuickWordsContentProps> = ({
         className='self-start'
         variant='Standard'
         size='Medium'
-        isDisabled={!canAddCategory}
+        isDisabled={!canAddCategory || isPublishing}
         onClick={addCategory}>
         {tPendingTranslation(
           'Add category',

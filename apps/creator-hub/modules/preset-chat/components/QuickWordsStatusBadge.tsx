@@ -9,15 +9,18 @@ import type { PresetStatus } from '../types';
 type QuickWordsStatusBadgeProps = {
   status: PresetStatus;
   isSystemStatus?: boolean;
+  overrideStatus?: PresetStatus;
 };
 
 const QuickWordsStatusBadge: FunctionComponent<QuickWordsStatusBadgeProps> = ({
   status,
   isSystemStatus,
+  overrideStatus,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+  const effectiveStatus = overrideStatus ?? status;
 
-  switch (status) {
+  switch (effectiveStatus) {
     case 'APPROVED':
     case 'ROBLOX_DEFAULT':
       return (
@@ -63,9 +66,20 @@ const QuickWordsStatusBadge: FunctionComponent<QuickWordsStatusBadgeProps> = ({
           )}
         />
       );
+    case 'INELIGIBLE':
+      return (
+        <StatusBadge
+          size='Small'
+          variant='Alert'
+          label={tPendingTranslation(
+            'Not approved',
+            'Badge label for not approved status',
+            translationKey('Status.NotApproved', TranslationNamespace.PresetChat),
+          )}
+        />
+      );
     case 'DRAFT':
     case 'RESET_TO_DEFAULTS':
-    case 'INELIGIBLE':
     default:
       return (
         <StatusBadge

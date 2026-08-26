@@ -1,74 +1,12 @@
 import type {
-  CategoryGroupResponse,
-  CategoryResponse,
-  PresetChatStateResponse,
-  PresetResponse,
-} from '@modules/preset-chat/types';
-import { getBEDEV2ServiceBasePath } from './utils';
+  GetUniversePresetStateResponse,
+  PublishPresetVersionResponse,
+} from '@rbx/client-preset-chat/v1';
+import { V2CreatorApi } from '@rbx/client-preset-chat/v1';
+import { ResponseError } from '@rbx/clients-core';
+import { createClientConfiguration } from './utils/createClientConfiguration';
 
-const BASE_PATH = getBEDEV2ServiceBasePath('preset-chat');
-
-function hasKeys<K extends string>(value: object, keys: K[]): value is Record<K, unknown> {
-  return keys.every((k) => k in value);
-}
-
-function isPresetResponse(value: unknown): value is PresetResponse {
-  if (value == null || typeof value !== 'object') {
-    return false;
-  }
-  if (!hasKeys(value, ['id', 'value', 'state'])) {
-    return false;
-  }
-  return (
-    typeof value.id === 'string' &&
-    typeof value.value === 'string' &&
-    typeof value.state === 'string'
-  );
-}
-
-function isCategoryResponse(value: unknown): value is CategoryResponse {
-  if (value == null || typeof value !== 'object') {
-    return false;
-  }
-  if (!hasKeys(value, ['id', 'name', 'state', 'presets'])) {
-    return false;
-  }
-  return (
-    typeof value.id === 'string' &&
-    typeof value.name === 'string' &&
-    typeof value.state === 'string' &&
-    Array.isArray(value.presets) &&
-    value.presets.every(isPresetResponse)
-  );
-}
-
-function isCategoryGroupResponse(value: unknown): value is CategoryGroupResponse {
-  if (value == null || typeof value !== 'object') {
-    return false;
-  }
-  if (!hasKeys(value, ['name', 'categories'])) {
-    return false;
-  }
-  return (
-    typeof value.name === 'string' &&
-    Array.isArray(value.categories) &&
-    value.categories.every(isCategoryResponse)
-  );
-}
-
-function isPresetChatStateResponse(value: unknown): value is PresetChatStateResponse {
-  if (value == null || typeof value !== 'object') {
-    return false;
-  }
-  if (!hasKeys(value, ['overallStatus', 'categoryGroups'])) {
-    return false;
-  }
-  return (
-    typeof value.overallStatus === 'string' &&
-    Array.isArray(value.categoryGroups) &&
-    value.categoryGroups.every(isCategoryGroupResponse)
-  );
-}
+export type { GetUniversePresetStateResponse, PublishPresetVersionResponse };
 
 export class PresetChatApiError extends Error {
   status: number;
@@ -80,26 +18,57 @@ export class PresetChatApiError extends Error {
   }
 }
 
-export async function getUniversePresetState(
-  universeId: number,
-  options?: { signal?: AbortSignal },
-): Promise<PresetChatStateResponse> {
-  const response = await fetch(`${BASE_PATH}/v2/creator/universe/${universeId}/preset-chat`, {
-    method: 'GET',
-    credentials: 'include',
-    signal: options?.signal,
-  });
+export class PresetChatApiClient {
+  private api: V2CreatorApi;
 
-  if (!response.ok) {
-    throw new PresetChatApiError(
-      `Failed to fetch preset chat state: ${response.status}`,
-      response.status,
-    );
+  constructor() {
+    const configuration = createClientConfiguration('preset-chat', 'bedev2');
+    this.api = new V2CreatorApi(configuration);
   }
 
-  const json: unknown = await response.json();
-  if (!isPresetChatStateResponse(json)) {
-    throw new PresetChatApiError('Invalid preset chat state response', 500);
+  async getUniversePresetState(
+    universeId: number,
+    options?: { signal?: AbortSignal },
+  ): Promise<GetUniversePresetStateResponse> {
+    try {
+      return await this.api.v2CreatorGetUniversePresetState(
+        { universeId },
+        options?.signal ? { signal: options.signal } : undefined,
+      );
+    } catch (error) {
+      if (error instanceof ResponseError) {
+        throw new PresetChatApiError(
+          `Failed to fetch preset chat state: ${error.response.status}`,
+          error.response.status,
+        );
+      }
+      throw error;
+    }
   }
-  return json;
+
+  async publishPresetVersion(
+    universeId: number,
+    options?: { signal?: AbortSignal },
+  ): Promise<PublishPresetVersionResponse> {
+    try {
+      return await this.api.v2CreatorPublishPresetVersion(
+        { universeId },
+        options?.signal ? { signal: options.signal } : undefined,
+      );
+    } catch (error) {
+      if (error instanceof ResponseError) {
+        const status = error.response.status;
+        throw new PresetChatApiError(
+          status === 429
+            ? 'Publish limit reached — 3 publishes per 24 hours.'
+            : `Publish failed: ${status}`,
+          status,
+        );
+      }
+      throw error;
+    }
+  }
 }
+
+const presetChatApiClient = new PresetChatApiClient();
+export default presetChatApiClient;

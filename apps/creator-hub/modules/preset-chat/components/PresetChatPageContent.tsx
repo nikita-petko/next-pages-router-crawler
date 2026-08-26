@@ -2,7 +2,18 @@ import type { FunctionComponent } from 'react';
 import { useCallback, useState } from 'react';
 import { StatusCodes } from '@rbx/core';
 import { useFlag } from '@rbx/flags';
-import { Divider, Link } from '@rbx/foundation-ui';
+import {
+  Button,
+  Divider,
+  IconButton,
+  Link,
+  Menu,
+  MenuItem,
+  MenuSection,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { CircularProgress } from '@rbx/ui';
 import { presetChatEnabled } from '@generated/flags/presetChat';
@@ -15,7 +26,9 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import ChatTabOptions from '../enums/ChatTabOptions';
 import { useGetPresetChatState } from '../queries/useGetPresetChatState';
+import { usePublish } from '../queries/usePublish';
 import ChatNavigation from './ChatNavigation';
+import { PublishStatusBanner } from './PublishStatusBanner';
 import QuickWordsContent from './QuickWordsContent';
 import QuickWordsStatusBadge from './QuickWordsStatusBadge';
 
@@ -24,11 +37,22 @@ const PresetChatPageContent: FunctionComponent = () => {
   const { ready: flagReady, value: isPresetChatEnabled } = useFlag(presetChatEnabled);
   const { ready, tPendingTranslation } = useTranslationWrapper(useTranslation());
   const [currentTab, setCurrentTab] = useState<ChatTabOptions>(ChatTabOptions.QuickWords);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const {
     data: presetChatState,
     isLoading: isPresetChatLoading,
     error: presetChatError,
   } = useGetPresetChatState(gameDetails?.id, isPresetChatEnabled ?? false);
+
+  const { mutate: publish, isPending: isPublishPending } = usePublish(gameDetails?.id);
+
+  const handlePublish = useCallback(() => {
+    publish();
+  }, [publish]);
+
+  const handleCloseMoreMenu = useCallback(() => {
+    setMoreMenuOpen(false);
+  }, []);
 
   const handleSelectTab = useCallback((value: ChatTabOptions) => {
     setCurrentTab(value);
@@ -54,7 +78,7 @@ const PresetChatPageContent: FunctionComponent = () => {
     );
   }
 
-  if (presetChatError) {
+  if (presetChatError && !presetChatState) {
     const status =
       presetChatError instanceof PresetChatApiError ? presetChatError.status : undefined;
     const errorCode =
@@ -117,18 +141,86 @@ const PresetChatPageContent: FunctionComponent = () => {
                   )}
                 </span>
                 <QuickWordsStatusBadge
-                  status={presetChatState?.overallStatus ?? 'DRAFT'}
+                  status={
+                    isPublishPending ? 'PUBLISHING' : (presetChatState?.overallStatus ?? 'DRAFT')
+                  }
                   isSystemStatus
                 />
               </div>
             </div>
-            {/* TODO (EXPR-4049): Publish/Save action buttons */}
+            <div className='flex items-center gap-small'>
+              <Button
+                variant='Emphasis'
+                size='Medium'
+                onClick={handlePublish}
+                isDisabled={presetChatState?.overallStatus === 'PUBLISHING' || isPublishPending}>
+                {tPendingTranslation(
+                  'Publish',
+                  'Button to publish preset chat changes',
+                  translationKey('Action.Publish', TranslationNamespace.PresetChat),
+                )}
+              </Button>
+              {/* TODO: Wire up save draft API call */}
+              <Button
+                variant='Standard'
+                size='Medium'
+                isDisabled={presetChatState?.overallStatus === 'PUBLISHING' || isPublishPending}>
+                {tPendingTranslation(
+                  'Save',
+                  'Button to save the current draft of Quick Words categories',
+                  translationKey('Action.SaveDraft', TranslationNamespace.PresetChat),
+                )}
+              </Button>
+              <Popover open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>
+                <PopoverTrigger asChild>
+                  <IconButton
+                    variant='Standard'
+                    size='Medium'
+                    icon='icon-regular-three-dots-horizontal'
+                    isDisabled={presetChatState?.overallStatus === 'PUBLISHING' || isPublishPending}
+                    ariaLabel={tPendingTranslation(
+                      'More options',
+                      'Accessible label for the more options menu button',
+                      translationKey('Action.MoreOptions', TranslationNamespace.PresetChat),
+                    )}
+                  />
+                </PopoverTrigger>
+                <PopoverContent
+                  ariaLabel={tPendingTranslation(
+                    'More options',
+                    'Accessible label for the more options menu button',
+                    translationKey('Action.MoreOptions', TranslationNamespace.PresetChat),
+                  )}
+                  align='end'>
+                  <Menu size='Medium'>
+                    <MenuSection>
+                      {/* TODO: Wire up revert to default API call */}
+                      <MenuItem
+                        value='revert'
+                        title={tPendingTranslation(
+                          'Revert back to default',
+                          'Menu item to revert Quick Words to the Roblox default values',
+                          translationKey('Action.RevertToDefault', TranslationNamespace.PresetChat),
+                        )}
+                        onSelect={handleCloseMoreMenu}
+                      />
+                    </MenuSection>
+                  </Menu>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
+          <PublishStatusBanner
+            overallStatus={
+              isPublishPending ? 'PUBLISHING' : (presetChatState?.overallStatus ?? 'DRAFT')
+            }
+          />
           <Divider className='margin-top-medium margin-bottom-small' />
           <QuickWordsContent
-            key={gameDetails.id}
+            key={`${gameDetails.id}-${presetChatState?.overallStatus}`}
             categoryGroups={presetChatState?.categoryGroups}
             overallStatus={presetChatState?.overallStatus}
+            isPublishPending={isPublishPending}
           />
         </div>
       )}

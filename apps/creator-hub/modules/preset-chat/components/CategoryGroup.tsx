@@ -4,13 +4,15 @@ import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import type { CategoryFormState } from '../types';
+import type { CategoryFormState, PresetStatus } from '../types';
 import CategoryNameField from './CategoryNameField';
 
 type CategoryGroupProps = {
   categoryIndex: number;
   category: CategoryFormState;
   onNameChange: (id: string, name: string) => void;
+  isDisabled?: boolean;
+  overrideStatus?: PresetStatus;
   children?: ReactNode;
 };
 
@@ -18,6 +20,8 @@ const CategoryGroup: FunctionComponent<CategoryGroupProps> = ({
   categoryIndex,
   category,
   onNameChange,
+  isDisabled,
+  overrideStatus,
   children,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
@@ -44,6 +48,8 @@ const CategoryGroup: FunctionComponent<CategoryGroupProps> = ({
           value={category.name}
           state={category.state}
           onChange={handleNameChange}
+          isDisabled={isDisabled}
+          overrideStatus={overrideStatus}
         />
       </div>
       {children}
