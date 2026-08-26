@@ -6,6 +6,7 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import { useAuthentication } from '@modules/authentication/providers';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import CustomDashboardBreadcrumbRegistration from '../../components/CustomDashboardBreadcrumbRegistration';
+import DashboardTitleActionHeader from '../../components/DashboardTitleActionHeader';
 import InternalSandboxBanner from '../../components/InternalSandboxBanner';
 import LocalCopyBadge from '../../components/LocalCopyBadge';
 import ReadOnlyDashboardSurface from '../../components/ReadOnlyDashboardSurface';
@@ -125,30 +126,34 @@ const DashboardViewPage: FC<DashboardViewPageProps> = ({
         <header className='flex flex-col gap-medium width-full'>
           <CustomDashboardBreadcrumbRegistration dashboardName={document.name} />
           <InternalSandboxBanner />
-          <div className='flex flex-col medium:flex-row medium:items-center medium:justify-between gap-small width-full'>
-            <div className='flex items-center gap-small min-width-0 grow'>
-              <h1 className='text-heading-large content-emphasis margin-none text-truncate-end'>
-                {document.name}
-              </h1>
-              {document.hybridOrigin === 'localCopy' ? <LocalCopyBadge /> : null}
-            </div>
-            <div className='flex flex-col items-start medium:items-end gap-small min-width-0 shrink-0'>
-              <div className='flex wrap items-center gap-small'>
-                {canMutateDashboards ? (
-                  <Button variant='Emphasis' size='Medium' onClick={handleEditDashboard}>
-                    {document.hybridOrigin === 'server' && service.forkApiDashboardToLocal
-                      ? t.editAsLocalCopyLabel
-                      : t.editDashboardLabel}
-                  </Button>
-                ) : null}
+          <DashboardTitleActionHeader
+            title={
+              <div className='flex items-center gap-small min-width-0'>
+                <h1 className='text-heading-large content-emphasis margin-none text-truncate-end'>
+                  {document.name}
+                </h1>
+                {document.hybridOrigin === 'localCopy' ? <LocalCopyBadge /> : null}
               </div>
-              {editError ? (
-                <p role='alert' className='text-body-small content-system-alert margin-none'>
-                  {t.localCopyError}
-                </p>
-              ) : null}
-            </div>
-          </div>
+            }
+            actions={
+              <>
+                <div className='flex wrap items-center gap-small'>
+                  {canMutateDashboards ? (
+                    <Button variant='Emphasis' size='Medium' onClick={handleEditDashboard}>
+                      {document.hybridOrigin === 'server' && service.forkApiDashboardToLocal
+                        ? t.editAsLocalCopyLabel
+                        : t.editDashboardLabel}
+                    </Button>
+                  ) : null}
+                </div>
+                {editError ? (
+                  <p role='alert' className='text-body-small content-system-alert margin-none'>
+                    {t.localCopyError}
+                  </p>
+                ) : null}
+              </>
+            }
+          />
         </header>
       }
     />

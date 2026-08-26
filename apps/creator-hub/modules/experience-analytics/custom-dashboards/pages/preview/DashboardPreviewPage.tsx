@@ -8,6 +8,7 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import DiscardChangesDialog from '@modules/miscellaneous/discard-dialog/DiscardChangesDialog';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import CustomDashboardBreadcrumbRegistration from '../../components/CustomDashboardBreadcrumbRegistration';
+import DashboardTitleActionHeader from '../../components/DashboardTitleActionHeader';
 import ReadOnlyDashboardSurface from '../../components/ReadOnlyDashboardSurface';
 import {
   CustomDashboardNotAvailableError,
@@ -283,36 +284,42 @@ const DashboardPreviewPage: FC<DashboardPreviewPageProps> = ({ draftId, onBackTo
         header={
           <header className='flex flex-col gap-small width-full'>
             <CustomDashboardBreadcrumbRegistration dashboardName={workingCopy.name} />
-            <div className='flex flex-col gap-small width-full'>
-              <div className='flex flex-col gap-xsmall min-width-0'>
-                <h1 className='text-heading-large content-emphasis margin-none text-truncate-end'>
-                  {workingCopy.name}
-                </h1>
-                <span className='text-body-medium content-muted text-truncate-end'>
-                  {workingCopy.createdByUsername}
-                </span>
-              </div>
-              <div className='flex wrap items-center gap-small'>
-                <Button variant='Standard' size='Medium' onClick={onBackToEditor}>
-                  {t.editLabel}
-                </Button>
-                <Button variant='Standard' size='Medium' onClick={handleCancel}>
-                  {t.cancelLabel}
-                </Button>
-                <Button
-                  variant='Emphasis'
-                  size='Medium'
-                  isDisabled={universeId === undefined || !canMutateDashboards || isSaving}
-                  onClick={handlePublish}>
-                  {workingCopy.dashboardId === null ? t.publishLabel : t.saveLabel}
-                </Button>
-              </div>
-              {saveErrorLabel ? (
-                <p role='alert' className='text-body-small content-system-alert margin-none'>
-                  {saveErrorLabel}
-                </p>
-              ) : null}
-            </div>
+            <DashboardTitleActionHeader
+              title={
+                <>
+                  <h1 className='text-heading-large content-emphasis margin-none text-truncate-end'>
+                    {workingCopy.name}
+                  </h1>
+                  <span className='text-body-medium content-muted text-truncate-end'>
+                    {workingCopy.createdByUsername}
+                  </span>
+                </>
+              }
+              actions={
+                <>
+                  <div className='flex wrap items-center gap-small'>
+                    <Button variant='Standard' size='Medium' onClick={onBackToEditor}>
+                      {t.editLabel}
+                    </Button>
+                    <Button variant='Standard' size='Medium' onClick={handleCancel}>
+                      {t.cancelLabel}
+                    </Button>
+                    <Button
+                      variant='Emphasis'
+                      size='Medium'
+                      isDisabled={universeId === undefined || !canMutateDashboards || isSaving}
+                      onClick={handlePublish}>
+                      {workingCopy.dashboardId === null ? t.publishLabel : t.saveLabel}
+                    </Button>
+                  </div>
+                  {saveErrorLabel ? (
+                    <p role='alert' className='text-body-small content-system-alert margin-none'>
+                      {saveErrorLabel}
+                    </p>
+                  ) : null}
+                </>
+              }
+            />
           </header>
         }
       />
