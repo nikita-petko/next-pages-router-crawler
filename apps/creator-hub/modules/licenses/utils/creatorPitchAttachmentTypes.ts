@@ -1,3 +1,4 @@
+import { LicenseType } from '@rbx/client-content-licensing-api/v1';
 import { CreatorPitchAttachmentStatus, type CreatorPitchAttachmentErrorType } from './constants';
 
 export { CreatorPitchAttachmentErrorType, CreatorPitchAttachmentStatus } from './constants';
@@ -30,6 +31,17 @@ export function isCreatorPitchAttachmentBlocking(attachment: CreatorPitchAttachm
 
 export function hasBlockingCreatorPitchAttachments(attachments: CreatorPitchAttachment[]): boolean {
   return attachments.some(isCreatorPitchAttachmentBlocking);
+}
+
+export function hasUsableCreatorPitchAttachments(attachments: CreatorPitchAttachment[]): boolean {
+  return attachments.some((attachment) => !isCreatorPitchAttachmentBlocking(attachment));
+}
+
+export function isCreatorPitchAttachmentsRequired(licenseType: LicenseType | undefined): boolean {
+  return (
+    licenseType === LicenseType.CollaborationInExperienceSale ||
+    licenseType === LicenseType.MarketplaceSale
+  );
 }
 
 /**

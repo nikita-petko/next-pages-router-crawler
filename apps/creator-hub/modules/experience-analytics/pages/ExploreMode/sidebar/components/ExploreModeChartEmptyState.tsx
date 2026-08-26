@@ -14,8 +14,6 @@ type ExploreModeChartEmptyStateProps = {
 
 const DefaultChartHeight = 450;
 
-const noDataAbnormalState = { status: ChartAbnormalStatus.NoData };
-
 const ExploreModeChartEmptyState: FC<ExploreModeChartEmptyStateProps> = ({
   titleLabel,
   subtitleLabel,
@@ -23,13 +21,12 @@ const ExploreModeChartEmptyState: FC<ExploreModeChartEmptyStateProps> = ({
   isError = false,
   errorDescription,
 }) => {
-  const abnormalStatus = isError ? ChartAbnormalStatus.Error : ChartAbnormalStatus.NoData;
-
+  // Omit ChartPlaceholder for empty (non-error) previews: its NoData icon is a
+  // question mark with no help action (DSA-6159). Use summaryValue for the "--"
+  // placeholder because SingleChartCardContainer derives abnormalStatus from abnormalState.
   const abnormalState = useMemo(
     () =>
-      isError
-        ? { status: ChartAbnormalStatus.Error, description: errorDescription }
-        : noDataAbnormalState,
+      isError ? { status: ChartAbnormalStatus.Error, description: errorDescription } : undefined,
     [isError, errorDescription],
   );
 
@@ -37,12 +34,11 @@ const ExploreModeChartEmptyState: FC<ExploreModeChartEmptyStateProps> = ({
     () => [
       {
         key: 'empty-summary',
-        summaryValue: '',
+        summaryValue: '--',
         description: subtitleLabel,
-        abnormalStatus,
       },
     ],
-    [subtitleLabel, abnormalStatus],
+    [subtitleLabel],
   );
 
   return (
