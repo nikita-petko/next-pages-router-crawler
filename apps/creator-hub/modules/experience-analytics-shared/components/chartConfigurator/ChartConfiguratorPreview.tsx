@@ -4,7 +4,10 @@ import type { RAQIV2DateRangeType } from '@rbx/creator-hub-analytics-config';
 import { Icon } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
-import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import {
+  brandUntranslatableText,
+  translationKey,
+} from '@modules/analytics-translations/wrapperFunctions';
 import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import type { ChartLocation } from '@modules/charts-generic/context/ChartLocation';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -217,6 +220,40 @@ const ChartConfiguratorPreview: FC<ChartConfiguratorPreviewProps> = ({
     if (!tableConfig) {
       return null;
     }
+    const { localizedName } = getAnalyticsMetricDisplayConfig(displayMetric);
+    const computedMetricChart = isComputedMetric(chartSpec.metric) ? chartSpec.metric : null;
+    const defaultMetricTitleLabel = translate(localizedName);
+    const isPrecomputedL7MetricChart =
+      !computedMetricChart &&
+      typeof chartSpec.metric === 'string' &&
+      getBaseMetricFromL7(chartSpec.metric) !== null;
+    const previewTitleLabel = resolveChartConfiguratorPreviewTitleLabel({
+      authoredChartTitleLabel,
+      computedMetricChart,
+      computedMetricChartTitleLabel,
+      defaultMetricTitleLabel,
+      fallbackChartTitleLabel,
+      formatSmoothingTitleLabel: (metricName) =>
+        String(
+          tPendingTranslation(
+            '{metricName} (7 day moving average)',
+            'Chart title when L7 smoothing is enabled. {metricName} is replaced with the metric display name.',
+            translationKey(
+              'Label.ExploreMode.Smoothing.ChartTitleFormat',
+              TranslationNamespace.Analytics,
+            ),
+            { metricName },
+          ),
+        ),
+      isPrecomputedL7MetricChart,
+      untitledFormulaLabel: String(untitledFormulaLabel),
+    });
+    const titledTableConfig = {
+      ...tableConfig,
+      titleLabel: previewTitleLabel
+        ? brandUntranslatableText(previewTitleLabel)
+        : defaultMetricTitleLabel,
+    };
     const tableContext: RAQIV2TableContext = {
       resource: chartSpec.resource,
       timeSpec: chartSpec.timeSpec,
@@ -228,10 +265,21 @@ const ChartConfiguratorPreview: FC<ChartConfiguratorPreviewProps> = ({
     // plus chart-card `height: 100%` rules collapses the table to an empty frame.
     return (
       <div className={styles.previewTableFrame} data-testid='chart-configurator-preview-table'>
-        <AnalyticsConfigTable config={tableConfig} tableContext={tableContext} />
+        <AnalyticsConfigTable config={titledTableConfig} tableContext={tableContext} />
       </div>
     );
-  }, [chartSpec, displayMetric, selectedChartType, tableAdditionalColumns]);
+  }, [
+    authoredChartTitleLabel,
+    chartSpec,
+    computedMetricChartTitleLabel,
+    displayMetric,
+    fallbackChartTitleLabel,
+    selectedChartType,
+    tPendingTranslation,
+    tableAdditionalColumns,
+    translate,
+    untitledFormulaLabel,
+  ]);
 
   const chart = useMemo(() => {
     if (selectedChartType === ChartType.Table) {

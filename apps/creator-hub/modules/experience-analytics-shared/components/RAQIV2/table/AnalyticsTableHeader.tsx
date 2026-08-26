@@ -17,6 +17,7 @@ type DataTableHeaderProps = {
   columnConfigs: TableColumnConfig<string>[];
   data: Map<string, CellDataType>[];
   titleKey?: TranslationKey;
+  titleLabel?: FormattedText;
   definitionTooltipKey?: TranslationKey;
   isDataLoading?: boolean;
   isInTabSwitchedContext?: boolean;
@@ -41,6 +42,7 @@ const AnalyticsTableHeader = ({
   data,
   columnConfigs,
   titleKey,
+  titleLabel,
   definitionTooltipKey,
   isDataLoading,
   isInTabSwitchedContext,
@@ -59,8 +61,12 @@ const AnalyticsTableHeader = ({
     if (data.length === 0 || !translationReady || isDataLoading || gameDetails.isLoadingGame) {
       return null;
     }
-    // Fall back to provided file name when titleKey is absent
-    const fileName = titleKey ? translate(titleKey) : fallbackFileName || '';
+    // Prefer the authored label, then the translated key, then the caller fallback.
+    const fileName = titleLabel?.trim()
+      ? titleLabel.trim()
+      : titleKey
+        ? translate(titleKey)
+        : (fallbackFileName ?? '');
 
     const columnNames = new Map<string, FormattedText>();
     columnConfigs.forEach((config) => {
@@ -74,7 +80,7 @@ const AnalyticsTableHeader = ({
 
     return {
       telemetryContext: {
-        kpiType: metricLabelsForExportLog?.join(',') || '',
+        kpiType: metricLabelsForExportLog?.join(',') ?? '',
       },
       columns,
       columnNames,
@@ -88,6 +94,7 @@ const AnalyticsTableHeader = ({
     isDataLoading,
     gameDetails,
     titleKey,
+    titleLabel,
     translate,
     fallbackFileName,
     columnConfigs,
@@ -139,14 +146,21 @@ const AnalyticsTableHeader = ({
     onExporterReady(getExporter);
   }, [exportButtonProps, onExporterReady]);
 
-  if (!titleKey || !translationReady) {
-    return;
+  const resolvedTitle = titleLabel?.trim()
+    ? titleLabel.trim()
+    : titleKey && translationReady
+      ? translate(titleKey)
+      : undefined;
+  if (!resolvedTitle) {
+    return null;
   }
 
   return (
     <ChartHeader
-      title={translate(titleKey)}
-      definitionTooltip={definitionTooltipKey ? translate(definitionTooltipKey) : undefined}
+      title={resolvedTitle}
+      definitionTooltip={
+        definitionTooltipKey && translationReady ? translate(definitionTooltipKey) : undefined
+      }
       chartControl={chartControl}
       exportButton={exportButton}
     />

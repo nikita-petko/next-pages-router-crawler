@@ -10,8 +10,8 @@
   outline: none;
 }
 
-/* Chart-card fill rules — skip table chrome/frame (GenericTableV2 collapses under height:100%). */
-.chartTileMount > *:not(.chartTableFrame):not(.chartTableChrome) {
+/* Chart-card fill rules — skip tables so GenericTableV2 keeps paginated natural height. */
+.chartTileMount:not(.chartTableTileMount) > * {
   flex: 1 1 auto;
   height: 100%;
   min-height: 0;
@@ -19,69 +19,46 @@
   overflow: hidden;
 }
 
-.chartTileMount
-  > *:not(.chartTableFrame):not(.chartTableChrome)
-  :global([data-chart-container-item-id]),
-.chartTileMount > *:not(.chartTableFrame):not(.chartTableChrome) :global(.MuiGrid-item),
-.chartTileMount > *:not(.chartTableFrame):not(.chartTableChrome) :global(.MuiPaper-root),
-.chartTileMount > *:not(.chartTableFrame):not(.chartTableChrome) :global(.MuiCard-root) {
+.chartTileMount:not(.chartTableTileMount) :global([data-chart-container-item-id]),
+.chartTileMount:not(.chartTableTileMount) :global(.MuiGrid-item),
+.chartTileMount:not(.chartTableTileMount) :global(.MuiPaper-root),
+.chartTileMount:not(.chartTableTileMount) :global(.MuiCard-root) {
   height: 100%;
   min-height: 0;
   width: 100%;
 }
 
-.chartTileMount
-  > *:not(.chartTableFrame):not(.chartTableChrome)
-  :global([data-chart-container-item-id]) {
+.chartTileMount:not(.chartTableTileMount) :global([data-chart-container-item-id]) {
   display: flex;
   flex-direction: column;
 }
 
-.chartTileMount
-  > *:not(.chartTableFrame):not(.chartTableChrome)
-  :global([data-chart-container-item-id])
-  > :last-child {
+.chartTileMount:not(.chartTableTileMount) :global([data-chart-container-item-id]) > :last-child {
   flex: 1 1 auto;
   height: 100%;
   min-height: 0;
 }
 
-.chartTileMount > *:not(.chartTableFrame):not(.chartTableChrome) :global(.MuiPaper-root),
-.chartTileMount > *:not(.chartTableFrame):not(.chartTableChrome) :global(.MuiCard-root) {
+.chartTileMount:not(.chartTableTileMount) :global(.MuiPaper-root),
+.chartTileMount:not(.chartTableTileMount) :global(.MuiCard-root) {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
 }
 
-.chartTileMount > *:not(.chartTableFrame):not(.chartTableChrome) :global(.MuiCardContent-root) {
+.chartTileMount:not(.chartTableTileMount) :global(.MuiCardContent-root) {
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
 }
 
-/* Dedicated chrome row so edit/menu actions don't sit on table headers. */
-.chartTableChrome {
-  display: flex;
-  flex: 0 0 auto;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-  min-width: 0;
-  padding: 12px 12px 4px;
-  box-sizing: border-box;
-}
-
-/* Natural-height table body — pagination (not an inner scrollbar) navigates rows. */
-.chartTableFrame {
-  display: block;
+/* Tables size to paginated content instead of the fixed chart-card height. */
+.chartTableTileMount > * {
   flex: 0 1 auto;
   width: 100%;
   min-width: 0;
   height: auto;
   overflow: visible;
-  padding: 0 12px 12px;
-  box-sizing: border-box;
 }
 
 /* The editor owns the tile frame; analytics-ui owns chart chrome and natural plot height. */
@@ -101,12 +78,11 @@
   overflow: visible;
 }
 
-.chartTileMountResizing > *:not(.chartTableFrame):not(.chartTableChrome) {
+.chartTileMountResizing > * {
   overflow: visible;
 }
 
-.chartTileMountResizing
-  > *:not(.chartTableFrame):not(.chartTableChrome)
+.chartTileMountResizing:not(.chartTableTileMount)
   :global([data-chart-container-item-id])
   > :last-child {
   overflow: hidden;

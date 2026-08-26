@@ -1,4 +1,5 @@
 import AnalyticsComponentType from '@modules/analytics-configurations/AnalyticsComponentType';
+import { brandString } from '@modules/charts-generic/types/Branded';
 import { getUniqueKeyForChartConfig } from '../constants/RAQIV2PredefinedChartConfig';
 import { getUniqueKeyForTabbedChartConfig } from '../constants/RAQIV2PredefinedTabbedChartConfig';
 import type { AnalyticsComponentConfig } from '../types/RAQIV2PageConfig';
@@ -15,7 +16,7 @@ const getUniqueKeyForAnalyticsComponent = (
   chartKeyOrConfig: AnalyticsComponentConfig,
 ): UniqueKeyForAnalyticsComponent => {
   if (typeof chartKeyOrConfig === 'string') {
-    return chartKeyOrConfig as UniqueKeyForAnalyticsComponent;
+    return brandString<UniqueKeyForAnalyticsComponent>(chartKeyOrConfig);
   }
 
   switch (chartKeyOrConfig.type) {
@@ -23,8 +24,17 @@ const getUniqueKeyForAnalyticsComponent = (
       return getUniqueKeyForTabbedChartConfig(chartKeyOrConfig);
     case AnalyticsComponentType.Chart:
       return getUniqueKeyForChartConfig(chartKeyOrConfig);
+    case AnalyticsComponentType.Table:
+      return brandString<UniqueKeyForAnalyticsComponent>(
+        chartKeyOrConfig.tableKey ?? getStableKey(chartKeyOrConfig),
+      );
+    case AnalyticsComponentType.TabbedTable:
+    case AnalyticsComponentType.SummaryCard:
+    case AnalyticsComponentType.NonGeneric:
+    case AnalyticsComponentType.ControlledSubcontext:
+      return brandString<UniqueKeyForAnalyticsComponent>(getStableKey(chartKeyOrConfig));
     default:
-      return getStableKey(chartKeyOrConfig) as UniqueKeyForAnalyticsComponent;
+      return brandString<UniqueKeyForAnalyticsComponent>(getStableKey(chartKeyOrConfig));
   }
 };
 

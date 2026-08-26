@@ -40,7 +40,6 @@ import {
   type ChartActionsPolicy,
 } from '@modules/experience-analytics-shared/components/RAQIV2/ChartActionsContext';
 import { AnalyticsChartContainerDragDropProvider } from '@modules/experience-analytics-shared/components/RAQIV2/layout/AnalyticsChartContainerDragDropContext';
-import AnalyticsComponent from '@modules/experience-analytics-shared/components/RAQIV2/layout/AnalyticsComponent';
 import AnalyticsConfigurableComponent from '@modules/experience-analytics-shared/components/RAQIV2/layout/AnalyticsConfigurableComponent';
 import { RAQIV2ConfigurablePageSurfaceContextProvider } from '@modules/experience-analytics-shared/components/RAQIV2/layout/RAQIV2ConfigurablePageContext';
 import useRAQIV2PredefinedSurfaceControlsBundle from '@modules/experience-analytics-shared/components/RAQIV2/layout/useRAQIV2PredefinedSurfaceControlsBundle';
@@ -1037,35 +1036,11 @@ const ChartTileMountInner: FC<ChartTileMountProps> = ({
   );
   const trimmedTitle = title?.trim();
   const isTableTile = renderableEntry.component.type === AnalyticsComponentType.Table;
-  const tableTileChrome = (
-    <div className={styles.chartTableChrome}>
-      <TileEditMenu
-        ariaLabel={overflowMenuLabel}
-        editLabel={editLabel}
-        duplicateLabel={duplicateLabel}
-        removeLabel={removeLabel}
-        isDuplicateDisabled={isDuplicateDisabled}
-        onEdit={() => onEdit(entry.tileId)}
-        onDuplicate={() => onDuplicate(entry.tileId)}
-        onRemove={() => onRemove(entry.tileId)}
-      />
-    </div>
-  );
   // Always mount the chart so card chrome stays and Figma empty states flow
   // through genericChartStateToChartAbnormalState (no alert-card short-circuit).
-  const tileContent = isTableTile ? (
-    // Tables collapse under chart-card Grid/height CSS — mount bare like
-    // DashboardLayoutBody / Add Chart preview. Tile height follows paginated
-    // content so rows navigate via paging instead of an inner scrollbar.
-    <div className={styles.chartTableFrame} data-testid='custom-dashboard-chart-table-frame'>
-      <AnalyticsComponent
-        config={renderableEntry.component}
-        chartContext={chartContext}
-        onSelectChartRegion={null}
-        chartUpdatePolicy='non-animated'
-      />
-    </div>
-  ) : (
+  // Tables use the same AnalyticsConfigurableComponent path; card chrome lives
+  // in AnalyticsConfigTable whenever tile actions or the row DnD provider are on.
+  const tileContent = (
     <AnalyticsConfigurableComponent
       component={renderableEntry.component}
       chartContext={chartContext}
@@ -1080,6 +1055,7 @@ const ChartTileMountInner: FC<ChartTileMountProps> = ({
       <div
         className={[
           styles.chartTileMount,
+          isTableTile ? styles.chartTableTileMount : '',
           isSelected ? styles.chartTileMountSelected : '',
           isActiveDragTile ? styles.chartTileMountDragging : '',
           isActiveResizeTile ? styles.chartTileMountResizing : '',
@@ -1112,7 +1088,6 @@ const ChartTileMountInner: FC<ChartTileMountProps> = ({
           ...(isTableTile ? chartTableTileMountStyle : chartTileMountStyle),
           ...layoutStyle,
         }}>
-        {isTableTile ? tableTileChrome : null}
         {tileContent}
         {isActiveDragTile ? (
           <div className={styles.chartActiveDragPlaceholder} aria-hidden='true'>

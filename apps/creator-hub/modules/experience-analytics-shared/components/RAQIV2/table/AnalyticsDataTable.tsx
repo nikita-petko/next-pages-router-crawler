@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import React, { useCallback, useMemo, useRef } from 'react';
 import { RAQIV2MetricGranularity } from '@rbx/creator-hub-analytics-config';
 import type { TRAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
-import type { TranslationKey } from '@modules/analytics-translations/types';
+import type { FormattedText, TranslationKey } from '@modules/analytics-translations/types';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import ChartFooter from '@modules/charts-generic/charts/ChartFooter';
 import type GenericCsvExporter from '@modules/charts-generic/charts/exporters/GenericCsvExporter';
@@ -110,6 +110,7 @@ export type AnalyticsDataTableProps<TColumnKey extends string = string> = {
   isTotalRowIncluded?: boolean;
   ignoreCache?: boolean;
   titleKey?: TranslationKey;
+  titleLabel?: FormattedText;
   definitionTooltipKey?: TranslationKey;
   isInTabSwitchedContext?: boolean;
   pagination?: TablePaginationSpec;
@@ -181,6 +182,7 @@ const AnalyticsDataTable = <TColumnKey extends string>({
   isTotalRowIncluded,
   ignoreCache,
   titleKey,
+  titleLabel,
   definitionTooltipKey,
   isInTabSwitchedContext,
   pagination,
@@ -494,10 +496,13 @@ const AnalyticsDataTable = <TColumnKey extends string>({
           isDataLoading={isDataLoading}
           columnConfigs={columnConfigs}
           titleKey={titleKey}
+          titleLabel={titleLabel}
           definitionTooltipKey={definitionTooltipKey}
           isInTabSwitchedContext={isInTabSwitchedContext}
           fallbackFileName={
-            !titleKey && context ? `${context.resource.type}-${context.resource.id}` : undefined
+            !titleKey && !titleLabel && context
+              ? `${context.resource.type}-${context.resource.id}`
+              : undefined
           }
           exportButtonConfig={exportButtonConfig}
           metricLabelsForExportLog={allColumnSpecs
@@ -515,6 +520,7 @@ const AnalyticsDataTable = <TColumnKey extends string>({
       definitionTooltipKey,
       isInTabSwitchedContext,
       titleKey,
+      titleLabel,
       translationDependencies,
       exportButtonConfig,
       onExporterReady,

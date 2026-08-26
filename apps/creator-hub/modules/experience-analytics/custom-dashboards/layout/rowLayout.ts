@@ -3,7 +3,6 @@
  * is an ordered list of `{ tiles, columnCount }` rows.
  */
 
-import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import {
   MAX_TILES_PER_ROW,
   type ChartTileConfig,
@@ -387,12 +386,6 @@ export function canAppendTileToLastRow(rows: Rows): boolean {
 }
 
 export function appendTileAsRow(rows: Rows, tile: ChartTileConfig): Rows {
-  // Tables are wide (breakdown columns + pagination) and should not share a
-  // half-width row with the Add Chart empty slot — match Explore's full-width
-  // `addChartTileToConfig` path.
-  if (tile.chartSpec.chartType === ChartType.Table) {
-    return [...rows, singleTileRow(tile)];
-  }
   if (!canAppendTileToLastRow(rows)) {
     return [...rows, halfWidthRow(tile)];
   }

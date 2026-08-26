@@ -6,7 +6,10 @@ import {
 } from '@rbx/creator-hub-analytics-config';
 import AnalyticsComponentType from '@modules/analytics-configurations/AnalyticsComponentType';
 import type { TranslationKey } from '@modules/analytics-translations/types';
-import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import {
+  brandUntranslatableText,
+  translationKey,
+} from '@modules/analytics-translations/wrapperFunctions';
 import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import ChartSummaryType from '@modules/charts-generic/enums/ChartSummaryType';
 import { RAQIV2ChartResourceType } from '@modules/clients/analytics';
@@ -571,11 +574,27 @@ function synthesizeTableTile(
       },
     };
   }
+  const titleMetric = getBaseMetricFromL7(metric) ?? metric;
+  const { localizedName } = getAnalyticsMetricDisplayConfig(titleMetric);
+  const customTitle = tile.title?.trim();
+  const computedMetric = primaryMetric?.metric.computedMetric;
+  const computedMetricName = computedMetric?.name?.trim();
+  const customEventName = primaryMetric
+    ? getCustomEventNameFromMetricReference(primaryMetric.metric, tile.dataSpec.filters)
+    : undefined;
   return {
     kind: 'rendered',
     component: {
       ...tableConfig,
-      tableKey: `custom-dashboard-${tile.tileId}`,
+      tableKey: tile.tileId,
+      titleKey: localizedName,
+      ...(customTitle
+        ? { titleLabel: brandUntranslatableText(customTitle) }
+        : computedMetricName
+          ? { titleLabel: brandUntranslatableText(computedMetricName) }
+          : customEventName
+            ? { titleLabel: brandUntranslatableText(customEventName) }
+            : {}),
     },
   };
 }

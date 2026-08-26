@@ -1,5 +1,5 @@
-import type { FC } from 'react';
-import React, { useMemo } from 'react';
+import React, { type FC, useMemo } from 'react';
+import { SingleChartCardContainer } from '@rbx/analytics-ui';
 import type GenericCsvExporter from '@modules/charts-generic/charts/exporters/GenericCsvExporter';
 import type { GenericTableV2RowExpansionConfig } from '@modules/charts-generic/tables/types/GenericTableType';
 import { isCustomTableColumnConfig } from '../../../constants/RAQIV2PredefinedTableColumnConfig';
@@ -8,6 +8,10 @@ import useRAQIV2PredefinedWarnings from '../../../hooks/useRAQIV2PredefinedWarni
 import useRAQIV2TranslationDependencies from '../../../hooks/useRAQIV2TranslationDependencies';
 import type RAQIV2TableContext from '../../../types/RAQIV2TableContext';
 import computeRAQIV2SpecOverride from '../../../utils/computeRAQIV2SpecOverride';
+import getUniqueKeyForAnalyticsComponent from '../../../utils/getUniqueKeyForAnalyticsComponent';
+import { useChartActionsPolicy } from '../ChartActionsContext';
+import { useAnalyticsChartContainerDragDropContext } from '../layout/AnalyticsChartContainerDragDropContext';
+import SortableAnalyticsChartContainer from '../layout/SortableAnalyticsChartContainer';
 import AnalyticsDataTable from './AnalyticsDataTable';
 import type { MetricTableColumnSpec } from './types';
 
@@ -38,6 +42,10 @@ export type RAQIV2PredefinedTableProps = {
   rowExpansion?: GenericTableV2RowExpansionConfig<string>;
 };
 
+const EMPTY_CHART_SUMMARY_SPECS: React.ComponentProps<
+  typeof SingleChartCardContainer
+>['chartSummarySpecs'] = [];
+
 const AnalyticsConfigTable: FC<RAQIV2PredefinedTableProps> = ({
   config,
   tableContext,
@@ -47,8 +55,17 @@ const AnalyticsConfigTable: FC<RAQIV2PredefinedTableProps> = ({
   onExporterReady,
   rowExpansion,
 }) => {
-  const { dataColumns, breakdowns, pagination, footerKey, ...otherConfig } = config;
-  const { translate } = useRAQIV2TranslationDependencies();
+  const {
+    dataColumns,
+    breakdowns,
+    pagination,
+    footerKey,
+    titleKey,
+    titleLabel,
+    definitionTooltipKey,
+    ...otherConfig
+  } = config;
+  const { translate, ready } = useRAQIV2TranslationDependencies();
   const { fullDataColumnSpecs, metricDataColumnSpecs } = useMemo(() => {
     const metricSpecs: MetricTableColumnSpec<string>[] = [];
     const fullSpecs = dataColumns.map((column) => {
@@ -78,10 +95,28 @@ const AnalyticsConfigTable: FC<RAQIV2PredefinedTableProps> = ({
     () => (footerKey ? [...dynamicWarnings, translate(footerKey)] : dynamicWarnings),
     [dynamicWarnings, footerKey, translate],
   );
-
-  return (
+  const dragDropContext = useAnalyticsChartContainerDragDropContext();
+  const actionsPolicy = useChartActionsPolicy();
+  const chartContainerId = useMemo(() => getUniqueKeyForAnalyticsComponent(config), [config]);
+  const headerActionItems = useMemo(() => {
+    if (actionsPolicy && typeof actionsPolicy === 'object' && 'actions' in actionsPolicy) {
+      return actionsPolicy.actions;
+    }
+    return [];
+  }, [actionsPolicy]);
+  const resolvedTitleLabel = titleLabel?.trim()
+    ? titleLabel.trim()
+    : titleKey && ready
+      ? String(translate(titleKey))
+      : '';
+  const shouldRenderCardChrome = !!dragDropContext?.isEnabled || headerActionItems.length > 0;
+  const hideTableHeaderTitle = shouldRenderCardChrome;
+  const table = (
     <AnalyticsDataTable
       {...otherConfig}
+      titleKey={hideTableHeaderTitle ? undefined : titleKey}
+      titleLabel={hideTableHeaderTitle ? undefined : titleLabel}
+      definitionTooltipKey={definitionTooltipKey}
       dataColumnSpecs={fullDataColumnSpecs}
       breakdowns={breakdowns}
       isInTabSwitchedContext={isInTabSwitchedContext}
@@ -92,6 +127,32 @@ const AnalyticsConfigTable: FC<RAQIV2PredefinedTableProps> = ({
       onExporterReady={onExporterReady}
       rowExpansion={rowExpansion}
     />
+  );
+
+  if (!shouldRenderCardChrome) {
+    return table;
+  }
+
+  const chartCard = (
+    <SingleChartCardContainer
+      titleLabel={resolvedTitleLabel}
+      chartSummarySpecs={EMPTY_CHART_SUMMARY_SPECS}
+      headerActionItems={headerActionItems}>
+      {table}
+    </SingleChartCardContainer>
+  );
+
+  if (!dragDropContext?.isEnabled) {
+    return chartCard;
+  }
+
+  return (
+    <SortableAnalyticsChartContainer
+      itemId={chartContainerId}
+      dropIndicator={dragDropContext.getDropIndicator(chartContainerId)}
+      resizeOptions={dragDropContext.getResizeOptions?.(chartContainerId)}>
+      {chartCard}
+    </SortableAnalyticsChartContainer>
   );
 };
 

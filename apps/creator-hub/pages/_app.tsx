@@ -4,6 +4,10 @@ import '@rbx/polyfills';
 import '@formatjs/intl-locale/polyfill';
 import '@formatjs/intl-relativetimeformat/polyfill';
 import '@rbx/webfont';
+// Foundation UI ships its component CSS as a standalone stylesheet rather than injecting it at
+// import time, so its components render without elevation, stacking, and theme variables
+// unless this is imported once globally.
+import '@rbx/foundation-ui/style';
 import '../styles/globals.css';
 import React, { type FunctionComponent, useEffect, useMemo } from 'react';
 import type { NextComponentType, NextGetPageLayout } from 'next';
