@@ -16,21 +16,23 @@ const parsePositiveInt = (raw: string | string[] | undefined): number | null => 
 type ContextTarget = { kind: 'group'; id: number } | { kind: 'user' } | null;
 
 /**
- * When Transactions is opened via a deep link carrying `?groupId=<id>` or `?userId=<id>` (e.g. a
- * redirect from roblox.com), switch the active creator context to match so the correct
- * transactions load: `?groupId` to a group the user belongs to, `?userId` back to their own
- * personal context.
+ * When a page is opened via a deep link carrying `?groupId=<id>` or `?userId=<id>` (e.g. a redirect
+ * from roblox.com, or the publish settings link from Studio), switch the active creator context to
+ * match: `?groupId` to a group the user belongs to, `?userId` back to their own personal context.
+ * Without this the page falls back to the last creator in localStorage and quietly shows the wrong
+ * one.
  *
  * Once the deep link has been consumed (or settled as a no-op) the `?groupId`/`?userId` param is
- * stripped from the URL, so a refresh doesn't re-apply it and a later manual workspace switch
- * isn't fought by the stale param. This is scoped to Transactions (the only page this hook mounts
- * on), so unlike a global strip it can't clobber params other flows rely on (e.g. `/unsubscribe`).
+ * stripped from the URL, so a refresh doesn't re-apply it and a later manual workspace switch isn't
+ * fought by the stale param. Only those two params are removed and the rest of the query is
+ * preserved, so mounting this on another page cannot clobber params that page relies on.
  *
  * Returns `isResolving`: true while the router has not yet hydrated the query, or while a valid,
- * in-scope target from the URL has not yet been applied to the context. Callers gate rendering on
- * it so the page never briefly queries the previously selected creator's financial data. Once the
- * router is ready it is never true for links with no directive, malformed ids, or groups the user
- * does not belong to — those are no-ops and the page renders with the existing context.
+ * in-scope target from the URL has not yet been applied to the context. Callers gate rendering on it
+ * so nothing renders against the previously selected creator first — see each call site for what
+ * specifically goes wrong there. Once the router is ready it is never true for links with no
+ * directive, malformed ids, or groups the user does not belong to — those are no-ops and the page
+ * renders with the existing context.
  */
 export default function useSyncCreatorContextFromQuery(): { isResolving: boolean } {
   const router = useRouter();

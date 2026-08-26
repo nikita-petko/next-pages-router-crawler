@@ -726,7 +726,7 @@ export const generatedFlags = [
       metadata: {
         namespace: 'leaderboards',
         name: 'isLeaderboardConfigsEnabled',
-        defaultValue: false,
+        defaultValue: true,
         valueType: 'boolean',
         contextType: 'static',
       },

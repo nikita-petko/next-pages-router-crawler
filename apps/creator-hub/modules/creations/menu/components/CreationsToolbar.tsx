@@ -34,6 +34,7 @@ import {
   TAXONOMY_HOST_ASSET,
 } from '../../avatarItem/utils/taxonomyRoutingUtils';
 import useCreationsFilters from '../../common/hooks/useCreationsFilters';
+import useIsCreatorContextResolving from '../../common/hooks/useIsCreatorContextResolving';
 import { getSortForAssetType } from '../../common/interfaces/CreationsFilters';
 import { getValidTimedOptionsTypes } from '../../unifiedFeeSystem/helper/UnifiedFeeSystemConstants';
 import { getIsRentableType } from '../../unifiedFeeSystem/helper/UnifiedFeeSystemHelper';
@@ -63,7 +64,9 @@ const CreationsToolbar: FunctionComponent<React.PropsWithChildren<CreationsToolb
 }) => {
   const { translate } = useTranslation();
   const { unifiedLogger } = useUnifiedLoggerProvider();
-  const { value: autoPublishEnabled } = useFlag(isAutoPublishPreferencesEnabled);
+  const { ready: isAutoPublishFlagReady, value: autoPublishEnabled } = useFlag(
+    isAutoPublishPreferencesEnabled,
+  );
   const { isFetched: isGroupContextFetched } = useGroups();
 
   const {
@@ -99,6 +102,10 @@ const CreationsToolbar: FunctionComponent<React.PropsWithChildren<CreationsToolb
   } = useCreationsFilters();
 
   const [{ filterIndex, publishSettings }] = useQueryParams(['filterIndex', 'publishSettings']);
+  // useGroups().isFetched only says the groups list arrived, which happens before a deep-linked switch
+  // actually applies. Opening on that alone would show the previous creator's preferences and let Save
+  // write them as this creator's.
+  const isCreatorContextResolving = useIsCreatorContextResolving();
   const [, setViewParams] = useQueryParams(['activeTab', 'filterIndex']);
   const [, setPublishSettingsParam] = useQueryParams(publishSettingsParamKeys);
   const assetType = useMemo(() => {
@@ -124,19 +131,30 @@ const CreationsToolbar: FunctionComponent<React.PropsWithChildren<CreationsToolb
   const isPublishSettingsRequestedByUrl =
     !!isAvatarItemSettings &&
     isGroupContextFetched &&
+    !isCreatorContextResolving &&
     !hasDismissedUrlPublishSettings &&
     (requestedPublishSettings === 'true' || requestedPublishSettings === '1');
 
   // Tab switching spreads the current query, so an unhonoured param would ride along and pop the
   // modal open on the first avatar item tab the creator visits, long after they followed the link.
   useEffect(() => {
-    if (!isGroupContextFetched || requestedPublishSettings === undefined) {
+    // Also wait on the flag and on the creator switch: until the flag resolves its value is null, and
+    // a switch in flight means the creator is about to change. Either one reads as "not wanted here" and
+    // would delete the param before the link could be honoured.
+    if (
+      !isAutoPublishFlagReady ||
+      !isGroupContextFetched ||
+      isCreatorContextResolving ||
+      requestedPublishSettings === undefined
+    ) {
       return;
     }
     if (!isPublishSettingsRequestedByUrl) {
       setPublishSettingsParam({ publishSettings: null }, { skipHistory: true });
     }
   }, [
+    isAutoPublishFlagReady,
+    isCreatorContextResolving,
     isGroupContextFetched,
     isPublishSettingsRequestedByUrl,
     requestedPublishSettings,

@@ -23,7 +23,6 @@ export const ChartConfiguratorFilterOnlyDimensions = [
   RAQIV2Dimension.Country,
   RAQIV2Dimension.Locale,
   RAQIV2Dimension.Place,
-  RAQIV2Dimension.MemoryGroup,
   RAQIV2Dimension.ItemSku,
   RAQIV2UIPseudoDimension.AggregationType,
 ] as const satisfies readonly TRAQIV2Dimension[];

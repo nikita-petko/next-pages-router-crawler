@@ -5,5 +5,5 @@ import { defineFlag } from '@rbx/flags';
 export const isLeaderboardConfigsEnabled = defineFlag({
     namespace: 'leaderboards',
     name: 'isLeaderboardConfigsEnabled',
-    defaultValue: false,
+    defaultValue: true,
   });
