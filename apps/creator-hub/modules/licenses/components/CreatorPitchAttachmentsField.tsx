@@ -12,6 +12,7 @@ export interface CreatorPitchAttachmentsFieldHandle {
 interface CreatorPitchAttachmentsFieldProps {
   attachments: CreatorPitchAttachment[];
   onAttachmentsChange: Dispatch<SetStateAction<CreatorPitchAttachment[]>>;
+  isRequired?: boolean;
 }
 
 /**
@@ -21,10 +22,11 @@ interface CreatorPitchAttachmentsFieldProps {
 const CreatorPitchAttachmentsField = forwardRef<
   CreatorPitchAttachmentsFieldHandle,
   CreatorPitchAttachmentsFieldProps
->(({ attachments, onAttachmentsChange }, ref) => {
+>(({ attachments, onAttachmentsChange, isRequired = false }, ref) => {
   const { isEnabled, onChange, showErrors, validateForNext } = useCreatorPitchAttachments({
     attachments,
     onAttachmentsChange,
+    isRequired,
   });
 
   useImperativeHandle(ref, () => ({ validateForNext }), [validateForNext]);
@@ -39,6 +41,7 @@ const CreatorPitchAttachmentsField = forwardRef<
         attachments={attachments}
         onChange={onChange}
         showErrors={showErrors}
+        isRequired={isRequired}
       />
     </Grid>
   );
