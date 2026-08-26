@@ -1,13 +1,68 @@
-.chartTileMount {
+/*
+ * Outer chrome is unclipped so the selection ring (`::after` hangs 3px outside)
+ * and edge resize/drag handles stay visible. Plot clipping lives on the card
+ * content layer, not this wrapper (DSA-6146 / DSA-6147).
+ */
+.chartTileChrome {
   position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   isolation: isolate;
-  border-radius: 12px;
   outline: none;
+}
+
+.chartTileChromeResizing {
+  z-index: 6;
+}
+
+.chartTileChrome::after {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  bottom: -3px;
+  left: -3px;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  content: '';
+  pointer-events: none;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    background-color 120ms ease;
+}
+
+.chartTileChromeSelected::after,
+.chartTileChrome:focus-within::after {
+  border-color: var(--color-action-emphasis-background);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-action-emphasis-background) 35%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--color-action-emphasis-background) 16%, transparent);
+}
+
+.chartTileChromeDragging::after {
+  border-color: var(--color-stroke-emphasis);
+  box-shadow: 0 0 0 var(--stroke-thick) var(--color-action-emphasis-background);
+}
+
+.chartTileChromeDragTarget::after {
+  border-color: var(--color-stroke-emphasis);
+  border-style: dashed;
+  background: color-mix(in srgb, var(--color-action-emphasis-background) 5%, transparent);
+}
+
+.chartTileMount {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
 /* Chart-card fill rules — skip tables so GenericTableV2 keeps paginated natural height. */
@@ -16,7 +71,7 @@
   height: 100%;
   min-height: 0;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .chartTileMount:not(.chartTableTileMount) :global([data-chart-container-item-id]),
@@ -31,12 +86,18 @@
 .chartTileMount:not(.chartTableTileMount) :global([data-chart-container-item-id]) {
   display: flex;
   flex-direction: column;
+  overflow: visible;
 }
 
+/*
+ * Clip the plot, not the interaction chrome. Resize/drag handles are siblings
+ * of this last child inside ChartCardDragAndResizeContainer.
+ */
 .chartTileMount:not(.chartTableTileMount) :global([data-chart-container-item-id]) > :last-child {
   flex: 1 1 auto;
   height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 .chartTileMount:not(.chartTableTileMount) :global(.MuiPaper-root),
@@ -73,59 +134,9 @@
  * clips the chart at the pointer edge while Highcharts retains its last
  * rendered width; a later chart render can then size it naturally.
  */
-.chartTileMountResizing {
-  z-index: 6;
-  overflow: visible;
-}
-
-.chartTileMountResizing > * {
-  overflow: visible;
-}
-
-.chartTileMountResizing:not(.chartTableTileMount)
-  :global([data-chart-container-item-id])
-  > :last-child {
-  overflow: hidden;
-}
-
-.chartTileMountResizing :global(.highcharts-container),
-.chartTileMountResizing :global(.highcharts-root) {
+.chartTileChromeResizing :global(.highcharts-container),
+.chartTileChromeResizing :global(.highcharts-root) {
   max-width: none;
-}
-
-.chartTileMount::after {
-  position: absolute;
-  top: -3px;
-  right: -3px;
-  bottom: -3px;
-  left: -3px;
-  border: 2px solid transparent;
-  border-radius: 14px;
-  content: '';
-  pointer-events: none;
-  transition:
-    border-color 120ms ease,
-    box-shadow 120ms ease,
-    background-color 120ms ease;
-}
-
-.chartTileMountSelected::after,
-.chartTileMount:focus-within::after {
-  border-color: rgba(59, 130, 246, 0.7);
-  box-shadow:
-    0 0 0 1px rgba(59, 130, 246, 0.35),
-    0 0 0 4px rgba(59, 130, 246, 0.16);
-}
-
-.chartTileMountDragging::after {
-  border-color: var(--color-stroke-emphasis);
-  box-shadow: 0 0 0 var(--stroke-thick) var(--color-action-emphasis-background);
-}
-
-.chartTileMountDragTarget::after {
-  border-color: var(--color-stroke-emphasis);
-  border-style: dashed;
-  background: color-mix(in srgb, var(--color-action-emphasis-background) 5%, transparent);
 }
 
 .summaryTileMount {
@@ -175,10 +186,10 @@
 
 .summaryTileMountSelected::after,
 .summaryTileMount:focus-within::after {
-  border-color: rgba(59, 130, 246, 0.7);
+  border-color: var(--color-action-emphasis-background);
   box-shadow:
-    0 0 0 1px rgba(59, 130, 246, 0.35),
-    0 0 0 4px rgba(59, 130, 246, 0.16);
+    0 0 0 1px color-mix(in srgb, var(--color-action-emphasis-background) 35%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--color-action-emphasis-background) 16%, transparent);
 }
 
 .chartSkeleton {
@@ -192,9 +203,18 @@
 }
 
 .chartSkeletonActiveDrop {
-  border-color: rgba(59, 130, 246, 0.65) !important;
-  background: rgba(59, 130, 246, 0.14) !important;
-  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.45) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--color-action-emphasis-background) 65%,
+    transparent
+  ) !important;
+  background: color-mix(
+    in srgb,
+    var(--color-action-emphasis-background) 14%,
+    transparent
+  ) !important;
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--color-action-emphasis-background) 45%, transparent) !important;
 }
 
 .chartCanvasSection {
@@ -306,7 +326,7 @@
   background: var(--color-surface-100);
   box-shadow:
     0 16px 40px rgba(0, 0, 0, 0.28),
-    inset 0 0 0 1px rgba(59, 130, 246, 0.35);
+    inset 0 0 0 1px color-mix(in srgb, var(--color-action-emphasis-background) 35%, transparent);
   pointer-events: none;
 }
 

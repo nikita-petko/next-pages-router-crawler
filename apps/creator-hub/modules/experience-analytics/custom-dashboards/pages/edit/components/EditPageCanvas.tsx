@@ -1054,12 +1054,11 @@ const ChartTileMountInner: FC<ChartTileMountProps> = ({
     <ChartActionsProvider value={tileActions}>
       <div
         className={[
-          styles.chartTileMount,
-          isTableTile ? styles.chartTableTileMount : '',
-          isSelected ? styles.chartTileMountSelected : '',
-          isActiveDragTile ? styles.chartTileMountDragging : '',
-          isActiveResizeTile ? styles.chartTileMountResizing : '',
-          isDragCandidate ? styles.chartTileMountDragTarget : '',
+          styles.chartTileChrome,
+          isSelected ? styles.chartTileChromeSelected : '',
+          isActiveDragTile ? styles.chartTileChromeDragging : '',
+          isActiveResizeTile ? styles.chartTileChromeResizing : '',
+          isDragCandidate ? styles.chartTileChromeDragTarget : '',
         ]
           .filter(Boolean)
           .join(' ')}
@@ -1088,17 +1087,24 @@ const ChartTileMountInner: FC<ChartTileMountProps> = ({
           ...(isTableTile ? chartTableTileMountStyle : chartTileMountStyle),
           ...layoutStyle,
         }}>
-        {tileContent}
-        {isActiveDragTile ? (
-          <div className={styles.chartActiveDragPlaceholder} aria-hidden='true'>
-            {trimmedTitle ? <span className={styles.chartPreviewTitle}>{trimmedTitle}</span> : null}
-            <div className={styles.chartPreviewSkeletonStack}>
-              <div className={styles.chartPreviewSkeletonHeader} />
-              <div className={styles.chartPreviewSkeletonBody} />
-              <div className={styles.chartPreviewSkeletonFooter} />
+        <div
+          className={[styles.chartTileMount, isTableTile ? styles.chartTableTileMount : '']
+            .filter(Boolean)
+            .join(' ')}>
+          {tileContent}
+          {isActiveDragTile ? (
+            <div className={styles.chartActiveDragPlaceholder} aria-hidden='true'>
+              {trimmedTitle ? (
+                <span className={styles.chartPreviewTitle}>{trimmedTitle}</span>
+              ) : null}
+              <div className={styles.chartPreviewSkeletonStack}>
+                <div className={styles.chartPreviewSkeletonHeader} />
+                <div className={styles.chartPreviewSkeletonBody} />
+                <div className={styles.chartPreviewSkeletonFooter} />
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </div>
     </ChartActionsProvider>
   );
