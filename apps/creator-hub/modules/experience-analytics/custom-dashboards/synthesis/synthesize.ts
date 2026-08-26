@@ -54,10 +54,7 @@ import {
 } from '@modules/experience-analytics-shared/types/RAQIV2ChartSpec';
 import {
   CreatorAnalyticsPageMode,
-  defaultAnalyticsPageSurfaceConfig,
   type AnalyticsPageConfigAnnotationOptions,
-  type AnalyticsPageConfigDateOptions,
-  type AnalyticsPageConfigDefaultDateRangeSelection,
   type CreatorAnalyticsUntabbedPageConfig,
   type RAQIV2UIComponent,
 } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
@@ -77,7 +74,6 @@ import {
   type ChartTileConfig,
   type CustomDashboardChartRow,
   type CustomDashboardConfig,
-  type DashboardDateRangeDefault,
   type DashboardSurfaceControls,
   type DashboardMetricReference,
   type SummaryCardAggregation,
@@ -87,6 +83,7 @@ import {
 } from '../types';
 import { getCustomDashboardBreakdownDimensions } from '../utils/breakdownDimensions';
 import { chartTileToRenderConfig } from '../utils/chartTypeMapping';
+import { resolveDashboardPageTimeRange } from '../utils/dashboardPageTimeRange';
 import {
   resolveSupportedSummaryCardAggregation,
   SUMMARY_CARD_TIME_SERIES_GRANULARITY,
@@ -306,38 +303,6 @@ function getCustomEventNameFromMetricReference(
     return collapseComputedMetricToSimple(computedMetric)?.customEventName;
   }
   return getCustomEventNameFromFilters(filters);
-}
-
-function buildDefaultDateRangeSelection(
-  defaultDateRange: DashboardDateRangeDefault | undefined,
-): AnalyticsPageConfigDefaultDateRangeSelection | undefined {
-  if (!defaultDateRange) {
-    return undefined;
-  }
-  if (defaultDateRange.type === 'Relative') {
-    return {
-      type: 'Preset',
-      rangeType: defaultDateRange.rangeType,
-    };
-  }
-  return {
-    type: 'Custom',
-    startTime: new Date(defaultDateRange.startTimeMs),
-    endTime: new Date(defaultDateRange.endTimeMs),
-  };
-}
-
-function buildTimeRangeOptions(
-  defaultDateRange: DashboardDateRangeDefault | undefined,
-): AnalyticsPageConfigDateOptions {
-  const baseTimeRangeOptions = defaultAnalyticsPageSurfaceConfig.timeRangeOptions;
-  if (defaultDateRange?.type !== 'Relative' || baseTimeRangeOptions.type !== 'dateRange') {
-    return baseTimeRangeOptions;
-  }
-  return {
-    ...baseTimeRangeOptions,
-    defaultRange: defaultDateRange.rangeType,
-  };
 }
 
 function buildDefaultFilters(
@@ -932,10 +897,7 @@ export function synthesize(
     controls.defaultBreakdown,
     chartBreakdownDimensions,
   );
-  const defaultDateRange =
-    controls.timeRangeOptions?.type === 'DateRange'
-      ? controls.timeRangeOptions.defaultSelection
-      : undefined;
+  const { timeRangeOptions, defaultDateRangeSelection } = resolveDashboardPageTimeRange(controls);
 
   const pageConfig: CreatorAnalyticsUntabbedPageConfig = {
     mode: CreatorAnalyticsPageMode.Untabbed,
@@ -943,8 +905,8 @@ export function synthesize(
     description: { standard: EMPTY_TRANSLATION_KEY },
     docLinks: [],
     resourceTypes: [RAQIV2ChartResourceType.Universe],
-    timeRangeOptions: buildTimeRangeOptions(defaultDateRange),
-    defaultDateRangeSelection: buildDefaultDateRangeSelection(defaultDateRange),
+    timeRangeOptions,
+    defaultDateRangeSelection,
     surfaceAnnotationOptions: buildSurfaceAnnotationOptions(controls),
     filterDimensions,
     defaultFilters,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   RAQIV2AggregationType,
   RAQIV2Dimension,
@@ -25,9 +25,6 @@ import {
 import type { TChartConfiguratorMetrics } from '../../chartConfigurator/chartConfiguratorMetricsConfig';
 import {
   ControlledChartConfiguratorActionType,
-  controlledChartConfiguratorReducer,
-  createInitialControlledChartConfiguratorState,
-  deriveControlledChartConfiguratorMetrics,
   normalizePersistedComputedMetric,
   resolveGranularitySelection,
   selectSupportedChartType,
@@ -58,11 +55,7 @@ import {
   type UIFilters,
 } from '../../layout/ExperienceAnalyticsPageControlBar/filterUtils';
 import type { ComputedMetric } from '../../types/ComputedMetric';
-import {
-  getUIMetricFromAtomicMetricLike,
-  isComputedMetric,
-  type MetricLike,
-} from '../../types/ComputedMetric';
+import { getUIMetricFromAtomicMetricLike, isComputedMetric } from '../../types/ComputedMetric';
 import type RAQIV2ChartSpec from '../../types/RAQIV2ChartSpec';
 import computeRAQIV2SpecOverride from '../../utils/computeRAQIV2SpecOverride';
 import extractPseudoDimensionsFromFilters, {
@@ -84,6 +77,9 @@ import {
   isCustomEventsQueryReady,
   useChartConfiguratorSourceSelection,
 } from './useChartConfiguratorSourceSelection';
+import useControlledChartConfiguratorDraft, {
+  type ControlledChartConfiguratorDraft,
+} from './useControlledChartConfiguratorDraft';
 
 // Stable empty default so the breakdown seeding effect does not treat "no seeded
 // breakdown" as a changing dependency on every render.
@@ -161,6 +157,12 @@ export type UseControlledChartConfiguratorArgs = {
   readonly dateRange: Pick<AnalyticsDateRangeBundle, 'startDate' | 'endDate'>;
   readonly initialState?: ControlledChartConfiguratorInitialState;
   readonly seedKey?: string;
+};
+
+export type UseControlledChartConfiguratorFromDraftArgs = {
+  readonly draft: ControlledChartConfiguratorDraft;
+  readonly resource: RAQIV2ChartResource;
+  readonly dateRange: Pick<AnalyticsDateRangeBundle, 'startDate' | 'endDate'>;
 };
 
 /**
@@ -260,49 +262,34 @@ function resolveBreakdownDimensions(
  * This hook translates reducer state into `ChartConfiguratorSidebar` props and a
  * preview chart spec. It does not save dashboards, mutate routes, or decide
  * product-level chart type policy; those decisions belong to the caller.
+ *
+ * Hosts that must put metric `dateRangeOptions` onto page-config
+ * `supportedRanges` before the date-range provider mounts should call
+ * {@link useControlledChartConfiguratorDraft} above the provider and pass the
+ * draft into {@link useControlledChartConfiguratorFromDraft}.
  */
-export default function useControlledChartConfigurator({
-  allowedMetrics,
+export function useControlledChartConfiguratorFromDraft({
+  draft,
   resource,
   dateRange,
-  initialState,
-  seedKey = 'default',
-}: UseControlledChartConfiguratorArgs): UseControlledChartConfiguratorResult {
+}: UseControlledChartConfiguratorFromDraftArgs): UseControlledChartConfiguratorResult {
   const { translate } = useRAQIV2TranslationDependencies();
-  const stableAllowedMetrics = useStableArray(allowedMetrics);
-  const stateSeed = useMemo(
-    () => ({ allowedMetrics: stableAllowedMetrics, initialState }),
-    [stableAllowedMetrics, initialState],
-  );
-  const [state, dispatch] = useReducer(
-    controlledChartConfiguratorReducer,
-    stateSeed,
-    createInitialControlledChartConfiguratorState,
-  );
-
-  // Reset draft state only when the seed boundary actually changes (a new
-  // seedKey or allowed-metric set), not when a caller rebuilds an equivalent
-  // `initialState` object. Depending on `stateSeed` identity here would wipe
-  // in-progress edits whenever a parent re-created the seed with equal content.
-  const reseedKey = useMemo(
-    () => JSON.stringify({ seedKey, allowedMetrics: [...stableAllowedMetrics] }),
-    [seedKey, stableAllowedMetrics],
-  );
-  const previousReseedKeyRef = useRef(reseedKey);
-  useEffect(() => {
-    if (previousReseedKeyRef.current === reseedKey) {
-      return;
-    }
-    previousReseedKeyRef.current = reseedKey;
-    dispatch({
-      type: ControlledChartConfiguratorActionType.ResetFromSeed,
-      seed: stateSeed,
-    });
-  }, [reseedKey, stateSeed]);
-
   const {
+    seedKey,
+    initialState,
+    stableAllowedMetrics,
+    state,
+    dispatch,
     metric,
     computedMetric,
+    executionMetric,
+    displaySourceMetrics,
+    displayMetric,
+    dateRangeOptions,
+    setMetric,
+    setComputedMetric,
+  } = draft;
+  const {
     chartTypeOverride,
     granularity,
     isOperationsToggleOn,
@@ -315,65 +302,6 @@ export default function useControlledChartConfigurator({
     customEventFilters,
     tableAdditionalColumns,
   } = state;
-
-  const setMetric = useCallback(
-    (nextMetric: TChartConfiguratorMetrics | null) => {
-      dispatch({
-        type: ControlledChartConfiguratorActionType.SetMetric,
-        metric: nextMetric && stableAllowedMetrics.includes(nextMetric) ? nextMetric : null,
-      });
-    },
-    [stableAllowedMetrics],
-  );
-
-  const setComputedMetric = useCallback(
-    (nextComputedMetric: ComputedMetric | null) => {
-      if (nextComputedMetric === null) {
-        dispatch({
-          type: ControlledChartConfiguratorActionType.SetComputedMetric,
-          computedMetric: null,
-        });
-        return;
-      }
-      const isAllowed = isComputedMetricAllowedForExploreMode({
-        computedMetric: nextComputedMetric,
-        allowedMetrics: stableAllowedMetrics,
-      });
-      dispatch({
-        type: ControlledChartConfiguratorActionType.SetComputedMetric,
-        computedMetric: isAllowed ? nextComputedMetric : null,
-      });
-    },
-    [stableAllowedMetrics],
-  );
-
-  const executionMetric = useMemo<MetricLike | null>(() => {
-    if (computedMetric) {
-      return computedMetric;
-    }
-    return metric;
-  }, [computedMetric, metric]);
-
-  const metricDerivation = useMemo(
-    () =>
-      deriveControlledChartConfiguratorMetrics({
-        executionMetric,
-        fallbackMetric: metric,
-        allowedMetrics: stableAllowedMetrics,
-      }),
-    [executionMetric, metric, stableAllowedMetrics],
-  );
-  const displaySourceMetrics = useStableArray(metricDerivation.displaySourceMetrics);
-
-  const displayMetric = useMemo((): TChartConfiguratorMetrics | null => {
-    if (!displaySourceMetrics.length) {
-      return null;
-    }
-    if (metric && displaySourceMetrics.some((sourceMetric) => sourceMetric === metric)) {
-      return metric;
-    }
-    return displaySourceMetrics[0];
-  }, [displaySourceMetrics, metric]);
 
   const {
     activeMetricForQuery,
@@ -532,12 +460,15 @@ export default function useControlledChartConfigurator({
     : smoothingOption;
 
   const availableMetrics = useMemo(() => [...stableAllowedMetrics], [stableAllowedMetrics]);
-  const onCustomEventFiltersChange = useCallback((filters: UIFilters) => {
-    dispatch({
-      type: ControlledChartConfiguratorActionType.SetCustomEventFilters,
-      filters,
-    });
-  }, []);
+  const onCustomEventFiltersChange = useCallback(
+    (filters: UIFilters) => {
+      dispatch({
+        type: ControlledChartConfiguratorActionType.SetCustomEventFilters,
+        filters,
+      });
+    },
+    [dispatch],
+  );
   const sourceSelection = useChartConfiguratorSourceSelection({
     metric,
     setMetric,
@@ -563,12 +494,15 @@ export default function useControlledChartConfigurator({
         granularity: nextGranularity,
       });
     },
-    [],
+    [dispatch],
   );
 
-  const onChartTypeChange = useCallback((chartType: ChartConfiguratorChartType) => {
-    dispatch({ type: ControlledChartConfiguratorActionType.SetChartType, chartType });
-  }, []);
+  const onChartTypeChange = useCallback(
+    (chartType: ChartConfiguratorChartType) => {
+      dispatch({ type: ControlledChartConfiguratorActionType.SetChartType, chartType });
+    },
+    [dispatch],
+  );
 
   const resolvedMetricForQuery = useMemo(() => {
     if (!activeMetricForQuery) {
@@ -645,8 +579,6 @@ export default function useControlledChartConfigurator({
     selectedChartType,
   ]);
 
-  const dateRangeOptions = metricDerivation.dateRangeOptions;
-
   const getBreakdownLabel = useCallback(
     (dimension: TRAQIV2Dimension): FormattedText => translate(getDimensionRenderer(dimension).name),
     [translate],
@@ -680,7 +612,7 @@ export default function useControlledChartConfigurator({
       });
       setComputedMetric(nextComputedMetric);
     },
-    [setComputedMetric, stableAllowedMetrics],
+    [dispatch, setComputedMetric, stableAllowedMetrics],
   );
 
   const handleOperationsToggleChange = useCallback(
@@ -700,22 +632,28 @@ export default function useControlledChartConfigurator({
           : null,
       });
     },
-    [customEventFilters, isOperationsToggleOn, metric],
+    [customEventFilters, dispatch, isOperationsToggleOn, metric],
   );
 
-  const onGranularityChange = useCallback((nextGranularity: TUIGranularity) => {
-    dispatch({
-      type: ControlledChartConfiguratorActionType.SetGranularity,
-      granularity: nextGranularity,
-    });
-  }, []);
+  const onGranularityChange = useCallback(
+    (nextGranularity: TUIGranularity) => {
+      dispatch({
+        type: ControlledChartConfiguratorActionType.SetGranularity,
+        granularity: nextGranularity,
+      });
+    },
+    [dispatch],
+  );
 
-  const onSmoothingChange = useCallback((nextSmoothingOption: SmoothingOption) => {
-    dispatch({
-      type: ControlledChartConfiguratorActionType.SetSmoothingOption,
-      smoothingOption: nextSmoothingOption,
-    });
-  }, []);
+  const onSmoothingChange = useCallback(
+    (nextSmoothingOption: SmoothingOption) => {
+      dispatch({
+        type: ControlledChartConfiguratorActionType.SetSmoothingOption,
+        smoothingOption: nextSmoothingOption,
+      });
+    },
+    [dispatch],
+  );
 
   const dispatchSidebarAction = useCallback(
     (action: ChartConfiguratorSidebarAction) => {
@@ -785,6 +723,7 @@ export default function useControlledChartConfigurator({
       }
     },
     [
+      dispatch,
       handleOperationsToggleChange,
       onChartTypeChange,
       onCustomEventFiltersChange,
@@ -935,4 +874,27 @@ export default function useControlledChartConfigurator({
       fallbackChartTitleLabel: selectedCustomEventNameForTitle,
     },
   };
+}
+
+/**
+ * Default controlled-configurator adapter for hosts that do not need to lift
+ * metric date-range intersection above the analytics date-range provider.
+ */
+export default function useControlledChartConfigurator({
+  allowedMetrics,
+  resource,
+  dateRange,
+  initialState,
+  seedKey,
+}: UseControlledChartConfiguratorArgs): UseControlledChartConfiguratorResult {
+  const draft = useControlledChartConfiguratorDraft({
+    allowedMetrics,
+    initialState,
+    seedKey,
+  });
+  return useControlledChartConfiguratorFromDraft({
+    draft,
+    resource,
+    dateRange,
+  });
 }

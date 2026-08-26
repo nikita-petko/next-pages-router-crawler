@@ -14,6 +14,7 @@ import type { TUIGranularity } from '../utils/seriesGranularities';
 import type { ChartConfiguratorChartType } from './ChartConfiguratorChartTypes';
 import { getChartConfiguratorDimensions } from './ChartConfiguratorDimensions';
 import type { TChartConfiguratorMetrics } from './chartConfiguratorMetricsConfig';
+import { DefaultExploreModeDateRanges } from './defaultExploreModeDateRanges';
 import getSharedGranularityOptionsForMetrics from './getSharedGranularityOptionsForMetrics';
 import getChartTypeSupportForMetric, {
   UnsupportedL7SmoothingCumulativeGranularityReason,
@@ -22,7 +23,6 @@ import getChartTypeSupportForMetric, {
 import isDurationChartMetric, { isDurationChartType } from './isDurationChartMetric';
 import type { ComparisonCustomStartDateValue, ComparisonOffsetValue } from './overlayUrlParams';
 import resolveChartConfiguratorComputedMetricSources, {
-  DefaultExploreModeDateRanges,
   getIntersectedExploreModeDateRangesForMetrics,
 } from './resolveChartConfiguratorComputedMetricSources';
 import { SmoothingOptionValue, type SmoothingOption } from './smoothingOptions';

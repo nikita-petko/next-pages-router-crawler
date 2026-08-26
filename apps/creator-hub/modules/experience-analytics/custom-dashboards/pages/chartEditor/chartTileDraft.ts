@@ -2,6 +2,7 @@ import {
   RAQIV2AggregationType,
   RAQIV2Dimension,
   RAQIV2Metric,
+  RAQIV2MetricToSupportedGranularities,
   RAQIV2PercentileType,
   RAQIV2UIPseudoDimension,
 } from '@rbx/creator-hub-analytics-config';
@@ -28,7 +29,10 @@ import {
   updateFilterSingleValue,
   type UIFilters,
 } from '@modules/experience-analytics-shared/layout/ExperienceAnalyticsPageControlBar/filterUtils';
-import type { ComputedMetric } from '@modules/experience-analytics-shared/types/ComputedMetric';
+import {
+  getUIMetricFromAtomicMetricLike,
+  type ComputedMetric,
+} from '@modules/experience-analytics-shared/types/ComputedMetric';
 import type { TUIGranularity } from '@modules/experience-analytics-shared/utils/seriesGranularities';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
 import { getChartRows } from '../../layout/dashboardLayout';
@@ -257,6 +261,72 @@ export function timeIntervalToGranularity(timeInterval: TimeInterval): TUIGranul
 
 export function granularityToTimeInterval(granularity: TUIGranularity): TimeInterval | undefined {
   return GRANULARITY_TO_TIME_INTERVAL[granularity];
+}
+
+function metricsConstrainingPersistedGranularity({
+  metric,
+  computedMetric,
+}: {
+  readonly metric: TChartConfiguratorMetrics;
+  readonly computedMetric?: ComputedMetric | null;
+}): readonly TChartConfiguratorMetrics[] {
+  if (!computedMetric) {
+    return [metric];
+  }
+  return computedMetric.sources.map((source) => getUIMetricFromAtomicMetricLike(source.metric));
+}
+
+function isGranularityIntrinsicallySupportedByEveryMetric(
+  metrics: readonly TChartConfiguratorMetrics[],
+  granularity: TUIGranularity,
+): boolean {
+  return metrics.every((item) => {
+    if (!(item in RAQIV2MetricToSupportedGranularities)) {
+      // Metrics missing from the codegen map keep the stored interval for
+      // existing tiles (DSA-6135) rather than guessing a fallback.
+      return true;
+    }
+    return RAQIV2MetricToSupportedGranularities[item].includes(granularity);
+  });
+}
+
+/**
+ * Granularity written on save. Keep a stored interval that the metric can
+ * honor even when the current dashboard *window* cannot preview it (Last 28
+ * days + hourly). Coerce to the displayed interval when the metric itself
+ * cannot render the request, or when a new tile still has the Day seed on a
+ * short range the dropdown already coerced.
+ */
+export function resolvePersistedEditorGranularity({
+  requestedGranularity,
+  effectiveGranularity,
+  isRequestedGranularitySupported,
+  metric,
+  computedMetric,
+  isNewTile,
+}: {
+  readonly requestedGranularity: TUIGranularity;
+  readonly effectiveGranularity: TUIGranularity;
+  readonly isRequestedGranularitySupported: boolean;
+  readonly metric: TChartConfiguratorMetrics;
+  readonly computedMetric?: ComputedMetric | null;
+  readonly isNewTile: boolean;
+}): TUIGranularity {
+  if (isRequestedGranularitySupported) {
+    return requestedGranularity;
+  }
+  if (isNewTile) {
+    return effectiveGranularity;
+  }
+  if (
+    isGranularityIntrinsicallySupportedByEveryMetric(
+      metricsConstrainingPersistedGranularity({ metric, computedMetric }),
+      requestedGranularity,
+    )
+  ) {
+    return requestedGranularity;
+  }
+  return effectiveGranularity;
 }
 
 function normalizeOptionalTitle(title: string): string | undefined {

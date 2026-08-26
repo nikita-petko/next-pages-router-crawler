@@ -19,21 +19,13 @@ import {
   getAllChartConfiguratorMetrics,
   type TChartConfiguratorMetrics,
 } from './chartConfiguratorMetricsConfig';
+import { DefaultExploreModeDateRanges } from './defaultExploreModeDateRanges';
 import isDurationChartMetric from './isDurationChartMetric';
 
 export type ExploreModeComputedMetricSourcesResolution = {
   displaySourceMetrics: readonly TChartConfiguratorMetrics[];
   hasUnsupportedSourceMetrics: boolean;
 };
-
-export const DefaultExploreModeDateRanges = [
-  RAQIV2DateRangeType.Last1Day,
-  RAQIV2DateRangeType.Last7Days,
-  RAQIV2DateRangeType.Last28Days,
-  RAQIV2DateRangeType.Last56Days,
-  RAQIV2DateRangeType.Last90Days,
-  RAQIV2DateRangeType.Custom,
-] as const;
 
 const recommendedEventsExploreModeDateRanges = [
   RAQIV2DateRangeType.Last1Day,

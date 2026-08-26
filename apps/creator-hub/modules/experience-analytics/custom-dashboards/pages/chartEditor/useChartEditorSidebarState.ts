@@ -9,9 +9,11 @@ import type {
   ChartConfiguratorSidebarAction,
 } from '@modules/experience-analytics-shared/components/chartConfigurator/ChartConfiguratorSidebarModelTypes';
 import type { ExploreModeTableMetricColumn } from '@modules/experience-analytics-shared/components/chartConfigurator/chartConfiguratorTableColumns';
-import useControlledChartConfigurator, {
+import {
   buildControlledChartConfiguratorInitialState,
+  useControlledChartConfiguratorFromDraft,
 } from '@modules/experience-analytics-shared/components/chartConfigurator/useControlledChartConfigurator';
+import type { ControlledChartConfiguratorDraft } from '@modules/experience-analytics-shared/components/chartConfigurator/useControlledChartConfiguratorDraft';
 import useAvailableBenchmarkTypes from '@modules/experience-analytics-shared/hooks/useAvailableBenchmarkTypes';
 import type {
   UIFilterDimension,
@@ -35,7 +37,7 @@ import {
 } from './chartTileDraft';
 
 type UseChartEditorSidebarStateArgs = {
-  readonly allowedMetrics: readonly TChartConfiguratorMetrics[];
+  readonly draft: ControlledChartConfiguratorDraft;
   readonly resource: RAQIV2ChartResource;
   readonly dateRange: Pick<AnalyticsDateRangeBundle, 'startDate' | 'endDate'>;
   readonly initialTile: CustomDashboardTile | null;
@@ -84,68 +86,72 @@ function toTableAdditionalColumns(
   });
 }
 
-export default function useChartEditorSidebarState({
+export function buildChartEditorSidebarInitialState({
+  initialTile,
   allowedMetrics,
+}: {
+  readonly initialTile: CustomDashboardTile | null;
+  readonly allowedMetrics: readonly TChartConfiguratorMetrics[];
+}) {
+  const initialMetric = initialTile?.type === 'Chart' ? initialTile.dataSpec.metrics[0] : null;
+  const overlayState =
+    initialTile?.type === 'Chart'
+      ? chartTileOverlaysToEditorState(initialTile.chartSpec.overlays)
+      : chartTileOverlaysToEditorState(undefined);
+  const smoothingOption =
+    initialTile?.type === 'Chart'
+      ? chartTileSmoothingToEditorState(initialTile.chartSpec.smoothing)
+      : chartTileSmoothingToEditorState(undefined);
+  const chartType = (() => {
+    if (initialTile?.type !== 'Chart') {
+      return null;
+    }
+    const explore = tileChartTypeToExploreChartType(initialTile.chartSpec.chartType);
+    // The configurator does not offer Area as a selectable type, so seed the
+    // preview with Spline. Area is preserved read-only on save (see
+    // `selectedChartType` below) so an unchanged Area tile keeps its type.
+    return explore === ChartType.Area ? ChartType.Spline : explore;
+  })();
+  const breakdownDimensions =
+    initialTile?.type === 'Chart' ? (initialTile.dataSpec.breakdownDimensions ?? null) : null;
+  // Seed any persisted metric-variant selection into the working filters so it
+  // survives the round-trip even when it was only stored on `variantSelections`.
+  const persistedVariant =
+    initialTile?.type === 'Chart' && !initialMetric?.metric.computedMetric
+      ? selectionsToMetricVariant(initialMetric?.metric.variantSelections)
+      : undefined;
+
+  return buildControlledChartConfiguratorInitialState({
+    metric: resolveInitialEditorMetric(initialTile, allowedMetrics),
+    computedMetric: initialMetric?.metric.computedMetric ?? null,
+    chartType,
+    breakdownDimensions,
+    granularity:
+      initialTile?.type === 'Chart'
+        ? timeIntervalToGranularity(initialTile.dataSpec.granularity)
+        : undefined,
+    l7Smoothing: smoothingOption === 'l7-moving-average',
+    overlayOption: overlayState.overlayOption,
+    benchmarkType: overlayState.benchmarkType,
+    comparisonOffset: overlayState.comparisonOffset,
+    comparisonCustomStartDate: overlayState.comparisonCustomStartDate,
+    customEventFilters: mergeMetricVariantIntoFilters(toUIFilters(initialTile), persistedVariant),
+    tableAdditionalColumns: toTableAdditionalColumns(initialTile, allowedMetrics),
+  });
+}
+
+export default function useChartEditorSidebarState({
+  draft,
   resource,
   dateRange,
   initialTile,
 }: UseChartEditorSidebarStateArgs) {
-  const initialState = useMemo(() => {
-    const initialMetric = initialTile?.type === 'Chart' ? initialTile.dataSpec.metrics[0] : null;
-    const overlayState =
-      initialTile?.type === 'Chart'
-        ? chartTileOverlaysToEditorState(initialTile.chartSpec.overlays)
-        : chartTileOverlaysToEditorState(undefined);
-    const smoothingOption =
-      initialTile?.type === 'Chart'
-        ? chartTileSmoothingToEditorState(initialTile.chartSpec.smoothing)
-        : chartTileSmoothingToEditorState(undefined);
-    const chartType = (() => {
-      if (initialTile?.type !== 'Chart') {
-        return null;
-      }
-      const explore = tileChartTypeToExploreChartType(initialTile.chartSpec.chartType);
-      // The configurator does not offer Area as a selectable type, so seed the
-      // preview with Spline. Area is preserved read-only on save (see
-      // `selectedChartType` below) so an unchanged Area tile keeps its type.
-      return explore === ChartType.Area ? ChartType.Spline : explore;
-    })();
-    const breakdownDimensions =
-      initialTile?.type === 'Chart' ? (initialTile.dataSpec.breakdownDimensions ?? null) : null;
-    // Seed any persisted metric-variant selection into the working filters so it
-    // survives the round-trip even when it was only stored on `variantSelections`.
-    const persistedVariant =
-      initialTile?.type === 'Chart' && !initialMetric?.metric.computedMetric
-        ? selectionsToMetricVariant(initialMetric?.metric.variantSelections)
-        : undefined;
+  const seedKey = draft.seedKey;
 
-    return buildControlledChartConfiguratorInitialState({
-      metric: resolveInitialEditorMetric(initialTile, allowedMetrics),
-      computedMetric: initialMetric?.metric.computedMetric ?? null,
-      chartType,
-      breakdownDimensions,
-      granularity:
-        initialTile?.type === 'Chart'
-          ? timeIntervalToGranularity(initialTile.dataSpec.granularity)
-          : undefined,
-      l7Smoothing: smoothingOption === 'l7-moving-average',
-      overlayOption: overlayState.overlayOption,
-      benchmarkType: overlayState.benchmarkType,
-      comparisonOffset: overlayState.comparisonOffset,
-      comparisonCustomStartDate: overlayState.comparisonCustomStartDate,
-      customEventFilters: mergeMetricVariantIntoFilters(toUIFilters(initialTile), persistedVariant),
-      tableAdditionalColumns: toTableAdditionalColumns(initialTile, allowedMetrics),
-    });
-  }, [allowedMetrics, initialTile]);
-
-  const seedKey = initialTile?.tileId ?? 'new-chart-tile';
-
-  const configurator = useControlledChartConfigurator({
-    allowedMetrics,
+  const configurator = useControlledChartConfiguratorFromDraft({
+    draft,
     resource,
     dateRange,
-    initialState,
-    seedKey,
   });
 
   // Area is hydrated read-only: the configurator never offers it as a selectable

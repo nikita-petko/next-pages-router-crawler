@@ -15,7 +15,10 @@ import ChartEditorPageContent from './ChartEditorPageContent';
 
 /**
  * Chart-editor sub-route: configure a single chart tile (metric, breakdown,
- * chart type, time interval) with a live preview, then save back to the layout editor.
+ * chart type, time interval) with a live preview, then save back to the layout
+ * editor. Date range stays on the dashboard (`DashboardSurfaceControls.timeRangeOptions`);
+ * the editor hydrates preview dates from that default and does not treat them
+ * as a tile field.
  */
 const ChartEditorPage: FC = () => {
   const router = useRouter();

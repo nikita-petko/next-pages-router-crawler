@@ -1,6 +1,5 @@
 import React, { type FC, useCallback, useMemo, useState } from 'react';
 import {
-  RAQIV2DateRangeType,
   RAQIV2Dimension,
   RAQIV2UIPseudoDimension,
   RAQIV2UIMetric,
@@ -14,10 +13,12 @@ import {
   getSharedChartConfiguratorDimensions,
 } from '@modules/experience-analytics-shared/chartConfigurator/ChartConfiguratorDimensions';
 import type { TChartConfiguratorMetrics } from '@modules/experience-analytics-shared/chartConfigurator/chartConfiguratorMetricsConfig';
-import { DefaultExploreModeDateRanges } from '@modules/experience-analytics-shared/chartConfigurator/resolveChartConfiguratorComputedMetricSources';
 import ChartConfigurator from '@modules/experience-analytics-shared/components/chartConfigurator/ChartConfigurator';
 import ChartConfiguratorPreview from '@modules/experience-analytics-shared/components/chartConfigurator/ChartConfiguratorPreview';
 import { customEventsMetric } from '@modules/experience-analytics-shared/components/chartConfigurator/useChartConfiguratorSourceSelection';
+import useControlledChartConfiguratorDraft, {
+  type ControlledChartConfiguratorDraft,
+} from '@modules/experience-analytics-shared/components/chartConfigurator/useControlledChartConfiguratorDraft';
 import { SourceMetricContextProvider } from '@modules/experience-analytics-shared/components/RAQIV2/layout/RAQIV2ConfigurablePageContext';
 import { isNumericUIMetric } from '@modules/experience-analytics-shared/constants/AnalyticsMetricDisplayConfig';
 import {
@@ -39,16 +40,12 @@ import {
   isCustomEventsAtomicMetricLike,
   type MetricLike,
 } from '@modules/experience-analytics-shared/types/ComputedMetric';
-import type {
-  AnalyticsPageConfigDateOptions,
-  CreatorAnalyticsPageSurfaceConfig,
-} from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
 import { getAPIMetricFromUIMetric } from '@modules/experience-analytics-shared/utils/getAPIMetricFromUIMetric';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
 import CustomDashboardBreadcrumbRegistration from '../../components/CustomDashboardBreadcrumbRegistration';
 import { CUSTOM_DASHBOARD_SURFACE_ANNOTATION_OPTIONS } from '../../constants/customDashboardSurfaceAnnotationOptions';
 import { CustomDashboardNotFoundError } from '../../errors';
-import { getChartRows, withChartRows } from '../../layout/dashboardLayout';
+import { getChartRows, getDashboardSurface, withChartRows } from '../../layout/dashboardLayout';
 import { appendTileAsRow, flattenRows, replaceTile } from '../../layout/rowLayout';
 import type { ChartTileConfig, CustomDashboardDocument } from '../../types';
 import { MAX_CHART_TILES_PER_DASHBOARD, MAX_TILE_TITLE_LENGTH } from '../../types';
@@ -62,6 +59,7 @@ import {
 } from '../../workingCopy/editorWorkingCopy';
 import useDashboardDocumentQuery from '../edit/hooks/useDashboardDocumentQuery';
 import useEditPageTranslations from '../edit/useEditPageTranslations';
+import { buildChartEditorPageSurfaceConfig } from './chartEditorPageSurface';
 import {
   buildChartTileFromEditor,
   createDefaultChartTileDraft,
@@ -70,8 +68,11 @@ import {
   findChartTileInConfig,
   isNewChartTileRoute,
   mintChartTileIdForSave,
+  resolvePersistedEditorGranularity,
 } from './chartTileDraft';
-import useChartEditorSidebarState from './useChartEditorSidebarState';
+import useChartEditorSidebarState, {
+  buildChartEditorSidebarInitialState,
+} from './useChartEditorSidebarState';
 import styles from './ChartEditorPageContent.module.css';
 
 const resolveApiMetric = (
@@ -146,7 +147,6 @@ const ChartEditorPageContent: FC<ChartEditorPageContentProps> = ({
   onBackToEditor,
 }) => {
   const t = useEditPageTranslations();
-  const resource = useUniverseResource();
   const [activeSession, setActiveSession] = useState<EditorWorkingCopy | null>(() =>
     getEditorWorkingCopy(draftId),
   );
@@ -185,31 +185,6 @@ const ChartEditorPageContent: FC<ChartEditorPageContentProps> = ({
     () => getCustomDashboardBreakdownDimensions(dimensions),
     [dimensions],
   );
-  const defaultDateRangeOptions = useMemo(
-    () => [...DefaultExploreModeDateRanges, RAQIV2DateRangeType.Custom],
-    [],
-  );
-  const timeRangeOptions: AnalyticsPageConfigDateOptions = useMemo(
-    () => ({
-      type: 'dateRange',
-      supportedRanges: defaultDateRangeOptions,
-      defaultRange: RAQIV2DateRangeType.Last28Days,
-      minStartDate: new Date('06/01/2023'),
-    }),
-    [defaultDateRangeOptions],
-  );
-  const pageConfig: CreatorAnalyticsPageSurfaceConfig = useMemo(
-    () => ({
-      resourceTypes: [resource.type],
-      filterDimensions: dimensions,
-      breakdownDimensions,
-      timeRangeOptions,
-      surfaceAnnotationOptions: CUSTOM_DASHBOARD_SURFACE_ANNOTATION_OPTIONS,
-      body: [],
-    }),
-    [breakdownDimensions, dimensions, resource.type, timeRangeOptions],
-  );
-
   if (documentQuery.isLoading && !activeSession) {
     return <ChartEditorStatus variant='status'>{t.chartEditorLoadingLabel}</ChartEditorStatus>;
   }
@@ -258,23 +233,106 @@ const ChartEditorPageContent: FC<ChartEditorPageContentProps> = ({
 
   return (
     <UniversePerformanceRaqiClientProvider>
-      <AnalyticsContextLayerInnerProvider config={pageConfig}>
-        <CustomDashboardBreadcrumbRegistration
-          dashboardName={activeSession?.name ?? document?.name}
-        />
-        <ChartEditorSurface
-          dashboardId={dashboardId}
-          document={document}
-          activeSession={activeSession}
-          setActiveSession={setActiveSession}
-          isNewTile={isNewTile}
-          initialTile={initialTile}
-          existingChartTile={existingChartTile}
-          allowedMetrics={allowedMetrics}
-          onBackToEditor={onBackToEditor}
-        />
-      </AnalyticsContextLayerInnerProvider>
+      <ChartEditorDateRangeSession
+        dashboardId={dashboardId}
+        document={document}
+        activeSession={activeSession}
+        setActiveSession={setActiveSession}
+        isNewTile={isNewTile}
+        initialTile={initialTile}
+        existingChartTile={existingChartTile}
+        allowedMetrics={allowedMetrics}
+        dimensions={dimensions}
+        breakdownDimensions={breakdownDimensions}
+        controls={getDashboardSurface(activeConfig).controls}
+        onBackToEditor={onBackToEditor}
+      />
     </UniversePerformanceRaqiClientProvider>
+  );
+};
+
+type ChartEditorDateRangeSessionProps = {
+  readonly dashboardId: string;
+  readonly document: CustomDashboardDocument | null;
+  readonly activeSession: EditorWorkingCopy | null;
+  readonly setActiveSession: (session: EditorWorkingCopy) => void;
+  readonly isNewTile: boolean;
+  readonly initialTile: ChartTileConfig;
+  readonly existingChartTile: ChartTileConfig | null;
+  readonly allowedMetrics: readonly TChartConfiguratorMetrics[];
+  readonly dimensions: ReturnType<typeof getSharedChartConfiguratorDimensions>;
+  readonly breakdownDimensions: ReturnType<typeof getCustomDashboardBreakdownDimensions>;
+  readonly controls: ReturnType<typeof getDashboardSurface>['controls'];
+  readonly onBackToEditor: (draftId?: string) => void;
+};
+
+const ChartEditorDateRangeSession: FC<ChartEditorDateRangeSessionProps> = ({
+  dashboardId,
+  document,
+  activeSession,
+  setActiveSession,
+  isNewTile,
+  initialTile,
+  existingChartTile,
+  allowedMetrics,
+  dimensions,
+  breakdownDimensions,
+  controls,
+  onBackToEditor,
+}) => {
+  const resource = useUniverseResource();
+  const initialState = useMemo(
+    () =>
+      buildChartEditorSidebarInitialState({
+        initialTile: existingChartTile,
+        allowedMetrics,
+      }),
+    [allowedMetrics, existingChartTile],
+  );
+  const seedKey = existingChartTile?.tileId ?? 'new-chart-tile';
+  const draft = useControlledChartConfiguratorDraft({
+    allowedMetrics,
+    initialState,
+    seedKey,
+  });
+  const pageConfig = useMemo(
+    () =>
+      buildChartEditorPageSurfaceConfig({
+        resourceTypes: [resource.type],
+        filterDimensions: dimensions,
+        breakdownDimensions,
+        dateRangeOptions: draft.dateRangeOptions,
+        displaySourceMetrics: draft.displaySourceMetrics,
+        controls,
+        surfaceAnnotationOptions: CUSTOM_DASHBOARD_SURFACE_ANNOTATION_OPTIONS,
+      }),
+    [
+      breakdownDimensions,
+      controls,
+      dimensions,
+      draft.dateRangeOptions,
+      draft.displaySourceMetrics,
+      resource.type,
+    ],
+  );
+
+  return (
+    <AnalyticsContextLayerInnerProvider config={pageConfig}>
+      <CustomDashboardBreadcrumbRegistration
+        dashboardName={activeSession?.name ?? document?.name}
+      />
+      <ChartEditorSurface
+        dashboardId={dashboardId}
+        document={document}
+        activeSession={activeSession}
+        setActiveSession={setActiveSession}
+        isNewTile={isNewTile}
+        initialTile={initialTile}
+        existingChartTile={existingChartTile}
+        draft={draft}
+        onBackToEditor={onBackToEditor}
+      />
+    </AnalyticsContextLayerInnerProvider>
   );
 };
 
@@ -286,7 +344,7 @@ type ChartEditorSurfaceProps = {
   readonly isNewTile: boolean;
   readonly initialTile: ChartTileConfig;
   readonly existingChartTile: ChartTileConfig | null;
-  readonly allowedMetrics: readonly TChartConfiguratorMetrics[];
+  readonly draft: ControlledChartConfiguratorDraft;
   readonly onBackToEditor: (draftId?: string) => void;
 };
 
@@ -298,7 +356,7 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
   isNewTile,
   initialTile,
   existingChartTile,
-  allowedMetrics,
+  draft,
   onBackToEditor,
 }) => {
   const t = useEditPageTranslations();
@@ -322,7 +380,9 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
     computedMetric,
     selectedChartType,
     breakdownDimensions,
+    granularity,
     effectiveGranularity,
+    granularitySelection,
     overlayOption,
     benchmarkType,
     comparisonOffset,
@@ -330,10 +390,9 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
     persistedSmoothingOption,
     customEventFilters,
     tableAdditionalColumns,
-    dateRangeOptions,
     chartPreview,
   } = useChartEditorSidebarState({
-    allowedMetrics,
+    draft,
     resource,
     dateRange,
     initialTile: existingChartTile,
@@ -424,6 +483,27 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
     resource,
   ]);
 
+  const persistedGranularity = useMemo(() => {
+    if (!metric) {
+      return granularity;
+    }
+    return resolvePersistedEditorGranularity({
+      requestedGranularity: granularity,
+      effectiveGranularity,
+      isRequestedGranularitySupported: granularitySelection.isRequestedGranularitySupported,
+      metric,
+      computedMetric,
+      isNewTile,
+    });
+  }, [
+    computedMetric,
+    effectiveGranularity,
+    granularity,
+    granularitySelection.isRequestedGranularitySupported,
+    isNewTile,
+    metric,
+  ]);
+
   const draftTile = useMemo(() => {
     if (!metric) {
       return null;
@@ -435,7 +515,7 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
       computedMetric,
       chartType: selectedChartType,
       breakdownDimensions,
-      granularity: effectiveGranularity,
+      granularity: persistedGranularity,
       title: confirmedChartTitle,
       overlayOption,
       benchmarkType,
@@ -454,8 +534,8 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
     confirmedChartTitle,
     computedMetric,
     customEventFilters,
-    effectiveGranularity,
     existingChartTile,
+    persistedGranularity,
     initialTile.tileId,
     metric,
     metricVariant,
@@ -535,10 +615,6 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
     t.chartEditorMaxTilesError,
   ]);
 
-  const resolvedDateRangeOptions = useMemo(
-    () => (dateRangeOptions.length > 0 ? dateRangeOptions : [...DefaultExploreModeDateRanges]),
-    [dateRangeOptions],
-  );
   const chartConfiguratorSidebarProps = useMemo(
     () => ({
       ...sidebarProps,
@@ -608,7 +684,6 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
           <ChartConfiguratorPreview
             {...chartPreview}
             chartTitleLabel={confirmedChartTitle}
-            dateRangeOptions={resolvedDateRangeOptions}
             filterControlSlot={filterControlSlot}
           />
         }

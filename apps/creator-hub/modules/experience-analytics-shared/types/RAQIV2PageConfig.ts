@@ -14,6 +14,7 @@ import type {
   TQueryFilter as RAQIV2QueryFilter,
 } from '@modules/clients/analytics/analyticsRAQIShared';
 import type { AnnotationType } from '@modules/clients/analytics/annotations/annotations';
+import { DefaultExploreModeDateRanges } from '../chartConfigurator/defaultExploreModeDateRanges';
 import type { ArbitraryComponentConfig } from '../components/RAQIV2/layout/AnalyticsArbitraryComponent';
 import type { AnalyticsControlledSubcontextConfig } from '../components/RAQIV2/subcontext/RAQIV2ControlledSubcontextConfig';
 import type { OnboardingTipsConfigs } from '../constants/onboardingTipsConfigs';
@@ -217,13 +218,7 @@ export const defaultAnalyticsPageSurfaceConfig: CreatorAnalyticsPageSurfaceConfi
   resourceTypes: [],
   timeRangeOptions: {
     type: 'dateRange',
-    supportedRanges: [
-      RAQIV2DateRangeType.Last7Days,
-      RAQIV2DateRangeType.Last28Days,
-      RAQIV2DateRangeType.Last56Days,
-      RAQIV2DateRangeType.Last90Days,
-      RAQIV2DateRangeType.Custom,
-    ],
+    supportedRanges: [...DefaultExploreModeDateRanges],
     defaultRange: RAQIV2DateRangeType.Last28Days,
     excludeEndDateInRange: false,
     maxEndDateOffset: 0,

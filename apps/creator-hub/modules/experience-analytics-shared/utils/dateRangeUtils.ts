@@ -139,7 +139,7 @@ export function calculateDatesFromRangeType({
  * @returns A RAQIV2DateRangeType that is guaranteed to be in supportedRanges, or Last28Days as ultimate fallback
  */
 export function getSafeDefaultRange(
-  supportedRanges: RAQIV2DateRangeType[] | undefined,
+  supportedRanges: readonly RAQIV2DateRangeType[] | undefined,
   preferredDefault?: RAQIV2DateRangeType,
 ): RAQIV2DateRangeType {
   // If no supported ranges, use the preferred default or Last28Days

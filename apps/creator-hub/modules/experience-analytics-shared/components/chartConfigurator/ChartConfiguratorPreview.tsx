@@ -60,8 +60,8 @@ export type ChartConfiguratorEmptyStateReason = 'missing-metric' | 'missing-cust
  * Render-only model for the chart configurator preview pane.
  *
  * The parent hook owns draft state and spec construction; this component only
- * renders the date-range control, the bare chart preview, and empty states for
- * incomplete or unsupported preview configurations.
+ * renders the date-range control (when the host owns one), the bare chart
+ * preview, and empty states for incomplete or unsupported preview configurations.
  */
 export type ChartConfiguratorPreviewProps = {
   readonly chartSpec: RAQIV2ChartSpec | null;
@@ -82,7 +82,12 @@ export type ChartConfiguratorPreviewProps = {
    */
   readonly chartTitleLabel?: string;
   readonly granularitySelection?: ControlledChartConfiguratorGranularitySelection;
-  readonly dateRangeOptions: readonly RAQIV2DateRangeType[];
+  /**
+   * Hosts that own a date range (Explore Mode) pass the allowed presets.
+   * Custom dashboard chart editing leaves this unset: date range is a
+   * dashboard-level control, not a tile field.
+   */
+  readonly dateRangeOptions?: readonly RAQIV2DateRangeType[];
   /**
    * Product surface used by chart telemetry/actions. Defaults to Explore for
    * compatibility with the original preview usage.
@@ -364,12 +369,19 @@ const ChartConfiguratorPreview: FC<ChartConfiguratorPreviewProps> = ({
     return null;
   }, [resolvedEmptyStateReason, selectMetricPreviewLabel, selectMetricPreviewSubtitleLabel]);
 
+  const shouldShowDateRangeControl = dateRangeOptions !== undefined && dateRangeOptions.length > 0;
+  const shouldShowPreviewToolbar = shouldShowDateRangeControl || Boolean(filterControlSlot);
+
   return (
     <div className='flex flex-col [flex:1_1_0%] width-full min-width-0 gap-medium'>
-      <div className='width-full flex flex-row items-start [flex-wrap:wrap] gap-medium padding-bottom-medium'>
-        <ChartConfiguratorDateRangeControl dateRangeOptions={dateRangeOptions} />
-        {filterControlSlot}
-      </div>
+      {shouldShowPreviewToolbar && (
+        <div className='width-full flex flex-row items-start [flex-wrap:wrap] gap-medium padding-bottom-medium'>
+          {shouldShowDateRangeControl && dateRangeOptions ? (
+            <ChartConfiguratorDateRangeControl dateRangeOptions={dateRangeOptions} />
+          ) : null}
+          {filterControlSlot}
+        </div>
+      )}
       {shouldShowUnsupportedGranularityWarning && (
         <div className='flex items-center gap-xsmall content-system-warning'>
           <Icon name='icon-filled-triangle-exclamation' size='Small' />

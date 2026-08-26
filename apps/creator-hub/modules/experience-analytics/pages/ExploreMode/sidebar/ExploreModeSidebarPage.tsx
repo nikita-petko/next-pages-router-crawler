@@ -1,9 +1,12 @@
 import type { FC } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChartStyleMode } from '@rbx/analytics-ui';
-import type { TRAQIV2APIMetric, TRAQIV2Dimension } from '@rbx/creator-hub-analytics-config';
-import {
+import type {
   RAQIV2DateRangeType,
+  TRAQIV2APIMetric,
+  TRAQIV2Dimension,
+} from '@rbx/creator-hub-analytics-config';
+import {
   RAQIV2Dimension,
   RAQIV2MetricToSupportedGranularities,
   RAQIV2UIMetric,
@@ -41,6 +44,7 @@ import { analyticsAlertControlPlaneClient } from '@modules/experience-alerts/con
 import buildChartConfiguratorTableConfig, {
   type ExploreModeTableMetricColumnInput,
 } from '@modules/experience-analytics-shared/chartConfigurator/buildChartConfiguratorTableConfig';
+import { buildConfiguratorPageTimeRangeOptions } from '@modules/experience-analytics-shared/chartConfigurator/buildConfiguratorPageTimeRangeOptions';
 import {
   isChartConfiguratorSupportedChartType,
   type ChartConfiguratorChartType,
@@ -144,7 +148,6 @@ import {
 } from '@modules/experience-analytics-shared/types/RAQIV2ChartSpec';
 import type {
   AnalyticsPageConfigAnnotationOptions,
-  AnalyticsPageConfigDateOptions,
   CreatorAnalyticsPageSurfaceConfig,
 } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
 import { RAQIV2SpecialLayoutType } from '@modules/experience-analytics-shared/types/RAQIV2SpecialLayoutConfig';
@@ -2500,41 +2503,14 @@ const ExploreModeSidebarPage: FC = () => {
     return getSharedChartConfiguratorDimensions(displaySourceMetrics);
   }, [displaySourceMetrics]);
 
-  const timeRangeOptions: AnalyticsPageConfigDateOptions = useMemo(() => {
-    const baseRanges = [...dateRangeOptions];
-    // Always allow Custom: a metric's `supportedDateRangeTypes` enumerates the
-    // relative-range presets shown in the picker, but Custom is rendered as a
-    // separate calendar entry and is also how deep links from other surfaces
-    // pass an explicit min/max time. Without it here, PageConfigAwareDateRange
-    // sees `rangeType=Custom` in the URL, treats it as unsupported, and snaps
-    // back to the first preset — silently dropping the carried-over range.
-    const supportedRanges = baseRanges.includes(RAQIV2DateRangeType.Custom)
-      ? baseRanges
-      : [...baseRanges, RAQIV2DateRangeType.Custom];
-    const defaultRange = supportedRanges.includes(RAQIV2DateRangeType.Last28Days)
-      ? RAQIV2DateRangeType.Last28Days
-      : supportedRanges[0];
-    const hasDisabledSourceMetric = displaySourceMetrics.some(
-      (metricToCheck) => getAnalyticsMetricDisplayConfig(metricToCheck).exploreMode?.disabled,
-    );
-
-    if (hasDisabledSourceMetric) {
-      return {
-        type: 'dateRange' as const,
-        supportedRanges,
-        defaultRange,
-        excludeEndDateInRange: false,
-        maxEndDateOffset: 0,
-        maxStartDateOffsetDays: 365,
-      };
-    }
-    return {
-      type: 'dateRange' as const,
-      supportedRanges,
-      defaultRange,
-      minStartDate: new Date('06/01/2023'),
-    };
-  }, [dateRangeOptions, displaySourceMetrics]);
+  const timeRangeOptions = useMemo(
+    () =>
+      buildConfiguratorPageTimeRangeOptions({
+        dateRangeOptions,
+        displaySourceMetrics,
+      }),
+    [dateRangeOptions, displaySourceMetrics],
+  );
   // Per-source-card filter drawers are wrapped in SourceMetricContextProvider
   // (see ChartConfiguratorMetricSourceCard), so dynamic filter dimensions like
   // TransactionType, CustomField1-3, and ItemSku resolve their option queries
