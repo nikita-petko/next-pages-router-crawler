@@ -903,6 +903,9 @@
 .items-center {
   align-items: center;
 }
+.items-baseline {
+  align-items: baseline;
+}
 .items-stretch {
   align-items: stretch;
 }
@@ -2494,6 +2497,10 @@
 .margin-y-large {
   margin-top: var(--margin-large);
   margin-bottom: var(--margin-large);
+}
+.margin-y-medium {
+  margin-top: var(--margin-medium);
+  margin-bottom: var(--margin-medium);
 }
 .margin-y-small {
   margin-top: var(--margin-small);

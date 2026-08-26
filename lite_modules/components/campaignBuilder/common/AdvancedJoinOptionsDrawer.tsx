@@ -1,4 +1,5 @@
 import {
+  Alert,
   Autocomplete,
   AutocompleteOption,
   Button,
@@ -12,7 +13,6 @@ import {
   TextArea,
   TextInput,
 } from '@rbx/foundation-ui';
-import { Alert } from '@rbx/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
@@ -211,7 +211,10 @@ const AdvancedJoinOptionsDrawer = () => {
             ])}
           </span>
           {!warningDismissed && (
-            <Alert onClose={() => setWarningDismissed(true)} severity='warning' variant='standard'>
+            <Alert
+              onDismiss={() => setWarningDismissed(true)}
+              severity='Warning'
+              variant='Feedback'>
               {translate('Message.CodeSetupRequired')}
             </Alert>
           )}

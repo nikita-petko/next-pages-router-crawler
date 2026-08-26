@@ -211,24 +211,8 @@ const useAddPaymentMethodStyles = makeStyles()((theme) => ({
     marginBottom: '24px',
     marginTop: 0,
   },
-  tab: {
-    borderBottom: 'solid',
-    borderBottomColor: theme.palette.surface.outline,
-    borderBottomWidth: '2px',
-    opacity: 1,
-    textTransform: 'uppercase',
-  },
   tabs: {
-    display: 'block',
     marginBottom: marginUnit * 6,
-  },
-  tabSelected: {
-    borderBottom: 'solid',
-    borderBottomColor: theme.palette.primary.main,
-    borderBottomWidth: '2px',
-    color: theme.palette.primary.main,
-    opacity: 1,
-    textTransform: 'uppercase',
   },
   watermarkedAdCreditBalanceSegment: {
     gridColumn: 3,

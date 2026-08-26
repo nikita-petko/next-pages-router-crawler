@@ -1,4 +1,5 @@
 import {
+  Checkbox,
   Dropdown,
   Icon,
   Menu,
@@ -116,9 +117,16 @@ const ReachCreativeSection = ({
   const creativeFormat = useWatch<FormType, typeof FormField.CREATIVE_FORMAT>({
     name: FormField.CREATIVE_FORMAT,
   });
+  const isBrandClickout = useWatch<FormType, typeof FormField.IS_BRAND_CLICKOUT>({
+    name: FormField.IS_BRAND_CLICKOUT,
+  });
   const videos = useWatch<FormType, typeof FormField.VIDEOS>({ name: FormField.VIDEOS });
   const bidType = useWatch<FormType, typeof FormField.BID_TYPE>({ name: FormField.BID_TYPE });
   const isVerticalFormat = creativeFormat === ReachAdFormat.VERTICAL_1X2;
+  // A 1x2 tile either drives to an external site or carries a subtitle — the attribution
+  // bar a clickout renders sits where the subtitle would go, so the two are exclusive.
+  // Only the vertical format can clickout at all; the backend rejects clickout_url on 2x1.
+  const isBrandClickoutSelected = isVerticalFormat && !!isBrandClickout;
   const isVideoOnlyBidType = !!bidType && VIDEO_ONLY_REACH_BID_TYPES.includes(bidType);
   // 1x2 uses a single poster image for the video ad; 2x1 can select more.
   const maxAllowedThumbnails = isVerticalFormat ? 1 : maxAllowedThumbnailsFromMetadata;
@@ -463,6 +471,80 @@ const ReachCreativeSection = ({
           </div>
         )}
 
+        {/* Brand clickout opt-in — 1x2 vertical (video) format only */}
+        {isVerticalFormat && (
+          <Controller
+            control={control}
+            name={FormField.IS_BRAND_CLICKOUT}
+            render={({ field: { onChange, value } }) => (
+              <div className={`text-body-large ${reachCreativeFieldContainer}`}>
+                <Checkbox
+                  data-testid='brand-clickout-checkbox'
+                  isChecked={value || false}
+                  isDisabled={editMode}
+                  label={translateCampaign('Label.SendClicksToExternalWebsite')}
+                  onCheckedChange={(checked) => {
+                    if (editMode) {
+                      return;
+                    }
+                    const isChecked = checked === true;
+                    onChange(isChecked);
+                    // Empty whichever of the two mutually exclusive fields just became
+                    // unreachable, so a hidden value can never reach the payload. Cleared
+                    // to '' rather than undefined because the input unmounts here, and
+                    // react-hook-form restores a field's default value on remount when
+                    // its current value is undefined.
+                    setValue(isChecked ? FormField.SUBTITLE : FormField.CLICK_DESTINATION, '');
+                  }}
+                  placement='Start'
+                  size='Small'
+                />
+              </div>
+            )}
+          />
+        )}
+
+        {/* Click destination (clickout URL) — only once the brand clickout box is checked */}
+        {isBrandClickoutSelected && (
+          <Controller
+            control={control}
+            name={FormField.CLICK_DESTINATION}
+            render={({ field, fieldState: { error, isTouched } }) => {
+              const shouldShowError = !!error && !!isTouched;
+              return (
+                <div className={`text-body-large ${reachCreativeFieldContainer}`}>
+                  <TextInput
+                    {...field}
+                    error={shouldShowError ? error?.message : undefined}
+                    hasError={shouldShowError}
+                    // A click destination turns the ad into a clickout that
+                    // drives off-platform, so the experience selected earlier in
+                    // the form stops being the ad's destination. Carried as
+                    // helper text rather than a sibling node so it lands in the
+                    // input's aria-describedby, and so an invalid-URL error
+                    // supersedes it instead of stacking two messages.
+                    helperText={
+                      field.value?.trim() ? (
+                        <span
+                          className='content-system-warning'
+                          data-testid='click-destination-experience-warning'>
+                          {translateCampaign('Description.ClickDestinationExperienceNotTargeted')}
+                        </span>
+                      ) : undefined
+                    }
+                    id='clickDestination'
+                    isDisabled={editMode}
+                    label={translateCampaign('Label.ClickDestination')}
+                    placeholder='http://'
+                    size='Medium'
+                    value={field.value ?? ''}
+                  />
+                </div>
+              );
+            }}
+          />
+        )}
+
         {/* Headline */}
         <Controller
           control={control}
@@ -489,31 +571,34 @@ const ReachCreativeSection = ({
           }}
         />
 
-        {/* Subtitle */}
-        <Controller
-          control={control}
-          name={FormField.SUBTITLE}
-          render={({ field, fieldState: { error, isTouched } }) => {
-            const shouldShowError = !!error && !!isTouched;
-            return (
-              <div className={`text-body-large ${reachCreativeFieldContainer}`}>
-                <TextInput
-                  {...field}
-                  error={shouldShowError ? error?.message : undefined}
-                  hasError={shouldShowError}
-                  helperText={translateCampaign('Label.CharCount', {
-                    current: String(field.value?.length || 0),
-                    max: String(maxSubtitleLength),
-                  })}
-                  id='subtitle'
-                  isDisabled={editMode}
-                  label={translateCampaign('Label.SubtitleOptional')}
-                  size='Medium'
-                />
-              </div>
-            );
-          }}
-        />
+        {/* Subtitle — a brand clickout renders the attribution bar in its place */}
+        {!isBrandClickoutSelected && (
+          <Controller
+            control={control}
+            name={FormField.SUBTITLE}
+            render={({ field, fieldState: { error, isTouched } }) => {
+              const shouldShowError = !!error && !!isTouched;
+              return (
+                <div className={`text-body-large ${reachCreativeFieldContainer}`}>
+                  <TextInput
+                    {...field}
+                    error={shouldShowError ? error?.message : undefined}
+                    hasError={shouldShowError}
+                    helperText={translateCampaign('Label.CharCount', {
+                      current: String(field.value?.length || 0),
+                      max: String(maxSubtitleLength),
+                    })}
+                    id='subtitle'
+                    isDisabled={editMode}
+                    label={translateCampaign('Label.SubtitleOptional')}
+                    size='Medium'
+                    value={field.value ?? ''}
+                  />
+                </div>
+              );
+            }}
+          />
+        )}
 
         {/* CTA button text — 1x2 vertical (video) format only. The option labels come
             from the Ads.Serving namespace so the picker, the preview, and the served
@@ -551,47 +636,6 @@ const ReachCreativeSection = ({
                 </Dropdown>
               </div>
             )}
-          />
-        )}
-
-        {/* Click destination (clickout URL) — 1x2 vertical (video) format only */}
-        {isVerticalFormat && (
-          <Controller
-            control={control}
-            name={FormField.CLICK_DESTINATION}
-            render={({ field, fieldState: { error, isTouched } }) => {
-              const shouldShowError = !!error && !!isTouched;
-              return (
-                <div className={`text-body-large ${reachCreativeFieldContainer}`}>
-                  <TextInput
-                    {...field}
-                    error={shouldShowError ? error?.message : undefined}
-                    hasError={shouldShowError}
-                    // A click destination turns the ad into a clickout that
-                    // drives off-platform, so the experience selected earlier in
-                    // the form stops being the ad's destination. Carried as
-                    // helper text rather than a sibling node so it lands in the
-                    // input's aria-describedby, and so an invalid-URL error
-                    // supersedes it instead of stacking two messages.
-                    helperText={
-                      field.value?.trim() ? (
-                        <span
-                          className='content-system-warning'
-                          data-testid='click-destination-experience-warning'>
-                          {translateCampaign('Description.ClickDestinationExperienceNotTargeted')}
-                        </span>
-                      ) : undefined
-                    }
-                    id='clickDestination'
-                    isDisabled={editMode}
-                    label={translateCampaign('Label.ClickDestination')}
-                    placeholder='http://'
-                    size='Medium'
-                    value={field.value ?? ''}
-                  />
-                </div>
-              );
-            }}
           />
         )}
       </div>

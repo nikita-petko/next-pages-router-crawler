@@ -1,4 +1,4 @@
-import { alertClasses, makeStyles } from '@rbx/ui';
+import { makeStyles } from '@rbx/ui';
 
 const useDrawerStyles = makeStyles()(() => ({
   drawerBodyContent: {
@@ -10,11 +10,6 @@ const useDrawerStyles = makeStyles()(() => ({
     gap: '24px',
   },
 
-  educationText: {
-    position: 'relative',
-    top: '-3px',
-  },
-
   inlineRow: {
     alignItems: 'flex-start',
     display: 'flex',
@@ -22,10 +17,6 @@ const useDrawerStyles = makeStyles()(() => ({
   },
 
   pendingDecreaseBanner: {
-    [`& .${alertClasses.message}`]: {
-      alignItems: 'center',
-      display: 'flex',
-    },
     width: '100%',
   },
 

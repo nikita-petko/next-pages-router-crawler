@@ -1,12 +1,25 @@
-import { Button, IconButton } from '@rbx/foundation-ui';
-import { Alert, AlertTitle } from '@rbx/ui';
+import { Alert, TAlertSeverity } from '@rbx/foundation-ui';
 import { ReactNode, useState } from 'react';
 
-import useAlertToastStyles from '@components/billing/AlertToast.styles';
 import Collapse from '@components/common/Collapse';
 import { TranslationNamespace } from '@constants/localization';
 import { AlertToastLevel } from '@constants/toastConstants';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+
+// AlertToastLevel keeps the lowercase wire values that StringToAlertToastLevel
+// parses out of backend status banners; Foundation severities are capitalized.
+const AlertSeverityByLevel: Record<AlertToastLevel, TAlertSeverity> = {
+  [AlertToastLevel.Error]: 'Error',
+  [AlertToastLevel.Info]: 'Info',
+  [AlertToastLevel.Warning]: 'Warning',
+};
+
+// Alert models the dismiss affordance as a discriminated union: onDismiss is
+// required when the affordance is shown and forbidden when it is not, so the
+// two shapes have to be built separately rather than toggled with a boolean.
+type AlertCloseProps =
+  | { closeLabel: string; hasCloseAffordance: true; onDismiss: () => void }
+  | { hasCloseAffordance: false };
 
 interface AlertToastProps {
   alwaysShowCloseButton?: boolean;
@@ -34,66 +47,43 @@ const AlertToast = ({
   text,
 }: AlertToastProps) => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Billing);
-  const {
-    classes: { alertAction, alertRoot, secondaryButton },
-  } = useAlertToastStyles();
 
   const [hideToast, setHideToast] = useState<boolean>(false);
 
-  const buttons = [];
-  if (secondaryButtonText) {
-    buttons.push(
-      <Button
-        className={secondaryButton}
-        data-testid='secondaryButton'
-        key='secondaryButton'
-        onClick={onSecondaryButtonClick}
-        size='Medium'
-        variant='Standard'>
-        {secondaryButtonText}
-      </Button>,
-    );
-  }
-  if (primaryButtonText) {
-    buttons.push(
-      <Button
-        data-testid='primaryButton'
-        key='primaryButton'
-        onClick={onPrimaryButtonClick}
-        size='Medium'
-        variant='Standard'>
-        {primaryButtonText}
-      </Button>,
-    );
-  }
-  if ((!secondaryButtonText && !primaryButtonText) || alwaysShowCloseButton) {
-    buttons.push(
-      <IconButton
-        ariaLabel={translate('Description.CloseButton')}
-        data-testid='closeButton'
-        icon='icon-regular-x'
-        key='closeButton'
-        onClick={() => {
-          setHideToast(true);
-          onCloseButtonClick();
-        }}
-        variant='Utility'
-      />,
-    );
-  }
+  const hasActions = Boolean(primaryButtonText || secondaryButtonText);
+  const closeProps: AlertCloseProps =
+    !hasActions || alwaysShowCloseButton
+      ? {
+          closeLabel: translate('Description.CloseButton'),
+          hasCloseAffordance: true,
+          onDismiss: () => {
+            setHideToast(true);
+            onCloseButtonClick();
+          },
+        }
+      : { hasCloseAffordance: false };
 
   return (
     <Collapse in={!hideToast} unmountOnExit>
       <Alert
-        action={buttons}
-        classes={{
-          action: alertAction,
-          root: alertRoot,
-        }}
+        {...closeProps}
         data-testid='toastContainer'
-        severity={level}>
-        {header && <AlertTitle data-testid='toastHeader'>{header}</AlertTitle>}
-        {text}
+        onPrimaryAction={onPrimaryButtonClick}
+        onSecondaryAction={onSecondaryButtonClick}
+        primaryActionLabel={primaryButtonText}
+        secondaryActionLabel={secondaryButtonText}
+        severity={AlertSeverityByLevel[level]}
+        variant='Feedback'>
+        {/* Foundation Alert has no title slot and lays its message out as `flex
+            items-center`, so the header is stacked above the body here. */}
+        <div className='flex flex-col gap-xsmall'>
+          {header ? (
+            <span className='text-title-small' data-testid='toastHeader'>
+              {header}
+            </span>
+          ) : null}
+          {text}
+        </div>
       </Alert>
     </Collapse>
   );

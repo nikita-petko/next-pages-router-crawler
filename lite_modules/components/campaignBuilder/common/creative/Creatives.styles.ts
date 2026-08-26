@@ -1,4 +1,4 @@
-import { buttonClasses, makeStyles } from '@rbx/ui';
+import { makeStyles } from '@rbx/ui';
 
 import { LogoSize, ThumbnailSize } from '@constants/campaignBuilder';
 
@@ -204,10 +204,6 @@ const useCreativesStyles = makeStyles<void, 'removeButtonOverlay' | 'trashIconWr
     },
 
     selectedCreativeGlass: {
-      [`.${buttonClasses.disabled}`]: {
-        backgroundColor: theme.palette.components.backdrop.fill,
-        outline: 'none',
-      },
       backgroundColor: theme.palette.components.backdrop.fill,
       borderRadius: '8px',
       outline: `2px solid ${theme.palette.actionV2.primary.containedHoverFocus}`,

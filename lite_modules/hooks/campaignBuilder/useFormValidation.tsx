@@ -61,6 +61,7 @@ const VALID_PAYMENT_TYPES: ReadonlySet<ServerPaymentType> = new Set([
 
 export const useFormValidation = (): Resolver<FormType> => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Campaign);
+  const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
   const formSchema = useFormSchema();
   const { currentWorkspace } = useWorkspaces();
   const isAdAccountAutoCreateEnabled = useAppStore(
@@ -220,6 +221,19 @@ export const useFormValidation = (): Resolver<FormType> => {
               code: 'custom',
               message: translate('Validation.VideoRequired'),
               path: [FormField.VIDEOS],
+            });
+          }
+
+          // Opting into a brand clickout without giving a URL would quietly produce an
+          // ordinary experience-targeted ad that has also lost its subtitle, so the URL
+          // is required once the box is checked rather than optional.
+          if (data[FormField.IS_BRAND_CLICKOUT] && !data[FormField.CLICK_DESTINATION]?.trim()) {
+            addIssue({
+              code: 'custom',
+              message: translateMisc('Validation.FieldRequired', {
+                fieldName: translate('Label.ClickDestination'),
+              }),
+              path: [FormField.CLICK_DESTINATION],
             });
           }
 

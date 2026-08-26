@@ -1,5 +1,4 @@
-import { Button, TextInput } from '@rbx/foundation-ui';
-import { Alert } from '@rbx/ui';
+import { Alert, Button, TextInput } from '@rbx/foundation-ui';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useFormContext, UseFormReturn, useWatch } from 'react-hook-form';
@@ -504,11 +503,11 @@ const ExperienceSection = ({ advancedTargetingFormMethods }: ExperienceSectionPr
         hasAdvancedJoinSettings &&
         !isAdvancedJoinAlertDismissed && (
           <Alert
+            className='margin-y-medium'
             data-testid='advanced-join-enabled-alert'
-            onClose={() => setIsAdvancedJoinAlertDismissed(true)}
-            severity='info'
-            sx={{ marginY: 2 }}
-            variant='outlined'>
+            onDismiss={() => setIsAdvancedJoinAlertDismissed(true)}
+            severity='Info'
+            variant='Feedback'>
             {translate('Message.AdvancedJoinEnabled')}
           </Alert>
         )

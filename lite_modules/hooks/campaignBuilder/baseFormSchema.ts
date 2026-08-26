@@ -13,12 +13,14 @@ import {
   CONTINUOUS_VALUE,
   DEFAULT_HEADLINE_MAX_LENGTH,
   DEFAULT_SUBTITLE_MAX_LENGTH,
+  FlowTypes,
   FormField,
   ReachAdFormat,
 } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { useAppStore } from '@stores/appStoreProvider';
+import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
 import { ServerAdSetBidType } from '@type/adSet';
 import { VideoUploadState } from '@type/fileUpload';
 
@@ -30,6 +32,11 @@ const useFormSchema = () => {
   const maxSubtitleLength =
     useAppStore((state) => state.appMetadataState?.data?.maxSubtitleLengthInChars) ||
     DEFAULT_SUBTITLE_MAX_LENGTH;
+  // The headline and subtitle inputs are disabled in edit mode and the edit payload does
+  // not carry either field, so enforcing a length here can only block submit on a value
+  // the user is not allowed to change — which is what happens to a campaign created
+  // before the limit was lowered.
+  const editMode = useCampaignBuilderStore((state) => state.flowType === FlowTypes.EDIT);
 
   return useMemo(
     () =>
@@ -95,9 +102,15 @@ const useFormSchema = () => {
         [FormField.FREQUENCY_CAPPING_ON]: z.boolean().optional(),
         [FormField.FREQUENCY_CAPPING_VALUE]: z.number().min(1).max(100).optional(),
         [FormField.GOAL]: z.enum(ServerCampaignObjectiveType),
-        [FormField.HEADLINE]: z.string().min(1).max(maxHeadlineLength).optional(),
+        [FormField.HEADLINE]: editMode
+          ? z.string().optional()
+          : z.string().min(1).max(maxHeadlineLength).optional(),
         [FormField.IDEMPOTENCY_KEY]: z.string(),
         [FormField.IS_AUTO_RELOAD_ENABLED]: z.boolean(),
+        // Client-only: the API expresses "this is a brand clickout" as the presence of
+        // clickout_url. The flag exists so the user can opt in before typing the URL, and
+        // so an empty URL is an error rather than a silent fall back to the experience.
+        [FormField.IS_BRAND_CLICKOUT]: z.boolean().optional(),
         [FormField.IS_EXTEND_TO_OFF_PLATFORM_ENABLED]: z.boolean(),
         [FormField.LAUNCH_DATA]: z.string().max(200).optional(),
         [FormField.LOGO_ASSETS]: z.array(
@@ -114,7 +127,9 @@ const useFormSchema = () => {
         [FormField.PLACE_ID_OVERRIDE]: z.number().optional(),
         [FormField.START_DATE]: z.string(),
         [FormField.START_TIME]: z.string(),
-        [FormField.SUBTITLE]: z.string().max(maxSubtitleLength).optional(),
+        [FormField.SUBTITLE]: editMode
+          ? z.string().optional()
+          : z.string().max(maxSubtitleLength).optional(),
         [FormField.THUMBNAILS]: z.array(
           z.object({
             assetId: z.number(),
@@ -141,7 +156,7 @@ const useFormSchema = () => {
           }),
         ),
       }),
-    [translate, maxHeadlineLength, maxSubtitleLength],
+    [translate, maxHeadlineLength, maxSubtitleLength, editMode],
   );
 };
 

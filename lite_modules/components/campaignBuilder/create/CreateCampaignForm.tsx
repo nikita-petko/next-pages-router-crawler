@@ -43,7 +43,6 @@ const CreateCampaignForm = () => {
   const initialCampaign = useCampaignBuilderStore((state) => state.simplifiedCampaign?.data);
   const getAudienceEstimate = useCampaignBuilderStore((state) => state.getAudienceEstimate);
 
-  const setCalloutBanners = useCampaignBuilderStore((state) => state.setCalloutBanners);
   const setDetailedTargetingMatchType = useCampaignBuilderStore(
     (state) => state.setDetailedTargetingMatchType,
   );
@@ -103,7 +102,6 @@ const CreateCampaignForm = () => {
   const cloneMode = flowType === FlowTypes.CLONE;
 
   useEffect(() => {
-    setCalloutBanners([]);
     if (cloneMode && initialCampaign) {
       // Don't set advanced targeting values as defaultValues, otherwise reset form will not work correctly
       const targeting = FormatSimplifiedCampaignTargetingResponseJson(initialCampaign);
@@ -150,7 +148,6 @@ const CreateCampaignForm = () => {
     EURegionCodeList,
     getAudienceEstimate,
     methods,
-    setCalloutBanners,
   ]);
 
   return (

@@ -1,8 +1,8 @@
 import {
+  Alert,
   Checkbox,
   Dropdown,
   Icon,
-  IconButton,
   Menu,
   MenuItem,
   MenuSection,
@@ -10,7 +10,6 @@ import {
   RadioGroup,
   TextInput,
 } from '@rbx/foundation-ui';
-import { Alert } from '@rbx/ui';
 import { Fragment, ReactNode, useEffect, useMemo, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { NumericFormat } from 'react-number-format';
@@ -340,24 +339,22 @@ const BudgetSection = () => {
       <>
         <Collapse in={hasSavedPendingDecrease && !isPendingDecreaseBannerDismissed} unmountOnExit>
           <Alert
-            action={
-              <IconButton
-                ariaLabel={translateMisc('Action.Close')}
-                icon='icon-regular-x'
-                onClick={() => setIsPendingDecreaseBannerDismissed(true)}
-                size='Small'
-                variant='Utility'
-              />
-            }
             className={cardBanner}
+            closeLabel={translateMisc('Action.Close')}
             data-testid='scheduled-budget-decrease-banner'
-            severity='warning'
-            variant='outlined'>
+            onDismiss={() => setIsPendingDecreaseBannerDismissed(true)}
+            severity='Warning'
+            variant='Feedback'>
             {translate('Message.BudgetDecreasePending')}
           </Alert>
         </Collapse>
         {showWarningBanner && (
-          <Alert className={cardBanner} data-testid='warning-banner' severity='warning'>
+          <Alert
+            className={cardBanner}
+            data-testid='warning-banner'
+            hasCloseAffordance={false}
+            severity='Warning'
+            variant='Feedback'>
             {translate(HIGH_BUDGET_WARNING_TEXT)}
           </Alert>
         )}

@@ -148,12 +148,25 @@ export const getAttributionQueryEndTime = (attributionEndTime: Date): Date =>
 export const ROAS_VALIDATED_MIN_AGE_DAYS = ATTRIBUTION_WINDOW_DAYS + 1;
 
 /**
- * True when the AQG request's end time is old enough that AdsUARoas is treated
- * as final. Absolute-time comparison; timezone-agnostic (AQG reporting queries
- * are UTC-normalized via REPORTING_TIMEZONE_DB_NAME).
+ * True when a campaign's ROAS is old enough to surface the validated AdsUARoas
+ * cube instead of the ML AdsRoasEstimate. Uses the earlier of the campaign's
+ * scheduled end and the requested query window's end so campaigns whose
+ * attribution window closed long ago are eligible even when the user picked a
+ * range that ends today. Absolute-time comparison; timezone-agnostic (AQG
+ * reporting queries are UTC-normalized via REPORTING_TIMEZONE_DB_NAME).
  */
-export const isValidatedRoasEligible = (endTime: Date, now: Date = new Date()): boolean =>
-  now.getTime() - endTime.getTime() >= ROAS_VALIDATED_MIN_AGE_DAYS * MS_PER_DAY;
+export const isValidatedRoasEligible = (
+  campaignEndTimestampMs: number | undefined,
+  requestedEndTime: Date,
+  now: Date = new Date(),
+): boolean => {
+  const requestedMs = requestedEndTime.getTime();
+  const effectiveEndMs =
+    campaignEndTimestampMs && campaignEndTimestampMs < requestedMs
+      ? campaignEndTimestampMs
+      : requestedMs;
+  return now.getTime() - effectiveEndMs >= ROAS_VALIDATED_MIN_AGE_DAYS * MS_PER_DAY;
+};
 
 /**
  * Builds the universe-authorized CAaaS request used by page-scoped reporting.
@@ -219,10 +232,7 @@ export const buildReportingAnalyticsQueryRequest = ({
       ...resourceFields,
       query: {
         breakdown: breakdownDimensions.length ? [{ dimensions: breakdownDimensions }] : [],
-        endTime: (isRoasEstimate
-          ? endTime
-          : getAttributionQueryEndTime(endTime)
-        ).toISOString(),
+        endTime: (isRoasEstimate ? endTime : getAttributionQueryEndTime(endTime)).toISOString(),
         filter,
         granularity: METRIC_GRANULARITY_NONE,
         metric: getReportingMetricName(metric, reportingView, resource.type),

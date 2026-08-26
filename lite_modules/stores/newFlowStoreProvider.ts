@@ -1159,53 +1159,19 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       ]);
     },
     fetchVisibleCampaignRoas: async (campaignIds: string[]) => {
-      // ROAS always sources from analytics-query-gateway regardless of the CAaaS
-      // reporting flag; this is the sole loader for the ROAS column.
+      // Sole loader for the ROAS column; always sources from AQG.
       const reportingView = get().reportingViewState.currentSelection;
-      const isRoasColumnVisible =
-        getIsCampaignRoasEnabled() &&
-        reportingView === ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT;
-      if (!isRoasColumnVisible || campaignIds.length === 0) {
+      if (
+        !getIsCampaignRoasEnabled() ||
+        reportingView !== ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT ||
+        campaignIds.length === 0
+      ) {
         return;
       }
-      // Build one AQG batch per resource: workspace mode fans out per universe
-      // (mirrors fetchFrontendStatsForEntities); otherwise one ad-account batch.
       const shouldUseWorkspaceUniverseFiltering = getShouldUseWorkspaceUniverseFiltering();
       const adAccountId = useAppStore.getState().appData?.adAccountId;
       const campaigns = get().campaignsState.data ?? [];
-      const campaignsById = new Map(campaigns.map((campaign) => [campaign.id, campaign]));
-      let batches: { entityIds: string[]; resource: AnalyticsReportingResource }[] = [];
-      if (shouldUseWorkspaceUniverseFiltering) {
-        const idsByUniverse = new Map<number, string[]>();
-        campaignIds.forEach((id) => {
-          const universeId = campaignsById.get(id)?.universe_id;
-          if (universeId === undefined) {
-            return;
-          }
-          const bucket = idsByUniverse.get(universeId) ?? [];
-          bucket.push(id);
-          idsByUniverse.set(universeId, bucket);
-        });
-        batches = Array.from(idsByUniverse.entries()).map(([universeId, ids]) => ({
-          entityIds: ids,
-          resource: { id: universeId, type: 'universe' },
-        }));
-      } else if (adAccountId) {
-        batches = [{ entityIds: campaignIds, resource: { id: adAccountId, type: 'adAccount' } }];
-      }
-      if (batches.length === 0) {
-        // Clear isLoading; otherwise is_roas_loading stays true on every row
-        // and the ROAS cell shows a skeleton forever (workspace-mode with no
-        // campaign.universe_id, or ad-account mode with no adAccountId).
-        set((draft) => {
-          draft.visibleCampaignRoasState = {
-            data: draft.visibleCampaignRoasState.data ?? {},
-            isError: false,
-            isLoading: false,
-          };
-        });
-        return;
-      }
+      const campaignsById = new Map(campaigns.map((c) => [c.id, c]));
       const {
         currentSelection: timePeriod,
         customEndDate: storedCustomEndDate,
@@ -1221,14 +1187,61 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         customStartDate,
         customEndDate,
       );
-      const source = isValidatedRoasEligible(endTime) ? 'validated' : 'estimated';
+      // One AQG batch per (resource, source). Source is per-campaign so
+      // campaigns ended >30d ago surface validated AdsUARoas even when the
+      // range ends today.
+      const adAccountResource: AnalyticsReportingResource | undefined = adAccountId
+        ? { id: adAccountId, type: 'adAccount' }
+        : undefined;
+      const groups = new Map<
+        string,
+        {
+          entityIds: string[];
+          resource: AnalyticsReportingResource;
+          source: 'validated' | 'estimated';
+        }
+      >();
+      const universeResource = (
+        campaign: Campaign | undefined,
+      ): AnalyticsReportingResource | undefined =>
+        campaign?.universe_id !== undefined
+          ? { id: campaign.universe_id, type: 'universe' }
+          : undefined;
+      campaignIds.forEach((id) => {
+        const campaign = campaignsById.get(id);
+        const resource: AnalyticsReportingResource | undefined = shouldUseWorkspaceUniverseFiltering
+          ? universeResource(campaign)
+          : adAccountResource;
+        if (!resource) {
+          return;
+        }
+        const source = isValidatedRoasEligible(campaign?.end_timestamp_ms, endTime)
+          ? 'validated'
+          : 'estimated';
+        const key = `${resource.type}:${resource.id}:${source}`;
+        const bucket = groups.get(key) ?? { entityIds: [], resource, source };
+        bucket.entityIds.push(id);
+        groups.set(key, bucket);
+      });
+      const batches = Array.from(groups.values());
+      if (batches.length === 0) {
+        // Clear isLoading so the ROAS cell doesn't render a permanent skeleton
+        // (workspace mode with no universe_id, or ad-account mode with none).
+        set((draft) => {
+          draft.visibleCampaignRoasState = {
+            data: draft.visibleCampaignRoasState.data ?? {},
+            isError: false,
+            isLoading: false,
+          };
+        });
+        return;
+      }
       const requestKey = JSON.stringify({
         batches,
         customEndDate,
         customStartDate,
         reportingView,
         requestTimestamp,
-        source,
         timePeriod,
       });
       if (get().visibleCampaignRoasState.requestKey === requestKey) {
@@ -1243,8 +1256,10 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
         };
       });
       try {
-        const result = await visibleCampaignRoasRequestManager.executeRequest(async () => {
-          const batchResults = await Promise.all(
+        // allSettled so a single-source AQG outage doesn't discard the other
+        // source's rows and force a manual retry.
+        const settled = await visibleCampaignRoasRequestManager.executeRequest(async () =>
+          Promise.allSettled(
             batches.map((batch) =>
               getCampaignRoas({
                 customEndDate,
@@ -1253,28 +1268,38 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
                 reportingView,
                 requestTimestamp,
                 resource: batch.resource,
-                source,
+                source: batch.source,
                 timePeriod,
               }),
             ),
-          );
-          return Object.assign({}, ...batchResults) as Record<string, CampaignRoas>;
-        });
-        if (result === null) {
+          ),
+        );
+        // Bail on cancellation or a mid-flight reset (date/view change).
+        if (settled === null || get().visibleCampaignRoasState.requestKey !== requestKey) {
           return;
         }
-        // Guard against a reset (date/view change) that happened while this
-        // request was in flight: the manager only invalidates the callback when
-        // a *newer* request supersedes it, but a bare reset leaves the promise
-        // to resolve into fresh state. Compare against the current requestKey.
-        if (get().visibleCampaignRoasState.requestKey !== requestKey) {
+        const fulfilledResults: Record<string, CampaignRoas>[] = [];
+        settled.forEach((outcome) => {
+          if (outcome.status === 'fulfilled') {
+            fulfilledResults.push(outcome.value);
+          } else {
+            CaptureException(outcome.reason as Error, {
+              context: 'fetchVisibleCampaignRoas: sub-batch failed',
+            });
+          }
+        });
+        if (fulfilledResults.length === 0) {
+          set((draft) => {
+            draft.visibleCampaignRoasState.isError = true;
+            draft.visibleCampaignRoasState.isLoading = false;
+          });
           return;
         }
         set((draft) => {
-          // Merge into any existing rows so scrolling doesn't clobber values
-          // for entities that fell out of the visible window.
+          // Merge into existing rows so scrolling doesn't clobber values that
+          // fell out of the visible window.
           draft.visibleCampaignRoasState = {
-            data: { ...(draft.visibleCampaignRoasState.data ?? {}), ...result },
+            data: Object.assign({}, draft.visibleCampaignRoasState.data ?? {}, ...fulfilledResults),
             isError: false,
             isLoading: false,
             requestKey,

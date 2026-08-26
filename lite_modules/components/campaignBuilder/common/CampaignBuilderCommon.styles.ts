@@ -1,4 +1,4 @@
-import { alertClasses, alertTitleClasses, makeStyles } from '@rbx/ui';
+import { makeStyles } from '@rbx/ui';
 
 const useCampaignBuilderCommonStyles = makeStyles()((theme) => ({
   advancedTargetingContainer: {
@@ -7,20 +7,7 @@ const useCampaignBuilderCommonStyles = makeStyles()((theme) => ({
     gap: theme.spacing(1),
     paddingTop: theme.spacing(3),
   },
-  alertTitle: {
-    paddingBottom: theme.spacing(1),
-  },
-  banner: {
-    // This is to override the default styles of the Alert component
-    [`& .${alertTitleClasses.root}`]: {
-      lineHeight: 1.4,
-    },
-  },
   cardBanner: {
-    [`& .${alertClasses.message}`]: {
-      alignItems: 'center',
-      display: 'flex',
-    },
     // accordion description has paddingTop: theme.spacing(1)
     marginBottom: theme.spacing(2),
     marginTop: theme.spacing(3),
@@ -28,11 +15,6 @@ const useCampaignBuilderCommonStyles = makeStyles()((theme) => ({
   },
   cardTitleSecondaryText: {
     marginLeft: '8px',
-  },
-  // Use on AlertTitle when an Alert renders its title and body inline on a single row
-  inlineAlertTitle: {
-    marginBottom: 0,
-    paddingRight: theme.spacing(2),
   },
   inputHelperText: {
     marginLeft: 14,
@@ -52,9 +34,6 @@ const useCampaignBuilderCommonStyles = makeStyles()((theme) => ({
   },
   noMargin: {
     margin: 0,
-  },
-  resetFilterButton: {
-    marginLeft: '8px',
   },
   rightContentContainer: {
     display: 'flex',

@@ -1,5 +1,5 @@
-import { Button, Divider, IconButton, Link, TextInput } from '@rbx/foundation-ui';
-import { DialogContent, Grid, UIThemeProvider } from '@rbx/ui';
+import { Button, DialogBody, Divider, IconButton, Link, TextInput } from '@rbx/foundation-ui';
+import { Grid, UIThemeProvider } from '@rbx/ui';
 import { useRouter } from 'next/router';
 import { type ReactElement, useEffect, useRef, useState } from 'react';
 
@@ -227,7 +227,7 @@ const CardVerificationDialog = ({
 
   // Show loading messages and spinner
   const verifyLoadingState = (
-    <DialogContent className={verifyCardModalContainer} data-testid='verifyCardModalContainer'>
+    <DialogBody className={verifyCardModalContainer} data-testid='verifyCardModalContainer'>
       <IconButton
         ariaLabel={translateBilling('Description.CloseButton')}
         className={verifyCardModalCloseButton}
@@ -248,12 +248,12 @@ const CardVerificationDialog = ({
       <span className={`text-body-large ${loadingTextContainer}`} data-testid='loadingText'>
         {translateBilling('Description.VerifyingCard')}
       </span>
-    </DialogContent>
+    </DialogBody>
   );
 
   // Show requesting new pin message and spinner
   const resendLoadingState = (
-    <DialogContent className={verifyCardModalContainer} data-testid='verifyCardModalContainer'>
+    <DialogBody className={verifyCardModalContainer} data-testid='verifyCardModalContainer'>
       <IconButton
         ariaLabel={translateBilling('Description.CloseButton')}
         className={verifyCardModalCloseButton}
@@ -274,12 +274,12 @@ const CardVerificationDialog = ({
       <span className={`text-body-large ${loadingTextContainer}`} data-testid='loadingText'>
         {translateBilling('Description.RequestingNewCode')}
       </span>
-    </DialogContent>
+    </DialogBody>
   );
 
   // Show failed attempts message and allow user to request a new pin
   const resendPinState = (
-    <DialogContent className={verifyCardModalContainer} data-testid='verifyCardModalContainer'>
+    <DialogBody className={verifyCardModalContainer} data-testid='verifyCardModalContainer'>
       <IconButton
         ariaLabel={translateBilling('Description.CloseButton')}
         className={verifyCardModalCloseButton}
@@ -328,7 +328,7 @@ const CardVerificationDialog = ({
           {translateBilling('Action.RequestNewCode')}
         </Button>
       </div>
-    </DialogContent>
+    </DialogBody>
   );
 
   // For auto-tabbing
@@ -339,7 +339,7 @@ const CardVerificationDialog = ({
 
   // Initial state
   const pinInputState = (
-    <DialogContent className={verifyCardModalContainer} data-testid='verifyCardModalContainer'>
+    <DialogBody className={verifyCardModalContainer} data-testid='verifyCardModalContainer'>
       <IconButton
         ariaLabel={translateBilling('Description.CloseButton')}
         className={verifyCardModalCloseButton}
@@ -510,7 +510,7 @@ const CardVerificationDialog = ({
           {translateBilling('Action.Skip')}
         </Button>
       </div>
-    </DialogContent>
+    </DialogBody>
   );
 
   let body: ReactElement;

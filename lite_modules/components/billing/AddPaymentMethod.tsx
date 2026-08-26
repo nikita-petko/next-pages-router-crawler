@@ -1,8 +1,7 @@
 import { useWorkspaces } from '@rbx/creator-hub-navigation';
-import { Icon } from '@rbx/foundation-ui';
-import { Tab, Tabs } from '@rbx/ui';
+import { Icon, Tabs, TabsList, TabsTrigger } from '@rbx/foundation-ui';
 import { useRouter } from 'next/router';
-import { ChangeEvent, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import AccountScopedBuyAdCredit from '@components/billing/AccountScopedBuyAdCredit';
 import useAddPaymentMethodStyles from '@components/billing/AddPaymentMethod.styles';
@@ -41,7 +40,7 @@ const AddPaymentMethodTabsNavigation = ({
 }: BuyAdCreditProps) => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Billing);
   const {
-    classes: { buyAdCreditFormContainer, creditCardFormContainer, tab, tabs, tabSelected },
+    classes: { buyAdCreditFormContainer, creditCardFormContainer, tabs },
   } = useAddPaymentMethodStyles();
 
   const router = useRouter();
@@ -68,11 +67,9 @@ const AddPaymentMethodTabsNavigation = ({
     (router.query.action === undefined || router.query.action === PaymentMethodActionEnum.ADD) &&
     userOver18;
 
-  const handleChangeTab = (_event: ChangeEvent<object>, newValue: unknown) => {
+  const handleChangeTab = (newValue: string) => {
     setValue(newValue as ADD_PAYMENT_TABS);
   };
-
-  const isTabSelected = (tabValue: ADD_PAYMENT_TABS) => tabValue === value;
 
   const isGroupMetadataPending =
     groupId !== undefined &&
@@ -87,23 +84,21 @@ const AddPaymentMethodTabsNavigation = ({
   return (
     <>
       {showTabs && (
-        <Tabs className={tabs} onChange={handleChangeTab} value={value} variant='fullWidth'>
-          <Tab
-            className={isTabSelected(ADD_PAYMENT_TABS.CREDIT_CARD) ? tabSelected : tab}
-            data-testid='creditCardTab'
-            disableTouchRipple
-            icon={<AddCreditCardIcon />}
-            label={translate('Title.Card')}
-            value={ADD_PAYMENT_TABS.CREDIT_CARD}
-          />
-          <Tab
-            className={isTabSelected(ADD_PAYMENT_TABS.ADS_CREDIT) ? tabSelected : tab}
-            data-testid='robuxAdCreditTab'
-            disableTouchRipple
-            icon={<Icon name='icon-filled-robux' size='Medium' />}
-            label={translate('Title.RobuxAdCredit')}
-            value={ADD_PAYMENT_TABS.ADS_CREDIT}
-          />
+        <Tabs className={tabs} onValueChange={handleChangeTab} value={value} variant='Inlined'>
+          <TabsList>
+            <TabsTrigger data-testid='creditCardTab' value={ADD_PAYMENT_TABS.CREDIT_CARD}>
+              <span className='flex items-center gap-small'>
+                <AddCreditCardIcon />
+                {translate('Title.Card')}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger data-testid='robuxAdCreditTab' value={ADD_PAYMENT_TABS.ADS_CREDIT}>
+              <span className='flex items-center gap-small'>
+                <Icon name='icon-filled-robux' size='Medium' />
+                {translate('Title.RobuxAdCredit')}
+              </span>
+            </TabsTrigger>
+          </TabsList>
         </Tabs>
       )}
       <CustomTabPanel index={0} value={Object.values(ADD_PAYMENT_TABS).indexOf(value)}>

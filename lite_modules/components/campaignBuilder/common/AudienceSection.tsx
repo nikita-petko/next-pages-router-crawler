@@ -1,5 +1,4 @@
-import { Badge, Button, Link, OptionSelector } from '@rbx/foundation-ui';
-import { Alert } from '@rbx/ui';
+import { Alert, Badge, Button, Link, OptionSelector } from '@rbx/foundation-ui';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Controller,
@@ -76,7 +75,6 @@ const AudienceSection = ({ advancedTargetingFormMethods }: AudienceSectionProps)
     classes: {
       advancedTargetingContainer,
       cardBanner,
-      resetFilterButton,
       rightContentContainer,
       rightContentSubContainer,
       sectionCardBanner,
@@ -266,7 +264,11 @@ const AudienceSection = ({ advancedTargetingFormMethods }: AudienceSectionProps)
     const errorObject = advancedTargetingErrors[firstErrorKey] as FieldError | undefined;
     if (errorObject?.message) {
       return (
-        <Alert className={sectionCardBanner} severity='error'>
+        <Alert
+          className={sectionCardBanner}
+          hasCloseAffordance={false}
+          severity='Error'
+          variant='Feedback'>
           {errorObject.message}
         </Alert>
       );
@@ -276,36 +278,35 @@ const AudienceSection = ({ advancedTargetingFormMethods }: AudienceSectionProps)
 
   const advancedTargetingWarningBanner = useMemo(
     () => (
+      // The reset action goes through `primaryActionLabel` rather than a Button
+      // child: Alert lays its actions out as a sibling of the message, so an
+      // action nested in the message row would stretch it to the control's
+      // height and drop the text below the severity icon, which is pinned to the
+      // top of the row.
       <Alert
         className={cardBanner}
         data-testid='advanced-targeting-warning-banner'
-        severity='warning'
-        variant='outlined'>
-        <span className='text-body-medium'>{translate('Description.ManualTargetingWarning')}</span>
-        <Button
-          className={resetFilterButton}
-          data-testid='reset-filter-button'
-          onClick={() => {
-            isResettingRef.current = true;
-            ResetForm({
-              getAudienceEstimate,
-              getValues: advancedTargetingGetValues,
-              reset: advancedTargetingReset,
-              setValue: advancedTargetingSetValue,
-              trigger: advancedTargetingTrigger,
-            }).finally(() => {
-              isResettingRef.current = false;
-            });
-          }}
-          size='Small'
-          variant='Link'>
-          {translate('Action.ResetFilter')}
-        </Button>
+        hasCloseAffordance={false}
+        onPrimaryAction={() => {
+          isResettingRef.current = true;
+          ResetForm({
+            getAudienceEstimate,
+            getValues: advancedTargetingGetValues,
+            reset: advancedTargetingReset,
+            setValue: advancedTargetingSetValue,
+            trigger: advancedTargetingTrigger,
+          }).finally(() => {
+            isResettingRef.current = false;
+          });
+        }}
+        primaryActionLabel={translate('Action.ResetFilter')}
+        severity='Warning'
+        variant='Feedback'>
+        {translate('Description.ManualTargetingWarning')}
       </Alert>
     ),
     [
       cardBanner,
-      resetFilterButton,
       getAudienceEstimate,
       advancedTargetingGetValues,
       advancedTargetingReset,
@@ -317,7 +318,12 @@ const AudienceSection = ({ advancedTargetingFormMethods }: AudienceSectionProps)
 
   const audienceWarningBanner = useCallback(
     (audience: ServerDetailedTargetingMatchType) => (
-      <Alert className={cardBanner} data-testid='audience-warning-banner' severity='warning'>
+      <Alert
+        className={cardBanner}
+        data-testid='audience-warning-banner'
+        hasCloseAffordance={false}
+        severity='Warning'
+        variant='Feedback'>
         {translate('Description.AudiencePerformanceWarning', {
           userCount: getWarningAudienceSize(audience).toString(),
         })}

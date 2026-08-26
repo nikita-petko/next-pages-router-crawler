@@ -171,6 +171,11 @@ export const useTransformFormToCampaign = ({
     // thumbnail, a 1x2 ad without a clickout URL still renders a CTA.
     const ctaButtonType = isVerticalFormat ? data[FormField.CTA_BUTTON_TYPE] : undefined;
 
+    // A clickout ad shows the attribution bar where the subtitle would sit, so the two
+    // never ship together. Enforced here rather than relying on the form having cleared
+    // the field, so a campaign cloned from older data cannot send both.
+    const subtitle = clickoutUrl !== undefined ? undefined : data[FormField.SUBTITLE];
+
     // 1x2 vertical reach is a video ad: the primary asset is the uploaded video
     // (asset_type VIDEO) and the selected image is its poster/fallback
     // (thumbnail_asset_id). Cap to a single poster so we do not emit N ads
@@ -199,7 +204,7 @@ export const useTransformFormToCampaign = ({
           ...(ctaButtonType !== undefined && { cta_button_type: ctaButtonType }),
           ...(selectedLogo !== undefined && { logo_asset_id: selectedLogo }),
           ...(logoAspectWidth !== undefined && { logo_asset_aspect_width: logoAspectWidth }),
-          ...(data[FormField.SUBTITLE] !== undefined && { subtitle: data[FormField.SUBTITLE] }),
+          ...(subtitle !== undefined && { subtitle }),
         }))
       : undefined;
   }, []);

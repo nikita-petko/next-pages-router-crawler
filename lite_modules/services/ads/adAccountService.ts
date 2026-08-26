@@ -75,8 +75,11 @@ export const getValidateDisplayName = async (
   return response.data;
 };
 
-export const getCurrentUser = async (): Promise<CurrentUserResponse> => {
-  const response = await usersClient.get<CurrentUserResponse>({ url: '/users/authenticated' });
+export const getCurrentUser = async (abortSignal?: AbortSignal): Promise<CurrentUserResponse> => {
+  const response = await usersClient.get<CurrentUserResponse>({
+    ...(abortSignal ? { abortSignal } : {}),
+    url: '/users/authenticated',
+  });
   return response.data;
 };
 

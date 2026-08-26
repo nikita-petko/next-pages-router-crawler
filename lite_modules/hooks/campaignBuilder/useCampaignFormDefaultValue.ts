@@ -226,6 +226,13 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
     [],
   );
 
+  // The API has no brand-clickout flag; a saved clickout URL is what makes an ad a
+  // brand tile, so the checkbox reflects that rather than being stored separately.
+  const transformIsBrandClickout = useCallback(
+    ({ sponsored_ads }: SimplifiedCampaignType) => !!sponsored_ads?.[0]?.clickout_url,
+    [],
+  );
+
   // Transform Sponsored Ads to CTA button form field value. An ad saved before
   // the field existed, or one saved with the unspecified value, comes back as
   // undefined and the picker falls back to its View default — matching what
@@ -364,6 +371,7 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
         [FormField.HEADLINE]: transformHeadline(campaignData),
         [FormField.IDEMPOTENCY_KEY]: uuidv4(),
         [FormField.IS_AUTO_RELOAD_ENABLED]: campaignData.is_auto_reload_ad_credit_enabled ?? false,
+        [FormField.IS_BRAND_CLICKOUT]: transformIsBrandClickout(campaignData),
         [FormField.IS_EXTEND_TO_OFF_PLATFORM_ENABLED]: !!campaignData.off_platform_request_id,
         [FormField.LAUNCH_DATA]: campaignData.launch_data_override,
         [FormField.LOGO_ASSETS]: transformLogoAssets(campaignData),
@@ -391,6 +399,7 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
       transformHeadline,
       transformSubtitle,
       transformClickDestination,
+      transformIsBrandClickout,
       transformCtaButtonType,
       transformDetailedTargetingMatchType,
       transformDuration,
@@ -491,6 +500,7 @@ export const useCampaignFormDefaultValue = (): Partial<FormType> => {
       [FormField.HEADLINE]: undefined,
       [FormField.IDEMPOTENCY_KEY]: uuidv4(),
       [FormField.IS_AUTO_RELOAD_ENABLED]: true,
+      [FormField.IS_BRAND_CLICKOUT]: false,
       [FormField.IS_EXTEND_TO_OFF_PLATFORM_ENABLED]: false,
       [FormField.LAUNCH_DATA]: undefined,
       [FormField.LOGO_ASSETS]: [],

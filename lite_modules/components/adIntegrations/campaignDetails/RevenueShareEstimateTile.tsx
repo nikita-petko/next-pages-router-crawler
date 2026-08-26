@@ -1,5 +1,4 @@
-import { Button, Link } from '@rbx/foundation-ui';
-import { Alert } from '@rbx/ui';
+import { Alert, Button, Link } from '@rbx/foundation-ui';
 import { ReactElement } from 'react';
 
 import useRevenueShareEstimateTileStyles from '@components/adIntegrations/campaignDetails/RevenueShareEstimateTile.styles';
@@ -91,7 +90,9 @@ const RevenueShareEstimateTile = ({
             </Button>
           )}
         </div>
-        <Alert severity='warning'>{translate('Message.RevenueShareForecastEffectiveDate')}</Alert>
+        <Alert hasCloseAffordance={false} severity='Warning' variant='Feedback'>
+          {translate('Message.RevenueShareForecastEffectiveDate')}
+        </Alert>
         <span className={`text-body-medium ${description}`}>
           {translateHTML('Description.RevenueShareForecast', [
             {

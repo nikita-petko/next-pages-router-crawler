@@ -177,10 +177,9 @@ export const getCampaignTimeSeries = async ({
 
   const shouldQueryRoas =
     isRoasEnabled && reportingView === ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT;
-  const roasPromise: Promise<Pick<CampaignTimeSeries, 'roas' | 'totalRoas'>> = shouldQueryRoas
+  const roasPromise: Promise<Pick<CampaignTimeSeries, 'roas'>> = shouldQueryRoas
     ? Promise.all([
         fetchMetric('AdsUARoas', 'oneDay', false),
-        fetchMetric('AdsUARoas', 'none', false),
         // `ByUniverse` suffix is applied automatically by
         // `buildAnalyticsQueryRequest` for universe resources — mirrors how
         // `AdsUARoas` routes to `AdsUARoasByUniverse` here.
@@ -191,10 +190,7 @@ export const getCampaignTimeSeries = async ({
           return undefined;
         }),
       ])
-        .then(([dailyResult, totalResult, estimateResult]) => {
-          const totalRoas = totalResult.values
-            ?.flatMap((value) => value.dataPoints ?? [])
-            .find((dataPoint) => typeof dataPoint.value === 'number')?.value;
+        .then(([dailyResult, estimateResult]) => {
           const validatedDaily = queryResultToDailyDirectDataPoints(dailyResult);
           const estimatedDaily = estimateResult
             ? queryResultToDailyDirectDataPoints(estimateResult)
@@ -203,7 +199,6 @@ export const getCampaignTimeSeries = async ({
             roas: estimatedDaily.length
               ? mergeRoasPreferValidated(validatedDaily, estimatedDaily)
               : validatedDaily,
-            totalRoas: typeof totalRoas === 'number' ? totalRoas : undefined,
           };
         })
         .catch((error) => {

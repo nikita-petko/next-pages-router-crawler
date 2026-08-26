@@ -1,23 +1,10 @@
 import { ChartSummary, LineChart, SeriesDataTypes, XAxisGranularity } from '@rbx/analytics-ui';
 import type { LineChartZones } from '@rbx/analytics-ui';
-import {
-  Dropdown,
-  Menu,
-  MenuItem,
-  MenuSection,
-  ProgressCircle,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from '@rbx/foundation-ui';
+import { ProgressCircle, Tabs, TabsList, TabsTrigger } from '@rbx/foundation-ui';
 import { useLocalization } from '@rbx/intl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import useCampaignReportingChartsStyles from '@components/reporting/CampaignReportingCharts.styles';
-import DateFilteringTimePeriod, {
-  DATE_FILTERING_TIME_PERIOD_OPTIONS,
-  IsValidDateFilteringTimePeriod,
-} from '@constants/dateFilteringTimePeriod';
 import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
 import { TranslationNamespace } from '@constants/localization';
 import { REPORTING_TIMEZONE_DB_NAME } from '@constants/reportingStatsConstants';
@@ -27,7 +14,6 @@ import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
 import { NewFlowStoreType, useNewFlowStore } from '@stores/newFlowStoreProvider';
 import { CampaignTimeSeriesDataPoints } from '@type/timeSeries';
-import { shouldUseCustomDateRange } from '@utils/customDateRange';
 import {
   formatTimestampLabel,
   makePlaysValueFormatter,
@@ -106,11 +92,6 @@ const CampaignReportingCharts = () => {
   const isCampaignRoasEnabled = useAppStore(
     (state: AppStoreType) => state.appMetadataState?.data?.isCampaignRoasEnabled ?? false,
   );
-  // Under the custom-range flag the drawer chart is driven entirely by the
-  // page-level date selection (the store already re-fetches it on page-level
-  // date changes and on drawer open), so the drawer's own picker is redundant
-  // and is hidden to prevent divergence.
-  const isCustomDateRangeEnabled = useAppStore(shouldUseCustomDateRange);
 
   const [activeMetricTab, setActiveMetricTab] = useState<MetricTab>('plays');
 
@@ -121,14 +102,25 @@ const CampaignReportingCharts = () => {
   const formatPlaysValue = useMemo(() => makePlaysValueFormatter(locale), [locale]);
   const formatRoasValue = useMemo(() => makeRoasValueFormatter(locale), [locale]);
 
-  const { timeSeriesPeriod, timeSeriesState } = useNewFlowStore(
-    (state: NewFlowStoreType) => state.campaignDetailsState,
+  const campaignId = useNewFlowStore(
+    (state: NewFlowStoreType) => state.campaignDetailsState.campaign?.id,
+  );
+  const timeSeriesState = useNewFlowStore(
+    (state: NewFlowStoreType) => state.campaignDetailsState.timeSeriesState,
   );
   const reportingViewType = useNewFlowStore(
     (state: NewFlowStoreType) => state.reportingViewState.currentSelection,
   );
-  const fetchCampaignTimeSeries = useNewFlowStore(
-    (state: NewFlowStoreType) => state.fetchCampaignTimeSeries,
+  // ROAS scorecard reads the row's per-campaign source so the drawer tab title
+  // matches the table cell exactly (validated vs. estimated, with the same
+  // `est.` prefix). Populated by the table's fetchVisibleCampaignRoas.
+  const rowRoas = useNewFlowStore((state: NewFlowStoreType) =>
+    campaignId ? state.visibleCampaignRoasState.data?.[campaignId] : undefined,
+  );
+  const isRowRoasLoading = useNewFlowStore(
+    (state: NewFlowStoreType) =>
+      state.visibleCampaignRoasState.isLoading &&
+      (!campaignId || state.visibleCampaignRoasState.data?.[campaignId] === undefined),
   );
 
   const attributionWindowDays = getAttributionWindow(reportingViewType);
@@ -155,40 +147,6 @@ const CampaignReportingCharts = () => {
       : translateReport('Label.Unvalidated');
   };
 
-  const handlePeriodChange = (nextValue: string) => {
-    const newPeriod = Number(nextValue);
-    if (!IsValidDateFilteringTimePeriod(newPeriod) || newPeriod === timeSeriesPeriod) {
-      return;
-    }
-    fetchCampaignTimeSeries(newPeriod);
-  };
-
-  // Custom is not one of the presets, but the page-level picker can leave the drawer
-  // on it. It is appended only then, so the trigger has a label to show instead of
-  // collapsing to the empty placeholder.
-  const periodMenuItems = [
-    ...DATE_FILTERING_TIME_PERIOD_OPTIONS.map((option) => (
-      <MenuItem
-        key={option.value}
-        title={translateReport(option.labelKey)}
-        value={String(option.value)}
-      />
-    )),
-    ...(timeSeriesPeriod === DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM
-      ? [
-          <MenuItem
-            key={DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM}
-            title={translateReport('Label.Custom')}
-            value={String(DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM)}
-          />,
-        ]
-      : []),
-  ];
-
-  const handleMetricTabChange = (newTab: string) => {
-    setActiveMetricTab(newTab as MetricTab);
-  };
-
   const roasDataPoints = timeSeriesState.data?.roas;
 
   const totalPlays = useMemo(
@@ -196,23 +154,22 @@ const CampaignReportingCharts = () => {
     [timeSeriesState.data],
   );
 
-  const totalRoas = timeSeriesState.data?.totalRoas;
-
   const playsScorecardDisplayValue = useMemo(() => {
     if (timeSeriesState.isLoading || timeSeriesState.isError || totalPlays === undefined) {
       return UNAVAILABLE_VALUE_DISPLAY;
     }
-
     return formatPlaysValue(totalPlays);
   }, [formatPlaysValue, timeSeriesState.isError, timeSeriesState.isLoading, totalPlays]);
 
   const roasScorecardDisplayValue = useMemo(() => {
-    if (timeSeriesState.isLoading || timeSeriesState.isError || totalRoas === undefined) {
+    if (isRowRoasLoading || rowRoas === undefined) {
       return UNAVAILABLE_VALUE_DISPLAY;
     }
-
-    return formatRoasValue(totalRoas);
-  }, [formatRoasValue, timeSeriesState.isError, timeSeriesState.isLoading, totalRoas]);
+    const formatted = formatRoasValue(rowRoas.value);
+    return rowRoas.source === 'estimated'
+      ? `${translateReport('Label.EstimatePrefix')} ${formatted}`
+      : formatted;
+  }, [formatRoasValue, isRowRoasLoading, rowRoas, translateReport]);
 
   // Delegates description-over-value styling to @rbx/analytics-ui so this tab
   // summary stays in sync with the one creator analytics uses in its own chart
@@ -236,6 +193,10 @@ const CampaignReportingCharts = () => {
     roasScorecardDisplayValue,
     'roas-metric',
   );
+
+  const handleMetricTabChange = (newTab: string) => {
+    setActiveMetricTab(newTab as MetricTab);
+  };
 
   const renderChartContent = () => {
     if (timeSeriesState.isLoading) {
@@ -305,20 +266,6 @@ const CampaignReportingCharts = () => {
             </TabsList>
           </Tabs>
         </div>
-        {!isCustomDateRangeEnabled && (
-          <Dropdown
-            className={classes.periodSelect}
-            isDisabled={timeSeriesState.isLoading}
-            label={translateReport('Label.DateRange')}
-            onValueChange={handlePeriodChange}
-            placeholder=''
-            size='Small'
-            value={String(timeSeriesPeriod)}>
-            <Menu>
-              <MenuSection>{periodMenuItems}</MenuSection>
-            </Menu>
-          </Dropdown>
-        )}
       </div>
       <div className={classes.chartWrapper}>{renderChartContent()}</div>
     </div>

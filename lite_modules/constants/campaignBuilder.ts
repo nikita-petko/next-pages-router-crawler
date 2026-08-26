@@ -27,6 +27,7 @@ export enum FormField {
   HEADLINE = 'headline',
   IDEMPOTENCY_KEY = 'idempotencyKey',
   IS_AUTO_RELOAD_ENABLED = 'isAutoReloadEnabled',
+  IS_BRAND_CLICKOUT = 'isBrandClickout',
   IS_EXTEND_TO_OFF_PLATFORM_ENABLED = 'isExtendToOffPlatformEnabled',
   LAUNCH_DATA = 'launchData',
   LOGO_ASSETS = 'logoAsset',

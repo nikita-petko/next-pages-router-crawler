@@ -1,5 +1,4 @@
-import { Tab, Tabs } from '@rbx/ui';
-import { ChangeEvent } from 'react';
+import { Tabs, TabsList, TabsTrigger } from '@rbx/foundation-ui';
 
 import AccountScopedBuyAdCredit from '@components/billing/AccountScopedBuyAdCredit';
 import useAddPaymentMethodStyles from '@components/billing/AddPaymentMethod.styles';
@@ -78,9 +77,7 @@ const PaymentStep = ({
       buyAdCreditFormContainerCentered,
       creditCardFormContainer,
       stepLockedMessage,
-      tab,
       tabs,
-      tabSelected,
     },
   } = useAddPaymentMethodStyles();
 
@@ -111,25 +108,19 @@ const PaymentStep = ({
       {userOver18 && !isAdCreditPurchaseOnly && (
         <Tabs
           className={tabs}
-          onChange={(_e: ChangeEvent<object>, newValue: unknown) => {
+          onValueChange={(newValue: string) => {
             onPaymentTabChange(newValue as ADD_PAYMENT_TABS);
           }}
           value={paymentTab}
-          variant='fullWidth'>
-          <Tab
-            className={paymentTab === ADD_PAYMENT_TABS.CREDIT_CARD ? tabSelected : tab}
-            data-testid='creditCardTab'
-            disableTouchRipple
-            label={translateBilling('Title.Card')}
-            value={ADD_PAYMENT_TABS.CREDIT_CARD}
-          />
-          <Tab
-            className={paymentTab === ADD_PAYMENT_TABS.ADS_CREDIT ? tabSelected : tab}
-            data-testid='robuxAdCreditTab'
-            disableTouchRipple
-            label={translateBilling('Title.AdCredit')}
-            value={ADD_PAYMENT_TABS.ADS_CREDIT}
-          />
+          variant='Inlined'>
+          <TabsList>
+            <TabsTrigger data-testid='creditCardTab' value={ADD_PAYMENT_TABS.CREDIT_CARD}>
+              {translateBilling('Title.Card')}
+            </TabsTrigger>
+            <TabsTrigger data-testid='robuxAdCreditTab' value={ADD_PAYMENT_TABS.ADS_CREDIT}>
+              {translateBilling('Title.AdCredit')}
+            </TabsTrigger>
+          </TabsList>
         </Tabs>
       )}
       <CustomTabPanel index={0} value={Object.values(ADD_PAYMENT_TABS).indexOf(paymentTab)}>

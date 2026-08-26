@@ -5,8 +5,7 @@ import DateFilteringTimePeriod from '@constants/dateFilteringTimePeriod';
 /**
  * Bidirectional mapping between WACAM's backend `DateFilteringTimePeriod`
  * (numeric protobuf enum) and the shared package's `DateRangePreset`
- * (string enum). Kept co-located with `DATE_FILTERING_TIME_PERIOD_OPTIONS`
- * so future preset additions land in both places.
+ * (string enum).
  */
 const backendToPreset: Record<DateFilteringTimePeriod, DateRangePreset | null> = {
   [DateFilteringTimePeriod.DATE_FILTERING_TIME_PERIOD_CUSTOM]: DateRangePreset.Custom,

@@ -1,4 +1,5 @@
 import {
+  Alert,
   Button,
   SheetActions,
   SheetBody,
@@ -6,13 +7,11 @@ import {
   SheetRoot,
   SheetTitle,
 } from '@rbx/foundation-ui';
-import { Alert } from '@rbx/ui';
 import { useRef } from 'react';
 import { useFormContext } from 'react-hook-form';
 
 import { EventName, logNativeClickEvent } from '@clients/unifiedLogger';
 import AdvancedTargetingAudienceSection from '@components/campaignBuilder/targeting/AdvancedTargetingAudienceSection';
-import useDrawerStyles from '@components/common/Drawer.styles';
 import { FlowTypes } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import type { FormType as AdvancedTargetingFormType } from '@hooks/campaignBuilder/advancedTargetingFormSchema';
@@ -22,9 +21,6 @@ import { HaveFormValuesChanged, ResetForm } from '@utils/advancedTargeting';
 
 const AdvancedTargetingDrawer = () => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Campaign);
-  const {
-    classes: { educationText },
-  } = useDrawerStyles();
 
   const { advancedTargetingDrawerOpen, getAudienceEstimate, setAdvancedTargetingDrawerOpen } =
     useCampaignBuilderStore();
@@ -70,8 +66,12 @@ const AdvancedTargetingDrawer = () => {
       return null;
     }
     return (
-      <Alert data-testid='educationWarning' severity='warning'>
-        <span className={`text-body-large ${educationText}`} data-testid='educationWarningHeader'>
+      <Alert
+        data-testid='educationWarning'
+        hasCloseAffordance={false}
+        severity='Warning'
+        variant='Feedback'>
+        <span className='text-body-large' data-testid='educationWarningHeader'>
           {translate('Description.TargetingWarning')}
         </span>
       </Alert>

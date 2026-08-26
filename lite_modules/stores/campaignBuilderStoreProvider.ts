@@ -25,11 +25,7 @@ import {
   GetAudienceEstimateParams,
   GetAudienceEstimateResponseType,
 } from '@type/advancedTargeting';
-import {
-  CalloutBannerType,
-  GetRecommendationResponse,
-  SimplifiedCampaignType,
-} from '@type/campaignBuilder';
+import { GetRecommendationResponse, SimplifiedCampaignType } from '@type/campaignBuilder';
 import { GetEligibilityResponse } from '@type/eligibility';
 import { ListPlacesResponse } from '@type/place';
 import { AdvertisedUniverse, UniverseShapeType } from '@type/universe';
@@ -69,7 +65,6 @@ interface CampaignBuilderStoreStateType {
     latestRealTimeRequestId: number;
     universeId: number;
   };
-  calloutBanners: CalloutBannerType[];
   campaignSpendMicroUsd: number;
   campaignTodaySpendMicroUsd: number;
   detailedTargetingMatchType: ServerDetailedTargetingMatchType;
@@ -111,7 +106,6 @@ interface CampaignBuilderStoreActionType {
   setAdvancedJoinDrawerOpen: (open: boolean) => void;
   setAdvancedTargetingDrawerOpen: (open: boolean) => void;
   setAttributionThumbnailDrawerOpen: (open: boolean, universeId: number) => void;
-  setCalloutBanners: (calloutBanners: CalloutBannerType[]) => void;
   setCreativeLibraryRegistrationInProgress: (inProgress: boolean) => void;
   setDetailedTargetingMatchType: (
     detailedTargetingMatchType: ServerDetailedTargetingMatchType,
@@ -150,7 +144,6 @@ export const useCampaignBuilderStore = create<CampaignBuilderStoreType>()(
       latestRealTimeRequestId: 0,
       universeId: 0,
     },
-    calloutBanners: [],
     campaignSpendMicroUsd: 0,
     campaignTodaySpendMicroUsd: 0,
     clearSimplifiedCampaign: () => {
@@ -451,11 +444,6 @@ export const useCampaignBuilderStore = create<CampaignBuilderStoreType>()(
           open: open.toString(),
           universeId: universeId.toString(),
         });
-      });
-    },
-    setCalloutBanners: (calloutBanners: CalloutBannerType[]) => {
-      set((draft) => {
-        draft.calloutBanners = calloutBanners;
       });
     },
     setCreativeLibraryRegistrationInProgress: (inProgress: boolean) => {

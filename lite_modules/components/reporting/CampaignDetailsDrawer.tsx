@@ -1,5 +1,4 @@
-import { IconButton, SheetBody, SheetContent, SheetRoot, SheetTitle } from '@rbx/foundation-ui';
-import { Alert } from '@rbx/ui';
+import { Alert, SheetBody, SheetContent, SheetRoot, SheetTitle } from '@rbx/foundation-ui';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
 
@@ -50,19 +49,12 @@ const CampaignDetailsDrawer = () => {
           {hasPendingDecrease && (
             <Collapse in={!isBannerDismissed} unmountOnExit>
               <Alert
-                action={
-                  <IconButton
-                    ariaLabel={translateMisc('Action.Close')}
-                    icon='icon-regular-x'
-                    onClick={() => setIsBannerDismissed(true)}
-                    size='Small'
-                    variant='Utility'
-                  />
-                }
                 className={classes.pendingDecreaseBanner}
+                closeLabel={translateMisc('Action.Close')}
                 data-testid='scheduled-budget-decrease-banner'
-                severity='warning'
-                variant='outlined'>
+                onDismiss={() => setIsBannerDismissed(true)}
+                severity='Warning'
+                variant='Feedback'>
                 {translate('Message.BudgetDecreasePending')}
               </Alert>
             </Collapse>

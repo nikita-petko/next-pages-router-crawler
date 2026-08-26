@@ -1,5 +1,4 @@
-import { Badge, Icon, Link, OptionSelector } from '@rbx/foundation-ui';
-import { Alert, AlertTitle } from '@rbx/ui';
+import { Alert, Badge, Icon, Link, OptionSelector } from '@rbx/foundation-ui';
 import { Fragment, useCallback, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
@@ -154,7 +153,7 @@ const ObjectiveSection = () => {
     !editMode;
 
   const {
-    classes: { cardBanner, inlineAlertTitle, rightContentSubContainer },
+    classes: { cardBanner, rightContentSubContainer },
   } = useCampaignBuilderCommonStyles();
   const {
     classes: { iconContainer, largeIconProperties },
@@ -184,7 +183,12 @@ const ObjectiveSection = () => {
   const getBanner = () => {
     if (isExtendToOffPlatformEnabled && isSpendOffPlatformOnly) {
       return (
-        <Alert className={cardBanner} data-testid='info-banner' severity='info'>
+        <Alert
+          className={cardBanner}
+          data-testid='info-banner'
+          hasCloseAffordance={false}
+          severity='Info'
+          variant='Feedback'>
           {translate('Description.EarningsOffPlatformOnly')}
         </Alert>
       );
@@ -194,26 +198,34 @@ const ObjectiveSection = () => {
         <Alert
           className={cardBanner}
           data-testid='engaged-plays-info-banner'
-          severity='info'
-          variant='outlined'>
-          <AlertTitle className={inlineAlertTitle}>
-            {translate('Heading.EngagedPlaysBanner')}
-          </AlertTitle>
-          <div className='text-body-medium'>
-            {translateHTML('Description.EngagedPlaysBanner', [
-              {
-                closing: 'linkEnd',
-                content: (chunks) => (
-                  <Link
-                    href={ENGAGED_PLAYS_LEARN_MORE_URL}
-                    rel='noopener noreferrer'
-                    target='_blank'>
-                    {chunks}
-                  </Link>
-                ),
-                opening: 'linkStart',
-              },
-            ])}
+          hasCloseAffordance={false}
+          severity='Info'
+          variant='Feedback'>
+          {/* Alert has no title slot, so the heading and body share one row here.
+              They go inside a single wrapper rather than as two children of the
+              message row: that row is `flex items-center`, so as siblings the
+              one-line heading would sink to the middle of the body once the body
+              wrapped, while the severity icon stayed pinned to the top. */}
+          <div className='flex items-baseline'>
+            <span className='text-title-small padding-right-medium shrink-0'>
+              {translate('Heading.EngagedPlaysBanner')}
+            </span>
+            <div>
+              {translateHTML('Description.EngagedPlaysBanner', [
+                {
+                  closing: 'linkEnd',
+                  content: (chunks) => (
+                    <Link
+                      href={ENGAGED_PLAYS_LEARN_MORE_URL}
+                      rel='noopener noreferrer'
+                      target='_blank'>
+                      {chunks}
+                    </Link>
+                  ),
+                  opening: 'linkStart',
+                },
+              ])}
+            </div>
           </div>
         </Alert>
       );

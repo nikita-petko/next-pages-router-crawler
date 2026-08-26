@@ -58,9 +58,11 @@ export const applyReachCreativeFormatChange = ({
   setValue: UseFormSetValue<FormType>;
 }) => {
   if (nextFormat === ReachAdFormat.HORIZONTAL_2X1) {
-    // 2x1 (image) rejects a clickout URL, so drop the click destination and the
-    // attribution bar assets that only the clickout experience renders.
+    // 2x1 (image) rejects a clickout URL, so drop the click destination, the opt-in
+    // that reveals it, and the attribution bar assets that only the clickout
+    // experience renders.
     setValue(FormField.CLICK_DESTINATION, undefined);
+    setValue(FormField.IS_BRAND_CLICKOUT, false);
     setValue(FormField.ATTRIBUTION_THUMBNAILS, []);
     // 2x1 CTA text comes from the max-reach tile-variant experiment, not from an
     // advertiser choice.
@@ -169,6 +171,10 @@ export const applyObjectiveChange = ({
     setValue(FormField.HEADLINE, undefined);
     setValue(FormField.SUBTITLE, undefined);
     setValue(FormField.CLICK_DESTINATION, undefined);
+    // Reset alongside the field it reveals. Left set, the box comes back checked with an
+    // empty URL once the user returns to 1x2, which fails the required-URL rule and
+    // disables Publish while the error stays invisible on the untouched field.
+    setValue(FormField.IS_BRAND_CLICKOUT, false);
     setValue(FormField.LOGO_ASSETS, []);
     setValue(FormField.ATTRIBUTION_THUMBNAILS, []);
     setValue(FormField.CTA_BUTTON_TYPE, undefined);

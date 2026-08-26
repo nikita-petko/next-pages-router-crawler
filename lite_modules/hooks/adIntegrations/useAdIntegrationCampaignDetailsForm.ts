@@ -46,6 +46,15 @@ export const getIsCampaignEnded = (
   Boolean(endDate) &&
   moment.tz(endDate, DateFormat, timezoneDbName).isBefore(moment().tz(timezoneDbName), 'day');
 
+const isValidAdvertiserUrl = (value: string): boolean => {
+  try {
+    const url = new URL(value);
+    return (url.protocol === 'http:' || url.protocol === 'https:') && Boolean(url.hostname);
+  } catch {
+    return false;
+  }
+};
+
 const useAdIntegrationCampaignDetailsSchema = (
   campaignInProgress: boolean,
   isMultiUniverseEnabled: boolean,
@@ -81,7 +90,7 @@ const useAdIntegrationCampaignDetailsSchema = (
                 fieldName: translateAccount('Label.AdvertiserName'),
               }),
             ),
-          [AdIntegrationFormField.AdvertiserUrl]: z.string(),
+          [AdIntegrationFormField.AdvertiserUrl]: z.string().trim(),
           [AdIntegrationFormField.CampaignName]: z
             .string()
             .min(
@@ -161,6 +170,18 @@ const useAdIntegrationCampaignDetailsSchema = (
                 fieldMaxLength: String(MaxAdvertiserUrlLength),
                 fieldName: translate('Label.AdvertiserUrl'),
               }),
+              path: [AdIntegrationFormField.AdvertiserUrl],
+            });
+          }
+          if (
+            isMultiUniverseEnabled &&
+            !campaignInProgress &&
+            values.advertiserUrl.trim().length > 0 &&
+            !isValidAdvertiserUrl(values.advertiserUrl.trim())
+          ) {
+            ctx.addIssue({
+              code: 'custom',
+              message: translate('Validation.InvalidUrl'),
               path: [AdIntegrationFormField.AdvertiserUrl],
             });
           }

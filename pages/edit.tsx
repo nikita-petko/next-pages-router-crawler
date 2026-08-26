@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 
 import CampaignBreadcrumbs from '@components/campaignBuilder/common/Breadcrumbs';
 import EditCampaignContainer from '@components/campaignBuilder/edit/EditCampaignContainer';
@@ -30,6 +30,7 @@ const EditCampaignPage = () => {
     universesCanAdvertise,
   } = useCampaignBuilderStore();
   const router = useRouter();
+  const [finishedFirstLoad, setFinishedFirstLoad] = useState<boolean>(false);
 
   if (!router.query.campaignId) {
     router.push(Routes.MANAGE);
@@ -52,6 +53,9 @@ const EditCampaignPage = () => {
       !paymentProfiles.isLoading &&
       !advertiserState.isLoading &&
       !simplifiedCampaign.isLoading;
+    if (isLoaded) {
+      setFinishedFirstLoad(true);
+    }
     if (
       isLoaded &&
       !adTogglingShouldBeEnabled(
@@ -79,11 +83,7 @@ const EditCampaignPage = () => {
   return (
     <AdsManagerPageBaseLayout
       isLoading={
-        adCreditState.isLoading ||
-        paymentProfiles.isLoading ||
-        advertiserState.isLoading ||
-        simplifiedCampaign.isLoading ||
-        universesCanAdvertise.isLoading
+        !finishedFirstLoad || simplifiedCampaign.isLoading || universesCanAdvertise.isLoading
       }>
       <EditCampaignContainer />
     </AdsManagerPageBaseLayout>

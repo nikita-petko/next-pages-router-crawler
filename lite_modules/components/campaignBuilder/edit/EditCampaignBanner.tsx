@@ -1,4 +1,4 @@
-import { Alert, AlertTitle } from '@rbx/ui';
+import { Alert } from '@rbx/foundation-ui';
 
 import useCampaignBuilderCommonStyles from '@components/campaignBuilder/common/CampaignBuilderCommon.styles';
 import { TranslationNamespace } from '@constants/localization';
@@ -9,7 +9,7 @@ import { GetEditCampaignDisabledTooltipText } from '@utils/campaignBuilder';
 const EditCampaignBanner = () => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const {
-    classes: { banner, mb4 },
+    classes: { mb4 },
   } = useCampaignBuilderCommonStyles();
   const campaignStatus = useCampaignBuilderStore(
     (state) => state.simplifiedCampaign?.data?.display_status,
@@ -20,11 +20,9 @@ const EditCampaignBanner = () => {
     return null;
   }
   return (
-    <div className={`text-body-large ${banner}`}>
-      <Alert className={mb4} severity='warning' variant='standard'>
-        <AlertTitle>{translate(bannerTextKey)}</AlertTitle>
-      </Alert>
-    </div>
+    <Alert className={mb4} hasCloseAffordance={false} severity='Warning' variant='Feedback'>
+      {translate(bannerTextKey)}
+    </Alert>
   );
 };
 

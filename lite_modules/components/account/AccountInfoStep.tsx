@@ -1,5 +1,5 @@
-import { Button, Checkbox, Link } from '@rbx/foundation-ui';
-import { Alert, FormLabel } from '@rbx/ui';
+import { Alert, Button, Checkbox, Link } from '@rbx/foundation-ui';
+import { FormLabel } from '@rbx/ui';
 import { useId } from 'react';
 import { Controller, FormProvider, UseFormReturn } from 'react-hook-form';
 
@@ -49,7 +49,11 @@ const AccountInfoStep = ({
 
   if (isCompleted) {
     return (
-      <Alert severity='success' sx={{ mt: 1 }}>
+      <Alert
+        className='margin-top-small'
+        hasCloseAffordance={false}
+        severity='Success'
+        variant='Feedback'>
         {translate('Message.SetupStepCompleted')}
       </Alert>
     );
