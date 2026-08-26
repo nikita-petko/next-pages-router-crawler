@@ -36,6 +36,13 @@ const pendingReview: content = {
   textWithDate: undefined,
 };
 
+const moderationReview: content = {
+  icon: <AccessTimeIcon fontSize='inherit' />,
+  variant: 'warning',
+  text: 'Label.ModerationReview',
+  textWithDate: undefined,
+};
+
 const conditionalOfferCompactContent: content = {
   icon: <AccessTimeIcon fontSize='inherit' />,
   variant: 'warning',
@@ -222,13 +229,14 @@ const CreatorAgreementStatusLabel: React.FC<Props> = ({ agreement, isCompact = f
     content = creatorActionRequired;
     date = ipRemovalAttestation.expiresAtTime;
   }
-  if (
-    isImageAttachmentFlagReady &&
-    isImageAttachmentEnabled &&
-    status === AgreementStatus.Draft &&
-    activityLog?.[0]?.transition === AgreementTransition.PitchImageRejected
-  ) {
-    content = creatorActionRequired;
+  const latestTransition = activityLog?.[0]?.transition;
+
+  if (isImageAttachmentFlagReady && isImageAttachmentEnabled && status === AgreementStatus.Draft) {
+    if (latestTransition === AgreementTransition.PitchImagePendingModeration) {
+      content = moderationReview;
+    } else if (latestTransition === AgreementTransition.PitchImageRejected) {
+      content = creatorActionRequired;
+    }
   }
 
   let text = translate(content.text);
