@@ -5,6 +5,7 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 enum AnalyticsViewType {
   Overview = 'Overview',
   RewardedAds = 'RewardedAds',
+  ManagedRewarded = 'ManagedRewarded',
   VideoAds = 'VideoAds',
   PortalAds = 'PortalAds',
   ImageAds = 'ImageAds',
@@ -23,6 +24,10 @@ const analyticsViewItems: AnalyticsView[] = [
   {
     type: AnalyticsViewType.RewardedAds,
     nameKey: translationKey('Heading.RewardedAds', TranslationNamespace.ImmersiveAdsAnalytics),
+  },
+  {
+    type: AnalyticsViewType.ManagedRewarded,
+    nameKey: translationKey('Heading.ManagedRewarded', TranslationNamespace.ImmersiveAdsAnalytics),
   },
   {
     type: AnalyticsViewType.VideoAds,

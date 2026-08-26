@@ -141,6 +141,24 @@ const showRateCardConfig = {
   showComparisonChip: true,
 } as const satisfies AnalyticsSummaryCardConfig;
 
+// EPM breakdown, Managed Rewarded tab: CTR. Same metric as
+// `showRateCardConfig` — impressions / fills — which is the definition of CTR
+// for Play with Reward.
+const ctrCardConfig = {
+  type: AnalyticsComponentType.SummaryCard,
+  cardType: RAQIV2SummaryCardType.Metric,
+  metric: RAQIV2Metric.AdsPublisherReportingVideo2DConversionRate,
+  summaryType: { type: RAQIV2SummaryType.Average },
+  label: {
+    key: configConstants.ClickThroughRateTitleKey,
+    tooltip: configConstants.ClickThroughRateDescriptionKey,
+    type: 'simple',
+  },
+  fullWidth: false,
+  overrides: {},
+  showComparisonChip: true,
+} as const satisfies AnalyticsSummaryCardConfig;
+
 // EPM breakdown: reward rate (% of times a user watches an ad and gets a
 // reward, i.e. rewards / impressions).
 const rewardRateCardConfig = {
@@ -167,5 +185,6 @@ export default {
   fillRateCardConfigV2,
   optInRateCardConfig,
   showRateCardConfig,
+  ctrCardConfig,
   rewardRateCardConfig,
 };

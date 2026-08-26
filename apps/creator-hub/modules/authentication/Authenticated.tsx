@@ -2,6 +2,7 @@ import type { FunctionComponent } from 'react';
 import React, { useEffect } from 'react';
 import Router from 'next/router';
 import { useRobloxAuthentication } from '@rbx/auth';
+import { usePolyfills } from '@rbx/polyfills/deferred';
 import { getWebViewLoadingStyles } from '@rbx/studio-webview';
 import { LinearProgress, makeStyles } from '@rbx/ui';
 import LoadError from '@modules/miscellaneous/error/LoadError';
@@ -41,6 +42,9 @@ const Authenticated: FunctionComponent<React.PropsWithChildren> = ({ children })
     classes: { loading, content, background },
   } = useStyles();
   const { status, login } = useRobloxAuthentication();
+  // Gated here, not in `_app`: the loading state below renders on both the server and the
+  // first client render, so old browsers don't hydration-mismatch into a full remount.
+  const polyfillsReady = usePolyfills();
 
   useEffect(() => {
     if (process.env.buildTarget === 'luobu' && status === 'moderated') {
@@ -56,10 +60,11 @@ const Authenticated: FunctionComponent<React.PropsWithChildren> = ({ children })
     }
   }, [login, status]);
 
-  if (status === 'initial' || status === 'loading') {
+  if (status === 'initial' || status === 'loading' || !polyfillsReady) {
     return (
       <div className={background}>
         <div className={content}>
+          {/* oxlint-disable-next-line rbx/no-hardcoded-translation-string -- pre-existing; no registered key, and this renders before translations are ready */}
           <LinearProgress classes={{ root: loading }} title='loading' />
         </div>
       </div>

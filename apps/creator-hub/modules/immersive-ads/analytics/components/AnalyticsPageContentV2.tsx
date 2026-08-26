@@ -4,7 +4,10 @@ import { useFlag } from '@rbx/flags';
 import { clsx } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { Chip, Typography } from '@rbx/ui';
-import { isAdsPageRedesignEnabled } from '@generated/flags/immersiveAds';
+import {
+  isAdsPageRedesignEnabled,
+  isManagedRewardedTabEnabled,
+} from '@generated/flags/immersiveAds';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import ChartResourceType from '@modules/charts-generic/enums/ChartResourceType';
@@ -83,15 +86,43 @@ const AnalyticsPageContentV2 = ({
   const { value: adsPageRedesignFlagValue } = useFlag(isAdsPageRedesignEnabled);
   const isAdsPageRedesignOn = adsPageRedesignFlagValue ?? false;
 
+  const { ready: isManagedRewardedTabFlagReady, value: managedRewardedTabFlagValue } = useFlag(
+    isManagedRewardedTabEnabled,
+  );
+  const isManagedRewardedTabOn = managedRewardedTabFlagValue ?? false;
+
+  const visibleAnalyticsViewItems = useMemo(
+    () =>
+      analyticsViewItems.filter(
+        (item) => item.type !== AnalyticsViewType.ManagedRewarded || isManagedRewardedTabOn,
+      ),
+    [isManagedRewardedTabOn],
+  );
+
+  // Deep links carry the view type in a query param, so a stale or hand-edited
+  // `adType` can select a gated tab. Fall back to Overview rather than render a
+  // tab with no chip to navigate away from.
+  const activeAnalyticsViewType =
+    analyticsViewType === AnalyticsViewType.ManagedRewarded && !isManagedRewardedTabOn
+      ? AnalyticsViewType.Overview
+      : analyticsViewType;
+
+  // `useFlag` resolves asynchronously, so a deep link to the gated tab would
+  // otherwise mount the Overview layout and fire its queries on the first
+  // render, then swap once the flag arrives. Neither layout is the right one to
+  // mount while the answer is unknown, so hold the layout back until it lands.
+  const isManagedRewardedTabFlagPending =
+    analyticsViewType === AnalyticsViewType.ManagedRewarded && !isManagedRewardedTabFlagReady;
+
   const getPageLayout = useMemo(() => {
-    if (analyticsViewType === AnalyticsViewType.Overview && isAdsPageRedesignOn) {
+    if (activeAnalyticsViewType === AnalyticsViewType.Overview && isAdsPageRedesignOn) {
       return overviewPageLayoutRedesign;
     }
-    if (analyticsViewType === AnalyticsViewType.RewardedAds) {
+    if (activeAnalyticsViewType === AnalyticsViewType.RewardedAds) {
       return rewardedVideoPageLayout;
     }
-    return analyticsViewTypeToPageLayoutMap[analyticsViewType] || [];
-  }, [analyticsViewType, isAdsPageRedesignOn]);
+    return analyticsViewTypeToPageLayoutMap[activeAnalyticsViewType] || [];
+  }, [activeAnalyticsViewType, isAdsPageRedesignOn]);
 
   const analyticsPageConfig: CreatorAnalyticsEmbeddedSurfaceConfig = useMemo(
     () => ({
@@ -99,31 +130,31 @@ const AnalyticsPageContentV2 = ({
       resourceTypes: [ChartResourceType.Universe],
       timeRangeOptions: immersiveAdsTimeRangeOptions,
       surfaceAnnotationOptions: immersiveAdsSurfaceAnnotationOptions,
-      filterDimensions: [...filterDimensions, ...viewTypeSpecificFilters[analyticsViewType]],
+      filterDimensions: [...filterDimensions, ...viewTypeSpecificFilters[activeAnalyticsViewType]],
       defaultFilters: [],
       breakdownDimensions: [
         ...breakdownDimensions,
-        ...viewTypeSpecificBreakdownDimensions[analyticsViewType],
+        ...viewTypeSpecificBreakdownDimensions[activeAnalyticsViewType],
       ],
-      defaultBreakdown: viewTypeDefaultBreakdownDimension[analyticsViewType],
+      defaultBreakdown: viewTypeDefaultBreakdownDimension[activeAnalyticsViewType],
       body: getPageLayout,
     }),
-    [analyticsViewType, getPageLayout],
+    [activeAnalyticsViewType, getPageLayout],
   );
 
   return (
     <div>
       <div className={clsx('flex', classes.subMenu)}>
         <div className={clsx('flex', classes.subMenuChips)}>
-          {analyticsViewItems?.map((analyticsViewItem) => (
+          {visibleAnalyticsViewItems.map((analyticsViewItem) => (
             <Chip
               key={analyticsViewItem.type}
               label={translate(analyticsViewItem.nameKey)}
               clickable
-              color={analyticsViewType === analyticsViewItem.type ? 'primary' : 'secondary'}
+              color={activeAnalyticsViewType === analyticsViewItem.type ? 'primary' : 'secondary'}
               onClick={() => setAnalyticsViewType(analyticsViewItem.type)}
               role='tab'
-              aria-selected={analyticsViewType === analyticsViewItem.type}
+              aria-selected={activeAnalyticsViewType === analyticsViewItem.type}
               tabIndex={0}
             />
           ))}
@@ -135,7 +166,7 @@ const AnalyticsPageContentV2 = ({
         </Typography>
       </div>
 
-      <CreatorAnalyticsLayout config={analyticsPageConfig} />
+      {!isManagedRewardedTabFlagPending && <CreatorAnalyticsLayout config={analyticsPageConfig} />}
     </div>
   );
 };

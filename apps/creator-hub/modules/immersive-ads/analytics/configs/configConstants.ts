@@ -308,6 +308,21 @@ const ShowRateDescriptionKey = translationKey(
   TranslationNamespace.ImmersiveAdsAnalytics,
 );
 
+const ClickThroughRateTitleKey = translationKey(
+  'Title.ClickThroughRate',
+  TranslationNamespace.ImmersiveAdsAnalytics,
+);
+
+// Same metric as `ShowRateTitleKey` (impressions / fills), surfaced as CTR on
+// the Managed Rewarded tab. On Play with Reward the impression only fires once
+// the player chooses the reward flow, so the ratio spans a real click; on
+// in-experience rewarded video the player opts in before the request, so there
+// it stays labeled "Show rate".
+const ClickThroughRateDescriptionKey = translationKey(
+  'Description.ClickThroughRate',
+  TranslationNamespace.ImmersiveAdsAnalytics,
+);
+
 const RewardRateTitleKey = translationKey(
   'Title.RewardRate',
   TranslationNamespace.ImmersiveAdsAnalytics,
@@ -380,6 +395,8 @@ export default {
   OptInRateDescriptionKey,
   ShowRateTitleKey,
   ShowRateDescriptionKey,
+  ClickThroughRateTitleKey,
+  ClickThroughRateDescriptionKey,
   RewardRateTitleKey,
   RewardRateDescriptionKey,
 };

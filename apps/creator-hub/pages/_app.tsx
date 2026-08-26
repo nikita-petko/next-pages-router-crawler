@@ -1,15 +1,12 @@
 // Must stay first: `BigInt` has to be installed before any module that evaluates zod.
 import '@rbx/polyfills';
-// Intl shims are app-owned (~116KB gzipped); `intl-locale` must precede the next import.
-import '@formatjs/intl-locale/polyfill';
-import '@formatjs/intl-relativetimeformat/polyfill';
+import React, { type FunctionComponent, useEffect, useMemo } from 'react';
 import '@rbx/webfont';
 // Foundation UI ships its component CSS as a standalone stylesheet rather than injecting it at
 // import time, so its components render without elevation, stacking, and theme variables
 // unless this is imported once globally.
 import '@rbx/foundation-ui/style';
 import '../styles/globals.css';
-import React, { type FunctionComponent, useEffect, useMemo } from 'react';
 import type { NextComponentType, NextGetPageLayout } from 'next';
 import type { AppContext, AppInitialProps, AppLayoutProps } from 'next/app';
 import { useRouter } from 'next/router';
@@ -21,6 +18,9 @@ import { CookieConsentProvider } from '@rbx/cookie-banner';
 import { useMaintenanceObserver } from '@rbx/creator-hub-error';
 import { NavigationConfigsProvider } from '@rbx/creator-hub-navigation';
 import { LocalizationProvider } from '@rbx/intl';
+// Starts the download at module scope; rendering is gated in `Authenticated`, which
+// already has a loading state matching the prerendered HTML.
+import '@rbx/polyfills/deferred';
 import { createThumbnailsClient, ThumbnailsProvider } from '@rbx/thumbnails';
 import {
   CacheProvider,
@@ -179,6 +179,7 @@ export const CustomApp: CustomAppFC = ({ Component, pageProps, cache }) => {
   useEffect(() => {
     removeServerSideCSS();
   }, []);
+
   // NOTE(@yanzhuang, 5/2024): double write legacy events to the new unified logger
   trackerClient.setUnifiedLoggerClient(unifiedLoggerClient);
 

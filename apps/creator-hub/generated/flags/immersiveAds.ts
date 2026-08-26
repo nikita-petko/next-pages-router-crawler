@@ -7,3 +7,8 @@ export const isAdsPageRedesignEnabled = defineFlag({
     name: 'isAdsPageRedesignEnabled',
     defaultValue: false,
   });
+export const isManagedRewardedTabEnabled = defineFlag({
+    namespace: 'immersive-ads',
+    name: 'isManagedRewardedTabEnabled',
+    defaultValue: false,
+  });

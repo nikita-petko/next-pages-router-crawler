@@ -712,6 +712,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: immersiveAdsFlags.isManagedRewardedTabEnabled,
+      metadata: {
+        namespace: 'immersive-ads',
+        name: 'isManagedRewardedTabEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: leaderboardsFlags.isLeaderboardConfigsEnabled,
       metadata: {
         namespace: 'leaderboards',
