@@ -138,11 +138,6 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
   if (isApiBacked) {
     totalPages = hasNextPage ? pageState.page + 1 : pageState.page;
   }
-  const rangeStart = serverFilteredCount === 0 ? 0 : (pageState.page - 1) * pageState.pageSize + 1;
-  const rangeEnd =
-    serverFilteredCount === 0
-      ? 0
-      : (pageState.page - 1) * pageState.pageSize + serverPagedItems.length;
   const totalCount = isApiBacked ? undefined : serverFilteredCount;
 
   const refresh = useCallback(() => {
@@ -324,8 +319,6 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
                 page={pageState.page}
                 pageSize={pageState.pageSize}
                 totalPages={totalPages}
-                rangeStart={rangeStart}
-                rangeEnd={rangeEnd}
                 totalCount={totalCount}
                 disabled={isLoading}
                 onPageChange={handlePageChange}

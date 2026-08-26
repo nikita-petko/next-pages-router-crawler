@@ -20,6 +20,8 @@ export type GenericTablePaginationSpec = {
   onPreviousPage: () => void;
   hasNext: boolean;
   hasPrevious: boolean;
+  /** Disables next/previous and the rows-per-page selector (e.g. while a list is loading). */
+  disabled?: boolean;
 };
 
 /**
@@ -39,6 +41,7 @@ const GenericTablePagination: FC<GenericTablePaginationSpec> = ({
   onPreviousPage,
   hasNext,
   hasPrevious,
+  disabled = false,
 }) => {
   const { translate } = useTranslationWrapper(useTranslation());
   const {
@@ -99,8 +102,13 @@ const GenericTablePagination: FC<GenericTablePaginationSpec> = ({
         labelRowsPerPage={translate(
           translationKey('Label.RowsPerPage', TranslationNamespace.Table),
         )}
-        nextIconButtonProps={{ disabled: !hasNext }}
-        backIconButtonProps={{ disabled: !hasPrevious }}
+        slotProps={{
+          actions: {
+            nextButton: { disabled: disabled || !hasNext },
+            previousButton: { disabled: disabled || !hasPrevious },
+          },
+        }}
+        disabled={disabled}
         labelDisplayedRows={labelDisplayedRows}
       />
     );
@@ -115,6 +123,7 @@ const GenericTablePagination: FC<GenericTablePaginationSpec> = ({
     translate,
     hasNext,
     hasPrevious,
+    disabled,
     labelDisplayedRows,
   ]);
 

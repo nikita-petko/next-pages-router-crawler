@@ -154,61 +154,11 @@ export function useManagePageTranslations() {
       translationKey('Action.CustomDashboards.Delete', TranslationNamespace.Analytics),
     ),
 
-    paginationRegionLabel: tPendingTranslation(
-      'Pagination',
-      'Accessible region label for the pagination strip below the dashboards table. Names the entire control (selector + range readout + nav buttons) so screen readers announce it as a single landmark.',
-      translationKey('Label.Pagination.Region', TranslationNamespace.Analytics),
-    ),
     unknownCreatorLabel: tPendingTranslation(
       'Unknown creator',
       'Fallback creator name shown when the custom dashboards API does not return a username.',
       translationKey('Label.CustomDashboards.UnknownCreator', TranslationNamespace.Analytics),
     ),
-    paginationRowsPerPage: tPendingTranslation(
-      'Rows per page',
-      'Label for the pagination rows-per-page selector in the dashboards table.',
-      translationKey('Label.Pagination.RowsPerPage', TranslationNamespace.Analytics),
-    ),
-    paginationRangeReadout: (args: { range: string; total: string }) =>
-      tPendingTranslation(
-        'Rows {range} of {total}',
-        'Live readout describing which rows are currently visible in the dashboards table. {range} is the locale-formatted "start–end" pair (e.g. "1–10", "١–١٠") and {total} is the locale-formatted total count.',
-        translationKey('Label.Pagination.RangeReadout', TranslationNamespace.Analytics),
-        args,
-      ),
-    paginationRangeReadoutWithoutTotal: (args: { range: string }) =>
-      tPendingTranslation(
-        'Rows {range}',
-        'Live readout describing which rows are visible when the cursor-paginated backend does not provide a total count. {range} is the locale-formatted start–end pair.',
-        translationKey('Label.Pagination.RangeReadoutWithoutTotal', TranslationNamespace.Analytics),
-        args,
-      ),
-    paginationRangeReadoutLoading: tPendingTranslation(
-      'Rows —',
-      'Placeholder shown in place of the rows range readout while the dashboards list is loading.',
-      translationKey('Label.Pagination.RangeReadoutLoading', TranslationNamespace.Analytics),
-    ),
-    paginationFirstPageLabel: tPendingTranslation(
-      'First page',
-      'Accessible label for the pagination first-page button.',
-      translationKey('Action.Pagination.FirstPage', TranslationNamespace.Analytics),
-    ),
-    paginationPrevPageLabel: tPendingTranslation(
-      'Previous page',
-      'Accessible label for the pagination previous-page button.',
-      translationKey('Action.Pagination.PreviousPage', TranslationNamespace.Analytics),
-    ),
-    paginationNextPageLabel: tPendingTranslation(
-      'Next page',
-      'Accessible label for the pagination next-page button.',
-      translationKey('Action.Pagination.NextPage', TranslationNamespace.Analytics),
-    ),
-    paginationLastPageLabel: tPendingTranslation(
-      'Last page',
-      'Accessible label for the pagination last-page button.',
-      translationKey('Action.Pagination.LastPage', TranslationNamespace.Analytics),
-    ),
-
     emptyStateHeadline: tPendingTranslation(
       'No custom dashboards yet',
       'Headline shown in the manage-page empty state when the experience has no dashboards.',

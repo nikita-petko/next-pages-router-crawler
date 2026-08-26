@@ -26,21 +26,3 @@ export function formatLastModifiedDate(isoTimestamp: string, locale?: string): s
 
   return formatter.format(date);
 }
-
-/**
- * Locale-correct number formatting for the dashboards-table pagination
- * range readout. Returns the two pieces the translation interpolates:
- * `range` (the start–end pair) and `total` (the row count).
- */
-export function formatRangeReadout(
-  start: number,
-  end: number,
-  total: number,
-  locale?: string,
-): { range: string; total: string } {
-  const numberFormat = new Intl.NumberFormat(locale);
-  return {
-    range: start === end ? numberFormat.format(start) : numberFormat.formatRange(start, end),
-    total: numberFormat.format(total),
-  };
-}
