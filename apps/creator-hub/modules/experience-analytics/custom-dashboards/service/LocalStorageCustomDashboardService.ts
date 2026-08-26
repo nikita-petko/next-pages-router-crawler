@@ -24,6 +24,7 @@ import {
   type CustomDashboardListResult,
   type CustomDashboardMutationOptions,
   EMPTY_DASHBOARD_CONFIG,
+  LOCAL_DASHBOARD_LIST_CAPABILITIES,
   MAX_DASHBOARDS_PER_UNIVERSE,
   MAX_PINNED_DASHBOARDS,
   type UpdateCustomDashboardInput,
@@ -580,7 +581,11 @@ class LocalStorageCustomDashboardService implements CustomDashboardService {
     const { records } = this.readMaterialised(universeId);
     const allItems = sortDashboardsForList(Object.values(records).map((r) => r.document));
     const migrationFailedCount = this.corruptedByUniverse.get(universeId)?.length ?? 0;
-    return { ...pageLocalItems(allItems, options), migrationFailedCount };
+    return {
+      ...pageLocalItems(allItems, options),
+      capabilities: LOCAL_DASHBOARD_LIST_CAPABILITIES,
+      migrationFailedCount,
+    };
   }
 
   async get(universeId: number, dashboardId: string): Promise<CustomDashboardDocument> {

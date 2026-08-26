@@ -95,6 +95,9 @@ class HybridCustomDashboardService implements CustomDashboardService {
     return {
       items: apiResult.items.map(asServerItem),
       canEditCustomDashboards: apiResult.canEditCustomDashboards,
+      // Create/createAndPublish write locally; publish the local cap so
+      // callers do not treat the server quota as the hybrid write limit.
+      capabilities: localResult.capabilities,
       localItems: localResult.items.map(asLocalCopyItem),
       nextPageToken: apiResult.nextPageToken,
       migrationFailedCount: apiResult.migrationFailedCount + localResult.migrationFailedCount,

@@ -3,6 +3,8 @@ import { Button, Link } from '@rbx/foundation-ui';
 import { useManagePageTranslations } from '../useManagePageTranslations';
 import ManagePageOverflowMenu from './ManagePageOverflowMenu';
 
+const CREATE_LIMIT_DESCRIPTION_ID = 'custom-dashboards-create-limit';
+
 /**
  * Manage-page header. Stays invariant across render states (Loading / Empty /
  * List / No-matches) so the chrome doesn't jitter as content swaps below.
@@ -12,6 +14,7 @@ type ManagePageHeaderStackProps = {
   readonly isCreateEnabled: boolean;
   readonly onCreateClick: () => void;
   readonly onRefresh: () => void;
+  readonly maxDashboardsPerUniverse?: number;
 };
 
 const ManagePageHeaderStack: FC<ManagePageHeaderStackProps> = ({
@@ -19,8 +22,13 @@ const ManagePageHeaderStack: FC<ManagePageHeaderStackProps> = ({
   isCreateEnabled,
   onCreateClick,
   onRefresh,
+  maxDashboardsPerUniverse,
 }) => {
   const t = useManagePageTranslations();
+  const formattedLimit =
+    maxDashboardsPerUniverse === undefined
+      ? undefined
+      : new Intl.NumberFormat().format(maxDashboardsPerUniverse);
 
   return (
     <header className='flex flex-col small:flex-row small:items-start small:justify-between gap-medium'>
@@ -34,6 +42,13 @@ const ManagePageHeaderStack: FC<ManagePageHeaderStackProps> = ({
             {t.learnMoreLabel}
           </Link>
         </p>
+        {formattedLimit === undefined ? null : (
+          <p
+            id={CREATE_LIMIT_DESCRIPTION_ID}
+            className='text-body-medium content-muted margin-none'>
+            {t.createLimitDescription({ limit: formattedLimit })}
+          </p>
+        )}
       </div>
 
       <div className='flex items-center gap-small shrink-0'>
@@ -41,7 +56,8 @@ const ManagePageHeaderStack: FC<ManagePageHeaderStackProps> = ({
           variant='Emphasis'
           size='Medium'
           onClick={onCreateClick}
-          isDisabled={!isCreateEnabled}>
+          isDisabled={!isCreateEnabled}
+          aria-describedby={formattedLimit === undefined ? undefined : CREATE_LIMIT_DESCRIPTION_ID}>
           {t.createButtonLabel}
         </Button>
         <ManagePageOverflowMenu onRefresh={onRefresh} />

@@ -37,15 +37,31 @@ export const MAX_DASHBOARD_DESCRIPTION_LENGTH = 280;
 export const MAX_TILE_TITLE_LENGTH = 80;
 
 /**
- * Per-universe dashboard count cap. Authoritative on the backend once the
- * server-backed service exists; the frontend enforces the same number so the
- * UX rejects creates locally without a roundtrip. When the cap moves, both
- * sides must change together — keep this constant the single source of truth
- * on the client and mirror it server-side. Sized to keep the manage-page
- * list view (eager-loaded, no pagination at M1) snappy while covering
- * realistic creator workflows.
+ * Per-universe dashboard count cap for local-only backends (in-memory and
+ * localStorage). API-backed lists must use
+ * `ListDashboardsResponse.capabilities.limits.maxDashboardsPerUniverse`
+ * instead of this constant — the server publishes the live runtime value and
+ * remains the write authority.
  */
 export const MAX_DASHBOARDS_PER_UNIVERSE = 16;
+
+/**
+ * Write capabilities and limits returned with a dashboard list. API-backed
+ * lists copy `ListDashboardsResponse.capabilities`. Local backends publish
+ * only the cap they themselves enforce. A missing or non-positive
+ * `maxDashboardsPerUniverse` means the client must not invent a cap.
+ */
+export type CustomDashboardListCapabilities = {
+  readonly canCreate?: boolean;
+  readonly canEdit?: boolean;
+  readonly limits?: {
+    readonly maxDashboardsPerUniverse?: number;
+  };
+};
+
+export const LOCAL_DASHBOARD_LIST_CAPABILITIES: CustomDashboardListCapabilities = {
+  limits: { maxDashboardsPerUniverse: MAX_DASHBOARDS_PER_UNIVERSE },
+};
 
 /**
  * Per-universe pinned-dashboard cap. Authoritative on the backend once the
@@ -394,6 +410,12 @@ export type CustomDashboardListResult = {
    * determined by the active service provider instead.
    */
   readonly canEditCustomDashboards?: boolean;
+  /**
+   * Capabilities and limits from `ListDashboardsResponse.capabilities`, or
+   * the local-backend equivalent. Absent when the payload did not include
+   * them (older servers, or a list that never loaded).
+   */
+  readonly capabilities?: CustomDashboardListCapabilities;
   /** Hybrid mode: local-only copies shown in a separate manage-page section. */
   readonly localItems?: ReadonlyArray<CustomDashboardListItem>;
   /** Opaque cursor for the next server page; absent when there is no next page. */

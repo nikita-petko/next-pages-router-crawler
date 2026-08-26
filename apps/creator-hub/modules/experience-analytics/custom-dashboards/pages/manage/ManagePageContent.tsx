@@ -16,6 +16,7 @@ import {
 import { filterCustomDashboardText } from '../../textFilter';
 import { MAX_PINNED_DASHBOARDS } from '../../types';
 import type { CustomDashboardListItem } from '../../types';
+import { readMaxDashboardsPerUniverse } from '../../utils/readMaxDashboardsPerUniverse';
 import type { EditorWorkingCopy } from '../../workingCopy/editorWorkingCopy';
 import DashboardsEmptyState from './components/DashboardsEmptyState';
 import DashboardsErrorState from './components/DashboardsErrorState';
@@ -181,7 +182,32 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
   // Distinct error branch so a load failure doesn't fall through to
   // `isInitialEmpty` and render the Create CTA.
   const isError = !isLoading && listQuery.isError;
-  const isCreateEnabled = isUniverseReady && !isLoading && !isError && canMutateDashboards;
+  // Hybrid lists always include `localItems`. Create/createAndPublish write
+  // to localStorage, so the server cap/count must not disable that path.
+  const isHybridLocalWrite = localItems !== undefined;
+  const maxDashboardsPerUniverse = readMaxDashboardsPerUniverse(
+    listQuery.data?.capabilities ?? rootListQuery.data?.capabilities,
+  );
+  // API-backed paging loads one page into `listQuery`; the cap spans all
+  // server dashboards, so wait for the root list before enabling Create.
+  const isRootListPendingForCap =
+    isApiBacked &&
+    !isHybridLocalWrite &&
+    (rootListQuery.isPending || (rootListQuery.isFetching && rootListQuery.data === undefined));
+  const dashboardCountForCap = isHybridLocalWrite
+    ? localItems.length
+    : isApiBacked
+      ? (rootListQuery.data?.items.length ?? 0)
+      : (serverItems?.length ?? 0);
+  const isAtDashboardCap =
+    maxDashboardsPerUniverse !== undefined && dashboardCountForCap >= maxDashboardsPerUniverse;
+  const isCreateEnabled =
+    isUniverseReady &&
+    !isLoading &&
+    !isError &&
+    !isRootListPendingForCap &&
+    canMutateDashboards &&
+    !isAtDashboardCap;
   // Only page 1 (no page token) can be "initial empty" — i.e. the universe
   // genuinely has no dashboards. An empty page 2+ means the user paginated
   // past the last page (spurious token or items deleted between loads);
@@ -294,6 +320,7 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
           isCreateEnabled={isCreateEnabled}
           onCreateClick={onCreateClick}
           onRefresh={refresh}
+          maxDashboardsPerUniverse={maxDashboardsPerUniverse}
         />
 
         <InternalSandboxBanner />

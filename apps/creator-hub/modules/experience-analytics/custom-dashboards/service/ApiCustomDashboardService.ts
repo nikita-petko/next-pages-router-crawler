@@ -20,6 +20,7 @@ import {
 } from '../utils/suggestDefaultName';
 import {
   createDefaultCustomDashboardsApiClient,
+  type ApiDashboardCapabilities,
   type ApiDashboardMetadata,
   type CustomDashboardsApiClient,
 } from './customDashboardsApiClient';
@@ -76,6 +77,7 @@ class ApiCustomDashboardService implements CustomDashboardService {
       return {
         items: sortDashboardsForList(items),
         canEditCustomDashboards: response.capabilities?.canEdit === true,
+        capabilities: response.capabilities,
         migrationFailedCount: 0,
         nextPageToken: options ? (response.nextPageToken ?? undefined) : undefined,
       };
@@ -417,11 +419,11 @@ class ApiCustomDashboardService implements CustomDashboardService {
     universeId: number,
     pageToken?: string,
     accumulated: ReadonlyArray<ApiDashboardMetadata> = [],
-    canEditCustomDashboards?: boolean,
+    capabilities?: ApiDashboardCapabilities,
   ): Promise<{
     readonly dashboards: ReadonlyArray<ApiDashboardMetadata>;
     readonly nextPageToken?: string;
-    readonly capabilities?: { readonly canEdit?: boolean };
+    readonly capabilities?: ApiDashboardCapabilities;
   }> {
     const response = await this.client.listDashboards(
       universeId,
@@ -429,20 +431,12 @@ class ApiCustomDashboardService implements CustomDashboardService {
     );
     const dashboards = [...accumulated, ...(response.dashboards ?? [])];
     const nextPageToken = response.nextPageToken ?? undefined;
-    const resolvedCanEditCustomDashboards =
-      canEditCustomDashboards ?? response.capabilities?.canEdit;
+    const resolvedCapabilities = capabilities ?? response.capabilities;
     return nextPageToken
-      ? this.listAllDashboards(
-          universeId,
-          nextPageToken,
-          dashboards,
-          resolvedCanEditCustomDashboards,
-        )
+      ? this.listAllDashboards(universeId, nextPageToken, dashboards, resolvedCapabilities)
       : {
           dashboards,
-          ...(resolvedCanEditCustomDashboards === undefined
-            ? {}
-            : { capabilities: { canEdit: resolvedCanEditCustomDashboards } }),
+          ...(resolvedCapabilities === undefined ? {} : { capabilities: resolvedCapabilities }),
         };
   }
 

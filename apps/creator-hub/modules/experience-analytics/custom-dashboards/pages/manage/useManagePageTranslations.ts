@@ -18,6 +18,13 @@ export function useManagePageTranslations() {
       'Sub-heading describing the custom-dashboards manage page. Followed in the UI by an inline "Learn more" link.',
       translationKey('Description.CustomDashboards.Manage', TranslationNamespace.Analytics),
     ),
+    createLimitDescription: (args: { limit: string }) =>
+      tPendingTranslation(
+        'You can create up to {limit} dashboards.',
+        'Manage-page copy stating the per-universe dashboard cap. {limit} is the locale-formatted integer from ListDashboardsResponse.capabilities.limits.maxDashboardsPerUniverse for API writes, or the local-backend cap for local and hybrid writes.',
+        translationKey('Description.CustomDashboards.CreateLimit', TranslationNamespace.Analytics),
+        args,
+      ),
     learnMoreLabel: tPendingTranslation(
       'Learn more',
       'Inline link in the manage-page subtitle that opens the documentation.',

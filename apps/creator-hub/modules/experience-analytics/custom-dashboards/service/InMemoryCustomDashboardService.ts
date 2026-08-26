@@ -19,6 +19,7 @@ import {
   type CustomDashboardListResult,
   type CustomDashboardMutationOptions,
   EMPTY_DASHBOARD_CONFIG,
+  LOCAL_DASHBOARD_LIST_CAPABILITIES,
   MAX_DASHBOARDS_PER_UNIVERSE,
   MAX_PINNED_DASHBOARDS,
   type UpdateCustomDashboardInput,
@@ -226,7 +227,11 @@ class InMemoryCustomDashboardService implements CustomDashboardService {
     const allItems = universeMap
       ? sortDashboardsForList([...universeMap.values()].map((r) => r.document))
       : [];
-    return { ...pageLocalItems(allItems, options), migrationFailedCount: 0 };
+    return {
+      ...pageLocalItems(allItems, options),
+      capabilities: LOCAL_DASHBOARD_LIST_CAPABILITIES,
+      migrationFailedCount: 0,
+    };
   }
 
   async get(universeId: number, dashboardId: string): Promise<CustomDashboardDocument> {
