@@ -90,14 +90,10 @@ const TranslatedClientSessionsPageTitleInner = withNamespaceSwitchedTranslation(
 
 // The page title renders in the layout's title slot, a separate React tree from the page body,
 // so it provides its own session metadata client rather than inheriting one from page content.
-const ClientSessionsPageTitle = () => {
-  const { universeId } = useUniverseRelatedSession();
-
-  return (
-    <ClientSessionsMetadataClientProvider universeId={universeId}>
-      <TranslatedClientSessionsPageTitleInner />
-    </ClientSessionsMetadataClientProvider>
-  );
-};
+const ClientSessionsPageTitle = () => (
+  <ClientSessionsMetadataClientProvider>
+    <TranslatedClientSessionsPageTitleInner />
+  </ClientSessionsMetadataClientProvider>
+);
 
 export default ClientSessionsPageTitle;

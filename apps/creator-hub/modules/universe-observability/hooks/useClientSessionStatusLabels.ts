@@ -4,7 +4,7 @@ import useTranslationWrapper from '@modules/analytics-translations/useTranslatio
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { UniverseSessionExitReason } from '@modules/clients/analytics/universeSessionMetadataApi';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { MISSING_VALUE_PLACEHOLDER } from '../utils/formatMissingValue';
+import { MISSING_VALUE_PLACEHOLDER } from '../utils/clientSessionFormatters';
 
 export type ClientSessionStatusLabels = Record<UniverseSessionExitReason, string>;
 

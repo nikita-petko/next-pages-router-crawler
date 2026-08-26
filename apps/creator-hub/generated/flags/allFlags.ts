@@ -512,16 +512,6 @@ export const generatedFlags = [
       },
     },
     {
-      flag: creatorAnalyticsFlags.isClientSessionsRealDataEnabled,
-      metadata: {
-        namespace: 'creator-analytics',
-        name: 'isClientSessionsRealDataEnabled',
-        defaultValue: false,
-        valueType: 'boolean',
-        contextType: 'universe',
-      },
-    },
-    {
       flag: creatorAnalyticsFlags.isEhdResultsEnabled,
       metadata: {
         namespace: 'creator-analytics',

@@ -720,7 +720,7 @@ const GenericTableV2 = <
       </TableContainer>
       {effectivePagination && (
         <Grid item XSmall={12} container justifyContent='flex-end'>
-          <GenericTablePagination {...effectivePagination} />
+          <GenericTablePagination {...effectivePagination} component='div' />
         </Grid>
       )}
       {footer}

@@ -16,19 +16,9 @@ export { UniverseSessionExitReason, UniverseSessionOperatingSystem, UniverseSess
 
 export type { PlaySessionQueryOptions };
 
-/**
- * Frontend-only data-availability values. The current generated client does not
- * expose this field; the wrapper always fills an empty list until the package
- * is upgraded.
- */
-export enum UniverseSessionDataAvailability {
-  MicroProfiler = 'MICRO_PROFILER',
-  SceneAnalysisSnapshot = 'SCENE_ANALYSIS_SNAPSHOT',
-  Logs = 'LOGS',
-}
-
 type NormalizedPlaySessionField =
   | 'playSessionId'
+  | 'placeName'
   | 'platform'
   | 'os'
   | 'exitReason'
@@ -40,24 +30,23 @@ type NormalizedPlaySessionField =
 /**
  * Refined play-session row. Every generated field is present; fields that the
  * service omits are represented as null. A row without a play-session id is
- * dropped while parsing, and missing/unknown enums use their Invalid member.
- * WIP frontend fields that the generated client does not yet return are filled
- * with empty/null values rather than invented numbers.
+ * dropped while parsing. Missing platforms are null; missing OS values use
+ * Unknown; missing/unknown exit reasons use Invalid. Place name is null when
+ * the registry has none.
  */
 export type UniversePlaySession = Omit<
   Readonly<Required<RawUniversePlaySession>>,
   NormalizedPlaySessionField
 > & {
   readonly playSessionId: string;
-  readonly platform: UniverseSessionPlatform;
+  readonly placeName: string | null;
+  readonly platform: UniverseSessionPlatform | null;
   readonly os: UniverseSessionOperatingSystem;
   readonly exitReason: UniverseSessionExitReason;
   readonly startedTime: Date | null;
   readonly stoppedTime: Date | null;
   readonly minFpsTime: Date | null;
   readonly clientUsedMemoryTime: Date | null;
-  readonly placeName: string;
-  readonly dataAvailability: readonly UniverseSessionDataAvailability[];
 };
 
 export type UniverseSessionMetadataApiClient = {
@@ -68,14 +57,19 @@ export type UniverseSessionMetadataApiClient = {
   ) => Promise<readonly UniversePlaySession[]>;
 };
 
-const EMPTY_DATA_AVAILABILITY: readonly UniverseSessionDataAvailability[] = [];
-
 const parseEnum = <TEnum extends string>(
   enumObject: { readonly [key: string]: TEnum },
   value: string | null | undefined,
-  invalidValue: TEnum,
+  fallbackValue: TEnum,
 ): TEnum => {
-  return value != null && isValidEnumValue(enumObject, value) ? value : invalidValue;
+  return value != null && isValidEnumValue(enumObject, value) ? value : fallbackValue;
+};
+
+const parseOptionalEnum = <TEnum extends string>(
+  enumObject: { readonly [key: string]: TEnum },
+  value: string | null | undefined,
+): TEnum | null => {
+  return value != null && isValidEnumValue(enumObject, value) ? value : null;
 };
 
 const parseOptionalDate = (value: Date | null | undefined): Date | null => {
@@ -97,11 +91,12 @@ export const parseUniversePlaySession = (
     firstPlaySessionId: raw.firstPlaySessionId ?? null,
     universeId: raw.universeId ?? null,
     placeId: raw.placeId ?? null,
+    placeName: raw.placeName == null || raw.placeName === '' ? null : raw.placeName,
     placeVersion: raw.placeVersion ?? null,
     playerId: raw.playerId ?? null,
     jobId: raw.jobId ?? null,
-    platform: parseEnum(UniverseSessionPlatform, raw.platform, UniverseSessionPlatform.Invalid),
-    os: parseEnum(UniverseSessionOperatingSystem, raw.os, UniverseSessionOperatingSystem.Invalid),
+    platform: parseOptionalEnum(UniverseSessionPlatform, raw.platform),
+    os: parseEnum(UniverseSessionOperatingSystem, raw.os, UniverseSessionOperatingSystem.Unknown),
     clientRobloxVersion: raw.clientRobloxVersion ?? null,
     exitReason: parseEnum(
       UniverseSessionExitReason,
@@ -121,10 +116,6 @@ export const parseUniversePlaySession = (
     customTags: raw.customTags ?? null,
     funnelTags: raw.funnelTags ?? null,
     bugReportIds: raw.bugReportIds ?? null,
-    // Place names come from a separate PlaceApi request, not this RPC.
-    // TODO(@yukihe): resolve place names so the browser and detail sheet stop rendering a blank name.
-    placeName: '',
-    dataAvailability: EMPTY_DATA_AVAILABILITY,
   };
 };
 

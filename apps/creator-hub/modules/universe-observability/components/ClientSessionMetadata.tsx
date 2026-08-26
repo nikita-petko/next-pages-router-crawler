@@ -9,31 +9,24 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@rbx/foundation-ui';
-import { Locale, useLocalization, useTranslation } from '@rbx/intl';
+import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import withNamespaceSwitchedTranslation from '@modules/analytics-translations/withNamespaceSwitchedTranslation';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import useRAQIV2TranslationDependencies from '@modules/experience-analytics-shared/hooks/useRAQIV2TranslationDependencies';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import useClientSessionDataAvailabilityLabels from '../hooks/useClientSessionDataAvailabilityLabels';
 import useClientSessionMetadata from '../hooks/useClientSessionMetadata';
-import { durationMillisecondsToMinutes } from '../utils/durationMillisecondsToMinutes';
 import {
-  formatMissingValue,
-  formatOperatingSystem,
-  formatPlatform,
-  MISSING_VALUE_PLACEHOLDER,
-} from '../utils/formatMissingValue';
-
-// Session timestamps are stored in UTC; render them in UTC with a "UTC" suffix
-// (via timeZoneName) so the value is unambiguous regardless of the viewer's zone.
-const START_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
-  timeZone: 'UTC',
-  year: '2-digit',
-  month: 'numeric',
-  day: 'numeric',
-  hour: 'numeric',
-  timeZoneName: 'short',
-};
+  formatClientSessionDeviceMemory,
+  formatClientSessionDuration,
+  formatClientSessionMemoryUsage,
+  formatClientSessionMinFps,
+  formatClientSessionOperatingSystem,
+  formatClientSessionPlaceName,
+  formatClientSessionPlaceVersion,
+  formatClientSessionPlatform,
+  formatClientSessionStartTime,
+} from '../utils/clientSessionFormatters';
 
 type MetadataEntry = {
   readonly label: string;
@@ -48,19 +41,9 @@ type ClientSessionMetadataProps = {
 };
 
 const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ universeId, sessionId }) => {
-  const { locale } = useLocalization();
   const { translate, tPendingTranslation } = useTranslationWrapper(useTranslation());
   const { data, isError, isLoading } = useClientSessionMetadata({ universeId, sessionId });
-
-  const numberFormatter = useMemo(() => new Intl.NumberFormat(locale ?? Locale.English), [locale]);
-  const startTimeFormatter = useMemo(
-    () => new Intl.DateTimeFormat(locale ?? Locale.English, START_TIME_FORMAT_OPTIONS),
-    [locale],
-  );
-  const listFormatter = useMemo(
-    () => new Intl.ListFormat(locale ?? Locale.English, { style: 'short', type: 'unit' }),
-    [locale],
-  );
+  const raqiTranslationDependencies = useRAQIV2TranslationDependencies();
 
   const viewDetailsLabel = tPendingTranslation(
     'View details',
@@ -79,7 +62,6 @@ const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ universeId, ses
     ),
   );
   const closeDrawerLabel = translate(translationKey('Action.Close', TranslationNamespace.Controls));
-  const dataAvailabilityLabels = useClientSessionDataAvailabilityLabels();
 
   const labels = useMemo(
     () => ({
@@ -121,10 +103,10 @@ const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ universeId, ses
         translationKey('Label.ClientSessionMetadataMinFps', TranslationNamespace.ServerManagement),
       ),
       memoryUsage: tPendingTranslation(
-        'Memory Usage',
-        'Label for the memory used during a client session.',
+        'Max memory usage',
+        'Column heading for the peak memory usage reached during a client session.',
         translationKey(
-          'Label.ClientSessionMetadataMemoryUsage',
+          'Label.ClientSessionBrowserMaxMemoryUsage',
           TranslationNamespace.ServerManagement,
         ),
       ),
@@ -152,14 +134,6 @@ const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ universeId, ses
           TranslationNamespace.ServerManagement,
         ),
       ),
-      dataAvailability: tPendingTranslation(
-        'Data Availability',
-        'Label for the kinds of debug data captured for a client session.',
-        translationKey(
-          'Label.ClientSessionMetadataDataAvailability',
-          TranslationNamespace.ServerManagement,
-        ),
-      ),
     }),
     [tPendingTranslation],
   );
@@ -171,75 +145,50 @@ const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ universeId, ses
       return [];
     }
 
-    const durationMinutes = durationMillisecondsToMinutes(metadata.durationMilliseconds);
-    const durationValue =
-      durationMinutes == null
-        ? MISSING_VALUE_PLACEHOLDER
-        : tPendingTranslation(
-            '{duration} min',
-            'Client session duration in minutes; {duration} is the number of minutes.',
-            translationKey(
-              'Value.ClientSessionMetadataDuration',
-              TranslationNamespace.ServerManagement,
-            ),
-            { duration: numberFormatter.format(durationMinutes) },
-          );
-    const memoryUsageValue = formatMissingValue(
-      metadata.clientUsedMemoryMegabytes,
-      MISSING_VALUE_PLACEHOLDER,
-      (memory) =>
-        tPendingTranslation(
-          '{memory} MB',
-          'Memory amount in megabytes; {memory} is the number of megabytes.',
-          translationKey(
-            'Value.ClientSessionMetadataMemoryMB',
-            TranslationNamespace.ServerManagement,
-          ),
-          { memory: numberFormatter.format(memory) },
-        ),
-    );
-    const deviceMemoryValue = formatMissingValue(
-      metadata.clientDeviceRamMegabytes,
-      MISSING_VALUE_PLACEHOLDER,
-      (memory) =>
-        tPendingTranslation(
-          '{memory} MB',
-          'Memory amount in megabytes; {memory} is the number of megabytes.',
-          translationKey(
-            'Value.ClientSessionMetadataMemoryMB',
-            TranslationNamespace.ServerManagement,
-          ),
-          { memory: numberFormatter.format(memory) },
-        ),
-    );
-
     return [
-      { label: labels.placeName, value: metadata.placeName },
+      {
+        label: labels.placeName,
+        value: formatClientSessionPlaceName(metadata.placeName, raqiTranslationDependencies),
+      },
       {
         label: labels.placeVersion,
-        value: formatMissingValue(metadata.placeVersion, MISSING_VALUE_PLACEHOLDER),
+        value: formatClientSessionPlaceVersion(metadata.placeVersion, raqiTranslationDependencies),
       },
       {
         label: labels.startTime,
-        value: formatMissingValue(metadata.startedTime, MISSING_VALUE_PLACEHOLDER, (startedTime) =>
-          startTimeFormatter.format(startedTime),
+        value: formatClientSessionStartTime(metadata.startedTime, raqiTranslationDependencies),
+      },
+      {
+        label: labels.duration,
+        value: formatClientSessionDuration(
+          metadata.durationMilliseconds,
+          raqiTranslationDependencies,
         ),
       },
-      { label: labels.duration, value: durationValue },
       {
         label: labels.minFps,
-        value: formatMissingValue(metadata.minFps, MISSING_VALUE_PLACEHOLDER, (minFps) =>
-          numberFormatter.format(minFps),
+        value: formatClientSessionMinFps(metadata.minFps, raqiTranslationDependencies),
+      },
+      {
+        label: labels.memoryUsage,
+        value: formatClientSessionMemoryUsage(
+          metadata.clientUsedMemoryMegabytes,
+          raqiTranslationDependencies,
         ),
       },
-      { label: labels.memoryUsage, value: memoryUsageValue },
-      { label: labels.platform, value: formatPlatform(metadata.platform) },
-      { label: labels.operatingSystem, value: formatOperatingSystem(metadata.os) },
-      { label: labels.deviceMemory, value: deviceMemoryValue },
       {
-        label: labels.dataAvailability,
-        value: listFormatter.format(
-          metadata.dataAvailability.map((availability) => dataAvailabilityLabels[availability]),
+        label: labels.platform,
+        value: formatClientSessionPlatform(metadata.platform, raqiTranslationDependencies),
+      },
+      {
+        label: labels.operatingSystem,
+        value: formatClientSessionOperatingSystem(metadata.os, raqiTranslationDependencies),
+      },
+      {
+        label: labels.deviceMemory,
+        value: formatClientSessionDeviceMemory(
+          metadata.clientDeviceRamMegabytes,
+          raqiTranslationDependencies,
         ),
       },
     ];
@@ -281,6 +230,7 @@ const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ universeId, ses
 };
 
 export default withNamespaceSwitchedTranslation(ClientSessionMetadata, [
+  TranslationNamespace.Analytics,
   TranslationNamespace.ServerManagement,
   TranslationNamespace.Controls,
 ]);

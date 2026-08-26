@@ -24,6 +24,15 @@ export type GenericTablePaginationSpec = {
   disabled?: boolean;
 };
 
+export type GenericTablePaginationProps = GenericTablePaginationSpec & {
+  /**
+   * Element the pagination renders as. Defaults to `td` (MUI's default), which is only valid
+   * inside a table row. Pass `div` when the pagination is rendered outside of table markup,
+   * otherwise the `td` produces a hydration mismatch.
+   */
+  component?: 'div' | 'td';
+};
+
 /**
  * Wrapper around the webblox TablePagination component to provide for generic pagination controls
  * via callback integration with pagination request hooks (e.g. usePaginatedSearchUniverses). Also localizes table labels.
@@ -31,7 +40,7 @@ export type GenericTablePaginationSpec = {
  * Highly recommend using in it inside a Table component as the table footer for UI consistency but
  * technically there is no limitation to where this component can be used.
  */
-const GenericTablePagination: FC<GenericTablePaginationSpec> = ({
+const GenericTablePagination: FC<GenericTablePaginationProps> = ({
   page,
   total,
   pageSize,
@@ -41,6 +50,7 @@ const GenericTablePagination: FC<GenericTablePaginationSpec> = ({
   onPreviousPage,
   hasNext,
   hasPrevious,
+  component = 'td',
   disabled = false,
 }) => {
   const { translate } = useTranslationWrapper(useTranslation());
@@ -91,6 +101,7 @@ const GenericTablePagination: FC<GenericTablePaginationSpec> = ({
     const effectiveTotal = total ?? unknownDueToCursorBasedPagination;
     return (
       <TablePagination
+        component={component}
         className={footerBottomBorder}
         data-testid='tablePagination'
         count={effectiveTotal}
@@ -113,6 +124,7 @@ const GenericTablePagination: FC<GenericTablePaginationSpec> = ({
       />
     );
   }, [
+    component,
     footerBottomBorder,
     total,
     page,
