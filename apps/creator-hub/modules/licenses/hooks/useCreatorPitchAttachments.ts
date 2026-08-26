@@ -5,16 +5,19 @@ import { isImageAttachmentEnabledInLicenseApplication } from '@generated/flags/c
 import {
   type CreatorPitchAttachment,
   hasBlockingCreatorPitchAttachments,
+  hasUsableCreatorPitchAttachments,
 } from '../utils/creatorPitchAttachmentTypes';
 
 interface UseCreatorPitchAttachmentsParams {
   attachments: CreatorPitchAttachment[];
   onAttachmentsChange: Dispatch<SetStateAction<CreatorPitchAttachment[]>>;
+  isRequired?: boolean;
 }
 
 const useCreatorPitchAttachments = ({
   attachments,
   onAttachmentsChange,
+  isRequired = false,
 }: UseCreatorPitchAttachmentsParams) => {
   const { ready, value: isImageAttachmentEnabled } = useFlag(
     isImageAttachmentEnabledInLicenseApplication,
@@ -39,7 +42,9 @@ const useCreatorPitchAttachments = ({
       return true;
     }
 
-    const canProceed = !hasBlockingCreatorPitchAttachments(attachments);
+    const canProceed =
+      !hasBlockingCreatorPitchAttachments(attachments) &&
+      (!isRequired || hasUsableCreatorPitchAttachments(attachments));
 
     if (!canProceed) {
       setShowErrors(true);
@@ -48,7 +53,7 @@ const useCreatorPitchAttachments = ({
 
     setShowErrors(false);
     return true;
-  }, [attachments, isEnabled]);
+  }, [attachments, isEnabled, isRequired]);
 
   return {
     isEnabled,

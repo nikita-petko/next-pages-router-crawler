@@ -18,6 +18,9 @@ const MAX_CREATOR_PITCH_ATTACHMENT_SIZE_MB_LOCALIZED = new Intl.NumberFormat(und
 
 const useCreatorPitchAttachmentLabels = () => {
   const { translate } = useTranslationWithNamespace(TranslationNamespace.Licenses);
+  const { translate: translateAgreements } = useTranslationWithNamespace(
+    TranslationNamespace.AgreementsManager,
+  );
 
   const deleteAriaLabel = translate('Action.DeleteAttachment');
 
@@ -44,6 +47,8 @@ const useCreatorPitchAttachmentLabels = () => {
     maxSize: MAX_CREATOR_PITCH_ATTACHMENT_SIZE_MB_LOCALIZED,
   });
 
+  const requiredErrorText = translateAgreements('Label.FieldIsRequired');
+
   const getAttachmentErrorText = useCallback(
     (attachment: CreatorPitchAttachment): string => {
       if (attachment.errorType === CreatorPitchAttachmentErrorType.Moderated) {
@@ -64,6 +69,7 @@ const useCreatorPitchAttachmentLabels = () => {
     limitsText,
     pendingModerationLabel,
     previewAlt,
+    requiredErrorText,
     uploadButtonLabel,
     uploadingLabel,
   };

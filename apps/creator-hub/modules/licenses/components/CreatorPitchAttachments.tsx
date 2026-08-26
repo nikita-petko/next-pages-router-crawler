@@ -5,9 +5,10 @@ import { useAuthentication } from '@modules/authentication/providers';
 import useCreatorPitchAttachmentLabels from '../hooks/useCreatorPitchAttachmentLabels';
 import useCreatorPitchAttachmentUpload from '../hooks/useCreatorPitchAttachmentUpload';
 import { CREATOR_PITCH_ATTACHMENT_ACCEPT } from '../utils/constants';
-import type {
-  CreatorPitchAttachment,
-  CreatorPitchAttachmentsOnChange,
+import {
+  type CreatorPitchAttachment,
+  type CreatorPitchAttachmentsOnChange,
+  hasUsableCreatorPitchAttachments,
 } from '../utils/creatorPitchAttachmentTypes';
 import ManagePitchAttachments from './ManagePitchAttachments';
 
@@ -15,6 +16,7 @@ interface CreatorPitchAttachmentsProps {
   attachments: CreatorPitchAttachment[];
   onChange: CreatorPitchAttachmentsOnChange;
   showErrors?: boolean;
+  isRequired?: boolean;
 }
 
 /**
@@ -25,10 +27,14 @@ const CreatorPitchAttachments: FunctionComponent<CreatorPitchAttachmentsProps> =
   attachments,
   onChange,
   showErrors = false,
+  isRequired = false,
 }) => {
   const { user } = useAuthentication();
   const inputId = useId();
-  const { descriptionText, limitsText, uploadButtonLabel } = useCreatorPitchAttachmentLabels();
+  const { descriptionText, limitsText, requiredErrorText, uploadButtonLabel } =
+    useCreatorPitchAttachmentLabels();
+  const showRequiredError =
+    showErrors && isRequired && !hasUsableCreatorPitchAttachments(attachments);
 
   const { canUpload, handleFilesSelected, handleRemove } = useCreatorPitchAttachmentUpload({
     attachments,
@@ -59,6 +65,8 @@ const CreatorPitchAttachments: FunctionComponent<CreatorPitchAttachmentsProps> =
             multiple
             accept={CREATOR_PITCH_ATTACHMENT_ACCEPT}
             aria-label={uploadButtonLabel}
+            aria-invalid={showRequiredError}
+            required={isRequired}
             disabled={!canUpload}
             onChange={handleFilesSelected}
             className='absolute inset-[0] width-full height-full opacity-[0] cursor-pointer disabled:cursor-not-allowed'
@@ -66,6 +74,13 @@ const CreatorPitchAttachments: FunctionComponent<CreatorPitchAttachmentsProps> =
           />
         </div>
         <p className='text-caption-medium content-muted margin-none'>{limitsText}</p>
+        {showRequiredError ? (
+          <p
+            className='text-caption-medium content-system-alert margin-none'
+            data-testid='creator-pitch-attachments-required-error'>
+            {requiredErrorText}
+          </p>
+        ) : null}
       </div>
 
       <ManagePitchAttachments
