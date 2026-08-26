@@ -9,7 +9,11 @@ import {
   type TRAQIV2NumericUIMetric,
 } from '../constants/AnalyticsMetricDisplayConfig';
 import { useExploreModeAlertSelection } from '../exploreMode/ExploreModeAlertSelectionContext';
-import { getAtomicMetricsFromMetricLike, type MetricLike } from '../types/ComputedMetric';
+import {
+  getAtomicMetricsFromMetricLike,
+  isComputedMetric,
+  type MetricLike,
+} from '../types/ComputedMetric';
 
 export type ChartAnnotationSupportOverride = (
   annotationType: AnnotationType,
@@ -223,19 +227,16 @@ const useChartTimeSeriesAnnotations = ({
     [metric],
   );
 
-  // The chart's breakdown dimensions PLUS the dimensions referenced by its
-  // filter rows, deduped. This is exactly the "dimensions this chart cares
-  // about" set that announcement targeting wants. Returns `undefined` when
-  // the chart has neither so `getCurrentSupportedAnnotations` falls back to
-  // metric-only matching for Announcements (matching its arg-omitted
-  // behaviour).
-  const announcementTargetingDimensions = useMemo<readonly TRAQIV2Dimension[] | undefined>(() => {
-    if (!chartBreakdown?.length && !chartFilter?.length) {
-      return undefined;
-    }
+  // Chart breakdowns, chart filters, and ComputedMetric source filters, deduped.
+  // An empty array means the chart is unsliced; dimension-scoped announcements
+  // stay hidden and dimension-agnostic ones still show.
+  const announcementTargetingDimensions = useMemo<readonly TRAQIV2Dimension[]>(() => {
     const filterDims = chartFilter?.map(({ dimension }) => dimension) ?? [];
-    return Array.from(new Set([...(chartBreakdown ?? []), ...filterDims]));
-  }, [chartBreakdown, chartFilter]);
+    const sourceFilterDims = isComputedMetric(metric)
+      ? metric.sources.flatMap((source) => source.filters?.map(({ dimension }) => dimension) ?? [])
+      : [];
+    return Array.from(new Set([...(chartBreakdown ?? []), ...filterDims, ...sourceFilterDims]));
+  }, [chartBreakdown, chartFilter, metric]);
 
   // Explore Mode "Alerts" cascading sub-menu filter. Outside Explore
   // Mode the surrounding `ExploreModeAlertSelectionContext` is the default

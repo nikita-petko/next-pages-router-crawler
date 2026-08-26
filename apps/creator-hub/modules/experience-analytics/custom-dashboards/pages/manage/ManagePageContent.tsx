@@ -51,6 +51,7 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
   onDashboardCreated,
 }) => {
   const queryClient = useQueryClient();
+  const filterText = useMemo(() => filterCustomDashboardText(universeId), [universeId]);
   const pageState = useManagePageState();
   const { page, setPage, setTokenForPage } = pageState;
   const canMutateDashboards = useCanMutateCustomDashboards();
@@ -278,7 +279,7 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
   const isRenameSubmitting = confirmRename.status === 'submitting';
 
   return (
-    <TextFilterProvider filterText={filterCustomDashboardText}>
+    <TextFilterProvider filterText={filterText}>
       <main className='flex grow flex-col gap-large medium:gap-xxlarge padding-x-medium medium:padding-x-large padding-y-medium medium:padding-y-large min-height-0 min-width-0 bg-surface-0'>
         <StorageFailureToastSlot
           universeId={universeId}

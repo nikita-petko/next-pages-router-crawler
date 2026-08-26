@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import useDebouncedFunction from '@modules/miscellaneous/hooks/useDebouncedFunction';
 import { useTextFilter } from './TextFilterContext';
+import type { TextFilterFormat } from './TextFilterContext';
 
 /**
  * Default debounce window for text-filter API calls, in milliseconds.
@@ -26,6 +27,8 @@ export type UseTextFilterValidationOptions = {
    * Defaults to {@link DEFAULT_TEXT_FILTER_DEBOUNCE_MS}.
    */
   debounceMs?: number;
+  /** Text Filter policy used for this field. Defaults to title. */
+  format?: TextFilterFormat;
 };
 
 export type UseTextFilterValidationResult = {
@@ -68,7 +71,11 @@ const useTextFilterValidation = (
   typedValue: string,
   options: UseTextFilterValidationOptions = {},
 ): UseTextFilterValidationResult => {
-  const { initialConfirmedValue = '', debounceMs = DEFAULT_TEXT_FILTER_DEBOUNCE_MS } = options;
+  const {
+    initialConfirmedValue = '',
+    debounceMs = DEFAULT_TEXT_FILTER_DEBOUNCE_MS,
+    format = 'title',
+  } = options;
 
   const filterText = useTextFilter();
   // Funnel the context-supplied filter through a ref so `runFilterCheck`'s
@@ -87,45 +94,48 @@ const useTextFilterValidation = (
   }));
   const requestIdRef = useRef(0);
 
-  const runFilterCheck = useCallback(async (text: string) => {
-    // Capture the current request id without bumping it: the bump that
-    // matters happens synchronously in the typedValue effect below, on every
-    // change to the typed value, *before* the debounce fires. By the time we
-    // get here, that bump has already invalidated any earlier in-flight
-    // response; double-bumping here would just push the id forward without
-    // adding any stale-detection value.
-    const requestId = requestIdRef.current;
-    try {
-      const response = await filterTextRef.current(text);
-      if (requestIdRef.current !== requestId) {
-        return;
-      }
-      if (response.isFiltered) {
-        setValidationState((previousState) => ({
-          ...previousState,
-          validatedValue: text,
-          result: 'blocked',
-        }));
-      } else {
+  const runFilterCheck = useCallback(
+    async (text: string) => {
+      // Capture the current request id without bumping it: the bump that
+      // matters happens synchronously in the typedValue effect below, on every
+      // change to the typed value, *before* the debounce fires. By the time we
+      // get here, that bump has already invalidated any earlier in-flight
+      // response; double-bumping here would just push the id forward without
+      // adding any stale-detection value.
+      const requestId = requestIdRef.current;
+      try {
+        const response = await filterTextRef.current(text, format);
+        if (requestIdRef.current !== requestId) {
+          return;
+        }
+        if (response.isFiltered) {
+          setValidationState((previousState) => ({
+            ...previousState,
+            validatedValue: text,
+            result: 'blocked',
+          }));
+        } else {
+          setValidationState({
+            confirmedValue: text,
+            validatedValue: text,
+            result: 'ok',
+          });
+        }
+      } catch {
+        if (requestIdRef.current !== requestId) {
+          return;
+        }
+        // Fail open: promote the typed value as if it had passed moderation so
+        // a transient API outage doesn't strand the user.
         setValidationState({
           confirmedValue: text,
           validatedValue: text,
           result: 'ok',
         });
       }
-    } catch {
-      if (requestIdRef.current !== requestId) {
-        return;
-      }
-      // Fail open: promote the typed value as if it had passed moderation so
-      // a transient API outage doesn't strand the user.
-      setValidationState({
-        confirmedValue: text,
-        validatedValue: text,
-        result: 'ok',
-      });
-    }
-  }, []);
+    },
+    [format],
+  );
 
   const [debouncedRunFilterCheck, cancelDebouncedFilterCheck] = useDebouncedFunction(
     runFilterCheck,

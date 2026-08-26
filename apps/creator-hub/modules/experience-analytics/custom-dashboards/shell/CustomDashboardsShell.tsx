@@ -1,4 +1,4 @@
-import React, { type FC, type ReactNode } from 'react';
+import React, { type FC, type ReactNode, useMemo } from 'react';
 import { useFlag } from '@rbx/flags';
 import { isCustomDashboardsEnabled as isCustomDashboardsEnabledFlag } from '@generated/flags/creatorAnalytics';
 import wellKnownAnalyticsTranslationNamespaces from '@modules/analytics-translations/wellKnownAnalyticsTranslationNamespaces';
@@ -40,6 +40,7 @@ const CustomDashboardsShell: FC<CustomDashboardsShellProps> = ({
     { universeId },
   );
   const isCustomDashboardsEnabled = isFetched && isCustomDashboardsEnabledValue;
+  const filterText = useMemo(() => filterCustomDashboardText(universeId), [universeId]);
 
   if (!isFetched) {
     return <>{loading}</>;
@@ -49,7 +50,7 @@ const CustomDashboardsShell: FC<CustomDashboardsShellProps> = ({
     return <>{fallback}</>;
   }
 
-  return <TextFilterProvider filterText={filterCustomDashboardText}>{children}</TextFilterProvider>;
+  return <TextFilterProvider filterText={filterText}>{children}</TextFilterProvider>;
 };
 
 export default withNamespaceSwitchedTranslation(

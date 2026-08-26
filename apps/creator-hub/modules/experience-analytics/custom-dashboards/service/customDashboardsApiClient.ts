@@ -22,6 +22,15 @@ export type ApiDashboardMetadataPatch =
 export type ApiPublishDashboardRequest =
   components['schemas']['Roblox.DeveloperAnalytics.CustomDashboards.V1Beta1.PublishDashboardRequest'];
 
+type CustomDashboardTextFormat = 'title' | 'description';
+
+const CustomDashboardTextFormatTitle = 1;
+const CustomDashboardTextFormatDescription = 2;
+
+export type FilterDashboardTextResponse = {
+  readonly isFiltered: boolean;
+};
+
 /** Writable patch fields only — omit OpenAPI readOnly `has*` presence flags. */
 export type WritableDashboardMetadataPatch = Pick<
   ApiDashboardMetadataPatch,
@@ -91,6 +100,11 @@ export type CustomDashboardsApiClient = {
     readonly dashboardId: string;
     readonly expectedHeadEtag: string;
   }): Promise<void>;
+  filterDashboardText(input: {
+    readonly universeId: number;
+    readonly text: string;
+    readonly format: CustomDashboardTextFormat;
+  }): Promise<FilterDashboardTextResponse>;
 };
 
 function toWritableMetadataPatch(
@@ -291,6 +305,33 @@ export function createDefaultCustomDashboardsApiClient(
       if (error) {
         throwRequestError(response, error);
       }
+    },
+
+    async filterDashboardText({ universeId, text, format }) {
+      const { data, error, response } = await fetchClient.POST(
+        '/v1/universes/{universeId}/custom-dashboard-text/filter',
+        {
+          params: { path: { universeId } },
+          body: {
+            universeId,
+            text,
+            format:
+              format === 'description'
+                ? CustomDashboardTextFormatDescription
+                : CustomDashboardTextFormatTitle,
+          },
+        },
+      );
+      if (error || !data) {
+        throwRequestError(response, error);
+      }
+      if (typeof data.isFiltered !== 'boolean') {
+        throw new CustomDashboardsApiRequestError(
+          response?.status ?? 0,
+          'Response is missing isFiltered',
+        );
+      }
+      return { isFiltered: data.isFiltered };
     },
   };
 }

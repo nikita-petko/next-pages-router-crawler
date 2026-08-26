@@ -1,7 +1,15 @@
-import gameUpdateNotificationsClient from '@modules/clients/gameUpdateNotifications';
 import type { TextFilterFn } from '@modules/experience-analytics-shared/text-filter/TextFilterContext';
+import { createDefaultCustomDashboardsApiClient } from './service/customDashboardsApiClient';
 
-export const filterCustomDashboardText: TextFilterFn = async (text) => {
-  const response = await gameUpdateNotificationsClient.filterGameUpdateText({ body: text });
-  return { isFiltered: response.isFiltered === true };
-};
+const customDashboardsApiClient = createDefaultCustomDashboardsApiClient();
+
+export const filterCustomDashboardText =
+  (universeId: number): TextFilterFn =>
+  async (text, format = 'title') => {
+    const response = await customDashboardsApiClient.filterDashboardText({
+      universeId,
+      text,
+      format,
+    });
+    return { isFiltered: response.isFiltered };
+  };

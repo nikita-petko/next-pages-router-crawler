@@ -5,7 +5,7 @@ import { useTranslation } from '@rbx/intl';
 import LoadError from '@modules/miscellaneous/error/LoadError';
 import ShowcaseCard from '../components/ShowcaseCard';
 import ShowcasesEmptyState from '../components/ShowcasesEmptyState';
-import { CREATE_SHOWCASE_ROUTE } from '../constants';
+import { CREATE_SHOWCASE_ROUTE, buildManageShowcaseRoute } from '../constants';
 import useShowcasesGate from '../hooks/useShowcasesGate';
 import useShowcases from '../queries/useShowcases';
 
@@ -26,6 +26,13 @@ const ShowcasesPanel = ({ groupId }: ShowcasesPanelProps) => {
   const goToCreate = useCallback(() => {
     void router.push(CREATE_SHOWCASE_ROUTE);
   }, [router]);
+
+  const goToManage = useCallback(
+    (showcaseId: string) => {
+      void router.push(buildManageShowcaseRoute(showcaseId));
+    },
+    [router],
+  );
 
   // The flag is still resolving; hold rather than flashing an empty state.
   if (isShowcasesEnabled === undefined) {
@@ -77,7 +84,11 @@ const ShowcasesPanel = ({ groupId }: ShowcasesPanelProps) => {
   return (
     <div className='grid [grid-template-columns:repeat(3,minmax(0,1fr))] gap-medium self-stretch width-full'>
       {showcases.map((showcase) => (
-        <ShowcaseCard key={showcase.id} showcase={showcase} />
+        <ShowcaseCard
+          key={showcase.id}
+          showcase={showcase}
+          onManage={() => goToManage(showcase.id)}
+        />
       ))}
     </div>
   );

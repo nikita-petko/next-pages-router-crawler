@@ -429,12 +429,9 @@ export const useTimeSeriesAnnotations = ({
           const matchesMetricTarget = metrics.some((metric) =>
             isAnnotationTargetingMetric(annotation.id, metric),
           );
-          if (!targetingDimensions) {
-            return matchesMetricTarget;
-          }
           const matchesDimensionTarget = isAnnotationRelevantToDimensions(
             annotation.id,
-            targetingDimensions,
+            targetingDimensions ?? [],
           );
           return matchesMetricTarget && matchesDimensionTarget;
         }

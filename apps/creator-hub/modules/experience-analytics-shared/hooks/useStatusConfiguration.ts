@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   RAQIV2APIMetric,
@@ -11,9 +11,10 @@ import type {
   TRAQIV2Dimension,
   TRAQIV2UIMetric,
 } from '@rbx/creator-hub-analytics-config';
-import type {
-  TAnnotationId,
-  TimeSeriesAnnotation,
+import {
+  toAnnotationId,
+  type TAnnotationId,
+  type TimeSeriesAnnotation,
 } from '@modules/charts-generic/charts/types/Annotations';
 import { BannerCategory } from '@modules/charts-generic/components/StatusBanner';
 import logAnalyticsError from '@modules/charts-generic/utils/logAnalyticsError';
@@ -182,60 +183,97 @@ type AnnotationConfigurationResult = {
   ) => boolean;
 };
 
+// Status-config is fetched once per page but `useAnnotationConfiguration` is
+// mounted per chart. Module-scope dedupe keeps an unrecognized-dimension
+// warning to a single Sentry/console event per session instead of once per
+// chart and again on every refetch.
+const loggedUnrecognizedDimensionWarnings = new Set<string>();
+
+const logUnrecognizedDimensionWarningOnce = (warning: string): void => {
+  if (loggedUnrecognizedDimensionWarnings.has(warning)) {
+    return;
+  }
+  loggedUnrecognizedDimensionWarnings.add(warning);
+  logAnalyticsError(warning);
+};
+
+export const resetLoggedUnrecognizedDimensionWarnings = (): void => {
+  loggedUnrecognizedDimensionWarnings.clear();
+};
+
 export const useAnnotationConfiguration = (universeId?: number): AnnotationConfigurationResult => {
   const {
     data: { annotationConfigurations },
   } = useStatusConfiguration(universeId);
 
-  const { announcementAnnotations, annotationTargetsMap } = useMemo(() => {
-    const annotations: TimeSeriesAnnotation[] = [];
-    const targetsMap = new Map<
-      TAnnotationId,
-      {
-        metricTargets: Set<TRAQIV2APIMetric>;
-        dimensionTargets: Set<TRAQIV2Dimension>;
-      }
-    >();
+  const { announcementAnnotations, annotationTargetsMap, unrecognizedDimensionWarnings } =
+    useMemo(() => {
+      const annotations: TimeSeriesAnnotation[] = [];
+      const targetsMap = new Map<
+        TAnnotationId,
+        {
+          metricTargets: Set<TRAQIV2APIMetric>;
+          dimensionTargets: Set<TRAQIV2Dimension>;
+          isDimensionAgnostic: boolean;
+        }
+      >();
+      const warnings: string[] = [];
 
-    annotationConfigurations?.forEach((config) => {
-      const { key, targets, unixStartTime, dimensions: dimensionTargets } = config;
+      annotationConfigurations?.forEach((config) => {
+        const { key, targets, unixStartTime, dimensions: dimensionTargets } = config;
 
-      if (!isValidAnnotationKey(key)) {
-        return;
-      }
+        if (!isValidAnnotationKey(key)) {
+          return;
+        }
 
-      const parsedStartTime = parseStartTime(unixStartTime);
-      if (parsedStartTime === null) {
-        return;
-      }
+        const parsedStartTime = parseStartTime(unixStartTime);
+        if (parsedStartTime === null) {
+          return;
+        }
 
-      const validMetricTargets = targets?.filter(isValidAnnotationMetricTarget) ?? [];
-      const validDimensionTargets =
-        dimensionTargets?.filter(isValidAnnotationDimensionTarget) ?? [];
-      const validTargets = [...validMetricTargets, ...validDimensionTargets];
-      if (validTargets.length === 0) {
-        return;
-      }
+        const validMetricTargets = targets?.filter(isValidAnnotationMetricTarget) ?? [];
+        const validDimensionTargets =
+          dimensionTargets?.filter(isValidAnnotationDimensionTarget) ?? [];
+        const unrecognizedDimensionTargets =
+          dimensionTargets?.filter((dimension) => !isValidAnnotationDimensionTarget(dimension)) ??
+          [];
+        if (unrecognizedDimensionTargets.length > 0) {
+          warnings.push(
+            `Annotation config ${key} declared unrecognized dimensions: ${unrecognizedDimensionTargets.join(',')}`,
+          );
+        }
+        const validTargets = [...validMetricTargets, ...validDimensionTargets];
+        if (validTargets.length === 0) {
+          return;
+        }
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- ADHOC-cleanup - pre-existing tech debt surfaced by PR #13823 (proxy-module cleanup)
-      const annotationId = `${key}-${validTargets.join('-')}-${unixStartTime}` as TAnnotationId;
+        const annotationId = toAnnotationId(`${key}-${validTargets.join('-')}-${unixStartTime}`);
 
-      annotations.push({
-        id: annotationId,
-        type: AnnotationType.Announcement,
-        translationKey: annotationConfig[key].translationKey,
-        links: annotationConfig[key].links,
-        startUtc: parsedStartTime,
+        annotations.push({
+          id: annotationId,
+          type: AnnotationType.Announcement,
+          translationKey: annotationConfig[key].translationKey,
+          links: annotationConfig[key].links,
+          startUtc: parsedStartTime,
+        });
+
+        targetsMap.set(annotationId, {
+          metricTargets: new Set(validMetricTargets),
+          dimensionTargets: new Set(validDimensionTargets),
+          isDimensionAgnostic: !dimensionTargets || dimensionTargets.length === 0,
+        });
       });
 
-      targetsMap.set(annotationId, {
-        metricTargets: new Set(validMetricTargets),
-        dimensionTargets: new Set(validDimensionTargets),
-      });
-    });
+      return {
+        announcementAnnotations: annotations,
+        annotationTargetsMap: targetsMap,
+        unrecognizedDimensionWarnings: warnings,
+      };
+    }, [annotationConfigurations]);
 
-    return { announcementAnnotations: annotations, annotationTargetsMap: targetsMap };
-  }, [annotationConfigurations]);
+  useEffect(() => {
+    unrecognizedDimensionWarnings.forEach(logUnrecognizedDimensionWarningOnce);
+  }, [unrecognizedDimensionWarnings]);
 
   const isAnnotationTargetingMetric = useCallback(
     (annotationId: TAnnotationId, metric: TRAQIV2UIMetric): boolean => {
@@ -251,17 +289,14 @@ export const useAnnotationConfiguration = (universeId?: number): AnnotationConfi
 
   const isAnnotationRelevantToDimensions = useCallback(
     (annotationId: TAnnotationId, dimensions: readonly TRAQIV2Dimension[]): boolean => {
-      const targets = annotationTargetsMap.get(annotationId)?.dimensionTargets;
-      if (!targets) {
+      const targetConfig = annotationTargetsMap.get(annotationId);
+      if (!targetConfig) {
         return false;
       }
-      // Configured dimension targets narrow the annotation to charts that slice
-      // the metric by one of them. Declaring none means the change applies to
-      // the whole metric, so it stays relevant however the chart is sliced.
-      if (targets.size === 0) {
+      if (targetConfig.isDimensionAgnostic) {
         return true;
       }
-      return dimensions.some((dimension) => targets.has(dimension));
+      return dimensions.some((dimension) => targetConfig.dimensionTargets.has(dimension));
     },
     [annotationTargetsMap],
   );

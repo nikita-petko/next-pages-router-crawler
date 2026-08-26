@@ -5,6 +5,8 @@ export type TextFilterResponse = {
   isFiltered: boolean;
 };
 
+export type TextFilterFormat = 'title' | 'description';
+
 /**
  * Async function that runs an arbitrary string through the platform's
  * text-moderation service. Implementations should resolve with `isFiltered:
@@ -15,7 +17,7 @@ export type TextFilterResponse = {
  * `useTextFilterValidation` insulate themselves from identity churn via a
  * ref, but stable references are still preferred.
  */
-export type TextFilterFn = (text: string) => Promise<TextFilterResponse>;
+export type TextFilterFn = (text: string, format?: TextFilterFormat) => Promise<TextFilterResponse>;
 
 const TextFilterContext = createContext<TextFilterFn | null>(null);
 

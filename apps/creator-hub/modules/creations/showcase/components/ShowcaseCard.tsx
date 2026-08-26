@@ -1,5 +1,13 @@
 import { useMemo } from 'react';
-import { Badge } from '@rbx/foundation-ui';
+import {
+  Badge,
+  IconButton,
+  Menu,
+  MenuItem,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@rbx/foundation-ui';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import { ReturnPolicy, Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
 import { MAX_LIST_CARD_THUMBNAILS } from '../constants';
@@ -7,13 +15,14 @@ import type { Showcase } from '../types';
 
 type ShowcaseCardProps = {
   showcase: Showcase;
+  onManage?: () => void;
 };
 
 /**
  * The list card intentionally shows at most three thumbnails regardless of item
  * count, so the metadata line is the only place the true count appears.
  */
-const ShowcaseCard = ({ showcase }: ShowcaseCardProps) => {
+const ShowcaseCard = ({ showcase, onManage }: ShowcaseCardProps) => {
   const { translate } = useTranslation();
   const { locale } = useLocalization();
 
@@ -33,14 +42,39 @@ const ShowcaseCard = ({ showcase }: ShowcaseCardProps) => {
 
   return (
     <div className='flex flex-col gap-medium padding-medium radius-medium stroke-standard stroke-default'>
-      <div className='flex flex-col gap-xxsmall'>
-        <div className='flex items-center gap-small'>
-          <span className='text-title-medium content-emphasis'>{showcase.title}</span>
-          {showcase.moderationStatus === 'Moderated' && (
-            <Badge label={translate('Label.Moderated')} variant='Alert' />
-          )}
+      <div className='flex items-start gap-small'>
+        <div className='flex grow-1 flex-col gap-xxsmall min-width-0'>
+          <div className='flex items-center gap-small'>
+            <span className='text-title-medium content-emphasis text-truncate-end'>
+              {showcase.title}
+            </span>
+            {showcase.moderationStatus === 'Moderated' && (
+              <Badge label={translate('Label.Moderated')} variant='Alert' />
+            )}
+          </div>
+          <span className='text-body-small content-muted'>{metadata}</span>
         </div>
-        <span className='text-body-small content-muted'>{metadata}</span>
+        {onManage !== undefined && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <IconButton
+                variant='Standard'
+                size='Small'
+                ariaLabel={translate('Action.ShowcaseActions')}
+                icon='icon-regular-three-dots-horizontal'
+              />
+            </PopoverTrigger>
+            <PopoverContent align='end' ariaLabel={translate('Action.ShowcaseActions')}>
+              <Menu size='Medium'>
+                <MenuItem
+                  value='manage'
+                  title={translate('Heading.ManageShowcase')}
+                  onSelect={onManage}
+                />
+              </Menu>
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
       <div className='flex gap-small'>
         {showcase.items.slice(0, MAX_LIST_CARD_THUMBNAILS).map((item) => (

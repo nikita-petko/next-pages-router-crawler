@@ -14,3 +14,7 @@ export const CREATE_SHOWCASE_ROUTE = '/dashboard/creations/showcases/create';
 
 /** Deep link back to the Showcases pill on the Creations page. */
 export const SHOWCASES_LIST_ROUTE = '/dashboard/creations?activeTab=Showcase';
+
+/** Read-only detail page for a published showcase. */
+export const buildManageShowcaseRoute = (showcaseId: string): string =>
+  `/dashboard/creations/showcases/${showcaseId}/manage`;
