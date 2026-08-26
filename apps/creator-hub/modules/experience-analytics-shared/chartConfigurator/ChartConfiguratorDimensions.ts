@@ -11,18 +11,18 @@ import type { ChartConfiguratorChartType } from './ChartConfiguratorChartTypes';
 import type { TChartConfiguratorMetrics } from './chartConfiguratorMetricsConfig';
 
 /**
- * Some dimensions we want to show in the filter bar are not supported as breakdowns,
- * or should not be made available in the UI as breakdown options.
+ * Dimensions shown in the filter bar that must not appear as breakdown options
+ * in Explore or the custom-dashboard chart editor.
  *
- * Defining those here allows us to build an exhaustive type of all the dimensions
- * in the chart configurator catalog, as well as explicitly exclude them from our breakdown selector.
+ * Place is not in this list. RAQI already lists it for Explore-enabled
+ * performance, HTTP, and matchmaking metrics, and both surfaces offer whatever
+ * `getChartConfiguratorDimensions` returns after this exclusion.
  *
  * TODO(gperkins@20260120): DSA-2262 move this to the dimension display config
  */
 export const ChartConfiguratorFilterOnlyDimensions = [
   RAQIV2Dimension.Country,
   RAQIV2Dimension.Locale,
-  RAQIV2Dimension.Place,
   RAQIV2Dimension.ItemSku,
   RAQIV2UIPseudoDimension.AggregationType,
 ] as const satisfies readonly TRAQIV2Dimension[];

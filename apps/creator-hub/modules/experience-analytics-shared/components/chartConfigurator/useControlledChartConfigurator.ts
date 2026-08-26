@@ -319,13 +319,13 @@ export function useControlledChartConfiguratorFromDraft({
     () => getSharedChartConfiguratorDimensions(displaySourceMetrics),
     [displaySourceMetrics],
   );
-  // OPTIONS go through the shared mapper so a catalog change that re-enables
-  // raw PlaceVersion cannot surface the unbounded breakdown again. Filters
-  // still use `dimensions` unmapped.
-  const selectableBreakdownDimensions = useMemo(
-    () => toSelectableBreakdownDimensions(dimensions),
-    [dimensions],
-  );
+  const rawSelectableBreakdownDimensions = useMemo(() => {
+    const filterOnly = getChartConfiguratorFilterOnlyDimensions(chartTypeOverride);
+    return toSelectableBreakdownDimensions(dimensions).filter(
+      (dimension) => !filterOnly.includes(dimension),
+    );
+  }, [chartTypeOverride, dimensions]);
+  const selectableBreakdownDimensions = useStableArray(rawSelectableBreakdownDimensions);
 
   // Breakdown is intentionally hook-local state rather than part of
   // `controlledChartConfiguratorReducer`. That reducer is shared with Explore
@@ -343,33 +343,48 @@ export function useControlledChartConfiguratorFromDraft({
     initialState?.breakdownDimensions ?? EMPTY_BREAKDOWN_DIMENSIONS,
   );
   const [breakdown, setBreakdownState] = useState<readonly TRAQIV2Dimension[]>(() =>
-    resolveBreakdownDimensions(stableInitialBreakdownDimensions, dimensions),
+    resolveBreakdownDimensions(stableInitialBreakdownDimensions, selectableBreakdownDimensions),
   );
   const setBreakdown = useCallback(
     (nextBreakdown: TRAQIV2Dimension[]) => {
-      setBreakdownState(resolveBreakdownDimensions(nextBreakdown, dimensions));
+      setBreakdownState(resolveBreakdownDimensions(nextBreakdown, selectableBreakdownDimensions));
     },
-    [dimensions],
+    [selectableBreakdownDimensions],
   );
 
-  // Re-seed breakdown when the available dimensions or the seeded breakdown
-  // change. Using the "adjusting state during render" pattern (React docs:
+  // Re-seed from the tile seed when the metric dimensions or seed change.
+  // Chart-type changes only swap the filter-only list (PercentileType on Area),
+  // so keep the current selection and drop dimensions that are no longer
+  // selectable. Comparing `selectableBreakdownDimensions` here used to wipe a
+  // freshly picked Place whenever the user switched Spline to Column.
+  // Using the "adjusting state during render" pattern (React docs:
   // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)
   // instead of a `useEffect` to avoid cascading renders.
   const [lastSeedKey, setLastSeedKey] = useState(seedKey);
   const [lastDimensions, setLastDimensions] = useState(dimensions);
+  const [lastSelectableBreakdownDimensions, setLastSelectableBreakdownDimensions] = useState(
+    selectableBreakdownDimensions,
+  );
   const [lastInitialBreakdownDimensions, setLastInitialBreakdownDimensions] = useState(
     stableInitialBreakdownDimensions,
   );
-  if (
+  const shouldReseedBreakdownFromInitial =
     seedKey !== lastSeedKey ||
     dimensions !== lastDimensions ||
-    stableInitialBreakdownDimensions !== lastInitialBreakdownDimensions
-  ) {
+    stableInitialBreakdownDimensions !== lastInitialBreakdownDimensions;
+  const selectableBreakdownDimensionsChanged =
+    selectableBreakdownDimensions !== lastSelectableBreakdownDimensions;
+  if (shouldReseedBreakdownFromInitial || selectableBreakdownDimensionsChanged) {
     setLastSeedKey(seedKey);
     setLastDimensions(dimensions);
+    setLastSelectableBreakdownDimensions(selectableBreakdownDimensions);
     setLastInitialBreakdownDimensions(stableInitialBreakdownDimensions);
-    setBreakdownState(resolveBreakdownDimensions(stableInitialBreakdownDimensions, dimensions));
+    setBreakdownState(
+      resolveBreakdownDimensions(
+        shouldReseedBreakdownFromInitial ? stableInitialBreakdownDimensions : breakdown,
+        selectableBreakdownDimensions,
+      ),
+    );
   }
 
   const chartContextFromProvider = useCurrentChartContext({
@@ -809,7 +824,6 @@ export function useControlledChartConfiguratorFromDraft({
       breakdown,
       chartTypeSupport,
       customEventFilters,
-      selectableBreakdownDimensions,
       displaySourceMetrics,
       dispatchSidebarAction,
       effectiveComputedMetric,
@@ -821,6 +835,7 @@ export function useControlledChartConfiguratorFromDraft({
       l7SmoothingDisabledReason,
       metric,
       resource,
+      selectableBreakdownDimensions,
       selectedChartType,
       sidebarChartContext,
       smoothingOption,
