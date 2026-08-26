@@ -36,7 +36,10 @@ import RAQIV2GenericChart from '../RAQIV2/RAQIV2GenericChart';
 import AnalyticsConfigTable from '../RAQIV2/table/AnalyticsConfigTable';
 import ChartConfiguratorEmptyChartState from './ChartConfiguratorEmptyChartState';
 import type { OverlayOption } from './ChartConfiguratorOverlaysControl';
-import { resolveChartConfiguratorPreviewTitleLabel } from './chartConfiguratorPreviewTitle';
+import {
+  formatSmoothingChartTitleLabel,
+  resolveChartConfiguratorPreviewTitleLabel,
+} from './chartConfiguratorPreviewTitle';
 import type { ExploreModeTableMetricColumn } from './chartConfiguratorTableColumns';
 import ChartConfiguratorDateRangeControl from './components/ChartConfiguratorDateRangeControl';
 import styles from './ChartConfiguratorPreview.module.css';
@@ -252,17 +255,7 @@ const ChartConfiguratorPreview: FC<ChartConfiguratorPreviewProps> = ({
       defaultMetricTitleLabel,
       fallbackChartTitleLabel,
       formatSmoothingTitleLabel: (metricName) =>
-        String(
-          tPendingTranslation(
-            '{metricName} (7 day moving average)',
-            'Chart title when L7 smoothing is enabled. {metricName} is replaced with the metric display name.',
-            translationKey(
-              'Label.ExploreMode.Smoothing.ChartTitleFormat',
-              TranslationNamespace.Analytics,
-            ),
-            { metricName },
-          ),
-        ),
+        formatSmoothingChartTitleLabel(tPendingTranslation, metricName),
       isPrecomputedL7MetricChart,
       untitledFormulaLabel: String(untitledFormulaLabel),
     });

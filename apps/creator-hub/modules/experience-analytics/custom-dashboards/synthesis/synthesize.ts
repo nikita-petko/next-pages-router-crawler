@@ -5,6 +5,7 @@ import {
   type TRAQIV2Dimension,
 } from '@rbx/creator-hub-analytics-config';
 import AnalyticsComponentType from '@modules/analytics-configurations/AnalyticsComponentType';
+import type { TranslationKey } from '@modules/analytics-translations/types';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import ChartSummaryType from '@modules/charts-generic/enums/ChartSummaryType';
@@ -21,6 +22,10 @@ import {
   getBaseMetricFromL7,
   getMetricForL7Smoothing,
 } from '@modules/experience-analytics-shared/chartConfigurator/l7MetricMapping';
+import {
+  formatEnglishSmoothingChartTitleLabel,
+  resolveChartConfiguratorPreviewTitleLabel,
+} from '@modules/experience-analytics-shared/components/chartConfigurator/chartConfiguratorPreviewTitle';
 import { collapseComputedMetricToSimple } from '@modules/experience-analytics-shared/components/chartConfigurator/computedMetricUrlOwnership';
 import getAnalyticsMetricDisplayConfig, {
   isNumericUIMetric,
@@ -35,7 +40,10 @@ import {
   getUIMetricFromAtomicMetricLike,
   isComputedMetric,
 } from '@modules/experience-analytics-shared/types/ComputedMetric';
-import type { MetricLike } from '@modules/experience-analytics-shared/types/ComputedMetric';
+import type {
+  ComputedMetric,
+  MetricLike,
+} from '@modules/experience-analytics-shared/types/ComputedMetric';
 import type { ChartConfig } from '@modules/experience-analytics-shared/types/RAQIV2ChartConfig';
 import {
   ChartOverlay,
@@ -108,8 +116,20 @@ export type SynthesisUnsupportedItem = {
   readonly message: string;
 };
 
+export type ChartTitleResolution = {
+  readonly formatSmoothingTitleLabel: (metricName: string) => string;
+  readonly translateTitleKey: (key: TranslationKey) => string;
+  readonly untitledFormulaLabel?: string;
+  /**
+   * Cache-busting token so per-tile synthesis reruns when title translations
+   * change (pending English fallback → loaded catalog).
+   */
+  readonly revision: string;
+};
+
 export type SynthesizeOptions = {
   readonly tileCache?: SynthesisTileCache;
+  readonly chartTitleResolution?: ChartTitleResolution;
 };
 
 export type SynthesizedSummaryEntry = {
@@ -182,8 +202,28 @@ function evictStaleTileCacheEntries(
   });
 }
 
-const tileSynthesisFingerprint = (tile: ChartTileConfig | SummaryCardTileConfig): string =>
-  JSON.stringify(tile);
+const tileSynthesisFingerprint = (
+  tile: ChartTileConfig | SummaryCardTileConfig,
+  titleRevision: string | undefined,
+): string => JSON.stringify({ tile, titleRevision });
+
+function chartTileTitleRevision(
+  tile: ChartTileConfig,
+  chartTitleResolution: ChartTitleResolution | undefined,
+): string | undefined {
+  if (!chartTitleResolution) {
+    return undefined;
+  }
+  const metricKey = getPrimaryChartMetric(tile)?.metric.metricKey;
+  const metric = metricKey && isNumericUIMetric(metricKey) ? metricKey : null;
+  const titleMetric = metric ? (getBaseMetricFromL7(metric) ?? metric) : null;
+  const metricDisplayName = titleMetric
+    ? chartTitleResolution.translateTitleKey(
+        getAnalyticsMetricDisplayConfig(titleMetric).localizedName,
+      )
+    : '';
+  return `${chartTitleResolution.revision}:${metricDisplayName}`;
+}
 
 // `''` is treated as a no-op by the renderer. Reused for fields the renderer
 // requires structurally but the editor's chrome owns.
@@ -427,6 +467,20 @@ type ChartSynthesisOutcome =
   | { readonly kind: 'rendered'; readonly component: ChartConfig | AnalyticsTableConfig }
   | { readonly kind: 'unsupported'; readonly reason: SynthesisUnsupportedItem };
 
+function applyChartTileSmoothingToComputedMetric(
+  computedMetric: ComputedMetric,
+  shouldApplySmoothing: boolean,
+): ComputedMetric {
+  if (shouldApplySmoothing) {
+    return {
+      ...computedMetric,
+      l7Smoothing: true,
+    };
+  }
+  const { l7Smoothing: _l7Smoothing, ...withoutL7Smoothing } = computedMetric;
+  return withoutL7Smoothing;
+}
+
 function resolveTablePrimaryMetric(
   tile: ChartTileConfig,
   metric: TRAQIV2NumericUIMetric,
@@ -437,14 +491,7 @@ function resolveTablePrimaryMetric(
   const shouldApplySmoothing = tile.chartSpec.smoothing === 'weekly';
   const mappingOptions = getMetricMappingOptions(filters);
   if (computedMetric) {
-    if (shouldApplySmoothing) {
-      return {
-        ...computedMetric,
-        l7Smoothing: true,
-      };
-    }
-    const { l7Smoothing: _l7Smoothing, ...withoutL7Smoothing } = computedMetric;
-    return withoutL7Smoothing;
+    return applyChartTileSmoothingToComputedMetric(computedMetric, shouldApplySmoothing);
   }
   return getMetricForL7Smoothing(metric, shouldApplySmoothing, mappingOptions);
 }
@@ -536,6 +583,7 @@ function synthesizeTableTile(
 function synthesizeChartTile(
   tile: ChartTileConfig,
   inheritedFilters: ReadonlyArray<TileFilter>,
+  chartTitleResolution: ChartTitleResolution | undefined,
 ): ChartSynthesisOutcome {
   if (tile.chartSpec.chartType === ChartType.Table) {
     return synthesizeTableTile(tile, inheritedFilters);
@@ -589,24 +637,29 @@ function synthesizeChartTile(
       ? smoothedMetric
       : metric;
   const renderedComputedMetric = computedMetric
-    ? {
-        ...computedMetric,
-        ...(shouldApplySmoothing ? { l7Smoothing: true } : {}),
-      }
+    ? applyChartTileSmoothingToComputedMetric(computedMetric, shouldApplySmoothing)
     : isComputedMetric(smoothedMetric)
       ? smoothedMetric
       : undefined;
+  const isPrecomputedL7MetricChart =
+    renderedComputedMetric == null && getBaseMetricFromL7(metric) !== null;
+  const resolvedTitleLabel = resolveChartConfiguratorPreviewTitleLabel({
+    authoredChartTitleLabel: customTitle,
+    computedMetricChart: renderedComputedMetric ?? computedMetric ?? null,
+    computedMetricChartTitleLabel: computedMetricName,
+    defaultMetricTitleLabel: chartTitleResolution?.translateTitleKey(localizedName),
+    fallbackChartTitleLabel: customEventName,
+    formatSmoothingTitleLabel:
+      chartTitleResolution?.formatSmoothingTitleLabel ?? formatEnglishSmoothingChartTitleLabel,
+    isPrecomputedL7MetricChart,
+    untitledFormulaLabel: chartTitleResolution?.untitledFormulaLabel,
+  });
+  const titleLabel = resolvedTitleLabel?.trim() ? resolvedTitleLabel : undefined;
   const component: ChartConfig = {
     type: AnalyticsComponentType.Chart,
     chartKey: tile.tileId,
     titleKey: localizedName,
-    ...(customTitle
-      ? { titleLabel: customTitle }
-      : computedMetricName
-        ? { titleLabel: computedMetricName }
-        : customEventName
-          ? { titleLabel: customEventName }
-          : {}),
+    ...(titleLabel ? { titleLabel } : {}),
     metric: renderedMetric,
     ...(renderedComputedMetric ? { computedMetric: renderedComputedMetric } : {}),
     overrides,
@@ -689,12 +742,13 @@ function synthesizeSummaryTile(tile: SummaryCardTileConfig):
 function synthesizeWithCache<TTile extends ChartTileConfig | SummaryCardTileConfig, TOutcome>(
   tile: TTile,
   cache: Map<TileId, CachedTileOutcome<TOutcome>> | undefined,
+  titleRevision: string | undefined,
   synthesizeTile: (tile: TTile) => TOutcome,
 ): TOutcome {
   if (!cache) {
     return synthesizeTile(tile);
   }
-  const fingerprint = tileSynthesisFingerprint(tile);
+  const fingerprint = tileSynthesisFingerprint(tile, titleRevision);
   const cached = cache.get(tile.tileId);
   if (cached?.fingerprint === fingerprint) {
     return cached.outcome;
@@ -722,7 +776,9 @@ function synthesizeChartRow(
     const outcome = synthesizeWithCache(
       tile,
       hasApplicableMetricDefault ? undefined : ctx.tileCache?.chartTiles,
-      (nextTile) => synthesizeChartTile(nextTile, ctx.metricScopedDefaultFilters),
+      chartTileTitleRevision(tile, ctx.chartTitleResolution),
+      (nextTile) =>
+        synthesizeChartTile(nextTile, ctx.metricScopedDefaultFilters, ctx.chartTitleResolution),
     );
     if (outcome.kind === 'unsupported') {
       ctx.unsupported.push(outcome.reason);
@@ -759,7 +815,12 @@ function synthesizeSummaryRow(
 ): RAQIV2UIComponent | null {
   const components: AnalyticsSummaryCardConfig[] = [];
   summaries.slice(0, MAX_SUMMARY_CARDS_PER_DASHBOARD).forEach((tile) => {
-    const outcome = synthesizeWithCache(tile, ctx.tileCache?.summaryTiles, synthesizeSummaryTile);
+    const outcome = synthesizeWithCache(
+      tile,
+      ctx.tileCache?.summaryTiles,
+      ctx.chartTitleResolution?.revision,
+      synthesizeSummaryTile,
+    );
     if (outcome.kind === 'unsupported') {
       ctx.unsupported.push(outcome.reason);
       return;
@@ -782,11 +843,13 @@ type SynthesisContext = {
   readonly chartRows: SynthesizedChartEntry[][];
   readonly tileCache?: SynthesisTileCache;
   readonly metricScopedDefaultFilters: ReadonlyArray<TileFilter>;
+  readonly chartTitleResolution?: ChartTitleResolution;
 };
 
 function makeContext(
   tileCache: SynthesisTileCache | undefined,
   metricScopedDefaultFilters: ReadonlyArray<TileFilter>,
+  chartTitleResolution: ChartTitleResolution | undefined,
 ): SynthesisContext {
   const unsupported: SynthesisUnsupportedItem[] = [];
   const summaries: SynthesizedSummaryEntry[] = [];
@@ -797,6 +860,7 @@ function makeContext(
     chartRows,
     tileCache,
     metricScopedDefaultFilters,
+    chartTitleResolution,
   };
 }
 
@@ -810,7 +874,11 @@ export function synthesize(
     (filter): filter is TileFilter & { readonly dimension: RAQIV2Dimension } =>
       isRAQIV2Dimension(filter.dimension) && isMetricScopedDimension(filter.dimension),
   );
-  const ctx = makeContext(options?.tileCache, metricScopedDefaultFilters);
+  const ctx = makeContext(
+    options?.tileCache,
+    metricScopedDefaultFilters,
+    options?.chartTitleResolution,
+  );
   const body: RAQIV2UIComponent[] = [];
 
   const summaryRow = synthesizeSummaryRow(getSummaryCards(config), ctx);

@@ -55,7 +55,19 @@ function reuseChartComponent(
   if (tileConfigFingerprint(prevTile) !== tileConfigFingerprint(nextTile)) {
     return component;
   }
-  return prevChartsByTileId.get(tileId) ?? component;
+  const previousComponent = prevChartsByTileId.get(tileId);
+  if (!previousComponent) {
+    return component;
+  }
+  // Tile DTO equality is not enough once synthesis bakes translation-derived
+  // titles. Keep the previous identity only when the rendered title is unchanged.
+  const previousTitleLabel =
+    'titleLabel' in previousComponent ? previousComponent.titleLabel : undefined;
+  const nextTitleLabel = 'titleLabel' in component ? component.titleLabel : undefined;
+  if (previousTitleLabel !== nextTitleLabel) {
+    return component;
+  }
+  return previousComponent;
 }
 
 function reuseChartEntry(

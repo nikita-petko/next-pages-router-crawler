@@ -1,9 +1,18 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from '@rbx/intl';
+import type { TranslationKey } from '@modules/analytics-translations/types';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import {
+  formatEnglishSmoothingChartTitleLabel,
+  formatSmoothingChartTitleLabel,
+  smoothingChartTitleTranslationKey,
+} from '@modules/experience-analytics-shared/components/chartConfigurator/chartConfiguratorPreviewTitle';
 import type { CustomDashboardConfig } from '../types';
 import { stabilizeSynthesisResult } from './stabilizeSynthesis';
 import {
   createSynthesisTileCache,
   synthesize,
+  type ChartTitleResolution,
   type SynthesizeOptions,
   type SynthesizeResult,
 } from './synthesize';
@@ -46,12 +55,32 @@ export default function useDashboardSynthesis(
   const [tileCache] = useState(createSynthesisTileCache);
   const [resultStabilizer] = useState(createSynthesisResultStabilizer);
   const optionsTileCache = options?.tileCache;
+  const { translate, tPendingTranslation, ready } = useTranslationWrapper(useTranslation());
+  const chartTitleResolution = useMemo((): ChartTitleResolution => {
+    const formatSmoothingTitleLabel = (metricName: string) =>
+      typeof tPendingTranslation === 'function'
+        ? formatSmoothingChartTitleLabel(tPendingTranslation, metricName)
+        : formatEnglishSmoothingChartTitleLabel(metricName);
+    const translateTitleKey = (titleKey: TranslationKey) =>
+      typeof translate === 'function' ? String(translate(titleKey)) : titleKey.key;
+    const titleRevisionProbe = '__title-revision-probe__';
+    return {
+      formatSmoothingTitleLabel,
+      translateTitleKey,
+      revision: [
+        ready ? 'ready' : 'pending',
+        formatSmoothingTitleLabel(titleRevisionProbe),
+        translateTitleKey(smoothingChartTitleTranslationKey),
+      ].join(':'),
+    };
+  }, [ready, tPendingTranslation, translate]);
   const freshResult = useMemo(
     () =>
       synthesize(config, {
         tileCache: optionsTileCache ?? tileCache,
+        chartTitleResolution: options?.chartTitleResolution ?? chartTitleResolution,
       }),
-    [config, optionsTileCache, tileCache],
+    [chartTitleResolution, config, options?.chartTitleResolution, optionsTileCache, tileCache],
   );
 
   return useMemo(

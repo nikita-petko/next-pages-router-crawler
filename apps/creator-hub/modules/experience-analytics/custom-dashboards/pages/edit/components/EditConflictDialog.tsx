@@ -1,4 +1,4 @@
-import type { FC } from 'react';
+import { useId, type FC } from 'react';
 import {
   Button,
   Dialog,
@@ -8,6 +8,7 @@ import {
   DialogTitle,
   Tooltip,
   TooltipTrigger,
+  VisuallyHidden,
   type TButtonVariant,
 } from '@rbx/foundation-ui';
 import useEditPageTranslations from '../useEditPageTranslations';
@@ -41,21 +42,27 @@ const ConflictActionButton: FC<ConflictActionButtonProps> = ({
   isDisabled,
   isLoading,
   onClick,
-}) => (
-  <Tooltip title={description} position='top-center'>
-    <TooltipTrigger asChild>
-      <Button
-        variant={variant}
-        className='shrink-0'
-        isDisabled={isDisabled}
-        isLoading={isLoading}
-        aria-description={description}
-        onClick={onClick}>
-        {label}
-      </Button>
-    </TooltipTrigger>
-  </Tooltip>
-);
+}) => {
+  const descriptionId = useId();
+  return (
+    <>
+      <Tooltip title={description} position='top-center'>
+        <TooltipTrigger asChild>
+          <Button
+            variant={variant}
+            className='shrink-0'
+            isDisabled={isDisabled}
+            isLoading={isLoading}
+            aria-describedby={descriptionId}
+            onClick={onClick}>
+            {label}
+          </Button>
+        </TooltipTrigger>
+      </Tooltip>
+      <VisuallyHidden id={descriptionId}>{description}</VisuallyHidden>
+    </>
+  );
+};
 
 const EditConflictDialog: FC<EditConflictDialogProps> = ({
   open,
