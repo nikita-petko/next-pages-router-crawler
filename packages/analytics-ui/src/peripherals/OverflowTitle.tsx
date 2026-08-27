@@ -91,15 +91,15 @@ const OverflowTitle: FC<OverflowTitleProps> = (props) => {
         href={href}
         tabIndex={tabIndex}
         onClick={onClick}>
-        {text}
+        <bdi>{text}</bdi>
       </a>
     ) : as === 'h1' ? (
       <h1 ref={setLabelRef} className={mergedClassName} tabIndex={tabIndex}>
-        {text}
+        <bdi>{text}</bdi>
       </h1>
     ) : (
       <span ref={setLabelRef} className={mergedClassName} tabIndex={tabIndex}>
-        {text}
+        <bdi>{text}</bdi>
       </span>
     );
 
