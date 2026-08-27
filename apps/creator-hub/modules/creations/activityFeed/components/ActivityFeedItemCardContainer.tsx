@@ -1,12 +1,12 @@
 import type { FunctionComponent } from 'react';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from '@rbx/intl';
 import { IconButton, Menu, MenuItem, MoreHorizIcon, Typography } from '@rbx/ui';
 // eslint-disable-next-line no-restricted-imports -- creations barrel not yet migrated
 import useItemCardContainerStyles from '@modules/creations/common/containers/ItemCardContainer.styles';
 import unifiedLoggerClient from '@modules/eventStream/unifiedLoggerClient';
-import { EventType } from '../enums/ActivityFeedEnums';
 import type { ActivityFeedItemInfo } from '../hooks/useActivityFeedItemInfo';
+import { getEventTypeName } from '../utils/eventTypeUtils';
 
 interface ActivityFeedItemCardContainerProps {
   activityFeedItemInfo: ActivityFeedItemInfo;
@@ -20,11 +20,12 @@ const ActivityFeedItemCardContainer: FunctionComponent<
     cx,
   } = useItemCardContainerStyles();
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [menuAnchor, setMenuAnchor] = useState<HTMLButtonElement | null>(null);
   const { translate } = useTranslation();
 
   const handleClose = useCallback(() => {
     setIsMenuOpen(false);
+    setMenuAnchor(null);
   }, []);
 
   return (
@@ -36,14 +37,16 @@ const ActivityFeedItemCardContainer: FunctionComponent<
         className={cx({ [menuOpenedButton]: isMenuOpen }, moreIconButton)}
         color='onMediaDark'
         size='small'
-        onClick={() => setIsMenuOpen(true)}
-        ref={buttonRef}>
+        onClick={(event) => {
+          setMenuAnchor(event.currentTarget);
+          setIsMenuOpen(true);
+        }}>
         <MoreHorizIcon color='action' />
       </IconButton>
       <Menu
         data-testid='experience-options-menu'
         open={isMenuOpen}
-        anchorEl={buttonRef.current}
+        anchorEl={menuAnchor}
         onClose={handleClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
         transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
@@ -57,7 +60,7 @@ const ActivityFeedItemCardContainer: FunctionComponent<
                 unifiedLoggerClient.logClickEvent({
                   eventName: 'clickActivityFeedEvent.viewBasicSettings',
                   parameters: {
-                    eventType: EventType[activityFeedItemInfo.filters.eventType],
+                    eventType: getEventTypeName(activityFeedItemInfo.filters.eventType),
                   },
                 });
               }}
@@ -74,7 +77,7 @@ const ActivityFeedItemCardContainer: FunctionComponent<
                 unifiedLoggerClient.logClickEvent({
                   eventName: 'clickActivityFeedEvent.viewOnRoblox',
                   parameters: {
-                    eventType: EventType[activityFeedItemInfo.filters.eventType],
+                    eventType: getEventTypeName(activityFeedItemInfo.filters.eventType),
                   },
                 });
               }}

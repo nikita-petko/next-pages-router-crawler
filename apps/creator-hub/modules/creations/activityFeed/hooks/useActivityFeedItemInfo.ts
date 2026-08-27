@@ -673,7 +673,7 @@ function parseActivityFeedItemInfo(
         break;
       case EventType.UserTranslator:
         translationString = translate('Description.UserTranslator', {
-          userName: highlightUser(getUsername(response.resourceId ? response.resourceId : -1)),
+          userName: highlightUser(getUsername(response.resourceId ?? -1)),
         });
         iconType = ResourceType.User;
         viewBasicSettingsLink = `${universePath}/localization`;
@@ -1348,10 +1348,11 @@ export interface ActivityFeedItemInfo {
     placeId?: number;
     createdUtc: number;
   };
-  id: number;
+  id: number | string;
   iconId: number;
   iconType: ResourceType;
   translationString: string;
+  descriptionDetails?: string[];
   username: string;
   location: string;
   changedByLink: string;
@@ -1409,6 +1410,7 @@ export function useActivityFeedItemInfo(universeId: number, responses: ActivityF
 
   // Fetch usernames associated with all events.
   useEffect(() => {
+    /* oxlint-disable react/react-compiler -- async metadata fetches update their loading states around network requests. */
     const getUsernames = async () => {
       setLoadingInfo((prevInfo) => ({
         ...prevInfo,
@@ -1449,10 +1451,12 @@ export function useActivityFeedItemInfo(universeId: number, responses: ActivityF
     };
 
     void getUsernames();
+    /* oxlint-enable react/react-compiler */
   }, [responses]);
 
   // Fetch up-to-date place names from place ids
   useEffect(() => {
+    /* oxlint-disable react/react-compiler -- async metadata fetches update their loading states around network requests. */
     const placeIds = new Set<number>();
     responses.forEach((res) => {
       if (res.placeId) {
@@ -1461,6 +1465,7 @@ export function useActivityFeedItemInfo(universeId: number, responses: ActivityF
     });
     // Return early if there are no places to fetch.
     if (placeIds.size === 0) {
+      // oxlint-disable-next-line react/react-compiler -- no places means the loading state can be completed immediately.
       setLoadingInfo((prevInfo) => ({
         ...prevInfo,
         loadingPlaceNames: false,
@@ -1489,10 +1494,12 @@ export function useActivityFeedItemInfo(universeId: number, responses: ActivityF
       }
     };
     void getPlaceNames();
+    /* oxlint-enable react/react-compiler */
   }, [responses]);
 
   // Fetch the root place id for this experience.
   useEffect(() => {
+    /* oxlint-disable react/react-compiler -- async metadata fetches update their loading states around network requests. */
     const getRootPlaceId = async () => {
       setLoadingInfo((prevInfo) => ({
         ...prevInfo,
@@ -1514,11 +1521,13 @@ export function useActivityFeedItemInfo(universeId: number, responses: ActivityF
     if (universeId !== -1) {
       void getRootPlaceId();
     }
+    /* oxlint-enable react/react-compiler */
   }, [universeId]);
 
   // If the pre-requisite metadata (e.g. usernames) is finished loading, parse all activity feed events.
   const loading = Object.values(loadingInfo).some((isLoading) => isLoading);
   useEffect(() => {
+    /* oxlint-disable react/react-compiler -- parsed feed data intentionally mirrors fetched metadata. */
     // If any data is still being fetched, return early.
     if (loading) {
       return;
@@ -1538,6 +1547,7 @@ export function useActivityFeedItemInfo(universeId: number, responses: ActivityF
       );
     }
     setActivityFeedItemInfo(newActivityFeedItemInfo);
+    /* oxlint-enable react/react-compiler */
   }, [loadingInfo, getDateTime, loading, placeNames, responses, rootPlaceId, translate, usernames]);
 
   return {

@@ -372,6 +372,31 @@ function parseOrganizationActivityFeedItemInfo(
   };
 }
 
+const roleColorLabels = [
+  'Default',
+  'Blue',
+  'Green',
+  'Purple',
+  'Yellow',
+  'Orange',
+  'Red',
+  'Magenta',
+  'Teal',
+  'Turquoise',
+  'Rust',
+  'Pistachio',
+  'Midnight',
+  'Lavender',
+  'Pink',
+  'Crimson',
+  'Plum',
+];
+
+const roleColorTranslationId = (color: number | string | undefined): string => {
+  const numericColor = typeof color === 'number' ? color : Number(color);
+  return `Label.RoleColor${roleColorLabels[numericColor] || 'Default'}`;
+};
+
 function parseGroupAuditLogItemInfo(
   groupId: string,
   response: GroupAuditLogResponseItem,
@@ -395,9 +420,9 @@ function parseGroupAuditLogItemInfo(
   const groupRolePath = `/dashboard/group/roles?groupId=${groupId}&activeTab=GroupRolesTab`;
 
   const filters = {
-    eventType: response.actionType?.replaceAll(/\s/g, ''),
-    userId: response.actor?.user?.userId,
-    createdUtc: response.created,
+    eventType: response.actionType?.replaceAll(/\s/g, '') ?? '',
+    userId: response.actor?.user?.userId ?? 0,
+    createdUtc: response.created?.getTime() ?? 0,
   };
   let iconId: number;
   let iconType: ResourceType;
@@ -408,6 +433,7 @@ function parseGroupAuditLogItemInfo(
   let thumbnailLink = '';
   let viewBasicSettingsLink: string | undefined;
   let viewOnRobloxLink: string | undefined;
+  let descriptionDetails: string[] | undefined;
   const usernameMetadata: Map<string, string> = new Map();
 
   const dateTime: string = getDateTime(response.created ?? new Date());
@@ -519,29 +545,104 @@ function parseGroupAuditLogItemInfo(
             )
             .join(', ') ?? '';
 
-        translationString = `${translate(`Message.UpdateRolesetPermissions`, {
+        translationString = translate(`Message.UpdateRolesetPermissions`, {
           actor: response.actor?.user?.username ?? '',
           rolesetName: description.RoleSetName ?? '',
           entityType: description.EntityType?.toLowerCase() ?? '',
           entityName: description.EntityName ?? '',
-        })} ${
-          description.AddedPermissions && description.AddedPermissions.length > 0
-            ? translate(`Message.UpdateRoleSetPermissionsAdded`, {
-                addedPermissions: translatePermissions(description.AddedPermissions),
-              })
-            : ''
-        } ${
-          description.RemovedPermissions && description.RemovedPermissions.length > 0
-            ? translate(`Message.UpdateRoleSetPermissionsRemoved`, {
-                removedPermissions: translatePermissions(description.RemovedPermissions),
-              })
-            : ''
-        }`;
+        });
+        descriptionDetails = [];
+        if (description.AddedPermissions && description.AddedPermissions.length > 0) {
+          descriptionDetails.push(
+            translate(`Message.UpdateRoleSetPermissionsAdded`, {
+              addedPermissions: translatePermissions(description.AddedPermissions),
+            }),
+          );
+        }
+        if (description.RemovedPermissions && description.RemovedPermissions.length > 0) {
+          descriptionDetails.push(
+            translate(`Message.UpdateRoleSetPermissionsRemoved`, {
+              removedPermissions: translatePermissions(description.RemovedPermissions),
+            }),
+          );
+        }
         iconType =
           description.EntityType === 'Universe' ? ResourceType.Universe : ResourceType.Group;
         viewBasicSettingsLink =
           description.EntityType === 'Universe' ? universePath : groupRolePath;
         viewOnRobloxLink = description.EntityType === 'Universe' ? universeOnRobloxPath : undefined;
+        break;
+      }
+      case GroupAuditLogActionTypeEnum.UpdateRolesetData: {
+        const description = response.description as {
+          RoleSetName?: string;
+          OldName?: string;
+          NewName?: string;
+          OldDescription?: string;
+          NewDescription?: string;
+          OldColor?: number | string;
+          NewColor?: number | string;
+          OldIsPrivate?: boolean;
+          NewIsPrivate?: boolean;
+        };
+        descriptionDetails = [];
+        if (description.OldName !== description.NewName) {
+          descriptionDetails.push(
+            translate(`Message.UpdateRolesetPropertiesName`, {
+              newName: description.NewName ?? '',
+            }),
+          );
+        }
+        if (description.OldDescription !== description.NewDescription) {
+          descriptionDetails.push(
+            translate(`Message.UpdateRolesetPropertiesDescription`, {
+              newDescription: description.NewDescription ?? '',
+            }),
+          );
+        }
+        if (description.OldColor !== description.NewColor) {
+          descriptionDetails.push(
+            translate(`Message.UpdateRolesetPropertiesColor`, {
+              newColor: translate(roleColorTranslationId(description.NewColor)),
+            }),
+          );
+        }
+        if (description.OldIsPrivate !== description.NewIsPrivate) {
+          descriptionDetails.push(
+            translate(
+              description.NewIsPrivate
+                ? `Message.UpdateRolesetPropertiesVisibilityPrivate`
+                : `Message.UpdateRolesetPropertiesVisibilityPublic`,
+            ),
+          );
+        }
+        const propertiesMessage = translate(`Message.UpdateRolesetProperties`, {
+          actor: response.actor?.user?.username ?? '',
+          roleSetName: description.RoleSetName ?? '',
+        });
+        translationString = propertiesMessage;
+        iconType = ResourceType.Group;
+        viewBasicSettingsLink = groupRolePath;
+        break;
+      }
+      case GroupAuditLogActionTypeEnum.UpdateRoleSetPosition: {
+        const description = response.description as {
+          RoleSetName?: string;
+          OldRoleAboveName?: string;
+          NewRoleAboveName?: string;
+        };
+        const positionLabel = (roleAboveName?: string) =>
+          roleAboveName
+            ? translate(`Message.UpdateRolesetPositionBelowRole`, { roleAboveName })
+            : translate(`Message.UpdateRolesetPositionTopRole`);
+        translationString = translate(`Message.UpdateRolesetPosition`, {
+          actor: response.actor?.user?.username ?? '',
+          roleSetName: description.RoleSetName ?? '',
+          oldPosition: positionLabel(description.OldRoleAboveName),
+          newPosition: positionLabel(description.NewRoleAboveName),
+        });
+        iconType = ResourceType.Group;
+        viewBasicSettingsLink = groupRolePath;
         break;
       }
       default:
@@ -596,7 +697,8 @@ function parseGroupAuditLogItemInfo(
     iconId,
     iconType,
     translationString,
-    username: response.actor?.user?.username,
+    ...(descriptionDetails?.length ? { descriptionDetails } : {}),
+    username: response.actor?.user?.username ?? '',
     usernameMetadata,
     location,
     changedByLink,
@@ -736,7 +838,7 @@ export function useOrganizationActivityFeedItemInfo(
     void getUniverseDetails();
   }, [responses, auditLogResponse, groupId]);
 
-  const activityFeedItemInfo = useMemo(() => {
+  const activityFeedItemInfo = useMemo<OrganizationActivityFeedItemInfo[]>(() => {
     if (loadingInfo) {
       return [];
     }

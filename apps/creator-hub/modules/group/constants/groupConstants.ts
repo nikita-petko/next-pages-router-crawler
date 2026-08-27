@@ -221,7 +221,11 @@ const GroupActivityHistoryEventTypesMapping: {
     EventType.ExperiencePermissionsUpdated,
     GroupAuditLogActionTypeEnum.UpdateRoleSetPermissions,
   ],
-  [GroupActivityHistoryFilterCategories.ConfigureRolesSettings]: [EventType.RoleNameUpdated],
+  [GroupActivityHistoryFilterCategories.ConfigureRolesSettings]: [
+    EventType.RoleNameUpdated,
+    GroupAuditLogActionTypeEnum.UpdateRolesetData,
+    GroupAuditLogActionTypeEnum.UpdateRoleSetPosition,
+  ],
   [GroupActivityHistoryFilterCategories.Invitation]: [
     EventType.MemberInvited,
     EventType.InviteRevoked,

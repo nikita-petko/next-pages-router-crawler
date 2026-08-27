@@ -1,5 +1,11 @@
 import type { FunctionComponent } from 'react';
-import React, { useCallback, useEffect, useState } from 'react';
+import React from 'react';
+import {
+  Accordion,
+  AccordionItem,
+  AccordionItemContent,
+  AccordionItemTrigger,
+} from '@rbx/foundation-ui';
 import { Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
 import {
   Typography,
@@ -13,8 +19,9 @@ import {
   RobuxIcon,
 } from '@rbx/ui';
 import unifiedLoggerClient from '@modules/eventStream/unifiedLoggerClient';
-import { EventType, ResourceType } from '../enums/ActivityFeedEnums';
+import { ResourceType } from '../enums/ActivityFeedEnums';
 import type { ActivityFeedItemInfo } from '../hooks/useActivityFeedItemInfo';
+import { getEventTypeName } from '../utils/eventTypeUtils';
 import useActivityFeedItemStyles from './ActivityFeedItem.styles';
 import ActivityFeedItemCardContainer from './ActivityFeedItemCardContainer';
 
@@ -44,126 +51,129 @@ const ActivityFeedItem: FunctionComponent<React.PropsWithChildren<ActivityFeedIt
       smallScreenTruncateLocation,
     },
   } = useActivityFeedItemStyles();
-  const [icon, setIcon] = useState<React.JSX.Element | null>(null);
+  const hasDescriptionDetails = Boolean(activityFeedItemInfo.descriptionDetails?.length);
+  const hasActivityFeedItemLinks = [
+    activityFeedItemInfo.viewBasicSettingsLink,
+    activityFeedItemInfo.viewOnRobloxLink,
+  ].some((link) => Boolean(link));
 
-  const renderIcon = useCallback(
-    (
-      type: ThumbnailTypes,
-      targetId: number,
-      altText: string,
-      variant: 'circular' | 'rounded' | 'square' | undefined,
-    ) => {
-      return (
-        <Link
-          href={activityFeedItemInfo.thumbnailLink}
-          target='_blank'
-          onClick={() =>
-            // Log click event when clicking on the event icon
-            unifiedLoggerClient.logClickEvent({
-              eventName: 'clickActivityFeedEvent.icon',
-              parameters: {
-                eventType: EventType[activityFeedItemInfo.filters.eventType],
-              },
-            })
-          }>
-          <Avatar variant={variant} alt={altText} className={`${thumbnail} ${avatar}`}>
-            <Thumbnail2d
-              type={type}
-              targetId={targetId}
-              includeBackground
-              alt={altText}
-              isPendingNewTarget={false}
-            />
-          </Avatar>
-        </Link>
-      );
-    },
-    [activityFeedItemInfo.filters.eventType, activityFeedItemInfo.thumbnailLink, avatar, thumbnail],
+  const renderIcon = (
+    type: ThumbnailTypes,
+    targetId: number,
+    altText: string,
+    variant: 'circular' | 'rounded' | 'square' | undefined,
+  ) => (
+    <Link
+      href={activityFeedItemInfo.thumbnailLink}
+      target='_blank'
+      onClick={() =>
+        // Log click event when clicking on the event icon
+        unifiedLoggerClient.logClickEvent({
+          eventName: 'clickActivityFeedEvent.icon',
+          parameters: {
+            eventType: getEventTypeName(activityFeedItemInfo.filters.eventType),
+          },
+        })
+      }>
+      <Avatar variant={variant} alt={altText} className={`${thumbnail} ${avatar}`}>
+        <Thumbnail2d
+          type={type}
+          targetId={targetId}
+          includeBackground
+          alt={altText}
+          isPendingNewTarget={false}
+        />
+      </Avatar>
+    </Link>
   );
-  useEffect(() => {
+
+  const icon = (() => {
     switch (activityFeedItemInfo.iconType) {
       case ResourceType.Universe:
       case ResourceType.Place:
-        setIcon(
-          renderIcon(
-            ThumbnailTypes.placeIcon,
-            activityFeedItemInfo.iconId,
-            'Place Icon',
-            'rounded',
-          ),
+        return renderIcon(
+          ThumbnailTypes.placeIcon,
+          activityFeedItemInfo.iconId,
+          'Place Icon',
+          'rounded',
         );
-        break;
       case ResourceType.User:
-        setIcon(
-          renderIcon(
-            ThumbnailTypes.avatarHeadshot,
-            activityFeedItemInfo.iconId,
-            'User Icon',
-            'circular',
-          ),
+        return renderIcon(
+          ThumbnailTypes.avatarHeadshot,
+          activityFeedItemInfo.iconId,
+          'User Icon',
+          'circular',
         );
-        break;
       case ResourceType.Badge:
-        setIcon(
-          renderIcon(
-            ThumbnailTypes.badgeIcon,
-            activityFeedItemInfo.iconId,
-            'Badge Icon',
-            'circular',
-          ),
+        return renderIcon(
+          ThumbnailTypes.badgeIcon,
+          activityFeedItemInfo.iconId,
+          'Badge Icon',
+          'circular',
         );
-        break;
       case ResourceType.DeveloperProduct:
-        setIcon(
-          renderIcon(
-            ThumbnailTypes.developerProductIcon,
-            activityFeedItemInfo.iconId,
-            'Badge Icon',
-            'circular',
-          ),
+        return renderIcon(
+          ThumbnailTypes.developerProductIcon,
+          activityFeedItemInfo.iconId,
+          'Badge Icon',
+          'circular',
         );
-        break;
       case ResourceType.GamePass:
-        setIcon(
-          renderIcon(
-            ThumbnailTypes.gamePassIcon,
-            activityFeedItemInfo.iconId,
-            'Badge Icon',
-            'circular',
-          ),
+        return renderIcon(
+          ThumbnailTypes.gamePassIcon,
+          activityFeedItemInfo.iconId,
+          'Badge Icon',
+          'circular',
         );
-        break;
       case ResourceType.Group:
-        setIcon(
-          renderIcon(
-            ThumbnailTypes.groupIcon,
-            activityFeedItemInfo.iconId,
-            'Group Icon',
-            'circular',
-          ),
+        return renderIcon(
+          ThumbnailTypes.groupIcon,
+          activityFeedItemInfo.iconId,
+          'Group Icon',
+          'circular',
         );
-        break;
       case ResourceType.Asset:
-        setIcon(
-          renderIcon(
-            ThumbnailTypes.assetThumbnail,
-            activityFeedItemInfo.iconId,
-            'Asset',
-            'circular',
-          ),
+        return renderIcon(
+          ThumbnailTypes.assetThumbnail,
+          activityFeedItemInfo.iconId,
+          'Asset',
+          'circular',
         );
-        break;
       case ResourceType.Robux:
-        setIcon(
+        return (
           <Avatar variant='circular' alt='Robux Icon' className={thumbnail}>
             <RobuxIcon fontSize='large' />
-          </Avatar>,
+          </Avatar>
         );
-        break;
       default:
-        setIcon(<ImageIcon />);
+        return <ImageIcon />;
     }
-  }, [activityFeedItemInfo.iconType, activityFeedItemInfo.iconId, renderIcon, thumbnail]);
+  })();
+
+  const description = hasDescriptionDetails ? (
+    <Accordion size='Medium'>
+      <AccordionItem>
+        <AccordionItemTrigger className='text-align-x-left gap-small'>
+          <span className='text-body-large content-emphasis text-wrap text-truncate-none no-clip'>
+            {activityFeedItemInfo.translationString}
+          </span>
+        </AccordionItemTrigger>
+        <AccordionItemContent className='text-wrap text-align-x-left no-clip-x'>
+          <div className='flex flex-col gap-xxsmall padding-top-xxsmall'>
+            {activityFeedItemInfo.descriptionDetails?.map((detail) => (
+              <span key={detail} className='text-body-medium content-default'>
+                {detail}
+              </span>
+            ))}
+          </div>
+        </AccordionItemContent>
+      </AccordionItem>
+    </Accordion>
+  ) : (
+    <Typography variant='body1' color='primary' className={translationStringStyles}>
+      {activityFeedItemInfo.translationString}
+    </Typography>
+  );
 
   const smallScreen = (
     <TableRow className={itemRow} data-testid={`activity-feed-item-${activityFeedItemInfo.id}`}>
@@ -180,19 +190,14 @@ const ActivityFeedItem: FunctionComponent<React.PropsWithChildren<ActivityFeedIt
                     {activityFeedItemInfo.dateTime}
                   </Typography>
                   <Grid alignItems='flex-end' justifyContent='flex-end'>
-                    {(activityFeedItemInfo.viewBasicSettingsLink ||
-                      activityFeedItemInfo.viewOnRobloxLink) && (
+                    {hasActivityFeedItemLinks && (
                       <ActivityFeedItemCardContainer activityFeedItemInfo={activityFeedItemInfo} />
                     )}
                   </Grid>
                 </Grid>
               }
-              secondary={
-                <Typography variant='body1' color='primary' className={translationStringStyles}>
-                  {activityFeedItemInfo.translationString}
-                </Typography>
-              }
             />
+            {description}
             <Grid
               item
               direction='row'
@@ -246,12 +251,8 @@ const ActivityFeedItem: FunctionComponent<React.PropsWithChildren<ActivityFeedIt
                   {activityFeedItemInfo.dateTime}
                 </Typography>
               }
-              secondary={
-                <Typography variant='body1' color='primary' className={translationStringStyles}>
-                  {activityFeedItemInfo.translationString}
-                </Typography>
-              }
             />
+            {description}
           </Grid>
         </Grid>
       </TableCell>
@@ -263,7 +264,7 @@ const ActivityFeedItem: FunctionComponent<React.PropsWithChildren<ActivityFeedIt
               unifiedLoggerClient.logClickEvent({
                 eventName: 'clickActivityFeedEvent.changedBy',
                 parameters: {
-                  eventType: EventType[activityFeedItemInfo.filters.eventType],
+                  eventType: getEventTypeName(activityFeedItemInfo.filters.eventType),
                 },
               })
             }
@@ -288,7 +289,7 @@ const ActivityFeedItem: FunctionComponent<React.PropsWithChildren<ActivityFeedIt
               unifiedLoggerClient.logClickEvent({
                 eventName: 'clickActivityFeedEvent.location',
                 parameters: {
-                  eventType: EventType[activityFeedItemInfo.filters.eventType],
+                  eventType: getEventTypeName(activityFeedItemInfo.filters.eventType),
                 },
               })
             }
@@ -301,7 +302,7 @@ const ActivityFeedItem: FunctionComponent<React.PropsWithChildren<ActivityFeedIt
         </TableCell>
       )}
       <TableCell className={settingsLinkCell} align='right'>
-        {(activityFeedItemInfo.viewBasicSettingsLink || activityFeedItemInfo.viewOnRobloxLink) && (
+        {hasActivityFeedItemLinks && (
           <ActivityFeedItemCardContainer activityFeedItemInfo={activityFeedItemInfo} />
         )}
       </TableCell>
