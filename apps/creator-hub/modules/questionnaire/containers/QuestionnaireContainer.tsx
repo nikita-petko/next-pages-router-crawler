@@ -8,7 +8,6 @@ import { questionnaireSectionStepperEnabled } from '@generated/flags/contentSuit
 import { SCROLL_CONTAINER_ID } from '@modules/creator-hub-layout/CreatorHubLayoutInner';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import QuestionnaireAccordions from '../components/QuestionnaireAccordions';
 import QuestionnaireProgress from '../components/QuestionnaireProgress';
 import QuestionnaireSectionStepper from '../components/QuestionnaireSectionStepper';
@@ -69,8 +68,6 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
   const localeCode = convertToRobloxLocale(locale);
   const explicitEntryPoint =
     typeof router.query.entryPoint === 'string' ? router.query.entryPoint : undefined;
-  const { settings, isFetched } = useSettings();
-  const { enableContentMaturity18Plus } = settings;
   const { ready: isSectionStepperFlagReady, value: isSectionStepperFlagEnabled } = useFlag(
     questionnaireSectionStepperEnabled,
   );
@@ -388,7 +385,6 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
           moveBackAScreen={goToQuestionnaire}
           isContentMaturityEnabled
           isIncreaseMaturityEnabled={false}
-          enableContentMaturity18Plus={enableContentMaturity18Plus}
         />
       )}
     </Grid>
@@ -400,7 +396,6 @@ const QuestionnaireContainer: FunctionComponent<PropsWithChildren<QuestionnaireC
     isSubmissionLoading ||
     isQuestionnaireLoading ||
     isDetailedGuidelinesLoading ||
-    !isFetched ||
     !isSectionStepperFlagReady
   ) {
     return <PageLoading />;

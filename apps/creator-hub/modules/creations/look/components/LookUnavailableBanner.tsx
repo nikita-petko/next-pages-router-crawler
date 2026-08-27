@@ -1,34 +1,18 @@
 import type { FunctionComponent } from 'react';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import type { LookItemDetailV2 } from '@rbx/client-look-api/v1';
 import { useTranslation } from '@rbx/intl';
-import { Button, Alert, AlertTitle, Typography, makeStyles } from '@rbx/ui';
-import useVerificationStyles from '../../verification/components/Verification.styles';
+import GenericVerificationAlert from '../../verification/components/GenericVerificationAlert';
 
 export interface LookUnavailableBannerProps {
   items: LookItemDetailV2[];
   creatingUniverseId?: number | null;
 }
 
-const useStyles = makeStyles()(() => ({
-  bannerContainer: {
-    marginTop: '24px',
-    marginBottom: '20px',
-  },
-}));
-
 const LookUnavailableBanner: FunctionComponent<
   React.PropsWithChildren<LookUnavailableBannerProps>
 > = ({ items, creatingUniverseId }) => {
   const { translate } = useTranslation();
-  const {
-    classes: { bannerContainer },
-  } = useStyles();
-  const {
-    classes: { alertStyle },
-  } = useVerificationStyles();
-
-  const [showAlert, setShowAlert] = useState<boolean>(true);
 
   const { unavailableItems } = useMemo(() => {
     const unavailable: LookItemDetailV2[] = [];
@@ -53,26 +37,20 @@ const LookUnavailableBanner: FunctionComponent<
     return null;
   }
 
-  if (unavailableItems.length === 0 || !showAlert) {
+  if (unavailableItems.length === 0) {
     return null;
   }
 
   return (
-    <div className={bannerContainer}>
-      <Alert
+    <div className='margin-top-medium margin-bottom-small'>
+      <GenericVerificationAlert
+        alertTitle={translate('Heading.LookUnavailable')}
+        alertDescription={translate('Description.LookUnavailable')}
         severity='warning'
-        onClose={undefined}
-        className={alertStyle}
-        action={
-          <Button size='small' onClick={() => setShowAlert(false)}>
-            x
-          </Button>
-        }>
-        <AlertTitle>{translate('Heading.LookUnavailable')}</AlertTitle>
-        <Typography variant='smallLabel2' component='span'>
-          {translate('Description.LookUnavailable')}
-        </Typography>
-      </Alert>
+        externalLink={undefined}
+        linkLabel={undefined}
+        allowCloseDialog
+      />
     </div>
   );
 };

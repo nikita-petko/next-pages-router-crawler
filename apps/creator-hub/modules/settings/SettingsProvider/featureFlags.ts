@@ -18,7 +18,6 @@ export enum FeatureFlagName {
   unratedExperienceBannerLink = 'unratedExperienceBannerLink',
   enableRentables = 'enableRentables',
   rentablesPostLaunchWhitelist = 'rentablesPostLaunchWhitelist',
-  enableContentMaturity18Plus = 'enableContentMaturity18Plus',
   enableMakeupAssets = 'enableMakeupAssets',
   enableQuestionnaireHelpDialog = 'enableQuestionnaireHelpDialog',
   ageVerificationUpsellBannerStartDate = 'ageVerificationUpsellBannerStartDate',
@@ -88,7 +87,6 @@ export const featureFlagDefaults = defineFeatureFlagDefaults({
   [FeatureFlagName.unratedExperienceBannerLink]: '',
   [FeatureFlagName.enableRentables]: false,
   [FeatureFlagName.rentablesPostLaunchWhitelist]: '',
-  [FeatureFlagName.enableContentMaturity18Plus]: false,
   [FeatureFlagName.enableMakeupAssets]: false,
   [FeatureFlagName.enableQuestionnaireHelpDialog]: false,
 

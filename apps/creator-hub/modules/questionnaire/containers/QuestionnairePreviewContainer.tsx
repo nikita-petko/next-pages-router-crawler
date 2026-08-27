@@ -40,7 +40,6 @@ export interface QuestionnairePreviewContainerProps {
   moveBackAScreen: () => void;
   isContentMaturityEnabled: boolean;
   isIncreaseMaturityEnabled: boolean;
-  enableContentMaturity18Plus: boolean;
 }
 
 const QuestionnairePreviewContainer: FunctionComponent<
@@ -55,7 +54,6 @@ const QuestionnairePreviewContainer: FunctionComponent<
   moveBackAScreen,
   isContentMaturityEnabled,
   isIncreaseMaturityEnabled,
-  enableContentMaturity18Plus,
 }) => {
   const { parseText } = useMarkdownParser();
   const { translate } = useTranslation();
@@ -107,6 +105,7 @@ const QuestionnairePreviewContainer: FunctionComponent<
     }
   }, [universeId]);
 
+  /* oxlint-disable react/react-compiler -- pre-existing: exhaustive-deps intentionally suppressed (NOTE jcountryman) */
   const attemptGetQuestionnairePreview = useCallback(
     async (localQuestionnaireResponse: Response) => {
       try {
@@ -122,7 +121,7 @@ const QuestionnairePreviewContainer: FunctionComponent<
               ),
           );
 
-        setRestrictedCountries(previewResponseObj?.restrictedCountries || []);
+        setRestrictedCountries(previewResponseObj?.restrictedCountries ?? []);
 
         const ageRecommendationDetailsFound = previewResponseObj.ageRecommendationDetails ?? null;
         setAgeContentDescriptors(
@@ -130,7 +129,7 @@ const QuestionnairePreviewContainer: FunctionComponent<
         );
         setAgeDisplay(extractAgeDisplayNameFromEQS(ageRecommendationDetailsFound));
         setMinimumAge(
-          ageRecommendationDetailsFound?.summary?.ageRecommendation?.minimumAge || null,
+          ageRecommendationDetailsFound?.summary?.ageRecommendation?.minimumAge ?? null,
         );
 
         await getAndSetCurrentGuidelines();
@@ -168,6 +167,7 @@ const QuestionnairePreviewContainer: FunctionComponent<
       showToastUserError,
     ],
   );
+  /* oxlint-enable react/react-compiler */
 
   const toggleDialog = useCallback(
     (event?: React.MouseEvent<HTMLButtonElement>) => {
@@ -196,6 +196,7 @@ const QuestionnairePreviewContainer: FunctionComponent<
     [attemptSubmit, isDialogOpen],
   );
 
+  /* oxlint-disable react/react-compiler -- pre-existing: exhaustive-deps intentionally suppressed (NOTE jcountryman) */
   useEffect(() => {
     // Should run once at beginning to call a series of network requests gathering preview data
     async function beginFetchData() {
@@ -209,10 +210,11 @@ const QuestionnairePreviewContainer: FunctionComponent<
     // this code is also triggered on submit. This check prevents that from
     // happening, which also prevents a 400 error toast.
     if (!isSaving) {
-      beginFetchData();
+      void beginFetchData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- NOTE(jcountryman, 2/6/24): Turned off to check in code. Codeowners is responsible for triaging issue.
   }, [JSON.stringify(questionnaireResponse), attemptGetQuestionnairePreview]);
+  /* oxlint-enable react/react-compiler */
 
   if (isLoading) {
     return <PageLoading />;
@@ -222,9 +224,7 @@ const QuestionnairePreviewContainer: FunctionComponent<
     if (!isContentMaturityEnabled) {
       return 'This experience will become accessible to only age-verified 17+ users. The age recommendation of “Ages 17+” cannot be removed.';
     }
-    return enableContentMaturity18Plus
-      ? translate('Message.RestrictedLabelWarningAge18Plus')
-      : translate('Message.RestrictedLabelWarning');
+    return translate('Message.RestrictedLabelWarningAge18Plus');
   };
 
   return (
@@ -248,7 +248,7 @@ const QuestionnairePreviewContainer: FunctionComponent<
               restrictedCountries={restrictedCountries}
               ageDisplay={ageDisplay}
               ageContentDescriptors={ageContentDescriptors}
-              creatorOverrides={creatorOverrides as CreatorOverrides}
+              creatorOverrides={creatorOverrides}
               isContentMaturityEnabled={isContentMaturityEnabled}
               isIncreaseMaturityEnabled={isIncreaseMaturityEnabled}
             />
@@ -308,7 +308,8 @@ const QuestionnairePreviewContainer: FunctionComponent<
             title={
               isContentMaturityEnabled
                 ? translate('Title.ConfirmRestrictedLabel')
-                : 'Make experience Ages 17+?'
+                : // oxlint-disable-next-line rbx/no-hardcoded-translation-string -- pre-existing hardcoded copy (localization debt)
+                  'Make experience Ages 17+?'
             }
             variant='alert'
           />
