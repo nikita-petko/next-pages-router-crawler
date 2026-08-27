@@ -1,29 +1,25 @@
 import type { FunctionComponent } from 'react';
 import type { AgeBracketEnum, CreatorTierEnum } from '@rbx/client-core-content-api/v1';
 import { clsx as cx } from '@rbx/foundation-ui';
-import { useTranslation } from '@rbx/intl';
 import { Typography } from '@rbx/ui';
-import type { PublishingTier, TierRequirement } from '../types';
+import type { PublishPermissionRequirementView, PublishingTier } from '../constants/displayCopy';
+import { isRequiredForTier } from '../utils/mapPublishPermissionsToView';
 import RequirementChip from './RequirementChip';
 import RequirementStatusIcon from './RequirementStatusIcon';
 
 const DesktopRequirementRow: FunctionComponent<{
-  requirement: TierRequirement;
+  requirement: PublishPermissionRequirementView;
   isCompleted: boolean;
   currentTier: CreatorTierEnum;
   ageBracket: AgeBracketEnum;
   tierOrder: PublishingTier[];
 }> = ({ requirement, isCompleted, currentTier, ageBracket, tierOrder }) => {
-  const { translate } = useTranslation();
-
   return (
     <>
       <div className='flex items-center gap-xsmall padding-large place-content-between'>
         <div className='flex flex-col gap-xsmall'>
-          <Typography className='text-label-medium'>{translate(requirement.labelKey)}</Typography>
-          <Typography className='text-body-small text-center'>
-            {translate(requirement.descriptionKey)}
-          </Typography>
+          <Typography className='text-label-medium'>{requirement.label}</Typography>
+          <Typography className='text-body-small'>{requirement.description}</Typography>
         </div>
         <div className='grow-0 shrink-0'>
           <RequirementChip
@@ -41,9 +37,9 @@ const DesktopRequirementRow: FunctionComponent<{
             tier === currentTier && 'bg-shift-100',
           )}>
           <RequirementStatusIcon
-            status={requirement.tiers[tier]}
+            isRequired={isRequiredForTier(requirement, tier)}
             isCompleted={isCompleted}
-            comingSoon={requirement.comingSoon}
+            isEnabled={requirement.isEnabled}
           />
         </div>
       ))}

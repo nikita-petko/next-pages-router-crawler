@@ -1,19 +1,18 @@
 import type { FunctionComponent } from 'react';
 import { CheckCircleOutlineIcon, ErrorOutlineOutlinedIcon, RemoveIcon } from '@rbx/ui';
-import { RequirementStatus } from '../types';
 
 const RequirementStatusIcon: FunctionComponent<{
-  status: RequirementStatus;
+  isRequired: boolean;
   isCompleted: boolean;
-  comingSoon?: boolean;
-}> = ({ status, isCompleted, comingSoon }) => {
-  if (status === RequirementStatus.NotRequired) {
+  isEnabled: boolean;
+}> = ({ isRequired, isCompleted, isEnabled }) => {
+  if (!isRequired) {
     return <RemoveIcon />;
   }
   if (isCompleted) {
     return <CheckCircleOutlineIcon color='success' />;
   }
-  if (comingSoon) {
+  if (!isEnabled) {
     return <ErrorOutlineOutlinedIcon color='disabled' />;
   }
   return <ErrorOutlineOutlinedIcon color='error' />;

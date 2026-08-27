@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { CreatorEligibilityEnum, AgeBracketEnum } from '@rbx/client-core-content-api/v1';
 import { Button } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
+import type { PublishPermissionRequirementView } from '../constants/displayCopy';
 import { idVerificationActionUrl, parentLinkActionUrl } from '../constants/tiers';
-import type { TierRequirement } from '../types';
 import IdVerificationDialog from './IdVerificationDialog';
 import styles from './RequirementChip.module.css';
 
 const RequirementChip: FunctionComponent<{
-  requirement: TierRequirement;
+  requirement: PublishPermissionRequirementView;
   isCompleted: boolean;
   ageBracket: AgeBracketEnum;
 }> = ({ requirement, isCompleted, ageBracket }) => {
@@ -20,7 +20,7 @@ const RequirementChip: FunctionComponent<{
     requirement.id === CreatorEligibilityEnum.IdVerified &&
     ageBracket === AgeBracketEnum.Between13And18;
 
-  if (requirement.comingSoon) {
+  if (!requirement.isEnabled) {
     return (
       <Button size='Small' variant='Emphasis' isDisabled className={styles.chip}>
         {translate('Label.ComingSoon')}

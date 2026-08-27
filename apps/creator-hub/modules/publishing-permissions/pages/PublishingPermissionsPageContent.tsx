@@ -1,13 +1,8 @@
 import type { FunctionComponent, ReactNode } from 'react';
 import { useMemo } from 'react';
 import { useRouter } from 'next/router';
-import {
-  AgeBracketEnum,
-  CreatorEligibilityEnum,
-  CreatorEligibilityWarningEnum,
-  CreatorTierEnum,
-} from '@rbx/client-core-content-api/v1';
-import { FeedbackBanner } from '@rbx/foundation-ui';
+import { CreatorTierEnum } from '@rbx/client-core-content-api/v1';
+import { Alert } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { Link, Typography } from '@rbx/ui';
 import Authenticated from '@modules/authentication/Authenticated';
@@ -15,9 +10,10 @@ import { PageLoading } from '@modules/miscellaneous/components';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import PublishingPermissionsTable from '../components/PublishingPermissionsTable';
-import { getPublishingPermissionsConfig } from '../constants/configs';
+import type { PublishPermissionRequirementView, PublishingTier } from '../constants/displayCopy';
 import { idVerificationActionUrl } from '../constants/tiers';
-import { useCreatorEligibility } from '../hooks/useCreatorEligibility';
+import { usePublishPermissions } from '../hooks/usePublishPermissions';
+import { mapPublishPermissionsToView } from '../utils/mapPublishPermissionsToView';
 
 const learnMoreLinkChunks = [
   {
@@ -33,6 +29,15 @@ const learnMoreLinkChunks = [
     ),
   },
 ];
+
+const resolveTierCopy = (
+  keys: Record<PublishingTier, string>,
+  translate: (key: string) => string,
+): Record<PublishingTier, string> => ({
+  [CreatorTierEnum.Private]: translate(keys[CreatorTierEnum.Private]),
+  [CreatorTierEnum.Trusted]: translate(keys[CreatorTierEnum.Trusted]),
+  [CreatorTierEnum.Everyone]: translate(keys[CreatorTierEnum.Everyone]),
+});
 
 const PublishingPermissionsPageContent: FunctionComponent = () => {
   const router = useRouter();
@@ -56,47 +61,53 @@ const PublishingPermissionsPageContent: FunctionComponent = () => {
   }, [router.query.override_ownerId]);
 
   const {
-    data: creatorEligibilityResponse,
-    isLoading,
+    data: publishPermissionsResponse,
+    isPending,
     isError,
     refetch,
-  } = useCreatorEligibility({
+  } = usePublishPermissions({
     overrideUserId,
   });
 
-  const completedRequirements = creatorEligibilityResponse?.creatorEligibility ?? [];
-  const ageBracket = creatorEligibilityResponse?.ageBracket ?? AgeBracketEnum.Unknown;
-  const countryCode = creatorEligibilityResponse?.countryCode;
-  const creatorTier = creatorEligibilityResponse?.creatorTier ?? CreatorTierEnum.Blocked;
-  const allowlistTier = creatorEligibilityResponse?.allowlistTier ?? [];
-  const everyoneTierWithoutSubscription =
-    creatorEligibilityResponse?.everyoneTierWithoutSubscription ?? false;
+  const publishPermissions = useMemo(
+    () =>
+      publishPermissionsResponse
+        ? mapPublishPermissionsToView(publishPermissionsResponse)
+        : undefined,
+    [publishPermissionsResponse],
+  );
 
-  const config = getPublishingPermissionsConfig(countryCode);
+  const tableProps = useMemo(() => {
+    if (!publishPermissions) {
+      return undefined;
+    }
 
-  // The Everyone tier no longer requires an active subscription, so any user currently at
-  // Trusted who qualifies for Everyone without a subscription is displayed as Everyone.
-  const effectiveCreatorTier =
-    creatorTier === CreatorTierEnum.Trusted && everyoneTierWithoutSubscription
-      ? CreatorTierEnum.Everyone
-      : creatorTier;
+    const requirements: PublishPermissionRequirementView[] = publishPermissions.requirements.map(
+      (requirement) => ({
+        ...requirement,
+        label: translate(requirement.labelKey),
+        description: translate(requirement.descriptionKey),
+        actionUrl: requirement.actionUrl,
+      }),
+    );
 
-  const showParentLinkExpirationWarning =
-    creatorEligibilityResponse?.warnings?.includes(
-      CreatorEligibilityWarningEnum.ParentLinkExpiration,
-    ) ?? false;
-  const isEligibleForPlus = completedRequirements.includes(CreatorEligibilityEnum.HasRobloxPremium);
-  const approvalBannerKey = allowlistTier.includes(effectiveCreatorTier)
-    ? config.approvalBannerKeys?.[effectiveCreatorTier]
-    : undefined;
+    return {
+      ageBracket: publishPermissions.ageBracket,
+      currentTier: publishPermissions.currentTier,
+      tierOrder: publishPermissions.tierOrder,
+      tierLabels: resolveTierCopy(publishPermissions.tierLabelKeys, translate),
+      tierDescriptions: resolveTierCopy(publishPermissions.tierDescriptionKeys, translate),
+      requirements,
+    };
+  }, [publishPermissions, translate]);
 
-  if (!areTranslationsReady || isLoading) {
+  if (!areTranslationsReady || isPending) {
     return <PageLoading />;
   }
 
   return (
     <Authenticated>
-      {isError ? (
+      {isError || !publishPermissions || !tableProps ? (
         <FailureView
           message={translate('Message.FailedToLoadPage')}
           buttonText={translate('Action.FailedToLoadPage')}
@@ -107,48 +118,40 @@ const PublishingPermissionsPageContent: FunctionComponent = () => {
           <Typography variant='body1' color='secondary' className='text-body-medium'>
             {translateHTML('Description.PublishingPermissionsWithLearnMore', learnMoreLinkChunks)}
           </Typography>
-          {approvalBannerKey && (
-            <FeedbackBanner
-              title=''
-              description={translate(approvalBannerKey)}
+          {publishPermissions.approvalBannerKey && (
+            <Alert
               severity='Success'
-              variant='Emphasis'
-              layout='Inline'
-              className='margin-top-medium'
-            />
+              variant='Feedback'
+              hasCloseAffordance={false}
+              className='margin-top-medium'>
+              {translate(publishPermissions.approvalBannerKey)}
+            </Alert>
           )}
-          {isEligibleForPlus && (
-            <FeedbackBanner
-              title=''
-              description={translate('Message.PlusSubscriptionEligibility')}
+          {publishPermissions.showPlusEligibilityBanner && (
+            <Alert
               severity='Success'
-              variant='Emphasis'
-              layout='Inline'
+              variant='Feedback'
+              hasCloseAffordance={false}
               primaryActionLabel={translate('Action.ViewDetails')}
               className='margin-top-medium'
               onPrimaryAction={() => {
                 window.location.href = 'https://devforum.roblox.com/new-publishing-requirements';
-              }}
-            />
+              }}>
+              {translate('Message.PlusSubscriptionEligibility')}
+            </Alert>
           )}
-          {showParentLinkExpirationWarning && (
-            <FeedbackBanner
-              title=''
-              description={translate('Message.LinkedParentGraduationV2')}
+          {publishPermissions.showParentLinkExpirationBanner && (
+            <Alert
               severity='Warning'
-              variant='Emphasis'
-              layout='Inline'
+              variant='Feedback'
+              hasCloseAffordance={false}
               primaryActionLabel={translate('Action.Start')}
               className='margin-top-medium'
-              onPrimaryAction={() => window.open(idVerificationActionUrl, '_blank')}
-            />
+              onPrimaryAction={() => window.open(idVerificationActionUrl, '_blank')}>
+              {translate('Message.LinkedParentGraduationV2')}
+            </Alert>
           )}
-          <PublishingPermissionsTable
-            completedRequirements={completedRequirements}
-            ageBracket={ageBracket}
-            creatorTier={effectiveCreatorTier}
-            config={config}
-          />
+          <PublishingPermissionsTable {...tableProps} />
         </div>
       )}
     </Authenticated>

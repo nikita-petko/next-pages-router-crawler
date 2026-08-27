@@ -3,15 +3,15 @@ import type { CreatorTierEnum } from '@rbx/client-core-content-api/v1';
 import { clsx as cx } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { Typography } from '@rbx/ui';
-import type { PublishingTier } from '../types';
+import type { PublishingTier } from '../constants/displayCopy';
 import styles from './TierHeaders.module.css';
 
 const TierHeaders: FunctionComponent<{
   currentTier: CreatorTierEnum;
   tierOrder: PublishingTier[];
-  tierLabelKeys: Record<PublishingTier, string>;
-  tierDescriptionKeys: Record<PublishingTier, string>;
-}> = ({ currentTier, tierOrder, tierLabelKeys, tierDescriptionKeys }) => {
+  tierLabels: Record<PublishingTier, string>;
+  tierDescriptions: Record<PublishingTier, string>;
+}> = ({ currentTier, tierOrder, tierLabels, tierDescriptions }) => {
   const { translate } = useTranslation();
 
   return (
@@ -42,10 +42,10 @@ const TierHeaders: FunctionComponent<{
             )}
             <div className='flex flex-col gap-xsmall items-center'>
               <Typography className='text-label-medium text-align-x-center'>
-                {translate(tierLabelKeys[tier])}
+                {tierLabels[tier]}
               </Typography>
               <Typography className='text-body-small text-align-x-center'>
-                {translate(tierDescriptionKeys[tier])}
+                {tierDescriptions[tier]}
               </Typography>
             </div>
           </div>

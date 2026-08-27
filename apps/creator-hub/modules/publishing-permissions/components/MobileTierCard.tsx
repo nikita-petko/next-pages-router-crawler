@@ -1,10 +1,10 @@
 import type { FunctionComponent } from 'react';
-import type { CreatorEligibilityEnum, AgeBracketEnum } from '@rbx/client-core-content-api/v1';
+import type { AgeBracketEnum } from '@rbx/client-core-content-api/v1';
 import { clsx as cx } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { Typography } from '@rbx/ui';
-import type { PublishingTier, TierRequirement } from '../types';
-import { RequirementStatus } from '../types';
+import type { PublishPermissionRequirementView, PublishingTier } from '../constants/displayCopy';
+import { isRequiredForTier } from '../utils/mapPublishPermissionsToView';
 import RequirementChip from './RequirementChip';
 import RequirementStatusIcon from './RequirementStatusIcon';
 import styles from './MobileTierCard.module.css';
@@ -12,24 +12,15 @@ import styles from './MobileTierCard.module.css';
 const MobileTierCard: FunctionComponent<{
   tier: PublishingTier;
   isCurrent: boolean;
-  completedSet: Set<CreatorEligibilityEnum>;
   ageBracket: AgeBracketEnum;
-  requirements: TierRequirement[];
-  tierLabelKeys: Record<PublishingTier, string>;
-  tierDescriptionKeys: Record<PublishingTier, string>;
-}> = ({
-  tier,
-  isCurrent,
-  completedSet,
-  ageBracket,
-  requirements,
-  tierLabelKeys,
-  tierDescriptionKeys,
-}) => {
+  requirements: PublishPermissionRequirementView[];
+  tierLabels: Record<PublishingTier, string>;
+  tierDescriptions: Record<PublishingTier, string>;
+}> = ({ tier, isCurrent, ageBracket, requirements, tierLabels, tierDescriptions }) => {
   const { translate } = useTranslation();
 
-  const tierRequirements = requirements.filter(
-    (req) => req.tiers[tier] === RequirementStatus.Required,
+  const tierRequirements = requirements.filter((requirement) =>
+    isRequiredForTier(requirement, tier),
   );
 
   return (
@@ -51,11 +42,11 @@ const MobileTierCard: FunctionComponent<{
           isCurrent ? 'bg-shift-200' : 'bg-shift-100',
           'flex flex-col gap-xsmall padding-top-xxlarge padding-x-xlarge padding-bottom-large radius-medium items-center',
         )}>
-        <Typography className='text-label-medium'>{translate(tierLabelKeys[tier])}</Typography>
-        <Typography className='text-body-small'>{translate(tierDescriptionKeys[tier])}</Typography>
+        <Typography className='text-label-medium'>{tierLabels[tier]}</Typography>
+        <Typography className='text-body-small'>{tierDescriptions[tier]}</Typography>
       </div>
       {tierRequirements.map((requirement) => {
-        const isCompleted = completedSet.has(requirement.id);
+        const isCompleted = requirement.isCompleted;
         return (
           <div
             key={requirement.id}
@@ -66,18 +57,14 @@ const MobileTierCard: FunctionComponent<{
             )}>
             <div className='grow-0 shrink-0'>
               <RequirementStatusIcon
-                status={requirement.tiers[tier]}
+                isRequired
                 isCompleted={isCompleted}
-                comingSoon={requirement.comingSoon}
+                isEnabled={requirement.isEnabled}
               />
             </div>
             <div className='grow basis-0'>
-              <Typography className='text-label-medium block'>
-                {translate(requirement.labelKey)}
-              </Typography>
-              <Typography className='text-body-small block text-center'>
-                {translate(requirement.descriptionKey)}
-              </Typography>
+              <Typography className='text-label-medium block'>{requirement.label}</Typography>
+              <Typography className='text-body-small block'>{requirement.description}</Typography>
             </div>
             <div className={cx('grow-0 shrink-0', styles.requirementChipCell)}>
               <RequirementChip
