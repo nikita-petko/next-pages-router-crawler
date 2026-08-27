@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FunctionComponent,
   type ReactNode,
@@ -85,6 +86,11 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
   const { tPendingTranslation } = useTranslationWrapper(translation);
   const { logEvent } = useLicenseManagerLogger();
   const { logOnce } = useLicenseManagerLoggerLogOnce();
+  const panelStartedAtRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    panelStartedAtRef.current = Date.now();
+  }, [candidate.candidateId, candidate.id]);
   const [ignoreReasonViewCandidateId, setIgnoreReasonViewCandidateId] = useState<string | null>(
     null,
   );
@@ -100,6 +106,7 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
   const agreementId = candidate.agreementId?.trim();
   const rowError = agreementStatusFromList?.rowError;
   const statusFromList = agreementStatusFromList?.status;
+  const agreementStatusHasError = Boolean(rowError) || Boolean(agreementStatusFromList?.isError);
   const waitingOnAgreementStatus = !!agreementId && !!agreementStatusFromList?.isPending;
   const showViewAgreement = canViewAgreement({
     agreementId,
@@ -136,7 +143,7 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
     ? getCollectibleMatchPresentation(details, candidate.candidateContentCreatorType ?? undefined)
     : undefined;
   const itemType = presentation?.isBundle ? 'Bundle' : presentation ? 'Asset' : 'Unknown';
-  const agreementState = rowError
+  const agreementState = agreementStatusHasError
     ? 'error'
     : waitingOnAgreementStatus
       ? 'pending'
@@ -148,9 +155,14 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
       candidateType: AgreementCandidateType.Collectible,
       itemType,
       agreementState,
+      isLimited: presentation?.isLimited ?? false,
+      isResellAllowed: presentation?.isResellAllowed ?? false,
+      hasDescription: Boolean(presentation?.description?.trim()),
+      hasPrice: presentation?.price != null,
+      hasSubtype: Boolean(details?.subtype),
       ...(rowPosition === undefined ? {} : { rowPosition }),
     }),
-    [agreementState, itemType, rowPosition],
+    [agreementState, details?.subtype, itemType, presentation, rowPosition],
   );
   const analyticsDedupeKey = candidate.id ?? candidate.candidateId ?? 'unknown';
 
@@ -161,7 +173,10 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
     onPanelStateChange?.('ready');
     logOnce(
       LicenseManagerImpressionEvent.MatchDetailsPanelImpressionEvent,
-      analyticsContext,
+      {
+        ...analyticsContext,
+        timeToReadyMs: Math.max(0, Date.now() - (panelStartedAtRef.current ?? Date.now())),
+      },
       `${analyticsDedupeKey}:ready`,
     );
   }, [analyticsContext, analyticsDedupeKey, logOnce, onPanelStateChange, panelState]);
@@ -176,6 +191,7 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
       {
         ...analyticsContext,
         failureReason: itemDetailsQuery.isError ? 'requestError' : 'missingItem',
+        timeToFailureMs: Math.max(0, Date.now() - (panelStartedAtRef.current ?? Date.now())),
       },
       `${analyticsDedupeKey}:error`,
     );
@@ -187,6 +203,20 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
     onPanelStateChange,
     panelState,
   ]);
+
+  useEffect(() => {
+    if (!agreementStatusHasError) {
+      return;
+    }
+    logOnce(
+      LicenseManagerImpressionEvent.MatchDetailsPanelAgreementStatusErrorImpressionEvent,
+      {
+        ...analyticsContext,
+        failureReason: rowError ? 'rowError' : 'batchFailure',
+      },
+      `${analyticsDedupeKey}:agreement-status-error`,
+    );
+  }, [agreementStatusHasError, analyticsContext, analyticsDedupeKey, logOnce, rowError]);
 
   const headerControls = (
     <>
@@ -299,6 +329,11 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
         size='large'
         className='fill [white-space:nowrap] text-align-x-center'
         onClick={() => {
+          logEvent(LicenseManagerClickEvent.MatchDetailsPanelViewDetailsClickEvent, {
+            ...analyticsContext,
+            agreementCandidateId: candidate.id ?? '',
+            destination: 'unavailable',
+          });
           // TODO(MUS-2665): Navigate to the Collectible full-page match details experience.
         }}>
         {translate('Action.ViewDetails')}

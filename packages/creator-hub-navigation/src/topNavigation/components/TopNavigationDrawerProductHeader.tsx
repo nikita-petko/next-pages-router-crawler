@@ -1,8 +1,7 @@
 import type { FunctionComponent, ReactNode } from 'react';
 import React from 'react';
+import { Icon } from '@rbx/foundation-ui';
 import { Grid, makeStyles, Typography, CloseIcon, IconButton } from '@rbx/ui';
-import { studioLogoDimensionCompact } from '../constants/navigationConstants';
-import StudioIcon from './StudioIcon';
 import TopNavigationDrawerHeader from './TopNavigationDrawerHeader';
 
 type TopNavigationDrawerProductHeaderProps = {
@@ -27,7 +26,7 @@ const TopNavigationDrawerProductHeader: FunctionComponent<
     <TopNavigationDrawerHeader>
       <Grid container alignItems='center' wrap='nowrap' justifyContent='space-between'>
         <Grid container alignItems='center'>
-          <StudioIcon size={studioLogoDimensionCompact} />
+          <Icon name='icon-regular-tilt' size='Medium' className='margin-x-[var(--size-300)]' />
           <Typography className={heading} variant='h5'>
             {header}
           </Typography>

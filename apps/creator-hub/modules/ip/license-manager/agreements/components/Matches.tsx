@@ -285,6 +285,7 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
     MatchPanelView.None,
   );
   const panelOpenedAtRef = useRef<number | null>(null);
+  const offerPanelOpenedAtRef = useRef<number | null>(null);
   const panelNavigationCountRef = useRef(0);
   const panelStateRef = useRef<MatchPanelState>('loading');
 
@@ -502,6 +503,7 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
       panelNavigationCountRef.current += 1;
       logEvent(LicenseManagerClickEvent.MatchDetailsPanelNavigationClickEvent, {
         candidateType: analyticsCandidateType,
+        agreementCandidateId: candidate.id ?? '',
         direction,
         fromRowPosition,
         toRowPosition,
@@ -557,6 +559,7 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
   const handleCloseMatchPanelProgrammatically = useCallback(() => {
     setCurrentMatchPanelView(MatchPanelView.None);
     panelOpenedAtRef.current = null;
+    offerPanelOpenedAtRef.current = null;
   }, []);
 
   const handleDismissMatchPanel = useCallback(
@@ -567,17 +570,22 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
       const openedAt = panelOpenedAtRef.current;
       logEvent(LicenseManagerClickEvent.MatchDetailsPanelDismissClickEvent, {
         candidateType: analyticsCandidateType,
+        agreementCandidateId: selectedCandidate?.id ?? '',
         panelView: currentMatchPanelView,
-        panelState:
-          currentMatchPanelView === MatchPanelView.Details ? panelStateRef.current : 'unknown',
+        panelState: panelStateRef.current,
         dismissMethod,
         timeSincePanelOpenedMs: openedAt === null ? 0 : Math.max(0, Date.now() - openedAt),
+        timeSinceOfferOpenedMs:
+          offerPanelOpenedAtRef.current === null
+            ? 0
+            : Math.max(0, Date.now() - offerPanelOpenedAtRef.current),
         navigationCount: panelNavigationCountRef.current,
       });
       setCurrentMatchPanelView(MatchPanelView.None);
       panelOpenedAtRef.current = null;
+      offerPanelOpenedAtRef.current = null;
     },
-    [analyticsCandidateType, currentMatchPanelView, logEvent],
+    [analyticsCandidateType, currentMatchPanelView, logEvent, selectedCandidate?.id],
   );
 
   const handleCloseButtonClick = useCallback(() => {
@@ -622,13 +630,21 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
   }, []);
 
   const handleOfferLicense = useCallback(() => {
+    offerPanelOpenedAtRef.current = Date.now();
+    panelStateRef.current = 'loading';
+    logEvent(LicenseManagerClickEvent.MatchDetailsPanelOfferLicenseClickEvent, {
+      candidateType: analyticsCandidateType,
+      agreementCandidateId: selectedCandidate?.id ?? '',
+      rowPosition: selectedMatchIndex + 1,
+    });
     setCurrentMatchPanelView(MatchPanelView.Offer);
-  }, [setCurrentMatchPanelView]);
+  }, [analyticsCandidateType, logEvent, selectedCandidate?.id, selectedMatchIndex]);
 
   const handleAgreementSuccess = useCallback(
     (agreement: AgreementResponse) => {
       setCurrentMatchPanelView(MatchPanelView.None);
       panelOpenedAtRef.current = null;
+      offerPanelOpenedAtRef.current = null;
       const agreementId = agreement.id?.trim();
       if (selectedCandidate && agreementId) {
         setSelectedCandidate({
@@ -891,6 +907,7 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
               candidate={selectedCandidate}
               onSuccess={handleAgreementSuccess}
               onClose={handleCloseButtonClick}
+              onPanelStateChange={handlePanelStateChange}
             />
           ) : (
             <MatchOfferPanelContent
@@ -898,6 +915,7 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
               onSuccess={handleAgreementSuccess}
               onClose={handleCloseButtonClick}
               source='sidebar'
+              onPanelStateChange={handlePanelStateChange}
             />
           ))}
       </MatchesSidePanel>

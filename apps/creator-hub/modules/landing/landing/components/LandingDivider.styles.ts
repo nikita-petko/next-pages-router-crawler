@@ -17,7 +17,8 @@ const useLandingDividerStyles = makeStyles()((theme) => ({
 
   logo: {
     width: '100%',
-    verticalAlign: 'middle',
+    display: 'flex',
+    justifyContent: 'center',
     marginBottom: 28,
     zIndex: theme.zIndex.mobileStepper,
     [theme.breakpoints.down('Medium')]: { marginBottom: 16 },

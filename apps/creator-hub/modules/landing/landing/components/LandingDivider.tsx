@@ -1,7 +1,7 @@
 import type { FunctionComponent } from 'react';
 import React from 'react';
+import { Icon } from '@rbx/foundation-ui';
 import { Divider, Grid } from '@rbx/ui';
-import { studioLogoPath, logoDimension } from '../constants/assetConstants';
 import useLandingDividerStyles from './LandingDivider.styles';
 
 type TLandingDividerProps = {
@@ -18,13 +18,12 @@ const LandingDivider: FunctionComponent<React.PropsWithChildren<TLandingDividerP
   return (
     <Grid classes={{ root }} container item justifyContent='center'>
       <Divider className={divider} orientation='vertical' />
-      <img
-        className={logo}
-        src={studioLogoPath}
-        alt='Roblox Logo'
-        width={logoDimension}
-        height={logoDimension}
-      />
+      <div className={logo}>
+        <Icon
+          name='icon-regular-tilt'
+          className='dark-theme content-emphasis height-1000 width-1000'
+        />
+      </div>
       {showHighlight && <Grid className={highlight} />}
     </Grid>
   );

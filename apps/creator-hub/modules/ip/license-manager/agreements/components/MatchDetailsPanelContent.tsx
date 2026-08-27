@@ -1,5 +1,5 @@
 import type { FunctionComponent } from 'react';
-import React, { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   AgreementCandidateType,
@@ -99,6 +99,11 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
   const { isFetched } = useSettings();
   const { enqueueWithDefaults } = useIpSnackbar();
   const { logEvent } = useLicenseManagerLogger();
+  const panelStartedAtRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    panelStartedAtRef.current = Date.now();
+  }, [candidate.candidateId, candidate.id]);
 
   const [ignoreReasonViewCandidateId, setIgnoreReasonViewCandidateId] = useState<string | null>(
     null,
@@ -117,6 +122,11 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
       logExperiencePreviewEvent(
         logEvent,
         LicenseManagerClickEvent.ExperiencePreviewImageClickEvent,
+        { ...analyticsContext, source: 'sidebar' },
+      );
+      logExperiencePreviewEvent(
+        logEvent,
+        LicenseManagerClickEvent.ExperiencePreviewInspectButtonClickEvent,
         { ...analyticsContext, source: 'sidebar' },
       );
       setInspectorOpenIndex(index);
@@ -174,6 +184,11 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
   }, [logEvent, analyticsContext]);
 
   const notifyLinkCopied = useCallback(() => {
+    logExperiencePreviewEvent(
+      logEvent,
+      LicenseManagerClickEvent.ExperiencePreviewCopyImageLinkClickEvent,
+      { ...analyticsContext, source: 'sidebar' },
+    );
     enqueueWithDefaults({
       anchorOrigin: { vertical: 'bottom', horizontal: 'center' },
       children: (
@@ -184,7 +199,7 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
         </div>
       ),
     });
-  }, [enqueueWithDefaults, translate]);
+  }, [analyticsContext, enqueueWithDefaults, logEvent, translate]);
 
   const matchScreenshotsGalleryHrefForShare =
     candidate.id != null
@@ -248,27 +263,31 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
     panelState === 'ready' && gameRequest.data != null && gameRequest.data !== NO_GAME_FOUND_FOR_ID;
   const rowError = agreementStatusFromList?.rowError;
   const statusFromList = agreementStatusFromList?.status;
+  const agreementStatusHasError = Boolean(rowError) || Boolean(agreementStatusFromList?.isError);
   const waitingOnAgreementStatus = !!agreementId && !!agreementStatusFromList?.isPending;
   const showViewAgreement = canViewAgreement({
     agreementId,
     rowError,
     status: statusFromList,
   });
-  const agreementState = rowError
+  const agreementState = agreementStatusHasError
     ? 'error'
     : waitingOnAgreementStatus
       ? 'pending'
       : showViewAgreement
         ? 'viewable'
         : 'notViewable';
+  const hasDescription =
+    gameRequest.data !== NO_GAME_FOUND_FOR_ID && Boolean(gameRequest.data?.description?.trim());
   const matchPanelAnalyticsContext = useMemo(
     () => ({
       candidateType: AgreementCandidateType.Universe,
       itemType: 'Universe',
       agreementState,
+      hasDescription,
       ...(rowPosition === undefined ? {} : { rowPosition }),
     }),
-    [agreementState, rowPosition],
+    [agreementState, hasDescription, rowPosition],
   );
 
   useEffect(() => {
@@ -276,15 +295,20 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
       return;
     }
     onPanelStateChange?.('ready');
-    logExperiencePreviewEvent(
-      logOnce,
-      LicenseManagerImpressionEvent.ExperiencePreviewMatchDetailsPanelImpressionEvent,
-      analyticsContext,
-      analyticsContextDedupeKey,
-    );
+    if (showPlacefileScreenshots) {
+      logExperiencePreviewEvent(
+        logOnce,
+        LicenseManagerImpressionEvent.ExperiencePreviewMatchDetailsPanelImpressionEvent,
+        analyticsContext,
+        analyticsContextDedupeKey,
+      );
+    }
     logOnce(
       LicenseManagerImpressionEvent.MatchDetailsPanelImpressionEvent,
-      matchPanelAnalyticsContext,
+      {
+        ...matchPanelAnalyticsContext,
+        timeToReadyMs: Math.max(0, Date.now() - (panelStartedAtRef.current ?? Date.now())),
+      },
       `${analyticsContextDedupeKey}:match-panel`,
     );
   }, [
@@ -294,6 +318,7 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
     analyticsContextDedupeKey,
     matchPanelAnalyticsContext,
     onPanelStateChange,
+    showPlacefileScreenshots,
   ]);
 
   useEffect(() => {
@@ -311,7 +336,11 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
             : 'missingExperience';
     logOnce(
       LicenseManagerImpressionEvent.MatchDetailsPanelLoadFailureImpressionEvent,
-      { ...matchPanelAnalyticsContext, failureReason },
+      {
+        ...matchPanelAnalyticsContext,
+        failureReason,
+        timeToFailureMs: Math.max(0, Date.now() - (panelStartedAtRef.current ?? Date.now())),
+      },
       `${analyticsContextDedupeKey}:match-panel-error`,
     );
   }, [
@@ -323,6 +352,26 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
     maturityRequest.error,
     onPanelStateChange,
     panelState,
+  ]);
+
+  useEffect(() => {
+    if (!agreementStatusHasError) {
+      return;
+    }
+    logOnce(
+      LicenseManagerImpressionEvent.MatchDetailsPanelAgreementStatusErrorImpressionEvent,
+      {
+        ...matchPanelAnalyticsContext,
+        failureReason: rowError ? 'rowError' : 'batchFailure',
+      },
+      `${analyticsContextDedupeKey}:agreement-status-error`,
+    );
+  }, [
+    analyticsContextDedupeKey,
+    agreementStatusHasError,
+    logOnce,
+    matchPanelAnalyticsContext,
+    rowError,
   ]);
 
   const isScreenshotDataSettled =

@@ -1,5 +1,6 @@
 import { useCallback, useMemo, type FunctionComponent, type ReactNode } from 'react';
 import {
+  AgreementCandidateType,
   LicenseType,
   type AgreementCandidateResponse,
   type AgreementResponse,
@@ -13,6 +14,7 @@ import { Link } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { KeyValuePair, KeyValuePairContainer } from '../../components/KeyValuePair';
 import { IP_LISTINGS_HREF } from '../../urls';
+import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../../utils/logger';
 import useCollectibleMatchItemDetails from '../hooks/useCollectibleMatchItemDetails';
 import { isLicenseCompatibleWithCollectible } from '../utils/collectibleLicenseCompatibility';
 import CollectibleMatchContentTile from './CollectibleMatchContentTile';
@@ -28,6 +30,7 @@ interface CollectibleMatchOfferPanelContentProps {
   candidate: CollectibleMatchCandidate;
   onSuccess: (agreement: AgreementResponse) => void;
   onClose: () => void;
+  onPanelStateChange?: (state: 'loading' | 'ready' | 'error') => void;
 }
 
 const COLLECTIBLE_MATCH_OFFER_CONFIGURATION: MatchOfferPanelConfiguration = {
@@ -40,12 +43,13 @@ const COLLECTIBLE_MATCH_OFFER_CONFIGURATION: MatchOfferPanelConfiguration = {
 
 const CollectibleMatchOfferPanelContent: FunctionComponent<
   CollectibleMatchOfferPanelContentProps
-> = ({ candidate, onSuccess, onClose }) => {
+> = ({ candidate, onSuccess, onClose, onPanelStateChange }) => {
   const translation = useTranslation();
   const { tPendingTranslation, tPendingHtmlTranslation } = useTranslationWrapper(translation);
   const { translate: translateControls } = useTranslationWithNamespace(
     TranslationNamespace.Controls,
   );
+  const { logEvent } = useLicenseManagerLogger();
   const collectibleItemId = candidate.candidateId;
   const collectibleItemIds = useMemo(
     () => (collectibleItemId ? [collectibleItemId] : []),
@@ -72,6 +76,18 @@ const CollectibleMatchOfferPanelContent: FunctionComponent<
       ),
     [presentation?.isLimited, presentation?.isResellAllowed],
   );
+  const analyticsContext = useMemo(
+    () => ({
+      source: 'sidebar',
+      itemType: presentation?.isBundle ? 'Bundle' : presentation ? 'Asset' : 'Unknown',
+      isLimited: presentation?.isLimited ?? false,
+      isResellAllowed: presentation?.isResellAllowed ?? false,
+      hasDescription: Boolean(presentation?.description?.trim()),
+      hasPrice: presentation?.price != null,
+      hasSubtype: Boolean(details?.subtype),
+    }),
+    [details?.subtype, presentation],
+  );
   const limitedLabel = tPendingTranslation(
     'Limited',
     'Label indicating whether an avatar marketplace item has a limited supply.',
@@ -88,7 +104,9 @@ const CollectibleMatchOfferPanelContent: FunctionComponent<
       candidate={candidate}
       onSuccess={onSuccess}
       onClose={onClose}
-      source='sidebar'
+      candidateType={AgreementCandidateType.Collectible}
+      analyticsContext={analyticsContext}
+      onPanelStateChange={onPanelStateChange}
       creationTile={
         details && presentation ? (
           <>
@@ -137,7 +155,22 @@ const CollectibleMatchOfferPanelContent: FunctionComponent<
           {
             opening: 'linkStart',
             closing: 'linkEnd',
-            content: (chunks: ReactNode) => <Link href={IP_LISTINGS_HREF}>{chunks}</Link>,
+            content: (chunks: ReactNode) => (
+              <Link
+                href={IP_LISTINGS_HREF}
+                onClick={() =>
+                  logEvent(LicenseManagerClickEvent.MatchOfferPanelCreateLicenseClickEvent, {
+                    ...analyticsContext,
+                    candidateType: AgreementCandidateType.Collectible,
+                    agreementCandidateId: candidate.id ?? '',
+                    ipFamilyId: candidate.ipFamilyId ?? '',
+                    licenseType: LicenseType.MarketplaceSale,
+                    reason: 'noCompatibleLicenses',
+                  })
+                }>
+                {chunks}
+              </Link>
+            ),
           },
         ],
       )}

@@ -1,5 +1,5 @@
 import type { FunctionComponent, ReactNode } from 'react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import NextLink from 'next/link';
 import { useRouter } from 'next/router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -87,6 +87,8 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
 
   const [isOfferPanelOpen, setIsOfferPanelOpen] = useState(false);
   const [isIgnorePanelOpen, setIsIgnorePanelOpen] = useState(false);
+  const offerPanelOpenedAtRef = useRef<number | null>(null);
+  const offerPanelStateRef = useRef<'loading' | 'ready' | 'error'>('loading');
 
   const candidateQuery = useGetAgreementCandidateByIdQuery({ agreementCandidateId });
   const candidate = candidateQuery.data;
@@ -132,6 +134,7 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
     () => (candidate ? getExperiencePreviewAnalyticsContext(candidate) : null),
     [candidate],
   );
+  const offerAnalyticsContext = useMemo(() => ({ source: currentTab }), [currentTab]);
 
   useEffect(() => {
     if (!isMatchDetailsTab(tabParam)) {
@@ -155,14 +158,47 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
   }, [experienceId, gameName, setPageTitle]);
 
   const handleOfferLicense = useCallback(() => {
+    offerPanelOpenedAtRef.current = Date.now();
+    offerPanelStateRef.current = 'loading';
+    logEvent(LicenseManagerClickEvent.MatchDetailsPanelOfferLicenseClickEvent, {
+      candidateType: AgreementCandidateType.Universe,
+      agreementCandidateId,
+      source: currentTab,
+    });
     setIsOfferPanelOpen(true);
+  }, [agreementCandidateId, currentTab, logEvent]);
+
+  const handleOfferPanelStateChange = useCallback((state: 'loading' | 'ready' | 'error') => {
+    offerPanelStateRef.current = state;
   }, []);
 
-  const handleCloseOfferPanel = useCallback(() => {
-    setIsOfferPanelOpen(false);
-  }, []);
+  const handleCloseOfferPanel = useCallback(
+    (dismissMethod: 'closeButton' | 'outsideClick' | 'escapeKey' = 'closeButton') => {
+      logEvent(LicenseManagerClickEvent.MatchDetailsPanelDismissClickEvent, {
+        candidateType: AgreementCandidateType.Universe,
+        agreementCandidateId,
+        panelView: 'agreement',
+        panelState: offerPanelStateRef.current,
+        dismissMethod,
+        source: 'fullPage',
+        timeSinceOfferOpenedMs:
+          offerPanelOpenedAtRef.current === null
+            ? 0
+            : Math.max(0, Date.now() - offerPanelOpenedAtRef.current),
+        navigationCount: 0,
+      });
+      offerPanelOpenedAtRef.current = null;
+      setIsOfferPanelOpen(false);
+    },
+    [agreementCandidateId, logEvent],
+  );
+
+  const handleCloseOfferPanelByButton = useCallback(() => {
+    handleCloseOfferPanel('closeButton');
+  }, [handleCloseOfferPanel]);
 
   const handleAgreementSuccess = useCallback(() => {
+    offerPanelOpenedAtRef.current = null;
     setIsOfferPanelOpen(false);
     void refetchAgreementStatuses();
   }, [refetchAgreementStatuses]);
@@ -297,7 +333,15 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
         color='primaryBrand'
         size='large'
         component={NextLink}
-        href={IPH_AGREEMENT_DETAILS_HREF(agreementId)}>
+        href={IPH_AGREEMENT_DETAILS_HREF(agreementId)}
+        onClick={() =>
+          logEvent(LicenseManagerClickEvent.MatchDetailsPanelViewAgreementClickEvent, {
+            candidateType: AgreementCandidateType.Universe,
+            agreementCandidateId,
+            agreementStatus: statusFromList ?? 'unknown',
+            source: 'fullPage',
+          })
+        }>
         {translate('Action.ViewAgreement')}
       </Button>
     );
@@ -411,8 +455,11 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
           <MatchOfferPanelContent
             candidate={candidate}
             onSuccess={handleAgreementSuccess}
-            onClose={handleCloseOfferPanel}
+            onClose={handleCloseOfferPanelByButton}
             source={currentTab === MatchDetailsTabs.Gallery ? 'galleryView' : 'detailsView'}
+            candidateType={AgreementCandidateType.Universe}
+            analyticsContext={offerAnalyticsContext}
+            onPanelStateChange={handleOfferPanelStateChange}
           />
         )}
       </MatchesSidePanel>

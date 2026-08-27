@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useForm, Controller, type RegisterOptions } from 'react-hook-form';
+import { useForm, Controller, type FieldErrors, type RegisterOptions } from 'react-hook-form';
 import {
+  AgreementCandidateType,
   AgreementCandidatePromotionType,
   LicenseDurationType,
   LicenseModerationStatus,
@@ -101,28 +102,45 @@ const MatchOfferPanelError = ({
   error,
   candidateId,
   licenseId,
+  analyticsContext,
 }: {
   error: Error;
   candidateId: string | undefined;
   licenseId: string | undefined;
+  analyticsContext: Record<string, string | number | boolean>;
 }) => {
   const { translate } = useTranslation();
   const { logEvent } = useLicenseManagerLogger();
   const hasExistingAgreementError = isExistingAgreementError(error);
+  const impressionContextRef = useRef({ analyticsContext, candidateId, licenseId });
 
   useEffect(() => {
+    impressionContextRef.current = { analyticsContext, candidateId, licenseId };
+  }, [analyticsContext, candidateId, licenseId]);
+
+  useEffect(() => {
+    const {
+      analyticsContext: context,
+      candidateId: currentCandidateId,
+      licenseId: currentLicenseId,
+    } = impressionContextRef.current;
     if (hasExistingAgreementError) {
       logEvent(
         LicenseManagerImpressionEvent.UnsuccessfulLicenseOfferAgreementAlreadyExistsErrorImpressionEvent,
-        { candidateId: candidateId ?? '', licenseId: licenseId ?? '' },
+        {
+          ...context,
+          candidateId: currentCandidateId ?? '',
+          licenseId: currentLicenseId ?? '',
+        },
       );
     } else {
       logEvent(LicenseManagerImpressionEvent.UnsuccessfulLicenseOfferGenericErrorImpressionEvent, {
-        candidateId: candidateId ?? '',
-        licenseId: licenseId ?? '',
+        ...context,
+        candidateId: currentCandidateId ?? '',
+        licenseId: currentLicenseId ?? '',
       });
     }
-  }, [hasExistingAgreementError, logEvent, candidateId, licenseId]);
+  }, [error, hasExistingAgreementError, logEvent]);
 
   return (
     <Alert severity='error'>
@@ -187,11 +205,15 @@ const DEFAULT_MATCH_OFFER_PANEL_CONFIGURATION: MatchOfferPanelConfiguration = {
   allowChangeRequests: true,
   showLicenseDauAndMaturityMetadata: true,
 };
+const EMPTY_ANALYTICS_CONTEXT: Record<string, never> = {};
 
 interface Props {
   candidate: AgreementCandidateResponse;
   onSuccess: (agreement: AgreementResponse) => void;
   onClose: () => void;
+  candidateType?: AgreementCandidateType;
+  analyticsContext?: Record<string, string | number | boolean>;
+  onPanelStateChange?: (state: 'loading' | 'ready' | 'error') => void;
   source?: 'sidebar' | 'galleryView' | 'detailsView';
   creationTile?: React.ReactNode;
   creationRequest?: {
@@ -212,6 +234,9 @@ const MatchOfferPanelContent = ({
   candidate,
   onSuccess,
   onClose,
+  candidateType = AgreementCandidateType.Universe,
+  analyticsContext = EMPTY_ANALYTICS_CONTEXT,
+  onPanelStateChange,
   source,
   creationTile,
   creationRequest,
@@ -229,6 +254,25 @@ const MatchOfferPanelContent = ({
   );
   const { logEvent } = useLicenseManagerLogger();
   const { logOnce } = useLicenseManagerLoggerLogOnce();
+  const panelOpenedAtRef = useRef(Date.now());
+  const offerAnalyticsContext = useMemo(
+    () => ({
+      ...analyticsContext,
+      candidateType,
+      agreementCandidateId: candidate.id ?? '',
+      ipFamilyId: candidate.ipFamilyId ?? '',
+      licenseType: configuration.applicableLicenseType,
+      ...(source ? { source } : {}),
+    }),
+    [
+      analyticsContext,
+      candidate.id,
+      candidate.ipFamilyId,
+      candidateType,
+      configuration.applicableLicenseType,
+      source,
+    ],
+  );
 
   const usesProvidedCreation = creationRequest != null;
   const experienceId = usesProvidedCreation ? undefined : Number(candidate.candidateId);
@@ -302,12 +346,61 @@ const MatchOfferPanelContent = ({
     () => (licenseFilter ? eligibleLicenses?.filter(licenseFilter) : eligibleLicenses),
     [eligibleLicenses, licenseFilter],
   );
+  const game = gameRequest.data === NO_GAME_FOUND_FOR_ID ? undefined : gameRequest.data;
+  const hasNoMatchingLicenses =
+    noMatchingLicensesDescription != null &&
+    eligibleLicenses != null &&
+    eligibleLicenses.length > 0 &&
+    (!licenses || licenses.length === 0);
+  const hasLicenseOptionsError = !licenses || licenses.length === 0;
+  const loadFailureReason = ipFamilyReq.isError
+    ? 'ipFamilyRequestError'
+    : licensesReq.isError
+      ? 'licensesRequestError'
+      : hasCandidateContentError
+        ? usesProvidedCreation
+          ? 'creationRequestError'
+          : 'experienceRequestError'
+        : !usesProvidedCreation && !isPending && !game
+          ? 'missingExperience'
+          : undefined;
+  const offerPanelState = isPending
+    ? 'loading'
+    : hasError
+      ? 'loadFailure'
+      : !eligibleLicenses || eligibleLicenses.length === 0
+        ? 'noEligibleLicenses'
+        : hasNoMatchingLicenses
+          ? 'noCompatibleLicenses'
+          : loadFailureReason
+            ? 'loadFailure'
+            : 'ready';
   const selectedLicense = selectedLicenseId
     ? licenses?.find((license) => license.id === selectedLicenseId)
     : undefined;
   const showLicenseTypeSelection = showConditionalOfferSelection && !!selectedLicense;
   const showFeedbackTextbox =
     showLicenseTypeSelection && selectedOfferType === AgreementCandidatePromotionType.Conditional;
+  const selectedLicenseAnalyticsContext = useMemo(
+    () => ({
+      ...offerAnalyticsContext,
+      selectedLicenseType: selectedLicense?.licenseType ?? configuration.applicableLicenseType,
+      resellingPermission: selectedLicense?.licenseTerms?.reselling ?? 'unknown',
+    }),
+    [
+      configuration.applicableLicenseType,
+      offerAnalyticsContext,
+      selectedLicense?.licenseTerms?.reselling,
+      selectedLicense?.licenseType,
+    ],
+  );
+  const actionErrorAnalyticsContext = useMemo(
+    () => ({
+      ...selectedLicenseAnalyticsContext,
+      promotionType: selectedOfferType ?? AgreementCandidatePromotionType.Offer,
+    }),
+    [selectedLicenseAnalyticsContext, selectedOfferType],
+  );
 
   useEffect(() => {
     if (selectedLicense) {
@@ -331,18 +424,64 @@ const MatchOfferPanelContent = ({
     logOnce(
       LicenseManagerImpressionEvent.MatchOfferDrawerNoPerpetualLicensesEmptyStateImpressionEvent,
       {
-        candidateId: candidate.id ?? '',
-        ipFamilyId: candidate.ipFamilyId ?? '',
+        ...offerAnalyticsContext,
+        eligibleLicenseCount: 0,
       },
     );
+  }, [eligibleLicenses, hasError, isFetched, isPending, logOnce, offerAnalyticsContext]);
+
+  useEffect(() => {
+    if (offerPanelState === 'loading' || !isFetched) {
+      onPanelStateChange?.('loading');
+      return;
+    }
+
+    const panelState = offerPanelState === 'loadFailure' ? 'error' : 'ready';
+    onPanelStateChange?.(panelState);
+    logOnce(
+      LicenseManagerImpressionEvent.MatchOfferPanelImpressionEvent,
+      {
+        ...offerAnalyticsContext,
+        panelState: offerPanelState,
+        eligibleLicenseCount: eligibleLicenses?.length ?? 0,
+        compatibleLicenseCount: licenses?.length ?? 0,
+        timeToStateMs: Math.max(0, Date.now() - panelOpenedAtRef.current),
+      },
+      `${candidate.id ?? candidate.candidateId ?? 'unknown'}:${offerPanelState}`,
+    );
+
+    if (offerPanelState === 'loadFailure') {
+      logOnce(
+        LicenseManagerImpressionEvent.MatchOfferPanelLoadFailureImpressionEvent,
+        {
+          ...offerAnalyticsContext,
+          failureReason: loadFailureReason ?? 'unknown',
+          timeToFailureMs: Math.max(0, Date.now() - panelOpenedAtRef.current),
+        },
+        `${candidate.id ?? candidate.candidateId ?? 'unknown'}:loadFailure`,
+      );
+    } else if (offerPanelState === 'noCompatibleLicenses') {
+      logOnce(
+        LicenseManagerImpressionEvent.MatchOfferPanelNoCompatibleLicensesImpressionEvent,
+        {
+          ...offerAnalyticsContext,
+          eligibleLicenseCount: eligibleLicenses?.length ?? 0,
+          compatibleLicenseCount: licenses?.length ?? 0,
+        },
+        `${candidate.id ?? candidate.candidateId ?? 'unknown'}:noCompatibleLicenses`,
+      );
+    }
   }, [
+    candidate.candidateId,
     candidate.id,
-    candidate.ipFamilyId,
-    eligibleLicenses,
-    hasError,
+    eligibleLicenses?.length,
     isFetched,
-    isPending,
+    licenses?.length,
+    loadFailureReason,
     logOnce,
+    offerAnalyticsContext,
+    offerPanelState,
+    onPanelStateChange,
   ]);
 
   const onSubmit = async (data: FormData) => {
@@ -353,6 +492,14 @@ const MatchOfferPanelContent = ({
     const isConditionalOffer =
       showLicenseTypeSelection && data.offerType === AgreementCandidatePromotionType.Conditional;
     const feedbackText = data.feedbackText.trim();
+    logEvent(LicenseManagerClickEvent.MatchOfferPanelSubmitClickEvent, {
+      ...selectedLicenseAnalyticsContext,
+      promotionType: data.offerType ?? AgreementCandidatePromotionType.Offer,
+      monitorType: data.monitorType ?? 'none',
+      hasFeedback: feedbackText.length > 0,
+      validationPassed: true,
+      timeToSubmitMs: Math.max(0, Date.now() - panelOpenedAtRef.current),
+    });
 
     if (isConditionalOffer) {
       setModerationError(undefined);
@@ -365,6 +512,11 @@ const MatchOfferPanelContent = ({
 
       if (moderationErrorMessage) {
         setModerationError(moderationErrorMessage);
+        logEvent(LicenseManagerImpressionEvent.MatchOfferPanelModerationFailureImpressionEvent, {
+          ...selectedLicenseAnalyticsContext,
+          promotionType: AgreementCandidatePromotionType.Conditional,
+          failureReason: 'feedbackRejectedOrRequestFailed',
+        });
         return;
       }
     }
@@ -390,10 +542,17 @@ const MatchOfferPanelContent = ({
         return;
       }
       logEvent(LicenseManagerImpressionEvent.SuccessfulLicenseOfferImpressionEvent, {
+        ...selectedLicenseAnalyticsContext,
         agreementId,
         agreementCandidateId: candidate.id ?? '',
+        promotionType: data.offerType ?? AgreementCandidatePromotionType.Offer,
+        monitorType: data.monitorType ?? 'none',
+        enableMonetization: configuration.allowRevenueSharing
+          ? data.monitorType === MonitorType.MonitorAndRevshare
+          : (selectedLicense?.enableMonetization ?? false),
+        timeToSuccessMs: Math.max(0, Date.now() - panelOpenedAtRef.current),
       });
-      if (source) {
+      if (source && candidateType === AgreementCandidateType.Universe) {
         logEvent(LicenseManagerImpressionEvent.ExperiencePreviewOfferSentImpressionEvent, {
           agreementId,
           agreementCandidateId: candidate.id ?? '',
@@ -445,6 +604,15 @@ const MatchOfferPanelContent = ({
     }
   };
 
+  const onInvalidSubmit = (errors: FieldErrors<FormData>) => {
+    logEvent(LicenseManagerClickEvent.MatchOfferPanelSubmitClickEvent, {
+      ...selectedLicenseAnalyticsContext,
+      validationPassed: false,
+      invalidFieldCount: Object.keys(errors).length,
+      timeToSubmitMs: Math.max(0, Date.now() - panelOpenedAtRef.current),
+    });
+  };
+
   if (isPending || !isFetched) {
     return (
       <MatchPanelLayout title={translate('Heading.NewLicenseOffer')} onClose={onClose} loading />
@@ -459,13 +627,6 @@ const MatchOfferPanelContent = ({
     );
   }
 
-  const game = gameRequest.data === NO_GAME_FOUND_FOR_ID ? undefined : gameRequest.data;
-
-  const hasNoMatchingLicenses =
-    noMatchingLicensesDescription != null &&
-    eligibleLicenses != null &&
-    eligibleLicenses.length > 0 &&
-    (!licenses || licenses.length === 0);
   const noLicensesDescriptionContent =
     noLicensesDescription ??
     (isAvatarItemLicensingFlagReady && isAvatarItemLicensingEnabled
@@ -483,7 +644,17 @@ const MatchOfferPanelContent = ({
     return (
       <MatchPanelLayout title={translate('Heading.NewLicenseOffer')} onClose={onClose}>
         <EmptyState size='small' title='' description={noLicensesDescriptionContent}>
-          <Button component={Link} href={IP_LISTINGS_HREF} variant='contained' color='primaryBrand'>
+          <Button
+            component={Link}
+            href={IP_LISTINGS_HREF}
+            variant='contained'
+            color='primaryBrand'
+            onClick={() =>
+              logEvent(LicenseManagerClickEvent.MatchOfferPanelCreateLicenseClickEvent, {
+                ...offerAnalyticsContext,
+                reason: 'noEligibleLicenses',
+              })
+            }>
             {translate('Button.CreateLicense')}
           </Button>
         </EmptyState>
@@ -491,7 +662,6 @@ const MatchOfferPanelContent = ({
     );
   }
 
-  const hasLicenseOptionsError = !licenses || licenses.length === 0;
   const licenseOptionsErrorDescription = hasNoMatchingLicenses
     ? noMatchingLicensesDescription
     : noLicensesDescriptionContent;
@@ -542,13 +712,14 @@ const MatchOfferPanelContent = ({
     <MatchPanelLayout
       title={translate('Heading.NewLicenseOffer')}
       onClose={onClose}
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={handleSubmit(onSubmit, onInvalidSubmit)}
       actionError={
         promoteAgreementMutation.error && (
           <MatchOfferPanelError
             error={promoteAgreementMutation.error}
             candidateId={candidate.id ?? undefined}
             licenseId={selectedLicenseId}
+            analyticsContext={actionErrorAnalyticsContext}
           />
         )
       }
@@ -613,6 +784,18 @@ const MatchOfferPanelContent = ({
               <FormControl fullWidth error={hasLicenseOptionsError || !!error}>
                 <LicenseSelect
                   {...field}
+                  onChange={(event) => {
+                    field.onChange(event);
+                    const selectedId = event.target.value;
+                    const selected = licenses?.find((license) => license.id === selectedId);
+                    logEvent(LicenseManagerClickEvent.MatchOfferPanelFieldChangeClickEvent, {
+                      ...offerAnalyticsContext,
+                      fieldName: 'license',
+                      selectedLicenseType:
+                        selected?.licenseType ?? configuration.applicableLicenseType,
+                      resellingPermission: selected?.licenseTerms?.reselling ?? 'unknown',
+                    });
+                  }}
                   id='license-select'
                   label={translate('Label.License')}
                   licenses={licenses ?? []}
@@ -645,6 +828,11 @@ const MatchOfferPanelContent = ({
                   onValueChange={(value) => {
                     if (isValidEnumValue(AgreementCandidatePromotionType, value)) {
                       field.onChange(value);
+                      logEvent(LicenseManagerClickEvent.MatchOfferPanelFieldChangeClickEvent, {
+                        ...offerAnalyticsContext,
+                        fieldName: 'promotionType',
+                        value,
+                      });
                       if (value !== AgreementCandidatePromotionType.Conditional) {
                         setValue('feedbackText', '');
                         setModerationError(undefined);
@@ -740,7 +928,15 @@ const MatchOfferPanelContent = ({
                 <FormControl component='fieldset' error={!!error}>
                   <RadioGroup
                     value={field.value ?? ''}
-                    onValueChange={(value) => field.onChange(monitorTypeFromRadioValue(value))}
+                    onValueChange={(value) => {
+                      const monitorType = monitorTypeFromRadioValue(value);
+                      field.onChange(monitorType);
+                      logEvent(LicenseManagerClickEvent.MatchOfferPanelFieldChangeClickEvent, {
+                        ...offerAnalyticsContext,
+                        fieldName: 'monitorType',
+                        value: monitorType ?? 'unknown',
+                      });
+                    }}
                     size='Small'>
                     <Radio
                       value={MonitorType.MonitorAndRevshare}

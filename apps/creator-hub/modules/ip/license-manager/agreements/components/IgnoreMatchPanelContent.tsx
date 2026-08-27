@@ -4,7 +4,11 @@ import type { AgreementCandidateType } from '@rbx/client-content-licensing-api/v
 import { useTranslation } from '@rbx/intl';
 import { Typography, Button, CircularProgress, Radio, RadioGroup, FormControlLabel } from '@rbx/ui';
 import useIpSnackbar from '../../../hooks/useIpSnackbar';
-import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../../utils/logger';
+import {
+  LicenseManagerClickEvent,
+  LicenseManagerImpressionEvent,
+  useLicenseManagerLogger,
+} from '../../utils/logger';
 import IgnoreReason, { isIgnoreReason } from '../enums/IgnoreReason';
 import { useIgnoreAgreementCandidateMutation } from '../hooks/agreements';
 import { BUTTON_SPINNER_SIZE } from '../utils/constants';
@@ -88,10 +92,19 @@ const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> =
       { agreementCandidateId: candidateId, reason: selectedIgnoreReason },
       {
         onSuccess: () => {
+          logEvent(LicenseManagerImpressionEvent.IgnoreMatchPanelSuccessImpressionEvent, {
+            candidateType,
+            ignoreReason: selectedIgnoreReason,
+          });
           notifyMatchIgnored();
           onIgnored();
         },
         onError: () => {
+          logEvent(LicenseManagerImpressionEvent.IgnoreMatchPanelFailureImpressionEvent, {
+            candidateType,
+            ignoreReason: selectedIgnoreReason,
+            failureReason: 'requestError',
+          });
           enqueueErrorSnackbar();
         },
       },
