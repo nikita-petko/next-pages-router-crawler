@@ -41,8 +41,6 @@ const TestDynamicComponent = dynamic(
   },
 );
 
-import testDialogStyles from '@modules/components/TestDialog.module.css';
-
 const TestDialog: React.FC<TTestDialogProps> = ({
   title,
   content,
@@ -57,7 +55,7 @@ const TestDialog: React.FC<TTestDialogProps> = ({
     onOpenChange={handleClose}
   >
     {/* Dialog content should scale X to the buttons */}
-    <DialogContent className={testDialogStyles.foundationTestDialog}>
+    <DialogContent className="!min-width-0">
       <DialogBody>
         <div className="flex flex-col gap-small">
           <DialogTitle className="text-heading-large margin-none">
