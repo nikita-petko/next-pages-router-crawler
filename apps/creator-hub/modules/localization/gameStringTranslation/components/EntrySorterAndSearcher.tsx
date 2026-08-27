@@ -1,5 +1,5 @@
 import type { FunctionComponent, ChangeEvent } from 'react';
-import React, { Fragment, useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from '@rbx/intl';
 import {
   CircularProgress,
@@ -19,8 +19,10 @@ import CreatorDashboardContext from '@modules/eventStream/enum/CreatorDashboardC
 import CreatorDashboardEventType from '@modules/eventStream/enum/CreatorDashboardEventType';
 import CreatorDashboardSource from '@modules/eventStream/enum/CreatorDashboardSource';
 import { useEventTrackerProvider } from '@modules/eventStream/eventTrackerProvider';
+import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
+import SharedFilter from '../../translation/components/shared/Filter';
 import type EntryFilterOptions from '../enums/EntryFilterOptions';
-import type EntrySortingOptions from '../enums/EntrySortingOptions';
+import EntrySortingOptions from '../enums/EntrySortingOptions';
 import useEntryInformation from '../hooks/useEntryInformation';
 import useEntrySorterAndSearcherStyles from './EntrySorterAndSearcher.styles';
 import Filter from './Filter';
@@ -53,13 +55,23 @@ const EntrySorterAndSearcher: FunctionComponent<
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [isSearchButtonClicked, setIsSearchButtonClicked] = useState<boolean>(false);
   const anchorButtonRef = useRef<HTMLButtonElement>(null);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { translate } = useTranslation();
   const loadingIncompleteWarning = translate('Message.LoadingIncomplete');
   const errorLoadingTableWarning = translate('Message.ErrorLoadingTable');
   const { percentageLoaded, fetchFullEntryTableError, isFetchingFullEntryTable } =
     useEntryInformation();
+  const { settings } = useSettings();
+
+  useEffect(() => {
+    if (isSearchButtonClicked) {
+      searchInputRef.current?.focus();
+    }
+  }, [isSearchButtonClicked]);
 
   const handleToggleMenu = () => {
+    setMenuAnchorEl(anchorButtonRef.current);
     setIsMenuOpen(!isMenuOpen);
   };
 
@@ -107,7 +119,7 @@ const EntrySorterAndSearcher: FunctionComponent<
         </Grid>
         <Grid container direction='row' alignItems='center' justifyContent='flex-end'>
           {isFetchingFullEntryTable && (
-            <Fragment>
+            <>
               <CircularProgress className={loader} color='primary' size='2rem' />
               <Typography className={tooltipLabel} variant='captionHeader'>
                 {`${percentageLoaded}%`}
@@ -119,7 +131,7 @@ const EntrySorterAndSearcher: FunctionComponent<
                 placement='bottom'>
                 <ReportProblemOutlinedIcon fontSize='small' />
               </Tooltip>
-            </Fragment>
+            </>
           )}
           {!!fetchFullEntryTableError && !isFetchingFullEntryTable && (
             <Tooltip
@@ -130,12 +142,22 @@ const EntrySorterAndSearcher: FunctionComponent<
               <ReportProblemOutlinedIcon fontSize='small' />
             </Tooltip>
           )}
-          <Filter
-            onFilterClicked={handleToggleMenu}
-            anchorElement={anchorButtonRef}
-            sortingOption={sortingOption}
-            filterOptions={filterOptions}
-          />
+          {settings.enableSharedTranslationListComponents ? (
+            <SharedFilter
+              onFilterClicked={handleToggleMenu}
+              anchorElement={anchorButtonRef}
+              sortingOption={sortingOption}
+              defaultSortingOption={EntrySortingOptions.Default}
+              filterOptions={filterOptions}
+            />
+          ) : (
+            <Filter
+              onFilterClicked={handleToggleMenu}
+              anchorElement={anchorButtonRef}
+              sortingOption={sortingOption}
+              filterOptions={filterOptions}
+            />
+          )}
           <IconButton
             aria-label='search'
             edge='end'
@@ -149,7 +171,7 @@ const EntrySorterAndSearcher: FunctionComponent<
         <Grid container className={searchBar} wrap='nowrap'>
           <Input
             fullWidth
-            autoFocus
+            inputRef={searchInputRef}
             value={stringToSearch}
             onChange={handleInputChange}
             startAdornment={
@@ -163,7 +185,7 @@ const EntrySorterAndSearcher: FunctionComponent<
           </IconButton>
         </Grid>
       )}
-      <Menu anchorEl={anchorButtonRef.current} open={isMenuOpen} onClose={handleMenuClose}>
+      <Menu anchorEl={menuAnchorEl} open={isMenuOpen} onClose={handleMenuClose}>
         <SorterAndFilter
           sortingOption={sortingOption}
           setSortingOption={handleSelectSortingOption}

@@ -1,5 +1,5 @@
 import type { FunctionComponent } from 'react';
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from '@rbx/intl';
 import {
   FormControlLabel,
@@ -11,7 +11,9 @@ import {
   InfoOutlinedIcon,
   Tooltip,
 } from '@rbx/ui';
-import { sortingOptionsLabelMap } from '../constants';
+import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
+import SharedMultiCheckbox from '../../translation/components/shared/MultiCheckbox';
+import { filterOptionsLabelMap, sortingOptionsLabelMap } from '../constants';
 import EntryFilterOptions from '../enums/EntryFilterOptions';
 import EntrySortingOptions from '../enums/EntrySortingOptions';
 import MultiCheckbox from './MultiCheckbox';
@@ -33,6 +35,7 @@ const SorterAndFilter: FunctionComponent<React.PropsWithChildren<SorterAndFilter
   onMenuToggled,
 }) => {
   const { translate } = useTranslation();
+  const { settings } = useSettings();
   const {
     classes: {
       spacing,
@@ -74,6 +77,27 @@ const SorterAndFilter: FunctionComponent<React.PropsWithChildren<SorterAndFilter
     onMenuToggled(false);
   };
 
+  const getFilterOptionLabel = useCallback(
+    (value: EntryFilterOptions) => translate(filterOptionsLabelMap[value]),
+    [translate],
+  );
+
+  const renderFilterCheckbox = (allowedValues: EntryFilterOptions[]) =>
+    settings.enableSharedTranslationListComponents ? (
+      <SharedMultiCheckbox
+        checkedValues={selectedFilterOptions}
+        allowedValues={allowedValues}
+        getLabel={getFilterOptionLabel}
+        setCheckedValues={setSelectedFilterOptions}
+      />
+    ) : (
+      <MultiCheckbox
+        checkedValues={selectedFilterOptions}
+        allowedValues={allowedValues}
+        setCheckedValues={setSelectedFilterOptions}
+      />
+    );
+
   return (
     <>
       {' '}
@@ -86,7 +110,7 @@ const SorterAndFilter: FunctionComponent<React.PropsWithChildren<SorterAndFilter
             return (
               <FormControlLabel
                 classes={{ labelPlacementStart: spacing }}
-                key={sortOption as string}
+                key={sortOption}
                 value={sortOption}
                 labelPlacement='start'
                 control={
@@ -95,14 +119,12 @@ const SorterAndFilter: FunctionComponent<React.PropsWithChildren<SorterAndFilter
                     size='small'
                     color='primary'
                     checked={selectedSortingOption === sortOption}
-                    aria-label={translate(
-                      sortingOptionsLabelMap[sortOption as EntrySortingOptions],
-                    )}
+                    aria-label={translate(sortingOptionsLabelMap[sortOption])}
                   />
                 }
                 label={
                   <Typography variant='captionBody'>
-                    {translate(sortingOptionsLabelMap[sortOption as EntrySortingOptions])}
+                    {translate(sortingOptionsLabelMap[sortOption])}
                   </Typography>
                 }
               />
@@ -112,22 +134,14 @@ const SorterAndFilter: FunctionComponent<React.PropsWithChildren<SorterAndFilter
         <Typography className={header} variant='overline'>
           {translate('Title.FilterByCompletionStatus')}
         </Typography>
-        <MultiCheckbox
-          checkedValues={selectedFilterOptions}
-          allowedValues={[EntryFilterOptions.Translated, EntryFilterOptions.Untranslated]}
-          setCheckedValues={setSelectedFilterOptions}
-        />
+        {renderFilterCheckbox([EntryFilterOptions.Translated, EntryFilterOptions.Untranslated])}
         <Typography className={header} variant='overline'>
           {translate('Title.FilterByTranslationType')}
         </Typography>
-        <MultiCheckbox
-          checkedValues={selectedFilterOptions}
-          allowedValues={[
-            EntryFilterOptions.AutomaticTranslated,
-            EntryFilterOptions.UserTranslated,
-          ]}
-          setCheckedValues={setSelectedFilterOptions}
-        />
+        {renderFilterCheckbox([
+          EntryFilterOptions.AutomaticTranslated,
+          EntryFilterOptions.UserTranslated,
+        ])}
         <Grid className={tooltipContainer} direction='row'>
           <Typography className={header} variant='overline'>
             {translate('Title.FilterByRecency')}
@@ -140,14 +154,10 @@ const SorterAndFilter: FunctionComponent<React.PropsWithChildren<SorterAndFilter
             <InfoOutlinedIcon fontSize='small' />
           </Tooltip>
         </Grid>
-        <MultiCheckbox
-          checkedValues={selectedFilterOptions}
-          allowedValues={[
-            EntryFilterOptions.RecentlyAddedEntries,
-            EntryFilterOptions.RecentlyModifiedTranslations,
-          ]}
-          setCheckedValues={setSelectedFilterOptions}
-        />
+        {renderFilterCheckbox([
+          EntryFilterOptions.RecentlyAddedEntries,
+          EntryFilterOptions.RecentlyModifiedTranslations,
+        ])}
         <Grid container direction='row' justifyContent='flex-end'>
           <Button
             className={buttonContainer}
