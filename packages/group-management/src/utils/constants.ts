@@ -157,7 +157,7 @@ export const DefaultMemberIdPlaceholder = '-1';
 
 export const noResultsIconPath = `${process.env.assetPathPrefix}/group/no_results.svg`;
 
-export const MaximumRoles = 99;
+export const MaximumRoles = 100;
 
 export const DefaultRoleNameMaxLength = 100;
 export const DefaultRoleDescriptionMaxLength = 999;
