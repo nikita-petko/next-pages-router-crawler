@@ -13,7 +13,7 @@ import useTranslationWrapper from '@modules/analytics-translations/useTranslatio
 import withNamespaceSwitchedTranslation from '@modules/analytics-translations/withNamespaceSwitchedTranslation';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import type { DateRangePreset, DateRangeSelection } from '../types/Filters';
+import { DateRangePreset, type DateRangeSelection } from '../types/Filters';
 
 export type DateRangeControlProps = {
   readonly value: DateRangeSelection;
@@ -24,14 +24,19 @@ export type DateRangeControlProps = {
   readonly className?: string;
 };
 
-const PRESET_OPTIONS = ['all', 'last1Hour', 'last1Day', 'last7Days'] as const;
+const PRESET_OPTIONS = [
+  DateRangePreset.All,
+  DateRangePreset.Last1Hour,
+  DateRangePreset.Last1Day,
+  DateRangePreset.Last7Days,
+] as const;
 
 const PRESET_LABEL_KEYS = {
-  all: 'ServerDetailsPage.Logs.DateRange.All',
-  last1Hour: 'ServerDetailsPage.Logs.DateRange.LastHour',
-  last1Day: 'ServerDetailsPage.Logs.DateRange.LastDay',
-  last7Days: 'ServerDetailsPage.Logs.DateRange.LastWeek',
-  custom: 'ServerDetailsPage.Logs.DateRange.Custom',
+  [DateRangePreset.All]: 'ServerDetailsPage.Logs.DateRange.All',
+  [DateRangePreset.Last1Hour]: 'ServerDetailsPage.Logs.DateRange.LastHour',
+  [DateRangePreset.Last1Day]: 'ServerDetailsPage.Logs.DateRange.LastDay',
+  [DateRangePreset.Last7Days]: 'ServerDetailsPage.Logs.DateRange.LastWeek',
+  [DateRangePreset.Custom]: 'ServerDetailsPage.Logs.DateRange.Custom',
 } as const satisfies Record<DateRangePreset, string>;
 
 const CUSTOM_DATE_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
@@ -80,7 +85,7 @@ const DateRangeControl: FC<DateRangeControlProps> = ({
   );
 
   const triggerLabel = useMemo(() => {
-    if (value.preset !== 'custom') {
+    if (value.preset !== DateRangePreset.Custom) {
       return translateServerManagement(PRESET_LABEL_KEYS[value.preset]);
     }
     return dateFormatter.formatRange(value.customStart, value.customEnd);
@@ -100,7 +105,7 @@ const DateRangeControl: FC<DateRangeControlProps> = ({
   );
 
   const defaultDates = useMemo<TDateTimePickerDualProps['defaultDates']>(() => {
-    if (value.preset !== 'custom') {
+    if (value.preset !== DateRangePreset.Custom) {
       return null;
     }
     return [toPickerDate(value.customStart), toPickerDate(value.customEnd)];
@@ -133,7 +138,7 @@ const DateRangeControl: FC<DateRangeControlProps> = ({
         return;
       }
       onChange({
-        preset: 'custom',
+        preset: DateRangePreset.Custom,
         customStart: fromPickerDate(startDate),
         customEnd: fromPickerDate(endDate),
       });
@@ -146,8 +151,8 @@ const DateRangeControl: FC<DateRangeControlProps> = ({
       label={resolvedLabel}
       triggerLabel={triggerLabel}
       presets={presets}
-      customLabel={translateServerManagement(PRESET_LABEL_KEYS.custom)}
-      customSelected={value.preset === 'custom'}
+      customLabel={translateServerManagement(PRESET_LABEL_KEYS[DateRangePreset.Custom])}
+      customSelected={value.preset === DateRangePreset.Custom}
       className={`min-width-[220px] ${className ?? ''}`}
       renderPicker={({ closePopover, backToPresets }) => (
         <DateTimePicker

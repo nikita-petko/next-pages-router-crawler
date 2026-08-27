@@ -17,7 +17,7 @@ import useCommonAdaptiveDataTableLabels from '@modules/charts-generic/constants/
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import useClientLogs from '../hooks/useClientLogs';
 import type { ClientSessionLog } from '../types/ClientSession';
-import type { DateRangeSelection } from '../types/Filters';
+import { DateRangePreset, type DateRangeSelection } from '../types/Filters';
 import { LogSeverity } from '../types/LogSeverity';
 import { getLogFilter } from '../utils/logFilters';
 import DateRangeControl from './DateRangeControl';
@@ -71,7 +71,7 @@ const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ universeId, s
   const { locale } = useLocalization();
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const [dateRangeSelection, setDateRangeSelection] = useState<DateRangeSelection>({
-    preset: 'all',
+    preset: DateRangePreset.All,
   });
   const [severity, setSeverity] = useState<LogSeverity>();
   const [logSearchKey, setLogSearchKey] = useState('');

@@ -12,7 +12,10 @@ import useLocalPaginatedAdapter from '@modules/charts-generic/tables/hooks/useLo
 import type { TableColumnConfig } from '@modules/charts-generic/tables/types/GenericColumnType';
 import { ColumnType } from '@modules/charts-generic/tables/types/GenericColumnType';
 import type { CellDataType } from '@modules/charts-generic/tables/types/GenericTableType';
-import type { UniversePlaySession } from '@modules/clients/analytics/universeSessionMetadataApi';
+import type {
+  PlaySessionQueryOptions,
+  UniversePlaySession,
+} from '@modules/clients/analytics/universeSessionMetadataApi';
 import useRAQIV2TranslationDependencies from '@modules/experience-analytics-shared/hooks/useRAQIV2TranslationDependencies';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
@@ -52,6 +55,7 @@ type ClientSessionBrowserRow = Map<ClientSessionBrowserColumnKey, CellDataType>;
 
 type ClientSessionBrowserTableProps = {
   readonly universeId: number;
+  readonly queryOptions: PlaySessionQueryOptions;
 };
 
 const numberCell = (value: number | null): CellDataType => ({
@@ -59,9 +63,12 @@ const numberCell = (value: number | null): CellDataType => ({
   value: value ?? Number.NaN,
 });
 
-const ClientSessionBrowserTable: FC<ClientSessionBrowserTableProps> = ({ universeId }) => {
+const ClientSessionBrowserTable: FC<ClientSessionBrowserTableProps> = ({
+  universeId,
+  queryOptions,
+}) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
-  const { data, isError, isPending } = useClientSessions({ universeId });
+  const { data, isError, isPending } = useClientSessions({ universeId, ...queryOptions });
   const statusLabels = useClientSessionStatusLabels();
   const raqiTranslationDependencies = useRAQIV2TranslationDependencies();
 

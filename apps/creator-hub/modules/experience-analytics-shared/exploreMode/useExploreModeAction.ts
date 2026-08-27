@@ -1,18 +1,20 @@
-import type { FC, PropsWithChildren } from 'react';
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import type { TimeSeriesAnnotation } from '@modules/charts-generic/charts/types/Annotations';
 import { analyticsExploreNavigationItem } from '@modules/charts-generic/constants/analyticsNavigationItems';
 import buildExperienceAnalyticsUrlWithParams from '@modules/charts-generic/utils/analyticsUrlBuilder';
-import { Link } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import type { ChartConfigOrPredefinedKey } from '../constants/RAQIV2PredefinedChartConfig';
-import emptyFunction from '../emptyFunction';
 import { useUniverseResource } from '../hooks/useChartResourceProvider';
 import useRAQIV2TranslationDependencies from '../hooks/useRAQIV2TranslationDependencies';
 import type RAQIV2ChartContext from '../types/RAQIV2ChartContext';
 import useExploreModeUrlParams from './useExploreModeUrlParams';
 
+// Resolves the Explore CTA target for a chart. Callers render this as a single
+// native link-styled control (a `kind: 'link'` header action -> `<a>`); they
+// must NOT wrap a `<button>` in a `Link`. Nesting `<button>` inside `<a>` is
+// invalid markup that Chromium mishandles during history navigation, which
+// broke the browser Back button after entering Explore (Firefox tolerated it).
 const useExploreModeAction = (
   preset: ChartConfigOrPredefinedKey | null,
   chartContextOverride?: RAQIV2ChartContext,
@@ -42,30 +44,14 @@ const useExploreModeAction = (
     [translate],
   );
 
-  const ExploreModeLinkWrapper = useCallback<FC<PropsWithChildren>>(
-    ({ children }) => {
-      if (!href) {
-        return undefined;
-      }
-      return (
-        <Link href={href} underline='none'>
-          {children}
-        </Link>
-      );
-    },
-    [href],
-  );
-
   return useMemo(() => {
     return href
       ? {
           label,
-          onClick: emptyFunction,
           tooltip,
           href,
-          Wrapper: ExploreModeLinkWrapper,
         }
       : undefined;
-  }, [ExploreModeLinkWrapper, href, label, tooltip]);
+  }, [href, label, tooltip]);
 };
 export default useExploreModeAction;

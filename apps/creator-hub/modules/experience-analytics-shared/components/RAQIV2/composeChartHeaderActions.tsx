@@ -86,30 +86,28 @@ export function useExploreHeaderAction({
       return {};
     }
 
+    // Explore renders as a single native link-styled button (`<a>`), not a
+    // `Link`-wrapped `<button>`. The nested `<a><button></button></a>` markup
+    // it used to emit is invalid and Chromium mishandled the resulting history
+    // entry, breaking the browser Back button after opening Explore (Firefox
+    // happened to tolerate it).
     const inlineAction: ChartCardHeaderAction = {
       id: 'explore',
-      kind: 'button',
+      kind: 'link',
       label: exploreAction.label,
-      onClick: exploreAction.onClick,
+      href: exploreAction.href,
       tooltip: exploreAction.tooltip,
-      renderButton: exploreAction.Wrapper
-        ? ({ defaultButton }) => {
-            const Wrapper = exploreAction.Wrapper;
-            return Wrapper ? <Wrapper>{defaultButton}</Wrapper> : defaultButton;
-          }
-        : undefined,
+      testId: 'chart-explore-button',
     };
 
-    const menuAction: ChartCardHeaderAction = exploreAction.href
-      ? {
-          id: 'explore',
-          kind: 'link',
-          label: exploreAction.label,
-          href: exploreAction.href,
-          tooltip: exploreAction.tooltip,
-          testId: 'chart-overflow-explore',
-        }
-      : inlineAction;
+    const menuAction: ChartCardHeaderAction = {
+      id: 'explore',
+      kind: 'link',
+      label: exploreAction.label,
+      href: exploreAction.href,
+      tooltip: exploreAction.tooltip,
+      testId: 'chart-overflow-explore',
+    };
 
     return { inlineAction, menuAction };
   }, [exploreAction]);
