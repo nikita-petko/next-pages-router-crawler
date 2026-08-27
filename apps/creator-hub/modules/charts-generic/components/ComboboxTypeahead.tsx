@@ -352,8 +352,19 @@ const ComboboxTypeahead: FC<ComboboxTypeaheadProps> = ({
           if (disabled) {
             return;
           }
-          setIsOpen(true);
-          setSearchText('');
+          // Only open and clear on a fresh focus. A modal Dialog (Radix
+          // FocusScope) traps focus: when the user presses an option in the
+          // portaled listbox, the browser fires `focusout` on the input with
+          // `relatedTarget` pointing at the option (which lives outside the
+          // dialog), and the trap snaps focus back here. Re-running the
+          // open+clear would drop the typeahead filter, reflow the list under
+          // the cursor, and the deferred click would land on the listbox
+          // wrapper instead of the option. Skip when already open so the
+          // active filter survives that trap-induced re-focus.
+          if (!isOpen) {
+            setIsOpen(true);
+            setSearchText('');
+          }
         }}
         onKeyDown={handleKeyDown}
         trailingIconName='icon-regular-chevron-large-down'
