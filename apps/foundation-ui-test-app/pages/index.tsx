@@ -41,6 +41,8 @@ const TestDynamicComponent = dynamic(
   },
 );
 
+import testDialogStyles from '@modules/components/TestDialog.module.css';
+
 const TestDialog: React.FC<TTestDialogProps> = ({
   title,
   content,
@@ -54,23 +56,24 @@ const TestDialog: React.FC<TTestDialogProps> = ({
     open={open}
     onOpenChange={handleClose}
   >
-    <DialogContent>
+    {/* Dialog content should scale X to the buttons */}
+    <DialogContent className={testDialogStyles.foundationTestDialog}>
       <DialogBody>
         <div className="flex flex-col gap-small">
           <DialogTitle className="text-heading-large margin-none">
             {title}
           </DialogTitle>
           <Divider />
-          <span className="text-body-medium content-muted margin-y-small">
+          <span className="text-body-medium content-muted padding-y-xsmall">
             {content}
           </span>
           <Divider />
         </div>
       </DialogBody>
       <DialogFooter>
-        <div className="flex justify-center gap-small width-full">
+        <div className="flex justify-center gap-small margin-x-none">
           <Button variant="Standard" onClick={handleClose}>
-            Close
+            Cancel
           </Button>
           <Button variant="Emphasis" onClick={handleClose}>
             Confirm
@@ -154,7 +157,10 @@ const TestPage = () => {
 
 TestPage.getPageLayout = (page: React.ReactNode) => {
   return (
-    <TestAppMetaLayout title="Test Page" description="Test Page for Foundation UI">
+    <TestAppMetaLayout
+      title="Test Page"
+      description="Test Page for Foundation UI"
+    >
       {page}
     </TestAppMetaLayout>
   );

@@ -1841,6 +1841,10 @@
 .margin-none {
   margin: var(--margin-none);
 }
+.margin-x-none {
+  margin-left: var(--margin-none);
+  margin-right: var(--margin-none);
+}
 .margin-y-small {
   margin-top: var(--margin-small);
   margin-bottom: var(--margin-small);

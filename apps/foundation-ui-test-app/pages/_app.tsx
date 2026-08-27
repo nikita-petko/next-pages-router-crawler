@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-empty-object-type */
+import "@rbx/foundation-ui/style";
 import "../styles/webfont.css";
 import "../styles/globals.css";
-import "@rbx/foundation-ui/style";
 
 import { useFoundationTheme } from '@rbx/foundation-ui';
 
