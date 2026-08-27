@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/cache"
+	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/flags"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/html"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/next/types"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/url"
@@ -64,6 +65,11 @@ SCRIPTS:
 					// For non-prefixed urls prepend the baseUrl
 					if assetPrefix == "" {
 						scriptUrl = fmt.Sprintf("%s%s", baseUrl, scriptUrl)
+					} else {
+						if *flags.AssetPrefixOverride != "" {
+							// Replace the asset prefix with the override if it is set
+							scriptUrl = strings.Replace(scriptUrl, assetPrefix, *flags.AssetPrefixOverride, 1)
+						}
 					}
 
 					assetUrls = append(assetUrls, scriptUrl)
@@ -89,6 +95,11 @@ STYLES:
 					// For non-prefixed urls prepend the baseUrl
 					if assetPrefix == "" {
 						styleUrl = fmt.Sprintf("%s%s", baseUrl, styleUrl)
+					} else {
+						if *flags.AssetPrefixOverride != "" {
+							// Replace the asset prefix with the override if it is set
+							styleUrl = strings.Replace(styleUrl, assetPrefix, *flags.AssetPrefixOverride, 1)
+						}
 					}
 
 					assetUrls = append(assetUrls, styleUrl)
@@ -106,13 +117,15 @@ STYLES:
 	return assetUrls, nil
 }
 
-// getAllUniquePageAssets gets all unique asset URLs from the provided NextPageData list
+// getAllUniqueAssets gets all unique asset URLs from the provided NextPageData list
 // This does not include any dynamically fetched (at runtime) assets
-func getAllUniquePageAssets(initialPageAssetUrls []string, pages []*types.NextPageData) ([]string, error) {
+func getAllUniqueAssets(initialPageAssetUrls []string, pages []*types.NextPageData) ([]string, error) {
 	var assetUrls []string
 
-	for _, page := range pages {
-		assetUrls = append(assetUrls, page.AssetUrls...)
+	if len(pages) > 0 {
+		for _, page := range pages {
+			assetUrls = append(assetUrls, page.AssetUrls...)
+		}
 	}
 
 	assetUrls = append(assetUrls, initialPageAssetUrls...)
@@ -212,7 +225,16 @@ func resolveDynamicAssetsFromBundle(assetPrefix string, assetDataCached *cache.C
 	var dynamicAssetUrls []string
 
 	for _, match := range matches {
+		// Skip if it doesn't end in js, css, or json
+		if !strings.HasSuffix(match, ".js") && !strings.HasSuffix(match, ".css") && !strings.HasSuffix(match, ".json") {
+			continue
+		}
+
 		dynamicAssetUrl := fmt.Sprintf("%s/_next/%s", baseUrl, match)
+
+		if *flags.AssetPrefixOverride != "" && assetPrefix != "" {
+			dynamicAssetUrl = strings.Replace(dynamicAssetUrl, assetPrefix, *flags.AssetPrefixOverride, 1)
+		}
 
 		// Only include the dynamic asset if it is not already in the existing asset URLs
 		if !slices.Contains(existingAssetUrls, dynamicAssetUrl) {
@@ -276,7 +298,7 @@ func recursiveResolveDynamicAssets(assetPrefix string, assetDataCached *cache.Ca
 // resolveAllSiteAssets takes the assetPrefix, the initial asset URLs from the initial Next.js page data,
 // and the list of all NextPageData, and returns a map of all asset URLs to their content (as a string).
 func resolveAllSiteAssets(assetPrefix string, initialPageAssetUrls []string, pages []*types.NextPageData) (map[string]*cache.CacheGuard, []error) {
-	initialAssetUrls, err := getAllUniquePageAssets(initialPageAssetUrls, pages)
+	initialAssetUrls, err := getAllUniqueAssets(initialPageAssetUrls, pages)
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -310,14 +332,58 @@ func resolveAllSiteAssets(assetPrefix string, initialPageAssetUrls []string, pag
 	return allAssets, nil
 }
 
+// fetchAllSiteAssetsFromBuildManifest goes through the build manifest,
+// and prefixes all the chunk files with the asset prefix, and returns a slice of all asset URLs.
+func fetchAllSiteAssetsFromBuildManifest(assetPrefix string, buildManifest *types.BuildManifest) ([]string, error) {
+	baseUrl, err := url.GetBaseUrl(assetPrefix)
+	if err != nil {
+		return nil, err
+	}
+
+	var assetUrls []string
+
+	for _, chunkFiles := range buildManifest.PageChunks {
+		for _, chunkFile := range chunkFiles {
+			assetUrl := fmt.Sprintf("%s/_next/%s", baseUrl, chunkFile)
+
+			if *flags.AssetPrefixOverride != "" && assetPrefix != "" {
+				assetUrl = strings.Replace(assetUrl, assetPrefix, *flags.AssetPrefixOverride, 1)
+			}
+
+			assetUrls = append(assetUrls, assetUrl)
+		}
+	}
+
+	return assetUrls, nil
+}
+
 // FetchAndResolveAllSiteAssets takes the assetPrefix, the initial asset URLs from the initial Next.js page data,
 // and the list of all NextPageData, and returns a map of all asset URLs to their content (as a string).
 func FetchAndResolveAllSiteAssets(assetPrefix string, initialAssetUrls []string, buildManifest *types.BuildManifest) (map[string]*cache.CacheGuard, []error) {
-	pages, errs := fetchAllNextPages(buildManifest)
-	if len(errs) > 0 {
-		glog.Errorf("Error fetching all Next.js pages: %v", errs)
+	var pages []*types.NextPageData = nil
 
-		return nil, errs
+	switch *flags.FetchMode {
+	case "pages":
+		nextPages, errs := fetchAllNextPages(buildManifest)
+		if len(errs) > 0 {
+			glog.Errorf("Error fetching all Next.js pages: %v", errs)
+
+			return nil, errs
+		}
+
+		pages = nextPages
+	case "manifest-only":
+		// Do not fetch any pages, only resolve assets from the build manifest, and add them to the initial asset URLs
+		manifestAssetUrls, err := fetchAllSiteAssetsFromBuildManifest(assetPrefix, buildManifest)
+		if err != nil {
+			glog.Errorf("Error fetching all site assets from build manifest: %v", err)
+
+			return nil, []error{err}
+		}
+
+		initialAssetUrls = append(initialAssetUrls, manifestAssetUrls...)
+	default:
+		return nil, []error{fmt.Errorf("invalid fetch mode: %s", *flags.FetchMode)}
 	}
 
 	assets, errs := resolveAllSiteAssets(assetPrefix, initialAssetUrls, pages)

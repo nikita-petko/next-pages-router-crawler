@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/flags"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/next/types"
 	gohtml "golang.org/x/net/html"
 )
@@ -37,6 +38,10 @@ func getNextData(htmlBody *gohtml.Node) (*types.NextData, error) {
 	nextData := &types.NextData{}
 	if err := json.Unmarshal([]byte(nextDataScript.FirstChild.Data), nextData); err != nil {
 		return nil, err
+	}
+
+	if *flags.BuildIdOverride != "" {
+		nextData.BuildId = *flags.BuildIdOverride
 	}
 
 	return nextData, nil

@@ -4,6 +4,9 @@ func applyEnvironmentVariableFlags() {
 	getEnvironmentVariableOrFlag("INTERVAL", Interval)
 
 	getEnvironmentVariableOrFlag("URL", Url)
+	getEnvironmentVariableOrFlag("ASSET_PREFIX_OVERRIDE", AssetPrefixOverride)
+	getEnvironmentVariableOrFlag("BUILD_ID_OVERRIDE", BuildIdOverride)
+	getEnvironmentVariableOrFlag("FETCH_MODE", FetchMode)
 	getEnvironmentVariableOrFlag("CACHE_PATH", CachePath)
 	getEnvironmentVariableOrFlag("OUTPUT_PATH", OutputPath)
 	getEnvironmentVariableOrFlag("CLEAR_CACHE", ClearCache)

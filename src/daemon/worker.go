@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"path"
 
 	"github.com/golang/glog"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/alerting"
@@ -13,18 +14,18 @@ import (
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/sourcemap"
 )
 
-func combineErrors(combinedErr error, errs ...error) error {
+func combineErrors(initialError error, errs ...error) error {
 	for _, err := range errs {
 		if err != nil {
-			if combinedErr == nil {
-				combinedErr = err
+			if initialError == nil {
+				initialError = err
 			} else {
-				combinedErr = fmt.Errorf("%v; %w", combinedErr, err)
+				initialError = fmt.Errorf("%v; %w", initialError, err)
 			}
 		}
 	}
 
-	return combinedErr
+	return initialError
 }
 
 // DoWork is the function that is intended to perform the main work of the daemon.
@@ -48,8 +49,8 @@ func DoWork() error {
 	glog.Infof("Got new build ID: %s, proceeding to fetch all site assets and source maps.", nextData.BuildId)
 	alerting.Alert(
 		context.Background(),
-		fmt.Sprintf("Build ID Update (%s)", uri.Host),
-		fmt.Sprintf("New build ID detected for site %s: %s. Proceeding to fetch all site assets and source maps.", uri.Host, nextData.BuildId),
+		fmt.Sprintf("Build ID Update (%s)", path.Join(uri.Host, uri.Path)),
+		fmt.Sprintf("New build ID detected for site %s: %s. Proceeding to fetch all site assets and source maps.", path.Join(uri.Host, uri.Path), nextData.BuildId),
 	)
 
 	assets, errs := next.FetchAndResolveAllSiteAssets(nextData.AssetPrefix, initialAssetUrls, buildManifest)

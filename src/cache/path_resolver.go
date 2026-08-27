@@ -18,7 +18,7 @@ func ResolveUrlToCachePath(url string) (string, error) {
 	}
 
 	// Construct the cache path using the host and path of the URL
-	cachePath := path.Join(*flags.CachePath, uri.Host, uri.Path+".cache")
+	cachePath := path.Join(*flags.CachePath, uri.Host, uri.Path, ".cache")
 
 	return cachePath, nil
 }

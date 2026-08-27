@@ -8,6 +8,7 @@ import (
 	"github.com/dop251/goja"
 	"github.com/golang/glog"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/cache"
+	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/flags"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/next/types"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/url"
 )
@@ -22,6 +23,10 @@ func buildManifestUrl(nextData *types.NextData) (string, error) {
 	baseUrl, err := url.GetBaseUrl(nextData.AssetPrefix)
 	if err != nil {
 		return "", err
+	}
+
+	if *flags.AssetPrefixOverride != "" {
+		baseUrl = *flags.AssetPrefixOverride
 	}
 
 	return fmt.Sprintf("%s/_next/static/%s/%s", baseUrl, nextData.BuildId, buildManifestScript), nil

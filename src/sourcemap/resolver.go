@@ -49,6 +49,10 @@ func resolveSourceMapUrlsFromAsset(baseUrl string, assetDataCached *cache.CacheG
 }
 
 func resolveSourceMapUrls(assetPrefix string, sources map[string]*cache.CacheGuard) (map[string][]string, error) {
+	if *flags.AssetPrefixOverride != "" {
+		assetPrefix = *flags.AssetPrefixOverride
+	}
+
 	baseUrl, err := url.GetBaseUrl(assetPrefix)
 	if err != nil {
 		return nil, err
@@ -100,5 +104,5 @@ func resolveSourceMappingFilePathToOutputFilePath(sourceMappingFilePath string) 
 		return "", err
 	}
 
-	return path.Join(*flags.OutputPath, uri.Host, sourceMappingFilePath), nil
+	return path.Join(*flags.OutputPath, uri.Host, uri.Path, sourceMappingFilePath), nil
 }

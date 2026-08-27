@@ -1,6 +1,7 @@
 package next
 
 import (
+	goerrors "errors"
 	"fmt"
 	"slices"
 	"sync"
@@ -85,6 +86,13 @@ func fetchAllNextPages(buildManifest *types.BuildManifest) ([]*types.NextPageDat
 
 			nextData, assetUrls, err := fetchNextPageData(url)
 			if err != nil {
+				if goerrors.Is(err, html.ErrPageNotFound) {
+					// Skip the page if it is not found, as it may be a dynamic route that is not currently available.
+					glog.V(100).Infof("Page (%s) not found, skipping.", url)
+
+					return
+				}
+
 				errLock.Lock()
 				defer errLock.Unlock()
 

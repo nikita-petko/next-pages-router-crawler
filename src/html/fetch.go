@@ -3,11 +3,14 @@ package html
 import (
 	"bytes"
 	"errors"
+	"net/http"
 	"net/url"
 
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/cache"
 	gohtml "golang.org/x/net/html"
 )
+
+var ErrPageNotFound = errors.New("page not found")
 
 func getHtmlFromPageHtml(nodes *gohtml.Node) (*gohtml.Node, error) {
 	if html := GetFirstElementOfType("html", nodes); html != nil {
@@ -24,7 +27,13 @@ func FetchHTMLForPage(pageUrl string) (*gohtml.Node, error) {
 		return nil, err
 	}
 
-	cached, err := cache.CacheGuardedHttpGet(pageUrl, nil)
+	cached, err := cache.CacheGuardedHttpGet(pageUrl, func(response *http.Response) error {
+		if response.StatusCode == http.StatusNotFound {
+			return ErrPageNotFound
+		}
+
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}

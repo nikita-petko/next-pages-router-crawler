@@ -2,6 +2,7 @@ package next
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/golang/glog"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/cache"
@@ -15,7 +16,7 @@ var CachedBuildIdIsSameError = errors.New("cached build ID is the same as the cu
 func FetchInitialNextPageData() (buildManifest *types.BuildManifest, nextData *types.NextData, assetUrls []string, err error) {
 	// Ensure trailing slash for cache path
 	url := *flags.Url
-	if url[len(url)-1] != '/' {
+	if url[len(url)-1] != '/' && !strings.HasSuffix(url, ".html") {
 		url += "/"
 	}
 

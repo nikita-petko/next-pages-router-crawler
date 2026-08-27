@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/golang/glog"
@@ -15,7 +16,7 @@ var gSetupFlagsOnce sync.Once
 func SetupFlags(applicationName, buildMode, commitSha string) {
 	gSetupFlagsOnce.Do(func() {
 		flag.Usage = func() {
-			os.Stderr.WriteString(fmt.Sprintf("Usage: %s\nBuild Mode: %s\nCommit: %s %s\n\n", applicationName, buildMode, commitSha, FlagsUsageString))
+			fmt.Fprintf(os.Stderr, "Usage: %s\nBuild Mode: %s\nCommit: %s %s\n\n", applicationName, buildMode, commitSha, FlagsUsageString)
 			flag.PrintDefaults()
 		}
 
@@ -25,6 +26,8 @@ func SetupFlags(applicationName, buildMode, commitSha string) {
 		flag.Parse()
 
 		applyEnvironmentVariableFlags()
+
+		*FetchMode = strings.ToLower(*FetchMode)
 
 		if !*HelpFlag {
 			glog.Infof("Flags setup complete!")

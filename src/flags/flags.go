@@ -20,6 +20,15 @@ var (
 	// Url is the url to use to download the initial HTML document to determine the Next.js build manifest location. (environment variable: URL)
 	Url = flag.String("url", "", "The url to use to download the initial HTML document to determine the Next.js build manifest location. (environment variable: URL)")
 
+	// AssetPrefixOverride is the asset prefix to use instead of the one specified in the NextData. This is optional. (environment variable: ASSET_PREFIX_OVERRIDE)
+	AssetPrefixOverride = flag.String("asset-prefix-override", "", "The asset prefix to use instead of the one specified in the NextData. This is optional. (environment variable: ASSET_PREFIX_OVERRIDE)")
+
+	// BuildIdOverride is the build ID to use instead of the one specified in the NextData. This is optional. (environment variable: BUILD_ID_OVERRIDE)
+	BuildIdOverride = flag.String("build-id-override", "", "The build ID to use instead of the one specified in the NextData. This is optional. (environment variable: BUILD_ID_OVERRIDE)")
+
+	// FetchMode is the mode to use when fetching the chunks, set to "pages" to fetch all chunks from HTML pages, set to "manifest-only" to recursively resolve all chunks from the build manifest only. Defaults to "pages". (environment variable: FETCH_MODE)
+	FetchMode = flag.String("fetch-mode", "pages", "The mode to use when fetching the chunks, set to \"pages\" to fetch all chunks from HTML pages, set to \"manifest-only\" to recursively resolve all chunks from the build manifest only. Defaults to \"pages\". (environment variable: FETCH_MODE)")
+
 	// CachePath is the path to the cache directory. Defaults to .cache. This is required. (environment variable: CACHE_PATH)
 	CachePath = flag.String("cache-path", ".cache", "The path to the cache directory. Defaults to .cache. This is required. (environment variable: CACHE_PATH)")
 
@@ -62,7 +71,7 @@ var (
 // FlagUsageString is the usage string printed a longside the help command.
 const FlagsUsageString string = `
 	[-h|--help] [--interval[=5m]] [--pulse]
-	[--url[=]]
+	[--url[=]] [--asset-prefix-override[=]] [--build-id-override[=]] [--fetch-mode[=pages]]
 	[--sendgrid-api-key[=]] [--sendgrid-from[=]] [--sendgrid-from-email[=]] [--sendgrid-mailing-list[=]]
 	[--sns-topic-arn[=]] [--aws-credentials-from-profile[=false]]
 	[--discord-webhook-uri[=]] [--discord-alert-role-id[=0]]`
