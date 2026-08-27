@@ -98,7 +98,18 @@ const TestPage = () => {
       testDynamicImport: testDynamicImportV,
       testDynamicComponent: testDynamicComponentV,
     },
+    isReady,
   } = useRouter();
+
+  if (!isReady) {
+    return (
+      <div className="flex flex-col items-center justify-center min-height-[100vh]">
+        <span className="text-heading-large font-bold margin-bottom-medium text-align-x-center">
+          Loading...
+        </span>
+      </div>
+    );
+  }
 
   const testDynamicImport = testDynamicImportV === "true";
   const testDynamicComponent = testDynamicComponentV === "true";
