@@ -620,7 +620,9 @@ export const buildComputedMetricDag = (
   const topNConfigs = getSupportedTopNBreakdownConfigs(topNBreakdowns, sharedSupportedDimensions);
   const realBreakdowns = getUniqueBreakdowns([
     ...passthroughBreakdowns.filter(
-      (d) => sharedSupportedDimensions.has(d) || isDurationBucketDimension(d),
+      (d) =>
+        !isMetricFanoutDimension(d) &&
+        (sharedSupportedDimensions.has(d) || isDurationBucketDimension(d)),
     ),
     ...topNConfigs.map((config) => config.dimension),
   ]);
