@@ -8,10 +8,10 @@ import type {
 } from '@rbx/studio-webview';
 import {
   makeStudioWebViewMessageBusContextProvider,
+  StubMessageBus,
   StudioWebViewMessageBusConnector,
 } from '@rbx/studio-webview';
 import type { DeploymentStrategy } from '../../api/universeConfigsClientEnums';
-import StubMessageBus from './StubMessageBus';
 
 export const CreatorConfigStudioMessageBusEvent = {
   OpenPublishModal: 'OpenPublishModal',
@@ -120,6 +120,7 @@ const {
 const ConfigsStudioMessageBusProvider = ({ children }: ConfigsStudioMessageBusProviderProps) => {
   return (
     <ConfigsStudioMessageBusBaseProvider>
+      {/* eslint-disable-next-line react-compiler/react-compiler -- connector API requires passing hook as prop */}
       <StudioWebViewMessageBusConnector useContextHook={useConfigsStudioMessageBusProviderContext}>
         {children}
       </StudioWebViewMessageBusConnector>
