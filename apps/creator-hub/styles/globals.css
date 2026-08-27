@@ -2020,6 +2020,9 @@
 .\!height-full {
   height: 100% !important;
 }
+.\!max-width-\[608px\] {
+  max-width: 608px !important;
+}
 .\!max-width-\[95vw\] {
   max-width: 95vw !important;
 }
@@ -2034,6 +2037,9 @@
 }
 .\!min-width-\[280px\] {
   min-width: 280px !important;
+}
+.\!width-\[608px\] {
+  width: 608px !important;
 }
 .\!width-fit {
   width: -moz-fit-content !important;
@@ -2125,6 +2131,9 @@
 }
 .height-\[336px\] {
   height: 336px;
+}
+.height-\[34px\] {
+  height: 34px;
 }
 .height-\[35px\] {
   height: 35px;
@@ -2677,6 +2686,9 @@
 .width-\[115px\] {
   width: 115px;
 }
+.width-\[120px\] {
+  width: 120px;
+}
 .width-\[124px\] {
   width: 124px;
 }
@@ -2749,6 +2761,9 @@
 .width-\[32px\] {
   width: 32px;
 }
+.width-\[34px\] {
+  width: 34px;
+}
 .width-\[35px\] {
   width: 35px;
 }
@@ -2769,6 +2784,9 @@
 }
 .width-\[50\%\] {
   width: 50%;
+}
+.width-\[56px\] {
+  width: 56px;
 }
 .width-\[60\%\] {
   width: 60%;
@@ -3112,9 +3130,6 @@
 .padding-y-xxsmall {
   padding-top: var(--padding-xxsmall);
   padding-bottom: var(--padding-xxsmall);
-}
-.\!padding-bottom-large {
-  padding-bottom: var(--padding-large) !important;
 }
 .\!padding-left-small {
   padding-left: var(--padding-small) !important;

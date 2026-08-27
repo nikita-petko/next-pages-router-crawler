@@ -234,11 +234,6 @@ const useImmersiveAdsPageStyles = makeStyles()((theme) => ({
     ...horizontalContainer,
     gap: '8px',
   },
-  placementTableContainer: {
-    borderRadius: '8px',
-    border: '1px solid var(--Color-Stroke-Emphasis, rgba(208, 217, 251, 0.16))',
-    marginBottom: '24px',
-  },
   placementTableHeaderContainer: {
     display: 'flex',
     justifyContent: 'space-between',

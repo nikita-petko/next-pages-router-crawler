@@ -30,6 +30,7 @@ interface AddRewardItemModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (rewardItem: RewardItem) => void;
+  existingProductIds?: number[];
 }
 
 interface AddRewardItemFormValues {
@@ -38,12 +39,7 @@ interface AddRewardItemFormValues {
 
 const ns = TranslationNamespace.ImmersiveAdsAnalytics;
 const REWARD_IMAGE_ACCEPT_TYPES = 'image/jpg,image/jpeg,image/png,image/bmp';
-
-interface RewardDetailsWithDefaultImage {
-  productName?: string;
-  imageAssetId?: number;
-  isDefaultImage?: boolean;
-}
+const EMPTY_PRODUCT_IDS: number[] = [];
 
 const RewardAvatar = ({ imageAssetId, alt }: { imageAssetId?: number; alt: string }) => {
   if (!imageAssetId) {
@@ -56,7 +52,12 @@ const RewardAvatar = ({ imageAssetId, alt }: { imageAssetId?: number; alt: strin
   );
 };
 
-const AddRewardItemModal = ({ isOpen, onClose, onAdd }: AddRewardItemModalProps) => {
+const AddRewardItemModal = ({
+  isOpen,
+  onClose,
+  onAdd,
+  existingProductIds = EMPTY_PRODUCT_IDS,
+}: AddRewardItemModalProps) => {
   const { translate } = useTranslationWrapper(useTranslation());
   const { id: universeId } = useUniverseResource();
 
@@ -75,12 +76,13 @@ const AddRewardItemModal = ({ isOpen, onClose, onAdd }: AddRewardItemModalProps)
   const productIdValue = useWatch({ control, name: 'productId' });
   const parsedProductId =
     typeof productIdValue === 'number' && productIdValue > 0 ? productIdValue : null;
+  const isDuplicate = parsedProductId != null && existingProductIds.includes(parsedProductId);
 
   const validation = useValidateAdReward(selectedItem ? null : parsedProductId);
   const { isValidating, refetch: refetchValidation } = validation;
-  const details: RewardDetailsWithDefaultImage | undefined = validation.data?.rewardDetails;
+  const details = validation.data?.rewardDetails;
   const hasDefaultImage =
-    validation.data?.isValidReward === true && details?.isDefaultImage === true; // TODO: validate once API is updated
+    !isDuplicate && validation.data?.isValidReward === true && details?.isDefaultImage === true;
   const displayDetails =
     hasUploadedImageForReview && selectedItem
       ? {
@@ -101,6 +103,7 @@ const AddRewardItemModal = ({ isOpen, onClose, onAdd }: AddRewardItemModalProps)
   const candidate: RewardItem | null =
     !selectedItem &&
     !isValidating &&
+    !isDuplicate &&
     validation.data?.isValidReward === true &&
     !hasDefaultImage &&
     !hasUploadedImageForReview &&
@@ -116,8 +119,14 @@ const AddRewardItemModal = ({ isOpen, onClose, onAdd }: AddRewardItemModalProps)
   const isResolvedValid = Boolean(candidate) || Boolean(selectedItem);
   const hasValidationError =
     !selectedItem && !isValidating && parsedProductId
-      ? validation.isError || validation.data?.isValidReward === false
+      ? isDuplicate || validation.isError || validation.data?.isValidReward === false
       : false;
+  let validationErrorMessage: string | undefined;
+  if (hasValidationError) {
+    validationErrorMessage = isDuplicate
+      ? translate(translationKey('Error.DuplicateRewardItem', ns))
+      : translate(translationKey('Error.InvalidRewardItem', ns));
+  }
 
   const clearRewardState = useCallback(() => {
     setSelectedItem(null);
@@ -216,6 +225,7 @@ const AddRewardItemModal = ({ isOpen, onClose, onAdd }: AddRewardItemModalProps)
                     fullWidth
                     size='medium'
                     error={Boolean(error) || hasValidationError}
+                    helperText={validationErrorMessage}
                     disabled={isUploadingImage}
                     placeholder={translate(
                       translationKey('Placeholder.EnterDeveloperProductID', ns),
@@ -300,6 +310,7 @@ const AddRewardItemModal = ({ isOpen, onClose, onAdd }: AddRewardItemModalProps)
                   </div>
                 </div>
                 {hasUploadedImageForReview ? (
+                  // oxlint-disable-next-line typescript/no-deprecated
                   <FeedbackBanner
                     severity='Warning'
                     variant='Emphasis'
@@ -308,6 +319,7 @@ const AddRewardItemModal = ({ isOpen, onClose, onAdd }: AddRewardItemModalProps)
                     title={translate(translationKey('Warning.RewardItemImageUnderReview', ns))}
                   />
                 ) : (
+                  // oxlint-disable-next-line typescript/no-deprecated
                   <FeedbackBanner
                     severity='Error'
                     variant='Emphasis'

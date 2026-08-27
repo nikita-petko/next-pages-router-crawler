@@ -1,19 +1,28 @@
-import { useCallback, useMemo, useState } from 'react';
-import NextLink from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { PlayWithRewardServingStatus } from '@rbx/client-developer-ads-stats-api/v1';
+import {
+  PlacementRewardStatusEnum,
+  UpdatePlacementRequestStatusEnum,
+} from '@rbx/client-developer-ads-stats-api/v1';
 import {
   Button as FoundationButton,
+  EducationalTooltip,
+  EducationalTooltipBody,
+  EducationalTooltipContent,
+  EducationalTooltipDescription,
+  EducationalTooltipTitle,
+  EducationalTooltipTrigger,
+  Icon,
   IconButton as FoundationIconButton,
   Menu as FoundationMenu,
   MenuItem as FoundationMenuItem,
-  MenuSection,
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Tooltip as FoundationTooltip,
+  TooltipTrigger,
 } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
-import { Thumbnail2d, ThumbnailTypes } from '@rbx/thumbnails';
 import {
   Button,
   Table,
@@ -29,10 +38,6 @@ import {
   CircularProgress,
   Alert,
   Tooltip,
-  Avatar,
-  Menu,
-  MenuItem,
-  MoreVertIcon,
 } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
@@ -41,16 +46,18 @@ import { useSnackbarAlert } from '@modules/miscellaneous/hooks';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import ExperienceDetailsPageDocsLink from '../components/ExperienceDetailsPageDocsLink';
 import PlacementModal from '../components/PlacementModal';
-import {
-  DisablePlayWithRewardPlacementDialog,
-  EnablePlayWithRewardTestModeDialog,
-  LaunchPlayWithRewardPlacementDialog,
-} from '../components/PlayWithRewardConfirmationDialog';
-import PlayWithRewardStatusLabel from '../components/PlayWithRewardStatusLabel';
-import ProcessReceiptDialog from '../components/ProcessReceiptDialog';
+import { DisablePlayWithRewardPlacementDialog } from '../components/PlayWithRewardConfirmationDialog';
+import RewardItemsDrawer from '../components/RewardItemsDrawer';
 import RewardTable, { type RewardTableRow } from '../components/RewardTable';
+import StatusBadge from '../components/StatusBadge';
 import useModal from '../hooks/useModal';
-import type { Placement } from '../types/placementTypes';
+import {
+  PlacementType,
+  PlacementStatus,
+  SHOW_MANAGE_TOOLTIP_QUERY_PARAM,
+  type Placement,
+  type PlacementReward,
+} from '../types/placementTypes';
 import useImmersiveAdsPageStyles from './ImmersiveAdsPage.styles';
 
 interface ImmersiveAdsPlacementTabContentProps {
@@ -61,17 +68,6 @@ interface ImmersiveAdsPlacementTabContentProps {
   onRefreshPlacements: () => void;
   createPlacementUrl: string;
   showPlayWithRewardSettings?: boolean;
-  isAdsPageRedesignEnabled?: boolean;
-  rewardMetadata?: {
-    displayDetails?: {
-      productName?: string;
-      imageAssetId?: number;
-    };
-    rewardInfo?: {
-      productId?: number;
-    };
-  };
-  playWithRewardServingStatus: PlayWithRewardServingStatus;
   onRefreshPlayWithRewardServingStatus: () => void;
 }
 
@@ -91,27 +87,10 @@ const formatLastUpdate = (timestampMs: number): string => {
   }).format(new Date(timestampMs));
 };
 
-const isPlayWithRewardPlacementVisible = (status: PlayWithRewardServingStatus) => {
-  return !(
-    status === PlayWithRewardServingStatus.PLAY_WITH_REWARD_SERVING_STATUS_NONE ||
-    status === PlayWithRewardServingStatus.PLAY_WITH_REWARD_SERVING_STATUS_UNSPECIFIED
-  );
-};
-
-const isPlayWithRewardPlacementDeactivated = (status: PlayWithRewardServingStatus) => {
-  return status === PlayWithRewardServingStatus.PLAY_WITH_REWARD_SERVING_STATUS_INACTIVE_DISABLED;
-};
-
-const canDisablePlayWithRewardPlacement = (status: PlayWithRewardServingStatus) => {
-  return (
-    status === PlayWithRewardServingStatus.PLAY_WITH_REWARD_SERVING_STATUS_ACTIVE ||
-    status === PlayWithRewardServingStatus.PLAY_WITH_REWARD_SERVING_STATUS_INACTIVE_PENDING
-  );
-};
-
 type RewardRowMenuItem = {
   key: string;
   label: string;
+  isDisabled?: boolean;
   onSelect: () => void;
 };
 
@@ -119,79 +98,39 @@ const RewardTableRowMenu = ({
   ariaLabel,
   className,
   items,
-  useFoundationMenu,
 }: {
   ariaLabel: string;
   className?: string;
   items: RewardRowMenuItem[];
-  useFoundationMenu: boolean;
 }) => {
-  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
-  const [isFoundationMenuOpen, setIsFoundationMenuOpen] = useState(false);
-
-  if (!useFoundationMenu) {
-    const closeMenu = () => {
-      setAnchorEl(null);
-    };
-
-    return (
-      <>
-        <IconButton
-          size='small'
-          aria-label={ariaLabel}
-          className={className}
-          onClick={(event) => setAnchorEl(event.currentTarget)}>
-          <MoreVertIcon color='secondary' />
-        </IconButton>
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={closeMenu}
-          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-          transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
-          {items.map((item) => (
-            <MenuItem
-              key={item.key}
-              onClick={() => {
-                closeMenu();
-                item.onSelect();
-              }}>
-              {item.label}
-            </MenuItem>
-          ))}
-        </Menu>
-      </>
-    );
-  }
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <Popover open={isFoundationMenuOpen} onOpenChange={setIsFoundationMenuOpen}>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <FoundationIconButton
           as='button'
           variant='Utility'
-          size='Small'
-          isCircular
-          icon='icon-filled-three-dots-vertical'
+          size='Medium'
+          icon='icon-regular-three-dots-vertical'
           ariaLabel={ariaLabel}
           className={className}
         />
       </PopoverTrigger>
       <PopoverContent side='bottom' align='end' ariaLabel={ariaLabel}>
         <FoundationMenu size='Medium'>
-          <MenuSection>
-            {items.map((item) => (
-              <FoundationMenuItem
-                key={item.key}
-                value={item.key}
-                title={item.label}
-                onSelect={() => {
-                  setIsFoundationMenuOpen(false);
-                  item.onSelect();
-                }}
-              />
-            ))}
-          </MenuSection>
+          {items.map((item) => (
+            <FoundationMenuItem
+              key={item.key}
+              value={item.key}
+              title={item.label}
+              disabled={item.isDisabled}
+              onSelect={() => {
+                item.onSelect();
+                setIsOpen(false);
+              }}
+            />
+          ))}
         </FoundationMenu>
       </PopoverContent>
     </Popover>
@@ -206,9 +145,6 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
   onRefreshPlacements,
   createPlacementUrl,
   showPlayWithRewardSettings = false,
-  isAdsPageRedesignEnabled = false,
-  rewardMetadata,
-  playWithRewardServingStatus,
   onRefreshPlayWithRewardServingStatus,
 }) => {
   const {
@@ -223,7 +159,6 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
       lockIcon,
       loadingContainer,
       errorContainer,
-      placementTableContainer,
       placementTableTextContainer,
       placementTableHeaderContainer,
       placementTableTitleTextContainer,
@@ -234,20 +169,57 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
   } = useImmersiveAdsPageStyles();
   const translation = useTranslation();
   const { translate } = translation;
-  const {
-    translate: translateKey,
-    translateHTML,
-    tPendingTranslation,
-  } = useTranslationWrapper(translation);
+  const { translate: translateKey, translateHTML } = useTranslationWrapper(translation);
   const showSnackbarMessage = useSnackbarAlert();
   const router = useRouter();
   const [isDisablePlacementModalOpen, setIsDisablePlacementModalOpen] = useState(false);
-  const [isCodeSnippetDialogOpen, setIsCodeSnippetDialogOpen] = useState(false);
-  const [isEnableTestModeModalOpen, setIsEnableTestModeModalOpen] = useState(false);
-  const [isLaunchPlacementModalOpen, setIsLaunchPlacementModalOpen] = useState(false);
   const [isUpdatingPlayWithRewardEnabled, setIsUpdatingPlayWithRewardEnabled] = useState(false);
+  const [isRewardItemsDrawerOpen, setIsRewardItemsDrawerOpen] = useState(false);
+  const [showManageTooltip, setShowManageTooltip] = useState(false);
+  const [maxProductIds, setMaxProductIds] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (!router.isReady || router.query[SHOW_MANAGE_TOOLTIP_QUERY_PARAM] !== 'true') {
+      return;
+    }
+    // oxlint-disable-next-line react/react-compiler -- consume the one-time navigation signal after router hydration.
+    setShowManageTooltip(true);
+    const nextQuery = { ...router.query };
+    delete nextQuery[SHOW_MANAGE_TOOLTIP_QUERY_PARAM];
+    void router.replace({ pathname: router.pathname, query: nextQuery }, undefined, {
+      shallow: true,
+    });
+  }, [router]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchMetadata = async () => {
+      try {
+        const response = await developerAdsStatsClient.getImmersiveAdsMetadata();
+        if (cancelled) {
+          return;
+        }
+        setMaxProductIds(
+          response.placementTypeDefaults?.[String(PlacementType.PlayWithReward)]?.maxProductIds,
+        );
+      } catch {
+        // metadata is non-critical, fall through
+      }
+    };
+    void fetchMetadata();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const { isModalOpen, openModal, closeModal, modalContent } = useModal();
+
+  const rewardedVideoPlacements = placements.filter(
+    (placement) => placement.type !== PlacementType.PlayWithReward,
+  );
+  const pwrPlacement = placements.find(
+    (placement) => placement.type === PlacementType.PlayWithReward,
+  );
 
   const handlePlacementUpdate = useCallback(
     async (placementIdValue: number, newName: string) => {
@@ -324,40 +296,6 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
     void router.push(createPlacementUrl);
   }, [createPlacementUrl, router]);
 
-  const handleOpenCodeSnippetDialog = useCallback(() => {
-    setIsCodeSnippetDialogOpen(true);
-  }, []);
-
-  const handleCloseCodeSnippetDialog = useCallback(() => {
-    setIsCodeSnippetDialogOpen(false);
-  }, []);
-
-  const handleEnableTestMode = useCallback(() => {
-    setIsEnableTestModeModalOpen(true);
-  }, []);
-
-  const handleLaunchPlacement = useCallback(() => {
-    setIsLaunchPlacementModalOpen(true);
-  }, []);
-
-  const handleCloseLaunchPlacementModal = useCallback(() => {
-    setIsLaunchPlacementModalOpen(false);
-  }, []);
-
-  const handleConfirmLaunchPlacement = useCallback(() => {
-    // TODO: Call DASA endpoint to activate once available.
-    handleCloseLaunchPlacementModal();
-  }, [handleCloseLaunchPlacementModal]);
-
-  const handleCloseEnableTestModeModal = useCallback(() => {
-    setIsEnableTestModeModalOpen(false);
-  }, []);
-
-  const handleConfirmEnableTestMode = useCallback(() => {
-    // TODO: Call DASA endpoint to test mode once available.
-    handleCloseEnableTestModeModal();
-  }, [handleCloseEnableTestModeModal]);
-
   const handleCloseDisablePlacementModal = useCallback(() => {
     setIsDisablePlacementModalOpen(false);
   }, []);
@@ -367,16 +305,19 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
   }, []);
 
   const handleDisablePlacement = useCallback(async () => {
+    if (!pwrPlacement) {
+      return;
+    }
     setIsUpdatingPlayWithRewardEnabled(true);
     try {
-      await developerAdsStatsClient.updateUniverseAdsSettings({
-        universeId,
-        updateUniverseAdsSettingsRequest: {
-          isPlayWithRewardEnabled: false,
+      await developerAdsStatsClient.updatePlacement({
+        adPlacementId: pwrPlacement.id,
+        updatePlacementRequest: {
+          status: UpdatePlacementRequestStatusEnum.PLACEMENT_STATUS_INACTIVE,
         },
       });
       handleCloseDisablePlacementModal();
-      onRefreshPlayWithRewardServingStatus();
+      onRefreshPlacements();
       showSnackbarMessage('success', translate('Description.PlacementDeactivated'));
     } catch {
       showSnackbarMessage('error', translate('Label.PlacementUpdateError'));
@@ -385,37 +326,55 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
     }
   }, [
     handleCloseDisablePlacementModal,
-    onRefreshPlayWithRewardServingStatus,
+    onRefreshPlacements,
+    pwrPlacement,
     showSnackbarMessage,
     translate,
-    universeId,
   ]);
 
   const handleEnablePlacement = useCallback(async () => {
+    if (!pwrPlacement) {
+      return;
+    }
     setIsUpdatingPlayWithRewardEnabled(true);
     try {
-      await developerAdsStatsClient.updateUniverseAdsSettings({
-        universeId,
-        updateUniverseAdsSettingsRequest: {
-          isPlayWithRewardEnabled: true,
+      await developerAdsStatsClient.updatePlacement({
+        adPlacementId: pwrPlacement.id,
+        updatePlacementRequest: {
+          status: UpdatePlacementRequestStatusEnum.PLACEMENT_STATUS_ACTIVE,
         },
       });
-      onRefreshPlayWithRewardServingStatus();
+      onRefreshPlacements();
       showSnackbarMessage('success', translate('Label.PlacementCreatedSuccess'));
     } catch {
       showSnackbarMessage('error', translate('Label.PlacementUpdateError'));
     } finally {
       setIsUpdatingPlayWithRewardEnabled(false);
     }
-  }, [onRefreshPlayWithRewardServingStatus, showSnackbarMessage, translate, universeId]);
+  }, [onRefreshPlacements, pwrPlacement, showSnackbarMessage, translate]);
 
-  const rewardProductId = rewardMetadata?.rewardInfo?.productId;
-  const rewardProductIds = useMemo(
-    () => (rewardProductId === undefined ? [] : [rewardProductId]),
-    [rewardProductId],
-  );
+  const handleCloseRewardItemsDrawer = useCallback(() => {
+    setIsRewardItemsDrawerOpen(false);
+  }, []);
 
-  if (isLoading) {
+  const handleOpenRewardItemsDrawer = useCallback(() => {
+    setIsRewardItemsDrawerOpen(true);
+  }, []);
+
+  // Only the close affordance dismisses the one-time Manage tip; ignore trigger-click opens so
+  // clicking Manage (which opens the drawer) can't re-surface it. It's shown via the nav signal.
+  const handleManageTooltipOpenChange = useCallback((nextOpen: boolean) => {
+    if (!nextOpen) {
+      setShowManageTooltip(false);
+    }
+  }, []);
+
+  const handleRewardUpdated = useCallback(() => {
+    onRefreshPlacements();
+    onRefreshPlayWithRewardServingStatus();
+  }, [onRefreshPlacements, onRefreshPlayWithRewardServingStatus]);
+
+  if (isLoading && !isRewardItemsDrawerOpen) {
     return (
       <div className={`${placementTabContainer} ${loadingContainer}`}>
         <CircularProgress />
@@ -433,11 +392,11 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
     );
   }
 
-  const isMaxPlacementsReached = placements?.length >= MAX_PLACEMENTS;
-  const isDisabled = isMaxPlacementsReached || placements?.length === 0;
+  const isMaxPlacementsReached = rewardedVideoPlacements.length >= MAX_PLACEMENTS;
+  const isDisabled = isMaxPlacementsReached || rewardedVideoPlacements.length === 0;
 
   const getInExperienceTooltipTitle = () => {
-    if (placements?.length === 0) {
+    if (rewardedVideoPlacements.length === 0) {
       return translate('Tooltip.NoDefaultPlacement');
     }
     if (isMaxPlacementsReached) {
@@ -446,22 +405,36 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
     return '';
   };
 
-  const rewardItemAltText = translateKey(
-    translationKey('Heading.RewardItem', TranslationNamespace.ImmersiveAdsAnalytics),
+  const pwrRewards: PlacementReward[] = pwrPlacement?.rewards ?? [];
+  const hasTestModeReward = pwrRewards.some(
+    (r) => r.status === PlacementRewardStatusEnum.REWARD_STATUS_TEST,
   );
-  const isPlayWithRewardPlacementActive =
-    playWithRewardServingStatus ===
-    PlayWithRewardServingStatus.PLAY_WITH_REWARD_SERVING_STATUS_ACTIVE;
-  const isPlayWithRewardPlacementInTestMode =
-    playWithRewardServingStatus ===
-    PlayWithRewardServingStatus.PLAY_WITH_REWARD_SERVING_STATUS_INACTIVE_PENDING;
-  const enableTestModeMenuItem: RewardRowMenuItem = {
-    key: 'enable-test-mode',
-    label: translateKey(
-      translationKey('Action.EnableTestMode', TranslationNamespace.ImmersiveAdsAnalytics),
-    ),
-    onSelect: handleEnableTestMode,
-  };
+  const hasActiveReward = pwrRewards.some(
+    (r) => r.status === PlacementRewardStatusEnum.REWARD_STATUS_ACTIVE,
+  );
+  const hasDraftOrTestReward = pwrRewards.some(
+    (r) =>
+      r.status === PlacementRewardStatusEnum.REWARD_STATUS_DRAFT ||
+      r.status === PlacementRewardStatusEnum.REWARD_STATUS_TEST,
+  );
+  const activeRewardCount = pwrRewards.filter(
+    (r) => r.status === PlacementRewardStatusEnum.REWARD_STATUS_ACTIVE,
+  ).length;
+
+  const isPwrPlacementActive = pwrPlacement?.status === PlacementStatus.PLACEMENT_STATUS_ACTIVE;
+  const derivedPlacementRewardStatus = (() => {
+    if (!isPwrPlacementActive) {
+      return PlacementRewardStatusEnum.REWARD_STATUS_INACTIVE;
+    }
+    if (hasTestModeReward) {
+      return PlacementRewardStatusEnum.REWARD_STATUS_TEST;
+    }
+    if (hasActiveReward) {
+      return PlacementRewardStatusEnum.REWARD_STATUS_ACTIVE;
+    }
+    return PlacementRewardStatusEnum.REWARD_STATUS_INACTIVE;
+  })();
+
   const editPlacementMenuItem: RewardRowMenuItem = {
     key: 'edit-placement',
     label: translateKey(
@@ -483,33 +456,9 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
     ),
     onSelect: handleEnablePlacement,
   };
-  const viewCodeSnippetMenuItem: RewardRowMenuItem = {
-    key: 'view-code-snippet',
-    label: tPendingTranslation(
-      'View code snippet',
-      'Menu action for viewing the server-side ProcessReceipt code snippet.',
-      translationKey('Action.ViewCodeSnippet', TranslationNamespace.ImmersiveAdsAnalytics),
-    ),
-    onSelect: handleOpenCodeSnippetDialog,
-  };
-  const lifecycleMenuItem = isPlayWithRewardPlacementDeactivated(playWithRewardServingStatus)
-    ? enablePlacementMenuItem
-    : canDisablePlayWithRewardPlacement(playWithRewardServingStatus)
-      ? disablePlacementMenuItem
-      : undefined;
-  const redesignedPlayWithRewardMenuItems: RewardRowMenuItem[] = [
-    ...(lifecycleMenuItem ? [lifecycleMenuItem] : []),
-    editPlacementMenuItem,
-    ...(rewardMetadata?.rewardInfo?.productId ? [viewCodeSnippetMenuItem] : []),
-  ];
-  const legacyPlayWithRewardMenuItems: RewardRowMenuItem[] = isPlayWithRewardPlacementActive
-    ? [disablePlacementMenuItem, enableTestModeMenuItem, editPlacementMenuItem]
-    : isPlayWithRewardPlacementDeactivated(playWithRewardServingStatus)
-      ? [enablePlacementMenuItem, enableTestModeMenuItem, editPlacementMenuItem]
-      : [disablePlacementMenuItem, editPlacementMenuItem];
-  const playWithRewardMenuItems = isAdsPageRedesignEnabled
-    ? redesignedPlayWithRewardMenuItems
-    : legacyPlayWithRewardMenuItems;
+  const playWithRewardMenuItems: RewardRowMenuItem[] = isPwrPlacementActive
+    ? [disablePlacementMenuItem, editPlacementMenuItem]
+    : [enablePlacementMenuItem, editPlacementMenuItem];
 
   const playWithRewardRows: RewardTableRow[] = [
     {
@@ -520,61 +469,126 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
           <LockIcon color='disabled' className={lockIcon} />
         </div>
       ),
-      // TODO: no placement ID for the play-with-reward row yet
-      placementId: EMPTY_CELL,
-      status: (
-        <PlayWithRewardStatusLabel playWithRewardServingStatus={playWithRewardServingStatus} />
-      ),
+      placementId: pwrPlacement ? pwrPlacement.id : EMPTY_CELL,
+      status: <StatusBadge type='reward' status={derivedPlacementRewardStatus} />,
       location: translateKey(
         translationKey('Title.ExperienceDetailsPage', TranslationNamespace.ImmersiveAdsAnalytics),
       ),
-      rewardItem: (
-        <div className='gap-small flex items-center'>
-          {rewardMetadata?.displayDetails && rewardMetadata.displayDetails.imageAssetId && (
-            <Avatar variant='rounded' alt={rewardItemAltText} className='size-800'>
-              <Thumbnail2d
-                type={ThumbnailTypes.assetThumbnail}
-                targetId={rewardMetadata.displayDetails.imageAssetId}
-                alt={rewardItemAltText}
-              />
-            </Avatar>
+      rewardItem: hasDraftOrTestReward ? (
+        <FoundationTooltip
+          position='top-center'
+          title={translateKey(
+            translationKey(
+              'Tooltip.RewardItemsInTestMode',
+              TranslationNamespace.ImmersiveAdsAnalytics,
+            ),
           )}
-          <span className='text-body-medium'>{rewardMetadata?.displayDetails?.productName}</span>
-        </div>
+          description={translateKey(
+            translationKey(
+              'Tooltip.TestAndActivateRemaining',
+              TranslationNamespace.ImmersiveAdsAnalytics,
+            ),
+          )}
+          hasBeak>
+          <TooltipTrigger asChild>
+            <span className='gap-small flex items-center'>
+              <Icon
+                name='icon-regular-triangle-exclamation'
+                size='Small'
+                className='content-default'
+              />
+              <span className='text-body-medium'>
+                {translateKey(
+                  translationKey(
+                    'Label.RewardItemCount',
+                    TranslationNamespace.ImmersiveAdsAnalytics,
+                  ),
+                  {
+                    active: String(activeRewardCount),
+                    total: String(maxProductIds ?? pwrRewards.length),
+                  },
+                )}
+              </span>
+            </span>
+          </TooltipTrigger>
+        </FoundationTooltip>
+      ) : (
+        <span className='text-body-medium'>
+          {translateKey(
+            translationKey('Label.RewardItemCount', TranslationNamespace.ImmersiveAdsAnalytics),
+            {
+              active: String(activeRewardCount),
+              total: String(maxProductIds ?? pwrRewards.length),
+            },
+          )}
+        </span>
       ),
-      // TODO: last update timestamp not available for the reward row
-      lastUpdate: EMPTY_CELL,
+      lastUpdate: pwrPlacement ? formatLastUpdate(pwrPlacement.updatedTimestampMs) : EMPTY_CELL,
       actions: (
         <div className='flex width-full items-center justify-end gap-xsmall'>
-          {!isAdsPageRedesignEnabled && isPlayWithRewardPlacementInTestMode && (
-            <FoundationButton variant='SoftEmphasis' size='Medium' onClick={handleLaunchPlacement}>
-              {translateKey(
-                translationKey('Action.Launch', TranslationNamespace.ImmersiveAdsAnalytics),
-              )}
-            </FoundationButton>
+          {isPwrPlacementActive && (
+            <EducationalTooltip
+              open={showManageTooltip}
+              onOpenChange={handleManageTooltipOpenChange}>
+              <EducationalTooltipTrigger asChild>
+                <FoundationButton
+                  variant='SoftEmphasis'
+                  size='Medium'
+                  onClick={handleOpenRewardItemsDrawer}>
+                  {translateKey(
+                    translationKey('Action.Manage', TranslationNamespace.ImmersiveAdsAnalytics),
+                  )}
+                </FoundationButton>
+              </EducationalTooltipTrigger>
+              <EducationalTooltipContent
+                position='top-center'
+                hasCloseAffordance
+                closeLabel={translate('Action.Close')}
+                hasBeak>
+                <EducationalTooltipBody>
+                  <EducationalTooltipTitle>
+                    {translateKey(
+                      translationKey(
+                        'Title.TestPublishRewardItems',
+                        TranslationNamespace.ImmersiveAdsAnalytics,
+                      ),
+                    )}
+                  </EducationalTooltipTitle>
+                  <EducationalTooltipDescription>
+                    {translateHTML(
+                      translationKey(
+                        'Description.TestPublishRewardItems',
+                        TranslationNamespace.ImmersiveAdsAnalytics,
+                      ),
+                      [
+                        {
+                          opening: 'linkStart',
+                          closing: 'linkEnd',
+                          content: ExperienceDetailsPageDocsLink,
+                        },
+                      ],
+                    )}
+                  </EducationalTooltipDescription>
+                </EducationalTooltipBody>
+              </EducationalTooltipContent>
+            </EducationalTooltip>
           )}
           <RewardTableRowMenu
             ariaLabel={translateKey(
               translationKey('Label.PlacementActions', TranslationNamespace.ImmersiveAdsAnalytics),
             )}
-            className={
-              isAdsPageRedesignEnabled
-                ? 'invisible group-hover:visible group-focus-within:visible'
-                : 'invisible group-hover:visible'
-            }
+            className='invisible group-hover:visible'
             items={playWithRewardMenuItems}
-            useFoundationMenu={isAdsPageRedesignEnabled}
           />
         </div>
       ),
     },
   ];
 
-  const hasPlayWithRewardPlacementRow =
-    Boolean(rewardMetadata) && isPlayWithRewardPlacementVisible(playWithRewardServingStatus);
+  const hasPlayWithRewardPlacementRow = Boolean(pwrPlacement);
   const playWithRewardTable = <RewardTable rows={playWithRewardRows} />;
 
-  const inExperienceRows: RewardTableRow[] = placements.map((placement) => ({
+  const inExperienceRows: RewardTableRow[] = rewardedVideoPlacements.map((placement) => ({
     key: placement.id,
     name: (
       <div className={placementNameContainer}>
@@ -587,20 +601,16 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
       </div>
     ),
     placementId: placement.id,
-    status: isAdsPageRedesignEnabled ? (
-      EMPTY_CELL
-    ) : (
-      <PlayWithRewardStatusLabel
-        playWithRewardServingStatus={
-          PlayWithRewardServingStatus.PLAY_WITH_REWARD_SERVING_STATUS_ACTIVE
-        }
-      />
-    ),
+    status: <StatusBadge type='placement' status={placement.status} />,
     location: translateKey(
       translationKey('Title.InExperience', TranslationNamespace.ImmersiveAdsAnalytics),
     ),
-    rewardItem: translateKey(
-      translationKey('Label.CustomIntegration', TranslationNamespace.ImmersiveAdsAnalytics),
+    rewardItem: (
+      <span className='text-body-medium'>
+        {translateKey(
+          translationKey('Label.CustomIntegration', TranslationNamespace.ImmersiveAdsAnalytics),
+        )}
+      </span>
     ),
     lastUpdate: formatLastUpdate(placement.updatedTimestampMs),
     actions: placement.defaultPlacement ? undefined : (
@@ -608,19 +618,16 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
         ariaLabel={translateKey(
           translationKey('Label.PlacementActions', TranslationNamespace.ImmersiveAdsAnalytics),
         )}
-        className={
-          isAdsPageRedesignEnabled
-            ? 'invisible group-hover:visible group-focus-within:visible'
-            : 'invisible group-hover:visible'
-        }
+        className='invisible group-hover:visible'
         items={[
           {
             key: 'edit',
-            label: translate('Label.Edit'),
+            label: translateKey(
+              translationKey('Action.EditPlacement', TranslationNamespace.ImmersiveAdsAnalytics),
+            ),
             onSelect: () => handleEditClick(placement.id, placement.name),
           },
         ]}
-        useFoundationMenu={isAdsPageRedesignEnabled}
       />
     ),
   }));
@@ -631,15 +638,22 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
     <div className={placementTabContainer}>
       {showPlayWithRewardSettings ? (
         <>
-          <div className={placementTableContainer}>
-            <div
-              className={cx(
-                placementTableHeaderContainer,
-                !hasPlayWithRewardPlacementRow && '!padding-bottom-large',
-              )}>
+          <div
+            className={cx(
+              'margin-bottom-medium radius-medium stroke-standard stroke-default',
+              !hasPlayWithRewardPlacementRow && 'padding-bottom-large',
+            )}>
+            <div className={placementTableHeaderContainer}>
               <div className={placementTableTextContainer}>
                 <div className={placementTableTitleTextContainer}>
-                  <Typography variant='h5'>{translate('Title.ExperienceDetailsPage')}</Typography>
+                  <Typography variant='h5'>
+                    {translateKey(
+                      translationKey(
+                        'Title.ManagedRewarded',
+                        TranslationNamespace.ImmersiveAdsAnalytics,
+                      ),
+                    )}
+                  </Typography>
                 </div>
                 <Typography variant='body2' color='secondary'>
                   {translateHTML(
@@ -657,26 +671,35 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
                   )}
                 </Typography>
               </div>
-              {!isPlayWithRewardPlacementVisible(playWithRewardServingStatus) && (
-                <Button
-                  color='secondary'
-                  size='medium'
-                  variant='contained'
-                  component={NextLink}
-                  href={createPlacementUrl}>
+              {!hasPlayWithRewardPlacementRow && (
+                <FoundationButton
+                  variant='Standard'
+                  size='Medium'
+                  onClick={handlePlayWithRewardEdit}>
                   {translate('Label.Create')}
-                </Button>
+                </FoundationButton>
               )}
             </div>
             {hasPlayWithRewardPlacementRow && playWithRewardTable}
           </div>
-          <div className={placementTableContainer}>
+          <div
+            className={cx(
+              'margin-bottom-large radius-medium stroke-standard stroke-default',
+              rewardedVideoPlacements.length === 0 && 'padding-bottom-large',
+            )}>
             <div className={placementTableHeaderContainer}>
               <div className={placementTableTextContainer}>
                 <div className={placementTableTitleTextContainer}>
-                  <Typography variant='h5'>{translate('Title.InExperience')}</Typography>
+                  <Typography variant='h5'>
+                    {translateKey(
+                      translationKey(
+                        'Title.CustomRewarded',
+                        TranslationNamespace.ImmersiveAdsAnalytics,
+                      ),
+                    )}
+                  </Typography>
                   <Typography variant='body2' color='secondary'>
-                    ({placements?.length}/{MAX_PLACEMENTS})
+                    ({rewardedVideoPlacements.length}/{MAX_PLACEMENTS})
                   </Typography>
                 </div>
                 <Typography variant='body2' color='secondary'>
@@ -697,18 +720,17 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
               </div>
               <Tooltip placement='left' title={getInExperienceTooltipTitle()}>
                 <span>
-                  <Button
-                    color='secondary'
-                    size='medium'
-                    variant='contained'
-                    disabled={isDisabled}
+                  <FoundationButton
+                    variant='Standard'
+                    size='Medium'
+                    isDisabled={isDisabled}
                     onClick={handleCreateClick}>
                     {translate('Label.Create')}
-                  </Button>
+                  </FoundationButton>
                 </span>
               </Tooltip>
             </div>
-            {inExperiencePlacementTable}
+            {rewardedVideoPlacements.length > 0 && inExperiencePlacementTable}
           </div>
         </>
       ) : (
@@ -734,7 +756,7 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
             </Tooltip>
             <Typography variant='body2' color='secondary'>
               {/* oxlint-disable-next-line rbx/no-hardcoded-translation-string -- pre-existing */}
-              {placements?.length}/{MAX_PLACEMENTS} Placement Created
+              {rewardedVideoPlacements.length}/{MAX_PLACEMENTS} Placement Created
             </Typography>
           </div>
           <TableContainer>
@@ -748,7 +770,7 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
                 </TableRow>
               </TableHead>
               <TableBody>
-                {placements.map((placement) => (
+                {rewardedVideoPlacements.map((placement) => (
                   <TableRow key={placement.id} className={tableRow} hover>
                     <TableCell className={placementNameTableCell}>
                       <div className={placementNameContainer}>
@@ -783,12 +805,6 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
         </>
       )}
       {isModalOpen && modalContent}
-      {!isAdsPageRedesignEnabled && isEnableTestModeModalOpen && (
-        <EnablePlayWithRewardTestModeDialog
-          onConfirm={handleConfirmEnableTestMode}
-          onClose={handleCloseEnableTestModeModal}
-        />
-      )}
       {isDisablePlacementModalOpen && (
         <DisablePlayWithRewardPlacementDialog
           isPending={isUpdatingPlayWithRewardEnabled}
@@ -796,16 +812,14 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
           onClose={handleCloseDisablePlacementModal}
         />
       )}
-      {isAdsPageRedesignEnabled && isCodeSnippetDialogOpen && rewardProductId && (
-        <ProcessReceiptDialog
-          productIds={rewardProductIds}
-          onClose={handleCloseCodeSnippetDialog}
-        />
-      )}
-      {!isAdsPageRedesignEnabled && isLaunchPlacementModalOpen && (
-        <LaunchPlayWithRewardPlacementDialog
-          onConfirm={handleConfirmLaunchPlacement}
-          onClose={handleCloseLaunchPlacementModal}
+      {pwrPlacement && (
+        <RewardItemsDrawer
+          open={isRewardItemsDrawerOpen}
+          onClose={handleCloseRewardItemsDrawer}
+          placementId={pwrPlacement.id}
+          universeId={universeId}
+          rewards={pwrRewards}
+          onRewardUpdated={handleRewardUpdated}
         />
       )}
     </div>

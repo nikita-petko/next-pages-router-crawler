@@ -14,6 +14,8 @@ export {
   AdStatType,
   BreakdownType as AdStatBreakdownType,
   ValidationStatus as AdStatValidationStatus,
+  PlacementStatusEnum,
+  PlacementRewardStatusEnum,
 } from '@rbx/client-developer-ads-stats-api/v1';
 export type {
   AdStatSeries,
@@ -24,6 +26,10 @@ export type {
   DailyEstimatedEarning,
   DailyEstimatedEarningsWithAdFormat,
   TriageSubmissionModerationRequest,
+  PlacementReward as ApiPlacementReward,
+  GetImmersiveAdsMetadataResponse,
+  PlacementTypeDefaults,
+  PlacementFrequencyCapSettings,
 } from '@rbx/client-developer-ads-stats-api/v1';
 
 const configuration = createClientConfiguration('developer-ads-stats-api', 'bedev2');

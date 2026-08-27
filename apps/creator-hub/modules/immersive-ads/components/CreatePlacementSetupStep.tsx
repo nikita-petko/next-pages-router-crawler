@@ -1,5 +1,4 @@
 import { useCallback, useState } from 'react';
-import type { PlayWithRewardServingStatus } from '@rbx/client-developer-ads-stats-api/v1';
 import {
   Button,
   Checkbox,
@@ -20,9 +19,10 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import TableBase from '@modules/monetization-shared/table-v1/TableBase';
 import type { RewardItem } from '../types/rewardTypes';
 import AddRewardItemModal from './AddRewardItemModal';
-import PlayWithRewardStatusLabel from './PlayWithRewardStatusLabel';
+import StatusBadge from './StatusBadge';
 
-const MAX_REWARD_ITEMS = 1;
+const DEFAULT_MAX_REWARD_ITEMS = 1;
+const EMPTY_PRODUCT_IDS: number[] = [];
 
 interface CreatePlacementSetupStepProps {
   impressions: string;
@@ -30,9 +30,10 @@ interface CreatePlacementSetupStepProps {
   isExcludeLikelyPayers: boolean;
   onExcludeLikelyPayersChange: (value: boolean) => void;
   rewardItems: RewardItem[];
-  rewardStatus: PlayWithRewardServingStatus;
   showRewardRestartWarning: boolean;
   onRewardItemsChange: (rewardItems: RewardItem[]) => void;
+  maxRewardItems?: number;
+  existingProductIds?: number[];
 }
 
 const CreatePlacementSetupStep = ({
@@ -41,9 +42,10 @@ const CreatePlacementSetupStep = ({
   isExcludeLikelyPayers,
   onExcludeLikelyPayersChange,
   rewardItems,
-  rewardStatus,
   showRewardRestartWarning,
   onRewardItemsChange,
+  maxRewardItems = DEFAULT_MAX_REWARD_ITEMS,
+  existingProductIds = EMPTY_PRODUCT_IDS,
 }: CreatePlacementSetupStepProps) => {
   const { translate } = useTranslationWrapper(useTranslation());
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -77,7 +79,7 @@ const CreatePlacementSetupStep = ({
           <span className='text-body-medium content-muted'>
             {translate(
               translationKey('Label.RewardItemsCount', TranslationNamespace.ImmersiveAdsAnalytics),
-              { count: String(rewardCount), max: String(MAX_REWARD_ITEMS) },
+              { count: String(rewardCount), max: String(maxRewardItems) },
             )}
           </span>
         </div>
@@ -147,7 +149,7 @@ const CreatePlacementSetupStep = ({
                   </TableCell>
                   <TableCell>{rewardItem.productId}</TableCell>
                   <TableCell>
-                    <PlayWithRewardStatusLabel playWithRewardServingStatus={rewardStatus} />
+                    <StatusBadge type='reward' status={rewardItem.status} />
                   </TableCell>
                   <TableCell align='right' className='padding-y-[4px]'>
                     <IconButton
@@ -177,7 +179,7 @@ const CreatePlacementSetupStep = ({
             variant='Utility'
             size='Small'
             icon='icon-filled-plus-large'
-            isDisabled={rewardCount >= MAX_REWARD_ITEMS}
+            isDisabled={rewardCount >= maxRewardItems}
             onClick={() => setIsAddModalOpen(true)}>
             {translate(
               translationKey('Action.AddItem', TranslationNamespace.ImmersiveAdsAnalytics),
@@ -187,6 +189,7 @@ const CreatePlacementSetupStep = ({
       </div>
 
       {showRewardRestartWarning && (
+        // oxlint-disable-next-line typescript/no-deprecated
         <FeedbackBanner
           severity='Warning'
           variant='Emphasis'
@@ -205,6 +208,7 @@ const CreatePlacementSetupStep = ({
         isOpen={isAddModalOpen}
         onClose={handleCloseAddModal}
         onAdd={handleAddRewardItem}
+        existingProductIds={existingProductIds}
       />
 
       <div className='padding-y-medium'>

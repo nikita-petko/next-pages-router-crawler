@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext, useReducer, useCallback, useEffect, useMemo } from 'react';
-import { PlayWithRewardServingStatus } from '@rbx/client-developer-ads-stats-api/v1';
 import developerAdsStatsClient from '@modules/clients/developerAdsStats';
 import { getResponseFromError } from '@modules/clients/utils';
 import { uninitializedUniverseId } from '@modules/miscellaneous/common';
@@ -11,18 +10,6 @@ export interface UniverseAdsSettingsState {
   isAppPromoEnabled: boolean;
   isClickOutEnabled: boolean;
   isExcludeLikelyPayersEnabled: boolean;
-  pwrServingStatus: PlayWithRewardServingStatus;
-  rewardMetadata?: {
-    displayDetails?: {
-      productName?: string;
-      imageAssetId?: number;
-    };
-    rewardInfo?: {
-      productId?: number;
-      rewardsFrequencyCapDaily?: number;
-      excludeLikelyPayers?: boolean;
-    };
-  };
   isLoading: boolean;
   isError: boolean;
   errorStatus: number;
@@ -48,8 +35,6 @@ const initialUniverseAdsSettingsState: UniverseAdsSettingsState = {
   isAppPromoEnabled: false,
   isClickOutEnabled: false,
   isExcludeLikelyPayersEnabled: false,
-  pwrServingStatus: PlayWithRewardServingStatus.PLAY_WITH_REWARD_SERVING_STATUS_UNSPECIFIED,
-  rewardMetadata: undefined,
   isLoading: false,
   isError: false,
   errorStatus: 0,

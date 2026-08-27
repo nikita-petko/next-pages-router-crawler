@@ -44,7 +44,7 @@ import {
   UniverseAdsSettingsProvider,
   useUniverseAdsSettings,
 } from '../contexts/UniverseAdsSettingsContext';
-import { normalizePlacements, type Placement } from '../types/placementTypes';
+import { PlacementType, normalizePlacements, type Placement } from '../types/placementTypes';
 import ImmersiveAdsEligibilityContent from './ImmersiveAdsEligibilityContent';
 import useImmersiveAdsPageStyles, {
   getEligibilityAccordionStyles,
@@ -376,17 +376,17 @@ const ImmersiveAdsPageContent = () => {
       <div className='flex flex-col grow-1 min-width-0 padding-left-large'>
         {description}
         {rewardedAdsSuspendedAlertContent}
-        {rewardedAdsSuspendedAlertContent
-          ? null
-          : eligibilityState.isFetched &&
-            eligibilityState.isUniverseEligible &&
-            eligibilityState.showPwRSettings && (
-              <PlayWithRewardBanner
-                createPlacementUrl={dashboard.getMonetizationImmersiveAdsCreatePlacementUrl(
-                  universeId,
-                )}
-              />
-            )}
+        {!rewardedAdsSuspendedAlertContent &&
+          eligibilityState.isFetched &&
+          eligibilityState.isUniverseEligible &&
+          eligibilityState.showPwRSettings &&
+          !placementsState.placements.some((p) => p.type === PlacementType.PlayWithReward) && (
+            <PlayWithRewardBanner
+              createPlacementUrl={dashboard.getMonetizationImmersiveAdsCreatePlacementUrl(
+                universeId,
+              )}
+            />
+          )}
       </div>
     );
   }, [
@@ -396,6 +396,7 @@ const ImmersiveAdsPageContent = () => {
     eligibilityState.showPwRSettings,
     eligibilityState.isFetched,
     eligibilityState.isUniverseEligible,
+    placementsState.placements,
     universeId,
   ]);
 
@@ -513,9 +514,6 @@ const ImmersiveAdsPageContent = () => {
             (!isAdsPageRedesignOn ||
               (!universeAdsSettingsState.isLoading && !universeAdsSettingsState.isError))
           }
-          isAdsPageRedesignEnabled={isAdsPageRedesignOn}
-          rewardMetadata={universeAdsSettingsState.rewardMetadata}
-          playWithRewardServingStatus={universeAdsSettingsState.pwrServingStatus}
           onRefreshPlayWithRewardServingStatus={fetchUniverseAdsSettings}
         />
       ),
@@ -529,8 +527,6 @@ const ImmersiveAdsPageContent = () => {
       isAdsPageRedesignOn,
       universeAdsSettingsState.isError,
       universeAdsSettingsState.isLoading,
-      universeAdsSettingsState.rewardMetadata,
-      universeAdsSettingsState.pwrServingStatus,
       fetchUniverseAdsSettings,
     ],
   );
