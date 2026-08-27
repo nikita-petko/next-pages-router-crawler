@@ -58,6 +58,7 @@ const DeveloperItemStatus: FunctionComponent<React.PropsWithChildren> = () => {
 
   const isDecal = developerItemDetails?.type === Asset.Decal;
   const isMeshPart = developerItemDetails?.type === Asset.MeshPart;
+  const isTextDocument = developerItemDetails?.type === Asset.TextDocument;
   const { data: toolboxItemDetails } = useFetchItemDetails(
     Number(developerItemDetails?.id),
     isDecal || isMeshPart,
@@ -108,22 +109,28 @@ const DeveloperItemStatus: FunctionComponent<React.PropsWithChildren> = () => {
           />,
         ]
       : []),
-    <OpenLinkActionMenuItem
-      key='view-on-marketplace'
-      actionKey='viewOnMarketplace'
-      url={creatorStore.getAssetUrl(parseInt(developerItemDetails.id, 10))}
-      actionName={openInCreatorStoreLabel}
-    />,
+    ...(!isTextDocument
+      ? [
+          <OpenLinkActionMenuItem
+            key='view-on-marketplace'
+            actionKey='viewOnMarketplace'
+            url={creatorStore.getAssetUrl(parseInt(developerItemDetails.id, 10))}
+            actionName={openInCreatorStoreLabel}
+          />,
+        ]
+      : []),
   ];
 
   return (
     <List disablePadding classes={{ root: fullWidth }}>
       <ListItem disableGutters>
-        <ListItemAvatar>
-          <Avatar variant='rounded' alt='icon'>
-            {developerItemImage}
-          </Avatar>
-        </ListItemAvatar>
+        {isTextDocument ? null : (
+          <ListItemAvatar>
+            <Avatar variant='rounded' alt='icon' data-testid='developer-item-avatar'>
+              {developerItemImage}
+            </Avatar>
+          </ListItemAvatar>
+        )}
         <ListItemText primary={developerItemDetails.name} classes={{ primary: overflowText }} />
         <ListItemSecondaryAction>
           <StatusCardContextMenu menuItems={menuItems} />

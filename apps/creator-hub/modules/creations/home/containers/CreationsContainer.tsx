@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { SearchCreatorType } from '@rbx/client-universes-api/v1';
 import { buildBreadcrumb, buildTitle, HubMeta } from '@rbx/creator-hub-history';
+import { ProgressCircle } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { Grid } from '@rbx/ui';
 import {
@@ -46,6 +47,7 @@ import type { VerificationMetadataContextValue } from '../../verification/hooks/
 import useCreationsStyles from '../components/Creations.styles';
 import useAvatarLooksGate from '../hooks/useAvatarLooksGate';
 import useTaxonomyDashboardGate from '../hooks/useTaxonomyDashboardGate';
+import useTextDocumentGate from '../hooks/useTextDocumentGate';
 import useUGCFoldersGate from '../hooks/useUGCFoldersGate';
 
 const AvatarItemsGridContainer = dynamic(
@@ -125,6 +127,7 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
   const { resetAllFilters } = useCreationsFilters();
   const { settings } = useSettings();
   const isMomentsTabEnabled = useMomentsGate();
+  const isTextDocumentEnabled = useTextDocumentGate();
   const isUGCFoldersEnabled = useUGCFoldersGate();
   const isAvatarLooksEnabled = useAvatarLooksGate();
   const isShowcasesEnabled = useShowcasesGate();
@@ -228,6 +231,11 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
       return menuState;
     }
 
+    const isOnTextDocumentTab = parseActiveTabQueryParam(query.activeTab) === Asset.TextDocument;
+    if (isTextDocumentEnabled === undefined && isOnTextDocumentTab) {
+      return menuState;
+    }
+
     /* getValidMenuState returns the current menu state if it is valid,
        and the next closest menu state if it is not */
     const validMenuState = creationsMenuManager.getValidMenuState(
@@ -241,6 +249,7 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
       isUGCFoldersEnabled,
       isAvatarLooksEnabled,
       isShowcasesEnabled,
+      isTextDocumentEnabled,
     );
 
     if (validMenuState !== menuState) {
@@ -263,6 +272,7 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
     settings,
     currentGroup,
     isMomentsTabEnabled,
+    isTextDocumentEnabled,
     isUGCFoldersEnabled,
     isAvatarLooksEnabled,
     isShowcasesEnabled,
@@ -282,13 +292,17 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
     const previousAssetType = previousAssetTypeRef.current;
     if (previousAssetType !== assetType) {
       previousAssetTypeRef.current = assetType;
+      // Both sides need the TextDocument gate. Without it the helper reads TextDocument as "not a
+      // development item", so moving between it and another development item tab looked like
+      // leaving the consolidated flow and cleared the shared Archived filter.
       const isConsolidatedDevelopmentItemChange =
-        isDevelopmentItemAsset(previousAssetType) && isDevelopmentItemAsset(assetType);
+        isDevelopmentItemAsset(previousAssetType, isTextDocumentEnabled) &&
+        isDevelopmentItemAsset(assetType, isTextDocumentEnabled);
       if (!isConsolidatedDevelopmentItemChange) {
         resetAllFilters();
       }
     }
-  }, [assetType, resetAllFilters]);
+  }, [assetType, isTextDocumentEnabled, resetAllFilters]);
 
   const shouldRenderGrowthBannerOnTab =
     assetType === Asset.MyExperiences || assetType === Asset.SharedExperiences;
@@ -301,7 +315,7 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
   // without this they would also appear over Avatars, where the item-type tab hides them.
   const showMarketplaceItemBanners =
     isMarketplaceAssetType && !isAvatarLooksActiveTab(query.activeTab);
-  const showDevelopmentItemsInventory = isDevelopmentItemAsset(assetType);
+  const showDevelopmentItemsInventory = isDevelopmentItemAsset(assetType, isTextDocumentEnabled);
 
   const assetsGridContainer = useMemo(() => {
     if (showDevelopmentItemsInventory) {
@@ -330,6 +344,20 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
     }
     if (assetType === Asset.MeshPart) {
       return <MeshPartGridContainer groupId={currentGroup?.id} />;
+    }
+    // Text documents are served by the consolidated branch above once the gate resolves true, and
+    // with it resolved false the menu validation redirects to an enabled tab. The only way here is
+    // a deep link while the gate is still resolving, so wait rather than render another surface.
+    if (assetType === Asset.TextDocument) {
+      return (
+        <div className='flex justify-center items-center padding-y-xxlarge'>
+          <ProgressCircle
+            ariaLabel={translate('Label.Loading')}
+            size='Large'
+            variant='Indeterminate'
+          />
+        </div>
+      );
     }
     if (assetType === Asset.ShareLink) {
       return <ShareLinkContainer />;
@@ -371,6 +399,7 @@ const CreationsContainer: FunctionComponent<React.PropsWithChildren<CreationsCon
     currentUser?.id,
     isMarketplaceAssetType,
     showDevelopmentItemsInventory,
+    translate,
   ]);
 
   return (

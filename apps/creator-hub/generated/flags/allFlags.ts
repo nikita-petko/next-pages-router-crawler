@@ -602,6 +602,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: creatorCreationsFlags.isTextDocumentEnabled,
+      metadata: {
+        namespace: 'creator-creations',
+        name: 'isTextDocumentEnabled',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: creatorCreationsFlags.isMomentsUploadLanguageSelectEnabled,
       metadata: {
         namespace: 'creator-creations',

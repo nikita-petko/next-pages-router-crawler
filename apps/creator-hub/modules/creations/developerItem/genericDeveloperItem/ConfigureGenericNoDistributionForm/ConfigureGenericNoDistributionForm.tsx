@@ -8,7 +8,7 @@ import { useTranslation } from '@rbx/intl';
 import { ReturnPolicy, ThumbnailTypes } from '@rbx/thumbnails';
 import { Button, Divider, FormHelperText, Grid, useSnackbar } from '@rbx/ui';
 import { getErrorCode } from '@modules/clients/utils/errorHelpers';
-import { AssetError, FormMode } from '@modules/miscellaneous/common';
+import { Asset, AssetError, FormMode } from '@modules/miscellaneous/common';
 import useThumbnailImage from '@modules/miscellaneous/components/ThumbnailImage/useThumbnailImage';
 import { getEnumKeyByValue } from '@modules/miscellaneous/utils';
 import { cacheDevelopmentItemMetadataUpdate } from '../../../common/utils/developmentItemsInventoryCache';
@@ -34,6 +34,8 @@ const ConfigureGenericNoDistributionForm: FunctionComponent<
   React.PropsWithChildren<TConfigureGenericNoDistributionFormProps>
 > = ({ developerItemDetails, enableAssetAccessForm, refreshData }) => {
   const assetId = parseInt(developerItemDetails.id, 10);
+  // TextDocument assets have no visual thumbnail, so avoid rendering the placeholder ("unknown") icon.
+  const isTextDocument = developerItemDetails.type === Asset.TextDocument;
 
   const {
     classes: {
@@ -51,7 +53,7 @@ const ConfigureGenericNoDistributionForm: FunctionComponent<
   const queryClient = useQueryClient();
   const { enqueue } = useSnackbar();
   const { thumbnailImage } = useThumbnailImage({
-    targetId: assetId,
+    targetId: isTextDocument ? 0 : assetId,
     targetType: ThumbnailTypes.assetThumbnail,
     isStatusTextShown: true,
     returnPolicy: ReturnPolicy.PlaceHolder,
@@ -139,9 +141,18 @@ const ConfigureGenericNoDistributionForm: FunctionComponent<
               </Grid>
             )}
           </Grid>
-          <Grid container item XSmall={12} Large={4} XLarge={2} classes={{ root: imageContainer }}>
-            {thumbnailImage}
-          </Grid>
+          {!isTextDocument && (
+            <Grid
+              container
+              item
+              XSmall={12}
+              Large={4}
+              XLarge={2}
+              classes={{ root: imageContainer }}
+              data-testid='developer-item-thumbnail'>
+              {thumbnailImage}
+            </Grid>
+          )}
         </Grid>
         <Grid container item XSmall={12} XLarge={8}>
           <Grid item XSmall={12}>

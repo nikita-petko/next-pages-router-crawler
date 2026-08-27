@@ -56,7 +56,11 @@ const creationsMenuManager: MenuManager = {
     isUGCFoldersEnabled?: boolean,
     showAvatarLooksInCreations?: boolean | null,
     isShowcasesEnabled?: boolean | null,
+    isTextDocumentEnabled?: boolean,
   ): boolean {
+    if (menuItem?.type === Asset.TextDocument && !isTextDocumentEnabled) {
+      return false;
+    }
     if (menuItem?.type === Asset.AllCatalogAsset) {
       return isUGCFoldersEnabled ?? false;
     }
@@ -110,6 +114,7 @@ const creationsMenuManager: MenuManager = {
     isUGCFoldersEnabled?: boolean,
     showAvatarLooksInCreations?: boolean | null,
     isShowcasesEnabled?: boolean | null,
+    isTextDocumentEnabled?: boolean,
   ): MenuState {
     let validMenuItem;
     let validSubmenuItem;
@@ -134,6 +139,7 @@ const creationsMenuManager: MenuManager = {
         isUGCFoldersEnabled,
         showAvatarLooksInCreations,
         isShowcasesEnabled,
+        isTextDocumentEnabled,
       )
     ) {
       [validMenuItem] = menuItems;
@@ -151,6 +157,7 @@ const creationsMenuManager: MenuManager = {
         isUGCFoldersEnabled,
         showAvatarLooksInCreations,
         isShowcasesEnabled,
+        isTextDocumentEnabled,
       )
     ) {
       if (menuState.menuItem.submenuItems !== undefined) {
@@ -168,6 +175,7 @@ const creationsMenuManager: MenuManager = {
               isUGCFoldersEnabled,
               showAvatarLooksInCreations,
               isShowcasesEnabled,
+              isTextDocumentEnabled,
             )
           ) {
             validSubmenuIndex = submenuSeekIndex;

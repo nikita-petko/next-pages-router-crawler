@@ -16,6 +16,7 @@ import {
 } from '../developmentItemsAnalytics';
 import {
   canConfigureDevelopmentItem,
+  hasDevelopmentItemCreatorStorePage,
   type DevelopmentItemsInventoryItem,
 } from '../developmentItemsInventoryUtils';
 import type { DevelopmentItemToolboxIds } from '../useDevelopmentItemToolboxIds';
@@ -91,6 +92,7 @@ const DevelopmentItemActionsMenuContent: FunctionComponent<
   );
   const isArchived = item.state === 'Archived';
   const isConfigurable = canConfigureDevelopmentItem(item);
+  const hasCreatorStorePage = hasDevelopmentItemCreatorStorePage(item.assetType);
   const archiveActionLabel = translate(isArchived ? 'Action.Restore' : 'Action.Archive');
   const meshId =
     item.assetType === CreatorInventoryAssetType.MeshPart ? toolboxIds?.meshId : undefined;
@@ -164,12 +166,14 @@ const DevelopmentItemActionsMenuContent: FunctionComponent<
             value='configure-asset'
           />
         )}
-        <MenuItem
-          leading={<Icon name='icon-regular-arrow-up-right-from-square' size='Medium' />}
-          onSelect={handleViewAssetDetails}
-          title={viewAssetDetailsLabel}
-          value='view-asset-details'
-        />
+        {hasCreatorStorePage && (
+          <MenuItem
+            leading={<Icon name='icon-regular-arrow-up-right-from-square' size='Medium' />}
+            onSelect={handleViewAssetDetails}
+            title={viewAssetDetailsLabel}
+            value='view-asset-details'
+          />
+        )}
         <MenuItem onSelect={handleCopyAssetId} title={copyAssetIdLabel} value='copy-asset-id' />
         {meshId != null && meshId > 0 && (
           <MenuItem

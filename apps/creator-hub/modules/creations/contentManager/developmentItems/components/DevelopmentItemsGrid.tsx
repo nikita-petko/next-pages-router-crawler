@@ -6,6 +6,7 @@ import {
   logDevelopmentItemClick,
   logDevelopmentItemImpression,
 } from '../developmentItemsAnalytics';
+import { hasDevelopmentItemThumbnail } from '../developmentItemsInventoryUtils';
 import type { DevelopmentItemsInventoryItem } from '../developmentItemsInventoryUtils';
 import type { DevelopmentItemToolboxIds } from '../useDevelopmentItemToolboxIds';
 import DevelopmentItemActionsMenu, {
@@ -101,16 +102,22 @@ const DevelopmentItemsGridItem: FunctionComponent<DevelopmentItemsGridItemProps>
           className='flex flex-col gap-small min-width-0 width-full bg-none stroke-none padding-none cursor-pointer text-align-x-left focus-visible:outline-focus'
           onClick={handleSelect}
           type='button'>
-          <div className='relative width-full aspect-1-1 clip radius-medium bg-shift-300'>
-            {thumbnailUrl != null && (
-              <img
-                alt=''
-                className='absolute inset-[0] width-full height-full [object-fit:contain]'
-                src={thumbnailUrl}
-              />
-            )}
-            {item.isPackage && <DevelopmentItemPackageBadge label={packageLabel} size='Medium' />}
-          </div>
+          {/* Asset types with no visual representation omit the tile image entirely rather than
+              showing an empty square, matching the list view. */}
+          {hasDevelopmentItemThumbnail(item.assetType) && (
+            <div
+              className='relative width-full aspect-1-1 clip radius-medium bg-shift-300'
+              data-testid='development-item-thumbnail'>
+              {thumbnailUrl != null && (
+                <img
+                  alt=''
+                  className='absolute inset-[0] width-full height-full [object-fit:contain]'
+                  src={thumbnailUrl}
+                />
+              )}
+              {item.isPackage && <DevelopmentItemPackageBadge label={packageLabel} size='Medium' />}
+            </div>
+          )}
           <div className='flex flex-col gap-xxsmall min-width-0 width-full padding-right-small padding-bottom-small'>
             <span className='text-body-medium content-emphasis text-no-wrap text-truncate-split width-full'>
               {item.name}

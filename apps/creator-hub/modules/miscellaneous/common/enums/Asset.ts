@@ -40,6 +40,7 @@ enum Asset {
   EmoteAnimation = 'EmoteAnimation',
   Animation = 'Animation',
   Video = 'Video',
+  TextDocument = 'TextDocument',
   Event = 'Event',
   UpcomingEvent = 'UpcomingEvent',
   DraftEvent = 'DraftEvent',

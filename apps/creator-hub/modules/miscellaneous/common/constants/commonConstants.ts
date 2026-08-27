@@ -60,6 +60,7 @@ export const assetTypeToItemType: { [key in Asset]: Item } = {
   [Asset.UpcomingEvent]: Item.Event,
   [Asset.StorePreviewVideo]: Item.LibraryAsset,
   [Asset.GamePreviewVideo]: Item.LibraryAsset,
+  [Asset.TextDocument]: Item.LibraryAsset,
   [Asset.AssetPermissionRequests]: Item.Game,
 };
 
@@ -183,6 +184,7 @@ export const assetFullNameKeys: { [key in Asset]: string } = {
   [Asset.Moments]: 'Label.Moments',
   [Asset.StorePreviewVideo]: 'Label.StorePreviewVideo',
   [Asset.GamePreviewVideo]: 'Label.GamePreviewVideo',
+  [Asset.TextDocument]: 'Label.TextDocuments',
   [Asset.AssetPermissionRequests]: 'Label.Requests',
 };
 export const assetTypeToSingularNameKeys: { [key in Asset]: string } = {
@@ -235,6 +237,7 @@ export const assetTypeToSingularNameKeys: { [key in Asset]: string } = {
   [Asset.Moments]: 'Label.Moments',
   [Asset.StorePreviewVideo]: 'Label.StorePreviewVideo',
   [Asset.GamePreviewVideo]: 'Label.GamePreviewVideo',
+  [Asset.TextDocument]: 'Label.TextDocument',
   [Asset.AssetPermissionRequests]: 'Label.Requests',
 };
 

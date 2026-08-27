@@ -17,6 +17,7 @@ import {
   logDevelopmentItemImpression,
   logDevelopmentItemsMenuAction,
 } from '../developmentItemsAnalytics';
+import { hasDevelopmentItemThumbnail } from '../developmentItemsInventoryUtils';
 import type { DevelopmentItemsInventoryItem } from '../developmentItemsInventoryUtils';
 import type { DevelopmentItemToolboxIds } from '../useDevelopmentItemToolboxIds';
 import DevelopmentItemActionsMenu, {
@@ -148,16 +149,22 @@ const DevelopmentItemsListRow: FunctionComponent<DevelopmentItemsListRowProps> =
         ref={itemRef}>
         <TableCell>
           <div className='flex items-center gap-medium min-width-0'>
-            <div className='relative size-1000 shrink-0 clip radius-medium bg-surface-200'>
-              {thumbnailUrl != null && (
-                <img
-                  alt=''
-                  className='width-full height-full [object-fit:contain]'
-                  src={thumbnailUrl}
-                />
-              )}
-              {item.isPackage && <DevelopmentItemPackageBadge label={labels.package} />}
-            </div>
+            {/* Asset types with no visual representation omit the slot entirely rather than showing
+                an empty tile. Every row on such a tab omits it, so the column stays aligned. */}
+            {hasDevelopmentItemThumbnail(item.assetType) && (
+              <div
+                className='relative size-1000 shrink-0 clip radius-medium bg-surface-200'
+                data-testid='development-item-thumbnail'>
+                {thumbnailUrl != null && (
+                  <img
+                    alt=''
+                    className='width-full height-full [object-fit:contain]'
+                    src={thumbnailUrl}
+                  />
+                )}
+                {item.isPackage && <DevelopmentItemPackageBadge label={labels.package} />}
+              </div>
+            )}
             <span className='text-body-medium content-emphasis text-no-wrap text-truncate-split'>
               {item.name}
             </span>

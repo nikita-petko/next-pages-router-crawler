@@ -33,6 +33,7 @@ const getDeveloperItemTypeToContainer = (): DeveloperItemTypeToContainerType => 
     [Asset.Video]: ConfigureMediaFiatContainer,
     [Asset.Image]: ConfigureGenericNoDistributionContainer,
     [Asset.Mesh]: ConfigureGenericNoDistributionContainer,
+    [Asset.TextDocument]: ConfigureGenericNoDistributionContainer,
   };
 };
 

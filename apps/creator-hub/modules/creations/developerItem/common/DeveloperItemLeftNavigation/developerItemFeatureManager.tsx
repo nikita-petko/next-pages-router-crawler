@@ -36,7 +36,7 @@ export const dependenciesFeature: Feature = {
   sectionTitleKey: 'Heading.Details',
 };
 
-const openInMarketplace: Feature = {
+export const openInMarketplace: Feature = {
   adornment: <OpenInNewIcon fontSize='small' />,
   getExternalPath: creatorStore.getAssetUrl,
   key: 'openInMarketplace',

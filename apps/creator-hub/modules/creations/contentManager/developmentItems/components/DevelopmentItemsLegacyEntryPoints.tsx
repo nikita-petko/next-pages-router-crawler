@@ -23,6 +23,7 @@ const getEmptyStateAction = (assetType: CreatorInventoryAssetType): ReactNode =>
     case CreatorInventoryAssetType.MeshPart:
     case CreatorInventoryAssetType.Model:
     case CreatorInventoryAssetType.Plugin:
+    case CreatorInventoryAssetType.TextDocument:
       return <OpenStudioButton />;
     case CreatorInventoryAssetType.Image:
       return <DevelopmentItemsPrimitiveNavigation assetType={CreatorInventoryAssetType.Image} />;
@@ -75,6 +76,7 @@ const DevelopmentItemsLegacyEntryPoints: FunctionComponent<
     case CreatorInventoryAssetType.MeshPart:
     case CreatorInventoryAssetType.Model:
     case CreatorInventoryAssetType.Plugin:
+    case CreatorInventoryAssetType.TextDocument:
       return null;
   }
 

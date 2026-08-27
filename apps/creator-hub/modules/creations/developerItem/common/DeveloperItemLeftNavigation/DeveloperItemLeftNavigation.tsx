@@ -18,6 +18,7 @@ import {
 import VERSION_HISTORY_ASSETS, {
   ASSET_ACCESS_FORM_ASSETS,
   DEPENDENCIES_ASSETS,
+  MARKETPLACE_LINK_EXCLUDED_ASSETS,
 } from '../../constants';
 import { useCurrentDeveloperItem } from '../DeveloperItemProvider';
 import {
@@ -29,6 +30,7 @@ import developerItemFeatureManager, {
   DeveloperItemNavigationSectionTitleKeys,
   dependenciesFeature,
   openInExperience,
+  openInMarketplace,
   permissionsFeature,
   versionHistoryFeature,
 } from './developerItemFeatureManager';
@@ -68,6 +70,11 @@ const DeveloperItemLeftNavigation: FunctionComponent<React.PropsWithChildren> = 
             filter = !!(
               developerItemDetails?.type &&
               ASSET_ACCESS_FORM_ASSETS.includes(developerItemDetails.type)
+            );
+          } else if (filter && feature.key === openInMarketplace.key) {
+            filter = !!(
+              developerItemDetails?.type &&
+              !MARKETPLACE_LINK_EXCLUDED_ASSETS.includes(developerItemDetails.type)
             );
           }
           return filter;

@@ -18,6 +18,7 @@ export enum CreatorInventoryAssetType {
   MeshPart = 'MeshPart',
   Model = 'Model',
   Plugin = 'Plugin',
+  TextDocument = 'TextDocument',
   Video = 'Video',
 }
 

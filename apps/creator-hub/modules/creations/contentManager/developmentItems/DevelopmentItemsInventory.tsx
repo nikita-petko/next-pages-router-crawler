@@ -17,6 +17,7 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { creatorHub } from '@modules/miscellaneous/urls';
 import useCreationsFilters from '../../common/hooks/useCreationsFilters';
 import { addPublishingConsolidationReturnTo } from '../../common/utils/publishingConsolidationNavigation';
+import useTextDocumentGate from '../../home/hooks/useTextDocumentGate';
 import DevelopmentItemsActiveFiltersRow from './components/DevelopmentItemsActiveFiltersRow';
 import type { DevelopmentItemsActiveFilterChip } from './components/DevelopmentItemsActiveFiltersRow';
 import DevelopmentItemsEmptyState from './components/DevelopmentItemsEmptyState';
@@ -45,10 +46,12 @@ import {
   buildCreatorInventoryScope,
   canConfigureDevelopmentItem,
   DevelopmentItemsSourceFilter,
-  developmentItemsAssetTypes,
   filterDevelopmentItemsByArchivedState,
+  getDevelopmentItemsAssetTypes,
   getDevelopmentItemsSearchAssetTypes,
   hasActiveDevelopmentItemsInventoryFilters,
+  hasDevelopmentItemCreatorStorePage,
+  hasDevelopmentItemThumbnail,
   isDevelopmentItemDirectlyArchivable,
   isDevelopmentItemsAssetTypeSelection,
   isDevelopmentItemsSourceSelection,
@@ -94,6 +97,7 @@ const assetTypeLabelKeys: Record<CreatorInventoryAssetType, string> = {
   [CreatorInventoryAssetType.MeshPart]: 'Label.MeshParts',
   [CreatorInventoryAssetType.Model]: 'Label.ModelsAndPackages',
   [CreatorInventoryAssetType.Plugin]: 'Label.Plugins',
+  [CreatorInventoryAssetType.TextDocument]: 'Label.Text',
   [CreatorInventoryAssetType.Video]: 'Label.Videos',
 };
 
@@ -139,6 +143,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
 }) => {
   const router = useRouter();
   const { translate } = useTranslation();
+  const isTextDocumentEnabled = useTextDocumentGate();
   const { isArchived, setIsArchived } = useCreationsFilters();
   const translations = useDevelopmentItemsInventoryTranslations();
   const { inventorySourceFilter, searchSuggestion } = translations;
@@ -202,6 +207,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
   const queryAssetType = getQueryValue(queryParams.activeTab);
   const assetType: DevelopmentItemsAssetTypeSelection = isDevelopmentItemsAssetTypeSelection(
     queryAssetType,
+    isTextDocumentEnabled,
   )
     ? queryAssetType
     : CreatorInventoryAssetType.Model;
@@ -410,7 +416,13 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
     isArchived,
     optimisticArchivedItems,
   ]);
-  const assetIds = useMemo(() => items.map((item) => item.assetId), [items]);
+  const thumbnailAssetIds = useMemo(
+    () =>
+      items
+        .filter((item) => hasDevelopmentItemThumbnail(item.assetType))
+        .map((item) => item.assetId),
+    [items],
+  );
   const archiveCandidateAssetIds = useMemo(
     () =>
       items
@@ -424,7 +436,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
   const archivableAssetIds = isArchived
     ? (archivedInventoryQuery.data?.archivableAssetIds ?? EMPTY_ARCHIVABLE_ASSET_IDS)
     : (activeArchivableAssetIds ?? EMPTY_ARCHIVABLE_ASSET_IDS);
-  const { data: thumbnailUrls } = useDevelopmentItemThumbnailUrls(assetIds);
+  const { data: thumbnailUrls } = useDevelopmentItemThumbnailUrls(thumbnailAssetIds);
   const { data: toolboxIdsByAssetId = EMPTY_TOOLBOX_IDS } = useDevelopmentItemToolboxIds(items);
 
   const getSourceLabel = useCallback(
@@ -450,7 +462,13 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
   );
   const handleSelectItem = useCallback(
     (item: DevelopmentItemsInventoryItem) => {
-      if (canConfigureDevelopmentItem(item)) {
+      // Falling back to Creator Store only helps when the asset is listed there. Text documents are
+      // not, so they go to their Creator Hub asset details page whatever the source — matching the
+      // legacy text document row, which links there unconditionally.
+      if (
+        canConfigureDevelopmentItem(item) ||
+        !hasDevelopmentItemCreatorStorePage(item.assetType)
+      ) {
         handleConfigureAsset(item);
         return;
       }
@@ -459,21 +477,25 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
     [handleConfigureAsset, handleViewAssetDetails],
   );
 
+  const availableAssetTypes = useMemo(
+    () => getDevelopmentItemsAssetTypes(isTextDocumentEnabled),
+    [isTextDocumentEnabled],
+  );
   const assetTypeOptions = useMemo(
     () =>
-      developmentItemsAssetTypes.map((option) => ({
+      availableAssetTypes.map((option) => ({
         label: translate(assetTypeLabelKeys[option]),
         value: option,
       })),
-    [translate],
+    [availableAssetTypes, translate],
   );
   const scopedSearchOptions = useMemo<DevelopmentItemsSearchScope[]>(
     () =>
-      getDevelopmentItemsSearchAssetTypes(assetType).map((option) => ({
+      getDevelopmentItemsSearchAssetTypes(assetType, isTextDocumentEnabled).map((option) => ({
         label: translate(assetTypeLabelKeys[option]),
         value: option,
       })),
-    [assetType, translate],
+    [assetType, isTextDocumentEnabled, translate],
   );
   const sourceOptions = useMemo(
     () =>
@@ -508,7 +530,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
   );
   const handleSelectSearchScope = useCallback(
     (selectedScope: DevelopmentItemsSearchScope, value: string) => {
-      if (!isDevelopmentItemsAssetTypeSelection(selectedScope.value)) {
+      if (!isDevelopmentItemsAssetTypeSelection(selectedScope.value, isTextDocumentEnabled)) {
         return;
       }
       logDevelopmentItemsSearch({
@@ -526,11 +548,11 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
         inventoryQuery: value,
       });
     },
-    [assetType, isArchived, setIsArchived, updateQuery],
+    [assetType, isArchived, isTextDocumentEnabled, setIsArchived, updateQuery],
   );
   const handleAssetTypeChange = useCallback(
     (value: string) => {
-      if (isDevelopmentItemsAssetTypeSelection(value)) {
+      if (isDevelopmentItemsAssetTypeSelection(value, isTextDocumentEnabled)) {
         if (value === assetType) {
           return;
         }
@@ -541,7 +563,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
         updateQuery({ activeTab: value });
       }
     },
-    [assetType, isArchived, setIsArchived, updateQuery],
+    [assetType, isArchived, isTextDocumentEnabled, setIsArchived, updateQuery],
   );
   const sheetFilters = useMemo<DevelopmentItemsSheetFilters>(
     () => ({ showArchived: isArchived, source }),
@@ -658,6 +680,8 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
     },
     [setStoredView, updateQuery, view],
   );
+  // A search or non-default filter returning nothing is a "no results" state; an untouched view
+  // returning nothing means the creator has no items of this asset type yet.
   const hasActiveFilters = hasActiveDevelopmentItemsInventoryFilters({
     query,
     showArchived: isArchived,

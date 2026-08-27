@@ -307,6 +307,7 @@ const menuItems: MenuItem[] = [
       { type: Asset.Mesh, nameKey: 'Label.Meshes' },
       { type: Asset.MeshPart, nameKey: 'Label.MeshParts' },
       { type: Asset.Animation, nameKey: 'Label.Animations' },
+      { type: Asset.TextDocument, nameKey: 'Label.Text' },
     ],
   },
   {

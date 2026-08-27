@@ -49,7 +49,7 @@ export type DevelopmentItemsInventoryItem = {
   updated?: Date;
 };
 
-export const developmentItemsAssetTypes = [
+const ungatedDevelopmentItemsAssetTypes = [
   CreatorInventoryAssetType.Model,
   CreatorInventoryAssetType.Plugin,
   CreatorInventoryAssetType.Audio,
@@ -61,33 +61,25 @@ export const developmentItemsAssetTypes = [
   CreatorInventoryAssetType.Animation,
 ] as const;
 
-export const getDevelopmentItemsSearchAssetTypes = (
-  activeAssetType: DevelopmentItemsAssetTypeSelection,
-): DevelopmentItemsAssetTypeSelection[] => [
-  activeAssetType,
-  ...developmentItemsAssetTypes.filter((assetType) => assetType !== activeAssetType),
-];
+// TextDocument (asset type 93) is behind the `isTextDocumentEnabled` flag. It maps to
+// ASSET_TYPE_TEXT_DOCUMENT — never ASSET_TYPE_TEXT, which is the unrelated legacy Text type (7).
+const allDevelopmentItemsAssetTypes = [
+  ...ungatedDevelopmentItemsAssetTypes,
+  CreatorInventoryAssetType.TextDocument,
+] as const;
 
+// Mirrors the legacy `allowedAssetTypesForDirectArchiving`, minus the experience types, which are
+// not development items. Every other type can only be archived through its composite asset.
 const directlyArchivableDevelopmentItemsAssetTypes = new Set<CreatorInventoryAssetType>([
   CreatorInventoryAssetType.Audio,
   CreatorInventoryAssetType.Decal,
   CreatorInventoryAssetType.MeshPart,
+  CreatorInventoryAssetType.TextDocument,
   CreatorInventoryAssetType.Video,
 ]);
 
-const developmentItemsAssetTypeToAsset: Record<CreatorInventoryAssetType, Asset> = {
-  [CreatorInventoryAssetType.Animation]: Asset.Animation,
-  [CreatorInventoryAssetType.Audio]: Asset.Audio,
-  [CreatorInventoryAssetType.Decal]: Asset.Decal,
-  [CreatorInventoryAssetType.Image]: Asset.Image,
-  [CreatorInventoryAssetType.Mesh]: Asset.Mesh,
-  [CreatorInventoryAssetType.MeshPart]: Asset.MeshPart,
-  [CreatorInventoryAssetType.Model]: Asset.Model,
-  [CreatorInventoryAssetType.Plugin]: Asset.Plugin,
-  [CreatorInventoryAssetType.Video]: Asset.Video,
-};
-
-const developmentItemsAssetTypeSet = new Set<string>(developmentItemsAssetTypes);
+const developmentItemsAssetTypeSet = new Set<string>(allDevelopmentItemsAssetTypes);
+const textDocumentAssetTypeSet = new Set<string>([CreatorInventoryAssetType.TextDocument]);
 const developmentItemsSourceSet = new Set<string>([
   DevelopmentItemsSourceFilter.All,
   CreatorInventorySourceType.Created,
@@ -107,6 +99,21 @@ const developmentItemAssets = new Set<Asset>([
   Asset.Video,
 ]);
 
+// Bridges the inventory asset type back to the shared `Asset` enum, which drives per-asset-type
+// resources such as empty-state copy and illustrations.
+export const developmentItemsAssetTypeToAsset: Record<CreatorInventoryAssetType, Asset> = {
+  [CreatorInventoryAssetType.Animation]: Asset.Animation,
+  [CreatorInventoryAssetType.Audio]: Asset.Audio,
+  [CreatorInventoryAssetType.Decal]: Asset.Decal,
+  [CreatorInventoryAssetType.Image]: Asset.Image,
+  [CreatorInventoryAssetType.Mesh]: Asset.Mesh,
+  [CreatorInventoryAssetType.MeshPart]: Asset.MeshPart,
+  [CreatorInventoryAssetType.Model]: Asset.Model,
+  [CreatorInventoryAssetType.Plugin]: Asset.Plugin,
+  [CreatorInventoryAssetType.TextDocument]: Asset.TextDocument,
+  [CreatorInventoryAssetType.Video]: Asset.Video,
+};
+
 const assetTypeToApiAssetType: Record<
   CreatorInventoryAssetType,
   CreatorInventoryApiAssetTypeValue
@@ -119,6 +126,7 @@ const assetTypeToApiAssetType: Record<
   [CreatorInventoryAssetType.MeshPart]: CreatorInventoryApiAssetType.MeshPart,
   [CreatorInventoryAssetType.Model]: CreatorInventoryApiAssetType.Model,
   [CreatorInventoryAssetType.Plugin]: CreatorInventoryApiAssetType.Plugin,
+  [CreatorInventoryAssetType.TextDocument]: CreatorInventoryApiAssetType.TextDocument,
   [CreatorInventoryAssetType.Video]: CreatorInventoryApiAssetType.Video,
 };
 
@@ -130,6 +138,7 @@ const normalizedAssetTypes: Record<string, CreatorInventoryAssetType> = {
   '38': CreatorInventoryAssetType.Plugin,
   '40': CreatorInventoryAssetType.MeshPart,
   '62': CreatorInventoryAssetType.Video,
+  '93': CreatorInventoryAssetType.TextDocument,
   ANIMATION: CreatorInventoryAssetType.Animation,
   ASSET_TYPE_ANIMATION: CreatorInventoryAssetType.Animation,
   ASSET_TYPE_AUDIO: CreatorInventoryAssetType.Audio,
@@ -139,6 +148,7 @@ const normalizedAssetTypes: Record<string, CreatorInventoryAssetType> = {
   ASSET_TYPE_MESH_PART: CreatorInventoryAssetType.MeshPart,
   ASSET_TYPE_MODEL: CreatorInventoryAssetType.Model,
   ASSET_TYPE_PLUGIN: CreatorInventoryAssetType.Plugin,
+  ASSET_TYPE_TEXT_DOCUMENT: CreatorInventoryAssetType.TextDocument,
   ASSET_TYPE_VIDEO: CreatorInventoryAssetType.Video,
   AUDIO: CreatorInventoryAssetType.Audio,
   DECAL: CreatorInventoryAssetType.Decal,
@@ -147,6 +157,7 @@ const normalizedAssetTypes: Record<string, CreatorInventoryAssetType> = {
   MESHPART: CreatorInventoryAssetType.MeshPart,
   MODEL: CreatorInventoryAssetType.Model,
   PLUGIN: CreatorInventoryAssetType.Plugin,
+  TEXTDOCUMENT: CreatorInventoryAssetType.TextDocument,
   VIDEO: CreatorInventoryAssetType.Video,
 };
 
@@ -163,23 +174,101 @@ const apiAssetStateToInventoryState: Partial<
   [CreatorInventoryApiState.Archived]: 'Archived',
 };
 
-export const isDevelopmentItemAsset = (assetType: Asset): boolean =>
-  developmentItemAssets.has(assetType);
+/**
+ * Text documents are behind the `isTextDocumentEnabled` flag, so callers pass the resolved gate.
+ * An unresolved gate (`undefined`) is treated as disabled.
+ */
+export const getDevelopmentItemsAssetTypes = (
+  isTextDocumentEnabled?: boolean,
+): readonly CreatorInventoryAssetType[] =>
+  isTextDocumentEnabled === true
+    ? allDevelopmentItemsAssetTypes
+    : ungatedDevelopmentItemsAssetTypes;
+
+/**
+ * The scoped-search options: the active type first, then every other type the creator can see.
+ * Gated types are excluded so search never offers a scope the tab row does not have.
+ */
+export const getDevelopmentItemsSearchAssetTypes = (
+  activeAssetType: DevelopmentItemsAssetTypeSelection,
+  isTextDocumentEnabled?: boolean,
+): DevelopmentItemsAssetTypeSelection[] => [
+  activeAssetType,
+  ...getDevelopmentItemsAssetTypes(isTextDocumentEnabled).filter(
+    (assetType) => assetType !== activeAssetType,
+  ),
+];
+
+/**
+ * Whether an asset type is served by the consolidated Creator Inventory flow.
+ *
+ * `isTextDocumentEnabled` is required rather than optional, and accepts `undefined` for a gate that
+ * has not resolved yet. Omitting it read as "gate off", so a caller that forgot it silently got
+ * `false` for text documents with no type error — which is how the filter-reset check in
+ * `CreationsContainer` came to treat Model ↔ TextDocument as leaving the consolidated flow.
+ */
+export const isDevelopmentItemAsset = (
+  assetType: Asset,
+  isTextDocumentEnabled: boolean | undefined,
+): boolean => {
+  if (assetType === Asset.TextDocument) {
+    return isTextDocumentEnabled === true;
+  }
+  return developmentItemAssets.has(assetType);
+};
+
+/**
+ * Whether an item's asset type has a visual thumbnail worth requesting.
+ *
+ * Text documents have no visual representation, and the thumbnails service is called with a
+ * placeholder return policy — so asking for one yields a placeholder image rather than nothing,
+ * which would render a meaningless icon. Mirrors the developer-item status card and configure form,
+ * which omit the thumbnail for text documents for the same reason.
+ *
+ * An unknown asset type keeps its thumbnail: absent evidence, the visual types are the common case.
+ */
+export const hasDevelopmentItemThumbnail = (
+  assetType: CreatorInventoryAssetType | undefined,
+): boolean => assetType !== CreatorInventoryAssetType.TextDocument;
 
 export const isDevelopmentItemDirectlyArchivable = (
   assetType: CreatorInventoryAssetType | undefined,
 ): boolean => assetType != null && directlyArchivableDevelopmentItemsAssetTypes.has(assetType);
+
+/**
+ * Whether an item's asset type has a Creator Store page worth linking to.
+ *
+ * Text documents are not listed on Creator Store, so "View Asset Details" would open a page that
+ * does not exist. Mirrors the legacy `MARKETPLACE_LINK_EXCLUDED_ASSETS`, which drops the developer
+ * item sidebar's "open in marketplace" link for the same reason.
+ *
+ * An unknown asset type keeps the link: absent evidence, the listed types are the common case.
+ */
+export const hasDevelopmentItemCreatorStorePage = (
+  assetType: CreatorInventoryAssetType | undefined,
+): boolean => assetType !== CreatorInventoryAssetType.TextDocument;
 
 export const canConfigureDevelopmentItem = (item: DevelopmentItemsInventoryItem): boolean =>
   item.sources.includes(CreatorInventorySourceType.Created);
 
 export const isDevelopmentItemsAssetType = (
   value: string | undefined,
-): value is CreatorInventoryAssetType => value != null && developmentItemsAssetTypeSet.has(value);
+  isTextDocumentEnabled?: boolean,
+): value is CreatorInventoryAssetType => {
+  if (value == null || !developmentItemsAssetTypeSet.has(value)) {
+    return false;
+  }
+  if (textDocumentAssetTypeSet.has(value)) {
+    return isTextDocumentEnabled === true;
+  }
+  return true;
+};
 
 export const isDevelopmentItemsAssetTypeSelection = (
   value: string | undefined,
-): value is DevelopmentItemsAssetTypeSelection => isDevelopmentItemsAssetType(value);
+  isTextDocumentEnabled?: boolean,
+): value is DevelopmentItemsAssetTypeSelection =>
+  isDevelopmentItemsAssetType(value, isTextDocumentEnabled);
 
 export const isDevelopmentItemsSourceSelection = (
   value: string | undefined,

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { TGroup } from '@modules/authentication/types';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import useAvatarLooksGate from '../../home/hooks/useAvatarLooksGate';
+import useTextDocumentGate from '../../home/hooks/useTextDocumentGate';
 import useUGCFoldersGate from '../../home/hooks/useUGCFoldersGate';
 import useMomentsGate from '../../moments/hooks/useMomentsGate';
 import useShowcasesGate from '../../showcase/hooks/useShowcasesGate';
@@ -25,6 +26,7 @@ const useEnabledSubmenuItems = (menuState: MenuState, group: TGroup | null): Men
   const isUGCFoldersEnabled = useUGCFoldersGate();
   const isAvatarLooksEnabled = useAvatarLooksGate();
   const isShowcasesEnabled = useShowcasesGate();
+  const isTextDocumentEnabled = useTextDocumentGate();
 
   // The entry-point set rather than the publish-permitted one: Avatar Backgrounds are uploadable
   // without being publish-permitted, and the tab row keys off what can be entered. Cached by
@@ -51,6 +53,7 @@ const useEnabledSubmenuItems = (menuState: MenuState, group: TGroup | null): Men
           isUGCFoldersEnabled,
           isAvatarLooksEnabled,
           isShowcasesEnabled,
+          isTextDocumentEnabled,
         ),
       ) ?? [],
     [
@@ -63,6 +66,7 @@ const useEnabledSubmenuItems = (menuState: MenuState, group: TGroup | null): Men
       isUGCFoldersEnabled,
       isAvatarLooksEnabled,
       isShowcasesEnabled,
+      isTextDocumentEnabled,
     ],
   );
 };

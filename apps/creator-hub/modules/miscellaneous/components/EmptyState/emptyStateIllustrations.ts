@@ -12,6 +12,8 @@ import collaboratorsDark from '@rbx/foundation-images/pictograms/collaborators_d
 import collaboratorsLight from '@rbx/foundation-images/pictograms/collaborators_light.svg';
 import decalsDark from '@rbx/foundation-images/pictograms/decals_dark.svg';
 import decalsLight from '@rbx/foundation-images/pictograms/decals_light.svg';
+import textDocumentsDark from '@rbx/foundation-images/pictograms/envelope_dark.svg';
+import textDocumentsLight from '@rbx/foundation-images/pictograms/envelope_light.svg';
 import eventsAndUpdatesDark from '@rbx/foundation-images/pictograms/event_calendar_dark.svg';
 import eventsAndUpdatesLight from '@rbx/foundation-images/pictograms/event_calendar_light.svg';
 import findPeopleDark from '@rbx/foundation-images/pictograms/find_people_dark.svg';
@@ -115,6 +117,10 @@ const emptyStateIllustrations = {
   animations: {
     light: animationsLight,
     dark: animationsDark,
+  },
+  textDocuments: {
+    light: textDocumentsLight,
+    dark: textDocumentsDark,
   },
   noUsers: {
     light: collaboratorsLight,

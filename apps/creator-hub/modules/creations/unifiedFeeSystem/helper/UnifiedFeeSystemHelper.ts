@@ -173,6 +173,11 @@ const ASSET_TYPE_MAPPING: Record<
     asset: Asset.AvatarBackground,
     apiType: V1ItemsByCreatorGetAssetTypeEnum.NUMBER_92,
   },
+  // TextDocument has no ItemsByCreator asset-type code (not listed on Creator Store), so NUMBER_0 is an intentional placeholder.
+  [Asset.TextDocument]: {
+    asset: Asset.TextDocument,
+    apiType: V1ItemsByCreatorGetAssetTypeEnum.NUMBER_0,
+  },
   [Asset.AssetPermissionRequests]: {
     asset: Asset.AssetPermissionRequests,
     apiType: V1ItemsByCreatorGetAssetTypeEnum.NUMBER_0,

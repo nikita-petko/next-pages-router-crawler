@@ -6,6 +6,7 @@ import ToolboxServiceApiProvider from '@modules/toolboxService/ToolboxServiceApi
 import DeveloperItemLeftNavigation from './DeveloperItemLeftNavigation/DeveloperItemLeftNavigation';
 import { DeveloperItemProvider } from './DeveloperItemProvider';
 import { DeveloperItemPublishAttributionProvider } from './DeveloperItemPublishAttributionProvider';
+import DeveloperItemTextDocumentGate from './DeveloperItemTextDocumentGate';
 
 export default function getDeveloperItemPageLayout(
   page: ReactNode,
@@ -17,11 +18,13 @@ export default function getDeveloperItemPageLayout(
         <DeveloperItemProvider>
           <DeveloperItemPublishAttributionProvider>
             <OrganizationProvider>
-              <CreatorHubLayout
-                title={title}
-                leftNavigationContents={<DeveloperItemLeftNavigation />}>
-                {page}
-              </CreatorHubLayout>
+              <DeveloperItemTextDocumentGate>
+                <CreatorHubLayout
+                  title={title}
+                  leftNavigationContents={<DeveloperItemLeftNavigation />}>
+                  {page}
+                </CreatorHubLayout>
+              </DeveloperItemTextDocumentGate>
             </OrganizationProvider>
           </DeveloperItemPublishAttributionProvider>
         </DeveloperItemProvider>

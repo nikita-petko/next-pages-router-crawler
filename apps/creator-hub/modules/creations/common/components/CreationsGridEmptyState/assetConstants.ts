@@ -68,6 +68,11 @@ const emptyStateByNonCatalogAsset: Partial<Record<Asset, CreationsGridEmptyState
     illustration: 'animations',
     linkHref: docs.getAnimationReferenceUrl(),
   },
+  [Asset.TextDocument]: {
+    title: 'Label.EmptyStateTextDocuments',
+    description: 'Description.EmptyStateTextDocuments',
+    illustration: 'textDocuments',
+  },
   [Asset.Audio]: {
     title: 'Label.EmptyStateAudio',
     description: 'Description.EmptyStateAudio',
