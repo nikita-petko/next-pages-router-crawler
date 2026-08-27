@@ -5,13 +5,16 @@ import { useRouter } from "next/router";
 
 import TestAppMetaLayout from "@modules/components/layouts/TestAppMetaLayout";
 import {
+  Alert,
   Button,
+  Card,
   Dialog,
   DialogBody,
   DialogContent,
   DialogFooter,
   DialogTitle,
   Divider,
+  Icon,
   TextInput,
 } from "@rbx/foundation-ui";
 
@@ -34,9 +37,9 @@ const TestDynamicComponent = dynamic(
   {
     ssr: false,
     loading: () => (
-      <span className="text-body-large text-align-x-center">
-        Loading Dynamic Component...
-      </span>
+      <Alert variant="Feedback" severity="Warning" hasCloseAffordance={false}>
+        Loading dynamic component...
+      </Alert>
     ),
   },
 );
@@ -85,7 +88,16 @@ const TestDialog: React.FC<TTestDialogProps> = ({
 const TestPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [text, setText] = useState("");
+  const [error, setError] = useState("");
+
   const handleClickOpen = () => {
+    if (text.trim() === "") {
+      setError("Please enter some text before opening the dialog.");
+      return;
+    } else {
+      setError("");
+    }
+
     setDialogOpen(true);
   };
   const handleClose = () => {
@@ -98,18 +110,7 @@ const TestPage = () => {
       testDynamicImport: testDynamicImportV,
       testDynamicComponent: testDynamicComponentV,
     },
-    isReady,
   } = useRouter();
-
-  if (!isReady) {
-    return (
-      <div className="flex flex-col items-center justify-center min-height-[100vh]">
-        <span className="text-heading-large font-bold margin-bottom-medium text-align-x-center">
-          Loading...
-        </span>
-      </div>
-    );
-  }
 
   const testDynamicImport = testDynamicImportV === "true";
   const testDynamicComponent = testDynamicComponentV === "true";
@@ -123,38 +124,43 @@ const TestPage = () => {
   return (
     <div className="flex flex-col items-center justify-center min-height-[100vh]">
       <div className="flex flex-col items-center justify-center width-fit">
-        {testDynamicComponent && <div className="margin-bottom-small"><TestDynamicComponent /></div>}
+        <Card title="Foundation Test App" variant="Emphasis" leading={<Icon name="icon-filled-studio" />}>
+          {testDynamicComponent && (
+            <div className="margin-bottom-small">
+              <TestDynamicComponent />
+            </div>
+          )}
 
-        <span className="text-heading-large font-bold margin-bottom-medium text-align-x-center">
-          Foundation Test App
-        </span>
-        <Divider className="self-stretch" />
-        <span className="text-body-large margin-y-small text-align-center">
-          Test Query: {testQuery}
-        </span>
-        <Divider className="self-stretch" />
+          <Divider className="self-stretch" />
+          <span className="text-body-large margin-y-small text-align-center">
+            Test Query: {testQuery}
+          </span>
+          <Divider className="self-stretch" />
 
-        <TextInput
-          id="test-id"
-          label="Test Dialog Content"
-          className="margin-top-small"
-          variant="Standard"
-          onChange={(e) => setText(e.target.value)}
-        />
+          <TextInput
+            id="test-id"
+            label="Test Dialog Content"
+            className="margin-top-small"
+            variant="Standard"
+            hasError={!!error}
+            error={error}
+            onChange={(e) => setText(e.target.value)}
+          />
 
-        <Button
-          variant="Emphasis"
-          onClick={handleClickOpen}
-          className="margin-top-small"
-        >
-          Test Button
-        </Button>
-        <TestDialog
-          title="Test Dialog"
-          content={text}
-          open={dialogOpen}
-          handleClose={handleClose}
-        />
+          <Button
+            variant="Emphasis"
+            onClick={handleClickOpen}
+            className="margin-top-small"
+          >
+            Test Button
+          </Button>
+          <TestDialog
+            title="Test Dialog"
+            content={text}
+            open={dialogOpen}
+            handleClose={handleClose}
+          />
+        </Card>
       </div>
     </div>
   );
