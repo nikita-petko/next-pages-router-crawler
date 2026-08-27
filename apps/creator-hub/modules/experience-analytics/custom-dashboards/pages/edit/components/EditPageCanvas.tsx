@@ -34,7 +34,6 @@ import {
 } from '@rbx/foundation-ui';
 import AnalyticsComponentType from '@modules/analytics-configurations/AnalyticsComponentType';
 import { SummaryCardHeaderActionsProvider } from '@modules/charts-generic/cards/summaryCards/SummaryCardHeaderActionsContext';
-import getGranularityOptionsForMetric from '@modules/experience-analytics-shared/chartConfigurator/getGranularityOptionsForMetric';
 import {
   ChartActionsProvider,
   type ChartActionsPolicy,
@@ -46,8 +45,6 @@ import useRAQIV2PredefinedSurfaceControlsBundle from '@modules/experience-analyt
 import type RAQIV2ChartContext from '@modules/experience-analytics-shared/types/RAQIV2ChartContext';
 import type { CreatorAnalyticsUntabbedPageConfig } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
 import { RAQIV2SpecialLayoutType } from '@modules/experience-analytics-shared/types/RAQIV2SpecialLayoutConfig';
-import computeRAQIV2SpecOverride from '@modules/experience-analytics-shared/utils/computeRAQIV2SpecOverride';
-import { getClosestAllowedGranularity } from '@modules/experience-analytics-shared/utils/seriesGranularities';
 import { applyActiveDashboardOverridesToTable } from '../../../components/applyActiveDashboardOverridesToTable';
 import DashboardCanvasControlBar from '../../../components/DashboardCanvasControlBar';
 import DashboardFilterChips from '../../../components/DashboardFilterChips';
@@ -93,6 +90,7 @@ import {
   type CustomDashboardConfig,
   type TileId,
 } from '../../../types';
+import { coerceChartConfigGranularity } from '../../../utils/coerceChartConfigGranularity';
 import { createTileId } from '../../../utils/createTileId';
 import { filterSupportedCustomDashboardSavedDateRangeTypes } from '../../../utils/savedDateRange';
 import { chartContextFingerprint } from '../chartContextFingerprint';
@@ -916,40 +914,13 @@ function getRenderableChartEntry(
   ) {
     return entry;
   }
-  const requestedGranularity = entry.component.overrides.granularity?.override;
-  if (!requestedGranularity) {
-    return entry;
-  }
-  const chartSpec = computeRAQIV2SpecOverride(
-    { ...chartContext, metric: entry.component.metric },
-    entry.component.overrides,
-  );
-  const supportedGranularities = getGranularityOptionsForMetric({
-    metric: chartSpec.metric,
-    startDate: chartContext.timeSpec.startTime,
-    endDate: chartContext.timeSpec.endTime,
-    breakdown: chartSpec.breakdown,
-  })
-    .filter((option) => option.isAllowed)
-    .map((option) => option.granularity);
-  const granularity = getClosestAllowedGranularity({
-    startDate: chartContext.timeSpec.startTime,
-    endDate: chartContext.timeSpec.endTime,
-    granularity: requestedGranularity,
-    supportedGranularities,
-  });
-  if (granularity === requestedGranularity) {
+  const component = coerceChartConfigGranularity(entry.component, chartContext);
+  if (component === entry.component) {
     return entry;
   }
   return {
     ...entry,
-    component: {
-      ...entry.component,
-      overrides: {
-        ...entry.component.overrides,
-        granularity: { override: granularity },
-      },
-    },
+    component,
   };
 }
 

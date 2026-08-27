@@ -1,6 +1,5 @@
 import { type FC, useMemo } from 'react';
 import AnalyticsComponentType from '@modules/analytics-configurations/AnalyticsComponentType';
-import getGranularityOptionsForMetric from '@modules/experience-analytics-shared/chartConfigurator/getGranularityOptionsForMetric';
 import AnalyticsComponent from '@modules/experience-analytics-shared/components/RAQIV2/layout/AnalyticsComponent';
 import useRAQIV2PredefinedSurfaceControlsBundle from '@modules/experience-analytics-shared/components/RAQIV2/layout/useRAQIV2PredefinedSurfaceControlsBundle';
 import type RAQIV2ChartContext from '@modules/experience-analytics-shared/types/RAQIV2ChartContext';
@@ -8,10 +7,9 @@ import type {
   AnalyticsComponentConfig,
   CreatorAnalyticsUntabbedPageConfig,
 } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
-import computeRAQIV2SpecOverride from '@modules/experience-analytics-shared/utils/computeRAQIV2SpecOverride';
-import { getClosestAllowedGranularity } from '@modules/experience-analytics-shared/utils/seriesGranularities';
 import type { SynthesizeResult } from '../synthesis/synthesize';
 import type { CustomDashboardConfig, DashboardLayoutNode, TileId } from '../types';
+import { coerceChartConfigGranularity } from '../utils/coerceChartConfigGranularity';
 import { isSummaryCardLayoutNode } from '../utils/dashboardLayoutNodes';
 import { applyActiveDashboardOverridesToTable } from './applyActiveDashboardOverridesToTable';
 import DashboardFilterChips from './DashboardFilterChips';
@@ -35,46 +33,21 @@ function getRenderableComponent(
   component: AnalyticsComponentConfig,
   chartContext: RAQIV2ChartContext,
 ): AnalyticsComponentConfig {
-  if (typeof component !== 'string' && component.type === AnalyticsComponentType.Table) {
+  if (typeof component === 'string') {
+    return component;
+  }
+  if (component.type === AnalyticsComponentType.Table) {
     return applyActiveDashboardOverridesToTable(component, chartContext);
+  }
+  if (!('overrides' in component) || !('metric' in component)) {
+    return component;
   }
   // The config package and app enum are structurally compatible but come from separate declarations.
   // oxlint-disable-next-line typescript/no-unsafe-enum-comparison
-  if (typeof component === 'string' || component.type !== 'Chart' || !('overrides' in component)) {
+  if (component.type !== 'Chart') {
     return component;
   }
-  const requestedGranularity = component.overrides.granularity?.override;
-  if (!requestedGranularity) {
-    return component;
-  }
-  const metric = computeRAQIV2SpecOverride(
-    { ...chartContext, metric: component.metric },
-    component.overrides,
-  ).metric;
-  const options = getGranularityOptionsForMetric({
-    metric,
-    startDate: chartContext.timeSpec.startTime,
-    endDate: chartContext.timeSpec.endTime,
-    breakdown: chartContext.breakdown,
-  });
-  const granularity = getClosestAllowedGranularity({
-    startDate: chartContext.timeSpec.startTime,
-    endDate: chartContext.timeSpec.endTime,
-    granularity: requestedGranularity,
-    supportedGranularities: options
-      .filter((option) => option.isAllowed)
-      .map((option) => option.granularity),
-  });
-  if (granularity === requestedGranularity) {
-    return component;
-  }
-  return {
-    ...component,
-    overrides: {
-      ...component.overrides,
-      granularity: { override: granularity },
-    },
-  };
+  return coerceChartConfigGranularity(component, chartContext);
 }
 
 function buildComponentByTileId(
