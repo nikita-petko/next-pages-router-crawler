@@ -46,9 +46,17 @@ const useCategoryManager = (
   initialCategoryGroups?: CategoryGroupResponse[],
   overallStatus?: PresetStatus,
 ): UseCategoryManagerReturn => {
+  const [prevData, setPrevData] = useState(initialCategoryGroups);
   const [categories, setCategories] = useState<CategoryFormState[]>(() =>
     initialCategoryGroups ? mapCategoryGroupsToFormState(initialCategoryGroups, overallStatus) : [],
   );
+
+  if (initialCategoryGroups !== prevData) {
+    setPrevData(initialCategoryGroups);
+    if (initialCategoryGroups) {
+      setCategories(mapCategoryGroupsToFormState(initialCategoryGroups, overallStatus));
+    }
+  }
 
   const addCategory = useCallback(() => {
     setCategories((prev) => {

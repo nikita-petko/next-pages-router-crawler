@@ -1,12 +1,18 @@
 import type {
   GetUniversePresetStateResponse,
+  PresetCategoryInput,
   PublishPresetVersionResponse,
+  UpsertPresetDraftResponse,
 } from '@rbx/client-preset-chat/v1';
 import { V2CreatorApi } from '@rbx/client-preset-chat/v1';
 import { ResponseError } from '@rbx/clients-core';
 import { createClientConfiguration } from './utils/createClientConfiguration';
 
-export type { GetUniversePresetStateResponse, PublishPresetVersionResponse };
+export type {
+  GetUniversePresetStateResponse,
+  PublishPresetVersionResponse,
+  UpsertPresetDraftResponse,
+};
 
 export class PresetChatApiError extends Error {
   status: number;
@@ -63,6 +69,31 @@ export class PresetChatApiClient {
             ? 'Publish limit reached — 3 publishes per 24 hours.'
             : `Publish failed: ${status}`,
           status,
+        );
+      }
+      throw error;
+    }
+  }
+
+  // TODO: Once BE adds `required` to UpsertPresetDraftResponse fields (status, presetValidationErrors, errorCode), consuming validation errors won't need null checks.
+  async upsertPresetDraft(
+    universeId: number,
+    categories: PresetCategoryInput[],
+    options?: { signal?: AbortSignal },
+  ): Promise<UpsertPresetDraftResponse> {
+    try {
+      return await this.api.v2CreatorUpsertPresetDraft(
+        {
+          universeId,
+          v2CreatorUpsertPresetDraftRequest: { universeId, categories },
+        },
+        options?.signal ? { signal: options.signal } : undefined,
+      );
+    } catch (error) {
+      if (error instanceof ResponseError) {
+        throw new PresetChatApiError(
+          `Failed to save draft: ${error.response.status}`,
+          error.response.status,
         );
       }
       throw error;

@@ -5,13 +5,13 @@ import useTranslationWrapper from '@modules/analytics-translations/useTranslatio
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import useCategoryManager from '../hooks/useCategoryManager';
-import type { CategoryFormState, CategoryGroupResponse, PresetStatus } from '../types';
+import type { UseCategoryManagerReturn } from '../hooks/useCategoryManager';
+import type { CategoryFormState, PresetStatus } from '../types';
 import CategoryGroup from './CategoryGroup';
 import PresetTable from './PresetTable';
 
 type QuickWordsContentProps = {
-  categoryGroups?: CategoryGroupResponse[];
+  categoryManager: UseCategoryManagerReturn;
   overallStatus?: PresetStatus;
   isPublishPending?: boolean;
 };
@@ -95,7 +95,7 @@ const CategoryItem: FunctionComponent<CategoryItemProps> = ({
 };
 
 const QuickWordsContent: FunctionComponent<QuickWordsContentProps> = ({
-  categoryGroups,
+  categoryManager,
   overallStatus,
   isPublishPending,
 }) => {
@@ -113,7 +113,7 @@ const QuickWordsContent: FunctionComponent<QuickWordsContentProps> = ({
     updatePresetText,
     reorderPresets,
     canAddCategory,
-  } = useCategoryManager(categoryGroups, overallStatus);
+  } = categoryManager;
 
   const minPresetsPerCategory =
     settings.presetChatMinPresetsPerCategory > 0

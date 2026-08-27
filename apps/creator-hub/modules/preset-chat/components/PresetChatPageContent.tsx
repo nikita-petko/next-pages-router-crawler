@@ -25,8 +25,10 @@ import { ErrorPage } from '@modules/miscellaneous/error';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import ChatTabOptions from '../enums/ChatTabOptions';
+import useCategoryManager from '../hooks/useCategoryManager';
 import { useGetPresetChatState } from '../queries/useGetPresetChatState';
 import { usePublish } from '../queries/usePublish';
+import { useUpsertDraft } from '../queries/useUpsertDraft';
 import ChatNavigation from './ChatNavigation';
 import { PublishStatusBanner } from './PublishStatusBanner';
 import QuickWordsContent from './QuickWordsContent';
@@ -44,11 +46,32 @@ const PresetChatPageContent: FunctionComponent = () => {
     error: presetChatError,
   } = useGetPresetChatState(gameDetails?.id, isPresetChatEnabled ?? false);
 
+  const categoryManager = useCategoryManager(
+    presetChatState?.categoryGroups,
+    presetChatState?.overallStatus,
+  );
+
   const { mutate: publish, isPending: isPublishPending } = usePublish(gameDetails?.id);
+  // TODO (EXPR-4048): Surface save errors to the user (toast/banner) — no design yet
+  const { mutate: saveDraft, isPending: isSavePending } = useUpsertDraft(gameDetails?.id);
 
   const handlePublish = useCallback(() => {
     publish();
   }, [publish]);
+
+  const handleSave = useCallback(() => {
+    const categories = categoryManager.categories.map((category) => ({
+      name: category.name.trim(),
+      state: category.state,
+      presets: category.presets
+        .map((preset) => ({
+          content: preset.text.replaceAll(/[^a-zA-Z\s'-]/g, '').trim(),
+          state: preset.state,
+        }))
+        .filter((preset) => preset.content.length > 0),
+    }));
+    saveDraft(categories);
+  }, [categoryManager.categories, saveDraft]);
 
   const handleCloseMoreMenu = useCallback(() => {
     setMoreMenuOpen(false);
@@ -160,11 +183,15 @@ const PresetChatPageContent: FunctionComponent = () => {
                   translationKey('Action.Publish', TranslationNamespace.PresetChat),
                 )}
               </Button>
-              {/* TODO: Wire up save draft API call */}
               <Button
                 variant='Standard'
                 size='Medium'
-                isDisabled={presetChatState?.overallStatus === 'PUBLISHING' || isPublishPending}>
+                onClick={handleSave}
+                isDisabled={
+                  presetChatState?.overallStatus === 'PUBLISHING' ||
+                  isPublishPending ||
+                  isSavePending
+                }>
                 {tPendingTranslation(
                   'Save',
                   'Button to save the current draft of Quick Words categories',
@@ -217,8 +244,7 @@ const PresetChatPageContent: FunctionComponent = () => {
           />
           <Divider className='margin-top-medium margin-bottom-small' />
           <QuickWordsContent
-            key={`${gameDetails.id}-${presetChatState?.overallStatus}`}
-            categoryGroups={presetChatState?.categoryGroups}
+            categoryManager={categoryManager}
             overallStatus={presetChatState?.overallStatus}
             isPublishPending={isPublishPending}
           />

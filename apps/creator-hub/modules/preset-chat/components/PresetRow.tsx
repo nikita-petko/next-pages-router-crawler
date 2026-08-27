@@ -1,4 +1,4 @@
-import type { ChangeEvent, FunctionComponent } from 'react';
+import type { ChangeEvent, FocusEvent, FunctionComponent } from 'react';
 import { useCallback, useMemo } from 'react';
 import { RestrictToVerticalAxis } from '@dnd-kit/abstract/modifiers';
 import { closestCenter } from '@dnd-kit/collision';
@@ -60,13 +60,24 @@ const PresetRow: FunctionComponent<PresetRowProps> = ({
     [onTextChange, preset.id],
   );
 
+  const handleBlur = useCallback(
+    (event: FocusEvent<HTMLInputElement>) => {
+      const trimmed = event.target.value.trim();
+      if (trimmed !== event.target.value) {
+        onTextChange(preset.id, trimmed);
+      }
+    },
+    [onTextChange, preset.id],
+  );
+
   const handleDelete = useCallback(() => {
     onDelete(preset.id);
   }, [onDelete, preset.id]);
 
+  const trimmedText = preset.text.trim();
   const hasInvalidInput =
-    preset.text.length > 0 &&
-    (preset.text.length < MinPresetLength || !VALID_PRESET_TEXT_REGEX.test(preset.text));
+    trimmedText.length > 0 &&
+    (trimmedText.length < MinPresetLength || !VALID_PRESET_TEXT_REGEX.test(trimmedText));
 
   return (
     <TableRow ref={ref} className={isDragging ? 'opacity-[0.5]' : ''}>
@@ -88,6 +99,7 @@ const PresetRow: FunctionComponent<PresetRowProps> = ({
           maxLength={MaxPresetLength}
           value={preset.text}
           onChange={handleChange}
+          onBlur={handleBlur}
           hasError={hasInvalidInput}
           error={
             hasInvalidInput
