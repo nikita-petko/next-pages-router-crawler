@@ -96,6 +96,7 @@ export interface LicenseFormData {
   maxDuration?: LicenseDurationBucket;
   licenseType?: LicenseType | null;
   licenseCategory?: LicenseCategory;
+  resellPreference?: ResellPreference;
 }
 
 const LICENSE_CATEGORY = {
@@ -104,6 +105,13 @@ const LICENSE_CATEGORY = {
 } as const;
 
 type LicenseCategory = (typeof LICENSE_CATEGORY)[keyof typeof LICENSE_CATEGORY];
+
+export const RESELL_PREFERENCE = {
+  Yes: 'Yes',
+  No: 'No',
+} as const;
+
+type ResellPreference = (typeof RESELL_PREFERENCE)[keyof typeof RESELL_PREFERENCE];
 
 type LicenseFormMode = { type: 'create' } | { type: 'edit'; hasAgreements: boolean };
 
@@ -403,7 +411,7 @@ const LicenseForm = ({
   onBeforeSubmitModeratedChanges,
 }: Props) => {
   const translation = useTranslation();
-  const { translate, translateHTML } = translation;
+  const { translate, translateHTML, translateWithNamespace } = translation;
   const { tPendingTranslation } = useTranslationWrapper(translation);
   const { classes } = useLicenseFormStyles();
   const { enqueueErrorSnackbar } = useIpSnackbar();
@@ -414,6 +422,26 @@ const LicenseForm = ({
   );
   const isLicenseCreationEnabled = licenseCreationFlagValue ?? false;
   const unknownDurationLabel = translate('Label.Unknown');
+  const resellPreferenceYesLabel = translateWithNamespace(
+    TranslationNamespace.Controls,
+    'Action.Yes',
+  );
+  const resellPreferenceNoLabel = translateWithNamespace(
+    TranslationNamespace.Controls,
+    'Action.No',
+  );
+  const renderResellPreferenceValue = useCallback(
+    (value: unknown) => {
+      if (value === RESELL_PREFERENCE.Yes) {
+        return resellPreferenceYesLabel;
+      }
+      if (value === RESELL_PREFERENCE.No) {
+        return resellPreferenceNoLabel;
+      }
+      return null;
+    },
+    [resellPreferenceNoLabel, resellPreferenceYesLabel],
+  );
 
   const { control, handleSubmit, setValue, register, formState, getValues, setError, clearErrors } =
     useForm<LicenseFormData>({
@@ -600,6 +628,205 @@ const LicenseForm = ({
         maxWidth={708}
         component='form'
         onSubmit={handleSubmit(handleFormSubmit)}>
+        {isLicenseCreationEnabled && (
+          <Grid item>
+            <Typography variant='h5' component='h2' gutterBottom>
+              {tPendingTranslation(
+                'License terms',
+                'Heading for the section where a rights holder sets the terms of a license.',
+                translationKey('Heading.LicenseTerms', TranslationNamespace.AgreementsManager),
+              )}
+            </Typography>
+            <Typography color='secondary' component='p' className={classes.semanticGapLargerBottom}>
+              {tPendingTranslation(
+                'Set the terms of the license you are granting to Creators.',
+                'Description for the section where a rights holder sets the terms of a license.',
+                translationKey('Description.LicenseTerms', TranslationNamespace.AgreementsManager),
+              )}
+            </Typography>
+            <FormControl
+              fullWidth
+              className={
+                licenseCategory === LICENSE_CATEGORY.Collab
+                  ? classes.semanticGapLargerBottom
+                  : undefined
+              }>
+              <Controller
+                name='licenseCategory'
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <LicenseFormControlledSelect
+                    field={field}
+                    id='license-type-select'
+                    error={!!error}
+                    helperText={error?.message}
+                    label={translate('Label.SelectLicenseType')}
+                    renderValue={renderLicenseCategoryValue}
+                    disabled={isEditMode}
+                    onChange={(event) => {
+                      field.onChange(event);
+                      const selectedCategory = event.target.value;
+                      if (selectedCategory === LICENSE_CATEGORY.FullGame) {
+                        setValue('licenseType', LicenseType.FullExperience);
+                        clearErrors('licenseType');
+                      } else if (selectedCategory === LICENSE_CATEGORY.Collab) {
+                        setValue('licenseType', null);
+                        clearErrors('licenseType');
+                      }
+                      setValue('resellPreference', undefined);
+                      clearErrors('resellPreference');
+                      if (
+                        mode.type === 'create' &&
+                        selectedCategory === LICENSE_CATEGORY.FullGame
+                      ) {
+                        logEvent(LicenseManagerClickEvent.IphLicenseCreateLicenseTypeClickEvent, {
+                          licenseType: LicenseType.FullExperience,
+                        });
+                      }
+                    }}>
+                    <MenuItem
+                      value={LICENSE_CATEGORY.FullGame}
+                      data-testid='full-experience-option'>
+                      <LicenseCategoryOptions licenseCategory={LICENSE_CATEGORY.FullGame} />
+                    </MenuItem>
+                    <MenuItem value={LICENSE_CATEGORY.Collab} data-testid='collaboration-option'>
+                      <LicenseCategoryOptions licenseCategory={LICENSE_CATEGORY.Collab} />
+                    </MenuItem>
+                  </LicenseFormControlledSelect>
+                )}
+                rules={{ required: translate('Label.FieldIsRequired') }}
+              />
+            </FormControl>
+            {licenseCategory === LICENSE_CATEGORY.Collab && (
+              <>
+                <Typography
+                  color='secondary'
+                  component='p'
+                  className={classes.semanticGapLargerBottom}>
+                  {tPendingTranslation(
+                    'Where can creators sell IP-based content to players?',
+                    'Prompt shown above the sale location dropdown for collaboration licenses.',
+                    translationKey(
+                      'Description.SelectSaleLocation',
+                      TranslationNamespace.AgreementsManager,
+                    ),
+                  )}
+                </Typography>
+                <FormControl
+                  fullWidth
+                  className={
+                    licenseType === LicenseType.MarketplaceSale && !isEditMode
+                      ? classes.semanticGapLargerBottom
+                      : undefined
+                  }>
+                  <Controller
+                    name='licenseType'
+                    control={control}
+                    render={({ field, fieldState: { error } }) => (
+                      <LicenseFormControlledSelect
+                        field={field}
+                        id='sale-location-select'
+                        error={!!error}
+                        helperText={error?.message}
+                        label={tPendingTranslation(
+                          'Select sale location',
+                          'Label for the dropdown used to choose where IP-based content may be sold.',
+                          translationKey(
+                            'Label.SelectSaleLocation',
+                            TranslationNamespace.AgreementsManager,
+                          ),
+                        )}
+                        renderValue={renderSaleLocationValue}
+                        disabled={isEditMode}
+                        onChange={(event) => {
+                          field.onChange(event);
+                          if (event.target.value !== LicenseType.MarketplaceSale) {
+                            setValue('resellPreference', undefined);
+                            clearErrors('resellPreference');
+                          }
+                          if (mode.type === 'create') {
+                            logEvent(
+                              LicenseManagerClickEvent.IphLicenseCreateLicenseTypeClickEvent,
+                              {
+                                licenseType: String(event.target.value),
+                              },
+                            );
+                          }
+                        }}>
+                        <MenuItem
+                          value={LicenseType.CollaborationInExperienceSale}
+                          data-testid='in-game-sale-location-option'>
+                          <SaleLocationOptions
+                            licenseType={LicenseType.CollaborationInExperienceSale}
+                          />
+                        </MenuItem>
+                        <MenuItem
+                          value={LicenseType.MarketplaceSale}
+                          data-testid='avatar-marketplace-sale-location-option'>
+                          <SaleLocationOptions licenseType={LicenseType.MarketplaceSale} />
+                        </MenuItem>
+                      </LicenseFormControlledSelect>
+                    )}
+                    rules={{ required: translate('Label.FieldIsRequired') }}
+                  />
+                </FormControl>
+                {licenseType === LicenseType.MarketplaceSale && !isEditMode && (
+                  <>
+                    <Typography
+                      color='secondary'
+                      component='p'
+                      className={classes.semanticGapLargerBottom}>
+                      {tPendingTranslation(
+                        'Can creators re-sell IP-based items?',
+                        'Prompt shown above the re-sell preference dropdown for Avatar Marketplace licenses.',
+                        translationKey(
+                          'Description.ResellPreference',
+                          TranslationNamespace.AgreementsManager,
+                        ),
+                      )}
+                    </Typography>
+                    <FormControl fullWidth>
+                      <Controller
+                        name='resellPreference'
+                        control={control}
+                        render={({ field, fieldState: { error } }) => (
+                          <LicenseFormControlledSelect
+                            field={field}
+                            id='resell-preference-select'
+                            error={!!error}
+                            helperText={error?.message}
+                            label={tPendingTranslation(
+                              'Select re-sell preference',
+                              'Label for choosing whether Creators may re-sell IP-based items.',
+                              translationKey(
+                                'Label.SelectResellPreference',
+                                TranslationNamespace.AgreementsManager,
+                              ),
+                            )}
+                            renderValue={renderResellPreferenceValue}>
+                            <MenuItem
+                              value={RESELL_PREFERENCE.Yes}
+                              data-testid='resell-preference-yes-option'>
+                              {resellPreferenceYesLabel}
+                            </MenuItem>
+                            <MenuItem
+                              value={RESELL_PREFERENCE.No}
+                              data-testid='resell-preference-no-option'>
+                              {resellPreferenceNoLabel}
+                            </MenuItem>
+                          </LicenseFormControlledSelect>
+                        )}
+                        rules={{
+                          required: isEditMode ? false : translate('Label.FieldIsRequired'),
+                        }}
+                      />
+                    </FormControl>
+                  </>
+                )}
+              </>
+            )}
+          </Grid>
+        )}
         <Grid item>
           <Typography variant='h5' component='h2' gutterBottom>
             {translate('Heading.LicenseDetails')}
@@ -676,140 +903,6 @@ const LicenseForm = ({
             </FormControl>
           )}
         </Grid>
-        {isLicenseCreationEnabled && (
-          <Grid item>
-            <Typography variant='h5' component='h2' gutterBottom>
-              {tPendingTranslation(
-                'License terms',
-                'Heading for the section where a rights holder sets the terms of a license.',
-                translationKey('Heading.LicenseTerms', TranslationNamespace.AgreementsManager),
-              )}
-            </Typography>
-            <Typography color='secondary' component='p' className={classes.semanticGapLargerBottom}>
-              {tPendingTranslation(
-                'Set the terms of the license you are granting to Creators.',
-                'Description for the section where a rights holder sets the terms of a license.',
-                translationKey('Description.LicenseTerms', TranslationNamespace.AgreementsManager),
-              )}
-            </Typography>
-            <FormControl
-              fullWidth
-              className={
-                licenseCategory === LICENSE_CATEGORY.Collab
-                  ? classes.semanticGapLargerBottom
-                  : undefined
-              }>
-              <Controller
-                name='licenseCategory'
-                control={control}
-                render={({ field, fieldState: { error } }) => (
-                  <LicenseFormControlledSelect
-                    field={field}
-                    id='license-type-select'
-                    error={!!error}
-                    helperText={error?.message}
-                    label={translate('Label.SelectLicenseType')}
-                    renderValue={renderLicenseCategoryValue}
-                    disabled={isEditMode}
-                    onChange={(event) => {
-                      field.onChange(event);
-                      const selectedCategory = event.target.value;
-                      if (selectedCategory === LICENSE_CATEGORY.FullGame) {
-                        setValue('licenseType', LicenseType.FullExperience);
-                        clearErrors('licenseType');
-                      } else if (selectedCategory === LICENSE_CATEGORY.Collab) {
-                        setValue('licenseType', null);
-                        clearErrors('licenseType');
-                      }
-                      if (
-                        mode.type === 'create' &&
-                        selectedCategory === LICENSE_CATEGORY.FullGame
-                      ) {
-                        logEvent(LicenseManagerClickEvent.IphLicenseCreateLicenseTypeClickEvent, {
-                          licenseType: LicenseType.FullExperience,
-                        });
-                      }
-                    }}>
-                    <MenuItem
-                      value={LICENSE_CATEGORY.FullGame}
-                      data-testid='full-experience-option'>
-                      <LicenseCategoryOptions licenseCategory={LICENSE_CATEGORY.FullGame} />
-                    </MenuItem>
-                    <MenuItem value={LICENSE_CATEGORY.Collab} data-testid='collaboration-option'>
-                      <LicenseCategoryOptions licenseCategory={LICENSE_CATEGORY.Collab} />
-                    </MenuItem>
-                  </LicenseFormControlledSelect>
-                )}
-                rules={{ required: translate('Label.FieldIsRequired') }}
-              />
-            </FormControl>
-            {licenseCategory === LICENSE_CATEGORY.Collab && (
-              <>
-                <Typography
-                  color='secondary'
-                  component='p'
-                  className={classes.semanticGapLargerBottom}>
-                  {tPendingTranslation(
-                    'Where can creators sell IP-based content to players?',
-                    'Prompt shown above the sale location dropdown for collaboration licenses.',
-                    translationKey(
-                      'Description.SelectSaleLocation',
-                      TranslationNamespace.AgreementsManager,
-                    ),
-                  )}
-                </Typography>
-                <FormControl fullWidth>
-                  <Controller
-                    name='licenseType'
-                    control={control}
-                    render={({ field, fieldState: { error } }) => (
-                      <LicenseFormControlledSelect
-                        field={field}
-                        id='sale-location-select'
-                        error={!!error}
-                        helperText={error?.message}
-                        label={tPendingTranslation(
-                          'Select sale location',
-                          'Label for the dropdown used to choose where IP-based content may be sold.',
-                          translationKey(
-                            'Label.SelectSaleLocation',
-                            TranslationNamespace.AgreementsManager,
-                          ),
-                        )}
-                        renderValue={renderSaleLocationValue}
-                        disabled={isEditMode}
-                        onChange={(event) => {
-                          field.onChange(event);
-                          if (mode.type === 'create') {
-                            logEvent(
-                              LicenseManagerClickEvent.IphLicenseCreateLicenseTypeClickEvent,
-                              {
-                                licenseType: String(event.target.value),
-                              },
-                            );
-                          }
-                        }}>
-                        <MenuItem
-                          value={LicenseType.CollaborationInExperienceSale}
-                          data-testid='in-game-sale-location-option'>
-                          <SaleLocationOptions
-                            licenseType={LicenseType.CollaborationInExperienceSale}
-                          />
-                        </MenuItem>
-                        <MenuItem
-                          value={LicenseType.MarketplaceSale}
-                          data-testid='avatar-marketplace-sale-location-option'>
-                          <SaleLocationOptions licenseType={LicenseType.MarketplaceSale} />
-                        </MenuItem>
-                      </LicenseFormControlledSelect>
-                    )}
-                    rules={{ required: translate('Label.FieldIsRequired') }}
-                  />
-                </FormControl>
-              </>
-            )}
-          </Grid>
-        )}
         <Grid item>
           <Typography variant='h5' component='h2' className={classes.paddingMediumBtm}>
             {translate('Label.Duration')}

@@ -234,4 +234,5 @@ const LicenseEditContainer = ({ licenseId }: Props) => {
 export default withTranslation(LicenseEditContainer, [
   TranslationNamespace.Navigation,
   TranslationNamespace.AgreementsManager,
+  TranslationNamespace.Controls,
 ]);

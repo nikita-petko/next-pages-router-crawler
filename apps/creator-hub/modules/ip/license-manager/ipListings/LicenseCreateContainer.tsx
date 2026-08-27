@@ -5,6 +5,7 @@ import {
   LicenseDurationType,
   LicenseType,
   LicenseVisibility,
+  ResellingPermission,
   UniverseContentMaturity,
 } from '@rbx/client-content-licensing-api/v1';
 import { useFlag } from '@rbx/flags';
@@ -21,7 +22,7 @@ import { convertContentStandardsQuestionAnswerToRequest } from '../utils/guideli
 import { buildLicenseDurationForRequest } from '../utils/timeLimitedLicense';
 import IpListingsBreadcrumbs from './components/IpListingsBreadcrumbs';
 import type { LicenseFormData } from './components/LicenseForm';
-import LicenseForm from './components/LicenseForm';
+import LicenseForm, { RESELL_PREFERENCE } from './components/LicenseForm';
 import { MinimumDAU } from './components/licenseFormTypes';
 import { useAddLicenseMutation, useIpListingQuery, useLicenseQuery } from './hooks/ipListings';
 import mapLicenseResponseToFormDefaults from './utils/mapLicenseResponseToFormDefaults';
@@ -191,6 +192,15 @@ const LicenseCreateContainer = () => {
         },
       ),
       licenseType,
+      licenseTerms:
+        data.resellPreference == null
+          ? undefined
+          : {
+              reselling:
+                data.resellPreference === RESELL_PREFERENCE.Yes
+                  ? ResellingPermission.Allowed
+                  : ResellingPermission.Disallowed,
+            },
     });
   };
 
@@ -230,4 +240,5 @@ const LicenseCreateContainer = () => {
 export default withTranslation(LicenseCreateContainer, [
   TranslationNamespace.Navigation,
   TranslationNamespace.AgreementsManager,
+  TranslationNamespace.Controls,
 ]);

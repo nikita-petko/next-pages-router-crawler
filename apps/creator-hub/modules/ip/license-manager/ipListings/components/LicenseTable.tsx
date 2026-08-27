@@ -269,12 +269,16 @@ const LicenseTable = ({ licenses, ipListingId }: LicenseTableProps) => {
         <TableHead>
           <TableRow>
             <TableCell>{translate('Heading.Name')}</TableCell>
-            <TableCell>{translate('Heading.Status')}</TableCell>
-            <TableCell>{translate('Label.RevenueShare')}</TableCell>
-            <TableCell>{translate('Label.MinimumAverageL7DAU')}</TableCell>
-            <TableCell>{translate('Label.MaxMaturityRating')}</TableCell>
             {isLicenseCreationEnabled && (
               <TableCell>{translate(LICENSE_TYPE_TABLE_HEADER_KEY)}</TableCell>
+            )}
+            <TableCell>{translate('Heading.Status')}</TableCell>
+            <TableCell>{translate('Label.RevenueShare')}</TableCell>
+            {!isLicenseCreationEnabled && (
+              <>
+                <TableCell>{translate('Label.MinimumAverageL7DAU')}</TableCell>
+                <TableCell>{translate('Label.MaxMaturityRating')}</TableCell>
+              </>
             )}
             <TableCell width='15%'>{translate('Label.Duration')}</TableCell>
             <TableCell />
@@ -299,6 +303,11 @@ const LicenseTable = ({ licenses, ipListingId }: LicenseTableProps) => {
                   [classes.rowForcedHover]: openMenuLicenseId === licenseId,
                 })}>
                 <TableCell>{license.name}</TableCell>
+                {isLicenseCreationEnabled && (
+                  <TableCell>
+                    {translate(getLicenseTypeTableLabelKey(license.licenseType))}
+                  </TableCell>
+                )}
                 <TableCell>
                   <LicenseStatusValue
                     visibility={license.visibility}
@@ -307,14 +316,13 @@ const LicenseTable = ({ licenses, ipListingId }: LicenseTableProps) => {
                   />
                 </TableCell>
                 <TableCell>{formatRoyaltyRate(license.royaltyRate)}</TableCell>
-                <TableCell>
-                  {translate(getDauLicenseLabelFromEnum(license.dau7DayThreshold))}
-                </TableCell>
-                <TableCell>{translate(getMaturityRatingLabel(license.maxAgeRating))}</TableCell>
-                {isLicenseCreationEnabled && (
-                  <TableCell>
-                    {translate(getLicenseTypeTableLabelKey(license.licenseType))}
-                  </TableCell>
+                {!isLicenseCreationEnabled && (
+                  <>
+                    <TableCell>
+                      {translate(getDauLicenseLabelFromEnum(license.dau7DayThreshold))}
+                    </TableCell>
+                    <TableCell>{translate(getMaturityRatingLabel(license.maxAgeRating))}</TableCell>
+                  </>
                 )}
                 <TableCell width='15%'>
                   {getDurationRangeLabel(translate, license.licenseDuration)}

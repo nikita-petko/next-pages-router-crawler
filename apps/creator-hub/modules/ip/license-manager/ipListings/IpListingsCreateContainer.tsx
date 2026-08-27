@@ -1,6 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { DauBucket, LicenseVisibility } from '@rbx/client-content-licensing-api/v1';
+import {
+  DauBucket,
+  LicenseVisibility,
+  ResellingPermission,
+} from '@rbx/client-content-licensing-api/v1';
 import { withTranslation, useTranslation } from '@rbx/intl';
 import { Button, Grid, Step, StepLabel, Stepper, Typography } from '@rbx/ui';
 import { PageLoading } from '@modules/miscellaneous/components';
@@ -16,6 +20,7 @@ import type { FormStore } from './components/IpListingForm';
 import IpListingForm from './components/IpListingForm';
 import IpListingsBreadcrumbs from './components/IpListingsBreadcrumbs';
 import type { LicenseFormData } from './components/LicenseForm';
+import { RESELL_PREFERENCE } from './components/LicenseForm';
 import { MonitorType } from './components/licenseFormTypes';
 import ReviewStep from './components/ReviewStep';
 import { useCreateIpListingMutation, useAddLicenseMutation } from './hooks/ipListings';
@@ -108,6 +113,15 @@ const IpListingsCreateContainer = () => {
           ),
           creatorDau7DayThreshold: DauBucket.None,
           countries: [],
+          licenseTerms:
+            licenseFormData.resellPreference == null
+              ? undefined
+              : {
+                  reselling:
+                    licenseFormData.resellPreference === RESELL_PREFERENCE.Yes
+                      ? ResellingPermission.Allowed
+                      : ResellingPermission.Disallowed,
+                },
         });
       }
 
@@ -250,4 +264,5 @@ const IpListingsCreateContainer = () => {
 export default withTranslation(IpListingsCreateContainer, [
   TranslationNamespace.Navigation,
   TranslationNamespace.AgreementsManager,
+  TranslationNamespace.Controls,
 ]);

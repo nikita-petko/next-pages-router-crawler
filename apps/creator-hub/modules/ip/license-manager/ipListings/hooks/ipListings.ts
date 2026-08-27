@@ -318,6 +318,7 @@ export const useAddLicenseMutation = ({
         contentStandardAnswers: params.contentStandardAnswers ?? [],
         licenseDuration: params.licenseDuration,
         licenseType: params.licenseType,
+        ...(params.licenseTerms ? { licenseTerms: params.licenseTerms } : {}),
       };
 
       return contentLicensingClient.createLicense(accountId, licenseResponse);
