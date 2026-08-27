@@ -67,6 +67,46 @@ export const getSelectedConfigureRoleTab = (
 ): ConfigureRoleTab | undefined =>
   currentTab !== undefined && availableTabs.includes(currentTab) ? currentTab : availableTabs[0];
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+type JsonResponse = {
+  json: () => Promise<unknown>;
+};
+
+type ErrorResponseBody = {
+  errors: unknown[];
+};
+
+const isJsonResponse = (value: unknown): value is JsonResponse =>
+  isRecord(value) && typeof value.json === 'function';
+
+const isErrorResponseBody = (value: unknown): value is ErrorResponseBody =>
+  isRecord(value) && Array.isArray(value.errors);
+
+export const getUserFacingErrorMessage = async (error: unknown): Promise<string | null> => {
+  const response = isRecord(error) && 'response' in error ? error.response : error;
+  if (!isJsonResponse(response)) {
+    return null;
+  }
+
+  try {
+    const responseBody = await response.json();
+    if (!isErrorResponseBody(responseBody)) {
+      return null;
+    }
+
+    const firstError = responseBody.errors[0];
+    if (!isRecord(firstError) || typeof firstError.userFacingMessage !== 'string') {
+      return null;
+    }
+
+    return firstError.userFacingMessage.trim() || null;
+  } catch {
+    return null;
+  }
+};
+
 const getConfigureRoleTabs = (
   roleId: number | undefined,
   roleRank: number | undefined,
@@ -337,9 +377,10 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
         setSelectedTab(ConfigureRoleTab.Settings);
         void refreshPermission();
         setIsCreateModalOpen(false);
-      } catch {
+      } catch (error: unknown) {
         showToast(
-          translateWithNamespace(TranslationNamespace.Organization, 'Error.SavingRoleSettings'),
+          (await getUserFacingErrorMessage(error)) ??
+            translateWithNamespace(TranslationNamespace.Organization, 'Error.SavingRoleSettings'),
           true,
         );
       } finally {
@@ -403,9 +444,10 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
         });
 
         showToast(translateWithNamespace(TranslationNamespace.Groups, 'Message.RoleUpdateSuccess'));
-      } catch {
+      } catch (error: unknown) {
         showToast(
-          translateWithNamespace(TranslationNamespace.Organization, 'Error.SavingRoleSettings'),
+          (await getUserFacingErrorMessage(error)) ??
+            translateWithNamespace(TranslationNamespace.Organization, 'Error.SavingRoleSettings'),
           true,
         );
       } finally {
