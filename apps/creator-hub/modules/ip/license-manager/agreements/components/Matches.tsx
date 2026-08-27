@@ -30,6 +30,7 @@ import {
 import { markMatchCandidateIgnored, useMatchesQuery } from '../hooks/useMatchesQuery';
 import CollectibleMatchDetailsPanelContent from './CollectibleMatchDetailsPanelContent';
 import CollectibleMatchesTable from './CollectibleMatchesTable';
+import CollectibleMatchOfferPanelContent from './CollectibleMatchOfferPanelContent';
 import ContentMaturityFilterChip from './ContentMaturityFilterChip';
 import DauRangeFilterChip, { DauRange } from './DauRangeFilterChip';
 import IpFamilyFilterChip from './IpFamilyFilterChip';
@@ -864,6 +865,7 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
             <CollectibleMatchDetailsPanelContent
               candidate={selectedCandidate}
               onClose={handleCloseButtonClick}
+              onOfferLicense={handleOfferLicense}
               onIgnored={handleMatchIgnored}
               agreementStatusFromList={matchPanelAgreementStatus}
               navigation={matchDetailsNavigation}
@@ -882,14 +884,22 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
               onPanelStateChange={handlePanelStateChange}
             />
           ))}
-        {selectedCandidate && currentMatchPanelView === MatchPanelView.Offer && (
-          <MatchOfferPanelContent
-            candidate={selectedCandidate}
-            onSuccess={handleAgreementSuccess}
-            onClose={handleCloseButtonClick}
-            source='sidebar'
-          />
-        )}
+        {selectedCandidate &&
+          currentMatchPanelView === MatchPanelView.Offer &&
+          (isCollectibleMatchesRequest ? (
+            <CollectibleMatchOfferPanelContent
+              candidate={selectedCandidate}
+              onSuccess={handleAgreementSuccess}
+              onClose={handleCloseButtonClick}
+            />
+          ) : (
+            <MatchOfferPanelContent
+              candidate={selectedCandidate}
+              onSuccess={handleAgreementSuccess}
+              onClose={handleCloseButtonClick}
+              source='sidebar'
+            />
+          ))}
       </MatchesSidePanel>
 
       {content}

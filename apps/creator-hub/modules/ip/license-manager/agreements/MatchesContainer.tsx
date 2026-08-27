@@ -199,4 +199,5 @@ export default withTranslation(MatchesContainer, [
   TranslationNamespace.Navigation,
   TranslationNamespace.AgreementsManager,
   TranslationNamespace.Creations,
+  TranslationNamespace.Controls,
 ]);

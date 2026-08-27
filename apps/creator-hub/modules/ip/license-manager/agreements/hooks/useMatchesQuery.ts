@@ -12,9 +12,9 @@ import type {
   AgreementCandidateIndexSortBy,
   AgreementCandidateIndexSortDirection,
   AgreementCandidateResponse,
+  AgreementCandidateType,
   IndexedAgreementCandidateResponse,
   ListAgreementCandidatesResponse,
-  AgreementCandidateType,
   UniverseContentMaturity,
 } from '@rbx/client-content-licensing-api/v1';
 import {

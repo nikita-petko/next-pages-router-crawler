@@ -4,11 +4,14 @@ import {
   AgreementCandidatePromotionType,
   LicenseDurationType,
   LicenseModerationStatus,
+  LicenseType,
   ModerationStatus,
   type AgreementCandidateResponse,
   type AgreementResponse,
+  type LicenseResponse,
   type ModerationResponse,
 } from '@rbx/client-content-licensing-api/v1';
+import { useFlag } from '@rbx/flags';
 import { Radio, RadioGroup } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import {
@@ -21,12 +24,16 @@ import {
   FormHelperText,
   Button,
 } from '@rbx/ui';
+import { isAvatarItemLicensingEnabled as isAvatarItemLicensingEnabledFlag } from '@generated/flags/contentLicensing';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { getResponseFromError } from '@modules/clients/utils';
 import useContentModerationMutation from '@modules/licenses/hooks/useContentModerationMutation';
 import getKeyFromModerationReason from '@modules/licenses/utils/moderationReason';
 import { Link } from '@modules/miscellaneous/components';
 import EmptyState from '@modules/miscellaneous/components/EmptyState/EmptyState';
 import { Flex } from '@modules/miscellaneous/components/Flex';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import {
@@ -165,30 +172,73 @@ interface FormData {
   feedbackText: string;
 }
 
+export interface MatchOfferPanelConfiguration {
+  applicableLicenseType: LicenseType;
+  allowConditionalOffers: boolean;
+  allowRevenueSharing: boolean;
+  allowChangeRequests: boolean;
+  showLicenseDauAndMaturityMetadata: boolean;
+}
+
+const DEFAULT_MATCH_OFFER_PANEL_CONFIGURATION: MatchOfferPanelConfiguration = {
+  applicableLicenseType: LicenseType.FullExperience,
+  allowConditionalOffers: true,
+  allowRevenueSharing: true,
+  allowChangeRequests: true,
+  showLicenseDauAndMaturityMetadata: true,
+};
+
 interface Props {
   candidate: AgreementCandidateResponse;
   onSuccess: (agreement: AgreementResponse) => void;
   onClose: () => void;
   source?: 'sidebar' | 'galleryView' | 'detailsView';
+  creationTile?: React.ReactNode;
+  creationRequest?: {
+    isPending: boolean;
+    isError: boolean;
+  };
+  noLicensesDescription?: React.ReactNode;
+  licenseFilter?: (license: LicenseResponse) => boolean;
+  noMatchingLicensesDescription?: React.ReactNode;
+  configuration?: MatchOfferPanelConfiguration;
 }
 
 /**
  * A form to allow IPH to initiate an agreement from `AgreementCandidate`
  */
 /* oxlint-disable react/react-compiler -- react-hook-form watch() is incompatible with React Compiler memoization */
-const MatchOfferPanelContent = ({ candidate, onSuccess, onClose, source }: Props) => {
+const MatchOfferPanelContent = ({
+  candidate,
+  onSuccess,
+  onClose,
+  source,
+  creationTile,
+  creationRequest,
+  noLicensesDescription,
+  licenseFilter,
+  noMatchingLicensesDescription,
+  configuration = DEFAULT_MATCH_OFFER_PANEL_CONFIGURATION,
+}: Props) => {
   const { classes } = useStyles();
-  const { translate } = useTranslation();
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
+  const { ready: isAvatarItemLicensingFlagReady, value: isAvatarItemLicensingEnabled } = useFlag(
+    isAvatarItemLicensingEnabledFlag,
+  );
   const { logEvent } = useLicenseManagerLogger();
   const { logOnce } = useLicenseManagerLoggerLogOnce();
 
-  const experienceId = Number(candidate.candidateId);
+  const usesProvidedCreation = creationRequest != null;
+  const experienceId = usesProvidedCreation ? undefined : Number(candidate.candidateId);
   const gameRequest = useDebouncedGameDetails(experienceId);
   const licensesReq = useLicenseByIpFamilyIdQuery(candidate.ipFamilyId ?? '');
   const ipFamilyReq = useIpFamilyQuery(candidate.ipFamilyId ?? undefined);
   const { settings, isFetched } = useSettings();
   const { enableIpPlatformConditionalOffers } = settings;
-  const showConditionalOfferSelection = enableIpPlatformConditionalOffers;
+  const showConditionalOfferSelection =
+    configuration.allowConditionalOffers && enableIpPlatformConditionalOffers;
 
   const { enqueueErrorSnackbar, enqueueWithDefaults } = useIpSnackbar();
 
@@ -213,8 +263,14 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose, source }: Props
     };
   }, [moderationError]);
 
-  const isPending = ipFamilyReq.isPending || licensesReq.isPending || gameRequest.isPending;
-  const hasError = ipFamilyReq.isError || licensesReq.isError || gameRequest.error;
+  const isCandidateContentPending = usesProvidedCreation
+    ? creationRequest.isPending
+    : gameRequest.isPending;
+  const hasCandidateContentError = usesProvidedCreation
+    ? creationRequest.isError
+    : !!gameRequest.error;
+  const isPending = ipFamilyReq.isPending || licensesReq.isPending || isCandidateContentPending;
+  const hasError = ipFamilyReq.isError || licensesReq.isError || hasCandidateContentError;
 
   const { control, handleSubmit, watch, setValue } = useForm<FormData>({
     defaultValues: {
@@ -227,10 +283,12 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose, source }: Props
 
   const selectedLicenseId = watch('license');
   const selectedOfferType = watch('offerType');
-  const licenses = useMemo(
+  const eligibleLicenses = useMemo(
     () =>
       licensesReq.data?.filter(
         (license) =>
+          (license.licenseType ?? LicenseType.FullExperience) ===
+            configuration.applicableLicenseType &&
           !license.archived &&
           (!license.moderationStatus ||
             license.moderationStatus === LicenseModerationStatus.Approved) &&
@@ -238,10 +296,15 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose, source }: Props
             license.licenseDuration.durationType !== LicenseDurationType.TimeLimited),
         [],
       ),
-    [licensesReq.data],
+    [configuration.applicableLicenseType, licensesReq.data],
   );
-  const selectedLicense =
-    !!selectedLicenseId && licenses?.find((license) => license.id === selectedLicenseId);
+  const licenses = useMemo(
+    () => (licenseFilter ? eligibleLicenses?.filter(licenseFilter) : eligibleLicenses),
+    [eligibleLicenses, licenseFilter],
+  );
+  const selectedLicense = selectedLicenseId
+    ? licenses?.find((license) => license.id === selectedLicenseId)
+    : undefined;
   const showLicenseTypeSelection = showConditionalOfferSelection && !!selectedLicense;
   const showFeedbackTextbox =
     showLicenseTypeSelection && selectedOfferType === AgreementCandidatePromotionType.Conditional;
@@ -261,7 +324,7 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose, source }: Props
     if (!isFetched || isPending || hasError) {
       return;
     }
-    const hasNoPerpetualLicenseOptions = !licenses || licenses.length === 0;
+    const hasNoPerpetualLicenseOptions = !eligibleLicenses || eligibleLicenses.length === 0;
     if (!hasNoPerpetualLicenseOptions) {
       return;
     }
@@ -272,7 +335,15 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose, source }: Props
         ipFamilyId: candidate.ipFamilyId ?? '',
       },
     );
-  }, [candidate.id, candidate.ipFamilyId, hasError, isFetched, isPending, licenses, logOnce]);
+  }, [
+    candidate.id,
+    candidate.ipFamilyId,
+    eligibleLicenses,
+    hasError,
+    isFetched,
+    isPending,
+    logOnce,
+  ]);
 
   const onSubmit = async (data: FormData) => {
     if (!candidate.id) {
@@ -302,7 +373,9 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose, source }: Props
       const agreement = await promoteAgreementMutation.mutateAsync({
         candidateId: candidate.id,
         licenseId: data.license,
-        enableMonetization: data.monitorType === MonitorType.MonitorAndRevshare,
+        enableMonetization: configuration.allowRevenueSharing
+          ? data.monitorType === MonitorType.MonitorAndRevshare
+          : (selectedLicense?.enableMonetization ?? false),
         ...(showLicenseTypeSelection && data.offerType != null
           ? {
               promotionType: data.offerType,
@@ -386,15 +459,30 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose, source }: Props
     );
   }
 
-  const game = gameRequest.data;
+  const game = gameRequest.data === NO_GAME_FOUND_FOR_ID ? undefined : gameRequest.data;
 
-  if (!licenses || licenses.length === 0) {
+  const hasNoMatchingLicenses =
+    noMatchingLicensesDescription != null &&
+    eligibleLicenses != null &&
+    eligibleLicenses.length > 0 &&
+    (!licenses || licenses.length === 0);
+  const noLicensesDescriptionContent =
+    noLicensesDescription ??
+    (isAvatarItemLicensingFlagReady && isAvatarItemLicensingEnabled
+      ? tPendingTranslation(
+          'In order to send license offers, you need to create at least one perpetual, full game license for this IP Family.',
+          'Empty-state description when a rights holder has no perpetual full-game license available for a Universe match offer.',
+          translationKey(
+            'Description.NoPerpetualFullGameLicensesForIpFamily',
+            TranslationNamespace.AgreementsManager,
+          ),
+        )
+      : translate('Description.NoPerpetualLicensesForIpFamily'));
+
+  if (!eligibleLicenses || eligibleLicenses.length === 0) {
     return (
       <MatchPanelLayout title={translate('Heading.NewLicenseOffer')} onClose={onClose}>
-        <EmptyState
-          size='small'
-          title=''
-          description={translate('Description.NoPerpetualLicensesForIpFamily')}>
+        <EmptyState size='small' title='' description={noLicensesDescriptionContent}>
           <Button component={Link} href={IP_LISTINGS_HREF} variant='contained' color='primaryBrand'>
             {translate('Button.CreateLicense')}
           </Button>
@@ -403,7 +491,12 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose, source }: Props
     );
   }
 
-  if (!game || game === NO_GAME_FOUND_FOR_ID) {
+  const hasLicenseOptionsError = !licenses || licenses.length === 0;
+  const licenseOptionsErrorDescription = hasNoMatchingLicenses
+    ? noMatchingLicensesDescription
+    : noLicensesDescriptionContent;
+
+  if (!usesProvidedCreation && !game) {
     return (
       <MatchPanelLayout title={translate('Heading.NewLicenseOffer')} onClose={onClose}>
         <Typography color='error'>
@@ -435,7 +528,11 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose, source }: Props
       type='submit'
       size='large'
       fullWidth
-      disabled={isExistingAgreementError(promoteAgreementMutation.error) || !!moderationError}
+      disabled={
+        hasLicenseOptionsError ||
+        isExistingAgreementError(promoteAgreementMutation.error) ||
+        !!moderationError
+      }
       loading={promoteAgreementMutation.isPending || contentModerationMutation.isPending}>
       {translate('Action.SendOffer')}
     </Button>
@@ -465,17 +562,25 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose, source }: Props
           {translate('Heading.CreationSendingAgreement')}
         </Typography>
         <div>
-          <ContentTile
-            header={game.name ?? ''}
-            subheader={
-              game.creator?.name
-                ? getCreatorDisplayName(normalizeCreatorType(game.creator.type), game.creator.name)
-                : ''
-            }
-            thumbnailTargetId={game.id ?? 0}
-            type={ContentType.Universe}
-            link={game.rootPlaceId != null ? EXTERNAL_EXPERIENCE_HREF(game.rootPlaceId) : undefined}
-          />
+          {creationTile ??
+            (game && (
+              <ContentTile
+                header={game.name ?? ''}
+                subheader={
+                  game.creator?.name
+                    ? getCreatorDisplayName(
+                        normalizeCreatorType(game.creator.type),
+                        game.creator.name,
+                      )
+                    : ''
+                }
+                thumbnailTargetId={game.id ?? 0}
+                type={ContentType.Universe}
+                link={
+                  game.rootPlaceId != null ? EXTERNAL_EXPERIENCE_HREF(game.rootPlaceId) : undefined
+                }
+              />
+            ))}
         </div>
       </div>
 
@@ -505,13 +610,16 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose, source }: Props
             control={control}
             rules={{ required: translate('Label.FieldIsRequired') }}
             render={({ field, fieldState: { error } }) => (
-              <FormControl fullWidth error={!!error}>
+              <FormControl fullWidth error={hasLicenseOptionsError || !!error}>
                 <LicenseSelect
                   {...field}
                   id='license-select'
                   label={translate('Label.License')}
-                  licenses={licenses}
-                  disabled={licenses.length === 0}
+                  licenses={licenses ?? []}
+                  disabled={hasLicenseOptionsError}
+                  error={hasLicenseOptionsError}
+                  helperText={hasLicenseOptionsError ? licenseOptionsErrorDescription : undefined}
+                  showDauAndMaturityMetadata={configuration.showLicenseDauAndMaturityMetadata}
                 />
                 {error && <FormHelperText>{error.message}</FormHelperText>}
               </FormControl>
@@ -616,57 +724,65 @@ const MatchOfferPanelContent = ({ candidate, onSuccess, onClose, source }: Props
         </div>
       )}
 
-      {selectedLicense && selectedLicense.royaltyRate !== 0 && (
-        <div>
-          <Typography variant='h6' component='h2' className={classes.mediumBottomMargin}>
-            {translate('Heading.RevenueSharingOptions')}
-          </Typography>
+      {configuration.allowRevenueSharing &&
+        selectedLicense &&
+        selectedLicense.royaltyRate !== 0 && (
+          <div>
+            <Typography variant='h6' component='h2' className={classes.mediumBottomMargin}>
+              {translate('Heading.RevenueSharingOptions')}
+            </Typography>
 
-          <Controller
-            name='monitorType'
-            control={control}
-            rules={{ required: translate('Error.PleaseSelectType') }}
-            render={({ field, fieldState: { error } }) => (
-              <FormControl component='fieldset' error={!!error}>
-                <RadioGroup
-                  value={field.value ?? ''}
-                  onValueChange={(value) => field.onChange(monitorTypeFromRadioValue(value))}
-                  size='Small'>
-                  <Radio
-                    value={MonitorType.MonitorAndRevshare}
-                    label={foundationRadioLabel(
-                      <>
-                        <Typography variant='body1' component='div' className={classes.radioOption}>
-                          <strong>{translate('Label.MonetizeOnActivation')}</strong>
-                        </Typography>
-                        <Typography variant='body2' component='div' color='secondary'>
-                          {translate('Description.MonetizeOnActivation')}
-                        </Typography>
-                      </>,
-                    )}
-                  />
-                  <Radio
-                    value={MonitorType.MonitorOnly}
-                    label={foundationRadioLabel(
-                      <>
-                        <Typography variant='body1' component='div' className={classes.radioOption}>
-                          <strong>{translate('Label.MonetizeLater')}</strong>
-                        </Typography>
-                        <Typography variant='body2' component='div' color='secondary'>
-                          {translate('Description.MonetizeLater')}
-                        </Typography>
-                      </>,
-                    )}
-                  />
-                </RadioGroup>
-                {error && <FormHelperText error>{error.message}</FormHelperText>}
-              </FormControl>
-            )}
-          />
-        </div>
-      )}
+            <Controller
+              name='monitorType'
+              control={control}
+              rules={{ required: translate('Error.PleaseSelectType') }}
+              render={({ field, fieldState: { error } }) => (
+                <FormControl component='fieldset' error={!!error}>
+                  <RadioGroup
+                    value={field.value ?? ''}
+                    onValueChange={(value) => field.onChange(monitorTypeFromRadioValue(value))}
+                    size='Small'>
+                    <Radio
+                      value={MonitorType.MonitorAndRevshare}
+                      label={foundationRadioLabel(
+                        <>
+                          <Typography
+                            variant='body1'
+                            component='div'
+                            className={classes.radioOption}>
+                            <strong>{translate('Label.MonetizeOnActivation')}</strong>
+                          </Typography>
+                          <Typography variant='body2' component='div' color='secondary'>
+                            {translate('Description.MonetizeOnActivation')}
+                          </Typography>
+                        </>,
+                      )}
+                    />
+                    <Radio
+                      value={MonitorType.MonitorOnly}
+                      label={foundationRadioLabel(
+                        <>
+                          <Typography
+                            variant='body1'
+                            component='div'
+                            className={classes.radioOption}>
+                            <strong>{translate('Label.MonetizeLater')}</strong>
+                          </Typography>
+                          <Typography variant='body2' component='div' color='secondary'>
+                            {translate('Description.MonetizeLater')}
+                          </Typography>
+                        </>,
+                      )}
+                    />
+                  </RadioGroup>
+                  {error && <FormHelperText error>{error.message}</FormHelperText>}
+                </FormControl>
+              )}
+            />
+          </div>
+        )}
 
-      {selectedLicense && (
+      {configuration.allowChangeRequests && selectedLicense && (
         <div>
           <Typography variant='h6' component='h2' gutterBottom>
             {translate('Label.ChangeRequests')}

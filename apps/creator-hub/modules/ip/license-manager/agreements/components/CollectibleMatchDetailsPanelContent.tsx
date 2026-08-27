@@ -18,6 +18,7 @@ import { useTranslation, useTranslationWithNamespace } from '@rbx/intl';
 import { Alert, Button, CircularProgress, Typography } from '@rbx/ui';
 import { isIgnoreMatchEnabled as isIgnoreMatchEnabledFlag } from '@generated/flags/contentLicensing';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import Flex from '@modules/miscellaneous/components/Flex';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { KeyValuePair, KeyValuePairContainer } from '../../components/KeyValuePair';
@@ -52,6 +53,7 @@ type CollectibleMatchCandidate = AgreementCandidateResponse &
 interface CollectibleMatchDetailsPanelContentProps {
   candidate: CollectibleMatchCandidate;
   onClose: () => void;
+  onOfferLicense: () => void;
   /** Called after a match is successfully ignored so the parent can prune and advance. */
   onIgnored?: () => void;
   agreementStatusFromList?: MatchPanelAgreementStatus;
@@ -65,6 +67,7 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
 > = ({
   candidate,
   onClose,
+  onOfferLicense,
   onIgnored,
   agreementStatusFromList,
   navigation,
@@ -75,6 +78,9 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
   const { translate } = translation;
   const { translate: translateCreations } = useTranslationWithNamespace(
     TranslationNamespace.Creations,
+  );
+  const { translate: translateControls } = useTranslationWithNamespace(
+    TranslationNamespace.Controls,
   );
   const { tPendingTranslation } = useTranslationWrapper(translation);
   const { logEvent } = useLicenseManagerLogger();
@@ -273,12 +279,12 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
     );
   } else {
     primaryCta = (
-      // TODO(MUS-2670): Implement offering a license for Collectible matches.
       <Button
         variant='contained'
         color='primaryBrand'
         size='large'
-        className='fill [white-space:nowrap] text-align-x-center'>
+        className='fill [white-space:nowrap] text-align-x-center'
+        onClick={onOfferLicense}>
         {translate('Action.OfferLicense')}
       </Button>
     );
@@ -308,6 +314,16 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
   const description = presentation.description?.trim()
     ? presentation.description
     : translate('Label.NoDescriptionAvailable');
+  const limitedLabel = tPendingTranslation(
+    'Limited',
+    'Label indicating whether an avatar marketplace item has a limited supply.',
+    translationKey('Label.Limited', TranslationNamespace.AgreementsManager),
+  );
+  const resellAllowedLabel = tPendingTranslation(
+    'Resell allowed',
+    'Label indicating whether owners may resell a limited avatar marketplace item.',
+    translationKey('Label.ResellAllowed', TranslationNamespace.AgreementsManager),
+  );
   const statusColumn: AgreementStatusesColumnProps = {
     statusByAgreementId:
       agreementId && statusFromList !== undefined ? { [agreementId]: statusFromList } : {},
@@ -344,6 +360,16 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
             label={translate('Label.Type')}
             value={getCollectibleItemTypeLabel(details, translateCreations, tPendingTranslation)}
           />
+          <KeyValuePair
+            label={limitedLabel}
+            value={translateControls(presentation.isLimited ? 'Action.Yes' : 'Action.No')}
+          />
+          {presentation.isLimited && (
+            <KeyValuePair
+              label={resellAllowedLabel}
+              value={translateControls(presentation.isResellAllowed ? 'Action.Yes' : 'Action.No')}
+            />
+          )}
           <KeyValuePair
             label={translate('Label.DetectedIpFamily')}
             value={candidate.ipFamilyName}

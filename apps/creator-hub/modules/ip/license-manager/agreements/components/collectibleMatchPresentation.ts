@@ -1,4 +1,8 @@
-import { ItemTargetType } from '@rbx/client-marketplace-items-api/v1';
+import {
+  CollectibleItemType,
+  ItemTargetType,
+  ResaleRestriction,
+} from '@rbx/client-marketplace-items-api/v1';
 import { AssetThumbnailSize, BundleThumbnailSize, ThumbnailTypes } from '@rbx/thumbnails';
 import { getCreatorDisplayName, normalizeCreatorType } from '../../utils/creatorName';
 import type { CollectibleMatchItemDetails } from '../hooks/useCollectibleMatchItemDetails';
@@ -7,6 +11,8 @@ export interface CollectibleMatchPresentation {
   creatorDisplayName: string;
   description?: string;
   isBundle: boolean;
+  isLimited: boolean;
+  isResellAllowed: boolean;
   name?: string;
   price?: number | null;
   size: AssetThumbnailSize | BundleThumbnailSize;
@@ -39,6 +45,8 @@ export const getCollectibleMatchPresentation = (
     creatorDisplayName: getCreatorDisplayName(creatorType, creatorName),
     description: catalogItem?.description,
     isBundle,
+    isLimited: collectible.itemType === CollectibleItemType.NUMBER_1,
+    isResellAllowed: collectible.resaleRestriction === ResaleRestriction.NUMBER_1,
     name,
     price: collectible.price ?? catalogItem?.price,
     // eslint-disable-next-line no-underscore-dangle -- Swagger generated enum has underscore

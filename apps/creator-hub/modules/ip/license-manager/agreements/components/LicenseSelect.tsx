@@ -31,9 +31,14 @@ interface LicenseOptionContentProps {
   license: LicenseResponse;
   /** Shows a simplified version of the license content */
   simple?: boolean;
+  showDauAndMaturityMetadata?: boolean;
 }
 
-const LicenseOptionContent: React.FC<LicenseOptionContentProps> = ({ license, simple }) => {
+const LicenseOptionContent: React.FC<LicenseOptionContentProps> = ({
+  license,
+  simple,
+  showDauAndMaturityMetadata = true,
+}) => {
   const { classes } = useStyles();
   const { translate } = useTranslation();
 
@@ -49,7 +54,7 @@ const LicenseOptionContent: React.FC<LicenseOptionContentProps> = ({ license, si
           })}
         </Typography>
       </div>
-      {!simple && (
+      {!simple && showDauAndMaturityMetadata && (
         <div className={classes.detailsRow}>
           <Typography variant='body2' color='secondary'>
             {translate('Label.MinimumDAUWithValue', {
@@ -79,11 +84,16 @@ function isSelectableLicense(
 function getLicenseMenuItemDescription(
   license: LicenseResponse,
   translate: UseTranslationResult['translate'],
+  showDauAndMaturityMetadata: boolean,
 ): string {
+  const revenueShareDescription = translate('Label.RevenueShareWithValue', {
+    value: formatRoyaltyRate(license.royaltyRate),
+  });
+  if (!showDauAndMaturityMetadata) {
+    return revenueShareDescription;
+  }
   return [
-    translate('Label.RevenueShareWithValue', {
-      value: formatRoyaltyRate(license.royaltyRate),
-    }),
+    revenueShareDescription,
     translate('Label.MinimumDAUWithValue', {
       value: translate(getDauLicenseLabelFromEnum(license.dau7DayThreshold)),
     }),
@@ -97,6 +107,8 @@ interface LicenseSelectProps extends Omit<TSelectProps, 'children' | 'onChange' 
   licenses: LicenseResponse[];
   /** When true, renders with Foundation UI `Dropdown` instead of MUI `Select`. */
   useFoundationUiComponents?: boolean;
+  /** Controls whether options show Minimum DAU and Maximum maturity metadata. */
+  showDauAndMaturityMetadata?: boolean;
   onChange?: BridgedSelectChangeHandler;
   onBlur?: BridgedSelectBlurHandler;
   'data-testId'?: string;
@@ -108,6 +120,7 @@ const LicenseSelect = React.forwardRef<HTMLDivElement, LicenseSelectProps>(
     {
       licenses,
       useFoundationUiComponents = false,
+      showDauAndMaturityMetadata = true,
       value,
       onChange,
       onBlur,
@@ -171,7 +184,11 @@ const LicenseSelect = React.forwardRef<HTMLDivElement, LicenseSelectProps>(
                     key={license.id}
                     value={license.id}
                     title={license.name ?? ''}
-                    description={getLicenseMenuItemDescription(license, translate)}
+                    description={getLicenseMenuItemDescription(
+                      license,
+                      translate,
+                      showDauAndMaturityMetadata,
+                    )}
                   />
                 ))
               ) : (
@@ -214,7 +231,10 @@ const LicenseSelect = React.forwardRef<HTMLDivElement, LicenseSelectProps>(
         {selectableLicenses.length > 0 ? (
           selectableLicenses.map((license) => (
             <MuiMenuItem key={license.id} value={license.id}>
-              <LicenseOptionContent license={license} />
+              <LicenseOptionContent
+                license={license}
+                showDauAndMaturityMetadata={showDauAndMaturityMetadata}
+              />
             </MuiMenuItem>
           ))
         ) : (
