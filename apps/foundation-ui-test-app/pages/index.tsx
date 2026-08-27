@@ -5,6 +5,10 @@ import { useRouter } from "next/router";
 
 import TestAppMetaLayout from "@modules/components/layouts/TestAppMetaLayout";
 import {
+  Accordion,
+  AccordionItem,
+  AccordionItemContent,
+  AccordionItemTrigger,
   Alert,
   Button,
   Card,
@@ -124,18 +128,58 @@ const TestPage = () => {
   return (
     <div className="flex flex-col items-center justify-center min-height-[100vh]">
       <div className="flex flex-col items-center justify-center width-fit">
-        <Card title="Foundation Test App" variant="Emphasis" leading={<Icon name="icon-filled-studio" />}>
+        <Card
+          title="Foundation Test App"
+          variant="Emphasis"
+          leading={<Icon name="icon-filled-studio" />}
+        >
           {testDynamicComponent && (
             <div className="margin-bottom-small">
               <TestDynamicComponent />
             </div>
           )}
 
-          <Divider className="self-stretch" />
-          <span className="text-body-large margin-y-small text-align-center">
-            Test Query: {testQuery}
-          </span>
-          <Divider className="self-stretch" />
+          <Accordion size="Small" hasDivider>
+            <AccordionItem defaultOpen>
+              <AccordionItemTrigger>
+                <span className="text-label-large content-system-warning">
+                  Important Information
+                </span>
+              </AccordionItemTrigger>
+              <AccordionItemContent>
+                <span className="text-body-large">
+                  Set the following query parameters for testing:
+                  <ul className="margin-top-xsmall">
+                    <li>
+                      <code className="content-system-neutral">testQuery</code>: Set a value
+                      to display in the accordion content.
+                    </li>
+                    <li>
+                      <code className="content-system-neutral">testDynamicImport</code>: Set
+                      to <code className="content-system-emphasis">true</code> to test dynamic
+                      import.
+                    </li>
+                    <li>
+                      <code className="content-system-neutral">testDynamicComponent</code>:
+                      Set to <code className="content-system-emphasis">true</code> to test
+                      dynamic component.
+                    </li>
+                  </ul>
+                </span>
+              </AccordionItemContent>
+            </AccordionItem>
+
+            <AccordionItem>
+              <AccordionItemTrigger className="text-label-medium">
+                Test Query
+              </AccordionItemTrigger>
+              <AccordionItemContent>
+                <span className="text-body-large margin-y-small text-align-center">
+                  {testQuery}
+                </span>
+              </AccordionItemContent>
+            </AccordionItem>
+          </Accordion>
 
           <TextInput
             id="test-id"

@@ -1754,6 +1754,9 @@
 .content-system-emphasis {
   color: var(--color-system-emphasis);
 }
+.content-system-neutral {
+  color: var(--color-system-neutral);
+}
 .content-system-success {
   color: var(--color-system-success);
 }
