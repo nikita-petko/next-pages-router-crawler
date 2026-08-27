@@ -21,6 +21,7 @@ type GroupManagementProviderProps = PropsWithChildren<{
   surface: GroupManagementSurface;
   navigation: GroupManagementNavigation;
   showToast: (message: string, isError?: boolean) => void;
+  isUnified?: boolean;
   studio?: GroupManagementStudio;
   unifiedLogger?: GroupManagementLogger;
 }>;
@@ -31,6 +32,7 @@ const GroupManagementProvider: FunctionComponent<GroupManagementProviderProps> =
   surface,
   navigation,
   showToast,
+  isUnified = true,
   studio,
   unifiedLogger,
   children,
@@ -74,8 +76,11 @@ const GroupManagementProvider: FunctionComponent<GroupManagementProviderProps> =
     setIsOrganizationLoading(true);
 
     try {
-      if (!groupId) {
+      if (!groupId || !isUnified) {
         setOrganization(null);
+        setPermissions(null);
+        setRolePermissions(null);
+        setIsOwner(false);
         return;
       }
 
@@ -95,7 +100,7 @@ const GroupManagementProvider: FunctionComponent<GroupManagementProviderProps> =
     } finally {
       setIsOrganizationLoading(false);
     }
-  }, [groupId, getPermissions]);
+  }, [groupId, isUnified, getPermissions]);
 
   const refreshOrganization = useCallback(() => {
     setIsOrganizationRefreshRequired(true);
