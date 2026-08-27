@@ -84,6 +84,7 @@ import {
 import { getCustomDashboardBreakdownDimensions } from '../utils/breakdownDimensions';
 import { chartTileToRenderConfig } from '../utils/chartTypeMapping';
 import { resolveDashboardPageTimeRange } from '../utils/dashboardPageTimeRange';
+import { resolveDefaultChartAggregation } from '../utils/resolveDefaultChartAggregation';
 import {
   resolveSupportedSummaryCardAggregation,
   SUMMARY_CARD_TIME_SERIES_GRANULARITY,
@@ -116,6 +117,16 @@ export type SynthesisUnsupportedItem = {
   readonly message: string;
 };
 
+export type SynthesisWarning = {
+  readonly tileId: TileId;
+  readonly kind:
+    | 'degraded-aggregation'
+    | 'dropped-period-over-period-overlay'
+    | 'dropped-chart-aggregation'
+    | 'over-cap-summary-cards';
+  readonly message: string;
+};
+
 export type ChartTitleResolution = {
   readonly formatSmoothingTitleLabel: (metricName: string) => string;
   readonly translateTitleKey: (key: TranslationKey) => string;
@@ -145,6 +156,7 @@ export type SynthesizedChartEntry = {
 export type SynthesizeResult = {
   readonly pageConfig: CreatorAnalyticsUntabbedPageConfig;
   readonly unsupportedItems: ReadonlyArray<SynthesisUnsupportedItem>;
+  readonly warnings: ReadonlyArray<SynthesisWarning>;
   /** Configured summary cards in render order; empty rows are pruned. */
   readonly summaries: ReadonlyArray<SynthesizedSummaryEntry>;
   /** Configured chart tiles preserved in row order; empty rows are pruned. */
@@ -768,6 +780,22 @@ function synthesizeChartRow(
       ctx.unsupported.push(outcome.reason);
       return;
     }
+    // Warn only for true aggregation overrides. The write path stamps a
+    // default via resolveDefaultChartAggregation; that value is not a
+    // user-facing override and should not surface as a dropped-fidelity warning.
+    const primaryMetric = getPrimaryChartMetric(tile)?.metric;
+    const defaultAggregation =
+      primaryMetric !== undefined ? resolveDefaultChartAggregation(primaryMetric) : undefined;
+    if (
+      tile.dataSpec.aggregation !== undefined &&
+      tile.dataSpec.aggregation !== defaultAggregation
+    ) {
+      ctx.warnings.push({
+        tileId: tile.tileId,
+        kind: 'dropped-chart-aggregation',
+        message: `Chart aggregation "${tile.dataSpec.aggregation}" is not yet supported by the renderer and was dropped.`,
+      });
+    }
     components.push(outcome.component);
     rowEntries.push({ tileId: tile.tileId, component: outcome.component });
   });
@@ -778,12 +806,6 @@ function synthesizeChartRow(
   if (columnCount === MAX_TILES_PER_ROW) {
     return {
       type: RAQIV2SpecialLayoutType.TwoPerRowLayout,
-      items: components,
-    };
-  }
-  if (components.length > 1) {
-    return {
-      type: RAQIV2SpecialLayoutType.RowLayout,
       items: components,
     };
   }
@@ -798,7 +820,15 @@ function synthesizeSummaryRow(
   ctx: SynthesisContext,
 ): RAQIV2UIComponent | null {
   const components: AnalyticsSummaryCardConfig[] = [];
-  summaries.slice(0, MAX_SUMMARY_CARDS_PER_DASHBOARD).forEach((tile) => {
+  const cappedSummaries = summaries.slice(0, MAX_SUMMARY_CARDS_PER_DASHBOARD);
+  if (summaries.length > MAX_SUMMARY_CARDS_PER_DASHBOARD) {
+    ctx.warnings.push({
+      tileId: summaries[MAX_SUMMARY_CARDS_PER_DASHBOARD]?.tileId ?? 'over-cap',
+      kind: 'over-cap-summary-cards',
+      message: `Dashboard has ${summaries.length} summary cards; only the first ${MAX_SUMMARY_CARDS_PER_DASHBOARD} are rendered.`,
+    });
+  }
+  cappedSummaries.forEach((tile) => {
     const outcome = synthesizeWithCache(
       tile,
       ctx.tileCache?.summaryTiles,
@@ -808,6 +838,21 @@ function synthesizeSummaryRow(
     if (outcome.kind === 'unsupported') {
       ctx.unsupported.push(outcome.reason);
       return;
+    }
+    if (outcome.degradedAggregation) {
+      ctx.warnings.push({
+        tileId: tile.tileId,
+        kind: 'degraded-aggregation',
+        message: `Summary card aggregation "${tile.aggregation}" is not fully supported by the renderer; degraded to Total.`,
+      });
+    }
+    if (tile.overlays?.periodOverPeriod) {
+      ctx.warnings.push({
+        tileId: tile.tileId,
+        kind: 'dropped-period-over-period-overlay',
+        message:
+          'Period-over-period overlays are not yet supported on summary cards and were dropped.',
+      });
     }
     components.push(outcome.component);
     ctx.summaries.push({ tileId: tile.tileId, component: outcome.component });
@@ -823,6 +868,7 @@ function synthesizeSummaryRow(
 
 type SynthesisContext = {
   readonly unsupported: SynthesisUnsupportedItem[];
+  readonly warnings: SynthesisWarning[];
   readonly summaries: SynthesizedSummaryEntry[];
   readonly chartRows: SynthesizedChartEntry[][];
   readonly tileCache?: SynthesisTileCache;
@@ -836,10 +882,12 @@ function makeContext(
   chartTitleResolution: ChartTitleResolution | undefined,
 ): SynthesisContext {
   const unsupported: SynthesisUnsupportedItem[] = [];
+  const warnings: SynthesisWarning[] = [];
   const summaries: SynthesizedSummaryEntry[] = [];
   const chartRows: SynthesizedChartEntry[][] = [];
   return {
     unsupported,
+    warnings,
     summaries,
     chartRows,
     tileCache,
@@ -922,6 +970,7 @@ export function synthesize(
   return {
     pageConfig,
     unsupportedItems: ctx.unsupported,
+    warnings: ctx.warnings,
     summaries: ctx.summaries,
     chartRows: ctx.chartRows,
   };

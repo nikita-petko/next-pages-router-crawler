@@ -171,7 +171,7 @@ function stabilizePageConfig(
     defaultFilters: reuseValueIfEqual(previous.defaultFilters, next.defaultFilters),
     breakdownDimensions: reuseValueIfEqual(previous.breakdownDimensions, next.breakdownDimensions),
     defaultBreakdown: reuseValueIfEqual(previous.defaultBreakdown, next.defaultBreakdown),
-    granularity: reuseValueIfEqual(previous.granularity, next.granularity),
+    defaultGranularity: reuseValueIfEqual(previous.defaultGranularity, next.defaultGranularity),
     // Keep a stable `body` identity across renders when the rendered layout is
     // unchanged so body consumers (and their children) don't needlessly
     // re-render when an unrelated part of the config changes (Finding #17).

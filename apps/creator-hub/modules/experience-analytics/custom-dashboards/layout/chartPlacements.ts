@@ -70,38 +70,35 @@ const chartTilesFromChildren = (
     : null;
 };
 
-function assertCanonicalColumnCount(
-  columnCount: number,
-): asserts columnCount is CustomDashboardChartRowColumnCount {
-  if (columnCount !== 1 && columnCount !== MAX_TILES_PER_ROW) {
-    throw new Error(
-      `Malformed dashboard layout: chart row columnCount must be 1 or ${MAX_TILES_PER_ROW}, received ${columnCount}.`,
-    );
-  }
-}
-
 /**
  * Canonical chart-row normalization. A chart "row" may be authored as a Grid
  * (which declares its own column count), or as a Flex/Stack container (where the
  * column count is implied by the tile count). All three container kinds funnel
  * through here so a 2-column row is represented identically — as a 2-column Grid
- * row in the layout model — regardless of the source container type. Malformed
- * column counts or empty rows fail loudly rather than silently mis-parsing.
+ * row in the layout model — regardless of the source container type.
+ *
+ * Malformed column counts are clamped to the valid range (1 or MAX_TILES_PER_ROW)
+ * and empty rows are skipped rather than throwing, so synthesis can fulfill its
+ * "never throws on any input" contract (C3) even for corrupt/hand-edited docs.
  */
 function normalizeChartTilesToRows(
   tiles: ReadonlyArray<ChartTileConfig>,
   columnCount: CustomDashboardChartRowColumnCount,
 ): ReadonlyArray<CustomDashboardChartRow> {
-  assertCanonicalColumnCount(columnCount);
   if (tiles.length === 0) {
-    throw new Error('Malformed dashboard layout: a chart row must contain at least one tile.');
+    return [];
   }
-  if (columnCount === 1) {
-    return tiles.map((tile) => ({ columnCount, tiles: [tile] }));
+  const canonicalColumnCount: CustomDashboardChartRowColumnCount =
+    columnCount === 1 ? 1 : MAX_TILES_PER_ROW;
+  if (canonicalColumnCount === 1) {
+    return tiles.map((tile) => ({ columnCount: canonicalColumnCount, tiles: [tile] }));
   }
   const rows: CustomDashboardChartRow[] = [];
   for (let index = 0; index < tiles.length; index += MAX_TILES_PER_ROW) {
-    rows.push({ columnCount, tiles: tiles.slice(index, index + MAX_TILES_PER_ROW) });
+    rows.push({
+      columnCount: canonicalColumnCount,
+      tiles: tiles.slice(index, index + MAX_TILES_PER_ROW),
+    });
   }
   return rows;
 }
@@ -117,7 +114,9 @@ function deriveChartRowColumnCount(
   chartTiles: ReadonlyArray<ChartTileConfig>,
 ): CustomDashboardChartRowColumnCount {
   if (node.type === 'Grid') {
-    return node.columnCount;
+    // Clamp to valid range so a malformed columnCount (e.g. 0 or 3) doesn't
+    // propagate; normalizeChartTilesToRows will then produce canonical rows.
+    return node.columnCount === 1 ? 1 : MAX_TILES_PER_ROW;
   }
   return chartTiles.length > 1 ? MAX_TILES_PER_ROW : 1;
 }
