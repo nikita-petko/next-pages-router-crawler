@@ -159,13 +159,12 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
         ];
       }
       // Variant 4: There is no deposit for this game and the user has the permission level to
-      // pay for it.
-      // If the game is Public and above the engagement threshold, we add greater emphasis with
-      // the button styling and the addition of a banner
+      // pay for it. Pay always uses Emphasis; the upsell banner is still gated on being
+      // published and above the engagement threshold.
       const paymentButton = (
         <Button
           key='cta'
-          variant={!isBelowThreshold && isPublished ? 'Emphasis' : 'Standard'}
+          variant='Emphasis'
           size='Small'
           onClick={() => setIsDialogOpen(true)}
           isDisabled={!canSubmitPublishingFee || !canPay}

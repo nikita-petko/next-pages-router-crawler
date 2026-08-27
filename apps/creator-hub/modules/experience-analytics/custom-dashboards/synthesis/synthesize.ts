@@ -226,8 +226,9 @@ function chartTileTitleRevision(
   if (!chartTitleResolution) {
     return undefined;
   }
-  const metricKey = getPrimaryChartMetric(tile)?.metric.metricKey;
-  const metric = metricKey && isNumericUIMetric(metricKey) ? metricKey : null;
+  const primaryMetric = getPrimaryChartMetric(tile);
+  const primaryMetricKey = primaryMetric ? getPrimaryMetricKey(primaryMetric.metric) : null;
+  const metric = primaryMetricKey ? tryResolveMetric(primaryMetricKey) : null;
   const titleMetric = metric ? (getBaseMetricFromL7(metric) ?? metric) : null;
   const metricDisplayName = titleMetric
     ? chartTitleResolution.translateTitleKey(
