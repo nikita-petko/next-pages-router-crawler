@@ -93,7 +93,7 @@ const ClientSessionBrowserTable: FC<ClientSessionBrowserTableProps> = ({
         translationKey('Label.ClientSessionBrowserDevice', TranslationNamespace.ServerManagement),
       ),
       sessionStart: tPendingTranslation(
-        'Session start',
+        'Session start (UTC)',
         'Column heading for when a client session started.',
         translationKey(
           'Label.ClientSessionBrowserSessionStart',

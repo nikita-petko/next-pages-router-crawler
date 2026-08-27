@@ -28,6 +28,7 @@ export const CLIENT_SESSION_START_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOption
   minute: '2-digit',
   month: 'short',
   year: 'numeric',
+  timeZone: 'UTC',
 };
 
 export const CLIENT_SESSION_DURATION_FORMATTING_SPEC: TFormattingSpec = {
@@ -80,10 +81,10 @@ export const formatClientSessionStartTime = (
 ): string =>
   startedTime == null
     ? MISSING_VALUE_PLACEHOLDER
-    : dateTimeFormatter(translationDependencies.locale).getCustomDateTime(
-        startedTime,
-        CLIENT_SESSION_START_TIME_FORMAT_OPTIONS,
-      );
+    : dateTimeFormatter(translationDependencies.locale).getCustomDateTime(startedTime, {
+        ...CLIENT_SESSION_START_TIME_FORMAT_OPTIONS,
+        timeZoneName: 'short',
+      });
 
 export const formatClientSessionDuration = (
   durationMilliseconds: number | null,
