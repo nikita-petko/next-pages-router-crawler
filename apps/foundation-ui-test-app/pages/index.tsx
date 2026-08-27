@@ -121,44 +121,42 @@ const TestPage = () => {
   }
 
   return (
-    <>
-      {testDynamicComponent && <TestDynamicComponent />}
+    <div className="flex flex-col items-center justify-center min-height-[100vh]">
+      <div className="flex flex-col items-center justify-center width-fit">
+        {testDynamicComponent && <div className="margin-bottom-small"><TestDynamicComponent /></div>}
 
-      <div className="flex flex-col items-center justify-center min-height-[100vh]">
-        <div className="flex flex-col items-center justify-center width-fit">
-          <span className="text-heading-large font-bold margin-bottom-medium text-align-x-center">
-            Foundation Test App
-          </span>
-          <Divider className="self-stretch" />
-          <span className="text-body-large margin-y-small text-align-center">
-            Test Query: {testQuery}
-          </span>
-          <Divider className="self-stretch" />
+        <span className="text-heading-large font-bold margin-bottom-medium text-align-x-center">
+          Foundation Test App
+        </span>
+        <Divider className="self-stretch" />
+        <span className="text-body-large margin-y-small text-align-center">
+          Test Query: {testQuery}
+        </span>
+        <Divider className="self-stretch" />
 
-          <TextInput
-            id="test-id"
-            label="Test Dialog Content"
-            className="margin-top-small"
-            variant="Standard"
-            onChange={(e) => setText(e.target.value)}
-          />
+        <TextInput
+          id="test-id"
+          label="Test Dialog Content"
+          className="margin-top-small"
+          variant="Standard"
+          onChange={(e) => setText(e.target.value)}
+        />
 
-          <Button
-            variant="Emphasis"
-            onClick={handleClickOpen}
-            className="margin-top-small"
-          >
-            Test Button
-          </Button>
-          <TestDialog
-            title="Test Dialog"
-            content={text}
-            open={dialogOpen}
-            handleClose={handleClose}
-          />
-        </div>
+        <Button
+          variant="Emphasis"
+          onClick={handleClickOpen}
+          className="margin-top-small"
+        >
+          Test Button
+        </Button>
+        <TestDialog
+          title="Test Dialog"
+          content={text}
+          open={dialogOpen}
+          handleClose={handleClose}
+        />
       </div>
-    </>
+    </div>
   );
 };
 
