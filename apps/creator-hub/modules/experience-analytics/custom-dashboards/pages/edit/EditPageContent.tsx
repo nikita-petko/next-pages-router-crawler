@@ -878,7 +878,7 @@ const EditPageContent: FC<EditPageContentProps> = ({
         <InternalSandboxBanner />
         <EditPageHeaderStack
           dashboardName={draftDashboardName}
-          createdByUsername={createdByDisplayName}
+          createdByDisplayName={createdByDisplayName}
           hasUnsavedChanges={canMutateDashboards && hasUnsavedChanges}
           isSaving={isSaving}
           saveError={saveError}

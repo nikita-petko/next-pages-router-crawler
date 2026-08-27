@@ -7,7 +7,9 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import { useAuthentication } from '@modules/authentication/providers';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import CustomDashboardBreadcrumbRegistration from '../../components/CustomDashboardBreadcrumbRegistration';
-import DashboardTitleActionHeader from '../../components/DashboardTitleActionHeader';
+import DashboardTitleActionHeader, {
+  DASHBOARD_TITLE_ACTION_HEADER_ACTION_GROUP_CLASS,
+} from '../../components/DashboardTitleActionHeader';
 import InternalSandboxBanner from '../../components/InternalSandboxBanner';
 import LocalCopyBadge from '../../components/LocalCopyBadge';
 import ReadOnlyDashboardSurface from '../../components/ReadOnlyDashboardSurface';
@@ -129,7 +131,7 @@ const DashboardViewPage: FC<DashboardViewPageProps> = ({
           <InternalSandboxBanner />
           <DashboardTitleActionHeader
             title={
-              <div className='flex items-center gap-small min-width-0'>
+              <div className='flex items-center gap-small min-width-0 max-width-full'>
                 <OverflowTitle
                   as='h1'
                   text={document.name}
@@ -140,7 +142,7 @@ const DashboardViewPage: FC<DashboardViewPageProps> = ({
             }
             actions={
               <>
-                <div className='flex wrap items-center gap-small'>
+                <div className={DASHBOARD_TITLE_ACTION_HEADER_ACTION_GROUP_CLASS}>
                   {canMutateDashboards ? (
                     <Button variant='Emphasis' size='Medium' onClick={handleEditDashboard}>
                       {document.hybridOrigin === 'server' && service.forkApiDashboardToLocal

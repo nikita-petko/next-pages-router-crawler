@@ -2,7 +2,9 @@ import { type FC, type KeyboardEvent, useCallback, useEffect, useRef, useState }
 import { OverflowTitle } from '@rbx/analytics-ui';
 import { Button, IconButton } from '@rbx/foundation-ui';
 import useTextFilterValidation from '@modules/experience-analytics-shared/text-filter/useTextFilterValidation';
-import DashboardTitleActionHeader from '../../../components/DashboardTitleActionHeader';
+import DashboardTitleActionHeader, {
+  DASHBOARD_TITLE_ACTION_HEADER_ACTION_GROUP_CLASS,
+} from '../../../components/DashboardTitleActionHeader';
 import {
   CustomDashboardNotAvailableError,
   CustomDashboardPermissionDeniedError,
@@ -22,7 +24,7 @@ import useEditPageTranslations from '../useEditPageTranslations';
  */
 type EditPageHeaderStackProps = {
   readonly dashboardName: string | null;
-  readonly createdByUsername: string | null;
+  readonly createdByDisplayName: string | null;
   readonly hasUnsavedChanges: boolean;
   readonly isSaving: boolean;
   readonly saveError: unknown;
@@ -65,7 +67,7 @@ function getSaveErrorLabel(
 
 const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
   dashboardName,
-  createdByUsername,
+  createdByDisplayName,
   hasUnsavedChanges,
   isSaving,
   saveError,
@@ -100,7 +102,7 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
     return () => window.clearTimeout(id);
   }, [isEditingTitle]);
 
-  const subtitle = createdByUsername !== null ? t.createdBySubtitle(createdByUsername) : null;
+  const subtitle = createdByDisplayName !== null ? t.createdBySubtitle(createdByDisplayName) : null;
   const isDashboardLoaded = dashboardName !== null;
   const {
     confirmedValue: confirmedDraftTitle,
@@ -226,13 +228,14 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
         }
         title={
           <>
-            <div className='flex items-center gap-small min-width-0'>
+            <div className='flex items-center gap-small min-width-0 max-width-full'>
               {isEditingTitle ? (
                 <input
                   ref={inputRef}
                   type='text'
+                  dir='auto'
                   aria-label={t.renameDashboardLabel}
-                  className='text-heading-large content-emphasis margin-none padding-none max-width-full bg-none stroke-none outline-none'
+                  className='text-heading-large content-emphasis margin-none padding-none max-width-full min-width-0 bg-none stroke-none outline-none'
                   // Auto-size the field to its content so the pencil stays next to
                   // the text (matching the static title) instead of the input
                   // stretching to fill the row. `ch`-based sizing is approximate
@@ -262,7 +265,7 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
                   size='Small'
                   icon='icon-regular-pencil'
                   ariaLabel={t.renameDashboardLabel}
-                  className='content-emphasis'
+                  className='content-emphasis shrink-0'
                   isDisabled={isEditingTitle}
                   onClick={startTitleEdit}
                 />
@@ -285,7 +288,7 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
         }
         actions={
           <>
-            <div className='flex wrap items-center gap-small'>
+            <div className={DASHBOARD_TITLE_ACTION_HEADER_ACTION_GROUP_CLASS}>
               <Button
                 variant='Standard'
                 size='Medium'

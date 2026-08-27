@@ -1,4 +1,4 @@
-import { type FC, useCallback, useRef, useState } from 'react';
+import { type FC, useCallback, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useQueryClient } from '@tanstack/react-query';
 import { OverflowTitle } from '@rbx/analytics-ui';
@@ -9,7 +9,9 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import DiscardChangesDialog from '@modules/miscellaneous/discard-dialog/DiscardChangesDialog';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import CustomDashboardBreadcrumbRegistration from '../../components/CustomDashboardBreadcrumbRegistration';
-import DashboardTitleActionHeader from '../../components/DashboardTitleActionHeader';
+import DashboardTitleActionHeader, {
+  DASHBOARD_TITLE_ACTION_HEADER_ACTION_GROUP_CLASS,
+} from '../../components/DashboardTitleActionHeader';
 import ReadOnlyDashboardSurface from '../../components/ReadOnlyDashboardSurface';
 import {
   CustomDashboardNotAvailableError,
@@ -21,12 +23,18 @@ import {
 } from '../../errors';
 import { customDashboardQueryKeys } from '../../hooks/customDashboardsQueryConfig';
 import {
+  type UserDisplayNamesById,
+  useUserDisplayNamesQuery,
+} from '../../hooks/useUserDisplayNamesQuery';
+import {
   useCanMutateCustomDashboards,
   useCustomDashboardService,
 } from '../../service/CustomDashboardServiceProvider';
 import useDashboardSynthesis from '../../synthesis/useDashboardSynthesis';
 import { EMPTY_DASHBOARD_CONFIG } from '../../types';
+import { resolveCreatedByDisplayName } from '../../utils/resolveCreatedByDisplayName';
 import {
+  type EditorWorkingCopy,
   attachDashboardIdToWorkingCopy,
   deleteEditorWorkingCopy,
   getEditorWorkingCopy,
@@ -112,6 +120,18 @@ function usePreviewTranslations() {
         TranslationNamespace.Analytics,
       ),
     ),
+    unknownCreatorLabel: tPendingTranslation(
+      'Unknown creator',
+      'Fallback creator name shown when the custom dashboards API does not return a username.',
+      translationKey('Label.CustomDashboards.UnknownCreator', TranslationNamespace.Analytics),
+    ),
+    createdBySubtitle: (createdBy: string) =>
+      tPendingTranslation(
+        'Created by {createdBy}',
+        'Subtitle line beneath the dashboard name in the editor header. Identifies the original author by username; the value is interpolated client-side, so the placeholder must appear verbatim.',
+        translationKey('Label.CustomDashboards.Editor.CreatedBy', TranslationNamespace.Analytics),
+        { createdBy },
+      ),
   };
 }
 
@@ -143,6 +163,8 @@ function getSaveErrorLabel(
   return t.saveErrorLabel;
 }
 
+const EMPTY_USER_DISPLAY_NAMES: UserDisplayNamesById = new Map();
+
 const DashboardPreviewPage: FC<DashboardPreviewPageProps> = ({ draftId, onBackToEditor }) => {
   const t = usePreviewTranslations();
   const router = useRouter();
@@ -152,15 +174,37 @@ const DashboardPreviewPage: FC<DashboardPreviewPageProps> = ({ draftId, onBackTo
   const publishInFlightRef = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<unknown>(null);
-  // The preview always reflects the in-memory working copy resolved from the
-  // `draftId` query param. We deliberately do not fall back to the persisted /
-  // published document: doing so renders the published config under the
-  // "Draft preview" banner for stale or direct preview links, which is
-  // misleading. Without a valid draft session there is nothing to preview.
-  const workingCopy = getEditorWorkingCopy(draftId);
+  // Snapshot the external in-memory store per route. This keeps callback
+  // dependencies stable while retaining the no-persisted-document behavior.
+  const [workingCopy, setWorkingCopy] = useState<EditorWorkingCopy | null>(() =>
+    getEditorWorkingCopy(draftId),
+  );
+  const [workingCopyDraftId, setWorkingCopyDraftId] = useState(draftId);
+  if (draftId !== workingCopyDraftId) {
+    setWorkingCopyDraftId(draftId);
+    setWorkingCopy(getEditorWorkingCopy(draftId));
+  }
   const config = workingCopy?.config ?? EMPTY_DASHBOARD_CONFIG;
   const universeId = workingCopy?.universeId;
   const synthesis = useDashboardSynthesis(config);
+  const createdByUserId = workingCopy?.createdByUserId;
+  const attributionUserIds = useMemo(
+    () => (createdByUserId !== undefined && createdByUserId > 0 ? [createdByUserId] : []),
+    [createdByUserId],
+  );
+  const userDisplayNamesQuery = useUserDisplayNamesQuery(attributionUserIds);
+  const userDisplayNamesById = userDisplayNamesQuery.isSuccess
+    ? userDisplayNamesQuery.data
+    : EMPTY_USER_DISPLAY_NAMES;
+  const createdByDisplayName = workingCopy
+    ? resolveCreatedByDisplayName({
+        createdByUserId: workingCopy.createdByUserId,
+        createdByUsername: workingCopy.createdByUsername,
+        displayNamesById: userDisplayNamesById,
+        isLookupPending: userDisplayNamesQuery.isPending,
+        unknownCreatorLabel: t.unknownCreatorLabel,
+      })
+    : null;
 
   const [isDiscardChangesDialogOpen, setIsDiscardChangesDialogOpen] = useState(false);
   const handleCloseDiscardChangesDialog = useCallback(() => {
@@ -293,14 +337,16 @@ const DashboardPreviewPage: FC<DashboardPreviewPageProps> = ({ draftId, onBackTo
                     text={workingCopy.name}
                     className='text-heading-large content-emphasis margin-none text-truncate-end'
                   />
-                  <span className='text-body-medium content-muted text-truncate-end'>
-                    {workingCopy.createdByUsername}
-                  </span>
+                  {createdByDisplayName !== null ? (
+                    <span className='text-body-medium content-muted text-truncate-end'>
+                      {t.createdBySubtitle(createdByDisplayName)}
+                    </span>
+                  ) : null}
                 </>
               }
               actions={
                 <>
-                  <div className='flex wrap items-center gap-small'>
+                  <div className={DASHBOARD_TITLE_ACTION_HEADER_ACTION_GROUP_CLASS}>
                     <Button variant='Standard' size='Medium' onClick={onBackToEditor}>
                       {t.editLabel}
                     </Button>

@@ -4948,6 +4948,9 @@
 .\[translated\:Test\.Key\] {
   translated: Test.Key;
 }
+.\[unicode-bidi\:isolate\] {
+  unicode-bidi: isolate;
+}
 .\[user-select\:text\] {
   -webkit-user-select: text;
      -moz-user-select: text;
