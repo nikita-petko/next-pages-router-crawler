@@ -99,7 +99,6 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
   const [isFree, setIsFree] = useState(false);
   const [isResellable, setIsResellable] = useState(false);
   const [originalIsResellable, setOriginalIsResellable] = useState(false);
-  const [price, setPrice] = useState<number>();
   const [priceOffset, setPriceOffset] = useState<number>();
   const [optionalPriceFloor, setOptionalPriceFloor] = useState<number>();
   const [saleLocation, setSaleLocation] = useState<SaleLocationEnum>(1);
@@ -268,10 +267,9 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
 
         setLimit(collectibleDetails?.quantityLimitPerUser);
         setInitialLimit(collectibleDetails?.quantityLimitPerUser);
-        setPrice(collectibleDetails?.price ?? undefined);
         if (collectibleDetails?.price === 0) {
           setIsFree(true);
-        } else if (!isBundle || collectiblesMetadata?.isNewBundleUIEnabled) {
+        } else {
           const dynamicPriceDataResponse =
             await itemconfigurationClient.getDynamicPriceConfiguration(collectibleItemIdValue);
           setPriceOffset(dynamicPriceDataResponse?.dynamicPriceConfiguration?.priceOffset);
@@ -334,7 +332,6 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
   }, [
     targetId,
     isBundle,
-    collectiblesMetadata?.isNewBundleUIEnabled,
     collectiblesMetadata?.isScheduledPublishingEnabled,
     isCollectible,
     setHasBeenRestocked,
@@ -347,7 +344,7 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
     } else {
       setIsSaveDisabled(false);
     }
-  }, [price, isBundle, isOnSale, itemType, collectiblesMetadata, description]);
+  }, [isBundle, isOnSale, itemType, collectiblesMetadata, description]);
 
   useEffect(() => {
     setCannotBeSold(
@@ -498,8 +495,6 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
             isLimited={isLimited}
             isOptOutRegionalPricing={isOptOutRegionalPricing}
             setIsOptOutRegionalPricing={setIsOptOutRegionalPricing}
-            price={price}
-            setPrice={setPrice}
             priceOffset={priceOffset}
             setPriceOffset={setPriceOffset}
             optionalPriceFloor={optionalPriceFloor}
@@ -557,7 +552,6 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
             quantity={quantity}
             limit={limit}
             isResellable={isResellable}
-            price={price}
             priceOffset={priceOffset}
             optionalPriceFloor={optionalPriceFloor}
             isFree={isFree}
@@ -565,7 +559,6 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
             selectedPlaces={selectedPlaces}
             name={name}
             description={description}
-            collectiblesMetadata={collectiblesMetadata}
             scheduledStartDate={scheduledStartDate}
             scheduledEndDate={scheduledEndDate}
             optOutFromRegionalPricing={isOptOutRegionalPricing}
@@ -588,7 +581,6 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
             originalIsResellable={originalIsResellable}
             optionalPriceFloor={optionalPriceFloor}
             priceOffset={priceOffset}
-            price={price}
             isFree={isFree}
             saleLocation={saleLocation}
             selectedPlaces={selectedPlaces}
@@ -646,7 +638,6 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
     targetId,
     enableItemAttributes,
     isOptOutRegionalPricing,
-    price,
     priceOffset,
     optionalPriceFloor,
     itemType,

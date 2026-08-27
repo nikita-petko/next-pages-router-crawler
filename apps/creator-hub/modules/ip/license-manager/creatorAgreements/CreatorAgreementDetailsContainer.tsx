@@ -6,6 +6,7 @@ import { StatusCodes } from '@rbx/core';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { Typography, Tabs, Tab } from '@rbx/ui';
 import { getResponseFromError } from '@modules/clients/utils';
+import { isCreatorPitchAttachmentsRequired } from '@modules/licenses/utils/creatorPitchAttachmentTypes';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { Flex } from '@modules/miscellaneous/components/Flex';
 import { ErrorPage } from '@modules/miscellaneous/error';
@@ -328,6 +329,7 @@ const CreatorAgreementDetailsContainer: FunctionComponent<
         agreementId={agreementId}
         isOpen={isPitchImageRejectedTakeActionModalOpen}
         closeModal={handlePitchImageRejectedTakeActionClose}
+        isRequired={isCreatorPitchAttachmentsRequired(license.licenseType)}
       />
     </Flex>
   );

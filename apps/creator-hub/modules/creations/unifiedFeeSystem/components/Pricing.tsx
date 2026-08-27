@@ -49,8 +49,6 @@ interface PricingProps {
   isLimited: boolean;
   isOptOutRegionalPricing?: boolean;
   setIsOptOutRegionalPricing?: (isRegionalPricingEnabled: boolean) => void;
-  price: number | undefined;
-  setPrice: (price: number) => void;
   priceOffset: number | undefined;
   setPriceOffset: (priceOffset: number) => void;
   optionalPriceFloor: number | undefined;
@@ -77,8 +75,6 @@ function Pricing(props: PricingProps) {
     isLimited,
     isOptOutRegionalPricing = false,
     setIsOptOutRegionalPricing = () => {},
-    price,
-    setPrice,
     priceOffset,
     setPriceOffset,
     optionalPriceFloor,
@@ -401,78 +397,76 @@ function Pricing(props: PricingProps) {
             </Grid>
           </Grid>
 
-          {(!isBundle || collectiblesMetadata?.isNewBundleUIEnabled) && (
-            <Grid
-              container
-              item
-              XSmall={12}
-              rowGap={2}
-              style={{ marginTop: '40px', color: 'inherit' }}>
-              <Grid item XSmall={12} Large={5} style={{ paddingRight: '64px' }}>
-                <Typography style={{ fontSize: '18px', fontWeight: '450' }}>
-                  {translate('Label.PriceConfigurations')}
-                </Typography>
-                <br />
-                <Typography variant='body2' className={styles.description}>
-                  {translate('Message.SetPrice')}
-                </Typography>
-              </Grid>
-              <Grid item XSmall={12} Large={7}>
-                <TextField
-                  id='amountAbovePriceFloor'
-                  fullWidth
-                  label={translate('Label.AmountAbovePriceFloor')}
-                  value={
-                    // oxlint-disable-next-line typescript-eslint/prefer-nullish-coalescing -- intentional falsy coalescing: 0 should render as an empty field
-                    priceOffset || ''
-                  }
-                  onChange={(event) => {
-                    const value = +event.target.value;
-                    if (value >= 0 && value <= maxCollectiblePrice) {
-                      setPriceOffset(value);
-                    }
-                  }}
-                  disabled={isFree}
-                  InputProps={{
-                    endAdornment: (
-                      <Tooltip title={translate('Message.PriceOffsetDescription')} placement='top'>
-                        <IconButton aria-label='iconbutton' className={styles.iconButton}>
-                          <InfoOutlinedIcon />
-                        </IconButton>
-                      </Tooltip>
-                    ),
-                  }}
-                />
-
-                <TextField
-                  id='price floor'
-                  fullWidth
-                  label={translate('Label.DoNotPriceBelow')}
-                  value={
-                    // oxlint-disable-next-line typescript-eslint/prefer-nullish-coalescing -- intentional falsy coalescing: 0 should render as an empty field
-                    optionalPriceFloor || ''
-                  }
-                  onChange={(event) => {
-                    const value = +event.target.value;
-                    if (value >= 0 && value <= maxCollectiblePrice) {
-                      setOptionalPriceFloor(value);
-                    }
-                  }}
-                  disabled={isFree}
-                  style={{ marginTop: '16px' }}
-                  InputProps={{
-                    endAdornment: (
-                      <Tooltip title={translate('Message.OptionalPriceFloorDescription')}>
-                        <IconButton aria-label='iconbutton' className={styles.iconButton}>
-                          <InfoOutlinedIcon />
-                        </IconButton>
-                      </Tooltip>
-                    ),
-                  }}
-                />
-              </Grid>
+          <Grid
+            container
+            item
+            XSmall={12}
+            rowGap={2}
+            style={{ marginTop: '40px', color: 'inherit' }}>
+            <Grid item XSmall={12} Large={5} style={{ paddingRight: '64px' }}>
+              <Typography style={{ fontSize: '18px', fontWeight: '450' }}>
+                {translate('Label.PriceConfigurations')}
+              </Typography>
+              <br />
+              <Typography variant='body2' className={styles.description}>
+                {translate('Message.SetPrice')}
+              </Typography>
             </Grid>
-          )}
+            <Grid item XSmall={12} Large={7}>
+              <TextField
+                id='amountAbovePriceFloor'
+                fullWidth
+                label={translate('Label.AmountAbovePriceFloor')}
+                value={
+                  // oxlint-disable-next-line typescript-eslint/prefer-nullish-coalescing -- intentional falsy coalescing: 0 should render as an empty field
+                  priceOffset || ''
+                }
+                onChange={(event) => {
+                  const value = +event.target.value;
+                  if (value >= 0 && value <= maxCollectiblePrice) {
+                    setPriceOffset(value);
+                  }
+                }}
+                disabled={isFree}
+                InputProps={{
+                  endAdornment: (
+                    <Tooltip title={translate('Message.PriceOffsetDescription')} placement='top'>
+                      <IconButton aria-label='iconbutton' className={styles.iconButton}>
+                        <InfoOutlinedIcon />
+                      </IconButton>
+                    </Tooltip>
+                  ),
+                }}
+              />
+
+              <TextField
+                id='price floor'
+                fullWidth
+                label={translate('Label.DoNotPriceBelow')}
+                value={
+                  // oxlint-disable-next-line typescript-eslint/prefer-nullish-coalescing -- intentional falsy coalescing: 0 should render as an empty field
+                  optionalPriceFloor || ''
+                }
+                onChange={(event) => {
+                  const value = +event.target.value;
+                  if (value >= 0 && value <= maxCollectiblePrice) {
+                    setOptionalPriceFloor(value);
+                  }
+                }}
+                disabled={isFree}
+                style={{ marginTop: '16px' }}
+                InputProps={{
+                  endAdornment: (
+                    <Tooltip title={translate('Message.OptionalPriceFloorDescription')}>
+                      <IconButton aria-label='iconbutton' className={styles.iconButton}>
+                        <InfoOutlinedIcon />
+                      </IconButton>
+                    </Tooltip>
+                  ),
+                }}
+              />
+            </Grid>
+          </Grid>
 
           {!isFree && (
             <Grid container item XSmall={12} rowGap={2} alignItems='center' marginTop='40px'>
@@ -482,49 +476,20 @@ function Pricing(props: PricingProps) {
                 </Typography>
               </Grid>
 
-              {isBundle && collectiblesMetadata?.isNewBundleUIEnabled === false ? (
-                <Grid item XSmall={12} Large={7}>
-                  <TextField
-                    id='price'
-                    // oxlint-disable-next-line rbx/no-hardcoded-translation-string -- pre-existing; unrelated to this flag cleanup
-                    label='Price'
-                    type='Number'
-                    value={
-                      // oxlint-disable-next-line typescript-eslint/prefer-nullish-coalescing -- intentional falsy coalescing: 0 should render as an empty field
-                      price || ''
-                    }
-                    error={!price || price > maxCollectiblePrice || price < priceFloor}
-                    helperText={
-                      price != null && price < priceFloor
-                        ? // oxlint-disable-next-line rbx/no-hardcoded-translation-string -- pre-existing; unrelated to this flag cleanup
-                          `Price cannot be lower than ${priceFloor} `
-                        : ''
-                    }
-                    onChange={(event) => {
-                      const value = +event.target.value;
-                      if (value >= 0 && value <= maxCollectiblePrice) {
-                        setPrice(value);
-                      }
-                    }}
-                    fullWidth
-                  />
-                </Grid>
-              ) : (
-                <Grid item XSmall={12} Large={7}>
-                  <Grid item XSmall={12} Large={7} alignItems='center' marginBottom='3px' container>
-                    <RobuxIcon />
-                    <Typography style={{ fontSize: '18px', fontWeight: '425', marginLeft: '6px' }}>
-                      {Math.max(
-                        optionalPriceFloor ?? 1,
-                        priceOffset ? priceFloor + priceOffset : priceFloor,
-                      )}
-                    </Typography>
-                  </Grid>
-                  <Typography variant='body2' className={styles.description}>
-                    {translate('Label.PriceFloorBreakdown')}
+              <Grid item XSmall={12} Large={7}>
+                <Grid item XSmall={12} Large={7} alignItems='center' marginBottom='3px' container>
+                  <RobuxIcon />
+                  <Typography style={{ fontSize: '18px', fontWeight: '425', marginLeft: '6px' }}>
+                    {Math.max(
+                      optionalPriceFloor ?? 1,
+                      priceOffset ? priceFloor + priceOffset : priceFloor,
+                    )}
                   </Typography>
                 </Grid>
-              )}
+                <Typography variant='body2' className={styles.description}>
+                  {translate('Label.PriceFloorBreakdown')}
+                </Typography>
+              </Grid>
             </Grid>
           )}
 

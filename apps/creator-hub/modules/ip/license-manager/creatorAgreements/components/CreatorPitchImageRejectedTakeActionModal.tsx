@@ -10,6 +10,7 @@ type CreatorPitchImageRejectedTakeActionModalProps = {
   agreementId: string;
   isOpen: boolean;
   closeModal: () => void;
+  isRequired: boolean;
 };
 
 enum PitchTakeActionModalView {
@@ -18,11 +19,14 @@ enum PitchTakeActionModalView {
   ConfirmSend = 'confirmSend',
 }
 
+const getInitialView = (isRequired: boolean): PitchTakeActionModalView =>
+  isRequired ? PitchTakeActionModalView.EditImages : PitchTakeActionModalView.Options;
+
 const CreatorPitchImageRejectedTakeActionModal: FunctionComponent<
   CreatorPitchImageRejectedTakeActionModalProps
-> = ({ agreementId, isOpen, closeModal }) => {
+> = ({ agreementId, isOpen, closeModal, isRequired }) => {
   const { enqueueErrorSnackbar } = useIpSnackbar();
-  const [view, setView] = useState(PitchTakeActionModalView.Options);
+  const [view, setView] = useState(() => getInitialView(isRequired));
   const hasNotifiedAttachmentError = useRef(false);
   const {
     data: pitchImageAttachments,
@@ -34,9 +38,9 @@ const CreatorPitchImageRejectedTakeActionModal: FunctionComponent<
   });
 
   const handleCloseModal = useCallback(() => {
-    setView(PitchTakeActionModalView.Options);
+    setView(getInitialView(isRequired));
     closeModal();
-  }, [closeModal]);
+  }, [closeModal, isRequired]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -65,19 +69,26 @@ const CreatorPitchImageRejectedTakeActionModal: FunctionComponent<
     setView(PitchTakeActionModalView.ConfirmSend);
   }, []);
 
-  if (view === PitchTakeActionModalView.EditImages && pitchImageAttachments != null) {
+  // The edit view owns the in-progress attachment list and its validation errors, so it has to
+  // unmount while closed to reopen from freshly fetched attachments.
+  if (isOpen && view === PitchTakeActionModalView.EditImages && pitchImageAttachments != null) {
     return (
       <CreatorPitchImageRejectedEditImagesModal
         agreementId={agreementId}
         isOpen={isOpen}
         closeModal={handleCloseModal}
         pitchImageAttachments={pitchImageAttachments}
-        onBack={handleBackToOptions}
+        isRequired={isRequired}
+        onBack={isRequired ? undefined : handleBackToOptions}
       />
     );
   }
 
-  if (view === PitchTakeActionModalView.ConfirmSend && pitchImageAttachments != null) {
+  if (
+    !isRequired &&
+    view === PitchTakeActionModalView.ConfirmSend &&
+    pitchImageAttachments != null
+  ) {
     return (
       <CreatorPitchImageRejectedConfirmSendModal
         agreementId={agreementId}

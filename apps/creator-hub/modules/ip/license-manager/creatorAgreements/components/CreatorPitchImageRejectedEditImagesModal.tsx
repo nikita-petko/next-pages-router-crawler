@@ -15,12 +15,13 @@ type CreatorPitchImageRejectedEditImagesModalProps = {
   isOpen: boolean;
   closeModal: () => void;
   pitchImageAttachments: CreatorPitchAttachment[];
-  onBack: () => void;
+  isRequired: boolean;
+  onBack?: () => void;
 };
 
 const CreatorPitchImageRejectedEditImagesModal: FunctionComponent<
   CreatorPitchImageRejectedEditImagesModalProps
-> = ({ agreementId, isOpen, closeModal, pitchImageAttachments, onBack }) => {
+> = ({ agreementId, isOpen, closeModal, pitchImageAttachments, isRequired, onBack }) => {
   const { translate } = useTranslationWithNamespace(TranslationNamespace.Licenses);
   const { enqueueErrorSnackbar } = useIpSnackbar();
   const { mutateAsync: sendPitchImageRequest, isPending: isSendingRequest } =
@@ -30,6 +31,7 @@ const CreatorPitchImageRejectedEditImagesModal: FunctionComponent<
   const { onChange, showErrors, validateForNext } = useCreatorPitchAttachments({
     attachments: editableAttachments,
     onAttachmentsChange: setEditableAttachments,
+    isRequired,
   });
 
   const handleOpenChange = useCallback(
@@ -43,7 +45,7 @@ const CreatorPitchImageRejectedEditImagesModal: FunctionComponent<
 
   const handleBack = useCallback(() => {
     if (!isSendingRequest) {
-      onBack();
+      onBack?.();
     }
   }, [isSendingRequest, onBack]);
 
@@ -89,6 +91,7 @@ const CreatorPitchImageRejectedEditImagesModal: FunctionComponent<
             attachments={editableAttachments}
             onChange={onChange}
             showErrors={showErrors}
+            isRequired={isRequired}
           />
         </DialogBody>
         <DialogFooter className='flex flex-col gap-small small:flex-row small:justify-end'>
@@ -99,13 +102,15 @@ const CreatorPitchImageRejectedEditImagesModal: FunctionComponent<
             disabled={isSendingRequest}>
             {translate('Action.SendRequest')}
           </Button>
-          <Button
-            variant='contained'
-            color='secondary'
-            onClick={handleBack}
-            disabled={isSendingRequest}>
-            {translate('Action.Back')}
-          </Button>
+          {onBack != null ? (
+            <Button
+              variant='contained'
+              color='secondary'
+              onClick={handleBack}
+              disabled={isSendingRequest}>
+              {translate('Action.Back')}
+            </Button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>

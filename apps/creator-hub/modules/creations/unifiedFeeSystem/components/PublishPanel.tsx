@@ -28,7 +28,6 @@ import {
   makeStyles,
 } from '@rbx/ui';
 import { useAuthentication } from '@modules/authentication/providers';
-import type { ItemConfigurationCollectiblesMetadataResponse } from '@modules/clients/itemconfiguration';
 import itemconfigurationClient from '@modules/clients/itemconfiguration';
 import tryParseResponseError from '@modules/clients/utils/tryParseResponseError';
 import type { Asset } from '@modules/miscellaneous/common';
@@ -108,7 +107,6 @@ interface PublishPanelProps {
   quantity: number | undefined;
   limit: number | undefined;
   isResellable: boolean;
-  price: number | undefined;
   priceOffset: number | undefined;
   optionalPriceFloor: number | undefined;
   isFree: boolean;
@@ -116,7 +114,6 @@ interface PublishPanelProps {
   selectedPlaces: string[];
   name: string;
   description: string;
-  collectiblesMetadata?: ItemConfigurationCollectiblesMetadataResponse;
   scheduledStartDate: Date | null;
   scheduledEndDate: Date | null;
   optOutFromRegionalPricing: boolean;
@@ -138,7 +135,6 @@ function PublishPanel(props: PublishPanelProps) {
     quantity,
     limit,
     isResellable,
-    price,
     priceOffset,
     optionalPriceFloor,
     isFree,
@@ -146,7 +142,6 @@ function PublishPanel(props: PublishPanelProps) {
     selectedPlaces,
     name,
     description,
-    collectiblesMetadata,
     scheduledStartDate,
     scheduledEndDate,
     optOutFromRegionalPricing,
@@ -338,8 +333,6 @@ function PublishPanel(props: PublishPanelProps) {
     let priceInRobux;
     if (isFree) {
       priceInRobux = 0;
-    } else if (isBundle && collectiblesMetadata?.isNewBundleUIEnabled === false) {
-      priceInRobux = price ?? 0;
     } else if (optionalPriceFloor && optionalPriceFloor > 0) {
       priceInRobux = optionalPriceFloor;
     } else {
@@ -490,10 +483,8 @@ function PublishPanel(props: PublishPanelProps) {
     user?.id,
     isFree,
     isBundle,
-    collectiblesMetadata?.isNewBundleUIEnabled,
     optionalPriceFloor,
     targetId,
-    price,
     isLimited,
     publishingFees,
     quantity,

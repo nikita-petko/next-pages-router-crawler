@@ -32,7 +32,6 @@ interface SavePanelProps {
   originalIsResellable: boolean;
   optionalPriceFloor: number | undefined;
   priceOffset: number | undefined;
-  price: number | undefined;
   isFree: boolean;
   saleLocation: SaleLocationEnum;
   selectedPlaces: string[];
@@ -78,7 +77,6 @@ function SavePanel(props: SavePanelProps) {
     originalIsResellable,
     optionalPriceFloor,
     priceOffset,
-    price,
     isFree,
     saleLocation,
     selectedPlaces,
@@ -191,10 +189,7 @@ function SavePanel(props: SavePanelProps) {
 
       const priceInRobux = computePriceInRobux({
         isFree,
-        isBundle,
-        collectiblesMetadata,
         optionalPriceFloor,
-        price,
       });
 
       // Don't need to call cancel if just updating the scheduled sale

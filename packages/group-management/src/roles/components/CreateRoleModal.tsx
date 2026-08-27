@@ -1,5 +1,5 @@
 import type { FunctionComponent } from 'react';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Button,
   Dialog,
@@ -37,6 +37,7 @@ const CreateRoleModal: FunctionComponent<CreateRoleModalProps> = ({
 
   const [name, setName] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   const [prevOpen, setPrevOpen] = useState(open);
   if (prevOpen !== open) {
@@ -60,6 +61,18 @@ const CreateRoleModal: FunctionComponent<CreateRoleModalProps> = ({
     setName(e.target.value);
   }, []);
 
+  const handleOpenAutoFocus = useCallback(
+    (event: Event) => {
+      if (saving) {
+        return;
+      }
+
+      event.preventDefault();
+      nameInputRef.current?.focus();
+    },
+    [saving],
+  );
+
   return (
     <Dialog
       open={open}
@@ -72,7 +85,7 @@ const CreateRoleModal: FunctionComponent<CreateRoleModalProps> = ({
       size='Small'
       hasCloseAffordance
       closeLabel={translateWithNamespace(TranslationNamespace.GroupManagement, 'Action.Close')}>
-      <DialogContent>
+      <DialogContent onOpenAutoFocus={handleOpenAutoFocus}>
         <DialogBody className='flex flex-col gap-medium'>
           <DialogTitle className='text-heading-small margin-none'>
             {translateWithNamespace(TranslationNamespace.GroupManagement, 'Heading.CreateRole')}
@@ -80,6 +93,7 @@ const CreateRoleModal: FunctionComponent<CreateRoleModalProps> = ({
           <div className='flex flex-col gap-small'>
             <div>
               <TextInput
+                ref={nameInputRef}
                 label={translateWithNamespace(
                   TranslationNamespace.GroupManagement,
                   'Label.RoleName',

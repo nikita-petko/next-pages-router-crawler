@@ -51,7 +51,6 @@ function NonSellableSavePanel(props: NonSellableSavePanelProps) {
             originalIsResellable={false}
             optionalPriceFloor={undefined}
             priceOffset={0}
-            price={0}
             isFree={false}
             saleLocation={SaleLocationEnum.MarketplaceOnly}
             selectedPlaces={[]}
