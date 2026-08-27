@@ -139,14 +139,12 @@ const TestPage = () => {
           >
             Test Button
           </Button>
-          {dialogOpen && (
-            <TestDialog
-              title="Test Dialog"
-              content={text}
-              open={dialogOpen}
-              handleClose={handleClose}
-            />
-          )}
+          <TestDialog
+            title="Test Dialog"
+            content={text}
+            open={dialogOpen}
+            handleClose={handleClose}
+          />
         </div>
       </div>
     </>

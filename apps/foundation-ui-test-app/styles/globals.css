@@ -2222,10 +2222,6 @@
 .max-height-\[calc\(var\(--size-800\)\*3\+var\(--gap-small\)\*2\)\] {
   max-height: calc(var(--size-800) * 3 + var(--gap-small) * 2);
 }
-.text-align-center {
-  text-align: center;
-  vertical-align: center;
-}
 .text-align-x-center {
   text-align: center;
 }
