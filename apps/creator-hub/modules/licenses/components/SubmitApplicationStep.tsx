@@ -26,6 +26,8 @@ import {
   type CreatorPitchAttachment,
   hasBlockingCreatorPitchAttachments,
   getSubmittableCreatorPitchAttachmentAssetIds,
+  hasUsableCreatorPitchAttachments,
+  isCreatorPitchAttachmentsRequired,
 } from '../utils/creatorPitchAttachmentTypes';
 import { getApplyFlowRevShareOnActivation } from '../utils/getApplyFlowRevShareOnActivation';
 import type { CollaborationSalesAvenues } from '../utils/salesAvenue';
@@ -76,7 +78,9 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
   const isSubmitBlockedByAttachments =
     isImageAttachmentFlagReady &&
     isImageAttachmentEnabled &&
-    hasBlockingCreatorPitchAttachments(creatorPitchAttachments);
+    (hasBlockingCreatorPitchAttachments(creatorPitchAttachments) ||
+      (isCreatorPitchAttachmentsRequired(license.licenseType) &&
+        !hasUsableCreatorPitchAttachments(creatorPitchAttachments)));
 
   const context = useContext(SelectedExperienceContext);
   const { selectedExperienceId } = context;

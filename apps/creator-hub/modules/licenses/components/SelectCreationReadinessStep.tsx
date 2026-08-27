@@ -24,7 +24,10 @@ import SelectedExperienceContext from '../context/SelectedExperienceContext';
 import useContentModerationMutation from '../hooks/useContentModerationMutation';
 import { CREATOR_PITCH_HREF } from '../urls';
 import { MIN_CREATOR_PITCH_LENGTH, MAX_CREATOR_PITCH_LENGTH } from '../utils/constants';
-import type { CreatorPitchAttachment } from '../utils/creatorPitchAttachmentTypes';
+import {
+  type CreatorPitchAttachment,
+  isCreatorPitchAttachmentsRequired,
+} from '../utils/creatorPitchAttachmentTypes';
 import { getApplyFlowRevShareOnActivation } from '../utils/getApplyFlowRevShareOnActivation';
 import {
   getRevShareTimingPreference,
@@ -320,6 +323,7 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
           ref={creatorPitchAttachmentsFieldRef}
           attachments={creatorPitchAttachments}
           onAttachmentsChange={setCreatorPitchAttachments}
+          isRequired={isCreatorPitchAttachmentsRequired(licenseType)}
         />
       </Grid>
 
