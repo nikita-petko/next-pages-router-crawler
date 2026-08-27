@@ -9,12 +9,13 @@ const featureToEligibilityDefaultMap = Object.values(OnboardingFeatureKey).reduc
   return maps;
 }, new Map<OnboardingFeatureKey, boolean>());
 
+const featureKeys: OnboardingFeatureKey[] = Object.values(OnboardingFeatureKey);
+
 const useOnboardingTipsEligibility = () => {
   const [eligibilityOverrides, setEligibilityOverrides] = useState<
     Map<OnboardingFeatureKey, boolean>
   >(new Map());
 
-  const featureKeys: OnboardingFeatureKey[] = Object.values(OnboardingFeatureKey);
   const makeMappedRequest = useMemo(
     () => singleToMappedRequest(modelHistoryClient.shouldUserSeeModal),
     [],

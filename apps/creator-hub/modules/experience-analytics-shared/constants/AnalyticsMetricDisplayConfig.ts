@@ -1539,4 +1539,15 @@ const getMetricDisplayConfig = (metric: TRAQIV2Metric): MetricDisplayConfig => {
   return result;
 };
 
+/**
+ * The chart type the metric catalog prefers, falling back to `Spline` when the
+ * catalog does not specify one (or when no metric is selected). This is the
+ * controlled configurator uses this accessor when deciding whether a catalog
+ * metric should default to Area.
+ */
+export const getPreferredChartType = (metric: TRAQIV2Metric | null): ChartType =>
+  metric
+    ? (getMetricDisplayConfig(metric).exploreModeChartType ?? ChartType.Spline)
+    : ChartType.Spline;
+
 export default getMetricDisplayConfig;

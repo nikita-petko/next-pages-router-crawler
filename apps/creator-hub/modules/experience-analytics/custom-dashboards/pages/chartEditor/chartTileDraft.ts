@@ -198,21 +198,26 @@ export function mergeMetricVariantIntoFilters(
 }
 
 /**
- * Resolves the chart type to persist for a tile. Area is hydrated read-only by
- * the editor — the configurator never lets the user select Area — so an opened
- * Area tile keeps its type on save unless the user explicitly picks a different
- * chart type. Every other case persists the configurator's live selection.
+ * Resolves the chart type to persist for a tile. Area tiles keep their type on
+ * save until the user changes either the chart type or metric. Every other case
+ * persists the live selection.
  */
 export function resolveSavedChartType({
   persistedChartType,
   selectedChartType,
   hasUserSelectedChartType,
+  hasUserSelectedMetric,
 }: {
   readonly persistedChartType: ChartConfiguratorChartType | null;
   readonly selectedChartType: ChartConfiguratorChartType;
   readonly hasUserSelectedChartType: boolean;
+  readonly hasUserSelectedMetric: boolean;
 }): ChartConfiguratorChartType {
-  if (persistedChartType === ChartType.Area && !hasUserSelectedChartType) {
+  if (
+    persistedChartType === ChartType.Area &&
+    !hasUserSelectedChartType &&
+    !hasUserSelectedMetric
+  ) {
     return ChartType.Area;
   }
   return selectedChartType;

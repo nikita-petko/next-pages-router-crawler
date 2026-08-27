@@ -449,7 +449,7 @@ export function useControlledChartConfiguratorFromDraft({
       selectSupportedChartType({
         chartTypeOverride,
         displayMetric,
-        defaultChartType: initialState?.chartType ?? ChartType.Spline,
+        defaultChartType: initialState?.chartType ?? undefined,
         isL7SmoothingEnabled: smoothingOption === SmoothingOptionValue.L7MovingAverage,
         granularity: granularitySelection.effectiveGranularity,
       }),

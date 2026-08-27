@@ -6,12 +6,16 @@ import {
 import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import type { OverlayOption } from '../components/chartConfigurator/ChartConfiguratorOverlaysControl';
 import type { ExploreModeTableMetricColumn } from '../components/chartConfigurator/chartConfiguratorTableColumns';
+import { getPreferredChartType } from '../constants/AnalyticsMetricDisplayConfig';
 import { isComputedMetricAllowedForExploreMode } from '../exploreMode/resolveExploreModeQueryState';
 import type { BenchmarkOverlayType } from '../hooks/useAnalyticsBenchmarks';
 import type { UIFilters } from '../layout/ExperienceAnalyticsPageControlBar/filterUtils';
 import type { ComputedMetric, MetricLike } from '../types/ComputedMetric';
 import type { TUIGranularity } from '../utils/seriesGranularities';
-import type { ChartConfiguratorChartType } from './ChartConfiguratorChartTypes';
+import {
+  type ChartConfiguratorChartType,
+  isChartConfiguratorSupportedChartType,
+} from './ChartConfiguratorChartTypes';
 import { getChartConfiguratorDimensions } from './ChartConfiguratorDimensions';
 import type { TChartConfiguratorMetrics } from './chartConfiguratorMetricsConfig';
 import { DefaultExploreModeDateRanges } from './defaultExploreModeDateRanges';
@@ -685,12 +689,12 @@ export function isChartTypeCompatibleWithGranularity(
 /**
  * Chart types offered by the controlled configurator (custom dashboard editor).
  * Explore Mode keeps separate availability rules in ExploreModeSidebarPage.
- * Area is not supported here yet; hydrated Area tiles coerce to Spline via
- * selectSupportedChartType and the chart editor seed mapping.
+ * Area is offered only when the catalog already defaults that metric to Area.
  */
 function isControlledConfiguratorChartTypeAvailable(
   chartType: ChartConfiguratorChartType,
   isDurationMetric: boolean,
+  displayMetric: TChartConfiguratorMetrics | null,
 ): boolean {
   if (chartType === ChartType.Table) {
     return true;
@@ -699,7 +703,7 @@ function isControlledConfiguratorChartTypeAvailable(
     return isDurationMetric;
   }
   if (chartType === ChartType.Area) {
-    return false;
+    return !isDurationMetric && getPreferredChartType(displayMetric) === ChartType.Area;
   }
   if (
     chartType === ChartType.Spline ||
@@ -752,12 +756,14 @@ export function deriveChartTypeAvailability({
 /**
  * Derives chart type availability and the effective selection for controlled surfaces.
  * Metric compatibility stays centralized here; product-specific rules live in callers
- * (for example, Explore Mode) or in explicit editor coercion (Area → Spline).
+ * (for example, Explore Mode). The default chart type comes from the metric catalog's
+ * `exploreModeChartType` via `getPreferredChartType`; Area stays gated to catalog metrics
+ * that prefer it while other preferred types generalize automatically.
  */
 export function selectSupportedChartType({
   chartTypeOverride,
   displayMetric,
-  defaultChartType = ChartType.Spline,
+  defaultChartType,
   isL7SmoothingEnabled = false,
   granularity,
 }: {
@@ -780,14 +786,18 @@ export function selectSupportedChartType({
     deriveChartTypeAvailability({
       displayMetric,
       isChartTypeAvailable: (chartType) =>
-        isControlledConfiguratorChartTypeAvailable(chartType, isDurationMetric),
+        isControlledConfiguratorChartTypeAvailable(chartType, isDurationMetric, displayMetric),
       isL7SmoothingEnabled,
     });
+  const configPreferred = getPreferredChartType(displayMetric);
+  const preferredDefault =
+    defaultChartType ??
+    (isChartConfiguratorSupportedChartType(configPreferred) ? configPreferred : ChartType.Spline);
   const resolvedChartType =
     chartTypeOverride && supportedChartTypes.includes(chartTypeOverride)
       ? chartTypeOverride
-      : supportedChartTypes.includes(defaultChartType)
-        ? defaultChartType
+      : supportedChartTypes.includes(preferredDefault)
+        ? preferredDefault
         : (supportedChartTypes[0] ?? ChartType.Spline);
   // Coerce away from a cumulative chart type (Bar/Pie) when the effective
   // granularity is time-bucketed — both the override and the seeded default can

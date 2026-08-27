@@ -106,11 +106,10 @@ export function buildChartEditorSidebarInitialState({
     if (initialTile?.type !== 'Chart') {
       return null;
     }
-    const explore = tileChartTypeToExploreChartType(initialTile.chartSpec.chartType);
-    // The configurator does not offer Area as a selectable type, so seed the
-    // preview with Spline. Area is preserved read-only on save (see
-    // `selectedChartType` below) so an unchanged Area tile keeps its type.
-    return explore === ChartType.Area ? ChartType.Spline : explore;
+    // Seed the persisted type, including Area. Catalog memory/CPU metrics
+    // offer Area as a selectable type; unchanged legacy Area tiles retain it
+    // on save through `resolveSavedChartType`.
+    return tileChartTypeToExploreChartType(initialTile.chartSpec.chartType);
   })();
   const breakdownDimensions =
     initialTile?.type === 'Chart' ? (initialTile.dataSpec.breakdownDimensions ?? null) : null;
@@ -154,14 +153,15 @@ export default function useChartEditorSidebarState({
     dateRange,
   });
 
-  // Area is hydrated read-only: the configurator never offers it as a selectable
-  // type, so we track whether the user has explicitly changed the chart type and
-  // preserve a persisted Area type on save until they do (see resolveSavedChartType).
+  // Track chart-type and metric edits separately so an unchanged legacy Area
+  // tile round-trips, while changing its metric cannot retain a stale Area type.
   const [hasUserSelectedChartType, setHasUserSelectedChartType] = useState(false);
+  const [hasUserSelectedMetric, setHasUserSelectedMetric] = useState(false);
   const [trackedSeedKey, setTrackedSeedKey] = useState(seedKey);
   if (seedKey !== trackedSeedKey) {
     setTrackedSeedKey(seedKey);
     setHasUserSelectedChartType(false);
+    setHasUserSelectedMetric(false);
   }
   const dispatchWithChartTypeTracking = useCallback(
     (action: ChartConfiguratorSidebarAction) => {
@@ -170,6 +170,9 @@ export default function useChartEditorSidebarState({
         action.type === 'select-chart-type-with-granularity'
       ) {
         setHasUserSelectedChartType(true);
+      }
+      if (action.type === 'select-metric') {
+        setHasUserSelectedMetric(true);
       }
       configurator.sidebarProps.dispatch(action);
     },
@@ -182,6 +185,7 @@ export default function useChartEditorSidebarState({
         : null,
     selectedChartType: configurator.selectedChartType,
     hasUserSelectedChartType,
+    hasUserSelectedMetric,
   });
 
   // The metric variant (percentile / aggregation) is tracked live in the
