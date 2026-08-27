@@ -126,7 +126,7 @@ const TestPage = () => {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-height-[100vh]">
+    <div className="flex flex-col items-center justify-center min-height-screen">
       <div className="flex flex-col items-center justify-center width-fit">
         <Card
           title="Foundation Test App"

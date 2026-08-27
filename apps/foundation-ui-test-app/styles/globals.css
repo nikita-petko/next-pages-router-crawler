@@ -2123,9 +2123,6 @@
 .min-height-800 {
   min-height: var(--size-800);
 }
-.min-height-\[100vh\] {
-  min-height: 100vh;
-}
 .min-height-\[48px\] {
   min-height: 48px;
 }
@@ -2137,6 +2134,9 @@
 }
 .min-height-\[calc\(var\(--size-2700\)\*2\)\] {
   min-height: calc(var(--size-2700) * 2);
+}
+.min-height-screen {
+  min-height: 100vh;
 }
 .max-height-\[calc\(var\(--size-600\)\*3\+var\(--gap-small\)\*2\)\] {
   max-height: calc(var(--size-600) * 3 + var(--gap-small) * 2);
