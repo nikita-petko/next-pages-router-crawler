@@ -72,17 +72,12 @@ const AnalyticsConfigTabbedChart = ({
   const { tabs, titleKey, definitionTooltipKey, onboardingTipsConfig } =
     getTabbedConfigFromKeyOrConfig(tabbedChartKeyOrConfig);
 
-  const titleSuffix = useMemo(() => {
-    if (!onboardingTipsConfig) {
-      return undefined;
-    }
-    return (
-      <OnboardingTipsCarousel
-        featureKey={onboardingTipsConfig.featureKey}
-        stepKey={onboardingTipsConfig.stepKey}
-      />
-    );
-  }, [onboardingTipsConfig]);
+  const titleSuffix = onboardingTipsConfig ? (
+    <OnboardingTipsCarousel
+      featureKey={onboardingTipsConfig.featureKey}
+      stepKey={onboardingTipsConfig.stepKey}
+    />
+  ) : undefined;
 
   const { resource } = chartContext;
   const resourceLoggingFields = useMemo(() => {
@@ -90,93 +85,71 @@ const AnalyticsConfigTabbedChart = ({
   }, [resource]);
   const { id: resourceId } = resource;
 
-  const tabSpecs = useMemo(
-    (): NonEmptyArray<GenericRAQIV2TabbedChartSpec<UniqueKeyForAnalyticsComponent>> =>
-      mapNonEmptyArray(tabs, (tabSpec) => {
-        const { chart, tabLabel, action } = tabSpec;
-        const uniqueKey = getUniqueKeyForAnalyticsComponent(chart);
-        const partialPredefinedChartConfig = getNonMetricRelatedConfigFromPredefinedChart(chart);
-        const [{ metric, overrides: predefinedChartSpecOverride }] =
-          getMetricRelatedConfigFromPredefinedChart(chart);
-        const chartSpec = computeRAQIV2SpecOverride(
-          { ...chartContext, metric },
-          predefinedChartSpecOverride,
-        );
+  const tabSpecs: NonEmptyArray<GenericRAQIV2TabbedChartSpec<UniqueKeyForAnalyticsComponent>> =
+    mapNonEmptyArray(tabs, (tabSpec) => {
+      const { chart, tabLabel, action } = tabSpec;
+      const uniqueKey = getUniqueKeyForAnalyticsComponent(chart);
+      const partialPredefinedChartConfig = getNonMetricRelatedConfigFromPredefinedChart(chart);
+      const [{ metric, computedMetric, overrides: predefinedChartSpecOverride }] =
+        getMetricRelatedConfigFromPredefinedChart(chart);
+      const chartSpec = computeRAQIV2SpecOverride(
+        { ...chartContext, metric: computedMetric ?? metric },
+        predefinedChartSpecOverride,
+      );
 
-        const footerProps = action
-          ? {
-              actionLink: {
-                onClick: () => {
-                  const { loggingMetricOverride } = getAnalyticsMetricDisplayConfig(metric);
-                  const loggingMetric = computeRAQIV2LoggingMetricOverride(
-                    metric,
-                    loggingMetricOverride,
-                  );
-                  if (action.actionEventName && loggingMetric) {
-                    unifiedLogger.logClickEvent({
-                      eventName: action.actionEventName,
-                      parameters: {
-                        ...resourceLoggingFields,
-                        metric: loggingMetric,
-                      },
-                    });
-                  }
-                },
-                url: buildExperienceAnalyticsUrlWithParams(
-                  action.actionTargetNavigationItem,
-                  buildSearchParamsWithTimeRange(startDate, endDate, rangeType),
-                  resourceId,
-                ),
-                label: action.actionLabel,
+      const footerProps = action
+        ? {
+            actionLink: {
+              onClick: () => {
+                const { loggingMetricOverride } = getAnalyticsMetricDisplayConfig(metric);
+                const loggingMetric = computeRAQIV2LoggingMetricOverride(
+                  metric,
+                  loggingMetricOverride,
+                );
+                if (action.actionEventName && loggingMetric) {
+                  unifiedLogger.logClickEvent({
+                    eventName: action.actionEventName,
+                    parameters: {
+                      ...resourceLoggingFields,
+                      metric: loggingMetric,
+                    },
+                  });
+                }
               },
-            }
-          : undefined;
+              url: buildExperienceAnalyticsUrlWithParams(
+                action.actionTargetNavigationItem,
+                buildSearchParamsWithTimeRange(startDate, endDate, rangeType),
+                resourceId,
+              ),
+              label: action.actionLabel,
+            },
+          }
+        : undefined;
 
-        const overlays = getOverlays(partialPredefinedChartConfig);
-        const displayOptions = getDisplayOptions(partialPredefinedChartConfig);
+      const overlays = getOverlays(partialPredefinedChartConfig);
+      const displayOptions = getDisplayOptions(partialPredefinedChartConfig);
 
-        const genericTabSpec: GenericRAQIV2TabbedChartSpec<UniqueKeyForAnalyticsComponent> = {
-          key: uniqueKey,
-          chartKeyOrConfig: chart,
-          tabLabel: translate(tabLabel),
-          ...partialPredefinedChartConfig,
-          spec: chartSpec,
-          onSelectChartRegion,
-          footerProps,
-          eventLogging,
-          overlays,
-          displayOptions,
-          chartLocation,
-          chartUpdatePolicy,
-        };
-        return genericTabSpec;
-      }),
-    [
-      tabs,
-      chartContext,
-      startDate,
-      endDate,
-      rangeType,
-      resourceId,
-      translate,
-      onSelectChartRegion,
-      eventLogging,
-      unifiedLogger,
-      resourceLoggingFields,
-      chartLocation,
-      chartUpdatePolicy,
-    ],
-  );
+      const genericTabSpec: GenericRAQIV2TabbedChartSpec<UniqueKeyForAnalyticsComponent> = {
+        key: uniqueKey,
+        chartKeyOrConfig: chart,
+        tabLabel: translate(tabLabel),
+        ...partialPredefinedChartConfig,
+        spec: chartSpec,
+        onSelectChartRegion,
+        footerProps,
+        eventLogging,
+        overlays,
+        displayOptions,
+        chartLocation,
+        chartUpdatePolicy,
+      };
+      return genericTabSpec;
+    });
 
-  const definitionTooltip = useMemo(
-    () => (definitionTooltipKey ? translate(definitionTooltipKey) : undefined),
-    [definitionTooltipKey, translate],
-  );
+  const definitionTooltip = definitionTooltipKey ? translate(definitionTooltipKey) : undefined;
   const title = translate(titleKey);
 
-  const allChartSpecs = useMemo(() => {
-    return tabSpecs.map((tab) => tab.spec);
-  }, [tabSpecs]);
+  const allChartSpecs = tabSpecs.map((tab) => tab.spec);
   const chartWarnings = useRAQIV2PredefinedWarnings(allChartSpecs);
   const footerContent = useMemo(() => {
     return chartWarnings?.length > 0 ? <ChartFooter warnings={chartWarnings} /> : undefined;

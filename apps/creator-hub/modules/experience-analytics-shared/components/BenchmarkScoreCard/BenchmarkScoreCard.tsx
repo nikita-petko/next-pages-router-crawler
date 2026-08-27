@@ -36,7 +36,6 @@ const useScoreCardStyle = makeStyles()(() => ({
   titleLabel: {
     lineClamp: 1,
     WebkitLineClamp: 1,
-    boxOrient: 'vertical',
     '-webkit-box-orient': 'vertical',
     '@supports (display: -webkit-box)': {
       display: '-webkit-box',
@@ -74,6 +73,7 @@ type BenchmarkScoreCardProps = {
     percentChange: number;
     metricTime: string;
   };
+  loggingMetric?: string;
 };
 
 const BenchmarkScoreCard: FC<BenchmarkScoreCardProps> = ({
@@ -82,6 +82,7 @@ const BenchmarkScoreCard: FC<BenchmarkScoreCardProps> = ({
   eventLogging,
   state,
   benchmarkData,
+  loggingMetric: loggingMetricProp,
 }) => {
   const { id: universeId } = useUniverseResource();
   const gameDetails = useExperienceAnalyticsGameDetails();
@@ -112,7 +113,8 @@ const BenchmarkScoreCard: FC<BenchmarkScoreCardProps> = ({
       ),
     [metric, translationDependencies],
   );
-  const loggingMetric = computeRAQIV2LoggingMetricOverride(metric, loggingMetricOverride);
+  const loggingMetric =
+    loggingMetricProp ?? computeRAQIV2LoggingMetricOverride(metric, loggingMetricOverride);
 
   const onClick = useMemo(
     () =>
@@ -198,7 +200,7 @@ const BenchmarkScoreCard: FC<BenchmarkScoreCardProps> = ({
         },
       });
     }
-  }, [eventLogging?.suggestionHoverEventName, loggingMetric, unifiedLogger, universeId]);
+  }, [eventLogging, loggingMetric, unifiedLogger, universeId]);
   const [debouncedSuggestionHoverLogging, clearDebouncedSuggesitonHoverLogging] =
     useDebouncedFunction(logSuggestionHoverEvent, 500);
 
@@ -256,17 +258,11 @@ const BenchmarkScoreCard: FC<BenchmarkScoreCardProps> = ({
         eventName: eventLogging.comparisonChipHoverEventName,
         parameters: {
           universe_id: `${universeId}`,
-          metric: computeRAQIV2LoggingMetricOverride(metric, loggingMetricOverride),
+          metric: loggingMetric,
         },
       });
     }
-  }, [
-    eventLogging?.comparisonChipHoverEventName,
-    metric,
-    unifiedLogger,
-    universeId,
-    loggingMetricOverride,
-  ]);
+  }, [eventLogging, loggingMetric, unifiedLogger, universeId]);
   const [debouncedComparisonHoverLogging, clearDebouncedComparisonHoverLogging] =
     useDebouncedFunction(logComparisonHoverEvent, 500);
 

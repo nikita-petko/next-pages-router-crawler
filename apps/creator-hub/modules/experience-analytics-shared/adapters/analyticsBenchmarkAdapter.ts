@@ -39,7 +39,7 @@ import {
 import { BenchmarkType, benchmarkTypeToTranslationKey } from '../constants/BenchmarkType';
 import type RAQIV2ChartSpec from '../types/RAQIV2ChartSpec';
 import type { RAQIV2TranslationDependencies } from '../types/RAQIV2DimensionRenderer';
-import { getRAQIV2BenchmarkMetricFromMetricLike } from '../utils/metricLikeSemantics';
+import { getBenchmarkRequestIdentityFromMetricLike } from '../utils/metricLikeSemantics';
 
 enum BenchmarkLineType {
   Spline = 'spline',
@@ -408,13 +408,13 @@ const updateHighchartsDataWithBenchmark = (
   rangeBenchmark: LineRange<number, number, TagFormatterFn> | null;
   benchmarkSeriesMetadata?: Map<string, SeriesMetadata>;
 } => {
-  const benchmarkMetric = getRAQIV2BenchmarkMetricFromMetricLike(spec.metric);
-  if (!benchmarkMetric) {
+  const requestIdentity = getBenchmarkRequestIdentityFromMetricLike(spec.metric);
+  if (!requestIdentity) {
     return { chart: chartWithoutBenchmarks, rangeBenchmark: null };
   }
-  const { isPositiveGood } = getAnalyticsMetricDisplayConfig(benchmarkMetric);
+  const { isPositiveGood } = getAnalyticsMetricDisplayConfig(requestIdentity.metric);
   const benchmarkDataModification = ingestBenchmarkValues(
-    benchmarkMetric,
+    requestIdentity.metric,
     benchmarkData,
     locale,
     translationDeps,

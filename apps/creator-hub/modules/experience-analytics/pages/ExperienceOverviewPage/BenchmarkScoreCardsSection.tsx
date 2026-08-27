@@ -54,7 +54,7 @@ import {
   OnboardingStepKey,
 } from '@modules/experience-analytics-shared/constants/onboardingTipsConfigs';
 import type { ChartConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedChartConfig';
-import { getFirstMetricFromPredefinedChart } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedChartConfig';
+import { getBenchmarkIdentityFromPredefinedChart } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedChartConfig';
 import { useUniverseAnalyticsInsightsClient } from '@modules/experience-analytics-shared/context/UniverseAnalyticsInsightsClientProvider';
 import getExploreModeUrlParams from '@modules/experience-analytics-shared/exploreMode/getExploreModeUrlParams';
 import { useUniverseResource } from '@modules/experience-analytics-shared/hooks/useChartResourceProvider';
@@ -183,7 +183,7 @@ const BenchmarkScoreCardsSection: FC = () => {
       queryFn: () =>
         universeInsightsClient.getUniverseBenchmarkScorecard({
           universeId,
-          metric: getFirstMetricFromPredefinedChart(chartConfig),
+          metric: getBenchmarkIdentityFromPredefinedChart(chartConfig),
         }),
       enabled: !isUniverseLoading,
       retry,
@@ -193,7 +193,7 @@ const BenchmarkScoreCardsSection: FC = () => {
 
   const onClickCard = useCallback(
     (chartConfig: ChartConfig) => {
-      const metric = getFirstMetricFromPredefinedChart(chartConfig);
+      const metric = getBenchmarkIdentityFromPredefinedChart(chartConfig);
       logClickBenchmarkScoreCard(unifiedLogger, universeId, metric);
 
       const queryParams = getExploreModeUrlParams({
@@ -265,6 +265,7 @@ const BenchmarkScoreCardsSection: FC = () => {
               eventLogging={scoreCardEventLogging}
               state={state}
               benchmarkData={benchmarkData}
+              loggingMetric={getBenchmarkIdentityFromPredefinedChart(chartConfig)}
             />
           </Grid>
         );

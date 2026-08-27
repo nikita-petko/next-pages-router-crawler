@@ -61,8 +61,10 @@ type ChartConfigBase = MetricConfig & {
   // Custom-dashboard authored chart title, rendered ahead of `titleKey` when set
   // (see custom-dashboards synthesis). Optional so predefined configs are unaffected.
   titleLabel?: string;
-  // Computed/formula metric carried alongside the atomic `metric` for
-  // custom-dashboard charts; consumed by the rendering pipeline when present.
+  // ACE metric carried alongside the atomic `metric`. Predefined L7 charts and
+  // custom-dashboard tiles set this so queries use L7 smoothing of the base
+  // metric instead of leftover `L7Average*` identities. AnalyticsConfigChart
+  // puts this on `spec.metric` when present.
   computedMetric?: ComputedMetric;
 };
 

@@ -1,4 +1,5 @@
 import type {
+  BenchmarkQuery,
   QueryBenchmarkResponse,
   QueryBenchmarkResult,
   MetricValue,
@@ -10,7 +11,7 @@ import {
   ResourceType,
   BenchmarkType,
 } from '@rbx/client-analytics-benchmark-api/v1';
-import type { TRAQIV2APIMetric } from '@rbx/creator-hub-analytics-config';
+import type { RAQIV2BenchmarkVariantId, TRAQIV2APIMetric } from '@rbx/creator-hub-analytics-config';
 import { createClientConfiguration } from '../utils/createClientConfiguration';
 import type { ChartResourceType } from './analyticsRAQIShared';
 import { mapChartResourceTypeToTargetResourceType } from './analyticsRAQIShared';
@@ -39,6 +40,10 @@ type AnalyticsBenchmarkQuery = {
   filter?: BreakdownFilter[];
   percentiles?: [number, number];
   benchmarkType?: BenchmarkType;
+  // Optional CAaaS registry variant. When set, `metric` is the base metric and
+  // the server resolves the leftover overlay dataset. Omit it to keep `metric`
+  // as the dataset key itself.
+  benchmarkVariantId?: RAQIV2BenchmarkVariantId;
 };
 
 export type AnalyticsBenchmarkClientWrapper = {
@@ -68,17 +73,21 @@ export enum BenchmarkPercentile {
 
 const analyticsBenchmarkClient: AnalyticsBenchmarkClientWrapper = {
   query: (query) => {
+    const benchmarkQuery: BenchmarkQuery = {
+      metric: query.metric,
+      startTime: query.startTime.toISOString(),
+      endTime: query.endTime.toISOString(),
+      filter: query.filter,
+      percentiles: query.percentiles,
+      benchmarkType: query.benchmarkType,
+    };
+    if (query.benchmarkVariantId != null) {
+      benchmarkQuery.benchmarkVariantId = query.benchmarkVariantId;
+    }
     return analyticsBenchmarkApi.v1BenchmarksResourceResourceTypeIdResourceIdPost({
       resourceType: mapChartResourceTypeToTargetResourceType(query.resourceType, ResourceType),
       resourceId: query.resourceId,
-      benchmarkQuery: {
-        metric: query.metric,
-        startTime: query.startTime.toISOString(),
-        endTime: query.endTime.toISOString(),
-        filter: query.filter,
-        percentiles: query.percentiles,
-        benchmarkType: query.benchmarkType,
-      },
+      v1BenchmarksResourceResourceTypeIdResourceIdPostRequest: benchmarkQuery,
     });
   },
 };

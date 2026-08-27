@@ -14,6 +14,7 @@ import AnalyticsComponentType from '@modules/analytics-configurations/AnalyticsC
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { buildL7SmoothingComputedMetric } from '../../chartConfigurator/l7MetricMapping';
 import { RAQIV2SummaryType } from '../../enums/RAQIV2SummaryType';
 import type { ChartConfig } from '../../types/RAQIV2ChartConfig';
 import RAQIV2PredefinedChartKey from '../RAQIV2PredefinedChartKey';
@@ -341,7 +342,8 @@ export const chartConfigL7AverageForwardD1Retention = {
     'Description.L7AverageForwardD1Retention',
     TranslationNamespace.Analytics,
   ), // reused for metric
-  metric: RAQIV2Metric.L7AverageForwardD1Retention,
+  metric: RAQIV2Metric.ForwardD1Retention,
+  computedMetric: buildL7SmoothingComputedMetric(RAQIV2Metric.ForwardD1Retention, undefined),
   chartType: ChartType.Spline,
   overrides: {},
 } as const satisfies ChartConfig;
@@ -375,7 +377,8 @@ export const chartConfigL7AverageForwardD1RetentionByTopAcquisitionSources = {
     'Description.L7AverageForwardD1Retention',
     TranslationNamespace.Analytics,
   ),
-  metric: RAQIV2Metric.L7AverageForwardD1Retention,
+  metric: RAQIV2Metric.ForwardD1Retention,
+  computedMetric: buildL7SmoothingComputedMetric(RAQIV2Metric.ForwardD1Retention, undefined),
   chartType: ChartType.Spline,
   overrides: {
     breakdown: {
@@ -420,7 +423,8 @@ export const chartConfigL7AverageForwardD7Retention = {
     'Description.L7AverageForwardD7Retention',
     TranslationNamespace.Analytics,
   ), // reused for metric
-  metric: RAQIV2Metric.L7AverageForwardD7Retention,
+  metric: RAQIV2Metric.ForwardD7Retention,
+  computedMetric: buildL7SmoothingComputedMetric(RAQIV2Metric.ForwardD7Retention, undefined),
   chartType: ChartType.Spline,
   overrides: {},
 } as const satisfies ChartConfig;
@@ -504,7 +508,8 @@ export const chartConfigL7AverageDailyActiveUsers = {
     'Description.L7AverageDailyActiveUsers',
     TranslationNamespace.Analytics,
   ),
-  metric: RAQIV2Metric.L7AverageDailyActiveUsers,
+  metric: RAQIV2Metric.DailyActiveUsers,
+  computedMetric: buildL7SmoothingComputedMetric(RAQIV2Metric.DailyActiveUsers, undefined),
   chartType: ChartType.Spline,
   overrides: {},
 } as const satisfies ChartConfig;
@@ -693,7 +698,11 @@ export const chartConfigL7AveragePlayTimePerDAU = {
     'Description.L7AveragePlayTimePerDAU',
     TranslationNamespace.Analytics,
   ), // reused for metric
-  metric: RAQIV2Metric.L7AveragePlayTimeMinutesPerDAU,
+  metric: RAQIV2Metric.AveragePlayTimeMinutesPerDAU,
+  computedMetric: buildL7SmoothingComputedMetric(
+    RAQIV2Metric.AveragePlayTimeMinutesPerDAU,
+    undefined,
+  ),
   overrides: {},
   chartType: ChartType.Spline,
   titleKeyByGranularity: {
@@ -786,7 +795,8 @@ export const chartConfigL7AverageDailyRevenue = {
     'Description.L7AverageDailyRevenue',
     TranslationNamespace.Analytics,
   ),
-  metric: RAQIV2Metric.L7AverageDailyRevenue,
+  metric: RAQIV2Metric.DailyRevenue,
+  computedMetric: buildL7SmoothingComputedMetric(RAQIV2Metric.DailyRevenue, undefined),
   overrides: {},
   chartType: ChartType.Spline,
   summarySpec: {
@@ -908,7 +918,11 @@ export const chartConfigL7AverageRevenuePerPayingUser = {
     'Description.L7AverageRevenuePerPayingUser',
     TranslationNamespace.Analytics,
   ), // reused for metric
-  metric: RAQIV2Metric.L7AverageRevenuePerPayingUser,
+  metric: RAQIV2Metric.AverageRevenuePerPayingUser,
+  computedMetric: buildL7SmoothingComputedMetric(
+    RAQIV2Metric.AverageRevenuePerPayingUser,
+    undefined,
+  ),
   overrides: {},
   chartType: ChartType.Spline,
   definitionTooltipKeyByGranularity: {
@@ -959,7 +973,8 @@ export const chartConfigL7AveragePayingUsersCVR = {
     'Description.L7AveragePayingUsersCVR',
     TranslationNamespace.Analytics,
   ), // reused for metric
-  metric: RAQIV2Metric.L7AveragePayingUsersCVR,
+  metric: RAQIV2Metric.PayingUsersCVR,
+  computedMetric: buildL7SmoothingComputedMetric(RAQIV2Metric.PayingUsersCVR, undefined),
   overrides: {},
   chartType: ChartType.Spline,
   definitionTooltipKeyByGranularity: {
@@ -1014,7 +1029,11 @@ export const chartConfigL7AverageAcquisitionNewUsersWithPlaysV2 = {
     'Description.L7AverageNewUsersWithPlaysPerSource',
     TranslationNamespace.Analytics,
   ),
-  metric: RAQIV2Metric.L7AverageUniqueUsersWithPlaySessions,
+  metric: RAQIV2Metric.UniqueUsersWithPlaySessions,
+  computedMetric: buildL7SmoothingComputedMetric(
+    RAQIV2Metric.UniqueUsersWithPlaySessions,
+    undefined,
+  ),
   overrides: {
     filter: {
       intersect: [
@@ -2036,7 +2055,8 @@ export const chartConfigL7AverageRFYQualifiedPTR = {
     'Description.L7AverageRFYQualifiedPTR',
     TranslationNamespace.Analytics,
   ),
-  metric: RAQIV2Metric.L7AverageRFYQualifiedPTR,
+  metric: RAQIV2Metric.RFYQualifiedPTR,
+  computedMetric: buildL7SmoothingComputedMetric(RAQIV2Metric.RFYQualifiedPTR, undefined),
   overrides: {},
   chartType: ChartType.Spline,
 } as const satisfies ChartConfig;
@@ -2051,7 +2071,8 @@ export const chartConfigL7AverageRFYPTR = {
     'Description.L7AverageRFYPlayThroughRate',
     TranslationNamespace.Analytics,
   ),
-  metric: RAQIV2Metric.L7AverageRFYPlayThroughRate,
+  metric: RAQIV2Metric.RFYPlayThroughRate,
+  computedMetric: buildL7SmoothingComputedMetric(RAQIV2Metric.RFYPlayThroughRate, undefined),
   overrides: {},
   chartType: ChartType.Spline,
 } as const satisfies ChartConfig;

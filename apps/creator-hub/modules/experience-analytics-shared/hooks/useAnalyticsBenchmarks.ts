@@ -25,7 +25,7 @@ import {
 import { BenchmarkType } from '../constants/BenchmarkType';
 import { useCachedAnalyticsBenchmark } from '../context/AnalyticsBenchmarkProvider';
 import type RAQIV2ChartSpec from '../types/RAQIV2ChartSpec';
-import { getRAQIV2BenchmarkMetricFromMetricLike } from '../utils/metricLikeSemantics';
+import { getBenchmarkRequestIdentityFromMetricLike } from '../utils/metricLikeSemantics';
 import { snapToLatestEndTime, snapToLatestStartTime } from '../utils/snapToLatestTimestep';
 import useApiRequest from './useApiRequest';
 
@@ -166,11 +166,11 @@ export const getBenchmarkMetricByFilter = (
   spec: RAQIV2ChartSpec,
   benchmarkMetricMappingConfig: BenchmarkMetricMappingConfig = BenchmarkMetricMapping,
 ): BenchmarkMetric | null => {
-  const benchmarkMetric = getRAQIV2BenchmarkMetricFromMetricLike(spec.metric);
-  if (!benchmarkMetric || !isNumericUIMetric(benchmarkMetric)) {
+  const requestIdentity = getBenchmarkRequestIdentityFromMetricLike(spec.metric);
+  if (!requestIdentity || !isNumericUIMetric(requestIdentity.metric)) {
     return null;
   }
-  const filterMapping = benchmarkMetricMappingConfig[benchmarkMetric]?.filterMapping;
+  const filterMapping = benchmarkMetricMappingConfig[requestIdentity.metric]?.filterMapping;
   if (!filterMapping || spec.filter?.length !== 1) {
     return null;
   }
@@ -187,21 +187,21 @@ export const getBenchmarkMetric = (
   spec: RAQIV2ChartSpec,
   benchmarkMetricMappingConfig: BenchmarkMetricMappingConfig = BenchmarkMetricMapping,
 ): BenchmarkMetric | null => {
-  const benchmarkMetric = getRAQIV2BenchmarkMetricFromMetricLike(spec.metric);
-  if (!benchmarkMetric || !isNumericUIMetric(benchmarkMetric)) {
+  const requestIdentity = getBenchmarkRequestIdentityFromMetricLike(spec.metric);
+  if (!requestIdentity || !isNumericUIMetric(requestIdentity.metric)) {
     return null;
   }
   return (
-    getBenchmarkMetricByFilter(spec, benchmarkMetricMappingConfig) ||
-    benchmarkMetricMappingConfig[benchmarkMetric]?.defaultMetric ||
+    getBenchmarkMetricByFilter(spec, benchmarkMetricMappingConfig) ??
+    benchmarkMetricMappingConfig[requestIdentity.metric]?.defaultMetric ??
     null
   );
 };
 
 // Exported for testing
 export const allowBenchmarks = (spec: RAQIV2ChartSpec) => {
-  const benchmarkMetric = getRAQIV2BenchmarkMetricFromMetricLike(spec.metric);
-  if (!benchmarkMetric) {
+  const requestIdentity = getBenchmarkRequestIdentityFromMetricLike(spec.metric);
+  if (!requestIdentity) {
     return false;
   }
   if (spec.breakdown?.length || spec.granularity !== RAQIV2MetricGranularity.OneDay) {
@@ -212,6 +212,8 @@ export const allowBenchmarks = (spec: RAQIV2ChartSpec) => {
     return false;
   }
 
+  const benchmarkMetric = requestIdentity.metric;
+
   if (
     benchmarkMetric === RAQIV2Metric.EndToEndCVR ||
     benchmarkMetric === RAQIV2Metric.EndToEndCVRMigration ||
@@ -221,7 +223,9 @@ export const allowBenchmarks = (spec: RAQIV2ChartSpec) => {
     return (
       spec.filter?.length === 1 &&
       spec.filter[0].values.length === 1 &&
-      spec.filter[0].values[0] === RAQIV2AcquisitionSource.HomeRecommendation
+      // The UI filter may contain enum values despite its generic string typing.
+      // oxlint-disable-next-line typescript/no-unnecessary-type-conversion
+      String(spec.filter[0].values[0]) === String(RAQIV2AcquisitionSource.HomeRecommendation)
     );
   }
 
@@ -243,13 +247,13 @@ export const allowBenchmarks = (spec: RAQIV2ChartSpec) => {
 };
 
 const getBenchmarkFilter = (spec: RAQIV2ChartSpec): BreakdownFilter[] | undefined => {
-  const benchmarkMetric = getRAQIV2BenchmarkMetricFromMetricLike(spec.metric);
-  if (!benchmarkMetric) {
+  const requestIdentity = getBenchmarkRequestIdentityFromMetricLike(spec.metric);
+  if (!requestIdentity) {
     return undefined;
   }
   const filter: BreakdownFilter[] = [];
   if (
-    benchmarkMetric === RAQIV2Metric.UniqueAbuseReportSubmittersPer1000PlaytimeHours &&
+    requestIdentity.metric === RAQIV2Metric.UniqueAbuseReportSubmittersPer1000PlaytimeHours &&
     spec.filter?.length === 1 &&
     spec.filter[0].dimension === RAQIV2Dimension.AbuseChannel &&
     spec.filter[0].values.length === 1 &&
@@ -265,8 +269,8 @@ const getBenchmarkFilter = (spec: RAQIV2ChartSpec): BreakdownFilter[] | undefine
 };
 
 export const getBenchmarkQuery = (spec: RAQIV2ChartSpec): AnalyticsBenchmarkQuery | null => {
-  const benchmarkMetric = getRAQIV2BenchmarkMetricFromMetricLike(spec.metric);
-  if (!benchmarkMetric) {
+  const requestIdentity = getBenchmarkRequestIdentityFromMetricLike(spec.metric);
+  if (!requestIdentity) {
     return null;
   }
   if (!allowBenchmarks(spec)) {
@@ -274,14 +278,19 @@ export const getBenchmarkQuery = (spec: RAQIV2ChartSpec): AnalyticsBenchmarkQuer
     return null;
   }
 
+  const specialMetric = getBenchmarkMetric(spec);
+
   return {
     startTime: snapToLatestStartTime(spec.timeSpec.startTime, spec.granularity),
     endTime: snapToLatestEndTime(spec.timeSpec.endTime, spec.granularity),
-    metric: getBenchmarkMetric(spec) || benchmarkMetric,
+    metric: specialMetric ?? requestIdentity.metric,
     resourceType: spec.resource.type,
     resourceId: spec.resource.id.toString(),
     filter: getBenchmarkFilter(spec),
     percentiles: spec.benchmarkPercentiles,
+    ...(specialMetric || requestIdentity.benchmarkVariantId == null
+      ? {}
+      : { benchmarkVariantId: requestIdentity.benchmarkVariantId }),
   };
 };
 
@@ -293,12 +302,10 @@ export const useAnalyticsBenchmarks = (
   hasBenchmarks: boolean;
   hasSimilarityBenchmarks: boolean;
 } => {
-  const benchmarkOverlayType: BenchmarkOverlayType | undefined = useMemo(() => {
-    if (benchmarkType === BenchmarkType.Genre || benchmarkType === BenchmarkType.Similarity) {
-      return benchmarkType;
-    }
-    return;
-  }, [benchmarkType]);
+  const benchmarkOverlayType: BenchmarkOverlayType | undefined =
+    benchmarkType === BenchmarkType.Genre || benchmarkType === BenchmarkType.Similarity
+      ? benchmarkType
+      : undefined;
 
   const apiBenchmarkType = mapOverlayTypeToApiBenchmarkType(benchmarkOverlayType);
 
@@ -306,11 +313,6 @@ export const useAnalyticsBenchmarks = (
     if (!spec) {
       return null;
     }
-    const benchmarkMetric = getRAQIV2BenchmarkMetricFromMetricLike(spec.metric);
-    if (!benchmarkMetric) {
-      return null;
-    }
-
     const query = getBenchmarkQuery(spec);
     if (query && apiBenchmarkType) {
       return { ...query, benchmarkType: apiBenchmarkType };

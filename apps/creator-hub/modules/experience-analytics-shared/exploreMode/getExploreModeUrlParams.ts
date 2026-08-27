@@ -13,6 +13,7 @@ import { isValidArrayEnumValue, isValidEnumValue } from '@modules/miscellaneous/
 import { raqiV2FiltersToLegacy } from '../adapters/legacyFiltersToRAQIV2';
 import { isChartConfiguratorSupportedChartType } from '../chartConfigurator/ChartConfiguratorChartTypes';
 import { isChartConfiguratorMetric } from '../chartConfigurator/chartConfiguratorMetricsConfig';
+import { isPureL7SmoothingComputedMetric } from '../chartConfigurator/l7MetricMapping';
 import {
   serializeOverlayParam,
   serializeBenchmarkType,
@@ -46,6 +47,7 @@ import getOverlayAvailability from '../utils/getOverlayAvailability';
 import { getQuotaConfigForMetric } from '../utils/getQuotaConfigForMetric';
 import { getRAQIV2BenchmarkMetricFromMetricLike } from '../utils/metricLikeSemantics';
 import { UIGranularities } from '../utils/seriesGranularities';
+import { L7_SMOOTHING_QUERY_VALUE } from './resolveExploreModeQueryState';
 
 // Time window lives under `timeSpec` to match `RAQIV2ChartContext` /
 // `RAQIV2ChartSpec`; reading it from the top level silently falls through to
@@ -169,9 +171,12 @@ const getExploreModeUrlParams = ({
    */
   alertIdsToPreselect?: readonly string[];
 }): AnalyticsSearchParams => {
-  const [{ metric, overrides: predefinedChartSpecOverride }] =
+  const [{ metric, computedMetric, overrides: predefinedChartSpecOverride }] =
     getMetricRelatedConfigFromPredefinedChart(preset);
-  const atomicMetric = isComputedMetric(metric) ? null : metric;
+  const isPureL7Smoothing =
+    computedMetric != null && isPureL7SmoothingComputedMetric(computedMetric);
+  const isFormulaComputedMetric = computedMetric != null && !isPureL7Smoothing;
+  const atomicMetric = isFormulaComputedMetric || isComputedMetric(metric) ? null : metric;
 
   const effectiveOverlays =
     overlays ?? getOverlays(getNonMetricRelatedConfigFromPredefinedChart(preset));
@@ -191,7 +196,7 @@ const getExploreModeUrlParams = ({
   });
 
   let timeRangeQueryParams: Partial<AnalyticsSearchParams> = {};
-  if (isComputedMetric(metric)) {
+  if (isFormulaComputedMetric || isComputedMetric(metric)) {
     timeRangeQueryParams = getTimeRangeQueryParamsFromTimeSpec(chartContext.timeSpec) ?? {};
   } else if (atomicMetric) {
     timeRangeQueryParams = getTimeRangeQueryParams(atomicMetric, chartContext);
@@ -201,7 +206,14 @@ const getExploreModeUrlParams = ({
   const presetParams = resolvedPreset ? { [AnalyticsQueryParams.Preset]: resolvedPreset } : {};
 
   const computedMetricParams: Partial<AnalyticsSearchParams> = {};
-  if (isComputedMetric(metric)) {
+  if (isPureL7Smoothing) {
+    computedMetricParams[AnalyticsQueryParams.Smoothing] = L7_SMOOTHING_QUERY_VALUE;
+  } else if (computedMetric) {
+    const serializedComputedMetric = serializeComputedMetricToQueryParam(computedMetric);
+    if (serializedComputedMetric) {
+      computedMetricParams[AnalyticsQueryParams.ComputedMetric] = serializedComputedMetric;
+    }
+  } else if (isComputedMetric(metric)) {
     const serializedComputedMetric = serializeComputedMetricToQueryParam(metric);
     if (serializedComputedMetric) {
       computedMetricParams[AnalyticsQueryParams.ComputedMetric] = serializedComputedMetric;

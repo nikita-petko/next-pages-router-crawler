@@ -4,7 +4,7 @@ import type { TranslationKey } from '@modules/analytics-translations/types';
 import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import { mapNonEmptyArray, type NonEmptyArray } from '@modules/charts-generic/types/NonEmptyArray';
 import { isValidEnumValue, isValidArrayEnumValue } from '@modules/miscellaneous/utils/enumUtils';
-import type { MetricLike } from '../types/ComputedMetric';
+import type { ComputedMetric, MetricLike } from '../types/ComputedMetric';
 import type { ChartDisplayContext, QuotaConfig } from '../types/RAQIV2ChartConfig';
 import {
   type ChartConfigDisplayOptions,
@@ -20,7 +20,9 @@ import {
   type UniqueKeyForAnalyticsComponent,
 } from '../utils/getUniqueKeyForKeyOrConfig';
 import { hasMetricFanoutBreakdown } from '../utils/isMetricFanoutDimension';
+import { getRAQIV2BenchmarkMetricFromMetricLike } from '../utils/metricLikeSemantics';
 import getAnalyticsMetricDisplayConfig, {
+  isNumericUIMetric,
   type TRAQIV2NumericUIMetric,
 } from './AnalyticsMetricDisplayConfig';
 import {
@@ -139,6 +141,7 @@ export type {
 
 type MetricConfig = {
   metric: TRAQIV2NumericUIMetric;
+  computedMetric?: ComputedMetric;
   overrides: SpecOverride;
 };
 
@@ -340,15 +343,47 @@ export const getFirstMetricFromPredefinedChart = (
   return getMetricsFromPredefinedChart(chartKeyOrConfig)[0];
 };
 
-export const getNonMetricRelatedConfigFromPredefinedChart = (
+/**
+ * Metric the chart actually queries: L7 `ComputedMetric` when the config
+ * carries one, otherwise the atomic `metric`. Overlay identity still comes
+ * from {@link getBenchmarkIdentityFromPredefinedChart}.
+ */
+export const getExecutionMetricFromPredefinedChart = (
   chartKeyOrConfig: ChartConfigOrPredefinedKey,
-): Omit<ChartConfig, 'metric' | 'metricConfig' | 'overrides'> => {
+): MetricLike => {
   const config = getConfigFromKeyOrConfig(chartKeyOrConfig);
   if (isMultiMetricChartConfig(config)) {
-    const { metricsConfig, ...commonConfig } = config;
+    return config.metricsConfig[0].metric;
+  }
+  return config.computedMetric ?? config.metric;
+};
+
+/**
+ * Leftover overlay / insights dataset key for L7-smoothed charts; otherwise
+ * the atomic metric. Insights scorecards still key leftover `L7Average*`
+ * names until that service accepts `{ base, l7_average }`.
+ */
+export const getBenchmarkIdentityFromPredefinedChart = (
+  chartKeyOrConfig: ChartConfigOrPredefinedKey,
+): TRAQIV2NumericUIMetric => {
+  const overlayIdentity = getRAQIV2BenchmarkMetricFromMetricLike(
+    getExecutionMetricFromPredefinedChart(chartKeyOrConfig),
+  );
+  if (overlayIdentity && isNumericUIMetric(overlayIdentity)) {
+    return overlayIdentity;
+  }
+  return getFirstMetricFromPredefinedChart(chartKeyOrConfig);
+};
+
+export const getNonMetricRelatedConfigFromPredefinedChart = (
+  chartKeyOrConfig: ChartConfigOrPredefinedKey,
+): Omit<ChartConfig, 'metric' | 'metricConfig' | 'overrides' | 'computedMetric'> => {
+  const config = getConfigFromKeyOrConfig(chartKeyOrConfig);
+  if (isMultiMetricChartConfig(config)) {
+    const { metricsConfig, computedMetric: _computedMetric, ...commonConfig } = config;
     return commonConfig;
   }
-  const { metric, overrides, ...commonConfig } = config;
+  const { metric, overrides, computedMetric: _computedMetric, ...commonConfig } = config;
   return commonConfig;
 };
 
@@ -359,7 +394,13 @@ export const getMetricRelatedConfigFromPredefinedChart = (
   if (isMultiMetricChartConfig(config)) {
     return config.metricsConfig;
   }
-  return [{ metric: config.metric, overrides: config.overrides }];
+  return [
+    {
+      metric: config.metric,
+      ...(config.computedMetric ? { computedMetric: config.computedMetric } : {}),
+      overrides: config.overrides,
+    },
+  ];
 };
 
 /**

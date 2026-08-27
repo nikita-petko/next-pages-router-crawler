@@ -1,9 +1,19 @@
-import { RAQIV2Metric, RAQIV2UIMetric } from '@rbx/creator-hub-analytics-config';
+import {
+  RAQIV2BenchmarkVariantId,
+  RAQIV2BenchmarkVariantsByMetric,
+  RAQIV2BenchmarkDatasetKeyToVariant,
+  RAQIV2Metric,
+  RAQIV2UIMetric,
+} from '@rbx/creator-hub-analytics-config';
 import type {
   TRAQIV2UIMetric,
   TRAQIV2UIMetricFanoutDimensionValues,
 } from '@rbx/creator-hub-analytics-config';
-import type { TRAQIV2NumericUIMetric } from '../constants/AnalyticsMetricDisplayConfig';
+import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
+import {
+  isNumericUIMetric,
+  type TRAQIV2NumericUIMetric,
+} from '../constants/AnalyticsMetricDisplayConfig';
 import type {
   AtomicMetricLike,
   ComputedMetric,
@@ -13,47 +23,69 @@ import type {
 import { hasPseudoDimensionValues } from '../utils/extractPseudoDimensionsFromFilters';
 
 /**
- * Exhaustive list of [baseMetric, precomputedL7Metric] pairs.
- * Single source of truth — all maps, sets, and helpers derive from this array.
+ * Leftover L7 overlay dataset keys. The published reverse index is typed
+ * `Record<RAQIV2BenchmarkDatasetKey, ...>`, a separate enum from `RAQIV2Metric`,
+ * so Hub keeps this list as the leftover-name union. `Extract` keeps those
+ * names assignable to `RAQIV2Metric` while 0.1.466 still ships the matching
+ * enum members. Insights, titles, and URL ingest use these names. Benchmark
+ * API requests use `{ base metric, benchmarkVariantId }` from
+ * `getBenchmarkRequestIdentityFromMetricLike` instead.
  */
-const l7SmoothingMetricPairs = [
-  [RAQIV2Metric.ForwardD1Retention, RAQIV2Metric.L7AverageForwardD1Retention],
-  [RAQIV2Metric.ForwardD7Retention, RAQIV2Metric.L7AverageForwardD7Retention],
-  [RAQIV2Metric.DailyRevenue, RAQIV2Metric.L7AverageDailyRevenue],
-  [RAQIV2Metric.AverageRevenuePerPayingUser, RAQIV2Metric.L7AverageRevenuePerPayingUser],
-  [RAQIV2Metric.PayingUsersCVR, RAQIV2Metric.L7AveragePayingUsersCVR],
-  [RAQIV2Metric.DailyActiveUsers, RAQIV2Metric.L7AverageDailyActiveUsers],
-  [RAQIV2Metric.AveragePlayTimeMinutesPerDAU, RAQIV2Metric.L7AveragePlayTimeMinutesPerDAU],
-  [RAQIV2Metric.UniqueUsersWithPlaySessions, RAQIV2Metric.L7AverageUniqueUsersWithPlaySessions],
-  [RAQIV2Metric.RFYPlayThroughRate, RAQIV2Metric.L7AverageRFYPlayThroughRate],
-  [RAQIV2Metric.RFYQualifiedPTR, RAQIV2Metric.L7AverageRFYQualifiedPTR],
-] as const satisfies ReadonlyArray<readonly [TRAQIV2NumericUIMetric, TRAQIV2NumericUIMetric]>;
+export const leftoverL7DatasetNames = [
+  'L7AverageDailyActiveUsers',
+  'L7AverageDailyRevenue',
+  'L7AverageForwardD1Retention',
+  'L7AverageForwardD7Retention',
+  'L7AveragePayingUsersCVR',
+  'L7AveragePlayTimeMinutesPerDAU',
+  'L7AverageRFYPlayThroughRate',
+  'L7AverageRFYQualifiedPTR',
+  'L7AverageRevenuePerPayingUser',
+  'L7AverageUniqueUsersWithPlaySessions',
+] as const;
 
-type L7SmoothingPair = (typeof l7SmoothingMetricPairs)[number];
+export type LeftoverL7DatasetName = (typeof leftoverL7DatasetNames)[number];
 
-/** Union of all pre-computed L7 metric enum values. */
-export type PrecomputedL7Metric = L7SmoothingPair[1];
+export type PrecomputedL7Metric = Extract<RAQIV2Metric, LeftoverL7DatasetName>;
 
-/** Reverse map: every pre-computed L7 metric -> its base metric. */
-export const reverseL7SmoothingMetricMap: Partial<
-  Record<PrecomputedL7Metric, TRAQIV2NumericUIMetric>
-> = l7SmoothingMetricPairs.reduce<Partial<Record<PrecomputedL7Metric, TRAQIV2NumericUIMetric>>>(
-  (metricMap, [baseMetric, precomputedMetric]) => {
-    metricMap[precomputedMetric] = baseMetric;
-    return metricMap;
-  },
-  {},
-);
-
-const baseToPrecomputedL7Metric = new Map<string, PrecomputedL7Metric>(l7SmoothingMetricPairs);
-
-/** Set of all pre-computed L7 metric keys (the L7 side of the pairs). */
-export const precomputedL7Metrics: ReadonlySet<string> = new Set(
-  l7SmoothingMetricPairs.map(([, l7]) => l7),
-);
+const leftoverL7DatasetNameSet: ReadonlySet<string> = new Set(leftoverL7DatasetNames);
 
 export const isPrecomputedL7Metric = (metric: string): metric is PrecomputedL7Metric =>
-  precomputedL7Metrics.has(metric);
+  Object.hasOwn(RAQIV2BenchmarkDatasetKeyToVariant, metric) && leftoverL7DatasetNameSet.has(metric);
+
+/** Reverse map: leftover L7 dataset key -> its base metric. */
+export const reverseL7SmoothingMetricMap: Partial<
+  Record<PrecomputedL7Metric, TRAQIV2NumericUIMetric>
+> = Object.entries(RAQIV2BenchmarkDatasetKeyToVariant).reduce<
+  Partial<Record<PrecomputedL7Metric, TRAQIV2NumericUIMetric>>
+>((metricMap, [leftoverName, mapping]) => {
+  if (!isPrecomputedL7Metric(leftoverName) || !isNumericUIMetric(mapping.metric)) {
+    return metricMap;
+  }
+  metricMap[leftoverName] = mapping.metric;
+  return metricMap;
+}, {});
+
+/** Set of leftover L7 dataset keys. Overlay identity, not ACE smoothing eligibility. */
+export const precomputedL7Metrics: ReadonlySet<string> = new Set(
+  Object.keys(RAQIV2BenchmarkDatasetKeyToVariant),
+);
+
+/**
+ * Published benchmark variant mapping for a leftover L7 dataset key. The
+ * registry map is keyed by `RAQIV2BenchmarkDatasetKey`, a separate enum from
+ * `RAQIV2Metric`, so this localizes the string-keyed lookup for callers that
+ * have already been narrowed by {@link isPrecomputedL7Metric}.
+ */
+export const getBenchmarkVariantByDatasetKey = (
+  datasetKey: PrecomputedL7Metric,
+): { metric: RAQIV2Metric; variantId: RAQIV2BenchmarkVariantId } | undefined =>
+  (
+    RAQIV2BenchmarkDatasetKeyToVariant as Record<
+      string,
+      { metric: RAQIV2Metric; variantId: RAQIV2BenchmarkVariantId } | undefined
+    >
+  )[datasetKey];
 
 type L7SmoothingComputedMetricSourceOptions = {
   customEventName?: string;
@@ -177,24 +209,29 @@ export const getBaseMetricFromL7 = (metric: string): TRAQIV2NumericUIMetric | nu
 };
 
 /**
- * If `metric` is a base metric with a leftover precomputed L7 dataset, returns
- * that L7 identity. Otherwise returns `null`.
+ * If `metric` is a base metric with a leftover L7 benchmark dataset, returns
+ * that leftover dataset key. Otherwise returns `null`.
  *
- * Query execution no longer sends `L7Average*` (those CAaaS definitions are
- * gone), but the benchmark API is still keyed by those leftover names. Explore
- * Mode L7-on for the mapped ten therefore queries as an ACE
- * {@link ComputedMetric} and resolves the overlay through this lookup.
+ * Overlay eligibility comes from the CAaaS registry leftover name. ACE
+ * smoothing can still apply to metrics with no leftover dataset.
  */
-export const getPrecomputedL7MetricFromBase = (metric: string): PrecomputedL7Metric | null =>
-  baseToPrecomputedL7Metric.get(metric) ?? null;
+export const getPrecomputedL7MetricFromBase = (metric: string): PrecomputedL7Metric | null => {
+  if (!isValidEnumValue(RAQIV2Metric, metric)) {
+    return null;
+  }
+  const leftoverName =
+    RAQIV2BenchmarkVariantsByMetric[metric]?.[RAQIV2BenchmarkVariantId.L7Average]?.datasetKey;
+  return leftoverName && isPrecomputedL7Metric(leftoverName) ? leftoverName : null;
+};
 
 /**
  * Request-boundary compatibility rewrite for leftover `L7Average*` identities.
  *
- * Chart specs, URLs, benchmarks, duration eligibility, and display config keep
- * the precomputed L7 name as the UI identity. Query execution cannot: those
- * CAaaS definitions are gone, so this converts the leftover name into the ACE
- * seven-day rolling-window {@link ComputedMetric} that now backs it.
+ * Old Explore URLs and leftover ingest still carry the precomputed L7 name.
+ * Query execution cannot: those CAaaS definitions are gone, so this converts
+ * the leftover name into the ACE seven-day rolling-window {@link ComputedMetric}
+ * that now backs it. Predefined L7 charts already put that ComputedMetric on
+ * `spec.metric` and do not go through this rewrite.
  *
  * Returns `null` for everything else (computed metrics, custom-event atomics,
  * and non-L7 strings). The lookup is a small-set check, so calling this on
@@ -202,7 +239,7 @@ export const getPrecomputedL7MetricFromBase = (metric: string): PrecomputedL7Met
  * than inlining them into request dispatch.
  */
 export const rewritePrecomputedL7MetricForRequest = (
-  metric: MetricLike<TRAQIV2UIMetric>,
+  metric: MetricLike<TRAQIV2UIMetric> | LeftoverL7DatasetName,
 ): ComputedMetric | null => {
   if (typeof metric !== 'string') {
     return null;

@@ -20,6 +20,7 @@ import {
 } from '@modules/charts-generic/utils/comparisonChipUtils';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
+import { isPureL7SmoothingComputedMetric } from '../chartConfigurator/l7MetricMapping';
 import getDimensionRenderer from '../components/getDimensionRenderer';
 import getAnalyticsMetricDisplayConfig from '../constants/AnalyticsMetricDisplayConfig';
 import type {
@@ -116,10 +117,11 @@ const summarizeSingleSeries = <T, V extends number>(
       chartSummaryType: type,
     },
   });
-  // Comparison chips are suppressed for computed metrics until isPositiveGood can be derived
-  // from the equation and source metrics. See TODO in getIsPositiveGoodFromMetricLike (DSA-5477).
+  // Comparison chips are suppressed for computed metrics unless pure L7
+  // smoothing, whose isPositiveGood delegates to the source metric.
   const comparisonChipSpec =
-    comparisonSingleSeries && !isComputedMetric(spec.metric)
+    comparisonSingleSeries &&
+    !(isComputedMetric(spec.metric) && !isPureL7SmoothingComputedMetric(spec.metric))
       ? getComparisonChipSpec({
           isPositiveGood,
           current: value,

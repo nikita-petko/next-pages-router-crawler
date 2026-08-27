@@ -1,6 +1,6 @@
-import { useQueryClient } from '@tanstack/react-query';
 import type { FC } from 'react';
 import React, { useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type {
   AnalyticsBenchmarkClientWrapper,
   AnalyticsBenchmarkQuery,
@@ -33,6 +33,7 @@ const getQueryKey = (request: AnalyticsBenchmarkQuery) => {
     filter,
     percentiles,
     benchmarkType,
+    benchmarkVariantId,
     ...remainder
   } = request;
   /**
@@ -53,8 +54,12 @@ const getQueryKey = (request: AnalyticsBenchmarkQuery) => {
     filter,
     percentiles,
     benchmarkType,
+    benchmarkVariantId,
   ]);
 };
+
+/** Exported so tests can lock the remainder-guard against new query fields. */
+export const getAnalyticsBenchmarkQueryKey = getQueryKey;
 
 const noStale = { staleTime: Infinity };
 const AnalyticsBenchmarkProvider: FC<React.PropsWithChildren> = ({ children }) => {

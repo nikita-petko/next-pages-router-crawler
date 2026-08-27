@@ -1,4 +1,8 @@
-import { RAQIV2Metric, type TRAQIV2UIMetric } from '@rbx/creator-hub-analytics-config';
+import {
+  RAQIV2BenchmarkVariantId,
+  RAQIV2Metric,
+  type TRAQIV2UIMetric,
+} from '@rbx/creator-hub-analytics-config';
 import type { FormattedText, TranslationKey } from '@modules/analytics-translations/types';
 import {
   brandUntranslatableText,
@@ -8,8 +12,11 @@ import ChartSummaryType from '@modules/charts-generic/enums/ChartSummaryType';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
 import {
+  getBenchmarkVariantByDatasetKey,
   getPrecomputedL7MetricFromBase,
+  isPrecomputedL7Metric,
   isPureL7SmoothingComputedMetric,
+  type PrecomputedL7Metric,
 } from '../chartConfigurator/l7MetricMapping';
 import getAnalyticsMetricDisplayConfig from '../constants/AnalyticsMetricDisplayConfig';
 import {
@@ -59,6 +66,9 @@ export const getMetricLabelFromMetricLike = (
     return translationDependencies
       ? translationDependencies.translate(localizedName)
       : brandUserSuppliedText(localizedName.key);
+  }
+  if (isPureL7SmoothingComputedMetric(metricLike)) {
+    return getMetricLabelFromMetricLike(metricLike.sources[0].metric, translationDependencies);
   }
   return brandUserSuppliedText(
     isNonEmptyString(metricLike.name) ? metricLike.name : metricLike.formula,
@@ -111,24 +121,25 @@ export const getMetricTitleKeyFromMetricLike = (
 };
 
 /**
- * Canonical RAQI metric identity for the analytics-benchmark API.
+ * Leftover overlay dataset key for insights and titles.
  *
- * Atomic leftover `L7Average*` identities pass through unchanged (predefined
- * L7 charts keep that name as UI identity). Pure L7 smoothing ComputedMetrics
- * — Explore Mode's ACE rewrite of those same ten — map back to the leftover
- * name so the overlay still hits the L7 benchmark dataset. Arbitrary formulas
- * and L7-on metrics with no leftover dataset return null.
+ * Pure L7 smoothing ComputedMetrics map to the leftover `L7Average*` name so
+ * insights scorecards can keep keying that dataset. Atomic leftover identities
+ * (old URLs / ingest) pass through unchanged. Arbitrary formulas and L7-on
+ * metrics with no leftover dataset return null.
+ *
+ * Benchmark API requests use {@link getBenchmarkRequestIdentityFromMetricLike}
+ * instead. Do not POST this leftover name as `metric`.
  */
 export const getRAQIV2BenchmarkMetricFromMetricLike = <TMetric extends TRAQIV2UIMetric>(
   metricLike: MetricLike<TMetric>,
-): RAQIV2Metric | null => {
+): RAQIV2Metric | PrecomputedL7Metric | null => {
   if (isComputedMetric(metricLike)) {
     if (!isPureL7SmoothingComputedMetric(metricLike)) {
       return null;
     }
     const sourceMetric = getUIMetricFromAtomicMetricLike(metricLike.sources[0].metric);
-    const precomputedL7 = getPrecomputedL7MetricFromBase(sourceMetric);
-    return precomputedL7 && isRAQIV2Metric(precomputedL7) ? precomputedL7 : null;
+    return getPrecomputedL7MetricFromBase(sourceMetric);
   }
 
   const uiMetric = getUIMetricFromAtomicMetricLike(metricLike);
@@ -138,21 +149,80 @@ export const getRAQIV2BenchmarkMetricFromMetricLike = <TMetric extends TRAQIV2UI
   return uiMetric;
 };
 
+/**
+ * Benchmark API request identity. `metric` is the CAaaS base metric.
+ * `benchmarkVariantId` is set when the overlay table is a leftover L7
+ * dataset for that variant. Do not POST leftover `L7Average*` names as
+ * `metric`.
+ *
+ * Pure L7 smoothing of a leftover base becomes `{ base, l7_average }`.
+ * Leftover atomic `L7Average*` names (old URLs) become the same pair.
+ * Other atomic RAQIV2 metrics send `metric` with no variant. Formulas and
+ * L7-on metrics with no leftover dataset return null.
+ */
+export type AnalyticsBenchmarkRequestIdentity = {
+  metric: RAQIV2Metric;
+  benchmarkVariantId?: RAQIV2BenchmarkVariantId;
+};
+
+export const getBenchmarkRequestIdentityFromMetricLike = <TMetric extends TRAQIV2UIMetric>(
+  metricLike: MetricLike<TMetric>,
+): AnalyticsBenchmarkRequestIdentity | null => {
+  if (isComputedMetric(metricLike)) {
+    if (!isPureL7SmoothingComputedMetric(metricLike)) {
+      return null;
+    }
+    const sourceMetric = getUIMetricFromAtomicMetricLike(metricLike.sources[0].metric);
+    if (!isValidEnumValue(RAQIV2Metric, sourceMetric)) {
+      return null;
+    }
+    if (getPrecomputedL7MetricFromBase(sourceMetric) == null) {
+      return null;
+    }
+    return {
+      metric: sourceMetric,
+      benchmarkVariantId: RAQIV2BenchmarkVariantId.L7Average,
+    };
+  }
+
+  const uiMetric = getUIMetricFromAtomicMetricLike(metricLike);
+  if (isPrecomputedL7Metric(uiMetric)) {
+    const mapping = getBenchmarkVariantByDatasetKey(uiMetric);
+    if (mapping == null) {
+      return null;
+    }
+    return {
+      metric: mapping.metric,
+      benchmarkVariantId: mapping.variantId,
+    };
+  }
+  if (!isRAQIV2Metric(uiMetric)) {
+    return null;
+  }
+  return { metric: uiMetric };
+};
+
 export const getDisplayUnitFromMetricLike = (
   metricLike: MetricLike,
-  { translate }: RAQIV2TranslationDependencies,
+  translationDependencies: RAQIV2TranslationDependencies,
 ): FormattedText => {
   if (isComputedMetric(metricLike)) {
+    if (isPureL7SmoothingComputedMetric(metricLike)) {
+      return getDisplayUnitFromMetricLike(metricLike.sources[0].metric, translationDependencies);
+    }
     return brandUntranslatableText('');
   }
   const { localizedName } = getAnalyticsMetricDisplayConfig(
     getUIMetricFromAtomicMetricLike(metricLike),
   );
-  return translate(localizedName);
+  return translationDependencies.translate(localizedName);
 };
 
 export const getIsPositiveGoodFromMetricLike = (metric: MetricLike<TRAQIV2UIMetric>): boolean => {
   if (isComputedMetric(metric)) {
+    if (isPureL7SmoothingComputedMetric(metric)) {
+      return getIsPositiveGoodFromMetricLike(metric.sources[0].metric);
+    }
     // TODO(gperkins@20260302): derive from equation and source metrics DSA-5477
     return true;
   }
@@ -166,6 +236,9 @@ export const getIsPositiveGoodFromMetricLike = (metric: MetricLike<TRAQIV2UIMetr
  */
 export const getIsAverageAggregationMetric = (metric: MetricLike<TRAQIV2UIMetric>): boolean => {
   if (isComputedMetric(metric)) {
+    if (isPureL7SmoothingComputedMetric(metric)) {
+      return getIsAverageAggregationMetric(metric.sources[0].metric);
+    }
     return false;
   }
   const { defaultTotalSummaryTypes } = getAnalyticsMetricDisplayConfig(

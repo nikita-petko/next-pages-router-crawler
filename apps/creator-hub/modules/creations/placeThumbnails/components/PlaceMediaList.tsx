@@ -19,7 +19,7 @@ const useStyles = makeStyles()((theme) => {
     actions: {
       position: 'sticky',
       bottom: 0,
-      backgroundColor: theme.palette.content.inverse,
+      backgroundColor: theme.palette.surface[0],
       padding: '16px 0',
     },
   };
@@ -59,6 +59,7 @@ const PlaceMediaList: FC<PlaceMediaListProps> = ({
     // update ordered lists when queried previews update
     // it happens due to user add a new thumbnail or delete a thumbnail
     if (!isPending && !isError && queriedPreviews) {
+      // oxlint-disable-next-line react/react-compiler -- pre-existing synchronization of local reorder state with refreshed server previews
       setMediaItems(queriedPreviews ?? []);
     }
   }, [isError, isPending, queriedPreviews]);
@@ -85,6 +86,7 @@ const PlaceMediaList: FC<PlaceMediaListProps> = ({
         isAssetUploading={isAssetUploading}
       />
       {itemsOrderChanged && (
+        // oxlint-disable-next-line typescript/no-deprecated -- pre-existing reorder warning; banner migration is outside this color correction
         <FeedbackBanner
           title={null}
           severity='Warning'
