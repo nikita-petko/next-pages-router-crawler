@@ -62,6 +62,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: avatarMarketplaceFlags.enableGetItemCollectibleDetails,
+      metadata: {
+        namespace: 'avatar-marketplace',
+        name: 'enableGetItemCollectibleDetails',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: communitiesFlags.creatorAnalytics,
       metadata: {
         namespace: 'communities',

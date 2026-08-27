@@ -6,6 +6,8 @@ import {
   TableHeader,
   TableHeaderCell,
   TableRow,
+  Tooltip,
+  TooltipTrigger,
 } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
@@ -17,7 +19,6 @@ export interface RewardTableRow {
   name: ReactNode;
   placementId: ReactNode;
   status: ReactNode;
-  location: ReactNode;
   rewardItem: ReactNode;
   lastUpdate: ReactNode;
   actions?: ReactNode;
@@ -25,16 +26,16 @@ export interface RewardTableRow {
 
 interface RewardTableProps {
   rows: RewardTableRow[];
+  showCustomRewardedTooltip?: boolean;
 }
 
-const RewardTable = ({ rows }: RewardTableProps) => {
+const RewardTable = ({ rows, showCustomRewardedTooltip = false }: RewardTableProps) => {
   const { translate } = useTranslationWrapper(useTranslation());
 
   return (
     <div className='margin-top-small [&>div]:bg-none'>
       <Table className='[table-layout:fixed]' size='Medium' variant='Divided'>
         <colgroup>
-          <col />
           <col />
           <col />
           <col />
@@ -60,13 +61,37 @@ const RewardTable = ({ rows }: RewardTableProps) => {
               )}
             </TableHeaderCell>
             <TableHeaderCell>
-              {translate(
-                translationKey('Label.Location', TranslationNamespace.ImmersiveAdsAnalytics),
-              )}
-            </TableHeaderCell>
-            <TableHeaderCell>
-              {translate(
-                translationKey('Heading.RewardItem', TranslationNamespace.ImmersiveAdsAnalytics),
+              {showCustomRewardedTooltip ? (
+                <Tooltip
+                  position='top-center'
+                  title={translate(
+                    translationKey(
+                      'Title.CustomRewardedVideo',
+                      TranslationNamespace.ImmersiveAdsAnalytics,
+                    ),
+                  )}
+                  description={translate(
+                    translationKey(
+                      'Tooltip.CustomIntegration',
+                      TranslationNamespace.ImmersiveAdsAnalytics,
+                    ),
+                  )}
+                  hasBeak>
+                  <TooltipTrigger asChild>
+                    <span className='inline-flex'>
+                      {translate(
+                        translationKey(
+                          'Heading.RewardItem',
+                          TranslationNamespace.ImmersiveAdsAnalytics,
+                        ),
+                      )}
+                    </span>
+                  </TooltipTrigger>
+                </Tooltip>
+              ) : (
+                translate(
+                  translationKey('Heading.RewardItem', TranslationNamespace.ImmersiveAdsAnalytics),
+                )
               )}
             </TableHeaderCell>
             <TableHeaderCell>
@@ -85,7 +110,6 @@ const RewardTable = ({ rows }: RewardTableProps) => {
               <TableCell className='!padding-left-xxlarge'>{row.name}</TableCell>
               <TableCell>{row.placementId}</TableCell>
               <TableCell>{row.status}</TableCell>
-              <TableCell>{row.location}</TableCell>
               <TableCell>{row.rewardItem}</TableCell>
               <TableCell>{row.lastUpdate}</TableCell>
               <TableCell>

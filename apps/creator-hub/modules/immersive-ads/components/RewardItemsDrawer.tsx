@@ -240,7 +240,9 @@ function RewardItemsDrawer({
         largeScreenVariant='side'
         closeLabel={translate('Action.Close')}
         largeScreenClassName='!width-[608px] !max-width-[608px]'>
-        <SheetTitle>{translate('Heading.JoinWithReward')}</SheetTitle>
+        <SheetTitle className='!padding-bottom-none'>
+          {translate('Heading.JoinWithReward')}
+        </SheetTitle>
         <SheetBody>
           <p className='text-body-small content-default margin-bottom-medium'>
             {translate('Description.RewardItemsDrawer')}{' '}

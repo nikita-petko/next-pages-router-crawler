@@ -1,5 +1,5 @@
 /* oxlint-disable react/react-compiler -- pre-existing useEffect+setState patterns throughout this file */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import type { RobloxCatalogApiMultigetItemDetailsRequestItem } from '@rbx/client-catalog/v1';
 import { RobloxCatalogApiMultigetItemDetailsRequestItemItemTypeEnum } from '@rbx/client-catalog/v1';
@@ -13,8 +13,12 @@ import {
   RobloxItemConfigurationApiBundleDetailsBundleTypeEnum,
   RobloxItemConfigurationApiAssetDetailsAssetTypeEnum,
   RobloxItemConfigurationApiMarketplaceItemCannotBePublishedReasonEnum,
+  RobloxItemConfigurationApiMarketplaceItemSaleStatusEnum,
+  RobloxItemConfigurationApiMarketplaceItemCollectibleItemTypeEnum,
 } from '@rbx/client-itemconfiguration/v1';
+import { useFlag } from '@rbx/flags';
 import { Divider, useMediaQuery, useTheme } from '@rbx/ui';
+import { enableGetItemCollectibleDetails } from '@generated/flags/avatarMarketplace';
 import catalogClient from '@modules/clients/catalog';
 import developClient from '@modules/clients/develop';
 import type { ItemConfigurationCollectiblesMetadataResponse } from '@modules/clients/itemconfiguration';
@@ -51,6 +55,13 @@ interface UnifiedFeeSystemContainerProps {
   isBundle: boolean;
   is2dAsset: boolean;
 }
+
+// CollectiblesSaleLocationType values as returned by the itemconfiguration GetItem
+// saleLocation.saleLocationType field.
+const SALE_LOCATION_TYPE_SHOP_AND_ALL_EXPERIENCES = 1;
+const SALE_LOCATION_EXPERIENCES_AND_DEV_API_ONLY = 2;
+const SALE_LOCATION_TYPE_SHOP_ONLY = 3;
+const SALE_LOCATION_TYPE_SHOP_AND_EXPERIENCES_BY_ID = 4;
 
 function getUsedWearTimes() {
   // TODO @mryumae: durables - The used options will be retrieved from itemDetails's new RelatedItems field
@@ -166,6 +177,9 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
     RobloxItemConfigurationApiModelsMarketplaceItemRegionalRentalPrice[]
   >([]);
   const isRentablesEnabled = settings?.enableRentables;
+  const { ready: isCollectibleDetailsFlagReady, value: useGetItemCollectibleDetails } = useFlag(
+    enableGetItemCollectibleDetails,
+  );
 
   const router = useRouter();
   const isPublishPage = router.pathname.includes('/publish');
@@ -232,6 +246,124 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
     itemDetails?.item?.dynamicPriceConfiguration?.isOptOutRegionalPricing,
   ]);
 
+  // Resolves the selected places (root place ids) from a set of universe ids.
+  const resolveSelectedPlaces = useCallback(async (universeIds: number[]) => {
+    const origRootPlaceIds: string[] = [];
+    for (const uid of universeIds) {
+      let universeDetailResponse: RobloxApiDevelopModelsUniverseModel;
+      try {
+        universeDetailResponse = await developClient.getUniverseDetails(uid);
+        if (universeDetailResponse?.rootPlaceId) {
+          origRootPlaceIds.push(`${universeDetailResponse?.rootPlaceId}`);
+        }
+      } catch {
+        // will not include root place in response
+      }
+    }
+    setSelectedPlaces(origRootPlaceIds);
+  }, []);
+
+  // GetItem-sourced path reads collectible details from the GetItem response. Kept in its own
+  // effect that depends on itemDetails so provider refetches do not re-run the legacy path below.
+  useEffect(() => {
+    // GetItem-sourced path: reads all collectible details from the GetItem response instead of
+    // calling IsCollectibleItem, GetItemConfiguration, and marketplace-items-api
+    // GetCollectibleItemsDetails.
+    async function applyCollectibleDataFromGetItem() {
+      const item = itemDetails?.item;
+      const collectibleDetails = item?.collectibleDetails;
+      if (!item?.isCollectible || !collectibleDetails?.collectibleItemId) {
+        return;
+      }
+      setCollectibleItemId(collectibleDetails.collectibleItemId);
+      setIsCollectible(true);
+
+      const isItemOnSale =
+        item.saleStatus === RobloxItemConfigurationApiMarketplaceItemSaleStatusEnum.NUMBER_0;
+      setIsOnSale(isItemOnSale);
+      setIsLimited(
+        item.collectibleItemType ===
+          RobloxItemConfigurationApiMarketplaceItemCollectibleItemTypeEnum.NUMBER_1,
+      );
+
+      // Total quantity is sourced directly from the GetItem response instead of a separate
+      // catalog-api call.
+      setQuantity(collectibleDetails.totalQuantity ?? undefined);
+      setOriginalQuantity(collectibleDetails.totalQuantity ?? undefined);
+
+      setHasBeenRestocked((collectibleDetails.totalRestockedQuantity ?? 0) > 0);
+      setLastRestockedTime(collectibleDetails.lastRestockedTime?.toISOString() ?? undefined);
+      // Eligibility fetch is handled by useRestockState hook via collectibleItemId dependency.
+
+      setLimit(collectibleDetails.quantityLimitPerUser ?? undefined);
+      setInitialLimit(collectibleDetails.quantityLimitPerUser ?? undefined);
+      // A collectible is free when it has no dynamic price configuration.
+      const isItemFree = (item.isCollectible ?? false) && item.dynamicPriceConfiguration == null;
+      if (isItemFree) {
+        setIsFree(true);
+      } else {
+        setPriceOffset(item.dynamicPriceConfiguration?.priceOffset);
+        const minPrice = item.dynamicPriceConfiguration?.minimumPrice;
+        if (minPrice !== 1) {
+          setOptionalPriceFloor(minPrice);
+        }
+      }
+      setIsResellable(collectibleDetails.isResellable ?? false);
+      setOriginalIsResellable(collectibleDetails.isResellable ?? false);
+
+      const saleLocationType = item.saleLocation?.saleLocationType;
+      if (saleLocationType === SALE_LOCATION_TYPE_SHOP_AND_ALL_EXPERIENCES) {
+        setSaleLocation(SaleLocationEnum.MarketplaceAndAllExperiences);
+      } else if (saleLocationType === SALE_LOCATION_TYPE_SHOP_ONLY) {
+        setSaleLocation(SaleLocationEnum.MarketplaceOnly);
+      } else if (
+        saleLocationType === SALE_LOCATION_EXPERIENCES_AND_DEV_API_ONLY ||
+        saleLocationType === SALE_LOCATION_TYPE_SHOP_AND_EXPERIENCES_BY_ID
+      ) {
+        setSaleLocation(
+          saleLocationType === SALE_LOCATION_EXPERIENCES_AND_DEV_API_ONLY
+            ? SaleLocationEnum.ExperiencesAndDevAPIOnly
+            : SaleLocationEnum.MarketplaceAndExperiencesById,
+        );
+        await resolveSelectedPlaces(item.saleLocation?.universeIds ?? []);
+      }
+
+      // Set scheduledStartDate and scheduledEndDate if scheduled publishing is enabled
+      if (collectiblesMetadata?.isScheduledPublishingEnabled) {
+        setOriginalSaleStatus(isItemOnSale);
+
+        // There is a pre-existing scheduled sale
+        if (item.scheduledRelease) {
+          const { onSaleTime, offSaleTime } = item.scheduledRelease;
+          const startDate = onSaleTime?.seconds ? new Date(onSaleTime.seconds * 1000) : null;
+          const endDate = offSaleTime?.seconds ? new Date(offSaleTime.seconds * 1000) : null;
+          setScheduledStartDate(startDate);
+          setScheduledEndDate(endDate);
+          setPreSaveScheduledStartDate(startDate);
+          setPreSaveScheduledEndDate(endDate);
+        }
+      }
+    }
+
+    if (!isCollectibleDetailsFlagReady || !useGetItemCollectibleDetails) {
+      return;
+    }
+
+    void applyCollectibleDataFromGetItem();
+  }, [
+    collectiblesMetadata?.isScheduledPublishingEnabled,
+    isCollectibleDetailsFlagReady,
+    useGetItemCollectibleDetails,
+    itemDetails?.item,
+    setHasBeenRestocked,
+    setOriginalQuantity,
+    resolveSelectedPlaces,
+  ]);
+
+  // Legacy path: resolves the collectible id via IsCollectibleItem, then hydrates details from
+  // marketplace-items-api GetCollectibleItemsDetails and GetItemConfiguration. This effect does
+  // not depend on itemDetails, so provider refetches do not re-trigger these calls or reset
+  // locally edited state.
   useEffect(() => {
     async function fetchCollectiblesData() {
       const getCollectibleItemIdResponse = await itemconfigurationClient.getCollectibleItemId(
@@ -294,20 +426,7 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
               : SaleLocationEnum.MarketplaceAndExperiencesById,
           );
 
-          const origRootPlaceIds: string[] = [];
-          const retrievedUniverseIds: number[] = collectibleDetails?.universeIds ?? [];
-          for (const uid of retrievedUniverseIds) {
-            let universeDetailResponse: RobloxApiDevelopModelsUniverseModel;
-            try {
-              universeDetailResponse = await developClient.getUniverseDetails(uid);
-              if (universeDetailResponse?.rootPlaceId) {
-                origRootPlaceIds.push(`${universeDetailResponse?.rootPlaceId}`);
-              }
-            } catch {
-              // will not include root place in response
-            }
-          }
-          setSelectedPlaces(origRootPlaceIds);
+          await resolveSelectedPlaces(collectibleDetails?.universeIds ?? []);
         }
 
         // Set scheduledStartDate and scheduledEndDate if scheduled publishing is enabled
@@ -328,6 +447,12 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
       }
     }
 
+    // Wait for the flag to resolve so the legacy endpoints are not called when the
+    // GetItem-sourced path is enabled.
+    if (!isCollectibleDetailsFlagReady || useGetItemCollectibleDetails) {
+      return;
+    }
+
     void fetchCollectiblesData();
   }, [
     targetId,
@@ -336,6 +461,9 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
     isCollectible,
     setHasBeenRestocked,
     setOriginalQuantity,
+    isCollectibleDetailsFlagReady,
+    useGetItemCollectibleDetails,
+    resolveSelectedPlaces,
   ]);
 
   useEffect(() => {

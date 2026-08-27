@@ -1,13 +1,13 @@
 import { useCallback, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import {
+  Alert,
   Button,
   Dialog,
   DialogBody,
   DialogContent,
   DialogFooter,
   DialogTitle,
-  FeedbackBanner,
   Icon,
   Menu,
   MenuItem,
@@ -310,23 +310,13 @@ const AddRewardItemModal = ({
                   </div>
                 </div>
                 {hasUploadedImageForReview ? (
-                  // oxlint-disable-next-line typescript/no-deprecated
-                  <FeedbackBanner
-                    severity='Warning'
-                    variant='Emphasis'
-                    layout='Inline'
-                    showIcon
-                    title={translate(translationKey('Warning.RewardItemImageUnderReview', ns))}
-                  />
+                  <Alert severity='Warning' variant='Feedback' hasCloseAffordance={false}>
+                    {translate(translationKey('Warning.RewardItemImageUnderReview', ns))}
+                  </Alert>
                 ) : (
-                  // oxlint-disable-next-line typescript/no-deprecated
-                  <FeedbackBanner
-                    severity='Error'
-                    variant='Emphasis'
-                    layout='Inline'
-                    showIcon
-                    title={translate(translationKey('Error.RewardItemDefaultImage', ns))}
-                  />
+                  <Alert severity='Error' variant='Feedback' hasCloseAffordance={false}>
+                    {translate(translationKey('Error.RewardItemDefaultImage', ns))}
+                  </Alert>
                 )}
                 {uploadErrorKey && (
                   <span className='text-body-medium content-system-alert'>

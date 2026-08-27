@@ -1,7 +1,6 @@
 import type { FunctionComponent } from 'react';
 import React, { useEffect, useState } from 'react';
 import type {
-  RobloxItemConfigurationApiAssetDetailsAssetTypeEnum,
   RobloxItemConfigurationApiModelsResponseCategory,
   RobloxItemConfigurationApiModelsResponseGetPriceFloorVariablesResponseAssetTypesEnum,
   RobloxItemConfigurationApiModelsResponseGetPriceFloorVariablesResponseBundleTypesEnum,
@@ -33,7 +32,6 @@ import FailureView from '@modules/miscellaneous/components/FailureView/FailureVi
 import { useQueryParams } from '@modules/miscellaneous/hooks';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import type { BundleType } from '../../avatarItem/constants/avatarItemConstants';
 import { translateBundleType } from '../../avatarItem/utils/loadAvatarItemsUtils';
 import {
   getTaxonomyDisplayName,
@@ -71,15 +69,13 @@ enum LoadingStatus {
 const assetTypeEnumToString = (
   assetType: RobloxItemConfigurationApiModelsResponseGetPriceFloorVariablesResponseAssetTypesEnum,
 ): string | undefined => {
-  return translateAssetTypeToAsset(
-    assetType as RobloxItemConfigurationApiAssetDetailsAssetTypeEnum,
-  );
+  return translateAssetTypeToAsset(assetType);
 };
 
 const bundleTypeEnumToString = (
   bundleType: RobloxItemConfigurationApiModelsResponseGetPriceFloorVariablesResponseBundleTypesEnum,
 ): string => {
-  return translateBundleType(bundleType as BundleType) as string;
+  return translateBundleType(bundleType);
 };
 
 const fetchPriceFloorVariables = async () => {
@@ -257,7 +253,6 @@ const PricingCalculator: FunctionComponent<React.PropsWithChildren> = () => {
             ? V1ItemsPriceFloorGetCreationTypeEnum.NUMBER_2
             : V1ItemsPriceFloorGetCreationTypeEnum.NUMBER_1,
           isPbr,
-          false,
           assetType,
           bundleType,
           categoryIdForPriceFloor,

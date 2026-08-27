@@ -380,7 +380,6 @@ const CreatePlacementForm = ({
             isExcludeLikelyPayers={isExcludeLikelyPayers}
             onExcludeLikelyPayersChange={setIsExcludeLikelyPayers}
             rewardItems={rewardItems}
-            showRewardRestartWarning={false}
             onRewardItemsChange={handleRewardItemsChange}
             maxRewardItems={placementDefaults?.maxProductIds}
             existingProductIds={productIds}

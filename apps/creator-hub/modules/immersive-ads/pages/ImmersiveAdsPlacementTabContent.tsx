@@ -471,9 +471,6 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
       ),
       placementId: pwrPlacement ? pwrPlacement.id : EMPTY_CELL,
       status: <StatusBadge type='reward' status={derivedPlacementRewardStatus} />,
-      location: translateKey(
-        translationKey('Title.ExperienceDetailsPage', TranslationNamespace.ImmersiveAdsAnalytics),
-      ),
       rewardItem: hasDraftOrTestReward ? (
         <FoundationTooltip
           position='top-center'
@@ -602,9 +599,6 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
     ),
     placementId: placement.id,
     status: <StatusBadge type='placement' status={placement.status} />,
-    location: translateKey(
-      translationKey('Title.InExperience', TranslationNamespace.ImmersiveAdsAnalytics),
-    ),
     rewardItem: (
       <span className='text-body-medium'>
         {translateKey(
@@ -632,7 +626,9 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
     ),
   }));
 
-  const inExperiencePlacementTable = <RewardTable rows={inExperienceRows} />;
+  const inExperiencePlacementTable = (
+    <RewardTable rows={inExperienceRows} showCustomRewardedTooltip />
+  );
 
   return (
     <div className={placementTabContainer}>

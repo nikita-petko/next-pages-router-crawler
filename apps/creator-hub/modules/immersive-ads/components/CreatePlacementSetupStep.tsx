@@ -3,7 +3,6 @@ import {
   Button,
   Checkbox,
   Divider,
-  FeedbackBanner,
   Icon,
   IconButton,
   TextInput,
@@ -30,7 +29,6 @@ interface CreatePlacementSetupStepProps {
   isExcludeLikelyPayers: boolean;
   onExcludeLikelyPayersChange: (value: boolean) => void;
   rewardItems: RewardItem[];
-  showRewardRestartWarning: boolean;
   onRewardItemsChange: (rewardItems: RewardItem[]) => void;
   maxRewardItems?: number;
   existingProductIds?: number[];
@@ -42,7 +40,6 @@ const CreatePlacementSetupStep = ({
   isExcludeLikelyPayers,
   onExcludeLikelyPayersChange,
   rewardItems,
-  showRewardRestartWarning,
   onRewardItemsChange,
   maxRewardItems = DEFAULT_MAX_REWARD_ITEMS,
   existingProductIds = EMPTY_PRODUCT_IDS,
@@ -187,22 +184,6 @@ const CreatePlacementSetupStep = ({
           </Button>
         </div>
       </div>
-
-      {showRewardRestartWarning && (
-        // oxlint-disable-next-line typescript/no-deprecated
-        <FeedbackBanner
-          severity='Warning'
-          variant='Emphasis'
-          layout='Inline'
-          showIcon
-          title={translate(
-            translationKey(
-              'Warning.RewardItemChangeRestartsTestMode',
-              TranslationNamespace.ImmersiveAdsAnalytics,
-            ),
-          )}
-        />
-      )}
 
       <AddRewardItemModal
         isOpen={isAddModalOpen}

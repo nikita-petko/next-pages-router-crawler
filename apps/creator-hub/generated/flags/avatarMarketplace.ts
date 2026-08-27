@@ -22,3 +22,8 @@ export const isAutoPublishPreferencesEnabled = defineFlag({
     name: 'isAutoPublishPreferencesEnabled',
     defaultValue: false,
   });
+export const enableGetItemCollectibleDetails = defineFlag({
+    namespace: 'avatar-marketplace',
+    name: 'enableGetItemCollectibleDetails',
+    defaultValue: false,
+  });
