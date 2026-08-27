@@ -205,6 +205,7 @@ const CreatePlacementForm = ({
             updatePlacementRequest: {
               excludeLikelyPayers: isExcludeLikelyPayers,
               isFrequencyCapEnabled: true,
+              universeId,
               frequencyCapSettings: {
                 frequencyCapLimit,
                 frequencyCapWindowMinutes: FREQUENCY_CAP_WINDOW_MINUTES,

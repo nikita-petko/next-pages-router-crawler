@@ -228,6 +228,7 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
           adPlacementId: placementIdValue,
           updatePlacementRequest: {
             name: newName.trim(),
+            universeId,
           },
         });
         if (response.isUpdated) {
@@ -241,7 +242,7 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
       }
       closeModal();
     },
-    [closeModal, onRefreshPlacements, showSnackbarMessage, translate],
+    [closeModal, onRefreshPlacements, showSnackbarMessage, translate, universeId],
   );
 
   const handlePlacementCreate = useCallback(
@@ -314,6 +315,7 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
         adPlacementId: pwrPlacement.id,
         updatePlacementRequest: {
           status: UpdatePlacementRequestStatusEnum.PLACEMENT_STATUS_INACTIVE,
+          universeId,
         },
       });
       handleCloseDisablePlacementModal();
@@ -330,6 +332,7 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
     pwrPlacement,
     showSnackbarMessage,
     translate,
+    universeId,
   ]);
 
   const handleEnablePlacement = useCallback(async () => {
@@ -342,6 +345,7 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
         adPlacementId: pwrPlacement.id,
         updatePlacementRequest: {
           status: UpdatePlacementRequestStatusEnum.PLACEMENT_STATUS_ACTIVE,
+          universeId,
         },
       });
       onRefreshPlacements();
@@ -351,7 +355,7 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
     } finally {
       setIsUpdatingPlayWithRewardEnabled(false);
     }
-  }, [onRefreshPlacements, pwrPlacement, showSnackbarMessage, translate]);
+  }, [onRefreshPlacements, pwrPlacement, showSnackbarMessage, translate, universeId]);
 
   const handleCloseRewardItemsDrawer = useCallback(() => {
     setIsRewardItemsDrawerOpen(false);

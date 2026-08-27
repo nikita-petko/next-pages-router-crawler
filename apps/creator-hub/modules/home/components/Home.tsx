@@ -1,5 +1,5 @@
 import type { FunctionComponent } from 'react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { captureException } from '@sentry/nextjs';
 import { useRobloxAuthentication } from '@rbx/auth';
@@ -7,7 +7,10 @@ import { GenericCreatorSettingType } from '@rbx/client-creator-settings/v1';
 import KnowledgeFeed from '@rbx/knowledge-feed';
 import { useMediaQuery } from '@rbx/ui';
 import AudienceReachGrowthOpportunitiesBanner from '@modules/audience-reach/components/AudienceReachGrowthOpportunitiesBanner';
-import { getChangelogPosts } from '@modules/clients/creatorUpdatesApi';
+import {
+  getChangelogPosts,
+  type CreatorUpdatesChangelogPost,
+} from '@modules/clients/creatorUpdatesApi';
 import unifiedLoggerClient from '@modules/eventStream/unifiedLoggerClient';
 import useStarterPlace from '@modules/landing/sections/hooks/useStarterPlace';
 import {
@@ -68,9 +71,8 @@ const Home: FunctionComponent = () => {
   const { isFetched: isFetchedUserAuthentication, user } = useRobloxAuthentication();
   const isMd = useMediaQuery((theme) => theme.breakpoints.down('Large'));
   const isSingleColumn = useMediaQuery((theme) => theme.breakpoints.down('Large'));
-  const [announcements, setAnnouncements] = useState<TDevForumAnnouncement[] | null>(null);
+  const [changelogPosts, setChangelogPosts] = useState<CreatorUpdatesChangelogPost[] | null>(null);
   const userId = user?.id;
-  const [shouldResetOnboardingBanner, setShouldResetOnboardingBanner] = useState(false);
   const [isUpdatesCollapsed, setIsUpdatesCollapsed] = useState(() => {
     try {
       const stored = localStorage.getItem(UPDATES_COLLAPSED_KEY);
@@ -118,6 +120,36 @@ const Home: FunctionComponent = () => {
       isFetchedStarterPlaceCreation,
     ],
   );
+  const announcements = useMemo<TDevForumAnnouncement[] | null>(() => {
+    if (changelogPosts === null || !isFetchedLastViewedDate) {
+      return null;
+    }
+
+    const lastViewedDate = currentLastViewedDate ?? '';
+    return changelogPosts.map((post) => mapChangelogPostToHomeAnnouncement(post, lastViewedDate));
+  }, [changelogPosts, currentLastViewedDate, isFetchedLastViewedDate]);
+  const shouldResetOnboardingBanner = useMemo(() => {
+    if (
+      !shouldProceedWithUpdateSettingsLastViewedDate ||
+      !enableStarterPlace ||
+      !currentLastViewedDate
+    ) {
+      return false;
+    }
+
+    const lastViewedDate = new Date(currentLastViewedDate);
+    const experimentStartDate = new Date(clientSettings.enableYourPlaceCreationExperimentDate);
+    return (
+      !Number.isNaN(lastViewedDate.getTime()) &&
+      !Number.isNaN(experimentStartDate.getTime()) &&
+      lastViewedDate < experimentStartDate
+    );
+  }, [
+    clientSettings.enableYourPlaceCreationExperimentDate,
+    currentLastViewedDate,
+    enableStarterPlace,
+    shouldProceedWithUpdateSettingsLastViewedDate,
+  ]);
   const homePageLayoutType = 'homePageLayoutNewWithAlert';
   const homeLayoutClassName = cx(
     classes.homeLayout,
@@ -132,74 +164,42 @@ const Home: FunctionComponent = () => {
     captureHomepageImpression();
   }, []);
 
-  const getAndUpdateSettingsLastViewedDate = useCallback(async () => {
+  useEffect(() => {
     if (!shouldProceedWithUpdateSettingsLastViewedDate) {
       return;
     }
 
-    if (enableStarterPlace && currentLastViewedDate) {
-      const lastViewedDate = new Date(currentLastViewedDate);
-      const experimentStartDate = new Date(clientSettings.enableYourPlaceCreationExperimentDate);
-
-      // Only compare if both dates are valid
-      if (!Number.isNaN(lastViewedDate.getTime()) && !Number.isNaN(experimentStartDate.getTime())) {
-        if (lastViewedDate < experimentStartDate) {
-          setShouldResetOnboardingBanner(true);
-        }
-      }
-    }
-    try {
-      await updateSettings({
-        userId,
-        setting: GenericCreatorSettingType.HubHomeLastViewedDate,
-        settingValue: new Date().toISOString(),
-      });
-    } catch (error) {
+    void updateSettings({
+      userId,
+      setting: GenericCreatorSettingType.HubHomeLastViewedDate,
+      settingValue: new Date().toISOString(),
+    }).catch((error: unknown) => {
       if (error instanceof Error) {
         error.message = `Creator Hub Home: Error updating last viewed date: ${error.message}`;
       }
       captureException(error);
-    }
-  }, [
-    currentLastViewedDate,
-    setShouldResetOnboardingBanner,
-    clientSettings,
-    shouldProceedWithUpdateSettingsLastViewedDate,
-    enableStarterPlace,
-    updateSettings,
-    userId,
-  ]);
+    });
+  }, [shouldProceedWithUpdateSettingsLastViewedDate, updateSettings, userId]);
 
   useEffect(() => {
     captureHomepageView(homePageLayoutType, EHomepageSection.HomePageAnnouncements);
   }, [homePageLayoutType]);
 
   useEffect(() => {
-    const fetchAnnouncementsAndUpdateDate = async () => {
-      if (!isFetchedUserAuthentication || !userId || !isFetchedLastViewedDate) {
+    const fetchAnnouncements = async () => {
+      if (!isFetchedUserAuthentication || !userId) {
         return;
       }
       try {
-        const lastViewedDate = currentLastViewedDate ?? '';
         const posts = await getChangelogPosts();
-        setAnnouncements(
-          posts.map((post) => mapChangelogPostToHomeAnnouncement(post, lastViewedDate)),
-        );
+        setChangelogPosts(posts);
       } catch (error) {
         captureException(`Creator Hub Home: Error fetching announcements: ${String(error)}`);
-        setAnnouncements([]);
-      } finally {
-        await getAndUpdateSettingsLastViewedDate();
+        setChangelogPosts([]);
       }
     };
-    void fetchAnnouncementsAndUpdateDate();
-  }, [
-    currentLastViewedDate,
-    getAndUpdateSettingsLastViewedDate,
-    isFetchedLastViewedDate,
-    isFetchedUserAuthentication,
-    userId,
-  ]);
+    void fetchAnnouncements();
+  }, [isFetchedUserAuthentication, userId]);
 
   return (
     <>
