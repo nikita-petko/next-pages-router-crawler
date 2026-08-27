@@ -27,7 +27,7 @@ jobs:
     # Run for 2 branches:
     strategy:
       matrix:
-        target: ["advertise.roblox.com", "create.roblox.com", "test.rbxlabs.net", "test.rbxlabs.net/foundation", "create.robloxdev.cn"]
+        target: ["advertise.roblox.com", "create.roblox.com", "test.rbxlabs.net/web-blox", "test.rbxlabs.net/foundation", "create.robloxdev.cn"]
 
     env:
       CLEAR_CACHE: ${{ github.event.inputs.clear-cache == 'true' }}
