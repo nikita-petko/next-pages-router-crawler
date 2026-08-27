@@ -1,0 +1,1 @@
+import{useEffect as a}from"react";const m=(s,t)=>{a(()=>{if(t==null)return;const{classList:e}=t;switch(e.remove("light-theme","dark-theme","system-theme"),s){case"light":e.add("light-theme");break;case"dark":e.add("dark-theme");break;case"system":e.add("system-theme");break}},[s,t])};export{m as default};
