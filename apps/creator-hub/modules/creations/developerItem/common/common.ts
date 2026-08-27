@@ -169,6 +169,7 @@ export enum DistributionErrorState {
   CompositeAssetDependenciesLimit = 'CompositeAssetDependenciesLimit',
   HiddenFromSearch = 'HiddenFromSearch',
   IneligiblePublisher = 'IneligiblePublisher',
+  NoPublishedVersion = 'NoPublishedVersion',
 }
 
 export const getDistributionErrorStateForRestrictions = (
@@ -180,6 +181,11 @@ export const getDistributionErrorStateForRestrictions = (
   isBackendFiatProductPriced: boolean,
   visibilityStatus: ToolboxVisibilityStatus | undefined,
 ): DistributionErrorState | undefined => {
+  // A draft asset has no published version, so it cannot be distributed at all and no other
+  // restriction is actionable until it is published. This takes precedence over every other check.
+  if (publishingRestrictions.includes(Restriction.NoPublishedVersion)) {
+    return DistributionErrorState.NoPublishedVersion;
+  }
   // This needs to before the check for broken composite assets, as if this Restriction is present,
   // The asset can NEVER be fixed, and an entirely new one must be uploaded.
   if (publishingRestrictions.includes(Restriction.CompositeAssetSubcomponentsRestricted)) {

@@ -547,6 +547,12 @@ const ConfigureMediaFiatForm: FunctionComponent<
   // First encountered publishing restriction will override the error state
   let distributionErrorState = DistributionErrorState.AssetNotPublic;
   if (
+    // A draft asset has no published version, so it cannot be distributed at all and no other
+    // restriction is actionable until it is published. This is checked first so it always wins.
+    assetConfigurationRestrictions.publishingRestrictions.includes(Restriction.NoPublishedVersion)
+  ) {
+    distributionErrorState = DistributionErrorState.NoPublishedVersion;
+  } else if (
     assetConfigurationRestrictions.publishingRestrictions.includes(Restriction.AgeVerification) ||
     assetConfigurationRestrictions.publishingRestrictions.includes(Restriction.Moderation)
   ) {

@@ -106,6 +106,13 @@ const DistributionAlert: FunctionComponent<React.PropsWithChildren<DistributionA
           severity: 'error',
           title: translate('Label.AssetCannotBeDistributed'),
         };
+      case DistributionErrorState.NoPublishedVersion:
+        return {
+          link: undefined,
+          message: translate('Message.AssetNotPublishedYet'),
+          severity: 'error',
+          title: translate('Label.AssetCannotBeDistributed'),
+        };
       case DistributionErrorState.PackageIneligible:
         return {
           link: undefined,
@@ -255,6 +262,7 @@ const DistributionAlert: FunctionComponent<React.PropsWithChildren<DistributionA
       case DistributionErrorState.CompositeAssetIneligibleDependencies:
       case DistributionErrorState.CompositeAssetDependenciesLimit:
       case DistributionErrorState.HiddenFromSearch:
+      case DistributionErrorState.NoPublishedVersion:
       default:
         return {
           alertStyle: undefined,

@@ -116,6 +116,7 @@ const SettingsForm: FunctionComponent<React.PropsWithChildren<SettingsFormProps>
       case DistributionErrorState.CompositeAssetIneligibleDependencies:
       case DistributionErrorState.CompositeAssetDependenciesLimit:
       case DistributionErrorState.HiddenFromSearch:
+      case DistributionErrorState.NoPublishedVersion:
       default:
         return translateHTML('Message.DistributionCaption', [
           {
@@ -221,6 +222,7 @@ const SettingsForm: FunctionComponent<React.PropsWithChildren<SettingsFormProps>
         DistributionErrorState.Approved,
         DistributionErrorState.PackageIneligible,
         DistributionErrorState.RightsClaim,
+        DistributionErrorState.NoPublishedVersion,
       ].includes(distributionErrorState)
     ) {
       return (
