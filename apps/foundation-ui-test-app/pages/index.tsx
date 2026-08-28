@@ -56,7 +56,8 @@ const TestDialog: React.FC<TTestDialogProps> = ({
 }) => (
   <Dialog
     size='Small'
-    hasCloseAffordance={false}
+    hasCloseAffordance
+    closeLabel='Close Dialog'
     isModal
     open={open}
     onOpenChange={handleClose}>
