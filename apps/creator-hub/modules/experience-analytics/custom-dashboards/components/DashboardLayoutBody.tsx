@@ -22,10 +22,11 @@ import {
   DASHBOARD_BODY_SUMMARY_COLLECTION_CLASSES,
   DASHBOARD_BODY_SUMMARY_COMPONENT_NODE_CLASSES,
 } from './dashboardLayoutClasses';
-import DashboardTileControlError, {
+import {
   DashboardTileRenderError,
   getDashboardControlIssuesForComponent,
   getDashboardControlOverrideState,
+  useDashboardSummaryUnavailableValue,
   type DashboardControlOverrideState,
 } from './DashboardTileControlError';
 
@@ -84,6 +85,7 @@ const DashboardLayoutNodeView: FC<DashboardLayoutNodeViewProps> = ({
   controlOverrides,
   componentNodeClassName = DASHBOARD_BODY_COMPONENT_NODE_CLASSES,
 }) => {
+  const unavailableValue = useDashboardSummaryUnavailableValue();
   const isSummaryComponentNode =
     componentNodeClassName === DASHBOARD_BODY_SUMMARY_COMPONENT_NODE_CLASSES;
   if (node.type === 'Component') {
@@ -110,23 +112,23 @@ const DashboardLayoutNodeView: FC<DashboardLayoutNodeViewProps> = ({
       chartContext,
       controlOverrides,
     );
-    // Charts keep their card chrome and surface Figma empty states via
-    // genericChartStateToChartAbnormalState. Summary cards that can't honor
-    // dashboard controls show `--` instead of an alert card.
-    const showSummaryUnavailable = isSummaryComponentNode && issues.length > 0;
+    // Summary cards cannot honor dashboard-level breakdowns, but retain their
+    // card chrome so the title and subtitle remain visible.
+    const unavailableSummaryComponent =
+      typeof renderableComponent === 'object' &&
+      renderableComponent.type === AnalyticsComponentType.SummaryCard &&
+      issues.length > 0
+        ? { ...renderableComponent, unavailableValue }
+        : renderableComponent;
     return (
       <div
         className={componentNodeClassName}
         data-testid={isSummaryComponentNode ? 'dashboard-summary-component-node' : undefined}>
-        {showSummaryUnavailable ? (
-          <DashboardTileControlError />
-        ) : (
-          <AnalyticsComponent
-            config={renderableComponent}
-            chartContext={chartContext}
-            onSelectChartRegion={null}
-          />
-        )}
+        <AnalyticsComponent
+          config={unavailableSummaryComponent}
+          chartContext={chartContext}
+          onSelectChartRegion={null}
+        />
       </div>
     );
   }

@@ -76,15 +76,6 @@ export const summaryTileChromeStyle: CSSProperties = {
   gap: 4,
 };
 
-// Error tiles don't mount GenericSummaryCard, so fall back to an overlay.
-export const summaryTileErrorChromeStyle: CSSProperties = {
-  ...summaryTileChromeStyle,
-  position: 'absolute',
-  zIndex: 2,
-  top: 16,
-  right: 16,
-};
-
 export const summaryAddPlaceholderStyle: CSSProperties = {
   ...summaryTileAddCardSizeStyle,
   ...addPlaceholderBorderStyle,

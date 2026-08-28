@@ -32,6 +32,13 @@ export type AnalyticsSummaryCardConfig = {
   fullWidth?: boolean;
   truncateLabelWithTooltip?: boolean;
   /**
+   * Replaces the fetched value while preserving the summary card's title and
+   * chrome. Custom dashboards use this when a dashboard-level control cannot
+   * apply to the card. Currently only honored by `RAQIV2SummaryCardType.Metric`
+   * cards.
+   */
+  unavailableValue?: FormattedText;
+  /**
    * When true, the summary card renders a comparison chip (e.g. ↑ 2.4%) next
    * to the value, similar to chart summaries. Opt-in to avoid issuing extra
    * comparison requests for cards that don't need it. Currently only honored

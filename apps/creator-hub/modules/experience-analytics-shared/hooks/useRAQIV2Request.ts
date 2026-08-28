@@ -18,6 +18,7 @@ const useRAQIV2Request = (
   request: RAQIV2UIQueryRequest,
   makeRAQIV2RequestOptions?: MakeRAQIV2RequestOptions,
   ignoreCache?: boolean,
+  shouldFetch = true,
 ): TUseApiRequestResponse<RAQIV2QueryResponses> & {
   getClientCacheStatus: () => ClientCacheStatus | undefined;
   requestIdentity?: object;
@@ -73,6 +74,7 @@ const useRAQIV2Request = (
   }, [createClientCacheTracking, resolvedOptions, request]);
 
   const response = useApiRequest(makeRaqiRequest, {
+    enabled: shouldFetch,
     refetchShouldSetLoading: true,
     invalidateCache: ignoreCache ? clearCache : undefined,
     trackRequestVersion: true,

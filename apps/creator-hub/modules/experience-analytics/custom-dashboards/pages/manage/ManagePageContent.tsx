@@ -288,6 +288,7 @@ const ManagePageContent: FC<ManagePageContentProps> = ({
           handlers,
           canMutateDashboards,
           userDisplayNamesById,
+          isUserDisplayNamesPending: userDisplayNamesQuery.isPending,
           pinnedCount,
           maxPinnedDashboards: MAX_PINNED_DASHBOARDS,
         }}

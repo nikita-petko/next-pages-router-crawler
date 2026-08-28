@@ -20,10 +20,7 @@ import type { AnalyticsComponentConfig } from '@modules/experience-analytics-sha
 import { getPageSurfaceMetrics } from '@modules/experience-analytics-shared/utils/getPredefinedComponentMetrics';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
-import {
-  DASHBOARD_TILE_EMPTY_STATE_CLASSES,
-  DASHBOARD_TILE_SUMMARY_UNAVAILABLE_CLASSES,
-} from './dashboardTileErrorClasses';
+import { DASHBOARD_TILE_EMPTY_STATE_CLASSES } from './dashboardTileErrorClasses';
 
 export type DashboardControlIssue =
   | {
@@ -155,27 +152,23 @@ export function getDashboardControlIssuesForComponent(
   return issues;
 }
 
-/**
- * Summary-card unavailable state when dashboard-level controls don't apply.
- * Figma 2384-62450: value reads "N/A".
- */
-const DashboardTileControlError: FC = () => {
+export const useDashboardSummaryUnavailableValue = () => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
-  return (
-    <output className={DASHBOARD_TILE_SUMMARY_UNAVAILABLE_CLASSES}>
-      <span className='text-heading-large content-emphasis'>
-        {tPendingTranslation(
-          'N/A',
-          'Value shown on a custom dashboard summary card when dashboard-level controls do not apply to that card.',
-          translationKey(
-            'Label.CustomDashboards.Tile.SummaryUnavailable',
-            TranslationNamespace.Analytics,
-          ),
-        )}
-      </span>
-    </output>
+  return tPendingTranslation(
+    'N/A',
+    'Value shown on a custom dashboard summary card when dashboard-level controls do not apply to that card.',
+    translationKey(
+      'Label.CustomDashboards.Tile.SummaryUnavailable',
+      TranslationNamespace.Analytics,
+    ),
   );
 };
+
+export const DashboardSummaryUnavailableValue: FC = () => (
+  <span className='text-heading-large content-emphasis'>
+    {useDashboardSummaryUnavailableValue()}
+  </span>
+);
 
 /**
  * Per-tile error placeholder shown when a tile cannot be synthesized into a
@@ -210,5 +203,3 @@ export const DashboardTileRenderError: FC = () => {
     </div>
   );
 };
-
-export default DashboardTileControlError;

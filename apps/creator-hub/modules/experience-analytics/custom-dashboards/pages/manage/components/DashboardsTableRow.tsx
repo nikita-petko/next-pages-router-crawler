@@ -2,9 +2,9 @@ import { type FC, type MouseEvent, type ReactNode, useCallback } from 'react';
 import { OverflowTitle } from '@rbx/analytics-ui';
 import { Button, TableCell, TableRow, Toggle, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
 import LocalCopyBadge from '../../../components/LocalCopyBadge';
-import { UNRESOLVED_CREATED_BY_USERNAME } from '../../../constants/unresolvedCreatedByUsername';
 import type { UserDisplayNamesById } from '../../../hooks/useUserDisplayNamesQuery';
 import type { CustomDashboardListItem } from '../../../types';
+import { resolveCreatedByDisplayName } from '../../../utils/resolveCreatedByDisplayName';
 import type { DashboardActionHandlers } from '../hooks/useDashboardActions';
 import { useManagePageTranslations } from '../useManagePageTranslations';
 import { formatLastModifiedDate } from '../utils/customDashboardFormatting';
@@ -22,6 +22,7 @@ type DashboardsTableRowProps = {
   readonly dashboard: CustomDashboardListItem;
   readonly canMutateDashboards: boolean;
   readonly userDisplayNamesById: UserDisplayNamesById;
+  readonly isUserDisplayNamesPending: boolean;
   readonly pinnedCount: number;
   readonly maxPinnedDashboards: number;
 } & DashboardActionHandlers;
@@ -30,6 +31,7 @@ const DashboardsTableRow: FC<DashboardsTableRowProps> = ({
   dashboard,
   canMutateDashboards,
   userDisplayNamesById,
+  isUserDisplayNamesPending,
   pinnedCount,
   maxPinnedDashboards,
   onOpen,
@@ -65,18 +67,22 @@ const DashboardsTableRow: FC<DashboardsTableRowProps> = ({
   );
 
   const lastModified = formatLastModifiedDate(dashboard.updatedAt);
-  const createdByFallback =
-    !dashboard.createdByUsername || dashboard.createdByUsername === UNRESOLVED_CREATED_BY_USERNAME
-      ? t.unknownCreatorLabel
-      : dashboard.createdByUsername;
-  const createdByDisplay = userDisplayNamesById.get(dashboard.createdByUserId) ?? createdByFallback;
+  const createdByDisplay = resolveCreatedByDisplayName({
+    createdByUserId: dashboard.createdByUserId,
+    createdByUsername: dashboard.createdByUsername,
+    displayNamesById: userDisplayNamesById,
+    isLookupPending: isUserDisplayNamesPending,
+    unknownCreatorLabel: t.unknownCreatorLabel,
+  });
   const modifiedByUserId = dashboard.updatedByUserId ?? dashboard.createdByUserId;
   const modifiedBySource = dashboard.updatedByUsername ?? dashboard.createdByUsername;
-  const modifiedByFallback =
-    !modifiedBySource || modifiedBySource === UNRESOLVED_CREATED_BY_USERNAME
-      ? t.unknownCreatorLabel
-      : modifiedBySource;
-  const modifiedByDisplay = userDisplayNamesById.get(modifiedByUserId) ?? modifiedByFallback;
+  const modifiedByDisplay = resolveCreatedByDisplayName({
+    createdByUserId: modifiedByUserId,
+    createdByUsername: modifiedBySource,
+    displayNamesById: userDisplayNamesById,
+    isLookupPending: isUserDisplayNamesPending,
+    unknownCreatorLabel: t.unknownCreatorLabel,
+  });
   const isHybridServerRow = dashboard.hybridOrigin === 'server';
   const isHybridLocalCopy = dashboard.hybridOrigin === 'localCopy';
   // Sidebar nav only consumes server list items; hybrid local pins never appear there.

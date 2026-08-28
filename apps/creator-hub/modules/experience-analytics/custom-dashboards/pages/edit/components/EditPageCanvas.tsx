@@ -49,10 +49,11 @@ import { applyActiveDashboardOverridesToTable } from '../../../components/applyA
 import DashboardCanvasControlBar from '../../../components/DashboardCanvasControlBar';
 import DashboardFilterChips from '../../../components/DashboardFilterChips';
 import DashboardsEmptyStateIllustration from '../../../components/DashboardsEmptyStateIllustration';
-import DashboardTileControlError, {
+import {
   DashboardTileRenderError,
   getDashboardControlIssuesForComponent,
   getDashboardControlOverrideState,
+  useDashboardSummaryUnavailableValue,
   type DashboardControlOverrideState,
 } from '../../../components/DashboardTileControlError';
 import { CUSTOM_DASHBOARDS_LEARN_MORE_HREF } from '../../../constants/docsLinks';
@@ -136,7 +137,6 @@ import {
   summarySkeletonStyle,
   summaryTileChromeStyle,
   summaryTileConfiguredSizeStyle,
-  summaryTileErrorChromeStyle,
   tileChromeHostStyle,
 } from './editPageCanvasStyles';
 import getResizeDragDeltaX from './getResizeDragDeltaX';
@@ -806,10 +806,15 @@ const SummaryCardMountInner: FC<SummaryCardMountProps> = ({
   onDuplicate,
   onRemove,
 }) => {
+  const unavailableValue = useDashboardSummaryUnavailableValue();
   const issues = getDashboardControlIssuesForComponent(
     entry.component,
     chartContext,
     controlOverrides,
+  );
+  const renderedComponent = useMemo(
+    () => (issues.length > 0 ? { ...entry.component, unavailableValue } : entry.component),
+    [entry.component, issues.length, unavailableValue],
   );
   const headerActions = useMemo(
     () => (
@@ -866,25 +871,17 @@ const SummaryCardMountInner: FC<SummaryCardMountProps> = ({
         }
       }}
       onKeyDown={onSelectionKeyDown}>
-      {issues.length > 0 ? (
-        <>
-          <DashboardTileControlError />
-          {/* Unavailable path skips GenericSummaryCard, so overlay chrome instead. */}
-          <div style={summaryTileErrorChromeStyle}>{headerActions}</div>
-        </>
-      ) : (
-        <SummaryCardHeaderActionsProvider value={headerActions}>
-          <div className={styles.summaryTileSelectionTarget}>
-            <AnalyticsConfigurableComponent
-              component={entry.component}
-              chartContext={chartContext}
-              onSelectChartRegion={null}
-              chartUpdatePolicy='non-animated'
-              layout={RAQIV2SpecialLayoutType.FullWidthLayout}
-            />
-          </div>
-        </SummaryCardHeaderActionsProvider>
-      )}
+      <SummaryCardHeaderActionsProvider value={headerActions}>
+        <div className={styles.summaryTileSelectionTarget}>
+          <AnalyticsConfigurableComponent
+            component={renderedComponent}
+            chartContext={chartContext}
+            onSelectChartRegion={null}
+            chartUpdatePolicy='non-animated'
+            layout={RAQIV2SpecialLayoutType.FullWidthLayout}
+          />
+        </div>
+      </SummaryCardHeaderActionsProvider>
     </div>
   );
 };

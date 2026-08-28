@@ -26,6 +26,7 @@ const AnalyticsConfigSummaryCard: FC<RAQIV2PredefinedSummaryCardProps> = ({
     overrides,
     fullWidth,
     truncateLabelWithTooltip,
+    unavailableValue,
   } = config;
 
   const chartSpec = useMemo(() => {
@@ -55,6 +56,7 @@ const AnalyticsConfigSummaryCard: FC<RAQIV2PredefinedSummaryCardProps> = ({
           truncateLabelWithTooltip={truncateLabelWithTooltip}
           fullWidth={fullWidth}
           showComparisonChip={config.showComparisonChip}
+          unavailableValue={unavailableValue}
         />
       );
     case RAQIV2SummaryCardType.TopBreakdown:

@@ -31,6 +31,7 @@ export type GenericRAQIV2SummaryCardProps = {
   truncateLabelWithTooltip?: boolean;
   ignoreCache?: boolean;
   fullWidth?: boolean;
+  unavailableValue?: FormattedText;
   /**
    * When true, the card fetches comparison data and renders a comparison chip
    * (e.g. ↑ 2.4%) next to the value. Opt-in to avoid issuing extra comparison
@@ -49,11 +50,13 @@ const GenericRAQIV2MetricSummaryCard: FC<GenericRAQIV2SummaryCardProps> = ({
   truncateLabelWithTooltip,
   ignoreCache,
   fullWidth,
+  unavailableValue,
   showComparisonChip,
 }) => {
   const locale = useLocale();
   const { date } = useAnalyticsCurrentSingleDateBundle();
   const translationDependencies = useRAQIV2TranslationDependencies();
+  const isUnavailable = unavailableValue !== undefined;
 
   const RAQIV2RequestOptions: MakeRAQIV2RequestOptions = useMemo(
     // TODO(shumingxu, 04/15/2024): DSA-2250: Using fetchTotalSeries might not be ideal here since it doesn't
@@ -65,22 +68,30 @@ const GenericRAQIV2MetricSummaryCard: FC<GenericRAQIV2SummaryCardProps> = ({
     [showComparisonChip, spec.granularity],
   );
 
-  const requestResult = useRAQIV2Request(spec, RAQIV2RequestOptions, ignoreCache);
+  const requestResult = useRAQIV2Request(spec, RAQIV2RequestOptions, ignoreCache, !isUnavailable);
   const { data: raqiData } = requestResult;
-  const chartState = useMemo(
-    () => ({
+  const chartState = useMemo(() => {
+    if (isUnavailable) {
+      return {
+        isDataLoading: false,
+        isResponseFailed: false,
+        isUserForbidden: false,
+        error: null,
+      };
+    }
+    return {
       isDataLoading: requestResult.isDataLoading,
       isResponseFailed: requestResult.isResponseFailed,
       isUserForbidden: requestResult.isUserForbidden,
       error: requestResult.error,
-    }),
-    [
-      requestResult.error,
-      requestResult.isDataLoading,
-      requestResult.isResponseFailed,
-      requestResult.isUserForbidden,
-    ],
-  );
+    };
+  }, [
+    isUnavailable,
+    requestResult.error,
+    requestResult.isDataLoading,
+    requestResult.isResponseFailed,
+    requestResult.isUserForbidden,
+  ]);
 
   const summary = useMemo(() => {
     const summaries = filterNumericChartSummaryItemSpecs(
@@ -136,10 +147,11 @@ const GenericRAQIV2MetricSummaryCard: FC<GenericRAQIV2SummaryCardProps> = ({
 
   const formattedValue = useMemo(
     () =>
-      summary
+      unavailableValue ??
+      (summary
         ? formatChartUnit(summary.value, summary.formattingSpec, translationDependencies)
-        : noDataSymbol,
-    [summary, translationDependencies],
+        : noDataSymbol),
+    [summary, translationDependencies, unavailableValue],
   );
 
   const formattedLabel = useMemo(
@@ -183,8 +195,8 @@ const GenericRAQIV2MetricSummaryCard: FC<GenericRAQIV2SummaryCardProps> = ({
     <GenericSummaryCard
       label={formattedLabel}
       value={formattedValue}
-      valueLeadingIcon={valueLeadingIcon}
-      comparisonChip={comparisonChip}
+      valueLeadingIcon={isUnavailable ? undefined : valueLeadingIcon}
+      comparisonChip={isUnavailable ? undefined : comparisonChip}
       {...chartState}
       fullWidth={fullWidth}
       truncateLabelWithTooltip={truncateLabelWithTooltip}

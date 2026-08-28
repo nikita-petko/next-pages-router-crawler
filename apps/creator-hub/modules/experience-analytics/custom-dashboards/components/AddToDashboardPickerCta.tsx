@@ -90,8 +90,8 @@ type AddedDashboardDestination = {
   readonly name: string;
 };
 
-function getDashboardEditorHref(universeId: number, dashboardId: string): string {
-  return `/dashboard/creations/experiences/${universeId}/analytics/dashboards/${dashboardId}/edit`;
+function getDashboardViewHref(universeId: number, dashboardId: string): string {
+  return `/dashboard/creations/experiences/${universeId}/analytics/dashboards/${dashboardId}`;
 }
 
 function getDashboardsManageHref(universeId: number): string {
@@ -323,7 +323,7 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
         title: getAddedToastTitle(addedDashboards),
         href:
           addedDashboards.length === 1 && addedDashboards[0]
-            ? getDashboardEditorHref(universeId, addedDashboards[0].id)
+            ? getDashboardViewHref(universeId, addedDashboards[0].id)
             : getDashboardsManageHref(universeId),
         actionLabel: addedDashboards.length === 1 ? openDashboardLabel : openDashboardsLabel,
       });

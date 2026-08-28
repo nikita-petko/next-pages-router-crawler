@@ -18,6 +18,7 @@ type DashboardsTableMode =
       readonly handlers: DashboardActionHandlers;
       readonly canMutateDashboards: boolean;
       readonly userDisplayNamesById: UserDisplayNamesById;
+      readonly isUserDisplayNamesPending: boolean;
       readonly pinnedCount: number;
       readonly maxPinnedDashboards: number;
     }
@@ -44,6 +45,7 @@ const DashboardsTable: FC<DashboardsTableProps> = ({ mode }) => {
                 dashboard={item}
                 canMutateDashboards={mode.canMutateDashboards}
                 userDisplayNamesById={mode.userDisplayNamesById}
+                isUserDisplayNamesPending={mode.isUserDisplayNamesPending}
                 pinnedCount={mode.pinnedCount}
                 maxPinnedDashboards={mode.maxPinnedDashboards}
                 onOpen={mode.handlers.onOpen}
