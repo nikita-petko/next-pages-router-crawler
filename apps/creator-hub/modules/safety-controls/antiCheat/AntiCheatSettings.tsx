@@ -1,7 +1,7 @@
 import type { FC, ReactNode } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ProgressCircle, Snackbar, Toggle } from '@rbx/foundation-ui';
-import { useTranslation } from '@rbx/intl';
+import { useTranslation, withTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import LoadError from '@modules/miscellaneous/error/LoadError';
@@ -172,4 +172,6 @@ const AntiCheatSettings: FC<AntiCheatSettingsProps> = ({ universeId, placeId }) 
   );
 };
 
-export default AntiCheatSettings;
+// Load the AntiCheat namespace this component and AntiCheatPlaceSelect read, so their strings
+// resolve at runtime instead of falling back to English. ModerationTabs loads its own namespaces.
+export default withTranslation(AntiCheatSettings, [TranslationNamespace.AntiCheat]);

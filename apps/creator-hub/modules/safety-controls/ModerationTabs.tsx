@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useFlag } from '@rbx/flags';
 import { Tabs, TabsList, TabsTrigger } from '@rbx/foundation-ui';
-import { useTranslation } from '@rbx/intl';
+import { useTranslation, withTranslation } from '@rbx/intl';
 import { enhancedAntiCheatAccess } from '@generated/flags/antiCheat';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
@@ -79,4 +79,10 @@ const ModerationTabs: FC<ModerationTabsProps> = ({ activeTab, children }) => {
   );
 };
 
-export default ModerationTabs;
+// ModerationTabs renders on both the Bans and Anti-Cheat routes and reads Tab.AntiCheat (AntiCheat)
+// and Heading.Bans (Navigation), so it loads both namespaces itself rather than depending on which
+// route it mounts under.
+export default withTranslation(ModerationTabs, [
+  TranslationNamespace.AntiCheat,
+  TranslationNamespace.Navigation,
+]);
