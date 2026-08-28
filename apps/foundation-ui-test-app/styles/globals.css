@@ -1439,6 +1439,62 @@
   width: 0.25rem;
   height: 0.25rem;
 }
+.size-1000 {
+  width: var(--size-1000);
+  height: var(--size-1000);
+}
+.size-1200 {
+  width: var(--size-1200);
+  height: var(--size-1200);
+}
+.size-1400 {
+  width: var(--size-1400);
+  height: var(--size-1400);
+}
+.size-150 {
+  width: var(--size-150);
+  height: var(--size-150);
+}
+.size-1600 {
+  width: var(--size-1600);
+  height: var(--size-1600);
+}
+.size-200 {
+  width: var(--size-200);
+  height: var(--size-200);
+}
+.size-2400 {
+  width: var(--size-2400);
+  height: var(--size-2400);
+}
+.size-250 {
+  width: var(--size-250);
+  height: var(--size-250);
+}
+.size-300 {
+  width: var(--size-300);
+  height: var(--size-300);
+}
+.size-400 {
+  width: var(--size-400);
+  height: var(--size-400);
+}
+.size-500 {
+  width: var(--size-500);
+  height: var(--size-500);
+}
+.size-600 {
+  width: var(--size-600);
+  height: var(--size-600);
+}
+.size-700 {
+  width: var(--size-700);
+  height: var(--size-700);
+}
+.size-800 {
+  width: var(--size-800);
+  height: var(--size-800);
+}
 .size-\[1em\] {
   width: 1em;
   height: 1em;
@@ -1732,19 +1788,19 @@
   color: var(--color-content-emphasis);
 }
 .content-inverse-action-alert {
-  color: var(--inverse-color-action-alert-foreground);
+  color: var(--inverse-action-alert-foreground);
 }
 .content-inverse-action-emphasis {
-  color: var(--inverse-color-action-emphasis-foreground);
+  color: var(--inverse-action-emphasis-foreground);
 }
 .content-inverse-action-standard {
-  color: var(--inverse-color-action-standard-foreground);
+  color: var(--inverse-action-standard-foreground);
 }
 .content-inverse-default {
-  color: var(--inverse-color-content-default);
+  color: var(--inverse-content-default);
 }
 .content-inverse-emphasis {
-  color: var(--inverse-color-content-emphasis);
+  color: var(--inverse-content-emphasis);
 }
 .content-muted {
   color: var(--color-content-muted);
@@ -2601,12 +2657,12 @@
   --svg: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'%3E%3Cpath d='M24 15C24.5523 15 25 15.4477 25 16C25 16.5523 24.5523 17 24 17C11.0228 17 20.3132 17 8 17C7.44772 17 7 16.5523 7 16C7 15.4477 7.44772 15 8 15C20.3132 15 11.0228 15 24 15Z' fill='black'/%3E%3C/svg%3E");
 }
 .group\/toggle[data-state="checked"] .group-data-\[state\=checked\]\/toggle\:size-0 {
-  width: 0px;
-  height: 0px;
+  width: var(--size-0);
+  height: var(--size-0);
 }
 .group\/toggle[data-state="unchecked"] .group-data-\[state\=unchecked\]\/toggle\:size-0 {
-  width: 0px;
-  height: 0px;
+  width: var(--size-0);
+  height: var(--size-0);
 }
 .group\/toggle[data-state="checked"] .group-data-\[state\=checked\]\/toggle\:opacity-\[1\] {
   opacity: 1;
