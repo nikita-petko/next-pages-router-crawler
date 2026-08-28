@@ -38,16 +38,32 @@ function SplitBar(props: SplitBarProps) {
     },
   ];
 
-  const robloxStyle: progressBarStyle = {
-    color: 'secondary',
-    colorCode: theme.palette.states.focus,
+  // Map each revenue-share segment to a fixed color by its translation key so the
+  // colors stay stable regardless of segment order — e.g. when the green IP Holder
+  // Share segment is prepended for licensed items. Falls back to position-based
+  // styling for any other segments.
+  const styleByNameKey: Record<string, progressBarStyle> = {
+    'Label.IPHolderShare': {
+      color: 'primary',
+      // oxlint-disable-next-line typescript/no-deprecated -- no non-deprecated green token in the palette yet; IP Holder Share segment is intentionally green
+      colorCode: theme.palette.success.main,
+    },
+    'Label.YourShare': {
+      color: 'primary',
+      colorCode: theme.palette.actionV2.primaryBrand.fill,
+    },
+    'Label.Experiences': {
+      color: 'secondary',
+      colorCode: theme.palette.content.muted,
+    },
+    'Label.Roblox': {
+      color: 'secondary',
+      colorCode: theme.palette.states.focus,
+    },
   };
 
   function getStyle(index: number, nameLabel: string) {
-    if (nameLabel === 'Label.Roblox') {
-      return robloxStyle;
-    }
-    return linearProgressStyles[index];
+    return styleByNameKey[nameLabel] ?? linearProgressStyles[index];
   }
 
   return (
@@ -78,7 +94,7 @@ function SplitBar(props: SplitBarProps) {
         justifyContent='flex-end'
         spacing={1}>
         {names.map((name, index) => (
-          <Grid item key={`${name}`} className={classes.legendItem}>
+          <Grid item key={name} className={classes.legendItem}>
             <div
               className={classes.colorIndicator}
               style={{

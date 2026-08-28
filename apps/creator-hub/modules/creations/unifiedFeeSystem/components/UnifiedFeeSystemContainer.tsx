@@ -654,6 +654,9 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
               priceOffset={priceOffset ?? 0}
               minimumPrice={optionalPriceFloor ?? 1}
               isFree={isFree}
+              isAvatarItemLicensingEnabled={
+                collectiblesMetadata?.isAvatarItemLicensingEnabled ?? false
+              }
             />
           ) : (
             <SaleLocation

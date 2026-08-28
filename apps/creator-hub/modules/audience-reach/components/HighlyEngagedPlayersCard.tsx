@@ -1,7 +1,7 @@
 import { useMemo, type FC } from 'react';
 import { ReasonEnum, SelectStatusEnum } from '@rbx/client-core-content-api/v1';
 import { getProductionCreatorHubUrl } from '@rbx/env-utils';
-import { Alert } from '@rbx/foundation-ui';
+import { Alert, IconButton, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
 import { useLocalization, useTranslation } from '@rbx/intl';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { Ages16PlusThreshold } from '../constants/audienceReachConstants';
@@ -131,12 +131,31 @@ const HighlyEngagedPlayersCard: FC<HighlyEngagedPlayersCardProps> = ({
       </div>
       <ContentThresholdBar score={score} thresholdTrigger={thresholdTrigger} barColor={barColor} />
       {lastUpdated && (
-        <div className='text-body-medium content-muted'>
+        <div className='flex items-center gap-xsmall text-body-medium content-muted'>
           {translateWithNamespace(TranslationNamespace.AudienceReach, 'Label.LastUpdated', {
             date: lastUpdated.toLocaleDateString(locale ?? 'en-us', {
               timeZone: 'UTC',
             }),
           })}
+          <Tooltip
+            position='bottom-center'
+            title={translateWithNamespace(
+              TranslationNamespace.AudienceReach,
+              'Label.HepGraphUpdateFrequency',
+            )}>
+            <TooltipTrigger asChild>
+              <IconButton
+                icon='icon-regular-circle-i'
+                variant='Utility'
+                size='XSmall'
+                isCircular
+                ariaLabel={translateWithNamespace(
+                  TranslationNamespace.AudienceReach,
+                  'Label.HepGraphUpdateFrequency',
+                )}
+              />
+            </TooltipTrigger>
+          </Tooltip>
         </div>
       )}
     </div>

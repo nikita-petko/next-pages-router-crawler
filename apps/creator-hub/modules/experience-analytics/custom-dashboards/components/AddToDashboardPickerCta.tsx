@@ -1,6 +1,7 @@
 import { type ChangeEvent, type FC, type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useQueryClient } from '@tanstack/react-query';
+import { OverflowTitle } from '@rbx/analytics-ui';
 import {
   Button,
   Checkbox,
@@ -46,6 +47,7 @@ const dialogContentStyle = { width: 'min(92vw, 34rem)', maxWidth: 'min(92vw, 34r
  */
 const dashboardListScrollClassName =
   'flex flex-col gap-medium scroll-y max-height-[calc((var(--size-600)+var(--gap-medium))*15-var(--gap-medium))]';
+const dashboardCheckboxLabelIdPrefix = 'add-to-dashboard-label-';
 
 type AddToDashboardPickerCtaCommonProps = {
   readonly universeId: number;
@@ -73,22 +75,33 @@ type AddToDashboardPickerCtaProps = AddToDashboardPickerCtaCommonProps &
       }
   );
 
-type AddDashboardToast =
-  | {
-      readonly kind: 'pending' | 'error';
-      readonly title: string;
-    }
-  | {
-      readonly kind: 'success';
-      readonly title: string;
-      readonly href: string;
-      readonly actionLabel: string;
-    };
-
 type AddedDashboardDestination = {
   readonly id: string;
   readonly name: string;
 };
+
+type AddDashboardToast = {
+  readonly title: string;
+  readonly href: string;
+  readonly actionLabel: string;
+};
+
+type DashboardAdditionAttempt =
+  | {
+      readonly didSucceed: true;
+      readonly destination: AddedDashboardDestination;
+      readonly retry: {
+        readonly selectedDashboardId: string;
+      } | null;
+    }
+  | {
+      readonly didSucceed: false;
+      readonly error: unknown;
+      readonly retry: {
+        readonly selectedDashboardId: string;
+        readonly replacementDashboardId?: string;
+      } | null;
+    };
 
 function getDashboardViewHref(universeId: number, dashboardId: string): string {
   return `/dashboard/creations/experiences/${universeId}/analytics/dashboards/${dashboardId}`;
@@ -188,12 +201,12 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
   );
   const addingLabel = tPendingTranslation(
     'Adding chart...',
-    'Snackbar status while adding an Explore Mode chart to a custom dashboard.',
+    'Submit-button status while adding an Explore Mode chart to a custom dashboard.',
     translationKey('Label.AddingChartToDashboard', TranslationNamespace.Analytics),
   );
   const creatingDashboardLabel = tPendingTranslation(
     'Creating dashboard...',
-    'Snackbar status while creating a custom dashboard from the Explore Mode add-to-dashboard picker.',
+    'Submit-button status while creating a custom dashboard from the add-to-dashboard picker.',
     translationKey('Label.CreatingDashboardFromPicker', TranslationNamespace.Analytics),
   );
   const openDashboardLabel = tPendingTranslation(
@@ -265,61 +278,95 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
 
     setIsSubmittingDestinationId('submit');
     setWriteError(null);
-    setIsOpen(false);
-    setToast({
-      kind: 'pending',
-      title: willCreateNewDashboard ? creatingDashboardLabel : addingLabel,
-    });
     try {
-      const existingDashboardAdditions = Promise.all(
-        selectedDashboards.map(async (dashboard) => {
-          const destination =
-            dashboard.hybridOrigin === 'server' && service.forkApiDashboardToLocal
-              ? await service.forkApiDashboardToLocal(universeId, dashboard.id, {
-                  createdByUserId: user.id,
-                  createdByUsername: user.name,
-                })
-              : dashboard;
-          await service.addChartTile(
-            universeId,
-            destination.id,
-            { tile: capturedTile },
-            { actor: { userId: user.id, username: user.name } },
-          );
-          return destination;
-        }),
-      );
-
-      const createdDashboard = willCreateNewDashboard
-        ? (async (): Promise<AddedDashboardDestination> => {
-            const dashboardName =
-              newDashboardName.trim() || (await service.suggestDefaultName(universeId));
-            const { config } = addChartTileToConfig({
-              config: EMPTY_DASHBOARD_CONFIG,
-              tile: capturedTile,
-              nextTileId: createTileId(),
-            });
-            return service.create({
+      const existingDashboardAdditions: readonly Promise<DashboardAdditionAttempt>[] =
+        selectedDashboards.map(async (dashboard): Promise<DashboardAdditionAttempt> => {
+          let destination: AddedDashboardDestination = dashboard;
+          try {
+            destination =
+              dashboard.hybridOrigin === 'server' && service.forkApiDashboardToLocal
+                ? await service.forkApiDashboardToLocal(universeId, dashboard.id, {
+                    createdByUserId: user.id,
+                    createdByUsername: user.name,
+                  })
+                : dashboard;
+            await service.addChartTile(
               universeId,
-              name: dashboardName,
-              createdByUserId: user.id,
-              createdByUsername: user.name,
-              config,
-            });
-          })()
-        : Promise.resolve(null);
+              destination.id,
+              { tile: capturedTile },
+              { actor: { userId: user.id, username: user.name } },
+            );
+            return { didSucceed: true, destination, retry: { selectedDashboardId: dashboard.id } };
+          } catch (error) {
+            return {
+              didSucceed: false,
+              error,
+              retry: {
+                selectedDashboardId: dashboard.id,
+                replacementDashboardId:
+                  destination.id !== dashboard.id ? destination.id : undefined,
+              },
+            };
+          }
+        });
 
-      const [existingDashboards, newDashboard] = await Promise.all([
-        existingDashboardAdditions,
-        createdDashboard,
+      const createdDashboard: Promise<DashboardAdditionAttempt> | null = willCreateNewDashboard
+        ? (async (): Promise<DashboardAdditionAttempt> => {
+            try {
+              const dashboardName =
+                newDashboardName.trim() || (await service.suggestDefaultName(universeId));
+              const { config } = addChartTileToConfig({
+                config: EMPTY_DASHBOARD_CONFIG,
+                tile: capturedTile,
+                nextTileId: createTileId(),
+              });
+              const destination = await service.create({
+                universeId,
+                name: dashboardName,
+                createdByUserId: user.id,
+                createdByUsername: user.name,
+                config,
+              });
+              return { didSucceed: true, destination, retry: null };
+            } catch (error) {
+              return { didSucceed: false, error, retry: null };
+            }
+          })()
+        : null;
+
+      const additions = await Promise.all([
+        ...existingDashboardAdditions,
+        ...(createdDashboard ? [createdDashboard] : []),
       ]);
-      const addedDashboards = newDashboard
-        ? [...existingDashboards, newDashboard]
-        : existingDashboards;
+      const addedDashboards = additions.flatMap((addition) =>
+        addition.didSucceed ? [addition.destination] : [],
+      );
+      const failedAddition = additions.find((addition) => !addition.didSucceed);
 
       void queryClient.invalidateQueries({ queryKey: customDashboardQueryKeys.list(universeId) });
+      if (failedAddition && !failedAddition.didSucceed) {
+        const retryDashboardIds = additions.flatMap((addition) => {
+          if (addition.didSucceed || !addition.retry) {
+            return [];
+          }
+          return [addition.retry.replacementDashboardId ?? addition.retry.selectedDashboardId];
+        });
+        const createdDashboardAddition = additions.find((addition) => addition.retry === null);
+        setSelectedDashboardIds(retryDashboardIds);
+        if (createdDashboardAddition?.didSucceed) {
+          setCreateNewDashboard(false);
+          setNewDashboardName('');
+        }
+        setWriteError(failedAddition.error);
+        return;
+      }
+
+      if (addedDashboards.length === 0) {
+        return;
+      }
+
+      setIsOpen(false);
       setToast({
-        kind: 'success',
         title: getAddedToastTitle(addedDashboards),
         href:
           addedDashboards.length === 1 && addedDashboards[0]
@@ -329,7 +376,6 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
       });
     } catch (error) {
       setWriteError(error);
-      setToast({ kind: 'error', title: addFailedLabel });
     } finally {
       setIsSubmittingDestinationId(null);
     }
@@ -380,7 +426,7 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
   }, []);
 
   const handleToastAction = useCallback(() => {
-    if (toast?.kind === 'success') {
+    if (toast) {
       if (onNavigateToDashboard) {
         onNavigateToDashboard(toast.href);
       } else {
@@ -456,17 +502,30 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
                   <div className={dashboardListScrollClassName}>
                     {dashboards.map((dashboard) => {
                       const hasEditAccess = canEditDashboard(dashboard);
+                      const dashboardCheckboxLabelId = `${dashboardCheckboxLabelIdPrefix}${dashboard.id}`;
+                      const isDashboardSelectable = canSubmit && !isSubmitting && hasEditAccess;
                       const checkbox = (
-                        <Checkbox
-                          size='Medium'
-                          placement='Start'
-                          label={dashboard.name}
-                          isChecked={editableSelectedDashboardIds.includes(dashboard.id)}
-                          isDisabled={!canSubmit || isSubmitting || !hasEditAccess}
-                          onCheckedChange={(nextChecked) => {
-                            toggleDashboardSelection(dashboard.id, nextChecked === true);
-                          }}
-                        />
+                        <label
+                          className='flex items-start gap-medium min-width-0 grow-1'
+                          htmlFor={dashboardCheckboxLabelId}>
+                          <Checkbox
+                            id={dashboardCheckboxLabelId}
+                            size='Medium'
+                            placement='Start'
+                            className='shrink-0'
+                            aria-labelledby={dashboardCheckboxLabelId}
+                            isChecked={editableSelectedDashboardIds.includes(dashboard.id)}
+                            isDisabled={!isDashboardSelectable}
+                            onCheckedChange={(nextChecked) => {
+                              toggleDashboardSelection(dashboard.id, nextChecked === true);
+                            }}
+                          />
+                          <span
+                            id={dashboardCheckboxLabelId}
+                            className='grow-1 min-width-0 padding-top-xxsmall cursor-pointer'>
+                            <OverflowTitle text={dashboard.name} className='text-body-medium' />
+                          </span>
+                        </label>
                       );
 
                       return (
@@ -519,7 +578,11 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
                 className='fill basis-0'
                 isLoading={isSubmitting}
                 isDisabled={!canAddSelection}>
-                {isSubmitting ? loadingLabel : submitAddLabel}
+                {isSubmitting
+                  ? willCreateNewDashboard
+                    ? creatingDashboardLabel
+                    : addingLabel
+                  : submitAddLabel}
               </Button>
               <Button
                 type='button'
@@ -537,10 +600,10 @@ export const AddToDashboardPickerCtaInner: FC<AddToDashboardPickerCtaProps> = ({
       {toast ? (
         <Snackbar
           title={toast.title}
-          actionLabel={toast.kind === 'success' ? toast.actionLabel : undefined}
-          onAction={toast.kind === 'success' ? handleToastAction : undefined}
+          actionLabel={toast.actionLabel}
+          onAction={handleToastAction}
           closeIconAriaLabel={closeLabel}
-          shouldAutoDismiss={toast.kind !== 'pending'}
+          shouldAutoDismiss
           autoDismissDurationMs={SnackbarDismissMs}
           onClose={handleToastClose}
         />

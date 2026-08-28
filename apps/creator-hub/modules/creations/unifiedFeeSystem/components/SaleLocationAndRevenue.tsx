@@ -187,6 +187,7 @@ interface TSaleLocationAndRevenueProps {
   priceOffset: number;
   minimumPrice: number;
   isFree: boolean;
+  isAvatarItemLicensingEnabled: boolean;
 }
 
 function SaleLocationAndRevenue(props: TSaleLocationAndRevenueProps) {
@@ -203,6 +204,7 @@ function SaleLocationAndRevenue(props: TSaleLocationAndRevenueProps) {
     priceOffset,
     minimumPrice,
     isFree,
+    isAvatarItemLicensingEnabled,
   } = props;
   const { translate } = useTranslation();
   const { classes } = useSaleLocationAndRevenueStyles();
@@ -210,6 +212,8 @@ function SaleLocationAndRevenue(props: TSaleLocationAndRevenueProps) {
   const [experiencesEnabled, setExperiencesEnabled] = useState(true);
   const [marketplaceRevenueSplit, setMarketplaceRevenueSplit] = useState<number[]>([]);
   const [experiencesRevenueSplit, setExperiencesRevenueSplit] = useState<number[]>([]);
+  const [marketplaceIpHolderSplit, setMarketplaceIpHolderSplit] = useState(0);
+  const [experiencesIpHolderSplit, setExperiencesIpHolderSplit] = useState(0);
   const [allExperiencesEnabled, setAllExperiencesEnabled] = useState(true);
   const [increaseSplitBannerDismissed, setIncreaseSplitBannerDismissed] = useLocalStorage<boolean>(
     'increaseSplitBannerDismissed',
@@ -218,6 +222,7 @@ function SaleLocationAndRevenue(props: TSaleLocationAndRevenueProps) {
 
   useEffect(() => {
     if (saleLocation === SaleLocationEnum.ExperiencesAndDevAPIOnly) {
+      // oxlint-disable-next-line react/react-compiler -- pre-existing EffectSetState pattern: syncing marketplace/experiences toggles from the saleLocation prop
       setMarketplaceEnabled(false);
       setExperiencesEnabled(true);
       setAllExperiencesEnabled(false);
@@ -294,6 +299,12 @@ function SaleLocationAndRevenue(props: TSaleLocationAndRevenueProps) {
           experiencesRevenueSplitResponse.revenueSplit?.sellerSplitPercentage ?? 0,
           experiencesRevenueSplitResponse.revenueSplit?.marketplaceSplitPercentage ?? 0,
         ]);
+        setMarketplaceIpHolderSplit(
+          marketplaceRevenueSplitResponse.revenueSplit?.ipHolderSplitPercentage ?? 0,
+        );
+        setExperiencesIpHolderSplit(
+          experiencesRevenueSplitResponse.revenueSplit?.ipHolderSplitPercentage ?? 0,
+        );
       }
       const callNumber = latestCallNumber.current + 1;
       latestCallNumber.current = callNumber;
@@ -307,6 +318,24 @@ function SaleLocationAndRevenue(props: TSaleLocationAndRevenueProps) {
 
   const MarketplaceNameKeys = ['Label.YourShare', 'Label.Roblox'];
   const ExperiencesNameKeys = ['Label.YourShare', 'Label.Experiences', 'Label.Roblox'];
+
+  // When avatar item licensing is enabled (BE flag from ICA metadata) and the item
+  // carries an IP-holder royalty, prepend the IP Holder Share segment to each split
+  // bar. The creator bucket is already reduced server-side, so no further math here.
+  const showMarketplaceIpHolder = isAvatarItemLicensingEnabled && marketplaceIpHolderSplit > 0;
+  const showExperiencesIpHolder = isAvatarItemLicensingEnabled && experiencesIpHolderSplit > 0;
+  const marketplaceSplitPercentages = showMarketplaceIpHolder
+    ? [marketplaceIpHolderSplit, ...marketplaceRevenueSplit]
+    : marketplaceRevenueSplit;
+  const marketplaceSplitNames = showMarketplaceIpHolder
+    ? ['Label.IPHolderShare', ...MarketplaceNameKeys]
+    : MarketplaceNameKeys;
+  const experiencesSplitPercentages = showExperiencesIpHolder
+    ? [experiencesIpHolderSplit, ...experiencesRevenueSplit]
+    : experiencesRevenueSplit;
+  const experiencesSplitNames = showExperiencesIpHolder
+    ? ['Label.IPHolderShare', ...ExperiencesNameKeys]
+    : ExperiencesNameKeys;
 
   return (
     <div>
@@ -339,7 +368,7 @@ function SaleLocationAndRevenue(props: TSaleLocationAndRevenueProps) {
           {marketplaceEnabled && !isFree && (
             <Grid item XSmall={12} Large={6}>
               <Grid container direction='column' rowGap={2}>
-                <SplitBar percentages={marketplaceRevenueSplit} names={MarketplaceNameKeys} />
+                <SplitBar percentages={marketplaceSplitPercentages} names={marketplaceSplitNames} />
                 {!increaseSplitBannerDismissed && (
                   <Alert
                     severity='info'
@@ -381,7 +410,7 @@ function SaleLocationAndRevenue(props: TSaleLocationAndRevenueProps) {
           </Grid>
           {experiencesEnabled && !isFree && (
             <Grid item XSmall={12} Large={6}>
-              <SplitBar percentages={experiencesRevenueSplit} names={ExperiencesNameKeys} />
+              <SplitBar percentages={experiencesSplitPercentages} names={experiencesSplitNames} />
             </Grid>
           )}
         </Grid>
