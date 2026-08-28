@@ -12,8 +12,8 @@ import {
   Tooltip,
 } from '@rbx/ui';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import SharedMultiCheckbox from '../../translation/components/shared/MultiCheckbox';
-import { filterOptionsLabelMap, sortingOptionsLabelMap } from '../constants';
+import SharedSorterAndFilter from '../../translation/components/shared/SorterAndFilter';
+import { sortingOptionsLabelMap } from '../constants';
 import EntryFilterOptions from '../enums/EntryFilterOptions';
 import EntrySortingOptions from '../enums/EntrySortingOptions';
 import MultiCheckbox from './MultiCheckbox';
@@ -27,7 +27,7 @@ export interface SorterAndFilterProps {
   onMenuToggled: (isMenuOpen: boolean) => void;
 }
 
-const SorterAndFilter: FunctionComponent<React.PropsWithChildren<SorterAndFilterProps>> = ({
+const LegacySorterAndFilter: FunctionComponent<React.PropsWithChildren<SorterAndFilterProps>> = ({
   sortingOption,
   setSortingOption,
   filterOptions,
@@ -35,7 +35,6 @@ const SorterAndFilter: FunctionComponent<React.PropsWithChildren<SorterAndFilter
   onMenuToggled,
 }) => {
   const { translate } = useTranslation();
-  const { settings } = useSettings();
   const {
     classes: {
       spacing,
@@ -77,26 +76,13 @@ const SorterAndFilter: FunctionComponent<React.PropsWithChildren<SorterAndFilter
     onMenuToggled(false);
   };
 
-  const getFilterOptionLabel = useCallback(
-    (value: EntryFilterOptions) => translate(filterOptionsLabelMap[value]),
-    [translate],
+  const renderFilterCheckbox = (allowedValues: EntryFilterOptions[]) => (
+    <MultiCheckbox
+      checkedValues={selectedFilterOptions}
+      allowedValues={allowedValues}
+      setCheckedValues={setSelectedFilterOptions}
+    />
   );
-
-  const renderFilterCheckbox = (allowedValues: EntryFilterOptions[]) =>
-    settings.enableSharedTranslationListComponents ? (
-      <SharedMultiCheckbox
-        checkedValues={selectedFilterOptions}
-        allowedValues={allowedValues}
-        getLabel={getFilterOptionLabel}
-        setCheckedValues={setSelectedFilterOptions}
-      />
-    ) : (
-      <MultiCheckbox
-        checkedValues={selectedFilterOptions}
-        allowedValues={allowedValues}
-        setCheckedValues={setSelectedFilterOptions}
-      />
-    );
 
   return (
     <>
@@ -187,6 +173,57 @@ const SorterAndFilter: FunctionComponent<React.PropsWithChildren<SorterAndFilter
       </Grid>
     </>
   );
+};
+
+// Adapts the string-specific enum-typed props to the shared, generic SorterAndFilter's
+// string-typed API. The narrowing handlers are memoized so the shared component (and its
+// children) receive stable references.
+const StringSorterAndFilter: FunctionComponent<React.PropsWithChildren<SorterAndFilterProps>> = ({
+  sortingOption,
+  setSortingOption,
+  filterOptions,
+  setFilterOptions,
+  onMenuToggled,
+}) => {
+  const handleSetSortingOption = useCallback(
+    (option: string) => {
+      // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion
+      setSortingOption(option as EntrySortingOptions);
+    },
+    [setSortingOption],
+  );
+  const handleSetFilterOptions = useCallback(
+    (options: string[]) => {
+      // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion
+      setFilterOptions(options as EntryFilterOptions[]);
+    },
+    [setFilterOptions],
+  );
+
+  return (
+    <SharedSorterAndFilter
+      sortingOption={sortingOption}
+      setSortingOption={handleSetSortingOption}
+      filterOptions={filterOptions}
+      setFilterOptions={handleSetFilterOptions}
+      onMenuToggled={onMenuToggled}
+    />
+  );
+};
+
+// Gated by the `enableSharedTranslationListComponents` client setting: renders the shared,
+// generic SorterAndFilter (fed pre-resolved labels + filter sections) when on, otherwise the
+// original local implementation.
+const SorterAndFilter: FunctionComponent<React.PropsWithChildren<SorterAndFilterProps>> = (
+  props,
+) => {
+  const { settings } = useSettings();
+
+  if (settings.enableSharedTranslationListComponents) {
+    return <StringSorterAndFilter {...props} />;
+  }
+
+  return <LegacySorterAndFilter {...props} />;
 };
 
 export default SorterAndFilter;

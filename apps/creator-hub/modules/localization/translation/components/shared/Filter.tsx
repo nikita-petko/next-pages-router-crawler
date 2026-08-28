@@ -2,6 +2,7 @@ import type { MouseEvent, ReactElement, RefObject } from 'react';
 import React from 'react';
 import { useTranslation } from '@rbx/intl';
 import { FiberManualRecordIcon, FilterListIcon, IconButton, Typography } from '@rbx/ui';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import useFilterStyles from './Filter.styles';
 
 export interface FilterProps<TSortingOption, TFilterOption> {
@@ -33,7 +34,7 @@ const Filter = <TSortingOption, TFilterOption>({
       <IconButton
         className={areFiltersApplied ? filtered : notFiltered}
         aria-label={translateWithNamespace(
-          'CreatorDashboard.GameStringTranslation',
+          TranslationNamespace.GameStringTranslation,
           'Label.FilterBy',
         )}
         onClick={onFilterClicked}

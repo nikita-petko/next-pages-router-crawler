@@ -64,13 +64,10 @@ const GameStringsEntryListContainer: FunctionComponent<
   );
   const [filterOptions, setFilterOptions] = useState<EntryFilterOptions[]>([]);
   const [stringToSearch, setStringToSearch] = useState<string>('');
-  const [entryListState, setEntryListState] = useState<EntryListStates>(EntryListStates.Default);
-  const [isUpdatingSortFilters, setIsUpdatingSortFilters] = useState<boolean>(false);
   const { sourceLanguageCode, activeTranslationTarget, isRoleAdmin } = useEntryManagementMetadata();
   const { fullEntryInfoMap } = useEntryManagement();
 
   const handleSortEntry = (_sortingOption: EntrySortingOptions) => {
-    setIsUpdatingSortFilters(true);
     setSortingOption(_sortingOption);
     const entryFilterTrackerClientRequest: TrackerClientRequest = {
       eventType: CreatorDashboardEventType.FilterTranslationEntryList,
@@ -84,7 +81,6 @@ const GameStringsEntryListContainer: FunctionComponent<
   };
 
   const handleFilterEntry = (_filterOptions: EntryFilterOptions[]) => {
-    setIsUpdatingSortFilters(true);
     setFilterOptions(_filterOptions);
   };
 
@@ -102,13 +98,10 @@ const GameStringsEntryListContainer: FunctionComponent<
       return null;
     }
     if (fullList.length === 0) {
-      onSelectEntry(null);
-      setEntryListState(EntryListStates.EmptyList);
       return fullList;
     }
 
-    let filteredEntryList: EntryBriefInfo[] = fullList;
-    filteredEntryList = filterEntryList(filterOptions, fullList);
+    let filteredEntryList: EntryBriefInfo[] = filterEntryList(filterOptions, fullList);
 
     filteredEntryList = searchEntryList(
       stringToSearch,
@@ -120,15 +113,6 @@ const GameStringsEntryListContainer: FunctionComponent<
 
     filteredEntryList = sortEntryList(sortingOption, filteredEntryList, sourceLanguageCode);
 
-    if (filteredEntryList.length === 0) {
-      onSelectEntry(null);
-      setEntryListState(EntryListStates.ResultNotFound);
-      return filteredEntryList;
-    }
-    setEntryListState(EntryListStates.Default);
-    if (!filteredEntryList.some((entry) => entry.identifier === activeEntryKey)) {
-      onSelectEntry(filteredEntryList[0].identifier);
-    }
     return filteredEntryList;
   }, [
     fullList,
@@ -138,15 +122,46 @@ const GameStringsEntryListContainer: FunctionComponent<
     sourceLanguageCode,
     activeTranslationTarget?.languageCode,
     sortingOption,
-    onSelectEntry,
-    activeEntryKey,
   ]);
 
-  // reset sort/filter options to default when selected translation language changes
+  // Derive the empty / no-results state during render instead of writing it from the memo above.
+  let entryListState: EntryListStates = EntryListStates.Default;
+  if (fullList !== null) {
+    if (fullList.length === 0) {
+      entryListState = EntryListStates.EmptyList;
+    } else if (filteredList !== null && filteredList.length === 0) {
+      entryListState = EntryListStates.ResultNotFound;
+    }
+  }
+
+  // Keep the active selection in sync with the filtered list: clear it when nothing matches and
+  // default to the first entry when the current selection drops out of the list. This updates
+  // parent state, so it belongs in an effect rather than the render/memo path.
   useEffect(() => {
+    if (filteredList === null) {
+      return;
+    }
+    if (filteredList.length === 0) {
+      if (activeEntryKey !== null) {
+        onSelectEntry(null);
+      }
+      return;
+    }
+    if (!filteredList.some((entry) => entry.identifier === activeEntryKey)) {
+      onSelectEntry(filteredList[0].identifier);
+    }
+  }, [filteredList, activeEntryKey, onSelectEntry]);
+
+  // Reset sort/filter options to default when the selected translation language changes.
+  // Adjusting state during render (instead of in an effect) is the React-recommended pattern.
+  const [previousTranslationKey, setPreviousTranslationKey] = useState(
+    activeTranslationTarget?.translationKey,
+  );
+  if (activeTranslationTarget?.translationKey !== previousTranslationKey) {
+    setPreviousTranslationKey(activeTranslationTarget?.translationKey);
     setFilterOptions([]);
     setSortingOption(EntrySortingOptions.Default);
-  }, [activeTranslationTarget?.translationKey]);
+  }
 
   let content;
   if (isLoadingEntryList && !fullList) {
@@ -188,8 +203,7 @@ const GameStringsEntryListContainer: FunctionComponent<
             isUpdating={isLoadingEntryList}
             activeEntryKey={activeEntryKey}
             onSelect={handleSelectEntry}
-            areSortsFiltersUpdated={isUpdatingSortFilters}
-            onSortsFiltersUpdated={setIsUpdatingSortFilters}
+            resetPageKey={`${sortingOption}:${[...filterOptions].sort().join(',')}`}
           />
           {isLoadingEntryList && (
             <div className={cx(overlay, disabledOverlay)}>

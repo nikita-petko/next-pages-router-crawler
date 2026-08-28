@@ -10,22 +10,27 @@ import {
 // The current UI is a single on/off toggle, but the proto models a much richer config
 // (per-trust-bucket enforcement plus optional per-platform overrides). Until a dedicated
 // multi-control UI is built, the toggle maps onto the full config here: "on" enables hardware
-// attestation with a conservative default policy at the universal level; "off" disables it.
-// Per-platform overrides are left unset so every platform inherits that universal default. These
-// defaults are intentionally non-destructive (no hard BLOCK) so flipping the toggle can never
-// lock players out.
+// attestation on the platform(s) we've launched support for (Android today) with a policy that
+// blocks limited and untrusted devices; "off" disables it everywhere. The universal default is
+// left disabled and enforcement is scoped per-platform on purpose, so a platform without launched
+// support (e.g. Windows) can't inherit enforcement and lock its players out the moment that
+// support ships.
 // TODO: Replace this mapping with real per-control UI once the enhanced anti-cheat UX is designed.
 
-/** Non-destructive default policy applied when the toggle enables hardware attestation. */
+/**
+ * Policy applied when the toggle enables hardware attestation: block limited and untrusted devices,
+ * ignore trusted and established ones.
+ */
 export const ENABLED_ATTESTATION_POLICY: AntiCheatHardwareAttestationPolicy = {
   trusted: AntiCheatEnforcementAction.Ignore,
   established: AntiCheatEnforcementAction.Ignore,
-  limited: AntiCheatEnforcementAction.Signal,
-  untrusted: AntiCheatEnforcementAction.Signal,
+  limited: AntiCheatEnforcementAction.Block,
+  untrusted: AntiCheatEnforcementAction.Block,
 };
 
-// Platform option defaults leave `hardwareAttestation` unset so each platform inherits the
-// universal default, and apply no extra restrictions until the creator opts in via a real UI.
+// Base platform option booleans. `hardwareAttestation` is applied separately in
+// `buildEnhancedAntiCheatConfig` (Android gets the enabled policy when the toggle is on; every
+// other platform inherits the disabled universal default).
 const DEFAULT_WINDOWS_OPTIONS: AntiCheatWindowsOptions = {
   blockVirtualInput: false,
   blockHypervisors: false,
@@ -35,17 +40,23 @@ const DEFAULT_ANDROID_OPTIONS: AntiCheatAndroidOptions = {
   blockExternalInputDevices: false,
 };
 
-/** The toggle reflects whether hardware attestation is enabled at the universal level. */
+// The toggle reflects whether hardware attestation is enabled on Android, the platform its
+// enforcement is scoped to (see `buildEnhancedAntiCheatConfig`), rather than the universal default.
 export const isEnhancedAntiCheatEnabled = (config: AntiCheatEnhancedConfig): boolean =>
-  config.hardwareAttestation.mode === 'enabled';
+  config.android.hardwareAttestation?.mode === 'enabled';
 
 /** Build a complete, valid {@link AntiCheatEnhancedConfig} from the single toggle's state. */
 export const buildEnhancedAntiCheatConfig = (isEnabled: boolean): AntiCheatEnhancedConfig => ({
-  hardwareAttestation: isEnabled
-    ? { mode: 'enabled', policy: { ...ENABLED_ATTESTATION_POLICY } }
-    : { mode: 'disabled' },
+  // Leave the universal default disabled and scope enforcement to Android below, so platforms
+  // without launched support don't inherit blocking.
+  hardwareAttestation: { mode: 'disabled' },
   windows: { ...DEFAULT_WINDOWS_OPTIONS },
-  android: { ...DEFAULT_ANDROID_OPTIONS },
+  android: {
+    ...(isEnabled
+      ? { hardwareAttestation: { mode: 'enabled', policy: { ...ENABLED_ATTESTATION_POLICY } } }
+      : {}),
+    ...DEFAULT_ANDROID_OPTIONS,
+  },
   macos: {},
   ios: {},
 });

@@ -1,5 +1,6 @@
-import type { FunctionComponent } from 'react';
+import type { ReactElement } from 'react';
 import React, { useRef, useMemo, useState } from 'react';
+import { useTranslation } from '@rbx/intl';
 import {
   IconButton,
   Pagination,
@@ -12,31 +13,36 @@ import {
   Grid,
   List,
 } from '@rbx/ui';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import SharedEntryList from '../../translation/components/shared/EntryList';
-import { entryListPageSize } from '../constants';
-import type { EntryBriefInfo } from '../types';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { entryListPageSize } from '../../constants';
 import useEntryListStyle from './EntryList.styles';
 
-const getEntryPrimaryText = (entry: EntryBriefInfo) => entry.sourceText;
+export interface BaseEntryBriefInfo {
+  identifier: string;
+  isTranslated: boolean;
+}
 
-export interface EntryListProps {
-  entries: EntryBriefInfo[];
+export interface EntryListProps<TEntry extends BaseEntryBriefInfo> {
+  entries: TEntry[];
   isUpdating: boolean;
   activeEntryKey: string | null;
   onSelect: (activeEntryKey: string) => void;
-  // A value derived from the current sort/filter selection; when it changes the list resets
-  // to page 1. Keyed off the selection (not `entries` identity) so unrelated re-renders don't.
+  getPrimaryText: (entry: TEntry) => string;
+  // A value the caller derives from its sort/filter selection. When it changes, the list
+  // resets to page 1. Keyed off the selection rather than `entries` identity so unrelated
+  // re-renders (row selection, background data refreshes) don't snap back to page 1.
   resetPageKey: string;
 }
 
-const LegacyEntryList: FunctionComponent<React.PropsWithChildren<EntryListProps>> = ({
+const EntryList = <TEntry extends BaseEntryBriefInfo>({
   entries,
   isUpdating,
   activeEntryKey,
   onSelect,
+  getPrimaryText,
   resetPageKey,
-}) => {
+}: EntryListProps<TEntry>): ReactElement => {
+  const { translateWithNamespace } = useTranslation();
   const {
     classes: { buttonListItem, list, text, shimmerText },
   } = useEntryListStyle();
@@ -52,9 +58,7 @@ const LegacyEntryList: FunctionComponent<React.PropsWithChildren<EntryListProps>
   }
 
   // calculate the total number of pages we have from the filteredEntryList
-  const totalPages = useMemo(() => {
-    return Math.ceil(entries?.length / entryListPageSize);
-  }, [entries]);
+  const totalPages = Math.ceil(entries?.length / entryListPageSize);
 
   const currentList = useMemo(() => {
     // check list to see if the results are less than a full page
@@ -84,16 +88,30 @@ const LegacyEntryList: FunctionComponent<React.PropsWithChildren<EntryListProps>
               onClick={() => onSelect(entry.identifier)}>
               <ListItemText>
                 <Typography className={isUpdating ? shimmerText : text} variant='largeLabel2'>
-                  {entry.sourceText}
+                  {getPrimaryText(entry)}
                 </Typography>
               </ListItemText>
               <ListItemSecondaryAction>
                 {entry.isTranslated ? (
-                  <IconButton aria-label='success' edge='end' disabled size='large'>
+                  <IconButton
+                    aria-label={translateWithNamespace(
+                      TranslationNamespace.GameStringTranslation,
+                      'Label.Success',
+                    )}
+                    edge='end'
+                    disabled
+                    size='large'>
                     <CheckIcon fontSize='small' />
                   </IconButton>
                 ) : (
-                  <IconButton aria-label='pending' edge='end' disabled size='large'>
+                  <IconButton
+                    aria-label={translateWithNamespace(
+                      TranslationNamespace.GameStringTranslation,
+                      'Label.Pending',
+                    )}
+                    edge='end'
+                    disabled
+                    size='large'>
                     <ScheduleIcon fontSize='small' />
                   </IconButton>
                 )}
@@ -112,27 +130,6 @@ const LegacyEntryList: FunctionComponent<React.PropsWithChildren<EntryListProps>
       </Grid>
     </>
   );
-};
-
-// Gated by the `enableSharedTranslationListComponents` client setting: renders the shared,
-// generic EntryList when on, otherwise the original local implementation.
-const EntryList: FunctionComponent<React.PropsWithChildren<EntryListProps>> = (props) => {
-  const { settings } = useSettings();
-
-  if (settings.enableSharedTranslationListComponents) {
-    return (
-      <SharedEntryList
-        entries={props.entries}
-        isUpdating={props.isUpdating}
-        activeEntryKey={props.activeEntryKey}
-        onSelect={props.onSelect}
-        getPrimaryText={getEntryPrimaryText}
-        resetPageKey={props.resetPageKey}
-      />
-    );
-  }
-
-  return <LegacyEntryList {...props} />;
 };
 
 export default EntryList;

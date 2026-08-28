@@ -1,20 +1,33 @@
-import type { FunctionComponent } from 'react';
-import React, { Fragment, useCallback } from 'react';
+import type { ReactElement, ReactNode } from 'react';
+import React, { Fragment } from 'react';
 import { dateTimeFormatter } from '@rbx/core';
 import { useLocalization, useTranslation } from '@rbx/intl';
 import { Link, Divider, Grid, List, Typography, ReportProblemOutlinedIcon } from '@rbx/ui';
 import { PageLoading } from '@modules/miscellaneous/components';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { www } from '@modules/miscellaneous/urls';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import Panel from '../../common/components/Panel';
-import SharedTranslationHistory from '../../translation/components/shared/TranslationHistory';
-import type { HistoryEntry } from '../types';
+import Panel from '../../../common/components/Panel';
 import useTranslationHistoryStyles from './TranslationHistory.styles';
 
-export interface TranslationHistoryProps {
+// The generic shell only needs the change-agent metadata and a timestamp to render each record's
+// header; the record body (translated text, an image thumbnail, …) is supplied via `renderContent`.
+export interface BaseTranslationHistoryEntry {
+  changeAgent: {
+    changeAgentId?: number;
+    changeAgentName?: string;
+  };
+  translation: {
+    createdTime: Date | null;
+  };
+}
+
+export interface TranslationHistoryProps<TEntry extends BaseTranslationHistoryEntry> {
   error: Error | null;
   isLoading: boolean;
-  entries: HistoryEntry[];
+  entries: TEntry[];
+  // Renders the body of a single history record. Game strings render the translated text; other
+  // surfaces (e.g. images) render their own representation such as a thumbnail.
+  renderContent: (entry: TEntry) => ReactNode;
 }
 
 function localTime(time: string, userLocale: string) {
@@ -22,9 +35,12 @@ function localTime(time: string, userLocale: string) {
   return dateTimeFormatter(userLocale).getFullDate(date);
 }
 
-const LegacyTranslationHistory: FunctionComponent<
-  React.PropsWithChildren<TranslationHistoryProps>
-> = ({ error, entries, isLoading }) => {
+const TranslationHistory = <TEntry extends BaseTranslationHistoryEntry>({
+  error,
+  entries,
+  isLoading,
+  renderContent,
+}: TranslationHistoryProps<TEntry>): ReactElement => {
   const {
     classes: {
       container,
@@ -39,7 +55,7 @@ const LegacyTranslationHistory: FunctionComponent<
       metadataContainter,
     },
   } = useTranslationHistoryStyles();
-  const { translate } = useTranslation();
+  const { translateWithNamespace } = useTranslation();
   const { locale } = useLocalization();
 
   let content;
@@ -50,20 +66,27 @@ const LegacyTranslationHistory: FunctionComponent<
       <Grid className={errorGrid} container alignItems='center'>
         <ReportProblemOutlinedIcon fontSize='small' />
         <Typography className={errorText} variant='largeLabel2'>
-          {translate('Message.FailedToFetchTranslationHistory')}
+          {translateWithNamespace(
+            TranslationNamespace.GameStringTranslation,
+            'Message.FailedToFetchTranslationHistory',
+          )}
         </Typography>
       </Grid>
     );
   } else if (entries.length === 0) {
     content = (
       <Typography className={emptyText} variant='largeLabel2'>
-        {translate('Label.NoTranslationHistory')}
+        {translateWithNamespace(
+          TranslationNamespace.GameStringTranslation,
+          'Label.NoTranslationHistory',
+        )}
       </Typography>
     );
   } else {
     content = (
       <List disablePadding>
-        {entries.map(({ changeAgent, translation }) => {
+        {entries.map((historyEntry) => {
+          const { changeAgent, translation } = historyEntry;
           const time = translation.createdTime?.toString() ?? '';
           const translatorLink = www.getUserUrl(changeAgent?.changeAgentId ?? 0);
           const translatorName = changeAgent?.changeAgentName;
@@ -86,11 +109,7 @@ const LegacyTranslationHistory: FunctionComponent<
                     </Typography>
                   </Grid>
                 </Grid>
-                <Grid>
-                  <Typography variant='largeLabel2' className={text}>
-                    {translation.translationText}
-                  </Typography>
-                </Grid>
+                <Grid>{renderContent(historyEntry)}</Grid>
               </Grid>
               <Divider className={divider} />
             </Fragment>
@@ -101,53 +120,15 @@ const LegacyTranslationHistory: FunctionComponent<
   }
 
   return (
-    <Panel className={container} title={translate('Title.TranslationHistory')}>
+    <Panel
+      className={container}
+      title={translateWithNamespace(
+        TranslationNamespace.GameStringTranslation,
+        'Title.TranslationHistory',
+      )}>
       <Grid className={grid}>{content}</Grid>
     </Panel>
   );
-};
-
-// Adapts the string-specific history entries to the shared, generic TranslationHistory shell by
-// rendering each record's translated text. The render slot is memoized so the shared component
-// receives a stable reference.
-const StringTranslationHistory: FunctionComponent<
-  React.PropsWithChildren<TranslationHistoryProps>
-> = ({ error, isLoading, entries }) => {
-  const {
-    classes: { text },
-  } = useTranslationHistoryStyles();
-
-  const renderContent = useCallback(
-    (historyEntry: HistoryEntry) => (
-      <Typography variant='largeLabel2' className={text}>
-        {historyEntry.translation.translationText}
-      </Typography>
-    ),
-    [text],
-  );
-
-  return (
-    <SharedTranslationHistory
-      error={error}
-      isLoading={isLoading}
-      entries={entries}
-      renderContent={renderContent}
-    />
-  );
-};
-
-// Gated by the `enableSharedTranslationListComponents` client setting: renders the shared,
-// generic TranslationHistory when on, otherwise the original local implementation.
-const TranslationHistory: FunctionComponent<React.PropsWithChildren<TranslationHistoryProps>> = (
-  props,
-) => {
-  const { settings } = useSettings();
-
-  if (settings.enableSharedTranslationListComponents) {
-    return <StringTranslationHistory {...props} />;
-  }
-
-  return <LegacyTranslationHistory {...props} />;
 };
 
 export default TranslationHistory;

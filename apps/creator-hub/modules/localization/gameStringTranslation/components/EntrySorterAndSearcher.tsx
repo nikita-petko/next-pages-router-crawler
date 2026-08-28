@@ -1,5 +1,5 @@
 import type { FunctionComponent, ChangeEvent } from 'react';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { useTranslation } from '@rbx/intl';
 import {
   CircularProgress,
@@ -20,6 +20,11 @@ import CreatorDashboardEventType from '@modules/eventStream/enum/CreatorDashboar
 import CreatorDashboardSource from '@modules/eventStream/enum/CreatorDashboardSource';
 import { useEventTrackerProvider } from '@modules/eventStream/eventTrackerProvider';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
+import type {
+  EntrySorterAndSearcherRenderFilterArgs,
+  EntrySorterAndSearcherRenderMenuArgs,
+} from '../../translation/components/shared/EntrySorterAndSearcher';
+import SharedEntrySorterAndSearcher from '../../translation/components/shared/EntrySorterAndSearcher';
 import SharedFilter from '../../translation/components/shared/Filter';
 import type EntryFilterOptions from '../enums/EntryFilterOptions';
 import EntrySortingOptions from '../enums/EntrySortingOptions';
@@ -37,7 +42,106 @@ export interface EntrySorterAndSearcherProps {
   onSearch: (string: string) => void;
 }
 
-const EntrySorterAndSearcher: FunctionComponent<
+const sendSearchTrackerEvent = (
+  trackerClient: ReturnType<typeof useEventTrackerProvider>['trackerClient'],
+) => {
+  const entrySearchTrackerClientRequest: TrackerClientRequest = {
+    eventType: CreatorDashboardEventType.SearchTranslationEntryList,
+    context: CreatorDashboardContext.Click,
+    additionalProperties: {
+      Source: CreatorDashboardSource.TranslationStringsTab,
+    },
+  };
+  trackerClient.sendEvent(entrySearchTrackerClientRequest);
+};
+
+// Composes the shared, generic EntrySorterAndSearcher shell with the string-specific
+// concerns (load-progress status, search analytics, the shared Filter, and SorterAndFilter).
+const StringEntrySorterAndSearcher: FunctionComponent<
+  React.PropsWithChildren<EntrySorterAndSearcherProps>
+> = ({ sortingOption, filterOptions, stringToSearch, onSort, onFilter, onSearch }) => {
+  const { trackerClient } = useEventTrackerProvider();
+  const { translate } = useTranslation();
+  const {
+    classes: { tooltipIconPadding, tooltipLabel, loader },
+  } = useEntrySorterAndSearcherStyles();
+  const { percentageLoaded, fetchFullEntryTableError, isFetchingFullEntryTable } =
+    useEntryInformation();
+
+  const handleSearchToggled = useCallback(
+    () => sendSearchTrackerEvent(trackerClient),
+    [trackerClient],
+  );
+
+  const renderFilter = useCallback(
+    ({ onFilterClicked, anchorElement }: EntrySorterAndSearcherRenderFilterArgs) => (
+      <SharedFilter
+        onFilterClicked={onFilterClicked}
+        anchorElement={anchorElement}
+        sortingOption={sortingOption}
+        defaultSortingOption={EntrySortingOptions.Default}
+        filterOptions={filterOptions}
+      />
+    ),
+    [sortingOption, filterOptions],
+  );
+
+  const renderMenuContent = useCallback(
+    ({ onMenuToggled }: EntrySorterAndSearcherRenderMenuArgs) => (
+      <SorterAndFilter
+        sortingOption={sortingOption}
+        setSortingOption={onSort}
+        filterOptions={filterOptions}
+        setFilterOptions={onFilter}
+        onMenuToggled={onMenuToggled}
+      />
+    ),
+    [sortingOption, onSort, filterOptions, onFilter],
+  );
+
+  const statusContent = (
+    <>
+      {isFetchingFullEntryTable && (
+        <>
+          <CircularProgress className={loader} color='primary' size='2rem' />
+          <Typography className={tooltipLabel} variant='captionHeader'>
+            {`${percentageLoaded}%`}
+          </Typography>
+          <Tooltip
+            className={tooltipIconPadding}
+            title={translate('Message.LoadingIncomplete')}
+            arrow
+            placement='bottom'>
+            <ReportProblemOutlinedIcon fontSize='small' />
+          </Tooltip>
+        </>
+      )}
+      {!!fetchFullEntryTableError && !isFetchingFullEntryTable && (
+        <Tooltip
+          className={tooltipIconPadding}
+          title={translate('Message.ErrorLoadingTable')}
+          arrow
+          placement='bottom'>
+          <ReportProblemOutlinedIcon fontSize='small' />
+        </Tooltip>
+      )}
+    </>
+  );
+
+  return (
+    <SharedEntrySorterAndSearcher
+      heading={translate('Label.Strings')}
+      stringToSearch={stringToSearch}
+      onSearch={onSearch}
+      statusContent={statusContent}
+      onSearchToggled={handleSearchToggled}
+      renderFilter={renderFilter}
+      renderMenuContent={renderMenuContent}
+    />
+  );
+};
+
+const LegacyEntrySorterAndSearcher: FunctionComponent<
   React.PropsWithChildren<EntrySorterAndSearcherProps>
 > = ({ sortingOption, filterOptions, stringToSearch, onSort, onFilter, onSearch }) => {
   const { trackerClient } = useEventTrackerProvider();
@@ -58,11 +162,8 @@ const EntrySorterAndSearcher: FunctionComponent<
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLButtonElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { translate } = useTranslation();
-  const loadingIncompleteWarning = translate('Message.LoadingIncomplete');
-  const errorLoadingTableWarning = translate('Message.ErrorLoadingTable');
   const { percentageLoaded, fetchFullEntryTableError, isFetchingFullEntryTable } =
     useEntryInformation();
-  const { settings } = useSettings();
 
   useEffect(() => {
     if (isSearchButtonClicked) {
@@ -87,26 +188,11 @@ const EntrySorterAndSearcher: FunctionComponent<
   const handleToggleSearchButton = () => {
     onSearch('');
     setIsSearchButtonClicked(!isSearchButtonClicked);
-    const entrySearchTrackerClientRequest: TrackerClientRequest = {
-      eventType: CreatorDashboardEventType.SearchTranslationEntryList,
-      context: CreatorDashboardContext.Click,
-      additionalProperties: {
-        Source: CreatorDashboardSource.TranslationStringsTab,
-      },
-    };
-    trackerClient.sendEvent(entrySearchTrackerClientRequest);
+    sendSearchTrackerEvent(trackerClient);
   };
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     onSearch(event.target.value);
-  };
-
-  const handleSelectFilterOptions = (options: EntryFilterOptions[]) => {
-    onFilter(options);
-  };
-
-  const handleSelectSortingOption = (option: EntrySortingOptions) => {
-    onSort(option);
   };
 
   return (
@@ -126,7 +212,7 @@ const EntrySorterAndSearcher: FunctionComponent<
               </Typography>
               <Tooltip
                 className={tooltipIconPadding}
-                title={loadingIncompleteWarning}
+                title={translate('Message.LoadingIncomplete')}
                 arrow
                 placement='bottom'>
                 <ReportProblemOutlinedIcon fontSize='small' />
@@ -136,28 +222,18 @@ const EntrySorterAndSearcher: FunctionComponent<
           {!!fetchFullEntryTableError && !isFetchingFullEntryTable && (
             <Tooltip
               className={tooltipIconPadding}
-              title={errorLoadingTableWarning}
+              title={translate('Message.ErrorLoadingTable')}
               arrow
               placement='bottom'>
               <ReportProblemOutlinedIcon fontSize='small' />
             </Tooltip>
           )}
-          {settings.enableSharedTranslationListComponents ? (
-            <SharedFilter
-              onFilterClicked={handleToggleMenu}
-              anchorElement={anchorButtonRef}
-              sortingOption={sortingOption}
-              defaultSortingOption={EntrySortingOptions.Default}
-              filterOptions={filterOptions}
-            />
-          ) : (
-            <Filter
-              onFilterClicked={handleToggleMenu}
-              anchorElement={anchorButtonRef}
-              sortingOption={sortingOption}
-              filterOptions={filterOptions}
-            />
-          )}
+          <Filter
+            onFilterClicked={handleToggleMenu}
+            anchorElement={anchorButtonRef}
+            sortingOption={sortingOption}
+            filterOptions={filterOptions}
+          />
           <IconButton
             aria-label='search'
             edge='end'
@@ -188,13 +264,28 @@ const EntrySorterAndSearcher: FunctionComponent<
       <Menu anchorEl={menuAnchorEl} open={isMenuOpen} onClose={handleMenuClose}>
         <SorterAndFilter
           sortingOption={sortingOption}
-          setSortingOption={handleSelectSortingOption}
+          setSortingOption={onSort}
           filterOptions={filterOptions}
-          setFilterOptions={handleSelectFilterOptions}
+          setFilterOptions={onFilter}
           onMenuToggled={setIsMenuOpen}
         />
       </Menu>
     </>
   );
 };
+
+// Gated by the `enableSharedTranslationListComponents` client setting: composes the shared,
+// generic EntrySorterAndSearcher shell when on, otherwise the original local implementation.
+const EntrySorterAndSearcher: FunctionComponent<
+  React.PropsWithChildren<EntrySorterAndSearcherProps>
+> = (props) => {
+  const { settings } = useSettings();
+
+  if (settings.enableSharedTranslationListComponents) {
+    return <StringEntrySorterAndSearcher {...props} />;
+  }
+
+  return <LegacyEntrySorterAndSearcher {...props} />;
+};
+
 export default EntrySorterAndSearcher;
