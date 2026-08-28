@@ -1,4 +1,4 @@
-import Head from "next/head";
+import Head from 'next/head';
 
 export interface TMaintenanceMetaHeadLayoutProps {
   children: React.ReactNode;
@@ -7,32 +7,38 @@ export interface TMaintenanceMetaHeadLayoutProps {
   description?: string;
 }
 
-const TestAppMetaLayout: React.FC<TMaintenanceMetaHeadLayoutProps> = ({ children, title, description }) => {
-  const pageTitle = title ? `${title} - Foundation Test App` : 'Foundation Test App';
+const TestAppMetaLayout: React.FC<TMaintenanceMetaHeadLayoutProps> = ({
+  children,
+  title,
+  description,
+}) => {
+  const pageTitle = title
+    ? `${title} - Foundation Test App`
+    : 'Foundation Test App';
 
   return (
     <>
       <Head>
         <title>{pageTitle}</title>
-        <meta property="og:title" content={pageTitle} />
-        <meta name="twitter:title" content={pageTitle} />
+        <meta property='og:title' content={pageTitle} />
+        <meta name='twitter:title' content={pageTitle} />
 
-        <meta property="og:type" content="website" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:site" content="@webblox" />
+        <meta property='og:type' content='website' />
+        <meta name='twitter:card' content='summary_large_image' />
+        <meta name='twitter:site' content='@webblox' />
 
         {description && (
           <>
-            <meta name="description" content={description} />
-            <meta property="og:description" content={description} />
-            <meta name="twitter:description" content={description} />
+            <meta name='description' content={description} />
+            <meta property='og:description' content={description} />
+            <meta name='twitter:description' content={description} />
           </>
         )}
       </Head>
 
       {children}
     </>
-  )
-}
+  );
+};
 
 export default TestAppMetaLayout;

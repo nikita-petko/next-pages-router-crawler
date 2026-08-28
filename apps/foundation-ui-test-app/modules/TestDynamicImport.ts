@@ -1,3 +1,3 @@
 export default function TestDynamicImport() {
-  console.log('Heavy Operation')
+  console.warn('Heavy Operation');
 }

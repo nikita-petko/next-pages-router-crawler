@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState } from 'react';
 
-import dynamic from "next/dynamic";
-import { useRouter } from "next/router";
+import dynamic from 'next/dynamic';
+import { useRouter } from 'next/router';
 
-import TestAppMetaLayout from "@modules/components/layouts/TestAppMetaLayout";
+import TestAppMetaLayout from '@modules/components/layouts/TestAppMetaLayout';
 import {
   Accordion,
   AccordionItem,
@@ -20,7 +20,7 @@ import {
   Divider,
   Icon,
   TextInput,
-} from "@rbx/foundation-ui";
+} from '@rbx/foundation-ui';
 
 interface TTestDialogProps {
   title: string;
@@ -35,13 +35,13 @@ const TestDynamicComponent = dynamic(
   () =>
     new Promise((resolve) => {
       setTimeout(() => {
-        resolve(import("@modules/components/TestDynamicComponent"));
+        resolve(import('@modules/components/TestDynamicComponent'));
       }, 2000);
-    }) as Promise<typeof import("@modules/components/TestDynamicComponent")>,
+    }) as Promise<typeof import('@modules/components/TestDynamicComponent')>,
   {
     ssr: false,
     loading: () => (
-      <Alert variant="Feedback" severity="Warning" hasCloseAffordance={false}>
+      <Alert variant='Feedback' severity='Warning' hasCloseAffordance={false}>
         Loading dynamic component...
       </Alert>
     ),
@@ -55,32 +55,31 @@ const TestDialog: React.FC<TTestDialogProps> = ({
   handleClose,
 }) => (
   <Dialog
-    size="Small"
+    size='Small'
     hasCloseAffordance={false}
     isModal
     open={open}
-    onOpenChange={handleClose}
-  >
+    onOpenChange={handleClose}>
     {/* Dialog content should scale X to the buttons */}
-    <DialogContent className="!min-width-0">
+    <DialogContent className='!min-width-0'>
       <DialogBody>
-        <div className="flex flex-col gap-small">
-          <DialogTitle className="text-heading-large margin-none">
+        <div className='flex flex-col gap-small'>
+          <DialogTitle className='text-heading-large margin-none'>
             {title}
           </DialogTitle>
           <Divider />
-          <span className="text-body-medium content-muted padding-y-xsmall">
+          <span className='text-body-medium content-muted padding-y-xsmall'>
             {content}
           </span>
           <Divider />
         </div>
       </DialogBody>
       <DialogFooter>
-        <div className="flex justify-center gap-small margin-x-none">
-          <Button variant="Standard" onClick={handleClose}>
+        <div className='flex justify-center gap-small margin-x-none'>
+          <Button variant='Standard' onClick={handleClose}>
             Cancel
           </Button>
-          <Button variant="Emphasis" onClick={handleClose}>
+          <Button variant='Emphasis' onClick={handleClose}>
             Confirm
           </Button>
         </div>
@@ -91,15 +90,15 @@ const TestDialog: React.FC<TTestDialogProps> = ({
 
 const TestPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [text, setText] = useState("");
-  const [error, setError] = useState("");
+  const [text, setText] = useState('');
+  const [error, setError] = useState('');
 
   const handleClickOpen = () => {
-    if (text.trim() === "") {
-      setError("Please enter some text before opening the dialog.");
+    if (text.trim() === '') {
+      setError('Please enter some text before opening the dialog.');
       return;
     } else {
-      setError("");
+      setError('');
     }
 
     setDialogOpen(true);
@@ -110,59 +109,64 @@ const TestPage = () => {
 
   const {
     query: {
-      testQuery = "test",
+      testQuery = 'test',
       testDynamicImport: testDynamicImportV,
       testDynamicComponent: testDynamicComponentV,
     },
   } = useRouter();
 
-  const testDynamicImport = testDynamicImportV === "true";
-  const testDynamicComponent = testDynamicComponentV === "true";
+  const testDynamicImport = testDynamicImportV === 'true';
+  const testDynamicComponent = testDynamicComponentV === 'true';
 
   if (testDynamicImport) {
-    import("@modules/TestDynamicImport").then((module) => {
+    import('@modules/TestDynamicImport').then((module) => {
       module.default();
     });
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-height-screen">
-      <div className="flex flex-col items-center justify-center width-fit">
+    <div className='flex flex-col items-center justify-center min-height-screen'>
+      <div className='flex flex-col items-center justify-center width-fit'>
         <Card
-          title="Foundation Test App"
-          variant="Emphasis"
-          leading={<Icon name="icon-filled-studio" />}
-        >
+          title='Foundation Test App'
+          variant='Emphasis'
+          leading={<Icon name='icon-filled-studio' />}>
           {testDynamicComponent && (
-            <div className="margin-bottom-small">
+            <div className='margin-bottom-small'>
               <TestDynamicComponent />
             </div>
           )}
 
-          <Accordion size="Small" hasDivider>
+          <Accordion size='Small' hasDivider>
             <AccordionItem defaultOpen>
               <AccordionItemTrigger>
-                <span className="text-label-large content-system-warning">
+                <span className='text-label-large content-system-warning'>
                   Important Information
                 </span>
               </AccordionItemTrigger>
               <AccordionItemContent>
-                <span className="text-body-large">
+                <span className='text-body-large'>
                   Set the following query parameters for testing:
-                  <ul className="margin-top-xsmall">
+                  <ul className='margin-top-xsmall'>
                     <li>
-                      <code className="content-system-neutral">testQuery</code>: Set a value
-                      to display in the accordion content.
+                      <code className='content-system-neutral'>testQuery</code>:
+                      Set a value to display in the accordion content.
                     </li>
                     <li>
-                      <code className="content-system-neutral">testDynamicImport</code>: Set
-                      to <code className="content-system-emphasis">true</code> to test dynamic
-                      import.
+                      <code className='content-system-neutral'>
+                        testDynamicImport
+                      </code>
+                      : Set to{' '}
+                      <code className='content-system-emphasis'>true</code> to
+                      test dynamic import.
                     </li>
                     <li>
-                      <code className="content-system-neutral">testDynamicComponent</code>:
-                      Set to <code className="content-system-emphasis">true</code> to test
-                      dynamic component.
+                      <code className='content-system-neutral'>
+                        testDynamicComponent
+                      </code>
+                      : Set to{' '}
+                      <code className='content-system-emphasis'>true</code> to
+                      test dynamic component.
                     </li>
                   </ul>
                 </span>
@@ -170,11 +174,11 @@ const TestPage = () => {
             </AccordionItem>
 
             <AccordionItem>
-              <AccordionItemTrigger className="text-label-medium">
+              <AccordionItemTrigger className='text-label-medium'>
                 Test Query
               </AccordionItemTrigger>
               <AccordionItemContent>
-                <span className="text-body-large margin-y-small text-align-center">
+                <span className='text-body-large margin-y-small text-align-center'>
                   {testQuery}
                 </span>
               </AccordionItemContent>
@@ -182,24 +186,23 @@ const TestPage = () => {
           </Accordion>
 
           <TextInput
-            id="test-id"
-            label="Test Dialog Content"
-            className="margin-top-small"
-            variant="Standard"
+            id='test-id'
+            label='Test Dialog Content'
+            className='margin-top-small'
+            variant='Standard'
             hasError={!!error}
             error={error}
             onChange={(e) => setText(e.target.value)}
           />
 
           <Button
-            variant="Emphasis"
+            variant='Emphasis'
             onClick={handleClickOpen}
-            className="margin-top-small"
-          >
+            className='margin-top-small'>
             Test Button
           </Button>
           <TestDialog
-            title="Test Dialog"
+            title='Test Dialog'
             content={text}
             open={dialogOpen}
             handleClose={handleClose}
@@ -213,9 +216,8 @@ const TestPage = () => {
 TestPage.getPageLayout = (page: React.ReactNode) => {
   return (
     <TestAppMetaLayout
-      title="Test Page"
-      description="Test Page for Foundation UI"
-    >
+      title='Test Page'
+      description='Test Page for Foundation UI'>
       {page}
     </TestAppMetaLayout>
   );
