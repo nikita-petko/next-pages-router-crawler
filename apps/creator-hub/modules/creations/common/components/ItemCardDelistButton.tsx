@@ -1,9 +1,8 @@
-import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
 import { useTranslation } from '@rbx/intl';
 import { DialogTemplate, useDialog, useSnackbar } from '@rbx/ui';
 import itemconfigurationClient from '@modules/clients/itemconfiguration';
-import marketplaceItemsClient from '@modules/clients/marketplaceitems';
 import tryParseResponseError from '@modules/clients/utils/tryParseResponseError';
 import { Item } from '@modules/miscellaneous/common';
 import type CreationData from '../interfaces/CreationData';
@@ -52,21 +51,10 @@ function ItemCardDelistButton({
         ? (creation.assetId ?? 0)
         : (creation.bundleId ?? 0));
 
-      // Perform checks specific to assets
-      if (itemType === Item.CatalogAsset) {
-        const getCollectibleItemIdResponse =
-          await itemconfigurationClient.getCollectibleItemId(idToDelist);
-        const collectibleItemIdValue = getCollectibleItemIdResponse?.collectibleItemId;
-        if (collectibleItemIdValue) {
-          const getCollectibleDetailsResponse =
-            await marketplaceItemsClient.getCollectibleItemsDetails([collectibleItemIdValue]);
-          const collectibleDetails = getCollectibleDetailsResponse?.[0];
-          if (collectibleDetails?.itemType === 1) {
-            showBottomMsg(translate('Message.UnableToArchiveLimitedItem'));
-            closeDialog();
-            return;
-          }
-        }
+      if (itemType === Item.CatalogAsset && creation.isLimited2) {
+        showBottomMsg(translate('Message.UnableToArchiveLimitedItem'));
+        closeDialog();
+        return;
       }
 
       await itemconfigurationClient.delistItem(itemType === Item.Bundle, idToDelist);
@@ -75,13 +63,10 @@ function ItemCardDelistButton({
       closeDialog();
     } catch (error) {
       const errorResponse = await tryParseResponseError(error);
-      switch (errorResponse?.code) {
-        case 3:
-          showBottomMsg(translate('Message.ItemTooNew'));
-          break;
-        default:
-          showBottomMsg(translate('Message.ArchiveFailed'));
-          break;
+      if (errorResponse?.code === 3) {
+        showBottomMsg(translate('Message.ItemTooNew'));
+      } else {
+        showBottomMsg(translate('Message.ArchiveFailed'));
       }
     } finally {
       setIsDelistUpdating(false);
@@ -92,6 +77,7 @@ function ItemCardDelistButton({
     itemType,
     creation.assetId,
     creation.bundleId,
+    creation.isLimited2,
     removeItem,
     showBottomMsg,
     translate,
