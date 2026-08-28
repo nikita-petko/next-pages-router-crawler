@@ -3,6 +3,7 @@ import { useFlag } from '@rbx/flags';
 import { isCustomDashboardsEnabled as isCustomDashboardsEnabledFlag } from '@generated/flags/creatorAnalytics';
 import wellKnownAnalyticsTranslationNamespaces from '@modules/analytics-translations/wellKnownAnalyticsTranslationNamespaces';
 import withNamespaceSwitchedTranslation from '@modules/analytics-translations/withNamespaceSwitchedTranslation';
+import { useAnalyticsExperiencePermissions } from '@modules/experience-analytics-shared/hooks/useAnalyticsPermissions';
 import { TextFilterProvider } from '@modules/experience-analytics-shared/text-filter/TextFilterContext';
 import { PageNotFound } from '@modules/miscellaneous/error';
 import { filterCustomDashboardText } from '../textFilter';
@@ -39,14 +40,19 @@ const CustomDashboardsShell: FC<CustomDashboardsShellProps> = ({
     isCustomDashboardsEnabledFlag,
     { universeId },
   );
+  const {
+    userCanViewAnalyticsForUniverse,
+    isPending: isPermissionPending,
+    isError: isPermissionError,
+  } = useAnalyticsExperiencePermissions(universeId);
   const isCustomDashboardsEnabled = isFetched && isCustomDashboardsEnabledValue;
   const filterText = useMemo(() => filterCustomDashboardText(universeId), [universeId]);
 
-  if (!isFetched) {
+  if (!isFetched || isPermissionPending) {
     return <>{loading}</>;
   }
 
-  if (!isCustomDashboardsEnabled) {
+  if (!isCustomDashboardsEnabled || isPermissionError || !userCanViewAnalyticsForUniverse) {
     return <>{fallback}</>;
   }
 
