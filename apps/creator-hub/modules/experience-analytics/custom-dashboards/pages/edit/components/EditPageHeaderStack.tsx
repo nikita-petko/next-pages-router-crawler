@@ -82,6 +82,7 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const isFinishingEditRef = useRef(false);
   const pendingTitleCommitRef = useRef(false);
+  const pendingPublishTitlePreviousNameRef = useRef<string | null>(null);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState(dashboardName ?? '');
   const [pendingPublishTitle, setPendingPublishTitle] = useState<string | undefined>(undefined);
@@ -121,6 +122,16 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
     trimmedDraftTitle.length > 0 &&
     trimmedDraftTitle !== (dashboardName?.trim() ?? '');
   const hasPendingTitleChange = pendingPublishTitle !== undefined;
+  const displayedDashboardName = pendingPublishTitle ?? dashboardName;
+
+  useEffect(() => {
+    if (
+      pendingPublishTitle !== undefined &&
+      dashboardName !== pendingPublishTitlePreviousNameRef.current
+    ) {
+      setPendingPublishTitle(undefined);
+    }
+  }, [dashboardName, pendingPublishTitle]);
 
   useEffect(() => {
     if (!pendingTitleCommitRef.current || titleFilterStatus === 'pending') {
@@ -166,6 +177,7 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
       isFinishingEditRef.current = true;
       if (shouldCommit && nextName.length > 0 && nextName !== currentName) {
         const confirmedNextName = confirmedDraftTitle.trim();
+        pendingPublishTitlePreviousNameRef.current = dashboardName;
         setPendingPublishTitle(confirmedNextName);
         onRenameDashboard(confirmedNextName);
       } else {
@@ -253,7 +265,7 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
               ) : dashboardName !== null ? (
                 <OverflowTitle
                   as='h1'
-                  text={dashboardName}
+                  text={displayedDashboardName ?? dashboardName}
                   className='text-heading-large content-emphasis margin-none text-truncate-end'
                 />
               ) : (
