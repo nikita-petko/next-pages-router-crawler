@@ -24,13 +24,7 @@ export default function CreatorAnalyticsLayout<
   TTab extends string,
   TDim extends RAQIV2Dimension,
   TDimValues extends string,
->({
-  config,
-  preControlComponentHack,
-}: {
-  config: CreatorAnalyticsPageConfig<TTab, TDim, TDimValues>;
-  preControlComponentHack?: React.JSX.Element; // TODO(gperkins@20240521): DSA-2360 remove
-}) {
+>({ config }: { config: CreatorAnalyticsPageConfig<TTab, TDim, TDimValues> }) {
   const { mode } = config;
 
   return (
@@ -40,19 +34,14 @@ export default function CreatorAnalyticsLayout<
           case CreatorAnalyticsPageMode.Embedded:
             return <AnalyticsInternalTabContentSurfaceLayout config={config} />;
           case CreatorAnalyticsPageMode.FixedTab:
-            return (
-              <AnalyticsInternalEnumTabbedLayout
-                config={config}
-                preControlComponentHack={preControlComponentHack}
-              />
-            );
+            return <AnalyticsInternalEnumTabbedLayout config={config} />;
           case CreatorAnalyticsPageMode.BreakdownTab:
             return <AnalyticsInternalBreakdownTabLayout config={config} />;
           case CreatorAnalyticsPageMode.Untabbed:
             return <AnalyticsInternalUntabbedLayout config={config} />;
           default: {
             const exhaustiveCheck: never = mode;
-            throw new Error(`Unhandled mode: ${exhaustiveCheck}`);
+            throw new Error(`Unhandled mode: ${String(exhaustiveCheck)}`);
           }
         }
       })()}

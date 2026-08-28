@@ -344,6 +344,16 @@ export type RAQIV2PageConfig = {
   navigationItem?: AnalyticsNavigationItem;
 
   /**
+   * Page-level pre-control components rendered as the hero element above the
+   * tab bar (or above the body for untabbed pages). Unlike the per-surface
+   * {@link CreatorAnalyticsPageSurfaceConfig.preControlCharts}, these are not
+   * scoped to a single tab and are visible even when the page is ineligible
+   * (when {@link RAQIV2PageEligibilityConfig.ignorePreControlComponents} is
+   * true).
+   */
+  preControlCharts?: RAQIV2PreControlComponent[];
+
+  /**
    * Temporary acquisition banner slot; remove with CLIGROW-3770 cleanup.
    * Shown only when no status banners are active.
    */

@@ -9,6 +9,7 @@ import type {
 } from '../../../types/RAQIV2PageConfig';
 import resolveDateRangeSelection from '../../../utils/resolveDateRangeSelection';
 import AnalyticsInternalTabContentSurfaceLayout from './AnalyticsInternalTabContentSurfaceLayout';
+import PageLevelPreControlComponents from './PageLevelPreControlComponents';
 import RAQIV2PredefinedPageEligibilityCheckContext from './RAQIV2PredefinedPageEligbilityCheckContext';
 import useRAQIV2PredefinedPageControlsBundle from './useRAQIV2PredefinedPageControlsBundle';
 import useRAQIV2PredefinedPreControlComponentsBundle from './useRAQIV2PredefinedPreControlComponentsBundle';
@@ -36,18 +37,19 @@ const FixedTabPreControlComponents = ({
 
   return preControlComponent;
 };
-
 function AnalyticsInternalEnumTabbedLayout<TTab extends string>({
   config,
-  preControlComponentHack, // TODO(gperkins@20240521): DSA-2360 remove
 }: {
   config: CreatorAnalyticsFixedTabPageConfig<TTab>;
-  preControlComponentHack?: React.JSX.Element;
 }) {
   const { tabs: tabConfig, tabOrder, action } = config;
   const { translate } = useRAQIV2TranslationDependencies();
 
   const { title, description, buildDescription } = useRAQIV2PredefinedPageControlsBundle(config);
+
+  const heroElement = config.preControlCharts?.length ? (
+    <PageLevelPreControlComponents preControlComponents={config.preControlCharts} />
+  ) : undefined;
 
   const tabs: AnalyticsTabConfig[] = useMemo(() => {
     return tabOrder.map((key) => ({
@@ -66,14 +68,12 @@ function AnalyticsInternalEnumTabbedLayout<TTab extends string>({
   }, [buildDescription, tabConfig, tabOrder, translate]);
 
   return (
-    <RAQIV2PredefinedPageEligibilityCheckContext
-      config={config}
-      preControlComponentHack={preControlComponentHack}>
+    <RAQIV2PredefinedPageEligibilityCheckContext config={config}>
       <GenericAnalyticsTabbedPageLayout
         title={title}
         description={description}
         action={action}
-        heroElement={preControlComponentHack ?? undefined}
+        heroElement={heroElement}
         addHeroDivider={false}
         controls={[]}
         rightSideControls={[]}

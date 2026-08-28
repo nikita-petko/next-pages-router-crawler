@@ -1,4 +1,4 @@
-import { useCallback, useReducer, useMemo, useEffect } from 'react';
+import { useCallback, useReducer, useMemo, useEffect, useState } from 'react';
 import { getResponseFromError } from '@modules/clients/utils';
 import { HttpStatusCodes } from '@modules/miscellaneous/common';
 
@@ -48,6 +48,8 @@ type PaginationRequest = {
     pageSize: number;
   };
 };
+
+const forbiddenStatusCode: number = HttpStatusCodes.FORBIDDEN;
 
 export type NonPaginatedRequest<RequestType> = Omit<RequestType, keyof PaginationRequest>;
 
@@ -157,7 +159,7 @@ const createReducer =
       }
       default: {
         const exhaustiveCheck: never = type;
-        throw new Error(`Unhandled severity ${exhaustiveCheck}`);
+        throw new Error(`Unhandled severity ${String(exhaustiveCheck)}`);
       }
     }
   };
@@ -203,6 +205,22 @@ const usePaginatedRequest = <RequestType, DataType>(
     getInitialState<RequestType, DataType>(initialPageSize ?? 10),
   );
 
+  const [previousRequestInputs, setPreviousRequestInputs] = useState({
+    nonPaginatedRequest,
+    fetchResponse,
+  });
+
+  // Clear the previous response before consumers render against new inputs.
+  // Waiting for the reset effect leaves one render where a new column config
+  // can receive cells produced for the prior request.
+  if (
+    previousRequestInputs.nonPaginatedRequest !== nonPaginatedRequest ||
+    previousRequestInputs.fetchResponse !== fetchResponse
+  ) {
+    setPreviousRequestInputs({ nonPaginatedRequest, fetchResponse });
+    dispatch({ type: 'reset' });
+  }
+
   const fetchPage = useCallback(
     async (cursor: string) => {
       if (!nonPaginatedRequest) {
@@ -222,6 +240,7 @@ const usePaginatedRequest = <RequestType, DataType>(
       };
       // NOTE(shumingxu, 08/23/2023): Type assertion is a bit hacky but Typescript refuses to acknowledge that Omit<A, B> & B = A
       // Seems like it's a known and ongoing issue with Typescript: https://github.com/microsoft/TypeScript/issues/28884#issuecomment-448356158
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- spreading pagination fields restores the omitted request shape.
       const paginatedRequest = {
         ...nonPaginatedRequest,
         ...paginationRequest,
@@ -242,7 +261,7 @@ const usePaginatedRequest = <RequestType, DataType>(
       } catch (e) {
         const err = getResponseFromError(e);
         const errorCode = err?.status ?? 500;
-        if (errorCode === HttpStatusCodes.FORBIDDEN) {
+        if (errorCode === forbiddenStatusCode) {
           dispatch({ type: 'forbidden', request: paginatedRequest });
         } else {
           dispatch({ type: 'failure', request: paginatedRequest });
@@ -271,11 +290,6 @@ const usePaginatedRequest = <RequestType, DataType>(
     return data.slice(page * pageSize, (page + 1) * pageSize);
   }, [data, initialPageSize, page, pageSize]);
 
-  // Reset & fetch new page when params have changed or first load
-  useEffect(() => {
-    dispatch({ type: 'reset' });
-  }, [nonPaginatedRequest, fetchResponse]);
-
   // Fetch more data if we aren't making an active request, and don't have enough data for the current page
   useEffect(() => {
     const needsMoreDataForPage = (page + 1) * pageSize > data.length;
@@ -292,7 +306,7 @@ const usePaginatedRequest = <RequestType, DataType>(
     const shouldFetch = (autoLoadAll ? true : needsMoreDataForPage) && canFetchMore;
 
     if (!activeRequest && shouldFetch && !isResponseFailed && !isUserForbidden) {
-      fetchPage(nextCursor);
+      void fetchPage(nextCursor);
     }
   }, [
     fetchPage,

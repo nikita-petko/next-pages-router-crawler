@@ -43,6 +43,10 @@ import type { TabbedChartConfig } from '@modules/experience-analytics-shared/typ
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import Category from '../../types/Category';
 import { bandwidthNetworkTabBody } from './bandwidthChartConfigs';
+import {
+  arbitraryComponentConfigCCUSummary,
+  arbitraryComponentConfigSetupAlertBanner,
+} from './performancePageComponentsConfig';
 
 const performanceDocLink: AnalyticsDocLink = '/docs/production/analytics/performance';
 
@@ -105,8 +109,10 @@ const getPerformancePageConfig = (
       ),
       ignorePreControlComponents: true,
     },
-    // TODO(gperkins@20240507): DSA-2360 -- convert CCUSummary to be a special predefined component
-    // preControlCharts: [RAQIV2PredefinedChartKey.CCUSummary],
+    preControlCharts: [
+      arbitraryComponentConfigSetupAlertBanner,
+      arbitraryComponentConfigCCUSummary,
+    ],
     tabOrder: isNetworkTabEnabled ? orderedTabKeys : ([Category.Client, Category.Server] as const),
     tabs: {
       [Category.Client]: {

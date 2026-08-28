@@ -5,11 +5,12 @@ import { AnalyticsPageLayout } from '@modules/charts-generic/layout/AnalyticsPag
 import useIsPageContentEligible from '../../../hooks/useIsPageContentEligible';
 import useRAQIV2TranslationDependencies from '../../../hooks/useRAQIV2TranslationDependencies';
 import type { RAQIV2PageConfig } from '../../../types/RAQIV2PageConfig';
+import PageLevelPreControlComponents from './PageLevelPreControlComponents';
 import useRAQIV2PredefinedPageControlsBundle from './useRAQIV2PredefinedPageControlsBundle';
 
 const RAQIV2PredefinedPageEligibilityCheckContext: FC<
-  React.PropsWithChildren<{ config: RAQIV2PageConfig; preControlComponentHack?: React.JSX.Element }>
-> = ({ config, preControlComponentHack, children }) => {
+  React.PropsWithChildren<{ config: RAQIV2PageConfig }>
+> = ({ config, children }) => {
   const { translate } = useRAQIV2TranslationDependencies();
   const { eligibility } = config;
   const { title, description } = useRAQIV2PredefinedPageControlsBundle(config);
@@ -18,11 +19,12 @@ const RAQIV2PredefinedPageEligibilityCheckContext: FC<
   const isEligible = useIsPageContentEligible(eligibility) || !hasEligibilityConfig;
 
   if (eligibility && !isEligible) {
+    const heroElement =
+      eligibility.ignorePreControlComponents && config.preControlCharts?.length ? (
+        <PageLevelPreControlComponents preControlComponents={config.preControlCharts} />
+      ) : undefined;
     return (
-      <AnalyticsPageLayout
-        title={title}
-        description={description}
-        heroElement={eligibility.ignorePreControlComponents ? preControlComponentHack : undefined}>
+      <AnalyticsPageLayout title={title} description={description} heroElement={heroElement}>
         <Grid item key='ineligibleMessage'>
           <Typography>{translate(eligibility.ineligibleMessage)}</Typography>
         </Grid>

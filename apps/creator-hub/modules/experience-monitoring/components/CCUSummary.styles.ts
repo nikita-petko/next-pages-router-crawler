@@ -37,7 +37,7 @@ const useCCUSummaryStyles = makeStyles<{ large: boolean }>()((theme, { large }) 
   totalNumberFont: {
     fontWeight: 'bold',
     lineHeight: '100%',
-    fontSize: large ? '48px' : '24px',
+    fontSize: '48px',
   },
 
   numberContainer: {
