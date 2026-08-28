@@ -17,6 +17,7 @@ import useNavigationConfigs from '../../hooks/useNavigationConfigs';
 import type useNotificationsM2Tracking from '../hooks/useNotificationsM2Tracking';
 import useElapsedTime from '../utils/useElapsedTime';
 import useNotificationImpressionTracker from '../utils/useNotificationImpressionTracker';
+import NotificationCtaButton from './NotificationCtaButton';
 import NotificationThumbnail from './NotificationThumbnail';
 import useNotificationStyles from './NotificationV2.styles';
 
@@ -194,8 +195,8 @@ const Notification = forwardRef<HTMLDivElement | HTMLAnchorElement, TNotificatio
         plainNotificationBody: plainBody,
       };
     }, [
-      notificationContent?.creatorStreamNotificationContent?.title,
-      notificationContent?.creatorStreamNotificationContent?.body,
+      notificationContent.creatorStreamNotificationContent?.title,
+      notificationContent.creatorStreamNotificationContent?.body,
     ]);
 
     const hasBodyText = !!notificationContent?.creatorStreamNotificationContent?.body;
@@ -221,7 +222,7 @@ const Notification = forwardRef<HTMLDivElement | HTMLAnchorElement, TNotificatio
             targetId={notificationContent?.creatorStreamNotificationContent?.targetId}
             enableNotificationsM2={enableNotificationsM2}
           />
-          <div className={styles.content}>
+          <div className={cx(styles.content, 'min-width-0')}>
             <div className='flex relative'>
               <h4
                 className={cx(styles.title, styles.truncatedText, 'text-title-medium', {
@@ -262,6 +263,13 @@ const Notification = forwardRef<HTMLDivElement | HTMLAnchorElement, TNotificatio
                   __html: sanitizedNotificationBody,
                 }}
               />
+            )}
+            {!!notificationContent?.creatorStreamNotificationContent?.buttons?.length && (
+              <div className='flex gap-small padding-top-medium'>
+                {notificationContent.creatorStreamNotificationContent.buttons.map((button) => (
+                  <NotificationCtaButton key={button.buttonText} button={button} />
+                ))}
+              </div>
             )}
           </div>
         </div>
@@ -326,8 +334,10 @@ const Notification = forwardRef<HTMLDivElement | HTMLAnchorElement, TNotificatio
                     value={notifIsUnread ? 'mark-as-read' : 'mark-as-unread'}
                     title={
                       notifIsUnread
-                        ? translate('Label.MarkAsRead') || 'Mark as read'
-                        : translate('Label.MarkAsUnread') || 'Mark as unread'
+                        ? // oxlint-disable-next-line rbx/no-hardcoded-translation-string
+                          translate('Label.MarkAsRead') || 'Mark as read'
+                        : // oxlint-disable-next-line rbx/no-hardcoded-translation-string
+                          translate('Label.MarkAsUnread') || 'Mark as unread'
                     }
                     aria-label={
                       notifIsUnread

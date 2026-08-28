@@ -65,6 +65,7 @@ import {
 } from '@modules/miscellaneous/localization';
 import { MetricsMonitoringProvider } from '@modules/miscellaneous/metricsMonitoring';
 import { PageHead } from '@modules/miscellaneous/pageMetadata';
+import StudioLauncherProvider from '@modules/miscellaneous/providers/StudioLauncherProvider';
 import ModerationOverlay from '@modules/moderation/components/ModerationOverlay';
 import UniversalFeatureRestrictionsProvider from '@modules/moderation/providers/UniversalFeatureRestrictionsProvider';
 import { DialogOutlet as MonetizationDialogOutlet } from '@modules/monetization-shared/dialog/outlet';
@@ -217,6 +218,7 @@ not change */
             <SettingsProvider />,
             <NavigationConfigsWithSettings />,
             <ThemeAwareStudioResourcesProvider />,
+            <StudioLauncherProvider />,
             <MetricsMonitoringProvider />,
             <OrganizationProvider />,
             <LeftNavigationStateProvider />,
