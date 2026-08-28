@@ -347,6 +347,14 @@ export const getLabelFromContentLicensingActivity = (
       return 'Label.ActivityCreatorRemovedIpExpired';
     case AgreementTransition.ScannerResultFound:
       return 'Label.ActivityIpUsageDetected';
+    case AgreementTransition.PitchImagePendingModeration:
+      return 'Label.ActivityPitchImagePendingModeration';
+    case AgreementTransition.PitchImageRejected:
+      return 'Label.ActivityPitchImageRejected';
+    case AgreementTransition.PitchImageRevised:
+      return 'Label.ActivityPitchImageRevised';
+    case AgreementTransition.PitchImageApproved:
+      return 'Label.ActivityPitchImageApproved';
     default:
       return 'Label.ActivityUnknown';
   }
