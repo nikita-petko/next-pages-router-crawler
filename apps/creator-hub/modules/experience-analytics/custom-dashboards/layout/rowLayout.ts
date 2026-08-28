@@ -385,13 +385,15 @@ export function canAppendTileToLastRow(rows: Rows): boolean {
   return !!lastRow && hasOpenSecondSlot(lastRow);
 }
 
-export function appendTileAsRow(rows: Rows, tile: ChartTileConfig): Rows {
-  if (!canAppendTileToLastRow(rows)) {
+export function appendTileAsRow(rows: Rows, tile: ChartTileConfig, targetRowIndex?: number): Rows {
+  const rowIndex = targetRowIndex ?? rows.length - 1;
+  const targetRow = rows[rowIndex];
+  if (!targetRow || !hasOpenSecondSlot(targetRow)) {
     return [...rows, halfWidthRow(tile)];
   }
 
-  return rows.map((row, rowIndex) => {
-    if (rowIndex !== rows.length - 1) {
+  return rows.map((row, index) => {
+    if (index !== rowIndex) {
       return row;
     }
     return twoTileRow(getChartRowTiles(row)[0], tile);

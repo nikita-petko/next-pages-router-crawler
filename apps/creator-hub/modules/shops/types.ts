@@ -15,9 +15,19 @@ export type ShopItem = {
   type: ProductType;
   /** Mirrors `ShopItem.isVisibleInShop` from shops-api; true = listed, false = hidden. */
   isVisibleInShop: boolean;
+  /** Whether the item may surface outside the experience; true = eligible, false = ineligible. */
+  isExternallyEligible: boolean;
   // Kept as the API object so `category.id` is available for future BatchUpdateShopItems.
   category: Category;
 };
+
+/**
+ * Items that creators have listed but that cannot surface out of experience, i.e. the
+ * ProcessReceipt report set. Reported to creators as needing a fix.
+ */
+export function isListedButExternallyIneligible(item: ShopItem): boolean {
+  return item.isVisibleInShop && !item.isExternallyEligible;
+}
 
 export function isVisibilityEditable(item: ShopItem): boolean {
   return item.type !== 'GamePass';

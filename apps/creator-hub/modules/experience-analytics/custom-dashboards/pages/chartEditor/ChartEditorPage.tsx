@@ -26,9 +26,13 @@ const ChartEditorPage: FC = () => {
   const dashboardIdParam = router.query.dashboardId;
   const tileIdParam = router.query.tileId;
   const draftIdParam = router.query.draftId;
+  const targetRowParam = router.query.targetRow;
   const dashboardId = typeof dashboardIdParam === 'string' ? dashboardIdParam : undefined;
   const tileId = typeof tileIdParam === 'string' ? tileIdParam : undefined;
   const draftId = typeof draftIdParam === 'string' ? draftIdParam : undefined;
+  const targetRowValue = typeof targetRowParam === 'string' ? Number(targetRowParam) : Number.NaN;
+  const targetRowIndex =
+    Number.isInteger(targetRowValue) && targetRowValue >= 0 ? targetRowValue : undefined;
 
   const { ready: isRotraceMetricReady, value: isRotraceMetricEnabledValue } = useFlag(
     isRotraceMetricEnabledFlag,
@@ -90,6 +94,7 @@ const ChartEditorPage: FC = () => {
           dashboardId={dashboardId}
           draftId={draftId}
           tileIdParam={tileId}
+          targetRowIndex={targetRowIndex}
           allowedMetrics={allowedMetrics}
           onBackToEditor={handleBackToEditor}
         />

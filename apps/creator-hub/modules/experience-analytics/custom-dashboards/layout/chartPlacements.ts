@@ -33,7 +33,6 @@ export type ChartEmptySlotPlacement = {
   readonly rowIndex: number;
   readonly order: number;
   readonly columnSpan: 1;
-  readonly isAddPlaceholderSlot: boolean;
 };
 
 export type ChartPlacement = ChartTilePlacement | ChartEmptySlotPlacement;
@@ -47,15 +46,6 @@ export const getEmptyChartSlotTarget = (id: string | null): EmptyChartSlotTarget
   }
   const rowIndex = Number.parseInt(id.slice(EMPTY_CHART_SLOT_PREFIX.length), 10);
   return Number.isInteger(rowIndex) && rowIndex >= 0 ? { rowIndex } : null;
-};
-
-const canUseLastRowEmptySlotForAddPlaceholder = (
-  rows: ReadonlyArray<CustomDashboardChartRow>,
-): boolean => {
-  const lastRow = rows[rows.length - 1];
-  return (
-    !!lastRow && getChartRowColumnCount(lastRow) === 2 && getChartRowTiles(lastRow).length === 1
-  );
 };
 
 const getChartTileFromNode = (node: DashboardLayoutNode): ChartTileConfig | null =>
@@ -142,7 +132,6 @@ export function selectChartRowsFromLayoutNodes(
 export function selectChartPlacements(
   rows: ReadonlyArray<CustomDashboardChartRow>,
 ): ReadonlyArray<ChartPlacement> {
-  const useTrailingEmptySlotForAddPlaceholder = canUseLastRowEmptySlotForAddPlaceholder(rows);
   const placements: ChartPlacement[] = [];
   let order = 0;
 
@@ -173,7 +162,6 @@ export function selectChartPlacements(
       rowIndex,
       order,
       columnSpan: 1,
-      isAddPlaceholderSlot: useTrailingEmptySlotForAddPlaceholder && rowIndex === rows.length - 1,
     });
     order += 1;
   });

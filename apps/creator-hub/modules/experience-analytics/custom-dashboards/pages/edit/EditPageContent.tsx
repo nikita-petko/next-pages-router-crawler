@@ -93,7 +93,11 @@ type EditPageContentProps = {
   readonly draftId: string | undefined;
   readonly onBackToManage: () => void;
   /** `tileId` is undefined for new chart tiles; special route ids select other editor modes. */
-  readonly onOpenChartEditor: (tileId: string | undefined, draftId: string) => void;
+  readonly onOpenChartEditor: (
+    tileId: string | undefined,
+    draftId: string,
+    targetRowIndex?: number,
+  ) => void;
   readonly onOpenPreview: (draftId: string) => void;
   readonly onOpenView: (dashboardId: string) => void;
   /**
@@ -413,16 +417,16 @@ const EditPageContent: FC<EditPageContentProps> = ({
     ],
   );
   const handleOpenChartEditor = useCallback(
-    (tileId: string | undefined) => {
+    (tileId: string | undefined, targetRowIndex?: number) => {
       if (!renderedActiveSession) {
         return;
       }
-      onOpenChartEditor(tileId, renderedActiveSession.draftId);
+      onOpenChartEditor(tileId, renderedActiveSession.draftId, targetRowIndex);
     },
     [renderedActiveSession, onOpenChartEditor],
   );
   const handleAddChart = useCallback(
-    () => handleOpenChartEditor(undefined),
+    (targetRowIndex?: number) => handleOpenChartEditor(undefined, targetRowIndex),
     [handleOpenChartEditor],
   );
   const handleConfigChange = useCallback(

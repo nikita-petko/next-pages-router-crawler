@@ -159,7 +159,7 @@ type EditPageCanvasProps = {
     options?: { readonly hydrate?: boolean },
   ) => void;
   readonly onAddSummaryCard: () => void;
-  readonly onAddChart: () => void;
+  readonly onAddChart: (targetRowIndex?: number) => void;
   readonly onEditSummaryCard: (tileId: TileId) => void;
   readonly onEditChart: (tileId: TileId) => void;
   readonly canUndo: boolean;
@@ -1158,7 +1158,7 @@ type DashboardCanvasBodyProps = {
   readonly activeEmptySlotId: string | null;
   readonly isNarrowViewport: boolean;
   readonly onAddSummaryCard: () => void;
-  readonly onAddChart: () => void;
+  readonly onAddChart: (targetRowIndex?: number) => void;
   readonly onSelectSummaryCard: (tileId: TileId) => void;
   readonly onSelectChart: (tileId: TileId) => void;
   readonly onEditSummaryCard: (tileId: TileId) => void;
@@ -1204,9 +1204,8 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
   );
 
   const hasCharts = chartPlacements.some((placement) => placement.kind === 'tile');
-  const hasAddPlaceholderPlacement = chartPlacements.some(
-    (placement) => placement.kind === 'empty-slot' && placement.isAddPlaceholderSlot,
-  );
+  const lastChartPlacement = chartPlacements[chartPlacements.length - 1];
+  const hasTrailingEmptySlot = lastChartPlacement?.kind === 'empty-slot';
   const chartTileCount = chartPlacements.filter((p) => p.kind === 'tile').length;
   const canAddSummaryCard = summaryCardCount < MAX_SUMMARY_CARDS_PER_DASHBOARD;
   const canAddChart = chartTileCount < MAX_CHART_TILES_PER_DASHBOARD;
@@ -1219,11 +1218,14 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
       onAddSummaryCard();
     }
   }, [canAddSummaryCard, onAddSummaryCard]);
-  const handleAddChart = useCallback(() => {
-    if (canAddChart) {
-      onAddChart();
-    }
-  }, [canAddChart, onAddChart]);
+  const handleAddChart = useCallback(
+    (targetRowIndex?: number) => {
+      if (canAddChart) {
+        onAddChart(targetRowIndex);
+      }
+    },
+    [canAddChart, onAddChart],
+  );
 
   return (
     <div className='flex flex-col items-start width-full gap-xxlarge'>
@@ -1264,35 +1266,29 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
           {chartPlacements.map((placement) => {
             if (placement.kind === 'empty-slot') {
               // Narrow viewports stack every chart full-width and disable DnD, so
-              // half-row drop skeletons are decorative noise — keep only Add.
-              // Also hide the add-placeholder slot when at the chart cap.
-              if (isNarrowViewport && (!placement.isAddPlaceholderSlot || !canAddChart)) {
+              // half-row slots are decorative noise — retain the add-row affordance below.
+              if (isNarrowViewport) {
                 return null;
               }
-              const emptySlotLayoutStyle = isNarrowViewport
-                ? chartFullWidthCellStyle
-                : chartHalfWidthCellStyle;
-              return placement.isAddPlaceholderSlot && canAddChart ? (
+              return canAddChart ? (
                 <ChartAddPlaceholderCard
                   key={placement.emptySlotId}
-                  onAddPlaceholder={handleAddChart}
+                  onAddPlaceholder={() => handleAddChart(placement.rowIndex)}
                   illustrationLabel={t.canvasIllustrationLabel}
                   addChartHeadline={t.addChartPlaceholderHeadline}
                   addChartDescription={t.addChartPlaceholderDescription}
                   addChartLearnMoreLabel={t.addChartPlaceholderLearnMoreLabel}
                   addChartButtonLabel={t.addChartPlaceholderButtonLabel}
-                  droppableId={isNarrowViewport ? undefined : placement.emptySlotId}
-                  isActiveDropTarget={
-                    !isNarrowViewport && activeEmptySlotId === placement.emptySlotId
-                  }
-                  layoutStyle={emptySlotLayoutStyle}
+                  droppableId={placement.emptySlotId}
+                  isActiveDropTarget={activeEmptySlotId === placement.emptySlotId}
+                  layoutStyle={chartHalfWidthCellStyle}
                 />
               ) : (
                 <DroppableChartSkeleton
                   key={placement.emptySlotId}
                   id={placement.emptySlotId}
                   isActiveDropTarget={activeEmptySlotId === placement.emptySlotId}
-                  layoutStyle={emptySlotLayoutStyle}
+                  layoutStyle={chartHalfWidthCellStyle}
                 />
               );
             }
@@ -1334,7 +1330,7 @@ const DashboardCanvasBodyInner: FC<DashboardCanvasBodyProps> = ({
               />
             );
           })}
-          {hasAddPlaceholderPlacement || !canAddChart ? null : (
+          {!isNarrowViewport && hasTrailingEmptySlot ? null : !canAddChart ? null : (
             <ChartAddRowAffordance
               onAddPlaceholder={handleAddChart}
               illustrationLabel={t.canvasIllustrationLabel}

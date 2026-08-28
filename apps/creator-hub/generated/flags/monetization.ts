@@ -27,3 +27,8 @@ export const isProductArchiveEnabled = defineFlag({
     name: 'isProductArchiveEnabled',
     defaultValue: false,
   });
+export const mockShopItemsExternalEligibility = defineFlag({
+    namespace: 'monetization',
+    name: 'mockShopItemsExternalEligibility',
+    defaultValue: false,
+  });

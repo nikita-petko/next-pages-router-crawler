@@ -7,6 +7,9 @@ export function transformShopItem(apiItem: ApiShopItem): ShopItem {
     name: apiItem.name,
     type: apiItem.item.type,
     isVisibleInShop: apiItem.isVisibleInShop,
+    // shops-api has no `isExternallyEligible` yet. Fail open so real items keep
+    // surfacing; swap to `apiItem.isExternallyEligible` after the client bump.
+    isExternallyEligible: true,
     category: apiItem.category,
     thumbnailAssetId: apiItem.imageAssetId,
   };

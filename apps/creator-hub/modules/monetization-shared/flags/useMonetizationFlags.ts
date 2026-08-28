@@ -5,6 +5,7 @@ import {
   mockManagedPricingEvents,
   mockManagedPricingProductWrites,
   mockManagedPricingSummary,
+  mockShopItemsExternalEligibility,
 } from '@generated/flags/monetization';
 
 const monetizationFlags = {
@@ -13,6 +14,7 @@ const monetizationFlags = {
   mockManagedPricingEvents,
   mockManagedPricingProductWrites,
   mockManagedPricingSummary,
+  mockShopItemsExternalEligibility,
 } as const;
 
 type MonetizationFlagName = keyof typeof monetizationFlags;

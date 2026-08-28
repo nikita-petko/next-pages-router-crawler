@@ -823,6 +823,16 @@ export const generatedFlags = [
       },
     },
     {
+      flag: monetizationFlags.mockShopItemsExternalEligibility,
+      metadata: {
+        namespace: 'monetization',
+        name: 'mockShopItemsExternalEligibility',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'static',
+      },
+    },
+    {
       flag: payoutsFlags.enablePayoutWatermarkContributions,
       metadata: {
         namespace: 'payouts',

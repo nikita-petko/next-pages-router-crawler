@@ -134,6 +134,7 @@ type ChartEditorPageContentProps = {
   readonly dashboardId: string;
   readonly draftId: string | undefined;
   readonly tileIdParam: string | undefined;
+  readonly targetRowIndex: number | undefined;
   readonly allowedMetrics: readonly TChartConfiguratorMetrics[];
   readonly onBackToEditor: (draftId?: string) => void;
 };
@@ -143,6 +144,7 @@ const ChartEditorPageContent: FC<ChartEditorPageContentProps> = ({
   dashboardId,
   draftId,
   tileIdParam,
+  targetRowIndex,
   allowedMetrics,
   onBackToEditor,
 }) => {
@@ -241,6 +243,7 @@ const ChartEditorPageContent: FC<ChartEditorPageContentProps> = ({
         isNewTile={isNewTile}
         initialTile={initialTile}
         existingChartTile={existingChartTile}
+        targetRowIndex={targetRowIndex}
         allowedMetrics={allowedMetrics}
         dimensions={dimensions}
         breakdownDimensions={breakdownDimensions}
@@ -259,6 +262,7 @@ type ChartEditorDateRangeSessionProps = {
   readonly isNewTile: boolean;
   readonly initialTile: ChartTileConfig;
   readonly existingChartTile: ChartTileConfig | null;
+  readonly targetRowIndex: number | undefined;
   readonly allowedMetrics: readonly TChartConfiguratorMetrics[];
   readonly dimensions: ReturnType<typeof getSharedChartConfiguratorDimensions>;
   readonly breakdownDimensions: ReturnType<typeof getCustomDashboardBreakdownDimensions>;
@@ -274,6 +278,7 @@ const ChartEditorDateRangeSession: FC<ChartEditorDateRangeSessionProps> = ({
   isNewTile,
   initialTile,
   existingChartTile,
+  targetRowIndex,
   allowedMetrics,
   dimensions,
   breakdownDimensions,
@@ -329,6 +334,7 @@ const ChartEditorDateRangeSession: FC<ChartEditorDateRangeSessionProps> = ({
         isNewTile={isNewTile}
         initialTile={initialTile}
         existingChartTile={existingChartTile}
+        targetRowIndex={targetRowIndex}
         draft={draft}
         onBackToEditor={onBackToEditor}
       />
@@ -344,6 +350,7 @@ type ChartEditorSurfaceProps = {
   readonly isNewTile: boolean;
   readonly initialTile: ChartTileConfig;
   readonly existingChartTile: ChartTileConfig | null;
+  readonly targetRowIndex: number | undefined;
   readonly draft: ControlledChartConfiguratorDraft;
   readonly onBackToEditor: (draftId?: string) => void;
 };
@@ -356,6 +363,7 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
   isNewTile,
   initialTile,
   existingChartTile,
+  targetRowIndex,
   draft,
   onBackToEditor,
 }) => {
@@ -579,7 +587,7 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
       }
 
       const nextConfig = isNewTile
-        ? withChartRows(session.config, appendTileAsRow(chartRows, nextTile))
+        ? withChartRows(session.config, appendTileAsRow(chartRows, nextTile, targetRowIndex))
         : withChartRows(
             session.config,
             replaceTile(chartRows, existingChartTile?.tileId ?? '', nextTile),
@@ -612,6 +620,7 @@ const ChartEditorSurface: FC<ChartEditorSurfaceProps> = ({
     metric,
     onBackToEditor,
     setActiveSession,
+    targetRowIndex,
     t.chartEditorMaxTilesError,
   ]);
 

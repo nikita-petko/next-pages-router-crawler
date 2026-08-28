@@ -25,14 +25,15 @@ const CustomDashboardEditRoute: NextLayoutPage = () => {
   }, [router]);
 
   const handleOpenChartEditor = useCallback(
-    (tileId: string | undefined, nextDraftId: string) => {
+    (tileId: string | undefined, nextDraftId: string, targetRowIndex?: number) => {
       const experienceId = router.query.id;
       if (!experienceId || Array.isArray(experienceId) || !dashboardId) {
         return;
       }
       const resolvedTileId = tileId ?? NEW_CHART_TILE_ROUTE_ID;
+      const targetRowQuery = targetRowIndex === undefined ? '' : `&targetRow=${targetRowIndex}`;
       void router.push(
-        `/dashboard/creations/experiences/${experienceId}/analytics/dashboards/${dashboardId}/tile/${resolvedTileId}/edit?draftId=${nextDraftId}`,
+        `/dashboard/creations/experiences/${experienceId}/analytics/dashboards/${dashboardId}/tile/${resolvedTileId}/edit?draftId=${nextDraftId}${targetRowQuery}`,
       );
     },
     [dashboardId, router],
