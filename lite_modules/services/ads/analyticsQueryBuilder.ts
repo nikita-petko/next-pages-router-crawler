@@ -147,6 +147,32 @@ export const getAttributionQueryEndTime = (attributionEndTime: Date): Date =>
 // window closes. Windows younger than this show the ML AdsRoasEstimate instead.
 export const ROAS_VALIDATED_MIN_AGE_DAYS = ATTRIBUTION_WINDOW_DAYS + 1;
 
+// AdsRoasEstimate predictions take ~3 days to mature: today and the two
+// previous UTC days haven't accumulated enough conversion signal to be
+// trustworthy. The AQG request builders clamp `endTime` for this metric so
+// every consumer (scalar table cell, daily chart) sees the same matured
+// window without needing to opt in.
+export const ESTIMATED_ROAS_MATURATION_DAYS = 3;
+
+/**
+ * Clamps an AdsRoasEstimate query's `endTime` down to the UTC-midnight
+ * boundary before the trailing maturation window. Never returns a value below
+ * `startTime`, so callers that pick a range entirely inside the immature
+ * window get an empty (but valid) `[startTime, startTime)` request.
+ */
+export const clampEndTimeForMatureRoasEstimate = (
+  startTime: Date,
+  endTime: Date,
+  now: Date = new Date(),
+): Date => {
+  const startOfTodayUtcMs = now.getTime() - (now.getTime() % MS_PER_DAY);
+  const maturedBeforeMs = startOfTodayUtcMs - (ESTIMATED_ROAS_MATURATION_DAYS - 1) * MS_PER_DAY;
+  if (endTime.getTime() <= maturedBeforeMs) {
+    return endTime;
+  }
+  return new Date(Math.max(startTime.getTime(), maturedBeforeMs));
+};
+
 /**
  * True when a campaign's ROAS is old enough to surface the validated AdsUARoas
  * cube instead of the ML AdsRoasEstimate. Uses the earlier of the campaign's
@@ -174,7 +200,7 @@ export const isValidatedRoasEligible = (
  * timestamp equals the next period's start is not included.
  */
 export const buildReportingAnalyticsQueryRequest = ({
-  endTime,
+  endTime: rawEndTime,
   entityIds,
   entityType,
   metric,
@@ -196,6 +222,9 @@ export const buildReportingAnalyticsQueryRequest = ({
   // AdsRoasEstimate's cube keys __time by attribution_date (not conversion
   // date), so it doesn't need the 30-day  attribution-window pad.
   const isRoasEstimate = metric === 'roasEstimate';
+  const endTime = isRoasEstimate
+    ? clampEndTimeForMatureRoasEstimate(startTime, rawEndTime)
+    : rawEndTime;
   const filter: QueryFilter[] = !isRoasEstimate
     ? [
         {
@@ -273,7 +302,7 @@ export const buildAnalyticsQueryRequest = ({
   timezoneDbName,
   unifiedAttributionCutoverDate,
 }: BuildAnalyticsQueryRequestParams): V1MetricsResourceResourceTypeIdResourceIdPostRequest => {
-  const { endTime, startTime } = getAdvertiserTimeSeriesRange(
+  const { endTime: rawEndTime, startTime } = getAdvertiserTimeSeriesRange(
     requestTimestamp,
     timePeriod,
     timezoneDbName,
@@ -288,6 +317,10 @@ export const buildAnalyticsQueryRequest = ({
   // as a supported dimension, so filter/breakdown on it would fail AQG
   // validation. Time bounds still travel via query.startTime/endTime.
   const supportsAttributionDateHour = metric !== METRIC_ROAS_ESTIMATE;
+  const endTime =
+    metric === METRIC_ROAS_ESTIMATE
+      ? clampEndTimeForMatureRoasEstimate(startTime, rawEndTime)
+      : rawEndTime;
   const filter: QueryFilter[] = [
     // AttributionDateHour filter values must be epoch-ms strings (parsed as
     // int64 server-side by RoCubeFilterValueParser.ParseOrThrow in

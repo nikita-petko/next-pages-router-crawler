@@ -1,3 +1,4 @@
+import { useWorkspaces } from '@rbx/creator-hub-navigation';
 import {
   Alert,
   Checkbox,
@@ -62,6 +63,7 @@ import {
   RequiresMinimumAudienceSize,
 } from '@utils/campaignBuilder';
 import { MICRO_USD_IN_USD, MicroUsdToUsd } from '@utils/currency';
+import { getSelectedGroupId } from '@utils/groupScopedAccount';
 import { RoundToTwoDecimals } from '@utils/math';
 
 const BudgetNameKey: Record<number, string> = {
@@ -93,6 +95,7 @@ const BudgetSection = () => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.Campaign);
   const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
   const { translate: translateReport } = useNamespacedTranslation(TranslationNamespace.Report);
+  const { currentWorkspace } = useWorkspaces();
   const { control, formState, getValues, setValue, trigger } = useFormContext<FormType>();
   const budgetType = useWatch<FormType, typeof FormField.BUDGET_TYPE>({
     control,
@@ -157,6 +160,16 @@ const BudgetSection = () => {
   const recommendation = useCampaignBuilderStore((state) => state.recommendation);
   const adCreditBalance = useAppStore(
     (state) => state.adCreditState.data?.ad_credit_balance_in_micro || 0,
+  );
+  const isAdAccountAutoCreateEnabled = useAppStore(
+    (state) => state.appMetadataState.data?.isAdAccountAutoCreateEnabled ?? false,
+  );
+  const selectedGroupId = getSelectedGroupId(currentWorkspace, isAdAccountAutoCreateEnabled);
+  const groupAdCreditBalance = useAppStore((state) =>
+    selectedGroupId
+      ? state.groupScopedAccountStateByGroupId[selectedGroupId]?.adCreditState.data
+          ?.ad_credit_balance_in_micro || 0
+      : 0,
   );
   const initialBudget = useCampaignBuilderStore(
     (state) => state.simplifiedCampaign?.data?.budget_in_micro_usd,
@@ -247,7 +260,7 @@ const BudgetSection = () => {
   useEffect(() => {
     // Trigger payment type and budget validation when the budget type/duration/budget changes
     trigger([FormField.PAYMENT_TYPE, FormField.BUDGET, FormField.DURATION]);
-  }, [budgetType, trigger, budget, duration, paymentType, adCreditBalance]);
+  }, [budgetType, trigger, budget, duration, paymentType, adCreditBalance, groupAdCreditBalance]);
 
   const {
     classes: { cardBanner, mt3, rightContentContainer, rightContentSubContainer },

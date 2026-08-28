@@ -2041,6 +2041,7 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
       const customEndDate = isCustom ? storedCustomEnd : undefined;
       const currentReportingView = get().reportingViewState.currentSelection;
 
+      let keepFrontendSummaryLoading = false;
       // Use shared request manager to handle cancellation of stale requests (fire-and-forget)
       dateReportingViewRequestManager
         .executeRequest(async (abortSignal) => {
@@ -2077,8 +2078,11 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
             ],
           );
           abortSignal.throwIfAborted();
-          const frontendSummaryStats = shouldUseFrontendSummary
-            ? await frontendSummaryRequestManager.executeRequest((summaryAbortSignal) =>
+          // Kick off the summary query without awaiting it so the table can render
+          // as soon as the campaigns resolve; the summary cards keep their own
+          // loading state until it settles.
+          const frontendSummaryPromise = shouldUseFrontendSummary
+            ? frontendSummaryRequestManager.executeRequest((summaryAbortSignal) =>
                 fetchFrontendSummaryStats({
                   abortSignal: summaryAbortSignal,
                   backendSummary: backendSummaryStats,
@@ -2093,17 +2097,12 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
                 }),
               )
             : undefined;
-          const summaryStats =
-            shouldUseFrontendSummary && frontendSummaryStats
-              ? frontendSummaryStats
-              : backendSummaryStats;
 
           return {
             backendSummaryStats,
             campaignFetchResult,
             filteredCampaignIds,
-            frontendSummaryStats,
-            summaryStats,
+            frontendSummaryPromise,
           };
         })
         .then((result) => {
@@ -2118,11 +2117,41 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
               filteredCampaignIds: result.filteredCampaignIds,
               isLoading: false,
             };
-            draft.summaryStatsState.data = result.summaryStats;
-            draft.summaryStatsState.isError = false;
+            if (!result.frontendSummaryPromise) {
+              draft.summaryStatsState.data = result.backendSummaryStats;
+              draft.summaryStatsState.isError = false;
+            }
             // Clear campaign name search error as a successful filter request has been sent
             draft.campaignNameFilterState.isError = false;
           });
+
+          if (result.frontendSummaryPromise) {
+            keepFrontendSummaryLoading = true;
+            result.frontendSummaryPromise
+              .then((frontendSummaryStats) => {
+                if (
+                  frontendSummaryStats === null ||
+                  get().summaryRequestTimestamp !== requestTimestamp
+                ) {
+                  return;
+                }
+                set((draft) => {
+                  draft.summaryStatsState.data = frontendSummaryStats;
+                  draft.summaryStatsState.isError = false;
+                  draft.summaryStatsState.isLoading = false;
+                });
+              })
+              .catch((error) => {
+                if (get().summaryRequestTimestamp !== requestTimestamp) {
+                  return;
+                }
+                set((draft) => {
+                  draft.summaryStatsState.isError = true;
+                  draft.summaryStatsState.isLoading = false;
+                });
+                CaptureException(error, { context: 'fetchUniverseFrontendSummary' });
+              });
+          }
         })
         .catch(() => {
           if (get().summaryRequestTimestamp !== requestTimestamp) {
@@ -2142,7 +2171,9 @@ export const useNewFlowStore = create<NewFlowStoreType>()(
 
             draft.campaignsState.isLoading = false;
             draft.filteredIdsState.isLoading = false;
-            draft.summaryStatsState.isLoading = false;
+            if (!keepFrontendSummaryLoading) {
+              draft.summaryStatsState.isLoading = false;
+            }
           });
         });
     },

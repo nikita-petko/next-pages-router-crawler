@@ -232,10 +232,9 @@ export const useAppStore = create<AppStoreType>()(
     // Toggle is enabled IFF: The user is managed/internal OR
     // The user is over 13
     // The user has an ad account
-    // The user has a verified email
     // The user does not have payment failures OR this is an ad credit nampaign
     adTogglingShouldBeEnabled: (paymentType: ServerPaymentType) => {
-      const { adAccountId, hasVerifiedEmail, paymentFailure, userOver13 } = get().appData;
+      const { adAccountId, paymentFailure, userOver13 } = get().appData;
 
       if (
         (get().adAccountIsInternalManaged() || get().adAccountIsExternalManaged()) &&
@@ -247,8 +246,7 @@ export const useAppStore = create<AppStoreType>()(
       const enableAdvertising = !!(
         userOver13 &&
         adAccountId &&
-        (!paymentFailure || paymentType === ServerPaymentType.PAYMENT_TYPE_ADS_CREDIT) &&
-        hasVerifiedEmail
+        (!paymentFailure || paymentType === ServerPaymentType.PAYMENT_TYPE_ADS_CREDIT)
       );
 
       return {
@@ -263,7 +261,6 @@ export const useAppStore = create<AppStoreType>()(
     // Create is enabled IFF: The user is managed/internal and account has valid name OR
     // The user is over 18
     // The user has an ad account
-    // The user has a verified email
     // The user has a verified payment on file and does not have payment failures OR has sufficient ad credit
     // The account has valid name (if business account)
     advertisingShouldBeEnabled: (forPaymentStatusToast?: boolean) => {
@@ -273,7 +270,6 @@ export const useAppStore = create<AppStoreType>()(
         adCreditActivated,
         adCreditBalance,
         campaignMinimumDailyBudgetUsd,
-        hasVerifiedEmail,
         paymentFailure,
         // TODO: Work this in and replace the hasVerifiedPaymentProfiles logic after migration
         // profileNotVerified,
@@ -299,12 +295,7 @@ export const useAppStore = create<AppStoreType>()(
       }
 
       if (!forPaymentStatusToast) {
-        const advertisingShouldBeEnabled = !!(
-          userOver13 &&
-          adAccountId &&
-          hasVerifiedEmail &&
-          accountHasValidName
-        );
+        const advertisingShouldBeEnabled = !!(userOver13 && adAccountId && accountHasValidName);
         return {
           advertisingShouldBeEnabled,
           disabledTooltip: !accountHasValidName ? invalidBusinessNameTooltip : undefined,
@@ -330,8 +321,7 @@ export const useAppStore = create<AppStoreType>()(
         // !profileNotVerified &&
         ((hasVerifiedPaymentProfiles &&
           (!paymentFailure || profileNotVerifiedAndAllAdCreditCampaigns)) ||
-          sufficientAdCredit) &&
-        hasVerifiedEmail
+          sufficientAdCredit)
       );
 
       enableAdvertising = !!(enableAdvertising && accountHasValidName);

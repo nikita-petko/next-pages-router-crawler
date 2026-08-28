@@ -1,8 +1,9 @@
 import { AdAccountType } from '@constants/app';
+import { ServerPaymentType } from '@constants/campaign';
 import { useAppStore } from '@stores/appStoreProvider';
 import { usePaymentStore } from '@stores/paymentStoreProvider';
 
-const useNeedsPaymentSetup = (): boolean => {
+const useNeedsPaymentSetup = (paymentType?: ServerPaymentType): boolean => {
   const isAdAccountAutoCreateEnabled = useAppStore(
     (state) => state.appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false,
   );
@@ -14,6 +15,10 @@ const useNeedsPaymentSetup = (): boolean => {
       state.advertiserState.data?.ad_account?.type ?? AdAccountType.AD_ACCOUNT_TYPE_SELF_SERVICE,
     ),
   );
+
+  if (paymentType === ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT) {
+    return false;
+  }
 
   return (
     isAdAccountAutoCreateEnabled &&

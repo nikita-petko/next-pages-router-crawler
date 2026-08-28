@@ -56,7 +56,7 @@ const CreateCampaignFooter = ({ advancedTargetingFormMethods }: Props) => {
   const isAdAccountAutoCreateEnabled = useAppStore(
     (state: AppStoreType) => state.appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false,
   );
-  const needsPaymentSetup = useNeedsPaymentSetup();
+  const needsPaymentSetup = useNeedsPaymentSetup(paymentType);
   const hasLoggedDrawerOpened = useRef<boolean>(false);
   const resetAiCreateCampaignScope = useAiCreateSessionStore(
     (state) => state.resetAiCreateCampaignScope,

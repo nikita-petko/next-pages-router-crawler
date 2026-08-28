@@ -13,7 +13,7 @@ import TableNameCell from '@components/reporting/TableNameCell';
 import TableStatusCell from '@components/reporting/TableStatusCell';
 import TableToggleCell from '@components/reporting/TableToggleCell';
 import TwoLineTableCellContent from '@components/reporting/TwoLineTableCellContent';
-import { PaymentMethodActionEnum } from '@constants/billing';
+import { AdCreditBalanceScope, PaymentMethodActionEnum } from '@constants/billing';
 import { ServerDetailedTargetingMatchType } from '@constants/campaign';
 import {
   getStatusTooltipLinkTags,
@@ -82,6 +82,8 @@ const CampaignTableRow = ({
   let toggleState = { isDisabled: true, isOn: false };
   let cancelDisabledTooltip: string | undefined;
   let editDisabledTooltip: string | undefined;
+  let insufficientAdCreditAccountName: string | undefined;
+  let insufficientAdCreditIsGroupAccount = false;
   let insufficientAdCreditTooltip: string | undefined;
   let toggleDisabledTooltip: string | undefined;
   if (unsortableData) {
@@ -89,6 +91,8 @@ const CampaignTableRow = ({
     toggleState = unsortableData.toggleState;
     cancelDisabledTooltip = unsortableData.cancelDisabledTooltip;
     editDisabledTooltip = unsortableData.editDisabledTooltip;
+    insufficientAdCreditAccountName = unsortableData.insufficientAdCreditAccountName;
+    insufficientAdCreditIsGroupAccount = Boolean(unsortableData.insufficientAdCreditIsGroupAccount);
     insufficientAdCreditTooltip = unsortableData.insufficientAdCreditTooltip;
     toggleDisabledTooltip = unsortableData.toggleDisabledTooltip;
   }
@@ -99,8 +103,17 @@ const CampaignTableRow = ({
   } else if (row.status_text === StatusText.DISPLAY_STATUS_CANCELED) {
     toggleTooltip = translate('Tooltip.CanceledCannotSwitchOn');
   } else if (insufficientAdCreditTooltip) {
+    const addCreditQuery: { action: PaymentMethodActionEnum; balanceScope?: AdCreditBalanceScope } =
+      {
+        action: PaymentMethodActionEnum.RELOAD_AD_CREDIT,
+      };
+    if (insufficientAdCreditIsGroupAccount) {
+      addCreditQuery.balanceScope = AdCreditBalanceScope.Group;
+    }
     toggleTooltip = translateHTML(
-      'Tooltip.InsufficientAdCredit',
+      insufficientAdCreditAccountName
+        ? 'Tooltip.InsufficientAdCreditV2'
+        : 'Tooltip.InsufficientAdCredit',
       [
         {
           closing: 'linkEnd',
@@ -109,7 +122,7 @@ const CampaignTableRow = ({
               className={tooltipLinkUnderline}
               href={{
                 pathname: Routes.ADD_PAYMENT,
-                query: { action: PaymentMethodActionEnum.RELOAD_AD_CREDIT },
+                query: addCreditQuery,
               }}>
               {chunks}
             </Link>
@@ -117,7 +130,10 @@ const CampaignTableRow = ({
           opening: 'linkStart',
         },
       ],
-      { credits: insufficientAdCreditTooltip },
+      {
+        accountName: insufficientAdCreditAccountName,
+        credits: insufficientAdCreditTooltip,
+      },
     );
   } else if (toggleDisabledTooltip) {
     toggleTooltip = toggleDisabledTooltip;

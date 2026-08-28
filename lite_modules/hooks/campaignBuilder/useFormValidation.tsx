@@ -400,7 +400,10 @@ export const useFormValidation = (): Resolver<FormType> => {
       }
     })
     .superRefine((data, { addIssue }) => {
-      if (skipPaymentValidation) {
+      if (
+        skipPaymentValidation &&
+        data[FormField.PAYMENT_TYPE] !== ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT
+      ) {
         return;
       }
       const selectedPaymentType = data[FormField.PAYMENT_TYPE] as ServerPaymentType;

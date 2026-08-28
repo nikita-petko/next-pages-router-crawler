@@ -40,6 +40,7 @@ import Routes from '@constants/routes';
 import { studioResources, StudioResourcesProvider } from '@modules/miscellaneous/hooks/useStudio';
 import AuthenticatedThemeModeProvider from '@modules/theme/hooks/AuthenticatedThemeModeProvider';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
+import { shouldSkipFullPageEmailVerification } from '@utils/emailVerification';
 import { IsLocalDeveloperToolsEnvEnabled, IsMSWMockResponsesEnabled } from '@utils/env';
 import { CaptureException } from '@utils/error';
 import {
@@ -285,7 +286,10 @@ function AdsCreationAndManagementApp({
 
     const isAdAccountAutoCreateEnabled =
       useAppStore.getState().appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false;
-    const skipEmailVerification = isAdAccountAutoCreateEnabled && !adAccountId;
+    const skipEmailVerification = shouldSkipFullPageEmailVerification(
+      adAccountId,
+      isAdAccountAutoCreateEnabled,
+    );
 
     let hasVerifiedEmail = null;
     try {
@@ -500,8 +504,6 @@ function AdsCreationAndManagementApp({
       } else {
         // If the advertiser has an ad account attached to their roblox account render everything normally
         setShowContent(true);
-        // for backward compatibility, existing accounts with no verified email
-        // will need to land on the page to get the email verified
         if (isEmailVerifiedPage) {
           setShowVerifyEmail(false);
         }

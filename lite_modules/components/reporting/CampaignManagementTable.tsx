@@ -1,3 +1,4 @@
+import { useWorkspaces } from '@rbx/creator-hub-navigation';
 import { Button } from '@rbx/foundation-ui';
 import { useEffect, useMemo } from 'react';
 
@@ -16,6 +17,7 @@ import { TranslationNamespace } from '@constants/localization';
 import ReportingViewType from '@constants/reportingViewType';
 import { Tooltips } from '@constants/tooltips';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
+import useShouldUseWorkspaceUniverseFiltering from '@hooks/useShouldUseWorkspaceUniverseFiltering';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
 import {
   CampaignCreatorStoreType,
@@ -33,6 +35,7 @@ import {
   GetToggleDisabled,
 } from '@utils/displayStatus';
 import { shouldUseCaaSReportingStats } from '@utils/frontendReportingStats';
+import { getSelectedGroupId } from '@utils/groupScopedAccount';
 import { GetTimezoneObjFromEnum, GetValidatedTimezoneDbName } from '@utils/timezone';
 
 // Generally performance always has payment type (even if campaign doesn't have stats), but in case it doesn't, we fallback to the payment type stored on the campaign
@@ -56,6 +59,7 @@ interface CampaignManagementTableProps {
 }
 
 const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManagementTableProps) => {
+  const { currentWorkspace } = useWorkspaces();
   const { translate } = useNamespacedTranslation(TranslationNamespace.Report);
   const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
   const campaignsState = useNewFlowStore((state: NewFlowStoreType) => state.campaignsState);
@@ -87,6 +91,20 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
   const adCreditBalance = useAppStore(
     (state) => state.adCreditState.data?.ad_credit_balance_in_micro || 0,
   );
+  const isAdAccountAutoCreateEnabled = useAppStore(
+    (state: AppStoreType) => state.appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false,
+  );
+  const shouldUseWorkspaceUniverseFiltering = useShouldUseWorkspaceUniverseFiltering();
+  const groupId = getSelectedGroupId(currentWorkspace, isAdAccountAutoCreateEnabled);
+  const groupAdCreditBalance = useAppStore(
+    (state) =>
+      (groupId
+        ? state.groupScopedAccountStateByGroupId[groupId]?.adCreditState?.data
+            ?.ad_credit_balance_in_micro
+        : undefined) || 0,
+  );
+  const groupAccountName =
+    currentWorkspace?.creatorType === 'Group' ? (currentWorkspace.creatorName ?? '') : '';
   const currentReportingView = useNewFlowStore(
     (state: NewFlowStoreType) =>
       state.reportingViewState?.currentSelection ?? ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT,
@@ -143,14 +161,14 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
   }, [campaignsState.data, filteredCampaignIds]);
 
   const creatorUserIds = useMemo(() => {
-    if (!showCreatorColumn) {
+    if (!showCreatorColumn && !shouldUseWorkspaceUniverseFiltering) {
       return [];
     }
 
     return filteredCampaigns
       .map((campaign) => campaign.creator_user_id)
       .filter((userId): userId is number => userId !== undefined);
-  }, [filteredCampaigns, showCreatorColumn]);
+  }, [filteredCampaigns, shouldUseWorkspaceUniverseFiltering, showCreatorColumn]);
 
   useEffect(() => {
     if (creatorUserIds.length === 0) {
@@ -304,19 +322,35 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
         effectiveDailyBudget = campaign.budget.lifetime_budget_micro_usd / campaignDuration;
       }
 
-      const requiredAdditionalAdCredit = (effectiveDailyBudget || 0) - adCreditBalance;
+      const isGroupAdCredit =
+        campaign.payment_type === ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT &&
+        groupId !== undefined;
+      const isPersonalAdCredit =
+        campaign.payment_type === ServerPaymentType.PAYMENT_TYPE_ADS_CREDIT;
+      const relevantAdCreditBalance = isGroupAdCredit ? groupAdCreditBalance : adCreditBalance;
+      const requiredAdditionalAdCredit = (effectiveDailyBudget || 0) - relevantAdCreditBalance;
 
       const disableToggleBecauseInsufficientAdCredit =
         (campaignStatus?.display_status ===
           CampaignDisplayStatusType.CAMPAIGN_DISPLAY_STATUS_AUTO_PAUSED ||
           campaignStatus?.display_status ===
             CampaignDisplayStatusType.CAMPAIGN_DISPLAY_STATUS_PAUSED) &&
-        campaign.payment_type === ServerPaymentType.PAYMENT_TYPE_ADS_CREDIT &&
+        (isPersonalAdCredit || isGroupAdCredit) &&
         requiredAdditionalAdCredit > 0;
 
       const insufficientAdCreditAmount = disableToggleBecauseInsufficientAdCredit
         ? MicroUsdToUsdStringRoundedDown(requiredAdditionalAdCredit)
         : '';
+      const creatorProfile =
+        campaign.creator_user_id === undefined
+          ? undefined
+          : creatorProfilesByUserId[campaign.creator_user_id]?.data;
+      let insufficientAdCreditAccountName = '';
+      if (disableToggleBecauseInsufficientAdCredit && shouldUseWorkspaceUniverseFiltering) {
+        insufficientAdCreditAccountName = isGroupAdCredit
+          ? groupAccountName
+          : (creatorProfile?.username ?? '');
+      }
 
       // Check if this is an off-platform campaign
       const isOffPlatformCampaign = Boolean(campaign.off_platform_request_id);
@@ -349,6 +383,8 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
         {
           cancelDisabledTooltip: cancelDisabledTooltipText,
           editDisabledTooltip: editDisabledTooltipText,
+          insufficientAdCreditAccountName: insufficientAdCreditAccountName || undefined,
+          insufficientAdCreditIsGroupAccount: isGroupAdCredit,
           insufficientAdCreditTooltip: insufficientAdCreditAmount,
           paymentType: getCampaignPaymentType(campaign),
           statusText,

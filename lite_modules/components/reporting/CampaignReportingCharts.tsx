@@ -5,6 +5,7 @@ import { useLocalization } from '@rbx/intl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import useCampaignReportingChartsStyles from '@components/reporting/CampaignReportingCharts.styles';
+import { ServerCampaignObjectiveType } from '@constants/campaign';
 import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
 import { TranslationNamespace } from '@constants/localization';
 import { REPORTING_TIMEZONE_DB_NAME } from '@constants/reportingStatsConstants';
@@ -25,6 +26,9 @@ import {
 type MetricTab = 'plays' | 'roas';
 
 const CHART_HEIGHT_PX = 240;
+
+const getDefaultMetricTab = (canShowRoas: boolean, isEarningsObjective: boolean): MetricTab =>
+  canShowRoas && isEarningsObjective ? 'roas' : 'plays';
 
 interface MetricChartProps {
   attributionWindowDays: number;
@@ -93,7 +97,26 @@ const CampaignReportingCharts = () => {
     (state: AppStoreType) => state.appMetadataState?.data?.isCampaignRoasEnabled ?? false,
   );
 
-  const [activeMetricTab, setActiveMetricTab] = useState<MetricTab>('plays');
+  const campaignId = useNewFlowStore(
+    (state: NewFlowStoreType) => state.campaignDetailsState.campaign?.id,
+  );
+  const campaignObjective = useNewFlowStore(
+    (state: NewFlowStoreType) => state.campaignDetailsState.campaign?.objective,
+  );
+  const timeSeriesState = useNewFlowStore(
+    (state: NewFlowStoreType) => state.campaignDetailsState.timeSeriesState,
+  );
+  const reportingViewType = useNewFlowStore(
+    (state: NewFlowStoreType) => state.reportingViewState.currentSelection,
+  );
+
+  const canShowRoas =
+    isCampaignRoasEnabled && reportingViewType === ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT;
+  const isEarningsObjective = campaignObjective === ServerCampaignObjectiveType.SPEND;
+
+  const [activeMetricTab, setActiveMetricTab] = useState<MetricTab>(() =>
+    getDefaultMetricTab(canShowRoas, isEarningsObjective),
+  );
 
   const formatTimestamp = useCallback(
     (ts: number | string) => formatTimestampLabel(ts, locale, REPORTING_TIMEZONE_DB_NAME),
@@ -102,15 +125,6 @@ const CampaignReportingCharts = () => {
   const formatPlaysValue = useMemo(() => makePlaysValueFormatter(locale), [locale]);
   const formatRoasValue = useMemo(() => makeRoasValueFormatter(locale), [locale]);
 
-  const campaignId = useNewFlowStore(
-    (state: NewFlowStoreType) => state.campaignDetailsState.campaign?.id,
-  );
-  const timeSeriesState = useNewFlowStore(
-    (state: NewFlowStoreType) => state.campaignDetailsState.timeSeriesState,
-  );
-  const reportingViewType = useNewFlowStore(
-    (state: NewFlowStoreType) => state.reportingViewState.currentSelection,
-  );
   // ROAS scorecard reads the row's per-campaign source so the drawer tab title
   // matches the table cell exactly (validated vs. estimated, with the same
   // `est.` prefix). Populated by the table's fetchVisibleCampaignRoas.
@@ -124,14 +138,10 @@ const CampaignReportingCharts = () => {
   );
 
   const attributionWindowDays = getAttributionWindow(reportingViewType);
-  const canShowRoas =
-    isCampaignRoasEnabled && reportingViewType === ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT;
 
   useEffect(() => {
-    if (!canShowRoas && activeMetricTab === 'roas') {
-      setActiveMetricTab('plays');
-    }
-  }, [activeMetricTab, canShowRoas]);
+    setActiveMetricTab(getDefaultMetricTab(canShowRoas, isEarningsObjective));
+  }, [campaignId, canShowRoas, isEarningsObjective]);
 
   // Only ROAS is blended with ML-produced estimates for the trailing
   // attribution window (see getCampaignTimeSeriesService
