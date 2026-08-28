@@ -76,6 +76,7 @@ enum BreadcrumbItemType {
   PriceOptimization = 'price-optimization',
   PriceCheck = 'price-check',
   Bans = 'bans',
+  AntiCheat = 'anti-cheat',
   Add = 'add',
   Reorder = 'reorder',
   AvatarCreationTokens = 'avatar-creation-tokens',

@@ -1,3 +1,4 @@
+/* oxlint-disable react/react-compiler -- Pre-existing finding relocated unchanged during the safety-controls restructure; tracked for UB cleanup. */
 import React from 'react';
 import { useLocalization, useTranslation } from '@rbx/intl';
 import { Typography } from '@rbx/ui';

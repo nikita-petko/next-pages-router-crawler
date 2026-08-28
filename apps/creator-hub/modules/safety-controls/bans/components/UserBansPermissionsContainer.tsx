@@ -1,5 +1,5 @@
-import { useRouter } from 'next/router';
 import type { FunctionComponent, PropsWithChildren } from 'react';
+import { useRouter } from 'next/router';
 import { StatusCodes } from '@rbx/core';
 import Authenticated from '@modules/authentication/Authenticated';
 import { PageLoading } from '@modules/miscellaneous/components';

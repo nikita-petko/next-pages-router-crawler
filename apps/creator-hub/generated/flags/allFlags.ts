@@ -1,4 +1,5 @@
 import type { WidgetProps } from '@rbx/flags/widget';
+import * as antiCheatFlags from './antiCheat';
 import * as avatarMarketplaceFlags from './avatarMarketplace';
 import * as communitiesFlags from './communities';
 import * as contentAccessAndInventoryFlags from './contentAccessAndInventory';
@@ -21,6 +22,16 @@ import * as payoutsFlags from './payouts';
 import * as presetChatFlags from './presetChat';
 
 export const generatedFlags = [
+    {
+      flag: antiCheatFlags.enhancedAntiCheatAccess,
+      metadata: {
+        namespace: 'anti-cheat',
+        name: 'enhancedAntiCheatAccess',
+        defaultValue: false,
+        valueType: 'boolean',
+        contextType: 'universe',
+      },
+    },
     {
       flag: avatarMarketplaceFlags.enableUgcFolders,
       metadata: {

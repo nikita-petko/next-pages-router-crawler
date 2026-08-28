@@ -1,3 +1,4 @@
+/* oxlint-disable react/jsx-no-useless-fragment, typescript/switch-exhaustiveness-check -- Pre-existing finding relocated unchanged during the safety-controls restructure; tracked for UB cleanup. */
 import React from 'react';
 import { useTranslation } from '@rbx/intl';
 import {

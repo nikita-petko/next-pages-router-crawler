@@ -1,3 +1,4 @@
+/* oxlint-disable typescript/no-non-null-assertion -- Pre-existing finding relocated unchanged during the safety-controls restructure; tracked for UB cleanup. */
 import { Locale } from '@rbx/intl';
 import type { V2CloudProtos } from '@rbx/open-cloud';
 import type { google } from '@rbx/open-cloud/dist/v2/protos/protos';

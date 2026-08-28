@@ -1,9 +1,14 @@
 import type { NextLayoutPage } from 'next';
-import UserBansContainer from '@modules/safety-controls/components/UserBansContainer';
-import getUserBansPageLayout from '@modules/safety-controls/layout/GetUserBansPageLayout';
+import UserBansContainer from '@modules/safety-controls/bans/components/UserBansContainer';
+import getUserBansPageLayout from '@modules/safety-controls/bans/layout/GetUserBansPageLayout';
+import ModerationTabs, { ModerationTab } from '@modules/safety-controls/ModerationTabs';
 
 const UserBans: NextLayoutPage = () => {
-  return <UserBansContainer />;
+  return (
+    <ModerationTabs activeTab={ModerationTab.Bans}>
+      <UserBansContainer />
+    </ModerationTabs>
+  );
 };
 
 UserBans.getPageLayout = getUserBansPageLayout;

@@ -1,3 +1,4 @@
+/* oxlint-disable typescript/no-inferrable-types -- Pre-existing finding relocated unchanged during the safety-controls restructure; tracked for UB cleanup. */
 import type { UseFormProps } from 'react-hook-form';
 import { DurationUnits, MAX_NUM_USERS_BULK_OPERATION } from '../constants/userBansConstants';
 

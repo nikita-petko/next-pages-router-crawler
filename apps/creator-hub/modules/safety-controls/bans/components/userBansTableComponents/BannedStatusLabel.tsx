@@ -1,12 +1,10 @@
+/* oxlint-disable react/react-compiler -- Pre-existing finding relocated unchanged during the safety-controls restructure; tracked for UB cleanup. */
 import React from 'react';
 import { useTranslation } from '@rbx/intl';
 import type { google } from '@rbx/open-cloud/dist/v2/protos/protos';
 import { Label } from '@rbx/ui';
-import {
-  ONE_DAY_IN_SECONDS,
-  ONE_HOUR_IN_SECONDS,
-} from '@modules/safety-controls/constants/userBansConstants';
-import { convertTimestampToDate } from '@modules/safety-controls/utils/userBansDataUtils';
+import { ONE_DAY_IN_SECONDS, ONE_HOUR_IN_SECONDS } from '../../constants/userBansConstants';
+import { convertTimestampToDate } from '../../utils/userBansDataUtils';
 
 type BannedStatusLabelProps = {
   active: boolean;

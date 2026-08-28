@@ -87,6 +87,7 @@ enum TranslationNamespace {
   DataSharingSettingsV2 = 'CreatorDashboard.DataSharingSettingsV2',
   PriceOptimization = 'CreatorDashboard.PriceOptimization',
   SafetyControls = 'CreatorDashboard.SafetyControls',
+  AntiCheat = 'CreatorDashboard.AntiCheat',
   ShareLinksManagement = 'CreatorDashboard.ShareLinksManagament',
   ShareLinkPromo = 'CreatorDashboard.ShareLinkPromo',
   FiatPaidAccess = 'CreatorDashboard.FiatPaidAccess',

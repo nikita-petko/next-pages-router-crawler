@@ -1,8 +1,9 @@
+/* oxlint-disable react/react-compiler -- Pre-existing finding relocated unchanged during the safety-controls restructure; tracked for UB cleanup. */
 import React, { useState } from 'react';
 import { useTranslation } from '@rbx/intl';
 import { IconButton, Menu, MenuItem, MoreVertIcon, Typography } from '@rbx/ui';
 import { useUnifiedLoggerProvider } from '@modules/miscellaneous/hooks/UnifiedLoggerProvider';
-import { ModerationEvents } from '@modules/safety-controls/constants/userBansConstants';
+import { ModerationEvents } from '../../constants/userBansConstants';
 import BanHistoryDialog from './BanHistoryDialog/BanHistoryDialog';
 import UseMoreOptionsStyles from './MoreOptions.styles';
 

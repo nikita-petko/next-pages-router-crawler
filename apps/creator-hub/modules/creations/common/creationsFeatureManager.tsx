@@ -700,11 +700,15 @@ const safetyOverviewFeature: Feature<CreationsFeatureSettings> = {
     settings?.userCanViewAnalyticsForUniverse ?? false,
 };
 
+// This nav entry links to /safety/bans, but the destination is now a "Moderation"
+// page with Bans and Anti-Cheat sub-tabs, so the sidebar label is Heading.Moderation
+// (same Navigation namespace as the page header). The path stays /safety/bans.
 const bansFeature: Feature<CreationsFeatureSettings> = {
   key: 'bans',
-  nameKey: 'Heading.Bans',
+  nameKey: 'Heading.Moderation',
   path: '/safety/bans',
   subPath: '/safety/bans/add',
+  altMatchPaths: ['/safety/anti-cheat'],
   sectionTitleKey: 'Heading.Safety',
 };
 

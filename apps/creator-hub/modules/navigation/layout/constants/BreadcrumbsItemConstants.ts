@@ -989,14 +989,27 @@ export const RouterParseItemToBreadcrumbItemDetails: { [key: string]: Breadcrumb
     },
     breadcrumbType: BreadcrumbItemType.Advanced,
   },
-  // TODO (yinanzhao): Modify once we add the translation strings
+  // Links to /safety/bans, but the page is now "Moderation" (Bans + Anti-Cheat tabs),
+  // so the breadcrumb label matches the sidebar and page header.
   bans: {
     displayName: ({ translate }) => {
-      return createNameWithTranslate({ key: 'Heading.Bans' }, translate);
+      return createNameWithTranslate({ key: 'Heading.Moderation' }, translate);
     },
     breadcrumbType: BreadcrumbItemType.Bans,
     getLinkPath: (getLinkPathParams) => {
       return creatorHub.dashboard.getUserBansUrl(Number(getLinkPathParams.baseId));
+    },
+  },
+  // The Anti-Cheat tab lives under the same "Moderation" page as Bans, so its breadcrumb
+  // shows the same Heading.Moderation label. itemPathCheck renders it as the non-linked
+  // leaf when you're on the anti-cheat page.
+  'anti-cheat': {
+    displayName: ({ translate }) => {
+      return createNameWithTranslate({ key: 'Heading.Moderation' }, translate);
+    },
+    breadcrumbType: BreadcrumbItemType.AntiCheat,
+    getLinkPath: (getLinkPathParams) => {
+      return creatorHub.dashboard.getAntiCheatUrl(Number(getLinkPathParams.baseId));
     },
   },
   add: {

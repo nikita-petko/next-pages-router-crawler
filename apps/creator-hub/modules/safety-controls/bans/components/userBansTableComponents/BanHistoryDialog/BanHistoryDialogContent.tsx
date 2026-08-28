@@ -1,3 +1,4 @@
+/* oxlint-disable react/react-compiler, typescript/no-non-null-assertion, typescript/no-floating-promises -- Pre-existing finding relocated unchanged during the safety-controls restructure; tracked for UB cleanup. */
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from '@rbx/intl';
 import {

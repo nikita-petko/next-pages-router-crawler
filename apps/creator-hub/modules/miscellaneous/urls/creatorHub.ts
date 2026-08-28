@@ -100,6 +100,8 @@ export const dashboard = {
     `/dashboard/creations/experiences/${universeId}/safety/bans`,
   getAddUsersToBanUrl: (universeId: number) =>
     `/dashboard/creations/experiences/${universeId}/safety/bans/add`,
+  getAntiCheatUrl: (universeId: number) =>
+    `/dashboard/creations/experiences/${universeId}/safety/anti-cheat`,
   getAnalyticsOverviewUrl: () => `/dashboard/analytics`,
   getAnalyticsUrl: (experienceId: number) =>
     `/dashboard/creations/experiences/${experienceId}/analytics`,

@@ -1,3 +1,4 @@
+/* oxlint-disable react/react-compiler -- Pre-existing finding relocated unchanged during the safety-controls restructure; tracked for UB cleanup. */
 import type { FunctionComponent } from 'react';
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
