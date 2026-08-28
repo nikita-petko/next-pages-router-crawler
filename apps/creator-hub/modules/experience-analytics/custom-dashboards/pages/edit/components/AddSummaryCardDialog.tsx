@@ -85,6 +85,14 @@ const SummaryTimeInterval = {
   Cumulative: 'Cumulative',
 } as const;
 
+const DAILY_SUMMARY_CARD_AGGREGATIONS = [
+  CustomDashboardSummaryCardAggregation.AverageOverTimePeriod,
+  CustomDashboardSummaryCardAggregation.MostRecentDataPoint,
+] as const;
+const CUMULATIVE_SUMMARY_CARD_AGGREGATIONS = [
+  CustomDashboardSummaryCardAggregation.Cumulative,
+] as const;
+
 export type AddSummaryCardDialogValue = {
   readonly title: string;
   readonly titleSource: SummaryCardTitleSourceValue;
@@ -211,6 +219,39 @@ export function buildAutoSummaryCardTitle(
   return customEventAggregationLabel
     ? t.formatAutoCustomEventTitle(metricLabel, customEventAggregationLabel, summarizeBy)
     : t.formatAutoTitle(metricLabel, summarizeBy);
+}
+
+export function resolveSummaryCardAggregationForTimeInterval(
+  metric: TChartConfiguratorMetrics | null,
+  aggregation: SummaryCardEditorAggregation | null,
+  timeInterval: string,
+): SummaryCardEditorAggregation | null {
+  if (!metric) {
+    return aggregation;
+  }
+
+  if (
+    timeInterval !== SummaryTimeInterval.Cumulative &&
+    timeInterval !== SummaryTimeInterval.Daily
+  ) {
+    return aggregation;
+  }
+  const candidateAggregations: readonly SummaryCardEditorAggregation[] =
+    timeInterval === SummaryTimeInterval.Cumulative
+      ? CUMULATIVE_SUMMARY_CARD_AGGREGATIONS
+      : DAILY_SUMMARY_CARD_AGGREGATIONS;
+  if (
+    aggregation &&
+    candidateAggregations.includes(aggregation) &&
+    isSummaryCardAggregationSupported(metric, aggregation)
+  ) {
+    return aggregation;
+  }
+  return (
+    candidateAggregations.find((candidate) =>
+      isSummaryCardAggregationSupported(metric, candidate),
+    ) ?? null
+  );
 }
 
 const AddSummaryCardDialog: FC<AddSummaryCardDialogProps> = ({
@@ -343,29 +384,9 @@ const AddSummaryCardDialog: FC<AddSummaryCardDialogProps> = ({
 
   const handleTimeIntervalChange = useCallback(
     (nextValue: string) => {
-      if (nextValue === SummaryTimeInterval.Cumulative) {
-        if (
-          metric &&
-          isSummaryCardAggregationSupported(
-            metric,
-            CustomDashboardSummaryCardAggregation.Cumulative,
-          )
-        ) {
-          setAggregation(CustomDashboardSummaryCardAggregation.Cumulative);
-        }
-        return;
-      }
-      if (nextValue === SummaryTimeInterval.Daily && metric) {
-        const nextAggregation = [
-          CustomDashboardSummaryCardAggregation.AverageOverTimePeriod,
-          CustomDashboardSummaryCardAggregation.MostRecentDataPoint,
-        ].find((candidate) => isSummaryCardAggregationSupported(metric, candidate));
-        if (nextAggregation) {
-          setAggregation(nextAggregation);
-        }
-      }
+      setAggregation(resolveSummaryCardAggregationForTimeInterval(metric, aggregation, nextValue));
     },
-    [metric],
+    [aggregation, metric],
   );
 
   const handleMetricChange = useCallback((nextMetric: TChartConfiguratorMetrics | null) => {

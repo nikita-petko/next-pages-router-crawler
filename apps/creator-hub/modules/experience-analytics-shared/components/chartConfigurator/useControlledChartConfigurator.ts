@@ -286,7 +286,7 @@ export function useControlledChartConfiguratorFromDraft({
     displaySourceMetrics,
     displayMetric,
     dateRangeOptions,
-    setMetric,
+    setMetric: setDraftMetric,
     setComputedMetric,
   } = draft;
   const {
@@ -421,6 +421,28 @@ export function useControlledChartConfiguratorFromDraft({
     ],
   );
 
+  const setMetric = useCallback(
+    (nextMetric: TChartConfiguratorMetrics | null) => {
+      if (nextMetric) {
+        const selection = resolveGranularitySelection({
+          metrics: [nextMetric],
+          requestedGranularity: granularity,
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+          breakdown,
+        });
+        if (!selection.isRequestedGranularitySupported) {
+          dispatch({
+            type: ControlledChartConfiguratorActionType.CoerceGranularity,
+            granularity: selection.effectiveGranularity,
+          });
+        }
+      }
+      setDraftMetric(nextMetric);
+    },
+    [breakdown, dateRange.endDate, dateRange.startDate, dispatch, granularity, setDraftMetric],
+  );
+
   const tileQueryFilters = useMemo(
     () => toTileQueryFilters(customEventFilters),
     [customEventFilters],
@@ -438,9 +460,9 @@ export function useControlledChartConfiguratorFromDraft({
   );
 
   // The sidebar control always shows the coerced (effective) granularity so the
-  // dropdown matches the rendered chart. The requested value stays in
-  // URL/reducer state (and is recoverable on round-trip); computed charts
-  // additionally surface a notice (shouldShowUnsupportedGranularityWarning)
+  // dropdown matches the rendered chart. Metric selection commits that fallback;
+  // URL/reducer state can still retain an unsupported request from other changes.
+  // Computed charts additionally surface a notice (shouldShowUnsupportedGranularityWarning)
   // explaining that the requested interval isn't shared by the source metrics.
   const sidebarChartContext = effectiveChartContext;
 

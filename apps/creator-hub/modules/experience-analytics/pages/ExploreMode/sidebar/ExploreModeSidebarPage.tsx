@@ -448,6 +448,7 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
     tableAdditionalColumns,
     annotationOptions,
     setMetric: setControlledMetric,
+    setMetricWithGranularity: setControlledMetricWithGranularity,
     setComputedMetric: setControlledComputedMetric,
     setChartType,
     setChartTypeWithGranularity: setControlledChartTypeWithGranularity,
@@ -471,14 +472,6 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
     smoothingOption,
   } = controlledState;
   const executionMetric: MetricLike | null = computedMetric ?? metric;
-
-  const setMetric = useCallback(
-    (nextMetric: TChartConfiguratorMetrics | null) => {
-      clearPreset();
-      setControlledMetric(nextMetric);
-    },
-    [clearPreset, setControlledMetric],
-  );
 
   const setComputedMetric = useCallback(
     (nextComputedMetric: ComputedMetric | null) => {
@@ -701,9 +694,9 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
     [chartContextFromProvider, granularitySelection.effectiveGranularity],
   );
   // The granularity dropdown always shows the coerced (effective) granularity so
-  // the control matches the rendered chart. The requested value (e.g. Cumulative
-  // carried over from a previous metric) stays in the reducer/URL for seamless
-  // round-tripping. Computed charts additionally surface an inline notice
+  // the control matches the rendered chart. Selecting a metric commits that
+  // fallback, while unsupported URL state from other changes can be retained.
+  // Computed charts additionally surface an inline notice
   // (shouldShowUnsupportedGranularityWarning) explaining that the source metrics
   // don't share the requested interval; single-metric charts coerce silently.
   const sidebarChartContext = useMemo(
@@ -712,6 +705,37 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
       granularity: granularitySelection.effectiveGranularity,
     }),
     [granularitySelection.effectiveGranularity, requestedChartContext],
+  );
+
+  const setMetric = useCallback(
+    (nextMetric: TChartConfiguratorMetrics | null) => {
+      clearPreset();
+      if (!nextMetric) {
+        setControlledMetric(nextMetric);
+        return;
+      }
+      const selection = resolveGranularitySelection({
+        metrics: [nextMetric],
+        requestedGranularity: controlledGranularity,
+        startDate: chartContextFromProvider.timeSpec.startTime,
+        endDate: chartContextFromProvider.timeSpec.endTime,
+        breakdown: chartContextFromProvider.breakdown,
+      });
+      if (!selection.isRequestedGranularitySupported) {
+        setControlledMetricWithGranularity(nextMetric, selection.effectiveGranularity);
+        return;
+      }
+      setControlledMetric(nextMetric);
+    },
+    [
+      chartContextFromProvider.breakdown,
+      chartContextFromProvider.timeSpec.endTime,
+      chartContextFromProvider.timeSpec.startTime,
+      clearPreset,
+      controlledGranularity,
+      setControlledMetric,
+      setControlledMetricWithGranularity,
+    ],
   );
 
   const hasComputedMetricExecution = Boolean(executionMetric && isComputedMetric(executionMetric));

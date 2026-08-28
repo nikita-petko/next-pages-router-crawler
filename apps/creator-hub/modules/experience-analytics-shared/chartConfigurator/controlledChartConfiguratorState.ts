@@ -11,7 +11,7 @@ import { isComputedMetricAllowedForExploreMode } from '../exploreMode/resolveExp
 import type { BenchmarkOverlayType } from '../hooks/useAnalyticsBenchmarks';
 import type { UIFilters } from '../layout/ExperienceAnalyticsPageControlBar/filterUtils';
 import type { ComputedMetric, MetricLike } from '../types/ComputedMetric';
-import type { TUIGranularity } from '../utils/seriesGranularities';
+import { UIIntervalGranularities, type TUIGranularity } from '../utils/seriesGranularities';
 import {
   type ChartConfiguratorChartType,
   isChartConfiguratorSupportedChartType,
@@ -600,6 +600,34 @@ export function coerceGranularityForMetric({
     : selection.effectiveGranularity;
 }
 
+function getClosestAllowedGranularity(
+  requestedGranularity: TUIGranularity,
+  allowedGranularities: readonly TUIGranularity[],
+): TUIGranularity {
+  if (requestedGranularity === RAQIV2MetricGranularity.None) {
+    return allowedGranularities.includes(RAQIV2MetricGranularity.OneDay)
+      ? RAQIV2MetricGranularity.OneDay
+      : allowedGranularities[0];
+  }
+  const requestedIndex = UIIntervalGranularities.indexOf(requestedGranularity);
+  const intervalGranularities = allowedGranularities.filter(
+    (granularity) => granularity !== RAQIV2MetricGranularity.None,
+  );
+  if (intervalGranularities.length === 0) {
+    return allowedGranularities[0];
+  }
+  return intervalGranularities.reduce((closestGranularity, candidateGranularity) => {
+    const closestIndex = UIIntervalGranularities.indexOf(closestGranularity);
+    const candidateIndex = UIIntervalGranularities.indexOf(candidateGranularity);
+    const closestDistance = Math.abs(closestIndex - requestedIndex);
+    const candidateDistance = Math.abs(candidateIndex - requestedIndex);
+    return candidateDistance < closestDistance ||
+      (candidateDistance === closestDistance && candidateIndex > closestIndex)
+      ? candidateGranularity
+      : closestGranularity;
+  });
+}
+
 /**
  * Splits persisted/user-requested granularity from the granularity a chart can
  * safely render for the current metric/date/breakdown context.
@@ -653,9 +681,10 @@ export function resolveGranularitySelection({
       allowedGranularities,
     };
   }
-  const effectiveGranularity = allowedGranularities.includes(RAQIV2MetricGranularity.OneDay)
-    ? RAQIV2MetricGranularity.OneDay
-    : allowedGranularities[0];
+  const effectiveGranularity = getClosestAllowedGranularity(
+    requestedGranularity,
+    allowedGranularities,
+  );
   return {
     requestedGranularity,
     effectiveGranularity,

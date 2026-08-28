@@ -322,6 +322,33 @@ export default function useExploreControlledChartConfiguratorCoreUrlSync({
     [allowedMetrics, clearPendingComputedMetricUrlSync, setMetricQueryParams],
   );
 
+  const setMetricWithGranularity = useCallback(
+    (nextMetric: TChartConfiguratorMetrics | null, granularity: TUIGranularity) => {
+      const metric = nextMetric && allowedMetrics.includes(nextMetric) ? nextMetric : null;
+      clearPendingComputedMetricUrlSync();
+      dispatch({ type: ControlledChartConfiguratorActionType.SetMetric, metric });
+      dispatch({ type: ControlledChartConfiguratorActionType.CoerceGranularity, granularity });
+      setQueryParams({
+        ...serializeExploreMetricParams({
+          metric,
+          computedMetric: null,
+          smoothingOption: state.smoothingOption,
+        }),
+        ...serializeExploreChartTypeGranularityParams({
+          chartType: state.chartTypeOverride,
+          granularity,
+        }),
+      });
+    },
+    [
+      allowedMetrics,
+      clearPendingComputedMetricUrlSync,
+      setQueryParams,
+      state.chartTypeOverride,
+      state.smoothingOption,
+    ],
+  );
+
   // URL sync rule: write committed user selections immediately, but keep
   // in-progress editor drafts local until they become serializable committed
   // state. This mirrors table metric columns: empty columns and incomplete
@@ -590,6 +617,7 @@ export default function useExploreControlledChartConfiguratorCoreUrlSync({
     annotationOptions,
     sourceUrlState,
     setMetric,
+    setMetricWithGranularity,
     setComputedMetric,
     setChartType,
     setGranularity,
