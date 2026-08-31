@@ -15,7 +15,7 @@ import {
 } from '@generated/flags/contentLicensing';
 import Flex from '@modules/miscellaneous/components/Flex';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import useIpSnackbar from '../../../hooks/useIpSnackbar';
+import { useNeutralIpSnackbar } from '../../../hooks/useIpSnackbar';
 import { useIpFamilyQuery } from '../../../ipFamilies/hooks/ipFamily';
 import { ContentTile, ContentType } from '../../components/ContentTile';
 import { KeyValuePair, KeyValuePairContainer } from '../../components/KeyValuePair';
@@ -97,7 +97,7 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
   const { locale } = useLocalization();
   const resolvedLocale = locale ?? Locale.English;
   const { isFetched } = useSettings();
-  const { enqueueWithDefaults } = useIpSnackbar();
+  const enqueueNeutralSnackbar = useNeutralIpSnackbar();
   const { logEvent } = useLicenseManagerLogger();
   const panelStartedAtRef = useRef<number | null>(null);
 
@@ -189,17 +189,8 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
       LicenseManagerClickEvent.ExperiencePreviewCopyImageLinkClickEvent,
       { ...analyticsContext, source: 'sidebar' },
     );
-    enqueueWithDefaults({
-      anchorOrigin: { vertical: 'bottom', horizontal: 'center' },
-      children: (
-        <div
-          role='alert'
-          className='[background-color:#fff] [color:#1b1b1f] radius-medium padding-y-medium padding-x-large text-body-medium text-align-x-center [box-shadow:0px_6px_16px_rgba(0,0,0,0.24)]'>
-          {translate('Label.LinkCopied')}
-        </div>
-      ),
-    });
-  }, [analyticsContext, enqueueWithDefaults, logEvent, translate]);
+    enqueueNeutralSnackbar(translate('Label.LinkCopied'));
+  }, [analyticsContext, enqueueNeutralSnackbar, logEvent, translate]);
 
   const matchScreenshotsGalleryHrefForShare =
     candidate.id != null

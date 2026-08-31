@@ -6,7 +6,7 @@ import { useTranslation } from '@rbx/intl';
 import { Button, CircularProgress, Skeleton, Typography } from '@rbx/ui';
 import type { UniverseResponse } from '@modules/clients/develop';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
-import useIpSnackbar from '../../../hooks/useIpSnackbar';
+import { useNeutralIpSnackbar } from '../../../hooks/useIpSnackbar';
 import { EXTERNAL_EXPERIENCE_HREF } from '../../urls';
 import {
   LicenseManagerClickEvent,
@@ -39,9 +39,6 @@ const EMPTY_STATE_TEXT_CLASS = 'flex flex-col items-center text-align-x-center g
 const EMPTY_STATE_ICON_CLASS = 'content-emphasis width-[80px] height-[80px]';
 const LOADING_STATE_CLASS = 'grow flex justify-center items-center min-height-[480px]';
 
-const NEUTRAL_TOAST_CLASS =
-  '[background-color:#fff] [color:#1b1b1f] radius-medium padding-y-medium padding-x-large text-body-medium text-align-x-center [box-shadow:0px_6px_16px_rgba(0,0,0,0.24)]';
-
 interface GalleryCell {
   key: string;
   src: string;
@@ -61,7 +58,7 @@ interface GalleryTabContentProps {
  */
 const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidate, universe }) => {
   const { translate } = useTranslation();
-  const { enqueueWithDefaults } = useIpSnackbar();
+  const enqueueNeutralSnackbar = useNeutralIpSnackbar();
   const { logEvent } = useLicenseManagerLogger();
   const analyticsContext = useMemo(
     () => getExperiencePreviewAnalyticsContext(candidate),
@@ -233,24 +230,10 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
     return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
   }, []);
 
-  const showNeutralToast = useCallback(
-    (message: string) => {
-      enqueueWithDefaults({
-        anchorOrigin: { vertical: 'bottom', horizontal: 'center' },
-        children: (
-          <div role='alert' className={NEUTRAL_TOAST_CLASS}>
-            {message}
-          </div>
-        ),
-      });
-    },
-    [enqueueWithDefaults],
-  );
-
   const screenshotUnavailableLabel = translate('Label.ScreenshotNoLongerAvailable');
   const notifyScreenshotUnavailable = useCallback(
-    () => showNeutralToast(screenshotUnavailableLabel),
-    [showNeutralToast, screenshotUnavailableLabel],
+    () => enqueueNeutralSnackbar(screenshotUnavailableLabel),
+    [enqueueNeutralSnackbar, screenshotUnavailableLabel],
   );
 
   const linkCopiedLabel = translate('Label.LinkCopied');
@@ -260,8 +243,8 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
       LicenseManagerClickEvent.ExperiencePreviewCopyImageLinkClickEvent,
       analyticsContext,
     );
-    showNeutralToast(linkCopiedLabel);
-  }, [logEvent, analyticsContext, showNeutralToast, linkCopiedLabel]);
+    enqueueNeutralSnackbar(linkCopiedLabel);
+  }, [logEvent, analyticsContext, enqueueNeutralSnackbar, linkCopiedLabel]);
 
   // An unresolvable `?inspect=<assetId>` (once data has settled) can't be shown: surface a popup and
   // drop the param so a refresh stays on the gallery. Only side effects here (toast + URL change, no

@@ -3,7 +3,7 @@ import React, { useCallback, useState } from 'react';
 import type { AgreementCandidateType } from '@rbx/client-content-licensing-api/v1';
 import { useTranslation } from '@rbx/intl';
 import { Typography, Button, CircularProgress, Radio, RadioGroup, FormControlLabel } from '@rbx/ui';
-import useIpSnackbar from '../../../hooks/useIpSnackbar';
+import useIpSnackbar, { useNeutralIpSnackbar } from '../../../hooks/useIpSnackbar';
 import {
   LicenseManagerClickEvent,
   LicenseManagerImpressionEvent,
@@ -36,7 +36,8 @@ const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> =
 }) => {
   const { translate } = useTranslation();
   const { logEvent } = useLicenseManagerLogger();
-  const { enqueueWithDefaults, enqueueErrorSnackbar } = useIpSnackbar();
+  const { enqueueErrorSnackbar } = useIpSnackbar();
+  const enqueueNeutralSnackbar = useNeutralIpSnackbar();
   const ignoreMatchMutation = useIgnoreAgreementCandidateMutation();
   const [selectedIgnoreReason, setSelectedIgnoreReason] = useState<IgnoreReason | null>(null);
 
@@ -68,17 +69,8 @@ const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> =
   }, [candidateType, logEvent, onClose]);
 
   const notifyMatchIgnored = useCallback(() => {
-    enqueueWithDefaults({
-      anchorOrigin: { vertical: 'bottom', horizontal: 'center' },
-      children: (
-        <div
-          role='alert'
-          className='[background-color:#fff] [color:#1b1b1f] radius-medium padding-y-medium padding-x-large text-body-medium text-align-x-center [box-shadow:0px_6px_16px_rgba(0,0,0,0.24)]'>
-          {translate('Label.MatchSuccessfullyIgnored')}
-        </div>
-      ),
-    });
-  }, [enqueueWithDefaults, translate]);
+    enqueueNeutralSnackbar(translate('Label.MatchSuccessfullyIgnored'));
+  }, [enqueueNeutralSnackbar, translate]);
 
   const handleConfirmIgnore = useCallback(() => {
     if (candidateId == null || selectedIgnoreReason == null) {
