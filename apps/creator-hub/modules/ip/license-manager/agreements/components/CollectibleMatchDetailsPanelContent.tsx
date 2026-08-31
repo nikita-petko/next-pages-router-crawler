@@ -351,7 +351,7 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
     : translate('Label.NoDescriptionAvailable');
   const limitedLabel = tPendingTranslation(
     'Limited',
-    'Label indicating whether an avatar marketplace item has a limited supply.',
+    'Label indicating that an avatar marketplace item has a limited supply.',
     translationKey('Label.Limited', TranslationNamespace.AgreementsManager),
   );
   const resellAllowedLabel = tPendingTranslation(

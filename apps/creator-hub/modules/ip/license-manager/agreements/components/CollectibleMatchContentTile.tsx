@@ -56,7 +56,7 @@ const CollectibleMatchContentTile: FunctionComponent<CollectibleMatchContentTile
         presentation.creatorDisplayName
           ? tPendingTranslation(
               'By {creatorName}',
-              'Creator attribution shown below a Collectible match name',
+              'Creator attribution shown below a collectible item name.',
               translationKey('Description.ByCreator', TranslationNamespace.AgreementsManager),
               { creatorName: presentation.creatorDisplayName },
             )

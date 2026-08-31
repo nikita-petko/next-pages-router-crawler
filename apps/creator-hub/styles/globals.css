@@ -1356,6 +1356,9 @@
 .bottom-\[8px\] {
   bottom: 8px;
 }
+.bottom-\[var\(--size-50\)\] {
+  bottom: var(--size-50);
+}
 .left-\[0\] {
   left: 0;
 }
@@ -1367,6 +1370,9 @@
 }
 .left-\[var\(--size-250\)\] {
   left: var(--size-250);
+}
+.left-\[var\(--size-50\)\] {
+  left: var(--size-50);
 }
 .right-\[0\] {
   right: 0;
@@ -2115,6 +2121,9 @@
 .height-\[180px\] {
   height: 180px;
 }
+.height-\[18px\] {
+  height: 18px;
+}
 .height-\[1em\] {
   height: 1em;
 }
@@ -2693,6 +2702,9 @@
 .width-\[120px\] {
   width: 120px;
 }
+.width-\[123px\] {
+  width: 123px;
+}
 .width-\[124px\] {
   width: 124px;
 }
@@ -2716,6 +2728,9 @@
 }
 .width-\[176px\] {
   width: 176px;
+}
+.width-\[180px\] {
+  width: 180px;
 }
 .width-\[190px\] {
   width: 190px;
@@ -4259,6 +4274,21 @@
 }
 .\[background-image\:linear-gradient\(var\(--color-shift-200\)\2c var\(--color-shift-200\)\)\] {
   background-image: linear-gradient(var(--color-shift-200),var(--color-shift-200));
+}
+.\[background-image\:url\(\/assets\/limiteds\/itemlabel_10182018\.svg\)\] {
+  background-image: url(/assets/limiteds/itemlabel_10182018.svg);
+}
+.\[background-position\:0_-126px\] {
+  background-position: 0 -126px;
+}
+.\[background-position\:0_-54px\] {
+  background-position: 0 -54px;
+}
+.\[background-repeat\:no-repeat\] {
+  background-repeat: no-repeat;
+}
+.\[background-size\:123px_450px\] {
+  background-size: 123px 450px;
 }
 .\[background\:none\] {
   background: none;
