@@ -10,6 +10,8 @@ export type CreatorPitchAttachment = {
   operationId?: string;
   assetId?: number;
   errorType?: CreatorPitchAttachmentErrorType;
+  /** Pre-resolved image URL, used when the asset is only reachable through an access context. */
+  imageUrl?: string;
 };
 
 export type CreatorPitchAttachmentsOnChange = (

@@ -57,27 +57,41 @@ export const mapAssetToCreatorPitchAttachment = (
 interface UseGetCreatorPitchImageAttachmentsParams {
   agreementId: string;
   enabled?: boolean;
+  isIpHolderView?: boolean;
 }
 
 export const useGetCreatorPitchImageAttachments = ({
   agreementId,
   enabled = true,
+  isIpHolderView = false,
 }: UseGetCreatorPitchImageAttachmentsParams) => {
   const { account } = useCurrentAccountContext();
   const accountId = account?.id;
 
   return useQuery({
-    queryKey: GET_CREATOR_PITCH_IMAGE_ATTACHMENTS_QUERY_KEY(accountId, agreementId),
+    queryKey: GET_CREATOR_PITCH_IMAGE_ATTACHMENTS_QUERY_KEY(accountId, agreementId, isIpHolderView),
     queryFn: async (): Promise<CreatorPitchAttachment[]> => {
       if (!accountId) {
         throw new Error('Missing account ID');
       }
+      if (!agreementId) {
+        throw new Error('Missing agreement ID');
+      }
 
-      const pitchImages = await contentLicensingClient.getCreatorPitchImages(
-        accountId,
-        agreementId,
-      );
+      const pitchImages = await (isIpHolderView
+        ? contentLicensingClient.getIphPitchImages(accountId, agreementId)
+        : contentLicensingClient.getCreatorPitchImages(accountId, agreementId));
       const assetIds = pitchImages.assetIds ?? [];
+
+      if (isIpHolderView) {
+        // TODO - PR-16927 - anagarajan: Resolve IPH pitch images with the access context.
+        return assetIds.map((assetId) => ({
+          id: String(assetId),
+          fileName: String(assetId),
+          status: CreatorPitchAttachmentStatus.Ready,
+          assetId,
+        }));
+      }
 
       return Promise.all(
         assetIds.map(async (assetId) => {

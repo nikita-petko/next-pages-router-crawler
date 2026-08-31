@@ -53,7 +53,7 @@ const IphViewOfCreatorIntent: FunctionComponent<IphViewOfCreatorIntentProps> = (
         ) : null}
       </div>
 
-      <CreatorPitch agreement={agreement} />
+      <CreatorPitch agreement={agreement} isIpHolderView />
     </>
   );
 };

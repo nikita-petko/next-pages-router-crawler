@@ -60,6 +60,18 @@ const CreatorPitchAttachmentPreview: FunctionComponent<CreatorPitchAttachmentPre
     );
   }
 
+  if (attachment.status === CreatorPitchAttachmentStatus.Ready && attachment.imageUrl != null) {
+    return (
+      <div className='relative width-[190px] aspect-16-9 radius-xsmall clip shrink-0 bg-surface-200'>
+        <img
+          src={attachment.imageUrl}
+          alt={previewAlt}
+          className='absolute inset-[0] width-full height-full [object-fit:cover] block radius-xsmall'
+        />
+      </div>
+    );
+  }
+
   if (attachment.status === CreatorPitchAttachmentStatus.Ready && attachment.assetId != null) {
     return (
       // Parent owns size/aspect-ratio. Thumbnail2d's default paddingTop hack is bypassed via

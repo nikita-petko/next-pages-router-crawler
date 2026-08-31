@@ -189,6 +189,19 @@ export class ContentLicensingApiClient {
   }
 
   /**
+   * Gets pitch image asset IDs for an agreement from the Rights holder (IPH) view.
+   */
+  async getIphPitchImages(
+    accountId: string,
+    agreementId: string,
+  ): Promise<AgreementWorkflowImagesResponse> {
+    return this.agreementsApi.agreementsGetPitchImagesByAgreement({
+      accountId,
+      agreementId: agreementId.trim(),
+    });
+  }
+
+  /**
    * Gets pitch image asset IDs for a creator agreement.
    */
   async getCreatorPitchImages(

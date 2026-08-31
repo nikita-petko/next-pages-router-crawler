@@ -11,9 +11,14 @@ import { useGetCreatorPitchImageAttachments } from '../creatorAgreements/hooks/u
 
 type CreatorPitchProps = {
   agreement: HydratedAgreementWithHydratedTargetsResponse;
+  /** Reads pitch images through the Rights holder routes instead of the creator's own routes. */
+  isIpHolderView?: boolean;
 };
 
-const CreatorPitch: FunctionComponent<CreatorPitchProps> = ({ agreement }) => {
+const CreatorPitch: FunctionComponent<CreatorPitchProps> = ({
+  agreement,
+  isIpHolderView = false,
+}) => {
   const { translate } = useTranslationWithNamespace(TranslationNamespace.Licenses);
   const agreementId = agreement.id ?? '';
   const {
@@ -23,6 +28,7 @@ const CreatorPitch: FunctionComponent<CreatorPitchProps> = ({ agreement }) => {
   } = useGetCreatorPitchImageAttachments({
     agreementId,
     enabled: agreementId !== '',
+    isIpHolderView,
   });
   const pitchText =
     getAgreementActivityByTransition(agreement.activityLog, AgreementTransition.Apply)?.notes ?? '';
