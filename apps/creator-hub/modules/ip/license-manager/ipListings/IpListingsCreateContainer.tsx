@@ -2,8 +2,10 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import {
   DauBucket,
+  LicenseType,
   LicenseVisibility,
   ResellingPermission,
+  UniverseContentMaturity,
 } from '@rbx/client-content-licensing-api/v1';
 import { withTranslation, useTranslation } from '@rbx/intl';
 import { Button, Grid, Step, StepLabel, Stepper, Typography } from '@rbx/ui';
@@ -97,11 +99,15 @@ const IpListingsCreateContainer = () => {
       });
 
       if (licenseFormData && createdListing.id) {
+        const isMarketplaceSaleLicense =
+          licenseFormData.licenseType === LicenseType.MarketplaceSale;
         await addLicenseMutation.mutateAsync({
           listingId: createdListing.id,
           royaltyRate: licenseFormData.revenueShare,
-          maxAgeRating: licenseFormData.maxMaturityRating,
-          dau7DayThreshold: licenseFormData.minimumDAU,
+          maxAgeRating: isMarketplaceSaleLicense
+            ? UniverseContentMaturity.None
+            : licenseFormData.maxMaturityRating,
+          dau7DayThreshold: isMarketplaceSaleLicense ? DauBucket.None : licenseFormData.minimumDAU,
           name: licenseFormData.name,
           description: licenseFormData.description,
           visibility: licenseFormData.visibility ?? LicenseVisibility.Private,
@@ -113,14 +119,16 @@ const IpListingsCreateContainer = () => {
           ),
           creatorDau7DayThreshold: DauBucket.None,
           countries: [],
+          licenseType: licenseFormData.licenseType ?? undefined,
           licenseTerms:
-            licenseFormData.resellPreference == null
+            !isMarketplaceSaleLicense || licenseFormData.resellPreference == null
               ? undefined
               : {
                   reselling:
                     licenseFormData.resellPreference === RESELL_PREFERENCE.Yes
                       ? ResellingPermission.Allowed
                       : ResellingPermission.Disallowed,
+                  minimumCreatorEarningsBucket: licenseFormData.minimumCreatorEarningsBucket,
                 },
         });
       }
@@ -263,6 +271,7 @@ const IpListingsCreateContainer = () => {
 
 export default withTranslation(IpListingsCreateContainer, [
   TranslationNamespace.Navigation,
+  TranslationNamespace.Licenses,
   TranslationNamespace.AgreementsManager,
   TranslationNamespace.Controls,
 ]);

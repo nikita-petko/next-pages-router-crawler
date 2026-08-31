@@ -1,10 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useForm, Controller, useFormState, useWatch } from 'react-hook-form';
 import type {
+  CreatorEarningsBucket,
   UniverseContentMaturity,
   ContentStandardsQuestionAnswer,
 } from '@rbx/client-content-licensing-api/v1';
 import {
+  CreatorEarningsBucket as CreatorEarningsBucketValue,
   LicenseType,
   LicenseVisibility,
   LicenseDurationType,
@@ -97,6 +99,7 @@ export interface LicenseFormData {
   licenseType?: LicenseType | null;
   licenseCategory?: LicenseCategory;
   resellPreference?: ResellPreference;
+  minimumCreatorEarningsBucket?: CreatorEarningsBucket;
 }
 
 const LICENSE_CATEGORY = {
@@ -502,6 +505,34 @@ const LicenseForm = ({
   const isTimeLimitedLicense = durationType === LicenseDurationType.TimeLimited;
   const isCollaborationLicense =
     isLicenseCreationEnabled && licenseCategory === LICENSE_CATEGORY.Collab;
+  const shouldShowExperienceEligibility =
+    !isLicenseCreationEnabled ||
+    licenseType === LicenseType.FullExperience ||
+    licenseType === LicenseType.CollaborationInExperienceSale;
+  // TODO - MUS-2702 - aquach - Allow pre-agreement edits once the update API supports licenseTerms.
+  const shouldShowCreatorEligibility =
+    isLicenseCreationEnabled &&
+    licenseType === LicenseType.MarketplaceSale &&
+    mode.type === 'create';
+  const licenseTypeRevenueShareTimingDescription = (() => {
+    if (!isLicenseCreationEnabled) {
+      return null;
+    }
+    if (licenseType === LicenseType.CollaborationInExperienceSale) {
+      return translate('Description.CollaborationRevenueShareTiming');
+    }
+    if (licenseType === LicenseType.MarketplaceSale) {
+      return tPendingTranslation(
+        'Avatar marketplace licenses will only monetize when the avatar item associated with the license has been sold either through Avatar Marketplace or in games that contain a marketplace.',
+        'Explanatory text shown in the revenue share timing section when the rights holder has selected their license type to be Marketplace sales license aka Avatar marketplace sales license.',
+        translationKey(
+          'Description.MarketplaceSalesRevenueShareTiming',
+          TranslationNamespace.AgreementsManager,
+        ),
+      );
+    }
+    return null;
+  })();
   const shouldEnforceRevShareOnActivation = shouldRevShareOnActivation({
     durationType,
     licenseType: licenseType ?? undefined,
@@ -675,6 +706,8 @@ const LicenseForm = ({
                       }
                       setValue('resellPreference', undefined);
                       clearErrors('resellPreference');
+                      setValue('minimumCreatorEarningsBucket', undefined);
+                      clearErrors('minimumCreatorEarningsBucket');
                       if (
                         mode.type === 'create' &&
                         selectedCategory === LICENSE_CATEGORY.FullGame
@@ -743,6 +776,8 @@ const LicenseForm = ({
                           if (event.target.value !== LicenseType.MarketplaceSale) {
                             setValue('resellPreference', undefined);
                             clearErrors('resellPreference');
+                            setValue('minimumCreatorEarningsBucket', undefined);
+                            clearErrors('minimumCreatorEarningsBucket');
                           }
                           if (mode.type === 'create') {
                             logEvent(
@@ -1024,7 +1059,10 @@ const LicenseForm = ({
             {translate('Heading.Monetization')}
           </Typography>
           <Typography variant='h6' component='h3' gutterBottom>
-            {translate('Label.RevenueShareRate')}
+            {translateWithNamespace(
+              TranslationNamespace.AgreementsManager,
+              'Label.RevenueShareRate',
+            )}
           </Typography>
           <Typography color='secondary' component='p' className={classes.semanticGapLargerBottom}>
             {translate('Description.RevenueShareEditable')}
@@ -1078,12 +1116,12 @@ const LicenseForm = ({
                 {translate('Description.TimelimitedRevenueShareTiming')}
               </Typography>
             )}
-            {isCollaborationLicense && (
+            {licenseTypeRevenueShareTimingDescription != null && (
               <Typography
                 color='secondary'
                 component='p'
                 className={classes.semanticGapLargerBottom}>
-                {translate('Description.CollaborationRevenueShareTiming')}
+                {licenseTypeRevenueShareTimingDescription}
               </Typography>
             )}
             <FormControl fullWidth>
@@ -1116,83 +1154,165 @@ const LicenseForm = ({
             </FormControl>
           </Grid>
         )}
-        <Grid item>
-          <Typography variant='h5' component='h2' gutterBottom>
-            {translate('Heading.ExperienceEligibility')}
-          </Typography>
-          <Typography color='secondary' component='p' className={classes.semanticGapLargerBottom}>
-            {translateHTML('Description.ExperienceEligibilityWithContentMaturityLink', [
-              {
-                opening: 'ContentMaturityLinkStart',
-                closing: 'ContentMaturityLinkEnd',
-                content(chunks) {
-                  return (
-                    <Link
-                      href={CONTENT_MATURITY_LABELS_HREF}
-                      target='_blank'
-                      style={{ textDecoration: 'none' }}>
-                      {chunks}
-                    </Link>
-                  );
+        {shouldShowExperienceEligibility && (
+          <Grid item>
+            <Typography variant='h5' component='h2' gutterBottom>
+              {translate('Heading.ExperienceEligibility')}
+            </Typography>
+            <Typography color='secondary' component='p' className={classes.semanticGapLargerBottom}>
+              {translateHTML('Description.ExperienceEligibilityWithContentMaturityLink', [
+                {
+                  opening: 'ContentMaturityLinkStart',
+                  closing: 'ContentMaturityLinkEnd',
+                  content(chunks) {
+                    return (
+                      <Link
+                        href={CONTENT_MATURITY_LABELS_HREF}
+                        target='_blank'
+                        style={{ textDecoration: 'none' }}>
+                        {chunks}
+                      </Link>
+                    );
+                  },
                 },
-              },
-            ])}
-          </Typography>
-          <FormControl fullWidth className={classes.semanticGapLargerBottom}>
-            <Controller
-              name='minimumDAU'
-              control={control}
-              render={({ field, fieldState: { error } }) => (
-                <Select
-                  {...field}
-                  disabled={areAgreementLockedFieldsDisabled}
-                  id='minimum-dau-select'
-                  error={!!error}
-                  helperText={
-                    error?.message ??
-                    (isMinimumDAUFocused ? translate('Description.MinimumDAU') : '')
-                  }
-                  label={translate('Label.MinimumAverageL7DAU')}
-                  onFocus={() => setIsMinimumDAUFocused(true)}
-                  onBlur={() => setIsMinimumDAUFocused(false)}>
-                  <MenuItem value={MinimumDAU.NoRequirement}>
-                    {translate('Label.NoRequirement')}
-                  </MenuItem>
-                  <MenuItem value={MinimumDAU.Small}>{translate('Label.DauLow')}</MenuItem>
-                  <MenuItem value={MinimumDAU.Large}>{translate('Label.DauHigh')}</MenuItem>
-                </Select>
-              )}
-              rules={{ required: translate('Label.FieldIsRequired') }}
-            />
-          </FormControl>
-          <FormControl fullWidth>
-            <Controller
-              name='maxMaturityRating'
-              control={control}
-              render={({ field, fieldState: { error } }) => (
-                <Select
-                  {...field}
-                  disabled={areAgreementLockedFieldsDisabled}
-                  id='maturity-rating-select'
-                  error={!!error}
-                  helperText={
-                    error?.message ??
-                    (isMaxMaturityRatingFocused ? translate('Description.MaxMaturityRating') : '')
-                  }
-                  label={translate('Label.MaxMaturityRating')}
-                  onFocus={() => setIsMaxMaturityRatingFocused(true)}
-                  onBlur={() => setIsMaxMaturityRatingFocused(false)}>
-                  {maturityRatingOptions.map((item) => (
-                    <MenuItem key={item.value} value={item.value}>
-                      {translate(item.label)}
+              ])}
+            </Typography>
+            <FormControl fullWidth className={classes.semanticGapLargerBottom}>
+              <Controller
+                name='minimumDAU'
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <Select
+                    {...field}
+                    disabled={areAgreementLockedFieldsDisabled}
+                    id='minimum-dau-select'
+                    error={!!error}
+                    helperText={
+                      error?.message ??
+                      (isMinimumDAUFocused ? translate('Description.MinimumDAU') : '')
+                    }
+                    label={translate('Label.MinimumAverageL7DAU')}
+                    onFocus={() => setIsMinimumDAUFocused(true)}
+                    onBlur={() => setIsMinimumDAUFocused(false)}>
+                    <MenuItem value={MinimumDAU.NoRequirement}>
+                      {translate('Label.NoRequirement')}
                     </MenuItem>
-                  ))}
-                </Select>
+                    <MenuItem value={MinimumDAU.Small}>{translate('Label.DauLow')}</MenuItem>
+                    <MenuItem value={MinimumDAU.Large}>{translate('Label.DauHigh')}</MenuItem>
+                  </Select>
+                )}
+                rules={{ required: translate('Label.FieldIsRequired') }}
+              />
+            </FormControl>
+            <FormControl fullWidth>
+              <Controller
+                name='maxMaturityRating'
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <Select
+                    {...field}
+                    disabled={areAgreementLockedFieldsDisabled}
+                    id='maturity-rating-select'
+                    error={!!error}
+                    helperText={
+                      error?.message ??
+                      (isMaxMaturityRatingFocused ? translate('Description.MaxMaturityRating') : '')
+                    }
+                    label={translate('Label.MaxMaturityRating')}
+                    onFocus={() => setIsMaxMaturityRatingFocused(true)}
+                    onBlur={() => setIsMaxMaturityRatingFocused(false)}>
+                    {maturityRatingOptions.map((item) => (
+                      <MenuItem key={item.value} value={item.value}>
+                        {translate(item.label)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                )}
+                rules={{ required: translate('Label.FieldIsRequired') }}
+              />
+            </FormControl>
+          </Grid>
+        )}
+        {shouldShowCreatorEligibility && (
+          <Grid item>
+            <Typography variant='h5' component='h2' gutterBottom>
+              {tPendingTranslation(
+                'Creator eligibility',
+                'Heading for the section where a rights holder sets creator eligibility criteria.',
+                translationKey(
+                  'Heading.CreatorEligibility',
+                  TranslationNamespace.AgreementsManager,
+                ),
               )}
-              rules={{ required: translate('Label.FieldIsRequired') }}
-            />
-          </FormControl>
-        </Grid>
+            </Typography>
+            <Typography color='secondary' component='p' className={classes.semanticGapLargerBottom}>
+              {tPendingTranslation(
+                'Set the criteria creators must meet to use this license.',
+                'Description for the creator eligibility section.',
+                translationKey(
+                  'Description.CreatorEligibility',
+                  TranslationNamespace.AgreementsManager,
+                ),
+              )}
+            </Typography>
+            <FormControl fullWidth>
+              <Controller
+                name='minimumCreatorEarningsBucket'
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <Select
+                    {...field}
+                    id='minimum-creator-earnings-select'
+                    error={!!error}
+                    helperText={error?.message}
+                    label={tPendingTranslation(
+                      'Select minimum 90 day earnings',
+                      'Label for selecting the minimum creator earnings over the last 90 days.',
+                      translationKey(
+                        'Label.SelectMinimum90DayEarnings',
+                        TranslationNamespace.AgreementsManager,
+                      ),
+                    )}>
+                    <MenuItem value={CreatorEarningsBucketValue.NotApplicable}>
+                      {translate('Label.NoRequirement')}
+                    </MenuItem>
+                    <MenuItem value={CreatorEarningsBucketValue.Small}>
+                      {tPendingTranslation(
+                        'Greater than 1,000 Robux',
+                        'Greater than 1,000 Robux',
+                        translationKey(
+                          'Label.CreatorEarningsSmallRange',
+                          TranslationNamespace.Licenses,
+                        ),
+                      )}
+                    </MenuItem>
+                    <MenuItem value={CreatorEarningsBucketValue.Medium}>
+                      {tPendingTranslation(
+                        'Greater than 10,000 Robux',
+                        'Greater than 10,000 Robux',
+                        translationKey(
+                          'Label.CreatorEarningsMediumRange',
+                          TranslationNamespace.Licenses,
+                        ),
+                      )}
+                    </MenuItem>
+                    <MenuItem value={CreatorEarningsBucketValue.Large}>
+                      {tPendingTranslation(
+                        'Greater than 100,000 Robux',
+                        'Greater than 100,000 Robux',
+                        translationKey(
+                          'Label.CreatorEarningsLargeRange',
+                          TranslationNamespace.Licenses,
+                        ),
+                      )}
+                    </MenuItem>
+                  </Select>
+                )}
+                rules={{ required: translate('Label.FieldIsRequired') }}
+              />
+            </FormControl>
+          </Grid>
+        )}
         <Grid item>
           <Typography variant='h5' component='h2' gutterBottom>
             {translate('Heading.GuidelinesRestrictions')}

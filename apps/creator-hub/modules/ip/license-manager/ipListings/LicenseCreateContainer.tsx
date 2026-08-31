@@ -160,12 +160,15 @@ const LicenseCreateContainer = () => {
     const licenseType = isLicenseCreationEnabled
       ? (data.licenseType ?? undefined)
       : LicenseType.FullExperience;
+    const isMarketplaceSaleLicense = licenseType === LicenseType.MarketplaceSale;
 
     addLicenseMutation.mutate({
       listingId: ipListingId,
       royaltyRate: data.revenueShare,
-      maxAgeRating: data.maxMaturityRating,
-      dau7DayThreshold: data.minimumDAU,
+      maxAgeRating: isMarketplaceSaleLicense
+        ? UniverseContentMaturity.None
+        : data.maxMaturityRating,
+      dau7DayThreshold: isMarketplaceSaleLicense ? DauBucket.None : data.minimumDAU,
       name: data.name,
       description: data.description,
       visibility: data.visibility ?? LicenseVisibility.Private,
@@ -193,13 +196,14 @@ const LicenseCreateContainer = () => {
       ),
       licenseType,
       licenseTerms:
-        data.resellPreference == null
+        !isMarketplaceSaleLicense || data.resellPreference == null
           ? undefined
           : {
               reselling:
                 data.resellPreference === RESELL_PREFERENCE.Yes
                   ? ResellingPermission.Allowed
                   : ResellingPermission.Disallowed,
+              minimumCreatorEarningsBucket: data.minimumCreatorEarningsBucket,
             },
     });
   };
@@ -239,6 +243,7 @@ const LicenseCreateContainer = () => {
 
 export default withTranslation(LicenseCreateContainer, [
   TranslationNamespace.Navigation,
+  TranslationNamespace.Licenses,
   TranslationNamespace.AgreementsManager,
   TranslationNamespace.Controls,
 ]);

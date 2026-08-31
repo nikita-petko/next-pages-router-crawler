@@ -85,6 +85,7 @@ function mapLicenseResponseToFormDefaults(
       license.licenseDuration?.timeBounds?.minMax?.maxDays,
     ),
     licenseType,
+    minimumCreatorEarningsBucket: license.licenseTerms?.minimumCreatorEarningsBucket,
   };
 }
 

@@ -4,6 +4,7 @@ import {
   DauBucket,
   LicenseDurationType,
   LicenseModerationStatus,
+  LicenseType,
   LicenseVisibility,
   UniverseContentMaturity,
 } from '@rbx/client-content-licensing-api/v1';
@@ -100,6 +101,7 @@ const LicenseEditContainer = ({ licenseId }: Props) => {
 
   const license = licenseReq.data;
   const hasAgreements = agreementsReq.data.agreements && agreementsReq.data.agreements.length > 0;
+  const isMarketplaceSaleLicense = license.licenseType === LicenseType.MarketplaceSale;
 
   const hasPendingEdits = !!license.hasPendingEdits;
   const isLicensePending = license.moderationStatus === LicenseModerationStatus.Pending;
@@ -158,8 +160,12 @@ const LicenseEditContainer = ({ licenseId }: Props) => {
                 {
                   licenseId,
                   royaltyRate: license.royaltyRate ?? 0,
-                  maxAgeRating: license.maxAgeRating ?? UniverseContentMaturity.None,
-                  dau7DayThreshold: license.dau7DayThreshold ?? DauBucket.None,
+                  maxAgeRating: isMarketplaceSaleLicense
+                    ? UniverseContentMaturity.None
+                    : (license.maxAgeRating ?? UniverseContentMaturity.None),
+                  dau7DayThreshold: isMarketplaceSaleLicense
+                    ? DauBucket.None
+                    : (license.dau7DayThreshold ?? DauBucket.None),
                   name: data.name,
                   description: data.description,
                   visibility: data.visibility ?? LicenseVisibility.Private,
@@ -180,8 +186,10 @@ const LicenseEditContainer = ({ licenseId }: Props) => {
                   creatorDau7DayThreshold: license.creatorDau7DayThreshold ?? DauBucket.None,
                   ...(!hasAgreements && {
                     royaltyRate: data.revenueShare,
-                    maxAgeRating: data.maxMaturityRating,
-                    dau7DayThreshold: data.minimumDAU,
+                    ...(!isMarketplaceSaleLicense && {
+                      maxAgeRating: data.maxMaturityRating,
+                      dau7DayThreshold: data.minimumDAU,
+                    }),
                   }),
                   ...(data.contentStandardsFile && {
                     contentStandardsDocument: data.contentStandardsFile,
@@ -201,8 +209,7 @@ const LicenseEditContainer = ({ licenseId }: Props) => {
                         data.maxDuration ?? license.licenseDuration?.timeBounds?.minMax?.maxDays,
                     },
                   ),
-                  // TODO - ASSE-56 - aquach - Consume LicenseType and append to API request when backend is ready
-                  // licenseType: isLicenseCreationEnabled ? data.licenseType : license.licenseType,
+                  // TODO - MUS-2702 - aquach - Send minimumCreatorEarningsBucket in licenseTerms once the update API supports it.
                 },
                 {
                   onSuccess: () => {
