@@ -4,7 +4,7 @@ import { Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
 
 const OverflowingTabIndex = 0;
 const NativeFocusableTags: ReadonlySet<string> = new Set(['a']);
-const TruncatedTitleClassName = 'text-truncate-end min-width-0 max-width-full';
+const TruncatedTitleClassName = 'text-no-wrap text-truncate-end min-width-0 max-width-full';
 const FocusableTruncatedTitleClassName = `${TruncatedTitleClassName} focus-visible:outline-focus`;
 
 type OverflowTitleCommonProps = {
