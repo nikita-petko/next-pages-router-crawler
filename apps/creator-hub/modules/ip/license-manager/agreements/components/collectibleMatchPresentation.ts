@@ -34,7 +34,9 @@ export const getCollectibleMatchPresentation = (
   const { catalogItem, collectible } = details;
   const creatorName = collectible.creatorName ?? catalogItem?.creatorName ?? '';
   const creatorType =
-    normalizeCreatorType(catalogItem?.creatorType) ?? normalizeCreatorType(candidateCreatorType);
+    normalizeCreatorType(catalogItem?.creatorType) ??
+    normalizeCreatorType(collectible.creatorType ?? undefined) ??
+    normalizeCreatorType(candidateCreatorType);
   const isBundle =
     collectible.itemTargetType === ItemTargetType.NUMBER_2 ||
     (collectible.itemTargetType == null && catalogItem?.itemType === 2);

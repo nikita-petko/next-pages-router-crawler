@@ -35,6 +35,7 @@ import {
   useLicenseManagerLogger,
   useLicenseManagerLoggerLogOnce,
 } from '../utils/logger';
+import CollectibleMatchDetailsContainer from './CollectibleMatchDetailsContainer';
 import GalleryTabContent from './components/GalleryTabContent';
 import IgnoreMatchPanelContent from './components/IgnoreMatchPanelContent';
 import {
@@ -74,7 +75,7 @@ interface IphMatchDetailsContainerProps {
  * Experience preview page for a single match (agreement candidate): breadcrumb, header (title,
  * creator, view experience, status, offer/view-agreement CTA), and empty Details/Gallery tabs.
  */
-const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps> = ({
+const UniverseMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps> = ({
   agreementCandidateId,
 }) => {
   const { translate } = useTranslation();
@@ -482,6 +483,27 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
       </MatchesSidePanel>
     </>
   );
+};
+
+const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps> = (props) => {
+  const candidateQuery = useGetAgreementCandidateByIdQuery({
+    agreementCandidateId: props.agreementCandidateId,
+  });
+
+  if (candidateQuery.isPending) {
+    return <PageLoading />;
+  }
+
+  if (candidateQuery.data?.candidateType === AgreementCandidateType.Collectible) {
+    return (
+      <CollectibleMatchDetailsContainer
+        agreementCandidateId={props.agreementCandidateId}
+        candidate={candidateQuery.data}
+      />
+    );
+  }
+
+  return <UniverseMatchDetailsContainer {...props} />;
 };
 
 export default withTranslation(IphMatchDetailsContainer, [

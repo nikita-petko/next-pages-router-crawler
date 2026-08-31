@@ -23,7 +23,7 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import Flex from '@modules/miscellaneous/components/Flex';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { KeyValuePair, KeyValuePairContainer } from '../../components/KeyValuePair';
-import { IPH_AGREEMENT_DETAILS_HREF } from '../../urls';
+import { IPH_AGREEMENT_CANDIDATE_DETAILS_HREF, IPH_AGREEMENT_DETAILS_HREF } from '../../urls';
 import {
   LicenseManagerClickEvent,
   LicenseManagerImpressionEvent,
@@ -323,21 +323,24 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
   const footerButtons = (
     <>
       {primaryCta}
-      <Button
-        variant='contained'
-        color='secondary'
-        size='large'
-        className='fill [white-space:nowrap] text-align-x-center'
-        onClick={() => {
-          logEvent(LicenseManagerClickEvent.MatchDetailsPanelViewDetailsClickEvent, {
-            ...analyticsContext,
-            agreementCandidateId: candidate.id ?? '',
-            destination: 'unavailable',
-          });
-          // TODO(MUS-2665): Navigate to the Collectible full-page match details experience.
-        }}>
-        {translate('Action.ViewDetails')}
-      </Button>
+      {candidate.id && (
+        <Button
+          variant='contained'
+          color='secondary'
+          size='large'
+          className='fill [white-space:nowrap] text-align-x-center'
+          component={Link}
+          href={`${IPH_AGREEMENT_CANDIDATE_DETAILS_HREF(candidate.id)}?ref=sidebar`}
+          onClick={() => {
+            logEvent(LicenseManagerClickEvent.MatchDetailsPanelViewDetailsClickEvent, {
+              ...analyticsContext,
+              agreementCandidateId: candidate.id ?? '',
+              destination: 'fullPage',
+            });
+          }}>
+          {translate('Action.ViewDetails')}
+        </Button>
+      )}
       {showIgnoreButton && (
         <Button variant='contained' color='secondary' size='large' onClick={handleIgnoreClick}>
           {translate('Action.Ignore')}

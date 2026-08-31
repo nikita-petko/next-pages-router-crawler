@@ -31,6 +31,7 @@ interface CollectibleMatchOfferPanelContentProps {
   onSuccess: (agreement: AgreementResponse) => void;
   onClose: () => void;
   onPanelStateChange?: (state: 'loading' | 'ready' | 'error') => void;
+  source?: 'sidebar' | 'detailsView';
 }
 
 const COLLECTIBLE_MATCH_OFFER_CONFIGURATION: MatchOfferPanelConfiguration = {
@@ -43,7 +44,7 @@ const COLLECTIBLE_MATCH_OFFER_CONFIGURATION: MatchOfferPanelConfiguration = {
 
 const CollectibleMatchOfferPanelContent: FunctionComponent<
   CollectibleMatchOfferPanelContentProps
-> = ({ candidate, onSuccess, onClose, onPanelStateChange }) => {
+> = ({ candidate, onSuccess, onClose, onPanelStateChange, source = 'sidebar' }) => {
   const translation = useTranslation();
   const { tPendingTranslation, tPendingHtmlTranslation } = useTranslationWrapper(translation);
   const { translate: translateControls } = useTranslationWithNamespace(
@@ -78,7 +79,7 @@ const CollectibleMatchOfferPanelContent: FunctionComponent<
   );
   const analyticsContext = useMemo(
     () => ({
-      source: 'sidebar',
+      source,
       itemType: presentation?.isBundle ? 'Bundle' : presentation ? 'Asset' : 'Unknown',
       isLimited: presentation?.isLimited ?? false,
       isResellAllowed: presentation?.isResellAllowed ?? false,
@@ -86,7 +87,7 @@ const CollectibleMatchOfferPanelContent: FunctionComponent<
       hasPrice: presentation?.price != null,
       hasSubtype: Boolean(details?.subtype),
     }),
-    [details?.subtype, presentation],
+    [details?.subtype, presentation, source],
   );
   const limitedLabel = tPendingTranslation(
     'Limited',
