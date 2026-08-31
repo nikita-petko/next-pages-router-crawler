@@ -40,8 +40,8 @@ import useDebouncedContentMaturity, {
   NO_CONTENT_MATURITY_FOUND_FOR_ID,
 } from '../hooks/experienceGuidelines';
 import { NO_GAME_FOUND_FOR_ID, useDebouncedGameDetails } from '../hooks/games';
+import { useAssetImageUrlsQuery } from '../hooks/useAssetImageUrlsQuery';
 import { useGetPlacefileImagesQuery } from '../hooks/useGetPlacefileImagesQuery';
-import { usePlacefileImageUrlsQuery } from '../hooks/usePlacefileImageUrlsQuery';
 import { BUTTON_SPINNER_SIZE } from '../utils/constants';
 import {
   getExperiencePreviewAnalyticsContext,
@@ -228,17 +228,17 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
     enabled: showPlacefileScreenshots,
   });
   const placefileAssetIds = placefileImagesQuery.data ?? [];
-  const placefileImageUrlsQuery = usePlacefileImageUrlsQuery(placefileAssetIds);
+  const imageUrlsQuery = useAssetImageUrlsQuery(placefileAssetIds);
   const resolvedScreenshotUrls = placefileAssetIds
-    .map((assetId) => placefileImageUrlsQuery.data?.get(assetId))
+    .map((assetId) => imageUrlsQuery.data?.get(assetId))
     .filter((imageUrl): imageUrl is string => Boolean(imageUrl));
   const screenshotItems = placefileAssetIds
     .map((assetId) => {
-      const imageUrl = placefileImageUrlsQuery.data?.get(assetId);
+      const imageUrl = imageUrlsQuery.data?.get(assetId);
       return imageUrl ? { assetId, imageUrl } : null;
     })
     .filter((entry): entry is { assetId: number; imageUrl: string } => entry !== null);
-  const isScreenshotsLoading = placefileAssetIds.length > 0 && placefileImageUrlsQuery.isLoading;
+  const isScreenshotsLoading = placefileAssetIds.length > 0 && imageUrlsQuery.isLoading;
   const skeletonCount = Math.min(placefileAssetIds.length, MAX_SCREENSHOTS);
 
   const agreementId = candidate.agreementId ?? undefined;

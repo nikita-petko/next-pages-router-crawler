@@ -14,8 +14,8 @@ import {
   useLicenseManagerLogger,
 } from '../../utils/logger';
 import MatchDetailsTabs from '../enums/MatchDetailsTabs';
+import { useAssetImageUrlsQuery } from '../hooks/useAssetImageUrlsQuery';
 import { useGetPlacefileImagesQuery } from '../hooks/useGetPlacefileImagesQuery';
-import { usePlacefileImageUrlsQuery } from '../hooks/usePlacefileImageUrlsQuery';
 import {
   getExperiencePreviewAnalyticsContext,
   logExperiencePreviewEvent,
@@ -79,14 +79,13 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
     enabled: true,
   });
   const placefileAssetIds = placefileImagesQuery.data ?? [];
-  const placefileImageUrlsQuery = usePlacefileImageUrlsQuery(placefileAssetIds);
+  const imageUrlsQuery = useAssetImageUrlsQuery(placefileAssetIds);
 
   // Show a spinner until we know the actual resolvable screenshot URLs. The detected asset-id count
   // can over-count (moderated assets don't resolve to a URL), so we can't render an accurate grid
   // until resolution finishes. Once resolved, each tile shows its own skeleton until the image loads.
   const isLoading =
-    placefileImagesQuery.isLoading ||
-    (placefileAssetIds.length > 0 && placefileImageUrlsQuery.isLoading);
+    placefileImagesQuery.isLoading || (placefileAssetIds.length > 0 && imageUrlsQuery.isLoading);
 
   // Resolve detected asset ids to loadable URLs (moderated assets won't resolve and are dropped),
   // preserving asset-id order. Each cell keeps its (stable) asset id so a screenshot can be referenced
@@ -94,12 +93,12 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
   // Keyed on the stable query-data references so the grid only recomputes when the data changes.
   const cells = useMemo<GalleryCell[]>(() => {
     const assetIds = placefileImagesQuery.data ?? [];
-    const urlsByAssetId = placefileImageUrlsQuery.data;
+    const urlsByAssetId = imageUrlsQuery.data;
     return assetIds
       .map((assetId) => ({ assetId, src: urlsByAssetId?.get(assetId) }))
       .filter((entry): entry is { assetId: number; src: string } => Boolean(entry.src))
       .map(({ assetId, src }, index) => ({ key: `real-${index}`, assetId, src }));
-  }, [placefileImagesQuery.data, placefileImageUrlsQuery.data]);
+  }, [placefileImagesQuery.data, imageUrlsQuery.data]);
   const totalCount = cells.length;
 
   // Selected cell keys stored in the order clicked (not sorted) so a downstream inspector view can
