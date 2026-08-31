@@ -6038,6 +6038,9 @@ html.studio-webview.dark-theme,
   .large\:justify-between {
     justify-content: space-between;
   }
+  .large\:items-end {
+    align-items: flex-end;
+  }
   .large\:gap-\[64px\] {
     gap: 64px;
   }
@@ -6065,6 +6068,9 @@ html.studio-webview.dark-theme,
   .large\:text-title-large {
     font: var(--typography-title-large-font);
     letter-spacing: var(--typography-title-large-letter-spacing);
+  }
+  .large\:\[grid-template-columns\:repeat\(2\2c minmax\(0\2c 1fr\)\)\] {
+    grid-template-columns: repeat(2,minmax(0,1fr));
   }
 }
 

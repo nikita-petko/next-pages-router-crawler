@@ -34,9 +34,10 @@ type ClientSessionMetadataProps = {
 };
 
 const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ universeId, sessionId }) => {
-  const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+  const { translate, tPendingTranslation } = useTranslationWrapper(useTranslation());
   const { data, isError, isLoading } = useClientSessionMetadata({ universeId, sessionId });
   const raqiTranslationDependencies = useRAQIV2TranslationDependencies();
+  const closeLabel = translate(translationKey('Action.Close', TranslationNamespace.Controls));
 
   const viewDetailsLabel = tPendingTranslation(
     'View details',
@@ -192,7 +193,11 @@ const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ universeId, ses
   const entries = buildEntries(data);
 
   return (
-    <TriggerSheet buttonLabel={viewDetailsLabel} title={drawerTitle} isLoading={isLoading}>
+    <TriggerSheet
+      buttonLabel={viewDetailsLabel}
+      closeLabel={closeLabel}
+      title={drawerTitle}
+      isLoading={isLoading}>
       <div className='flex flex-col gap-large padding-large'>
         {entries.map(({ label, value }, index) => (
           <Fragment key={label}>
@@ -210,5 +215,6 @@ const ClientSessionMetadata: FC<ClientSessionMetadataProps> = ({ universeId, ses
 
 export default withNamespaceSwitchedTranslation(ClientSessionMetadata, [
   TranslationNamespace.Analytics,
+  TranslationNamespace.Controls,
   TranslationNamespace.ServerManagement,
 ]);

@@ -13,6 +13,7 @@ import { oneDecimalFormattingSpec } from '@modules/charts-generic/constants/anal
 import type {
   UniversePlaySession,
   UniverseSessionOperatingSystem,
+  UniverseSessionPlace,
   UniverseSessionPlatform,
 } from '@modules/clients/analytics/universeSessionMetadataApi';
 import { getSingleDimensionBreakdownLabel } from '@modules/experience-analytics-shared/adapters/genericRAQIV2ChartAdapter';
@@ -161,6 +162,32 @@ export const formatClientSessionPlaceName = (
     },
     translationDependencies,
   ).name;
+
+/** Explore-style Place chip/option: `Name (id)` when a name is known, otherwise the id. */
+export const formatClientSessionPlaceWithId = (
+  placeId: string,
+  placeName: string | null,
+  translationDependencies: RAQIV2TranslationDependencies,
+): FormattedText =>
+  getSingleDimensionBreakdownLabel(
+    {
+      dimension: RAQIV2Dimension.Place,
+      value: placeId,
+      displayValue: placeName ?? undefined,
+    },
+    translationDependencies,
+  ).name;
+
+export const formatClientSessionPlaceOption = (
+  placeId: string,
+  placesById: ReadonlyMap<string, Pick<UniverseSessionPlace, 'placeName'>>,
+  translationDependencies: RAQIV2TranslationDependencies,
+): FormattedText =>
+  formatClientSessionPlaceWithId(
+    placeId,
+    placesById.get(placeId)?.placeName ?? null,
+    translationDependencies,
+  );
 
 export const formatClientSessionPlaceVersion = (
   placeVersion: number | null,

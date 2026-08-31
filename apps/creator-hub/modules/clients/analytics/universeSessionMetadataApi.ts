@@ -1,4 +1,6 @@
 import type {
+  GetSessionPlacesWithVersionsResponse as RawUniverseSessionPlacesResponse,
+  Place as RawUniverseSessionPlace,
   PlaySession as RawUniversePlaySession,
   PlaySessionQueryPlaySessionsRequest as PlaySessionQueryOptions,
   PlaySessionQueryResponse as RawUniversePlaySessionQueryResponse,
@@ -6,6 +8,7 @@ import type {
 import {
   ExitReason as UniverseSessionExitReason,
   OperatingSystem as UniverseSessionOperatingSystem,
+  PlaceApi,
   Platform as UniverseSessionPlatform,
   PlaySessionApi,
 } from '@rbx/client-universe-session-metadata-service/v1';
@@ -49,12 +52,23 @@ export type UniversePlaySession = Omit<
   readonly clientUsedMemoryTime: Date | null;
 };
 
+/** Place + played versions for session-browser filter options, from PlaceApi. */
+export type UniverseSessionPlace = {
+  readonly placeId: string;
+  readonly placeName: string | null;
+  readonly versions: readonly number[];
+};
+
 export type UniverseSessionMetadataApiClient = {
   readonly getPlaySessions: (
     universeId: number,
     filterOptions: PlaySessionQueryOptions,
     signal?: AbortSignal,
   ) => Promise<readonly UniversePlaySession[]>;
+  readonly getSessionPlacesWithVersions: (
+    universeId: number,
+    signal?: AbortSignal,
+  ) => Promise<readonly UniverseSessionPlace[]>;
 };
 
 const parseEnum = <TEnum extends string>(
@@ -119,6 +133,33 @@ export const parseUniversePlaySession = (
   };
 };
 
+export const parseUniverseSessionPlace = (
+  raw: RawUniverseSessionPlace,
+): UniverseSessionPlace | null => {
+  if (raw.placeId == null || raw.placeId.trim() === '') {
+    return null;
+  }
+
+  return {
+    placeId: raw.placeId,
+    placeName: raw.placeName == null || raw.placeName === '' ? null : raw.placeName,
+    versions: (raw.versions ?? []).filter((version) => Number.isFinite(version)),
+  };
+};
+
+export const parseUniverseSessionPlacesWithVersionsResponse = (
+  raw: RawUniverseSessionPlacesResponse,
+): readonly UniverseSessionPlace[] => {
+  const places = raw.places ?? [];
+  if (!Array.isArray(places)) {
+    throw new TypeError('Session places response has a malformed places field.');
+  }
+
+  return places
+    .map((place) => parseUniverseSessionPlace(place))
+    .filter((place): place is UniverseSessionPlace => place !== null);
+};
+
 export const parseUniversePlaySessionQueryResponse = (
   raw: RawUniversePlaySessionQueryResponse,
 ): readonly UniversePlaySession[] => {
@@ -135,6 +176,7 @@ export const parseUniversePlaySessionQueryResponse = (
 
 const configuration = createClientConfiguration('universe-session-metadata-service', 'bedev2');
 const playSessionApi = new PlaySessionApi(configuration);
+const placeApi = new PlaceApi(configuration);
 
 const getPlaySessions = async (
   universeId: number,
@@ -151,8 +193,17 @@ const getPlaySessions = async (
   return parseUniversePlaySessionQueryResponse(rawResponse);
 };
 
+const getSessionPlacesWithVersions = async (
+  universeId: number,
+  signal?: AbortSignal,
+): Promise<readonly UniverseSessionPlace[]> => {
+  const rawResponse = await placeApi.placeGetSessionPlacesWithVersions({ universeId }, { signal });
+  return parseUniverseSessionPlacesWithVersionsResponse(rawResponse);
+};
+
 const universeSessionMetadataClient: UniverseSessionMetadataApiClient = {
   getPlaySessions,
+  getSessionPlacesWithVersions,
 };
 
 export default universeSessionMetadataClient;
