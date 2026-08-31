@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import React, { useRef, useMemo, useState } from 'react';
 import { useTranslation } from '@rbx/intl';
 import {
@@ -28,6 +28,8 @@ export interface EntryListProps<TEntry extends BaseEntryBriefInfo> {
   activeEntryKey: string | null;
   onSelect: (activeEntryKey: string) => void;
   getPrimaryText: (entry: TEntry) => string;
+  // Optional leading content rendered before the primary text (e.g. an image thumbnail avatar).
+  renderItemStart?: (entry: TEntry) => ReactNode;
   // A value the caller derives from its sort/filter selection. When it changes, the list
   // resets to page 1. Keyed off the selection rather than `entries` identity so unrelated
   // re-renders (row selection, background data refreshes) don't snap back to page 1.
@@ -40,6 +42,7 @@ const EntryList = <TEntry extends BaseEntryBriefInfo>({
   activeEntryKey,
   onSelect,
   getPrimaryText,
+  renderItemStart,
   resetPageKey,
 }: EntryListProps<TEntry>): ReactElement => {
   const { translateWithNamespace } = useTranslation();
@@ -86,6 +89,7 @@ const EntryList = <TEntry extends BaseEntryBriefInfo>({
               id={entry.identifier}
               selected={entry.identifier === activeEntryKey}
               onClick={() => onSelect(entry.identifier)}>
+              {renderItemStart?.(entry)}
               <ListItemText>
                 <Typography className={isUpdating ? shimmerText : text} variant='largeLabel2'>
                   {getPrimaryText(entry)}

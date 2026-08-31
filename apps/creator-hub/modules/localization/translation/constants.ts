@@ -14,6 +14,7 @@ export const localizationTranslationPath =
 export const translationTabMap = {
   [TranslationFeatureOptions.GameInfo]: 'info',
   [TranslationFeatureOptions.GameStrings]: 'strings',
+  [TranslationFeatureOptions.GameImages]: 'images',
   [TranslationFeatureOptions.GameProducts]: 'products',
 };
 

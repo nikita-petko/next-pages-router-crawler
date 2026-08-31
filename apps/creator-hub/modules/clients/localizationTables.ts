@@ -22,6 +22,9 @@ import type {
   V1AutolocalizationGamesGameIdSettingsPatchRequest,
   V1AutolocalizationGamesGameIdAutolocalizationtablePostRequest,
   RobloxLocalizationTablesApiGameAutolocalizationInformationResponse,
+  V1LocalizationTableTablesTableIdAssetEntriesGetRequest,
+  RobloxLocalizationTablesApiGetTableAssetEntriesPagedResponse,
+  RobloxLocalizationTablesApiAssetEntry,
 } from '@rbx/client-localizationtables/v1';
 import {
   LocalizationTableApi,
@@ -37,6 +40,7 @@ export { RobloxLocalizationTablesApiCursorEntryIdentifierSortOrderEnum as Transl
 
 type ModifyEntryRequest = V1LocalizationTableTablesTableIdPatchRequest;
 type TranslationEntryRequest = V1LocalizationTableTablesTableIdEntriesGetRequest;
+type AssetTranslationEntryRequest = V1LocalizationTableTablesTableIdAssetEntriesGetRequest;
 type TranslationHistoryRequest =
   V1LocalizationTableTablesTableIdEntriesTranslationHistoryPostRequest;
 type GetTableEntryCountRequest = V1LocalizationTableTablesTableIdEntryCountGetRequest;
@@ -50,6 +54,10 @@ export type autoLocalizationTableRequest =
 export type autoLocalizationTableResponse =
   RobloxLocalizationTablesApiGameAutolocalizationInformationResponse;
 export type TranslationEntryResponse = RobloxLocalizationTablesApiGetTableEntriesPagedResponse;
+export type AssetTranslationEntryResponse =
+  RobloxLocalizationTablesApiGetTableAssetEntriesPagedResponse;
+export type AssetEntry = RobloxLocalizationTablesApiAssetEntry;
+export type AssetTranslationEntryTable = RobloxLocalizationTablesApiAssetEntry[];
 export type EntryTranslation = RobloxLocalizationTablesApiPatchTranslation;
 export type GameLocation = RobloxInGameContentTablesClientGameLocation;
 export type EntryIdentifier = RobloxLocalizationTablesApiEntryIdentifier;
@@ -87,6 +95,12 @@ export class LocalizationTableClient {
 
   async getTranslationEntries(request: TranslationEntryRequest): Promise<TranslationEntryResponse> {
     return this.localizationTableApi.v1LocalizationTableTablesTableIdEntriesGet(request);
+  }
+
+  async getAssetTranslationEntries(
+    request: AssetTranslationEntryRequest,
+  ): Promise<AssetTranslationEntryResponse> {
+    return this.localizationTableApi.v1LocalizationTableTablesTableIdAssetEntriesGet(request);
   }
 
   async getTranslationHistory(

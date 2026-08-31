@@ -36,6 +36,7 @@ enum TranslationNamespace {
   GameTranslation = 'CreatorDashboard.GameTranslation',
   GameInfoTranslation = 'CreatorDashboard.GameInfoTranslation',
   GameStringTranslation = 'CreatorDashboard.GameStringTranslation',
+  GameImageTranslation = 'CreatorDashboard.GameImageTranslation',
   GameProductTranslation = 'CreatorDashboard.GameProductTranslation',
   ConfigureItem = 'CreatorDashboard.ConfigureItem',
   OpenCloud = 'CreatorDashboard.OpenCloud',

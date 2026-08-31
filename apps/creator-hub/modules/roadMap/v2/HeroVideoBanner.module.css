@@ -9,6 +9,7 @@
 }
 
 .heroContainer {
+  container-type: inline-size;
   position: relative;
   width: 100%;
   height: 560px;
@@ -75,6 +76,12 @@
   font-size: 14px;
   line-height: 140%;
   text-align: center;
+}
+
+@container (max-width: 1400px) {
+  .heroHeading:global(.text-display-large) {
+    font-size: 64px;
+  }
 }
 
 @media (max-width: 990px) {

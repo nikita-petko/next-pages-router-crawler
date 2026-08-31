@@ -2,7 +2,7 @@ import { useMemo, type FC } from 'react';
 import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
 import { OwnerType } from '@rbx/client-commerce-api/v1';
-import { CreatorTierEnum } from '@rbx/client-core-content-api/v1';
+import { AllowlistTypeEnum, CreatorTierEnum } from '@rbx/client-core-content-api/v1';
 import { TransactionVariantEnum } from '@rbx/client-core-content-transaction-api/v1';
 import { StatusCodes } from '@rbx/core';
 import { useTranslation, withTranslation } from '@rbx/intl';
@@ -57,6 +57,10 @@ const AudienceReachPage: FC = () => {
   const { data: expeditedTransactionStatus, isLoading: isTransactionsLoading } =
     useCoreContentTransactionStatus(universeId, TransactionVariantEnum.Expedited);
   const expeditedIsPaid = expeditedTransactionStatus?.hasDeposit ?? false;
+  const isAllowlistedExempt =
+    state !== null &&
+    (Boolean(state.activeAllowlists?.includes(AllowlistTypeEnum.UniverseBypass)) ||
+      Boolean(state.activeAllowlists?.includes(AllowlistTypeEnum.TemporaryExpeditedFeeBypass)));
 
   // Banner that displays your review status whenever the user has reached select eligibility
   const confirmationBanner = useMemo(() => {
@@ -157,7 +161,7 @@ const AudienceReachPage: FC = () => {
           lastUpdated={state.indicatorLastUpdated}
           barColor={state.thresholdBarColor}
           daysRemaining={state.thresholdDaysRemaining}
-          isExempt={expeditedIsPaid}
+          isExempt={expeditedIsPaid || isAllowlistedExempt}
           thresholdTrigger={state.thresholdTrigger}
           thresholdReset={state.thresholdReset}
         />
