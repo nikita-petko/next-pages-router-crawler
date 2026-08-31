@@ -49,7 +49,7 @@ const ChartOverflowMenu: FC<ChartOverflowMenuProps> = ({ action, actions }) => {
     <>
       <IconButton
         variant='Standard'
-        size='Medium'
+        size='Small'
         icon='icon-filled-three-dots-vertical'
         ariaLabel={action.label ?? moreOptionsLabel}
         aria-controls={open ? action.id : undefined}
