@@ -1,9 +1,9 @@
 import type { UrlObject } from 'node:url';
 import React, { useCallback } from 'react';
 import Link from 'next/link';
-import Router from 'next/router';
 import type { TTreeItemProps, TTypographyProps } from '@rbx/ui';
 import { makeStyles, TreeItem, treeItemClasses, Typography } from '@rbx/ui';
+import isModifiedClick from '../utils/isModifiedClick';
 import withNavAdornmentSize from '../utils/withNavAdornmentSize';
 import {
   navTreeContentWithTrailingClass,
@@ -29,6 +29,12 @@ const useStyles = makeStyles()(() => {
       alignSelf: 'stretch',
       padding: '8px 4px 8px 0',
       boxSizing: 'border-box',
+      position: 'static' as const,
+      '&::after': {
+        content: '""',
+        position: 'absolute' as const,
+        inset: 0,
+      },
     },
     // Parent rows: right inset is on the chevron, not the link.
     linkWithExpandIcon: {
@@ -127,6 +133,12 @@ const useStyles = makeStyles()(() => {
   };
 });
 
+const stopModifiedClickPropagation = (e: React.MouseEvent) => {
+  if (isModifiedClick(e.nativeEvent)) {
+    e.stopPropagation();
+  }
+};
+
 type TNavigationTreeItemProps = {
   variant?: TTypographyProps['variant'];
   href?: UrlObject | string;
@@ -178,29 +190,20 @@ const NavigationTreeItem: React.FunctionComponent<TNavigationTreeItemProps> = ({
   const isSelectionDisabled = disableSelection ?? href == null;
   const hasExpandIcon = React.Children.count(children) > 0;
 
-  // Match primary RailItem: the whole hover row is the control. Navigate on any
-  // click except the expand chevron (same preventDefault + delayed Router.push).
+  // Fire the consumer's onClick for side-effects (analytics, optimistic state)
+  // but let the <Link> handle navigation natively — preserving cmd-click, etc.
+  // Chevron clicks only expand/collapse and must not reach the consumer's onClick.
+  // Modified clicks (cmd, shift, alt) skip the consumer callback so optimistic
+  // state doesn't stick when navigation opens in a different tab/window.
   const handleClick = useCallback(
     (event: React.MouseEvent<HTMLLIElement>) => {
-      onClick?.(event);
-      if (!href || event.defaultPrevented) {
-        return;
-      }
       const target = event.target instanceof Element ? event.target : null;
       if (hasExpandIcon && target?.closest(`.${treeItemClasses.iconContainer}`)) {
         return;
       }
-      event.preventDefault();
-      setTimeout(() => {
-        const isAbsoluteUrl = typeof href === 'string' && href.startsWith('http');
-        if (isAbsoluteUrl) {
-          window.open(href, '_self');
-        } else {
-          void Router.push(href);
-        }
-      }, 100);
+      onClick?.(event);
     },
-    [hasExpandIcon, href, onClick],
+    [hasExpandIcon, onClick],
   );
 
   let treeItemLabel = (
@@ -224,7 +227,10 @@ const NavigationTreeItem: React.FunctionComponent<TNavigationTreeItemProps> = ({
   );
   if (href) {
     treeItemLabel = (
-      <Link className={cx(link, hasExpandIcon ? linkWithExpandIcon : undefined)} href={href}>
+      <Link
+        className={cx(link, hasExpandIcon ? linkWithExpandIcon : undefined)}
+        href={href}
+        onClick={stopModifiedClickPropagation}>
         {treeItemLabel}
       </Link>
     );

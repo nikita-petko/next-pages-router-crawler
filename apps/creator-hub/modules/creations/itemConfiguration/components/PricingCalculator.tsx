@@ -1,16 +1,13 @@
 import type { FunctionComponent } from 'react';
 import React, { useEffect, useState } from 'react';
-import type {
-  RobloxItemConfigurationApiModelsResponseCategory,
-  RobloxItemConfigurationApiModelsResponseGetPriceFloorVariablesResponseAssetTypesEnum,
-  RobloxItemConfigurationApiModelsResponseGetPriceFloorVariablesResponseBundleTypesEnum,
-} from '@rbx/client-itemconfiguration/v1';
 import {
   RobloxItemConfigurationApiModelsResponseBundleBundleInfoBundleTypeEnum,
   V1ItemsPriceFloorGetCollectibleItemTypeEnum,
   V1ItemsPriceFloorGetCreationTypeEnum,
   V1PermissionsActionAllowedForItemTypeGetActionEnum,
   V1PermissionsActionAllowedForItemTypeGetAssetTypeEnum,
+  V1PermissionsItemTypesGetActionEnum,
+  V1PermissionsItemTypesGetTargetTypesEnum,
 } from '@rbx/client-itemconfiguration/v1';
 import { HubMeta, buildTitle } from '@rbx/creator-hub-history';
 import { useTranslation, withTranslation } from '@rbx/intl';
@@ -25,19 +22,20 @@ import {
   Select,
   Typography,
 } from '@rbx/ui';
-import itemConfigurationClient from '@modules/clients/itemconfiguration';
+import itemConfigurationClient, {
+  CategoryDomain,
+  type CategoryNode,
+} from '@modules/clients/itemconfiguration';
 import { Asset } from '@modules/miscellaneous/common';
 import { EmptyGrid } from '@modules/miscellaneous/components';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import { translateBundleType } from '../../avatarItem/utils/loadAvatarItemsUtils';
 import {
   getTaxonomyDisplayName,
   itemTypeStringToLabelKey,
   translateAssetType,
-  translateAssetTypeToAsset,
   translateBundleInfoTypeToBundleType,
 } from '../../unifiedFeeSystem/helper/UnifiedFeeSystemHelper';
 import usePricingCalculatorStyles from './PricingCalculator.styles';
@@ -66,29 +64,70 @@ enum LoadingStatus {
   SUCCESS = 2,
 }
 
-const assetTypeEnumToString = (
-  assetType: RobloxItemConfigurationApiModelsResponseGetPriceFloorVariablesResponseAssetTypesEnum,
-): string | undefined => {
-  return translateAssetTypeToAsset(assetType);
+type PricingCalculatorCategory = {
+  id: string;
+  name: string;
 };
 
-const bundleTypeEnumToString = (
-  bundleType: RobloxItemConfigurationApiModelsResponseGetPriceFloorVariablesResponseBundleTypesEnum,
-): string => {
-  return translateBundleType(bundleType);
-};
+function flattenPublishableCategories(nodes: CategoryNode[]): PricingCalculatorCategory[] {
+  const result: PricingCalculatorCategory[] = [];
 
-const fetchPriceFloorVariables = async () => {
-  const response = await itemConfigurationClient.getPriceFloorVariables();
+  nodes.forEach((node) => {
+    if (node.id && node.name && node.isPublishable === true) {
+      result.push({ id: node.id, name: node.name });
+    }
+    if (node.children?.length) {
+      result.push(...flattenPublishableCategories(node.children));
+    }
+  });
 
-  const assetTypeLabels = (response.assetTypes ?? [])
-    .map(assetTypeEnumToString)
-    .filter((label): label is Asset => label !== undefined);
-  const bundleTypes = (response.bundleTypes ?? []).map(bundleTypeEnumToString);
+  return result;
+}
 
-  const itemTypes = bundleTypes.concat(assetTypeLabels);
+function parseAllowedItemTypes(
+  allowedAssetTypes: string[] | undefined,
+  allowedBundleTypes: string[] | undefined,
+): string[] {
+  const itemTypes: string[] = [];
 
-  const categories = response.categories ?? [];
+  allowedAssetTypes?.forEach((assetType) => {
+    let parsedAssetType = assetType;
+
+    if (parsedAssetType === 'TshirtAccessory') {
+      parsedAssetType = 'TShirtAccessory';
+    }
+
+    if (isAssetItemType(parsedAssetType)) {
+      itemTypes.push(parsedAssetType);
+    }
+  });
+
+  allowedBundleTypes?.forEach((bundleType) => {
+    if (isBundleInfoBundleType(bundleType)) {
+      itemTypes.push(bundleType);
+    }
+  });
+
+  return itemTypes;
+}
+
+const fetchPricingCalculatorOptions = async () => {
+  const [categoriesResponse, allowedItemTypesResponse] = await Promise.all([
+    itemConfigurationClient.getItemCategories(CategoryDomain.NUMBER_3),
+    itemConfigurationClient.getAllowedAssetTypes(
+      V1PermissionsItemTypesGetActionEnum.NUMBER_3, // IecCreation
+      [
+        V1PermissionsItemTypesGetTargetTypesEnum.NUMBER_0,
+        V1PermissionsItemTypesGetTargetTypesEnum.NUMBER_1,
+      ],
+    ),
+  ]);
+
+  const categories = flattenPublishableCategories(categoriesResponse.categories ?? []);
+  const itemTypes = parseAllowedItemTypes(
+    allowedItemTypesResponse.allowedAssetTypes,
+    allowedItemTypesResponse.allowedBundleTypes,
+  );
 
   return { itemTypes, categories };
 };
@@ -116,9 +155,7 @@ const PricingCalculator: FunctionComponent<React.PropsWithChildren> = () => {
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
 
   const [itemTypes, setItemTypes] = useState<string[]>([]);
-  const [categories, setCategories] = useState<RobloxItemConfigurationApiModelsResponseCategory[]>(
-    [],
-  );
+  const [categories, setCategories] = useState<PricingCalculatorCategory[]>([]);
 
   const itemType =
     typeof queryParams.itemType === 'string' && itemTypes.includes(queryParams.itemType)
@@ -147,9 +184,9 @@ const PricingCalculator: FunctionComponent<React.PropsWithChildren> = () => {
   const categoryIdForPriceFloor = showCategorySelect ? categoryId : undefined;
 
   useEffect(() => {
-    const updatePriceFloorVariables = async () => {
+    const loadPricingCalculatorOptions = async () => {
       try {
-        const response = await fetchPriceFloorVariables();
+        const response = await fetchPricingCalculatorOptions();
         setItemTypes(response.itemTypes);
         setCategories(response.categories);
         setLoadingStatus(LoadingStatus.SUCCESS);
@@ -157,7 +194,7 @@ const PricingCalculator: FunctionComponent<React.PropsWithChildren> = () => {
         setLoadingStatus(LoadingStatus.FAILED);
       }
     };
-    void updatePriceFloorVariables();
+    void loadPricingCalculatorOptions();
   }, []);
 
   useEffect(() => {
@@ -353,10 +390,6 @@ const PricingCalculator: FunctionComponent<React.PropsWithChildren> = () => {
               setQueryParamValues({ category: e.target.value || undefined }, { skipHistory: true })
             }>
             {categories
-              .filter(
-                (cat): cat is RobloxItemConfigurationApiModelsResponseCategory & { name: string } =>
-                  cat.name != null && cat.name !== '',
-              )
               .map((cat) => ({
                 name: cat.name,
                 localizedName: getTaxonomyDisplayName(cat.name, translate),

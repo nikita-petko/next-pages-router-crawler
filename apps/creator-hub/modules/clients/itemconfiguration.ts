@@ -6,11 +6,9 @@ import type {
   V1CollectiblesCollectibleItemIdPatchRequest,
   V1CollectiblesPostRequest,
   V1CollectiblesPublishingFeesGetRequest,
-  V1CollectiblesTargetTypeIdGetRequest,
   V1CreationsGetAssetsGetLimitEnum,
   V1CreationsGetAssetsGetRequest,
   RobloxItemConfigurationApiCollectiblesMetadataResponse,
-  RobloxItemConfigurationApiIsCollectibleItemResponse,
   V1CollectiblesUpdateItemDisplayInformationPatchRequest,
   RobloxItemConfigurationApiModelsRequestUpdateItemDisplayInformationRequest,
   V1CollectiblesCheckItemPublishAccessGetRequest,
@@ -93,7 +91,6 @@ import {
   RobloxItemConfigurationApiModelsRequestPublishCollectibleItemRequestTargetTypeEnum,
   RobloxItemConfigurationApiModelsRequestPublishCollectibleItemRequestPublishingTypeEnum,
   V1CollectiblesPublishingFeesGetTargetTypeEnum,
-  V1CollectiblesTargetTypeIdGetTargetTypeEnum,
   RobloxItemConfigurationApiModelsRequestPublishCollectibleItemRequestResaleRestrictionEnum,
   V1CollectiblesPublishingFeesGetPublishingTypeEnum,
   RobloxItemConfigurationApiModelsRequestUpdateItemDisplayInformationRequestTargetTypeEnum,
@@ -222,19 +219,6 @@ export class ItemConfigurationClient {
 
   getCollectiblesMetadata() {
     return this.collectiblesApi.v1CollectiblesMetadataGet();
-  }
-
-  getCollectibleItemId(
-    targetId: number,
-    isBundle = false,
-  ): Promise<RobloxItemConfigurationApiIsCollectibleItemResponse> {
-    const request: V1CollectiblesTargetTypeIdGetRequest = {
-      targetType: isBundle
-        ? V1CollectiblesTargetTypeIdGetTargetTypeEnum.NUMBER_1
-        : V1CollectiblesTargetTypeIdGetTargetTypeEnum.NUMBER_0,
-      id: targetId,
-    };
-    return this.collectiblesApi.v1CollectiblesTargetTypeIdGet(request);
   }
 
   getCollectibleCommissionRates() {
@@ -492,10 +476,6 @@ export class ItemConfigurationClient {
     };
 
     return this.marketplaceItemApi.v1ItemsUploadFeeGet(request);
-  }
-
-  async getPriceFloorVariables() {
-    return this.marketplaceItemApi.v1ItemsPriceFloorVariablesGet();
   }
 
   async getPriceFloorFromVariables(

@@ -1,6 +1,5 @@
 import type { FunctionComponent } from 'react';
-import React, { useCallback, useEffect, useState } from 'react';
-import Router from 'next/router';
+import React, { useCallback, useState } from 'react';
 import { ChevronRightIcon, collapseClasses, makeStyles, treeItemClasses, TreeView } from '@rbx/ui';
 
 /** Class names shared with NavigationTreeItem for depth + trailing layout. */
@@ -52,17 +51,20 @@ const useNavigationTreeStyles = makeStyles()((theme) => ({
       minHeight: 40,
       height: 'auto',
       padding: 0,
+      gap: 0,
       borderRadius: 8,
       flexDirection: 'row-reverse',
       alignItems: 'center',
       boxSizing: 'border-box',
       cursor: 'pointer',
+      position: 'relative',
       [`& .${treeItemClasses.label}`]: {
         padding: 0,
         flex: 1,
         minWidth: 0,
         alignSelf: 'stretch',
         display: 'flex',
+        position: 'static',
       },
     },
 
@@ -96,6 +98,8 @@ const useNavigationTreeStyles = makeStyles()((theme) => ({
       justifyContent: 'center',
       alignSelf: 'center',
       boxSizing: 'content-box',
+      position: 'relative',
+      zIndex: 1,
       // Kill MUI's default svg fontSize:18 so chevron is a true 24×24, matching
       // the external icon's 24×24 hit box for vertical centering.
       '& .MuiSvgIcon-root': {
@@ -118,18 +122,21 @@ const useNavigationTreeStyles = makeStyles()((theme) => ({
       padding: 0,
     },
 
-    // Expand/collapse-only rows
+    // Expand-only rows (no href) never look selected via focus.
     [`&& .${treeItemClasses.content}.${navTreeExpandOnlyClass}[data-focused]:not([data-selected])`]:
       {
         backgroundColor: 'transparent',
       },
-    // Hover / active page / focused navigable link: bg/shift-200.
+    // Hover / active page / focused link: bg/shift-200.
+    // [data-focused] on navigable items gives immediate click feedback while the
+    // route loads. Modified clicks (cmd/ctrl) stopPropagation at the Link so MUI
+    // never sets [data-focused] — no stuck state.
     [`&& .${treeItemClasses.content}:hover, && .${treeItemClasses.content}.${navTreeExpandOnlyClass}[data-focused]:not([data-selected]):hover, && .${treeItemClasses.content}[data-selected], && .${treeItemClasses.content}[data-selected][data-focused], && .${treeItemClasses.content}[data-focused]:not(.${navTreeExpandOnlyClass})`]:
       {
         backgroundColor: 'var(--color-shift-200)',
       },
-    // Pressed / selected+hover / focused navigable link + hover: bg/shift-300.
-    [`&& .${treeItemClasses.content}:active:hover, && .${treeItemClasses.content}[data-selected]:hover, && .${treeItemClasses.content}[data-selected][data-focused]:hover, && .${treeItemClasses.content}[data-focused]:not(.${navTreeExpandOnlyClass}):hover`]:
+    // Pressed / selected+hover / focused+hover: bg/shift-300.
+    [`&& .${treeItemClasses.content}:active:hover, && .${treeItemClasses.content}.${navTreeExpandOnlyClass}[data-focused]:not([data-selected]):active:hover, && .${treeItemClasses.content}[data-selected]:hover, && .${treeItemClasses.content}[data-selected][data-focused]:hover, && .${treeItemClasses.content}[data-focused]:not(.${navTreeExpandOnlyClass}):hover`]:
       {
         backgroundColor: 'var(--color-shift-300)',
       },
@@ -188,26 +195,6 @@ const NavigationTree: FunctionComponent<React.PropsWithChildren<TNavigationTreeP
   } = useNavigationTreeStyles();
   const [expandedItems, setExpandedItems] = useState(defaultExpanded ?? []);
 
-  const [pendingSelected, setPendingSelected] = useState<string | null>(null);
-  if (pendingSelected != null && selected === pendingSelected) {
-    setPendingSelected(null);
-  }
-  const selectedItems = pendingSelected ?? selected ?? null;
-
-  useEffect(() => {
-    const events = Router.events;
-    if (!events) {
-      return undefined;
-    }
-    const revertPending = () => {
-      setPendingSelected(null);
-    };
-    events.on('routeChangeError', revertPending);
-    return () => {
-      events.off('routeChangeError', revertPending);
-    };
-  }, []);
-
   const onExpandedItemsChange = useCallback(
     (_: React.SyntheticEvent | null, nodeIds: string[]) => {
       if (onExpanded) {
@@ -223,10 +210,6 @@ const NavigationTree: FunctionComponent<React.PropsWithChildren<TNavigationTreeP
 
   const onSelectedItemsChange = useCallback(
     (event: React.SyntheticEvent | null, itemIds: string | null) => {
-      // Latch the click optimistically so the fill moves before the route settles.
-      if (itemIds != null) {
-        setPendingSelected(itemIds);
-      }
       if (onNodeSelect && event && itemIds) {
         onNodeSelect(event, itemIds);
       }
@@ -243,8 +226,7 @@ const NavigationTree: FunctionComponent<React.PropsWithChildren<TNavigationTreeP
       expandedItems={expandedItems}
       onExpandedItemsChange={onExpandedItemsChange}
       defaultSelectedItems={defaultSelected}
-      // Prefer null over '' so "no page selected" isn't an empty-string item id.
-      selectedItems={selectedItems}
+      selectedItems={selected ?? null}
       onSelectedItemsChange={onSelectedItemsChange}>
       {children}
     </TreeView>

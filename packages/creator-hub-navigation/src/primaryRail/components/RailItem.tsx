@@ -1,34 +1,10 @@
 import React, { useCallback } from 'react';
-import Router from 'next/router';
+import Link from 'next/link';
 import { Button, Grow, Tooltip, Typography } from '@rbx/ui';
 import { useRailContext } from '../../layout/providers/RailProvider';
+import isModifiedClick from '../../utils/isModifiedClick';
 import withNavAdornmentSize from '../../utils/withNavAdornmentSize';
 import useRailStyles from './Rail.styles';
-
-const LOCALE_SLUG_REGEXP = /^[a-z]{2}-[a-z]{2}$/i;
-
-/** Navigate like other Creator Hub / docs links (absolute → hard nav; locale home → [locale] route). */
-function navigateHref(href: string): void {
-  if (href.startsWith('http')) {
-    window.open(href, '_self');
-    return;
-  }
-
-  const path = href.split('?')[0] ?? href;
-  const segments = path.split('/').filter(Boolean);
-
-  // Doc-site locale landing (`/en-us` or `/en-us/`) uses pages/[locale], not the catch-all.
-  // Plain Router.push('/en-us/') no-ops there; next/link uses this URL object instead.
-  if (segments.length === 1 && LOCALE_SLUG_REGEXP.test(segments[0])) {
-    void Router.push({
-      pathname: '/[locale]',
-      query: { locale: segments[0].toLowerCase() },
-    });
-    return;
-  }
-
-  void Router.push(href);
-}
 
 type TRailItemProps = {
   icon: React.ReactNode;
@@ -92,16 +68,10 @@ const RailItem = React.forwardRef<HTMLDivElement, TRailItemProps>(function RailI
 
   const onClickWrapper: React.MouseEventHandler<HTMLButtonElement> = useCallback(
     (e) => {
-      e.preventDefault();
-      onClick(e);
-
-      if (!href) {
+      if (href && isModifiedClick(e)) {
         return;
       }
-
-      setTimeout(() => {
-        navigateHref(href);
-      }, 100);
+      onClick(e);
     },
     [href, onClick],
   );
@@ -109,35 +79,36 @@ const RailItem = React.forwardRef<HTMLDivElement, TRailItemProps>(function RailI
   const startIconEl = active && activeIcon ? activeIcon : icon;
   const textVariant = compact && !useIconStyle ? 'captionSmall' : 'largeLabel2';
 
-  const buttonEl = (
-    <Button
-      href={href}
-      onClick={onClickWrapper}
-      variant='text'
-      disableRipple
-      aria-label={ariaLabel ?? (useIconStyle && typeof label === 'string' ? label : undefined)}
-      classes={{
-        root: cx({
-          [railItemIconOnly]: useIconStyle,
-          [railItem]: !useIconStyle,
-          [railItemVertical]: compact && !useIconStyle,
-          [railItemNoHover]: !iconOnlyHover,
-          // Hover: shift-200. Pressed: shift-300. Active page: shift-200; +hover/press: shift-300.
-          'radius-medium hover:bg-shift-200 active:bg-shift-300': iconOnlyHover && !active,
-          'radius-medium bg-shift-200 hover:bg-shift-300 active:bg-shift-300':
-            iconOnlyHover && active,
-        }),
-        startIcon: cx(startIcon, {
-          [startIconCompact]: compact && !useIconStyle,
-          [startIconTransition]: enableAnimation && !useIconStyle,
-          'hover:bg-shift-200 active:bg-shift-300': compact && !useIconStyle && !active,
-          'bg-shift-200 hover:bg-shift-300 active:bg-shift-300': compact && !useIconStyle && active,
-          'hover:content-emphasis': compact && !useIconStyle,
-          'content-emphasis': active && compact && !useIconStyle,
-        }),
-      }}
-      color={active ? 'secondary' : 'primary'}
-      startIcon={startIconEl}>
+  const buttonProps = {
+    onClick: onClickWrapper,
+    variant: 'text',
+    disableRipple: true,
+    'aria-label': ariaLabel ?? (useIconStyle && typeof label === 'string' ? label : undefined),
+    classes: {
+      root: cx({
+        [railItemIconOnly]: useIconStyle,
+        [railItem]: !useIconStyle,
+        [railItemVertical]: compact && !useIconStyle,
+        [railItemNoHover]: !iconOnlyHover,
+        'radius-medium hover:bg-shift-200 active:bg-shift-300': iconOnlyHover && !active,
+        'radius-medium bg-shift-200 hover:bg-shift-300 active:bg-shift-300':
+          iconOnlyHover && active,
+      }),
+      startIcon: cx(startIcon, {
+        [startIconCompact]: compact && !useIconStyle,
+        [startIconTransition]: enableAnimation && !useIconStyle,
+        'hover:bg-shift-200 active:bg-shift-300': compact && !useIconStyle && !active,
+        'bg-shift-200 hover:bg-shift-300 active:bg-shift-300': compact && !useIconStyle && active,
+        'hover:content-emphasis': compact && !useIconStyle,
+        'content-emphasis': active && compact && !useIconStyle,
+      }),
+    },
+    color: active ? 'secondary' : 'primary',
+    startIcon: startIconEl,
+  } as const;
+
+  const buttonContent = (
+    <>
       <Typography
         classes={{
           root: cx(labelClass, {
@@ -154,8 +125,25 @@ const RailItem = React.forwardRef<HTMLDivElement, TRailItemProps>(function RailI
           {withNavAdornmentSize(adornment)}
         </span>
       )}
-    </Button>
+    </>
   );
+
+  let buttonEl: React.ReactElement;
+  if (href != null && href.startsWith('http')) {
+    buttonEl = (
+      <Button {...buttonProps} component='a' href={href}>
+        {buttonContent}
+      </Button>
+    );
+  } else if (href != null) {
+    buttonEl = (
+      <Button {...buttonProps} component={Link} href={href} prefetch={false}>
+        {buttonContent}
+      </Button>
+    );
+  } else {
+    buttonEl = <Button {...buttonProps}>{buttonContent}</Button>;
+  }
 
   return (
     <div
