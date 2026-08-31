@@ -599,7 +599,7 @@ function synthesizeChartTile(
     };
   }
   const chartTypeConfig = chartTileToRenderConfig(tile);
-  if (!chartTypeConfig) {
+  if (!chartTypeConfig || chartTypeConfig.chartType === ChartType.Table) {
     return {
       kind: 'unsupported',
       reason: {

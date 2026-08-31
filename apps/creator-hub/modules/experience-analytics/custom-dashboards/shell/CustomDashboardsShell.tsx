@@ -5,23 +5,23 @@ import wellKnownAnalyticsTranslationNamespaces from '@modules/analytics-translat
 import withNamespaceSwitchedTranslation from '@modules/analytics-translations/withNamespaceSwitchedTranslation';
 import { useAnalyticsExperiencePermissions } from '@modules/experience-analytics-shared/hooks/useAnalyticsPermissions';
 import { TextFilterProvider } from '@modules/experience-analytics-shared/text-filter/TextFilterContext';
-import { PageNotFound } from '@modules/miscellaneous/error';
 import { filterCustomDashboardText } from '../textFilter';
 
-const DEFAULT_DISABLED_FALLBACK = <PageNotFound />;
-
 /**
- * Custom-dashboards page shell: feature-flag gate, service provider, and the
- * change-event → React-Query invalidation bridge. Pages below assume a
- * service is available and that mutations propagate cross-tab.
+ * Custom-dashboards page shell: feature-flag gate and text-filter provider.
+ * Service provider and cross-tab invalidation live in `_app.tsx` (app-wide).
  *
  * The flag query is async; while it's loading, missing flags coerce to
- * `false`, so a naive `if (!flag)` would render the 404 fallback and then
- * mount the full tree once the flag arrives. Chart-editor ↔ edit navigation
- * also remounts this shell, and `useFlag` starts each mount with
+ * `false`. A naive `if (!flag)` would render `fallback` (or an empty body)
+ * and then mount the full tree once the flag arrives. Chart-editor ↔ edit
+ * navigation also remounts this shell, and `useFlag` starts each mount with
  * `ready: false`. Keep the loading slot blank by default (do **not** fall
- * through to `fallback`) until `isFetched` is true so pages don't flash
- * PageNotFound on every sub-route transition.
+ * through to `fallback`) until `isFetched` is true so pages don't flash the
+ * disabled-flag surface on every sub-route transition.
+ *
+ * The default `fallback` is `null` (empty body) so a disabled feature-flag
+ * renders an empty analytics surface. Routes that want a 404 pass their
+ * own `fallback={<PageNotFound />}`.
  */
 type CustomDashboardsShellProps = {
   readonly children: ReactNode;
@@ -33,7 +33,7 @@ type CustomDashboardsShellProps = {
 const CustomDashboardsShell: FC<CustomDashboardsShellProps> = ({
   children,
   universeId,
-  fallback = DEFAULT_DISABLED_FALLBACK,
+  fallback = null,
   loading = null,
 }) => {
   const { ready: isFetched, value: isCustomDashboardsEnabledValue } = useFlag(

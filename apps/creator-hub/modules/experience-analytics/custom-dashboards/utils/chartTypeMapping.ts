@@ -7,7 +7,8 @@ export type ChartTileRenderChartConfig =
       readonly chartType: ChartType.Spline | ChartType.Area | ChartType.Bar | ChartType.Pie;
       readonly stacking?: undefined;
     }
-  | { readonly chartType: ChartType.Column; readonly stacking?: undefined };
+  | { readonly chartType: ChartType.Column; readonly stacking?: undefined }
+  | { readonly chartType: ChartType.Table; readonly stacking?: undefined };
 
 /** Maps a persisted tile to renderer `ChartType` + display options. */
 export function chartTileToRenderConfig(
@@ -22,6 +23,7 @@ export function chartTileToRenderConfig(
     case ChartType.Column:
       return { chartType: ChartType.Column };
     case ChartType.Table:
+      return { chartType: ChartType.Table };
     default:
       return null;
   }
@@ -42,11 +44,12 @@ export function renderChartTypeToTileFields(
       return { chartType: ChartType.Column };
     case ChartType.Pie:
       return { chartType: ChartType.Pie };
+    case ChartType.Table:
+      return { chartType: ChartType.Table };
     case ChartType.DurationArea:
     case ChartType.DurationSpline:
     case ChartType.Map:
     case ChartType.MultipleMetricSpline:
-    case ChartType.Table:
       return null;
   }
   return null;

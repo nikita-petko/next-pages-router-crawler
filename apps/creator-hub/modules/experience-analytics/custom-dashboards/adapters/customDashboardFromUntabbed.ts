@@ -5,9 +5,12 @@ import {
   RAQIV2UIPseudoDimension,
 } from '@rbx/creator-hub-analytics-config';
 import AnalyticsComponentType from '@modules/analytics-configurations/AnalyticsComponentType';
+import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import type { TQueryFilter } from '@modules/clients/analytics/analyticsRAQIShared';
 import { isNumericUIMetric } from '@modules/experience-analytics-shared/constants/AnalyticsMetricDisplayConfig';
 import type { AnalyticsSummaryCardConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedSummaryCardConfig';
+import { isMetricTableColumnConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedTableColumnConfig';
+import type { AnalyticsTableConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedTableConfig';
 import type { ChartConfig } from '@modules/experience-analytics-shared/types/RAQIV2ChartConfig';
 import type { CreatorAnalyticsUntabbedPageConfig } from '@modules/experience-analytics-shared/types/RAQIV2PageConfig';
 import { isRAQIV2SpecialLayoutConfig } from '@modules/experience-analytics-shared/types/RAQIV2SpecialLayoutConfig';
@@ -126,12 +129,18 @@ function getTileFilters(filters: readonly TQueryFilter[]): ChartTileConfig['data
   );
 }
 
-function isSupportedComponent(c: unknown): c is ChartConfig | AnalyticsSummaryCardConfig {
+function isSupportedComponent(
+  c: unknown,
+): c is ChartConfig | AnalyticsSummaryCardConfig | AnalyticsTableConfig {
   if (typeof c !== 'object' || c === null || !('type' in c)) {
     return false;
   }
   const { type } = c;
-  return type === AnalyticsComponentType.Chart || type === AnalyticsComponentType.SummaryCard;
+  return (
+    type === AnalyticsComponentType.Chart ||
+    type === AnalyticsComponentType.SummaryCard ||
+    type === AnalyticsComponentType.Table
+  );
 }
 
 function getFirstBreakdownDimension(
@@ -151,7 +160,7 @@ function getFirstBreakdownDimension(
 
 function flattenBodyComponents(
   body: CreatorAnalyticsUntabbedPageConfig['body'],
-): ReadonlyArray<ChartConfig | AnalyticsSummaryCardConfig> {
+): ReadonlyArray<ChartConfig | AnalyticsSummaryCardConfig | AnalyticsTableConfig> {
   // Recurses one level into special layouts; other shapes (tabbed,
   // benchmark groups, funnels) drop and surface as unsupported.
   return body.flatMap((component) => {
@@ -170,7 +179,7 @@ function flattenBodyComponents(
 
 /**
  * Convert a predefined page's untabbed config into an authoring DTO. Output
- * is a starting point; unsupported items (tabbed, tables, multi-metric, etc.)
+ * is a starting point; unsupported items (tabbed, multi-metric, etc.)
  * are dropped and reported via `unsupported`.
  */
 export function customDashboardConfigFromUntabbed(
@@ -206,6 +215,45 @@ export function customDashboardConfigFromUntabbed(
         },
         aggregation: 'Total',
         filters: getTileFilters(getOverrideFilters(item.overrides?.filter)),
+      });
+      return;
+    }
+    if (item.type === AnalyticsComponentType.Table) {
+      // TODO(DSA-6141): Preserve or report per-column overrides before Edit a copy ships.
+      const tableMetrics = item.dataColumns.filter(isMetricTableColumnConfig).flatMap((column) => {
+        if (typeof column.metric !== 'string') {
+          return [];
+        }
+        const metricKey = toPersistedMetricKey(column.metric);
+        if (!metricKey) {
+          return [];
+        }
+        return [
+          {
+            metric: { metricKey } satisfies DashboardMetricReference,
+            seriesKey: column.key,
+          },
+        ];
+      });
+      const [primaryTableMetric] = tableMetrics;
+      if (!primaryTableMetric) {
+        unsupported.push({
+          kind: 'unsupported-chart-type',
+          chartType: ChartType.Table,
+        });
+        return;
+      }
+      charts.push({
+        tileId: createTileId(),
+        type: 'Chart',
+        dataSpec: {
+          metrics: tableMetrics,
+          aggregation: resolveDefaultChartAggregation(primaryTableMetric.metric),
+          granularity: DEFAULT_CHART_GRANULARITY,
+          ...(item.breakdowns.length > 0 ? { breakdownDimensions: [...item.breakdowns] } : {}),
+          filters: [],
+        },
+        chartSpec: { chartType: ChartType.Table },
       });
       return;
     }
