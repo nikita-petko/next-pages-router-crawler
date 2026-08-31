@@ -19,6 +19,7 @@ import { IPH_AGREEMENT_DETAILS_HREF } from '../../urls';
 import { normalizeCreatorType } from '../../utils/creatorName';
 import { getLifetimeVisitsRangeLabelFromEnum } from '../../utils/dauEnum';
 import { getLicenseTypeTableLabelKey } from '../../utils/licenseTypeTableLabelKeys';
+import { licenseUsesUniverseAgreementTarget } from '../../utils/licenseUsesUniverseAgreementTarget';
 import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../../utils/logger';
 import { getRevShareTimingKey } from '../../utils/revShareTiming';
 import { getDateRangeLabel } from '../../utils/timeLimitedLicense';
@@ -65,21 +66,24 @@ const IphAgreementRow: FunctionComponent<IphAgreementRowProps> = ({ agreement })
   };
 
   const license = agreement.license;
+  const usesUniverseTarget = licenseUsesUniverseAgreementTarget(license?.licenseType);
   const ipListingRequest = useIpListingQuery(license?.listingId ?? undefined);
   const ipFamilyRequest = useIpFamilyQuery(ipListingRequest.data?.ipFamilyId ?? undefined);
-  const universeId = Number(agreement.agreementTargets?.[0]?.contentId);
+  const universeId = usesUniverseTarget
+    ? Number(agreement.agreementTargets?.[0]?.contentId)
+    : undefined;
   const gameDetailsRequest = useDebouncedGameDetails(universeId);
   const isRowPending =
     !isFetched ||
     ipListingRequest.isPending ||
     ipFamilyRequest.isPending ||
-    gameDetailsRequest.isPending;
+    (usesUniverseTarget && gameDetailsRequest.isPending);
 
   if (
     ipListingRequest.isError ||
     ipFamilyRequest.isError ||
-    gameDetailsRequest.isError ||
-    gameDetailsRequest.data === NO_GAME_FOUND_FOR_ID
+    (usesUniverseTarget &&
+      (gameDetailsRequest.isError || gameDetailsRequest.data === NO_GAME_FOUND_FOR_ID))
   ) {
     return (
       <IpTableRow>
@@ -154,16 +158,19 @@ const IphAgreementRow: FunctionComponent<IphAgreementRowProps> = ({ agreement })
 
   const listing = ipListingRequest.data;
   const ipFamily = ipFamilyRequest.data;
-  const gameData = gameDetailsRequest.data;
+  const gameData =
+    usesUniverseTarget &&
+    gameDetailsRequest.data != null &&
+    gameDetailsRequest.data !== NO_GAME_FOUND_FOR_ID
+      ? gameDetailsRequest.data
+      : undefined;
 
   if (
     !license ||
     !listing ||
     !ipFamily ||
-    !gameData ||
     listing.thumbnailAssetIds?.[0] === undefined ||
-    gameData.id === undefined ||
-    gameData.name === undefined
+    (usesUniverseTarget && (gameData?.id === undefined || gameData.name === undefined))
   ) {
     return (
       <IpTableRow>
@@ -174,18 +181,23 @@ const IphAgreementRow: FunctionComponent<IphAgreementRowProps> = ({ agreement })
     );
   }
 
-  const game = gameData;
   const thumbnailAssetId = listing.thumbnailAssetIds[0];
 
   return (
     <IpTableRow onActivate={handleActivate}>
       <TableCell>
-        <CreationCell
-          universeId={gameData.id}
-          universeName={gameData.name}
-          creatorName={game.creator?.name ?? ''}
-          creatorType={normalizeCreatorType(game.creator?.type)}
-        />
+        {gameData?.id !== undefined && gameData.name !== undefined ? (
+          <CreationCell
+            universeId={gameData.id}
+            universeName={gameData.name}
+            creatorName={gameData.creator?.name ?? ''}
+            creatorType={normalizeCreatorType(gameData.creator?.type)}
+          />
+        ) : (
+          <Typography variant='body2' color='primary'>
+            {translate('Label.NotApplicable')}
+          </Typography>
+        )}
       </TableCell>
       <TableCell>
         <LicenseCell thumbnailAssetId={thumbnailAssetId} licenseName={license.name ?? ''} />
@@ -224,7 +236,11 @@ const IphAgreementRow: FunctionComponent<IphAgreementRowProps> = ({ agreement })
       <TableCell>
         <Typography variant='body2' color='primary'>
           {translate(
-            getLifetimeVisitsRangeLabelFromEnum(agreement.creatorLifetimeVisitBucket ?? undefined),
+            usesUniverseTarget
+              ? getLifetimeVisitsRangeLabelFromEnum(
+                  agreement.creatorLifetimeVisitBucket ?? undefined,
+                )
+              : 'Label.NotApplicable',
           )}
         </Typography>
       </TableCell>

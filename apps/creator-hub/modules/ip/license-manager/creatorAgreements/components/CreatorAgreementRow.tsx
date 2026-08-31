@@ -24,6 +24,7 @@ import { NO_GAME_FOUND_FOR_ID, useDebouncedGameDetails } from '../../agreements/
 import { CREATOR_AGREEMENT_DETAILS_HREF } from '../../urls';
 import { normalizeCreatorType } from '../../utils/creatorName';
 import { getLicenseTypeTableLabelKey } from '../../utils/licenseTypeTableLabelKeys';
+import { licenseUsesUniverseAgreementTarget } from '../../utils/licenseUsesUniverseAgreementTarget';
 import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../../utils/logger';
 import { getRevShareTimingKey } from '../../utils/revShareTiming';
 import { getDateRangeLabel } from '../../utils/timeLimitedLicense';
@@ -64,11 +65,16 @@ const CreatorAgreementRow: FunctionComponent<CreateAgreementRowProps> = ({ agree
   const agreementDetailsRequest = useGetCreatorAgreementDetails({
     agreementId: agreement.id ?? undefined,
   });
-  const universeId = agreement.agreementTargets
-    ? Number(agreement.agreementTargets?.[0]?.contentId)
-    : undefined;
+  const usesUniverseTarget = licenseUsesUniverseAgreementTarget(agreement.license?.licenseType);
+  const universeId =
+    usesUniverseTarget && agreement.agreementTargets
+      ? Number(agreement.agreementTargets?.[0]?.contentId)
+      : undefined;
   const universeRequest = useDebouncedGameDetails(universeId);
-  const isRowPending = !isFetched || agreementDetailsRequest.isPending || universeRequest.isPending;
+  const isRowPending =
+    !isFetched ||
+    agreementDetailsRequest.isPending ||
+    (usesUniverseTarget && universeRequest.isPending);
 
   if (isRowPending) {
     return (
@@ -129,8 +135,8 @@ const CreatorAgreementRow: FunctionComponent<CreateAgreementRowProps> = ({ agree
   if (
     agreementDetailsRequest.isError ||
     !agreementDetailsRequest.data ||
-    universeRequest.isError ||
-    universeRequest.data === NO_GAME_FOUND_FOR_ID
+    (usesUniverseTarget &&
+      (universeRequest.isError || universeRequest.data === NO_GAME_FOUND_FOR_ID))
   ) {
     return (
       <IpTableRow>
@@ -142,12 +148,16 @@ const CreatorAgreementRow: FunctionComponent<CreateAgreementRowProps> = ({ agree
   }
 
   const { agreement: agreementData, license, listing } = agreementDetailsRequest.data;
-  const universe = universeRequest.data;
+  const universe =
+    usesUniverseTarget &&
+    universeRequest.data != null &&
+    universeRequest.data !== NO_GAME_FOUND_FOR_ID
+      ? universeRequest.data
+      : undefined;
 
   if (
     listing.thumbnailAssetIds?.[0] === undefined ||
-    universe.id === undefined ||
-    universe.name === undefined
+    (usesUniverseTarget && (universe?.id === undefined || universe.name === undefined))
   ) {
     return (
       <IpTableRow>
@@ -163,12 +173,18 @@ const CreatorAgreementRow: FunctionComponent<CreateAgreementRowProps> = ({ agree
   return (
     <IpTableRow onActivate={handleActivate}>
       <TableCell>
-        <CreationCell
-          universeId={universe.id}
-          universeName={universe.name}
-          creatorName={universe.creator?.name ?? ''}
-          creatorType={normalizeCreatorType(universe.creator?.type)}
-        />
+        {universe?.id !== undefined && universe.name !== undefined ? (
+          <CreationCell
+            universeId={universe.id}
+            universeName={universe.name}
+            creatorName={universe.creator?.name ?? ''}
+            creatorType={normalizeCreatorType(universe.creator?.type)}
+          />
+        ) : (
+          <Typography variant='body2' color='primary'>
+            {translate('Label.NotApplicable')}
+          </Typography>
+        )}
       </TableCell>
       <TableCell>
         <LicenseCell thumbnailAssetId={thumbnailAssetId} licenseName={license.name ?? ''} />
