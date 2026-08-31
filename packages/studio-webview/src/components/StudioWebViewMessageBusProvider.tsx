@@ -79,33 +79,41 @@ const makeStudioWebViewMessageBusProvider = <
   bus,
   useSearchParams,
   MockMessageBus,
+  defaultToMockWebView,
 }: {
   context: React.Context<StudioWebViewMessageBusContextType<TEventTypes> | null>;
   bus: BaseMessageBus<TEventTypes>;
   useSearchParams: () => Readonly<URLSearchParams>;
   MockMessageBus: new () => BaseMessageBus<TEventTypes>;
+  defaultToMockWebView: boolean;
 }) => {
   return function StudioWebViewMessageBusProvider({
     children,
   }: {
     children: React.ReactNode;
   }): React.ReactElement {
-    const [isWebViewAvailable, setIsWebViewAvailable] = useState<boolean>(
-      typeof window !== 'undefined' && isStudioWebViewAvailable(),
+    const hasRealWebView = useMemo(
+      () => typeof window !== 'undefined' && isStudioWebViewAvailable(),
+      [],
     );
-
     const searchParams = useSearchParams();
-    const [isUsingMockedWebView, setIsUsingMockedWebView] = useSessionStorage<boolean | null>(
+    const [mockedWebViewPreference, setMockedWebViewPreference] = useSessionStorage<boolean | null>(
       MOCK_WEB_VIEW_KEY,
       null,
     );
     const mockMessageBus = useRef<BaseMessageBus<TEventTypes> | null>(null);
 
+    // A real WebView always wins — mocking only ever applies in an external browser. Within that,
+    // mock when explicitly opted in via ?mockWebview=true or when the app defaults to it.
+    const isUsingMockedWebView =
+      typeof window !== 'undefined' &&
+      !hasRealWebView &&
+      (mockedWebViewPreference === true || defaultToMockWebView);
+    const isWebViewAvailable = hasRealWebView || isUsingMockedWebView;
+
     const messageBus = useMemo((): BaseMessageBus<TEventTypes> => {
       if (isUsingMockedWebView) {
-        if (!mockMessageBus.current) {
-          mockMessageBus.current = new MockMessageBus();
-        }
+        mockMessageBus.current ??= new MockMessageBus();
         return mockMessageBus.current;
       }
 
@@ -192,10 +200,22 @@ const makeStudioWebViewMessageBusProvider = <
       // NOTE: This is the one case where we need to capitalize "Webview" as such (as opposed to "WebView")
       // When trying to use the query param "mockWebView", it is automatically converted to "mockWebview"
       const mockWebViewSearchParam = searchParams.get('mockWebview');
-      if (process.env.NEXT_PUBLIC_MOCK_WEB_VIEW === 'true' || mockWebViewSearchParam === 'true') {
-        setIsUsingMockedWebView(true);
-        setIsWebViewAvailable(true);
+      const isMockForced =
+        process.env.NEXT_PUBLIC_MOCK_WEB_VIEW === 'true' || mockWebViewSearchParam === 'true';
 
+      // Persist the choice so it survives navigation without repeating the query param. Everything
+      // else is derived from it during render, so this effect only records intent.
+      if (!hasRealWebView) {
+        if (isMockForced) {
+          setMockedWebViewPreference(true);
+        } else if (mockWebViewSearchParam === 'false') {
+          setMockedWebViewPreference(false);
+        }
+      }
+
+      // Allow selecting a mock theme override via query param, but only while actually on a mocked
+      // bus — a real WebView's own theme must not be overridden.
+      if (isUsingMockedWebView) {
         const mockThemeOverride = searchParams.get('theme');
         if (mockThemeOverride) {
           const studioTheme = mockThemeOverride.includes('light')
@@ -203,25 +223,13 @@ const makeStudioWebViewMessageBusProvider = <
             : StudioTheme.DarkFoundation;
           setStudioThemeOverride(studioTheme);
         }
-      } else if (mockWebViewSearchParam === 'false') {
-        setIsUsingMockedWebView(false);
-        setIsWebViewAvailable(isStudioWebViewAvailable());
-      } else if (isUsingMockedWebView === null) {
-        // No search param passed in for 'mockWebview', check sessionStorage to see if it was set
-        // sessionStorage doesn't have a value for MOCK_WEB_VIEW_KEY checking if WebView is available in browser
-        setIsWebViewAvailable(isStudioWebViewAvailable());
-      } else {
-        // continuing to use the value from sessionStorage for mocked WebView
-        setIsWebViewAvailable(isUsingMockedWebView);
       }
-
-      // If the WebView is available, we should set the flag to true
     }, [
-      isUsingMockedWebView,
+      hasRealWebView,
       searchParams,
-      setIsUsingMockedWebView,
-      setIsWebViewAvailable,
+      setMockedWebViewPreference,
       setStudioThemeOverride,
+      isUsingMockedWebView,
     ]);
 
     const currentStudioTheme = useMemo(() => {
@@ -290,10 +298,12 @@ const makeStudioWebViewMessageBusContextProvider = <
   namespace,
   useSearchParams,
   MockMessageBus,
+  defaultToMockWebView = false,
 }: {
   namespace: string;
   useSearchParams: () => Readonly<URLSearchParams>;
   MockMessageBus: new () => BaseMessageBus<TEventTypes>;
+  defaultToMockWebView?: boolean;
 }): {
   bus: BaseMessageBus<TEventTypes>;
   provider: React.ComponentType<{ children: React.ReactNode }>;
@@ -306,6 +316,7 @@ const makeStudioWebViewMessageBusContextProvider = <
   const provider = makeStudioWebViewMessageBusProvider<TEventTypes>({
     bus,
     context,
+    defaultToMockWebView,
     MockMessageBus,
     useSearchParams,
   });
