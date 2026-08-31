@@ -25,7 +25,6 @@ import {
   LicenseManagerImpressionEvent,
   useLicenseManagerLogger,
 } from '@modules/ip/license-manager/utils/logger';
-import { getMaturityRatingLabel } from '@modules/ip/license-manager/utils/maturityRating';
 import { getDurationRangeLabel } from '@modules/ip/license-manager/utils/timeLimitedLicense';
 import { Link, PageLoading } from '@modules/miscellaneous/components';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
@@ -127,13 +126,12 @@ const LicenseAccordion: FunctionComponent<LicenseAccordionProps> = ({
     return <PageLoading />;
   }
 
-  const licenseTypeLabels = getLicenseTypeTranslationKeys(
-    getEffectiveLicenseTypeForDisplay(
-      license.licenseType,
-      isInGameSalesLicensingEnabled,
-      isAvatarItemLicensingEnabled,
-    ),
+  const effectiveLicenseType = getEffectiveLicenseTypeForDisplay(
+    license.licenseType,
+    isInGameSalesLicensingEnabled,
+    isAvatarItemLicensingEnabled,
   );
+  const licenseTypeLabels = getLicenseTypeTranslationKeys(effectiveLicenseType);
   const showRevShareInSummary = isAuthenticated && license.royaltyRate !== undefined;
   const showDurationInSummary = isAuthenticated;
 
@@ -286,33 +284,6 @@ const LicenseAccordion: FunctionComponent<LicenseAccordionProps> = ({
                       fontSize='medium'
                       className={classes.icon}
                       data-testid='duration-info-icon'
-                    />
-                  </Tooltip>
-                </Grid>
-              </Grid>
-            </Grid>
-            {/* Max maturity rating — always visible (returned in both public and authenticated responses) */}
-            <Grid item container flexDirection='column' width='auto'>
-              <Grid item>
-                <Typography variant='h2'>
-                  {translate(getMaturityRatingLabel(license.maxAgeRating))}
-                </Typography>
-              </Grid>
-              <Grid item container className={classes.tooltipContainer}>
-                <Grid item>
-                  <Typography variant='body1' display='block' color='secondary'>
-                    {translate('Label.MaxMaturityRating')}
-                  </Typography>
-                </Grid>
-                <Grid item className={classes.tooltip}>
-                  <Tooltip
-                    arrow
-                    placement='right'
-                    title={translate('Label.TooltipMaxMaturityRating')}>
-                    <InfoOutlinedIcon
-                      fontSize='medium'
-                      className={classes.icon}
-                      data-testid='max-maturity-info-icon'
                     />
                   </Tooltip>
                 </Grid>
