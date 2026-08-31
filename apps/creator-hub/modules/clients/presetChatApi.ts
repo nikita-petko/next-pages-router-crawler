@@ -2,6 +2,7 @@ import type {
   GetUniversePresetStateResponse,
   PresetCategoryInput,
   PublishPresetVersionResponse,
+  RevertToDefaultsResponse,
   UpsertPresetDraftResponse,
 } from '@rbx/client-preset-chat/v1';
 import { V2CreatorApi } from '@rbx/client-preset-chat/v1';
@@ -11,6 +12,7 @@ import { createClientConfiguration } from './utils/createClientConfiguration';
 export type {
   GetUniversePresetStateResponse,
   PublishPresetVersionResponse,
+  RevertToDefaultsResponse,
   UpsertPresetDraftResponse,
 };
 
@@ -93,6 +95,26 @@ export class PresetChatApiClient {
       if (error instanceof ResponseError) {
         throw new PresetChatApiError(
           `Failed to save draft: ${error.response.status}`,
+          error.response.status,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async revertToDefaults(
+    universeId: number,
+    options?: { signal?: AbortSignal },
+  ): Promise<RevertToDefaultsResponse> {
+    try {
+      return await this.api.v2CreatorRevertToDefaults(
+        { universeId },
+        options?.signal ? { signal: options.signal } : undefined,
+      );
+    } catch (error) {
+      if (error instanceof ResponseError) {
+        throw new PresetChatApiError(
+          `Failed to revert to defaults: ${error.response.status}`,
           error.response.status,
         );
       }

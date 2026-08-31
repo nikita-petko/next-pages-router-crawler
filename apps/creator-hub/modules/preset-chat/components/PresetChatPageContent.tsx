@@ -28,6 +28,7 @@ import ChatTabOptions from '../enums/ChatTabOptions';
 import useCategoryManager from '../hooks/useCategoryManager';
 import { useGetPresetChatState } from '../queries/useGetPresetChatState';
 import { usePublish } from '../queries/usePublish';
+import { useRevertToDefaults } from '../queries/useRevertToDefaults';
 import { useUpsertDraft } from '../queries/useUpsertDraft';
 import ChatNavigation from './ChatNavigation';
 import { PublishStatusBanner } from './PublishStatusBanner';
@@ -54,6 +55,7 @@ const PresetChatPageContent: FunctionComponent = () => {
   const { mutate: publish, isPending: isPublishPending } = usePublish(gameDetails?.id);
   // TODO (EXPR-4048): Surface save errors to the user (toast/banner) — no design yet
   const { mutate: saveDraft, isPending: isSavePending } = useUpsertDraft(gameDetails?.id);
+  const { mutate: revert, isPending: isRevertPending } = useRevertToDefaults(gameDetails?.id);
 
   const handlePublish = useCallback(() => {
     publish();
@@ -73,9 +75,11 @@ const PresetChatPageContent: FunctionComponent = () => {
     saveDraft(categories);
   }, [categoryManager.categories, saveDraft]);
 
-  const handleCloseMoreMenu = useCallback(() => {
+  // TODO: Add confirmation dialog before reverting — this will immediately replace the most recent creator draft with the Roblox defaults
+  const handleRevert = useCallback(() => {
+    revert();
     setMoreMenuOpen(false);
-  }, []);
+  }, [revert]);
 
   const handleSelectTab = useCallback((value: ChatTabOptions) => {
     setCurrentTab(value);
@@ -176,7 +180,11 @@ const PresetChatPageContent: FunctionComponent = () => {
                 variant='Emphasis'
                 size='Medium'
                 onClick={handlePublish}
-                isDisabled={presetChatState?.overallStatus === 'PUBLISHING' || isPublishPending}>
+                isDisabled={
+                  presetChatState?.overallStatus === 'PUBLISHING' ||
+                  isPublishPending ||
+                  isRevertPending
+                }>
                 {tPendingTranslation(
                   'Publish',
                   'Button to publish preset chat changes',
@@ -190,7 +198,8 @@ const PresetChatPageContent: FunctionComponent = () => {
                 isDisabled={
                   presetChatState?.overallStatus === 'PUBLISHING' ||
                   isPublishPending ||
-                  isSavePending
+                  isSavePending ||
+                  isRevertPending
                 }>
                 {tPendingTranslation(
                   'Save',
@@ -204,7 +213,12 @@ const PresetChatPageContent: FunctionComponent = () => {
                     variant='Standard'
                     size='Medium'
                     icon='icon-regular-three-dots-horizontal'
-                    isDisabled={presetChatState?.overallStatus === 'PUBLISHING' || isPublishPending}
+                    isDisabled={
+                      presetChatState?.overallStatus === 'PUBLISHING' ||
+                      isPublishPending ||
+                      isSavePending ||
+                      isRevertPending
+                    }
                     ariaLabel={tPendingTranslation(
                       'More options',
                       'Accessible label for the more options menu button',
@@ -221,7 +235,6 @@ const PresetChatPageContent: FunctionComponent = () => {
                   align='end'>
                   <Menu size='Medium'>
                     <MenuSection>
-                      {/* TODO: Wire up revert to default API call */}
                       <MenuItem
                         value='revert'
                         title={tPendingTranslation(
@@ -229,7 +242,7 @@ const PresetChatPageContent: FunctionComponent = () => {
                           'Menu item to revert Quick Words to the Roblox default values',
                           translationKey('Action.RevertToDefault', TranslationNamespace.PresetChat),
                         )}
-                        onSelect={handleCloseMoreMenu}
+                        onSelect={handleRevert}
                       />
                     </MenuSection>
                   </Menu>

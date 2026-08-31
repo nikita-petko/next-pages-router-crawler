@@ -80,7 +80,9 @@ const useCategoryManager = (
 
   const updateCategoryName = useCallback((id: string, name: string) => {
     setCategories((prev) =>
-      prev.map((category) => (category.id === id ? { ...category, name } : category)),
+      prev.map((category) =>
+        category.id === id ? { ...category, name, state: 'DRAFT' } : category,
+      ),
     );
   }, []);
 
@@ -119,7 +121,9 @@ const useCategoryManager = (
         }
         return {
           ...category,
-          presets: category.presets.map((p) => (p.id === presetId ? { ...p, text } : p)),
+          presets: category.presets.map((p) =>
+            p.id === presetId ? { ...p, text, state: 'DRAFT' as const } : p,
+          ),
         };
       }),
     );
