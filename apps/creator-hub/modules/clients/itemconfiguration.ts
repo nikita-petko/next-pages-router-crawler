@@ -13,7 +13,6 @@ import type {
   RobloxItemConfigurationApiIsCollectibleItemResponse,
   V1CollectiblesUpdateItemDisplayInformationPatchRequest,
   RobloxItemConfigurationApiModelsRequestUpdateItemDisplayInformationRequest,
-  V1CollectiblesItemConfigurationCollectibleItemIdGetRequest,
   V1CollectiblesCheckItemPublishAccessGetRequest,
   V1CollectiblesCheckItemConfigurationAccessGetRequest,
   V1DelistItemPostRequest,
@@ -223,13 +222,6 @@ export class ItemConfigurationClient {
 
   getCollectiblesMetadata() {
     return this.collectiblesApi.v1CollectiblesMetadataGet();
-  }
-
-  getDynamicPriceConfiguration(collectibleItemId: string) {
-    const request: V1CollectiblesItemConfigurationCollectibleItemIdGetRequest = {
-      collectibleItemId,
-    };
-    return this.collectiblesApi.v1CollectiblesItemConfigurationCollectibleItemIdGet(request);
   }
 
   getCollectibleItemId(

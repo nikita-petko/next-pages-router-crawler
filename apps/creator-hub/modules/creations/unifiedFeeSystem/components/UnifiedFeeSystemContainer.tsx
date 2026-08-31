@@ -1,8 +1,6 @@
 /* oxlint-disable react/react-compiler -- pre-existing useEffect+setState patterns throughout this file */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
-import type { RobloxCatalogApiMultigetItemDetailsRequestItem } from '@rbx/client-catalog/v1';
-import { RobloxCatalogApiMultigetItemDetailsRequestItemItemTypeEnum } from '@rbx/client-catalog/v1';
 import type { RobloxApiDevelopModelsUniverseModel } from '@rbx/client-develop/v1';
 import type {
   RobloxItemConfigurationApiGetItemResponse,
@@ -16,14 +14,10 @@ import {
   RobloxItemConfigurationApiMarketplaceItemSaleStatusEnum,
   RobloxItemConfigurationApiMarketplaceItemCollectibleItemTypeEnum,
 } from '@rbx/client-itemconfiguration/v1';
-import { useFlag } from '@rbx/flags';
 import { Divider, useMediaQuery, useTheme } from '@rbx/ui';
-import { enableGetItemCollectibleDetails } from '@generated/flags/avatarMarketplace';
-import catalogClient from '@modules/clients/catalog';
 import developClient from '@modules/clients/develop';
 import type { ItemConfigurationCollectiblesMetadataResponse } from '@modules/clients/itemconfiguration';
 import itemconfigurationClient from '@modules/clients/itemconfiguration';
-import marketplaceItemsClient from '@modules/clients/marketplaceitems';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import TimedOptionsDialog from '../../itemConfiguration/components/TimedOptionsDialog';
 import ClassicItemVerificationAlert from '../../verification/components/ClassicItemVerificationAlert';
@@ -177,9 +171,6 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
     RobloxItemConfigurationApiModelsMarketplaceItemRegionalRentalPrice[]
   >([]);
   const isRentablesEnabled = settings?.enableRentables;
-  const { ready: isCollectibleDetailsFlagReady, value: useGetItemCollectibleDetails } = useFlag(
-    enableGetItemCollectibleDetails,
-  );
 
   const router = useRouter();
   const isPublishPage = router.pathname.includes('/publish');
@@ -263,12 +254,8 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
     setSelectedPlaces(origRootPlaceIds);
   }, []);
 
-  // GetItem-sourced path reads collectible details from the GetItem response. Kept in its own
-  // effect that depends on itemDetails so provider refetches do not re-run the legacy path below.
+  // Reads all collectible item details from the itemconfiguration GetItem response.
   useEffect(() => {
-    // GetItem-sourced path: reads all collectible details from the GetItem response instead of
-    // calling IsCollectibleItem, GetItemConfiguration, and marketplace-items-api
-    // GetCollectibleItemsDetails.
     async function applyCollectibleDataFromGetItem() {
       const item = itemDetails?.item;
       const collectibleDetails = item?.collectibleDetails;
@@ -345,124 +332,12 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
       }
     }
 
-    if (!isCollectibleDetailsFlagReady || !useGetItemCollectibleDetails) {
-      return;
-    }
-
     void applyCollectibleDataFromGetItem();
   }, [
     collectiblesMetadata?.isScheduledPublishingEnabled,
-    isCollectibleDetailsFlagReady,
-    useGetItemCollectibleDetails,
     itemDetails?.item,
     setHasBeenRestocked,
     setOriginalQuantity,
-    resolveSelectedPlaces,
-  ]);
-
-  // Legacy path: resolves the collectible id via IsCollectibleItem, then hydrates details from
-  // marketplace-items-api GetCollectibleItemsDetails and GetItemConfiguration. This effect does
-  // not depend on itemDetails, so provider refetches do not re-trigger these calls or reset
-  // locally edited state.
-  useEffect(() => {
-    async function fetchCollectiblesData() {
-      const getCollectibleItemIdResponse = await itemconfigurationClient.getCollectibleItemId(
-        targetId,
-        isBundle,
-      );
-      const collectibleItemIdValue = getCollectibleItemIdResponse?.collectibleItemId;
-      if (collectibleItemIdValue) {
-        setCollectibleItemId(collectibleItemIdValue);
-        setIsCollectible(true);
-        const getCollectibleDetailsResponse =
-          await marketplaceItemsClient.getCollectibleItemsDetails([collectibleItemIdValue]);
-        const collectibleDetails = getCollectibleDetailsResponse?.[0];
-        setIsOnSale(collectibleDetails?.productSaleStatus === 3);
-        setIsLimited(collectibleDetails?.itemType === 1);
-
-        const catalogItems: RobloxCatalogApiMultigetItemDetailsRequestItem[] = [
-          {
-            id: targetId,
-            itemType: isBundle
-              ? RobloxCatalogApiMultigetItemDetailsRequestItemItemTypeEnum.NUMBER_2
-              : RobloxCatalogApiMultigetItemDetailsRequestItemItemTypeEnum.NUMBER_1,
-          },
-        ];
-        const getCollectibleDetails = await catalogClient.postItemDetails(catalogItems);
-        const collectibleAssetDetails = getCollectibleDetails.data?.[0];
-        setQuantity(collectibleAssetDetails?.totalQuantity);
-        setOriginalQuantity(collectibleAssetDetails?.totalQuantity);
-
-        setHasBeenRestocked((collectibleDetails?.totalRestockedQuantity ?? 0) > 0);
-        setLastRestockedTime(collectibleDetails?.lastRestockedTime ?? undefined);
-        // Eligibility fetch is handled by useRestockState hook via collectibleItemId dependency.
-
-        setLimit(collectibleDetails?.quantityLimitPerUser);
-        setInitialLimit(collectibleDetails?.quantityLimitPerUser);
-        if (collectibleDetails?.price === 0) {
-          setIsFree(true);
-        } else {
-          const dynamicPriceDataResponse =
-            await itemconfigurationClient.getDynamicPriceConfiguration(collectibleItemIdValue);
-          setPriceOffset(dynamicPriceDataResponse?.dynamicPriceConfiguration?.priceOffset);
-          const minPrice = dynamicPriceDataResponse?.dynamicPriceConfiguration?.minimumPrice;
-          if (minPrice !== 1) {
-            setOptionalPriceFloor(minPrice);
-          }
-        }
-        setIsResellable(collectibleDetails?.resaleRestriction === 1);
-        setOriginalIsResellable(collectibleDetails?.resaleRestriction === 1);
-        if (collectibleDetails?.saleLocationType === 'ShopAndAllExperiences') {
-          setSaleLocation(SaleLocationEnum.MarketplaceAndAllExperiences);
-        } else if (collectibleDetails?.saleLocationType === 'ShopOnly') {
-          setSaleLocation(SaleLocationEnum.MarketplaceOnly);
-        } else if (
-          collectibleDetails?.saleLocationType === 'ExperiencesDevApiOnly' ||
-          collectibleDetails?.saleLocationType === 'ShopAndExperiencesById'
-        ) {
-          setSaleLocation(
-            collectibleDetails?.saleLocationType === 'ExperiencesDevApiOnly'
-              ? SaleLocationEnum.ExperiencesAndDevAPIOnly
-              : SaleLocationEnum.MarketplaceAndExperiencesById,
-          );
-
-          await resolveSelectedPlaces(collectibleDetails?.universeIds ?? []);
-        }
-
-        // Set scheduledStartDate and scheduledEndDate if scheduled publishing is enabled
-        if (collectiblesMetadata?.isScheduledPublishingEnabled) {
-          setOriginalSaleStatus(collectibleDetails?.productSaleStatus === 3);
-
-          // There is a pre-existing scheduled sale
-          if (collectibleDetails?.scheduledRelease) {
-            const { onSaleTime, offSaleTime } = collectibleDetails.scheduledRelease;
-            const startDate = onSaleTime?.seconds ? new Date(onSaleTime.seconds * 1000) : null;
-            const endDate = offSaleTime?.seconds ? new Date(offSaleTime.seconds * 1000) : null;
-            setScheduledStartDate(startDate);
-            setScheduledEndDate(endDate);
-            setPreSaveScheduledStartDate(startDate);
-            setPreSaveScheduledEndDate(endDate);
-          }
-        }
-      }
-    }
-
-    // Wait for the flag to resolve so the legacy endpoints are not called when the
-    // GetItem-sourced path is enabled.
-    if (!isCollectibleDetailsFlagReady || useGetItemCollectibleDetails) {
-      return;
-    }
-
-    void fetchCollectiblesData();
-  }, [
-    targetId,
-    isBundle,
-    collectiblesMetadata?.isScheduledPublishingEnabled,
-    isCollectible,
-    setHasBeenRestocked,
-    setOriginalQuantity,
-    isCollectibleDetailsFlagReady,
-    useGetItemCollectibleDetails,
     resolveSelectedPlaces,
   ]);
 
