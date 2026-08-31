@@ -1,6 +1,8 @@
 /* oxlint-disable react/react-compiler -- pre-existing useEffect+setState patterns throughout this file */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
+import type { HydratedListAgreementResponse } from '@rbx/client-content-licensing-api/v1';
+import { CreatorType } from '@rbx/client-content-licensing-api/v1';
 import type { RobloxApiDevelopModelsUniverseModel } from '@rbx/client-develop/v1';
 import type {
   RobloxItemConfigurationApiGetItemResponse,
@@ -35,6 +37,7 @@ import { useRestockState } from '../hooks/useRestockState';
 import ItemAttributes from './ItemAttributes';
 import ItemAttributesPostPublish from './ItemAttributesPostPublish';
 import ItemDetails from './ItemDetails';
+import type { LicensePickerProps } from './LicensePicker';
 import NonSellableSavePanel from './NonSellableSavePanel';
 import Pricing from './Pricing';
 import PublishPanel from './PublishPanel';
@@ -114,6 +117,12 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
   const [scheduledStartDate, setScheduledStartDate] = useState<Date | null>(null);
   const [scheduledEndDate, setScheduledEndDate] = useState<Date | null>(null);
   const [isOptOutRegionalPricing, setIsOptOutRegionalPricing] = useState(false);
+  // Selected IP licensing agreement (UCP-1808). Held here so the revenue-split preview
+  // (UCP-1809, via selectedAgreement.licenseId) and publish (UCP-1799, via
+  // selectedAgreement.id) can consume it; this ticket only populates and displays it.
+  const [selectedAgreement, setSelectedAgreement] = useState<
+    HydratedListAgreementResponse | undefined
+  >(undefined);
 
   // Restocking state (consolidated in custom hook)
   const [restockState, restockActions] = useRestockState({
@@ -422,6 +431,21 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
 
     const displayItemAttributes = isDurableType ? isPublishPage : !isCollectible;
 
+    // License picker props for the Item Attributes section; ItemAttributes /
+    // ItemAttributesPostPublish construct the component. Gated on the backend licensing flag.
+    // `disabled` is keyed off the synchronous `item.isCollectible` flag (not the async
+    // `isCollectible` state) so published items never briefly fire the agreements fetch.
+    const isItemCollectible = itemDetails?.item?.isCollectible ?? false;
+    const licensePickerBaseProps: Omit<LicensePickerProps, 'disabled'> | null =
+      (collectiblesMetadata?.isAvatarItemLicensingEnabled ?? false)
+        ? {
+            creatorType: isGroup ? CreatorType.Group : CreatorType.User,
+            creatorId: creatorTargetId != null ? creatorTargetId.toString() : '',
+            selectedAgreement,
+            onSelect: setSelectedAgreement,
+          }
+        : null;
+
     return (
       <div>
         <Divider style={{ margin: '40px 0' }} />
@@ -430,6 +454,11 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
           <>
             {displayItemAttributes ? (
               <ItemAttributes
+                licensePickerProps={
+                  licensePickerBaseProps
+                    ? { ...licensePickerBaseProps, disabled: isItemCollectible }
+                    : null
+                }
                 isBundle={isBundle}
                 isLimited={isLimited}
                 setIsLimited={setIsLimited}
@@ -455,6 +484,9 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
               />
             ) : (
               <ItemAttributesPostPublish
+                licensePickerProps={
+                  licensePickerBaseProps ? { ...licensePickerBaseProps, disabled: true } : null
+                }
                 isLimited={isLimited}
                 quantity={quantity}
                 setQuantity={setQuantity}
@@ -660,6 +692,8 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
     restockIneligibilityReason,
     resaleUnlockTime,
     maxRestockQuantityPerOp,
+    selectedAgreement,
+    setSelectedAgreement,
   ]);
 
   return (

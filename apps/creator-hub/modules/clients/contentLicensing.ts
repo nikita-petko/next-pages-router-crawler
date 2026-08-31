@@ -438,6 +438,28 @@ export class ContentLicensingApiClient {
   }
 
   /**
+   * Fetches a creator's IP licensing agreements. CL resolves the creator's Rights
+   * account internally from creatorType + creatorId, so no account-resolution work
+   * is needed on the caller's side. Used to populate the license picker on the item
+   * Configure page.
+   */
+  async listAgreementsByCreator(
+    creatorType: CreatorType,
+    creatorId: string,
+    pageSize?: number,
+    pageToken?: string,
+    filter?: string,
+  ): Promise<ListHydratedAgreementsResponse> {
+    return this.agreementsApi.agreementsListAgreementsByCreator({
+      creatorType,
+      creatorId,
+      pageSize: pageSize ?? DEFAULT_PAGE_SIZE,
+      pageToken,
+      filter,
+    });
+  }
+
+  /**
    * Fetches a single public IP listing by ID.
    * This call is used for authenticated users (aka logged-in users) and returns
    * the fully hydrated response.

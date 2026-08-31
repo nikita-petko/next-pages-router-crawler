@@ -23,6 +23,7 @@ import type { ItemConfigurationCollectiblesMetadataResponse } from '@modules/cli
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import type { DurationOptionsEnum } from '../helper/UnifiedFeeSystemConstants';
 import { mapDurationToString, DurationOptions } from '../helper/UnifiedFeeSystemConstants';
+import LicensePicker, { type LicensePickerProps } from './LicensePicker';
 
 const useStyles = makeStyles()((theme) => ({
   toggleButtonSelected: {
@@ -95,6 +96,8 @@ interface ItemAttributesProps {
   isRentableType: boolean;
   isRentableOptIn: boolean | undefined;
   setIsRentableOptIn: (isRentableOptIn: boolean) => void;
+  /** License picker props; rendered as the first row when present. Null when licensing is off. */
+  licensePickerProps?: LicensePickerProps | null;
 }
 
 function ItemAttributes(props: ItemAttributesProps) {
@@ -121,6 +124,7 @@ function ItemAttributes(props: ItemAttributesProps) {
     isRentableType,
     isRentableOptIn,
     setIsRentableOptIn,
+    licensePickerProps,
   } = props;
   const { translate } = useTranslation();
   const { classes } = useStyles();
@@ -147,6 +151,7 @@ function ItemAttributes(props: ItemAttributesProps) {
         </Grid>
       </Grid>
       <Grid container marginTop={4} spacing={3}>
+        {licensePickerProps ? <LicensePicker {...licensePickerProps} /> : null}
         <Grid container item XSmall={12} rowGap={2} alignItems='center'>
           <Grid item XSmall={12} Large={5}>
             <Typography style={{ fontSize: '18px', fontWeight: '450' }}>

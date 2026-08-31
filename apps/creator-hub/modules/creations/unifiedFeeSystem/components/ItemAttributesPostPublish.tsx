@@ -22,6 +22,7 @@ import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider
 import AddVariantDialog from '../../itemConfiguration/components/AddVariantDialog';
 import type { DurationOptionsEnum } from '../helper/UnifiedFeeSystemConstants';
 import { mapDurationToString } from '../helper/UnifiedFeeSystemConstants';
+import LicensePicker, { type LicensePickerProps } from './LicensePicker';
 
 const useStyles = makeStyles()((theme) => ({
   limited: {
@@ -62,6 +63,8 @@ interface ItemAttributesPostPublishProps {
   isRentableType: boolean;
   isRentableOptIn: boolean | undefined;
   setIsRentableOptIn: (isRentableOptIn: boolean) => void;
+  /** License picker props; rendered as the first row when present. Null when licensing is off. */
+  licensePickerProps?: LicensePickerProps | null;
 }
 function ItemAttributesPostPublish(props: ItemAttributesPostPublishProps) {
   const {
@@ -90,6 +93,7 @@ function ItemAttributesPostPublish(props: ItemAttributesPostPublishProps) {
     isRentableType,
     isRentableOptIn,
     setIsRentableOptIn,
+    licensePickerProps,
   } = props;
   const { translate } = useTranslation();
   const { classes } = useStyles();
@@ -165,6 +169,7 @@ function ItemAttributesPostPublish(props: ItemAttributesPostPublishProps) {
         </Grid>
       </Grid>
       <Grid container marginTop={2} spacing={3}>
+        {licensePickerProps ? <LicensePicker {...licensePickerProps} /> : null}
         <Grid container item XSmall={12} rowGap={2} alignItems='center'>
           <Grid item XSmall={12} Large={5}>
             <Typography style={{ fontSize: '18px', fontWeight: '450' }}>

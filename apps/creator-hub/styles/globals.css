@@ -1966,6 +1966,10 @@
   width: 20px;
   height: 20px;
 }
+.size-\[32px\] {
+  width: 32px;
+  height: 32px;
+}
 .size-\[40px\] {
   width: 40px;
   height: 40px;
@@ -4883,6 +4887,9 @@
 }
 .\[position\:fixed\] {
   position: fixed;
+}
+.\[position\:static\] {
+  position: static;
 }
 .\[property\:value\] {
   property: value;
