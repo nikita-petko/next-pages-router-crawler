@@ -286,7 +286,11 @@ const Notification = forwardRef<HTMLDivElement | HTMLAnchorElement, TNotificatio
               />
             </div>
           </PopoverTrigger>
-          <PopoverContent side='bottom' align='end' ariaLabel={translate('Label.Menu')}>
+          <PopoverContent
+            side='bottom'
+            align='end'
+            className={styles.overflowMenuPortal}
+            ariaLabel={translate('Label.Menu')}>
             <div
               role='none'
               tabIndex={-1}
@@ -307,19 +311,26 @@ const Notification = forwardRef<HTMLDivElement | HTMLAnchorElement, TNotificatio
                     ? translate('Label.MarkAsRead')
                     : translate('Label.MarkAsUnread'),
                 })}
-                className={cx(
-                  'bg-surface-300 radius-medium text-body-medium',
-                  styles.overflowMenu,
-                )}>
-                <button
-                  type='button'
+                className={cx('bg-surface-200 radius-medium', styles.overflowMenu)}>
+                <FMenuItem
+                  className='radius-medium'
+                  value={notifIsUnread ? 'mark-as-read' : 'mark-as-unread'}
+                  title={
+                    notifIsUnread ? translate('Label.MarkAsRead') : translate('Label.MarkAsUnread')
+                  }
+                  aria-label={
+                    notifIsUnread ? translate('Label.MarkAsRead') : translate('Label.MarkAsUnread')
+                  }
                   tabIndex={0}
+                  onSelect={toggleReadStatus}
                   onKeyDown={(e: React.KeyboardEvent) => {
-                    if (e.key === 'Enter' || e.key === 'Space') {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      // Toggle explicitly and cancel the native click so onSelect
+                      // doesn't fire a second time for keyboard activation.
+                      e.preventDefault();
                       toggleReadStatus();
                       focusableRef.current?.focus();
                     } else if (
-                      e.key === '  ' ||
                       e.key === 'Tab' ||
                       e.key === 'ArrowDown' ||
                       e.key === 'ArrowUp' ||
@@ -329,24 +340,8 @@ const Notification = forwardRef<HTMLDivElement | HTMLAnchorElement, TNotificatio
                     ) {
                       focusableRef.current?.focus();
                     }
-                  }}>
-                  <FMenuItem
-                    value={notifIsUnread ? 'mark-as-read' : 'mark-as-unread'}
-                    title={
-                      notifIsUnread
-                        ? // oxlint-disable-next-line rbx/no-hardcoded-translation-string
-                          translate('Label.MarkAsRead') || 'Mark as read'
-                        : // oxlint-disable-next-line rbx/no-hardcoded-translation-string
-                          translate('Label.MarkAsUnread') || 'Mark as unread'
-                    }
-                    aria-label={
-                      notifIsUnread
-                        ? translate('Label.MarkAsRead')
-                        : translate('Label.MarkAsUnread')
-                    }
-                    onSelect={toggleReadStatus}
-                  />
-                </button>
+                  }}
+                />
               </FMenu>
             </div>
           </PopoverContent>

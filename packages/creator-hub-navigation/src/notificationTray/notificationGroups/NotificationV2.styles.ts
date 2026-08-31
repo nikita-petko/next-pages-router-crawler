@@ -45,6 +45,7 @@ const useNotificationStyles = makeStyles()((theme) => ({
     overflow: 'hidden',
     display: '-webkit-box',
     WebkitLineClamp: MAX_LINES,
+    // oxlint-disable-next-line typescript/no-deprecated
     WebkitBoxOrient: 'vertical',
     wordBreak: 'break-word',
   },
@@ -149,9 +150,12 @@ const useNotificationStyles = makeStyles()((theme) => ({
   },
   overflowMenu: {
     minWidth: 180,
-    marginTop: 40,
     marginRight: 8,
-    zIndex: notificationOverflowMenuZIndex(theme),
+    marginTop: 40,
+    padding: 4,
+  },
+  overflowMenuPortal: {
+    zIndex: `${notificationOverflowMenuZIndex(theme)} !important`,
   },
 }));
 
