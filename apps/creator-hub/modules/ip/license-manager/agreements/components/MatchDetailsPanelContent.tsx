@@ -51,6 +51,8 @@ import {
 import formatDate from '../utils/formatDate';
 import DetectedScreenshotsGrid, { MAX_SCREENSHOTS } from './DetectedScreenshotsGrid';
 import IgnoreMatchPanelContent from './IgnoreMatchPanelContent';
+import type { InspectorImage } from './ImageInspector';
+import ImageInspector from './ImageInspector';
 import {
   AgreementStatusFromBatchMaps,
   type AgreementStatusesColumnProps,
@@ -62,8 +64,6 @@ import type {
   MatchPanelAgreementStatus,
   MatchPanelState,
 } from './matchPanelTypes';
-import type { InspectorImage } from './ScreenshotInspector';
-import ScreenshotInspector from './ScreenshotInspector';
 
 export type { MatchDetailsPanelNavigation, MatchPanelAgreementStatus } from './matchPanelTypes';
 
@@ -715,7 +715,7 @@ const MatchDetailsPanelContent: FunctionComponent<MatchDetailsPanelContentProps>
         </Flex>
       </MatchPanelLayout>
       {inspectorOpenIndex !== null && inspectorImages.length > 0 && (
-        <ScreenshotInspector
+        <ImageInspector
           images={inspectorImages}
           title={game.name ?? ''}
           experienceHref={

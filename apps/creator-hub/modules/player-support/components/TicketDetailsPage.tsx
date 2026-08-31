@@ -40,8 +40,8 @@ import {
 } from '@modules/clients/creatorCommunication';
 import { getResponseFromError } from '@modules/clients/utils';
 import unifiedLoggerClient from '@modules/eventStream/unifiedLoggerClient';
-import type { InspectorImage } from '@modules/ip/license-manager/agreements/components/ScreenshotInspector';
-import ScreenshotInspector from '@modules/ip/license-manager/agreements/components/ScreenshotInspector';
+import type { InspectorImage } from '@modules/ip/license-manager/agreements/components/ImageInspector';
+import ImageInspector from '@modules/ip/license-manager/agreements/components/ImageInspector';
 import { toastDurationTime } from '@modules/miscellaneous/common';
 import LoadError from '@modules/miscellaneous/error/LoadError';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -253,10 +253,10 @@ const TicketCaptures: React.FunctionComponent<{
       </div>
       {/*
         TODO: https://roblox.atlassian.net/browse/CSGO-2412 + https://roblox.atlassian.net/browse/UIBLOX-5179
-        Replace `ScreenshotInspector` with an approved Foundation component.
+        Replace `ImageInspector` with an approved Foundation component.
       */}
       {inspectedIndex !== null && (
-        <ScreenshotInspector
+        <ImageInspector
           images={inspectorImages}
           title={inspectorTitle ?? ''}
           initialIndex={inspectedIndex}
@@ -1006,8 +1006,8 @@ const TicketDetailsPage: React.FunctionComponent = () => {
   );
 };
 
-// `ScreenshotInspector` is borrowed from agreements-manager and calls bare `translate()` for its own
-// keys, so its namespace is registered too. Will be removed when the ScreenshotInspector is replaced.
+// `ImageInspector` is borrowed from agreements-manager and calls bare `translate()` for its own
+// keys, so its namespace is registered too. Will be removed when the ImageInspector is replaced.
 export default withTranslation(TicketDetailsPage, [
   TranslationNamespace.PlayerFeedback,
   TranslationNamespace.AgreementsManager,

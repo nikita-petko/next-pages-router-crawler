@@ -20,8 +20,8 @@ import {
   getExperiencePreviewAnalyticsContext,
   logExperiencePreviewEvent,
 } from '../utils/experiencePreviewAnalytics';
-import type { InspectorImage } from './ScreenshotInspector';
-import ScreenshotInspector from './ScreenshotInspector';
+import type { InspectorImage } from './ImageInspector';
+import ImageInspector from './ImageInspector';
 
 const galleryGridClassName =
   'grid gap-medium items-start [grid-template-columns:repeat(auto-fill,184px)]';
@@ -401,7 +401,7 @@ const GalleryTabContent: FunctionComponent<GalleryTabContentProps> = ({ candidat
       <div className={galleryGridClassName}>{cells.map(renderCell)}</div>
 
       {isInspectorOpen && activeInspectorImages && (
-        <ScreenshotInspector
+        <ImageInspector
           images={activeInspectorImages}
           title={inspectorTitle}
           experienceHref={inspectorHref}

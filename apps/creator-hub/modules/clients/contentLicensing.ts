@@ -39,6 +39,7 @@ import type {
   BatchGetAgreementStatusByIdsResponse,
   PlacefileImagesResponse,
   RevenueTargetReference,
+  AgreementContentReference,
   AgreementCandidatePromotionType,
   GetLicenseRecommendationsRequest,
   GetLicenseRecommendationsResponse as GeneratedGetLicenseRecommendationsResponse,
@@ -605,15 +606,15 @@ export class ContentLicensingApiClient {
   }
 
   /**
-   * Applies to a public license with the specified universe, pitch, and monetization settings.
+   * Applies to a public license with the specified pitch, monetization settings, and content targets.
    */
   async applyToLicense(
     licenseId: string,
-    universeId: number,
     enableMonetization: boolean,
     pitch: string,
     startTime: Date | null,
     endTime: Date | null,
+    targets: AgreementContentReference[],
     revenueTargets?: RevenueTargetReference[] | null,
     pitchImageAssetIds?: number[] | null,
   ): Promise<AgreementResponse> {
@@ -628,12 +629,7 @@ export class ContentLicensingApiClient {
         pitch,
         startTime,
         endTime,
-        targets: [
-          {
-            contentId: universeId.toString(),
-            contentType: 'Universe',
-          },
-        ],
+        targets,
         revenueTargets: revenueTargets ?? undefined,
         pitchImageAssetIds: pitchImageAssetIds ?? undefined,
       },

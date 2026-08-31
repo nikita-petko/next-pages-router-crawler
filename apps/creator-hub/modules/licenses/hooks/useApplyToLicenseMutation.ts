@@ -2,6 +2,7 @@ import { captureException } from '@sentry/nextjs';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { LicenseType } from '@rbx/client-content-licensing-api/v1';
 import contentLicensingClient from '@modules/clients/contentLicensing';
+import { buildApplyToLicenseTargets } from '../utils/buildApplyToLicenseTargets';
 import {
   buildApplyToLicenseRevenueTargets,
   type CollaborationSalesAvenues,
@@ -24,7 +25,7 @@ export const getLicenseKey = (licenseId: string) => [
 ];
 
 export interface ApplyToPublicLicenseParams {
-  universeId: number;
+  universeId?: number;
   pitch: string;
   dateRange: { startDate: Date | null; endDate: Date | null } | undefined;
   collaborationSalesAvenues?: CollaborationSalesAvenues;
@@ -49,6 +50,7 @@ const useApplyToPublicLicenseMutation = (
     }: ApplyToPublicLicenseParams) => {
       const startDate = dateRange?.startDate ?? null;
       const endDate = dateRange?.endDate ? toEndOfSelectedCalendarDayUtc(dateRange.endDate) : null;
+      const targets = buildApplyToLicenseTargets({ universeId });
       const revenueTargets = buildApplyToLicenseRevenueTargets({
         enableCollaborationLicensing,
         licenseType,
@@ -58,11 +60,11 @@ const useApplyToPublicLicenseMutation = (
 
       return contentLicensingClient.applyToLicense(
         licenseId,
-        universeId,
         enableMonetization,
         pitch,
         startDate,
         endDate,
+        targets,
         revenueTargets,
         pitchImageAssetIds,
       );

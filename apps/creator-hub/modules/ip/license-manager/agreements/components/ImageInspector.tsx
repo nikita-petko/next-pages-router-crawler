@@ -13,7 +13,7 @@ export interface InspectorImage {
   assetId: number;
 }
 
-interface ScreenshotInspectorProps {
+interface ImageInspectorProps {
   images: InspectorImage[];
   title: string;
   experienceHref?: string;
@@ -89,7 +89,7 @@ const dotClass = (isActive: boolean): string =>
  * strip. It renders into a portal so it sits above the app chrome; closing simply unmounts it,
  * revealing the gallery tab beneath.
  */
-const ScreenshotInspector: FunctionComponent<ScreenshotInspectorProps> = ({
+const ImageInspector: FunctionComponent<ImageInspectorProps> = ({
   images,
   title,
   experienceHref,
@@ -563,4 +563,4 @@ const ScreenshotInspector: FunctionComponent<ScreenshotInspectorProps> = ({
   return createPortal(overlay, document.body);
 };
 
-export default ScreenshotInspector;
+export default ImageInspector;

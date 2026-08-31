@@ -168,7 +168,7 @@ export function getSalesAvenueThumbnailSize(entry: SalesAvenueSelection) {
 interface BuildApplyToLicenseRevenueTargetsParams {
   enableCollaborationLicensing: boolean;
   licenseType?: LicenseType;
-  universeId: number;
+  universeId?: number;
   collaborationSalesAvenues?: CollaborationSalesAvenues;
 }
 
@@ -182,7 +182,15 @@ export function buildApplyToLicenseRevenueTargets({
   const isCollaborationLicense =
     enableCollaborationLicensing && licenseType === LicenseType.CollaborationInExperienceSale;
 
+  if (licenseType === LicenseType.MarketplaceSale && universeId == null) {
+    return [];
+  }
+
   if (!isCollaborationLicense) {
+    if (universeId == null) {
+      return [];
+    }
+
     return [
       {
         revenueTargetType: RevenueTargetType.Universe,
