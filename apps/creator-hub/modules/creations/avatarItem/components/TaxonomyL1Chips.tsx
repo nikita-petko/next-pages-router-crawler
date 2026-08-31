@@ -2,7 +2,6 @@ import type { FunctionComponent } from 'react';
 import React, { useCallback } from 'react';
 import { Chip } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { makeStyles } from '@rbx/ui';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
 import useAvatarLooksGate from '../../home/hooks/useAvatarLooksGate';
 import useUGCFoldersGate from '../../home/hooks/useUGCFoldersGate';
@@ -16,29 +15,11 @@ import {
   isAvatarLooksActiveTab,
 } from '../utils/taxonomyRoutingUtils';
 
-const useStyles = makeStyles()({
-  chipRow: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 8,
-    // The chips are a labelled group of toggle buttons, so the element is a fieldset; strip the
-    // border and inset padding a fieldset carries by default.
-    border: 'none',
-    margin: 0,
-    padding: 0,
-    minInlineSize: 'auto',
-  },
-});
-
 /**
  * Top-level taxonomy categories, rendered inline with the Avatar Items toolbar controls. Selection
  * lives in the `activeTab` query param so it is shareable and survives navigation.
  */
 const TaxonomyL1Chips: FunctionComponent = () => {
-  const {
-    classes: { chipRow },
-  } = useStyles();
   const { translate } = useTranslation();
   const isUGCFoldersEnabled = useUGCFoldersGate();
   const isAvatarLooksEnabled = useAvatarLooksGate() ?? false;
@@ -89,7 +70,9 @@ const TaxonomyL1Chips: FunctionComponent = () => {
   // Chip announces its state through `aria-pressed`, so these are labelled toggle buttons in a
   // group rather than a tablist: `aria-selected` is not valid on a button that is already pressed.
   return (
-    <fieldset className={chipRow} aria-label={categoriesLabel}>
+    <fieldset
+      className='flex wrap items-center gap-small stroke-none margin-none padding-none [min-inline-size:auto]'
+      aria-label={categoriesLabel}>
       {/* First, as in the item-type submenu. */}
       {isAvatarLooksEnabled && (
         <Chip

@@ -370,6 +370,9 @@ export function useGetGroupProductFeatures(groupId: number | undefined) {
   return useQuery({
     enabled: groupId !== undefined,
     queryKey: [GROUPS_PRODUCT_FEATURES_KEY, groupId],
+    // Product features are stable for the page session. Keeping a successful response fresh lets
+    // nested consumers reuse the request started by GroupRoles without refetching on mount.
+    staleTime: Infinity,
     queryFn: () => {
       if (groupId === undefined) {
         throw new Error('Tried to fetch product features for a group but group id was undefined');

@@ -7,6 +7,7 @@ import ErrorState from '../../components/ErrorState';
 import TranslationNamespace from '../../constants/TranslationNamespace';
 import useCurrentGroup from '../../hooks/useCurrentGroup';
 import { useGetGroupInfo } from '../../queries';
+import { useGetGroupProductFeatures } from '../../queries/rolesQueries';
 import { GroupManagementSurface } from '../../utils/types';
 import usePermissions from '../hooks/usePermissions';
 import { usePermissionsTranslation } from '../providers/TranslationProvider';
@@ -32,6 +33,8 @@ export type PermissionGroupListProps = {
   entity?: EntityDetails;
   creator?: CreatorDetails;
 };
+
+const FORUM_BUG_REPORTER_PERMISSION_ID = 'Group.ForumBugReporter';
 
 const usePermissionsContainerStyles = makeStyles()((theme) => ({
   rootClass: {
@@ -76,8 +79,15 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
     refetch: refetchPermissions,
   } = usePermissions(creator, entity);
 
-  const showMemberCount =
-    entity?.type === EntityTypes.GROUP && creator?.type === CreatorTypes.MEMBER_ROLE;
+  const isGroupEntity = entity?.type === EntityTypes.GROUP;
+  const { data: productFeatures } = useGetGroupProductFeatures(
+    isGroupEntity && organization?.groupId ? Number(organization.groupId) : undefined,
+  );
+  // Missing data during loading or failure hides only the gated permission. Cached data remains
+  // usable after a background refresh failure.
+  const showForumBugReporterPermission =
+    isGroupEntity && productFeatures?.forumsAttachmentsCreate === true;
+  const showMemberCount = isGroupEntity && creator?.type === CreatorTypes.MEMBER_ROLE;
   const groupInfoQuery = useGetGroupInfo(showMemberCount ? organization?.groupId : undefined);
   const memberCount = showMemberCount ? (groupInfoQuery.data?.memberCount ?? 0) : undefined;
 
@@ -90,8 +100,7 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
   const [trackedInitialPermissions, setTrackedInitialPermissions] = useState(initialPermissions);
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [selectedTab, setSelectedTab] = useState<PermissionTab>(PermissionTab.GENERAL);
-
-  const isGroupEntity = entity?.type === EntityTypes.GROUP;
+  const isGuestRole = creator?.type === CreatorTypes.GUEST_ROLE;
 
   if (trackedInitialPermissions !== initialPermissions && initialPermissions != null) {
     setTrackedInitialPermissions(initialPermissions);
@@ -105,6 +114,30 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
         : undefined,
     [explicitGrants, metadata, initialPermissions],
   );
+
+  const visibleMetadata = useMemo(() => {
+    const featureFilteredMetadata = (metadata ?? [])
+      .map((group) => ({
+        ...group,
+        permissions: group.permissions.filter(
+          (permission) =>
+            permission.permissionId !== FORUM_BUG_REPORTER_PERMISSION_ID ||
+            showForumBugReporterPermission,
+        ),
+      }))
+      .filter((group) => group.permissions.length > 0);
+
+    return isGuestRole
+      ? featureFilteredMetadata
+          .map((group) => ({
+            ...group,
+            permissions: group.permissions.filter(
+              (permission) => initialPermissions?.[permission.permissionId]?.canEdit,
+            ),
+          }))
+          .filter((group) => group.permissions.length > 0)
+      : featureFilteredMetadata;
+  }, [initialPermissions, isGuestRole, metadata, showForumBugReporterPermission]);
 
   const onPermissionChange = useCallback((permissionId: string, isGranted: boolean) => {
     setExplicitGrants((prev) => {
@@ -188,8 +221,11 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
     );
   }
 
-  const isAnyEditable = Object.values(initialPermissions).some((permission) =>
-    canPermissionChange(permission),
+  const isAnyEditable = visibleMetadata.some((group) =>
+    group.permissions.some((permission) => {
+      const initialPermission = initialPermissions[permission.permissionId];
+      return initialPermission ? canPermissionChange(initialPermission) : false;
+    }),
   );
   const { selected, unselected } = findUpdatedPermissions(initialPermissions, permissionData);
 
@@ -206,19 +242,7 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
   const cancelActionLabel = translate('Action.Cancel');
   const saveActionLabel = translate('Action.Save');
 
-  const isGuestRole = creator.type === CreatorTypes.GUEST_ROLE;
   const showTabChips = isGroupEntity && !isGuestRole;
-
-  const visibleMetadata = isGuestRole
-    ? metadata
-        .map((group) => ({
-          ...group,
-          permissions: group.permissions.filter(
-            (permission) => initialPermissions[permission.permissionId]?.canEdit,
-          ),
-        }))
-        .filter((group) => group.permissions.length > 0)
-    : metadata;
 
   const filteredMetadata = showTabChips
     ? visibleMetadata.filter((group) => PERMISSION_TAB_GROUP_IDS[selectedTab].has(group.groupId))
