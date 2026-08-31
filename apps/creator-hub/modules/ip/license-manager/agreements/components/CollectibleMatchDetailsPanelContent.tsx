@@ -20,6 +20,7 @@ import { Alert, Button, CircularProgress, Typography } from '@rbx/ui';
 import { isIgnoreMatchEnabled as isIgnoreMatchEnabledFlag } from '@generated/flags/contentLicensing';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import type { GridListView } from '@modules/licenses/components/GridListViewToggle';
 import Flex from '@modules/miscellaneous/components/Flex';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { KeyValuePair, KeyValuePairContainer } from '../../components/KeyValuePair';
@@ -60,6 +61,7 @@ interface CollectibleMatchDetailsPanelContentProps {
   agreementStatusFromList?: MatchPanelAgreementStatus;
   navigation?: MatchDetailsPanelNavigation;
   rowPosition?: number;
+  sourceView?: GridListView;
   onPanelStateChange?: (state: MatchPanelState) => void;
 }
 
@@ -73,6 +75,7 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
   agreementStatusFromList,
   navigation,
   rowPosition,
+  sourceView,
   onPanelStateChange,
 }) => {
   const translation = useTranslation();
@@ -122,10 +125,12 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
     if (isIgnoreMatchAllowed) {
       logEvent(LicenseManagerClickEvent.IgnoreMatchPanelOpenClickEvent, {
         candidateType: AgreementCandidateType.Collectible,
+        source: 'sidebar',
+        ...(sourceView === undefined ? {} : { sourceView }),
       });
       setIgnoreReasonViewCandidateId(candidate.id ?? null);
     }
-  }, [candidate.id, isIgnoreMatchAllowed, logEvent]);
+  }, [candidate.id, isIgnoreMatchAllowed, logEvent, sourceView]);
   const handleIgnoreBack = useCallback(() => {
     setIgnoreReasonViewCandidateId(null);
   }, []);
@@ -159,10 +164,21 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
       isResellAllowed: presentation?.isResellAllowed ?? false,
       hasDescription: Boolean(presentation?.description?.trim()),
       hasPrice: presentation?.price != null,
+      priceState:
+        presentation?.price == null ? 'unknown' : presentation.price === 0 ? 'free' : 'paid',
       hasSubtype: Boolean(details?.subtype),
+      source: 'sidebar',
+      ...(sourceView === undefined ? {} : { sourceView }),
       ...(rowPosition === undefined ? {} : { rowPosition }),
     }),
-    [agreementState, details?.subtype, itemType, presentation, rowPosition],
+    [agreementState, details?.subtype, itemType, presentation, rowPosition, sourceView],
+  );
+  const ignoreAnalyticsContext = useMemo(
+    () => ({
+      source: 'sidebar',
+      ...(sourceView === undefined ? {} : { sourceView }),
+    }),
+    [sourceView],
   );
   const analyticsDedupeKey = candidate.id ?? candidate.candidateId ?? 'unknown';
 
@@ -270,6 +286,7 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
       <IgnoreMatchPanelContent
         candidateId={candidate.id}
         candidateType={AgreementCandidateType.Collectible}
+        additionalAnalyticsContext={ignoreAnalyticsContext}
         onBack={handleIgnoreBack}
         onClose={onClose}
         onIgnored={handleMatchIgnored}
@@ -330,7 +347,9 @@ const CollectibleMatchDetailsPanelContent: FunctionComponent<
           size='large'
           className='fill [white-space:nowrap] text-align-x-center'
           component={Link}
-          href={`${IPH_AGREEMENT_CANDIDATE_DETAILS_HREF(candidate.id)}?ref=sidebar`}
+          href={`${IPH_AGREEMENT_CANDIDATE_DETAILS_HREF(candidate.id)}?ref=sidebar${
+            sourceView === undefined ? '' : `&sourceView=${sourceView}`
+          }`}
           onClick={() => {
             logEvent(LicenseManagerClickEvent.MatchDetailsPanelViewDetailsClickEvent, {
               ...analyticsContext,

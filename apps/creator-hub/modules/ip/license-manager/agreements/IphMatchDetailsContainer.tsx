@@ -486,6 +486,7 @@ const UniverseMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerP
 };
 
 const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps> = (props) => {
+  const [pageStartedAt] = useState(Date.now);
   const candidateQuery = useGetAgreementCandidateByIdQuery({
     agreementCandidateId: props.agreementCandidateId,
   });
@@ -499,6 +500,7 @@ const IphMatchDetailsContainer: FunctionComponent<IphMatchDetailsContainerProps>
       <CollectibleMatchDetailsContainer
         agreementCandidateId={props.agreementCandidateId}
         candidate={candidateQuery.data}
+        pageStartedAt={pageStartedAt}
       />
     );
   }

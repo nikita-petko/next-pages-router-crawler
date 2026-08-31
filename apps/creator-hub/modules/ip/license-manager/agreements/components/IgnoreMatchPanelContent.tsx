@@ -18,6 +18,7 @@ interface IgnoreMatchPanelContentProps {
   /** Agreement candidate id to ignore. */
   candidateId: string | null | undefined;
   candidateType: AgreementCandidateType;
+  additionalAnalyticsContext?: Record<string, string | number | boolean | Date>;
   /** Return to the previous view (e.g. the match details) without ignoring. */
   onBack: () => void;
   /** Dismiss the whole side panel (the header close button). */
@@ -30,6 +31,7 @@ interface IgnoreMatchPanelContentProps {
 const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> = ({
   candidateId,
   candidateType,
+  additionalAnalyticsContext,
   onBack,
   onClose,
   onIgnored,
@@ -46,27 +48,30 @@ const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> =
       if (isIgnoreReason(value)) {
         setSelectedIgnoreReason(value);
         logEvent(LicenseManagerClickEvent.IgnoreMatchPanelSelectReasonClickEvent, {
+          ...additionalAnalyticsContext,
           candidateType,
           ignoreReason: value,
         });
       }
     },
-    [candidateType, logEvent],
+    [additionalAnalyticsContext, candidateType, logEvent],
   );
 
   const handleBack = useCallback(() => {
     logEvent(LicenseManagerClickEvent.IgnoreMatchPanelBackClickEvent, {
+      ...additionalAnalyticsContext,
       candidateType,
     });
     onBack();
-  }, [candidateType, logEvent, onBack]);
+  }, [additionalAnalyticsContext, candidateType, logEvent, onBack]);
 
   const handleClose = useCallback(() => {
     logEvent(LicenseManagerClickEvent.IgnoreMatchPanelCloseClickEvent, {
+      ...additionalAnalyticsContext,
       candidateType,
     });
     onClose();
-  }, [candidateType, logEvent, onClose]);
+  }, [additionalAnalyticsContext, candidateType, logEvent, onClose]);
 
   const notifyMatchIgnored = useCallback(() => {
     enqueueNeutralSnackbar(translate('Label.MatchSuccessfullyIgnored'));
@@ -77,6 +82,7 @@ const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> =
       return;
     }
     logEvent(LicenseManagerClickEvent.IgnoreMatchPanelConfirmClickEvent, {
+      ...additionalAnalyticsContext,
       candidateType,
       ignoreReason: selectedIgnoreReason,
     });
@@ -85,6 +91,7 @@ const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> =
       {
         onSuccess: () => {
           logEvent(LicenseManagerImpressionEvent.IgnoreMatchPanelSuccessImpressionEvent, {
+            ...additionalAnalyticsContext,
             candidateType,
             ignoreReason: selectedIgnoreReason,
           });
@@ -93,6 +100,7 @@ const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> =
         },
         onError: () => {
           logEvent(LicenseManagerImpressionEvent.IgnoreMatchPanelFailureImpressionEvent, {
+            ...additionalAnalyticsContext,
             candidateType,
             ignoreReason: selectedIgnoreReason,
             failureReason: 'requestError',
@@ -102,6 +110,7 @@ const IgnoreMatchPanelContent: FunctionComponent<IgnoreMatchPanelContentProps> =
       },
     );
   }, [
+    additionalAnalyticsContext,
     candidateId,
     candidateType,
     selectedIgnoreReason,

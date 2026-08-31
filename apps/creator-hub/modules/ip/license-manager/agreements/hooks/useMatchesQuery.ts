@@ -12,13 +12,13 @@ import type {
   AgreementCandidateIndexSortBy,
   AgreementCandidateIndexSortDirection,
   AgreementCandidateResponse,
-  AgreementCandidateType,
   IndexedAgreementCandidateResponse,
   ListAgreementCandidatesResponse,
   UniverseContentMaturity,
 } from '@rbx/client-content-licensing-api/v1';
 import {
   AgreementCandidateIndexOfferStatusFilter as IndexedOfferStatusFilter,
+  AgreementCandidateType,
   AgreementStatus,
   DauBucket,
   LifetimeVisitBucket,
@@ -116,6 +116,34 @@ export const agreementCandidateMatchesOfferStatusFilter = (
   return false;
 };
 
+export interface MatchesCandidatesRequestMetrics {
+  activeFilterCount: number;
+  candidateType: AgreementCandidateType;
+  clientAppliedFilterCount: number;
+  contentMaturityFilterCount: number;
+  dataSource: 'indexed' | 'legacy';
+  endpoint: 'listIndexedAgreementCandidatesByAccount' | 'listAgreementCandidatesByAccount';
+  filterMode: 'filtered' | 'unfiltered';
+  hasContentMaturityFilter: boolean;
+  hasDauFilter: boolean;
+  hasIpFamilyFilter: boolean;
+  hasLifetimeVisitsFilter: boolean;
+  hasNextPage: boolean;
+  hasOfferStatusFilter: boolean;
+  hasSort: boolean;
+  outcome: 'success' | 'failure';
+  pageSize: number;
+  requestDurationMs: number;
+  requestPage: 'initial' | 'loadMore';
+  responseResultCount: number;
+  serverAppliedFilterCount: number;
+}
+
+type MatchesCandidatesRequestContext = Omit<
+  MatchesCandidatesRequestMetrics,
+  'hasNextPage' | 'outcome' | 'requestDurationMs' | 'responseResultCount'
+>;
+
 interface MatchesQueryOptions {
   pageSize: number;
   ipFamilyId?: string;
@@ -128,6 +156,7 @@ interface MatchesQueryOptions {
   sortDirection?: AgreementCandidateIndexSortDirection;
   candidateType?: AgreementCandidateType;
   enabled?: boolean;
+  onRequestCompleted?: (metrics: MatchesCandidatesRequestMetrics) => void;
   /**
    * When true, batch-loads agreement statuses for loaded candidates and exposes agreementStatusesColumn
    * for the matches table and offer-status filtering.
@@ -243,6 +272,7 @@ export const useMatchesQuery = (options: MatchesQueryOptions): MatchesQueryResul
     candidateType,
     loadAgreementStatuses = false,
     enabled = true,
+    onRequestCompleted,
   } = options;
 
   const request = useInfiniteQuery({
@@ -266,21 +296,92 @@ export const useMatchesQuery = (options: MatchesQueryOptions): MatchesQueryResul
       }
 
       const dau7DayBuckets = convertDauRangeToDau7DayBuckets(dauRange);
+      const hasIpFamilyFilter = Boolean(ipFamilyId);
+      const hasDauFilter = dauRange != null && dauRange !== DauRange.All;
+      const hasLifetimeVisitsFilter =
+        lifetimeVisitsRange != null && lifetimeVisitsRange !== LifetimeVisitsRange.All;
+      const hasContentMaturityFilter = Boolean(contentMaturityRatings?.length);
+      const hasOfferStatusFilter =
+        offerStatusFilter != null && offerStatusFilter !== MatchCandidateOfferStatusFilter.All;
+      const activeFilterCount = [
+        hasIpFamilyFilter,
+        hasDauFilter,
+        hasLifetimeVisitsFilter,
+        hasContentMaturityFilter,
+        hasOfferStatusFilter,
+      ].filter(Boolean).length;
+      const serverAppliedFilterCount = useIndexedMatches
+        ? activeFilterCount
+        : [hasIpFamilyFilter, hasDauFilter, hasContentMaturityFilter].filter(Boolean).length;
+      const dataSource = useIndexedMatches ? 'indexed' : 'legacy';
+      const endpoint = useIndexedMatches
+        ? 'listIndexedAgreementCandidatesByAccount'
+        : 'listAgreementCandidatesByAccount';
+      const requestContext: MatchesCandidatesRequestContext = {
+        activeFilterCount,
+        candidateType: candidateType ?? AgreementCandidateType.Universe,
+        clientAppliedFilterCount: activeFilterCount - serverAppliedFilterCount,
+        contentMaturityFilterCount: contentMaturityRatings?.length ?? 0,
+        dataSource,
+        endpoint,
+        filterMode: activeFilterCount > 0 ? ('filtered' as const) : ('unfiltered' as const),
+        hasContentMaturityFilter,
+        hasDauFilter,
+        hasIpFamilyFilter,
+        hasLifetimeVisitsFilter,
+        hasOfferStatusFilter,
+        hasSort: useIndexedMatches && sortBy != null,
+        pageSize,
+        requestPage: pageParam == null ? ('initial' as const) : ('loadMore' as const),
+        serverAppliedFilterCount,
+      };
+      const executeRequest = async <
+        T extends {
+          agreementCandidates?: readonly unknown[] | null;
+          nextPageToken?: string | null;
+        },
+      >(
+        performRequest: () => Promise<T>,
+      ): Promise<T> => {
+        const startedAt = Date.now();
+        try {
+          const response = await performRequest();
+          onRequestCompleted?.({
+            ...requestContext,
+            hasNextPage: Boolean(response.nextPageToken),
+            outcome: 'success',
+            requestDurationMs: Math.max(0, Date.now() - startedAt),
+            responseResultCount: response.agreementCandidates?.length ?? 0,
+          });
+          return response;
+        } catch (error) {
+          onRequestCompleted?.({
+            ...requestContext,
+            hasNextPage: false,
+            outcome: 'failure',
+            requestDurationMs: Math.max(0, Date.now() - startedAt),
+            responseResultCount: 0,
+          });
+          throw error;
+        }
+      };
 
       if (useIndexedMatches) {
-        const response = await contentLicensingClient.listIndexedAgreementCandidatesByAccount(
-          accountId,
-          pageSize,
-          pageParam,
-          false,
-          ipFamilyId,
-          dau7DayBuckets,
-          convertLifetimeVisitsRangeToLifetimeVisitBucket(lifetimeVisitsRange),
-          contentMaturityRatings?.length ? contentMaturityRatings : undefined,
-          convertOfferStatusFilter(offerStatusFilter),
-          sortBy,
-          sortDirection,
-          candidateType,
+        const response = await executeRequest(() =>
+          contentLicensingClient.listIndexedAgreementCandidatesByAccount(
+            accountId,
+            pageSize,
+            pageParam,
+            false,
+            ipFamilyId,
+            dau7DayBuckets,
+            convertLifetimeVisitsRangeToLifetimeVisitBucket(lifetimeVisitsRange),
+            contentMaturityRatings?.length ? contentMaturityRatings : undefined,
+            convertOfferStatusFilter(offerStatusFilter),
+            sortBy,
+            sortDirection,
+            candidateType,
+          ),
         );
 
         return {
@@ -322,13 +423,14 @@ export const useMatchesQuery = (options: MatchesQueryOptions): MatchesQueryResul
 
       const filter = filters.join(' AND ');
 
-      const response: ListAgreementCandidatesResponse =
-        await contentLicensingClient.listAgreementCandidatesByAccount(
+      const response: ListAgreementCandidatesResponse = await executeRequest(() =>
+        contentLicensingClient.listAgreementCandidatesByAccount(
           accountId,
           pageSize,
           pageParam,
           filter,
-        );
+        ),
+      );
 
       let agreementCandidates: AgreementCandidateResponse[] = response.agreementCandidates ?? [];
 

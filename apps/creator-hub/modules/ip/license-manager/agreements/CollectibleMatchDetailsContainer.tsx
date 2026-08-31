@@ -28,8 +28,10 @@ import {
 } from '@generated/flags/contentLicensing';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import type { GridListView } from '@modules/licenses/components/GridListViewToggle';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { PageNotFound } from '@modules/miscellaneous/error';
+import { useQueryParams } from '@modules/miscellaneous/hooks';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { getBundleUrl, getCatalogUrl } from '@modules/miscellaneous/urls/www';
 import IpLoadError from '../../components/error/IpLoadError';
@@ -38,7 +40,12 @@ import { useIpFamilyQuery } from '../../ipFamilies/hooks/ipFamily';
 import AmDivider from '../components/AmDivider';
 import { KeyValuePair, KeyValuePairContainer } from '../components/KeyValuePair';
 import { IP_MATCHES_HREF, IPH_AGREEMENT_DETAILS_HREF } from '../urls';
-import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../utils/logger';
+import {
+  LicenseManagerClickEvent,
+  LicenseManagerImpressionEvent,
+  useLicenseManagerLogger,
+  useLicenseManagerLoggerLogOnce,
+} from '../utils/logger';
 import CollectibleMatchOfferPanelContent from './components/CollectibleMatchOfferPanelContent';
 import { getCollectibleMatchPresentation } from './components/collectibleMatchPresentation';
 import getCollectibleItemTypeLabel from './components/getCollectibleItemTypeLabel';
@@ -66,15 +73,17 @@ const THUMBNAIL_WRAPPER_CLASS = 'relative overflow-hidden radius-none size-[420p
 const THUMBNAIL_CONTAINER_CLASS =
   '!absolute [inset:0] !width-full !height-full !padding-none !padding-top-none radius-none';
 const THUMBNAIL_IMG_CLASS = `${THUMBNAIL_FILL_CLASS} [object-fit:contain]`;
+const COLLECTIBLE_MATCH_QUERY_PARAMS = ['ref', 'sourceView'] as const;
 
 interface CollectibleMatchDetailsContainerProps {
   agreementCandidateId: string;
   candidate: AgreementCandidateResponse;
+  pageStartedAt?: number;
 }
 
 const CollectibleMatchDetailsContainer: FunctionComponent<
   CollectibleMatchDetailsContainerProps
-> = ({ agreementCandidateId, candidate }) => {
+> = ({ agreementCandidateId, candidate, pageStartedAt }) => {
   const translation = useTranslation();
   const { translate } = translation;
   const { translate: translateCreations } = useTranslationWithNamespace(
@@ -90,8 +99,28 @@ const CollectibleMatchDetailsContainer: FunctionComponent<
   const { tPendingTranslation } = useTranslationWrapper(translation);
   const { setPageTitle } = useIpLayoutContext();
   const { logEvent } = useLicenseManagerLogger();
+  const { logOnce } = useLicenseManagerLoggerLogOnce();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [queryParams, setQueryParams] = useQueryParams(COLLECTIBLE_MATCH_QUERY_PARAMS);
+  const refParam = Array.isArray(queryParams.ref) ? queryParams.ref[0] : queryParams.ref;
+  const sourceViewParam = Array.isArray(queryParams.sourceView)
+    ? queryParams.sourceView[0]
+    : queryParams.sourceView;
+  const [entrySource] = useState<'sidebar' | 'deepLink'>(() =>
+    refParam === 'sidebar' ? 'sidebar' : 'deepLink',
+  );
+  const [sourceView] = useState<GridListView | undefined>(() =>
+    sourceViewParam === 'grid' || sourceViewParam === 'list' ? sourceViewParam : undefined,
+  );
+  const [containerStartedAt] = useState(Date.now);
+
+  useEffect(() => {
+    if (refParam == null && sourceViewParam == null) {
+      return;
+    }
+    setQueryParams({ ref: null, sourceView: null }, { skipHistory: true });
+  }, [refParam, setQueryParams, sourceViewParam]);
 
   const [isOfferPanelOpen, setIsOfferPanelOpen] = useState(false);
   const [isIgnorePanelOpen, setIsIgnorePanelOpen] = useState(false);
@@ -143,6 +172,106 @@ const CollectibleMatchDetailsContainer: FunctionComponent<
     isIgnoreMatchEnabled &&
     !waitingOnAgreementStatus &&
     !showViewAgreement;
+  const agreementState = statusQuery.isError
+    ? 'error'
+    : waitingOnAgreementStatus
+      ? 'pending'
+      : showViewAgreement
+        ? 'viewable'
+        : 'notViewable';
+  const entryAnalyticsContext = useMemo(
+    () => ({
+      entrySource,
+      ...(sourceView === undefined ? {} : { sourceView }),
+    }),
+    [entrySource, sourceView],
+  );
+  const ignoreAnalyticsContext = useMemo(
+    () => ({
+      source: 'fullPage',
+      ...entryAnalyticsContext,
+    }),
+    [entryAnalyticsContext],
+  );
+  const pageAnalyticsContext = useMemo(
+    () => ({
+      candidateType: AgreementCandidateType.Collectible,
+      agreementCandidateId,
+      ...entryAnalyticsContext,
+      itemType: presentation?.isBundle ? 'Bundle' : presentation ? 'Asset' : 'Unknown',
+      isLimited: presentation?.isLimited ?? false,
+      isResellAllowed: presentation?.isResellAllowed ?? false,
+      priceState:
+        presentation?.price == null ? 'unknown' : presentation.price === 0 ? 'free' : 'paid',
+      agreementState,
+    }),
+    [agreementCandidateId, agreementState, entryAnalyticsContext, presentation],
+  );
+  const isPageReady =
+    isAvatarItemLicensingFlagReady &&
+    isAvatarItemLicensingEnabled &&
+    !waitingOnAgreementStatus &&
+    !itemDetailsQuery.isPending &&
+    !itemDetailsQuery.isError &&
+    details != null &&
+    presentation != null &&
+    Boolean(itemName);
+  const hasPageLoadFailure =
+    isAvatarItemLicensingFlagReady &&
+    isAvatarItemLicensingEnabled &&
+    !itemDetailsQuery.isPending &&
+    (itemDetailsQuery.isError || details == null || presentation == null || !itemName);
+
+  useEffect(() => {
+    if (!isPageReady) {
+      return;
+    }
+    logOnce(
+      LicenseManagerImpressionEvent.MatchDetailsPageImpressionEvent,
+      {
+        ...pageAnalyticsContext,
+        timeToReadyMs: Math.max(0, Date.now() - (pageStartedAt ?? containerStartedAt)),
+      },
+      agreementCandidateId,
+    );
+  }, [
+    agreementCandidateId,
+    containerStartedAt,
+    isPageReady,
+    logOnce,
+    pageAnalyticsContext,
+    pageStartedAt,
+  ]);
+
+  useEffect(() => {
+    if (!hasPageLoadFailure) {
+      return;
+    }
+    const failureReason = itemDetailsQuery.isError
+      ? 'requestError'
+      : details == null || presentation == null
+        ? 'missingItem'
+        : 'missingName';
+    logOnce(
+      LicenseManagerImpressionEvent.MatchDetailsPageLoadFailureImpressionEvent,
+      {
+        ...pageAnalyticsContext,
+        failureReason,
+        timeToFailureMs: Math.max(0, Date.now() - (pageStartedAt ?? containerStartedAt)),
+      },
+      agreementCandidateId,
+    );
+  }, [
+    agreementCandidateId,
+    containerStartedAt,
+    details,
+    hasPageLoadFailure,
+    itemDetailsQuery.isError,
+    logOnce,
+    pageAnalyticsContext,
+    pageStartedAt,
+    presentation,
+  ]);
 
   const handleOfferLicense = useCallback(() => {
     offerPanelOpenedAtRef.current = Date.now();
@@ -151,9 +280,10 @@ const CollectibleMatchDetailsContainer: FunctionComponent<
       candidateType: AgreementCandidateType.Collectible,
       agreementCandidateId,
       source: 'detailsView',
+      ...entryAnalyticsContext,
     });
     setIsOfferPanelOpen(true);
-  }, [agreementCandidateId, logEvent]);
+  }, [agreementCandidateId, entryAnalyticsContext, logEvent]);
 
   const handleOfferPanelStateChange = useCallback((state: 'loading' | 'ready' | 'error') => {
     offerPanelStateRef.current = state;
@@ -168,6 +298,7 @@ const CollectibleMatchDetailsContainer: FunctionComponent<
         panelState: offerPanelStateRef.current,
         dismissMethod,
         source: 'fullPage',
+        ...entryAnalyticsContext,
         timeSinceOfferOpenedMs:
           offerPanelOpenedAtRef.current === null
             ? 0
@@ -177,7 +308,7 @@ const CollectibleMatchDetailsContainer: FunctionComponent<
       offerPanelOpenedAtRef.current = null;
       setIsOfferPanelOpen(false);
     },
-    [agreementCandidateId, logEvent],
+    [agreementCandidateId, entryAnalyticsContext, logEvent],
   );
 
   const handleAgreementSuccess = useCallback(() => {
@@ -195,9 +326,11 @@ const CollectibleMatchDetailsContainer: FunctionComponent<
   const handleIgnoreClick = useCallback(() => {
     logEvent(LicenseManagerClickEvent.IgnoreMatchPanelOpenClickEvent, {
       candidateType: AgreementCandidateType.Collectible,
+      source: 'fullPage',
+      ...entryAnalyticsContext,
     });
     setIsIgnorePanelOpen(true);
-  }, [logEvent]);
+  }, [entryAnalyticsContext, logEvent]);
 
   if (!isAvatarItemLicensingFlagReady) {
     return <PageLoading />;
@@ -243,6 +376,7 @@ const CollectibleMatchDetailsContainer: FunctionComponent<
             agreementCandidateId,
             agreementStatus: statusFromList ?? 'unknown',
             source: 'fullPage',
+            ...entryAnalyticsContext,
           })
         }>
         {translate('Action.ViewAgreement')}
@@ -416,6 +550,8 @@ const CollectibleMatchDetailsContainer: FunctionComponent<
             onClose={() => handleCloseOfferPanel('closeButton')}
             onPanelStateChange={handleOfferPanelStateChange}
             source='detailsView'
+            entrySource={entrySource}
+            sourceView={sourceView}
           />
         )}
       </MatchesSidePanel>
@@ -430,6 +566,7 @@ const CollectibleMatchDetailsContainer: FunctionComponent<
           <IgnoreMatchPanelContent
             candidateId={candidate.id}
             candidateType={AgreementCandidateType.Collectible}
+            additionalAnalyticsContext={ignoreAnalyticsContext}
             onBack={() => setIsIgnorePanelOpen(false)}
             onClose={() => setIsIgnorePanelOpen(false)}
             onIgnored={handleMatchIgnored}

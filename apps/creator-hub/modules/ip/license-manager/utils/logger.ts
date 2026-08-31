@@ -97,6 +97,7 @@ export enum LicenseManagerClickEvent {
   IgnoreMatchPanelCloseClickEvent = 'ignoreMatchPanelCloseClickEvent',
   IgnoreMatchPanelConfirmClickEvent = 'ignoreMatchPanelConfirmClickEvent',
   ExploreLicensesBrowseViewToggleClickEvent = 'exploreLicensesBrowseViewToggleClickEvent',
+  MatchesBrowseViewToggleClickEvent = 'matchesBrowseViewToggleClickEvent',
   RecommendationClickEvent = 'recommendationClickEvent',
   RecommendationCarouselAdvanceEvent = 'recommendationCarouselAdvanceEvent',
   IphLicenseCreateDurationTypeClickEvent = 'iphLicenseCreateDurationTypeClickEvent',
@@ -135,6 +136,9 @@ export enum LicenseManagerImpressionEvent {
   RecommendationImpressionEvent = 'recommendationImpressionEvent',
   CatalogImpressionEvent = 'catalogImpressionEvent',
   MatchesTableResultsImpressionEvent = 'matchesTableResultsImpressionEvent',
+  MatchesBrowseViewImpressionEvent = 'matchesBrowseViewImpressionEvent',
+  MatchDetailsPageImpressionEvent = 'matchDetailsPageImpressionEvent',
+  MatchDetailsPageLoadFailureImpressionEvent = 'matchDetailsPageLoadFailureImpressionEvent',
   MatchDetailsPanelImpressionEvent = 'matchDetailsPanelImpressionEvent',
   MatchDetailsPanelLoadFailureImpressionEvent = 'matchDetailsPanelLoadFailureImpressionEvent',
   MatchDetailsPanelAgreementStatusErrorImpressionEvent = 'matchDetailsPanelAgreementStatusErrorImpressionEvent',
@@ -192,7 +196,14 @@ export enum LicenseManagerImpressionEvent {
   ExperiencePreviewScreenshotsAvailableImpressionEvent = 'experiencePreviewScreenshotsAvailableImpressionEvent',
 }
 
-type LicenseManagerEventName = LicenseManagerImpressionEvent | LicenseManagerClickEvent;
+export enum LicenseManagerApiVitalsEvent {
+  MatchesCandidatesRequestCompleted = 'matchesCandidatesRequestCompleted',
+}
+
+type LicenseManagerEventName =
+  | LicenseManagerImpressionEvent
+  | LicenseManagerClickEvent
+  | LicenseManagerApiVitalsEvent;
 
 const toUTCCalendarDay = (date: Date): string => {
   const offsetMillis = date.getTimezoneOffset() * 60 * 1000;
@@ -227,8 +238,9 @@ const logLicenseManagerEventInternal = (
 ) => {
   const isImpressionEvent = isValidEnumValue(LicenseManagerImpressionEvent, eventName);
   const isClickEvent = isValidEnumValue(LicenseManagerClickEvent, eventName);
+  const isApiVitalsEvent = isValidEnumValue(LicenseManagerApiVitalsEvent, eventName);
 
-  if (!isImpressionEvent && !isClickEvent) {
+  if (!isImpressionEvent && !isClickEvent && !isApiVitalsEvent) {
     throw new Error(`Invalid event: ${String(eventName)}`);
   }
 
@@ -236,6 +248,8 @@ const logLicenseManagerEventInternal = (
 
   if (isImpressionEvent) {
     client.logImpressionEvent({ eventName, parameters: transformedParams });
+  } else if (isApiVitalsEvent) {
+    client.logApiVitalsEvent({ eventName, parameters: transformedParams });
   } else {
     client.logClickEvent({ eventName, parameters: transformedParams });
   }

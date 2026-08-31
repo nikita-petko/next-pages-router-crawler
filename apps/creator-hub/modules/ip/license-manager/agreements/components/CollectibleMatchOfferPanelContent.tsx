@@ -10,6 +10,7 @@ import {
 import { useTranslation, useTranslationWithNamespace } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import type { GridListView } from '@modules/licenses/components/GridListViewToggle';
 import { Link } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { KeyValuePair, KeyValuePairContainer } from '../../components/KeyValuePair';
@@ -32,6 +33,8 @@ interface CollectibleMatchOfferPanelContentProps {
   onClose: () => void;
   onPanelStateChange?: (state: 'loading' | 'ready' | 'error') => void;
   source?: 'sidebar' | 'detailsView';
+  entrySource?: 'sidebar' | 'deepLink';
+  sourceView?: GridListView;
 }
 
 const COLLECTIBLE_MATCH_OFFER_CONFIGURATION: MatchOfferPanelConfiguration = {
@@ -44,7 +47,15 @@ const COLLECTIBLE_MATCH_OFFER_CONFIGURATION: MatchOfferPanelConfiguration = {
 
 const CollectibleMatchOfferPanelContent: FunctionComponent<
   CollectibleMatchOfferPanelContentProps
-> = ({ candidate, onSuccess, onClose, onPanelStateChange, source = 'sidebar' }) => {
+> = ({
+  candidate,
+  onSuccess,
+  onClose,
+  onPanelStateChange,
+  source = 'sidebar',
+  entrySource,
+  sourceView,
+}) => {
   const translation = useTranslation();
   const { tPendingTranslation, tPendingHtmlTranslation } = useTranslationWrapper(translation);
   const { translate: translateControls } = useTranslationWithNamespace(
@@ -85,9 +96,13 @@ const CollectibleMatchOfferPanelContent: FunctionComponent<
       isResellAllowed: presentation?.isResellAllowed ?? false,
       hasDescription: Boolean(presentation?.description?.trim()),
       hasPrice: presentation?.price != null,
+      priceState:
+        presentation?.price == null ? 'unknown' : presentation.price === 0 ? 'free' : 'paid',
       hasSubtype: Boolean(details?.subtype),
+      ...(entrySource === undefined ? {} : { entrySource }),
+      ...(sourceView === undefined ? {} : { sourceView }),
     }),
-    [details?.subtype, presentation, source],
+    [details?.subtype, entrySource, presentation, source, sourceView],
   );
   const limitedLabel = tPendingTranslation(
     'Limited',

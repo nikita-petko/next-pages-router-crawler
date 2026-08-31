@@ -25,12 +25,17 @@ import IpLoadError from '../../../components/error/IpLoadError';
 import { useIpFamiliesQuery } from '../../../ipFamilies/hooks/ipFamily';
 import { IP_FAMILY_CREATE_HREF } from '../../../ipFamilies/urls';
 import {
+  LicenseManagerApiVitalsEvent,
   LicenseManagerClickEvent,
   LicenseManagerImpressionEvent,
   useLicenseManagerLogger,
   useLicenseManagerLoggerLogOnce,
 } from '../../utils/logger';
-import { markMatchCandidateIgnored, useMatchesQuery } from '../hooks/useMatchesQuery';
+import {
+  markMatchCandidateIgnored,
+  useMatchesQuery,
+  type MatchesCandidatesRequestMetrics,
+} from '../hooks/useMatchesQuery';
 import CollectibleMatchDetailsPanelContent from './CollectibleMatchDetailsPanelContent';
 import CollectibleMatchesGrid from './CollectibleMatchesGrid';
 import CollectibleMatchesTable from './CollectibleMatchesTable';
@@ -288,6 +293,14 @@ const Matches: React.FC<MatchesProps> = ({
     [analyticsCandidateType, filters, sort, isIndexedMatchesEnabled],
   );
   const analyticsContextDedupeKey = serializeMatchesTableAnalyticsContext(analyticsContext);
+  const handleMatchesRequestCompleted = useCallback(
+    (metrics: MatchesCandidatesRequestMetrics) => {
+      logEvent(LicenseManagerApiVitalsEvent.MatchesCandidatesRequestCompleted, {
+        ...metrics,
+      });
+    },
+    [logEvent],
+  );
 
   const [selectedCandidate, setSelectedCandidate] = useState<
     AgreementCandidateResponse | undefined
@@ -305,6 +318,7 @@ const Matches: React.FC<MatchesProps> = ({
   const offerPanelOpenedAtRef = useRef<number | null>(null);
   const panelNavigationCountRef = useRef(0);
   const panelStateRef = useRef<MatchPanelState>('loading');
+  const lastImpressedCollectibleMatchesViewRef = useRef<GridListView | null>(null);
 
   const isMatchPanelOpen = currentMatchPanelView !== MatchPanelView.None;
   const isSidePanelOpen = isMatchPanelOpen || filterDrawerOpen;
@@ -324,6 +338,7 @@ const Matches: React.FC<MatchesProps> = ({
     candidateType,
     loadAgreementStatuses: true,
     enabled: !isCollectibleMatchesRequest || isCollectibleMatchesEnabled,
+    onRequestCompleted: handleMatchesRequestCompleted,
   });
 
   const { allAgreementCandidates, agreementStatusesColumn } = candidatesQuery;
@@ -479,10 +494,41 @@ const Matches: React.FC<MatchesProps> = ({
   const handleLoadMore = useCallback(() => {
     logEvent(LicenseManagerClickEvent.MatchesTableLoadMoreClickEvent, {
       ...analyticsContext,
+      ...(isCollectibleMatchesRequest ? { sourceView: collectibleMatchesView } : {}),
       loadedResultCount: allAgreementCandidates.length,
       hasNextPage: candidatesQuery.hasNextPage ?? false,
     });
-  }, [allAgreementCandidates.length, analyticsContext, candidatesQuery.hasNextPage, logEvent]);
+  }, [
+    allAgreementCandidates.length,
+    analyticsContext,
+    candidatesQuery.hasNextPage,
+    collectibleMatchesView,
+    isCollectibleMatchesRequest,
+    logEvent,
+  ]);
+
+  const handleCollectibleMatchesViewChange = useCallback(
+    (selectedView: GridListView) => {
+      if (selectedView === collectibleMatchesView) {
+        return;
+      }
+      logEvent(LicenseManagerClickEvent.MatchesBrowseViewToggleClickEvent, {
+        candidateType: AgreementCandidateType.Collectible,
+        previousView: collectibleMatchesView,
+        selectedView,
+        loadedResultCount: allAgreementCandidates.length,
+        hasNextPage: candidatesQuery.hasNextPage ?? false,
+      });
+      setCollectibleMatchesView(selectedView);
+    },
+    [
+      allAgreementCandidates.length,
+      candidatesQuery.hasNextPage,
+      collectibleMatchesView,
+      logEvent,
+      setCollectibleMatchesView,
+    ],
+  );
 
   const handleSelectCandidate = useCallback(
     (candidate: AgreementCandidateResponse) => {
@@ -491,6 +537,7 @@ const Matches: React.FC<MatchesProps> = ({
         logEvent(LicenseManagerClickEvent.ViewAgreementCandidateClickEvent, {
           candidate: candidateId,
           ...analyticsContext,
+          ...(isCollectibleMatchesRequest ? { sourceView: collectibleMatchesView } : {}),
           rowPosition:
             allAgreementCandidates.findIndex(
               (agreementCandidate) => agreementCandidate.id === candidateId,
@@ -504,7 +551,13 @@ const Matches: React.FC<MatchesProps> = ({
       setSelectedCandidate(candidate);
       setCurrentMatchPanelView(MatchPanelView.Details);
     },
-    [allAgreementCandidates, analyticsContext, logEvent],
+    [
+      allAgreementCandidates,
+      analyticsContext,
+      collectibleMatchesView,
+      isCollectibleMatchesRequest,
+      logEvent,
+    ],
   );
 
   const selectedMatchIndex = useMemo(() => {
@@ -535,6 +588,7 @@ const Matches: React.FC<MatchesProps> = ({
         logEvent(LicenseManagerClickEvent.ViewAgreementCandidateClickEvent, {
           candidate: candidate.id,
           ...analyticsContext,
+          ...(isCollectibleMatchesRequest ? { sourceView: collectibleMatchesView } : {}),
           rowPosition: toRowPosition,
         });
       }
@@ -542,7 +596,13 @@ const Matches: React.FC<MatchesProps> = ({
       setSelectedCandidate(candidate);
       setCurrentMatchPanelView(MatchPanelView.Details);
     },
-    [analyticsCandidateType, analyticsContext, logEvent],
+    [
+      analyticsCandidateType,
+      analyticsContext,
+      collectibleMatchesView,
+      isCollectibleMatchesRequest,
+      logEvent,
+    ],
   );
 
   const matchDetailsNavigation = useMemo((): MatchDetailsPanelNavigation | undefined => {
@@ -658,9 +718,19 @@ const Matches: React.FC<MatchesProps> = ({
       candidateType: analyticsCandidateType,
       agreementCandidateId: selectedCandidate?.id ?? '',
       rowPosition: selectedMatchIndex + 1,
+      ...(isCollectibleMatchesRequest
+        ? { source: 'sidebar', sourceView: collectibleMatchesView }
+        : {}),
     });
     setCurrentMatchPanelView(MatchPanelView.Offer);
-  }, [analyticsCandidateType, logEvent, selectedCandidate?.id, selectedMatchIndex]);
+  }, [
+    analyticsCandidateType,
+    collectibleMatchesView,
+    isCollectibleMatchesRequest,
+    logEvent,
+    selectedCandidate?.id,
+    selectedMatchIndex,
+  ]);
 
   const handleAgreementSuccess = useCallback(
     (agreement: AgreementResponse) => {
@@ -715,6 +785,35 @@ const Matches: React.FC<MatchesProps> = ({
     hasNoMatches,
     isCollectibleMatchesRequest,
     logOnce,
+  ]);
+
+  useEffect(() => {
+    if (
+      !showCollectibleViewToggle ||
+      candidatesQuery.isFetching ||
+      candidatesQuery.isPlaceholderData ||
+      lastImpressedCollectibleMatchesViewRef.current === collectibleMatchesView
+    ) {
+      return;
+    }
+
+    const isInitialView = lastImpressedCollectibleMatchesViewRef.current == null;
+    logEvent(LicenseManagerImpressionEvent.MatchesBrowseViewImpressionEvent, {
+      candidateType: AgreementCandidateType.Collectible,
+      selectedView: collectibleMatchesView,
+      loadedResultCount: allAgreementCandidates.length,
+      hasNextPage: candidatesQuery.hasNextPage ?? false,
+      isInitialView,
+    });
+    lastImpressedCollectibleMatchesViewRef.current = collectibleMatchesView;
+  }, [
+    allAgreementCandidates.length,
+    candidatesQuery.hasNextPage,
+    candidatesQuery.isFetching,
+    candidatesQuery.isPlaceholderData,
+    collectibleMatchesView,
+    logEvent,
+    showCollectibleViewToggle,
   ]);
 
   useEffect(() => {
@@ -904,7 +1003,7 @@ const Matches: React.FC<MatchesProps> = ({
           <div className={classes.filterButtonContainer}>
             <GridListViewToggle
               value={collectibleMatchesView}
-              onChange={setCollectibleMatchesView}
+              onChange={handleCollectibleMatchesViewChange}
               testId='collectible-matches-view-toggle'
             />
           </div>
@@ -928,6 +1027,7 @@ const Matches: React.FC<MatchesProps> = ({
               agreementStatusFromList={matchPanelAgreementStatus}
               navigation={matchDetailsNavigation}
               rowPosition={selectedMatchIndex + 1}
+              sourceView={collectibleMatchesView}
               onPanelStateChange={handlePanelStateChange}
             />
           ) : (
@@ -949,6 +1049,7 @@ const Matches: React.FC<MatchesProps> = ({
               candidate={selectedCandidate}
               onSuccess={handleAgreementSuccess}
               onClose={handleCloseButtonClick}
+              sourceView={collectibleMatchesView}
               onPanelStateChange={handlePanelStateChange}
             />
           ) : (
