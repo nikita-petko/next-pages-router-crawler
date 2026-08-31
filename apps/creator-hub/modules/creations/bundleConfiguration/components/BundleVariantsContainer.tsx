@@ -70,7 +70,7 @@ const BundleVariantsContainer: FunctionComponent<React.PropsWithChildren> = () =
           bundleType === undefined ? undefined : translateBundleDetailsToBundleInfoType(bundleType),
         bundleId: item.id,
         name: item.name,
-        price: item.price !== undefined ? item.price : null,
+        price: item.price ?? null,
         isDirectlyArchivable: false,
         isArchived,
         isClickable: true,
@@ -85,6 +85,7 @@ const BundleVariantsContainer: FunctionComponent<React.PropsWithChildren> = () =
         hidePricingInfo: shouldHidePricing(item.moderationStatus),
         isSellable: item.cannotBePublishedReason === 0,
         isCollectible: item.collectibleItemType !== 0,
+        collectibleItemId: item.collectibleDetails?.collectibleItemId,
         wearTime: DurationOptionsEnum.Permanent, // TODO @mryumae: durables - replace with item.wearTime once the BE is ready
       }));
 
@@ -106,23 +107,23 @@ const BundleVariantsContainer: FunctionComponent<React.PropsWithChildren> = () =
   return (
     <Grid container classes={{ root: container }}>
       <Grid container item direction='column' gap={2} classes={{ root: headerContainer }}>
+        {/* oxlint-disable rbx/no-hardcoded-translation-string -- WIP variants page placeholders; TODO @mryumae replace with translation */}
         <Grid item>
           <Typography color='primary' variant='h1'>
             Lorem ipsum
-            {/* TODO @mryumae: replace with translation */}
           </Typography>
         </Grid>
         <Grid item>
           <Typography color='secondary' variant='body1'>
-            {/* TODO @mryumae: replace with translation */}
             Lorem ipsum
           </Typography>
         </Grid>
+        {/* oxlint-enable rbx/no-hardcoded-translation-string */}
       </Grid>
       <ItemGridContainer
         pagingParameters={{}}
         loadItems={loadVariants}
-        getItemKey={(item) => (item.assetId || item.bundleId) ?? 0}
+        getItemKey={(item) => item.assetId ?? item.bundleId ?? 0}
         GridItemComponent={ItemCardContainer}
         errorMessage={translate('Message.LoadItemsError', {
           itemType: translate(Item.Bundle),

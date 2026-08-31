@@ -38,7 +38,6 @@ import ItemDetails from './ItemDetails';
 import NonSellableSavePanel from './NonSellableSavePanel';
 import Pricing from './Pricing';
 import PublishPanel from './PublishPanel';
-import SaleLocation from './SaleLocation';
 import SaleLocationAndRevenue from './SaleLocationAndRevenue';
 import SavePanel from './SavePanel';
 import VerificationAlert from './VerificationAlert';
@@ -495,6 +494,7 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
           <Pricing
             isBundle={isBundle}
             isFree={isFree}
+            is2dAsset={is2dAsset}
             isLimited={isLimited}
             isOptOutRegionalPricing={isOptOutRegionalPricing}
             setIsOptOutRegionalPricing={setIsOptOutRegionalPricing}
@@ -515,34 +515,23 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
             setShowTimedOptionsDialog={setShowTimedOptionsDialog}
           />
           <Divider style={{ margin: '40px 0' }} />
-          {collectiblesMetadata?.isRevenueSplitEnabled ? (
-            <SaleLocationAndRevenue
-              isBundle={isBundle}
-              targetId={targetId.toString()}
-              isLimited={isLimited}
-              saleLocation={saleLocation}
-              setSaleLocation={setSaleLocation}
-              selectedPlaces={selectedPlaces}
-              setSelectedPlaces={setSelectedPlaces}
-              availablePlaces={availablePlaces}
-              setAvailablePlaces={setAvailablePlaces}
-              priceOffset={priceOffset ?? 0}
-              minimumPrice={optionalPriceFloor ?? 1}
-              isFree={isFree}
-              isAvatarItemLicensingEnabled={
-                collectiblesMetadata?.isAvatarItemLicensingEnabled ?? false
-              }
-            />
-          ) : (
-            <SaleLocation
-              saleLocation={saleLocation}
-              setSaleLocation={setSaleLocation}
-              selectedPlaces={selectedPlaces}
-              setSelectedPlaces={setSelectedPlaces}
-              availablePlaces={availablePlaces}
-              setAvailablePlaces={setAvailablePlaces}
-            />
-          )}
+          <SaleLocationAndRevenue
+            isBundle={isBundle}
+            targetId={targetId.toString()}
+            isLimited={isLimited}
+            saleLocation={saleLocation}
+            setSaleLocation={setSaleLocation}
+            selectedPlaces={selectedPlaces}
+            setSelectedPlaces={setSelectedPlaces}
+            availablePlaces={availablePlaces}
+            setAvailablePlaces={setAvailablePlaces}
+            priceOffset={priceOffset ?? 0}
+            minimumPrice={optionalPriceFloor ?? 1}
+            isFree={isFree}
+            isAvatarItemLicensingEnabled={
+              collectiblesMetadata?.isAvatarItemLicensingEnabled ?? false
+            }
+          />
         </div>
         <Divider style={{ margin: '40px 0' }} />
 

@@ -1,8 +1,6 @@
 import type { FunctionComponent } from 'react';
-import React, { useEffect, useState } from 'react';
-import type { RobloxItemConfigurationApiCollectiblesMetadataResponse } from '@rbx/client-itemconfiguration/v1';
+import React from 'react';
 import { useTranslation } from '@rbx/intl';
-import itemConfigurationClient from '@modules/clients/itemconfiguration';
 import useVerificationMetadata from '../hooks/useVerificationMetadata';
 import { hasPremiumSubscription } from '../hooks/VerificationMetadataContext';
 import GenericVerificationAlert from './GenericVerificationAlert';
@@ -14,23 +12,7 @@ const ClassicItemVerificationAlert: FunctionComponent<
   const verificationMetadata = useVerificationMetadata();
   const hasPremium = hasPremiumSubscription(verificationMetadata);
 
-  const [collectiblesMetadata, setCollectiblesMetadata] = useState<
-    RobloxItemConfigurationApiCollectiblesMetadataResponse | undefined
-  >(undefined);
-
-  useEffect(() => {
-    const updateMetadata = async () => {
-      try {
-        const response = await itemConfigurationClient.getCollectiblesMetadata();
-        setCollectiblesMetadata(response);
-      } catch {
-        setCollectiblesMetadata(undefined);
-      }
-    };
-    void updateMetadata();
-  }, [setCollectiblesMetadata]);
-
-  if (hasPremium || !collectiblesMetadata?.unifyConfigureUI) {
+  if (hasPremium) {
     return null;
   }
 

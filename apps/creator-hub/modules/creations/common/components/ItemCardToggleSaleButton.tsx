@@ -20,21 +20,13 @@ export interface ItemCardToggleSaleButtonProps {
   handleClose: () => void;
 }
 
-const isForSale = (saleStatus: ItemStatus | undefined): boolean => {
-  switch (saleStatus) {
-    case ItemStatus.OnSale:
-    case ItemStatus.Free:
-      return true;
-    default:
-      return false;
-  }
-};
+const isForSale = (saleStatus: ItemStatus | undefined): boolean =>
+  saleStatus === ItemStatus.OnSale || saleStatus === ItemStatus.Free;
 
 const ItemCardToggleSaleButton: FunctionComponent<
   React.PropsWithChildren<ItemCardToggleSaleButtonProps>
 > = ({ creation, updateItem, handleClose }) => {
-  const { status } = creation;
-  const assetId = (creation.assetId as number) ?? 0;
+  const { status, collectibleItemId } = creation;
   const { translate } = useTranslation();
 
   const [isTakingOffSale, setIsTakingOffSale] = useState<boolean>(false);
@@ -56,18 +48,14 @@ const ItemCardToggleSaleButton: FunctionComponent<
   const takeOffSale = useCallback(async () => {
     setIsTakingOffSale(true);
     try {
-      const getCollectibleItemIdResponse =
-        await itemconfigurationClient.getCollectibleItemId(assetId);
-      const collectibleItemIdValue = getCollectibleItemIdResponse?.collectibleItemId;
-
-      if (collectibleItemIdValue) {
+      if (collectibleItemId) {
         const saleLocationModel: RobloxItemConfigurationApiModelsRequestCollectiblesSaleLocationConfigurationModel =
           {
             saleLocationType: mapSaleLocationToType(SaleLocationEnum.MarketplaceAndAllExperiences),
             places: [],
           };
         await itemconfigurationClient.updateCollectibleInformation(
-          collectibleItemIdValue,
+          collectibleItemId,
           saleLocationModel,
           false,
           0,
@@ -83,6 +71,7 @@ const ItemCardToggleSaleButton: FunctionComponent<
       }
     } catch (e) {
       if (e instanceof GenericBEDEV1Error && Object.values(PublishError).includes(e.code)) {
+        // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- publishErrorDescription is keyed by PublishError; numeric enum lookup needs explicit narrowing
         showSnackbar(translate(publishErrorDescription[e.code as PublishError]));
       } else {
         showSnackbar(translate('Message.TakeOffSaleFailed'));
@@ -91,7 +80,7 @@ const ItemCardToggleSaleButton: FunctionComponent<
       setIsTakingOffSale(false);
       handleClose();
     }
-  }, [assetId, creation, handleClose, showSnackbar, translate, updateItem]);
+  }, [collectibleItemId, creation, handleClose, showSnackbar, translate, updateItem]);
 
   return isForSale(status) ? (
     <TrackedMenuItem onClick={takeOffSale} disabled={isTakingOffSale} itemKey='Action.TakeOffSale'>

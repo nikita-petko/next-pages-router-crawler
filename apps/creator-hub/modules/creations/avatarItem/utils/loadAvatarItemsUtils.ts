@@ -217,6 +217,7 @@ export async function loadCreationsByCreator(
           hidePricingInfo: shouldHidePricing(item.moderationStatus),
           isSellable: item.cannotBePublishedReason === 0,
           isCollectible: item.collectibleItemType !== 0,
+          collectibleItemId: item.collectibleDetails?.collectibleItemId,
           wearTime: DurationOptionsEnum.Permanent, // TODO @mryumae: durables - replace with item.wearTime once the BE is ready
           isRentalOptIn: item.isRentalOptIn,
           rentalOptions: item.rentalOptions,
@@ -410,6 +411,7 @@ export async function loadCreationsByFolder(
           hidePricingInfo: shouldHidePricing(marketplaceItem?.moderationStatus),
           isSellable: marketplaceItem?.cannotBePublishedReason === 0,
           isCollectible: marketplaceItem?.collectibleItemType !== 0,
+          collectibleItemId: marketplaceItem?.collectibleDetails?.collectibleItemId,
           containingFolderId: avatarItem.folderId,
           userId,
         };
