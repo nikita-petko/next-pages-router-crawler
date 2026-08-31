@@ -10,7 +10,11 @@ import {
   type CustomDashboardDocument,
   type CustomDashboardStatus,
 } from '../types';
-import { validateDashboardDescription, validateDashboardName } from '../utils/validators';
+import {
+  validateCustomDashboardDocument,
+  validateDashboardDescription,
+  validateDashboardName,
+} from '../utils/validators';
 import type {
   ApiDashboard,
   ApiDashboardDocument,
@@ -101,7 +105,7 @@ export function fromApiDashboardMetadata(
   const createdByUserId = actorUserIdToNumber(createdBy?.userId);
   const updatedByUserId = actorUserIdToNumber(updatedBy?.userId);
 
-  return {
+  return validateCustomDashboardDocument({
     id: dashboardId,
     schemaVersion: CUSTOM_DASHBOARD_CURRENT_SCHEMA_VERSION,
     universeId,
@@ -114,8 +118,9 @@ export function fromApiDashboardMetadata(
     updatedAt,
     publishedAt,
     createdByUserId: createdByUserId ?? 0,
-    // The API returns attribution ids without names. Rendering surfaces resolve
-    // display names separately and apply their translated fallback when absent.
+    // The API returns attribution ids without names. Leave the username empty
+    // so rendering surfaces can apply their translated fallback (`''` is
+    // falsy; a sentinel like `'Unknown'` would display as a real name).
     createdByUsername: '',
     ...(updatedByUserId !== undefined
       ? {
@@ -123,7 +128,7 @@ export function fromApiDashboardMetadata(
         }
       : {}),
     config,
-  };
+  });
 }
 
 export function fromApiDashboard(dashboard: ApiDashboard): CustomDashboardDocument {

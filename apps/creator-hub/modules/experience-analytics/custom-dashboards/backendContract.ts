@@ -14,6 +14,7 @@ import {
   type ComputedMetricSource,
 } from '@modules/experience-analytics-shared/types/ComputedMetric';
 import { resolveCustomDashboardSupportedAnnotationTypes } from './constants/customDashboardSurfaceAnnotationOptions';
+import { CustomDashboardValidationError } from './errors';
 import {
   CUSTOM_DASHBOARD_CURRENT_SCHEMA_VERSION,
   CustomDashboardSummaryCardAggregation,
@@ -272,7 +273,7 @@ function enumKey(value: unknown): string {
 }
 
 function fail(message: string): never {
-  throw new TypeError(message);
+  throw new CustomDashboardValidationError('backendContract', message);
 }
 
 function mapEnumOrThrow<T extends string | number>(

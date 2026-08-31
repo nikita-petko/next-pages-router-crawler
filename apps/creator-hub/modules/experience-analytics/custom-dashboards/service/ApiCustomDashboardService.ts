@@ -1,9 +1,16 @@
 import { CustomDashboardNotAvailableError, CustomDashboardVersionConflictError } from '../errors';
 import {
+  getChartRows,
+  getSummaryCards,
+  withChartRows,
+  withSummaryCards,
+} from '../layout/dashboardLayout';
+import {
   EMPTY_DASHBOARD_CONFIG,
   type AddChartTileInput,
   type AddChartTileResult,
   type CreateCustomDashboardInput,
+  type CustomDashboardConfig,
   type CustomDashboardDocument,
   type CustomDashboardListOptions,
   type CustomDashboardListResult,
@@ -11,6 +18,7 @@ import {
   type UpdateCustomDashboardInput,
 } from '../types';
 import { addChartTileToConfig } from '../utils/addChartTileToConfig';
+import { cloneTileWithNewId } from '../utils/cloneTile';
 import { createTileId } from '../utils/createTileId';
 import { sortDashboardsForList } from '../utils/sortDashboards';
 import {
@@ -49,6 +57,15 @@ function tokenKey(universeId: number, dashboardId: string): string {
 }
 
 const PIN_REBASE_ATTEMPTS = 3;
+
+function cloneConfigWithFreshTileIds(config: CustomDashboardConfig): CustomDashboardConfig {
+  const summaryCards = getSummaryCards(config).map((tile) => cloneTileWithNewId(tile));
+  const chartRows = getChartRows(config).map((row) => ({
+    ...row,
+    tiles: row.tiles.map((tile) => cloneTileWithNewId(tile)),
+  }));
+  return withChartRows(withSummaryCards(config, summaryCards), chartRows);
+}
 
 class ApiCustomDashboardService implements CustomDashboardService {
   private readonly client: CustomDashboardsApiClient;
@@ -157,6 +174,10 @@ class ApiCustomDashboardService implements CustomDashboardService {
       const expectedVersion = options?.expectedVersion;
       let mutationDocument: CustomDashboardDocument | undefined;
       if (config !== undefined) {
+        // The backend v1 API exposes only `publishDashboard` for document
+        // updates, which flips draft → published. Match `addChartTile`: persist
+        // the config and accept the status change so editor Save is not
+        // deadlocked on draft dashboards.
         const dashboard = await this.client.publishDashboard({
           universeId,
           dashboardId,
@@ -186,15 +207,24 @@ class ApiCustomDashboardService implements CustomDashboardService {
     try {
       return await this.publish(input.universeId, created.id);
     } catch (publishError) {
+      // Publish may have succeeded on the server while the client timed out.
+      // Confirm status before deleting so we never remove a live dashboard.
       try {
-        const current = await this.get(input.universeId, created.id);
-        if (current.status === 'published') {
-          return current;
+        const latest = await this.get(input.universeId, created.id);
+        if (latest.status === 'published') {
+          return latest;
         }
-        return await this.publish(input.universeId, created.id);
-      } catch {
-        throw publishError;
+        await this.delete(input.universeId, created.id);
+      } catch (confirmError) {
+        // If status cannot be confirmed, do not delete — the dashboard may
+        // already be published. Cleanup failures must not mask publishError
+        // unless we already confirmed a published document above.
+        console.warn(
+          'ApiCustomDashboardService createAndPublish: could not confirm publish status; leftover draft may exist',
+          { dashboardId: created.id, publishError, confirmError },
+        );
       }
+      throw publishError;
     }
   }
 
@@ -261,8 +291,31 @@ class ApiCustomDashboardService implements CustomDashboardService {
       });
       this.rememberMetadata(universeId, dashboard.metadata);
       const document = fromApiDashboard(dashboard);
-      this.emit({ universeId, dashboardId: document.id, eventType: 'duplicate' });
-      return document;
+      // The backend duplicate copies tile ids verbatim; re-stamp fresh ids so
+      // React keys / DnD identity stay coherent across the original and copy.
+      const rekeyedConfig = cloneConfigWithFreshTileIds(document.config);
+      // Draft copies cannot be persisted without flipping status (the v1 API
+      // only exposes publishDashboard for document writes). Keep the rekey
+      // in-memory for drafts; persist it for published copies.
+      if (document.status !== 'published') {
+        const rekeyedDocument = {
+          ...document,
+          config: rekeyedConfig,
+        };
+        this.emit({ universeId, dashboardId: rekeyedDocument.id, eventType: 'duplicate' });
+        return rekeyedDocument;
+      }
+      const tokens = await this.ensureTokens(universeId, document.id);
+      const persisted = await this.client.publishDashboard({
+        universeId,
+        dashboardId: document.id,
+        expectedHeadEtag: this.requireHeadEtag(tokens, document.id),
+        document: toApiDashboardDocument(rekeyedConfig),
+      });
+      this.rememberMetadata(universeId, persisted.metadata);
+      const persistedDocument = fromApiDashboard(persisted);
+      this.emit({ universeId, dashboardId: persistedDocument.id, eventType: 'duplicate' });
+      return persistedDocument;
     });
   }
 

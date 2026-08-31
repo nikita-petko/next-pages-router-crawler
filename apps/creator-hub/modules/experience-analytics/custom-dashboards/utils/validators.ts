@@ -1197,6 +1197,7 @@ export function validateCustomDashboardDocument(raw: unknown): CustomDashboardDo
   }
 
   return {
+    ...record,
     id: asNonEmptyString(record.id, 'id'),
     schemaVersion: CUSTOM_DASHBOARD_CURRENT_SCHEMA_VERSION,
     universeId: asNumber(record.universeId, 'universeId'),
@@ -1209,7 +1210,7 @@ export function validateCustomDashboardDocument(raw: unknown): CustomDashboardDo
     updatedAt: asIsoTimestamp(record.updatedAt, 'updatedAt'),
     publishedAt: asOptionalIsoTimestamp(record.publishedAt, 'publishedAt'),
     createdByUserId: asNumber(record.createdByUserId, 'createdByUserId'),
-    createdByUsername: asNonEmptyString(record.createdByUsername, 'createdByUsername'),
+    createdByUsername: asString(record.createdByUsername ?? '', 'createdByUsername'),
     updatedByUserId: optional(asNumber)(record.updatedByUserId, 'updatedByUserId'),
     updatedByUsername: optional(asNonEmptyString)(record.updatedByUsername, 'updatedByUsername'),
     // Read path: accept previously saved over-cap layouts so lowering caps
