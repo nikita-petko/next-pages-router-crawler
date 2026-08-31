@@ -15,6 +15,9 @@ import { useFlag } from '@rbx/flags';
 import { useTranslation } from '@rbx/intl';
 import { makeStyles, CircularProgress, Button, Tooltip, FilterListIcon } from '@rbx/ui';
 import { isAvatarItemLicensingEnabled as isAvatarItemLicensingEnabledFlag } from '@generated/flags/contentLicensing';
+import GridListViewToggle, {
+  type GridListView,
+} from '@modules/licenses/components/GridListViewToggle';
 import EmptyState from '@modules/miscellaneous/components/EmptyState/EmptyState';
 import EmptyStateBorder from '@modules/miscellaneous/components/EmptyState/EmptyStateBorder';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
@@ -29,6 +32,7 @@ import {
 } from '../../utils/logger';
 import { markMatchCandidateIgnored, useMatchesQuery } from '../hooks/useMatchesQuery';
 import CollectibleMatchDetailsPanelContent from './CollectibleMatchDetailsPanelContent';
+import CollectibleMatchesGrid from './CollectibleMatchesGrid';
 import CollectibleMatchesTable from './CollectibleMatchesTable';
 import CollectibleMatchOfferPanelContent from './CollectibleMatchOfferPanelContent';
 import ContentMaturityFilterChip from './ContentMaturityFilterChip';
@@ -163,6 +167,8 @@ interface MatchesProps {
   openDialog?: () => void;
   maxManualRequestsLimit?: number;
   candidateType?: AgreementCandidateType;
+  collectibleMatchesView?: GridListView;
+  onCollectibleMatchesViewChange?: (view: GridListView) => void;
 }
 
 interface MatchesFilters {
@@ -234,7 +240,13 @@ const getMatchesTableAnalyticsContext = (
 const serializeMatchesTableAnalyticsContext = (context: MatchesTableAnalyticsContext): string =>
   JSON.stringify(context);
 
-const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, candidateType }) => {
+const Matches: React.FC<MatchesProps> = ({
+  maxManualRequestsLimit,
+  openDialog,
+  candidateType,
+  collectibleMatchesView: controlledCollectibleMatchesView,
+  onCollectibleMatchesViewChange,
+}) => {
   const { classes } = useStyles();
   const { translate } = useTranslation();
   const { logEvent } = useLicenseManagerLogger();
@@ -280,6 +292,11 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
   const [selectedCandidate, setSelectedCandidate] = useState<
     AgreementCandidateResponse | undefined
   >(undefined);
+  const [internalCollectibleMatchesView, setInternalCollectibleMatchesView] =
+    useState<GridListView>('grid');
+  const collectibleMatchesView = controlledCollectibleMatchesView ?? internalCollectibleMatchesView;
+  const setCollectibleMatchesView =
+    onCollectibleMatchesViewChange ?? setInternalCollectibleMatchesView;
 
   const [currentMatchPanelView, setCurrentMatchPanelView] = useState<MatchPanelView>(
     MatchPanelView.None,
@@ -336,6 +353,11 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
     filters.offerStatusFilter != null;
   const hasNoMatches = allAgreementCandidates.length === 0;
   const hasNoIpFamilies = ipFamiliesReq.data?.ipFamilies.length === 0;
+  const showCollectibleViewToggle =
+    isCollectibleMatchesRequest &&
+    isCollectibleMatchesEnabled &&
+    candidatesQuery.isSuccess &&
+    !hasNoMatches;
 
   const handleIpFamilyFilterChange = (selectedId: string | undefined) => {
     const nextFilters = { ...filtersRef.current, ipFamilyId: selectedId };
@@ -780,13 +802,22 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
   } else {
     content =
       candidateType === AgreementCandidateType.Collectible ? (
-        <CollectibleMatchesTable
-          dataReq={candidatesQuery}
-          onSelectMatch={handleSelectCandidate}
-          agreementStatusesColumn={agreementStatusesColumn}
-          selectedMatchId={isMatchPanelOpen ? (selectedCandidate?.id ?? undefined) : undefined}
-          onLoadMore={handleLoadMore}
-        />
+        collectibleMatchesView === 'grid' ? (
+          <CollectibleMatchesGrid
+            dataReq={candidatesQuery}
+            onSelectMatch={handleSelectCandidate}
+            selectedMatchId={isMatchPanelOpen ? (selectedCandidate?.id ?? undefined) : undefined}
+            onLoadMore={handleLoadMore}
+          />
+        ) : (
+          <CollectibleMatchesTable
+            dataReq={candidatesQuery}
+            onSelectMatch={handleSelectCandidate}
+            agreementStatusesColumn={agreementStatusesColumn}
+            selectedMatchId={isMatchPanelOpen ? (selectedCandidate?.id ?? undefined) : undefined}
+            onLoadMore={handleLoadMore}
+          />
+        )
       ) : (
         <UniverseMatchesTable
           dataReq={candidatesQuery}
@@ -867,6 +898,17 @@ const Matches: React.FC<MatchesProps> = ({ maxManualRequestsLimit, openDialog, c
             </MatchesFilterPanel>
           </MatchesSidePanel>
         </>
+      )}
+      {showCollectibleViewToggle && (
+        <div className={classes.filtersContainer}>
+          <div className={classes.filterButtonContainer}>
+            <GridListViewToggle
+              value={collectibleMatchesView}
+              onChange={setCollectibleMatchesView}
+              testId='collectible-matches-view-toggle'
+            />
+          </div>
+        </div>
       )}
 
       <MatchesSidePanel

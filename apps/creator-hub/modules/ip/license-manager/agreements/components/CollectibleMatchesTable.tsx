@@ -40,8 +40,18 @@ import {
 const ITEM_COLUMN_MIN_WIDTH_CLASS = '[min-width:184px]';
 const COLLECTIBLE_MATCHES_TABLE_COLUMN_COUNT = 6;
 
-type CollectibleMatchCandidate = AgreementCandidateResponse &
+export type CollectibleMatchCandidate = AgreementCandidateResponse &
   Pick<IndexedAgreementCandidateResponse, 'ipFamilyName' | 'candidateContentCreatorType'>;
+
+export type CollectibleMatchesDataReq = Omit<
+  Pick<
+    UseMatchesQueryResult,
+    'allAgreementCandidates' | 'fetchNextPage' | 'hasNextPage' | 'isFetchingNextPage'
+  >,
+  'allAgreementCandidates'
+> & {
+  allAgreementCandidates: CollectibleMatchCandidate[];
+};
 
 interface CollectibleMatchRowProps {
   match: CollectibleMatchCandidate;
@@ -162,15 +172,7 @@ const CollectibleMatchRowSkeleton = () => {
 };
 
 interface CollectibleMatchesTableProps {
-  dataReq: Omit<
-    Pick<
-      UseMatchesQueryResult,
-      'allAgreementCandidates' | 'fetchNextPage' | 'hasNextPage' | 'isFetchingNextPage'
-    >,
-    'allAgreementCandidates'
-  > & {
-    allAgreementCandidates: CollectibleMatchCandidate[];
-  };
+  dataReq: CollectibleMatchesDataReq;
   agreementStatusesColumn?: AgreementStatusesColumnProps;
   onLoadMore?: () => void;
   onSelectMatch: (match: CollectibleMatchCandidate) => void;

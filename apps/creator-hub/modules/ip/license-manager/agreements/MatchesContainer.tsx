@@ -6,6 +6,7 @@ import { Button, makeStyles, Tab, Tabs, Tooltip, Typography } from '@rbx/ui';
 import { isAvatarItemLicensingEnabled as isAvatarItemLicensingEnabledFlag } from '@generated/flags/contentLicensing';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import type { GridListView } from '@modules/licenses/components/GridListViewToggle';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -56,6 +57,7 @@ const MatchesContainer = () => {
     isAvatarItemLicensingEnabledFlag,
   );
   const [isManualMatchRequestDialogOpen, setIsManualMatchRequestDialogOpen] = useState(false);
+  const [collectibleMatchesView, setCollectibleMatchesView] = useState<GridListView>('grid');
 
   const [queryParams, setQueryParams] = useQueryParams(['tab']);
   const handleTabChange = useCallback(
@@ -120,6 +122,8 @@ const MatchesContainer = () => {
       <Matches
         key={AgreementCandidateType.Collectible}
         candidateType={AgreementCandidateType.Collectible}
+        collectibleMatchesView={collectibleMatchesView}
+        onCollectibleMatchesViewChange={setCollectibleMatchesView}
       />
     );
   }

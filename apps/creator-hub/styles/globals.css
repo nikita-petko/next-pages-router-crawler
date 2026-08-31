@@ -3489,11 +3489,17 @@
 .content-system-warning {
   color: var(--color-system-warning);
 }
+.\!bg-\[transparent\] {
+  background-color: transparent !important;
+}
 .\!bg-action-over-media {
   background-color: var(--color-action-over-media-background) !important;
 }
 .\!bg-none {
   background-color: var(--color-none) !important;
+}
+.\!bg-shift-100 {
+  background-color: var(--color-shift-100) !important;
 }
 .\!bg-shift-300 {
   background-color: var(--color-shift-300) !important;
@@ -4968,6 +4974,9 @@
 .\[transform\:rotate\(-15deg\)\] {
   transform: rotate(-15deg);
 }
+.\[transform\:scale\(1\.05\)\] {
+  transform: scale(1.05);
+}
 .\[transform\:translateX\(0\)\] {
   transform: translateX(0);
 }
@@ -5347,12 +5356,24 @@ html.studio-webview.dark-theme,
   background-color: var(--color-state-hover);
 }
 
+.group\/collectible-tile:hover .group-hover\/collectible-tile\:bg-shift-100 {
+  background-color: var(--color-shift-100);
+}
+
+.group\/collectible-tile:hover .group-hover\/collectible-tile\:bg-shift-200 {
+  background-color: var(--color-shift-200);
+}
+
 .group\/interactable:hover .group-hover\/interactable\:bg-\[var\(--color-state-hover\)\] {
   background-color: var(--color-state-hover);
 }
 
 .group:hover .group-hover\:opacity-\[1\] {
   opacity: 1;
+}
+
+.group\/collectible-tile:hover .group-hover\/collectible-tile\:\[transform\:scale\(1\.05\)\] {
+  transform: scale(1.05);
 }
 
 .group\/card:active .group-active\/card\:bg-\[var\(--color-state-press\)\] {
@@ -5994,6 +6015,9 @@ html.studio-webview.dark-theme,
   }
   .medium\:\[grid-template-columns\:minmax\(0\2c 1fr\)_auto_minmax\(0\2c 1fr\)_auto\] {
     grid-template-columns: minmax(0,1fr) auto minmax(0,1fr) auto;
+  }
+  .medium\:\[grid-template-columns\:repeat\(auto-fill\2c minmax\(min\(100\%\2c 180px\)\2c 1fr\)\)\] {
+    grid-template-columns: repeat(auto-fill,minmax(min(100%, 180px),1fr));
   }
 }
 

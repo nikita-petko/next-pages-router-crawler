@@ -1,10 +1,14 @@
 import type { FunctionComponent } from 'react';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { HubMeta, SiteName, buildTitle } from '@rbx/creator-hub-history';
 import { getProductionCreatorHubUrl } from '@rbx/env-utils';
 import { useTranslation, withTranslation } from '@rbx/intl';
 import { Grid, Typography, Link, makeStyles } from '@rbx/ui';
 import { useAuthentication } from '@modules/authentication/providers';
+import {
+  LicenseManagerClickEvent,
+  useLicenseManagerLogger,
+} from '@modules/ip/license-manager/utils/logger';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
@@ -43,6 +47,7 @@ const LicensesContainer: FunctionComponent = () => {
   const { classes } = useStyles();
   const { isFetched: isAuthenticationFetched } = useAuthentication();
   const { isFetched: isSettingsFetched } = useSettings();
+  const { logEvent } = useLicenseManagerLogger();
   const { view, setView } = useExploreLicensesBrowseView();
 
   const {
@@ -64,10 +69,26 @@ const LicensesContainer: FunctionComponent = () => {
   const showBrowseViewToggle = hasPublicListings;
   const showListView = view === 'list' && hasPublicListings;
 
+  const handleBrowseViewChange = useCallback(
+    (selectedView: typeof view) => {
+      logEvent(LicenseManagerClickEvent.ExploreLicensesBrowseViewToggleClickEvent, {
+        selectedView,
+      });
+      setView(selectedView);
+    },
+    [logEvent, setView],
+  );
+
   const browseViewToolbarEndSlot = useMemo(
     () =>
-      showBrowseViewToggle ? <GridListViewToggle value={view} onChange={setView} /> : undefined,
-    [showBrowseViewToggle, view, setView],
+      showBrowseViewToggle ? (
+        <GridListViewToggle
+          value={view}
+          onChange={handleBrowseViewChange}
+          testId='explore-licenses-browse-view-toggle'
+        />
+      ) : undefined,
+    [handleBrowseViewChange, showBrowseViewToggle, view],
   );
 
   if (!isAuthenticationFetched || !isSettingsFetched) {
