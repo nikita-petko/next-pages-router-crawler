@@ -29,13 +29,14 @@ const CreatorPitchImageRejectedTakeActionModal: FunctionComponent<
   const [view, setView] = useState(() => getInitialView(isRequired));
   const hasNotifiedAttachmentError = useRef(false);
   const {
-    data: pitchImageAttachments,
+    data: pitchImageAttachmentsResult,
     isPending: isPitchImageAttachmentsPending,
     isError: isPitchImageAttachmentsError,
   } = useGetCreatorPitchImageAttachments({
     agreementId,
     enabled: isOpen,
   });
+  const pitchImageAttachments = pitchImageAttachmentsResult?.attachments;
 
   const handleCloseModal = useCallback(() => {
     setView(getInitialView(isRequired));

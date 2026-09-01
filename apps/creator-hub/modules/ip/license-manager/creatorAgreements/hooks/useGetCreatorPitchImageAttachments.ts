@@ -73,6 +73,11 @@ type PitchImageQueryData =
       accessContext?: string | null;
     };
 
+export type CreatorPitchImageAttachmentsQueryData = {
+  attachments: CreatorPitchAttachment[];
+  accessContext?: string;
+};
+
 export const useGetCreatorPitchImageAttachments = ({
   agreementId,
   enabled = true,
@@ -158,9 +163,16 @@ export const useGetCreatorPitchImageAttachments = ({
 
   const isPending = pitchImagesQuery.isPending || isThumbnailUrlsPending;
   const isError = pitchImagesQuery.isError;
+  const data: CreatorPitchImageAttachmentsQueryData | undefined =
+    attachments == null
+      ? undefined
+      : {
+          attachments,
+          ...(accessContext != null ? { accessContext } : {}),
+        };
 
   return {
-    data: attachments,
+    data,
     isPending,
     isError,
     isSuccess: !isPending && !isError && attachments != null,

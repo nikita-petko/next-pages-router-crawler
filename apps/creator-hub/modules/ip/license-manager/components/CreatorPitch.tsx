@@ -6,12 +6,14 @@ import { useTranslationWithNamespace } from '@rbx/intl';
 import { Typography } from '@rbx/ui';
 import ViewPitchAttachments from '@modules/licenses/components/ViewPitchAttachments';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import AgreementDetailsTabs from '../agreements/enums/AgreementDetailsTabs';
 import { getAgreementActivityByTransition } from '../agreements/utils/agreementActivity';
 import { useGetCreatorPitchImageAttachments } from '../creatorAgreements/hooks/useGetCreatorPitchImageAttachments';
+import { IPH_AGREEMENT_DETAILS_HREF } from '../urls';
 
 type CreatorPitchProps = {
   agreement: HydratedAgreementWithHydratedTargetsResponse;
-  /** Reads pitch images through the Rights holder routes instead of the creator's own routes. */
+  /** Reads pitch images through the IP holder route and enables shareable full-size previews. */
   isIpHolderView?: boolean;
 };
 
@@ -22,7 +24,7 @@ const CreatorPitch: FunctionComponent<CreatorPitchProps> = ({
   const { translate } = useTranslationWithNamespace(TranslationNamespace.Licenses);
   const agreementId = agreement.id ?? '';
   const {
-    data: attachments,
+    data: attachmentsResult,
     isPending,
     isError,
   } = useGetCreatorPitchImageAttachments({
@@ -30,6 +32,7 @@ const CreatorPitch: FunctionComponent<CreatorPitchProps> = ({
     enabled: agreementId !== '',
     isIpHolderView,
   });
+  const attachments = attachmentsResult?.attachments;
   const pitchText =
     getAgreementActivityByTransition(agreement.activityLog, AgreementTransition.Apply)?.notes ?? '';
 
@@ -48,7 +51,20 @@ const CreatorPitch: FunctionComponent<CreatorPitchProps> = ({
         />
       )}
       {isError && <Typography>{translate('Error.Generic')}</Typography>}
-      {attachments != null && <ViewPitchAttachments attachments={attachments} />}
+      {attachments != null && (
+        <ViewPitchAttachments
+          attachments={attachments}
+          parentTitle={
+            isIpHolderView ? translate('Heading.CreatorIntent') : translate('Heading.YourIntent')
+          }
+          imgSharingBaseUrl={
+            isIpHolderView
+              ? `${IPH_AGREEMENT_DETAILS_HREF(agreementId)}?tab=${AgreementDetailsTabs.Details}`
+              : undefined
+          }
+          accessContext={isIpHolderView ? attachmentsResult?.accessContext : undefined}
+        />
+      )}
     </>
   );
 };
