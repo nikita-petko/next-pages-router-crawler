@@ -16,6 +16,8 @@ export const DEFAULT_STALE_TIME = 60 * 60 * 1000;
 export const shopsKeys = {
   all: ['shops'] as const, // base key for all shops queries
 
+  eligibility: () => [...shopsKeys.all, 'eligibility'] as const,
+
   byUniverse: (universeId: number) => [...shopsKeys.all, 'byUniverse', universeId] as const, // shop list for a universe
 
   items: () => [...shopsKeys.all, 'items'] as const, // all shop items in a universe
