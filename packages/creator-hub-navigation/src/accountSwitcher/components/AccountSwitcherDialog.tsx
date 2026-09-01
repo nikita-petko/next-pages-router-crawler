@@ -88,11 +88,15 @@ const AccountSwitcherDialog: FunctionComponent<AccountSwitcherDialogProps> = ({
     }
   }, [isLoggedInUsersMetadataSuccess, isOpen, sendEvent, userIdsViewedCsv]);
 
-  useEffect(() => {
-    if (!isOpen) {
-      setIsAddAccountButtonLoading(false);
-    }
-  }, [isOpen]);
+  const handleOpenChange = useCallback(
+    (nextIsOpen: boolean) => {
+      if (!nextIsOpen) {
+        setIsAddAccountButtonLoading(false);
+      }
+      setIsOpen(nextIsOpen);
+    },
+    [setIsOpen],
+  );
 
   const onClickSwitchAccounts = useCallback(
     (switchedToUserId: number) => {
@@ -143,7 +147,7 @@ const AccountSwitcherDialog: FunctionComponent<AccountSwitcherDialogProps> = ({
           </div>
         );
       }
-      return;
+      return undefined;
     },
     [
       isSwitchAccountsInProgress,
@@ -182,17 +186,17 @@ const AccountSwitcherDialog: FunctionComponent<AccountSwitcherDialogProps> = ({
       open={isOpen}
       size='Medium'
       hasCloseAffordance
-      closeLabel='Close'
+      closeLabel={translate('Action.Close')}
       hasMarginBottom={false}
       hasMarginTop={false}
-      onOpenChange={setIsOpen}>
+      onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogTitle className='flex items-center text-heading-large padding-x-xlarge margin-none padding-top-medium min-height-1800'>
           {translate('Heading.SwitchAccounts')}
         </DialogTitle>
         <DialogBody className='!padding-x-none flex flex-col medium:min-width-[480px]'>
           {isDialogLoading ? (
-            <div className='fill flex justify-center items-center min-height-1800'>
+            <div className='fill flex justify-center items-center min-height-2000'>
               <ProgressCircle
                 ariaLabel='Loading Account Switcher'
                 variant='Indeterminate'
@@ -202,6 +206,10 @@ const AccountSwitcherDialog: FunctionComponent<AccountSwitcherDialogProps> = ({
           ) : (
             <List>
               {sortedUsersMetadata.map((metadata) => {
+                // Fallback for alt text if displayName is empty
+                const displayName = metadata.displayName?.trim() ?? '';
+                const altText = displayName === '' ? translate('Label.Avatar') : displayName;
+
                 return (
                   <ListItem
                     isContained
@@ -213,19 +221,17 @@ const AccountSwitcherDialog: FunctionComponent<AccountSwitcherDialogProps> = ({
                         : () => onClickSwitchAccounts(Number(metadata.userId))
                     }
                     leading={
-                      <Avatar
-                        alt={metadata.displayName || 'avatar'}
-                        className='min-width-1200 min-height-1200'>
+                      <Avatar alt={altText} className='min-width-1200 min-height-1200'>
                         <Thumbnail2d
-                          targetId={Number(metadata.userId) ?? 0}
+                          targetId={Number(metadata.userId ?? 0)}
                           type={ThumbnailTypes.avatarHeadshot}
-                          alt={metadata.displayName || 'avatar'}
+                          alt={altText}
                         />
                       </Avatar>
                     }
                     trailing={getTrailingIcon(metadata.userId ?? '')}
                     title={metadata.displayName}
-                    text={`@${metadata.username}`}
+                    metadata={`@${metadata.username}`}
                     className={clsx(
                       'padding-x-xlarge',
                       isSwitchAccountsInProgress && 'pointer-events-none',

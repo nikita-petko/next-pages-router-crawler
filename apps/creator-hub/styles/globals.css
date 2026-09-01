@@ -2406,6 +2406,9 @@
 .min-height-1800 {
   min-height: var(--size-1800);
 }
+.min-height-2000 {
+  min-height: var(--size-2000);
+}
 .min-height-250 {
   min-height: var(--size-250);
 }
@@ -2516,6 +2519,9 @@
 }
 .min-width-1800 {
   min-width: var(--size-1800);
+}
+.min-width-1900 {
+  min-width: var(--size-1900);
 }
 .min-width-200 {
   min-width: var(--size-200);

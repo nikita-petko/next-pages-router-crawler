@@ -37,6 +37,12 @@ enum DialogType {
   Refresh,
 }
 
+/**
+ * Reserves an identical box for every auth state so the nav doesn't shift between loading, logged out, and logged in states.
+ */
+const AUTH_STATUS_SLOT_CLASS_NAME =
+  'flex justify-center items-center min-width-1900 min-height-1200';
+
 export type TAuthenticationStatusV3Props = {
   desktopDropdownContent?: ReactElement<TMenuItemProps>[];
   onLogout?: VoidFunction; // optional callback that runs after logout
@@ -98,7 +104,9 @@ const AuthenticationStatusV3: FunctionComponent<TAuthenticationStatusV3Props> = 
     if (user?.id === switchedAccountUsersStorage?.switchedToUserId) {
       // oxlint-disable-next-line react/react-compiler
       setSnackbarConfig({
-        title: translate('Message.YouSwitchedTo', { username: user.name ?? '' }),
+        title: translate('Message.YouSwitchedTo', {
+          username: user.name ?? '',
+        }),
         isError: false,
       });
     }
@@ -137,7 +145,7 @@ const AuthenticationStatusV3: FunctionComponent<TAuthenticationStatusV3Props> = 
 
   if (loading) {
     return (
-      <div className='flex justify-center items-center min-width-1800 min-height-1200'>
+      <div className={AUTH_STATUS_SLOT_CLASS_NAME}>
         <ProgressCircle ariaLabel='Loading Navigation' variant='Indeterminate' size='Medium' />
       </div>
     );
@@ -145,25 +153,13 @@ const AuthenticationStatusV3: FunctionComponent<TAuthenticationStatusV3Props> = 
 
   if (user === null) {
     return (
-      <Button
-        size='Large'
-        variant='Utility'
-        onClick={() => login()}
-        className='min-width-1800 min-height-1200'>
-        {translate('Action.LogIn')}
-      </Button>
+      <div className={AUTH_STATUS_SLOT_CLASS_NAME}>
+        <Button size='Large' variant='Utility' onClick={() => login()}>
+          {translate('Action.LogIn')}
+        </Button>
+      </div>
     );
   }
-
-  const avatar = (
-    <WorkplaceThumbnailContainer
-      creator={{
-        creatorId: user.id ?? 0,
-        creatorName: user.name,
-        creatorType: CreatorType.User,
-      }}
-    />
-  );
 
   return (
     <>
@@ -179,30 +175,38 @@ const AuthenticationStatusV3: FunctionComponent<TAuthenticationStatusV3Props> = 
         switchedFromUserId={user.id}
         switchedToUserId={authUser?.id}
       />
-      <Popover open={isPopoverOpen} onOpenChange={onPopoverOpenChange}>
-        <PopoverTrigger asChild>
-          <Button size='Large' variant='Utility' className='min-width-1800'>
-            {avatar}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          side='bottom'
-          align='end'
-          ariaLabel='Navigation Menu'
-          onKeyDown={onPopoverKeyDown}>
-          <AuthenticationStatusMenu
-            desktopDropdownContent={desktopDropdownContent}
-            isAccountSwitcherFrameLoaded={isAccountSwitcherFrameLoaded}
-            isAccountSwitcherEnabled={isAccountSwitcherEnabled}
-            isAccountSwitcherSupported={isAccountSwitcherSupported}
-            onLogout={onLogout}
-            setIsDialogOpen={setAccountSwitcherDialogOpen}
-            setIsLogoutInProgress={setIsLogoutInProgress}
-            setIsPopoverOpen={setIsPopoverOpen}
-            setSnackbarConfig={setSnackbarConfig}
-          />
-        </PopoverContent>
-      </Popover>
+      <div className={AUTH_STATUS_SLOT_CLASS_NAME}>
+        <Popover open={isPopoverOpen} onOpenChange={onPopoverOpenChange}>
+          <PopoverTrigger asChild>
+            <Button size='Large' variant='Utility'>
+              <WorkplaceThumbnailContainer
+                creator={{
+                  creatorId: user.id ?? 0,
+                  creatorName: user.name,
+                  creatorType: CreatorType.User,
+                }}
+              />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            side='bottom'
+            align='end'
+            ariaLabel={translate('Label.NavigationMenu')}
+            onKeyDown={onPopoverKeyDown}>
+            <AuthenticationStatusMenu
+              desktopDropdownContent={desktopDropdownContent}
+              isAccountSwitcherFrameLoaded={isAccountSwitcherFrameLoaded}
+              isAccountSwitcherEnabled={isAccountSwitcherEnabled}
+              isAccountSwitcherSupported={isAccountSwitcherSupported}
+              onLogout={onLogout}
+              setIsDialogOpen={setAccountSwitcherDialogOpen}
+              setIsLogoutInProgress={setIsLogoutInProgress}
+              setIsPopoverOpen={setIsPopoverOpen}
+              setSnackbarConfig={setSnackbarConfig}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
     </>
   );
 };
