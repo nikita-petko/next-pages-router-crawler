@@ -2,6 +2,8 @@ import type { FunctionComponent, ReactNode } from 'react';
 import {
   DauBucket,
   LicenseDurationType,
+  LicenseType,
+  ResellingPermission,
   type LicenseResponse,
 } from '@rbx/client-content-licensing-api/v1';
 import { useFlag } from '@rbx/flags';
@@ -12,6 +14,7 @@ import {
   isAvatarItemLicensingEnabled as isAvatarItemLicensingEnabledFlag,
   isInGameSalesLicensingEnabled as isInGameSalesLicensingEnabledFlag,
 } from '@generated/flags/contentLicensing';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import LinkButton from '@modules/ip/components/LinkButton';
 import AmDivider from '@modules/ip/license-manager/components/AmDivider';
 import { getDauLicenseLabelFromEnum } from '@modules/ip/license-manager/utils/dauEnum';
@@ -24,6 +27,7 @@ import { getDurationRangeLabel } from '@modules/ip/license-manager/utils/timeLim
 import { Link, PageLoading } from '@modules/miscellaneous/components';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import { LICENSE_APPLY_HREF, type LicenseRequestCancelReturnToValue } from '../urls';
+import { getCreatorEarningsRequirementText } from '../utils/creatorEarningsRequirementText';
 import { formatRoyaltyRate } from '../utils/format';
 import {
   getLicenseTypeTranslationKeys,
@@ -145,7 +149,9 @@ const LicenseDetailsModal: FunctionComponent<LicenseDetailsModalProps> = ({
   handleGuidelinesAndRestrictionsClick,
   licenseRequestCancelReturnTo,
 }) => {
-  const { translate } = useTranslation();
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
   const { classes } = useStyles();
   const { logEvent } = useLicenseManagerLogger();
   const { isFetched } = useSettings();
@@ -166,13 +172,24 @@ const LicenseDetailsModal: FunctionComponent<LicenseDetailsModalProps> = ({
 
   const isInGameSalesLicensingEnabled = inGameSalesLicensingFlagValue ?? false;
   const isAvatarItemLicensingEnabled = avatarItemLicensingFlagValue ?? false;
-  const licenseTypeLabels = getLicenseTypeTranslationKeys(
-    getEffectiveLicenseTypeForDisplay(
-      license.licenseType,
-      isInGameSalesLicensingEnabled,
-      isAvatarItemLicensingEnabled,
-    ),
+  const effectiveLicenseType = getEffectiveLicenseTypeForDisplay(
+    license.licenseType,
+    isInGameSalesLicensingEnabled,
+    isAvatarItemLicensingEnabled,
   );
+  const licenseTypeLabels = getLicenseTypeTranslationKeys(effectiveLicenseType);
+  const isMarketplaceSaleLicense = effectiveLicenseType === LicenseType.MarketplaceSale;
+  const creatorEarningsRequirementText = getCreatorEarningsRequirementText(
+    license,
+    effectiveLicenseType,
+    translate,
+    tPendingTranslation,
+  );
+  const resaleLabel = translate('Label.Resale');
+  const resaleValue =
+    license.licenseTerms?.reselling === ResellingPermission.Allowed
+      ? translate('Label.Allowed')
+      : translate('Label.NotAllowed');
 
   const listingId = license.listingId;
   const licenseId = license.id;
@@ -287,81 +304,150 @@ const LicenseDetailsModal: FunctionComponent<LicenseDetailsModalProps> = ({
                 <AmDivider />
               </Grid>
               <Grid item container>
-                <Grid item XSmall={7}>
-                  <Typography variant='body2' color='secondary'>
-                    {translate('Label.MinAvgDaus')}
-                  </Typography>
-                </Grid>
-                <Grid item container XSmall={5} flexDirection='column' alignItems='flex-end'>
-                  <Grid item>
-                    <Typography variant='body2' noWrap>
-                      <strong>
-                        {translate(
-                          getDauLicenseLabelFromEnum(
-                            coerceDauBucketForDisplay(license.dau7DayThreshold),
-                          ),
-                        )}
-                      </strong>
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Grid>
-              <Grid item>
-                <AmDivider />
-              </Grid>
-              <Grid item container>
-                <Grid item container XSmall={7} className={classes.tooltipContainer}>
-                  <Typography variant='body2' color='secondary'>
-                    {translate('Label.MaxMaturityRating')}
-                  </Typography>
-                  <Grid item className={classes.tooltip}>
-                    <Tooltip
-                      arrow
-                      placement='right'
-                      title={translate('Label.TooltipMaxMaturityRating')}>
-                      <InfoOutlinedIcon fontSize='small' className={classes.icon} />
-                    </Tooltip>
-                  </Grid>
-                </Grid>
-                <Grid item container XSmall={5} flexDirection='column' alignItems='flex-end'>
-                  <Grid item>
-                    <Typography variant='body2' noWrap>
-                      <strong>{translate(getMaturityRatingLabel(license.maxAgeRating))}</strong>
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Grid>
-              <Grid item>
-                <Typography variant='h5'>{translate('Label.Limitations')}</Typography>
-              </Grid>
-              <Grid item>
-                <AmDivider />
-              </Grid>
-              <Grid item container>
-                <Grid item container XSmall={7} className={classes.tooltipContainer}>
-                  <Typography variant='body2' color='secondary'>
-                    {translate('Label.GuidelinesAndRestrictions')}
-                  </Typography>
-                  <Grid item className={classes.tooltip}>
-                    <Tooltip
-                      arrow
-                      placement='right'
-                      title={translate('Label.TooltipGuidelinesAndRestrictions')}>
-                      <InfoOutlinedIcon
-                        fontSize='small'
-                        className={classes.icon}
-                        data-testid='guidelines-info-icon'
-                      />
-                    </Tooltip>
-                  </Grid>
-                </Grid>
-                <Grid item container XSmall={5} flexDirection='column' alignItems='flex-end'>
-                  <Grid item>
-                    <LinkButton onClick={handleGuidelinesAndRestrictionsClick}>
-                      <Typography variant='body2' noWrap>
-                        <strong>{translate('Action.View')}</strong>
+                {creatorEarningsRequirementText ? (
+                  <>
+                    <Grid item container XSmall={7} className={classes.tooltipContainer}>
+                      <Typography variant='body2' color='secondary'>
+                        {creatorEarningsRequirementText.label}
                       </Typography>
-                    </LinkButton>
+                      <Grid item className={classes.tooltip}>
+                        <Tooltip
+                          arrow
+                          placement='right'
+                          title={creatorEarningsRequirementText.tooltip}>
+                          <InfoOutlinedIcon
+                            fontSize='small'
+                            className={classes.icon}
+                            data-testid='creator-earnings-eligibility-info-icon'
+                          />
+                        </Tooltip>
+                      </Grid>
+                    </Grid>
+                    <Grid item container XSmall={5} flexDirection='column' alignItems='flex-end'>
+                      <Grid item>
+                        <Typography variant='body2' noWrap>
+                          <strong>{creatorEarningsRequirementText.value}</strong>
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </>
+                ) : (
+                  <>
+                    <Grid item XSmall={7}>
+                      <Typography variant='body2' color='secondary'>
+                        {translate('Label.MinAvgDaus')}
+                      </Typography>
+                    </Grid>
+                    <Grid item container XSmall={5} flexDirection='column' alignItems='flex-end'>
+                      <Grid item>
+                        <Typography variant='body2' noWrap>
+                          <strong>
+                            {translate(
+                              getDauLicenseLabelFromEnum(
+                                coerceDauBucketForDisplay(license.dau7DayThreshold),
+                              ),
+                            )}
+                          </strong>
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </>
+                )}
+              </Grid>
+              <Grid item>
+                <AmDivider />
+              </Grid>
+              {!isMarketplaceSaleLicense && (
+                <>
+                  <Grid item container>
+                    <Grid item container XSmall={7} className={classes.tooltipContainer}>
+                      <Typography variant='body2' color='secondary'>
+                        {translate('Label.MaxMaturityRating')}
+                      </Typography>
+                      <Grid item className={classes.tooltip}>
+                        <Tooltip
+                          arrow
+                          placement='right'
+                          title={translate('Label.TooltipMaxMaturityRating')}>
+                          <InfoOutlinedIcon fontSize='small' className={classes.icon} />
+                        </Tooltip>
+                      </Grid>
+                    </Grid>
+                    <Grid item container XSmall={5} flexDirection='column' alignItems='flex-end'>
+                      <Grid item>
+                        <Typography variant='body2' noWrap>
+                          <strong>{translate(getMaturityRatingLabel(license.maxAgeRating))}</strong>
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </Grid>
+                  <Grid item>
+                    <AmDivider />
+                  </Grid>
+                </>
+              )}
+              <Grid
+                item
+                container
+                component='section'
+                aria-labelledby='license-limitations-heading'
+                flexDirection='column'
+                spacing={1.5}>
+                <Grid item>
+                  <Typography id='license-limitations-heading' variant='h5'>
+                    {translate('Label.Limitations')}
+                  </Typography>
+                </Grid>
+                <Grid item>
+                  <AmDivider />
+                </Grid>
+                {isMarketplaceSaleLicense && (
+                  <>
+                    <Grid item container>
+                      <Grid item XSmall={7}>
+                        <Typography variant='body2' color='secondary'>
+                          {resaleLabel}
+                        </Typography>
+                      </Grid>
+                      <Grid item container XSmall={5} flexDirection='column' alignItems='flex-end'>
+                        <Grid item>
+                          <Typography variant='body2' noWrap>
+                            <strong>{resaleValue}</strong>
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                    </Grid>
+                    <Grid item>
+                      <AmDivider />
+                    </Grid>
+                  </>
+                )}
+                <Grid item container>
+                  <Grid item container XSmall={7} className={classes.tooltipContainer}>
+                    <Typography variant='body2' color='secondary'>
+                      {translate('Label.GuidelinesAndRestrictions')}
+                    </Typography>
+                    <Grid item className={classes.tooltip}>
+                      <Tooltip
+                        arrow
+                        placement='right'
+                        title={translate('Label.TooltipGuidelinesAndRestrictions')}>
+                        <InfoOutlinedIcon
+                          fontSize='small'
+                          className={classes.icon}
+                          data-testid='guidelines-info-icon'
+                        />
+                      </Tooltip>
+                    </Grid>
+                  </Grid>
+                  <Grid item container XSmall={5} flexDirection='column' alignItems='flex-end'>
+                    <Grid item>
+                      <LinkButton onClick={handleGuidelinesAndRestrictionsClick}>
+                        <Typography variant='body2' noWrap>
+                          <strong>{translate('Action.View')}</strong>
+                        </Typography>
+                      </LinkButton>
+                    </Grid>
                   </Grid>
                 </Grid>
               </Grid>
