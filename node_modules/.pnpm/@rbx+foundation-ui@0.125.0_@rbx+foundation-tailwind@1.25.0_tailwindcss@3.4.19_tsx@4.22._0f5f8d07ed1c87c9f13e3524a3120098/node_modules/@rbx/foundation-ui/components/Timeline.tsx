@@ -1,0 +1,129 @@
+import clsx from 'clsx';
+import React, {
+  ComponentProps,
+  createContext,
+  forwardRef,
+  ReactNode,
+  useContext,
+  useMemo
+} from 'react';
+import type { TTailwindIconClass } from '@rbx/foundation-tailwind/classes';
+import { TForwardRefComponent } from './types/TForwardRefComponent';
+import { Icon } from './Icon';
+
+export const timelinePlacements = ['Start', 'End'] as const;
+export type TTimelinePlacement = (typeof timelinePlacements)[number];
+
+type TTimelineContext = {
+  placement: TTimelinePlacement;
+};
+
+const TimelineContext = createContext<TTimelineContext | null>(null);
+
+const useTimelineContext = () => {
+  const context = useContext(TimelineContext);
+  if (!context) {
+    throw new Error('Timeline subcomponents must be used within a Timeline component');
+  }
+  return context;
+};
+
+export type TTimelineItemProps = ComponentProps<'li'> & {
+  title: string;
+  description?: string;
+  link?: ReactNode;
+  icon?: TTailwindIconClass;
+  children?: ReactNode;
+  className?: string;
+};
+
+const TimelineSeparator = ({
+  icon,
+  className
+}: {
+  icon?: TTailwindIconClass;
+  className?: string;
+}) => (
+  <div
+    className={clsx('flex flex-col items-center gap-y-xsmall shrink-0 grow-0 width-50', className)}>
+    <span className='grow-1 stroke-standard stroke-default group-first/timeline-item:invisible' />
+    <Icon
+      name={icon ?? 'icon-regular-diamond-simplified'}
+      size='Medium'
+      className='shrink-0 content-emphasis'
+    />
+    <span className='grow-1 stroke-standard stroke-default group-last/timeline-item:invisible' />
+  </div>
+);
+
+const TimelineItemComponent = (
+  { title, description, link, icon, children, className, ...props }: TTimelineItemProps,
+  ref: ComponentProps<'li'>['ref']
+) => {
+  const { placement } = useTimelineContext();
+  const isStart = placement === 'Start';
+  const rowDirection = isStart ? 'flex-row' : 'flex-row-reverse';
+  const hasBelow = Boolean(description || link || children);
+
+  return (
+    <li
+      ref={ref}
+      className={clsx('flex flex-col relative padding-x-medium group/timeline-item', className)}
+      style={{ listStyle: 'none' }}
+      {...props}>
+      <div className={clsx('flex gap-medium', rowDirection)}>
+        <TimelineSeparator icon={icon} />
+        <div className={clsx('fill padding-y-small', !isStart && 'text-align-x-end')}>
+          <div className={clsx('flex items-center gap-none', !isStart && 'justify-end')}>
+            <div className='text-title-medium content-emphasis'>{title}</div>
+          </div>
+        </div>
+      </div>
+      {hasBelow && (
+        <div className={clsx('flex gap-medium', rowDirection)}>
+          <div className='flex flex-col items-center shrink-0 grow-0 width-50'>
+            <span className='grow-1 stroke-standard stroke-default group-last/timeline-item:invisible' />
+          </div>
+          <div className={clsx('fill padding-bottom-small', !isStart && 'text-align-x-end')}>
+            {description && <div className='text-body-medium content-default'>{description}</div>}
+            {link && <div className='padding-top-xsmall'>{link}</div>}
+            {children && <div className='padding-top-small'>{children}</div>}
+          </div>
+        </div>
+      )}
+    </li>
+  );
+};
+
+export const TimelineItem = forwardRef(
+  TimelineItemComponent
+) as TForwardRefComponent<TTimelineItemProps>;
+TimelineItem.displayName = 'TimelineItem';
+
+export type TTimelineProps = Omit<ComponentProps<'ul'>, 'children'> & {
+  placement?: TTimelinePlacement;
+  children: ReactNode;
+  className?: string;
+};
+
+const TimelineComponent = (
+  { placement = 'Start', children, className, ...props }: TTimelineProps,
+  ref: ComponentProps<'ul'>['ref']
+) => {
+  const contextValue = useMemo(() => ({ placement }), [placement]);
+
+  return (
+    <TimelineContext.Provider value={contextValue}>
+      <ul
+        ref={ref}
+        className={clsx('flex flex-col padding-none', className)}
+        style={{ listStyle: 'none' }}
+        {...props}>
+        {children}
+      </ul>
+    </TimelineContext.Provider>
+  );
+};
+
+export const Timeline = forwardRef(TimelineComponent) as TForwardRefComponent<TTimelineProps>;
+Timeline.displayName = 'Timeline';

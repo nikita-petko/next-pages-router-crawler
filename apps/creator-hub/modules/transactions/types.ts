@@ -1,0 +1,15 @@
+import type { ReactElement } from 'react';
+
+export enum TransactionTab {
+  CreatorStore = 'store',
+  PaidAccess = 'paidAccess',
+  Virtual = 'virtual',
+  AudienceReach = 'audienceReach',
+  Legacy = 'Redirect',
+}
+
+export type TransactionTabType = {
+  key: TransactionTab;
+  translationKey: string;
+  icon?: ReactElement;
+};
