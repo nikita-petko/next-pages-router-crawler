@@ -1,5 +1,4 @@
 import { useState, type FC } from 'react';
-import type { UniverseTransactionStatusResponse } from '@rbx/client-core-content-transaction-api/v1';
 import { TransactionVariantEnum } from '@rbx/client-core-content-transaction-api/v1';
 import { Alert } from '@rbx/foundation-ui';
 import { useLocalization, useTranslation } from '@rbx/intl';
@@ -10,15 +9,15 @@ import {
   RefundPeriodMs,
   SelectReviewDocsLink,
 } from '../constants/audienceReachConstants';
+import { useContentRatingDetails } from '../hooks/useContentRatingDetails';
+import { useCoreContentTransactionStatus } from '../hooks/useCoreContentTransactionStatus';
 import ExpeditedIneligibleDialog from './ExpeditedIneligibleDialog';
 import TransactionDepositDialog from './TransactionDepositDialog';
 import TransactionRefundDialog from './TransactionRefundDialog';
 
 interface AudienceReachExpediteUpsellBannerProps {
   universeId: number;
-  isRated: boolean;
   isAccountAllAgesTier: boolean;
-  expeditedTransactionStatus: UniverseTransactionStatusResponse | null;
   openSuccessSnackbar?: (message: string) => void;
   groupId?: number;
   forceGroupFunds?: boolean;
@@ -26,8 +25,6 @@ interface AudienceReachExpediteUpsellBannerProps {
 
 const AudienceReachExpediteUpsellBanner: FC<AudienceReachExpediteUpsellBannerProps> = ({
   universeId,
-  isRated,
-  expeditedTransactionStatus,
   isAccountAllAgesTier,
   openSuccessSnackbar,
   groupId,
@@ -37,6 +34,12 @@ const AudienceReachExpediteUpsellBanner: FC<AudienceReachExpediteUpsellBannerPro
   const { translateWithNamespace } = useTranslation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const numberFormatter = new Intl.NumberFormat(locale ?? 'en-us');
+  const { data: contentRating } = useContentRatingDetails(universeId);
+  const { data: expeditedTransactionStatus } = useCoreContentTransactionStatus(
+    universeId,
+    TransactionVariantEnum.Expedited,
+  );
+  const isRated = !contentRating?.isUnrated;
 
   // Transaction status isn't done loading, so don't show a banner.
   if (!expeditedTransactionStatus) {

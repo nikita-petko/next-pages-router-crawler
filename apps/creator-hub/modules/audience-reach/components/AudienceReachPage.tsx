@@ -1,13 +1,11 @@
 import { useMemo, type FC } from 'react';
 import { useRouter } from 'next/router';
-import { useQuery } from '@tanstack/react-query';
-import { OwnerType } from '@rbx/client-commerce-api/v1';
 import { AllowlistTypeEnum, CreatorTierEnum } from '@rbx/client-core-content-api/v1';
 import { TransactionVariantEnum } from '@rbx/client-core-content-transaction-api/v1';
 import { StatusCodes } from '@rbx/core';
 import { useTranslation, withTranslation } from '@rbx/intl';
-import groupsClient from '@modules/clients/groups';
-import useExperienceOwner from '@modules/commerce/hooks/useExperienceOwner';
+import { useAuthentication } from '@modules/authentication/providers';
+import CreatorType from '@modules/miscellaneous/common/enums/Creator';
 import { PageLoading } from '@modules/miscellaneous/components';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import { ErrorPage } from '@modules/miscellaneous/error';
@@ -15,6 +13,7 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import { useAudienceReachData } from '../hooks/useAudienceReachData';
 import { useCoreContentTransactionStatus } from '../hooks/useCoreContentTransactionStatus';
+import { useGroupOwnerUserId } from '../hooks/useGroupOwnerUserId';
 import AudienceReachExpediteConfirmationBanner from './AudienceReachExpediteConfirmationBanner';
 import ContentRatingCard from './ContentRatingCard';
 import HighlyEngagedPlayersCard from './HighlyEngagedPlayersCard';
@@ -26,34 +25,25 @@ import RestrictedExperienceBanner from './RestrictedExperienceBanner';
 import UnderReviewBanner from './UnderReviewBanner';
 
 const AudienceReachPage: FC = () => {
-  const intl = useTranslation();
-  const { translate } = intl;
+  const { translate } = useTranslation();
   const router = useRouter();
   const { gameDetails, isLoadingGame, isErrorLoadingGame } = useCurrentGame();
   const universeId = gameDetails?.id ?? 0;
 
-  const { isExperienceOwner, isFetched: isOwnerFetched, ownerType, ownerId } = useExperienceOwner();
-  const creatorType = (gameDetails?.creator?.type ?? ownerType).toLowerCase();
-  const isGroupOwnedExperience = creatorType === OwnerType.Group.toLowerCase();
-  const isUserOwnedExperience = creatorType === OwnerType.User.toLowerCase();
-  const { data: groupOwnerUserId, isFetched: isGroupOwnerUserIdFetched } = useQuery({
-    queryKey: ['audienceReachGroupOwnerUserId', ownerId],
-    queryFn: async (): Promise<number | undefined> => {
-      const groupInfoResponse = await groupsClient.getGroupInfo(ownerId);
-      return groupInfoResponse.owner?.userId;
-    },
-    enabled: isGroupOwnedExperience && ownerId > 0,
-    retry: false,
-  });
-
-  const universeCreatorUserId = isUserOwnedExperience ? ownerId : groupOwnerUserId;
-  const isUniverseCreatorUserIdFetched = isUserOwnedExperience
-    ? ownerId > 0
-    : !isGroupOwnedExperience || isGroupOwnerUserIdFetched;
+  // Assemble game ownership info
+  const { user, isFetched: isUserFetched } = useAuthentication();
+  const ownerId = gameDetails?.creator?.id ?? 0;
+  const isGroupOwnedExperience = gameDetails?.creator?.type === CreatorType.Group;
+  const { groupOwnerUserId, isGroupOwnerUserIdFetched } = useGroupOwnerUserId(
+    isGroupOwnedExperience ? ownerId : undefined,
+  );
+  const isExperienceOwner = isGroupOwnedExperience
+    ? groupOwnerUserId === user?.id
+    : ownerId === user?.id;
+  const isOwnerFetched = !isGroupOwnedExperience || isGroupOwnerUserIdFetched;
 
   const { state, isLoading, isError, isRestricted, isDiscoveryBlocked } =
     useAudienceReachData(universeId);
-
   const { data: expeditedTransactionStatus, isLoading: isTransactionsLoading } =
     useCoreContentTransactionStatus(universeId, TransactionVariantEnum.Expedited);
   const expeditedIsPaid = expeditedTransactionStatus?.hasDeposit ?? false;
@@ -93,7 +83,7 @@ const AudienceReachPage: FC = () => {
     );
   }
 
-  if (isLoading || isLoadingGame || !isOwnerFetched) {
+  if (isLoading || isLoadingGame || !isOwnerFetched || !isUserFetched) {
     return <PageLoading />;
   }
 
@@ -143,11 +133,7 @@ const AudienceReachPage: FC = () => {
         <PublishingFeeCard
           isCreator={isExperienceOwner}
           isBelowThreshold={isBelowThreshold}
-          creatorId={universeCreatorUserId}
-          isEligibilityContextReady={isUniverseCreatorUserIdFetched}
           audienceReach={state.reachLevel}
-          isRated={!state.contentRating.isUnrated}
-          is16Plus={state.contentRating.minimumAge >= 16}
           isAccountAllAgesTier={effectiveCreatorTier === CreatorTierEnum.Everyone}
           activeAllowlists={state.activeAllowlists}
         />

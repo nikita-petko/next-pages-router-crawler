@@ -2093,9 +2093,6 @@
 .height-300 {
   height: var(--size-300);
 }
-.height-3000 {
-  height: var(--size-3000);
-}
 .height-400 {
   height: var(--size-400);
 }

@@ -1,31 +1,29 @@
 import { useMemo, useState, type FC } from 'react';
-import { AllowlistTypeEnum, CreatorTierEnum } from '@rbx/client-core-content-api/v1';
+import type { AllowlistTypeEnum } from '@rbx/client-core-content-api/v1';
 import { TransactionVariantEnum } from '@rbx/client-core-content-transaction-api/v1';
-import { StatusCodes } from '@rbx/core';
-import { Alert, Button, Snackbar, Tooltip, TooltipTrigger } from '@rbx/foundation-ui';
+import {
+  Alert,
+  Button,
+  Icon,
+  Skeleton,
+  Snackbar,
+  Tooltip,
+  TooltipTrigger,
+} from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { Skeleton } from '@rbx/ui';
-import { getResponseFromError } from '@modules/clients/utils';
-import useUniversePublishStatus from '@modules/creations-overview/hooks/useUniversePublishStatus';
 import CreatorType from '@modules/miscellaneous/common/enums/Creator';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
-import { useCreatorEligibility } from '@modules/publishing-permissions/hooks/useCreatorEligibility';
-import { useGetOrganizationPermissionsByGroupId } from '@modules/react-query/organizations/organizationsQueries';
 import { PublishingFee, PublishingPermissionsRoute } from '../constants/audienceReachConstants';
-import { useCoreContentTransactionStatus } from '../hooks/useCoreContentTransactionStatus';
-import { ReachLevel } from '../types/audienceReach';
+import { usePublishingFeeStatus } from '../hooks/usePublishingFeeStatus';
+import type { ReachLevel } from '../types/audienceReach';
 import AudienceReachExpediteUpsellBanner from './AudienceReachExpediteUpsellBanner';
 import TransactionDepositDialog from './TransactionDepositDialog';
 
 interface PublishingFeeCardProps {
   isCreator: boolean;
   isBelowThreshold: boolean;
-  creatorId?: number;
-  isEligibilityContextReady?: boolean;
   audienceReach: ReachLevel;
-  isRated: boolean;
-  is16Plus: boolean;
   isAccountAllAgesTier: boolean;
   activeAllowlists?: AllowlistTypeEnum[] | null;
 }
@@ -33,193 +31,158 @@ interface PublishingFeeCardProps {
 const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
   isCreator,
   isBelowThreshold,
-  creatorId,
   audienceReach,
-  isEligibilityContextReady = true,
-  isRated,
-  is16Plus,
   isAccountAllAgesTier,
   activeAllowlists,
 }) => {
   const { translateWithNamespace } = useTranslation();
   const { gameDetails } = useCurrentGame();
   const universeId = gameDetails?.id ?? 0;
-  const groupId =
-    gameDetails?.creator?.type === CreatorType.Group
-      ? (gameDetails.creator.id ?? undefined)
-      : undefined;
+  const isGroupOwned = gameDetails?.creator?.type === CreatorType.Group;
+  const groupId = isGroupOwned ? (gameDetails?.creator?.id ?? undefined) : undefined;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
-  const { isPublished, isLoading: isUniversePublishStatusLoading } =
-    useUniversePublishStatus(universeId);
+
   const {
-    data: publishingFeeTransactionStatus,
-    isLoading: isPublishingFeeTransactionStatusLoading,
-    error: publishingFeeError,
-  } = useCoreContentTransactionStatus(universeId, TransactionVariantEnum.PublishFee);
-  const {
-    data: expeditedTransactionStatus,
-    isLoading: isExpeditedTransactionStatusLoading,
-    error: expeditedFeeError,
-  } = useCoreContentTransactionStatus(universeId, TransactionVariantEnum.Expedited);
+    hasPublishingFeeDeposit,
+    hasExpeditedDeposit,
+    canView,
+    canPay,
+    isExempt,
+    shouldShowExpediteUpsell,
+    shouldShowPublishingFeeUpsell,
+    isLoading,
+    error,
+  } = usePublishingFeeStatus({
+    universeId,
+    isGroupOwned,
+    isCreator,
+    creatorId: gameDetails?.creator?.id,
+    isBelowThreshold,
+    audienceReach,
+    activeAllowlists,
+  });
 
-  const canSubmitPublishingFee = !publishingFeeTransactionStatus?.hasDeposit;
-  const { data: creatorEligibilityResponse, isLoading: isCreatorEligibilityLoading } =
-    useCreatorEligibility({
-      overrideUserId: creatorId,
-      isReady: isEligibilityContextReady,
-    });
-  const { data: groupPermissions, isLoading: isGroupPermissionsLoading } =
-    useGetOrganizationPermissionsByGroupId(groupId);
+  // Non-owners cannot use their own funds to pay the publishing fee
+  const forceGroupFunds = canPay && !isCreator;
 
-  const canConfigureGroupRevenue =
-    Boolean(groupId) &&
-    (groupPermissions?.isOwner === true || groupPermissions?.canConfigureRevenueDetails === true);
-  // Non-owner group revenue managers may pay, but only from group funds.
-  const canPay = isCreator || canConfigureGroupRevenue;
-  const canView = !(
-    getResponseFromError(publishingFeeError)?.status === StatusCodes.FORBIDDEN ||
-    getResponseFromError(expeditedFeeError)?.status === StatusCodes.FORBIDDEN
-  );
-  const forceGroupFunds = !isCreator && canConfigureGroupRevenue;
-
-  const exemptDueToActiveSubscription =
-    !creatorEligibilityResponse?.everyoneTierWithoutSubscription &&
-    creatorEligibilityResponse?.creatorTier === CreatorTierEnum.Everyone;
-
-  const isAllowlistedExempt =
-    Boolean(activeAllowlists?.includes(AllowlistTypeEnum.UniverseBypass)) ||
-    Boolean(activeAllowlists?.includes(AllowlistTypeEnum.TemporaryExpeditedFeeBypass));
-
-  const shouldShowExpediteUpsell =
-    // Eligible to pay expedited fee:
-    (isBelowThreshold && // Creators above threshold can just pay the normal fee
-      !isAllowlistedExempt &&
-      canPay &&
-      audienceReach !== ReachLevel.AllAges &&
-      !(isRated && is16Plus)) ||
-    // Or already paid fee
-    expeditedTransactionStatus?.hasDeposit;
-
-  const [feeStatusText, feeDescriptionText, ctaButton, shouldShowPublishingFeeUpsell] =
-    useMemo(() => {
-      // Variant 1: The user does not have permission to view the publishing fee status
-      if (!canView) {
-        return [
-          translateWithNamespace(TranslationNamespace.AudienceReach, 'Label.NotAvailable'),
-          translateWithNamespace(
-            TranslationNamespace.AudienceReach,
-            'Description.DepositOwnerOnly',
-          ),
-          null,
-          false,
-        ];
-      }
-      // Variant 2: The game has already had a deposit paid. No action is needed.
-      if (publishingFeeTransactionStatus?.hasDeposit) {
-        return [
-          translateWithNamespace(TranslationNamespace.AudienceReach, 'Label.Paid'),
-          translateWithNamespace(
-            TranslationNamespace.AudienceReach,
-            'Description.PublishingFeeReturnV2',
-          ),
-          null,
-          false,
-        ];
-      }
-      if (
-        exemptDueToActiveSubscription ||
-        expeditedTransactionStatus?.hasDeposit ||
-        isAllowlistedExempt
-      ) {
-        // Variant 3: The user has an active subscription that exempts them from the deposit, they
-        // have already paid the expedited review fee, or the universe is on a fee-bypass allowlist.
-        // No action is needed.
-        return [
-          translateWithNamespace(TranslationNamespace.AudienceReach, 'Label.Exempt'),
-          expeditedTransactionStatus?.hasDeposit
-            ? translateWithNamespace(
-                TranslationNamespace.AudienceReach,
-                'Description.NoPaymentWithExpedited',
-              )
-            : translateWithNamespace(
-                TranslationNamespace.AudienceReach,
-                'Description.PublishingFeeNotApplicable',
-              ),
-          <Button
-            as='a'
-            key='cta'
-            href={PublishingPermissionsRoute}
-            variant='Standard'
-            size='Small'
-            className='width-2100'>
-            {translateWithNamespace(TranslationNamespace.AudienceReach, 'Action.ViewDetails')}
-          </Button>,
-          false,
-        ];
-      }
-      // Variant 4: There is no deposit for this game and the user has the permission level to
-      // pay for it. Pay always uses Emphasis; the upsell banner is still gated on being
-      // published and above the engagement threshold.
-      const paymentButton = (
-        <Button
-          key='cta'
-          variant='Emphasis'
-          size='Small'
-          onClick={() => setIsDialogOpen(true)}
-          isDisabled={!canSubmitPublishingFee || !canPay}
-          className='width-2100'>
-          {translateWithNamespace(TranslationNamespace.AudienceReach, 'Action.Pay')}
-        </Button>
-      );
-      // Tooltip is only for the insufficient permissions case, already having a payment is covered elsewhere in
-      // the copy.
-      const disabledPaymentButtonWithTooltip = (
-        <Tooltip
-          position='top-center'
-          title={translateWithNamespace(
-            TranslationNamespace.AudienceReach,
-            'Label.InsufficientPermission',
-          )}
-          description={translateWithNamespace(
-            TranslationNamespace.AudienceReach,
-            'Tooltip.InsufficientPermissionsPublishingFee',
-          )}>
-          <TooltipTrigger asChild>{paymentButton}</TooltipTrigger>
-        </Tooltip>
-      );
+  const [feeStatusText, feeDescriptionText, ctaButton] = useMemo(() => {
+    if (isLoading) {
       return [
-        translateWithNamespace(TranslationNamespace.AudienceReach, 'Label.NotSubmitted'),
-        translateWithNamespace(TranslationNamespace.AudienceReach, 'Description.PublishingFee'),
-        canPay ? paymentButton : disabledPaymentButtonWithTooltip,
-        canPay && !isBelowThreshold && isPublished,
+        <Skeleton
+          key='label'
+          variant='Text'
+          height={16}
+          width='12em'
+          data-testid='payment-loading-skeleton'
+        />,
+        <Skeleton key='description' variant='Text' height={14} width='28em' />,
+        null,
       ];
-    }, [
-      canPay,
-      canView,
-      publishingFeeTransactionStatus,
-      exemptDueToActiveSubscription,
-      isAllowlistedExempt,
-      translateWithNamespace,
-      isBelowThreshold,
-      canSubmitPublishingFee,
-      isPublished,
-      expeditedTransactionStatus,
-    ]);
-
-  if (
-    isPublishingFeeTransactionStatusLoading ||
-    isExpeditedTransactionStatusLoading ||
-    isUniversePublishStatusLoading ||
-    isCreatorEligibilityLoading ||
-    (Boolean(groupId) && isGroupPermissionsLoading) ||
-    !isEligibilityContextReady
-  ) {
-    return (
-      // I don't think this component is in foundation yet
-      <Skeleton className='flex flex-col gap-xlarge padding-large radius-medium stroke-standard stroke-emphasis height-3000' />
+    }
+    if (error) {
+      return [
+        <span key='label' className='flex items-center gap-small'>
+          <Icon name='icon-regular-triangle-exclamation' className='content-action-alert' />
+          {translateWithNamespace(TranslationNamespace.AudienceReach, 'Label.FailedToLoadPayment')}
+        </span>,
+        translateWithNamespace(
+          TranslationNamespace.AudienceReach,
+          'Description.FailedToLoadPaymentStatus',
+        ),
+        null,
+      ];
+    }
+    // Variant 1: The user does not have permission to view the publishing fee status
+    if (!canView) {
+      return [
+        translateWithNamespace(TranslationNamespace.AudienceReach, 'Label.NotAvailable'),
+        translateWithNamespace(TranslationNamespace.AudienceReach, 'Description.DepositOwnerOnly'),
+        null,
+      ];
+    }
+    // Variant 2: The game has already had a deposit paid. No action is needed.
+    if (hasPublishingFeeDeposit) {
+      return [
+        translateWithNamespace(TranslationNamespace.AudienceReach, 'Label.Paid'),
+        translateWithNamespace(
+          TranslationNamespace.AudienceReach,
+          'Description.PublishingFeeReturnV2',
+        ),
+        null,
+      ];
+    }
+    if (isExempt) {
+      // Variant 3: The user has an active subscription that exempts them from the deposit, they have
+      // already paid the expedited review fee, or the universe is on a fee-bypass allowlist. No
+      // action is needed.
+      return [
+        translateWithNamespace(TranslationNamespace.AudienceReach, 'Label.Exempt'),
+        hasExpeditedDeposit
+          ? translateWithNamespace(
+              TranslationNamespace.AudienceReach,
+              'Description.NoPaymentWithExpedited',
+            )
+          : translateWithNamespace(
+              TranslationNamespace.AudienceReach,
+              'Description.PublishingFeeNotApplicable',
+            ),
+        <Button
+          as='a'
+          key='cta'
+          href={PublishingPermissionsRoute}
+          variant='Standard'
+          size='Small'
+          className='width-2100'>
+          {translateWithNamespace(TranslationNamespace.AudienceReach, 'Action.ViewDetails')}
+        </Button>,
+      ];
+    }
+    // Variant 4: There is no deposit for this game and the user has the permission level to
+    // pay for it. Pay always uses Emphasis; the upsell banner is still gated on being
+    // published and above the engagement threshold.
+    const paymentButton = (
+      <Button
+        key='cta'
+        variant='Emphasis'
+        size='Small'
+        onClick={() => setIsDialogOpen(true)}
+        isDisabled={hasPublishingFeeDeposit || !canPay}
+        className='width-2100'>
+        {translateWithNamespace(TranslationNamespace.AudienceReach, 'Action.Pay')}
+      </Button>
     );
-  }
+    // Tooltip is only for the insufficient permissions case, already having a payment is covered elsewhere in
+    // the copy.
+    const disabledPaymentButtonWithTooltip = (
+      <Tooltip
+        position='top-center'
+        title={translateWithNamespace(
+          TranslationNamespace.AudienceReach,
+          'Label.InsufficientPermission',
+        )}
+        description={translateWithNamespace(
+          TranslationNamespace.AudienceReach,
+          'Tooltip.InsufficientPermissionsPublishingFee',
+        )}>
+        <TooltipTrigger asChild>{paymentButton}</TooltipTrigger>
+      </Tooltip>
+    );
+    return [
+      translateWithNamespace(TranslationNamespace.AudienceReach, 'Label.NotSubmitted'),
+      translateWithNamespace(TranslationNamespace.AudienceReach, 'Description.PublishingFee'),
+      canPay ? paymentButton : disabledPaymentButtonWithTooltip,
+    ];
+  }, [
+    isLoading,
+    error,
+    canPay,
+    canView,
+    hasPublishingFeeDeposit,
+    isExempt,
+    translateWithNamespace,
+    hasExpeditedDeposit,
+  ]);
 
   const paymentModalBody = (
     <p className='text-body-medium margin-none'>
@@ -237,9 +200,7 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
       {shouldShowExpediteUpsell && (
         <AudienceReachExpediteUpsellBanner
           universeId={universeId}
-          isRated={isRated}
           isAccountAllAgesTier={isAccountAllAgesTier}
-          expeditedTransactionStatus={expeditedTransactionStatus ?? null}
           openSuccessSnackbar={setSnackbarMessage}
           groupId={groupId}
           forceGroupFunds={forceGroupFunds}
@@ -257,7 +218,9 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
             {translateWithNamespace(
               TranslationNamespace.PublicPublish,
               'Description.ExpandYourReach',
-              { number: PublishingFee.toString() },
+              {
+                number: PublishingFee.toString(),
+              },
             )}
           </div>
         </Alert>
