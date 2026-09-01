@@ -1,0 +1,197 @@
+import clsx from 'clsx';
+import React, { ComponentPropsWithRef, ReactNode, forwardRef } from 'react';
+import type { TTailwindBgClass, TTailwindIconClass } from '@rbx/foundation-tailwind/classes';
+import { Icon } from './Icon';
+import { Button } from './Button';
+import { CloseAffordance } from './internal/CloseAffordance';
+import { TForwardRefComponent } from './types/TForwardRefComponent';
+
+export const systemBannerVariants = ['Standard', 'Emphasis'] as const;
+export type TSystemBannerVariant = (typeof systemBannerVariants)[number];
+
+export const systemBannerSeverities = ['Info', 'Warning', 'Success', 'Error'] as const;
+export type TSystemBannerSeverity = (typeof systemBannerSeverities)[number];
+
+type TSystemBannerBaseProps = ComponentPropsWithRef<'div'> & {
+  title: string;
+  description?: string;
+  showIcon?: boolean;
+  variant?: TSystemBannerVariant;
+  primaryActionLabel?: string;
+  onPrimaryAction?: () => void;
+  actions?: ReactNode;
+  onDismiss?: () => void;
+  dismissIconAriaLabel?: string;
+};
+
+export type TSystemBannerProps = TSystemBannerBaseProps &
+  (
+    | { severity?: 'Info'; infoIconOverride?: TTailwindIconClass }
+    | { severity: Exclude<TSystemBannerSeverity, 'Info'>; infoIconOverride?: never }
+  );
+
+const BACKGROUND_BY_VARIANT_AND_SEVERITY: Record<
+  TSystemBannerVariant,
+  Record<TSystemBannerSeverity, TTailwindBgClass>
+> = {
+  Standard: {
+    Info: 'bg-shift-200',
+    Warning: 'bg-shift-200',
+    Success: 'bg-shift-200',
+    Error: 'bg-shift-200'
+  },
+  Emphasis: {
+    Info: 'bg-system-emphasis',
+    Warning: 'bg-system-warning',
+    Success: 'bg-system-success',
+    Error: 'bg-system-alert'
+  }
+};
+
+const DESCRIPTION_COLOR_BY_VARIANT_AND_SEVERITY: Record<TSystemBannerSeverity, string> = {
+  Info: 'var(--dark-mode-content-default)',
+  Warning: 'var(--light-mode-content-default)',
+  Success: 'var(--light-mode-content-default)',
+  Error: 'var(--dark-mode-content-default)'
+};
+
+const ICON_STANDARD_COLOR_BY_SEVERITY: Record<TSystemBannerSeverity, string> = {
+  Info: 'var(--light-mode-system-emphasis)',
+  Warning: 'var(--light-mode-system-warning)',
+  Success: 'var(--light-mode-system-success)',
+  Error: 'var(--light-mode-system-alert)'
+};
+
+const ICON_BY_SEVERITY: Record<TSystemBannerSeverity, TTailwindIconClass> = {
+  Info: 'icon-filled-circle-i',
+  Warning: 'icon-filled-triangle-exclamation',
+  Success: 'icon-filled-circle-check',
+  Error: 'icon-filled-circle-x'
+};
+
+const ACTION_EMPHASIS_BACKGROUND_BY_SEVERITY: Record<TSystemBannerSeverity, TTailwindBgClass> = {
+  Info: 'bg-action-standard',
+  Warning: 'bg-inverse-action-standard',
+  Success: 'bg-inverse-action-standard',
+  Error: 'bg-action-standard'
+};
+
+const CONTENT_EMPHASIS_COLOR_BY_SEVERITY: Record<TSystemBannerSeverity, string> = {
+  Info: 'var(--dark-mode-content-emphasis)',
+  Warning: 'var(--light-mode-content-emphasis)',
+  Success: 'var(--light-mode-content-emphasis)',
+  Error: 'var(--dark-mode-content-emphasis)'
+};
+
+// TODO (mbae 1/17/26): The left-hand icon's inner symbol should be white and not black in certain cases.
+// Will revisit this in a future PR
+const SystemBannerComponent = (
+  {
+    title,
+    description,
+    showIcon = true,
+    infoIconOverride,
+    variant = 'Standard',
+    severity = 'Info',
+    primaryActionLabel,
+    onPrimaryAction,
+    actions,
+    onDismiss,
+    dismissIconAriaLabel = 'Dismiss banner',
+    className,
+    ...rest
+  }: TSystemBannerProps,
+  ref: ComponentPropsWithRef<'div'>['ref']
+) => {
+  const backgroundClass = BACKGROUND_BY_VARIANT_AND_SEVERITY[variant][severity];
+  const titleColorClass = CONTENT_EMPHASIS_COLOR_BY_SEVERITY[severity];
+  const descriptionColorClass = DESCRIPTION_COLOR_BY_VARIANT_AND_SEVERITY[severity];
+  const iconStandardColorClass = ICON_STANDARD_COLOR_BY_SEVERITY[severity];
+  const actionBackgroundClass =
+    variant === 'Emphasis' ? ACTION_EMPHASIS_BACKGROUND_BY_SEVERITY[severity] : '';
+  const actionEmphasisColorClass =
+    variant === 'Emphasis' ? CONTENT_EMPHASIS_COLOR_BY_SEVERITY[severity] : '';
+  const role = severity === 'Warning' || severity === 'Error' ? 'alert' : 'status';
+
+  return (
+    <div
+      ref={ref}
+      role={role}
+      className={clsx(
+        'foundation-web-system-banner w-full flex items-center gap-medium radius-medium stroke-none padding-y-medium padding-x-large',
+        backgroundClass,
+        className
+      )}
+      {...rest}>
+      <div className='flex items-center gap-medium grow-1 basis-0'>
+        {showIcon && (
+          <Icon
+            name={
+              severity === 'Info' && infoIconOverride
+                ? infoIconOverride
+                : ICON_BY_SEVERITY[severity]
+            }
+            size='Large'
+            className={clsx('shrink-0')}
+            style={{
+              color: variant === 'Standard' ? iconStandardColorClass : actionEmphasisColorClass
+            }}
+          />
+        )}
+        <div className='flex flex-col gap-xsmall grow-1 basis-0'>
+          <div
+            className={clsx(
+              'text-title-medium text-truncate-end',
+              variant === 'Standard' ? 'content-emphasis' : ''
+            )}
+            style={{ color: variant === 'Emphasis' ? titleColorClass : undefined }}>
+            {title}
+          </div>
+          {description && (
+            <div
+              className={clsx(
+                'text-body-medium text-truncate-split',
+                variant === 'Standard' ? 'content-default' : ''
+              )}
+              style={{ color: variant === 'Emphasis' ? descriptionColorClass : undefined }}>
+              {description}
+            </div>
+          )}
+        </div>
+      </div>
+      {(primaryActionLabel || actions || onDismiss) && (
+        <div className='flex items-center justify-end gap-small shrink-0'>
+          {actions ??
+            (primaryActionLabel && onPrimaryAction && (
+              <Button
+                size='Small'
+                variant='Standard'
+                onClick={onPrimaryAction}
+                className={clsx(actionBackgroundClass)}
+                style={{ color: actionEmphasisColorClass }}>
+                {primaryActionLabel}
+              </Button>
+            ))}
+          {onDismiss && (
+            <CloseAffordance
+              variant='Utility'
+              size='Small'
+              isCircular
+              style={{ color: actionEmphasisColorClass || undefined }}
+              aria-label={dismissIconAriaLabel}
+              onClick={onDismiss}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * @deprecated This component is deprecated in place of `Alert`.
+ * Please work with your designers and #foundation-web to migrate to the new component.
+ */
+export const SystemBanner = forwardRef(
+  SystemBannerComponent
+) as TForwardRefComponent<TSystemBannerProps>;

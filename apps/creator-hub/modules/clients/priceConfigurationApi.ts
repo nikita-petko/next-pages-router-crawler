@@ -6,10 +6,7 @@ import type {
   UniversePinningTargetStatus,
   SetUniversePinnedPriceRequest,
 } from '@rbx/client-price-configuration-api/v1';
-import {
-  PriceConfigurationApiApi as PriceConfigurationApi,
-  PriceConfigurationPublicApiApi as PriceConfigurationPublicApi,
-} from '@rbx/client-price-configuration-api/v1';
+import { PriceConfigurationApiApi as PriceConfigurationApi } from '@rbx/client-price-configuration-api/v1';
 import { createClientConfiguration } from './utils/createClientConfiguration';
 
 export type RegionalPricingPreviewProductType = ProductType;
@@ -18,13 +15,10 @@ export type { UniversePinnedLocation, UniversePinningStatus, UniversePinningTarg
 export class PriceConfigurationApiClient {
   private priceConfigurationApi: PriceConfigurationApi;
 
-  private priceConfigurationPublicApi: PriceConfigurationPublicApi;
-
   constructor() {
     const configuration = createClientConfiguration('price-configuration-api', 'bedev2');
 
     this.priceConfigurationApi = new PriceConfigurationApi(configuration);
-    this.priceConfigurationPublicApi = new PriceConfigurationPublicApi(configuration);
   }
 
   async getTopCountriesByEarnings(universeId: number, initOverrides?: RequestInit) {
@@ -53,9 +47,7 @@ export class PriceConfigurationApiClient {
   }
 
   async getSupportedCountries(initOverrides?: RequestInit) {
-    return this.priceConfigurationPublicApi.priceConfigurationPublicApiGetSupportedCountries(
-      initOverrides,
-    );
+    return this.priceConfigurationApi.priceConfigurationApiGetSupportedCountries(initOverrides);
   }
 
   async getUniversePinnedLocation(universeId: number, initOverrides?: RequestInit) {

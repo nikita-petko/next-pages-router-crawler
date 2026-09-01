@@ -1,0 +1,552 @@
+import clsx from 'clsx';
+import React, {
+  ComponentPropsWithRef,
+  createContext,
+  forwardRef,
+  ReactNode,
+  useCallback,
+  useContext,
+  useMemo
+} from 'react';
+import type {
+  TTailwindGapClass,
+  TTailwindHeightClass,
+  TTailwindPaddingXClass,
+  TTailwindPaddingYClass,
+  TTailwindTextBodyClass,
+  TTailwindTextTitleClass
+} from '@rbx/foundation-tailwind/classes';
+import { Icon } from './Icon';
+import { IconButton, TIconButtonSize } from './IconButton';
+import { TForwardRefComponent } from './types/TForwardRefComponent';
+import './Table.css';
+
+export const tableSizes = ['XSmall', 'Small', 'Medium'] as const;
+export type TTableSize = (typeof tableSizes)[number];
+
+export const tableVariants = ['Divided', 'Framed'] as const;
+export type TTableVariant = (typeof tableVariants)[number];
+
+export type TTableSortDirection = 'ascending' | 'descending' | 'none';
+
+export type TTableProps = Omit<ComponentPropsWithRef<'table'>, 'children'> & {
+  /** Table contents: typically `TableHeader` and `TableBody`. */
+  children: ReactNode;
+  /** Visual size of the rows and cells. */
+  size?: TTableSize;
+  /** Visual variant. Framed adds an outer rounded border, Divided does not. */
+  variant?: TTableVariant;
+};
+
+export type TTableHeaderProps = Omit<ComponentPropsWithRef<'thead'>, 'children'> & {
+  children: ReactNode;
+};
+
+export type TTableBodyProps = Omit<ComponentPropsWithRef<'tbody'>, 'children'> & {
+  children: ReactNode;
+};
+
+export type TTableRowProps = Omit<ComponentPropsWithRef<'tr'>, 'children'> & {
+  children: ReactNode;
+  /** Makes the row focusable and clickable (applies focus/hover affordances). */
+  isInteractive?: boolean;
+  /** Applies hover background without full interactivity. */
+  isHoverable?: boolean;
+  /** Marks the row as visually selected. */
+  isSelected?: boolean;
+  /** Disables pointer events and applies reduced opacity. Only applies when isInteractive is true. */
+  isDisabled?: boolean;
+};
+
+export type TTableCellAlign = 'start' | 'center' | 'end';
+
+export type TTableHeaderCellProps = Omit<ComponentPropsWithRef<'th'>, 'children' | 'align'> & {
+  children: ReactNode;
+  /** If provided, renders the header as a sort toggle button. */
+  sortDirection?: TTableSortDirection;
+  /** Called when a sortable header is activated. */
+  onSort?: () => void;
+  /** Horizontal alignment of the header content. Defaults to `start`. */
+  align?: TTableCellAlign;
+  /** Aria label for the sort button. Defaults to `Sort by {children}`. Use to localize. */
+  sortLabel?: string;
+};
+
+export type TTableCellProps = Omit<ComponentPropsWithRef<'td'>, 'children' | 'align'> & {
+  children?: ReactNode;
+  /** Horizontal alignment of the cell content. Defaults to `start`. */
+  align?: TTableCellAlign;
+};
+
+type TTableContextValue = {
+  size: TTableSize;
+  variant: TTableVariant;
+};
+
+const TableContext = createContext<TTableContextValue | null>(null);
+
+const useTableContext = (component: string): TTableContextValue => {
+  const ctx = useContext(TableContext);
+  if (!ctx) {
+    throw new Error(`${component} must be used within a <Table>`);
+  }
+  return ctx;
+};
+
+const ROW_HEIGHT_BY_SIZE: Record<TTableSize, TTailwindHeightClass> = {
+  XSmall: 'height-800',
+  Small: 'height-1200',
+  Medium: 'height-1500'
+};
+
+const CELL_PADDING_X_BY_SIZE: Record<TTableSize, TTailwindPaddingXClass> = {
+  XSmall: 'padding-x-medium',
+  Small: 'padding-x-large',
+  Medium: 'padding-x-xlarge'
+};
+
+const HEADER_PADDING_Y_BY_SIZE: Record<TTableSize, TTailwindPaddingYClass> = {
+  XSmall: 'padding-y-xsmall',
+  Small: 'padding-y-small',
+  Medium: 'padding-y-medium'
+};
+
+const HEADER_TEXT_BY_SIZE: Record<TTableSize, TTailwindTextTitleClass> = {
+  XSmall: 'text-title-small',
+  Small: 'text-title-small',
+  Medium: 'text-title-medium'
+};
+
+const CELL_TEXT_BY_SIZE: Record<TTableSize, TTailwindTextBodyClass> = {
+  XSmall: 'text-body-small',
+  Small: 'text-body-medium',
+  Medium: 'text-body-medium'
+};
+
+const ALIGN_CLASS: Record<TTableCellAlign, string> = {
+  start: 'text-align-x-start',
+  center: 'text-align-x-center',
+  end: 'text-align-x-end'
+};
+
+const JUSTIFY_CLASS: Record<TTableCellAlign, string> = {
+  start: 'justify-start',
+  center: 'justify-center',
+  end: 'justify-end'
+};
+
+const TableComponent = (
+  { children, size = 'Medium', variant = 'Divided', className, ...rest }: TTableProps,
+  ref: ComponentPropsWithRef<'table'>['ref']
+) => {
+  const contextValue = useMemo(() => ({ size, variant }), [size, variant]);
+
+  const isFramed = variant === 'Framed';
+
+  return (
+    <TableContext.Provider value={contextValue}>
+      <div
+        className={clsx(
+          'width-full bg-surface-100',
+          isFramed && 'radius-medium clip stroke-standard stroke-default'
+        )}>
+        <table
+          ref={ref}
+          className={clsx('foundation-web-table width-full content-default', className)}
+          {...rest}>
+          {children}
+        </table>
+      </div>
+    </TableContext.Provider>
+  );
+};
+
+export const Table = forwardRef(TableComponent) as TForwardRefComponent<TTableProps>;
+(Table as unknown as { displayName: string }).displayName = 'Table';
+
+const TableHeaderComponent = (
+  { children, className, ...rest }: TTableHeaderProps,
+  ref: ComponentPropsWithRef<'thead'>['ref']
+) => {
+  useTableContext('TableHeader');
+  return (
+    <thead ref={ref} className={clsx('foundation-web-table-header', className)} {...rest}>
+      {children}
+    </thead>
+  );
+};
+
+export const TableHeader = forwardRef(
+  TableHeaderComponent
+) as TForwardRefComponent<TTableHeaderProps>;
+(TableHeader as unknown as { displayName: string }).displayName = 'TableHeader';
+
+const TableBodyComponent = (
+  { children, className, ...rest }: TTableBodyProps,
+  ref: ComponentPropsWithRef<'tbody'>['ref']
+) => {
+  useTableContext('TableBody');
+  return (
+    <tbody ref={ref} className={clsx('foundation-web-table-body', className)} {...rest}>
+      {children}
+    </tbody>
+  );
+};
+
+export const TableBody = forwardRef(TableBodyComponent) as TForwardRefComponent<TTableBodyProps>;
+(TableBody as unknown as { displayName: string }).displayName = 'TableBody';
+
+const TableRowComponent = (
+  {
+    children,
+    className,
+    isInteractive = false,
+    isHoverable = false,
+    isSelected = false,
+    isDisabled = false,
+    onClick,
+    onKeyDown,
+    tabIndex,
+    role,
+    ...rest
+  }: TTableRowProps,
+  ref: ComponentPropsWithRef<'tr'>['ref']
+) => {
+  useTableContext('TableRow');
+
+  const interactiveHandlers = isInteractive
+    ? {
+        role: role ?? 'row',
+        tabIndex: tabIndex ?? 0,
+        onClick: isDisabled ? undefined : onClick,
+        onKeyDown: (e: React.KeyboardEvent<HTMLTableRowElement>) => {
+          if (isDisabled) return;
+          onKeyDown?.(e);
+          if (e.defaultPrevented) return;
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick?.(e as unknown as React.MouseEvent<HTMLTableRowElement>);
+          }
+        }
+      }
+    : { role, tabIndex, onClick, onKeyDown };
+
+  return (
+    <tr
+      ref={ref}
+      aria-selected={isInteractive ? isSelected : undefined}
+      aria-disabled={isInteractive && isDisabled ? true : undefined}
+      data-selected={isSelected || undefined}
+      className={clsx(
+        'foundation-web-table-row',
+        (isInteractive || isHoverable) && 'hover:bg-shift-100',
+        isInteractive && !isDisabled && 'cursor-pointer',
+        isInteractive && isDisabled && 'opacity-disabled pointer-events-none',
+        isSelected && 'bg-shift-200',
+        className
+      )}
+      {...interactiveHandlers}
+      {...rest}>
+      {children}
+    </tr>
+  );
+};
+
+export const TableRow = forwardRef(TableRowComponent) as TForwardRefComponent<TTableRowProps>;
+(TableRow as unknown as { displayName: string }).displayName = 'TableRow';
+
+const TableHeaderCellComponent = (
+  {
+    children,
+    className,
+    sortDirection,
+    onSort,
+    align = 'start',
+    sortLabel,
+    scope,
+    ...rest
+  }: TTableHeaderCellProps,
+  ref: ComponentPropsWithRef<'th'>['ref']
+) => {
+  const { size } = useTableContext('TableHeaderCell');
+  const isSortable = Boolean(onSort);
+  const direction = sortDirection ?? 'none';
+
+  const sortIcon = isSortable && direction !== 'none' && (
+    <Icon
+      name={
+        direction === 'ascending' ? 'icon-regular-arrow-small-up' : 'icon-regular-arrow-small-down'
+      }
+      size='XSmall'
+      className='shrink-0 content-muted'
+    />
+  );
+
+  const innerContent = (
+    <div
+      className={clsx(
+        'flex items-center gap-xsmall',
+        HEADER_TEXT_BY_SIZE[size],
+        'content-muted',
+        JUSTIFY_CLASS[align]
+      )}>
+      {align === 'end' && sortIcon}
+      <span className='text-truncate-end'>{children}</span>
+      {align !== 'end' && sortIcon}
+    </div>
+  );
+
+  const defaultSortLabel = typeof children === 'string' ? `Sort by ${children}` : undefined;
+
+  return (
+    <th
+      ref={ref}
+      scope={scope ?? 'col'}
+      aria-sort={isSortable ? direction : undefined}
+      className={clsx(
+        'foundation-web-table-header-cell foundation-web-table-header-cell-divider',
+        HEADER_PADDING_Y_BY_SIZE[size],
+        CELL_PADDING_X_BY_SIZE[size],
+        ALIGN_CLASS[align],
+        'content-muted',
+        className
+      )}
+      {...rest}>
+      {isSortable ? (
+        <button
+          type='button'
+          className='bg-none stroke-none padding-none margin-none cursor-pointer width-full content-inherit [font:inherit] [text-align:inherit] focus-visible:outline-focus hover:content-default hover:bg-shift-100 radius-small'
+          onClick={onSort}
+          aria-label={sortLabel ?? defaultSortLabel}>
+          {innerContent}
+        </button>
+      ) : (
+        innerContent
+      )}
+    </th>
+  );
+};
+
+export const TableHeaderCell = forwardRef(
+  TableHeaderCellComponent
+) as TForwardRefComponent<TTableHeaderCellProps>;
+(TableHeaderCell as unknown as { displayName: string }).displayName = 'TableHeaderCell';
+
+const TableCellComponent = (
+  { children, className, align = 'start', ...rest }: TTableCellProps,
+  ref: ComponentPropsWithRef<'td'>['ref']
+) => {
+  const { size } = useTableContext('TableCell');
+
+  return (
+    <td
+      ref={ref}
+      className={clsx(
+        'foundation-web-table-cell foundation-web-table-row-divider',
+        ROW_HEIGHT_BY_SIZE[size],
+        CELL_PADDING_X_BY_SIZE[size],
+        CELL_TEXT_BY_SIZE[size],
+        ALIGN_CLASS[align],
+        'content-default',
+        className
+      )}
+      {...rest}>
+      {children}
+    </td>
+  );
+};
+
+export const TableCell = forwardRef(TableCellComponent) as TForwardRefComponent<TTableCellProps>;
+(TableCell as unknown as { displayName: string }).displayName = 'TableCell';
+
+// --- TablePagination ---
+
+export type TTablePaginationProps = Omit<ComponentPropsWithRef<'div'>, 'children'> & {
+  /** Visual size, should match the Table's size. */
+  size?: TTableSize;
+  /** Current page index (0-based). */
+  page: number;
+  /** Number of rows displayed per page. */
+  rowsPerPage: number;
+  /** Total number of rows in the dataset. */
+  totalRows: number;
+  /** Options for the rows-per-page selector. */
+  rowsPerPageOptions?: number[];
+  /** Called when the page changes. */
+  onPageChange: (page: number) => void;
+  /** Called when the rows-per-page value changes. */
+  onRowsPerPageChange?: (rowsPerPage: number) => void;
+  /** Label for the rows-per-page selector. Defaults to "Rows per page". */
+  rowsPerPageLabel?: string;
+  /** Aria label for the "first page" button. Defaults to "First page". */
+  firstPageLabel?: string;
+  /** Aria label for the "previous page" button. Defaults to "Previous page". */
+  previousPageLabel?: string;
+  /** Aria label for the "next page" button. Defaults to "Next page". */
+  nextPageLabel?: string;
+  /** Aria label for the "last page" button. Defaults to "Last page". */
+  lastPageLabel?: string;
+  /** Custom formatter for the range display. Receives (start, end, total) and should return a string. Defaults to "{start}-{end} of {total}". */
+  rangeLabel?: (start: number, end: number, total: number) => string;
+};
+
+const PAGINATION_PADDING_X_BY_SIZE: Record<TTableSize, TTailwindPaddingXClass> = {
+  XSmall: 'padding-x-small',
+  Small: 'padding-x-medium',
+  Medium: 'padding-x-large'
+};
+
+const PAGINATION_PADDING_Y_BY_SIZE: Record<TTableSize, TTailwindPaddingYClass> = {
+  XSmall: 'padding-y-xsmall',
+  Small: 'padding-y-small',
+  Medium: 'padding-y-medium'
+};
+
+const PAGINATION_LABEL_TEXT_BY_SIZE: Record<TTableSize, TTailwindTextTitleClass> = {
+  XSmall: 'text-title-small',
+  Small: 'text-title-small',
+  Medium: 'text-title-small'
+};
+
+const PAGINATION_RANGE_TEXT_BY_SIZE: Record<TTableSize, TTailwindTextBodyClass> = {
+  XSmall: 'text-body-small',
+  Small: 'text-body-small',
+  Medium: 'text-body-medium'
+};
+
+const PAGINATION_ACTIONS_GAP_BY_SIZE: Record<TTableSize, TTailwindGapClass> = {
+  XSmall: 'gap-xsmall',
+  Small: 'gap-xsmall',
+  Medium: 'gap-small'
+};
+
+const PAGINATION_ICON_BUTTON_SIZE_BY_SIZE: Record<TTableSize, TIconButtonSize> = {
+  XSmall: 'XSmall',
+  Small: 'XSmall',
+  Medium: 'Small'
+};
+
+const TablePaginationComponent = (
+  {
+    size = 'Medium',
+    page,
+    rowsPerPage,
+    totalRows,
+    rowsPerPageOptions = [10, 25, 50],
+    onPageChange,
+    onRowsPerPageChange,
+    rowsPerPageLabel = 'Rows per page',
+    firstPageLabel = 'First page',
+    previousPageLabel = 'Previous page',
+    nextPageLabel = 'Next page',
+    lastPageLabel = 'Last page',
+    rangeLabel,
+    className,
+    ...rest
+  }: TTablePaginationProps,
+  ref: ComponentPropsWithRef<'div'>['ref']
+) => {
+  const totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
+  const isFirstPage = page === 0;
+  const isLastPage = page >= totalPages - 1;
+
+  const rangeStart = totalRows === 0 ? 0 : page * rowsPerPage + 1;
+  const rangeEnd = Math.min((page + 1) * rowsPerPage, totalRows);
+
+  const handleRowsPerPageChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const newValue = Number(e.target.value);
+      onRowsPerPageChange?.(newValue);
+      onPageChange(0);
+    },
+    [onRowsPerPageChange, onPageChange]
+  );
+
+  const iconButtonSize = PAGINATION_ICON_BUTTON_SIZE_BY_SIZE[size];
+
+  return (
+    <div
+      ref={ref}
+      className={clsx(
+        'flex items-center justify-end',
+        PAGINATION_PADDING_X_BY_SIZE[size],
+        PAGINATION_PADDING_Y_BY_SIZE[size],
+        className
+      )}
+      {...rest}>
+      <div className='flex items-center gap-large'>
+        <div className='flex items-center gap-xlarge'>
+          {onRowsPerPageChange && (
+            <div className='flex items-center gap-small'>
+              <span className={clsx(PAGINATION_LABEL_TEXT_BY_SIZE[size], 'content-default')}>
+                {rowsPerPageLabel}
+              </span>
+              <div className='foundation-web-table-pagination-select-wrapper relative'>
+                <select
+                  className={clsx(
+                    'foundation-web-table-pagination-select',
+                    PAGINATION_LABEL_TEXT_BY_SIZE[size],
+                    'content-default bg-action-standard radius-small cursor-pointer',
+                    size === 'Medium' ? 'height-800 padding-x-medium' : 'height-600 padding-x-small'
+                  )}
+                  value={rowsPerPage}
+                  onChange={handleRowsPerPageChange}
+                  aria-label={rowsPerPageLabel}>
+                  {rowsPerPageOptions.map(option => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+          <span className={clsx(PAGINATION_RANGE_TEXT_BY_SIZE[size], 'content-default')}>
+            {rangeLabel
+              ? rangeLabel(rangeStart, rangeEnd, totalRows)
+              : `${rangeStart}-${rangeEnd} of ${totalRows}`}
+          </span>
+        </div>
+        <div className={clsx('flex items-center', PAGINATION_ACTIONS_GAP_BY_SIZE[size])}>
+          <IconButton
+            icon='icon-regular-double-chevron-large-left'
+            ariaLabel={firstPageLabel}
+            size={iconButtonSize}
+            variant='Utility'
+            isDisabled={isFirstPage}
+            onClick={() => onPageChange(0)}
+          />
+          <IconButton
+            icon='icon-regular-chevron-small-left'
+            ariaLabel={previousPageLabel}
+            size={iconButtonSize}
+            variant='Utility'
+            isDisabled={isFirstPage}
+            onClick={() => onPageChange(page - 1)}
+          />
+          <IconButton
+            icon='icon-regular-chevron-small-right'
+            ariaLabel={nextPageLabel}
+            size={iconButtonSize}
+            variant='Utility'
+            isDisabled={isLastPage}
+            onClick={() => onPageChange(page + 1)}
+          />
+          <IconButton
+            icon='icon-regular-double-chevron-large-right'
+            ariaLabel={lastPageLabel}
+            size={iconButtonSize}
+            variant='Utility'
+            isDisabled={isLastPage}
+            onClick={() => onPageChange(totalPages - 1)}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const TablePagination = forwardRef(
+  TablePaginationComponent
+) as TForwardRefComponent<TTablePaginationProps>;
+(TablePagination as unknown as { displayName: string }).displayName = 'TablePagination';

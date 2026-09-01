@@ -38,6 +38,7 @@ function buildMockSummary(experimentId: string): GetExperimentSummaryResponse {
       projectedRevenueLift: event.revenueLiftMicros,
       allowStopHoldout: true,
       revenueLiftInMicroUnits: null,
+      holdoutStartTime: new Date(),
     };
   }
 
@@ -54,6 +55,7 @@ function buildMockSummary(experimentId: string): GetExperimentSummaryResponse {
     projectedRevenueLift: event.revenueLiftMicros,
     allowStopHoldout: false,
     revenueLiftInMicroUnits: event.revenueLiftMicros,
+    holdoutStartTime: null,
   };
 }
 
