@@ -21,9 +21,15 @@ import {
   RobuxIcon,
   Typography,
 } from '@rbx/ui';
-import { isInGameSalesLicensingEnabled as isInGameSalesLicensingEnabledFlag } from '@generated/flags/contentLicensing';
+import {
+  isAvatarItemLicensingEnabled as isAvatarItemLicensingEnabledFlag,
+  isInGameSalesLicensingEnabled as isInGameSalesLicensingEnabledFlag,
+} from '@generated/flags/contentLicensing';
 import { formatRoyaltyRate } from '@modules/licenses/utils/format';
-import { getLicenseTypeTranslationKeys } from '@modules/licenses/utils/licenseTypeTranslationKeys';
+import {
+  getEffectiveLicenseTypeForDisplay,
+  getLicenseTypeTranslationKeys,
+} from '@modules/licenses/utils/licenseTypeTranslationKeys';
 import { Flex } from '@modules/miscellaneous/components/Flex';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import LinkButton from '../../../components/LinkButton';
@@ -80,7 +86,15 @@ const AgreementDetailsTab: FunctionComponent<AgreementDetailsTabProps> = ({
   const { isFetched } = useSettings();
   const { value: inGameSalesLicensingFlagValue } = useFlag(isInGameSalesLicensingEnabledFlag);
   const isInGameSalesLicensingEnabled = inGameSalesLicensingFlagValue ?? false;
-  const licenseTypeLabels = getLicenseTypeTranslationKeys(license.licenseType);
+  const { value: avatarItemLicensingFlagValue } = useFlag(isAvatarItemLicensingEnabledFlag);
+  const isAvatarItemLicensingEnabled = avatarItemLicensingFlagValue ?? false;
+  const effectiveLicenseType = getEffectiveLicenseTypeForDisplay(
+    license.licenseType,
+    isInGameSalesLicensingEnabled,
+    isAvatarItemLicensingEnabled,
+  );
+  const licenseTypeLabels = getLicenseTypeTranslationKeys(effectiveLicenseType);
+  const isMarketplaceSaleLicense = effectiveLicenseType === LicenseType.MarketplaceSale;
   const isTimeLimitedLicense =
     license.licenseDuration?.durationType === LicenseDurationType.TimeLimited;
   const keys = getRevShareTimingKeys(agreement, false, isTimeLimitedLicense);
@@ -177,65 +191,81 @@ const AgreementDetailsTab: FunctionComponent<AgreementDetailsTabProps> = ({
 
       <Typography variant='h5'>{translate('Heading.CreationDetails')}</Typography>
 
-      <ContentTile
-        header={universe.name ?? ''}
-        subheader={
-          universe.creatorName
-            ? getCreatorDisplayName(
-                normalizeCreatorType(universe.creatorType),
-                universe.creatorName,
-              )
-            : ''
-        }
-        thumbnailTargetId={universe.id ?? 0}
-        type={ContentType.Universe}
-        link={
-          universe.rootPlaceId != null ? EXTERNAL_EXPERIENCE_HREF(universe.rootPlaceId) : undefined
-        }
-      />
+      {!isMarketplaceSaleLicense && (
+        <ContentTile
+          header={universe.name ?? ''}
+          subheader={
+            universe.creatorName
+              ? getCreatorDisplayName(
+                  normalizeCreatorType(universe.creatorType),
+                  universe.creatorName,
+                )
+              : ''
+          }
+          thumbnailTargetId={universe.id ?? 0}
+          type={ContentType.Universe}
+          link={
+            universe.rootPlaceId != null
+              ? EXTERNAL_EXPERIENCE_HREF(universe.rootPlaceId)
+              : undefined
+          }
+        />
+      )}
 
-      {isInGameSalesLicensingEnabled &&
-        license.licenseType === LicenseType.CollaborationInExperienceSale && (
-          <AgreementRevenueTargetsSection
-            agreementId={agreement.id ?? undefined}
-            universeId={universe.id ?? undefined}
-          />
-        )}
+      {((isInGameSalesLicensingEnabled &&
+        effectiveLicenseType === LicenseType.CollaborationInExperienceSale) ||
+        (isAvatarItemLicensingEnabled && effectiveLicenseType === LicenseType.MarketplaceSale)) && (
+        <AgreementRevenueTargetsSection
+          agreementId={agreement.id ?? undefined}
+          agreementStatus={agreement.status}
+          marketplaceEmptyStateAudience={isMarketplaceSaleLicense ? 'iph' : undefined}
+          universeId={universe.id ?? undefined}
+        />
+      )}
 
       <KeyValuePairContainer>
-        {agreement.status === AgreementStatus.Active && (
+        {/* TODO(MUS-2724): Add a KeyValuePair for the creator's identified L90 sales bucket. */}
+        {!isMarketplaceSaleLicense && agreement.status === AgreementStatus.Active && (
           <KeyValuePair label={translate('Label.ExperienceId')} value={universe.rootPlaceId} />
         )}
 
-        <KeyValuePair
-          label={translate('Label.ContentMaturity')}
-          value={experienceGuidelines}
-          tooltipText={translate('Label.TooltipContentMaturity')}
-        />
+        {!isMarketplaceSaleLicense && (
+          <>
+            <KeyValuePair
+              label={translate('Label.ContentMaturity')}
+              value={experienceGuidelines}
+              tooltipText={translate('Label.TooltipContentMaturity')}
+            />
 
-        <KeyValuePair
-          label={translate('Label.RangeDau')}
-          value={translate(
-            getCreationDauRangeLabelFromEnum(
-              agreement.agreementTargets?.[0].universeMetrics?.dau7DayBucket,
-            ),
-          )}
-        />
+            <KeyValuePair
+              label={translate('Label.RangeDau')}
+              value={translate(
+                getCreationDauRangeLabelFromEnum(
+                  agreement.agreementTargets?.[0].universeMetrics?.dau7DayBucket,
+                ),
+              )}
+            />
 
-        <KeyValuePair
-          label={translate('Label.LifetimeVisitsRangeVerbose')}
-          value={translate(
-            getLifetimeVisitsRangeLabelFromEnum(agreement.creatorLifetimeVisitBucket ?? undefined),
-          )}
-        />
+            <KeyValuePair
+              label={translate('Label.LifetimeVisitsRangeVerbose')}
+              value={translate(
+                getLifetimeVisitsRangeLabelFromEnum(
+                  agreement.creatorLifetimeVisitBucket ?? undefined,
+                ),
+              )}
+            />
+          </>
+        )}
 
-        <KeyValuePair
-          label={translate('Label.Description')}
-          value={
-            // Ensures description matches formatting on Experience Detail Page
-            <Typography whiteSpace='pre-wrap'>{universe.description}</Typography>
-          }
-        />
+        {!isMarketplaceSaleLicense && (
+          <KeyValuePair
+            label={translate('Label.Description')}
+            value={
+              // Ensures description matches formatting on Experience Detail Page
+              <Typography whiteSpace='pre-wrap'>{universe.description}</Typography>
+            }
+          />
+        )}
       </KeyValuePairContainer>
 
       <AmDivider />
@@ -277,16 +307,20 @@ const AgreementDetailsTab: FunctionComponent<AgreementDetailsTabProps> = ({
           tooltipText={translate('Label.TooltipGuidelinesAndRestrictions')}
         />
 
-        <KeyValuePair
-          label={translate('Label.MaximumContentMaturity')}
-          value={translate(getMaturityRatingLabel(license.maxAgeRating))}
-          tooltipText={translate('Label.TooltipMaxContentMaturity')}
-        />
+        {!isMarketplaceSaleLicense && (
+          <>
+            <KeyValuePair
+              label={translate('Label.MaximumContentMaturity')}
+              value={translate(getMaturityRatingLabel(license.maxAgeRating))}
+              tooltipText={translate('Label.TooltipMaxContentMaturity')}
+            />
 
-        <KeyValuePair
-          label={translate('Label.MinimumAverageL7DAU')}
-          value={translate(getDauLicenseLabelFromEnum(license.dau7DayThreshold))}
-        />
+            <KeyValuePair
+              label={translate('Label.MinimumAverageL7DAU')}
+              value={translate(getDauLicenseLabelFromEnum(license.dau7DayThreshold))}
+            />
+          </>
+        )}
 
         <KeyValuePair
           label={translate('Label.Description')}
