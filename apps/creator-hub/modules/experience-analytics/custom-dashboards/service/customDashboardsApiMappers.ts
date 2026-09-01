@@ -51,7 +51,7 @@ function fallbackIso(): string {
   return new Date(0).toISOString();
 }
 
-function actorUserIdToNumber(value: unknown): number | undefined {
+function idToNumber(value: unknown): number | undefined {
   const parsed =
     typeof value === 'number'
       ? value
@@ -95,15 +95,15 @@ export function fromApiDashboardMetadata(
   config: CustomDashboardConfig = EMPTY_DASHBOARD_CONFIG,
 ): CustomDashboardDocument {
   const dashboardId = getDashboardId(metadata);
-  const universeId = metadata.universeId ?? 0;
+  const universeId = idToNumber(metadata.universeId) ?? 0;
   const createdAt = timestampToIso(metadata.createdTime) ?? fallbackIso();
   const updatedAt = timestampToIso(metadata.updatedTime) ?? createdAt;
   const publishedAt = timestampToIso(metadata.publishedTime);
   const isPinned = metadata.isPinned === true;
   const createdBy = metadata.createdBy;
   const updatedBy = metadata.updatedBy;
-  const createdByUserId = actorUserIdToNumber(createdBy?.userId);
-  const updatedByUserId = actorUserIdToNumber(updatedBy?.userId);
+  const createdByUserId = idToNumber(createdBy?.userId);
+  const updatedByUserId = idToNumber(updatedBy?.userId);
 
   return validateCustomDashboardDocument({
     id: dashboardId,
