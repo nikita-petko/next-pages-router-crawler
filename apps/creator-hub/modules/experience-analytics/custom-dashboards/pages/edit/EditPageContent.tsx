@@ -130,7 +130,7 @@ const EditPageContent: FC<EditPageContentProps> = ({
   // Synchronous guard against a double-submit between the click and the
   // `isSaving` state flush; `isSaving` still drives the disabled UI.
   const publishInFlightRef = useRef(false);
-  const baselineVersionRef = useRef(new Map<string, number | null>());
+  const editSessionVersionRef = useRef(new Map<string, number>());
   const isNewDashboard = dashboardId === NEW_DASHBOARD_ROUTE_ID;
   const persistedDashboardId = isNewDashboard ? undefined : dashboardId;
   const documentQuery = useDashboardDocumentQuery(universeId, persistedDashboardId);
@@ -140,6 +140,10 @@ const EditPageContent: FC<EditPageContentProps> = ({
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<unknown>(null);
+  const [editSessionVersionState, setEditSessionVersionState] = useState<{
+    readonly draftId: string;
+    readonly status: 'pending' | 'ready' | 'failed';
+  } | null>(null);
   const [hydratedBaselineByDraftId, setHydratedBaselineByDraftId] = useState<{
     readonly draftId: string;
     readonly config: CustomDashboardConfig;
@@ -276,6 +280,11 @@ const EditPageContent: FC<EditPageContentProps> = ({
   }
   const activeSessionDashboardId = renderedActiveSession?.dashboardId;
   const activeSessionDraftId = renderedActiveSession?.draftId;
+  const isEditSessionVersionReady =
+    activeSessionDashboardId === null ||
+    (activeSessionDraftId !== undefined &&
+      editSessionVersionState?.draftId === activeSessionDraftId &&
+      editSessionVersionState.status === 'ready');
   const createdByUserId = renderedActiveSession?.createdByUserId;
   const attributionUserIds = useMemo(
     () => (createdByUserId !== undefined && createdByUserId > 0 ? [createdByUserId] : []),
@@ -296,19 +305,34 @@ const EditPageContent: FC<EditPageContentProps> = ({
     : null;
 
   useEffect(() => {
-    if (
-      !activeSessionDashboardId ||
-      !activeSessionDraftId ||
-      baselineVersionRef.current.has(activeSessionDraftId)
-    ) {
+    if (!activeSessionDashboardId || !activeSessionDraftId) {
+      return undefined;
+    }
+    if (editSessionVersionRef.current.has(activeSessionDraftId)) {
+      setEditSessionVersionState({ draftId: activeSessionDraftId, status: 'ready' });
       return undefined;
     }
     let cancelled = false;
-    void service.getVersion(universeId, activeSessionDashboardId).then((version) => {
-      if (!cancelled) {
-        baselineVersionRef.current.set(activeSessionDraftId, version);
+    setEditSessionVersionState({ draftId: activeSessionDraftId, status: 'pending' });
+    setSaveError(null);
+    void (async () => {
+      try {
+        const version = await service.getVersion(universeId, activeSessionDashboardId);
+        if (cancelled) {
+          return;
+        }
+        if (version === null) {
+          throw new Error('Existing dashboard has no edit-session version');
+        }
+        editSessionVersionRef.current.set(activeSessionDraftId, version);
+        setEditSessionVersionState({ draftId: activeSessionDraftId, status: 'ready' });
+      } catch (error) {
+        if (!cancelled) {
+          setEditSessionVersionState({ draftId: activeSessionDraftId, status: 'failed' });
+          setSaveError(error);
+        }
       }
-    });
+    })();
     return () => {
       cancelled = true;
     };
@@ -481,7 +505,7 @@ const EditPageContent: FC<EditPageContentProps> = ({
       await queryClient.invalidateQueries({
         queryKey: customDashboardQueryKeys.list(universeId),
       });
-      baselineVersionRef.current.delete(sessionDraftId);
+      editSessionVersionRef.current.delete(sessionDraftId);
       deleteEditorWorkingCopy(sessionDraftId);
       setIsConflictDialogOpen(false);
       // Publish is a deliberate commit. Bypass before opening the view so the
@@ -521,9 +545,11 @@ const EditPageContent: FC<EditPageContentProps> = ({
       if (!persistedId) {
         throw new Error('persistExistingDraft requires a persisted dashboard id');
       }
-      const baselineVersion = baselineVersionRef.current.get(session.draftId) ?? null;
-      const expectedVersion =
-        mode === 'overwrite' || baselineVersion === null ? undefined : baselineVersion;
+      const editSessionVersion = editSessionVersionRef.current.get(session.draftId);
+      if (mode === 'default' && editSessionVersion === undefined) {
+        throw new Error('Cannot save an existing dashboard without its edit-session version');
+      }
+      const expectedVersion = mode === 'overwrite' ? undefined : editSessionVersion;
       // Omit unchanged name so API saves stay content-only. A rename is sent
       // with the document in one publish (`metadataPatch` + `expectedHeadEtag`).
       const persistedName = persistedDocument?.name;
@@ -573,16 +599,23 @@ const EditPageContent: FC<EditPageContentProps> = ({
               customDashboardQueryKeys.detail(universeId, persistedId),
               serverDocument,
             );
-            baselineVersionRef.current.set(
-              sessionDraftId,
-              await service.getVersion(universeId, persistedId),
-            );
+            editSessionVersionRef.current.delete(sessionDraftId);
+            setEditSessionVersionState({ draftId: sessionDraftId, status: 'pending' });
+            const revertedVersion = await service.getVersion(universeId, persistedId);
+            if (revertedVersion === null) {
+              throw new Error('Existing dashboard has no edit-session version');
+            }
+            editSessionVersionRef.current.set(sessionDraftId, revertedVersion);
+            setEditSessionVersionState({ draftId: sessionDraftId, status: 'ready' });
             setIsConflictDialogOpen(false);
             return;
           }
           const savedDocument = await persistExistingDraft(draft, renderedActiveSession, mode);
           await finishSuccessfulSave(savedDocument, sessionDraftId);
         } catch (error) {
+          if (mode === 'revert') {
+            setEditSessionVersionState({ draftId: sessionDraftId, status: 'failed' });
+          }
           setSaveError(error);
         } finally {
           publishInFlightRef.current = false;
@@ -610,6 +643,7 @@ const EditPageContent: FC<EditPageContentProps> = ({
         !canMutateDashboards ||
         !renderedActiveSession ||
         !draft ||
+        !isEditSessionVersionReady ||
         isSaving ||
         publishInFlightRef.current
       ) {
@@ -669,6 +703,7 @@ const EditPageContent: FC<EditPageContentProps> = ({
       canMutateDashboards,
       currentDraft,
       finishSuccessfulSave,
+      isEditSessionVersionReady,
       isSaving,
       persistExistingDraft,
       renderedActiveSession,
@@ -886,6 +921,7 @@ const EditPageContent: FC<EditPageContentProps> = ({
           hasUnsavedChanges={canMutateDashboards && hasUnsavedChanges}
           isSaving={isSaving}
           saveError={saveError}
+          isPrimaryActionDisabled={!isEditSessionVersionReady}
           canRename={canMutateDashboards && persistedDocument?.hybridOrigin !== 'server'}
           onCancel={handleCancel}
           onPreview={handleOpenPreview}

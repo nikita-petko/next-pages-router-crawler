@@ -28,6 +28,7 @@ type EditPageHeaderStackProps = {
   readonly hasUnsavedChanges: boolean;
   readonly isSaving: boolean;
   readonly saveError: unknown;
+  readonly isPrimaryActionDisabled: boolean;
   /** When false, hides the rename pencil (read-only / blocked edit modes). */
   readonly canRename?: boolean;
   readonly onCancel: () => void;
@@ -71,6 +72,7 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
   hasUnsavedChanges,
   isSaving,
   saveError,
+  isPrimaryActionDisabled,
   canRename = true,
   onCancel,
   onPreview,
@@ -323,6 +325,7 @@ const EditPageHeaderStack: FC<EditPageHeaderStackProps> = ({
                 isDisabled={
                   !isDashboardLoaded ||
                   isSaving ||
+                  isPrimaryActionDisabled ||
                   (!hasUnsavedChanges && !hasValidTitleChange && !hasPendingTitleChange) ||
                   isTitleFilterPending ||
                   isTitleBlocked
