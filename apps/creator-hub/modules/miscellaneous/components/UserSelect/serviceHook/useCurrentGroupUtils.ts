@@ -35,6 +35,10 @@ const useCurrentGroupUtils = ({
   });
 
   const [allInvitedUsersAndMembers, setAllInvitedUsersAndMembers] = useState<User[] | undefined>();
+  // Whether we've settled the prefetch decision: either the full list loaded, or we
+  // determined it won't be prefetched (org too large / missing data / not requested).
+  const [hasResolvedAllInvitedUsersAndMembers, setHasResolvedAllInvitedUsersAndMembers] =
+    useState(false);
 
   const orgMembersCache = useRef<Map<string, boolean>>(new Map());
   const orgRoleCache = useRef<Map<string, boolean>>(new Map());
@@ -83,8 +87,13 @@ const useCurrentGroupUtils = ({
     } catch {
       // in case of failure, we fallback to the uncached flow
       setAllInvitedUsersAndMembers(undefined);
+    } finally {
+      setHasResolvedAllInvitedUsersAndMembers(true);
     }
   }, []);
+
+  const shouldFetchAllInvitedUsersAndMembers =
+    overrideFetchAllInvitedUsersAndMembers === true ? true : !!roleId;
 
   const isUserInGroup = useCallback(
     async (userId: number): Promise<boolean> => {
@@ -110,10 +119,14 @@ const useCurrentGroupUtils = ({
         return orgInvitationsCache.current.get(userId.toString());
       }
 
+      if (!organizationId) {
+        return undefined;
+      }
+
       try {
         const userInvitation =
           await organizationApiClient.userClient.getUserInvitationByOrganization(
-            organizationId!,
+            organizationId,
             `${userId}`,
           );
         return userInvitation.id;
@@ -165,9 +178,9 @@ const useCurrentGroupUtils = ({
 
       try {
         const invitationId = await getUserInvitationId(userId);
-        if (invitationId) {
+        if (invitationId && organizationId) {
           const { roleIds } = await organizationApiClient.invitationClient.getRoleIdsByInvitationId(
-            organizationId!,
+            organizationId,
             invitationId,
           );
           const roleIdsSet = new Set(roleIds);
@@ -180,9 +193,13 @@ const useCurrentGroupUtils = ({
         return false;
       }
 
+      if (!organizationId) {
+        return false;
+      }
+
       try {
         const { roles } = await organizationApiClient.userClient.getUserRoles(
-          organizationId!,
+          organizationId,
           `${userId}`,
         );
         const roleIdsSet = new Set(roles.map((role) => role.id));
@@ -207,38 +224,52 @@ const useCurrentGroupUtils = ({
 
     // set cache values
     orgMembersCache.current = new Map(
-      orgUsers?.users.map((orgUser) => [orgUser.userId!, true]) ?? [],
+      orgUsers?.users
+        .filter((orgUser): orgUser is typeof orgUser & { userId: string } => orgUser.userId != null)
+        .map((orgUser) => [orgUser.userId, true]) ?? [],
     );
 
     orgInvitationsCache.current = new Map(
-      invitations?.invitations.map((invitation) => [invitation.recipientUserId!, invitation.id]) ??
-        [],
+      invitations?.invitations
+        .filter(
+          (invitation): invitation is typeof invitation & { recipientUserId: string } =>
+            invitation.recipientUserId != null,
+        )
+        .map((invitation) => [invitation.recipientUserId, invitation.id]) ?? [],
     );
 
     orgRoleCache.current = new Map(
-      orgUsers?.users.map((roleUser) => [
-        roleUser.userId!,
-        roleUser.roles?.some((role) => role.id === roleId) ?? false,
-      ]) ?? [],
+      orgUsers?.users
+        .filter(
+          (roleUser): roleUser is typeof roleUser & { userId: string } => roleUser.userId != null,
+        )
+        .map((roleUser) => [
+          roleUser.userId,
+          roleUser.roles?.some((role) => role.id === roleId) ?? false,
+        ]) ?? [],
     );
     invitationsByRole?.invitations.forEach((invitation) => {
-      orgRoleCache.current.set(invitation.recipientUserId!.toString(), true);
+      if (invitation.recipientUserId != null) {
+        orgRoleCache.current.set(invitation.recipientUserId, true);
+      }
     });
 
     orgFriendshipCache.current = new Map(
-      friends?.map((friend) => [friend.id!.toString(), true]) ?? [],
+      friends
+        ?.filter((friend): friend is typeof friend & { id: number } => friend.id != null)
+        .map((friend) => [friend.id.toString(), true]) ?? [],
     );
 
     const hasNecessaryDataToFetchInvitedUsersAndMembers =
       cacheState.current.membership && cacheState.current.invitations;
-    const shouldFetch =
-      (overrideFetchAllInvitedUsersAndMembers ?? false)
-        ? overrideFetchAllInvitedUsersAndMembers
-        : !!roleId;
 
     // prefetch all invited users and members if we have the necessary data
-    if (hasNecessaryDataToFetchInvitedUsersAndMembers && shouldFetch) {
-      fetchAllInvitedUsersAndMembers();
+    if (hasNecessaryDataToFetchInvitedUsersAndMembers && shouldFetchAllInvitedUsersAndMembers) {
+      void fetchAllInvitedUsersAndMembers();
+    } else {
+      // no prefetch will run (org too large, missing data, or not requested) — the
+      // full-list load is settled, so consumers should stop showing a loading state.
+      setHasResolvedAllInvitedUsersAndMembers(true);
     }
   }, [
     isFetching,
@@ -248,8 +279,14 @@ const useCurrentGroupUtils = ({
     invitationsByRole,
     orgUsers,
     roleId,
-    overrideFetchAllInvitedUsersAndMembers,
+    shouldFetchAllInvitedUsersAndMembers,
   ]);
+
+  // True while the prefetched full member/invitee list is still being determined or loaded.
+  // Lets consumers show a loading state (instead of an empty "no results") on an empty
+  // dropdown until the members arrive, fixing the all-vs-nothing timing race.
+  const isLoadingAllInvitedUsersAndMembers =
+    shouldFetchAllInvitedUsersAndMembers && !hasResolvedAllInvitedUsersAndMembers;
 
   const returnValue = useMemo(
     () => ({
@@ -258,6 +295,7 @@ const useCurrentGroupUtils = ({
       isUserFriend,
       isUserInRole,
       allInvitedUsersAndMembers,
+      isLoadingAllInvitedUsersAndMembers,
       isFetching,
     }),
     [
@@ -266,6 +304,7 @@ const useCurrentGroupUtils = ({
       isUserFriend,
       isUserInRole,
       allInvitedUsersAndMembers,
+      isLoadingAllInvitedUsersAndMembers,
       isFetching,
     ],
   );

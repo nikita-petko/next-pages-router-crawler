@@ -15,6 +15,7 @@ const useUserOptionsForOrgRoles: UserOptionsHook = (roleId: string) => {
     isUserInRole,
     isFetching: isGroupUtilsFetching,
     allInvitedUsersAndMembers,
+    isLoadingAllInvitedUsersAndMembers,
   } = useCurrentGroupUtils({ roleId });
 
   const [userOptions, setUserOptions] = useState<User[]>([]);
@@ -119,13 +120,20 @@ const useUserOptionsForOrgRoles: UserOptionsHook = (roleId: string) => {
       } else if (trimmedValue.length > 2) {
         updateUserSuggestionsDebounced(trimmedValue);
       } else {
+        setIsFetching(false);
         setHasValidSearch(false);
       }
     },
     [allInvitedUsersAndMembers, updateUserSuggestionsDebounced, updateUserSuggestionsInternal],
   );
 
-  return { userOptions, userStatus, isFetching, noOptionsText, updateUserSuggestions };
+  return {
+    userOptions,
+    userStatus,
+    isFetching: isFetching || isLoadingAllInvitedUsersAndMembers,
+    noOptionsText,
+    updateUserSuggestions,
+  };
 };
 
 export default useUserOptionsForOrgRoles;

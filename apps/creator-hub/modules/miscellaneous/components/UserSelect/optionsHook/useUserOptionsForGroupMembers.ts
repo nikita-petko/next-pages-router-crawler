@@ -24,6 +24,7 @@ const useUserOptionsForGroupMembers: UserOptionsHook = ({
     isUserInGroup,
     isFetching: isGroupUtilsFetching,
     allInvitedUsersAndMembers,
+    isLoadingAllInvitedUsersAndMembers,
   } = useCurrentGroupUtils({ overrideFetchAllInvitedUsersAndMembers: true });
 
   const { user: currentUser } = useAuthentication();
@@ -32,6 +33,7 @@ const useUserOptionsForGroupMembers: UserOptionsHook = ({
   const [isFetching, setIsFetching] = useState(false);
   const [noOptionsText, setNoOptionsText] = useState<string>('Label.NeedMoreThanTwoCharacters');
 
+  // oxlint-disable-next-line react/react-compiler -- memoize on currentUser?.id, not the whole user object
   const allExcludedUserIds = useMemo(() => {
     const excluded = new Set(excludeUserIds);
     if (excludeCurrentUser && currentUser?.id != null) {
@@ -71,7 +73,8 @@ const useUserOptionsForGroupMembers: UserOptionsHook = ({
 
   useEffect(() => {
     if (allInvitedUsersAndMembers) {
-      filterAndUpdateUserStatus(allInvitedUsersAndMembers);
+      // oxlint-disable-next-line react/react-compiler -- filtering externally loaded memberships updates the hook's result state
+      void filterAndUpdateUserStatus(allInvitedUsersAndMembers);
     }
   }, [allInvitedUsersAndMembers, filterAndUpdateUserStatus]);
 
@@ -83,10 +86,11 @@ const useUserOptionsForGroupMembers: UserOptionsHook = ({
       let foundUsers: User[] = [];
       try {
         if (allInvitedUsersAndMembers) {
+          const lowered = trimmedValue.toLowerCase();
           foundUsers = allInvitedUsersAndMembers.filter((user) => {
             return (
-              user.name?.toLowerCase().includes(trimmedValue.toLowerCase()) ||
-              user.displayName?.toLowerCase().includes(trimmedValue.toLowerCase()) ||
+              user.name?.toLowerCase().includes(lowered) === true ||
+              user.displayName?.toLowerCase().includes(lowered) === true ||
               user.id === parseInt(trimmedValue, 10)
             );
           });
@@ -118,7 +122,7 @@ const useUserOptionsForGroupMembers: UserOptionsHook = ({
       setNoOptionsText('Label.NoCreatorsFound');
       setIsFetching(true);
       if (allInvitedUsersAndMembers) {
-        updateUserSuggestionsInternal(trimmedValue);
+        void updateUserSuggestionsInternal(trimmedValue);
       } else if (trimmedValue.length > 2) {
         updateUserSuggestionsDebounced(trimmedValue);
       } else {
@@ -129,7 +133,13 @@ const useUserOptionsForGroupMembers: UserOptionsHook = ({
     [allInvitedUsersAndMembers, updateUserSuggestionsDebounced, updateUserSuggestionsInternal],
   );
 
-  return { userOptions, userStatus, isFetching, noOptionsText, updateUserSuggestions };
+  return {
+    userOptions,
+    userStatus,
+    isFetching: isFetching || isLoadingAllInvitedUsersAndMembers,
+    noOptionsText,
+    updateUserSuggestions,
+  };
 };
 
 export default useUserOptionsForGroupMembers;

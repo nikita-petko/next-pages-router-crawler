@@ -162,6 +162,7 @@ export default withTranslation(TranslationContainer, [
   TranslationNamespace.GameTranslation,
   TranslationNamespace.GameInfoTranslation,
   TranslationNamespace.GameStringTranslation,
+  TranslationNamespace.GameImageTranslation,
   TranslationNamespace.GameProductTranslation,
   TranslationNamespace.Error,
 ]);
