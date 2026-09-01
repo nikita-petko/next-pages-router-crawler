@@ -1,8 +1,13 @@
 import { UniverseContentMaturity } from '@rbx/client-content-licensing-api/v1';
 import { useTranslation } from '@rbx/intl';
-import type { LicenseFormData } from './LicenseForm';
+import type { LicenseFormAnalyticsContext, LicenseFormData } from './LicenseForm';
 import LicenseForm from './LicenseForm';
 import { MinimumDAU } from './licenseFormTypes';
+
+const LICENSE_FORM_ANALYTICS_CONTEXT: LicenseFormAnalyticsContext = {
+  formAction: 'create',
+  entrySource: 'listingCreationWizard',
+};
 
 interface Props {
   onLicenseAdd: (data: LicenseFormData) => void;
@@ -20,7 +25,7 @@ const AddLicenseStep = ({ onLicenseAdd, onPrev, onSkip, licenseFormData }: Props
   return (
     <LicenseForm
       defaultValues={
-        licenseFormData || {
+        licenseFormData ?? {
           name: '',
           description: '',
           revenueShare: 0,
@@ -38,6 +43,7 @@ const AddLicenseStep = ({ onLicenseAdd, onPrev, onSkip, licenseFormData }: Props
       submitButtonText={translate('Action.Next')}
       cancelButtonText={translate('Action.Back')}
       isSubmitting={false}
+      analyticsContext={LICENSE_FORM_ANALYTICS_CONTEXT}
     />
   );
 };

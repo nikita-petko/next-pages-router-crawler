@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import type { FieldErrors } from 'react-hook-form';
 import { useForm, Controller, useFormState, useWatch } from 'react-hook-form';
 import type {
   CreatorEarningsBucket,
@@ -51,7 +52,12 @@ import {
   FALLBACK_CONTENT_STANDARDS_ID,
 } from '../../constants';
 import { CONTENT_MATURITY_LABELS_HREF } from '../../urls';
-import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../../utils/logger';
+import {
+  LicenseManagerClickEvent,
+  LicenseManagerImpressionEvent,
+  useLicenseManagerLogger,
+  useLicenseManagerLoggerLogOnce,
+} from '../../utils/logger';
 import { maturityRatingOptions } from '../../utils/maturityRating';
 import type { LicenseDurationBucket } from '../../utils/timeLimitedLicense';
 import {
@@ -133,6 +139,18 @@ export interface LicenseFormSubmitOptions {
   hasModeratedChanges: boolean;
 }
 
+export type LicenseFormAction = 'create' | 'update' | 'copy';
+
+export interface LicenseFormAnalyticsContext {
+  formAction: LicenseFormAction;
+  entrySource: 'listingDetails' | 'listingCreationWizard';
+  listingId?: string;
+  licenseId?: string;
+  sourceLicenseId?: string;
+  hasAgreements?: boolean;
+  hasPendingEdits?: boolean;
+}
+
 interface Props {
   defaultValues: LicenseFormData;
   onSubmit: (data: LicenseFormData, options: LicenseFormSubmitOptions) => void;
@@ -150,6 +168,7 @@ interface Props {
    * Returns a promise that resolves to true if submit should proceed, false to cancel.
    */
   onBeforeSubmitModeratedChanges?: () => Promise<boolean>;
+  analyticsContext?: LicenseFormAnalyticsContext;
 }
 
 // Fields that require moderation review when changed
@@ -159,6 +178,22 @@ const MODERATED_FIELDS: (keyof LicenseFormData)[] = [
   'contentStandardsFile',
   'contentStandardScope',
 ];
+
+export const buildLicenseFormAnalyticsParameters = (
+  context: LicenseFormAnalyticsContext,
+  data?: LicenseFormData,
+) => ({
+  formAction: context.formAction,
+  entrySource: context.entrySource,
+  ...(context.listingId ? { listingId: context.listingId } : {}),
+  ...(context.licenseId ? { licenseId: context.licenseId } : {}),
+  ...(context.sourceLicenseId ? { sourceLicenseId: context.sourceLicenseId } : {}),
+  ...(context.hasAgreements !== undefined ? { hasAgreements: context.hasAgreements } : {}),
+  ...(context.hasPendingEdits !== undefined ? { hasPendingEdits: context.hasPendingEdits } : {}),
+  ...(data?.licenseType != null ? { licenseType: data.licenseType } : {}),
+  ...(data?.durationType != null ? { durationType: data.durationType } : {}),
+  ...(data?.visibility != null ? { visibility: data.visibility } : {}),
+});
 
 interface RevShareTimingOptionsProps {
   isRevShareOnActivation: boolean;
@@ -412,6 +447,7 @@ const LicenseForm = ({
   mode = CREATE_MODE,
   hasPendingEdits = false,
   onBeforeSubmitModeratedChanges,
+  analyticsContext,
 }: Props) => {
   const translation = useTranslation();
   const { translate, translateHTML, translateWithNamespace } = translation;
@@ -419,6 +455,7 @@ const LicenseForm = ({
   const { classes } = useLicenseFormStyles();
   const { enqueueErrorSnackbar } = useIpSnackbar();
   const { logEvent } = useLicenseManagerLogger();
+  const { logOnce } = useLicenseManagerLoggerLogOnce();
   const { isFetched } = useSettings();
   const { ready: isLicenseCreationFlagReady, value: licenseCreationFlagValue } = useFlag(
     isIphInGameSalesAvatarMarketplaceSalesLicenseCreationEnabled,
@@ -560,6 +597,27 @@ const LicenseForm = ({
     DocumentValidationError[]
   >([]);
 
+  useEffect(() => {
+    if (!isFetched || !isLicenseCreationFlagReady || !analyticsContext) {
+      return;
+    }
+    logOnce(
+      LicenseManagerImpressionEvent.IphLicenseFormImpressionEvent,
+      {
+        ...buildLicenseFormAnalyticsParameters(analyticsContext, defaultValues),
+        isLicenseCreationEnabled,
+      },
+      `${analyticsContext.formAction}:${analyticsContext.licenseId ?? analyticsContext.sourceLicenseId ?? analyticsContext.listingId ?? 'new'}`,
+    );
+  }, [
+    analyticsContext,
+    defaultValues,
+    isFetched,
+    isLicenseCreationEnabled,
+    isLicenseCreationFlagReady,
+    logOnce,
+  ]);
+
   const handleDocumentDownload = async () => {
     if (!defaultValues.contentStandardsDocumentId) {
       enqueueErrorSnackbar();
@@ -631,6 +689,15 @@ const LicenseForm = ({
       const shouldShowConfirmation =
         onBeforeSubmitModeratedChanges && (mode.type === 'create' || hasModeratedFieldChanges);
 
+      if (analyticsContext) {
+        logEvent(LicenseManagerClickEvent.IphLicenseFormSubmitClickEvent, {
+          ...buildLicenseFormAnalyticsParameters(analyticsContext, data),
+          validationPassed: true,
+          hasModeratedChanges: hasModeratedFieldChanges,
+          confirmationRequired: Boolean(shouldShowConfirmation),
+        });
+      }
+
       if (shouldShowConfirmation) {
         const shouldProceed = await onBeforeSubmitModeratedChanges();
         if (!shouldProceed) {
@@ -640,8 +707,58 @@ const LicenseForm = ({
 
       onSubmit(data, { hasModeratedChanges: hasModeratedFieldChanges });
     },
-    [mode.type, hasPendingEdits, dirtyFields, onBeforeSubmitModeratedChanges, onSubmit],
+    [
+      analyticsContext,
+      mode.type,
+      hasPendingEdits,
+      dirtyFields,
+      onBeforeSubmitModeratedChanges,
+      onSubmit,
+      logEvent,
+    ],
   );
+
+  const handleInvalidSubmit = useCallback(
+    (errors: FieldErrors<LicenseFormData>) => {
+      if (!analyticsContext) {
+        return;
+      }
+      const parameters = {
+        ...buildLicenseFormAnalyticsParameters(analyticsContext, getValues()),
+        validationPassed: false,
+        errorFieldCount: Object.keys(errors).length,
+      };
+      logEvent(LicenseManagerClickEvent.IphLicenseFormSubmitClickEvent, parameters);
+      logEvent(
+        LicenseManagerImpressionEvent.IphLicenseFormValidationFailureImpressionEvent,
+        parameters,
+      );
+    },
+    [analyticsContext, getValues, logEvent],
+  );
+
+  const handleCancel = useCallback(() => {
+    if (analyticsContext) {
+      logEvent(
+        LicenseManagerClickEvent.IphLicenseFormCancelClickEvent,
+        buildLicenseFormAnalyticsParameters(analyticsContext, getValues()),
+      );
+    }
+    onCancel();
+  }, [analyticsContext, getValues, logEvent, onCancel]);
+
+  const handleSkip = useCallback(() => {
+    if (!onSkip) {
+      return;
+    }
+    if (analyticsContext) {
+      logEvent(
+        LicenseManagerClickEvent.IphLicenseFormSkipClickEvent,
+        buildLicenseFormAnalyticsParameters(analyticsContext, getValues()),
+      );
+    }
+    onSkip();
+  }, [analyticsContext, getValues, logEvent, onSkip]);
 
   if (!isFetched || !isLicenseCreationFlagReady) {
     return <PageLoading />;
@@ -658,7 +775,7 @@ const LicenseForm = ({
         spacing={4}
         maxWidth={708}
         component='form'
-        onSubmit={handleSubmit(handleFormSubmit)}>
+        onSubmit={handleSubmit(handleFormSubmit, handleInvalidSubmit)}>
         {isLicenseCreationEnabled && (
           <Grid item>
             <Typography variant='h5' component='h2' gutterBottom>
@@ -1630,14 +1747,18 @@ const LicenseForm = ({
             <Button
               variant='contained'
               color='secondary'
-              onClick={onCancel}
+              onClick={handleCancel}
               disabled={isSubmitting}>
               {cancelButtonText ?? translate('Action.Cancel')}
             </Button>
           </Grid>
           {onSkip && (
             <Grid item>
-              <Button variant='contained' color='secondary' onClick={onSkip} loading={isSubmitting}>
+              <Button
+                variant='contained'
+                color='secondary'
+                onClick={handleSkip}
+                loading={isSubmitting}>
                 {translate('Action.SkipLicense')}
               </Button>
             </Grid>

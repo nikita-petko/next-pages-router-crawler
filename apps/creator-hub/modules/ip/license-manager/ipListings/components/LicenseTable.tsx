@@ -336,9 +336,10 @@ const LicenseTable = ({ licenses, ipListingId }: LicenseTableProps) => {
                       aria-label={editLicenseLabel}
                       onClick={() => {
                         logEvent(
-                          LicenseManagerClickEvent.IphListingsDetailsPageViewLicenseContentStandardsClickEvent,
+                          LicenseManagerClickEvent.IphListingsDetailsPageEditLicenseClickEvent,
                           {
                             licenseId,
+                            listingId: ipListingId,
                           },
                         );
                       }}>

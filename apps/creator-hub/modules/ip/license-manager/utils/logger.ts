@@ -102,6 +102,9 @@ export enum LicenseManagerClickEvent {
   RecommendationCarouselAdvanceEvent = 'recommendationCarouselAdvanceEvent',
   IphLicenseCreateDurationTypeClickEvent = 'iphLicenseCreateDurationTypeClickEvent',
   IphLicenseCreateLicenseTypeClickEvent = 'iphLicenseCreateLicenseTypeClickEvent',
+  IphLicenseFormSubmitClickEvent = 'iphLicenseFormSubmitClickEvent',
+  IphLicenseFormCancelClickEvent = 'iphLicenseFormCancelClickEvent',
+  IphLicenseFormSkipClickEvent = 'iphLicenseFormSkipClickEvent',
   CreatorAgreementCancelModalOpenClickEvent = 'creatorAgreementCancelModalOpenClickEvent',
   CreatorAgreementCancelModalDismissClickEvent = 'creatorAgreementCancelModalDismissClickEvent',
   CreatorAgreementCancelModalConfirmClickEvent = 'creatorAgreementCancelModalConfirmClickEvent',
@@ -194,6 +197,10 @@ export enum LicenseManagerImpressionEvent {
   ExperiencePreviewOfferSentImpressionEvent = 'experiencePreviewOfferSentImpressionEvent',
   // Experience Preview: screenshot availability resolved (total detected vs available after moderation).
   ExperiencePreviewScreenshotsAvailableImpressionEvent = 'experiencePreviewScreenshotsAvailableImpressionEvent',
+  IphLicenseFormImpressionEvent = 'iphLicenseFormImpressionEvent',
+  IphLicenseFormValidationFailureImpressionEvent = 'iphLicenseFormValidationFailureImpressionEvent',
+  IphLicenseFormSubmissionSuccessImpressionEvent = 'iphLicenseFormSubmissionSuccessImpressionEvent',
+  IphLicenseFormSubmissionFailureImpressionEvent = 'iphLicenseFormSubmissionFailureImpressionEvent',
 }
 
 export enum LicenseManagerApiVitalsEvent {

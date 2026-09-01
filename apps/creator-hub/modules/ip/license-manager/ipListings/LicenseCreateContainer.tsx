@@ -19,10 +19,14 @@ import { useIpLayoutContext } from '../../IpAppNavigationLayout';
 import useConfirmation from '../agreements/hooks/useConfirmation';
 import { IP_LISTING_DETAILS_HREF, LICENSE_CREATE_HREF } from '../urls';
 import { convertContentStandardsQuestionAnswerToRequest } from '../utils/guidelinesAndRestrictions';
+import { LicenseManagerImpressionEvent, useLicenseManagerLogger } from '../utils/logger';
 import { buildLicenseDurationForRequest } from '../utils/timeLimitedLicense';
 import IpListingsBreadcrumbs from './components/IpListingsBreadcrumbs';
-import type { LicenseFormData } from './components/LicenseForm';
-import LicenseForm, { RESELL_PREFERENCE } from './components/LicenseForm';
+import type { LicenseFormAnalyticsContext, LicenseFormData } from './components/LicenseForm';
+import LicenseForm, {
+  buildLicenseFormAnalyticsParameters,
+  RESELL_PREFERENCE,
+} from './components/LicenseForm';
 import { MinimumDAU } from './components/licenseFormTypes';
 import { useAddLicenseMutation, useIpListingQuery, useLicenseQuery } from './hooks/ipListings';
 import mapLicenseResponseToFormDefaults from './utils/mapLicenseResponseToFormDefaults';
@@ -47,6 +51,7 @@ const LicenseCreateContainer = () => {
   const { id } = router.query;
   const ipListingId = typeof id === 'string' ? id : '';
   const { enqueueErrorSnackbar } = useIpSnackbar();
+  const { logEvent } = useLicenseManagerLogger();
   const { confirm, confirmationContent } = useConfirmation();
   const { isFetched } = useSettings();
   const { ready: isLicenseCreationFlagReady, value: licenseCreationFlagValue } = useFlag(
@@ -109,6 +114,15 @@ const LicenseCreateContainer = () => {
   }, [copyFromLicenseId, licenseQuery.data, ipListingId, isLicenseCreationEnabled]);
 
   const licenseFormKey = `${ipListingId}-${copyFromLicenseId ?? 'new'}`;
+  const licenseFormAnalyticsContext = useMemo(
+    (): LicenseFormAnalyticsContext => ({
+      formAction: copySourceForSubmit ? 'copy' : 'create',
+      entrySource: 'listingDetails',
+      listingId: ipListingId,
+      ...(copySourceForSubmit?.id ? { sourceLicenseId: copySourceForSubmit.id } : {}),
+    }),
+    [copySourceForSubmit, ipListingId],
+  );
 
   const isCopyLoading =
     !!copyFromLicenseId && (!router.isReady || licenseQuery.isPending || licenseQuery.isFetching);
@@ -128,12 +142,7 @@ const LicenseCreateContainer = () => {
     );
   }, [ipListing?.name, ipListingId, setPageTitle, translate]);
 
-  const addLicenseMutation = useAddLicenseMutation({
-    onSuccess: () => router.push(IP_LISTING_DETAILS_HREF(ipListingId)),
-    onError: () => {
-      enqueueErrorSnackbar();
-    },
-  });
+  const addLicenseMutation = useAddLicenseMutation();
 
   const handleBeforeSubmitModeratedChanges = useCallback(async () => {
     const { confirmed } = await confirm({
@@ -161,51 +170,75 @@ const LicenseCreateContainer = () => {
       ? (data.licenseType ?? undefined)
       : LicenseType.FullExperience;
     const isMarketplaceSaleLicense = licenseType === LicenseType.MarketplaceSale;
-
-    addLicenseMutation.mutate({
-      listingId: ipListingId,
-      royaltyRate: data.revenueShare,
-      maxAgeRating: isMarketplaceSaleLicense
-        ? UniverseContentMaturity.None
-        : data.maxMaturityRating,
-      dau7DayThreshold: isMarketplaceSaleLicense ? DauBucket.None : data.minimumDAU,
-      name: data.name,
-      description: data.description,
-      visibility: data.visibility ?? LicenseVisibility.Private,
-      enableMonetization: resolveEnableMonetization({
-        durationType: data.durationType,
-        licenseType,
-        monitorType: data.monitorType,
-        enableCollaborationLicensing: isLicenseCreationEnabled,
-        enableMarketplaceSalesLicensing: isLicenseCreationEnabled,
-      }),
-      contentStandardsDocument: data.contentStandardsFile,
-      ...contentStandardsDocumentIdField,
-      contentStandardScope: data.contentStandardScope,
-      contentStandardAnswers: convertContentStandardsQuestionAnswerToRequest(
-        data.contentStandardAnswers,
-      ),
-      creatorDau7DayThreshold: DauBucket.None,
-      countries: [],
-      licenseDuration: buildLicenseDurationForRequest(
-        data.durationType ?? LicenseDurationType.Perpetual,
-        {
-          minDays: data.minDuration,
-          maxDays: data.maxDuration,
-        },
-      ),
+    const analyticsParameters = buildLicenseFormAnalyticsParameters(licenseFormAnalyticsContext, {
+      ...data,
       licenseType,
-      licenseTerms:
-        !isMarketplaceSaleLicense || data.resellPreference == null
-          ? undefined
-          : {
-              reselling:
-                data.resellPreference === RESELL_PREFERENCE.Yes
-                  ? ResellingPermission.Allowed
-                  : ResellingPermission.Disallowed,
-              minimumCreatorEarningsBucket: data.minimumCreatorEarningsBucket,
-            },
+      durationType: data.durationType ?? LicenseDurationType.Perpetual,
+      visibility: data.visibility ?? LicenseVisibility.Private,
     });
+
+    addLicenseMutation.mutate(
+      {
+        listingId: ipListingId,
+        royaltyRate: data.revenueShare,
+        maxAgeRating: isMarketplaceSaleLicense
+          ? UniverseContentMaturity.None
+          : data.maxMaturityRating,
+        dau7DayThreshold: isMarketplaceSaleLicense ? DauBucket.None : data.minimumDAU,
+        name: data.name,
+        description: data.description,
+        visibility: data.visibility ?? LicenseVisibility.Private,
+        enableMonetization: resolveEnableMonetization({
+          durationType: data.durationType,
+          licenseType,
+          monitorType: data.monitorType,
+          enableCollaborationLicensing: isLicenseCreationEnabled,
+          enableMarketplaceSalesLicensing: isLicenseCreationEnabled,
+        }),
+        contentStandardsDocument: data.contentStandardsFile,
+        ...contentStandardsDocumentIdField,
+        contentStandardScope: data.contentStandardScope,
+        contentStandardAnswers: convertContentStandardsQuestionAnswerToRequest(
+          data.contentStandardAnswers,
+        ),
+        creatorDau7DayThreshold: DauBucket.None,
+        countries: [],
+        licenseDuration: buildLicenseDurationForRequest(
+          data.durationType ?? LicenseDurationType.Perpetual,
+          {
+            minDays: data.minDuration,
+            maxDays: data.maxDuration,
+          },
+        ),
+        licenseType,
+        licenseTerms:
+          !isMarketplaceSaleLicense || data.resellPreference == null
+            ? undefined
+            : {
+                reselling:
+                  data.resellPreference === RESELL_PREFERENCE.Yes
+                    ? ResellingPermission.Allowed
+                    : ResellingPermission.Disallowed,
+                minimumCreatorEarningsBucket: data.minimumCreatorEarningsBucket,
+              },
+      },
+      {
+        onSuccess: (license) => {
+          logEvent(LicenseManagerImpressionEvent.IphLicenseFormSubmissionSuccessImpressionEvent, {
+            ...analyticsParameters,
+            ...(license.id ? { licenseId: license.id } : {}),
+          });
+          void router.push(IP_LISTING_DETAILS_HREF(ipListingId));
+        },
+        onError: () => {
+          logEvent(
+            LicenseManagerImpressionEvent.IphLicenseFormSubmissionFailureImpressionEvent,
+            analyticsParameters,
+          );
+          enqueueErrorSnackbar();
+        },
+      },
+    );
   };
 
   const handleCancel = () => {
@@ -234,6 +267,7 @@ const LicenseCreateContainer = () => {
             onCancel={handleCancel}
             submitButtonText={translate('Action.Create')}
             isSubmitting={addLicenseMutation.isPending}
+            analyticsContext={licenseFormAnalyticsContext}
           />
         </Grid>
       </Grid>

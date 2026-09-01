@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import {
   DauBucket,
@@ -21,10 +21,19 @@ import { useIpLayoutContext } from '../../IpAppNavigationLayout';
 import useConfirmation from '../agreements/hooks/useConfirmation';
 import { IP_LISTING_DETAILS_HREF } from '../urls';
 import { convertContentStandardsQuestionAnswerToRequest } from '../utils/guidelinesAndRestrictions';
+import { LicenseManagerImpressionEvent, useLicenseManagerLogger } from '../utils/logger';
 import { buildLicenseDurationForRequest } from '../utils/timeLimitedLicense';
 import IpListingsBreadcrumbs from './components/IpListingsBreadcrumbs';
-import type { LicenseFormData, LicenseFormSubmitOptions } from './components/LicenseForm';
-import LicenseForm, { EDIT_MODE, EDIT_WITH_AGREEMENTS_MODE } from './components/LicenseForm';
+import type {
+  LicenseFormAnalyticsContext,
+  LicenseFormData,
+  LicenseFormSubmitOptions,
+} from './components/LicenseForm';
+import LicenseForm, {
+  buildLicenseFormAnalyticsParameters,
+  EDIT_MODE,
+  EDIT_WITH_AGREEMENTS_MODE,
+} from './components/LicenseForm';
 import LicensePendingAlert from './components/LicensePendingAlert';
 import PendingEditsAlert from './components/PendingEditsAlert';
 import {
@@ -45,6 +54,7 @@ const LicenseEditContainer = ({ licenseId }: Props) => {
   const { translate } = useTranslation();
   const router = useRouter();
   const { enqueueErrorSnackbar, enqueueSuccessSnackbar } = useIpSnackbar();
+  const { logEvent } = useLicenseManagerLogger();
   const { confirm, confirmationContent } = useConfirmation();
   const { isFetched } = useSettings();
   const { ready: isLicenseCreationFlagReady, value: licenseCreationFlagValue } = useFlag(
@@ -85,6 +95,22 @@ const LicenseEditContainer = ({ licenseId }: Props) => {
     }
   }, [ipListingReq.data, licenseReq.data, setPageTitle, translate]);
 
+  const hasAgreements = Boolean(agreementsReq.data?.agreements?.length);
+  const hasPendingEdits = !!licenseReq.data?.hasPendingEdits;
+  const isLicensePending = licenseReq.data?.moderationStatus === LicenseModerationStatus.Pending;
+  const areModeratedFieldsLocked = hasPendingEdits || isLicensePending;
+  const licenseFormAnalyticsContext = useMemo<LicenseFormAnalyticsContext>(
+    () => ({
+      formAction: 'update',
+      entrySource: 'listingDetails',
+      listingId: licenseReq.data?.listingId ?? '',
+      licenseId,
+      hasAgreements,
+      hasPendingEdits: areModeratedFieldsLocked,
+    }),
+    [areModeratedFieldsLocked, hasAgreements, licenseId, licenseReq.data?.listingId],
+  );
+
   if (licenseReq.error || ipListingReq.error || agreementsReq.error) {
     return <IpLoadError error={licenseReq.error ?? ipListingReq.error ?? agreementsReq.error} />;
   }
@@ -100,12 +126,7 @@ const LicenseEditContainer = ({ licenseId }: Props) => {
   }
 
   const license = licenseReq.data;
-  const hasAgreements = agreementsReq.data.agreements && agreementsReq.data.agreements.length > 0;
   const isMarketplaceSaleLicense = license.licenseType === LicenseType.MarketplaceSale;
-
-  const hasPendingEdits = !!license.hasPendingEdits;
-  const isLicensePending = license.moderationStatus === LicenseModerationStatus.Pending;
-  const areModeratedFieldsLocked = hasPendingEdits || isLicensePending;
 
   return (
     <>
@@ -149,6 +170,18 @@ const LicenseEditContainer = ({ licenseId }: Props) => {
               contentStandardsFile: undefined, // Rely on contentStandardsDocumentId for existing PDF UI
             }}
             onSubmit={(data: LicenseFormData, options: LicenseFormSubmitOptions) => {
+              const analyticsParameters = {
+                ...buildLicenseFormAnalyticsParameters(licenseFormAnalyticsContext, {
+                  ...data,
+                  licenseType: data.licenseType ?? license.licenseType,
+                  durationType:
+                    data.durationType ??
+                    license.licenseDuration?.durationType ??
+                    LicenseDurationType.Perpetual,
+                  visibility: data.visibility ?? LicenseVisibility.Private,
+                }),
+                hasModeratedChanges: options.hasModeratedChanges,
+              };
               const getContentStandardsDocumentId = () => {
                 if (data.deleteContentStandardsDocument) {
                   return '';
@@ -213,6 +246,10 @@ const LicenseEditContainer = ({ licenseId }: Props) => {
                 },
                 {
                   onSuccess: () => {
+                    logEvent(
+                      LicenseManagerImpressionEvent.IphLicenseFormSubmissionSuccessImpressionEvent,
+                      analyticsParameters,
+                    );
                     enqueueSuccessSnackbar(
                       options.hasModeratedChanges
                         ? 'Message.LicenseUpdatedWithPendingChanges'
@@ -221,6 +258,10 @@ const LicenseEditContainer = ({ licenseId }: Props) => {
                     void router.push(IP_LISTING_DETAILS_HREF(license.listingId ?? ''));
                   },
                   onError: () => {
+                    logEvent(
+                      LicenseManagerImpressionEvent.IphLicenseFormSubmissionFailureImpressionEvent,
+                      analyticsParameters,
+                    );
                     enqueueErrorSnackbar();
                   },
                 },
@@ -231,6 +272,7 @@ const LicenseEditContainer = ({ licenseId }: Props) => {
             }}
             submitButtonText={translate('Action.Update')}
             isSubmitting={updateLicenseMutation.isPending}
+            analyticsContext={licenseFormAnalyticsContext}
           />
         </Grid>
       </Grid>
