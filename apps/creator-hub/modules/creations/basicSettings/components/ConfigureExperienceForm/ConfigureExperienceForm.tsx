@@ -1050,55 +1050,71 @@ const ConfigureExperienceForm: FunctionComponent<
     ],
   );
 
+  const shouldShowUpdatedGenreBanner =
+    updatedGenreBannerProps.notifyGenreChange && showUpdatedGenreBanner;
+  const hasPreMediaContent = isGroup || shouldShowUpdatedGenreBanner;
+
   return (
     <Grid container item className={formContainer}>
-      <Grid container item XSmall={12} XLarge={6} className={inputFormPadding}>
-        {isGroup && (
-          <Grid item>
-            <GroupFeaturesStatus />
+      <Grid container item XSmall={12}>
+        {hasPreMediaContent ? (
+          <Grid
+            container
+            item
+            XSmall={12}
+            XLarge={6}
+            className={inputFormPadding}
+            paddingBottom='32px'>
+            {isGroup && (
+              <Grid item>
+                <GroupFeaturesStatus />
+              </Grid>
+            )}
+            {shouldShowUpdatedGenreBanner && (
+              <Grid item XSmall={12} marginBottom='16px'>
+                <Alert
+                  action={[
+                    <Button
+                      key='button'
+                      color='inherit'
+                      size='small'
+                      href={creatorHub.docs.getExperienceGenresAppealUrl()}>
+                      {translate('Label.SubmitAppeal')}
+                    </Button>,
+                    <IconButton
+                      aria-label='bannerClose'
+                      key='iconButton'
+                      size='small'
+                      color='inherit'
+                      onClick={() => setShowUpdatedGenreBanner(false)}>
+                      <CloseIcon fontSize='small' />
+                    </IconButton>,
+                  ]}
+                  severity='info'
+                  variant='standard'>
+                  <AlertTitle>{translate('Heading.ExperienceGenreChanged')}</AlertTitle>
+                  <span>
+                    {translateHTML('Label.ExperienceGenreTransition', null, {
+                      oldGenre: (
+                        <b>
+                          {genreToLocalization[updatedGenreBannerProps.displayCreatorSelectedGenre]}
+                        </b>
+                      ),
+                      newGenre: (
+                        <b>{genreToLocalization[updatedGenreBannerProps.displayActualGenre]}</b>
+                      ),
+                    })}
+                  </span>
+                </Alert>
+              </Grid>
+            )}
           </Grid>
-        )}
-        {updatedGenreBannerProps.notifyGenreChange && showUpdatedGenreBanner && (
-          <Grid item XSmall={12} marginBottom='16px'>
-            <Alert
-              action={[
-                <Button
-                  key='button'
-                  color='inherit'
-                  size='small'
-                  href={creatorHub.docs.getExperienceGenresAppealUrl()}>
-                  {translate('Label.SubmitAppeal')}
-                </Button>,
-                <IconButton
-                  aria-label='bannerClose'
-                  key='iconButton'
-                  size='small'
-                  color='inherit'
-                  onClick={() => setShowUpdatedGenreBanner(false)}>
-                  <CloseIcon fontSize='small' />
-                </IconButton>,
-              ]}
-              severity='info'
-              variant='standard'>
-              <AlertTitle>{translate('Heading.ExperienceGenreChanged')}</AlertTitle>
-              <span>
-                {translateHTML('Label.ExperienceGenreTransition', null, {
-                  oldGenre: (
-                    <b>
-                      {genreToLocalization[updatedGenreBannerProps.displayCreatorSelectedGenre]}
-                    </b>
-                  ),
-                  newGenre: (
-                    <b>{genreToLocalization[updatedGenreBannerProps.displayActualGenre]}</b>
-                  ),
-                })}
-              </span>
-            </Alert>
-          </Grid>
-        )}
-        <Grid item XSmall={12} marginBottom='16px'>
+        ) : null}
+        <Grid item XSmall={12} XLarge={8}>
           <IconAndThumbnail />
         </Grid>
+      </Grid>
+      <Grid container item XSmall={12} XLarge={6} className={inputFormPadding}>
         <Grid item XSmall={12}>
           <Controller
             name='name'

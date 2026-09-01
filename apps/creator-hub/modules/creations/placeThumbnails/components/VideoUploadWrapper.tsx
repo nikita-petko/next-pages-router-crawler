@@ -116,13 +116,16 @@ const VideoUploadWrapper: FC<VideoUploadWrapperProps> = ({
   const {
     data: currentVideoPreview,
     isFetching: isVideoPreviewFetching,
-    isError: isVideoPreviewFetchError,
+    isError: isVideoPreviewQueryError,
     refetch: refetchCurrentVideoPreview,
   } = useGamePreviewVideoForPlaceQuery(placeId, gameDetails?.id, {
     enabled: true,
     shouldFetchContentQuality: true,
   });
 
+  const isVideoPreviewFetchError =
+    isVideoPreviewQueryError ||
+    currentVideoPreview?.isVideoContentQualityReviewStatusError === true;
   const videoPreviewId = currentVideoPreview?.videoPreviewId ?? null;
   const fetchedModerationState =
     currentVideoPreview?.moderationState ?? ModerationState.Unspecified;

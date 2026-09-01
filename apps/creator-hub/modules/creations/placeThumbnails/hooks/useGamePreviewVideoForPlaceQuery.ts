@@ -18,6 +18,7 @@ type GamePreviewVideoForPlace = {
   videoPreviewId: number | null;
   moderationState: ModerationState;
   videoContentQualityReviewStatus?: VideoContentQualityReviewStatusValue;
+  isVideoContentQualityReviewStatusError?: boolean;
 };
 
 const emptyGamePreviewVideo: GamePreviewVideoForPlace = {
@@ -128,17 +129,24 @@ const useGamePreviewVideoForPlaceQuery = (
           gamePreviewVideoDetails.assetDetails.moderationResult?.moderationState ??
           ModerationState.Unspecified;
 
-        const videoContentQualityReviewStatus =
+        let videoContentQualityReviewStatus: VideoContentQualityReviewStatusValue | undefined;
+        let isVideoContentQualityReviewStatusError = false;
+        if (
           shouldFetchContentQuality &&
           universeId !== undefined &&
           // Only fetch content quality if moderation approved the video
           assetModerationState === ModerationState.Approved
-            ? await getVideoContentQualityReviewStatus(
-                placeId,
-                universeId,
-                gamePreviewVideoDetails.previewId,
-              )
-            : undefined;
+        ) {
+          try {
+            videoContentQualityReviewStatus = await getVideoContentQualityReviewStatus(
+              placeId,
+              universeId,
+              gamePreviewVideoDetails.previewId,
+            );
+          } catch {
+            isVideoContentQualityReviewStatusError = true;
+          }
+        }
 
         return {
           videoPreview: previews.find((preview) => {
@@ -147,6 +155,9 @@ const useGamePreviewVideoForPlaceQuery = (
           videoPreviewId: gamePreviewVideoDetails.previewId,
           moderationState: assetModerationState,
           videoContentQualityReviewStatus,
+          ...(isVideoContentQualityReviewStatusError
+            ? { isVideoContentQualityReviewStatusError: true }
+            : {}),
         };
       } catch (error) {
         captureMessage(

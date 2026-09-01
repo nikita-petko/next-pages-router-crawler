@@ -1,14 +1,14 @@
-import { useQueries } from '@tanstack/react-query';
 import type { FC } from 'react';
 import { useCallback, useMemo } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import type { RobloxWebResponsesThumbnailsThumbnailResponse } from '@rbx/client-thumbnails/v1';
 import { useTranslation } from '@rbx/intl';
 import { ReturnPolicy, ThumbnailClient, ThumbnailFormat, ThumbnailTypes } from '@rbx/thumbnails';
 import { Container, makeStyles, Typography } from '@rbx/ui';
-import Flex from '@modules/miscellaneous/components/Flex';
 import { creatorHub } from '@modules/miscellaneous/urls';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import { useGetHomepageThumbnailsQuery } from '@modules/react-query/thumbnailPersonalization';
+import GamePreviewVideoTile from '../../../placeThumbnails/components/GamePreviewVideoTile';
 import ImagePreview from './ImagePreview';
 
 const queryPrefix = 'IconAndThumbnail';
@@ -16,21 +16,35 @@ const queryPrefix = 'IconAndThumbnail';
 const iconSize = 512;
 const thumbnailWidth = 576;
 const thumbnailHeight = 324;
+const thumbnailAspectRatio = thumbnailWidth / thumbnailHeight;
 
-const useStyles = makeStyles()(() => ({
+const useStyles = makeStyles()((theme) => ({
+  mediaGrid: {
+    display: 'grid',
+    gap: '16px',
+    gridTemplateColumns: `1fr ${thumbnailAspectRatio}fr ${thumbnailAspectRatio}fr`,
+    // Wrap video to a second row on small screens, with the same height as the first row.
+    [theme.breakpoints.down('Medium')]: {
+      gridTemplateColumns: `1fr ${thumbnailAspectRatio}fr`,
+      '& > :nth-child(3)': {
+        gridColumn: '1',
+        width: `${thumbnailAspectRatio * 100}%`,
+      },
+    },
+  },
   icon: {
     aspectRatio: 1,
-    flex: `${iconSize} ${iconSize} auto`,
+    minWidth: 0,
   },
   thumbnail: {
-    aspectRatio: `${thumbnailWidth / thumbnailHeight}`,
-    flex: `${(thumbnailWidth / thumbnailHeight) * iconSize} ${(thumbnailWidth / thumbnailHeight) * iconSize} auto`,
+    aspectRatio: `${thumbnailAspectRatio}`,
+    minWidth: 0,
   },
 }));
 
 const IconAndThumbnail: FC = () => {
   const {
-    classes: { icon, thumbnail },
+    classes: { icon, mediaGrid, thumbnail },
   } = useStyles();
   const { translate } = useTranslation();
   const { gameDetails } = useCurrentGame();
@@ -83,20 +97,21 @@ const IconAndThumbnail: FC = () => {
 
   return (
     <Container maxWidth={false} disableGutters>
-      <Flex gap={16}>
+      <div className={mediaGrid}>
         <ImagePreview
           imageUrl={iconUrl}
           linkTo={creatorHub.dashboard.getPlaceIconUrl(universeId, rootPlaceId)}
           className={icon}
         />
         <ImagePreview
-          imageUrl={activeThumbnailUrl || fallbackThumbnailUrl}
+          imageUrl={activeThumbnailUrl ?? fallbackThumbnailUrl}
           linkTo={creatorHub.dashboard.getPlaceThumbnailsUrl(universeId, rootPlaceId)}
           className={thumbnail}
         />
-      </Flex>
+        <GamePreviewVideoTile placeId={rootPlaceId} universeId={universeId} />
+      </div>
       <Typography variant='body1' color='secondary' display='block' marginTop='12px'>
-        {translate('Description.IconAndThumbnail' /** CreatorDashboard.ConfigureItem */)}
+        {translate('Description.IconThumbnailAndVideo' /** CreatorDashboard.ConfigureItem */)}
       </Typography>
     </Container>
   );
