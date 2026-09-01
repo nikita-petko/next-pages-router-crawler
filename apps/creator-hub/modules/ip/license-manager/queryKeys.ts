@@ -33,10 +33,11 @@ export const GET_PLACEFILE_IMAGES_QUERY_KEY = (
   accountId?: string,
   agreementCandidateId?: string,
 ) => [rootMatchesKey, 'placefileImages', accountId, agreementCandidateId];
-export const GET_ASSET_IMAGE_URLS_QUERY_KEY = (assetIds?: number[]) => [
+export const GET_ASSET_IMAGE_URLS_QUERY_KEY = (assetIds?: number[], accessContext?: string) => [
   rootMatchesKey,
   'assetImageUrls',
   assetIds,
+  accessContext,
 ];
 export const GET_AGREEMENT_CANDIDATE_BY_ID_QUERY_KEY = (
   accountId?: string,

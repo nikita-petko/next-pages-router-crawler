@@ -12,6 +12,8 @@ const assetdeliveryBatchApi = new BatchApi(createClientConfiguration('assetdeliv
 export interface AssetRequestItem {
   assetId: number;
   requestId: string;
+  /** Serialized access context */
+  accessContext?: string;
 }
 
 export interface AssetdeliveryClient {
