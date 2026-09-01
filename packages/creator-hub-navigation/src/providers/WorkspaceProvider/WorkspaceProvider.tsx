@@ -51,7 +51,7 @@ export const WorkspaceProvider: FunctionComponent<React.PropsWithChildren> = ({ 
     Dashboard: { creations },
   } = useProductUrls();
 
-  const [sort, setSort] = useLocalStorage<TSorts>('workspaceSort', WorkspaceSorts.CreatedAt);
+  const [sort, setSort] = useLocalStorage<TSorts>('workspaceSort', WorkspaceSorts.Alphabetically);
   const [currentGroupId, setCurrentGroupId] = useLocalStorage<number | null>(
     `creatorHubGroup.${user?.id}`,
     null,
