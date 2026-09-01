@@ -650,7 +650,7 @@ export const buildComputedMetricDag = (
 
   const durationBucketBreakdowns = realBreakdowns.filter(isDurationBucketDimension);
   const nonDurationBreakdowns = realBreakdowns.filter((d) => !isDurationBucketDimension(d));
-  const totalBreakdownSpecs =
+  const totalBreakdownSpecs: BreakdownSpec[] | undefined =
     durationBucketBreakdowns.length > 0
       ? durationBucketBreakdowns.map(dimensionToRankBreakdownSpec)
       : undefined;

@@ -5,7 +5,10 @@ import {
   RAQIV2UIMetric,
   RAQIV2UIPseudoDimension,
 } from '@rbx/creator-hub-analytics-config';
-import type { TRAQIV2UIMetricFanoutDimensionValues } from '@rbx/creator-hub-analytics-config';
+import type {
+  TRAQIV2Dimension,
+  TRAQIV2UIMetricFanoutDimensionValues,
+} from '@rbx/creator-hub-analytics-config';
 import { Button } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { makeStyles } from '@rbx/ui';
@@ -62,6 +65,8 @@ import ChartConfiguratorMetricSourceCard, {
 } from './ChartConfiguratorMetricSourceCard';
 import { customEventsMetric } from './useChartConfiguratorSourceSelection';
 
+const EMPTY_BREAKDOWN: readonly TRAQIV2Dimension[] = [];
+
 export type MetricSource = {
   key: string;
   metric: TChartConfiguratorMetrics | null;
@@ -106,6 +111,46 @@ export const getReferencedMetricSourcesForFormula = (
     : [];
 
   return { parseResult, referencedSources };
+};
+
+export const clearBreakdownOwnedPseudoDimensionValues = (
+  values: TRAQIV2UIMetricFanoutDimensionValues | undefined,
+  breakdown: readonly TRAQIV2Dimension[],
+): TRAQIV2UIMetricFanoutDimensionValues | undefined => {
+  if (!values) {
+    return undefined;
+  }
+  const nextValues: TRAQIV2UIMetricFanoutDimensionValues = {
+    aggregationType: breakdown.includes(RAQIV2UIPseudoDimension.AggregationType)
+      ? null
+      : values.aggregationType,
+    percentile: breakdown.includes(RAQIV2UIPseudoDimension.PercentileType)
+      ? null
+      : values.percentile,
+  };
+  return hasPseudoDimensionValues(nextValues) ? nextValues : undefined;
+};
+
+/**
+ * Drawer payloads omit AggregationType / PercentileType while a page-level
+ * breakdown owns those axes. Merge the omitted fields back from existing
+ * source state so a later drawer save does not wipe them; they stay in
+ * `sources` and reappear in the UI when ownership ends.
+ */
+export const mergeSourcePseudoDimensionValuesPreservingBreakdownOwned = (
+  existing: TRAQIV2UIMetricFanoutDimensionValues | undefined,
+  fromDrawer: TRAQIV2UIMetricFanoutDimensionValues,
+  breakdown: readonly TRAQIV2Dimension[],
+): TRAQIV2UIMetricFanoutDimensionValues | undefined => {
+  const nextValues: TRAQIV2UIMetricFanoutDimensionValues = {
+    aggregationType: breakdown.includes(RAQIV2UIPseudoDimension.AggregationType)
+      ? (existing?.aggregationType ?? null)
+      : fromDrawer.aggregationType,
+    percentile: breakdown.includes(RAQIV2UIPseudoDimension.PercentileType)
+      ? (existing?.percentile ?? null)
+      : fromDrawer.percentile,
+  };
+  return hasPseudoDimensionValues(nextValues) ? nextValues : undefined;
 };
 
 export const buildComputedMetricSourceFromMetricSource = (
@@ -231,6 +276,11 @@ const ChartConfiguratorEquationBuilder: FC<ChartConfiguratorEquationBuilderProps
 
   const variableKeys = useMemo(() => sources.map((s) => s.key), [sources]);
   const canAddSource = sources.length < COMPUTED_METRIC_VARIABLE_KEYS.length;
+  const breakdown = useMemo<readonly TRAQIV2Dimension[]>(() => {
+    const fanoutOwnedDimension = getFanoutOwnedDimension(metricVariant);
+    return fanoutOwnedDimension ? [fanoutOwnedDimension] : EMPTY_BREAKDOWN;
+  }, [metricVariant]);
+  const breakdownOwnedPseudoDimensionSet = useMemo(() => new Set<string>(breakdown), [breakdown]);
 
   // Strictly non-optimistic moderation of the typed formula name: only the
   // `confirmedFormulaName` returned by the hook flows downstream into the
@@ -322,56 +372,66 @@ const ChartConfiguratorEquationBuilder: FC<ChartConfiguratorEquationBuilderProps
           values: [source.customEventName],
         });
       }
-      if (source.pseudoDimensionValues?.aggregationType) {
+      const visiblePseudoDimensionValues = clearBreakdownOwnedPseudoDimensionValues(
+        source.pseudoDimensionValues,
+        breakdown,
+      );
+      if (visiblePseudoDimensionValues?.aggregationType) {
         uiFilters.push({
           dimension: RAQIV2UIPseudoDimension.AggregationType,
-          values: [source.pseudoDimensionValues.aggregationType],
+          values: [visiblePseudoDimensionValues.aggregationType],
         });
       }
-      if (source.pseudoDimensionValues?.percentile) {
+      if (visiblePseudoDimensionValues?.percentile) {
         uiFilters.push({
           dimension: RAQIV2UIPseudoDimension.PercentileType,
-          values: [source.pseudoDimensionValues.percentile],
+          values: [visiblePseudoDimensionValues.percentile],
         });
       }
       return uiFilters;
     },
-    [],
+    [breakdown],
   );
-  const handleSourceFiltersChange = useCallback((index: number, nextFilters: UIFilters) => {
-    const raqiFilters = legacyFiltersToRAQIV2(nextFilters);
-    // Split at the drawer seam into three slots:
-    //   1. `pseudoDimensionValues` — fanout pseudo-dimensions (extracted
-    //      structurally below, narrowing the residue to `RAQIV2APIQueryFilter`).
-    //   2. `customEventName` — source identity for CustomEventsV2.
-    //   3. `filters` — real, source-scoped query filters; narrowed via a
-    //      type-guarded `.filter` so the slot's stored type is
-    //      `ComputedMetricSourceFilter`, matching `MetricSource.filters`
-    //      and (transitively) `ComputedMetricSource.filters`.
-    // Downstream consumers (DAG builder, serializer) never see mixed state.
-    const { realFilters, pseudoDimensionValues } = extractPseudoDimensionsFromFilters(raqiFilters);
-    const customEventName = realFilters.find(
-      (filter) => filter.dimension === RAQIV2Dimension.CustomEventName,
-    )?.values[0];
-    const sourceFilters = realFilters.filter(
-      (filter): filter is ComputedMetricSourceFilter =>
-        filter.dimension !== RAQIV2Dimension.CustomEventName && filter.values.length > 0,
-    );
-    setSources((prev) =>
-      prev.map((source, sourceIndex) =>
-        sourceIndex === index
-          ? {
-              ...source,
-              filters: sourceFilters.length > 0 ? sourceFilters : undefined,
-              customEventName,
-              pseudoDimensionValues: hasPseudoDimensionValues(pseudoDimensionValues)
-                ? pseudoDimensionValues
-                : undefined,
-            }
-          : source,
-      ),
-    );
-  }, []);
+  const handleSourceFiltersChange = useCallback(
+    (index: number, nextFilters: UIFilters) => {
+      const raqiFilters = legacyFiltersToRAQIV2(nextFilters);
+      // Split at the drawer seam into three slots:
+      //   1. `pseudoDimensionValues` — fanout pseudo-dimensions (extracted
+      //      structurally below, narrowing the residue to `RAQIV2APIQueryFilter`).
+      //   2. `customEventName` — source identity for CustomEventsV2.
+      //   3. `filters` — real, source-scoped query filters; narrowed via a
+      //      type-guarded `.filter` so the slot's stored type is
+      //      `ComputedMetricSourceFilter`, matching `MetricSource.filters`
+      //      and (transitively) `ComputedMetricSource.filters`.
+      // Downstream consumers (DAG builder, serializer) never see mixed state.
+      const { realFilters, pseudoDimensionValues } =
+        extractPseudoDimensionsFromFilters(raqiFilters);
+      const customEventName = realFilters.find(
+        (filter) => filter.dimension === RAQIV2Dimension.CustomEventName,
+      )?.values[0];
+      const sourceFilters = realFilters.filter(
+        (filter): filter is ComputedMetricSourceFilter =>
+          filter.dimension !== RAQIV2Dimension.CustomEventName && filter.values.length > 0,
+      );
+      setSources((prev) =>
+        prev.map((source, sourceIndex) =>
+          sourceIndex === index
+            ? {
+                ...source,
+                filters: sourceFilters.length > 0 ? sourceFilters : undefined,
+                customEventName,
+                pseudoDimensionValues: mergeSourcePseudoDimensionValuesPreservingBreakdownOwned(
+                  source.pseudoDimensionValues,
+                  pseudoDimensionValues,
+                  breakdown,
+                ),
+              }
+            : source,
+        ),
+      );
+    },
+    [breakdown],
+  );
   const getSourceFilterDrawerConfigForMetric = useCallback(
     (
       sourceMetric: TChartConfiguratorMetrics | null,
@@ -379,9 +439,8 @@ const ChartConfiguratorEquationBuilder: FC<ChartConfiguratorEquationBuilderProps
       if (!sourceMetric || !sourceFilterResource) {
         return undefined;
       }
-      const fanoutOwnedDimension = getFanoutOwnedDimension(metricVariant);
       const dimensions = sourceFilterDimensionsByMetric?.[sourceMetric]?.filter(
-        (dimension) => dimension !== fanoutOwnedDimension,
+        (dimension) => !breakdownOwnedPseudoDimensionSet.has(dimension),
       );
       if (!dimensions || dimensions.length === 0) {
         return undefined;
@@ -391,23 +450,30 @@ const ChartConfiguratorEquationBuilder: FC<ChartConfiguratorEquationBuilderProps
         dimensions,
       };
     },
-    [metricVariant, sourceFilterDimensionsByMetric, sourceFilterResource],
+    [breakdownOwnedPseudoDimensionSet, sourceFilterDimensionsByMetric, sourceFilterResource],
   );
 
-  const handleClearSourceFilters = useCallback((index: number) => {
-    setSources((prev) =>
-      prev.map((s, i) =>
-        i === index
-          ? {
-              ...s,
-              filters: undefined,
-              customEventName: undefined,
-              pseudoDimensionValues: undefined,
-            }
-          : s,
-      ),
-    );
-  }, []);
+  const handleClearSourceFilters = useCallback(
+    (index: number) => {
+      setSources((prev) =>
+        prev.map((s, i) =>
+          i === index
+            ? {
+                ...s,
+                filters: undefined,
+                customEventName: undefined,
+                pseudoDimensionValues: mergeSourcePseudoDimensionValuesPreservingBreakdownOwned(
+                  s.pseudoDimensionValues,
+                  { aggregationType: null, percentile: null },
+                  breakdown,
+                ),
+              }
+            : s,
+        ),
+      );
+    },
+    [breakdown],
+  );
 
   const handleToggleSourceExpand = useCallback((index: number) => {
     setExpandedCardIndex((prev) => (prev === index ? null : index));
@@ -554,6 +620,7 @@ const ChartConfiguratorEquationBuilder: FC<ChartConfiguratorEquationBuilderProps
     chartContext,
     emitComputedMetricIfChanged,
     sourceStateToUIFilters,
+    breakdown,
   ]);
   /* oxlint-enable react/react-compiler */
 
@@ -581,6 +648,9 @@ const ChartConfiguratorEquationBuilder: FC<ChartConfiguratorEquationBuilderProps
             availableMetrics={availableMetrics}
             filterSummary={filterSummary}
             customEventResource={sourceFilterResource}
+            hideCustomEventAggregation={breakdownOwnedPseudoDimensionSet.has(
+              RAQIV2UIPseudoDimension.AggregationType,
+            )}
           />
         );
       })}

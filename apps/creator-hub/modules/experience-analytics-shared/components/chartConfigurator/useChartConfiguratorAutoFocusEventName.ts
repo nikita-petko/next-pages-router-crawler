@@ -28,6 +28,7 @@ export type UseChartConfiguratorAutoFocusEventNameArgs = {
   selectedEventType: string | null;
   filters: UIFilters;
   onFiltersChange: (filters: UIFilters) => void;
+  includeDefaultAggregation: boolean;
 };
 
 /**
@@ -59,6 +60,7 @@ const useChartConfiguratorAutoFocusEventName = ({
   selectedEventType,
   filters,
   onFiltersChange,
+  includeDefaultAggregation,
 }: UseChartConfiguratorAutoFocusEventNameArgs): void => {
   const hasAutoAppliedRef = useRef(false);
 
@@ -81,16 +83,18 @@ const useChartConfiguratorAutoFocusEventName = ({
       RAQIV2UIPseudoDimension.AggregationType,
       null,
     );
-    const next = existingAgg
-      ? withEvent
-      : updateFilterValues(withEvent, RAQIV2UIPseudoDimension.AggregationType, [
-          RAQIV2AggregationType.Sum,
-        ]);
+    const next =
+      existingAgg || !includeDefaultAggregation
+        ? withEvent
+        : updateFilterValues(withEvent, RAQIV2UIPseudoDimension.AggregationType, [
+            RAQIV2AggregationType.Sum,
+          ]);
     onFiltersChange(next);
   }, [
     autoFocusEventName,
     eventTypeValues,
     filters,
+    includeDefaultAggregation,
     isEventTypeLoading,
     isEventTypeRequestFailed,
     isEventTypeResolved,

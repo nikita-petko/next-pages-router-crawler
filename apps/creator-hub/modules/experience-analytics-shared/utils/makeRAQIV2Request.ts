@@ -1562,6 +1562,10 @@ const makeComputedMetricRequest = async ({
   fetchTotalSeries: boolean | undefined;
   comparison?: FetchComparisonOptions;
 }): Promise<RAQIV2QueryResponses> => {
+  const { metricVariant, breakdown } = splitMetricVariantFromBreakdown(
+    queryRequest.metricVariant,
+    queryRequest.breakdown,
+  );
   const executeForTimeSpec = async (
     timeSpec: ExactRAQIV2UIQueryRequest<RAQIV2UIQueryRequest>['timeSpec'],
   ) => {
@@ -1569,6 +1573,8 @@ const makeComputedMetricRequest = async ({
     try {
       const computedQueryRequest: RAQIV2UIQueryRequest = {
         ...queryRequest,
+        breakdown,
+        metricVariant,
         timeSpec,
         metric,
       };
@@ -1611,10 +1617,6 @@ const makeComputedMetricRequest = async ({
   };
 
   const responses = await executeAceDagComparison(executeForTimeSpec, snappedTimeSpec, comparison);
-  const { metricVariant } = splitMetricVariantFromBreakdown(
-    queryRequest.metricVariant,
-    queryRequest.breakdown,
-  );
   const fanoutInfo = isMetricVariantFanout(metricVariant)
     ? getMetricFanoutDimensionInfo(metricVariant)
     : undefined;
@@ -1953,8 +1955,6 @@ const makeRAQIV2Request = async (
   //     `limit` field (series limiting goes through topN/rank inside
   //     `breakdownSpecs`), so a request carrying an explicit limit stays on the
   //     legacy path that honors it rather than silently returning more series.
-  //     topN/rank (and limit) support lands with DSA-5783 (creator-hub#14115,
-  //     feature/dsa-5783-move-standard-topn-rank-queries-to-ace-afc).
   const canUseAceVariantFanout =
     resolvedOptions.enableAceVariantFanout === true &&
     Array.isArray(apiMetrics) &&

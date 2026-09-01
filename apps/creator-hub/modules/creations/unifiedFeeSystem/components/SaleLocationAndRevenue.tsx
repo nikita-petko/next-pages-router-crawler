@@ -188,6 +188,8 @@ interface TSaleLocationAndRevenueProps {
   minimumPrice: number;
   isFree: boolean;
   isAvatarItemLicensingEnabled: boolean;
+  /** License id of the agreement selected in the License Picker; scopes the IP-holder split. */
+  licenseId?: string;
 }
 
 function SaleLocationAndRevenue(props: TSaleLocationAndRevenueProps) {
@@ -205,6 +207,7 @@ function SaleLocationAndRevenue(props: TSaleLocationAndRevenueProps) {
     minimumPrice,
     isFree,
     isAvatarItemLicensingEnabled,
+    licenseId,
   } = props;
   const { translate } = useTranslation();
   const { classes } = useSaleLocationAndRevenueStyles();
@@ -271,6 +274,7 @@ function SaleLocationAndRevenue(props: TSaleLocationAndRevenueProps) {
           minimumPrice,
           priceOffset,
           PurchasePlatformEnum.Marketplace,
+          licenseId,
         );
 
         const experiencesRevenueSplitCall = itemConfigurationClient.getRevenueSplit(
@@ -280,6 +284,7 @@ function SaleLocationAndRevenue(props: TSaleLocationAndRevenueProps) {
           minimumPrice,
           priceOffset,
           PurchasePlatformEnum.InExperience,
+          licenseId,
         );
 
         const [marketplaceRevenueSplitResponse, experiencesRevenueSplitResponse] =
@@ -314,7 +319,7 @@ function SaleLocationAndRevenue(props: TSaleLocationAndRevenueProps) {
     return () => {
       clearTimeout(handler);
     };
-  }, [isBundle, isLimited, minimumPrice, priceOffset, targetId, isFree]);
+  }, [isBundle, isLimited, minimumPrice, priceOffset, targetId, isFree, licenseId]);
 
   const MarketplaceNameKeys = ['Label.YourShare', 'Label.Roblox'];
   const ExperiencesNameKeys = ['Label.YourShare', 'Label.Experiences', 'Label.Roblox'];

@@ -6,7 +6,7 @@ import {
   RAQIV2Dimension,
   RAQIV2UIPseudoDimension,
 } from '@rbx/creator-hub-analytics-config';
-import { Dropdown, FeedbackBanner, Menu, MenuItem, MenuSection, Icon } from '@rbx/foundation-ui';
+import { Alert, Dropdown, Menu, MenuItem, MenuSection, Icon } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
@@ -43,6 +43,7 @@ type ChartConfiguratorCustomEventControlsProps = {
   filters: UIFilters;
   onFiltersChange: (filters: UIFilters) => void;
   hasEventTypeError?: boolean;
+  hideAggregation?: boolean;
   /**
    * When true, the event-name combobox auto-focuses on first mount. Set
    * by the parent only when Explore mode just defaulted the source to
@@ -57,6 +58,7 @@ const ChartConfiguratorCustomEventControls: FC<ChartConfiguratorCustomEventContr
   filters,
   onFiltersChange,
   hasEventTypeError,
+  hideAggregation = false,
   autoFocusEventName = false,
 }) => {
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
@@ -172,16 +174,17 @@ const ChartConfiguratorCustomEventControls: FC<ChartConfiguratorCustomEventContr
         RAQIV2UIPseudoDimension.AggregationType,
         null,
       );
-      const next = existingAgg
-        ? withEvent
-        : updateFilterValues(withEvent, RAQIV2UIPseudoDimension.AggregationType, [
-            RAQIV2AggregationType.Sum,
-          ]);
+      const next =
+        existingAgg || hideAggregation
+          ? withEvent
+          : updateFilterValues(withEvent, RAQIV2UIPseudoDimension.AggregationType, [
+              RAQIV2AggregationType.Sum,
+            ]);
       onFiltersChange(next);
       setLastSelectedCustomEventName(resource.id, value);
       close();
     },
-    [filters, onFiltersChange, resource.id],
+    [filters, hideAggregation, onFiltersChange, resource.id],
   );
 
   // Side-effect: one-shot rehydrate the per-universe remembered event name
@@ -197,6 +200,7 @@ const ChartConfiguratorCustomEventControls: FC<ChartConfiguratorCustomEventContr
     selectedEventType,
     filters,
     onFiltersChange,
+    includeDefaultAggregation: !hideAggregation,
   });
 
   const selectedAggregationType = useMemo(
@@ -214,7 +218,7 @@ const ChartConfiguratorCustomEventControls: FC<ChartConfiguratorCustomEventContr
   // path bundles the default into handleEventTypeSelect to avoid a
   // second filter update.
   useEffect(() => {
-    if (!selectedEventType) {
+    if (!selectedEventType || hideAggregation) {
       return;
     }
     const existing = getFilterValueForDimension(
@@ -229,7 +233,7 @@ const ChartConfiguratorCustomEventControls: FC<ChartConfiguratorCustomEventContr
         ]),
       );
     }
-  }, [filters, onFiltersChange, selectedEventType]);
+  }, [filters, hideAggregation, onFiltersChange, selectedEventType]);
 
   const handleAggregationChange = useCallback(
     (value: string) => {
@@ -254,25 +258,22 @@ const ChartConfiguratorCustomEventControls: FC<ChartConfiguratorCustomEventContr
 
   if (hasNoEvents) {
     return (
-      <FeedbackBanner
-        severity='Warning'
-        variant='Standard'
-        layout='Inline'
-        title={noEventsMessage}
-      />
+      <Alert severity='Warning' variant='Feedback' hasCloseAffordance={false}>
+        {noEventsMessage}
+      </Alert>
     );
   }
 
   if (couldNotLoadEventTypes) {
     return (
-      <FeedbackBanner
+      <Alert
         severity='Error'
-        variant='Standard'
-        layout='Stacked'
-        title={eventTypesLoadError}
+        variant='Feedback'
+        hasCloseAffordance={false}
         primaryActionLabel={tryAgainLabel}
-        onPrimaryAction={refreshEventTypes}
-      />
+        onPrimaryAction={refreshEventTypes}>
+        {eventTypesLoadError}
+      </Alert>
     );
   }
 
@@ -310,29 +311,31 @@ const ChartConfiguratorCustomEventControls: FC<ChartConfiguratorCustomEventContr
         }}
       </ComboboxTypeahead>
 
-      <Dropdown
-        label={aggregationLabel}
-        size='Medium'
-        placeholder={selectAggregationPlaceholder}
-        value={selectedAggregationType ?? undefined}
-        onValueChange={handleAggregationChange}>
-        <Menu>
-          <MenuSection>
-            {aggregationTypeOptions.map((aggType) => (
-              <MenuItem
-                key={aggType}
-                value={aggType}
-                title={getAggregationLabel(aggType)}
-                trailing={
-                  selectedAggregationType === aggType ? (
-                    <Icon name='icon-filled-check' size='Medium' />
-                  ) : undefined
-                }
-              />
-            ))}
-          </MenuSection>
-        </Menu>
-      </Dropdown>
+      {!hideAggregation && (
+        <Dropdown
+          label={aggregationLabel}
+          size='Medium'
+          placeholder={selectAggregationPlaceholder}
+          value={selectedAggregationType ?? undefined}
+          onValueChange={handleAggregationChange}>
+          <Menu>
+            <MenuSection>
+              {aggregationTypeOptions.map((aggType) => (
+                <MenuItem
+                  key={aggType}
+                  value={aggType}
+                  title={getAggregationLabel(aggType)}
+                  trailing={
+                    selectedAggregationType === aggType ? (
+                      <Icon name='icon-filled-check' size='Medium' />
+                    ) : undefined
+                  }
+                />
+              ))}
+            </MenuSection>
+          </Menu>
+        </Dropdown>
+      )}
     </>
   );
 };

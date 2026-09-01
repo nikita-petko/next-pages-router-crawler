@@ -563,6 +563,7 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
             isAvatarItemLicensingEnabled={
               collectiblesMetadata?.isAvatarItemLicensingEnabled ?? false
             }
+            licenseId={selectedAgreement?.licenseId ?? undefined}
           />
         </div>
         <Divider style={{ margin: '40px 0' }} />

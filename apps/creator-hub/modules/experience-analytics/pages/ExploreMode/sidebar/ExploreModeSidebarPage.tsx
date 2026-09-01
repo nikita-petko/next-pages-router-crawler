@@ -1030,12 +1030,16 @@ export const SidebarPageContent: FC<SidebarPageContentProps> = ({
     () => getFilterValueForDimension(filters, RAQIV2Dimension.CustomEventName, null),
     [filters],
   );
+  const previousCustomEventNameFilterRef = useRef<string | null>(null);
 
   useEffect(() => {
+    const previousCustomEventNameFilter = previousCustomEventNameFilterRef.current;
+    previousCustomEventNameFilterRef.current = selectedCustomEventNameFilter;
     if (
       isOperationsToggleOn ||
       !isCustomEventsMode ||
       selectedCustomEventNameFilter === null ||
+      selectedCustomEventNameFilter === previousCustomEventNameFilter ||
       metric === customEventsMetric
     ) {
       return;

@@ -69,6 +69,7 @@ type ChartConfiguratorMetricSourceCardProps = {
   availableMetrics: TChartConfiguratorMetrics[];
   filterSummary?: string;
   customEventResource?: RAQIV2ChartResource;
+  hideCustomEventAggregation?: boolean;
 };
 
 const useStyles = makeStyles()((theme) => ({
@@ -153,6 +154,7 @@ const ChartConfiguratorMetricSourceCard: FC<ChartConfiguratorMetricSourceCardPro
   availableMetrics,
   filterSummary,
   customEventResource,
+  hideCustomEventAggregation,
 }) => {
   const {
     classes: {
@@ -371,6 +373,7 @@ const ChartConfiguratorMetricSourceCard: FC<ChartConfiguratorMetricSourceCardPro
             filters={sourceFilters ?? emptyFilters}
             onFiltersChange={onSourceFiltersChange}
             hasEventTypeError={!isReady}
+            hideAggregation={hideCustomEventAggregation}
           />
         )}
 

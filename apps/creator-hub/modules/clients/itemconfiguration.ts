@@ -603,6 +603,7 @@ export class ItemConfigurationClient {
     minimumPrice: number,
     priceOffset: number,
     purchasePlatform: PurchasePlatformEnum,
+    licenseId?: string,
   ) {
     const request: V1CollectiblesRevenueSplitGetRequest = {
       targetType: isBundle
@@ -615,6 +616,7 @@ export class ItemConfigurationClient {
       minimumPrice,
       priceOffset,
       purchasePlatform,
+      licenseId,
     };
 
     return this.collectiblesApi.v1CollectiblesRevenueSplitGet(request);
