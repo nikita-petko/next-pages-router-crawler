@@ -1,6 +1,7 @@
 import type { FunctionComponent } from 'react';
 import { useId } from 'react';
 import { Button } from '@rbx/foundation-ui';
+import { FormHelperText, Typography } from '@rbx/ui';
 import { useAuthentication } from '@modules/authentication/providers';
 import useCreatorPitchAttachmentLabels from '../hooks/useCreatorPitchAttachmentLabels';
 import useCreatorPitchAttachmentUpload from '../hooks/useCreatorPitchAttachmentUpload';
@@ -44,7 +45,7 @@ const CreatorPitchAttachments: FunctionComponent<CreatorPitchAttachmentsProps> =
 
   return (
     <div className='flex flex-col gap-medium width-full' data-testid='creator-pitch-attachments'>
-      <p className='text-body-medium content-default margin-none'>{descriptionText}</p>
+      <Typography variant='body1'>{descriptionText}</Typography>
 
       <div className='flex flex-col items-start gap-xsmall'>
         <div className='relative width-fit'>
@@ -73,7 +74,7 @@ const CreatorPitchAttachments: FunctionComponent<CreatorPitchAttachmentsProps> =
             data-testid='creator-pitch-attachments-input'
           />
         </div>
-        <p className='text-caption-medium content-muted margin-none'>{limitsText}</p>
+        <FormHelperText>{limitsText}</FormHelperText>
         {showRequiredError ? (
           <p
             className='text-caption-medium content-system-alert margin-none'
@@ -83,11 +84,13 @@ const CreatorPitchAttachments: FunctionComponent<CreatorPitchAttachmentsProps> =
         ) : null}
       </div>
 
-      <ManagePitchAttachments
-        attachments={attachments}
-        showErrors={showErrors}
-        onRemove={handleRemove}
-      />
+      <div className='max-height-[452px] scroll-y'>
+        <ManagePitchAttachments
+          attachments={attachments}
+          showErrors={showErrors}
+          onRemove={handleRemove}
+        />
+      </div>
     </div>
   );
 };

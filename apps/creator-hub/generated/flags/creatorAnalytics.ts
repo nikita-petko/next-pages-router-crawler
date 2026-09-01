@@ -110,7 +110,7 @@ export const isAnalyticsMetricAwareYAxisFormatterEnabled = defineFlag({
 export const isCustomDashboardsEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isCustomDashboardsEnabled',
-    defaultValue: false,
+    defaultValue: true,
   });
 export const isCustomDashboardsLocalStorageEnabled = defineFlag({
     namespace: 'creator-analytics',
@@ -120,7 +120,7 @@ export const isCustomDashboardsLocalStorageEnabled = defineFlag({
 export const isCustomDashboardsApiBackendEnabled = defineFlag({
     namespace: 'creator-analytics',
     name: 'isCustomDashboardsApiBackendEnabled',
-    defaultValue: false,
+    defaultValue: true,
   });
 export const isJourneyEventsEnabled = defineFlag({
     namespace: 'creator-analytics',

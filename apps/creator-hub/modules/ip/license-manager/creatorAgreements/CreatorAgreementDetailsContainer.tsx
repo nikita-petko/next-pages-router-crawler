@@ -34,7 +34,7 @@ import CreatorConfirmCompleteActionModal, {
   CreatorConfirmationType,
 } from './components/CreatorConfirmCompleteActionModal';
 import CreatorDisputeModal from './components/CreatorDisputeModal';
-import CreatorPitchImageRejectedTakeActionModal from './components/CreatorPitchImageRejectedTakeActionModal';
+import CreatorPitchImageRejectedEditImagesModal from './components/CreatorPitchImageRejectedEditImagesModal';
 import { AgreementDetailsTabs, creatorAgreementTabsConfig } from './constants';
 import { useCreatorCompleteChangeRequestMutation } from './hooks/useCreatorCompleteChangeRequestMutation';
 import { useCreatorCompleteConditionalChangeRequestMutation } from './hooks/useCreatorCompleteConditionalChangeRequestMutation';
@@ -79,7 +79,7 @@ const CreatorAgreementDetailsContainer: FunctionComponent<
     CreatorConfirmationType.ChangeRequest,
   );
   const [isCreatorDisputeModalOpen, setIsCreatorDisputeModalOpen] = useState<boolean>(false);
-  const [isPitchImageRejectedTakeActionModalOpen, setIsPitchImageRejectedTakeActionModalOpen] =
+  const [isPitchImageRejectedEditImagesModalOpen, setIsPitchImageRejectedEditImagesModalOpen] =
     useState<boolean>(false);
 
   const handleTabChange = useCallback(
@@ -180,12 +180,12 @@ const CreatorAgreementDetailsContainer: FunctionComponent<
     setIsCreatorDisputeModalOpen(false);
   }, []);
 
-  const handlePitchImageRejectedTakeActionOpen = useCallback(() => {
-    setIsPitchImageRejectedTakeActionModalOpen(true);
+  const handlePitchImageRejectedEditImagesOpen = useCallback(() => {
+    setIsPitchImageRejectedEditImagesModalOpen(true);
   }, []);
 
-  const handlePitchImageRejectedTakeActionClose = useCallback(() => {
-    setIsPitchImageRejectedTakeActionModalOpen(false);
+  const handlePitchImageRejectedEditImagesClose = useCallback(() => {
+    setIsPitchImageRejectedEditImagesModalOpen(false);
   }, []);
 
   const agreementDetailsRequest = useGetCreatorAgreementDetails({ agreementId });
@@ -267,7 +267,7 @@ const CreatorAgreementDetailsContainer: FunctionComponent<
           enableIpPlatformConditionalOffers ? handleCompleteConditionalChangeRequestOpen : undefined
         }
         handleCompleteIpRemoval={handleCompleteIpRemovalOpen}
-        handlePitchImageRejectedTakeAction={handlePitchImageRejectedTakeActionOpen}
+        handlePitchImageRejectedEditImages={handlePitchImageRejectedEditImagesOpen}
       />
 
       <Flex flexDirection='column'>
@@ -325,10 +325,10 @@ const CreatorAgreementDetailsContainer: FunctionComponent<
         }
       />
 
-      <CreatorPitchImageRejectedTakeActionModal
+      <CreatorPitchImageRejectedEditImagesModal
         agreementId={agreementId}
-        isOpen={isPitchImageRejectedTakeActionModalOpen}
-        closeModal={handlePitchImageRejectedTakeActionClose}
+        isOpen={isPitchImageRejectedEditImagesModalOpen}
+        closeModal={handlePitchImageRejectedEditImagesClose}
         isRequired={isCreatorPitchAttachmentsRequired(license.licenseType)}
       />
     </Flex>

@@ -477,7 +477,7 @@ export const generatedFlags = [
       metadata: {
         namespace: 'creator-analytics',
         name: 'isCustomDashboardsEnabled',
-        defaultValue: false,
+        defaultValue: true,
         valueType: 'boolean',
         contextType: 'universe',
       },
@@ -497,7 +497,7 @@ export const generatedFlags = [
       metadata: {
         namespace: 'creator-analytics',
         name: 'isCustomDashboardsApiBackendEnabled',
-        defaultValue: false,
+        defaultValue: true,
         valueType: 'boolean',
         contextType: 'universe',
       },

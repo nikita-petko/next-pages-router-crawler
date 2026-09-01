@@ -354,7 +354,7 @@ interface Props {
   handleCompleteChangeRequest?: () => void;
   handleCompleteConditionalChangeRequest?: () => void;
   handleCompleteIpRemoval?: () => void;
-  handlePitchImageRejectedTakeAction?: () => void;
+  handlePitchImageRejectedEditImages?: () => void;
 }
 
 const CreatorAgreementAlert: React.FC<Props> = ({
@@ -364,7 +364,7 @@ const CreatorAgreementAlert: React.FC<Props> = ({
   handleCompleteChangeRequest,
   handleCompleteConditionalChangeRequest,
   handleCompleteIpRemoval,
-  handlePitchImageRejectedTakeAction,
+  handlePitchImageRejectedEditImages,
 }) => {
   const { locale } = useLocalization();
   const { translate } = useTranslation();
@@ -632,8 +632,8 @@ const CreatorAgreementAlert: React.FC<Props> = ({
           variant='text'
           color='inherit'
           size='small'
-          onClick={handlePitchImageRejectedTakeAction}>
-          {translate('Action.TakeAction')}
+          onClick={handlePitchImageRejectedEditImages}>
+          {translate('Heading.EditImages')}
         </Button>
       );
       break;
