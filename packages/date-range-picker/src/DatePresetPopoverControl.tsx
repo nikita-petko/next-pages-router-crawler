@@ -1,6 +1,6 @@
 import type { FC, ReactNode } from 'react';
 import React, { useCallback, useId, useState } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '@rbx/foundation-ui';
+import { Divider, Popover, PopoverContent, PopoverTrigger } from '@rbx/foundation-ui';
 
 const INTERACTABLE =
   'relative clip group/interactable focus-visible:outline-focus disabled:outline-none';
@@ -179,7 +179,7 @@ const DatePresetPopoverControl: FC<DatePresetPopoverControlProps> = ({
                 ))}
                 {customLabel !== undefined && (
                   <>
-                    <hr className='margin-y-xsmall border-0 border-t border-stroke-default' />
+                    <Divider className='margin-y-xsmall' />
                     <button
                       type='button'
                       onClick={() => setShowPicker(true)}
