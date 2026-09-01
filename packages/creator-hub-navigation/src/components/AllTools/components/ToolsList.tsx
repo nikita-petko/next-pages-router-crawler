@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
-import Router from 'next/router';
+import Link from 'next/link';
 import { Grid, makeStyles, Typography } from '@rbx/ui';
+import isModifiedClick from '../../../utils/isModifiedClick';
 import type { TTool } from '../hooks/useTools';
 
 const useStyles = makeStyles()((theme) => ({
@@ -36,7 +37,7 @@ const useStyles = makeStyles()((theme) => ({
   heading: {
     fontWeight: 600,
     color: theme.palette.content.standard,
-    // Match NavigationTree category / BodyMedium so headings don’t clip.
+    // Match NavigationTree category / BodyMedium so headings don't clip.
     lineHeight: '20px',
   },
   // Depth 2 (subcategory) — multiples of 12; trailing stays right-aligned
@@ -45,7 +46,7 @@ const useStyles = makeStyles()((theme) => ({
     fontWeight: 400,
     color: theme.palette.content.muted,
   },
-  // Trailing: sits inside the item’s 12px right inset; pl-8 from label
+  // Trailing: sits inside the item's 12px right inset; pl-8 from label
   trailing: {
     display: 'flex',
     alignItems: 'center',
@@ -93,6 +94,43 @@ const useStyles = makeStyles()((theme) => ({
   },
 }));
 
+type TToolLinkProps = {
+  href: string;
+  external: boolean | undefined;
+  toolKey: string;
+  className: string;
+  ariaCurrent: 'page' | undefined;
+  onClick: (e: React.MouseEvent<HTMLAnchorElement>, key: string) => void;
+  children: React.ReactNode;
+};
+
+const ToolLink: React.FC<TToolLinkProps> = ({
+  href,
+  external,
+  toolKey,
+  className,
+  ariaCurrent,
+  onClick,
+  children,
+}) => {
+  const handleClick = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>) => onClick(e, toolKey),
+    [onClick, toolKey],
+  );
+  const props = { href, className, 'aria-current': ariaCurrent, onClick: handleClick };
+  if (external && href.startsWith('http')) {
+    return (
+      <a {...props} target='_blank' rel='noreferrer'>
+        {children}
+      </a>
+    );
+  }
+  if (href.startsWith('http')) {
+    return <a {...props}>{children}</a>;
+  }
+  return <Link {...props}>{children}</Link>;
+};
+
 type TToolsListProps = {
   tool: TTool;
   onToolSelect: (key: string) => void;
@@ -107,21 +145,11 @@ const ToolsList: React.FC<TToolsListProps> = ({ onToolSelect, tool, selectedKey 
   } = useStyles();
 
   const onClick = useCallback(
-    (
-      e: React.MouseEvent<HTMLAnchorElement>,
-      { key, href, external = false }: { key: string; href: string; external?: boolean },
-    ) => {
-      e.preventDefault();
+    (e: React.MouseEvent<HTMLAnchorElement>, key: string) => {
+      if (isModifiedClick(e.nativeEvent)) {
+        return;
+      }
       onToolSelect(key);
-      setTimeout(() => {
-        const isAbsoluteUrl = href.startsWith('http');
-        if (isAbsoluteUrl) {
-          const target = external ? '_blank' : '_self';
-          window.open(href, target);
-        } else {
-          void Router.push(href);
-        }
-      }, 100);
     },
     [onToolSelect],
   );
@@ -140,14 +168,16 @@ const ToolsList: React.FC<TToolsListProps> = ({ onToolSelect, tool, selectedKey 
   return (
     <Grid classes={{ root: container }}>
       {href ? (
-        <a
+        <ToolLink
           href={href}
+          external={tool.external}
+          toolKey={tool.key}
           className={cx(itemBox, link, isToolSelected && selected)}
-          aria-current={isToolSelected ? 'page' : undefined}
-          onClick={(e) => onClick(e, { key: tool.key, href, external: tool.external })}>
+          ariaCurrent={isToolSelected ? 'page' : undefined}
+          onClick={onClick}>
           {toolLabel}
           {toolTrailing}
-        </a>
+        </ToolLink>
       ) : (
         <div className={itemBox}>
           {toolLabel}
@@ -159,19 +189,19 @@ const ToolsList: React.FC<TToolsListProps> = ({ onToolSelect, tool, selectedKey 
           {tool.items.map((item) => {
             const isItemSelected = selectedKey === item.key;
             return (
-              <a
+              <ToolLink
                 key={item.key}
                 href={item.href}
+                external={item.external}
+                toolKey={item.key}
                 className={cx(itemBox, link, isItemSelected && selected)}
-                aria-current={isItemSelected ? 'page' : undefined}
-                onClick={(e) => onClick(e, item)}
-                target={item.external ? '_blank' : undefined}
-                rel={item.external ? 'noreferrer' : undefined}>
+                ariaCurrent={isItemSelected ? 'page' : undefined}
+                onClick={onClick}>
                 <Typography variant='smallLabel1' classes={{ root: cx(label, nestedLabel) }}>
                   {item.label}
                 </Typography>
                 {item.adornment ? <span className={trailing}>{item.adornment}</span> : null}
-              </a>
+              </ToolLink>
             );
           })}
         </div>
