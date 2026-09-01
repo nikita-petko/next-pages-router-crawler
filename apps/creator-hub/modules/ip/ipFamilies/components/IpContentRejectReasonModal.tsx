@@ -13,7 +13,7 @@ import {
   makeStyles,
 } from '@rbx/ui';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { RobloxTermsOfUseLink } from '../../common/TermsOfUseLink';
+import { IpLicensingLink } from '../../common/TermsOfUseLink';
 import getIpContentStatusReason from '../common/getIpContentStatusReason';
 
 interface IpContentRejectReasonModalProps {
@@ -96,12 +96,12 @@ const IpContentRejectReasonModal: FunctionComponent<IpContentRejectReasonModalPr
           ))}
           <br />
           <>
-            {translateHTML('Description.LearnMore', [
+            {translateHTML('Description.LearnMoreIpLibrary', [
               {
-                opening: 'tosLinkStart',
-                closing: 'tosLinkEnd',
+                opening: 'pageStart',
+                closing: 'pageEnd',
                 content(chunks) {
-                  return <RobloxTermsOfUseLink>{chunks}</RobloxTermsOfUseLink>;
+                  return <IpLicensingLink>{chunks}</IpLicensingLink>;
                 },
               },
             ])}

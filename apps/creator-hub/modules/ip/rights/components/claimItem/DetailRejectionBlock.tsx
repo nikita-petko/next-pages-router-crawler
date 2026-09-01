@@ -5,6 +5,7 @@ import { useTranslation, withTranslation } from '@rbx/intl';
 import { Grid, Typography, Divider } from '@rbx/ui';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { findRejectionReasonLink, renderReasonSegment } from '../common/rejectionReasonLink';
 
 interface DetailRejectionBlockProps {
   claimItem: ClaimItem;
@@ -16,9 +17,12 @@ const DetailRejectionBlock: FunctionComponent<DetailRejectionBlockProps> = ({ cl
   if (!ready) {
     return <PageLoading />;
   }
-  const statusReason = claimItem.statusReason
-    ?.split(/\\+n/)
-    .map((item) => <React.Fragment key={item}>{item} </React.Fragment>);
+  const rawStatusReason = claimItem.statusReason;
+  const activeLink = findRejectionReasonLink(rawStatusReason);
+  const statusReason = rawStatusReason?.split(/\\+n/).map((item, index) => (
+    // eslint-disable-next-line react/no-array-index-key -- reason segments are static text split from a fixed string; order never changes
+    <React.Fragment key={index}>{renderReasonSegment(item, activeLink)} </React.Fragment>
+  ));
 
   return (
     // ----- Why is this custom style here? -----

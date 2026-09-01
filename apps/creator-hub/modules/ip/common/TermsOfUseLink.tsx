@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Link as MuiLink } from '@rbx/ui';
 import useLocale from '@modules/charts-generic/context/useLocale';
@@ -43,14 +42,14 @@ export const LicenseManagerLegalAgreement = ({
 }) => {
   const locale = useLocale();
   return (
-    <Link
+    <MuiLink
       href={`https://en.help.roblox.com/hc/${locale}/articles/42542704086548`}
-      passHref
-      legacyBehavior>
-      <MuiLink color='primary' aria-label='legalAgreement' onClick={onClick} target='_blank'>
-        {children}
-      </MuiLink>
-    </Link>
+      color='primary'
+      aria-label='legalAgreement'
+      onClick={onClick}
+      target='_blank'>
+      {children}
+    </MuiLink>
   );
 };
 
@@ -58,6 +57,26 @@ export const LicenseManagerLegalAgreement = ({
 export const RobloxTermsOfUseLink = ({ children }: { children: ReactNode }) => {
   return (
     <MuiLink href={`https://${process.env.robloxSiteDomain}/info/terms`} target='_blank'>
+      {children}
+    </MuiLink>
+  );
+};
+
+// link to Roblox's IP Policy (DMCA guidelines) documentation
+export const IpPolicyLink = ({ children }: { children: ReactNode }) => {
+  return (
+    <MuiLink
+      href='https://create.roblox.com/docs/production/publishing/dmca-guidelines'
+      target='_blank'>
+      {children}
+    </MuiLink>
+  );
+};
+
+// link to Roblox's IP Licensing documentation
+export const IpLicensingLink = ({ children }: { children: ReactNode }) => {
+  return (
+    <MuiLink href='https://create.roblox.com/docs/ip-licensing/get-started' target='_blank'>
       {children}
     </MuiLink>
   );

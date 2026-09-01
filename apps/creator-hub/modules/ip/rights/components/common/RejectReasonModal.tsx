@@ -10,7 +10,8 @@ import {
   DialogTitle,
 } from '@rbx/ui';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { RobloxTermsOfUseLink } from '../../../common/TermsOfUseLink';
+import { IpPolicyLink, RobloxTermsOfUseLink } from '../../../common/TermsOfUseLink';
+import { findRejectionReasonLink, renderReasonSegment } from './rejectionReasonLink';
 
 interface RejectReasonModalProps {
   reason?: string;
@@ -25,6 +26,7 @@ const RejectReasonModal: FunctionComponent<RejectReasonModalProps> = ({
   setDialogOpen,
 }) => {
   const { translate, translateHTML } = useTranslation();
+  const activeLink = findRejectionReasonLink(reason);
   return (
     <Dialog
       open={dialogOpen}
@@ -34,20 +36,28 @@ const RejectReasonModal: FunctionComponent<RejectReasonModalProps> = ({
       <DialogTitle>{translate('Label.RejectionReason')}</DialogTitle>
       <DialogContent>
         <DialogContentText>
-          {reason?.split(/\\+n/).map((item) => (
-            <React.Fragment key={item}>
-              {item}
+          {reason?.split(/\\+n/).map((item, index) => (
+            // eslint-disable-next-line react/no-array-index-key -- reason segments are static text split from a fixed string; order never changes
+            <React.Fragment key={index}>
+              {renderReasonSegment(item, activeLink)}
               <br />
             </React.Fragment>
           ))}
           <br />
           <>
-            {translateHTML('Description.LearnMore', [
+            {translateHTML('Description.LearnMoreWithIpPolicy', [
               {
                 opening: 'tosLinkStart',
                 closing: 'tosLinkEnd',
                 content(chunks) {
                   return <RobloxTermsOfUseLink>{chunks}</RobloxTermsOfUseLink>;
+                },
+              },
+              {
+                opening: 'ipPolicyLinkStart',
+                closing: 'ipPolicyLinkEnd',
+                content(chunks) {
+                  return <IpPolicyLink>{chunks}</IpPolicyLink>;
                 },
               },
             ])}
