@@ -1,0 +1,339 @@
+import type { FC, ReactNode } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
+import { ProgressCircle } from '@rbx/foundation-ui';
+import { useTranslation } from '@rbx/intl';
+import { DialogTemplate, useDialog } from '@rbx/ui';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import type { GenericTablePaginationSpec } from '@modules/charts-generic/tables/GenericTablePagination';
+import GenericTableV2 from '@modules/charts-generic/tables/GenericTableV2';
+import type { TableColumnConfig } from '@modules/charts-generic/tables/types/GenericColumnType';
+import { ColumnType } from '@modules/charts-generic/tables/types/GenericColumnType';
+import type {
+  ActionCellType,
+  CellDataType,
+} from '@modules/charts-generic/tables/types/GenericTableType';
+import type { RAQIV2ChartResource } from '@modules/clients/analytics';
+import { EmptyState, Link } from '@modules/miscellaneous/components';
+import LoadError from '@modules/miscellaneous/error/LoadError';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { dashboard, docs } from '@modules/miscellaneous/urls/creatorHub';
+import {
+  useJourneyConfigs,
+  useDeleteJourneyConfig,
+} from '../../JourneysCreate/useJourneyConfigStorage';
+import JourneysCreateAction from './JourneysCreateAction';
+
+type JourneyAction = 'view' | 'edit' | 'delete';
+
+enum Col {
+  Name = 'name',
+  LastModified = 'lastModified',
+  Actions = 'actions',
+}
+
+const PageSizeOptions = [5, 10, 25, 50];
+const DefaultPageSize = 10;
+
+const JourneyDeleteConfirmContent: FC<{
+  journeyName: string;
+  universeId: number;
+  onDismiss: () => void;
+}> = ({ journeyName, universeId, onDismiss }) => {
+  const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+  const { mutate: deleteJourney, isPending: isDeleting } = useDeleteJourneyConfig(universeId);
+  const [deleteError, setDeleteError] = useState(false);
+
+  const handleConfirm = useCallback(() => {
+    setDeleteError(false);
+    deleteJourney(journeyName, {
+      onSuccess: onDismiss,
+      onError: () => setDeleteError(true),
+    });
+  }, [journeyName, onDismiss, deleteJourney]);
+
+  return (
+    <DialogTemplate
+      color='destructive'
+      variant='alert'
+      title={tPendingTranslation(
+        'Delete journey?',
+        'Title of the delete journey confirmation dialog',
+        translationKey('Dialog.DeleteJourney.Title', TranslationNamespace.Analytics),
+      )}
+      content={
+        <>
+          {tPendingTranslation(
+            'Are you sure you want to delete "{name}"? This action cannot be undone.',
+            'Body text of the delete journey confirmation dialog',
+            translationKey('Dialog.DeleteJourney.Body', TranslationNamespace.Analytics),
+            { name: journeyName },
+          )}
+          {deleteError && (
+            <div className='text-body-small content-system-alert margin-top-small'>
+              {tPendingTranslation(
+                'Failed to delete. Please try again.',
+                'Error message when journey deletion fails',
+                translationKey('Error.DeleteJourney', TranslationNamespace.Analytics),
+              )}
+            </div>
+          )}
+        </>
+      }
+      confirmText={tPendingTranslation(
+        'Delete',
+        'Menu item that deletes the selected tile from the custom dashboard editor canvas.',
+        translationKey('Action.Delete', TranslationNamespace.Analytics),
+      )}
+      cancelText={tPendingTranslation(
+        'Cancel',
+        'Button label for canceling the current action.',
+        translationKey('Action.Cancel', TranslationNamespace.Analytics),
+      )}
+      loading={isDeleting}
+      onConfirm={handleConfirm}
+      onCancel={onDismiss}
+    />
+  );
+};
+
+const JourneysHomeBody: FC<{ resource: RAQIV2ChartResource }> = ({ resource }) => {
+  const { tPendingTranslation, tPendingHtmlTranslation } = useTranslationWrapper(useTranslation());
+  const router = useRouter();
+  const universeId = resource.id;
+
+  const { data: configs, isLoading, error, refetch } = useJourneyConfigs(universeId);
+  const { open, close, configure } = useDialog();
+
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(DefaultPageSize);
+
+  const handleAction = useCallback(
+    (actionType: JourneyAction, journeyName: string) => {
+      if (actionType === 'view') {
+        void router.push(dashboard.getAnalyticsJourneysViewUrl(universeId, journeyName));
+      } else if (actionType === 'edit') {
+        void router.push(dashboard.getAnalyticsJourneysEditUrl(universeId, journeyName));
+      } else if (actionType === 'delete') {
+        configure(
+          <JourneyDeleteConfirmContent
+            journeyName={journeyName}
+            universeId={universeId}
+            onDismiss={close}
+          />,
+        );
+        open();
+      }
+    },
+    [universeId, router, configure, open, close],
+  );
+
+  const columnConfigs: TableColumnConfig<Col>[] = useMemo(
+    () => [
+      {
+        columnKey: Col.Name,
+        columnType: ColumnType.TextWithLink,
+        titleKey: tPendingTranslation(
+          'Name',
+          'Label for journey name input field',
+          translationKey('Label.JourneyName', TranslationNamespace.Analytics),
+        ),
+        widthWeight: 25,
+      },
+      {
+        columnKey: Col.LastModified,
+        columnType: ColumnType.Timestamp,
+        titleKey: tPendingTranslation(
+          'Last modified',
+          'Column header: when the journey was last modified',
+          translationKey('Label.LastModified', TranslationNamespace.Analytics),
+        ),
+        widthWeight: 20,
+      },
+      {
+        columnKey: Col.Actions,
+        columnType: ColumnType.Actions,
+        titleKey: tPendingTranslation(
+          'Actions',
+          'Column header: row action menu',
+          translationKey('Label.Actions', TranslationNamespace.Analytics),
+        ),
+        // Blank the "Actions" header — the row buttons are self-explanatory.
+        titleOverride: '',
+        widthWeight: 15,
+      },
+    ],
+    [tPendingTranslation],
+  );
+
+  const viewLabel = tPendingTranslation(
+    'View',
+    'a view button',
+    translationKey('Action.View', TranslationNamespace.Analytics),
+  );
+  const editLabel = tPendingTranslation(
+    'Edit',
+    'Action to edit journey configuration',
+    translationKey('Action.EditConfig', TranslationNamespace.Analytics),
+  );
+  const deleteLabel = tPendingTranslation(
+    'Delete',
+    'Menu item that deletes the selected tile from the custom dashboard editor canvas.',
+    translationKey('Action.Delete', TranslationNamespace.Analytics),
+  );
+
+  const pagedConfigs = useMemo(() => {
+    const start = page * pageSize;
+    return (configs ?? []).slice(start, start + pageSize);
+  }, [configs, page, pageSize]);
+
+  const rowData = useMemo(
+    () =>
+      pagedConfigs.map((entry) => {
+        const actionsCell: ActionCellType<JourneyAction> = {
+          type: ColumnType.Actions,
+          actions: [
+            {
+              actionType: 'view',
+              actionOn: entry.journeyName,
+              onActionInvoked: (name) => handleAction('view', name),
+              renderedAsInNonCompactTable: 'dedicated-button',
+              displayLabel: viewLabel,
+            },
+            {
+              actionType: 'edit',
+              actionOn: entry.journeyName,
+              onActionInvoked: (name) => handleAction('edit', name),
+              renderedAsInNonCompactTable: 'menu-item',
+              displayLabel: editLabel,
+            },
+            {
+              actionType: 'delete',
+              actionOn: entry.journeyName,
+              onActionInvoked: (name) => handleAction('delete', name),
+              renderedAsInNonCompactTable: 'menu-item',
+              displayLabel: deleteLabel,
+              color: 'error',
+            },
+          ],
+        };
+
+        return new Map<Col, CellDataType<JourneyAction>>([
+          [
+            Col.Name,
+            {
+              type: ColumnType.TextWithLink,
+              text: entry.journeyName,
+              href: dashboard.getAnalyticsJourneysViewUrl(universeId, entry.journeyName),
+              newTab: false,
+              onClick: () => {},
+            },
+          ],
+          [
+            Col.LastModified,
+            {
+              type: ColumnType.Timestamp,
+              value: entry.lastModified ?? '',
+            },
+          ],
+          [Col.Actions, actionsCell],
+        ]);
+      }),
+    [pagedConfigs, handleAction, viewLabel, editLabel, deleteLabel, universeId],
+  );
+
+  const pagination: GenericTablePaginationSpec = useMemo(() => {
+    const total = configs?.length ?? 0;
+    return {
+      page,
+      total,
+      pageSize,
+      pageSizeOptions: PageSizeOptions,
+      setPageSize: (newPageSize: number) => {
+        setPageSize(newPageSize);
+        setPage(0);
+      },
+      onNextPage: () => setPage((prev) => prev + 1),
+      onPreviousPage: () => setPage((prev) => Math.max(0, prev - 1)),
+      hasNext: (page + 1) * pageSize < total,
+      hasPrevious: page > 0,
+    };
+  }, [configs, page, pageSize]);
+
+  const getRowKey = useCallback(
+    (_: Map<Col, CellDataType<JourneyAction>>, i: number) => pagedConfigs[i]?.journeyName ?? '',
+    [pagedConfigs],
+  );
+
+  if (isLoading) {
+    return (
+      <div className='flex justify-center items-center [min-height:200px]'>
+        <ProgressCircle
+          variant='Indeterminate'
+          ariaLabel={tPendingTranslation(
+            'Loading journey configurations',
+            'Aria label for the loading spinner while journey configs are fetched',
+            translationKey('Label.LoadingJourneyConfigs', TranslationNamespace.Analytics),
+          )}
+        />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <LoadError onReload={refetch} />;
+  }
+
+  if ((configs ?? []).length === 0) {
+    return (
+      <EmptyState
+        illustration='barGraph'
+        title={tPendingTranslation(
+          'Instrument journey events to track your non-linear funnels',
+          'Empty state heading when no journeys have been created',
+          translationKey('Heading.NoJourneysYet', TranslationNamespace.Analytics),
+        )}
+        description={tPendingHtmlTranslation(
+          'Set up journeys to see the pathways that players choose. {linkStart}Learn more{linkEnd}',
+          'Empty state description; linkStart/linkEnd wraps the "Learn more" anchor to the journeys docs',
+          translationKey('Body.NoJourneysDescription', TranslationNamespace.Analytics),
+          [
+            {
+              opening: 'linkStart',
+              closing: 'linkEnd',
+              content: (chunks: ReactNode) => (
+                <Link
+                  href={docs.getAnalyticsJourneyEventsUrl()}
+                  target='_blank'
+                  underline='always'
+                  color='inherit'>
+                  {chunks}
+                </Link>
+              ),
+            },
+          ],
+        )}>
+        <JourneysCreateAction universeId={universeId} />
+      </EmptyState>
+    );
+  }
+
+  return (
+    <div className='flex flex-col gap-medium'>
+      <GenericTableV2
+        rowData={rowData}
+        columnConfigs={columnConfigs}
+        tableConfig={{ stickyHeader: true, hover: true, tableBorder: false }}
+        pagination={pagination}
+        getRowKey={getRowKey}
+        showNoDataMessage={false}
+        isDataLoading={false}
+        isResponseFailed={false}
+        isUserForbidden={false}
+      />
+    </div>
+  );
+};
+
+export default JourneysHomeBody;

@@ -1,0 +1,1037 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
+import type {
+  AgreementCandidateResponse,
+  AgreementCandidateIndexSortBy,
+  AgreementResponse,
+} from '@rbx/client-content-licensing-api/v1';
+import type { UniverseContentMaturity } from '@rbx/client-content-licensing-api/v1';
+import {
+  AgreementCandidateIndexSortDirection,
+  AgreementCandidateType,
+} from '@rbx/client-content-licensing-api/v1';
+import { useFlag } from '@rbx/flags';
+import { useTranslation } from '@rbx/intl';
+import { makeStyles, CircularProgress, Button, FilterListIcon } from '@rbx/ui';
+import { isAvatarItemLicensingEnabled as isAvatarItemLicensingEnabledFlag } from '@generated/flags/contentLicensing';
+import GridListViewToggle, {
+  type GridListView,
+} from '@modules/licenses/components/GridListViewToggle';
+import EmptyState from '@modules/miscellaneous/components/EmptyState/EmptyState';
+import EmptyStateBorder from '@modules/miscellaneous/components/EmptyState/EmptyStateBorder';
+import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
+import IpLoadError from '../../../components/error/IpLoadError';
+import { useIpFamiliesQuery } from '../../../ipFamilies/hooks/ipFamily';
+import { IP_FAMILY_CREATE_HREF } from '../../../ipFamilies/urls';
+import {
+  LicenseManagerApiVitalsEvent,
+  LicenseManagerClickEvent,
+  LicenseManagerImpressionEvent,
+  useLicenseManagerLogger,
+  useLicenseManagerLoggerLogOnce,
+} from '../../utils/logger';
+import {
+  markMatchCandidateIgnored,
+  useMatchesQuery,
+  type MatchesCandidatesRequestMetrics,
+} from '../hooks/useMatchesQuery';
+import CollectibleMatchDetailsPanelContent from './CollectibleMatchDetailsPanelContent';
+import CollectibleMatchesGrid from './CollectibleMatchesGrid';
+import CollectibleMatchesTable from './CollectibleMatchesTable';
+import CollectibleMatchOfferPanelContent from './CollectibleMatchOfferPanelContent';
+import ContentMaturityFilterChip from './ContentMaturityFilterChip';
+import DauRangeFilterChip, { DauRange } from './DauRangeFilterChip';
+import IpFamilyFilterChip from './IpFamilyFilterChip';
+import LifetimeVisitsRangeFilterChip, {
+  LifetimeVisitsRange,
+} from './LifetimeVisitsRangeFilterChip';
+import MatchCandidateOfferStatusFilterChip, {
+  MatchCandidateOfferStatusFilter,
+} from './MatchCandidateOfferStatusFilterChip';
+import MatchDetailsPanelContent from './MatchDetailsPanelContent';
+import MatchesFilterPanel from './MatchesFilterPanel';
+import MatchesFilterPanelContent from './MatchesFilterPanelContent';
+import MatchesSidePanel from './MatchesSidePanel';
+import type { MatchesSidePanelDismissReason } from './MatchesSidePanel';
+import MatchOfferPanelContent from './MatchOfferPanelContent';
+import type {
+  MatchDetailsPanelNavigation,
+  MatchPanelAgreementStatus,
+  MatchPanelState,
+} from './matchPanelTypes';
+import NoMatchesContent from './NoMatchesContent';
+import NoMatchesWithFiltersContent from './NoMatchesWithFiltersContent';
+import UniverseMatchesTable from './UniverseMatchesTable';
+
+enum MatchPanelView {
+  None = 'none',
+  Details = 'matchDetails',
+  Offer = 'agreement',
+}
+
+const useStyles = makeStyles()((theme) => ({
+  loading: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 200,
+  },
+  mockAlert: {
+    marginTop: theme.spacing(2),
+  },
+  filtersContainer: {
+    marginBottom: theme.spacing(1.5),
+    minHeight: theme.spacing(5.5),
+    display: 'flex',
+    gap: theme.spacing(1),
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  filterButtonContainer: {
+    marginLeft: 'auto',
+  },
+  filterButtonRoot: {
+    fontWeight: theme.typography.body1.fontWeight,
+    borderColor: theme.palette.surface.outline,
+  },
+}));
+
+const NoIpFamiliesContent = () => {
+  const { translate } = useTranslation();
+  return (
+    <EmptyStateBorder>
+      <EmptyState
+        title={translate('Label.NoMatchesFound')}
+        size='small'
+        description={translate('Description.MatchesNoIPLibrary')}>
+        <Button
+          component={Link}
+          href={IP_FAMILY_CREATE_HREF}
+          color='primaryBrand'
+          variant='contained'>
+          {translate('Action.CreateIpFamily')}
+        </Button>
+      </EmptyState>
+    </EmptyStateBorder>
+  );
+};
+
+interface MatchesProps {
+  openDialog?: () => void;
+  maxManualRequestsLimit?: number;
+  candidateType?: AgreementCandidateType;
+  collectibleMatchesView?: GridListView;
+  onCollectibleMatchesViewChange?: (view: GridListView) => void;
+}
+
+interface MatchesFilters {
+  ipFamilyId?: string;
+  dauRange?: DauRange;
+  lifetimeVisitsRange?: LifetimeVisitsRange;
+  contentMaturities: UniverseContentMaturity[];
+  offerStatusFilter?: MatchCandidateOfferStatusFilter;
+}
+
+interface MatchesSort {
+  sortBy?: AgreementCandidateIndexSortBy;
+  sortDirection: AgreementCandidateIndexSortDirection;
+}
+
+type MatchesTableAnalyticsContext = {
+  candidateType: AgreementCandidateType;
+  matchesDataSource: 'indexed' | 'legacy';
+  hasIpFamilyFilter: boolean;
+  dauRangeFilter: string;
+  lifetimeVisitsRangeFilter: string;
+  contentMaturityFilters: string;
+  offerStatusFilter: string;
+  sortBy: string;
+  sortDirection: string;
+  activeFilterCount: number;
+};
+
+const getMatchesTableAnalyticsContext = (
+  filters: MatchesFilters,
+  sort: MatchesSort,
+  isIndexedMatchesEnabled: boolean,
+  candidateType: AgreementCandidateType,
+): MatchesTableAnalyticsContext => {
+  const hasDauRangeFilter = filters.dauRange != null && filters.dauRange !== DauRange.All;
+  const hasLifetimeVisitsRangeFilter =
+    filters.lifetimeVisitsRange != null && filters.lifetimeVisitsRange !== LifetimeVisitsRange.All;
+  const hasOfferStatusFilter =
+    filters.offerStatusFilter != null &&
+    filters.offerStatusFilter !== MatchCandidateOfferStatusFilter.All;
+  const hasIpFamilyFilter = Boolean(filters.ipFamilyId);
+  const hasContentMaturityFilters = filters.contentMaturities.length > 0;
+  const hasSort = isIndexedMatchesEnabled && sort.sortBy !== undefined;
+
+  return {
+    candidateType,
+    matchesDataSource: isIndexedMatchesEnabled ? 'indexed' : 'legacy',
+    hasIpFamilyFilter,
+    dauRangeFilter: hasDauRangeFilter ? String(filters.dauRange) : 'All',
+    lifetimeVisitsRangeFilter: hasLifetimeVisitsRangeFilter
+      ? String(filters.lifetimeVisitsRange)
+      : 'All',
+    contentMaturityFilters: hasContentMaturityFilters
+      ? [...filters.contentMaturities].sort().join('|')
+      : 'All',
+    offerStatusFilter: hasOfferStatusFilter ? String(filters.offerStatusFilter) : 'All',
+    sortBy: hasSort ? String(sort.sortBy) : 'None',
+    sortDirection: hasSort ? sort.sortDirection : 'None',
+    activeFilterCount: [
+      hasIpFamilyFilter,
+      hasDauRangeFilter,
+      hasLifetimeVisitsRangeFilter,
+      hasContentMaturityFilters,
+      hasOfferStatusFilter,
+    ].filter(Boolean).length,
+  };
+};
+
+const serializeMatchesTableAnalyticsContext = (context: MatchesTableAnalyticsContext): string =>
+  JSON.stringify(context);
+
+const Matches: React.FC<MatchesProps> = ({
+  maxManualRequestsLimit,
+  openDialog,
+  candidateType,
+  collectibleMatchesView: controlledCollectibleMatchesView,
+  onCollectibleMatchesViewChange,
+}) => {
+  const { classes } = useStyles();
+  const { translate } = useTranslation();
+  const { logEvent } = useLicenseManagerLogger();
+  const { logOnce } = useLicenseManagerLoggerLogOnce();
+  const queryClient = useQueryClient();
+  const { settings, isFetched: isSettingsFetched } = useSettings();
+  const isIndexedMatchesEnabled = settings.enableIpPlatformMatchesTableEsIndexImprovements;
+  const { ready: isAvatarItemLicensingFlagReady, value: isAvatarItemLicensingEnabled } = useFlag(
+    isAvatarItemLicensingEnabledFlag,
+  );
+  const isCollectibleMatchesRequest = candidateType === AgreementCandidateType.Collectible;
+  const analyticsCandidateType = candidateType ?? AgreementCandidateType.Universe;
+  const isCollectibleMatchesEnabled =
+    isAvatarItemLicensingFlagReady && isAvatarItemLicensingEnabled;
+  const filterButtonRef = useRef<HTMLButtonElement>(null);
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+
+  const [filters, setFilters] = useState<MatchesFilters>({
+    ipFamilyId: undefined,
+    dauRange: undefined,
+    lifetimeVisitsRange: undefined,
+    contentMaturities: [],
+    offerStatusFilter: undefined,
+  });
+  const filtersRef = useRef(filters);
+  const [sort, setSort] = useState<MatchesSort>({
+    sortBy: undefined,
+    sortDirection: AgreementCandidateIndexSortDirection.Asc,
+  });
+  const sortRef = useRef(sort);
+  const analyticsContext = useMemo(
+    () =>
+      getMatchesTableAnalyticsContext(
+        filters,
+        sort,
+        isIndexedMatchesEnabled,
+        analyticsCandidateType,
+      ),
+    [analyticsCandidateType, filters, sort, isIndexedMatchesEnabled],
+  );
+  const analyticsContextDedupeKey = serializeMatchesTableAnalyticsContext(analyticsContext);
+  const handleMatchesRequestCompleted = useCallback(
+    (metrics: MatchesCandidatesRequestMetrics) => {
+      logEvent(LicenseManagerApiVitalsEvent.MatchesCandidatesRequestCompleted, {
+        ...metrics,
+      });
+    },
+    [logEvent],
+  );
+
+  const [selectedCandidate, setSelectedCandidate] = useState<
+    AgreementCandidateResponse | undefined
+  >(undefined);
+  const [internalCollectibleMatchesView, setInternalCollectibleMatchesView] =
+    useState<GridListView>('grid');
+  const collectibleMatchesView = controlledCollectibleMatchesView ?? internalCollectibleMatchesView;
+  const setCollectibleMatchesView =
+    onCollectibleMatchesViewChange ?? setInternalCollectibleMatchesView;
+
+  const [currentMatchPanelView, setCurrentMatchPanelView] = useState<MatchPanelView>(
+    MatchPanelView.None,
+  );
+  const panelOpenedAtRef = useRef<number | null>(null);
+  const offerPanelOpenedAtRef = useRef<number | null>(null);
+  const panelNavigationCountRef = useRef(0);
+  const panelStateRef = useRef<MatchPanelState>('loading');
+  const lastImpressedCollectibleMatchesViewRef = useRef<GridListView | null>(null);
+
+  const isMatchPanelOpen = currentMatchPanelView !== MatchPanelView.None;
+  const isSidePanelOpen = isMatchPanelOpen || filterDrawerOpen;
+
+  const ipFamiliesReq = useIpFamiliesQuery();
+  const candidatesQuery = useMatchesQuery({
+    pageSize: 50,
+    ipFamilyId: filters.ipFamilyId,
+    dauRange: filters.dauRange,
+    lifetimeVisitsRange: filters.lifetimeVisitsRange,
+    contentMaturityRatings:
+      filters.contentMaturities.length === 0 ? undefined : filters.contentMaturities,
+    offerStatusFilter: filters.offerStatusFilter,
+    sortBy: isIndexedMatchesEnabled ? sort.sortBy : undefined,
+    sortDirection:
+      isIndexedMatchesEnabled && sort.sortBy !== undefined ? sort.sortDirection : undefined,
+    candidateType,
+    loadAgreementStatuses: true,
+    enabled: !isCollectibleMatchesRequest || isCollectibleMatchesEnabled,
+    onRequestCompleted: handleMatchesRequestCompleted,
+  });
+
+  const { allAgreementCandidates, agreementStatusesColumn } = candidatesQuery;
+
+  const matchPanelAgreementStatus = useMemo((): MatchPanelAgreementStatus | undefined => {
+    if (!selectedCandidate?.agreementId) {
+      return undefined;
+    }
+    const col = agreementStatusesColumn;
+    if (!col) {
+      return undefined;
+    }
+    const aid = selectedCandidate.agreementId;
+    return {
+      status: col.statusByAgreementId?.[aid],
+      rowError: col.errorsByAgreementId?.[aid],
+      isPending: col.isPending,
+      isError: col.isError,
+    };
+  }, [selectedCandidate?.agreementId, agreementStatusesColumn]);
+
+  const hasActiveFilters =
+    Boolean(filters.ipFamilyId) ||
+    filters.dauRange != null ||
+    filters.lifetimeVisitsRange != null ||
+    filters.contentMaturities.length > 0 ||
+    filters.offerStatusFilter != null;
+  const hasNoMatches = allAgreementCandidates.length === 0;
+  const hasNoIpFamilies = ipFamiliesReq.data?.ipFamilies.length === 0;
+  const showCollectibleViewToggle =
+    isCollectibleMatchesRequest &&
+    isCollectibleMatchesEnabled &&
+    candidatesQuery.isSuccess &&
+    !hasNoMatches;
+
+  const handleIpFamilyFilterChange = (selectedId: string | undefined) => {
+    const nextFilters = { ...filtersRef.current, ipFamilyId: selectedId };
+    filtersRef.current = nextFilters;
+    logEvent(
+      LicenseManagerClickEvent.MatchesTableIpFamilyFilterClickEvent,
+      getMatchesTableAnalyticsContext(
+        nextFilters,
+        sortRef.current,
+        isIndexedMatchesEnabled,
+        analyticsCandidateType,
+      ),
+    );
+    setFilters(nextFilters);
+  };
+
+  const handleDauRangeChange = (range: DauRange | undefined) => {
+    const nextFilters = { ...filtersRef.current, dauRange: range };
+    filtersRef.current = nextFilters;
+    logEvent(
+      LicenseManagerClickEvent.MatchesTableDauRangeFilterClickEvent,
+      getMatchesTableAnalyticsContext(
+        nextFilters,
+        sortRef.current,
+        isIndexedMatchesEnabled,
+        analyticsCandidateType,
+      ),
+    );
+    setFilters(nextFilters);
+  };
+
+  const handleLifetimeVisitsRangeChange = (range: LifetimeVisitsRange | undefined) => {
+    const nextFilters = { ...filtersRef.current, lifetimeVisitsRange: range };
+    filtersRef.current = nextFilters;
+    logEvent(
+      LicenseManagerClickEvent.MatchesTableLifetimeVisitsRangeFilterClickEvent,
+      getMatchesTableAnalyticsContext(
+        nextFilters,
+        sortRef.current,
+        isIndexedMatchesEnabled,
+        analyticsCandidateType,
+      ),
+    );
+    setFilters(nextFilters);
+  };
+
+  const handleContentMaturityChange = (ratings: UniverseContentMaturity[]) => {
+    const nextFilters = { ...filtersRef.current, contentMaturities: ratings };
+    filtersRef.current = nextFilters;
+    logEvent(
+      LicenseManagerClickEvent.MatchesTableContentMaturityFilterClickEvent,
+      getMatchesTableAnalyticsContext(
+        nextFilters,
+        sortRef.current,
+        isIndexedMatchesEnabled,
+        analyticsCandidateType,
+      ),
+    );
+    setFilters(nextFilters);
+  };
+
+  const handleOfferStatusFilterChange = (value: MatchCandidateOfferStatusFilter | undefined) => {
+    const nextFilters = { ...filtersRef.current, offerStatusFilter: value };
+    filtersRef.current = nextFilters;
+    logEvent(
+      LicenseManagerClickEvent.MatchesTableMatchCandidateStatusFilterClickEvent,
+      getMatchesTableAnalyticsContext(
+        nextFilters,
+        sortRef.current,
+        isIndexedMatchesEnabled,
+        analyticsCandidateType,
+      ),
+    );
+    setFilters(nextFilters);
+  };
+
+  const handleSort = useCallback(
+    (sortBy: AgreementCandidateIndexSortBy) => {
+      const previousSort = sortRef.current;
+      const nextSort: MatchesSort = {
+        sortBy,
+        sortDirection:
+          previousSort.sortBy === sortBy &&
+          previousSort.sortDirection === AgreementCandidateIndexSortDirection.Asc
+            ? AgreementCandidateIndexSortDirection.Desc
+            : AgreementCandidateIndexSortDirection.Asc,
+      };
+      sortRef.current = nextSort;
+      logEvent(
+        LicenseManagerClickEvent.MatchesTableSortClickEvent,
+        getMatchesTableAnalyticsContext(
+          filtersRef.current,
+          nextSort,
+          isIndexedMatchesEnabled,
+          analyticsCandidateType,
+        ),
+      );
+      setSort(nextSort);
+    },
+    [analyticsCandidateType, isIndexedMatchesEnabled, logEvent],
+  );
+
+  const handleResetFilters = () => {
+    logEvent(LicenseManagerClickEvent.MatchesTableClearFiltersClickEvent, {
+      ...analyticsContext,
+      action: 'clear',
+    });
+    const resetFilters: MatchesFilters = {
+      ipFamilyId: undefined,
+      dauRange: undefined,
+      lifetimeVisitsRange: undefined,
+      contentMaturities: [],
+      offerStatusFilter: undefined,
+    };
+    filtersRef.current = resetFilters;
+    setFilters(resetFilters);
+  };
+
+  const handleLoadMore = useCallback(() => {
+    logEvent(LicenseManagerClickEvent.MatchesTableLoadMoreClickEvent, {
+      ...analyticsContext,
+      ...(isCollectibleMatchesRequest ? { sourceView: collectibleMatchesView } : {}),
+      loadedResultCount: allAgreementCandidates.length,
+      hasNextPage: candidatesQuery.hasNextPage ?? false,
+    });
+  }, [
+    allAgreementCandidates.length,
+    analyticsContext,
+    candidatesQuery.hasNextPage,
+    collectibleMatchesView,
+    isCollectibleMatchesRequest,
+    logEvent,
+  ]);
+
+  const handleCollectibleMatchesViewChange = useCallback(
+    (selectedView: GridListView) => {
+      if (selectedView === collectibleMatchesView) {
+        return;
+      }
+      logEvent(LicenseManagerClickEvent.MatchesBrowseViewToggleClickEvent, {
+        candidateType: AgreementCandidateType.Collectible,
+        previousView: collectibleMatchesView,
+        selectedView,
+        loadedResultCount: allAgreementCandidates.length,
+        hasNextPage: candidatesQuery.hasNextPage ?? false,
+      });
+      setCollectibleMatchesView(selectedView);
+    },
+    [
+      allAgreementCandidates.length,
+      candidatesQuery.hasNextPage,
+      collectibleMatchesView,
+      logEvent,
+      setCollectibleMatchesView,
+    ],
+  );
+
+  const handleSelectCandidate = useCallback(
+    (candidate: AgreementCandidateResponse) => {
+      const candidateId = candidate.id;
+      if (candidateId) {
+        logEvent(LicenseManagerClickEvent.ViewAgreementCandidateClickEvent, {
+          candidate: candidateId,
+          ...analyticsContext,
+          ...(isCollectibleMatchesRequest ? { sourceView: collectibleMatchesView } : {}),
+          rowPosition:
+            allAgreementCandidates.findIndex(
+              (agreementCandidate) => agreementCandidate.id === candidateId,
+            ) + 1,
+        });
+      }
+      setFilterDrawerOpen(false);
+      panelOpenedAtRef.current = Date.now();
+      panelNavigationCountRef.current = 0;
+      panelStateRef.current = 'loading';
+      setSelectedCandidate(candidate);
+      setCurrentMatchPanelView(MatchPanelView.Details);
+    },
+    [
+      allAgreementCandidates,
+      analyticsContext,
+      collectibleMatchesView,
+      isCollectibleMatchesRequest,
+      logEvent,
+    ],
+  );
+
+  const selectedMatchIndex = useMemo(() => {
+    const selectedId = selectedCandidate?.id;
+    if (selectedId == null) {
+      return -1;
+    }
+    return allAgreementCandidates.findIndex((match) => match.id === selectedId);
+  }, [allAgreementCandidates, selectedCandidate?.id]);
+
+  const handleNavigateCandidate = useCallback(
+    (
+      direction: 'previous' | 'next',
+      candidate: AgreementCandidateResponse,
+      fromRowPosition: number,
+      toRowPosition: number,
+    ) => {
+      panelNavigationCountRef.current += 1;
+      logEvent(LicenseManagerClickEvent.MatchDetailsPanelNavigationClickEvent, {
+        candidateType: analyticsCandidateType,
+        agreementCandidateId: candidate.id ?? '',
+        direction,
+        fromRowPosition,
+        toRowPosition,
+        navigationCount: panelNavigationCountRef.current,
+      });
+      if (candidate.id) {
+        logEvent(LicenseManagerClickEvent.ViewAgreementCandidateClickEvent, {
+          candidate: candidate.id,
+          ...analyticsContext,
+          ...(isCollectibleMatchesRequest ? { sourceView: collectibleMatchesView } : {}),
+          rowPosition: toRowPosition,
+        });
+      }
+      panelStateRef.current = 'loading';
+      setSelectedCandidate(candidate);
+      setCurrentMatchPanelView(MatchPanelView.Details);
+    },
+    [
+      analyticsCandidateType,
+      analyticsContext,
+      collectibleMatchesView,
+      isCollectibleMatchesRequest,
+      logEvent,
+    ],
+  );
+
+  const matchDetailsNavigation = useMemo((): MatchDetailsPanelNavigation | undefined => {
+    if (selectedMatchIndex < 0) {
+      return undefined;
+    }
+
+    return {
+      onPrevious: () => {
+        const previousMatch = allAgreementCandidates[selectedMatchIndex - 1];
+        if (previousMatch) {
+          handleNavigateCandidate(
+            'previous',
+            previousMatch,
+            selectedMatchIndex + 1,
+            selectedMatchIndex,
+          );
+        }
+      },
+      onNext: () => {
+        const nextMatch = allAgreementCandidates[selectedMatchIndex + 1];
+        if (nextMatch) {
+          handleNavigateCandidate(
+            'next',
+            nextMatch,
+            selectedMatchIndex + 1,
+            selectedMatchIndex + 2,
+          );
+        }
+      },
+      canGoPrevious: selectedMatchIndex > 0,
+      canGoNext: selectedMatchIndex < allAgreementCandidates.length - 1,
+    };
+  }, [allAgreementCandidates, handleNavigateCandidate, selectedMatchIndex]);
+
+  const handleCloseMatchPanelProgrammatically = useCallback(() => {
+    setCurrentMatchPanelView(MatchPanelView.None);
+    panelOpenedAtRef.current = null;
+    offerPanelOpenedAtRef.current = null;
+  }, []);
+
+  const handleDismissMatchPanel = useCallback(
+    (dismissMethod: MatchesSidePanelDismissReason | 'closeButton') => {
+      if (currentMatchPanelView === MatchPanelView.None) {
+        return;
+      }
+      const openedAt = panelOpenedAtRef.current;
+      logEvent(LicenseManagerClickEvent.MatchDetailsPanelDismissClickEvent, {
+        candidateType: analyticsCandidateType,
+        agreementCandidateId: selectedCandidate?.id ?? '',
+        panelView: currentMatchPanelView,
+        panelState: panelStateRef.current,
+        dismissMethod,
+        timeSincePanelOpenedMs: openedAt === null ? 0 : Math.max(0, Date.now() - openedAt),
+        timeSinceOfferOpenedMs:
+          offerPanelOpenedAtRef.current === null
+            ? 0
+            : Math.max(0, Date.now() - offerPanelOpenedAtRef.current),
+        navigationCount: panelNavigationCountRef.current,
+      });
+      setCurrentMatchPanelView(MatchPanelView.None);
+      panelOpenedAtRef.current = null;
+      offerPanelOpenedAtRef.current = null;
+    },
+    [analyticsCandidateType, currentMatchPanelView, logEvent, selectedCandidate?.id],
+  );
+
+  const handleCloseButtonClick = useCallback(() => {
+    handleDismissMatchPanel('closeButton');
+  }, [handleDismissMatchPanel]);
+
+  const handlePanelStateChange = useCallback((state: MatchPanelState) => {
+    panelStateRef.current = state;
+  }, []);
+
+  const handleMatchIgnored = useCallback(() => {
+    const ignoredId = selectedCandidate?.id;
+    // Advance to the match after this one; fall back to the previous when it was the last row.
+    const ignoredIndex = allAgreementCandidates.findIndex((match) => match.id === ignoredId);
+    const nextCandidate =
+      allAgreementCandidates[ignoredIndex + 1] ?? allAgreementCandidates[ignoredIndex - 1];
+    if (ignoredId) {
+      markMatchCandidateIgnored(queryClient, ignoredId);
+    }
+    if (nextCandidate) {
+      setSelectedCandidate(nextCandidate);
+      setCurrentMatchPanelView(MatchPanelView.Details);
+    } else {
+      handleCloseMatchPanelProgrammatically();
+    }
+  }, [
+    allAgreementCandidates,
+    handleCloseMatchPanelProgrammatically,
+    queryClient,
+    selectedCandidate?.id,
+  ]);
+
+  const openFilterDrawer = useCallback(() => {
+    setCurrentMatchPanelView(MatchPanelView.None);
+    panelOpenedAtRef.current = null;
+    setFilterDrawerOpen(true);
+  }, []);
+
+  const closeFilterDrawer = useCallback(() => {
+    setFilterDrawerOpen(false);
+    filterButtonRef.current?.focus();
+  }, []);
+
+  const handleOfferLicense = useCallback(() => {
+    offerPanelOpenedAtRef.current = Date.now();
+    panelStateRef.current = 'loading';
+    logEvent(LicenseManagerClickEvent.MatchDetailsPanelOfferLicenseClickEvent, {
+      candidateType: analyticsCandidateType,
+      agreementCandidateId: selectedCandidate?.id ?? '',
+      rowPosition: selectedMatchIndex + 1,
+      ...(isCollectibleMatchesRequest
+        ? { source: 'sidebar', sourceView: collectibleMatchesView }
+        : {}),
+    });
+    setCurrentMatchPanelView(MatchPanelView.Offer);
+  }, [
+    analyticsCandidateType,
+    collectibleMatchesView,
+    isCollectibleMatchesRequest,
+    logEvent,
+    selectedCandidate?.id,
+    selectedMatchIndex,
+  ]);
+
+  const handleAgreementSuccess = useCallback(
+    (agreement: AgreementResponse) => {
+      setCurrentMatchPanelView(MatchPanelView.None);
+      panelOpenedAtRef.current = null;
+      offerPanelOpenedAtRef.current = null;
+      const agreementId = agreement.id?.trim();
+      if (selectedCandidate && agreementId) {
+        setSelectedCandidate({
+          ...selectedCandidate,
+          agreementId,
+        });
+      }
+    },
+    [setCurrentMatchPanelView, selectedCandidate, setSelectedCandidate],
+  );
+
+  const matchPanelAriaLabel =
+    currentMatchPanelView === MatchPanelView.Offer
+      ? translate('Heading.NewLicenseOffer')
+      : translate('Heading.ViewMatch');
+
+  useEffect(() => {
+    if (
+      !candidatesQuery.isSuccess ||
+      candidatesQuery.isFetching ||
+      candidatesQuery.isPlaceholderData ||
+      hasNoMatches ||
+      (!isCollectibleMatchesRequest && hasNoIpFamilies)
+    ) {
+      return;
+    }
+
+    logOnce(
+      LicenseManagerImpressionEvent.MatchesTableResultsImpressionEvent,
+      {
+        ...analyticsContext,
+        loadedResultCount: allAgreementCandidates.length,
+        hasNextPage: candidatesQuery.hasNextPage ?? false,
+      },
+      analyticsContextDedupeKey,
+    );
+  }, [
+    allAgreementCandidates.length,
+    analyticsContext,
+    analyticsContextDedupeKey,
+    candidatesQuery.hasNextPage,
+    candidatesQuery.isFetching,
+    candidatesQuery.isPlaceholderData,
+    candidatesQuery.isSuccess,
+    hasNoIpFamilies,
+    hasNoMatches,
+    isCollectibleMatchesRequest,
+    logOnce,
+  ]);
+
+  useEffect(() => {
+    if (
+      !showCollectibleViewToggle ||
+      candidatesQuery.isFetching ||
+      candidatesQuery.isPlaceholderData ||
+      lastImpressedCollectibleMatchesViewRef.current === collectibleMatchesView
+    ) {
+      return;
+    }
+
+    const isInitialView = lastImpressedCollectibleMatchesViewRef.current == null;
+    logEvent(LicenseManagerImpressionEvent.MatchesBrowseViewImpressionEvent, {
+      candidateType: AgreementCandidateType.Collectible,
+      selectedView: collectibleMatchesView,
+      loadedResultCount: allAgreementCandidates.length,
+      hasNextPage: candidatesQuery.hasNextPage ?? false,
+      isInitialView,
+    });
+    lastImpressedCollectibleMatchesViewRef.current = collectibleMatchesView;
+  }, [
+    allAgreementCandidates.length,
+    candidatesQuery.hasNextPage,
+    candidatesQuery.isFetching,
+    candidatesQuery.isPlaceholderData,
+    collectibleMatchesView,
+    logEvent,
+    showCollectibleViewToggle,
+  ]);
+
+  useEffect(() => {
+    if (
+      !candidatesQuery.isSuccess ||
+      candidatesQuery.isFetching ||
+      candidatesQuery.isPlaceholderData ||
+      !hasNoMatches ||
+      (isCollectibleMatchesRequest && !hasActiveFilters)
+    ) {
+      return;
+    }
+
+    const eventName = hasActiveFilters
+      ? LicenseManagerImpressionEvent.EmptyStateMatchesTableNoMatchesWithAppliedFiltersImpressionEvent
+      : LicenseManagerImpressionEvent.EmptyStateMatchesTableNoMatchesImpressionEvent;
+    logOnce(
+      eventName,
+      {
+        ...analyticsContext,
+      },
+      analyticsContextDedupeKey,
+    );
+  }, [
+    analyticsContext,
+    analyticsContextDedupeKey,
+    candidatesQuery.isFetching,
+    candidatesQuery.isPlaceholderData,
+    candidatesQuery.isSuccess,
+    hasActiveFilters,
+    hasNoMatches,
+    isCollectibleMatchesRequest,
+    logOnce,
+  ]);
+
+  let content;
+  if (isCollectibleMatchesRequest && !isAvatarItemLicensingFlagReady) {
+    content = (
+      <div className={classes.loading}>
+        <CircularProgress />
+      </div>
+    );
+  } else if (isCollectibleMatchesRequest && !isAvatarItemLicensingEnabled) {
+    content = null;
+  } else if (
+    candidatesQuery.isPending ||
+    (!isCollectibleMatchesRequest && ipFamiliesReq.isPending) ||
+    !isSettingsFetched
+  ) {
+    content = (
+      <div className={classes.loading}>
+        <CircularProgress />
+      </div>
+    );
+  } else if (
+    candidatesQuery.error != null ||
+    (!isCollectibleMatchesRequest && ipFamiliesReq.error != null)
+  ) {
+    const loadError = candidatesQuery.error ?? ipFamiliesReq.error;
+    content = <IpLoadError error={loadError} />;
+  } else if (hasNoMatches) {
+    if (hasActiveFilters) {
+      content =
+        candidateType === AgreementCandidateType.Collectible ? (
+          <NoMatchesWithFiltersContent
+            candidateType={AgreementCandidateType.Collectible}
+            onResetFilters={handleResetFilters}
+          />
+        ) : (
+          <NoMatchesWithFiltersContent
+            candidateType={AgreementCandidateType.Universe}
+            onResetFilters={handleResetFilters}
+            openDialog={openDialog}
+            maxLimit={maxManualRequestsLimit ?? 0}
+          />
+        );
+    } else {
+      content =
+        candidateType === AgreementCandidateType.Collectible ? (
+          <NoMatchesContent candidateType={AgreementCandidateType.Collectible} />
+        ) : (
+          <NoMatchesContent
+            candidateType={AgreementCandidateType.Universe}
+            openDialog={openDialog}
+            maxLimit={maxManualRequestsLimit ?? 0}
+          />
+        );
+    }
+  } else if (!isCollectibleMatchesRequest && hasNoIpFamilies) {
+    logOnce(LicenseManagerImpressionEvent.EmptyStateMatchesTableCreateIpFamilyImpressionEvent);
+    content = <NoIpFamiliesContent />;
+  } else {
+    content =
+      candidateType === AgreementCandidateType.Collectible ? (
+        collectibleMatchesView === 'grid' ? (
+          <CollectibleMatchesGrid
+            dataReq={candidatesQuery}
+            onSelectMatch={handleSelectCandidate}
+            selectedMatchId={isMatchPanelOpen ? (selectedCandidate?.id ?? undefined) : undefined}
+            onLoadMore={handleLoadMore}
+          />
+        ) : (
+          <CollectibleMatchesTable
+            dataReq={candidatesQuery}
+            onSelectMatch={handleSelectCandidate}
+            agreementStatusesColumn={agreementStatusesColumn}
+            selectedMatchId={isMatchPanelOpen ? (selectedCandidate?.id ?? undefined) : undefined}
+            onLoadMore={handleLoadMore}
+          />
+        )
+      ) : (
+        <UniverseMatchesTable
+          dataReq={candidatesQuery}
+          onSelectMatch={handleSelectCandidate}
+          agreementStatusesColumn={agreementStatusesColumn}
+          selectedMatchId={isMatchPanelOpen ? (selectedCandidate?.id ?? undefined) : undefined}
+          sortingEnabled={isIndexedMatchesEnabled}
+          sortBy={sort.sortBy}
+          sortDirection={sort.sortDirection}
+          onSort={handleSort}
+          onLoadMore={handleLoadMore}
+        />
+      );
+  }
+
+  return (
+    <div>
+      {candidateType !== AgreementCandidateType.Collectible && (
+        <>
+          <div className={classes.filtersContainer}>
+            <IpFamilyFilterChip
+              selectedIpFamilyId={filters.ipFamilyId}
+              onFilterChange={handleIpFamilyFilterChange}
+            />
+            <MatchCandidateOfferStatusFilterChip
+              selected={filters.offerStatusFilter}
+              onFilterChange={handleOfferStatusFilterChange}
+            />
+            <DauRangeFilterChip
+              selectedRange={filters.dauRange}
+              onFilterChange={handleDauRangeChange}
+            />
+            <LifetimeVisitsRangeFilterChip
+              selectedRange={filters.lifetimeVisitsRange}
+              onFilterChange={handleLifetimeVisitsRangeChange}
+            />
+            <ContentMaturityFilterChip
+              selectedRatings={filters.contentMaturities}
+              onFilterChange={handleContentMaturityChange}
+            />
+            <div className={classes.filterButtonContainer}>
+              <Button
+                ref={filterButtonRef}
+                onClick={openFilterDrawer}
+                endIcon={<FilterListIcon />}
+                variant='outlined'
+                color='inherit'
+                aria-hidden={isSidePanelOpen ? true : undefined}
+                tabIndex={isSidePanelOpen ? -1 : undefined}
+                classes={{ root: classes.filterButtonRoot }}>
+                {translate('Action.FilterBy')}
+              </Button>
+            </div>
+          </div>
+
+          <MatchesSidePanel
+            open={filterDrawerOpen}
+            onDismiss={closeFilterDrawer}
+            testId='matches-filter-side-panel'
+            ariaLabel={translate('Label.FilterByCategory')}
+            dismissMode='filter'
+            dismissTriggerRef={filterButtonRef}>
+            <MatchesFilterPanel
+              title={translate('Label.FilterByCategory')}
+              onClose={closeFilterDrawer}>
+              <MatchesFilterPanelContent
+                selectedIpFamilyId={filters.ipFamilyId}
+                selectedDauRange={filters.dauRange}
+                selectedLifetimeVisitsRange={filters.lifetimeVisitsRange}
+                selectedContentMaturities={filters.contentMaturities}
+                selectedOfferStatusFilter={filters.offerStatusFilter}
+                onIpFamilyChange={handleIpFamilyFilterChange}
+                onDauRangeChange={handleDauRangeChange}
+                onLifetimeVisitsRangeChange={handleLifetimeVisitsRangeChange}
+                onContentMaturityChange={handleContentMaturityChange}
+                onOfferStatusFilterChange={handleOfferStatusFilterChange}
+              />
+            </MatchesFilterPanel>
+          </MatchesSidePanel>
+        </>
+      )}
+      {isCollectibleMatchesRequest && isCollectibleMatchesEnabled && (
+        <div className={classes.filtersContainer}>
+          <IpFamilyFilterChip
+            selectedIpFamilyId={filters.ipFamilyId}
+            onFilterChange={handleIpFamilyFilterChange}
+          />
+          <MatchCandidateOfferStatusFilterChip
+            selected={filters.offerStatusFilter}
+            onFilterChange={handleOfferStatusFilterChange}
+          />
+          {showCollectibleViewToggle && (
+            <div className={classes.filterButtonContainer}>
+              <GridListViewToggle
+                value={collectibleMatchesView}
+                onChange={handleCollectibleMatchesViewChange}
+                testId='collectible-matches-view-toggle'
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      <MatchesSidePanel
+        open={isMatchPanelOpen}
+        onDismiss={handleDismissMatchPanel}
+        testId='matches-side-panel'
+        ariaLabel={matchPanelAriaLabel}
+        dismissMode='match'>
+        {selectedCandidate &&
+          currentMatchPanelView === MatchPanelView.Details &&
+          (isCollectibleMatchesRequest ? (
+            <CollectibleMatchDetailsPanelContent
+              candidate={selectedCandidate}
+              onClose={handleCloseButtonClick}
+              onOfferLicense={handleOfferLicense}
+              onIgnored={handleMatchIgnored}
+              agreementStatusFromList={matchPanelAgreementStatus}
+              navigation={matchDetailsNavigation}
+              rowPosition={selectedMatchIndex + 1}
+              sourceView={collectibleMatchesView}
+              onPanelStateChange={handlePanelStateChange}
+            />
+          ) : (
+            <MatchDetailsPanelContent
+              candidate={selectedCandidate}
+              onClose={handleCloseButtonClick}
+              onOfferLicense={handleOfferLicense}
+              agreementStatusFromList={matchPanelAgreementStatus}
+              navigation={matchDetailsNavigation}
+              onIgnored={handleMatchIgnored}
+              rowPosition={selectedMatchIndex + 1}
+              onPanelStateChange={handlePanelStateChange}
+            />
+          ))}
+        {selectedCandidate &&
+          currentMatchPanelView === MatchPanelView.Offer &&
+          (isCollectibleMatchesRequest ? (
+            <CollectibleMatchOfferPanelContent
+              candidate={selectedCandidate}
+              onSuccess={handleAgreementSuccess}
+              onClose={handleCloseButtonClick}
+              sourceView={collectibleMatchesView}
+              onPanelStateChange={handlePanelStateChange}
+            />
+          ) : (
+            <MatchOfferPanelContent
+              candidate={selectedCandidate}
+              onSuccess={handleAgreementSuccess}
+              onClose={handleCloseButtonClick}
+              source='sidebar'
+              onPanelStateChange={handlePanelStateChange}
+            />
+          ))}
+      </MatchesSidePanel>
+
+      {content}
+    </div>
+  );
+};
+
+export default Matches;
