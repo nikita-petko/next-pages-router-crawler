@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { Asset } from '@rbx/client-assets-upload-api/v1';
 import { ModerationState } from '@rbx/client-assets-upload-api/v1';
@@ -10,6 +11,7 @@ import {
 import type { CreatorPitchAttachment } from '@modules/licenses/utils/creatorPitchAttachmentTypes';
 import { isNonEmptyString } from '@modules/miscellaneous/utils';
 import { useCurrentAccountContext } from '../../../components/AccountProvider';
+import { usePitchImageThumbnailUrlsQuery } from '../../agreements/hooks/usePitchImageThumbnailUrlsQuery';
 import { GET_CREATOR_PITCH_IMAGE_ATTACHMENTS_QUERY_KEY } from '../../queryKeys';
 
 const PITCH_IMAGE_ASSET_READ_MASK = [FieldMask.MODERATION_RESULT, FieldMask.DISPLAY_NAME];
@@ -60,6 +62,17 @@ interface UseGetCreatorPitchImageAttachmentsParams {
   isIpHolderView?: boolean;
 }
 
+type PitchImageQueryData =
+  | {
+      type: 'creator';
+      attachments: CreatorPitchAttachment[];
+    }
+  | {
+      type: 'ipHolder';
+      assetIds: number[];
+      accessContext?: string | null;
+    };
+
 export const useGetCreatorPitchImageAttachments = ({
   agreementId,
   enabled = true,
@@ -68,9 +81,9 @@ export const useGetCreatorPitchImageAttachments = ({
   const { account } = useCurrentAccountContext();
   const accountId = account?.id;
 
-  return useQuery({
+  const pitchImagesQuery = useQuery({
     queryKey: GET_CREATOR_PITCH_IMAGE_ATTACHMENTS_QUERY_KEY(accountId, agreementId, isIpHolderView),
-    queryFn: async (): Promise<CreatorPitchAttachment[]> => {
+    queryFn: async (): Promise<PitchImageQueryData> => {
       if (!accountId) {
         throw new Error('Missing account ID');
       }
@@ -78,30 +91,80 @@ export const useGetCreatorPitchImageAttachments = ({
         throw new Error('Missing agreement ID');
       }
 
-      const pitchImages = await (isIpHolderView
-        ? contentLicensingClient.getIphPitchImages(accountId, agreementId)
-        : contentLicensingClient.getCreatorPitchImages(accountId, agreementId));
-      const assetIds = pitchImages.assetIds ?? [];
-
       if (isIpHolderView) {
-        // TODO - PR-16927 - anagarajan: Resolve IPH pitch images with the access context.
-        return assetIds.map((assetId) => ({
-          id: String(assetId),
-          fileName: String(assetId),
-          status: CreatorPitchAttachmentStatus.Ready,
-          assetId,
-        }));
+        const { assetIds, accessContext } = await contentLicensingClient.getIphPitchImages(
+          accountId,
+          agreementId,
+        );
+        return {
+          type: 'ipHolder',
+          assetIds: assetIds ?? [],
+          accessContext,
+        };
       }
 
-      return Promise.all(
-        assetIds.map(async (assetId) => {
+      const pitchImages = await contentLicensingClient.getCreatorPitchImages(
+        accountId,
+        agreementId,
+      );
+      const attachments = await Promise.all(
+        (pitchImages.assetIds ?? []).map(async (assetId) => {
           const asset = await assetsUploadApiClient.getAsset(assetId, PITCH_IMAGE_ASSET_READ_MASK);
           return mapAssetToCreatorPitchAttachment(assetId, asset);
         }),
       );
+      return {
+        type: 'creator',
+        attachments,
+      };
     },
     enabled: enabled && !!accountId && !!agreementId,
   });
+
+  const ipHolderData =
+    pitchImagesQuery.data?.type === 'ipHolder' ? pitchImagesQuery.data : undefined;
+  const accessContext =
+    ipHolderData != null && isNonEmptyString(ipHolderData.accessContext)
+      ? ipHolderData.accessContext
+      : undefined;
+  const thumbnailUrlsQuery = usePitchImageThumbnailUrlsQuery({
+    assetIds: accessContext != null ? ipHolderData?.assetIds : undefined,
+    accessContext,
+  });
+  const isThumbnailUrlsPending =
+    accessContext != null &&
+    (ipHolderData?.assetIds.length ?? 0) > 0 &&
+    thumbnailUrlsQuery.isPending;
+
+  const attachments = useMemo((): CreatorPitchAttachment[] | undefined => {
+    if (isThumbnailUrlsPending) {
+      return undefined;
+    }
+    if (pitchImagesQuery.data?.type === 'creator') {
+      return pitchImagesQuery.data.attachments;
+    }
+
+    return pitchImagesQuery.data?.assetIds.map((assetId) => {
+      const imageUrl = thumbnailUrlsQuery.data?.urls.get(assetId);
+      return {
+        id: String(assetId),
+        fileName: String(assetId),
+        status: CreatorPitchAttachmentStatus.Ready,
+        assetId,
+        ...(imageUrl != null && { imageUrl }),
+      };
+    });
+  }, [isThumbnailUrlsPending, pitchImagesQuery.data, thumbnailUrlsQuery.data]);
+
+  const isPending = pitchImagesQuery.isPending || isThumbnailUrlsPending;
+  const isError = pitchImagesQuery.isError;
+
+  return {
+    data: attachments,
+    isPending,
+    isError,
+    isSuccess: !isPending && !isError && attachments != null,
+  };
 };
 
 export default useGetCreatorPitchImageAttachments;

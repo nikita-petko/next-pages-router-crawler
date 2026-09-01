@@ -80,6 +80,10 @@ export const GET_CREATOR_PITCH_IMAGE_ATTACHMENTS_QUERY_KEY = (
     agreementId,
     isIpHolderView ? 'ipHolder' : 'creator',
   ] as const;
+export const GET_PITCH_IMAGE_THUMBNAIL_URLS_QUERY_KEY = (
+  assetIds?: number[],
+  accessContext?: string,
+) => [rootAgreementsKey, 'pitchImageThumbnailUrls', assetIds, accessContext] as const;
 export const GET_REVENUE_TARGETS_BY_AGREEMENT_QUERY_KEY = (
   accountId?: string,
   agreementId?: string,
