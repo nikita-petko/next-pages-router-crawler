@@ -13,6 +13,8 @@ import {
   SheetBody,
   SheetActions,
   Toggle,
+  Tooltip,
+  TooltipTrigger,
   Link,
 } from '@rbx/foundation-ui';
 import { useTranslation, useTranslationWithNamespace, withTranslation } from '@rbx/intl';
@@ -39,6 +41,11 @@ interface RewardItemsDrawerProps {
 const isToggleable = (status: PlacementRewardStatusEnum): boolean =>
   status === PlacementRewardStatusEnum.REWARD_STATUS_ACTIVE ||
   status === PlacementRewardStatusEnum.REWARD_STATUS_INACTIVE;
+
+// A reward in test access mode, including one flagged for an unapproved image.
+const isTestModeStatus = (status: PlacementRewardStatusEnum): boolean =>
+  status === PlacementRewardStatusEnum.REWARD_STATUS_TEST ||
+  status === PlacementRewardStatusEnum.REWARD_STATUS_TEST_INVALID_IMAGE;
 
 function RewardItemsDrawer({
   open,
@@ -119,9 +126,7 @@ function RewardItemsDrawer({
     async (reward: PlacementReward) => {
       try {
         const otherTestRewards = rewards.filter(
-          (r) =>
-            r.productId !== reward.productId &&
-            r.status === PlacementRewardStatusEnum.REWARD_STATUS_TEST,
+          (r) => r.productId !== reward.productId && isTestModeStatus(r.status),
         );
         for (const r of otherTestRewards) {
           await updateReward({
@@ -218,6 +223,18 @@ function RewardItemsDrawer({
             {translate('Action.PublishReward')}
           </Button>
         );
+      case PlacementRewardStatusEnum.REWARD_STATUS_TEST_INVALID_IMAGE:
+        return (
+          <Tooltip title={translate('Warning.RewardItemImageUnderReview')} position='top-center'>
+            <TooltipTrigger asChild>
+              <span className='inline-flex'>
+                <Button variant='SoftEmphasis' size='Small' isDisabled>
+                  {translate('Action.PublishReward')}
+                </Button>
+              </span>
+            </TooltipTrigger>
+          </Tooltip>
+        );
       case PlacementRewardStatusEnum.REWARD_STATUS_DRAFT:
         return (
           <Button
@@ -285,7 +302,7 @@ function RewardItemsDrawer({
                     placement='Start'
                     isChecked={
                       reward.status === PlacementRewardStatusEnum.REWARD_STATUS_ACTIVE ||
-                      reward.status === PlacementRewardStatusEnum.REWARD_STATUS_TEST
+                      isTestModeStatus(reward.status)
                     }
                     onCheckedChange={(checked) => handleToggleEnable(reward, checked)}
                     isDisabled={isLoading || !isToggleable(reward.status)}

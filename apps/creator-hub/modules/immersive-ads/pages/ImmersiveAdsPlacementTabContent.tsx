@@ -411,7 +411,9 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
 
   const pwrRewards: PlacementReward[] = pwrPlacement?.rewards ?? [];
   const hasTestModeReward = pwrRewards.some(
-    (r) => r.status === PlacementRewardStatusEnum.REWARD_STATUS_TEST,
+    (r) =>
+      r.status === PlacementRewardStatusEnum.REWARD_STATUS_TEST ||
+      r.status === PlacementRewardStatusEnum.REWARD_STATUS_TEST_INVALID_IMAGE,
   );
   const hasActiveReward = pwrRewards.some(
     (r) => r.status === PlacementRewardStatusEnum.REWARD_STATUS_ACTIVE,
@@ -419,7 +421,8 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
   const hasDraftOrTestReward = pwrRewards.some(
     (r) =>
       r.status === PlacementRewardStatusEnum.REWARD_STATUS_DRAFT ||
-      r.status === PlacementRewardStatusEnum.REWARD_STATUS_TEST,
+      r.status === PlacementRewardStatusEnum.REWARD_STATUS_TEST ||
+      r.status === PlacementRewardStatusEnum.REWARD_STATUS_TEST_INVALID_IMAGE,
   );
   const activeRewardCount = pwrRewards.filter(
     (r) => r.status === PlacementRewardStatusEnum.REWARD_STATUS_ACTIVE,

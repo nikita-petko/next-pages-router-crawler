@@ -12,7 +12,8 @@ type StatusLabel =
   | 'Label.Status.Inactive'
   | 'Label.Status.Draft'
   | 'Label.Status.TestMode'
-  | 'Label.Status.Error';
+  | 'Label.Status.Error'
+  | 'Label.Status.InvalidImage';
 type StatusConfig = { label: StatusLabel; dotColor: string };
 
 interface StatusBadgeProps {
@@ -59,6 +60,10 @@ const REWARD_STATUS_CONFIG: Record<number, StatusConfig> = {
   [PlacementRewardStatusEnum.REWARD_STATUS_DRAFT]: {
     label: 'Label.Status.Draft',
     dotColor: 'bg-system-neutral',
+  },
+  [PlacementRewardStatusEnum.REWARD_STATUS_TEST_INVALID_IMAGE]: {
+    label: 'Label.Status.InvalidImage',
+    dotColor: 'bg-system-alert',
   },
 };
 
