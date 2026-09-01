@@ -16,7 +16,7 @@ export const getLogFilter = (
 
   return {
     ...(dateRange ? { dateRange } : {}),
-    ...(severity !== undefined ? { severity } : {}),
+    ...(severity !== undefined ? { severities: [severity] } : {}),
     ...(normalizedLogSearchKey ? { logSearchKey: normalizedLogSearchKey } : {}),
   };
 };
@@ -27,8 +27,8 @@ export const clientLogFilterToQuery = (filter: LogFilter | undefined): string | 
   }
 
   const parts: string[] = [];
-  if (filter.severity !== undefined) {
-    parts.push(`severity in [${filter.severity}]`);
+  if (filter.severities?.length) {
+    parts.push(`severity in [${filter.severities.join(',')}]`);
   }
   if (filter.logSearchKey) {
     const escapedSearch = filter.logSearchKey.replaceAll('\\', '\\\\').replaceAll('"', '\\"');

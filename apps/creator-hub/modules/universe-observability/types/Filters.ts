@@ -27,6 +27,6 @@ export type LogDateRange = {
 
 export type LogFilter = {
   readonly dateRange?: LogDateRange;
-  readonly severity?: LogSeverity;
+  readonly severities?: Array<LogSeverity>;
   readonly logSearchKey?: string;
 };

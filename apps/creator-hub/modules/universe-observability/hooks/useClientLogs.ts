@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { clientLogsApi } from '../clients/clientLogsApi';
-import type { ApiClientLog, ListClientLogsResponse } from '../mockData/clientLogs';
+import type { ListClientLogsResponse } from '@rbx/client-server-management-service/v1';
+import { gameObservabilityApi } from '../clients/gameObservabilityApi';
 import { ClientSessionLogSchema, type ClientSessionLog } from '../types/ClientSession';
 import type { LogFilter } from '../types/Filters';
 import { clientLogFilterToQuery } from '../utils/logFilters';
@@ -12,31 +12,13 @@ const DEFAULT_RETRIES = 3;
 const DEFAULT_STALE_TIME_MS = 10 * 60 * 1000;
 const EMPTY_CLIENT_LOGS: readonly ClientSessionLog[] = [];
 
-// The endpoint does not provide a log ID. Derive one from immutable transport fields so a
-// reordered refetch cannot transfer row state to a different log.
-const getStableClientLogId = (log: ApiClientLog): string =>
-  JSON.stringify([
-    log.sessionId ?? null,
-    log.messageTimestampMs?.getTime() ?? null,
-    log.universeId ?? null,
-    log.placeId ?? null,
-    log.placeVersion ?? null,
-    log.severity ?? null,
-    log.message ?? null,
-    log.stackTrace ?? null,
-    log.messageTemplate ?? null,
-    log.context ?? null,
-    log.skippedCount ?? null,
-    log.rateLimitedCount ?? null,
-  ]);
-
 const mapResponseLogs = (
   response: ListClientLogsResponse,
   pageToken: string | undefined,
 ): readonly ClientSessionLog[] =>
   (response.clientLogs ?? []).flatMap((log, logIndex) => {
     const parseResult = ClientSessionLogSchema.safeParse({
-      id: getStableClientLogId(log),
+      id: crypto.randomUUID(),
       sessionId: log.sessionId,
       severity: log.severity,
       message: log.message ?? '',
@@ -98,7 +80,7 @@ const useClientLogs = ({
         return { logs: EMPTY_CLIENT_LOGS, nextPageToken: undefined };
       }
 
-      const response = await clientLogsApi.clientSessionsListClientLogs(
+      const response = await gameObservabilityApi.gameServersListClientLogs(
         {
           universeId,
           sessionId,
@@ -109,6 +91,7 @@ const useClientLogs = ({
         },
         { signal },
       );
+
       return {
         logs: mapResponseLogs(response, pageToken || undefined),
         nextPageToken: response.nextPageToken ?? undefined,

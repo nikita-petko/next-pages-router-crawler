@@ -52,7 +52,7 @@ import { useAdaptiveDataTable } from './useAdaptiveDataTable';
 
 /* oxlint-disable react/react-compiler -- TanStack Table and Virtual return intentionally non-memoizable callbacks. */
 
-const InfiniteViewportHeight = 480;
+const InfiniteMaxViewportHeight = 480;
 const InfiniteLoadDistance = 500;
 const VirtualRowOverscan = 8;
 const MinimumColumnSpan = 1;
@@ -991,14 +991,15 @@ const AdaptiveDataTable = <
     () => ({ ...HeaderStyle, ...(isInfinite ? InfiniteHeaderStyle : undefined) }),
     [isInfinite],
   );
-  const infiniteBodyViewportHeight = InfiniteViewportHeight - RowHeightBySize[size];
+  const infiniteBodyMaxHeight = InfiniteMaxViewportHeight - RowHeightBySize[size];
   const infiniteBodyStyle = useMemo<CSSProperties>(
     () => ({
       ...VirtualBodyStyle,
-      height: infiniteBodyViewportHeight,
+      height: 'auto',
+      maxHeight: infiniteBodyMaxHeight,
       overflowX: canScrollHorizontally ? 'auto' : 'hidden',
     }),
-    [canScrollHorizontally, infiniteBodyViewportHeight],
+    [canScrollHorizontally, infiniteBodyMaxHeight],
   );
   const headerRowStyle = useMemo(
     () => ({ ...GridRowStyle, gridTemplateColumns: columnLayout.gridTemplateColumns }),
@@ -1008,14 +1009,6 @@ const AdaptiveDataTable = <
     () => ({ ...StateCellStyle, width: scrollViewportWidth ?? '100%' }),
     [scrollViewportWidth],
   );
-  const emptyStateCellStyle = useMemo(
-    () => ({
-      ...stateCellStyle,
-      ...(isInfinite ? { minHeight: infiniteBodyViewportHeight } : undefined),
-    }),
-    [infiniteBodyViewportHeight, isInfinite, stateCellStyle],
-  );
-
   const renderState = () => {
     if (isTableError) {
       return labels.error;
@@ -1096,7 +1089,7 @@ const AdaptiveDataTable = <
                   onScroll={isInfinite ? handleInfiniteScroll : undefined}
                   ref={isInfinite ? infiniteBodyRef : undefined}
                   style={isInfinite ? infiniteBodyStyle : BodyStyle}>
-                  <StateRow cellStyle={emptyStateCellStyle} columnCount={columnCount}>
+                  <StateRow cellStyle={stateCellStyle} columnCount={columnCount}>
                     {state}
                   </StateRow>
                 </TableBody>

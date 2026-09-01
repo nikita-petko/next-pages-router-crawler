@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { LogSeverity } from './LogSeverity';
 
 export const ClientSessionLogSchema = z.object({
+  // Client-generated id (the API does not return one). Used for React keys.
   id: z.string(),
   sessionId: z.string(),
   severity: z.enum(LogSeverity),
