@@ -1,0 +1,459 @@
+import clsx from 'clsx';
+import React, {
+  ComponentProps,
+  ReactNode,
+  forwardRef,
+  createContext,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  useEffect
+} from 'react';
+import type {
+  TTailwindTextLabelClass,
+  TTailwindHeightClass,
+  TTailwindPaddingXClass,
+  TTailwindIconClass,
+  TTailwindRadiusClass,
+  TTailwindPaddingClass
+} from '@rbx/foundation-tailwind/classes';
+import { disabledOpacity } from '../utils/styles';
+import { TForwardRefComponent } from './types/TForwardRefComponent';
+import { interactable, StateLayer } from './internal/StateLayer';
+import { Icon, TIconSize } from './Icon';
+import './SegmentedControl.css';
+
+export const segmentedControlSizes = ['XSmall', 'Small', 'Medium', 'Large'] as const;
+export type TSegmentedControlSize = (typeof segmentedControlSizes)[number];
+
+export const segmentedControlFillStyles = ['Filled', 'Stroke', 'Utility'] as const;
+export type TSegmentedControlFillStyle = (typeof segmentedControlFillStyles)[number];
+
+export const segmentedControlFillBehaviours = ['Hug', 'Fill'] as const;
+export type TSegmentedControlFillBehaviour = (typeof segmentedControlFillBehaviours)[number];
+
+export type TSegmentedControlTextItem = {
+  value: string;
+  label: string;
+  isDisabled?: boolean;
+};
+
+export type TSegmentedControlIconItem = {
+  value: string;
+  icon: TTailwindIconClass;
+  'aria-label': string;
+  isDisabled?: boolean;
+};
+
+export type TSegmentedControlItem = TSegmentedControlTextItem | TSegmentedControlIconItem;
+
+type TSegmentedControlBaseProps = {
+  size?: TSegmentedControlSize;
+  fillStyle?: TSegmentedControlFillStyle;
+  fillBehaviour?: TSegmentedControlFillBehaviour;
+  isCircular?: boolean;
+  value: string;
+  onValueChange: (value: string) => void;
+  isDisabled?: boolean;
+  className?: string;
+  'aria-label'?: string;
+};
+
+export type TSegmentedControlTextProps = TSegmentedControlBaseProps & {
+  variant?: 'Text';
+  items: TSegmentedControlTextItem[];
+};
+
+export type TSegmentedControlIconProps = TSegmentedControlBaseProps & {
+  variant: 'Icon';
+  items: TSegmentedControlIconItem[];
+};
+
+export type TSegmentedControlProps = TSegmentedControlTextProps | TSegmentedControlIconProps;
+
+type TSegmentedControlContextValue = {
+  size: TSegmentedControlSize;
+  fillStyle: TSegmentedControlFillStyle;
+  fillBehaviour: TSegmentedControlFillBehaviour;
+  isCircular: boolean;
+  isDisabled: boolean;
+  variant: 'Text' | 'Icon';
+};
+
+const SegmentedControlContext = createContext<TSegmentedControlContextValue>({
+  size: 'Medium',
+  fillStyle: 'Filled',
+  fillBehaviour: 'Hug',
+  isCircular: false,
+  isDisabled: false,
+  variant: 'Text'
+});
+
+const HEIGHT_BY_SIZE: Record<TSegmentedControlSize, TTailwindHeightClass> = {
+  XSmall: 'height-600',
+  Small: 'height-700',
+  Medium: 'height-800',
+  Large: 'height-900'
+};
+
+const LABEL_CLASS_BY_SIZE: Record<TSegmentedControlSize, TTailwindTextLabelClass> = {
+  XSmall: 'text-label-small',
+  Small: 'text-label-small',
+  Medium: 'text-label-medium',
+  Large: 'text-label-large'
+};
+
+const ICON_SIZE_BY_SIZE: Record<TSegmentedControlSize, TIconSize> = {
+  XSmall: 'Small',
+  Small: 'Medium',
+  Medium: 'Medium',
+  Large: 'Large'
+};
+
+const PADDING_X_BY_SIZE: Record<TSegmentedControlSize, TTailwindPaddingXClass> = {
+  XSmall: 'padding-x-small',
+  Small: 'padding-x-small',
+  Medium: 'padding-x-medium',
+  Large: 'padding-x-large'
+};
+
+const PADDING_X_UTILITY_BY_SIZE: Record<TSegmentedControlSize, TTailwindPaddingXClass> = {
+  XSmall: 'padding-x-small',
+  Small: 'padding-x-small',
+  Medium: 'padding-x-large',
+  Large: 'padding-x-xlarge'
+};
+
+const ICON_PADDING_BY_SIZE: Record<TSegmentedControlSize, TTailwindPaddingClass> = {
+  XSmall: 'padding-xsmall',
+  Small: 'padding-xsmall',
+  Medium: 'padding-small',
+  Large: 'padding-medium'
+};
+
+const CONTAINER_PADDING_BY_SIZE: Record<TSegmentedControlSize, string> = {
+  XSmall: 'padding-none',
+  Small: 'padding-none',
+  Medium: 'padding-xsmall',
+  Large: 'padding-xsmall'
+};
+
+const GAP_BY_SIZE: Record<TSegmentedControlSize, string> = {
+  XSmall: 'gap-xxsmall',
+  Small: 'gap-xxsmall',
+  Medium: 'gap-xxsmall',
+  Large: 'gap-xxsmall'
+};
+
+const RADIUS_CIRCULAR_BY_SIZE: Record<TSegmentedControlSize, TTailwindRadiusClass> = {
+  XSmall: 'radius-circle',
+  Small: 'radius-circle',
+  Medium: 'radius-circle',
+  Large: 'radius-circle'
+};
+
+const RADIUS_NON_CIRCULAR_BY_SIZE: Record<TSegmentedControlSize, TTailwindRadiusClass> = {
+  XSmall: 'radius-small',
+  Small: 'radius-medium',
+  Medium: 'radius-small',
+  Large: 'radius-small'
+};
+
+const CONTAINER_RADIUS_BY_SIZE_AND_CIRCULAR: Record<
+  TSegmentedControlSize,
+  Record<string, string>
+> = {
+  XSmall: { true: 'radius-circle', false: 'radius-small' },
+  Small: { true: 'radius-circle', false: 'radius-medium' },
+  Medium: { true: 'radius-circle', false: 'radius-medium' },
+  Large: { true: 'radius-circle', false: 'radius-medium' }
+};
+
+type TSegmentItemProps = {
+  isSelected: boolean;
+  isDisabled: boolean;
+  onClick: () => void;
+  children: ReactNode;
+  'aria-label'?: string;
+};
+
+const SegmentItem = forwardRef<HTMLButtonElement, TSegmentItemProps>(
+  ({ isSelected, isDisabled, onClick, children, 'aria-label': ariaLabel }, ref) => {
+    const { size, fillStyle, isCircular, variant } = useContext(SegmentedControlContext);
+    const isIconVariant = variant === 'Icon';
+
+    const paddingClass = (() => {
+      if (isIconVariant) return ICON_PADDING_BY_SIZE[size];
+      if (fillStyle === 'Utility') return PADDING_X_UTILITY_BY_SIZE[size];
+      return PADDING_X_BY_SIZE[size];
+    })();
+
+    const radiusClass = isCircular
+      ? RADIUS_CIRCULAR_BY_SIZE[size]
+      : RADIUS_NON_CIRCULAR_BY_SIZE[size];
+    const radiusStyle =
+      fillStyle === 'Stroke' && !isCircular
+        ? { borderRadius: `calc(var(--${radiusClass}) - 1px)` }
+        : undefined;
+
+    const widthClass = !isIconVariant ? 'fill min-width-[80px] max-width-[200px]' : undefined;
+    const heightClass = !isIconVariant ? HEIGHT_BY_SIZE[size] : undefined;
+
+    return (
+      <button
+        ref={ref}
+        type='button'
+        role='radio'
+        aria-checked={isSelected}
+        aria-label={ariaLabel}
+        disabled={isDisabled}
+        onClick={onClick}
+        className={clsx(
+          interactable,
+          'flex items-center justify-center transition-colors stroke-none relative bg-none',
+          widthClass,
+          heightClass,
+          paddingClass,
+          radiusClass,
+          isDisabled && disabledOpacity,
+          !isDisabled && 'cursor-pointer'
+        )}
+        style={radiusStyle}>
+        {!isDisabled && <StateLayer />}
+        <div
+          className={clsx(
+            'flex items-center justify-center relative width-full',
+            isSelected ? 'content-emphasis' : 'content-default',
+            LABEL_CLASS_BY_SIZE[size]
+          )}
+          style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}>
+          {children}
+        </div>
+      </button>
+    );
+  }
+);
+
+SegmentItem.displayName = 'SegmentItem';
+
+const SegmentedControlComponent = (
+  {
+    size = 'Medium',
+    fillStyle = 'Filled',
+    fillBehaviour = 'Hug',
+    isCircular = false,
+    value,
+    onValueChange,
+    isDisabled = false,
+    className,
+    items,
+    variant = 'Text',
+    'aria-label': ariaLabel
+  }: TSegmentedControlProps,
+  ref: ComponentProps<'div'>['ref']
+) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [indicatorStyle, setIndicatorStyle] = useState({
+    width: 0,
+    left: 0,
+    height: 0,
+    top: 0,
+    opacity: 0,
+    borderRadius: ''
+  });
+
+  const contextValue = useMemo(
+    () => ({
+      size,
+      fillStyle,
+      fillBehaviour,
+      isCircular,
+      isDisabled,
+      variant
+    }),
+    [size, fillStyle, fillBehaviour, isCircular, isDisabled, variant]
+  );
+
+  const updateIndicator = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const selectedButton = container.querySelector('[aria-checked="true"]') as HTMLElement;
+    if (!selectedButton) return;
+
+    const { offsetLeft, offsetTop, offsetWidth, offsetHeight } = selectedButton;
+
+    const adjustedBorderRadius =
+      fillStyle === 'Stroke' && !isCircular
+        ? `calc(var(--${RADIUS_NON_CIRCULAR_BY_SIZE[size]}) - 1px)`
+        : '';
+
+    setIndicatorStyle({
+      width: offsetWidth,
+      left: offsetLeft,
+      height: offsetHeight,
+      top: offsetTop,
+      opacity: 1,
+      borderRadius: adjustedBorderRadius
+    });
+  }, [fillStyle, isCircular, size]);
+
+  useEffect(() => {
+    updateIndicator();
+
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+            updateIndicator();
+          })
+        : null;
+
+    if (resizeObserver && containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    window.addEventListener('resize', updateIndicator);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', updateIndicator);
+    };
+  }, [value, items, size, fillStyle, fillBehaviour, isCircular, updateIndicator]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const enabledItems = items.filter(item => !item.isDisabled);
+      const currentIndex = enabledItems.findIndex(item => item.value === value);
+
+      let newIndex: number | null = null;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+        case 'ArrowUp':
+          e.preventDefault();
+          newIndex = currentIndex > 0 ? currentIndex - 1 : enabledItems.length - 1;
+          break;
+        case 'ArrowRight':
+        case 'ArrowDown':
+          e.preventDefault();
+          newIndex = currentIndex < enabledItems.length - 1 ? currentIndex + 1 : 0;
+          break;
+        case 'Home':
+          e.preventDefault();
+          newIndex = 0;
+          break;
+        case 'End':
+          e.preventDefault();
+          newIndex = enabledItems.length - 1;
+          break;
+        default:
+          break;
+      }
+
+      if (newIndex !== null && enabledItems[newIndex]) {
+        onValueChange(enabledItems[newIndex].value);
+      }
+    },
+    [items, value, onValueChange]
+  );
+
+  const setRefs = useCallback(
+    (node: HTMLDivElement | null) => {
+      containerRef.current = node;
+
+      if (typeof ref === 'function') {
+        ref(node);
+      } else if (ref && typeof ref === 'object' && 'current' in ref) {
+        const mutableRef = ref as React.MutableRefObject<HTMLDivElement | null>;
+        mutableRef.current = node;
+      }
+    },
+    [ref]
+  );
+
+  return (
+    <SegmentedControlContext.Provider value={contextValue}>
+      <div
+        ref={setRefs}
+        role='radiogroup'
+        aria-label={ariaLabel}
+        tabIndex={0}
+        className={clsx(
+          'fw-segmented-control',
+          'flex items-center width-[fit-content] relative',
+          CONTAINER_PADDING_BY_SIZE[size],
+          GAP_BY_SIZE[size],
+          CONTAINER_RADIUS_BY_SIZE_AND_CIRCULAR[size][String(isCircular)],
+          fillBehaviour === 'Fill' && 'width-full',
+          fillStyle === 'Filled' && 'bg-shift-200',
+          fillStyle === 'Stroke' && 'bg-none stroke-standard stroke-emphasis',
+          fillStyle === 'Utility' && 'bg-none stroke-none',
+          className
+        )}
+        onKeyDown={handleKeyDown}>
+        <div
+          className={clsx(
+            'fw-segmented-control-indicator',
+            'absolute bg-shift-300 transition-all',
+            HEIGHT_BY_SIZE[size],
+            isCircular ? RADIUS_CIRCULAR_BY_SIZE[size] : RADIUS_NON_CIRCULAR_BY_SIZE[size]
+          )}
+          style={{
+            width: `${indicatorStyle.width}px`,
+            left: `${indicatorStyle.left}px`,
+            height: `${indicatorStyle.height}px`,
+            top: `${indicatorStyle.top}px`,
+            borderRadius: indicatorStyle.borderRadius || undefined,
+            transform: 'none',
+            opacity: indicatorStyle.opacity
+          }}
+          aria-hidden='true'
+        />
+
+        {items.map(item => {
+          const isSelected = item.value === value;
+          const itemDisabled = isDisabled || item.isDisabled;
+
+          if (variant === 'Icon') {
+            const iconItem = item as TSegmentedControlIconItem;
+            return (
+              <SegmentItem
+                key={item.value}
+                isSelected={isSelected}
+                isDisabled={itemDisabled ?? false}
+                onClick={() => !itemDisabled && onValueChange(item.value)}
+                aria-label={iconItem['aria-label']}>
+                <Icon name={iconItem.icon} size={ICON_SIZE_BY_SIZE[size]} />
+              </SegmentItem>
+            );
+          }
+
+          const textItem = item as TSegmentedControlTextItem;
+          return (
+            <SegmentItem
+              key={item.value}
+              isSelected={isSelected}
+              isDisabled={itemDisabled ?? false}
+              onClick={() => !itemDisabled && onValueChange(item.value)}>
+              <span className='padding-y-xsmall text-truncate-end text-no-wrap'>
+                {textItem.label}
+              </span>
+            </SegmentItem>
+          );
+        })}
+      </div>
+    </SegmentedControlContext.Provider>
+  );
+};
+
+export const SegmentedControl = forwardRef(
+  SegmentedControlComponent
+) as TForwardRefComponent<TSegmentedControlProps>;
+
+SegmentedControl.displayName = 'SegmentedControl';

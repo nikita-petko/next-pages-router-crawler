@@ -66,18 +66,6 @@ export function getEventBasePath(target: TBuildTarget, environment: TTargetEnvir
   return `https://ecsv2.${robloxSiteDomain}`;
 }
 
-export const getAdsPath = (environment: TRobloxEnvironment): string => {
-  if (environment === 'production') {
-    return 'https://advertise.roblox.com/';
-  }
-
-  let env = environment;
-  if (environment === 'sitetest2' || environment === 'development') {
-    env = 'sitetest1';
-  }
-  return `https://advertise.${env}.robloxlabs.com/`;
-};
-
 export const getCreatorHubBasePathV2 = (
   target: TBuildTarget,
   environment: TRobloxEnvironment,

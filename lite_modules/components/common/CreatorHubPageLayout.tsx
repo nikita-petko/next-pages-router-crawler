@@ -2,6 +2,7 @@ import { CreatorHubLayout } from '@rbx/creator-hub-navigation';
 import { FC, PropsWithChildren, ReactNode, useCallback } from 'react';
 
 import NavigationRail from '@components/navigation/NavigationRail';
+import WorkspaceSelectorCue from '@components/navigation/WorkspaceSelectorCue';
 import { TranslationNamespace } from '@constants/localization';
 import { useLogin } from '@hooks/useLogin';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -47,6 +48,7 @@ const Layout: FC<PropsWithChildren<{ slots: Slots }>> = ({ children, slots }) =>
       <CreatorHubLayout.Header onLogout={login}>{header}</CreatorHubLayout.Header>
       <CreatorHubLayout.Rail openStudio={openStudio}>{rail}</CreatorHubLayout.Rail>
       <CreatorHubLayout.PageContent>{children}</CreatorHubLayout.PageContent>
+      <WorkspaceSelectorCue />
     </CreatorHubLayout>
   );
 };

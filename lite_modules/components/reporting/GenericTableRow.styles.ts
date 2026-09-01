@@ -61,6 +61,18 @@ const useGenericTableRowStyles = makeStyles<void, 'actionMenuButton'>()((theme, 
 
   dateModifiedRow: rowPadding,
 
+  earningsUsdContainer: {
+    alignItems: 'flex-end',
+    display: 'flex',
+    flexDirection: 'column',
+    lineHeight: 1.2,
+  },
+
+  earningsUsdSubtext: {
+    color: theme.palette.content.muted,
+    fontSize: '0.75rem',
+  },
+
   fullRow: {
     '&:hover': {
       [`& .${classes.actionMenuButton}`]: {

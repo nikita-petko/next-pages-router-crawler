@@ -27,7 +27,14 @@ export const enum AdTableColumnId {
   STATUS_TEXT = 'status_text',
 }
 
-const getSharedHeadCells = (): (SortableHeadCell | UnsortableHeadCell)[] => [
+// The earnings column doubles as "Robux Earnings" (Robux-only, the historical
+// default for every caller) and as "Earnings" for callers whose cell also
+// renders a USD subtext beneath the Robux value. The label + tooltip swap is
+// gated on the same rollout signal (isCampaignRoasEnabled) as the USD fetch
+// itself so non-cohort users keep the old "Robux Earnings" header.
+const getSharedHeadCells = ({
+  showCombinedEarningsLabel = false,
+}: { showCombinedEarningsLabel?: boolean } = {}): (SortableHeadCell | UnsortableHeadCell)[] => [
   {
     align: 'end',
     classNameKey: HeadCellName.SharedWithPaymentUnits,
@@ -96,10 +103,12 @@ const getSharedHeadCells = (): (SortableHeadCell | UnsortableHeadCell)[] => [
     align: 'end',
     classNameKey: HeadCellName.SharedRobuxRevenue,
     disabled: false,
-    label: 'Label.RobuxEarnings',
+    label: showCombinedEarningsLabel ? 'Label.Earnings' : 'Label.RobuxEarnings',
     renderTooltip: true,
     sortKey: 'total_robux_revenue_30d',
-    tooltipText: 'Tooltip.RobuxEarningsDescription',
+    tooltipText: showCombinedEarningsLabel
+      ? 'Tooltip.EarningsDescription'
+      : 'Tooltip.RobuxEarningsDescription',
   },
 ];
 
@@ -122,9 +131,14 @@ interface CampaignTableHeadCellOptions {
   // When true, append the ROAS column. Gated by AMA's enable_campaign_roas
   // dynamic config flag surfaced through /metadata as isCampaignRoasEnabled.
   includeRoas?: boolean;
-  // When false, the ROAS column is rendered but its header is not sortable.
+  // When false, the ROAS column renders but its header is not sortable.
   // Defaults to true.
   roasSortable?: boolean;
+  // When true, the shared earnings column header switches from "Robux Earnings"
+  // to "Earnings" (matches the USD subtext rendered in the cell for the same
+  // cohort). Kept independent of includeRoas so the two rollouts could be
+  // decoupled if the earnings surface ever ships to a different cohort.
+  showCombinedEarningsLabel?: boolean;
   showCreatorColumn?: boolean;
 }
 
@@ -169,7 +183,9 @@ export const getCampaignTableHeadCells = (
       label: 'Label.CampaignType',
       sortKey: 'objective',
     },
-    ...getSharedHeadCells(),
+    ...getSharedHeadCells({
+      showCombinedEarningsLabel: options.showCombinedEarningsLabel,
+    }),
   ];
   if (options.includeRoas) {
     cells.push(options.roasSortable === false ? unsortableRoasHeadCell : sortableRoasHeadCell);

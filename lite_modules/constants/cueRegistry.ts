@@ -11,4 +11,12 @@ export const CUE_REGISTRY = {
     emitAnalyticsOn: [CueLifecycle.Shown, CueLifecycle.Closed],
     persistSeenOn: [CueLifecycle.Closed],
   },
+  [CUE_MODAL_IDS.WORKSPACE_SELECTOR_CUE]: {
+    analyticsDefaults: {
+      cueKind: 'callout',
+      surface: 'creator-hub-workspace-selector',
+    },
+    emitAnalyticsOn: [CueLifecycle.Shown, CueLifecycle.Closed],
+    persistSeenOn: [CueLifecycle.Closed],
+  },
 } as const satisfies Record<CueModalId, CueConfig>;

@@ -12,14 +12,12 @@ import CenteredCircularProgress from '@components/common/CenteredCircularProgres
 import { openAdBlockerDialog } from '@components/common/dialog/adBlockerDialog';
 import { openAgeRestrictionDialog } from '@components/common/dialog/ageRestrictionDialog';
 import { openErrorDialog } from '@components/common/dialog/errorDialog';
-import GenericNoDataPage from '@components/common/GenericNoDataPage';
+import GroupPermissionDeniedPage from '@components/common/GroupPermissionDeniedPage';
 import ImpersonationBanner from '@components/common/ImpersonationBanner';
 import ForecastEstimatorDrawer from '@components/forecast/ForecastEstimatorDrawer';
-import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
 import useGroupWorkspacePersonalAccountSetup from '@hooks/account/useGroupWorkspacePersonalAccountSetup';
 import useCurrentWorkspaceMetadata from '@hooks/useCurrentWorkspaceMetadata';
-import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { AppStoreType, useAppStore } from '@stores/appStoreProvider';
 import { StringToAlertToastLevel } from '@utils/alertToast';
 import { CaptureException } from '@utils/error';
@@ -44,7 +42,6 @@ const AdsManagerPageBaseLayout = memo(
     isLoading = true,
   }: AdsManagerPageBaseLayoutInputProps) => {
     const router = useRouter();
-    const { translate } = useNamespacedTranslation(TranslationNamespace.Misc);
     const { currentWorkspace } = useWorkspaces();
     const { isResolved: isWorkspaceMetadataResolved, metadata: workspaceMetadata } =
       useCurrentWorkspaceMetadata();
@@ -193,7 +190,8 @@ const AdsManagerPageBaseLayout = memo(
     ]);
 
     useGroupWorkspacePersonalAccountSetup(
-      currentPath === Routes.MANAGE && isWorkspaceMetadataResolved,
+      currentPath === Routes.MANAGE,
+      isWorkspaceMetadataResolved,
     );
 
     const {
@@ -213,15 +211,7 @@ const AdsManagerPageBaseLayout = memo(
       [statusBannerMessageLevel, statusBannerMessage, systemWideAlertToast],
     );
 
-    const pageContent = groupPermissionDenied ? (
-      <GenericNoDataPage
-        iconName='icon-filled-lock-closed'
-        subtitle={translate('Description.GroupAdsManagerPermissionDenied')}
-        title={translate('Heading.PermissionDenied')}
-      />
-    ) : (
-      children
-    );
+    const pageContent = groupPermissionDenied ? <GroupPermissionDeniedPage /> : children;
     return (
       <div className={creatorHubLayoutPageContent}>
         {isForecastEstimatorEnabled ? <ForecastEstimatorDrawer /> : null}

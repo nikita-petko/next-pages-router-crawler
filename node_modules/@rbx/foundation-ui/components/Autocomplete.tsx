@@ -1,0 +1,1174 @@
+import clsx from 'clsx';
+import React, {
+  createContext,
+  forwardRef,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react';
+import * as PopoverPrimitive from '@radix-ui/react-popover';
+import type {
+  TTailwindGapXClass,
+  TTailwindGapYClass,
+  TTailwindHeightClass,
+  TTailwindIconClass,
+  TTailwindMinHeightClass,
+  TTailwindPaddingClass,
+  TTailwindPaddingXClass,
+  TTailwindPaddingYClass,
+  TTailwindRadiusClass,
+  TTailwindSizeClass,
+  TTailwindTextBodyClass,
+  TTailwindTextTitleClass
+} from '@rbx/foundation-tailwind/classes';
+import useId from '../utils/useId';
+import { Chip, type TChipSize } from './Chip';
+import { Icon } from './Icon';
+import { disabledOpacity } from '../utils/styles';
+import { TForwardRefComponent } from './types/TForwardRefComponent';
+import {
+  INPUT_BACKGROUND_BY_VARIANT,
+  INPUT_STROKE_BY_VARIANT,
+  type TInputVariant
+} from './internal/input-variants';
+import './Autocomplete.css';
+import './internal/Common.css';
+
+export { INPUT_VARIANTS as autocompleteVariants } from './internal/input-variants';
+export type TAutocompleteVariant = TInputVariant;
+
+export const autocompleteSizes = ['XSmall', 'Small', 'Medium', 'Large'] as const;
+export type TAutocompleteSize = (typeof autocompleteSizes)[number];
+
+export const autocompleteMultiSelectLayouts = ['None', 'Expand'] as const;
+export type TAutocompleteMultiSelectLayout = (typeof autocompleteMultiSelectLayouts)[number];
+
+export type TAutocompleteValue = string;
+
+/**
+ * Context exposed to children (e.g. `AutocompleteOption`).
+ */
+export type TAutocompleteContext = {
+  size: TAutocompleteSize;
+  /** Whether the autocomplete allows selecting more than one option. */
+  multiple: boolean;
+  /** Currently selected values. Always an array; single-select yields at most one entry. */
+  selectedValues: TAutocompleteValue[];
+  /** Current input text, used to emphasize matching text in option labels. */
+  inputValue: string;
+  highlightedValue: TAutocompleteValue | undefined;
+  /** Id of the combobox input, used to derive matching option ids for `aria-activedescendant`. */
+  inputId: string;
+  onSelect: (value: TAutocompleteValue) => void;
+  registerOptionLabel: (value: TAutocompleteValue, label: string) => void;
+  setHighlightedValue: (value: TAutocompleteValue | undefined) => void;
+};
+
+const AutocompleteContext = createContext<TAutocompleteContext | null>(null);
+
+const useAutocompleteContext = () => {
+  const ctx = useContext(AutocompleteContext);
+  if (!ctx) {
+    throw new Error('Autocomplete components must be used within an <Autocomplete />');
+  }
+  return ctx;
+};
+
+const CHEVRON_SIZE_CLASS_BY_SIZE: Record<TAutocompleteSize, TTailwindSizeClass> = {
+  XSmall: 'size-300',
+  Small: 'size-400',
+  Medium: 'size-500',
+  Large: 'size-600'
+};
+
+const PADDING_X_CLASS_BY_SIZE: Record<TAutocompleteSize, TTailwindPaddingXClass> = {
+  XSmall: 'padding-x-small',
+  Small: 'padding-x-medium',
+  Medium: 'padding-x-medium',
+  Large: 'padding-x-medium'
+};
+
+const GAP_X_CLASS_BY_SIZE: Record<TAutocompleteSize, TTailwindGapXClass> = {
+  XSmall: 'gap-x-xsmall',
+  Small: 'gap-x-small',
+  Medium: 'gap-x-small',
+  Large: 'gap-x-small'
+};
+
+const LABEL_CLASS_BY_SIZE: Record<TAutocompleteSize, TTailwindTextTitleClass> = {
+  XSmall: 'text-title-small',
+  Small: 'text-title-small',
+  Medium: 'text-title-medium',
+  Large: 'text-title-large'
+};
+
+const TEXT_CLASSES_BY_SIZE: Record<
+  TAutocompleteSize,
+  [TTailwindTextBodyClass, `placeholder:${TTailwindTextBodyClass}`]
+> = {
+  XSmall: ['text-body-small', 'placeholder:text-body-small'],
+  Small: ['text-body-small', 'placeholder:text-body-small'],
+  Medium: ['text-body-medium', 'placeholder:text-body-medium'],
+  Large: ['text-body-large', 'placeholder:text-body-large']
+};
+
+const HEIGHT_CLASS_BY_SIZE: Record<TAutocompleteSize, TTailwindHeightClass> = {
+  XSmall: 'height-600',
+  Small: 'height-800',
+  Medium: 'height-1000',
+  Large: 'height-1200'
+};
+
+const MIN_HEIGHT_CLASS_BY_SIZE: Record<TAutocompleteSize, TTailwindMinHeightClass> = {
+  XSmall: 'min-height-600',
+  Small: 'min-height-800',
+  Medium: 'min-height-1000',
+  Large: 'min-height-1200'
+};
+
+const EXPAND_PADDING_Y_CLASS_BY_SIZE: Record<TAutocompleteSize, TTailwindPaddingYClass> = {
+  XSmall: 'padding-y-none',
+  Small: 'padding-y-xsmall',
+  Medium: 'padding-y-small',
+  Large: 'padding-y-small'
+};
+
+const EXPAND_GAP_Y_CLASS_BY_SIZE: Record<TAutocompleteSize, TTailwindGapYClass> = {
+  XSmall: 'gap-y-xsmall',
+  Small: 'gap-y-small',
+  Medium: 'gap-y-small',
+  Large: 'gap-y-small'
+};
+
+const EXPAND_MAX_HEIGHT_CLASS_BY_SIZE: Record<TAutocompleteSize, string> = {
+  XSmall: 'max-height-[calc(var(--size-600)*3+var(--gap-xsmall)*2)]',
+  Small: 'max-height-[calc(var(--size-600)*3+var(--gap-small)*2)]',
+  Medium: 'max-height-[calc(var(--size-600)*3+var(--gap-small)*2)]',
+  Large: 'max-height-[calc(var(--size-800)*3+var(--gap-small)*2)]'
+};
+
+const CHIP_SIZE_BY_SIZE: Record<TAutocompleteSize, TChipSize> = {
+  XSmall: 'Small',
+  Small: 'Small',
+  Medium: 'Small',
+  Large: 'Medium'
+};
+
+const RADIUS_CLASS_BY_SIZE: Record<TAutocompleteSize, TTailwindRadiusClass> = {
+  XSmall: 'radius-small',
+  Small: 'radius-medium',
+  Medium: 'radius-medium',
+  Large: 'radius-medium'
+};
+
+const SIDE_OFFSET_BY_SIZE: Record<TAutocompleteSize, number> = {
+  XSmall: 6,
+  Small: 8,
+  Medium: 8,
+  Large: 8
+};
+
+const POPOVER_RADIUS_BY_SIZE: Record<TAutocompleteSize, TTailwindRadiusClass> = {
+  XSmall: 'radius-medium',
+  Small: 'radius-large',
+  Medium: 'radius-large',
+  Large: 'radius-large'
+};
+
+const POPOVER_PADDING_BY_SIZE: Record<TAutocompleteSize, TTailwindPaddingClass> = {
+  XSmall: 'padding-xsmall',
+  Small: 'padding-small',
+  Medium: 'padding-small',
+  Large: 'padding-small'
+};
+
+type TLeadingIconProps = {
+  /**
+   * Name of a built-in icon to render as the leading icon. Mutually exclusive with
+   * `leadingIconNode`; `leadingIconName` takes precedence if both are provided.
+   */
+  leadingIconName?: TTailwindIconClass;
+  /**
+   * Custom node rendered as the leading accessory. Ignored when `leadingIconName`
+   * is provided.
+   */
+  leadingIconNode?: React.ReactNode;
+};
+
+type TAutocompleteFoundationProps = {
+  /** Size of the autocomplete. Defaults to `Large`. */
+  size?: TAutocompleteSize;
+
+  /** Visual variant. Defaults to `Standard`. */
+  variant?: TAutocompleteVariant;
+
+  /** Optional label rendered above the input. */
+  label?: string;
+
+  /** Marks the label with a required asterisk. */
+  isRequired?: boolean;
+
+  /** Disables interaction with the autocomplete. */
+  isDisabled?: boolean;
+
+  /** Forces the error style and `aria-invalid`. */
+  hasError?: boolean;
+
+  /**
+   * Error message to display below the input. When provided, the input is put in the error state.
+   */
+  error?: string;
+
+  /** Helper text to display below the input. */
+  helperText?: string;
+
+  /** Placeholder text shown when the input is empty. */
+  placeholder?: string;
+
+  /**
+   * Layout strategy for selected chips in multi-select mode. `None` keeps the field at its
+   * configured size with a horizontally scrollable value area. `Expand` grows horizontally
+   * up to the containing block, then wraps vertically up to three rows. Defaults to `None`.
+   */
+  multiSelectLayout?: TAutocompleteMultiSelectLayout;
+
+  /** Controlled text input value. */
+  inputValue?: string;
+
+  /** Uncontrolled default input value. */
+  defaultInputValue?: string;
+
+  /** Called whenever the input value changes. */
+  onInputValueChange?: (value: string) => void;
+
+  /** Controlled open state of the suggestions menu. */
+  open?: boolean;
+
+  /** Uncontrolled default open state. */
+  defaultOpen?: boolean;
+
+  /** Called when the open state of the suggestions menu changes. */
+  onOpenChange?: (open: boolean) => void;
+
+  /** Accessible label for the listbox. Defaults to `label` when provided, otherwise "Suggestions". */
+  listboxAriaLabel?: string;
+
+  /** Rendered inside the suggestions popover. Typically `AutocompleteOption` elements. */
+  children?: ReactNode;
+
+  /**
+   * Content rendered inside the suggestions popover when no children or no results are present.
+   * Defaults to a simple "No results" string.
+   */
+  emptyState?: ReactNode;
+
+  className?: string;
+} & TLeadingIconProps;
+
+/**
+ * Selection props for single-select mode (the default). `value` and
+ * `defaultValue` are a single value and `onValueChange` receives that value
+ * (or `undefined` when cleared).
+ */
+type TAutocompleteSingleSelectionProps = {
+  /**
+   * Enables multi-select. When omitted or `false`, the autocomplete behaves as a
+   * single-select and `value`/`defaultValue`/`onValueChange` operate on one value.
+   */
+  multiple?: false;
+
+  /** Controlled currently selected value. */
+  value?: TAutocompleteValue;
+
+  /** Uncontrolled default selected value. */
+  defaultValue?: TAutocompleteValue;
+
+  /** Called when a selection is made (including when cleared to `undefined`). */
+  onValueChange?: (value: TAutocompleteValue | undefined) => void;
+};
+
+/**
+ * Selection props for multi-select mode. `value` and `defaultValue` are arrays
+ * of the selected values and `onValueChange` receives the full next array.
+ * Selecting an option toggles its membership and keeps the menu open.
+ */
+type TAutocompleteMultiSelectionProps = {
+  /** Enables multi-select. */
+  multiple: true;
+
+  /** Controlled list of currently selected values. */
+  value?: TAutocompleteValue[];
+
+  /** Uncontrolled default list of selected values. */
+  defaultValue?: TAutocompleteValue[];
+
+  /** Called whenever the set of selected values changes (with the full next array). */
+  onValueChange?: (value: TAutocompleteValue[]) => void;
+};
+
+export type TAutocompleteSelectionProps =
+  | TAutocompleteSingleSelectionProps
+  | TAutocompleteMultiSelectionProps;
+
+export type TAutocompleteProps = Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  keyof TAutocompleteFoundationProps | 'disabled' | 'size' | 'value' | 'defaultValue'
+> &
+  TAutocompleteFoundationProps &
+  TAutocompleteSelectionProps;
+
+const DEFAULT_SIZE: TAutocompleteSize = 'Large';
+
+export const Autocomplete = forwardRef<HTMLInputElement, TAutocompleteProps>(
+  (
+    {
+      size,
+      variant = 'Standard',
+      label,
+      isRequired,
+      isDisabled,
+      hasError,
+      error,
+      helperText,
+      placeholder,
+      multiple = false,
+      multiSelectLayout = 'None',
+      value: valueProp,
+      defaultValue,
+      onValueChange,
+      inputValue: inputValueProp,
+      defaultInputValue,
+      onInputValueChange,
+      open: openProp,
+      defaultOpen,
+      onOpenChange,
+      leadingIconName,
+      leadingIconNode,
+      listboxAriaLabel,
+      children,
+      emptyState,
+      className,
+      id,
+      onFocus,
+      onBlur,
+      onKeyDown,
+      onChange: onChangeProp,
+      ...inputProps
+    },
+    ref
+  ) => {
+    const autoId = useId();
+    const inputId = id || autoId;
+    const listboxId = `${inputId}-listbox`;
+    const descriptionId = `${inputId}-description`;
+    const resolvedSize = size ?? DEFAULT_SIZE;
+    const anchorRef = useRef<HTMLDivElement>(null);
+    const valueContainerRef = useRef<HTMLDivElement>(null);
+    const chipRefs = useRef<Map<TAutocompleteValue, HTMLButtonElement>>(new Map());
+    const removingValuesRef = useRef<Set<TAutocompleteValue>>(new Set());
+    const collapsedWidthRef = useRef<number | undefined>(undefined);
+    const emptyExpandWidthRef = useRef<number | undefined>(undefined);
+    const [hasFocusWithin, setHasFocusWithin] = useState(false);
+    const [hasValueOverflow, setHasValueOverflow] = useState(false);
+
+    const isError = hasError || Boolean(error);
+    const hintText = error || helperText;
+    const isExpandLayout = multiple && multiSelectLayout === 'Expand';
+
+    const isValueControlled = valueProp !== undefined;
+    const [uncontrolledValue, setUncontrolledValue] = useState<
+      TAutocompleteValue | TAutocompleteValue[] | undefined
+    >(defaultValue);
+    const rawValue = isValueControlled ? valueProp : uncontrolledValue;
+
+    // Normalize the selected value(s) into an array so option children can treat
+    // single- and multi-select uniformly. Single-select yields at most one entry.
+    const selectedValues = useMemo<TAutocompleteValue[]>(() => {
+      if (multiple) {
+        return Array.isArray(rawValue) ? rawValue : [];
+      }
+      return rawValue == null ? [] : [rawValue as TAutocompleteValue];
+    }, [multiple, rawValue]);
+
+    const [optionLabels, setOptionLabels] = useState<ReadonlyMap<TAutocompleteValue, string>>(
+      () => new Map()
+    );
+    const registerOptionLabel = useCallback(
+      (optionValue: TAutocompleteValue, optionLabel: string) => {
+        setOptionLabels(currentLabels => {
+          if (currentLabels.get(optionValue) === optionLabel) {
+            return currentLabels;
+          }
+          const nextLabels = new Map(currentLabels);
+          nextLabels.set(optionValue, optionLabel);
+          return nextLabels;
+        });
+      },
+      []
+    );
+
+    useEffect(() => {
+      const registerLabels = (nodes: ReactNode) => {
+        React.Children.forEach(nodes, child => {
+          if (!React.isValidElement(child)) return;
+          const childType = child.type as { displayName?: string };
+          if (childType.displayName === 'AutocompleteOption') {
+            const option = child.props as TAutocompleteOptionProps;
+            registerOptionLabel(option.value, option.title);
+          } else if (child.type === React.Fragment) {
+            registerLabels((child.props as { children?: ReactNode }).children);
+          }
+        });
+      };
+      registerLabels(children);
+    }, [children, registerOptionLabel]);
+
+    const isInputControlled = inputValueProp !== undefined;
+    const [uncontrolledInput, setUncontrolledInput] = useState<string>(defaultInputValue ?? '');
+    const inputValue = isInputControlled ? inputValueProp : uncontrolledInput;
+    const selectedValuesKey = selectedValues.join('\u0000');
+    const showCollapsedSummary =
+      multiple && !hasFocusWithin && hasValueOverflow && selectedValues.length > 0;
+
+    useEffect(() => {
+      if (!isExpandLayout || selectedValues.length > 0 || !anchorRef.current) return undefined;
+      const anchor = anchorRef.current;
+      const updateEmptyWidth = () => {
+        if (anchor.clientWidth > 0) {
+          emptyExpandWidthRef.current = anchor.clientWidth;
+        }
+      };
+      updateEmptyWidth();
+      if (typeof ResizeObserver === 'undefined') return undefined;
+      const resizeObserver = new ResizeObserver(updateEmptyWidth);
+      resizeObserver.observe(anchor);
+      return () => resizeObserver.disconnect();
+    }, [isExpandLayout, selectedValues.length]);
+
+    useEffect(() => {
+      setHasValueOverflow(false);
+    }, [selectedValuesKey]);
+
+    useEffect(() => {
+      if (!multiple || showCollapsedSummary || !valueContainerRef.current) return;
+      if (isExpandLayout) {
+        valueContainerRef.current.scrollTop = valueContainerRef.current.scrollHeight;
+      } else {
+        valueContainerRef.current.scrollLeft = valueContainerRef.current.scrollWidth;
+      }
+    }, [multiple, isExpandLayout, showCollapsedSummary, selectedValues, optionLabels, inputValue]);
+
+    useEffect(() => {
+      if (!multiple || showCollapsedSummary || !valueContainerRef.current) return undefined;
+      const valueContainer = valueContainerRef.current;
+      const updateOverflow = () => {
+        setHasValueOverflow(
+          valueContainer.scrollWidth > valueContainer.clientWidth ||
+            valueContainer.scrollHeight > valueContainer.clientHeight
+        );
+      };
+      updateOverflow();
+      if (typeof ResizeObserver === 'undefined') return undefined;
+      const resizeObserver = new ResizeObserver(updateOverflow);
+      resizeObserver.observe(valueContainer);
+      return () => resizeObserver.disconnect();
+    }, [multiple, showCollapsedSummary, isExpandLayout, selectedValues, optionLabels, inputValue]);
+
+    useEffect(() => {
+      if (!showCollapsedSummary || !anchorRef.current || typeof ResizeObserver === 'undefined') {
+        return undefined;
+      }
+      const anchor = anchorRef.current;
+      collapsedWidthRef.current = anchor.clientWidth;
+      const resizeObserver = new ResizeObserver(() => {
+        if (anchor.clientWidth !== collapsedWidthRef.current) {
+          collapsedWidthRef.current = anchor.clientWidth;
+          setHasValueOverflow(false);
+        }
+      });
+      resizeObserver.observe(anchor);
+      return () => resizeObserver.disconnect();
+    }, [showCollapsedSummary]);
+
+    const isOpenControlled = openProp !== undefined;
+    const [uncontrolledOpen, setUncontrolledOpen] = useState<boolean>(defaultOpen ?? false);
+    const open = isOpenControlled ? openProp : uncontrolledOpen;
+
+    const setOpen = useCallback(
+      (next: boolean) => {
+        if (!isOpenControlled) {
+          setUncontrolledOpen(next);
+        }
+        onOpenChange?.(next);
+      },
+      [isOpenControlled, onOpenChange]
+    );
+
+    const setInputValue = useCallback(
+      (next: string) => {
+        if (!isInputControlled) {
+          setUncontrolledInput(next);
+        }
+        onInputValueChange?.(next);
+      },
+      [isInputControlled, onInputValueChange]
+    );
+
+    const commitValue = useCallback(
+      (next: TAutocompleteValue | TAutocompleteValue[] | undefined) => {
+        if (!isValueControlled) {
+          setUncontrolledValue(next);
+        }
+        // `onValueChange` is typed per selection mode via the props union; the
+        // caller only ever receives the shape that matches its `multiple` value.
+        (onValueChange as ((value: typeof next) => void) | undefined)?.(next);
+      },
+      [isValueControlled, onValueChange]
+    );
+
+    const [highlightedValue, setHighlightedValue] = useState<TAutocompleteValue | undefined>();
+
+    // Enabled option values in visual (DOM) order. Reading from the DOM on demand
+    // keeps keyboard navigation aligned with what the user sees as options mount and
+    // unmount while filtering, and lets us ignore a highlight that has been filtered out.
+    const getEnabledOptionValues = useCallback((): TAutocompleteValue[] => {
+      const listbox = typeof document === 'undefined' ? null : document.getElementById(listboxId);
+      if (!listbox) return [];
+      return Array.from(listbox.querySelectorAll<HTMLElement>('[role="option"]'))
+        .filter(el => el.getAttribute('aria-disabled') !== 'true')
+        .map(el => el.dataset.value)
+        .filter((v): v is TAutocompleteValue => v != null);
+    }, [listboxId]);
+
+    // Reset highlight when closing.
+    useEffect(() => {
+      if (!open) {
+        setHighlightedValue(undefined);
+      }
+    }, [open]);
+
+    const handleRemoveSelectedValue = useCallback(
+      (selectedValue: TAutocompleteValue) => {
+        if (!multiple || removingValuesRef.current.has(selectedValue)) return;
+        const commitRemoval = () => {
+          removingValuesRef.current.delete(selectedValue);
+          commitValue(selectedValues.filter(currentValue => currentValue !== selectedValue));
+        };
+        const chip = chipRefs.current.get(selectedValue);
+        const prefersReducedMotion =
+          typeof window !== 'undefined' &&
+          typeof window.matchMedia === 'function' &&
+          window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (!chip || typeof chip.animate !== 'function' || prefersReducedMotion) {
+          commitRemoval();
+          return;
+        }
+
+        removingValuesRef.current.add(selectedValue);
+        const animation = chip.animate(
+          [
+            { opacity: 1, transform: 'scale(1)' },
+            { opacity: 0, transform: 'scale(0.96)' }
+          ],
+          { duration: 100, easing: 'ease-in' }
+        );
+        animation.addEventListener('finish', commitRemoval, { once: true });
+        animation.addEventListener(
+          'cancel',
+          () => removingValuesRef.current.delete(selectedValue),
+          { once: true }
+        );
+      },
+      [multiple, selectedValues, commitValue]
+    );
+
+    const handleSelect = useCallback(
+      (nextValue: TAutocompleteValue) => {
+        if (multiple) {
+          // Toggle membership and keep the menu open so the user can pick more.
+          // Leave the input text untouched so the current filter is preserved.
+          const isAlreadySelected = selectedValues.includes(nextValue);
+          if (isAlreadySelected) {
+            handleRemoveSelectedValue(nextValue);
+          } else {
+            commitValue([...selectedValues, nextValue]);
+          }
+          return;
+        }
+        // Single-select: set a fallback input value to the selected value first,
+        // then notify the consumer via `onValueChange` so they can override the
+        // displayed label (e.g. via `setInputValue(option.title)`) after the fact.
+        setInputValue(nextValue);
+        setOpen(false);
+        commitValue(nextValue);
+      },
+      [multiple, selectedValues, handleRemoveSelectedValue, commitValue, setOpen, setInputValue]
+    );
+
+    // Radix dismisses the popover on any outside interaction. Keep it open when the
+    // interaction targets our own anchor (input or chevron) so those toggle the
+    // popover instead of triggering a close-then-reopen.
+    const keepOpenOnAnchorInteraction = useCallback(
+      (event: { target: EventTarget | null; preventDefault: () => void }) => {
+        const target = event.target as Node | null;
+        if (target && anchorRef.current?.contains(target)) {
+          event.preventDefault();
+        }
+      },
+      []
+    );
+
+    const moveHighlight = useCallback(
+      (direction: 1 | -1) => {
+        const enabled = getEnabledOptionValues();
+        if (enabled.length === 0) return;
+        const currentIndex = enabled.findIndex(v => v === highlightedValue);
+        let nextIndex: number;
+        if (currentIndex === -1) {
+          nextIndex = direction === 1 ? 0 : enabled.length - 1;
+        } else {
+          nextIndex = (currentIndex + direction + enabled.length) % enabled.length;
+        }
+        setHighlightedValue(enabled[nextIndex]);
+      },
+      [highlightedValue, getEnabledOptionValues]
+    );
+
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+      onKeyDown?.(event);
+      if (event.defaultPrevented) return;
+
+      switch (event.key) {
+        case 'ArrowDown':
+          event.preventDefault();
+          if (!open) {
+            setOpen(true);
+            return;
+          }
+          moveHighlight(1);
+          break;
+        case 'ArrowUp':
+          event.preventDefault();
+          if (!open) {
+            setOpen(true);
+            return;
+          }
+          moveHighlight(-1);
+          break;
+        case 'Enter':
+          // Only select when the highlight still points at a visible, enabled option;
+          // it may have been filtered out since it was highlighted.
+          if (
+            open &&
+            highlightedValue !== undefined &&
+            getEnabledOptionValues().includes(highlightedValue)
+          ) {
+            event.preventDefault();
+            handleSelect(highlightedValue);
+          }
+          break;
+        case 'Escape':
+          if (open) {
+            event.preventDefault();
+            setOpen(false);
+          }
+          break;
+        case 'Tab':
+          if (open) {
+            setOpen(false);
+          }
+          break;
+        default:
+          break;
+      }
+    };
+
+    const contextValue = useMemo<TAutocompleteContext>(
+      () => ({
+        size: resolvedSize,
+        multiple,
+        selectedValues,
+        inputValue,
+        highlightedValue,
+        inputId,
+        onSelect: handleSelect,
+        registerOptionLabel,
+        setHighlightedValue
+      }),
+      [
+        resolvedSize,
+        multiple,
+        selectedValues,
+        inputValue,
+        highlightedValue,
+        inputId,
+        handleSelect,
+        registerOptionLabel
+      ]
+    );
+
+    const leadingIcon = leadingIconName ? (
+      <Icon
+        name={leadingIconName}
+        size={resolvedSize}
+        className='content-emphasis'
+        data-testid='autocomplete-leading-icon'
+      />
+    ) : (
+      leadingIconNode
+    );
+
+    const hasChildren = React.Children.count(children) > 0;
+    const popoverContent = hasChildren ? (
+      children
+    ) : (
+      <div className='padding-medium content-muted text-body-small'>
+        {emptyState ?? 'No results'}
+      </div>
+    );
+
+    const selectedLabels = selectedValues.map(
+      selectedValue => optionLabels.get(selectedValue) ?? selectedValue
+    );
+    const collapsedSummary = `${selectedLabels.slice(0, 2).join(', ')}${
+      selectedLabels.length > 2 ? ` +${selectedLabels.length - 2}` : ''
+    }`;
+    const isEmptyExpandInputOverlay =
+      isExpandLayout && selectedValues.length > 0 && inputValue.length === 0;
+    const emptyExpandMinWidth =
+      isExpandLayout && selectedValues.length > 0 && emptyExpandWidthRef.current
+        ? `min(${emptyExpandWidthRef.current}px, 100%)`
+        : undefined;
+
+    const selectedValueChips = multiple
+      ? selectedValues.map(selectedValue => {
+          const selectedLabel = optionLabels.get(selectedValue) ?? selectedValue;
+          return (
+            <Chip
+              key={selectedValue}
+              ref={(element: HTMLButtonElement | null) => {
+                if (element) {
+                  chipRefs.current.set(selectedValue, element);
+                } else {
+                  chipRefs.current.delete(selectedValue);
+                }
+              }}
+              text={selectedLabel}
+              size={CHIP_SIZE_BY_SIZE[resolvedSize]}
+              isChecked={false}
+              isDisabled={isDisabled}
+              trailingIconName='icon-filled-x'
+              aria-label={`Remove ${selectedLabel}`}
+              data-testid={`autocomplete-selected-value-${selectedValue}`}
+              className={clsx(
+                'foundation-web-autocomplete-chip',
+                showCollapsedSummary ? 'hidden' : 'shrink-0',
+                isEmptyExpandInputOverlay && 'relative [z-index:1]'
+              )}
+              onMouseDown={event => event.preventDefault()}
+              onCheckedChange={() => handleRemoveSelectedValue(selectedValue)}
+            />
+          );
+        })
+      : null;
+
+    const inputNode = (
+      <input
+        type='text'
+        role='combobox'
+        id={inputId}
+        ref={ref}
+        className={clsx(
+          (!multiple || !isExpandLayout || selectedValues.length === 0) && 'width-full',
+          'padding-none bg-none stroke-none outline-none content-emphasis placeholder:content-muted',
+          showCollapsedSummary || isEmptyExpandInputOverlay
+            ? 'absolute [inset:0] width-full [opacity:0]'
+            : [
+                multiple && isExpandLayout && selectedValues.length > 0
+                  ? 'width-[var(--size-1200)]'
+                  : multiple && 'grow-1 min-width-[var(--size-1200)]'
+              ],
+          TEXT_CLASSES_BY_SIZE[resolvedSize]
+        )}
+        style={{ appearance: 'none' }}
+        placeholder={multiple && selectedValues.length > 0 ? undefined : placeholder}
+        value={inputValue}
+        aria-autocomplete='list'
+        aria-expanded={open}
+        aria-controls={listboxId}
+        aria-activedescendant={
+          open && highlightedValue ? `${inputId}-option-${highlightedValue}` : undefined
+        }
+        aria-invalid={isError}
+        aria-describedby={hintText ? descriptionId : undefined}
+        aria-required={isRequired}
+        required={isRequired}
+        disabled={isDisabled}
+        autoComplete='off'
+        onChange={event => {
+          setInputValue(event.target.value);
+          // The option set changes as the user types, so drop any stale highlight.
+          setHighlightedValue(undefined);
+          if (!open) {
+            setOpen(true);
+          }
+          onChangeProp?.(event);
+        }}
+        onFocus={event => {
+          if (!open) {
+            setOpen(true);
+          }
+          onFocus?.(event);
+        }}
+        onBlur={onBlur}
+        onKeyDown={handleKeyDown}
+        {...inputProps}
+      />
+    );
+
+    return (
+      <AutocompleteContext.Provider value={contextValue}>
+        <div
+          className={clsx(
+            'flex flex-col',
+            !isExpandLayout && 'width-full',
+            'gap-small',
+            isExpandLayout && 'width-fit max-width-full',
+            isDisabled && disabledOpacity,
+            className
+          )}
+          style={{ minWidth: emptyExpandMinWidth }}>
+          {label && (
+            <label
+              htmlFor={inputId}
+              className={clsx(LABEL_CLASS_BY_SIZE[resolvedSize], 'content-emphasis')}>
+              {label}
+              {isRequired && (
+                <React.Fragment>
+                  {' '}
+                  <span className='content-default'>*</span>
+                </React.Fragment>
+              )}
+            </label>
+          )}
+          <PopoverPrimitive.Root
+            open={open && !isDisabled}
+            onOpenChange={next => {
+              if (isDisabled) return;
+              setOpen(next);
+            }}>
+            <PopoverPrimitive.Anchor asChild>
+              <div
+                ref={anchorRef}
+                data-testid='autocomplete-container'
+                onFocusCapture={() => setHasFocusWithin(true)}
+                onBlurCapture={event => {
+                  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                    setHasFocusWithin(false);
+                  }
+                }}
+                className={clsx(
+                  'foundation-web-input flex items-center width-full',
+                  INPUT_BACKGROUND_BY_VARIANT[variant],
+                  INPUT_STROKE_BY_VARIANT[variant],
+                  isExpandLayout
+                    ? [
+                        MIN_HEIGHT_CLASS_BY_SIZE[resolvedSize],
+                        EXPAND_PADDING_Y_CLASS_BY_SIZE[resolvedSize]
+                      ]
+                    : HEIGHT_CLASS_BY_SIZE[resolvedSize],
+                  RADIUS_CLASS_BY_SIZE[resolvedSize],
+                  PADDING_X_CLASS_BY_SIZE[resolvedSize],
+                  GAP_X_CLASS_BY_SIZE[resolvedSize],
+                  isError
+                    ? 'stroke-system-alert focus-within:stroke-system-alert'
+                    : 'stroke-contrast-alpha focus-within:stroke-system-emphasis'
+                )}>
+                {leadingIcon}
+                {multiple ? (
+                  <div
+                    ref={valueContainerRef}
+                    data-testid='autocomplete-value-container'
+                    className={clsx(
+                      'relative flex items-center grow-1 min-width-0',
+                      !showCollapsedSummary &&
+                        (isExpandLayout
+                          ? [
+                              '[flex-wrap:wrap] [overflow:auto] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+                              EXPAND_GAP_Y_CLASS_BY_SIZE[resolvedSize],
+                              EXPAND_MAX_HEIGHT_CLASS_BY_SIZE[resolvedSize]
+                            ]
+                          : '[overflow-x:auto] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'),
+                      GAP_X_CLASS_BY_SIZE[resolvedSize]
+                    )}>
+                    {showCollapsedSummary && (
+                      <span
+                        data-testid='autocomplete-collapsed-summary'
+                        className={clsx(
+                          'grow-1 min-width-0 text-no-wrap text-truncate-end content-emphasis',
+                          TEXT_CLASSES_BY_SIZE[resolvedSize][0]
+                        )}>
+                        {collapsedSummary}
+                      </span>
+                    )}
+                    {selectedValueChips}
+                    {inputNode}
+                  </div>
+                ) : (
+                  inputNode
+                )}
+                <PopoverPrimitive.Trigger asChild>
+                  <button
+                    type='button'
+                    tabIndex={-1}
+                    aria-hidden
+                    disabled={isDisabled}
+                    className={clsx(
+                      'flex items-center justify-center padding-none bg-none stroke-none cursor-pointer',
+                      multiple && 'shrink-0',
+                      CHEVRON_SIZE_CLASS_BY_SIZE[resolvedSize]
+                    )}
+                    onMouseDown={event => {
+                      event.preventDefault();
+                    }}>
+                    <span
+                      className={clsx(
+                        CHEVRON_SIZE_CLASS_BY_SIZE[resolvedSize],
+                        'icon content-default',
+                        open ? 'icon-regular-chevron-large-up' : 'icon-regular-chevron-large-down'
+                      )}
+                      aria-hidden
+                    />
+                  </button>
+                </PopoverPrimitive.Trigger>
+              </div>
+            </PopoverPrimitive.Anchor>
+            <PopoverPrimitive.Portal>
+              <PopoverPrimitive.Content
+                side='bottom'
+                align='start'
+                sideOffset={SIDE_OFFSET_BY_SIZE[resolvedSize]}
+                onOpenAutoFocus={event => event.preventDefault()}
+                onCloseAutoFocus={event => event.preventDefault()}
+                onPointerDownOutside={keepOpenOnAnchorInteraction}
+                onInteractOutside={keepOpenOnAnchorInteraction}
+                className={clsx(
+                  'foundation-web-portal-zindex foundation-web-menu bg-surface-100 stroke-standard stroke-default shadow-transient-high',
+                  POPOVER_RADIUS_BY_SIZE[resolvedSize],
+                  POPOVER_PADDING_BY_SIZE[resolvedSize]
+                )}
+                style={{
+                  width: 'var(--radix-popper-anchor-width)',
+                  maxHeight: 'var(--radix-popper-available-height)',
+                  overflowY: 'auto'
+                }}>
+                <div
+                  role='listbox'
+                  id={listboxId}
+                  aria-label={listboxAriaLabel ?? label ?? 'Suggestions'}
+                  aria-multiselectable={multiple || undefined}
+                  className='flex flex-col gap-y-xxsmall'>
+                  {popoverContent}
+                </div>
+              </PopoverPrimitive.Content>
+            </PopoverPrimitive.Portal>
+          </PopoverPrimitive.Root>
+          {hintText && (
+            <span
+              id={descriptionId}
+              className={clsx('foundation-web-autocomplete-helper text-caption-small', {
+                'content-system-alert': isError,
+                'content-default': !isError
+              })}>
+              {hintText}
+            </span>
+          )}
+        </div>
+      </AutocompleteContext.Provider>
+    );
+  }
+) as TForwardRefComponent<TAutocompleteProps>;
+
+Autocomplete.displayName = 'Autocomplete';
+
+// ========== AutocompleteOption ==========
+
+const OPTION_PADDING_X_CLASS_BY_SIZE: Record<TAutocompleteSize, TTailwindPaddingXClass> = {
+  XSmall: 'padding-x-medium',
+  Small: 'padding-x-medium',
+  Medium: 'padding-x-medium',
+  Large: 'padding-x-large'
+};
+
+const OPTION_TEXT_CLASS_BY_SIZE: Record<TAutocompleteSize, TTailwindTextBodyClass> = {
+  XSmall: 'text-body-small',
+  Small: 'text-body-small',
+  Medium: 'text-body-medium',
+  Large: 'text-body-large'
+};
+
+const OPTION_PADDING_Y_CLASS_BY_SIZE: Record<TAutocompleteSize, TTailwindPaddingYClass> = {
+  XSmall: 'padding-y-xsmall',
+  Small: 'padding-y-small',
+  Medium: 'padding-y-small',
+  Large: 'padding-y-medium'
+};
+
+const OPTION_GAP_CLASS_BY_SIZE: Record<TAutocompleteSize, TTailwindGapXClass> = {
+  XSmall: 'gap-x-medium',
+  Small: 'gap-x-medium',
+  Medium: 'gap-x-medium',
+  Large: 'gap-x-large'
+};
+
+const OPTION_RADIUS_CLASS_BY_SIZE: Record<TAutocompleteSize, TTailwindRadiusClass> = {
+  XSmall: 'radius-small',
+  Small: 'radius-medium',
+  Medium: 'radius-medium',
+  Large: 'radius-medium'
+};
+
+export type TAutocompleteOptionProps = {
+  /** The value associated with this option. */
+  value: TAutocompleteValue;
+  /** The label for this option. */
+  title: string;
+  /** Optional single-line description under the title. */
+  description?: string;
+  /** Optional leading accessory (e.g., an icon). */
+  leading?: ReactNode;
+  /** Optional trailing accessory (e.g., an icon). */
+  trailing?: ReactNode;
+  /** Disable this option. */
+  disabled?: boolean;
+  /** Extra classes for the option. */
+  className?: string;
+};
+
+export const AutocompleteOption = ({
+  value,
+  title,
+  description,
+  leading,
+  trailing,
+  disabled = false,
+  className
+}: TAutocompleteOptionProps) => {
+  const {
+    size,
+    multiple,
+    selectedValues,
+    inputValue,
+    highlightedValue,
+    inputId,
+    onSelect,
+    registerOptionLabel,
+    setHighlightedValue
+  } = useAutocompleteContext();
+
+  const isSelected = selectedValues.includes(value);
+  const isHighlighted = highlightedValue === value;
+  const queryMatchIndex = inputValue
+    ? title.toLocaleLowerCase().indexOf(inputValue.toLocaleLowerCase())
+    : -1;
+  const renderedTitle =
+    queryMatchIndex >= 0 ? (
+      <React.Fragment>
+        {title.slice(0, queryMatchIndex)}
+        <strong>{title.slice(queryMatchIndex, queryMatchIndex + inputValue.length)}</strong>
+        {title.slice(queryMatchIndex + inputValue.length)}
+      </React.Fragment>
+    ) : (
+      title
+    );
+
+  useEffect(() => {
+    if (multiple) {
+      registerOptionLabel(value, title);
+    }
+  }, [multiple, registerOptionLabel, value, title]);
+
+  // In multi-select, show a check on selected options by default so the current
+  // selection is visible without extra wiring. A consumer-provided `trailing`
+  // always wins.
+  const resolvedTrailing =
+    trailing ??
+    (multiple && isSelected ? (
+      <Icon
+        name='icon-filled-check'
+        size={size}
+        className='content-emphasis'
+        data-testid={`autocomplete-option-check-${value}`}
+      />
+    ) : undefined);
+
+  // Derive the id from the parent input's id so it matches the input's
+  // `aria-activedescendant` (`${inputId}-option-${highlightedValue}`).
+  const optionId = `${inputId}-option-${value}`;
+
+  return (
+    <div
+      role='option'
+      id={optionId}
+      data-value={value}
+      tabIndex={-1}
+      aria-selected={isSelected}
+      aria-disabled={disabled || undefined}
+      data-highlighted={isHighlighted || undefined}
+      data-testid={`autocomplete-option-${value}`}
+      onMouseEnter={() => {
+        if (!disabled) {
+          setHighlightedValue(value);
+        }
+      }}
+      onMouseDown={event => {
+        // Prevent focus stealing so the input stays focused while we close the menu.
+        event.preventDefault();
+      }}
+      onKeyDown={event => {
+        if (disabled) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onSelect(value);
+        }
+      }}
+      onClick={() => {
+        if (!disabled) {
+          onSelect(value);
+        }
+      }}
+      className={clsx(
+        'flex items-center width-full stroke-none bg-none text-align-x-left cursor-pointer',
+        'foundation-web-menu-item content-default text-truncate-split',
+        OPTION_TEXT_CLASS_BY_SIZE[size],
+        OPTION_PADDING_X_CLASS_BY_SIZE[size],
+        OPTION_PADDING_Y_CLASS_BY_SIZE[size],
+        OPTION_GAP_CLASS_BY_SIZE[size],
+        OPTION_RADIUS_CLASS_BY_SIZE[size],
+        isHighlighted && !disabled && 'bg-shift-100',
+        disabled && [disabledOpacity, 'pointer-events-none cursor-not-allowed'],
+        className
+      )}>
+      {leading}
+      <div className='grow-1 text-truncate-split flex flex-col'>
+        <span className='foundation-web-menu-item-title text-no-wrap text-truncate-split content-emphasis'>
+          {renderedTitle}
+        </span>
+        {description && (
+          <span className='foundation-web-menu-item-description content-muted text-truncate-split text-no-wrap'>
+            {description}
+          </span>
+        )}
+      </div>
+      {resolvedTrailing}
+    </div>
+  );
+};
+
+AutocompleteOption.displayName = 'AutocompleteOption';
+
+export default Autocomplete;

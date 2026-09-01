@@ -125,6 +125,9 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
   const visibleCampaignRoasState = useNewFlowStore(
     (state: NewFlowStoreType) => state.visibleCampaignRoasState,
   );
+  const visibleCampaignEarningsUsdState = useNewFlowStore(
+    (state: NewFlowStoreType) => state.visibleCampaignEarningsUsdState,
+  );
   const fetchVisibleCampaignReporting = useNewFlowStore(
     (state: NewFlowStoreType) => state.fetchVisibleCampaignReporting,
   );
@@ -147,6 +150,9 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
     // ROAS is loaded per-viewport, so we only expose sorting when CaaS also
     // page-scopes the other perf metrics; otherwise the header is not sortable.
     roasSortable: useCaaSReportingStats,
+    // Swap the earnings header from "Robux Earnings" → "Earnings" for the
+    // ROAS cohort, matching the USD subtext rendered in the shared cell.
+    showCombinedEarningsLabel: isRoasColumnVisible,
     showCreatorColumn,
   });
   const isLoading = campaignsState.isLoading || filteredIdsState.isLoading;
@@ -250,6 +256,7 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
       ? visibleCampaignStatsState.data?.[campaign.id]?.performance
       : campaign.performance;
     const roasEntry = visibleCampaignRoasState.data?.[campaign.id];
+    const earningsUsdEntry = visibleCampaignEarningsUsdState.data?.[campaign.id];
     const creatorProfile =
       campaign.creator_user_id === undefined
         ? undefined
@@ -271,9 +278,15 @@ const CampaignManagementTable = ({ showCreatorColumn = false }: CampaignManageme
       detailed_targeting_match_type: campaign.detailed_targeting_match_type,
       // Reporting stats || 0 to allow accurate number sorting
       display_spending_usd: performance?.display_spending_usd || 0,
+      earnings_usd: earningsUsdEntry,
       id: campaign.id,
       impression: performance?.impression || 0,
       is_auto_reload_ad_credit_enabled: campaign.is_auto_reload_ad_credit_enabled || false,
+      is_earnings_usd_loading:
+        isRoasColumnVisible &&
+        !visibleCampaignEarningsUsdState.isError &&
+        visibleCampaignEarningsUsdState.isLoading &&
+        earningsUsdEntry === undefined,
       is_off_platform_request: campaign.is_off_platform_request || false,
       is_reporting_enabled: campaign.is_reporting_enabled || false,
       is_roas_loading:

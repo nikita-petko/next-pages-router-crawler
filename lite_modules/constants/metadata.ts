@@ -45,7 +45,6 @@ export const appMetadataDefaults: GetAdsMetadataResponseType = {
   isAdIntegrationRevenueShareEstimateEnabled: false,
   isAdIntegrationsEnabled: false,
   isAge5To12TargetingEnabled: false,
-  isAttributionDateAggregationEnabled: false,
   isAudienceEstimateEnabled: false,
   isAuthMigrationEnabled: false,
   isAutoReloadAdCreditCueingEnabled: false,

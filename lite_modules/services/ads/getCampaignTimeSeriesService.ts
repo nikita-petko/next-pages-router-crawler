@@ -81,9 +81,6 @@ const queryMetric = async (
   );
 };
 
-/** Chart bucketing for the plays series: attribution day or raw conversion day. */
-type CampaignTimeSeriesAggregationType = 'attributionDate' | 'default';
-
 /**
  * Merge validated + estimated daily ROAS into a single series, preferring
  * validated where present. The ML DAG only writes estimates for the trailing
@@ -110,7 +107,6 @@ const mergeRoasPreferValidated = (
 };
 
 interface GetCampaignTimeSeriesRequest {
-  aggregationType: CampaignTimeSeriesAggregationType;
   campaignId: string;
   /** YYYY-MM-DD, required (with customStartDate) when timePeriod === CUSTOM. */
   customEndDate?: string;
@@ -127,7 +123,6 @@ interface GetCampaignTimeSeriesRequest {
 }
 
 export const getCampaignTimeSeries = async ({
-  aggregationType,
   campaignId,
   customEndDate,
   customStartDate,
@@ -163,16 +158,8 @@ export const getCampaignTimeSeries = async ({
     );
 
   // Plays is the baseline series; a failure rejects the whole call.
-  const useAttributionDate = aggregationType === 'attributionDate';
-  const playsPromise = fetchMetric(
-    getPlaysMetricForReportingView(reportingView),
-    'oneDay',
-    useAttributionDate,
-    useAttributionDate,
-  ).then((result) =>
-    aggregateQueryResultToDailyDataPoints(result, {
-      by: useAttributionDate ? 'attributionDate' : 'conversionDate',
-    }),
+  const playsPromise = fetchMetric(getPlaysMetricForReportingView(reportingView)).then((result) =>
+    aggregateQueryResultToDailyDataPoints(result),
   );
 
   const shouldQueryRoas =

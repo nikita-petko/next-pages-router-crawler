@@ -336,9 +336,60 @@ export const getAdAccountCaaSReportingStats = (
   );
 
 export interface CampaignRoas {
-  source: 'validated' | 'estimated';
-  value: number;
+  // 'none' is a sentinel written by the ROAS loader when no AQG source was
+  // queried for this batch (currently: an estimated batch whose date range
+  // sat entirely inside the AdsRoasEstimate maturation window). The cell
+  // renders a "pending" affordance for 'none' rather than an em-dash.
+  source: 'validated' | 'estimated' | 'none';
+  value?: number;
 }
+
+/**
+ * Issues a single Default-View AQG query for a scalar metric keyed by
+ * campaign_id and returns a Record<campaign_id, value>. Shared by the ROAS
+ * and earnings loaders; universe-scoped `resource` transparently swaps in
+ * the ByUniverse-suffixed metric name via getReportingMetricName.
+ */
+const runCampaignScalarMetricQuery = async (
+  context: Omit<BaseReportingQueryContext, 'entityType'> & {
+    resource: AnalyticsReportingResource;
+  },
+  metric: UniverseReportingMetric,
+  pollingOptions: RAQIClientOptions,
+): Promise<Record<string, number>> => {
+  if (
+    context.reportingView !== ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT ||
+    !context.entityIds?.length
+  ) {
+    return {};
+  }
+  const { endTime, startTime } = getFrontendReportingTimeSeriesRange(
+    context.requestTimestamp,
+    context.timePeriod,
+    context.customStartDate,
+    context.customEndDate,
+  );
+  const request = buildReportingAnalyticsQueryRequest({
+    endTime,
+    entityIds: context.entityIds,
+    entityType: 'campaign',
+    metric,
+    qualityPolicy: 'combined',
+    reportingView: context.reportingView,
+    resource: context.resource,
+    startTime,
+  });
+  const queryResult = await runAnalyticsQuery(request, pollingOptions, context.abortSignal);
+  const valueById = aggregateDirectMetricQueryResult(queryResult);
+  const result: Record<string, number> = {};
+  context.entityIds.forEach((id) => {
+    const value = valueById.get(id);
+    if (value !== undefined) {
+      result[id] = value;
+    }
+  });
+  return result;
+};
 
 /**
  * Fetch ROAS for a set of campaigns from analytics-query-gateway. Issues one
@@ -354,37 +405,25 @@ export const getCampaignRoas = async (
   },
   pollingOptions: RAQIClientOptions = ANALYTICS_POLLING_DEFAULTS,
 ): Promise<Record<string, CampaignRoas>> => {
-  if (
-    context.reportingView !== ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT ||
-    !context.entityIds?.length
-  ) {
-    return {};
-  }
-  const { endTime, startTime } = getFrontendReportingTimeSeriesRange(
-    context.requestTimestamp,
-    context.timePeriod,
-    context.customStartDate,
-    context.customEndDate,
-  );
   const metric: UniverseReportingMetric = context.source === 'validated' ? 'roas' : 'roasEstimate';
-  const request = buildReportingAnalyticsQueryRequest({
-    endTime,
-    entityIds: context.entityIds,
-    entityType: 'campaign',
-    metric,
-    qualityPolicy: 'combined',
-    reportingView: context.reportingView,
-    resource: context.resource,
-    startTime,
-  });
-  const queryResult = await runAnalyticsQuery(request, pollingOptions, context.abortSignal);
-  const valueById = aggregateDirectMetricQueryResult(queryResult);
+  const valueById = await runCampaignScalarMetricQuery(context, metric, pollingOptions);
   const roasById: Record<string, CampaignRoas> = {};
-  context.entityIds.forEach((id) => {
-    const value = valueById.get(id);
-    if (value !== undefined) {
-      roasById[id] = { source: context.source, value };
-    }
+  Object.entries(valueById).forEach(([id, value]) => {
+    roasById[id] = { source: context.source, value };
   });
   return roasById;
 };
+
+/**
+ * Fetch attributed USD earnings for a set of campaigns from analytics-query-gateway.
+ * Shares the ROAS numerator (standard + O18 attributed revenue in USD) but skips
+ * the spend division. Universe-scoped requests transparently swap in the
+ * ByUniverse-suffixed metric name.
+ */
+export const getCampaignEarningsUsd = (
+  context: Omit<BaseReportingQueryContext, 'entityType'> & {
+    resource: AnalyticsReportingResource;
+  },
+  pollingOptions: RAQIClientOptions = ANALYTICS_POLLING_DEFAULTS,
+): Promise<Record<string, number>> =>
+  runCampaignScalarMetricQuery(context, 'earningsUsd', pollingOptions);

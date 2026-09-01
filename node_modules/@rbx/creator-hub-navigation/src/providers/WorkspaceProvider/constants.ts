@@ -42,10 +42,10 @@ const HOME_PATH = '/';
 const ANALYTICS_HOME_PATH = '/dashboard/analytics';
 const TRANSACTIONS_PATH = '/dashboard/transactions';
 
-// The Transactions page supports group context only on its Virtual tab (`?tab=virtual`); the
-// other tabs are user-only and must still redirect on a context switch. Kept as a literal
-// (mirrors the app's TransactionTab.Virtual) to avoid an app→package dependency.
-const VIRTUAL_TRANSACTIONS_TAB = 'virtual';
+// The Transactions page supports group context on its Virtual and Audience Reach tabs; the
+// other tabs are user-only and must still redirect on a context switch. Kept as literals
+// (mirrors the app's TransactionTab.Virtual / AudienceReach) to avoid an app→package dependency.
+const GROUP_CONTEXT_TRANSACTIONS_TABS = new Set(['virtual', 'audienceReach']);
 
 // Group-specific paths
 const GROUP_PROFILE_PATH = '/dashboard/group/profile';
@@ -84,5 +84,9 @@ export const isAcceptedWorkspacePath = (
   if (workspaceSelectAcceptedPaths.has(pathname) || isGroupPath(pathname)) {
     return true;
   }
-  return pathname === TRANSACTIONS_PATH && tab === VIRTUAL_TRANSACTIONS_TAB;
+  return (
+    pathname === TRANSACTIONS_PATH &&
+    typeof tab === 'string' &&
+    GROUP_CONTEXT_TRANSACTIONS_TABS.has(tab)
+  );
 };

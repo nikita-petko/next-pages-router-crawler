@@ -71,24 +71,17 @@ const dailyTotalsToDataPoints = (totalsByDay: Map<number, number>): CampaignTime
     .map(([timestamp, total]) => [timestamp, total]);
 
 /**
- * Aggregate query result values into daily totals. `by` chooses the key:
- * - `attributionDate` (default): key by AttributionDateHour breakdown, so delayed
- *   conversions attach to their originating attribution day.
- * - `conversionDate`: key by dataPoint.time (Druid __time), ignoring any
- *   breakdown, so buckets reflect the day the conversion occurred.
+ * Aggregate query result values into daily totals keyed by AttributionDateHour
+ * so delayed conversions attach to their originating attribution day. Falls
+ * back to dataPoint.time when the breakdown is absent.
  */
 export const aggregateQueryResultToDailyDataPoints = (
   queryResult: QueryResult,
-  { by = 'attributionDate' }: { by?: 'attributionDate' | 'conversionDate' } = {},
 ): CampaignTimeSeriesDataPoints => {
   const totalsByDay = new Map<number, number>();
 
   (queryResult.values ?? []).forEach((series) => {
-    if (by === 'conversionDate') {
-      addDataPointsToDailyTotals(totalsByDay, series.dataPoints ?? []);
-    } else {
-      addSeriesToDailyTotals(totalsByDay, series);
-    }
+    addSeriesToDailyTotals(totalsByDay, series);
   });
 
   return dailyTotalsToDataPoints(totalsByDay);

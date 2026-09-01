@@ -1,0 +1,376 @@
+import clsx from 'clsx';
+import React, { useMemo, createContext, useContext, useRef, useState, useEffect } from 'react';
+import {
+  RadioGroup as RadixRadioGroup,
+  RadioGroupIndicator as RadixRadioGroupIndicator,
+  RadioGroupItem as RadixRadioGroupItem,
+  RadioGroupItemProps as RadixRadioGroupItemProps,
+  RadioGroupProps as RadixRadioGroupProps
+} from '@radix-ui/react-radio-group';
+import type {
+  TTailwindTextTitleClass,
+  TTailwindTextBodyClass,
+  TTailwindGapClass,
+  TTailwindSizeClass
+} from '@rbx/foundation-tailwind/classes';
+import { interactable, StateLayer } from './internal/StateLayer';
+import { LabelTooltip, TLabelTooltipConfig } from './internal/LabelTooltip';
+import useId from '../utils/useId';
+import { disabledOpacity } from '../utils/styles';
+import './internal/Common.css';
+
+export const radioGroupSizes = ['XSmall', 'Small', 'Medium'] as const;
+export type TRadioGroupSize = (typeof radioGroupSizes)[number];
+
+export const radioSizes = ['XSmall', 'Small', 'Medium', 'Large'] as const; // explicitly define for MCP usage
+export type TRadioSize = (typeof radioSizes)[number];
+
+export const radioPlacements = ['Start', 'End'] as const;
+export type TRadioPlacement = (typeof radioPlacements)[number];
+
+const DEFAULT_RADIO_SIZE = 'Medium';
+const DEFAULT_RADIO_PLACEMENT = 'Start';
+
+export type TRadioGroupProps = RadixRadioGroupProps & {
+  groupLabel?: string;
+  /**
+   * Optional info-icon tooltip rendered beside the group label. Set `title`, and
+   * optionally `description` and `position`.
+   */
+  labelTooltip?: TLabelTooltipConfig;
+  /** Size of radio group and items. @default 'Medium' */
+  size?: TRadioGroupSize;
+  /** Placement of radio group and items. @default 'Start' */
+  placement?: TRadioPlacement;
+  isDisabled?: boolean;
+  value?: string;
+  defaultValue?: string;
+  onValueChange?(value: string): void;
+};
+
+type TRadioBaseProps = Omit<
+  RadixRadioGroupItemProps,
+  'disabled' | 'aria-label' | 'aria-labelledby'
+> & {
+  /** Size of radio item. It is strongly recommended to inherit from RadioGroup. @default 'Medium' */
+  size?: TRadioSize;
+  /** Placement of radio item. It is strongly recommended to inherit from RadioGroup. @default 'Start' */
+  placement?: TRadioPlacement;
+  isDisabled?: boolean;
+  hint?: string;
+};
+
+/** Radio with visible label (label content provides the accessible name). */
+export type TRadioWithLabel = TRadioBaseProps & {
+  label: string;
+  ['aria-label']?: string;
+  ['aria-labelledby']?: never;
+};
+
+/** Radio with aria-label (no visible label). */
+export type TRadioWithAriaLabel = TRadioBaseProps & {
+  ['aria-label']: string;
+  label?: never;
+  ['aria-labelledby']?: string;
+};
+
+/** Radio with aria-labelledby (no visible label). */
+export type TRadioWithAriaLabelledby = TRadioBaseProps & {
+  ['aria-labelledby']: string;
+  label?: never;
+  ['aria-label']?: string;
+};
+
+/** One of: label (content), aria-label, or aria-labelledby must be provided for accessibility. */
+export type TRadioProps = TRadioWithLabel | TRadioWithAriaLabel | TRadioWithAriaLabelledby;
+
+const RADIO_SIZES: Record<TRadioSize, TTailwindSizeClass> = {
+  XSmall: 'size-400',
+  Small: 'size-500',
+  Medium: 'size-600',
+  Large: 'size-600'
+};
+
+const RADIO_INDICATOR_SIZE_BY_SIZE: Record<TRadioSize, TTailwindSizeClass> = {
+  XSmall: 'size-150',
+  Small: 'size-200',
+  Medium: 'size-250',
+  Large: 'size-250'
+};
+
+const RADIO_GAP_BY_SIZE: Record<TRadioSize, TTailwindGapClass> = {
+  XSmall: 'gap-medium',
+  Small: 'gap-medium',
+  Medium: 'gap-medium',
+  Large: 'gap-large'
+};
+
+const RADIO_GROUP_LABEL_GAP_BY_SIZE: Record<TRadioGroupSize, TTailwindGapClass> = {
+  XSmall: 'gap-medium',
+  Small: 'gap-large',
+  Medium: 'gap-large'
+};
+
+const RADIO_GROUP_ITEM_GAP_BY_SIZE: Record<TRadioGroupSize, TTailwindGapClass> = {
+  XSmall: 'gap-small',
+  Small: 'gap-medium',
+  Medium: 'gap-medium'
+};
+
+const RADIO_GROUP_LABEL_FONT_CLASS_BY_SIZE: Record<TRadioGroupSize, TTailwindTextTitleClass> = {
+  XSmall: 'text-title-small',
+  Small: 'text-title-small',
+  Medium: 'text-title-medium'
+};
+
+const RADIO_LABEL_FONT_CLASS_BY_SIZE: Record<TRadioSize, TTailwindTextBodyClass> = {
+  XSmall: 'text-body-small',
+  Small: 'text-body-small',
+  Medium: 'text-body-medium',
+  Large: 'text-body-large'
+};
+
+const HINT_CLASS_BY_SIZE: Record<TRadioSize, TTailwindTextBodyClass> = {
+  XSmall: 'text-body-small',
+  Small: 'text-body-small',
+  Medium: 'text-body-medium',
+  Large: 'text-body-large'
+};
+
+type RadioGroupContextType = {
+  size: TRadioGroupSize;
+  placement: TRadioPlacement;
+  disabled?: boolean;
+};
+
+const RadioGroupContext = createContext<RadioGroupContextType>({
+  size: DEFAULT_RADIO_SIZE,
+  placement: DEFAULT_RADIO_PLACEMENT
+});
+
+const useRadioGroupContext = () => {
+  const context = useContext(RadioGroupContext);
+  if (!context) {
+    throw new Error('Radio must be used within a RadioGroup');
+  }
+  return context;
+};
+
+export const RadioGroup = React.forwardRef<
+  HTMLDivElement,
+  React.PropsWithChildren<TRadioGroupProps>
+>(
+  (
+    {
+      groupLabel,
+      labelTooltip,
+      size,
+      placement,
+      isDisabled,
+      className,
+      children,
+      id,
+      ...otherProps
+    },
+    ref
+  ) => {
+    const autoId = useId();
+    const resolvedId = id || autoId;
+
+    const resolvedSize = size ?? DEFAULT_RADIO_SIZE;
+    const resolvedPlacement = placement ?? DEFAULT_RADIO_PLACEMENT;
+
+    const contextValue = useMemo(
+      () => ({
+        size: resolvedSize,
+        placement: resolvedPlacement,
+        disabled: isDisabled ?? false
+      }),
+      [resolvedSize, resolvedPlacement, isDisabled]
+    );
+
+    const groupLabelLabel = groupLabel ? (
+      <label
+        htmlFor={resolvedId}
+        className={clsx(
+          'foundation-web-radio-group-label',
+          RADIO_GROUP_LABEL_FONT_CLASS_BY_SIZE[resolvedSize],
+          'content-default',
+          // When paired with a tooltip the bottom padding moves to the row wrapper so the
+          // info icon aligns with the label text rather than its padded box.
+          !labelTooltip && 'padding-bottom-small'
+        )}>
+        {groupLabel}
+      </label>
+    ) : null;
+
+    const groupLabelNode =
+      groupLabelLabel && labelTooltip ? (
+        <div className='flex items-center gap-xsmall padding-bottom-small'>
+          {groupLabelLabel}
+          <LabelTooltip {...labelTooltip} />
+        </div>
+      ) : (
+        groupLabelLabel
+      );
+
+    return (
+      <RadioGroupContext.Provider value={contextValue}>
+        <div className={clsx('flex fill flex-col', RADIO_GROUP_LABEL_GAP_BY_SIZE[resolvedSize])}>
+          {groupLabelNode}
+
+          <RadixRadioGroup
+            ref={ref}
+            id={resolvedId}
+            className={clsx(
+              'foundation-web-radio-group',
+              'flex flex-col',
+              RADIO_GROUP_ITEM_GAP_BY_SIZE[resolvedSize],
+              className
+            )}
+            {...otherProps}>
+            {children}
+          </RadixRadioGroup>
+        </div>
+      </RadioGroupContext.Provider>
+    );
+  }
+);
+
+RadioGroup.displayName = 'RadioGroup';
+
+export const Radio = React.forwardRef<HTMLButtonElement, TRadioProps>(
+  (
+    {
+      className,
+      value,
+      isDisabled,
+      label,
+      'aria-label': ariaLabel,
+      'aria-labelledby': ariaLabelledby,
+      hint,
+      id,
+      size,
+      placement,
+      ...otherProps
+    },
+    ref
+  ) => {
+    const labelRef = useRef<HTMLLabelElement>(null);
+    const hintRef = useRef<HTMLDivElement>(null);
+    const [eitherMultiline, setEitherMultiline] = useState(false);
+
+    const {
+      size: groupSize,
+      placement: groupPlacement,
+      disabled: disabledOnGroupLevel
+    } = useRadioGroupContext();
+
+    // Resolve size and placement from group context / defaults if individually not provided.
+    const resolvedSize = size ?? groupSize;
+    const resolvedPlacement = placement ?? groupPlacement;
+
+    const autoId = useId();
+    const resolvedId = id || autoId;
+
+    const hasVisibleLabel = label !== undefined && label !== '';
+    const labelId = `${resolvedId}Label`;
+    const ariaLabelledbyResolved = hasVisibleLabel ? labelId : ariaLabelledby;
+
+    const showHint = !!hint;
+
+    const isDisabledValue = isDisabled || disabledOnGroupLevel;
+
+    // Compares line height and scroll height to determine if the label or hint is multiline
+    useEffect(() => {
+      const observer = new ResizeObserver(() => {
+        const labelRefCurrent = labelRef.current;
+        const hintRefCurrent = hintRef.current;
+
+        const isMultiline = (el: HTMLDivElement | HTMLLabelElement | null) => {
+          if (!el) return false;
+          const computedStyle = getComputedStyle(el);
+          const lineHeight = parseFloat(computedStyle.lineHeight);
+          const lines = Math.round(el.scrollHeight / lineHeight);
+          return lines > 1;
+        };
+
+        const result = isMultiline(labelRefCurrent) || isMultiline(hintRefCurrent);
+        setEitherMultiline(result);
+      });
+
+      if (labelRef.current) observer.observe(labelRef.current);
+      if (hintRef.current) observer.observe(hintRef.current);
+
+      return () => observer.disconnect();
+    }, [showHint, hasVisibleLabel]);
+
+    return (
+      <div
+        className={clsx('flex gap-medium', {
+          [disabledOpacity]: isDisabledValue,
+          'cursor-pointer': !isDisabledValue,
+          'flex-row': resolvedPlacement === 'Start',
+          'flex-row-reverse': resolvedPlacement === 'End'
+        })}>
+        <RadixRadioGroupItem
+          ref={ref}
+          className={clsx(
+            'foundation-web-radio',
+            interactable,
+            !isDisabledValue && 'cursor-pointer',
+            'padding-none shrink-0 grow-0 basis-auto flex items-center justify-center bg-none data-[state=checked]:bg-action-sub-emphasis radius-circle stroke-contrast-alpha stroke-standard',
+            RADIO_GAP_BY_SIZE[resolvedSize],
+            RADIO_SIZES[resolvedSize],
+            className
+          )}
+          disabled={isDisabledValue}
+          value={value}
+          id={resolvedId}
+          aria-describedby={showHint ? `${resolvedId}Hint` : undefined}
+          aria-label={ariaLabel}
+          aria-labelledby={ariaLabelledbyResolved}
+          {...otherProps}>
+          <StateLayer />
+          <RadixRadioGroupIndicator
+            className={clsx(
+              'radius-circle bg-inverse-action-sub-emphasis',
+              RADIO_INDICATOR_SIZE_BY_SIZE[resolvedSize]
+            )}
+          />
+        </RadixRadioGroupItem>
+        <div
+          className={clsx('flex fill flex-col width-full', {
+            'gap-xsmall': eitherMultiline,
+            'gap-none': !eitherMultiline,
+            'padding-top-xxsmall': resolvedSize !== 'XSmall'
+          })}>
+          {hasVisibleLabel && (
+            <label
+              ref={labelRef}
+              id={labelId}
+              htmlFor={resolvedId}
+              aria-describedby={showHint ? `${resolvedId}Hint` : undefined}
+              className={clsx(
+                RADIO_LABEL_FONT_CLASS_BY_SIZE[resolvedSize],
+                'content-emphasis',
+                !isDisabledValue && 'cursor-pointer'
+              )}>
+              {label}
+            </label>
+          )}
+          {showHint && (
+            <div
+              ref={hintRef}
+              id={`${resolvedId}Hint`}
+              className={clsx(HINT_CLASS_BY_SIZE[resolvedSize], 'content-default')}>
+              {hint}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+);
+
+Radio.displayName = 'Radio';

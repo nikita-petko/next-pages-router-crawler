@@ -375,10 +375,6 @@ export const productHrefMapping: Map<TProductKey, NavigationTab> = [
   return map;
 }, new Map<TProductKey, NavigationTab>());
 
-export const studioLogoDimension = 36;
-
-export const studioLogoDimensionCompact = 20;
-
 export const topNavHeight = 60;
 
 export const sidebarDrawerWidth = 340;

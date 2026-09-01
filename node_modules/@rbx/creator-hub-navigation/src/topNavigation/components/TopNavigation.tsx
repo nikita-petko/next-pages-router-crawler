@@ -27,7 +27,6 @@ import useGetNavigationTabs from '../../utils/useGetNavigationTabs';
 import type { NavigationTab } from '../constants/navigationConstants';
 import {
   ENavigationTabType,
-  studioLogoDimension,
   topNavHeight,
   homeTab,
   homeTabStaging,
@@ -69,12 +68,6 @@ const useTopNavigationStyles = makeStyles()((theme) => ({
     '&:hover': {
       textDecoration: 'none',
     },
-  },
-
-  logo: {
-    width: studioLogoDimension,
-    height: studioLogoDimension,
-    verticalAlign: 'middle',
   },
 
   tabClass: {

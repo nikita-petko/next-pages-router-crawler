@@ -1,0 +1,309 @@
+import clsx from 'clsx';
+import React, {
+  ComponentProps,
+  ReactNode,
+  forwardRef,
+  createContext,
+  useContext,
+  useMemo,
+  useRef,
+  useEffect,
+  useState
+} from 'react';
+import * as RadixTabs from '@radix-ui/react-tabs';
+import type {
+  TTailwindTextLabelClass,
+  TTailwindHeightClass,
+  TTailwindPaddingXClass,
+  TTailwindPaddingTopClass,
+  TTailwindPaddingBottomClass
+} from '@rbx/foundation-tailwind/classes';
+import { disabledOpacity } from '../utils/styles';
+import { TForwardRefComponent } from './types/TForwardRefComponent';
+import { interactable, StateLayer } from './internal/StateLayer';
+
+export const tabSizes = ['XSmall', 'Small', 'Medium', 'Large'] as const;
+
+export type TTabSize = (typeof tabSizes)[number];
+
+export const tabVariants = ['Contained', 'Inlined'] as const;
+
+export const tabFitBehaviors = ['Fill', 'Fit'] as const;
+
+export type TTabVariant = (typeof tabVariants)[number];
+
+export type TTabFitBehavior = (typeof tabFitBehaviors)[number];
+
+export type TTabsProps = Omit<ComponentProps<typeof RadixTabs.Root>, 'asChild'> & {
+  children: ReactNode;
+  className?: string;
+  size?: TTabSize;
+  variant?: TTabVariant;
+  fitBehavior?: TTabFitBehavior;
+};
+
+export type TTabsListProps = Omit<ComponentProps<typeof RadixTabs.List>, 'asChild'> & {
+  children: ReactNode;
+  className?: string;
+};
+
+export type TTabsTriggerProps = Omit<
+  ComponentProps<typeof RadixTabs.Trigger>,
+  'asChild' | 'disabled'
+> & {
+  children: ReactNode;
+  className?: string;
+  isDisabled?: boolean;
+};
+
+export type TTabsContentProps = Omit<ComponentProps<typeof RadixTabs.Content>, 'asChild'> & {
+  children: ReactNode;
+  className?: string;
+};
+
+type TTabsContextValue = {
+  size: TTabSize;
+  variant: TTabVariant;
+  fitBehavior: TTabFitBehavior;
+};
+
+const TabsContext = createContext<TTabsContextValue>({
+  size: 'Medium',
+  variant: 'Contained',
+  fitBehavior: 'Fill'
+});
+
+const classesBySize: Record<TTabSize, [TTailwindTextLabelClass, TTailwindHeightClass]> = {
+  XSmall: ['text-label-small', 'height-700'],
+  Small: ['text-label-small', 'height-800'],
+  Medium: ['text-label-medium', 'height-1000'],
+  Large: ['text-label-medium', 'height-1200']
+};
+
+const TABS_X_PADDING: Record<TTabSize, TTailwindPaddingXClass> = {
+  XSmall: 'padding-x-small',
+  Small: 'padding-x-small',
+  Medium: 'padding-x-medium',
+  Large: 'padding-x-large'
+};
+
+const TABS_TOP_PADDING: Record<TTabSize, Record<TTabVariant, TTailwindPaddingTopClass | ''>> = {
+  XSmall: {
+    Inlined: '',
+    Contained: 'padding-top-small'
+  },
+  Small: {
+    Inlined: '',
+    Contained: 'padding-top-small'
+  },
+  Medium: {
+    Inlined: 'padding-top-xsmall',
+    Contained: 'padding-top-medium'
+  },
+  Large: {
+    Inlined: 'padding-top-xsmall',
+    Contained: 'padding-top-xlarge'
+  }
+};
+
+const TABS_BOTTOM_PADDING: Record<TTabSize, TTailwindPaddingBottomClass> = {
+  XSmall: 'padding-bottom-small',
+  Small: 'padding-bottom-small',
+  Medium: 'padding-bottom-medium',
+  Large: 'padding-bottom-xlarge'
+};
+
+const TabsComponent = (
+  { children, className, size, variant, fitBehavior, ...props }: TTabsProps,
+  ref: ComponentProps<typeof RadixTabs.Root>['ref']
+) => {
+  const contextValue = useMemo(
+    () => ({
+      size: size || 'Large',
+      variant: variant || 'Contained',
+      fitBehavior: fitBehavior || 'Fill'
+    }),
+    [size, variant, fitBehavior]
+  );
+
+  return (
+    <TabsContext.Provider value={contextValue}>
+      <RadixTabs.Root
+        ref={ref}
+        {...props}
+        className={clsx('foundation-web-tabs', 'flex flex-col', className)}>
+        {children}
+      </RadixTabs.Root>
+    </TabsContext.Provider>
+  );
+};
+
+export const Tabs = forwardRef(TabsComponent) as TForwardRefComponent<TTabsProps>;
+
+const TabsListComponent = (
+  { children, className, ...props }: TTabsListProps,
+  forwardedRef: ComponentProps<typeof RadixTabs.List>['ref']
+) => {
+  const { fitBehavior } = useContext(TabsContext);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [indicatorStyle, setIndicatorStyle] = useState({
+    width: 0,
+    left: 0,
+    opacity: 0
+  });
+
+  const setRefs = React.useCallback(
+    (element: HTMLDivElement | null) => {
+      (listRef as React.MutableRefObject<HTMLDivElement | null>).current = element;
+
+      if (typeof forwardedRef === 'function') {
+        forwardedRef(element);
+      } else if (forwardedRef && 'current' in forwardedRef) {
+        const mutableRef = forwardedRef as React.MutableRefObject<HTMLDivElement | null>;
+        mutableRef.current = element;
+      }
+    },
+    [forwardedRef]
+  );
+
+  useEffect(() => {
+    const updateIndicator = () => {
+      const listElement = listRef.current;
+      if (!listElement) return;
+
+      const activeTab = listElement.querySelector('[data-state="active"]') as HTMLElement;
+      if (activeTab) {
+        const listRect = listElement.getBoundingClientRect();
+        const activeRect = activeTab.getBoundingClientRect();
+
+        setIndicatorStyle({
+          width: activeRect.width,
+          left: activeRect.left - listRect.left,
+          opacity: 1
+        });
+      }
+    };
+
+    updateIndicator();
+
+    let rafId: number;
+    const deferredUpdateIndicator = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(updateIndicator);
+    };
+
+    const mutationObserver = new MutationObserver(deferredUpdateIndicator);
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateIndicator) : null;
+    const listElement = listRef.current;
+
+    if (listElement) {
+      mutationObserver.observe(listElement, {
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['data-state']
+      });
+      resizeObserver?.observe(listElement);
+    }
+
+    window.addEventListener('resize', updateIndicator);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      mutationObserver.disconnect();
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', updateIndicator);
+    };
+  }, [children]);
+
+  return (
+    <div
+      className={clsx('relative scroll-x', className)}
+      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+      <RadixTabs.List
+        ref={setRefs}
+        {...props}
+        className={clsx('flex items-stretch bg-none border-0 stroke-none')}>
+        {children}
+      </RadixTabs.List>
+      {fitBehavior === 'Fit' && (
+        // In `Fit`, tabs only span their content, so the per-trigger bottom border
+        // stops short of the parent. This track extends the bottom border across the
+        // full width of the parent container. It overlaps the trigger borders exactly
+        // (same color, position, and thickness) and sits below the active indicator.
+        <div
+          aria-hidden='true'
+          className='absolute bottom-[0px] left-[0px] right-[0px] height-[var(--stroke-thick)] bg-[var(--color-stroke-muted)] [z-index:0]'
+        />
+      )}
+      <div
+        className='absolute bottom-[0px] bg-system-contrast transition-all duration-200 ease-standard-out'
+        style={{
+          height: 'var(--stroke-thick)',
+          zIndex: 1,
+          width: `${indicatorStyle.width}px`,
+          left: `${indicatorStyle.left}px`,
+          opacity: indicatorStyle.opacity
+        }}
+      />
+    </div>
+  );
+};
+
+export const TabsList = forwardRef(TabsListComponent) as TForwardRefComponent<TTabsListProps>;
+
+const TabsTriggerComponent = (
+  { children, className, isDisabled = false, ...props }: TTabsTriggerProps,
+  ref: ComponentProps<typeof RadixTabs.Trigger>['ref']
+) => {
+  const { size, variant, fitBehavior } = useContext(TabsContext);
+
+  return (
+    <RadixTabs.Trigger
+      ref={ref}
+      {...props}
+      disabled={isDisabled}
+      style={{
+        borderBottom: 'var(--stroke-thick) solid var(--color-stroke-muted)',
+        borderTop: 'none',
+        borderLeft: 'none',
+        borderRight: 'none'
+      }}
+      className={clsx(
+        'relative flex items-center justify-center cursor-pointer bg-none shrink-0',
+        interactable,
+        classesBySize[size],
+        fitBehavior === 'Fill' ? `grow-1 ${TABS_X_PADDING[size]}` : '',
+        TABS_TOP_PADDING[size][variant],
+        TABS_BOTTOM_PADDING[size],
+        isDisabled && disabledOpacity,
+        className
+      )}>
+      <StateLayer />
+      <div className='flex items-center justify-center height-600 relative'>{children}</div>
+    </RadixTabs.Trigger>
+  );
+};
+
+export const TabsTrigger = forwardRef(
+  TabsTriggerComponent
+) as TForwardRefComponent<TTabsTriggerProps>;
+
+// TODO: Follow-up on how `padding-top-*` should be scaled based on current tabs size
+const TabsContentComponent = (
+  { children, className, ...props }: TTabsContentProps,
+  ref: ComponentProps<typeof RadixTabs.Content>['ref']
+) => {
+  return (
+    <RadixTabs.Content
+      ref={ref}
+      {...props}
+      className={clsx('padding-top-large', 'outline-none', className)}>
+      {children}
+    </RadixTabs.Content>
+  );
+};
+
+export const TabsContent = forwardRef(
+  TabsContentComponent
+) as TForwardRefComponent<TTabsContentProps>;

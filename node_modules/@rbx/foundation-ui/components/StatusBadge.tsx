@@ -1,0 +1,105 @@
+import clsx from 'clsx';
+import React, { ComponentPropsWithRef } from 'react';
+import { StatusIndicator } from './StatusIndicator';
+import type { TStatusIndicatorColor, TStatusIndicatorSize } from './StatusIndicator';
+
+export const statusBadgeVariants = ['Standard', 'Emphasis', 'Success', 'Warning', 'Alert'] as const;
+export type TStatusBadgeVariant = (typeof statusBadgeVariants)[number];
+
+export const statusBadgeSizes = ['Small', 'XSmall'] as const;
+export type TStatusBadgeSize = (typeof statusBadgeSizes)[number];
+
+export const statusBadgeShapes = ['Utility', 'Box'] as const;
+export type TStatusBadgeShape = (typeof statusBadgeShapes)[number];
+
+export type TStatusBadgeProps = Omit<ComponentPropsWithRef<'div'>, 'children'> & {
+  /** The status badge text. */
+  label: string;
+  /** The status badge variant. @default 'Standard' */
+  variant?: TStatusBadgeVariant;
+  /** The status badge size. @default 'Small' */
+  size?: TStatusBadgeSize;
+  /** The status badge shape. @default 'Utility' */
+  shape?: TStatusBadgeShape;
+};
+
+const STATUS_INDICATOR_COLOR_BY_VARIANT: Record<TStatusBadgeVariant, TStatusIndicatorColor> = {
+  Standard: 'Neutral',
+  Emphasis: 'Emphasis',
+  Success: 'Success',
+  Warning: 'Warning',
+  Alert: 'Alert'
+};
+
+const HEIGHT_BY_SIZE: Record<TStatusBadgeSize, string> = {
+  Small: 'height-600',
+  XSmall: 'height-400'
+};
+
+const PADDING_X_BY_SIZE: Record<TStatusBadgeSize, string> = {
+  Small: 'padding-x-small',
+  XSmall: 'padding-x-xsmall'
+};
+
+const CONTENT_GAP_BY_SIZE: Record<TStatusBadgeSize, string> = {
+  Small: 'gap-[var(--size-150)]',
+  XSmall: 'gap-xxsmall'
+};
+
+const STATUS_INDICATOR_SIZE_BY_SIZE: Record<TStatusBadgeSize, TStatusIndicatorSize> = {
+  Small: 'Medium',
+  XSmall: 'Small'
+};
+
+const TEXT_BY_SIZE: Record<TStatusBadgeSize, string> = {
+  Small: 'text-label-small',
+  XSmall: 'text-caption-small'
+};
+
+const TEXT_PADDING_BOTTOM_BY_SIZE: Record<TStatusBadgeSize, string> = {
+  Small: 'padding-bottom-none',
+  XSmall: 'padding-bottom-[1px]'
+};
+
+export const StatusBadge = React.forwardRef<HTMLDivElement, TStatusBadgeProps>(
+  ({ className, label, variant = 'Standard', size = 'Small', shape = 'Utility', ...rest }, ref) => (
+    <div
+      ref={ref}
+      {...rest}
+      className={clsx(
+        'foundation-web-status-badge flex items-center select-none width-fit content-emphasis',
+        HEIGHT_BY_SIZE[size],
+        shape === 'Box' && ['radius-small', 'bg-shift-200', PADDING_X_BY_SIZE[size]],
+        className
+      )}>
+      <span
+        className={clsx(
+          'flex items-center shrink-0 height-full padding-right-xxsmall',
+          CONTENT_GAP_BY_SIZE[size]
+        )}>
+        <span
+          aria-hidden='true'
+          data-testid='status-badge-indicator'
+          className='flex items-center justify-center shrink-0 height-300 padding-x-xxsmall'>
+          <StatusIndicator
+            data-testid='status-badge-dot'
+            variant='Dot'
+            color={STATUS_INDICATOR_COLOR_BY_VARIANT[variant]}
+            size={STATUS_INDICATOR_SIZE_BY_SIZE[size]}
+            className='shrink-0'
+          />
+        </span>
+        <span
+          className={clsx(
+            'text-no-wrap text-truncate-split content-emphasis',
+            TEXT_BY_SIZE[size],
+            TEXT_PADDING_BOTTOM_BY_SIZE[size]
+          )}>
+          {label}
+        </span>
+      </span>
+    </div>
+  )
+);
+
+StatusBadge.displayName = 'StatusBadge';

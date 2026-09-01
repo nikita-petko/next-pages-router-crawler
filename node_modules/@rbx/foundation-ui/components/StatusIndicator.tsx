@@ -1,0 +1,120 @@
+import clsx from 'clsx';
+import React, { ComponentPropsWithRef } from 'react';
+import type { TTailwindBgClass, TTailwindContentClass } from '@rbx/foundation-tailwind/classes';
+
+export const statusIndicatorVariants = ['Dot', 'Numeric'] as const;
+export type TStatusIndicatorVariant = (typeof statusIndicatorVariants)[number];
+
+export const statusIndicatorColors = [
+  'Success',
+  'Warning',
+  'Alert',
+  'Emphasis',
+  'Neutral',
+  'Standard',
+  'Voice'
+] as const;
+export type TStatusIndicatorColor = (typeof statusIndicatorColors)[number];
+
+export const statusIndicatorSizes = ['Small', 'Medium', 'Large', 'XLarge', 'Pictogram'] as const;
+export type TStatusIndicatorSize = (typeof statusIndicatorSizes)[number];
+
+/** The `Numeric` variant supports only these two colors, per Figma. */
+type TStatusIndicatorNumericColor = Extract<TStatusIndicatorColor, 'Emphasis' | 'Standard'>;
+
+type TStatusIndicatorBaseProps = Omit<ComponentPropsWithRef<'div'>, 'children' | 'color'>;
+
+export type TStatusIndicatorProps =
+  | (TStatusIndicatorBaseProps & {
+      /** The indicator style. @default 'Dot' */
+      variant?: 'Dot';
+      /** The color variant. @default 'Emphasis' */
+      color?: TStatusIndicatorColor;
+      /** The dot size. @default 'Medium' */
+      size?: TStatusIndicatorSize;
+      value?: never;
+    })
+  | (TStatusIndicatorBaseProps & {
+      variant: 'Numeric';
+      /** The color variant. @default 'Emphasis' */
+      color?: TStatusIndicatorNumericColor;
+      /** The number to display (e.g. an unread count). */
+      value: string;
+      size?: never;
+    });
+
+const BACKGROUND_BY_COLOR: Record<TStatusIndicatorColor, TTailwindBgClass | `bg-[var(${string})]`> =
+  {
+    Success: 'bg-system-success',
+    Warning: 'bg-system-warning',
+    Alert: 'bg-system-alert',
+    Emphasis: 'bg-system-emphasis',
+    Neutral: 'bg-system-neutral',
+    Standard: 'bg-action-standard',
+    // Voice has no semantic `bg-*` token in the design system; Figma binds the raw
+    // extended-orange variable, so we reference it directly (bg is a matchUtility).
+    Voice: 'bg-[var(--color-extended-orange-600)]'
+  };
+
+const CONTENT_BY_COLOR: Record<
+  TStatusIndicatorNumericColor,
+  TTailwindContentClass | `content-[var(${string})]`
+> = {
+  Emphasis: 'content-[var(--dark-mode-content-emphasis)]',
+  Standard: 'content-emphasis'
+};
+
+const SIZE_CLASS: Record<TStatusIndicatorSize, `size-${number}`> = {
+  Small: 'size-150',
+  Medium: 'size-200',
+  Large: 'size-250',
+  XLarge: 'size-300',
+  Pictogram: 'size-500'
+};
+
+/**
+ * A status indicator marks unread messages, notifications, active items, or a
+ * user's availability.
+ *
+ * - `variant='Dot'` (default) renders a filled circle, in any of the seven
+ *   colors and five sizes.
+ * - `variant='Numeric'` renders a count (single digit as a circle, longer values
+ *   as a pill) via `value`; it supports only the `Emphasis`/`Standard` colors and
+ *   has a fixed size.
+ */
+export const StatusIndicator = React.forwardRef<HTMLDivElement, TStatusIndicatorProps>(
+  (props, ref) => {
+    if (props.variant === 'Numeric') {
+      const { color = 'Emphasis', variant, value, className, ...rest } = props;
+      return (
+        <div
+          ref={ref}
+          {...rest}
+          className={clsx(
+            'foundation-web-status-indicator min-width-400 height-400 inline-flex justify-center items-center radius-circle text-label-small',
+            BACKGROUND_BY_COLOR[color],
+            CONTENT_BY_COLOR[color],
+            className
+          )}>
+          <span className='padding-x-xsmall'>{value}</span>
+        </div>
+      );
+    }
+
+    const { color = 'Emphasis', size = 'Medium', variant, value, className, ...rest } = props;
+    return (
+      <div
+        ref={ref}
+        {...rest}
+        className={clsx(
+          'foundation-web-status-indicator radius-circle',
+          SIZE_CLASS[size],
+          BACKGROUND_BY_COLOR[color],
+          className
+        )}
+      />
+    );
+  }
+);
+
+StatusIndicator.displayName = 'StatusIndicator';

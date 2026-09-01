@@ -59,6 +59,7 @@ interface BuildAnalyticsQueryRequestParams {
 
 export type UniverseReportingMetric =
   | 'clicks'
+  | 'earningsUsd'
   | 'impressions'
   | 'plays'
   | 'playtime'
@@ -123,6 +124,7 @@ const getReportingMetricName = (
     REPORTING_VIEW_SUFFIXES[ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT]!;
   const metricPrefix: Record<UniverseReportingMetric, string> = {
     clicks: `AdsUANumClicks${suffix.user}`,
+    earningsUsd: 'AdsUAEarningsUsd',
     impressions: `AdsUANumImpressions${suffix.user}`,
     plays: `AdsUANumPlays${suffix.view}`,
     playtime: `AdsUAPlaytime${suffix.view}`,
@@ -132,7 +134,7 @@ const getReportingMetricName = (
     spend: `AdsUATotalSpendMicroUsd${suffix.user}`,
   };
   if (
-    (metric === 'roas' || metric === 'roasEstimate') &&
+    (metric === 'roas' || metric === 'roasEstimate' || metric === 'earningsUsd') &&
     reportingView !== ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT
   ) {
     throw new Error(`${metricPrefix[metric]} is only available for the default reporting view`);
@@ -174,6 +176,29 @@ export const clampEndTimeForMatureRoasEstimate = (
 };
 
 /**
+ * Whether a ROAS value can be produced for a sub-batch. Validated batches are
+ * always available (their cube is complete once the attribution window
+ * closes); estimated batches are only available when at least one day of the
+ * requested range is old enough to have a matured AdsRoasEstimate prediction
+ * (i.e. `clampEndTimeForMatureRoasEstimate` would return a non-empty range).
+ * Callers skip the AQG round-trip and surface a "pending" affordance in the
+ * UI when this returns false.
+ */
+export const isRoasEstimateAvailable = (
+  batchSource: 'validated' | 'estimated',
+  startTime: Date,
+  endTime: Date,
+  now: Date = new Date(),
+): boolean => {
+  if (batchSource === 'validated') {
+    return true;
+  }
+  const startOfTodayUtcMs = now.getTime() - (now.getTime() % MS_PER_DAY);
+  const maturedBeforeMs = startOfTodayUtcMs - (ESTIMATED_ROAS_MATURATION_DAYS - 1) * MS_PER_DAY;
+  return startTime.getTime() < endTime.getTime() && startTime.getTime() < maturedBeforeMs;
+};
+
+/**
  * True when a campaign's ROAS is old enough to surface the validated AdsUARoas
  * cube instead of the ML AdsRoasEstimate. Uses the earlier of the campaign's
  * scheduled end and the requested query window's end so campaigns whose
@@ -181,7 +206,7 @@ export const clampEndTimeForMatureRoasEstimate = (
  * range that ends today. Absolute-time comparison; timezone-agnostic (AQG
  * reporting queries are UTC-normalized via REPORTING_TIMEZONE_DB_NAME).
  */
-export const isValidatedRoasEligible = (
+export const isValidatedRoasAvailable = (
   campaignEndTimestampMs: number | undefined,
   requestedEndTime: Date,
   now: Date = new Date(),

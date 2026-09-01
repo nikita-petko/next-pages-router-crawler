@@ -9,6 +9,7 @@ import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
 import { HeadCellName } from '@constants/headCells';
 import { TranslationNamespace } from '@constants/localization';
 import ReportingStatType from '@constants/reportingStatsConstants';
+import { ReportingViewDocsUrl } from '@constants/reportingUrls';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { GenericTableRowProps, RowCell } from '@type/genericManagementTable';
 import { GetCPPFallbackValue, GetTableDisplayValue } from '@utils/reportingStats';
@@ -18,9 +19,9 @@ const RECENT_CAMPAIGN_THRESHOLD_MS = 48 * 60 * 60 * 1000;
 type SharedTableCellsProps = GenericTableRowProps;
 
 const SharedTableCells = ({ headCells, row, unsortableData }: SharedTableCellsProps) => {
-  const { translate } = useNamespacedTranslation(TranslationNamespace.Report);
+  const { translate, translateHTML } = useNamespacedTranslation(TranslationNamespace.Report);
   const {
-    classes: { centerAlignedContentRow, robuxContainer },
+    classes: { centerAlignedContentRow, earningsUsdContainer, earningsUsdSubtext, robuxContainer },
   } = useGenericTableRowStyles();
 
   const paymentType = unsortableData?.paymentType;
@@ -29,6 +30,16 @@ const SharedTableCells = ({ headCells, row, unsortableData }: SharedTableCellsPr
   const isReportingDisabled = row.is_off_platform_request && !row.is_reporting_enabled;
   const shouldShowStatsSkeleton = Boolean(row.is_stats_loading) && !isReportingDisabled;
 
+  // Both the recently-created and the ROAS-maturation-window paths render the
+  // same clock affordance in place of "—". Extracted so the two triggers can
+  // stay named/tested independently without duplicating the tooltip + icon.
+  const renderPendingIcon = (testId: string): ReactNode => (
+    <AppTooltip position='top-center' title={translate('Tooltip.MetricsPending')}>
+      <span data-testid={testId}>
+        <Icon name='icon-regular-clock' size='Small' />
+      </span>
+    </AppTooltip>
+  );
   // For recently launched campaigns, metrics may not be available yet. Render a
   // clock icon instead of the generic "—" placeholder so it's clear the data is
   // still pending rather than missing.
@@ -48,13 +59,7 @@ const SharedTableCells = ({ headCells, row, unsortableData }: SharedTableCellsPr
     if (value !== UNAVAILABLE_VALUE_DISPLAY || !isRecentlyCreated) {
       return value;
     }
-    return (
-      <AppTooltip position='top-center' title={translate('Tooltip.MetricsPending')}>
-        <span data-testid='metrics-pending-icon'>
-          <Icon name='icon-regular-clock' size='Small' />
-        </span>
-      </AppTooltip>
-    );
+    return renderPendingIcon('metrics-pending-icon');
   };
 
   const spend = GetTableDisplayValue({
@@ -98,7 +103,7 @@ const SharedTableCells = ({ headCells, row, unsortableData }: SharedTableCellsPr
   // not include a ROAS head cell, so this stays absent for ads even though SharedTableCells
   // is shared. Missing ROAS (undefined) renders as em-dash; a real 0.0 renders as 0.00%.
   // The single value comes from either AdsUARoas (validated) or AdsRoasEstimate — the
-  // store picks based on request end-time age (see isValidatedRoasEligible); estimated
+  // store picks based on request end-time age (see isValidatedRoasAvailable); estimated
   // rows get an `est.` prefix.
   const showRoasCell = headCells.some((cell) => cell.classNameKey === HeadCellName.SharedRoas);
   const roasDisplayValue = GetTableDisplayValue({
@@ -106,6 +111,19 @@ const SharedTableCells = ({ headCells, row, unsortableData }: SharedTableCellsPr
     reportingStatType: ReportingStatType.REPORTING_STAT_ROAS,
     value: row.roas,
   });
+  // USD earnings renders as a muted subtext under the Robux value in the shared
+  // Earnings cell. Only fetched for the ROAS rollout cohort (see
+  // fetchVisibleCampaignEarningsUsd's flag gate); non-cohort rows keep
+  // earnings_usd === undefined and the subtext stays hidden.
+  const isEarningsUsdLoading = Boolean(row.is_earnings_usd_loading) && !isReportingDisabled;
+  const earningsUsdDisplayValue = GetTableDisplayValue({
+    isReportingDisabled,
+    reportingStatType: ReportingStatType.REPORTING_STAT_EARNINGS_USD,
+    value: row.earnings_usd,
+  });
+  const hasEarningsUsd = earningsUsdDisplayValue !== UNAVAILABLE_VALUE_DISPLAY;
+  const showEarningsUsdSubtext =
+    !shouldShowStatsSkeleton && !isEarningsUsdLoading && hasEarningsUsd;
 
   const impressions = GetTableDisplayValue({
     isReportingDisabled,
@@ -187,14 +205,21 @@ const SharedTableCells = ({ headCells, row, unsortableData }: SharedTableCellsPr
     {
       cell: (
         <TableCell align='end' className={centerAlignedContentRow}>
-          <Grid className={robuxContainer} container>
-            {!shouldShowStatsSkeleton &&
-              !isReportingDisabled &&
-              robuxRevenue30dDisplayValue !== UNAVAILABLE_VALUE_DISPLAY && (
-                <Icon name='icon-filled-robux' size='Small' />
-              )}
-            {renderMetric(robuxRevenue30dDisplayValue)}
-          </Grid>
+          <div className={earningsUsdContainer}>
+            <Grid className={robuxContainer} container>
+              {!shouldShowStatsSkeleton &&
+                !isReportingDisabled &&
+                robuxRevenue30dDisplayValue !== UNAVAILABLE_VALUE_DISPLAY && (
+                  <Icon name='icon-filled-robux' size='Small' />
+                )}
+              {renderMetric(robuxRevenue30dDisplayValue)}
+            </Grid>
+            {showEarningsUsdSubtext && (
+              <span className={earningsUsdSubtext} data-testid='earnings-usd-subtext'>
+                {`${earningsUsdDisplayValue} ${translate('Label.USD')}`}
+              </span>
+            )}
+          </div>
         </TableCell>
       ),
       id: 'total_robux_revenue_30d',
@@ -204,23 +229,72 @@ const SharedTableCells = ({ headCells, row, unsortableData }: SharedTableCellsPr
     const isRoasLoading = Boolean(row.is_roas_loading) && !isReportingDisabled;
     const isEstimated = row.roas_source === 'estimated';
     const hasRoas = roasDisplayValue !== UNAVAILABLE_VALUE_DISPLAY;
+    // When the requested date range is entirely inside the AdsRoasEstimate
+    // maturation window, the store short-circuits the AQG fetch and writes a
+    // sentinel entry with `source === 'none'`. Render the same clock
+    // affordance as the recently-created path so the cell communicates
+    // "pending" instead of "no data".
+    const isRoasPending =
+      !isRoasLoading && !isReportingDisabled && !hasRoas && row.roas_source === 'none';
+    const renderRoasCellContent = (): ReactNode => {
+      if (isRoasLoading && !shouldShowStatsSkeleton) {
+        return (
+          <Skeleton
+            className='height-[20px] margin-left-auto width-[60px]'
+            data-testid='table-stat-skeleton'
+          />
+        );
+      }
+      if (isRoasPending) {
+        return renderPendingIcon('roas-pending-icon');
+      }
+      const valueNode = (
+        <>
+          {!shouldShowStatsSkeleton &&
+            isEstimated &&
+            hasRoas &&
+            `${translate('Label.EstimatePrefix')} `}
+          {renderMetric(roasDisplayValue)}
+        </>
+      );
+      // Only estimates get the docs explainer; validated ROAS is authoritative.
+      // Skip while the skeleton is showing (don't wrap a placeholder) and when
+      // the value itself is unavailable (em-dash / reporting-disabled).
+      if (shouldShowStatsSkeleton || !isEstimated || !hasRoas) {
+        return valueNode;
+      }
+      return (
+        <span className='inline-flex items-center gap-xsmall'>
+          {valueNode}
+          <AppTooltip
+            position='top-center'
+            title={translateHTML('Tooltip.RoasEstimateDescription', [
+              {
+                closing: 'linkEnd',
+                content: (chunks: ReactNode) => (
+                  <a
+                    href={ReportingViewDocsUrl}
+                    rel='noopener noreferrer'
+                    // eslint-disable-next-line no-inline-styles/no-inline-styles
+                    style={{ color: 'inherit', textDecoration: 'underline' }}
+                    target='_blank'>
+                    {chunks}
+                  </a>
+                ),
+                opening: 'linkStart',
+              },
+            ])}>
+            <span className='flex items-center' data-testid='roas-estimate-tooltip'>
+              <Icon className='content-muted' name='icon-regular-circle-i' size='Small' />
+            </span>
+          </AppTooltip>
+        </span>
+      );
+    };
     rowCells.push({
       cell: (
         <TableCell align='end' className={centerAlignedContentRow}>
-          {isRoasLoading && !shouldShowStatsSkeleton ? (
-            <Skeleton
-              className='height-[20px] margin-left-auto width-[60px]'
-              data-testid='table-stat-skeleton'
-            />
-          ) : (
-            <>
-              {!shouldShowStatsSkeleton &&
-                isEstimated &&
-                hasRoas &&
-                `${translate('Label.EstimatePrefix')} `}
-              {renderMetric(roasDisplayValue)}
-            </>
-          )}
+          {renderRoasCellContent()}
         </TableCell>
       ),
       id: 'roas',

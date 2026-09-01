@@ -172,7 +172,7 @@ const CampaignReportingCharts = () => {
   }, [formatPlaysValue, timeSeriesState.isError, timeSeriesState.isLoading, totalPlays]);
 
   const roasScorecardDisplayValue = useMemo(() => {
-    if (isRowRoasLoading || rowRoas === undefined) {
+    if (isRowRoasLoading || rowRoas === undefined || rowRoas.value === undefined) {
       return UNAVAILABLE_VALUE_DISPLAY;
     }
     const formatted = formatRoasValue(rowRoas.value);

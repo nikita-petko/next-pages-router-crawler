@@ -1,3 +1,4 @@
+import '@rbx/foundation-ui/style';
 import '@styles/globals.css';
 import '@utils/sentry';
 import { CookieConsentBanner, CookieConsentProvider } from '@rbx/cookie-banner';

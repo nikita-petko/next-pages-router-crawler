@@ -6,7 +6,6 @@ import { UnifiedLogger } from '@rbx/unified-logger';
 import type { TrackerClientRequest } from '../event/eventConstants';
 import { RailProvider } from '../layout/providers/RailProvider';
 import type { TBuildTarget, TProductKey, TRobloxEnvironment, TTargetEnvironment } from '../types';
-import { ProductKey } from '../types';
 import { getEventBasePath } from '../utils/getBasePaths';
 import type { TNavigationIXPResults } from '../utils/getNavigationIXPParams';
 import { getNavigationIXPParams } from '../utils/getNavigationIXPParams';
@@ -71,7 +70,6 @@ const NavigationConfigsProvider: FunctionComponent<NavigationConfigsProviderProp
     enableLuobu: false,
     creatorEventsVariant: null,
     enableCourses: false,
-    enableAdsManager: false,
     enableNotificationsM2: false,
     enableTalentHubV2M2: false,
     creatorHubSearchIxpParams: DEFAULT_CREATOR_HUB_SEARCH_VERSION,
@@ -83,7 +81,6 @@ const NavigationConfigsProvider: FunctionComponent<NavigationConfigsProviderProp
       creatorEventsVariant,
       enableAssistant,
       enableCourses,
-      enableAdsManager,
       enableNotificationsM2, // TODO @ahua (1/30/2026): Remove once notifications M2 is fully released
       enableTalentHubV2M2,
       creatorHubSearchIxpParams,
@@ -93,7 +90,6 @@ const NavigationConfigsProvider: FunctionComponent<NavigationConfigsProviderProp
       creatorEventsVariant,
       enableAssistant,
       enableCourses,
-      enableAdsManager: (enableAdsManager ?? false) || currentProduct === ProductKey.Advertise,
       enableNotificationsM2,
       enableTalentHubV2M2,
       creatorHubSearchIxpParams,
@@ -129,7 +125,6 @@ const NavigationConfigsProvider: FunctionComponent<NavigationConfigsProviderProp
       currentProduct,
       ...navigationFlags,
       enableCourses: navigationFlags.enableCourses ?? false,
-      enableAdsManager: navigationFlags.enableAdsManager ?? false,
       enableTalentHubV2M2:
         navigationFlags.enableTalentHubV2M2 === true || navigationFlags.enableTalentHubV2M2 === 1,
       useStaticTranslations,

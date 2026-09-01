@@ -27,6 +27,7 @@ import {
 import { TranslationNamespace } from '@constants/localization';
 import Routes from '@constants/routes';
 import { useBillingAccountView } from '@hooks/useBillingAccountView';
+import useCurrentWorkspaceMetadata from '@hooks/useCurrentWorkspaceMetadata';
 import useGroupSpendPermission from '@hooks/useGroupSpendPermission';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { adAccountCurrentBalance } from '@services/ads/adAccountFinanceService';
@@ -75,6 +76,11 @@ const PaymentSettings = () => {
     (state: AppStoreType) => state.appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false,
   );
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspaces();
+  const { isResolved: isWorkspaceMetadataResolved } = useCurrentWorkspaceMetadata();
+  // isAdAccountAutoCreateEnabled reads false until the workspace-scoped metadata
+  // override lands, so the personal-account layout would render first and then be
+  // replaced once the group workspace resolves.
+  const isWorkspaceContextResolved = !isWorkspaceLoading && isWorkspaceMetadataResolved;
   const groupId = getSelectedGroupId(currentWorkspace, isAdAccountAutoCreateEnabled);
   const { isGroupSpendPermissionDenied, isLoading: groupSpendPermissionLoading } =
     useGroupSpendPermission(groupId);
@@ -104,7 +110,7 @@ const PaymentSettings = () => {
   const { accountView, changeAccountView, isGroupAccountView } = useBillingAccountView({
     isGroupAccountViewDisabled: isGroupSpendPermissionDenied,
     router,
-    shouldSyncUrl: !isWorkspaceLoading,
+    shouldSyncUrl: isWorkspaceContextResolved,
     showAccountViewSwitcher,
   });
 
@@ -369,7 +375,12 @@ const PaymentSettings = () => {
     );
   }
 
-  if (loadingBalance || loadingPaymentProfile || groupSpendPermissionLoading) {
+  if (
+    !isWorkspaceContextResolved ||
+    loadingBalance ||
+    loadingPaymentProfile ||
+    groupSpendPermissionLoading
+  ) {
     return <CenteredCircularProgress />;
   }
 

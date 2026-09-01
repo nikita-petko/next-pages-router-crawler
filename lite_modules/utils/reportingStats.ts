@@ -35,12 +35,15 @@ const getEndUserPaymentUnit = (paymentType: ServerPaymentType) => {
 
 const getStatString = (reportingStatType: ReportingStatType, value: number | undefined) => {
   let valueString = UNAVAILABLE_VALUE_DISPLAY;
-  // Most stats treat 0 as unavailable. ROAS keeps 0 so spend-with-no-revenue
-  // can render as "0.00" (missing ROAS is undefined upstream).
+  // Most stats treat 0 as unavailable. ROAS and USD earnings keep 0 so
+  // spend-with-no-revenue (ROAS) and no-earnings-this-window (earnings USD)
+  // render as "0.00"; both use undefined upstream for genuinely missing rows.
   if (
     value == null ||
     Number.isNaN(value) ||
-    (value === 0 && reportingStatType !== ReportingStatType.REPORTING_STAT_ROAS)
+    (value === 0 &&
+      reportingStatType !== ReportingStatType.REPORTING_STAT_ROAS &&
+      reportingStatType !== ReportingStatType.REPORTING_STAT_EARNINGS_USD)
   ) {
     return valueString;
   }
@@ -60,6 +63,7 @@ const getStatString = (reportingStatType: ReportingStatType, value: number | und
       });
       break;
     case ReportingStatType.REPORTING_STAT_SPEND:
+    case ReportingStatType.REPORTING_STAT_EARNINGS_USD:
       valueString = value.toLocaleString('en-US', {
         maximumFractionDigits: 2,
         minimumFractionDigits: 2,
@@ -102,13 +106,17 @@ export const GetTableDisplayValue = ({
     return UNAVAILABLE_VALUE_DISPLAY;
   }
   // Missing data → em-dash. For most stats, 0 is also treated as missing (no
-  // activity). ROAS is an exception: AMSv2 sets 0.0 when there is spend but no
-  // revenue, and leaves the field unset when ROAS is unknown — so only
-  // nullish/NaN means unavailable for that metric.
+  // activity). ROAS and USD earnings are exceptions: AMSv2 sets ROAS = 0.0
+  // when spend > 0 but revenue = 0, and AQG returns earnings_usd = 0 for a
+  // matched campaign with no attributed revenue in the window. Both leave the
+  // field unset when genuinely unknown, so only nullish/NaN means unavailable
+  // for those two metrics.
   if (
     value == null ||
     Number.isNaN(value) ||
-    (value === 0 && reportingStatsType !== ReportingStatType.REPORTING_STAT_ROAS)
+    (value === 0 &&
+      reportingStatsType !== ReportingStatType.REPORTING_STAT_ROAS &&
+      reportingStatsType !== ReportingStatType.REPORTING_STAT_EARNINGS_USD)
   ) {
     return UNAVAILABLE_VALUE_DISPLAY;
   }
