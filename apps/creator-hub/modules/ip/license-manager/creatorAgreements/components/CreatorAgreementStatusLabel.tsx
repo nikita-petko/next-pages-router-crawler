@@ -139,11 +139,11 @@ const statusToContent: { [key in AgreementStatus]: content } = {
     text: 'Label.ConditionalOffer',
     textWithDate: undefined,
   },
-  // TODO - aquach/anagajaran - Handle draft visual treatment
+  // Refined into a moderation-specific label below once the image attachment flag is enabled.
   Draft: {
-    icon: undefined,
-    variant: undefined,
-    text: '',
+    icon: <AccessTimeIcon fontSize='inherit' />,
+    variant: 'warning',
+    text: 'Label.PendingReview',
     textWithDate: undefined,
   },
 };

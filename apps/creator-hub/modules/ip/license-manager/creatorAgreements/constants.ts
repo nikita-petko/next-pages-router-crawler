@@ -50,7 +50,7 @@ export const creatorAgreementTabsConfig: TabProperties[] = [
     keyName: AgreementFilterKeys.Requests,
     labelKey: 'Label.MyRequestsWithCount',
     breadcrumbKey: 'Label.MyRequests',
-    statusEnums: [AgreementStatus.Inquired, AgreementStatus.Accepted],
+    statusEnums: [AgreementStatus.Draft, AgreementStatus.Inquired, AgreementStatus.Accepted],
     emptyTableImpressionEvent:
       LicenseManagerImpressionEvent.EmptyStateCreatorAgreementsTableNoOffersImpressionEvent,
     translationKeys: {
