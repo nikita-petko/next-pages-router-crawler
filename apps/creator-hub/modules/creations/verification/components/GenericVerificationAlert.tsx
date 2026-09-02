@@ -1,7 +1,7 @@
 import type { FunctionComponent, ReactNode } from 'react';
 import React, { useState } from 'react';
-import { Alert, AlertTitle, Button, CloseIcon, IconButton } from '@rbx/ui';
-import useVerificationStyles from './Verification.styles';
+import { Alert } from '@rbx/foundation-ui';
+import { useTranslation } from '@rbx/intl';
 
 export interface GenericVerificationAlertProps {
   alertTitle: string | undefined;
@@ -12,6 +12,12 @@ export interface GenericVerificationAlertProps {
   allowCloseDialog: boolean;
   onDismiss?: () => void;
 }
+
+const SEVERITY_MAP = {
+  info: 'Info',
+  warning: 'Warning',
+  error: 'Error',
+} as const;
 
 const GenericVerificationAlert: FunctionComponent<
   React.PropsWithChildren<GenericVerificationAlertProps>
@@ -24,9 +30,7 @@ const GenericVerificationAlert: FunctionComponent<
   allowCloseDialog,
   onDismiss,
 }) => {
-  const {
-    classes: { alertStyle },
-  } = useVerificationStyles();
+  const { translate } = useTranslation();
   const [showAlert, setShowAlert] = useState<boolean>(true);
 
   const handleClose = () => {
@@ -34,32 +38,30 @@ const GenericVerificationAlert: FunctionComponent<
     setShowAlert(false);
   };
 
-  if (showAlert) {
-    return (
-      <Alert
-        severity={severity}
-        onClose={undefined}
-        className={alertStyle}
-        action={
-          <>
-            {linkLabel && (
-              <Button color='inherit' size='small' href={externalLink}>
-                {linkLabel}
-              </Button>
-            )}
-            {allowCloseDialog && (
-              <IconButton aria-label='Close' color='inherit' size='small' onClick={handleClose}>
-                <CloseIcon fontSize='small' />
-              </IconButton>
-            )}
-          </>
-        }>
-        {alertTitle && <AlertTitle>{alertTitle}</AlertTitle>}
-        {alertDescription}
-      </Alert>
-    );
+  if (!showAlert) {
+    return null;
   }
-  return null;
+
+  const dismissProps = allowCloseDialog
+    ? ({ closeLabel: translate('Action.Close'), onDismiss: handleClose } as const)
+    : ({ hasCloseAffordance: false } as const);
+
+  return (
+    <Alert
+      severity={SEVERITY_MAP[severity]}
+      variant='Feedback'
+      className='width-full'
+      primaryActionLabel={linkLabel}
+      primaryActionHref={externalLink}
+      {...dismissProps}>
+      <div className='flex flex-col gap-xsmall'>
+        {alertTitle && <span className='text-label-medium content-emphasis'>{alertTitle}</span>}
+        <span className='text-body-medium text-truncate-split content-default width-full'>
+          {alertDescription}
+        </span>
+      </div>
+    </Alert>
+  );
 };
 
 export default GenericVerificationAlert;

@@ -1,13 +1,12 @@
 import type { FunctionComponent } from 'react';
 import React, { useCallback, useState } from 'react';
 import { useRouter } from 'next/router';
+import { Divider, ProgressCircle } from '@rbx/foundation-ui';
 import { useTranslation, withTranslation } from '@rbx/intl';
-import { CircularProgress, Divider, Grid, useMediaQuery, useTheme } from '@rbx/ui';
 import Look from '@modules/miscellaneous/common/enums/Look';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import useOverviewStyles from '../../common/components/Overview.styles';
 import useAvatarLooksGate from '../../home/hooks/useAvatarLooksGate';
 import VerificationAlert from '../../unifiedFeeSystem/components/VerificationAlert';
 import useCurrentLook from '../hooks/useCurrentLook';
@@ -17,15 +16,9 @@ import LookSavePanel from './LookSavePanel';
 import LookTotalPrice from './LookTotalPrice';
 
 const LookConfigureContainer: FunctionComponent<React.PropsWithChildren> = () => {
-  const {
-    classes: { emptyGrid },
-  } = useOverviewStyles();
   const { isLoadingLook, lookSalesData, lookDetail } = useCurrentLook();
   const { translate } = useTranslation();
   const { settings } = useSettings();
-
-  const theme = useTheme();
-  const isXlScreen = useMediaQuery(theme.breakpoints.up('XXLarge'));
 
   const enableMakeupAssets = settings?.enableMakeupAssets;
   const avatarLooksEnabled = useAvatarLooksGate();
@@ -42,9 +35,13 @@ const LookConfigureContainer: FunctionComponent<React.PropsWithChildren> = () =>
 
   if (isLoadingLook || avatarLooksEnabled === undefined) {
     return (
-      <Grid container className={emptyGrid} justifyContent='center' alignItems='center'>
-        <CircularProgress />
-      </Grid>
+      <div className='flex justify-center items-center [min-height:450px]'>
+        <ProgressCircle
+          variant='Indeterminate'
+          size='Medium'
+          ariaLabel={translate('Label.Loading')}
+        />
+      </div>
     );
   }
 
@@ -68,7 +65,7 @@ const LookConfigureContainer: FunctionComponent<React.PropsWithChildren> = () =>
   }
 
   return (
-    <div style={{ width: '100%', maxWidth: '1800px', paddingRight: isXlScreen ? '10%' : '0%' }}>
+    <div className='width-full [max-width:1800px] xxlarge:padding-right-[10%]'>
       <VerificationAlert />
       <LookItemDetails
         lookDetail={lookDetail}
@@ -77,11 +74,11 @@ const LookConfigureContainer: FunctionComponent<React.PropsWithChildren> = () =>
         setName={setName}
         setDescription={setDescription}
       />
-      <Divider style={{ margin: '40px 0' }} />
+      <Divider className='margin-y-[40px]' />
       {!isIecLook && (
         <>
           <LookTotalPrice totalValue={lookDetail.totalValue ?? 0} />
-          <Divider style={{ margin: '40px 0' }} />
+          <Divider className='margin-y-[40px]' />
         </>
       )}
       <LookItems

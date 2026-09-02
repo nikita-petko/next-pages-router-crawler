@@ -1,35 +1,17 @@
-import React from 'react';
+import {
+  Button,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogTitle,
+  Divider,
+  Icon,
+} from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { Dialog, DialogTemplate, Divider, Grid, RobuxIcon, Typography, makeStyles } from '@rbx/ui';
 
 /** Minimum width shared by the presave and restock confirmation dialogs. */
 export const CONFIRM_DIALOG_MIN_WIDTH = '580px';
-
-const useStyles = makeStyles()((theme) => ({
-  container: {
-    minWidth: CONFIRM_DIALOG_MIN_WIDTH,
-    padding: '0 10px 10px 10px',
-    color: theme.palette.mode === 'light' ? 'black' : 'white',
-  },
-  title: {
-    fontSize: '20px',
-    fontWeight: '450',
-    textAlign: 'center',
-  },
-  divider: {
-    margin: '24px 0',
-  },
-  label: {
-    fontSize: '14px',
-    fontWeight: '400',
-  },
-  value: {
-    color: theme.palette.content.muted,
-  },
-  robuxIcon: {
-    verticalAlign: 'text-bottom',
-  },
-}));
 
 interface RestockConfirmDialogProps {
   open: boolean;
@@ -49,72 +31,65 @@ function RestockConfirmDialog({
   restockingFee,
 }: RestockConfirmDialogProps) {
   const { translate } = useTranslation();
-  const { classes } = useStyles();
 
   return (
-    <Dialog open={open}>
-      <DialogTemplate
-        onConfirm={onConfirm}
-        onCancel={onCancel}
-        title=''
-        content={
-          <div className={classes.container}>
-            <Typography className={classes.title}>{translate('Label.ConfirmRestock')}</Typography>
-            <Divider className={classes.divider} />
-            <Typography>{translate('Message.RestockWarning')}</Typography>
-
-            <Grid container item XSmall={12} alignItems='center' padding='16px'>
-              <Grid item XSmall={6}>
-                <Typography className={classes.label}>
-                  {translate('Label.AdditionalQuantity')}
-                </Typography>
-              </Grid>
-              <Grid item XSmall={6}>
-                <Typography variant='body2' className={classes.value}>
-                  {quantity && originalQuantity ? quantity - originalQuantity : 0}
-                </Typography>
-              </Grid>
-            </Grid>
-            <Divider />
-
-            <Grid container item XSmall={12} alignItems='center' padding='16px'>
-              <Grid item XSmall={6}>
-                <Typography className={classes.label}>
-                  {translate('Label.NewTotalQuantity')}
-                </Typography>
-              </Grid>
-              <Grid item XSmall={6}>
-                <Typography variant='body2' className={classes.value}>
-                  {quantity}
-                </Typography>
-              </Grid>
-            </Grid>
-            <Divider />
-
-            <Grid container item XSmall={12} alignItems='center' padding='16px'>
-              <Grid item XSmall={6}>
-                <Typography className={classes.label}>
-                  {translate('Label.RestockingFeeModalContent')}
-                </Typography>
-              </Grid>
-              <Grid item XSmall={6}>
-                <Typography variant='body2' className={classes.value}>
-                  {restockingFee !== undefined ? (
-                    <>
-                      <RobuxIcon fontSize='small' className={classes.robuxIcon} />{' '}
-                      {restockingFee.toLocaleString()}
-                    </>
-                  ) : (
-                    translate('Label.Calculating')
-                  )}
-                </Typography>
-              </Grid>
-            </Grid>
-          </div>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onCancel();
         }
-        confirmText={translate('Action.ConfirmRestock')}
-        cancelText={translate('Action.Cancel')}
-      />
+      }}
+      size='Medium'
+      isModal
+      hasCloseAffordance={false}>
+      <DialogContent className='min-width-[580px]'>
+        <DialogBody>
+          <DialogTitle className='text-heading-medium margin-y-none padding-bottom-small'>
+            {translate('Label.ConfirmRestock')}
+          </DialogTitle>
+          <span className='text-body-medium'>{translate('Message.RestockWarning')}</span>
+          <div className='margin-top-[24px]'>
+            <div className='grid items-center padding-[16px] [grid-template-columns:1fr_1fr]'>
+              <span className='text-body-medium'>{translate('Label.AdditionalQuantity')}</span>
+              <span className='text-body-medium content-muted flex flex-col'>
+                {quantity && originalQuantity ? quantity - originalQuantity : 0}
+              </span>
+            </div>
+            <Divider />
+            <div className='grid items-center padding-[16px] [grid-template-columns:1fr_1fr]'>
+              <span className='text-body-medium'>{translate('Label.NewTotalQuantity')}</span>
+              <span className='text-body-medium content-muted flex flex-col'>{quantity}</span>
+            </div>
+            <Divider />
+            <div className='grid items-center padding-[16px] [grid-template-columns:1fr_1fr]'>
+              <span className='text-body-medium'>
+                {translate('Label.RestockingFeeModalContent')}
+              </span>
+              <span className='text-body-medium content-muted flex items-center'>
+                {restockingFee !== undefined ? (
+                  <>
+                    <Icon name='icon-filled-robux' size='Small' className='text-align-y-bottom' />{' '}
+                    {restockingFee.toLocaleString()}
+                  </>
+                ) : (
+                  translate('Label.Calculating')
+                )}
+              </span>
+            </div>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <div className='flex justify-end gap-small'>
+            <Button variant='Standard' type='button' onClick={onCancel}>
+              {translate('Action.Cancel')}
+            </Button>
+            <Button variant='Emphasis' type='button' onClick={onConfirm}>
+              {translate('Action.ConfirmRestock')}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
     </Dialog>
   );
 }

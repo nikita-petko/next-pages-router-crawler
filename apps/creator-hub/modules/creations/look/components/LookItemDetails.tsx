@@ -1,17 +1,9 @@
 import type { LookDetailV2 } from '@rbx/client-look-api/v1';
 import { CreatorType } from '@rbx/client-look-api/v1';
+import { Icon, TextArea, TextInput } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { ReturnPolicy } from '@rbx/thumbnails';
-import {
-  TextField,
-  Typography,
-  Grid,
-  Chip,
-  Tooltip,
-  InfoOutlinedIcon,
-  makeStyles,
-  useTheme,
-} from '@rbx/ui';
+import { Chip, Tooltip, useTheme } from '@rbx/ui';
 import {
   Item,
   itemTypeToThumbnailType,
@@ -19,7 +11,6 @@ import {
 } from '@modules/miscellaneous/common';
 import Look from '@modules/miscellaneous/common/enums/Look';
 import ItemThumbnail from '../../common/components/ItemThumbnail';
-import { useItemConfigureFormStyles } from '../../unifiedFeeSystem/helper/StyleHooks';
 import LookUnavailableBanner from './LookUnavailableBanner';
 
 interface LookItemDetailsProps {
@@ -30,28 +21,11 @@ interface LookItemDetailsProps {
   setDescription: (description: string) => void;
 }
 
-const useStyles = makeStyles()(() => ({
-  thumbnail: {
-    maxWidth: '248px',
-    maxHeight: '248px',
-    marginTop: '15px',
-  },
-  iecInfoIcon: {
-    marginLeft: 5,
-  },
-}));
-
 function LookItemDetails(props: LookItemDetailsProps) {
-  const {
-    classes: { itemCardImg, moderatedCardImg },
-  } = useItemConfigureFormStyles();
   const { translate } = useTranslation();
   const { lookDetail, name, description, setName, setDescription } = props;
 
   const { lookType, curator, lookId, creatingUniverseId } = lookDetail;
-  const {
-    classes: { thumbnail, iecInfoIcon },
-  } = useStyles();
   const theme = useTheme();
 
   const isGroup = curator?.type === CreatorType.Group;
@@ -75,59 +49,48 @@ function LookItemDetails(props: LookItemDetailsProps) {
 
   return (
     <div>
-      <Grid container alignItems='center' marginBottom={2}>
-        <Grid item XSmall={8} Medium={3.5}>
-          <Typography variant='h1' style={{ fontSize: '40px', fontWeight: '550' }}>
-            {translate('Label.ManageItem')}
-          </Typography>
-        </Grid>
-        <Grid item XSmall={6.5} sx={{ display: { xs: 'none', md: 'block' } }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Tooltip title={translate('Label.ItemTypeDescription')} placement='top'>
-              <Chip
-                icon={
-                  <img
-                    src={chipImage}
-                    alt='icon'
-                    style={{ padding: '5px' }}
-                    onError={(e) => {
-                      if (e.target instanceof HTMLImageElement && e.target.src !== defaultImage) {
-                        e.target.src = defaultImage;
-                      }
-                    }}
-                  />
-                }
-                variant='outlined'
-                color='secondary'
-                label={translate(lookTypeChipLabelKey)}
-              />
-            </Tooltip>
-            {isIecLook && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  marginLeft: 'auto',
-                }}>
-                <Typography variant='body2' color='secondary'>
-                  {translate('Label.CannotBeSold')}
-                </Typography>
-                <InfoOutlinedIcon classes={{ root: iecInfoIcon }} />
-              </div>
-            )}
-          </div>
-        </Grid>
-      </Grid>
+      <div className='flex wrap items-center justify-between gap-y-[16px] margin-bottom-[16px] large:grid large:gap-medium large:[grid-template-columns:3fr_8fr]'>
+        <div className='text-display-small'>{translate('Label.ManageItem')}</div>
+        <div className='flex items-center gap-small'>
+          <Tooltip title={translate('Label.ItemTypeDescription')} placement='top'>
+            <Chip
+              icon={
+                <img
+                  src={chipImage}
+                  alt='icon'
+                  style={{ padding: '5px' }}
+                  onError={(e) => {
+                    if (e.target instanceof HTMLImageElement && e.target.src !== defaultImage) {
+                      e.target.src = defaultImage;
+                    }
+                  }}
+                />
+              }
+              variant='outlined'
+              color='secondary'
+              label={translate(lookTypeChipLabelKey)}
+            />
+          </Tooltip>
+          {isIecLook && (
+            <div className='flex items-center margin-left-auto'>
+              <span className='text-body-medium content-muted'>
+                {translate('Label.CannotBeSold')}
+              </span>
+              <Icon name='icon-regular-circle-i' size='Small' className='margin-left-[5px]' />
+            </div>
+          )}
+        </div>
+      </div>
       <LookUnavailableBanner
         items={lookDetail?.items ?? []}
         creatingUniverseId={lookDetail?.creatingUniverseId}
       />
-      <Grid container spacing={2}>
-        <Grid item Large={4} XLarge={3.5}>
-          <div className={thumbnail}>
+      <div className='grid gap-medium margin-top-[16px] large:[grid-template-columns:3fr_8fr]'>
+        <div>
+          <div className='[max-width:248px] [max-height:248px]'>
             <ItemThumbnail
-              containerClass={itemCardImg}
-              moderatedContainerClass={moderatedCardImg}
+              containerClass='inline-block size-[250px] radius-medium max-[1343px]:size-[200px]'
+              moderatedContainerClass='relative inline-block size-[200px] radius-medium'
               type={itemTypeToThumbnailType[Item.Look]}
               // TODO @asaxena UCP-1303
               // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IDs are int64 and cannot be safely converted to JS number
@@ -141,34 +104,29 @@ function LookItemDetails(props: LookItemDetailsProps) {
               itemType={Item.Look}
             />
           </div>
-        </Grid>
-        <Grid item Large={7} XLarge={8}>
-          <TextField
+        </div>
+        <div className='flex flex-col gap-medium'>
+          <TextInput
             id='name'
             label={translate('Label.ItemName')}
-            fullWidth
-            margin='normal'
-            disabled={false}
-            inputProps={{ maxLength: 50 }}
+            isRequired
+            maxLength={50}
             value={name}
             onChange={(event) => setName(event.target.value)}
             helperText={`${name.length}/50`}
-            error={!name?.trim()}
-            required
+            hasError={!name?.trim()}
           />
-          <TextField
+          <TextArea
             id='description'
             label={translate('Label.ItemDescription')}
-            fullWidth
-            multiline
-            margin='normal'
-            inputProps={{ maxLength: 1000 }}
+            textareaClassName='[resize:none] [field-sizing:content]'
+            maxLength={1000}
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             helperText={`${description.length}/1000`}
           />
-        </Grid>
-      </Grid>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,34 +1,32 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type {
   RobloxItemConfigurationApiGetItemResponse,
   RobloxItemConfigurationApiGetRegionalpricingPreviewResponse,
   RobloxItemConfigurationApiModelsMarketplaceItemRegionalRentalPrice,
 } from '@rbx/client-itemconfiguration/v1';
 import { RobloxItemConfigurationApiAssetDetailsAssetTypeEnum } from '@rbx/client-itemconfiguration/v1';
+import {
+  Button,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogTitle,
+  SearchInput,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from '@rbx/foundation-ui';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import { ReturnPolicy, ThumbnailTypes } from '@rbx/thumbnails';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  Grid,
-  Typography,
-  DialogActions,
-  Button,
-  SearchIcon,
-  Tab,
-  Tabs,
-} from '@rbx/ui';
-import DebouncedTextField from '@modules/charts-generic/charts/DebouncedTextField';
-import itemconfigurationClient, {
-  BundleModerationStatus,
-} from '@modules/clients/itemconfiguration';
+import itemconfigurationClient from '@modules/clients/itemconfiguration';
 import {
   Asset,
   assetTypeToItemType,
   itemTypeToReturnPolicyType,
   itemTypeToThumbnailType,
 } from '@modules/miscellaneous/common';
+import { isValidEnumValue } from '@modules/miscellaneous/utils';
 import AllCountriesTable from '@modules/regional-pricing/components/AllCountriesModal/AllCountriesTable';
 import TopCountriesTable from '@modules/regional-pricing/components/TopCountriesTable/TopCountriesTable';
 import type {
@@ -37,14 +35,17 @@ import type {
 } from '@modules/regional-pricing/types';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import ItemThumbnail from '../../common/components/ItemThumbnail';
-import useItemConfigureFormStylesFromForm from '../../itemConfiguration/components/ItemConfigureForm.styles';
-import { useItemConfigureFormStyles } from '../helper/StyleHooks';
 import {
   DurationOptionsEnum,
   mapAssetTypeToString,
   mapDurationToEnum,
   mapDurationToString,
 } from '../helper/UnifiedFeeSystemConstants';
+
+// Mirror the (working) ItemDetails thumbnail sizing: an inline-block sized container capped by a
+// maxWidth/maxHeight wrapper below.
+const THUMBNAIL_CLASS = 'inline-block size-[75px] radius-medium';
+const MODERATED_THUMBNAIL_CLASS = 'relative inline-block size-[75px] radius-medium';
 
 interface RegionalPricingPreviewPanelProps {
   isOpen: boolean;
@@ -76,17 +77,6 @@ function RegionalPricingPreviewPanel(props: RegionalPricingPreviewPanelProps) {
   } = props;
   const { translate } = useTranslation();
   const { settings } = useSettings();
-  const {
-    classes: {
-      regionalPricingPreviewItemCardImg,
-      regionalPricingPreviewTable,
-      searchIcon,
-      regionalPricingPreviewPanelModal,
-    },
-  } = useItemConfigureFormStyles();
-  const {
-    classes: { regionalPricingPreviewModeratedThumbnailWrapper },
-  } = useItemConfigureFormStylesFromForm();
 
   const [allCountriesData, setAllCountriesData] = useState<AllCountriesDisplayInfo[]>([]);
   const [topCountriesData, setTopCountriesData] = useState<RegionalPriceDisplayInfo[]>([]);
@@ -100,10 +90,6 @@ function RegionalPricingPreviewPanel(props: RegionalPricingPreviewPanelProps) {
   const locale = useLocalization().locale ?? Locale.English;
 
   const isRentablesTab = isRentablesEnabled && isRentableOptIn && activeTab === 1;
-
-  const moderatedThumbnail =
-    itemDetails?.item?.moderationStatus !== undefined &&
-    itemDetails?.item?.moderationStatus !== BundleModerationStatus.NUMBER_3;
 
   useEffect(() => {
     const regionNames = new Intl.DisplayNames(locale, {
@@ -124,12 +110,10 @@ function RegionalPricingPreviewPanel(props: RegionalPricingPreviewPanelProps) {
             const duration = rentalPrice.rentalDays;
             if (duration !== undefined) {
               const durationKey = mapDurationToEnum(duration);
-              if (!regionalRentalPrices[durationKey]) {
-                regionalRentalPrices[durationKey] = [];
-              }
+              regionalRentalPrices[durationKey] ??= [];
               regionalRentalPrices[durationKey]?.push({
                 country:
-                  regionNames.of(regionalRentalPrice.countryIso2Code?.toUpperCase() ?? '') || '',
+                  regionNames.of(regionalRentalPrice.countryIso2Code?.toUpperCase() ?? '') ?? '',
                 displayPrice: rentalPrice.priceInRobux?.toString() ?? minimumPrice.toString(),
               });
             }
@@ -155,7 +139,7 @@ function RegionalPricingPreviewPanel(props: RegionalPricingPreviewPanelProps) {
           .filter((duration) => duration !== DurationOptionsEnum.Permanent)
           .map((duration) => ({
             displayHeader: translate(`Action.${mapDurationToString(duration)}`),
-            allCountriesDisplayInfo: (allCountriesRegionalRentalPrices[duration] || []).sort(
+            allCountriesDisplayInfo: (allCountriesRegionalRentalPrices[duration] ?? []).sort(
               (a, b) => a.country.localeCompare(b.country),
             ),
           }));
@@ -165,7 +149,7 @@ function RegionalPricingPreviewPanel(props: RegionalPricingPreviewPanelProps) {
         getRegionalPricingPreviewData.regionalPrices?.map(
           (regionalPrice): RegionalPriceDisplayInfo => {
             return {
-              country: regionNames.of(regionalPrice.countryIso2Code?.toUpperCase() ?? '') || '',
+              country: regionNames.of(regionalPrice.countryIso2Code?.toUpperCase() ?? '') ?? '',
               displayPrice: regionalPrice.priceInRobux?.toString() ?? minimumPrice.toString(),
             };
           },
@@ -191,7 +175,7 @@ function RegionalPricingPreviewPanel(props: RegionalPricingPreviewPanelProps) {
       if (isRentablesTab) {
         const representativeCountryNames =
           representativeCountriesResponse.countryIso2Codes
-            ?.map((code) => regionNames.of(code.toUpperCase()) || '')
+            ?.map((code) => regionNames.of(code.toUpperCase()) ?? '')
             .filter((countryName) => countryName !== '') ?? [];
 
         const filteredTimedOptionsData = countryData.map((durationData) => ({
@@ -215,7 +199,7 @@ function RegionalPricingPreviewPanel(props: RegionalPricingPreviewPanelProps) {
               );
               if (foundRegionalPrice) {
                 return {
-                  country: regionNames.of(country.toUpperCase()) || '',
+                  country: regionNames.of(country.toUpperCase()) ?? '',
                   displayPrice:
                     foundRegionalPrice.priceInRobux?.toString() ?? minimumPrice.toString(),
                 };
@@ -241,10 +225,10 @@ function RegionalPricingPreviewPanel(props: RegionalPricingPreviewPanelProps) {
 
       setAllCountriesData(countryData);
 
-      setTopCountriesInfo(countryData, getRegionalPricingPreviewData);
+      void setTopCountriesInfo(countryData, getRegionalPricingPreviewData);
     }
 
-    fetchRegionalPricingData();
+    void fetchRegionalPricingData();
   }, [
     activeTab,
     isBundle,
@@ -264,10 +248,11 @@ function RegionalPricingPreviewPanel(props: RegionalPricingPreviewPanelProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const isGroup = itemDetails && itemDetails?.item?.creator?.group !== undefined;
-  const assetType = mapAssetTypeToString(
+  const mappedAssetType = mapAssetTypeToString(
     itemDetails?.item?.marketplaceItemDetails?.assetDetails?.assetType ??
       RobloxItemConfigurationApiAssetDetailsAssetTypeEnum.NUMBER_0,
-  ) as Asset;
+  );
+  const assetType = isValidEnumValue(Asset, mappedAssetType) ? mappedAssetType : Asset.Hat;
   const itemTypeThumbnail = isBundle
     ? assetTypeToItemType[Asset.Hat]
     : assetTypeToItemType[assetType];
@@ -301,8 +286,8 @@ function RegionalPricingPreviewPanel(props: RegionalPricingPreviewPanelProps) {
 
   const itemThumbnail = (
     <ItemThumbnail
-      containerClass={regionalPricingPreviewItemCardImg}
-      moderatedContainerClass={regionalPricingPreviewItemCardImg}
+      containerClass={THUMBNAIL_CLASS}
+      moderatedContainerClass={MODERATED_THUMBNAIL_CLASS}
       type={isBundle ? ThumbnailTypes.bundleThumbnail : itemTypeToThumbnailType[itemTypeThumbnail]}
       targetId={targetId}
       bundleModerationStatus={itemDetails?.item?.moderationStatus}
@@ -317,119 +302,108 @@ function RegionalPricingPreviewPanel(props: RegionalPricingPreviewPanelProps) {
   return (
     <Dialog
       open={isOpen}
-      onClose={onClose}
-      maxWidth='Medium'
-      fullWidth
-      className={regionalPricingPreviewPanelModal}>
-      <DialogTitle>{translate('Label.RegionalPricingPreview')}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <Grid item>
-            <Grid style={{ marginBottom: '16px' }}>
-              <Typography variant='h2'>{translate('Title.PriceCountryRegions')}</Typography>
-            </Grid>
-            <Grid container direction='row' alignItems='center'>
-              <Grid item>
-                {moderatedThumbnail ? (
-                  <div className={regionalPricingPreviewModeratedThumbnailWrapper}>
-                    {itemThumbnail}
-                  </div>
-                ) : (
-                  itemThumbnail
-                )}
-              </Grid>
-              <Grid item>
-                <Grid container direction='column' style={{ marginLeft: '16px' }}>
-                  <Grid item>
-                    <Typography variant='body1'>{name}</Typography>
-                  </Grid>
-                  <Grid item>
-                    <Typography variant='body2' style={{ color: 'gray' }}>
-                      {translate('Label.ID', { id: targetId.toString() })}
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Grid>
-            </Grid>
-          </Grid>
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onClose();
+        }
+      }}
+      size='Large'
+      isModal
+      hasCloseAffordance={false}>
+      <DialogContent className='width-full'>
+        <DialogBody>
+          <DialogTitle className='text-heading-small margin-none'>
+            {translate('Label.RegionalPricingPreview')}
+          </DialogTitle>
+          <div className='margin-top-[16px]'>
+            <div className='text-heading-small margin-bottom-[16px]'>
+              {translate('Title.PriceCountryRegions')}
+            </div>
+            <div className='flex items-center'>
+              <div className='shrink-0 [max-width:75px] [max-height:75px]'>{itemThumbnail}</div>
+              <div className='flex flex-col margin-left-[16px]'>
+                <span className='text-body-medium'>{name}</span>
+                <span className='text-body-small content-muted'>
+                  {translate('Label.ID', { id: targetId.toString() })}
+                </span>
+              </div>
+            </div>
 
-          {isRentablesEnabled && isRentableOptIn && (
-            <Grid item style={{ width: '100%', marginTop: '16px' }}>
-              <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
-                <Tab label={translate('Action.Permanent')} />
-                <Tab label={translate('Label.TimedOptionPrices')} />
-              </Tabs>
-            </Grid>
-          )}
-
-          <Grid item className={regionalPricingPreviewTable}>
-            {viewAllCountries ? (
-              <DialogContent>
-                <DebouncedTextField
-                  id='all-countries-table-search'
-                  label=''
-                  aria-label={translate('Label.Search')}
-                  placeholder={translate('Label.Search')}
-                  size='small'
-                  InputProps={{
-                    startAdornment: <SearchIcon className={searchIcon} />,
-                    type: 'search',
-                  }}
-                  value={searchTerm}
-                  onDebouncedChange={setSearchTerm}
-                  debounceTime={100}
-                  fullWidth
-                />
-                <AllCountriesTable
-                  countriesData={filteredCountriesData}
-                  classes={rentablesTableHeaderClasses}
-                />
-              </DialogContent>
-            ) : (
-              <>
-                {isRentablesTab ? (
-                  // Use AllCountriesTable which supports multiple price columns
-                  <AllCountriesTable
-                    countriesData={topCountriesTimedOptionsData}
-                    showViewAllButton
-                    onViewAllCountries={() => {
-                      setViewAllCountries(true);
-                    }}
-                    disableViewAllCountries={false}
-                    classes={rentablesTableHeaderClasses}
-                  />
-                ) : (
-                  <TopCountriesTable
-                    topCountriesData={topCountriesData}
-                    onViewAllCountries={() => {
-                      setViewAllCountries(true);
-                    }}
-                    disableViewAllCountries={false}
-                    isForSale
-                  />
-                )}
-              </>
+            {isRentablesEnabled && isRentableOptIn && (
+              <div className='width-full margin-top-[16px]'>
+                <Tabs
+                  value={activeTab === 1 ? 'timed' : 'permanent'}
+                  onValueChange={(value) => setActiveTab(value === 'timed' ? 1 : 0)}>
+                  <TabsList>
+                    <TabsTrigger value='permanent'>{translate('Action.Permanent')}</TabsTrigger>
+                    <TabsTrigger value='timed'>{translate('Label.TimedOptionPrices')}</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
             )}
-          </Grid>
-        </Grid>
-      </DialogContent>
-      <Grid container justifyContent='flex-end' spacing={1}>
-        {viewAllCountries && (
-          <DialogActions>
-            <Button
-              onClick={() => setViewAllCountries(false)}
-              color='secondary'
-              variant='contained'>
-              {translate('Action.GoBack')}
+
+            <div className='width-full margin-top-[16px]'>
+              {viewAllCountries ? (
+                <div className='flex flex-col gap-medium'>
+                  <SearchInput
+                    id='all-countries-table-search'
+                    aria-label={translate('Label.Search')}
+                    leadingIconName='icon-regular-magnifying-glass'
+                    placeholder={translate('Label.Search')}
+                    size='Small'
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    className='width-full'
+                  />
+                  {/* Scroll the (potentially long) country list instead of growing the dialog. */}
+                  <div className='[max-height:50vh] [overflow-y:auto]'>
+                    <AllCountriesTable
+                      countriesData={filteredCountriesData}
+                      classes={rentablesTableHeaderClasses}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className='[max-height:50vh] [overflow-y:auto]'>
+                  {isRentablesTab ? (
+                    // Use AllCountriesTable which supports multiple price columns
+                    <AllCountriesTable
+                      countriesData={topCountriesTimedOptionsData}
+                      showViewAllButton
+                      onViewAllCountries={() => {
+                        setViewAllCountries(true);
+                      }}
+                      disableViewAllCountries={false}
+                      classes={rentablesTableHeaderClasses}
+                    />
+                  ) : (
+                    <TopCountriesTable
+                      topCountriesData={topCountriesData}
+                      onViewAllCountries={() => {
+                        setViewAllCountries(true);
+                      }}
+                      disableViewAllCountries={false}
+                      isForSale
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <div className='flex gap-small justify-end'>
+            {viewAllCountries && (
+              <Button variant='Standard' type='button' onClick={() => setViewAllCountries(false)}>
+                {translate('Action.GoBack')}
+              </Button>
+            )}
+            <Button variant='Emphasis' type='button' onClick={onClose}>
+              {translate('Action.Close')}
             </Button>
-          </DialogActions>
-        )}
-        <DialogActions>
-          <Button onClick={onClose} color='primaryBrand' variant='contained'>
-            {translate('Action.Close')}
-          </Button>
-        </DialogActions>
-      </Grid>
+          </div>
+        </DialogFooter>
+      </DialogContent>
     </Dialog>
   );
 }

@@ -1,7 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
+import {
+  Button,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogTitle,
+} from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { Dialog, DialogTemplate } from '@rbx/ui';
 import lookClient, { type LookType } from '@modules/clients/look';
 import tryParseResponseError from '@modules/clients/utils/tryParseResponseError';
 import Look from '@modules/miscellaneous/common/enums/Look';
@@ -68,26 +75,69 @@ function LookDeleteDialog(props: LookDeleteDialogProps) {
 
   return (
     <div>
-      <Dialog open={showDeleteErrorDialog}>
-        <DialogTemplate
-          onConfirm={() => setShowDeleteErrorDialog(false)}
-          onCancel={() => setShowDeleteErrorDialog(false)}
-          title={translate('Message.DeleteUnsuccessful')}
-          content={`${translate('Message.DeleteErrorMsgPrefix')} ${translate(deleteErrorMessage)}`}
-          confirmText={translate('Action.Ok')}
-          cancelText={translate('Action.Cancel')}
-        />
+      <Dialog
+        open={showDeleteErrorDialog}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setShowDeleteErrorDialog(false);
+          }
+        }}
+        size='Medium'
+        isModal
+        hasCloseAffordance={false}>
+        <DialogContent>
+          <DialogBody>
+            <DialogTitle className='text-heading-medium margin-y-none padding-bottom-small'>
+              {translate('Message.DeleteUnsuccessful')}
+            </DialogTitle>
+            <span className='text-body-medium'>
+              {`${translate('Message.DeleteErrorMsgPrefix')} ${translate(deleteErrorMessage)}`}
+            </span>
+          </DialogBody>
+          <DialogFooter>
+            <div className='flex justify-end gap-medium'>
+              <Button
+                variant='Emphasis'
+                type='button'
+                aria-label={translate('Action.Ok')}
+                onClick={() => setShowDeleteErrorDialog(false)}>
+                {translate('Action.Ok')}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
-      <Dialog open={showDeleteLookDialog}>
-        <DialogTemplate
-          color='destructive'
-          onConfirm={handleDelete}
-          onCancel={() => setShowDeleteLookDialog(false)}
-          title={translate('Heading.DeleteLook')}
-          content={translate('Message.DeleteLookDescription')}
-          confirmText={translate('Action.Delete')}
-          cancelText={translate('Action.Cancel')}
-        />
+      <Dialog
+        open={showDeleteLookDialog}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setShowDeleteLookDialog(false);
+          }
+        }}
+        size='Medium'
+        isModal
+        hasCloseAffordance={false}>
+        <DialogContent>
+          <DialogBody>
+            <DialogTitle className='text-heading-medium margin-y-none padding-bottom-small'>
+              {translate('Heading.DeleteLook')}
+            </DialogTitle>
+            <span className='text-body-medium'>{translate('Message.DeleteLookDescription')}</span>
+          </DialogBody>
+          <DialogFooter>
+            <div className='flex justify-end gap-small'>
+              <Button
+                variant='Standard'
+                type='button'
+                onClick={() => setShowDeleteLookDialog(false)}>
+                {translate('Action.Cancel')}
+              </Button>
+              <Button variant='Alert' type='button' onClick={handleDelete}>
+                {translate('Action.Delete')}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   );

@@ -1,17 +1,14 @@
 import { useMemo } from 'react';
 import type { RobloxItemConfigurationApiRentalOption } from '@rbx/client-itemconfiguration/v1';
-import { useTranslation } from '@rbx/intl';
 import {
-  Typography,
-  Dialog,
-  DialogContent,
-  Grid,
-  useTheme,
-  DialogActions,
   Button,
-  makeStyles,
-  TableContainer,
-} from '@rbx/ui';
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogTitle,
+} from '@rbx/foundation-ui';
+import { useTranslation } from '@rbx/intl';
 import { NumberIcon } from '@modules/charts-generic/charts/numberFormatters';
 import GenericTableV2 from '@modules/charts-generic/tables/GenericTableV2';
 import type { TableColumnConfig } from '@modules/charts-generic/tables/types/GenericColumnType';
@@ -27,13 +24,6 @@ import {
   mapDurationToString,
 } from '../../unifiedFeeSystem/helper/UnifiedFeeSystemConstants';
 
-const useStyles = makeStyles()(() => ({
-  subText: {
-    marginTop: '10px',
-    color: 'GrayText',
-  },
-}));
-
 enum ColumnKey {
   Duration = 'duration',
   Price = 'price',
@@ -47,10 +37,7 @@ interface TimedOptionsDialogProps {
 
 function TimedOptionsDialog(props: TimedOptionsDialogProps) {
   const { showTimedOptionsDialog, setShowTimedOptionsDialog, rentalPricingData } = props;
-  const { classes } = useStyles();
   const { translate } = useTranslation();
-
-  const theme = useTheme();
 
   const columnConfigs: TableColumnConfig<ColumnKey>[] = useMemo(
     () => [
@@ -103,7 +90,7 @@ function TimedOptionsDialog(props: TimedOptionsDialogProps) {
       // Duration column
       map.set(ColumnKey.Duration, {
         type: ColumnType.Text,
-        value: `${translate(`Action.${mapDurationToString(duration)}`)}`,
+        value: translate(`Action.${mapDurationToString(duration)}`),
       });
 
       map.set(ColumnKey.Price, {
@@ -125,54 +112,52 @@ function TimedOptionsDialog(props: TimedOptionsDialogProps) {
   );
 
   return (
-    <Dialog onClose={() => setShowTimedOptionsDialog(false)} open={showTimedOptionsDialog}>
-      <DialogContent style={{ width: '100%' }}>
-        <div
-          style={{
-            padding: '0 10px 10px 10px',
-            color: theme.palette.mode === 'light' ? 'black' : 'white',
-          }}>
-          <div style={{ textAlign: 'left' }}>
-            <Grid container alignItems='left' direction='column'>
-              <Typography variant='h3'>{translate('Title.TimedOptions')}</Typography>
-              <Typography variant='body1' className={classes.subText}>
-                {translate('Description.TimedOptionsDialog')}
-              </Typography>
-            </Grid>
-            <br />
-            <Grid container alignItems='left' direction='column'>
-              <Typography variant='body1'>{translate('Label.HowAreThesePricesSet')}</Typography>
-              <Typography variant='body1' className={classes.subText}>
-                {translate('Description.HowAreThesePricesSet')}
-              </Typography>
-            </Grid>
-            <br />
-            <Grid container alignItems='left'>
-              <TableContainer>
-                <GenericTableV2
-                  rowData={rowData}
-                  columnConfigs={columnConfigs}
-                  tableConfig={tableConfig}
-                  isDataLoading={false}
-                  isResponseFailed={false}
-                  isUserForbidden={false}
-                />
-              </TableContainer>
-            </Grid>
+    <Dialog
+      open={showTimedOptionsDialog}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          setShowTimedOptionsDialog(false);
+        }
+      }}
+      size='Medium'
+      isModal
+      hasCloseAffordance={false}>
+      <DialogContent>
+        <DialogBody>
+          <DialogTitle className='text-heading-small margin-none'>
+            {translate('Title.TimedOptions')}
+          </DialogTitle>
+          <div className='text-body-medium content-muted margin-top-[10px]'>
+            {translate('Description.TimedOptionsDialog')}
           </div>
-        </div>
+          <div className='text-label-large margin-top-[16px]'>
+            {translate('Label.HowAreThesePricesSet')}
+          </div>
+          <div className='text-body-medium content-muted margin-top-[10px]'>
+            {translate('Description.HowAreThesePricesSet')}
+          </div>
+          <div className='margin-top-[16px]'>
+            <GenericTableV2
+              rowData={rowData}
+              columnConfigs={columnConfigs}
+              tableConfig={tableConfig}
+              isDataLoading={false}
+              isResponseFailed={false}
+              isUserForbidden={false}
+            />
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button
+            variant='Standard'
+            type='button'
+            onClick={() => {
+              setShowTimedOptionsDialog(false);
+            }}>
+            {translate('Action.Close')}
+          </Button>
+        </DialogFooter>
       </DialogContent>
-      <DialogActions>
-        <Button
-          variant='contained'
-          size='large'
-          color='secondary'
-          onClick={() => {
-            setShowTimedOptionsDialog(false);
-          }}>
-          {translate('Action.Close')}
-        </Button>
-      </DialogActions>
     </Dialog>
   );
 }

@@ -1,6 +1,14 @@
 import { useCallback, useState } from 'react';
+import {
+  Button,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogTitle,
+} from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { Button, Dialog, DialogTemplate, Grid, makeStyles, useSnackbar } from '@rbx/ui';
+import { useSnackbar } from '@rbx/ui';
 import lookClient from '@modules/clients/look';
 import tryParseResponseError from '@modules/clients/utils/tryParseResponseError';
 import LookDeleteDialog from './LookDeleteDialog';
@@ -12,23 +20,10 @@ interface LookSavePanelProps {
   description: string;
 }
 
-const useStyles = makeStyles()(() => ({
-  saveButton: {
-    minWidth: '100px',
-  },
-  deleteButton: {
-    left: '10px',
-    minWidth: '100px',
-  },
-}));
-
 function LookSavePanel(props: LookSavePanelProps) {
   const { isSaveDisabled, lookId, name, description } = props;
 
   const { translate } = useTranslation();
-  const {
-    classes: { saveButton, deleteButton },
-  } = useStyles();
   const { enqueue } = useSnackbar();
 
   const [saveErrorMessage, setSaveErrorMessage] = useState('');
@@ -67,33 +62,59 @@ function LookSavePanel(props: LookSavePanelProps) {
 
   return (
     <div>
-      <Grid container item XSmall={12} marginTop='40px' alignItems='center'>
-        <Grid item XSmall={9} alignItems='center' container paddingRight={12}>
-          <Button
-            variant='contained'
-            disabled={isSaveDisabled}
-            onClick={handleSaveChanges}
-            classes={{ root: saveButton }}>
-            {translate('Action.Save')}
-          </Button>
-          <Button
-            variant='contained'
-            color='secondary'
-            onClick={() => setShowDeleteLookDialog(true)}
-            classes={{ root: deleteButton }}>
-            {translate('Action.Delete')}
-          </Button>
-        </Grid>
-      </Grid>
-      <Dialog open={showSaveErrorDialog}>
-        <DialogTemplate
-          onConfirm={() => setShowSaveErrorDialog(false)}
-          onCancel={() => setShowSaveErrorDialog(false)}
-          title={translate('Message.SavingUnsuccessful')}
-          content={`${translate('Message.SaveErrorMsgPrefix')} ${translate(saveErrorMessage)}`}
-          confirmText={translate('Action.Ok')}
-          cancelText={translate('Action.Cancel')}
-        />
+      <div className='flex items-center gap-small margin-top-[40px]'>
+        <Button
+          variant='Emphasis'
+          type='button'
+          isDisabled={isSaveDisabled}
+          onClick={handleSaveChanges}
+          className='min-width-[100px]'>
+          {translate('Action.Save')}
+        </Button>
+        <Button
+          variant='Standard'
+          type='button'
+          onClick={() => setShowDeleteLookDialog(true)}
+          className='min-width-[100px]'>
+          {translate('Action.Delete')}
+        </Button>
+      </div>
+      <Dialog
+        open={showSaveErrorDialog}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setShowSaveErrorDialog(false);
+          }
+        }}
+        size='Small'
+        isModal
+        hasCloseAffordance={false}>
+        <DialogContent>
+          <DialogBody>
+            <DialogTitle className='text-heading-medium margin-y-none padding-bottom-small'>
+              {translate('Message.SavingUnsuccessful')}
+            </DialogTitle>
+            <span className='text-body-medium'>
+              {`${translate('Message.SaveErrorMsgPrefix')} ${translate(saveErrorMessage)}`}
+            </span>
+          </DialogBody>
+          <DialogFooter>
+            <div className='flex justify-end gap-small'>
+              <Button
+                variant='Standard'
+                type='button'
+                onClick={() => setShowSaveErrorDialog(false)}>
+                {translate('Action.Cancel')}
+              </Button>
+              <Button
+                variant='Emphasis'
+                type='button'
+                onClick={() => setShowSaveErrorDialog(false)}>
+                {translate('Action.Ok')}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
       <LookDeleteDialog
         lookId={lookId}

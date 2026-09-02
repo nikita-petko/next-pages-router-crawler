@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { RobloxItemConfigurationApiGetItemResponse } from '@rbx/client-itemconfiguration/v1';
 import {
   RobloxItemConfigurationApiAssetCreationsDetailsResponseStatusEnum,
@@ -8,8 +8,8 @@ import {
 import type { LookItemDetailV2 } from '@rbx/client-look-api/v1';
 import { NoPriceStatus } from '@rbx/client-look-api/v1';
 import type { PageResponse } from '@rbx/core';
+import { Divider } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { Grid, makeStyles, Typography, Divider } from '@rbx/ui';
 import { useAuthentication } from '@modules/authentication/providers';
 import itemconfigurationClient from '@modules/clients/itemconfiguration';
 import { Item } from '@modules/miscellaneous/common';
@@ -29,18 +29,6 @@ interface LookItemsProps {
 }
 
 const EMPTY_PAGING_PARAMS = {};
-
-const useStyles = makeStyles()((theme) => ({
-  description: {
-    color: theme.palette.content.muted,
-  },
-  unavailableItems: {
-    maxWidth: '60%',
-    marginLeft: 'auto',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-}));
 
 const convertItemToCreationData = async (
   item: LookItemDetailV2,
@@ -111,7 +99,6 @@ const convertItemToCreationData = async (
 
 function LookItems(props: LookItemsProps) {
   const { items, creatingUniverseId } = props;
-  const { classes: styles } = useStyles();
   const { translate } = useTranslation();
   const { user } = useAuthentication();
   // IEC looks always have non-purchasable component items by design; surfacing
@@ -156,21 +143,20 @@ function LookItems(props: LookItemsProps) {
 
   return (
     <div>
-      <Typography variant='h5' style={{ fontSize: '24px', fontWeight: '450' }}>
-        {translate('Heading.LookDetails')}
-      </Typography>
-      <Grid container item XSmall={12} rowGap={2} id='look-items' style={{ marginTop: '32px' }}>
-        <Grid item XSmall={12} Large={5} style={{ paddingRight: '20px' }}>
-          <Typography style={{ fontSize: '18px', fontWeight: '450' }}>
+      <div className='text-heading-medium'>{translate('Heading.LookDetails')}</div>
+      <div
+        id='look-items'
+        className='grid gap-y-[16px] margin-top-[32px] large:[grid-template-columns:5fr_7fr]'>
+        <div className='flex flex-col gap-xsmall padding-right-[20px]'>
+          <div className='text-label-large'>
             {translate('Label.ItemsInThisLook', { count: items.length.toString() })}
-          </Typography>
-          <br />
-          <Typography variant='body2' className={styles.description}>
+          </div>
+          <div className='text-body-medium content-muted'>
             {translate('Message.ItemsInThisLookDescription')}{' '}
-          </Typography>
-        </Grid>
+          </div>
+        </div>
         {availableItems.length > 0 && (
-          <Grid item XSmall={12} Large={7}>
+          <div>
             <ItemGridContainer
               pagingParameters={EMPTY_PAGING_PARAMS}
               loadItems={loadAvailableItems}
@@ -181,36 +167,32 @@ function LookItems(props: LookItemsProps) {
               })}
               emptyMessage={translate('Message.NoItemsFound')}
             />
-          </Grid>
+          </div>
         )}
-        {unavailableItems.length > 0 && (
-          <>
-            <Grid item XSmall={12}>
-              <Divider style={{ maxWidth: '60%', marginLeft: 'auto' }} />
-            </Grid>
-            <Grid item XSmall={12} className={styles.unavailableItems}>
-              <Typography style={{ fontSize: '18px', fontWeight: '450' }}>
-                {translate('Label.UnavailableItems')}
-              </Typography>
-              <Typography variant='body2' className={styles.description}>
-                {translate('Message.UnavailableItemsDescription')}
-              </Typography>
-            </Grid>
-            <Grid item XSmall={12} Large={7} style={{ marginLeft: 'auto' }}>
-              <ItemGridContainer
-                pagingParameters={EMPTY_PAGING_PARAMS}
-                loadItems={loadUnavailableItems}
-                getItemKey={(item) => item.assetId ?? item.bundleId ?? item.lookId ?? 0}
-                GridItemComponent={ItemCardContainer}
-                errorMessage={translate('Message.LoadItemsError', {
-                  itemType: translate('Label.Items'),
-                })}
-                emptyMessage={translate('Message.NoItemsFound')}
-              />
-            </Grid>
-          </>
-        )}
-      </Grid>
+      </div>
+      {unavailableItems.length > 0 && (
+        <div className='margin-top-[16px]'>
+          <Divider className='[max-width:60%] margin-left-auto' />
+          <div className='flex flex-col gap-xsmall [max-width:60%] margin-left-auto margin-top-[16px]'>
+            <div className='text-label-large'>{translate('Label.UnavailableItems')}</div>
+            <div className='text-body-medium content-muted'>
+              {translate('Message.UnavailableItemsDescription')}
+            </div>
+          </div>
+          <div className='large:[max-width:58.333%] margin-left-auto margin-top-[16px]'>
+            <ItemGridContainer
+              pagingParameters={EMPTY_PAGING_PARAMS}
+              loadItems={loadUnavailableItems}
+              getItemKey={(item) => item.assetId ?? item.bundleId ?? item.lookId ?? 0}
+              GridItemComponent={ItemCardContainer}
+              errorMessage={translate('Message.LoadItemsError', {
+                itemType: translate('Label.Items'),
+              })}
+              emptyMessage={translate('Message.NoItemsFound')}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
