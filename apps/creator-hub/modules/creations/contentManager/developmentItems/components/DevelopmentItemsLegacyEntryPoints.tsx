@@ -10,6 +10,7 @@ import DevelopmentItemsPrimitiveNavigation from './DevelopmentItemsPrimitiveNavi
 export type DevelopmentItemsLegacyEntryPointsProps = {
   assetType: CreatorInventoryAssetType;
   hasItems: boolean;
+  isBulkAssetUploadEnabled?: boolean;
 };
 
 const shouldPreserveUploadAssetCta = (assetType: CreatorInventoryAssetType): boolean =>
@@ -40,11 +41,23 @@ const getEmptyStateAction = (assetType: CreatorInventoryAssetType): ReactNode =>
 
 const DevelopmentItemsLegacyEntryPoints: FunctionComponent<
   DevelopmentItemsLegacyEntryPointsProps
-> = ({ assetType, hasItems }) => {
+> = ({ assetType, hasItems, isBulkAssetUploadEnabled = false }) => {
+  const isInlineUploadEntryPoint =
+    assetType === CreatorInventoryAssetType.Audio ||
+    assetType === CreatorInventoryAssetType.Decal ||
+    assetType === CreatorInventoryAssetType.Video;
+  const isReplacedByBulkUpload =
+    isInlineUploadEntryPoint || (assetType === CreatorInventoryAssetType.Image && hasItems);
+
+  if (hasItems && isBulkAssetUploadEnabled && isReplacedByBulkUpload) {
+    return null;
+  }
+
   if (!hasItems) {
     return (
       <CreationsGridEmptyState
         assetType={getLegacyDevelopmentItemsAssetType(assetType)}
+        hideAssetCreationEntryway={isBulkAssetUploadEnabled && isInlineUploadEntryPoint}
         preserveUploadAssetCta={shouldPreserveUploadAssetCta(assetType)}>
         {getEmptyStateAction(assetType)}
       </CreationsGridEmptyState>

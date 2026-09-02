@@ -6,7 +6,7 @@ import AssetCreationEntryway from '@modules/asset-creation/components/AssetCreat
 import { isCreateAssetAvailable } from '@modules/asset-creation/constants/AssetTypeConstants';
 import useCurrentOrganization from '@modules/group/hooks/useCurrentOrganization';
 import type { Asset } from '@modules/miscellaneous/common';
-import { assetTypeToItemType, Item } from '@modules/miscellaneous/common';
+import { Item, assetTypeToItemType } from '@modules/miscellaneous/common';
 import type Look from '@modules/miscellaneous/common/enums/Look';
 import EmptyState from '@modules/miscellaneous/components/EmptyState/EmptyState';
 import Flex from '@modules/miscellaneous/components/Flex';
@@ -16,6 +16,7 @@ type TCreationsGridEmptyStateProps = {
   assetType: Asset;
   lookType?: Look;
   children?: React.ReactNode;
+  hideAssetCreationEntryway?: boolean;
   preserveUploadAssetCta?: boolean;
 };
 
@@ -31,7 +32,13 @@ const useStyles = makeStyles()((theme) => ({
 
 const CreationsGridEmptyState: FunctionComponent<
   React.PropsWithChildren<TCreationsGridEmptyStateProps>
-> = ({ assetType, lookType, children, preserveUploadAssetCta = false }) => {
+> = ({
+  assetType,
+  lookType,
+  children,
+  hideAssetCreationEntryway = false,
+  preserveUploadAssetCta = false,
+}) => {
   const { translate, translateHTML } = useTranslation();
   const { organization, permissions } = useCurrentOrganization();
 
@@ -67,6 +74,7 @@ const CreationsGridEmptyState: FunctionComponent<
     // User assets or non-library group assets are always creatable if hasFileUpload
     return hasFileUpload;
   }, [assetType, organization?.groupId, permissions?.canCreateAssets]);
+  const showAssetCreationEntryway = canCreateAsset && !hideAssetCreationEntryway;
 
   return (
     <Flex
@@ -75,7 +83,7 @@ const CreationsGridEmptyState: FunctionComponent<
       alignItems='center'
       classes={{
         root: cx(emptyStateContainer, {
-          [withBorder]: !canCreateAsset,
+          [withBorder]: !showAssetCreationEntryway,
         }),
       }}>
       <EmptyState
@@ -85,7 +93,7 @@ const CreationsGridEmptyState: FunctionComponent<
         description={description}>
         {children}
       </EmptyState>
-      {canCreateAsset && (
+      {showAssetCreationEntryway && (
         <AssetCreationEntryway
           containerHasData={() => false}
           assetType={assetType}

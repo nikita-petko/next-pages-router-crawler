@@ -16,8 +16,10 @@ import { useQueryParams } from '@modules/miscellaneous/hooks';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { creatorHub } from '@modules/miscellaneous/urls';
 import useCreationsFilters from '../../common/hooks/useCreationsFilters';
+import useEnableBulkAssetUpload from '../../common/hooks/useEnableBulkAssetUpload';
 import { addPublishingConsolidationReturnTo } from '../../common/utils/publishingConsolidationNavigation';
 import useTextDocumentGate from '../../home/hooks/useTextDocumentGate';
+import { DevelopmentItemsBulkUpload } from './bulkUpload/DevelopmentItemsBulkUpload';
 import DevelopmentItemsActiveFiltersRow from './components/DevelopmentItemsActiveFiltersRow';
 import type { DevelopmentItemsActiveFilterChip } from './components/DevelopmentItemsActiveFiltersRow';
 import DevelopmentItemsEmptyState from './components/DevelopmentItemsEmptyState';
@@ -144,6 +146,7 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
   const router = useRouter();
   const { translate } = useTranslation();
   const isTextDocumentEnabled = useTextDocumentGate();
+  const isBulkAssetUploadEnabled = useEnableBulkAssetUpload();
   const { isArchived, setIsArchived } = useCreationsFilters();
   const translations = useDevelopmentItemsInventoryTranslations();
   const { inventorySourceFilter, searchSuggestion } = translations;
@@ -331,6 +334,9 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
     });
   }, [assetType, groupId, isArchived, query.length, scope, source, view]);
   const { refetch: refetchInventory } = inventoryQuery;
+  const handleBulkUploadComplete = useCallback(() => {
+    void refetchInventory();
+  }, [refetchInventory]);
   const handleRetry = useCallback(() => {
     logDevelopmentItemsRetry({ assetType, showArchived: isArchived });
     void refetchInventory();
@@ -767,6 +773,15 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
         useTabNavigationSpacing ? 'padding-top-xlarge' : 'padding-top-small',
       )}>
       <DevelopmentItemsToolbar
+        actionControl={
+          isBulkAssetUploadEnabled ? (
+            <DevelopmentItemsBulkUpload
+              groupId={groupId}
+              onUploadComplete={handleBulkUploadComplete}
+              userId={userId}
+            />
+          ) : undefined
+        }
         assetTypeControl={
           <InventoryFilterDropdown
             ariaLabel={translations.assetType}
@@ -865,7 +880,11 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
       )}
 
       {scope != null && inventoryQuery.isSuccess && items.length === 0 && !hasActiveFilters && (
-        <DevelopmentItemsLegacyEntryPoints assetType={assetType} hasItems={false} />
+        <DevelopmentItemsLegacyEntryPoints
+          assetType={assetType}
+          hasItems={false}
+          isBulkAssetUploadEnabled={isBulkAssetUploadEnabled}
+        />
       )}
 
       {scope != null && inventoryQuery.isSuccess && items.length === 0 && hasActiveFilters && (
@@ -882,7 +901,11 @@ const DevelopmentItemsInventory: FunctionComponent<DevelopmentItemsInventoryProp
       )}
 
       {!isArchived && scope != null && inventoryQuery.isSuccess && items.length > 0 && (
-        <DevelopmentItemsLegacyEntryPoints assetType={assetType} hasItems />
+        <DevelopmentItemsLegacyEntryPoints
+          assetType={assetType}
+          hasItems
+          isBulkAssetUploadEnabled={isBulkAssetUploadEnabled}
+        />
       )}
 
       {scope != null && inventoryQuery.isSuccess && items.length > 0 && view === 'grid' && (

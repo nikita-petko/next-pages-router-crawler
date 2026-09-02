@@ -2,6 +2,7 @@ import type { FunctionComponent, ReactNode } from 'react';
 import styles from './DevelopmentItemsToolbar.module.css';
 
 export type DevelopmentItemsToolbarProps = {
+  actionControl?: ReactNode;
   assetTypeControl: ReactNode;
   filterControl?: ReactNode;
   searchControl: ReactNode;
@@ -9,6 +10,7 @@ export type DevelopmentItemsToolbarProps = {
 };
 
 const DevelopmentItemsToolbar: FunctionComponent<DevelopmentItemsToolbarProps> = ({
+  actionControl,
   assetTypeControl,
   filterControl,
   searchControl,
@@ -18,7 +20,12 @@ const DevelopmentItemsToolbar: FunctionComponent<DevelopmentItemsToolbarProps> =
     <div className={styles.toolbar}>
       <div className={styles.search}>{searchControl}</div>
       <div className={styles.assetType}>{assetTypeControl}</div>
-      {filterControl != null && <div className={styles.filter}>{filterControl}</div>}
+      {(actionControl != null || filterControl != null) && (
+        <div className={styles.actions}>
+          {actionControl}
+          {filterControl}
+        </div>
+      )}
       <div className={styles.view}>{viewControl}</div>
     </div>
   </div>

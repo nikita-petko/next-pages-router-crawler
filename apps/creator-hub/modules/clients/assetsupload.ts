@@ -42,6 +42,22 @@ const BASE_PATH = getBEDEV2ServiceBasePath('assets/user-auth');
 const CSRF_TOKEN_HEADER = 'x-csrf-token';
 const OPEN_USE_ADDITIONAL_PARAMETERS = JSON.stringify({ AssetPrivacy: 'OpenUse' });
 const CHUNK_SIZE = 5 * 1024 * 1024; // required by content platform
+const MAX_CONCURRENT_CHUNK_UPLOADS = 3;
+
+async function waitForRetry(delay: number, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
+  await new Promise<void>((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      signal?.removeEventListener('abort', handleAbort);
+      resolve();
+    }, delay);
+    const handleAbort = () => {
+      clearTimeout(timeoutId);
+      reject(signal?.reason);
+    };
+    signal?.addEventListener('abort', handleAbort, { once: true });
+  });
+}
 
 /**
  * Retry a function with exponential backoff using recursion.
@@ -51,34 +67,41 @@ async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   maxRetries: number,
   getDelay: (attempt: number) => number,
+  signal?: AbortSignal,
   currentAttempt = 0,
 ): Promise<T> {
+  signal?.throwIfAborted();
   try {
     return await fn();
   } catch (error) {
+    if (signal?.aborted) {
+      throw error;
+    }
     const lastError = error instanceof Error ? error : new Error(String(error));
 
     if (currentAttempt < maxRetries) {
       const delay = getDelay(currentAttempt);
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, delay);
-      });
-      return retryWithBackoff(fn, maxRetries, getDelay, currentAttempt + 1);
+      await waitForRetry(delay, signal);
+      return retryWithBackoff(fn, maxRetries, getDelay, signal, currentAttempt + 1);
     }
 
     throw lastError;
   }
 }
 
-const getCSRFToken = async () => {
+const getCSRFToken = async (signal?: AbortSignal) => {
   try {
     const tokenRefresh = await fetch(`${BASE_PATH}/v1/assets`, {
       method: 'PATCH',
       credentials: 'include',
+      signal,
     });
 
     return tokenRefresh.headers.get(CSRF_TOKEN_HEADER);
-  } catch {
+  } catch (error) {
+    if (signal?.aborted) {
+      throw error;
+    }
     return null;
   }
 };
@@ -101,6 +124,7 @@ export class AssetsUploadApiClient {
     requestInfo: Asset,
     file: Blob,
     setAssetPrivacyToOpenUse = false,
+    signal?: AbortSignal,
   ): Promise<string> {
     const request = {
       request: requestInfo,
@@ -118,11 +142,12 @@ export class AssetsUploadApiClient {
      * Setting the value to anything else, including null, will simply result in
      * the default per-assetType privacy being used.
      */
-    const requestInit = setAssetPrivacyToOpenUse
+    const requestInit: RequestInit = setAssetPrivacyToOpenUse
       ? AssetsUploadApiClient.generateRequestInitForCreatingOpenUseAsset(requestInfo, file)
       : {};
+    requestInit.signal = signal;
 
-    const token = await getCSRFToken();
+    const token = await getCSRFToken(signal);
     if (token) {
       requestInit.headers = { [CSRF_TOKEN_HEADER]: token };
     }
@@ -136,12 +161,14 @@ export class AssetsUploadApiClient {
     file: File,
     setAssetPrivacyToOpenUse?: boolean,
     onUploadProgress?: (progress: number) => void,
+    signal?: AbortSignal,
   ): Promise<string> {
     const actualSetAssetPrivacyToOpenUse = setAssetPrivacyToOpenUse ?? false;
-    const requestInit = actualSetAssetPrivacyToOpenUse
+    const requestInit: RequestInit = actualSetAssetPrivacyToOpenUse
       ? AssetsUploadApiClient.generateRequestInitForCreatingOpenUseAsset(requestInfo, file)
       : {};
-    const token = await getCSRFToken();
+    requestInit.signal = signal;
+    const token = await getCSRFToken(signal);
     if (token) {
       requestInit.headers = {
         [CSRF_TOKEN_HEADER]: token,
@@ -156,7 +183,7 @@ export class AssetsUploadApiClient {
     let md5Sum: string;
     let fileData: Uint8Array;
     try {
-      const result = await AssetsUploadApiClient.calculateMD5(file);
+      const result = await AssetsUploadApiClient.calculateMD5(file, signal);
       md5Sum = result.hash;
       fileData = result.data;
     } catch (error) {
@@ -254,10 +281,14 @@ export class AssetsUploadApiClient {
               onUploadProgress(Math.min(overallProgress, 80));
             }
           : undefined,
+        signal,
       );
     } catch (error) {
       try {
-        await this.multipartUploadApi.assetsMultipartUploadAbort({ operationId }, requestInit);
+        await this.multipartUploadApi.assetsMultipartUploadAbort(
+          { operationId },
+          { ...requestInit, signal: undefined },
+        );
       } catch (abortError) {
         throw new MultipartUploadError(
           `Chunk upload failed and abort also failed. Original error: ${error instanceof Error ? error.message : String(error)}. Abort error: ${abortError instanceof Error ? abortError.message : String(abortError)}`,
@@ -320,12 +351,16 @@ export class AssetsUploadApiClient {
             },
             3, // maxRetries
             (attempt) => 1000 * 2 ** attempt, // Exponential backoff: 1s, 2s, 4s
+            signal,
           );
         }),
       );
     } catch (error) {
       try {
-        await this.multipartUploadApi.assetsMultipartUploadAbort({ operationId }, requestInit);
+        await this.multipartUploadApi.assetsMultipartUploadAbort(
+          { operationId },
+          { ...requestInit, signal: undefined },
+        );
       } catch (abortError) {
         throw new MultipartUploadError(
           `Chunk complete failed and abort also failed. Original error: ${error instanceof Error ? error.message : String(error)}. Abort error: ${abortError instanceof Error ? abortError.message : String(abortError)}`,
@@ -427,7 +462,7 @@ export class AssetsUploadApiClient {
     const rawResponse = await this.uploadStatusApi.assetsGetOperationRaw(request);
     const json: unknown = await rawResponse.raw.json();
     if (json !== null && typeof json === 'object') {
-      return json as AssetsUploadOperationWithMetadata;
+      return json;
     }
     return {};
   }
@@ -468,11 +503,22 @@ export class AssetsUploadApiClient {
     return { body };
   }
 
-  private static async calculateMD5(file: File): Promise<{ hash: string; data: Uint8Array }> {
+  private static async calculateMD5(
+    file: File,
+    signal?: AbortSignal,
+  ): Promise<{ hash: string; data: Uint8Array }> {
+    signal?.throwIfAborted();
     const data = await new Promise<Uint8Array>((resolve, reject) => {
       const reader = new FileReader();
+      const cleanup = () => signal?.removeEventListener('abort', handleAbort);
+      const handleAbort = () => {
+        reader.abort();
+        reject(signal?.reason);
+      };
+      signal?.addEventListener('abort', handleAbort, { once: true });
       // oxlint-disable-next-line unicorn/prefer-add-event-listener -- one-shot FileReader in Promise wrapper
       reader.onload = (event) => {
+        cleanup();
         const result = event?.target?.result;
         if (result instanceof ArrayBuffer) {
           resolve(new Uint8Array(result));
@@ -481,7 +527,10 @@ export class AssetsUploadApiClient {
         }
       };
       // oxlint-disable-next-line unicorn/prefer-add-event-listener -- one-shot FileReader in Promise wrapper
-      reader.onerror = () => reject(reader.error);
+      reader.onerror = () => {
+        cleanup();
+        reject(reader.error);
+      };
       reader.readAsArrayBuffer(file);
     });
 
@@ -504,6 +553,7 @@ export class AssetsUploadApiClient {
     fileData: Uint8Array,
     operationId: string,
     onUploadProgress?: (progress: number) => void,
+    signal?: AbortSignal,
   ): Promise<string[]> {
     const totalChunks = uploadUrls.length;
     let completedChunks = 0;
@@ -517,17 +567,19 @@ export class AssetsUploadApiClient {
         }
       : undefined;
 
-    // Upload chunks in parallel using the same file data
-    const uploadPromises = uploadUrls.map((url, index) => {
+    const etags = Array.from({ length: totalChunks }, () => '');
+    const uploadChunk = async (index: number) => {
+      const url = uploadUrls[index];
       // API may return contentStart/contentLength as strings at runtime despite typed as number;
       // Number() + || avoids slice failures during multipart upload (e.g. video).
       /* oxlint-disable typescript/no-unnecessary-type-conversion, typescript/prefer-nullish-coalescing */
-      const start = Number(url.contentStart || 0);
-      const length = Number(url.contentLength || 0);
+      const start = Number(url?.contentStart || 0);
+      const length = Number(url?.contentLength || 0);
       /* oxlint-enable typescript/no-unnecessary-type-conversion, typescript/prefer-nullish-coalescing */
 
-      return retryWithBackoff(
+      etags[index] = await retryWithBackoff(
         async () => {
+          signal?.throwIfAborted();
           if (!url?.url) {
             throw new MultipartUploadError(
               `No URL found for chunk ${index + 1}`,
@@ -557,6 +609,7 @@ export class AssetsUploadApiClient {
           const response = await fetch(url.url, {
             method: 'PUT',
             body: chunk,
+            signal,
           });
 
           if (!response.ok) {
@@ -591,10 +644,21 @@ export class AssetsUploadApiClient {
         },
         3, // maxRetries
         (attempt) => 1000 * 2 ** attempt, // Exponential backoff: 1s, 2s, 4s
+        signal,
       );
-    });
+    };
 
-    const etags = await Promise.all(uploadPromises);
+    let nextChunkIndex = 0;
+    const uploadWorker = async () => {
+      while (nextChunkIndex < totalChunks) {
+        signal?.throwIfAborted();
+        const chunkIndex = nextChunkIndex;
+        nextChunkIndex += 1;
+        await uploadChunk(chunkIndex);
+      }
+    };
+    const workerCount = Math.min(MAX_CONCURRENT_CHUNK_UPLOADS, totalChunks);
+    await Promise.all(Array.from({ length: workerCount }, uploadWorker));
 
     // Report 100% progress for chunk upload phase only
     if (onUploadProgress) {
