@@ -9,6 +9,13 @@ const SERVER_STATUSES = [
     indicator: 'bg-system-success',
   },
   {
+    key: 'pending',
+    api: 'pending',
+    translation: 'ServerStatus.Pending',
+    description: 'ServerStatus.Description.Pending',
+    indicator: 'bg-system-warning',
+  },
+  {
     key: 'shutDown',
     api: 'shut_down',
     translation: 'ServerStatus.ShutDown',
