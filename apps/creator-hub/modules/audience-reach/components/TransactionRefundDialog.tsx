@@ -1,12 +1,12 @@
 import { useCallback, useState, type FC } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
+  Alert,
   Button,
   Dialog,
   DialogBody,
   DialogContent,
   DialogTitle,
-  FeedbackBanner,
   Icon,
 } from '@rbx/foundation-ui';
 import { useLocalization, useTranslation } from '@rbx/intl';
@@ -15,7 +15,7 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import { TransactionVariantEnum } from '@modules/clients/coreContentTransactions';
 import coreContentTransactionClient from '@modules/clients/coreContentTransactions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { ExpeditedReviewFee } from '../constants/audienceReachConstants';
+import { useCoreContentTransactionMetadata } from '../hooks/useCoreContentTransactionMetadata';
 import { transactionStatusQueryKey } from '../hooks/useCoreContentTransactionStatus';
 
 interface TransactionRefundDialogProps {
@@ -35,6 +35,7 @@ const TransactionRefundDialog: FC<TransactionRefundDialogProps> = ({
   const { locale } = useLocalization();
   const numberFormatter = new Intl.NumberFormat(locale ?? 'en-us');
   const queryClient = useQueryClient();
+  const { data: metadata } = useCoreContentTransactionMetadata();
   const [isRefundLoading, setIsRefundLoading] = useState(false);
   const [error, setError] = useState(false);
 
@@ -91,14 +92,11 @@ const TransactionRefundDialog: FC<TransactionRefundDialogProps> = ({
             )}
           </DialogTitle>
           {error && (
-            <FeedbackBanner
-              title={translate(
+            <Alert variant='Feedback' severity='Error' hasCloseAffordance={false}>
+              {translate(
                 translationKey('Description.RefundErrorBanner', TranslationNamespace.AudienceReach),
               )}
-              layout='Stacked'
-              variant='Emphasis'
-              severity='Error'
-            />
+            </Alert>
           )}
           {translate(
             translationKey(
@@ -127,7 +125,9 @@ const TransactionRefundDialog: FC<TransactionRefundDialogProps> = ({
               :
             </span>
             <Icon name='icon-regular-robux' size='Small' aria-label='Robux' />
-            <span className='text-body-medium'>{numberFormatter.format(ExpeditedReviewFee)}</span>
+            <span className='text-body-medium'>
+              {numberFormatter.format(metadata?.expeditedReviewFee ?? 0)}
+            </span>
           </div>
         </DialogBody>
       </DialogContent>

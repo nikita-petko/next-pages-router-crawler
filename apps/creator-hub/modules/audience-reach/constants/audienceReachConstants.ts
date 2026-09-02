@@ -9,11 +9,6 @@ export const ExperienceQuestionnaireRoute = '/experience-questionnaire';
 export const SelectReviewDocsLink =
   '/docs/production/publishing/publish-games-and-places#expedited-review-fee';
 
-export const RefundPeriodDays = 90;
-export const RefundPeriodMs = RefundPeriodDays * 24 * 60 * 60 * 1000;
-export const PublishingFee = 1_000;
-export const ExpeditedReviewFee = 100_000;
-
 /**
  * The app-wide QueryClient disables retries (`retry: false`), which means a single transient
  * blip on any of the three audience-reach content queries replaces the page with FailureView.

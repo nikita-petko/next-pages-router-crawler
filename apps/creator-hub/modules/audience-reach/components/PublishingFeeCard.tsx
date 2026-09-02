@@ -14,7 +14,8 @@ import { useTranslation } from '@rbx/intl';
 import CreatorType from '@modules/miscellaneous/common/enums/Creator';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
-import { PublishingFee, PublishingPermissionsRoute } from '../constants/audienceReachConstants';
+import { PublishingPermissionsRoute } from '../constants/audienceReachConstants';
+import { useCoreContentTransactionMetadata } from '../hooks/useCoreContentTransactionMetadata';
 import { usePublishingFeeStatus } from '../hooks/usePublishingFeeStatus';
 import type { ReachLevel } from '../types/audienceReach';
 import AudienceReachExpediteUpsellBanner from './AudienceReachExpediteUpsellBanner';
@@ -51,7 +52,7 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
     isExempt,
     shouldShowExpediteUpsell,
     shouldShowPublishingFeeUpsell,
-    isLoading,
+    isLoading: isPublishingFeeStatusLoading,
     error,
   } = usePublishingFeeStatus({
     universeId,
@@ -62,6 +63,10 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
     audienceReach,
     activeAllowlists,
   });
+  const { data: metadata, isLoading: isMetadataLoading } = useCoreContentTransactionMetadata();
+  const publishingFee = metadata?.publishingFee;
+  const isLoading =
+    isPublishingFeeStatusLoading || isMetadataLoading || publishingFee === undefined;
 
   // Non-owners cannot use their own funds to pay the publishing fee
   const forceGroupFunds = canPay && !isCreator;
@@ -206,7 +211,7 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
           forceGroupFunds={forceGroupFunds}
         />
       )}
-      {shouldShowPublishingFeeUpsell && (
+      {shouldShowPublishingFeeUpsell && publishingFee !== undefined && (
         <Alert variant='Feedback' severity='Warning' hasCloseAffordance={false}>
           <div className='flex min-width-0 items-center gap-xsmall'>
             <span className='text-label-medium'>
@@ -219,7 +224,7 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
               TranslationNamespace.PublicPublish,
               'Description.ExpandYourReach',
               {
-                number: PublishingFee.toString(),
+                number: publishingFee.toString(),
               },
             )}
           </div>
@@ -244,21 +249,23 @@ const PublishingFeeCard: FC<PublishingFeeCardProps> = ({
           <p className='text-body-medium margin-none padding-top-small'>{feeDescriptionText}</p>
         </div>
       </div>
-      <TransactionDepositDialog
-        universeId={universeId}
-        variant={TransactionVariantEnum.PublishFee}
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        openSuccessSnackbar={setSnackbarMessage}
-        modalHeading={translateWithNamespace(
-          TranslationNamespace.AudienceReach,
-          'Label.RefundablePublishingFee',
-        )}
-        modalBody={paymentModalBody}
-        fee={PublishingFee}
-        groupId={groupId}
-        forceGroupFunds={forceGroupFunds}
-      />
+      {publishingFee !== undefined && (
+        <TransactionDepositDialog
+          universeId={universeId}
+          variant={TransactionVariantEnum.PublishFee}
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          openSuccessSnackbar={setSnackbarMessage}
+          modalHeading={translateWithNamespace(
+            TranslationNamespace.AudienceReach,
+            'Label.RefundablePublishingFee',
+          )}
+          modalBody={paymentModalBody}
+          fee={publishingFee}
+          groupId={groupId}
+          forceGroupFunds={forceGroupFunds}
+        />
+      )}
       {snackbarMessage !== null ? (
         <Snackbar
           title={snackbarMessage}

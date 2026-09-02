@@ -3,17 +3,15 @@ import { TransactionVariantEnum } from '@rbx/client-core-content-transaction-api
 import { Alert } from '@rbx/foundation-ui';
 import { useLocalization, useTranslation } from '@rbx/intl';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import {
-  ExpeditedReviewFee,
-  RefundPeriodDays,
-  RefundPeriodMs,
-  SelectReviewDocsLink,
-} from '../constants/audienceReachConstants';
+import { SelectReviewDocsLink } from '../constants/audienceReachConstants';
 import { useContentRatingDetails } from '../hooks/useContentRatingDetails';
+import { useCoreContentTransactionMetadata } from '../hooks/useCoreContentTransactionMetadata';
 import { useCoreContentTransactionStatus } from '../hooks/useCoreContentTransactionStatus';
 import ExpeditedIneligibleDialog from './ExpeditedIneligibleDialog';
 import TransactionDepositDialog from './TransactionDepositDialog';
 import TransactionRefundDialog from './TransactionRefundDialog';
+
+const MillisPerDay = 24 * 60 * 60 * 1000;
 
 interface AudienceReachExpediteUpsellBannerProps {
   universeId: number;
@@ -35,6 +33,7 @@ const AudienceReachExpediteUpsellBanner: FC<AudienceReachExpediteUpsellBannerPro
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const numberFormatter = new Intl.NumberFormat(locale ?? 'en-us');
   const { data: contentRating } = useContentRatingDetails(universeId);
+  const { data: metadata, isLoading: isMetadataLoading } = useCoreContentTransactionMetadata();
   const { data: expeditedTransactionStatus } = useCoreContentTransactionStatus(
     universeId,
     TransactionVariantEnum.Expedited,
@@ -42,12 +41,17 @@ const AudienceReachExpediteUpsellBanner: FC<AudienceReachExpediteUpsellBannerPro
   const isRated = !contentRating?.isUnrated;
 
   // Transaction status isn't done loading, so don't show a banner.
-  if (!expeditedTransactionStatus) {
+  if (!expeditedTransactionStatus || !metadata || isMetadataLoading) {
     return null;
   }
 
+  const { expeditedReviewFee, expeditedReviewFeeRefundPeriodDays } = metadata;
+
   const refundEligibleTime = expeditedTransactionStatus.createdTime
-    ? new Date(Number(expeditedTransactionStatus.createdTime.seconds) * 1000 + RefundPeriodMs)
+    ? new Date(
+        Number(expeditedTransactionStatus.createdTime.seconds) * 1000 +
+          expeditedReviewFeeRefundPeriodDays * MillisPerDay,
+      )
     : null;
   const refundIsAvailable = Boolean(refundEligibleTime && refundEligibleTime < new Date());
 
@@ -75,7 +79,7 @@ const AudienceReachExpediteUpsellBanner: FC<AudienceReachExpediteUpsellBannerPro
     bannerDescription = translateWithNamespace(
       TranslationNamespace.AudienceReach,
       'Description.ExpeditedReviewBanner',
-      { number: numberFormatter.format(ExpeditedReviewFee) },
+      { number: numberFormatter.format(expeditedReviewFee) },
     );
   }
 
@@ -85,14 +89,14 @@ const AudienceReachExpediteUpsellBanner: FC<AudienceReachExpediteUpsellBannerPro
         {translateWithNamespace(
           TranslationNamespace.AudienceReach,
           'Description.ExpeditedReviewModal1',
-          { number: RefundPeriodDays.toString() },
+          { number: expeditedReviewFeeRefundPeriodDays.toString() },
         )}
       </p>
       <p className='text-body-medium margin-none'>
         {translateWithNamespace(
           TranslationNamespace.AudienceReach,
           'Description.ExpeditedReviewModal2',
-          { number: RefundPeriodDays.toString() },
+          { number: expeditedReviewFeeRefundPeriodDays.toString() },
         )}
       </p>
     </>
@@ -121,7 +125,7 @@ const AudienceReachExpediteUpsellBanner: FC<AudienceReachExpediteUpsellBannerPro
           'Heading.ExpeditedReviewModal',
         )}
         modalBody={expeditedDialogBody}
-        fee={ExpeditedReviewFee}
+        fee={expeditedReviewFee}
         groupId={groupId}
         forceGroupFunds={forceGroupFunds}
       />

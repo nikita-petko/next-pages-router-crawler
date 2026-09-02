@@ -12,6 +12,7 @@ import { ErrorPage } from '@modules/miscellaneous/error';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import { useAudienceReachData } from '../hooks/useAudienceReachData';
+import { useCoreContentTransactionMetadata } from '../hooks/useCoreContentTransactionMetadata';
 import { useCoreContentTransactionStatus } from '../hooks/useCoreContentTransactionStatus';
 import { useGroupOwnerUserId } from '../hooks/useGroupOwnerUserId';
 import AudienceReachExpediteConfirmationBanner from './AudienceReachExpediteConfirmationBanner';
@@ -44,6 +45,8 @@ const AudienceReachPage: FC = () => {
 
   const { state, isLoading, isError, isRestricted, isDiscoveryBlocked } =
     useAudienceReachData(universeId);
+  const { isLoading: isMetadataLoading, isError: isMetadataError } =
+    useCoreContentTransactionMetadata();
   const { data: expeditedTransactionStatus, isLoading: isTransactionsLoading } =
     useCoreContentTransactionStatus(universeId, TransactionVariantEnum.Expedited);
   const expeditedIsPaid = expeditedTransactionStatus?.hasDeposit ?? false;
@@ -73,7 +76,7 @@ const AudienceReachPage: FC = () => {
       ? CreatorTierEnum.Everyone
       : state?.creatorTier;
 
-  if (isError || isErrorLoadingGame) {
+  if (isError || isErrorLoadingGame || isMetadataError) {
     return (
       <FailureView
         message={translate('Message.FailedToLoadPage')}
@@ -83,7 +86,7 @@ const AudienceReachPage: FC = () => {
     );
   }
 
-  if (isLoading || isLoadingGame || !isOwnerFetched || !isUserFetched) {
+  if (isLoading || isLoadingGame || isMetadataLoading || !isOwnerFetched || !isUserFetched) {
     return <PageLoading />;
   }
 
