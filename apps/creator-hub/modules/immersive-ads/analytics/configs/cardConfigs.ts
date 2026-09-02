@@ -141,9 +141,10 @@ const showRateCardConfig = {
   showComparisonChip: true,
 } as const satisfies AnalyticsSummaryCardConfig;
 
-// EPM breakdown, Managed Rewarded tab: CTR. Same metric as
-// `showRateCardConfig` — impressions / fills — which is the definition of CTR
-// for Play with Reward.
+// Managed Rewarded tab: CTR. Same metric as `showRateCardConfig` —
+// impressions / fills — which is the definition of CTR for Play with Reward.
+// Play with Reward scoping comes from the page-level placement id filter in
+// `AnalyticsPageContentV2`, not from an override here.
 const ctrCardConfig = {
   type: AnalyticsComponentType.SummaryCard,
   cardType: RAQIV2SummaryCardType.Metric,
