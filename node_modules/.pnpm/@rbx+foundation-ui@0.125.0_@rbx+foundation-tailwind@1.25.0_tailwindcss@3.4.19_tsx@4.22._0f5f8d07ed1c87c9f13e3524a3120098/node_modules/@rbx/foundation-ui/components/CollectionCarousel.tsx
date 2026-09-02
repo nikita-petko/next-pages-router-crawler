@@ -1,0 +1,223 @@
+import clsx from 'clsx';
+import React, {
+  ComponentPropsWithoutRef,
+  ReactNode,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState
+} from 'react';
+import { IconButton } from './IconButton';
+import './CollectionCarousel.css';
+
+export type TCollectionCarouselPosition = 'Start' | 'Middle' | 'End';
+
+export type TCollectionCarouselProps = Omit<ComponentPropsWithoutRef<'div'>, 'children'> & {
+  /**
+   * The carousel items. Each top-level child of the carousel is treated as a single item
+   * and positioned horizontally. Typically these will be ExperienceTile / MarketplaceTile
+   * components, but any fixed-width content is supported.
+   */
+  children: ReactNode;
+  /**
+   * When `true` (default), the carousel is inset with horizontal margin so items peek at
+   * the edges rather than sitting flush with the container. When `false`, the first and
+   * last items are flush with the carousel edges.
+   */
+  hasMargin?: boolean;
+  /**
+   * When `true`, the carousel snaps to discrete item positions while scrolling and the
+   * navigation buttons advance by approximately one "page" (the visible width). When
+   * `false` (default), free scrolling is allowed and nav buttons move a smaller amount.
+   */
+  discretePosition?: boolean;
+  /** Accessible label for the carousel region. */
+  'aria-label'?: string;
+  /**
+   * Override the aria label used for the previous button.
+   * @default 'Previous'
+   */
+  previousButtonAriaLabel?: string;
+  /**
+   * Override the aria label used for the next button.
+   * @default 'Next'
+   */
+  nextButtonAriaLabel?: string;
+  className?: string;
+};
+
+export type TCollectionCarouselHandle = {
+  /** Scroll towards the previous page/step of items. */
+  scrollPrevious: () => void;
+  /** Scroll towards the next page/step of items. */
+  scrollNext: () => void;
+  /** The underlying scroll container element. */
+  scrollContainer: HTMLDivElement | null;
+};
+
+const SCROLL_EPSILON = 1;
+const FREE_SCROLL_FRACTION = 0.75;
+
+const computePosition = (el: HTMLDivElement): TCollectionCarouselPosition => {
+  const { scrollLeft, scrollWidth, clientWidth } = el;
+  const absScrollLeft = Math.abs(scrollLeft);
+  const maxScroll = scrollWidth - clientWidth;
+  if (maxScroll <= SCROLL_EPSILON) {
+    return 'Middle';
+  }
+  if (absScrollLeft <= SCROLL_EPSILON) {
+    return 'Start';
+  }
+  if (absScrollLeft >= maxScroll - SCROLL_EPSILON) {
+    return 'End';
+  }
+  return 'Middle';
+};
+
+const canScroll = (el: HTMLDivElement | null): boolean => {
+  if (!el) return false;
+  return el.scrollWidth - el.clientWidth > SCROLL_EPSILON;
+};
+
+const CollectionCarouselComponent = (
+  {
+    children,
+    hasMargin = true,
+    discretePosition = false,
+    className,
+    previousButtonAriaLabel = 'Previous',
+    nextButtonAriaLabel = 'Next',
+    'aria-label': ariaLabel = 'Carousel',
+    ...rest
+  }: TCollectionCarouselProps,
+  ref: React.Ref<TCollectionCarouselHandle>
+) => {
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const [position, setPosition] = useState<TCollectionCarouselPosition>('Start');
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  const updatePosition = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    setPosition(computePosition(el));
+    setIsOverflowing(canScroll(el));
+  }, []);
+
+  useEffect(() => {
+    updatePosition();
+    const el = scrollContainerRef.current;
+    if (!el) return undefined;
+
+    const handleScroll = () => updatePosition();
+    el.addEventListener('scroll', handleScroll, { passive: true });
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => updatePosition());
+      resizeObserver.observe(el);
+      Array.from(el.children).forEach(child => resizeObserver?.observe(child));
+    }
+
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+      resizeObserver?.disconnect();
+    };
+  }, [updatePosition, children]);
+
+  const getStepSize = useCallback((): number => {
+    const el = scrollContainerRef.current;
+    if (!el) return 0;
+    if (discretePosition) {
+      return el.clientWidth;
+    }
+    return Math.max(1, Math.round(el.clientWidth * FREE_SCROLL_FRACTION));
+  }, [discretePosition]);
+
+  const scrollPrevious = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollBy({ left: -getStepSize(), behavior: 'smooth' });
+  }, [getStepSize]);
+
+  const scrollNext = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollBy({ left: getStepSize(), behavior: 'smooth' });
+  }, [getStepSize]);
+
+  useImperativeHandle(
+    ref,
+    (): TCollectionCarouselHandle => ({
+      scrollPrevious,
+      scrollNext,
+      scrollContainer: scrollContainerRef.current
+    }),
+    [scrollPrevious, scrollNext]
+  );
+
+  const showPrevious = isOverflowing && position !== 'Start';
+  const showNext = isOverflowing && position !== 'End';
+
+  return (
+    <div
+      {...rest}
+      className={clsx('foundation-web-collection-carousel relative', className)}
+      data-position={position.toLowerCase()}
+      data-has-margin={hasMargin}
+      data-discrete-position={discretePosition}
+      role='region'
+      aria-label={ariaLabel}
+      aria-roledescription='carousel'>
+      <div
+        ref={scrollContainerRef}
+        data-testid='collection-carousel-scroll'
+        className='foundation-web-collection-carousel-scroll flex flex-row gap-medium'>
+        {React.Children.map(children, (child, index) => (
+          // eslint-disable-next-line react/no-array-index-key
+          <div className='foundation-web-collection-carousel-item shrink-0' key={index}>
+            {child}
+          </div>
+        ))}
+      </div>
+      <div
+        data-testid='collection-carousel-nav-previous'
+        className='foundation-web-collection-carousel-nav foundation-web-collection-carousel-nav-previous absolute'
+        data-visible={showPrevious}
+        aria-hidden={!showPrevious}>
+        <IconButton
+          icon='icon-regular-chevron-small-left'
+          ariaLabel={previousButtonAriaLabel}
+          variant='OverMedia'
+          size='Medium'
+          isCircular
+          tabIndex={showPrevious ? 0 : -1}
+          onClick={scrollPrevious}
+          isDisabled={!showPrevious}
+        />
+      </div>
+      <div
+        data-testid='collection-carousel-nav-next'
+        className='foundation-web-collection-carousel-nav foundation-web-collection-carousel-nav-next absolute'
+        data-visible={showNext}
+        aria-hidden={!showNext}>
+        <IconButton
+          icon='icon-regular-chevron-small-right'
+          ariaLabel={nextButtonAriaLabel}
+          variant='OverMedia'
+          size='Medium'
+          isCircular
+          tabIndex={showNext ? 0 : -1}
+          onClick={scrollNext}
+          isDisabled={!showNext}
+        />
+      </div>
+    </div>
+  );
+};
+
+export const CollectionCarousel = forwardRef<TCollectionCarouselHandle, TCollectionCarouselProps>(
+  CollectionCarouselComponent
+);
+CollectionCarousel.displayName = 'CollectionCarousel';

@@ -232,7 +232,10 @@ const CreatorAgreementStatusLabel: React.FC<Props> = ({ agreement, isCompact = f
   const latestTransition = activityLog?.[0]?.transition;
 
   if (isImageAttachmentFlagReady && isImageAttachmentEnabled && status === AgreementStatus.Draft) {
-    if (latestTransition === AgreementTransition.PitchImagePendingModeration) {
+    if (
+      latestTransition === AgreementTransition.PitchImagePendingModeration ||
+      latestTransition === AgreementTransition.PitchImageRevised
+    ) {
       content = moderationReview;
     } else if (latestTransition === AgreementTransition.PitchImageRejected) {
       content = creatorActionRequired;
