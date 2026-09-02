@@ -22,7 +22,7 @@ import {
 } from '../hooks/agreements';
 import useConfirmation from '../hooks/useConfirmation';
 import {
-  getAgreementActivityByTransition,
+  getPitchText,
   isEarlyIpUsageDetected,
   isConditionalOfferDisputeAgreement,
 } from '../utils/agreementActivity';
@@ -62,9 +62,7 @@ const IphAgreementActions: React.FC<IphAgreementActionsProps> = ({ agreement }) 
     agreement.license?.licenseDuration?.durationType === LicenseDurationType.TimeLimited;
   const useAcceptAndActivateVerbiage = isTimelimitedLicense && isDeepScanFound;
 
-  const creatorNote =
-    getAgreementActivityByTransition(agreement.activityLog, AgreementTransition.Apply)?.notes ??
-    undefined;
+  const creatorNote = getPitchText(agreement.activityLog, true) || undefined;
   const hasActiveChangeRequest = useMemo(
     () => agreement.activityLog?.[0]?.transition === AgreementTransition.InitiateChangeRequest,
     [agreement.activityLog],

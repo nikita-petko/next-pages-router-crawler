@@ -376,6 +376,36 @@ export const getAgreementActivityByTransition = (
 };
 
 /**
+ * Pitch text lives on the Apply activity once the creator has submitted. Drafts have no Apply
+ * yet, so creator callers fall back to notes on the earliest PitchImagePendingModeration or
+ * PitchImageRejected activity, which is the one carrying the pitch (the log is newest first).
+ * IP holder callers only see Apply notes.
+ */
+export const getPitchText = (
+  activityLog: AgreementActivityResponse[] | undefined | null,
+  isIPHView: boolean,
+): string => {
+  const applyActivity = getAgreementActivityByTransition(activityLog, AgreementTransition.Apply);
+  if (applyActivity != null) {
+    return applyActivity.notes ?? '';
+  }
+
+  if (isIPHView) {
+    // IPH view doesn't see the draft agreements
+    return '';
+  }
+
+  // For creators, fall back to the earliest notes from the Draft agreement state transition.
+  return (
+    activityLog?.findLast(
+      (item) =>
+        item.transition === AgreementTransition.PitchImagePendingModeration ||
+        item.transition === AgreementTransition.PitchImageRejected,
+    )?.notes ?? ''
+  );
+};
+
+/**
  * Returns the most recent Creator dispute activity, if one exists.
  */
 export const getLatestDisputeOfferActivity = (

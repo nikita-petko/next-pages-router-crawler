@@ -28,6 +28,7 @@ import {
   getLatestConditionalChangeRequestExpireDate,
   getConditionalChangeRequestWindowExpireDate,
   getAgreementActivityByTransition,
+  getPitchText,
   isEarlyIpUsageDetected,
   getCancelReasonLabelKey,
   isConditionalOfferDisputeAgreement,
@@ -386,9 +387,7 @@ const IphAgreementAlerts: React.FC<IphAgreementAlertsProps> = ({
 
   // Only run truncation check for Inquired agreements with a creator note
   const creatorNote = useMemo(
-    () =>
-      getAgreementActivityByTransition(agreement.activityLog, AgreementTransition.Apply)?.notes ??
-      '',
+    () => getPitchText(agreement.activityLog, true),
     [agreement.activityLog],
   );
   useEffect(() => {

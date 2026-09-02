@@ -1,13 +1,12 @@
 import type { FunctionComponent } from 'react';
 import type { HydratedAgreementWithHydratedTargetsResponse } from '@rbx/client-content-licensing-api/v1';
-import { AgreementTransition } from '@rbx/client-content-licensing-api/v1';
 import { ProgressCircle } from '@rbx/foundation-ui';
 import { useTranslationWithNamespace } from '@rbx/intl';
 import { Typography } from '@rbx/ui';
 import ViewPitchAttachments from '@modules/licenses/components/ViewPitchAttachments';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import AgreementDetailsTabs from '../agreements/enums/AgreementDetailsTabs';
-import { getAgreementActivityByTransition } from '../agreements/utils/agreementActivity';
+import { getPitchText } from '../agreements/utils/agreementActivity';
 import { useGetCreatorPitchImageAttachments } from '../creatorAgreements/hooks/useGetCreatorPitchImageAttachments';
 import { IPH_AGREEMENT_DETAILS_HREF } from '../urls';
 
@@ -23,18 +22,15 @@ const CreatorPitch: FunctionComponent<CreatorPitchProps> = ({
 }) => {
   const { translate } = useTranslationWithNamespace(TranslationNamespace.Licenses);
   const agreementId = agreement.id ?? '';
-  const {
-    data: attachmentsResult,
-    isPending,
-    isError,
-  } = useGetCreatorPitchImageAttachments({
+  // Pitch images are best effort: a failed fetch renders no images and no error, so the pitch
+  // text still reaches the reader.
+  const { data: attachmentsResult, isPending } = useGetCreatorPitchImageAttachments({
     agreementId,
     enabled: agreementId !== '',
     isIpHolderView,
   });
   const attachments = attachmentsResult?.attachments;
-  const pitchText =
-    getAgreementActivityByTransition(agreement.activityLog, AgreementTransition.Apply)?.notes ?? '';
+  const pitchText = getPitchText(agreement.activityLog, isIpHolderView);
 
   if (agreementId === '') {
     return null;
@@ -50,7 +46,6 @@ const CreatorPitch: FunctionComponent<CreatorPitchProps> = ({
           ariaLabel={translate('Label.Loading')}
         />
       )}
-      {isError && <Typography>{translate('Error.Generic')}</Typography>}
       {attachments != null && (
         <ViewPitchAttachments
           attachments={attachments}
