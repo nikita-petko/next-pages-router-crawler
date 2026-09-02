@@ -12,6 +12,7 @@ export const applyLikedState = (items: RoadmapItem[], likedItemIds: string[]): R
 
 const MAX_ITEMS_PER_TIME_FRAME = 8;
 export const ALL_FILTER = 'all';
+export const FEATURED_FILTER = 'Featured';
 export const FAVORITES_FILTER = 'Favorites';
 /** Virtual stage value that matches every dev stage — the "All Stages" dropdown option. */
 export const ALL_STAGES_FILTER = 'all';
@@ -97,7 +98,9 @@ export const buildTimelineRows = (
       return {
         row,
         rowItems:
-          selectedCategory === ALL_FILTER ? rowItems : rowItems.slice(0, MAX_ITEMS_PER_TIME_FRAME),
+          selectedCategory === FEATURED_FILTER
+            ? rowItems.slice(0, MAX_ITEMS_PER_TIME_FRAME)
+            : rowItems,
       };
     })
     .filter(({ rowItems }) => rowItems.length > 0);

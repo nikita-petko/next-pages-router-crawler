@@ -17,6 +17,7 @@ import {
   buildTimelineRows,
   countVisibleItems,
   FAVORITES_FILTER,
+  FEATURED_FILTER,
 } from '../utils/roadmapUtils';
 import HeroVideoBanner, { type HeroStat } from './HeroVideoBanner';
 import RoadmapCard from './RoadmapCard';
@@ -72,7 +73,7 @@ function CreatorRoadmapV2() {
   const { user } = useAuthentication();
   const userId = user?.id;
   const [selectedItem, setSelectedItem] = useState<RoadmapItem | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState('Featured');
+  const [selectedCategory, setSelectedCategory] = useState(FEATURED_FILTER);
   const [selectedStage, setSelectedStage] = useState(ALL_STAGES_FILTER);
 
   const categoryOptions = useMemo<RoadmapFilterOption[]>(
@@ -89,9 +90,7 @@ function CreatorRoadmapV2() {
   const stageOptions = useMemo<RoadmapFilterOption[]>(
     () => [
       { value: ALL_STAGES_FILTER, label: translate('Label.AllStages') },
-      { value: 'Live', label: translate('Label.Live') },
-      { value: 'Early Access', label: translate('Label.EarlyAccess') },
-      { value: 'Beta', label: translate('Label.Beta') },
+      { value: 'Live', label: translate('Label.Shipped') },
       { value: 'In Development', label: translate('Label.InDevelopment') },
       { value: 'On Hold', label: translate('Label.OnHold') },
     ],
@@ -143,12 +142,7 @@ function CreatorRoadmapV2() {
   // 'On Hold' items count toward neither shipped nor upcoming, so those two intentionally do not sum to the roadmap total.
   const heroStats = useMemo<HeroStat[]>(() => {
     const shippedCount = roadmapItems.filter((item) => item.devStage === 'Live').length;
-    const upcomingCount = roadmapItems.filter(
-      (item) =>
-        item.devStage === 'Early Access' ||
-        item.devStage === 'Beta' ||
-        item.devStage === 'In Development',
-    ).length;
+    const upcomingCount = roadmapItems.filter((item) => item.devStage === 'In Development').length;
     return [
       { id: 'roadmap', value: roadmapItems.length, label: translate('Label.FeaturesInRoadmap') },
       { id: 'shipped', value: shippedCount, label: translate('Label.FeaturesShipped') },
@@ -180,7 +174,7 @@ function CreatorRoadmapV2() {
   }
 
   if (error) {
-    return <LoadError onReload={() => void refetch()} />;
+    return <LoadError onReload={() => refetch()} />;
   }
 
   return (

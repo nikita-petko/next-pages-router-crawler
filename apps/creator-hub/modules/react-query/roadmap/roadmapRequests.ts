@@ -14,13 +14,7 @@ import type {
 
 // The generated client types every field as optional and the enum-like ones loosely, so these guard
 // the enum values at the wire boundary rather than trusting the payload.
-const DEV_STAGES: readonly DevStage[] = [
-  'Live',
-  'Early Access',
-  'Beta',
-  'In Development',
-  'On Hold',
-];
+const DEV_STAGES: readonly DevStage[] = ['Live', 'In Development', 'On Hold'];
 const TIME_FRAMES: readonly TimeFrame[] = ['Early', 'Mid', 'Late'];
 const CATEGORIES: readonly RoadmapCategory[] = [
   'Featured',

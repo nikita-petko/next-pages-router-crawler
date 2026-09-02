@@ -60,7 +60,9 @@ function RoadmapDetailModal({ item, onClose }: RoadmapDetailModalProps) {
                       size='Small'
                       className='content-muted'
                     />
-                    <span className='text-body-small content-muted'>{translate('Label.Live')}</span>
+                    <span className='text-body-small content-muted'>
+                      {translate('Label.Shipped')}
+                    </span>
                   </div>
                 )}
                 {item.category.map((name) => (
