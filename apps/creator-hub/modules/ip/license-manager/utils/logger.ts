@@ -104,7 +104,6 @@ export enum LicenseManagerClickEvent {
   IphLicenseCreateLicenseTypeClickEvent = 'iphLicenseCreateLicenseTypeClickEvent',
   IphLicenseFormSubmitClickEvent = 'iphLicenseFormSubmitClickEvent',
   IphLicenseFormCancelClickEvent = 'iphLicenseFormCancelClickEvent',
-  IphLicenseFormSkipClickEvent = 'iphLicenseFormSkipClickEvent',
   CreatorAgreementCancelModalOpenClickEvent = 'creatorAgreementCancelModalOpenClickEvent',
   CreatorAgreementCancelModalDismissClickEvent = 'creatorAgreementCancelModalDismissClickEvent',
   CreatorAgreementCancelModalConfirmClickEvent = 'creatorAgreementCancelModalConfirmClickEvent',

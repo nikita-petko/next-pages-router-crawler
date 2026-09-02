@@ -143,7 +143,7 @@ export type LicenseFormAction = 'create' | 'update' | 'copy';
 
 export interface LicenseFormAnalyticsContext {
   formAction: LicenseFormAction;
-  entrySource: 'listingDetails' | 'listingCreationWizard';
+  entrySource: 'listingDetails';
   listingId?: string;
   licenseId?: string;
   sourceLicenseId?: string;
@@ -158,7 +158,6 @@ interface Props {
   submitButtonText: string;
   cancelButtonText?: string;
   isSubmitting: boolean;
-  onSkip?: () => void;
   mode?: LicenseFormMode;
   /** Whether there are pending edits awaiting moderation (disables moderated fields) */
   hasPendingEdits?: boolean;
@@ -443,7 +442,6 @@ const LicenseForm = ({
   submitButtonText,
   cancelButtonText,
   isSubmitting,
-  onSkip,
   mode = CREATE_MODE,
   hasPendingEdits = false,
   onBeforeSubmitModeratedChanges,
@@ -746,19 +744,6 @@ const LicenseForm = ({
     }
     onCancel();
   }, [analyticsContext, getValues, logEvent, onCancel]);
-
-  const handleSkip = useCallback(() => {
-    if (!onSkip) {
-      return;
-    }
-    if (analyticsContext) {
-      logEvent(
-        LicenseManagerClickEvent.IphLicenseFormSkipClickEvent,
-        buildLicenseFormAnalyticsParameters(analyticsContext, getValues()),
-      );
-    }
-    onSkip();
-  }, [analyticsContext, getValues, logEvent, onSkip]);
 
   if (!isFetched || !isLicenseCreationFlagReady) {
     return <PageLoading />;
@@ -1752,17 +1737,6 @@ const LicenseForm = ({
               {cancelButtonText ?? translate('Action.Cancel')}
             </Button>
           </Grid>
-          {onSkip && (
-            <Grid item>
-              <Button
-                variant='contained'
-                color='secondary'
-                onClick={handleSkip}
-                loading={isSubmitting}>
-                {translate('Action.SkipLicense')}
-              </Button>
-            </Grid>
-          )}
           <Grid item>
             <Button variant='contained' type='submit' loading={isSubmitting}>
               {submitButtonText}

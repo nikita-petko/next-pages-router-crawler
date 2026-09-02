@@ -362,46 +362,4 @@ const LicenseTable = ({ licenses, ipListingId }: LicenseTableProps) => {
   );
 };
 
-/**
- * Simplified license table for previewing licenses in the creation flow
- */
-export const PreviewLicenseTable = ({ licenses }: { licenses: LicenseResponse[] }) => {
-  const { translate } = useTranslation();
-
-  return (
-    <TableContainer>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>{translate('Heading.Name')}</TableCell>
-            <TableCell>{translate('Heading.Status')}</TableCell>
-            <TableCell>{translate('Heading.RevenueShare')}</TableCell>
-            <TableCell>{translate('Heading.MinimumDAU')}</TableCell>
-            <TableCell>{translate('Heading.MaxMaturityRating')}</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {licenses.map((license) => (
-            <TableRow key={license.id}>
-              <TableCell>{license.name}</TableCell>
-              <TableCell>
-                <LicenseStatusValue
-                  visibility={license.visibility}
-                  moderationStatus={license.moderationStatus}
-                  hasPendingEdits={license.hasPendingEdits}
-                />
-              </TableCell>
-              <TableCell>{formatRoyaltyRate(license.royaltyRate)}</TableCell>
-              <TableCell>
-                {translate(getDauLicenseLabelFromEnum(license.dau7DayThreshold))}
-              </TableCell>
-              <TableCell>{translate(getMaturityRatingLabel(license.maxAgeRating))}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-};
-
 export default LicenseTable;

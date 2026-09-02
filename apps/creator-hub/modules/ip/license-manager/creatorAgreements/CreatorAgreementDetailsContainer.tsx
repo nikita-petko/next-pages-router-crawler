@@ -304,6 +304,7 @@ const CreatorAgreementDetailsContainer: FunctionComponent<
       <CreatorDisputeModal
         agreementId={agreementId}
         isOpen={isCreatorDisputeModalOpen}
+        licenseType={license.licenseType}
         showConfirmation={isNextDisputeFinal(agreement)}
         closeModal={handleDisputeClose}
         submitDispute={handleDispute}

@@ -1,6 +1,6 @@
 import type { FunctionComponent } from 'react';
 import { useState, useEffect, useId } from 'react';
-import { DisputeReason } from '@rbx/client-content-licensing-api/v1';
+import { DisputeReason, LicenseType } from '@rbx/client-content-licensing-api/v1';
 import {
   Checkbox,
   Dialog,
@@ -40,6 +40,7 @@ enum Steps {
 interface CreatorDisputeModalProps {
   agreementId: string;
   isOpen: boolean;
+  licenseType: LicenseType | undefined;
   showConfirmation: boolean;
   closeModal: () => void;
   submitDispute: (reason: DisputeReason) => void;
@@ -49,6 +50,7 @@ interface CreatorDisputeModalProps {
 const CreatorDisputeModal: FunctionComponent<CreatorDisputeModalProps> = ({
   agreementId,
   isOpen,
+  licenseType,
   showConfirmation,
   closeModal,
   submitDispute,
@@ -169,7 +171,7 @@ const CreatorDisputeModal: FunctionComponent<CreatorDisputeModalProps> = ({
                   value={DisputeReason.IPNotUsed}
                   label={foundationRadioLabel(
                     <>
-                      <div className='text-body-large content-primary'>
+                      <div className='text-body-large content-emphasis'>
                         {translate('Label.DisputeReasonNotUsingIP')}
                       </div>
                       <div className='text-body-medium content-muted'>
@@ -184,7 +186,7 @@ const CreatorDisputeModal: FunctionComponent<CreatorDisputeModalProps> = ({
                   value={DisputeReason.FairUse}
                   label={foundationRadioLabel(
                     <>
-                      <div className='text-body-large content-primary'>
+                      <div className='text-body-large content-emphasis'>
                         {translate('Label.DisputeReasonFairUse')}
                       </div>
                       <div className='text-body-medium content-muted'>
@@ -206,21 +208,23 @@ const CreatorDisputeModal: FunctionComponent<CreatorDisputeModalProps> = ({
                   )}
                 />
               </div>
-              <div className={classes.option}>
-                <Radio
-                  value={DisputeReason.IPRemoved}
-                  label={foundationRadioLabel(
-                    <>
-                      <div className='text-body-large content-primary'>
-                        {translate('Label.DisputeReasonIPRemoved')}
-                      </div>
-                      <div className='text-body-medium content-muted'>
-                        {translate('Label.DisputeReasonIPRemovedSupport')}
-                      </div>
-                    </>,
-                  )}
-                />
-              </div>
+              {licenseType !== LicenseType.MarketplaceSale && (
+                <div className={classes.option}>
+                  <Radio
+                    value={DisputeReason.IPRemoved}
+                    label={foundationRadioLabel(
+                      <>
+                        <div className='text-body-large content-emphasis'>
+                          {translate('Label.DisputeReasonIPRemoved')}
+                        </div>
+                        <div className='text-body-medium content-muted'>
+                          {translate('Label.DisputeReasonIPRemovedSupport')}
+                        </div>
+                      </>,
+                    )}
+                  />
+                </div>
+              )}
             </RadioGroup>
           )}
           {activeStep === Steps.LegalAgreements && (
@@ -243,7 +247,7 @@ const CreatorDisputeModal: FunctionComponent<CreatorDisputeModalProps> = ({
                 label={
                   <span
                     id={rightsholderCheckboxLabelId}
-                    className='text-body-large content-primary'>
+                    className='text-body-large content-emphasis'>
                     {translate('Label.IUnderstandRightsholderReviews')}
                   </span>
                 }
@@ -264,7 +268,7 @@ const CreatorDisputeModal: FunctionComponent<CreatorDisputeModalProps> = ({
                   </span>
                 }
                 label={
-                  <span id={fraudulentCheckboxLabelId} className='text-body-large content-primary'>
+                  <span id={fraudulentCheckboxLabelId} className='text-body-large content-emphasis'>
                     {translate('Label.IUnderstandFradulentDisputes')}
                   </span>
                 }

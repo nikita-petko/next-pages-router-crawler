@@ -15,7 +15,6 @@ import {
 } from '@rbx/ui';
 import EmptyState from '@modules/miscellaneous/components/EmptyState/EmptyState';
 import EmptyStateBorder from '@modules/miscellaneous/components/EmptyState/EmptyStateBorder';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import IpLoadError from '../../../components/error/IpLoadError';
 import {
   TextFieldWithEnhancedHelperText,
@@ -75,8 +74,6 @@ const IpListingForm: React.FC<Props> = ({
   isSubmitting,
   mode = CREATE_MODE,
 }) => {
-  const { settings, isFetched } = useSettings();
-  const { enableIpPlatformDecoupleListingCreationFromLicenseCreation } = settings;
   const { translate } = useTranslation();
   const { classes } = useStyles();
   const ipFamiliesReq = useIpFamiliesQuery();
@@ -115,7 +112,7 @@ const IpListingForm: React.FC<Props> = ({
     rules: { minLength: 1, required: translate('Label.FieldIsRequired') },
   });
 
-  if (!isFetched || ipFamiliesReq.isPending) {
+  if (ipFamiliesReq.isPending) {
     return <CircularProgress />;
   }
 
@@ -161,13 +158,7 @@ const IpListingForm: React.FC<Props> = ({
         spacing={4}
         maxWidth={708}
         component='form'
-        onSubmit={
-          enableIpPlatformDecoupleListingCreationFromLicenseCreation
-            ? handleSubmit(submitWithConfirmation)
-            : mode.type === 'edit'
-              ? handleSubmit(submitWithConfirmation)
-              : handleSubmit(onSubmit)
-        }>
+        onSubmit={handleSubmit(submitWithConfirmation)}>
         <Grid item>
           <Typography
             variant='h5'
