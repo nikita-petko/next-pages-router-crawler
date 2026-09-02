@@ -3,12 +3,13 @@ import { V1UsersSearchGetLimitEnum } from '@rbx/client-users/v1';
 import { useTranslation } from '@rbx/intl';
 import type { User } from '../../../clients/users';
 import usersClient from '../../../clients/users';
+import TranslationNamespace from '../../../constants/TranslationNamespace';
 import useDebouncedFunction from '../../../hooks/useDebouncedFunction';
 import type { UserOptionsHook, UserStatus } from '../../types';
 import useCurrentGroupUtils from '../serviceHook/useCurrentGroupUtils';
 
 const useUserOptionsForOrgRoles: UserOptionsHook = (roleId: string) => {
-  const { translate } = useTranslation();
+  const { translate, translateWithNamespace } = useTranslation();
   const {
     isUserInGroup,
     isUserInvited,
@@ -22,9 +23,9 @@ const useUserOptionsForOrgRoles: UserOptionsHook = (roleId: string) => {
   const [userStatus, setUserStatus] = useState<Map<number, UserStatus>>(new Map());
   const [isFetching, setIsFetching] = useState(false);
   const [hasValidSearch, setHasValidSearch] = useState(false);
-  const noOptionsText = translate(
-    hasValidSearch ? 'Label.NoCreatorsFound' : 'Label.NeedMoreThanTwoCharacters',
-  );
+  const noOptionsText = hasValidSearch
+    ? translateWithNamespace(TranslationNamespace.GroupManagement, 'Label.NoMembersFound')
+    : translate('Label.NeedMoreThanTwoCharacters');
 
   const filterAndUpdateUserStatus = useCallback(
     async (foundUsers: User[]) => {
