@@ -280,11 +280,17 @@ const EditPageContent: FC<EditPageContentProps> = ({
   }
   const activeSessionDashboardId = renderedActiveSession?.dashboardId;
   const activeSessionDraftId = renderedActiveSession?.draftId;
-  const isEditSessionVersionReady =
-    activeSessionDashboardId === null ||
-    (activeSessionDraftId !== undefined &&
-      editSessionVersionState?.draftId === activeSessionDraftId &&
-      editSessionVersionState.status === 'ready');
+  const canEditDashboard = canMutateDashboards && persistedDocument?.hybridOrigin !== 'server';
+  const activeEditSessionVersionStatus =
+    activeSessionDraftId !== undefined && editSessionVersionState?.draftId === activeSessionDraftId
+      ? editSessionVersionState.status
+      : null;
+  const isEditSessionVersionLoading =
+    activeSessionDashboardId !== null &&
+    activeSessionDashboardId !== undefined &&
+    canEditDashboard &&
+    ((!isNewDashboard && documentQuery.isPending) ||
+      (activeEditSessionVersionStatus !== 'ready' && activeEditSessionVersionStatus !== 'failed'));
   const createdByUserId = renderedActiveSession?.createdByUserId;
   const attributionUserIds = useMemo(
     () => (createdByUserId !== undefined && createdByUserId > 0 ? [createdByUserId] : []),
@@ -304,8 +310,29 @@ const EditPageContent: FC<EditPageContentProps> = ({
       })
     : null;
 
+  const loadEditSessionVersion = useCallback(
+    async (sessionDashboardId: string, sessionDraftId: string): Promise<number> => {
+      const cachedVersion = editSessionVersionRef.current.get(sessionDraftId);
+      if (cachedVersion !== undefined) {
+        return cachedVersion;
+      }
+      const version = await service.getVersion(universeId, sessionDashboardId);
+      if (version === null) {
+        throw new Error('Existing dashboard has no edit-session version');
+      }
+      editSessionVersionRef.current.set(sessionDraftId, version);
+      return version;
+    },
+    [service, universeId],
+  );
+
   useEffect(() => {
-    if (!activeSessionDashboardId || !activeSessionDraftId) {
+    if (
+      !activeSessionDashboardId ||
+      !activeSessionDraftId ||
+      !canEditDashboard ||
+      (!isNewDashboard && documentQuery.isPending)
+    ) {
       return undefined;
     }
     if (editSessionVersionRef.current.has(activeSessionDraftId)) {
@@ -317,26 +344,28 @@ const EditPageContent: FC<EditPageContentProps> = ({
     setSaveError(null);
     void (async () => {
       try {
-        const version = await service.getVersion(universeId, activeSessionDashboardId);
+        await loadEditSessionVersion(activeSessionDashboardId, activeSessionDraftId);
         if (cancelled) {
           return;
         }
-        if (version === null) {
-          throw new Error('Existing dashboard has no edit-session version');
-        }
-        editSessionVersionRef.current.set(activeSessionDraftId, version);
         setEditSessionVersionState({ draftId: activeSessionDraftId, status: 'ready' });
-      } catch (error) {
+      } catch {
         if (!cancelled) {
           setEditSessionVersionState({ draftId: activeSessionDraftId, status: 'failed' });
-          setSaveError(error);
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [activeSessionDashboardId, activeSessionDraftId, service, universeId]);
+  }, [
+    activeSessionDashboardId,
+    activeSessionDraftId,
+    canEditDashboard,
+    documentQuery.isPending,
+    isNewDashboard,
+    loadEditSessionVersion,
+  ]);
 
   // Mirror the live session's draftId into the URL so a reload / refetch can
   // re-attach to it (see `onDraftSessionReady`).
@@ -601,11 +630,7 @@ const EditPageContent: FC<EditPageContentProps> = ({
             );
             editSessionVersionRef.current.delete(sessionDraftId);
             setEditSessionVersionState({ draftId: sessionDraftId, status: 'pending' });
-            const revertedVersion = await service.getVersion(universeId, persistedId);
-            if (revertedVersion === null) {
-              throw new Error('Existing dashboard has no edit-session version');
-            }
-            editSessionVersionRef.current.set(sessionDraftId, revertedVersion);
+            await loadEditSessionVersion(persistedId, sessionDraftId);
             setEditSessionVersionState({ draftId: sessionDraftId, status: 'ready' });
             setIsConflictDialogOpen(false);
             return;
@@ -628,6 +653,7 @@ const EditPageContent: FC<EditPageContentProps> = ({
       commitDraft,
       finishSuccessfulSave,
       isSaving,
+      loadEditSessionVersion,
       persistExistingDraft,
       queryClient,
       renderedActiveSession,
@@ -640,10 +666,10 @@ const EditPageContent: FC<EditPageContentProps> = ({
     (titleOverride?: string) => {
       const draft = currentDraft;
       if (
-        !canMutateDashboards ||
+        !canEditDashboard ||
         !renderedActiveSession ||
         !draft ||
-        !isEditSessionVersionReady ||
+        isEditSessionVersionLoading ||
         isSaving ||
         publishInFlightRef.current
       ) {
@@ -681,6 +707,16 @@ const EditPageContent: FC<EditPageContentProps> = ({
             await finishSuccessfulSave(savedDocument, sessionDraftId);
             return;
           }
+          if (!editSessionVersionRef.current.has(sessionDraftId)) {
+            setEditSessionVersionState({ draftId: sessionDraftId, status: 'pending' });
+            try {
+              await loadEditSessionVersion(renderedActiveSession.dashboardId, sessionDraftId);
+              setEditSessionVersionState({ draftId: sessionDraftId, status: 'ready' });
+            } catch (error) {
+              setEditSessionVersionState({ draftId: sessionDraftId, status: 'failed' });
+              throw error;
+            }
+          }
           const savedDocument = await persistExistingDraft(
             draftToPublish,
             renderedActiveSession,
@@ -700,11 +736,12 @@ const EditPageContent: FC<EditPageContentProps> = ({
       })();
     },
     [
-      canMutateDashboards,
+      canEditDashboard,
       currentDraft,
       finishSuccessfulSave,
-      isEditSessionVersionReady,
+      isEditSessionVersionLoading,
       isSaving,
+      loadEditSessionVersion,
       persistExistingDraft,
       renderedActiveSession,
       service,
@@ -918,11 +955,11 @@ const EditPageContent: FC<EditPageContentProps> = ({
         <EditPageHeaderStack
           dashboardName={draftDashboardName}
           createdByDisplayName={createdByDisplayName}
-          hasUnsavedChanges={canMutateDashboards && hasUnsavedChanges}
+          hasUnsavedChanges={canEditDashboard && hasUnsavedChanges}
           isSaving={isSaving}
-          saveError={saveError}
-          isPrimaryActionDisabled={!isEditSessionVersionReady}
-          canRename={canMutateDashboards && persistedDocument?.hybridOrigin !== 'server'}
+          saveError={canEditDashboard ? saveError : null}
+          isPrimaryActionDisabled={isEditSessionVersionLoading}
+          canRename={canEditDashboard}
           onCancel={handleCancel}
           onPreview={handleOpenPreview}
           onPublish={handlePublish}
