@@ -1,3 +1,4 @@
+import { useWorkspaces } from '@rbx/creator-hub-navigation';
 import { Button } from '@rbx/foundation-ui';
 import { useRouter } from 'next/router';
 import { useRef } from 'react';
@@ -18,6 +19,7 @@ import type { FormType as AdvancedTargetingFormType } from '@hooks/campaignBuild
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import useNeedsPaymentSetup from '@hooks/campaignBuilder/useNeedsPaymentSetup';
 import { useTransformFormToCampaign } from '@hooks/campaignBuilder/useTransformFormToCampaign';
+import useGroupSpendPermission from '@hooks/useGroupSpendPermission';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { createSimplifiedCampaign } from '@services/ads/campaignBuilderService';
 import { useAiCreateSessionStore } from '@stores/aiCreateSessionStoreProvider';
@@ -26,6 +28,7 @@ import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
 import { useToastStore } from '@stores/toastStoreProvider';
 import { IsAdvancedTargetingAllowed } from '@utils/campaignBuilder';
 import { IsImpersonationError } from '@utils/error';
+import { getSelectedGroupId } from '@utils/groupScopedAccount';
 
 interface Props {
   advancedTargetingFormMethods: UseFormReturn<AdvancedTargetingFormType>;
@@ -56,6 +59,17 @@ const CreateCampaignFooter = ({ advancedTargetingFormMethods }: Props) => {
   const isAdAccountAutoCreateEnabled = useAppStore(
     (state: AppStoreType) => state.appMetadataState?.data?.isAdAccountAutoCreateEnabled ?? false,
   );
+  const { currentWorkspace } = useWorkspaces();
+  const selectedGroupId = getSelectedGroupId(currentWorkspace, isAdAccountAutoCreateEnabled);
+  const selectedGroupAdvertiserState = useAppStore((state) =>
+    selectedGroupId
+      ? state.groupScopedAccountStateByGroupId[selectedGroupId]?.advertiserState
+      : undefined,
+  );
+  const isSelectedGroupAdvertiserLoading = Boolean(
+    selectedGroupId && (!selectedGroupAdvertiserState || selectedGroupAdvertiserState.isLoading),
+  );
+  const { isLoading: isGroupSpendPermissionLoading } = useGroupSpendPermission(selectedGroupId);
   const needsPaymentSetup = useNeedsPaymentSetup(paymentType);
   const hasLoggedDrawerOpened = useRef<boolean>(false);
   const resetAiCreateCampaignScope = useAiCreateSessionStore(
@@ -191,7 +205,8 @@ const CreateCampaignFooter = ({ advancedTargetingFormMethods }: Props) => {
     advancedTargetingInvalid ||
     imageUploadBlocking ||
     videoUploadBlocking ||
-    isCreativeLibraryRegistrationInProgress;
+    isCreativeLibraryRegistrationInProgress ||
+    Boolean(selectedGroupId && (isSelectedGroupAdvertiserLoading || isGroupSpendPermissionLoading));
 
   return (
     <div className={`text-body-large ${footer}`}>

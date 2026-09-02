@@ -12,7 +12,7 @@ import { getAdvertiserTimeSeriesRange } from '@services/ads/campaignTimeSeriesDa
 const METRIC_GRANULARITY_ONE_DAY = 'METRIC_GRANULARITY_ONE_DAY';
 const METRIC_GRANULARITY_NONE = 'METRIC_GRANULARITY_NONE';
 const ATTRIBUTION_WINDOW_DAYS = 30;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
+export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const DIMENSION_CAMPAIGN_ID = 'CampaignId';
 const DIMENSION_AD_ID = 'AdId';
 const DIMENSION_ATTRIBUTION_DATE_HOUR = 'AttributionDateHour';
@@ -38,6 +38,8 @@ export const getPlaysMetricForReportingView = (
 ): string => PLAYS_METRIC_BY_REPORTING_VIEW[reportingView] ?? METRIC_PLAYS;
 
 export const METRIC_ROAS_ESTIMATE = 'AdsRoasEstimate';
+export const METRIC_EARNINGS_USD_DEFAULT_VIEW = 'AdsUAEarningsUsdDefaultView';
+export const METRIC_SPEND_MICRO_USD_DEFAULT_VIEW = 'AdsUATotalSpendMicroUsdDefaultView';
 
 interface BuildAnalyticsQueryRequestParams {
   breakdownByAttributionDate?: boolean;
@@ -124,7 +126,7 @@ const getReportingMetricName = (
     REPORTING_VIEW_SUFFIXES[ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT]!;
   const metricPrefix: Record<UniverseReportingMetric, string> = {
     clicks: `AdsUANumClicks${suffix.user}`,
-    earningsUsd: 'AdsUAEarningsUsd',
+    earningsUsd: METRIC_EARNINGS_USD_DEFAULT_VIEW,
     impressions: `AdsUANumImpressions${suffix.user}`,
     plays: `AdsUANumPlays${suffix.view}`,
     playtime: `AdsUAPlaytime${suffix.view}`,
@@ -148,6 +150,12 @@ export const getAttributionQueryEndTime = (attributionEndTime: Date): Date =>
 // Validated AdsUARoas is considered final one day after the 30-day attribution
 // window closes. Windows younger than this show the ML AdsRoasEstimate instead.
 export const ROAS_VALIDATED_MIN_AGE_DAYS = ATTRIBUTION_WINDOW_DAYS + 1;
+
+// Minimum aggregated spend (USD) required for a client-composed ROAS bucket
+// to surface a value. Mirrors the cube-side gate at `5000000` micro-USD in
+// `roasdefaultview` (services/cubejs/schema/EntityAttributedConversionAggregation.js)
+// so client-computed ROAS agrees with the scalar cube measure at the threshold.
+export const ROAS_MIN_SPEND_USD = 5;
 
 // AdsRoasEstimate predictions take ~3 days to mature: today and the two
 // previous UTC days haven't accumulated enough conversion signal to be

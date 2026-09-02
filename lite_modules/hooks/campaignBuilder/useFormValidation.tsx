@@ -25,6 +25,7 @@ import { TranslationNamespace } from '@constants/localization';
 import { PaymentUnit } from '@constants/payment';
 import useFormSchema, { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import useNeedsPaymentSetup from '@hooks/campaignBuilder/useNeedsPaymentSetup';
+import useGroupSpendPermission from '@hooks/useGroupSpendPermission';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
@@ -46,6 +47,7 @@ import {
   UsdToString,
 } from '@utils/currency';
 import { SelectIsUniverseIneligible } from '@utils/eligibility';
+import { isGroupAdAccountMissing } from '@utils/groupAdAccountSetup';
 import { getSelectedGroupId } from '@utils/groupScopedAccount';
 import { GetTimezoneObjFromEnum, GetValidatedTimezoneDbName } from '@utils/timezone';
 
@@ -77,13 +79,15 @@ export const useFormValidation = (): Resolver<FormType> => {
         ({} as GetAdCreditBalanceResponseType)
       : ({} as GetAdCreditBalanceResponseType),
   );
-  const groupAdAccountId = useAppStore((state) =>
+  const groupAdvertiserState = useAppStore((state) =>
     selectedGroupId
-      ? state.groupScopedAccountStateByGroupId[selectedGroupId]?.advertiserState?.data?.ad_account
-          ?.id
+      ? state.groupScopedAccountStateByGroupId[selectedGroupId]?.advertiserState
       : undefined,
   );
+  const groupAdAccountId = groupAdvertiserState?.data?.ad_account?.id;
+  const groupAdAccountMissing = isGroupAdAccountMissing(groupAdvertiserState);
   const isGroupAdCreditPaymentAvailable = Boolean(selectedGroupId && groupAdAccountId);
+  const { isGroupSpendPermissionDenied } = useGroupSpendPermission(selectedGroupId);
   const groupAdCreditBalanceIsError = useAppStore((state) =>
     selectedGroupId
       ? (state.groupScopedAccountStateByGroupId[selectedGroupId]?.adCreditState?.isError ?? false)
@@ -429,14 +433,38 @@ export const useFormValidation = (): Resolver<FormType> => {
         });
       }
       if (
+        !editMode &&
         data[FormField.PAYMENT_TYPE] === ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT &&
-        isGroupAdCreditPaymentAvailable &&
-        groupAdCreditBalanceIsError
+        ((groupAdvertiserState?.isError && !groupAdAccountMissing) ||
+          (isGroupAdCreditPaymentAvailable && groupAdCreditBalanceIsError))
       ) {
         addIssue({
           code: 'custom',
           message: translate(FAILED_TO_FETCH_PAYMENT_METHOD_COPY),
           path: [FormField.PAYMENT_TYPE],
+        });
+      }
+      if (
+        !editMode &&
+        data[FormField.PAYMENT_TYPE] === ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT &&
+        (!selectedGroupId || groupAdAccountMissing)
+      ) {
+        addIssue({
+          code: 'custom',
+          message: translate(NO_PAYMENT_METHOD_COPY),
+          path: [FormField.PAYMENT_TYPE],
+        });
+      }
+      if (
+        !editMode &&
+        data[FormField.PAYMENT_TYPE] === ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT &&
+        data[FormField.IS_AUTO_RELOAD_ENABLED] &&
+        isGroupSpendPermissionDenied
+      ) {
+        addIssue({
+          code: 'custom',
+          message: translateMisc('Description.GroupSpendPermissionDeniedAutoReload'),
+          path: [FormField.IS_AUTO_RELOAD_ENABLED],
         });
       }
       if (
@@ -576,7 +604,11 @@ export const useFormValidation = (): Resolver<FormType> => {
             ? Number(data[FormField.DURATION] || 1)
             : 1);
 
-        if (isGroupAdCreditPaymentAvailable && groupAdCreditBalanceInMicro < requiredBalance) {
+        if (
+          isGroupAdCreditPaymentAvailable &&
+          !groupAdCreditBalanceIsError &&
+          groupAdCreditBalanceInMicro < requiredBalance
+        ) {
           addIssue({
             code: 'too_small',
             inclusive: true,

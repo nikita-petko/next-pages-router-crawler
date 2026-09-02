@@ -629,7 +629,7 @@ export const adSetBidValueUsdValidationConstructor = ({
                   microUsdToUsd(
                     overrides.videoMinBidMappingsMicroUsd.coreRegionVideoCpmFloorPriceMicroUsd,
                   )) ||
-                5.0;
+                4.0;
               maximumBidValue = 1000.0;
             } else if (targetedMarketType === MarketType.STRATEGIC) {
               minimumBidValue =
@@ -1739,7 +1739,7 @@ export const getDefaultBidValue = (
         return (
           (videoBidFloors.coreRegionVideoCpmFloorPriceMicroUsd &&
             microUsdToUsd(videoBidFloors.coreRegionVideoCpmFloorPriceMicroUsd)) ||
-          5.0
+          4.0
         );
       }
       if (regionType === MarketType.MIXED) {

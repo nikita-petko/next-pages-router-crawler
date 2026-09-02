@@ -15,12 +15,18 @@ import {
   AnalyticsReportingResource,
   buildAnalyticsQueryRequest,
   getPlaysMetricForReportingView,
+  METRIC_EARNINGS_USD_DEFAULT_VIEW,
   METRIC_ROAS_ESTIMATE,
+  METRIC_SPEND_MICRO_USD_DEFAULT_VIEW,
+  MS_PER_DAY,
+  ROAS_VALIDATED_MIN_AGE_DAYS,
 } from '@services/ads/analyticsQueryBuilder';
 import {
   aggregateQueryResultToDailyDataPoints,
+  computeDailyRoasFromAggregates,
   queryResultToDailyDirectDataPoints,
 } from '@services/ads/campaignTimeSeriesDataPoints';
+import { getAdvertiserTimeSeriesRange } from '@services/ads/campaignTimeSeriesDateRange';
 import { CampaignTimeSeries, CampaignTimeSeriesDataPoints } from '@type/timeSeries';
 import { CaptureException } from '@utils/error';
 import { GetApiSiteBaseUrl, GetSitetestBaseUrl } from '@utils/url';
@@ -111,7 +117,8 @@ interface GetCampaignTimeSeriesRequest {
   /** YYYY-MM-DD, required (with customStartDate) when timePeriod === CUSTOM. */
   customEndDate?: string;
   customStartDate?: string;
-  // When true, also queries direct AdsUARoas for the Default View.
+  // When true, composes daily validated ROAS from revenue + spend for the
+  // Default View, and fetches the ML-estimated ROAS alongside it.
   isRoasEnabled: boolean;
   pollingOptions?: RAQIClientOptions;
   reportingView?: ReportingViewType;
@@ -164,33 +171,63 @@ export const getCampaignTimeSeries = async ({
 
   const shouldQueryRoas =
     isRoasEnabled && reportingView === ReportingViewType.REPORTING_VIEW_TYPE_DEFAULT;
+  // Symmetric short-circuit around the 31-day attribution boundary, mirroring
+  // the scalar table cell's request-batching in `newFlowStoreProvider`:
+  // - Whole range inside open window (oldest day <31d old): skip revenue+spend;
+  //   every validated bucket would be null-gated in
+  //   `computeDailyRoasFromAggregates` and the estimate carries the chart.
+  // - Whole range past the boundary (newest day ≥31d old): skip the estimate;
+  //   every bucket qualifies for validated. Any missing-spend gaps stay null
+  //   because the estimate DAG doesn't retain matured predictions anyway.
+  // Mixed ranges that straddle the boundary fetch both.
+  const now = new Date(requestTimestamp);
+  const { endTime: rangeEndTime, startTime: rangeStartTime } = getAdvertiserTimeSeriesRange(
+    requestTimestamp,
+    timePeriod,
+    timezoneDbName,
+    { customEndDate, customStartDate, unifiedAttributionCutoverDate },
+  );
+  const openWindowCutoffMs = now.getTime() - ROAS_VALIDATED_MIN_AGE_DAYS * MS_PER_DAY;
+  const shouldQueryValidatedRoas =
+    shouldQueryRoas && rangeStartTime.getTime() <= openWindowCutoffMs;
+  const shouldQueryEstimatedRoas = shouldQueryRoas && rangeEndTime.getTime() > openWindowCutoffMs;
   const roasPromise: Promise<Pick<CampaignTimeSeries, 'roas'>> = shouldQueryRoas
     ? Promise.all([
-        fetchMetric('AdsUARoas', 'oneDay', false),
-        // `ByUniverse` suffix is applied automatically by
-        // `buildAnalyticsQueryRequest` for universe resources — mirrors how
-        // `AdsUARoas` routes to `AdsUARoasByUniverse` here.
-        fetchMetric(METRIC_ROAS_ESTIMATE, 'oneDay', false, false).catch((error) => {
-          CaptureException(error as Error, {
-            context: 'getCampaignTimeSeries: estimated ROAS fetch failed',
-          });
-          return undefined;
-        }),
+        shouldQueryValidatedRoas
+          ? fetchMetric(METRIC_EARNINGS_USD_DEFAULT_VIEW, 'oneDay', true)
+          : Promise.resolve(undefined),
+        shouldQueryValidatedRoas
+          ? fetchMetric(METRIC_SPEND_MICRO_USD_DEFAULT_VIEW, 'oneDay', true)
+          : Promise.resolve(undefined),
+        // `buildAnalyticsQueryRequest` appends the `ByUniverse` suffix
+        // automatically for universe resources, so the same metric names work
+        // for both ad-account and universe callers.
+        shouldQueryEstimatedRoas
+          ? fetchMetric(METRIC_ROAS_ESTIMATE, 'oneDay', false, false).catch((error) => {
+              CaptureException(error as Error, {
+                context: 'getCampaignTimeSeries: estimated ROAS fetch failed',
+              });
+              return undefined;
+            })
+          : Promise.resolve(undefined),
       ])
-        .then(([dailyResult, estimateResult]) => {
-          const validatedDaily = queryResultToDailyDirectDataPoints(dailyResult);
+        .then(([revenueResult, spendResult, estimateResult]) => {
+          const validatedDaily =
+            revenueResult && spendResult
+              ? computeDailyRoasFromAggregates(
+                  aggregateQueryResultToDailyDataPoints(revenueResult),
+                  aggregateQueryResultToDailyDataPoints(spendResult),
+                  now,
+                )
+              : [];
           const estimatedDaily = estimateResult
             ? queryResultToDailyDirectDataPoints(estimateResult)
             : [];
-          return {
-            roas: estimatedDaily.length
-              ? mergeRoasPreferValidated(validatedDaily, estimatedDaily)
-              : validatedDaily,
-          };
+          return { roas: mergeRoasPreferValidated(validatedDaily, estimatedDaily) };
         })
         .catch((error) => {
           CaptureException(error as Error, {
-            context: 'getCampaignTimeSeries: direct ROAS fetch failed',
+            context: 'getCampaignTimeSeries: ROAS composition failed',
           });
           return {};
         })

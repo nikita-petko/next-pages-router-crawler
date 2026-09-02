@@ -41,6 +41,7 @@ import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
 import { usePaymentStore } from '@stores/paymentStoreProvider';
 import { GetEditTooltipTitle } from '@utils/campaignBuilder';
 import { MicroUsdToUsdStringRoundedDown, MicroUsdToUsdStringRoundedUp } from '@utils/currency';
+import { isGroupAdAccountMissing } from '@utils/groupAdAccountSetup';
 import { getSelectedGroupId } from '@utils/groupScopedAccount';
 
 interface ZodFormIssue {
@@ -134,24 +135,29 @@ const PaymentSelect = () => {
       : undefined,
   );
   const groupAdAccountId = groupAdvertiserState?.data?.ad_account?.id;
+  const groupAdAccountMissing = isGroupAdAccountMissing(groupAdvertiserState);
+  const isGroupAdvertiserLoading = Boolean(
+    selectedGroupId && (!groupAdvertiserState || groupAdvertiserState.isLoading),
+  );
+  const isGroupAdvertiserResolved = Boolean(
+    selectedGroupId &&
+    groupAdvertiserState &&
+    !groupAdvertiserState.isLoading &&
+    (!groupAdvertiserState.isError || groupAdAccountMissing),
+  );
   const shouldShowGroupAdCredit = Boolean(selectedGroupId);
   const adCreditIsLoading = useAppStore((state) => state.adCreditState.isLoading);
   const groupAdCreditIsLoading = Boolean(
-    selectedGroupId &&
-    !isGroupSpendPermissionDenied &&
-    groupAdAccountId &&
-    (groupAdCreditState?.isLoading ?? true),
+    selectedGroupId && groupAdAccountId && (groupAdCreditState?.isLoading ?? true),
   );
   const paymentProfilesIsLoading = usePaymentStore((state) => state.paymentProfiles.isLoading);
   const adCreditIsError = useAppStore((state) => state.adCreditState.isError);
   const groupAdCreditIsError = Boolean(
-    selectedGroupId &&
-    !isGroupSpendPermissionDenied &&
-    groupAdAccountId &&
-    groupAdCreditState?.isError,
+    selectedGroupId && groupAdAccountId && groupAdCreditState?.isError,
   );
   const paymentProfilesIsError = usePaymentStore((state) => state.paymentProfiles.isError);
   const rawGroupAdCreditBalance = groupAdCreditState?.data?.ad_credit_balance_in_micro || 0;
+  const hasGroupAdCreditBalance = groupAdCreditState?.data !== undefined;
   const formattedGroupAdCreditBalance = MicroUsdToUsdStringRoundedDown(rawGroupAdCreditBalance);
   const getAdCredit = useAppStore((state) => state.getAdCredit);
   const getAdvertiser = useAppStore((state) => state.getAdvertiser);
@@ -162,15 +168,18 @@ const PaymentSelect = () => {
     setCreditCardAdded(true);
   });
 
+  // Fetched regardless of spend permission: the group balance is read-only
+  // information, and it is shown alongside the group ad credit option even when
+  // the user can only spend it through a campaign rather than reload it.
   useEffect(() => {
-    if (!selectedGroupId || isGroupSpendPermissionDenied) {
+    if (!selectedGroupId) {
       return;
     }
 
     Promise.all([getAdvertiser(false, selectedGroupId), getAdCredit(selectedGroupId)]).catch(
       () => undefined,
     );
-  }, [getAdCredit, getAdvertiser, isGroupSpendPermissionDenied, selectedGroupId]);
+  }, [getAdCredit, getAdvertiser, selectedGroupId]);
 
   useEffect(() => {
     if (!shouldShowInvoice && creditCardAdded && shouldShowCreditCard) {
@@ -182,25 +191,15 @@ const PaymentSelect = () => {
   useEffect(() => {
     if (
       shouldShowGroupAdCredit &&
-      !isGroupSpendPermissionDenied &&
       groupAdAccountId &&
       !shouldShowInvoice &&
-      !editMode &&
-      getValues(FormField.PAYMENT_TYPE) === ServerPaymentType.PAYMENT_TYPE_UNSPECIFIED
+      flowType === FlowTypes.CREATE
     ) {
       setValue(FormField.PAYMENT_TYPE, ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT, {
         shouldValidate: true,
       });
     }
-  }, [
-    shouldShowGroupAdCredit,
-    isGroupSpendPermissionDenied,
-    groupAdAccountId,
-    shouldShowInvoice,
-    editMode,
-    setValue,
-    getValues,
-  ]);
+  }, [flowType, groupAdAccountId, setValue, shouldShowGroupAdCredit, shouldShowInvoice]);
 
   useEffect(() => {
     // Only auto-select the card when it is actually selectable (i.e. not a
@@ -208,12 +207,13 @@ const PaymentSelect = () => {
     // `hasPaymentProfile` prevents this effect from claiming the UNSPECIFIED
     // value with a hidden, declined card — which would both leave the dropdown
     // empty and block the ad-credit fallback effect below from running.
-    // Group workspace ad credit takes priority over personal card when available.
+    // Group workspace ad credit takes priority over personal card when the group
+    // has an ad account, including without spend-group-funds permission.
     if (
       isAdAccountAutoCreateEnabled &&
       !shouldShowInvoice &&
       shouldShowCreditCard &&
-      (!groupAdAccountId || isGroupSpendPermissionDenied) &&
+      !groupAdAccountId &&
       !editMode &&
       getValues(FormField.PAYMENT_TYPE) === ServerPaymentType.PAYMENT_TYPE_UNSPECIFIED
     ) {
@@ -224,7 +224,6 @@ const PaymentSelect = () => {
     shouldShowCreditCard,
     shouldShowInvoice,
     groupAdAccountId,
-    isGroupSpendPermissionDenied,
     setValue,
     editMode,
     getValues,
@@ -235,7 +234,7 @@ const PaymentSelect = () => {
     if (
       !shouldShowInvoice &&
       !shouldShowCreditCard &&
-      (!groupAdAccountId || isGroupSpendPermissionDenied) &&
+      !groupAdAccountId &&
       !editMode &&
       getValues(FormField.PAYMENT_TYPE) === ServerPaymentType.PAYMENT_TYPE_UNSPECIFIED
     ) {
@@ -243,39 +242,42 @@ const PaymentSelect = () => {
         shouldValidate: true,
       });
     }
-  }, [
-    editMode,
-    groupAdAccountId,
-    isGroupSpendPermissionDenied,
-    shouldShowCreditCard,
-    shouldShowInvoice,
-    setValue,
-    getValues,
-  ]);
+  }, [editMode, groupAdAccountId, shouldShowCreditCard, shouldShowInvoice, setValue, getValues]);
 
   useEffect(() => {
     if (
-      !isGroupSpendPermissionDenied ||
+      shouldShowInvoice &&
+      !editMode &&
+      getValues(FormField.PAYMENT_TYPE) === ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT
+    ) {
+      setValue(FormField.PAYMENT_TYPE, ServerPaymentType.PAYMENT_TYPE_INVOICE, {
+        shouldValidate: true,
+      });
+    }
+  }, [editMode, getValues, setValue, shouldShowInvoice]);
+
+  useEffect(() => {
+    if (
       editMode ||
-      getValues(FormField.PAYMENT_TYPE) !== ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT
+      getValues(FormField.PAYMENT_TYPE) !== ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT ||
+      (selectedGroupId && (!isGroupAdvertiserResolved || groupAdAccountId))
     ) {
       return;
     }
 
-    // Invoice-billed advertisers never see the ad credit options, so falling
-    // back to ad credit there would select a value with no matching menu item.
     let fallbackPaymentType = ServerPaymentType.PAYMENT_TYPE_ADS_CREDIT;
     if (shouldShowInvoice) {
       fallbackPaymentType = ServerPaymentType.PAYMENT_TYPE_INVOICE;
     } else if (shouldShowCreditCard) {
       fallbackPaymentType = ServerPaymentType.PAYMENT_TYPE_CARD;
     }
-
     setValue(FormField.PAYMENT_TYPE, fallbackPaymentType, { shouldValidate: true });
   }, [
     editMode,
     getValues,
-    isGroupSpendPermissionDenied,
+    groupAdAccountId,
+    isGroupAdvertiserResolved,
+    selectedGroupId,
     setValue,
     shouldShowCreditCard,
     shouldShowInvoice,
@@ -323,15 +325,16 @@ const PaymentSelect = () => {
 
   const groupPaymentTypeSelects: PaymentTypeSelectOption[] = [
     {
-      disabled: isGroupSpendPermissionDenied,
+      disabled: isGroupSpendPermissionDenied && !groupAdAccountId,
       shouldShow: shouldShowAdCredit && (shouldShowGroupAdCredit || isGroupAdCreditSelected),
-      // Without spend permission the group balance is never fetched, so showing
-      // the amount would render a misleading zero.
-      title: isGroupSpendPermissionDenied
-        ? translateCampaign('Label.GroupAdCredit')
-        : translateCampaign('Label.GroupAdCreditBalance', {
+      // Falls back to the balance-free label only when the balance is unknown,
+      // so an unread balance renders without an amount instead of a misleading
+      // zero.
+      title: hasGroupAdCreditBalance
+        ? translateCampaign('Label.GroupAdCreditBalance', {
             balance: formattedGroupAdCreditBalance,
-          }),
+          })
+        : translateCampaign('Label.GroupAdCredit'),
       value: ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT,
     },
   ];
@@ -448,6 +451,10 @@ const PaymentSelect = () => {
         ? translateCampaign('Action.AddPaymentMethod')
         : translateBilling('Description.PurchaseAdCredits');
 
+    const cannotPurchaseGroupAdCredit =
+      isGroupSpendPermissionDenied &&
+      selectedPaymentType === ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT;
+
     const paymentDrawerLink = (
       <>
         {' '}
@@ -470,11 +477,17 @@ const PaymentSelect = () => {
       </>
     );
 
+    const adCreditTopUpSuffix = cannotPurchaseGroupAdCredit ? (
+      <> {translateMisc('Description.GroupSpendPermissionDenied')}</>
+    ) : (
+      paymentDrawerLink
+    );
+
     if (
       (error?.type === 'too_small' && error?.message !== FAILED_TO_FETCH_PAYMENT_METHOD_COPY) ||
       (error?.type === 'custom' && error?.message === NO_PAYMENT_METHOD_COPY)
     ) {
-      suffixForAdCreditTopUp = paymentDrawerLink;
+      suffixForAdCreditTopUp = adCreditTopUpSuffix;
     } else if (
       !error &&
       !editMode &&
@@ -486,7 +499,7 @@ const PaymentSelect = () => {
         amount: formattedAdCreditsNeededForFullDuration,
       });
       helperSeverity = 'warning';
-      suffixForAdCreditTopUp = paymentDrawerLink;
+      suffixForAdCreditTopUp = adCreditTopUpSuffix;
     }
 
     return (
@@ -502,6 +515,7 @@ const PaymentSelect = () => {
 
   if (
     adCreditIsLoading ||
+    isGroupAdvertiserLoading ||
     groupAdCreditIsLoading ||
     groupSpendPermissionLoading ||
     paymentProfilesIsLoading

@@ -33,6 +33,7 @@ import {
   isAdCreditPaymentType,
   ServerBudgetType,
   ServerCampaignObjectiveType,
+  ServerPaymentType,
 } from '@constants/campaign';
 import {
   CONTINUOUS_VALUE,
@@ -50,6 +51,7 @@ import { PaymentUnit } from '@constants/payment';
 import { AUTO_RELOAD_AD_CREDIT_CUE_MIGRATION } from '@cueMigrations/autoReloadAdCredit/config';
 import CueMigrationWrapper from '@cueMigrations/CueMigrationWrapper';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
+import useGroupSpendPermission from '@hooks/useGroupSpendPermission';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import { useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
@@ -165,6 +167,11 @@ const BudgetSection = () => {
     (state) => state.appMetadataState.data?.isAdAccountAutoCreateEnabled ?? false,
   );
   const selectedGroupId = getSelectedGroupId(currentWorkspace, isAdAccountAutoCreateEnabled);
+  const { isGroupSpendPermissionDenied, isLoading: isGroupSpendPermissionLoading } =
+    useGroupSpendPermission(selectedGroupId);
+  const selectedGroupAccountState = useAppStore((state) =>
+    selectedGroupId ? state.groupScopedAccountStateByGroupId[selectedGroupId] : undefined,
+  );
   const groupAdCreditBalance = useAppStore((state) =>
     selectedGroupId
       ? state.groupScopedAccountStateByGroupId[selectedGroupId]?.adCreditState.data
@@ -256,11 +263,40 @@ const BudgetSection = () => {
   // Helper to determine if budget/duration fields should be disabled
   const isBudgetDurationDisabled =
     !!IsEditCampaignDisabled(flowType, campaignStatus) || (editMode && isOffPlatformCampaign);
+  const isGroupAutoReloadDisabled =
+    paymentType === ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT && isGroupSpendPermissionDenied;
+  const isGroupAutoReloadUnavailable =
+    paymentType === ServerPaymentType.PAYMENT_TYPE_GROUP_AD_CREDIT &&
+    (isGroupSpendPermissionLoading || isGroupSpendPermissionDenied);
+
+  useEffect(() => {
+    if (!editMode && isGroupAutoReloadDisabled) {
+      setValue(FormField.IS_AUTO_RELOAD_ENABLED, false, { shouldValidate: true });
+    }
+  }, [editMode, isGroupAutoReloadDisabled, setValue]);
 
   useEffect(() => {
     // Trigger payment type and budget validation when the budget type/duration/budget changes
-    trigger([FormField.PAYMENT_TYPE, FormField.BUDGET, FormField.DURATION]);
-  }, [budgetType, trigger, budget, duration, paymentType, adCreditBalance, groupAdCreditBalance]);
+    trigger([
+      FormField.PAYMENT_TYPE,
+      FormField.BUDGET,
+      FormField.DURATION,
+      FormField.IS_AUTO_RELOAD_ENABLED,
+    ]);
+  }, [
+    adCreditBalance,
+    budget,
+    budgetType,
+    duration,
+    groupAdCreditBalance,
+    isGroupSpendPermissionDenied,
+    isGroupSpendPermissionLoading,
+    paymentType,
+    selectedGroupAccountState?.adCreditState.isError,
+    selectedGroupAccountState?.advertiserState.isError,
+    selectedGroupAccountState?.advertiserState.isLoading,
+    trigger,
+  ]);
 
   const {
     classes: { cardBanner, mt3, rightContentContainer, rightContentSubContainer },
@@ -514,7 +550,7 @@ const BudgetSection = () => {
                   setValue(FormField.BUDGET, recommendedBudget);
                   setValue(FormField.CUSTOM_BUDGET, false);
                 }
-                setValue(FormField.IS_AUTO_RELOAD_ENABLED, true);
+                setValue(FormField.IS_AUTO_RELOAD_ENABLED, !isGroupAutoReloadUnavailable);
               } else {
                 // if changing from daily to lifetime, keep duration if possible and convert budget
                 if (
@@ -771,37 +807,44 @@ const BudgetSection = () => {
             control={control}
             name={FormField.IS_AUTO_RELOAD_ENABLED}
             render={({ field: { onChange, value } }) => (
-              <AppTooltip title={getCustomInputTooltipTitle()}>
-                <div className='flex items-center gap-small padding-top-medium'>
-                  <Checkbox
-                    data-testid='auto-reload-checkbox'
-                    isChecked={value}
-                    isDisabled={isBudgetDurationDisabled}
-                    label={translate('Label.AutoReloadAdCredit')}
-                    onCheckedChange={(checked) => {
-                      onChange(checked === true);
-                    }}
-                    placement='Start'
-                    size='Small'
-                  />
-                  {isAccordionOpen && (
-                    <CueMigrationWrapper
-                      anchorElement={
-                        <AppTooltip
-                          position='bottom-center'
-                          title={translate('Description.AutoReloadEnabled')}>
-                          <Icon
-                            className='content-muted'
-                            name='icon-regular-circle-i'
-                            size='Small'
-                          />
-                        </AppTooltip>
-                      }
-                      migration={AUTO_RELOAD_AD_CREDIT_CUE_MIGRATION}
+              <div className='flex flex-col gap-xxsmall'>
+                <AppTooltip title={getCustomInputTooltipTitle()}>
+                  <div className='flex items-center gap-small padding-top-medium'>
+                    <Checkbox
+                      data-testid='auto-reload-checkbox'
+                      isChecked={value}
+                      isDisabled={isBudgetDurationDisabled || isGroupAutoReloadUnavailable}
+                      label={translate('Label.AutoReloadAdCredit')}
+                      onCheckedChange={(checked) => {
+                        onChange(checked === true);
+                      }}
+                      placement='Start'
+                      size='Small'
                     />
-                  )}
-                </div>
-              </AppTooltip>
+                    {isAccordionOpen && (
+                      <CueMigrationWrapper
+                        anchorElement={
+                          <AppTooltip
+                            position='bottom-center'
+                            title={translate('Description.AutoReloadEnabled')}>
+                            <Icon
+                              className='content-muted'
+                              name='icon-regular-circle-i'
+                              size='Small'
+                            />
+                          </AppTooltip>
+                        }
+                        migration={AUTO_RELOAD_AD_CREDIT_CUE_MIGRATION}
+                      />
+                    )}
+                  </div>
+                </AppTooltip>
+                {isGroupAutoReloadDisabled && (
+                  <span className='text-body-small content-muted'>
+                    {translateMisc('Description.GroupSpendPermissionDeniedAutoReload')}
+                  </span>
+                )}
+              </div>
             )}
           />
         </div>

@@ -1,6 +1,12 @@
 import { QueryResult } from '@rbx/client-analytics-query-gateway/v1';
 
+import {
+  MS_PER_DAY,
+  ROAS_MIN_SPEND_USD,
+  ROAS_VALIDATED_MIN_AGE_DAYS,
+} from '@services/ads/analyticsQueryBuilder';
 import { CampaignTimeSeriesDataPoints } from '@type/timeSeries';
+import { MicroUsdToUsd } from '@utils/currency';
 
 const DIMENSION_ATTRIBUTION_DATE_HOUR = 'AttributionDateHour';
 
@@ -85,6 +91,56 @@ export const aggregateQueryResultToDailyDataPoints = (
   });
 
   return dailyTotalsToDataPoints(totalsByDay);
+};
+
+/**
+ * Compose a per-attribution-day ROAS series from separately-aggregated revenue
+ * (USD) and spend (micro-USD) totals.
+ *
+ * Attribution-day age gate: any day younger than `ROAS_VALIDATED_MIN_AGE_DAYS`
+ * returns null so `mergeRoasPreferValidated` falls through to the ML
+ * `AdsRoasEstimate`. Without this gate, open-window days would emit
+ * understated validated ROAS (revenue keeps landing for 30 days after the
+ * attribution day) which then suppresses the estimate — the exact bug the
+ * scalar table cell avoids via `isValidatedRoasAvailable` at the source-
+ * selection layer. Applying the gate per bucket is the chart analogue.
+ *
+ * Semantics per day (age gate first):
+ * - attribution day too young (open window): null.
+ * - spend missing: null (no denominator, can't compute).
+ * - spend below `ROAS_MIN_SPEND_USD`: null (mirrors the cube-side min-spend
+ *   gate on the scalar `AdsUARoas` measure so noisy low-sample buckets stay
+ *   off the chart).
+ * - spend present, revenue missing: 0 (real "we spent money and got no
+ *   attributed conversions" day — only reachable for closed windows).
+ * - both present: revenue / spendUsd.
+ */
+export const computeDailyRoasFromAggregates = (
+  revenueUsdByDay: CampaignTimeSeriesDataPoints,
+  spendMicroUsdByDay: CampaignTimeSeriesDataPoints,
+  now: Date = new Date(),
+): CampaignTimeSeriesDataPoints => {
+  const spendByDay = new Map(spendMicroUsdByDay);
+  const revenueByDay = new Map(revenueUsdByDay);
+  const timestamps = new Set<number>([...spendByDay.keys(), ...revenueByDay.keys()]);
+  const closedWindowCutoffMs = now.getTime() - ROAS_VALIDATED_MIN_AGE_DAYS * MS_PER_DAY;
+  return Array.from(timestamps)
+    .sort((a, b) => a - b)
+    .map((ts): [number, number | null] => {
+      if (ts > closedWindowCutoffMs) {
+        return [ts, null];
+      }
+      const spendMicro = spendByDay.get(ts) ?? null;
+      if (spendMicro === null) {
+        return [ts, null];
+      }
+      const spendUsd = MicroUsdToUsd(spendMicro);
+      if (spendUsd < ROAS_MIN_SPEND_USD) {
+        return [ts, null];
+      }
+      const revenue = revenueByDay.get(ts) ?? 0;
+      return [ts, revenue / spendUsd];
+    });
 };
 
 /**

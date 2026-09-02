@@ -1,5 +1,5 @@
 export const videoMinBidMappingsMicroUsdDefaults = {
-  coreRegionVideoCpmFloorPriceMicroUsd: 5000000,
+  coreRegionVideoCpmFloorPriceMicroUsd: 4000000,
   coreRegionVideoCpv15FloorPriceMicroUsd: 200000,
   mixedRegionVideoCpmFloorPriceMicroUsd: 4000000,
   mixedRegionVideoCpv15FloorPriceMicroUsd: 200000,
