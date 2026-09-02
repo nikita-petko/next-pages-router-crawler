@@ -3350,6 +3350,10 @@
   font: var(--typography-display-large-font);
   letter-spacing: var(--typography-display-large-letter-spacing);
 }
+.text-display-medium {
+  font: var(--typography-display-medium-font);
+  letter-spacing: var(--typography-display-medium-letter-spacing);
+}
 .text-display-small {
   font: var(--typography-display-small-font);
   letter-spacing: var(--typography-display-small-letter-spacing);

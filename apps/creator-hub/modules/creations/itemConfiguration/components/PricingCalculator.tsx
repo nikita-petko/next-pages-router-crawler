@@ -10,24 +10,21 @@ import {
   V1PermissionsItemTypesGetTargetTypesEnum,
 } from '@rbx/client-itemconfiguration/v1';
 import { HubMeta, buildTitle } from '@rbx/creator-hub-history';
-import { useTranslation, withTranslation } from '@rbx/intl';
 import {
-  Checkbox,
-  CircularProgress,
   Divider,
-  FormControlLabel,
-  Grid,
+  Dropdown,
+  Icon,
+  Menu,
   MenuItem,
-  RobuxIcon,
-  Select,
-  Typography,
-} from '@rbx/ui';
+  ProgressCircle,
+  Checkbox,
+} from '@rbx/foundation-ui';
+import { useTranslation, withTranslation } from '@rbx/intl';
 import itemConfigurationClient, {
   CategoryDomain,
   type CategoryNode,
 } from '@modules/clients/itemconfiguration';
 import { Asset } from '@modules/miscellaneous/common';
-import { EmptyGrid } from '@modules/miscellaneous/components';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import { useQueryParams } from '@modules/miscellaneous/hooks';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
@@ -38,7 +35,6 @@ import {
   translateAssetType,
   translateBundleInfoTypeToBundleType,
 } from '../../unifiedFeeSystem/helper/UnifiedFeeSystemHelper';
-import usePricingCalculatorStyles from './PricingCalculator.styles';
 
 function isAssetItemType(value: string): value is Asset {
   return Object.values(Asset).some((assetValue) => {
@@ -145,9 +141,6 @@ const parseBoolParam = (v: string | string[] | undefined): boolean => v === 'tru
 
 const PricingCalculator: FunctionComponent<React.PropsWithChildren> = () => {
   const { translate } = useTranslation();
-  const {
-    classes: { robuxAmount, robuxAmountNumber, iconBig },
-  } = usePricingCalculatorStyles();
   const [queryParams, setQueryParamValues] = useQueryParams(QUERY_PARAM_KEYS);
 
   const [loadingStatus, setLoadingStatus] = useState<LoadingStatus>(LoadingStatus.LOADING);
@@ -316,9 +309,14 @@ const PricingCalculator: FunctionComponent<React.PropsWithChildren> = () => {
 
   if (loadingStatus === LoadingStatus.LOADING) {
     return (
-      <EmptyGrid>
-        <CircularProgress data-testid='loading' />
-      </EmptyGrid>
+      <div className='flex justify-center padding-y-xlarge'>
+        <ProgressCircle
+          ariaLabel={translate('Label.Loading')}
+          data-testid='loading'
+          size='Large'
+          variant='Indeterminate'
+        />
+      </div>
     );
   }
 
@@ -333,139 +331,133 @@ const PricingCalculator: FunctionComponent<React.PropsWithChildren> = () => {
   }
 
   return (
-    <>
-      <div className='margin-bottom-large'>
-        <Typography variant='h1'>{translate('Heading.PricingCalculatorTitle')}</Typography>
+    <div className='flex flex-col gap-xlarge'>
+      <div className='flex flex-col gap-small'>
+        <h1 className='text-heading-large content-emphasis margin-none'>
+          {translate('Heading.PricingCalculatorTitle')}
+        </h1>
         <HubMeta title={buildTitle(translate('Heading.PricingCalculatorTitle'))} />
       </div>
-      <Grid container>
-        {errorMessage ? (
-          <Typography color='error'>{errorMessage}</Typography>
-        ) : (
-          <Grid item container className={robuxAmount}>
-            <RobuxIcon className={iconBig} />
-            <Typography variant='hero' className={robuxAmountNumber}>
-              {(priceFloor ?? 0).toLocaleString()}
-            </Typography>
-          </Grid>
-        )}
-      </Grid>
-      <Divider className='margin-top-medium margin-bottom-medium' />
-      <Grid direction='row'>
-        {showItemTypeSelect ? (
-          <Select
-            size='medium'
-            style={{ width: '200px' }}
-            className='margin-right-medium margin-top-medium'
-            label={translate('Label.ItemType')}
-            value={itemType ?? ''}
-            onChange={(e) =>
-              setQueryParamValues({ itemType: e.target.value || undefined }, { skipHistory: true })
-            }>
-            {itemTypes
-              .map((type) => ({
-                type,
-                localizedName: translate(itemTypeStringToLabelKey(type)) || type,
-              }))
-              .sort((a, b) =>
-                a.localizedName.localeCompare(b.localizedName, undefined, { sensitivity: 'base' }),
-              )
-              .map(({ type, localizedName }) => {
-                return (
-                  <MenuItem key={type} value={type}>
-                    {localizedName}
-                  </MenuItem>
-                );
-              })}
-          </Select>
-        ) : undefined}
-        {showCategorySelect ? (
-          <Select
-            size='medium'
-            style={{ width: '200px' }}
-            className='margin-right-medium margin-top-medium'
-            label={translate('Label.Category')}
-            value={categoryCanonicalName ?? ''}
-            onChange={(e) =>
-              setQueryParamValues({ category: e.target.value || undefined }, { skipHistory: true })
-            }>
-            {categories
-              .map((cat) => ({
-                name: cat.name,
-                localizedName: getTaxonomyDisplayName(cat.name, translate),
-              }))
-              .sort((a, b) =>
-                a.localizedName.localeCompare(b.localizedName, undefined, { sensitivity: 'base' }),
-              )
-              .map(({ name, localizedName }) => {
-                return (
-                  <MenuItem key={name} value={name}>
-                    {localizedName}
-                  </MenuItem>
-                );
-              })}
-          </Select>
-        ) : undefined}
-        <Grid className='margin-top-small'>
-          <FormControlLabel
-            className='margin-right-medium margin-top-medium'
-            control={
-              <Checkbox
-                checked={isIec}
-                disabled={isLimited}
-                onClick={() =>
-                  setQueryParamValues(
-                    isIec ? { isIec: false } : { isIec: true, isLimited: undefined },
-                    { skipHistory: true },
+      {errorMessage ? (
+        <p className='text-body-large content-system-alert margin-none' role='alert'>
+          {errorMessage}
+        </p>
+      ) : (
+        <div className='flex items-center gap-small margin-top-small'>
+          <Icon name='icon-filled-robux' size='XXLarge' aria-hidden />
+          <span className='text-display-medium content-emphasis'>
+            {(priceFloor ?? 0).toLocaleString()}
+          </span>
+        </div>
+      )}
+      <Divider />
+      <div className='flex flex-col gap-xxlarge'>
+        <div className='flex wrap items-end gap-medium'>
+          {showItemTypeSelect ? (
+            <Dropdown
+              ariaLabel={translate('Label.ItemType')}
+              className='[width:240px] max-width-full'
+              label={translate('Label.ItemType')}
+              onValueChange={(value) =>
+                setQueryParamValues({ itemType: value || undefined }, { skipHistory: true })
+              }
+              placeholder={translate('Label.ItemType')}
+              size='Large'
+              value={itemType ?? ''}>
+              <Menu>
+                {itemTypes
+                  .map((type) => ({
+                    type,
+                    localizedName: translate(itemTypeStringToLabelKey(type)) || type,
+                  }))
+                  .sort((a, b) =>
+                    a.localizedName.localeCompare(b.localizedName, undefined, {
+                      sensitivity: 'base',
+                    }),
                   )
-                }
-              />
-            }
+                  .map(({ type, localizedName }) => {
+                    return <MenuItem key={type} title={localizedName} value={type} />;
+                  })}
+              </Menu>
+            </Dropdown>
+          ) : undefined}
+          {showCategorySelect ? (
+            <Dropdown
+              ariaLabel={translate('Label.Category')}
+              className='[width:240px] max-width-full'
+              label={translate('Label.Category')}
+              onValueChange={(value) =>
+                setQueryParamValues({ category: value || undefined }, { skipHistory: true })
+              }
+              placeholder={translate('Label.Category')}
+              size='Large'
+              value={categoryCanonicalName ?? ''}>
+              <Menu>
+                {categories
+                  .map((cat) => ({
+                    name: cat.name,
+                    localizedName: getTaxonomyDisplayName(cat.name, translate),
+                  }))
+                  .sort((a, b) =>
+                    a.localizedName.localeCompare(b.localizedName, undefined, {
+                      sensitivity: 'base',
+                    }),
+                  )
+                  .map(({ name, localizedName }) => {
+                    return <MenuItem key={name} title={localizedName} value={name} />;
+                  })}
+              </Menu>
+            </Dropdown>
+          ) : undefined}
+        </div>
+        <div className='flex wrap gap-medium'>
+          <Checkbox
+            isChecked={isIec}
+            isDisabled={isLimited}
             label={translate('Label.InExperienceCreation')}
-          />
-          <FormControlLabel
-            className='margin-right-medium margin-top-medium'
-            control={
-              <Checkbox
-                checked={isLimited}
-                disabled={isIec}
-                onClick={() =>
-                  setQueryParamValues(
-                    isLimited ? { isLimited: false } : { isLimited: true, isIec: undefined },
-                    { skipHistory: true },
-                  )
-                }
-              />
+            onCheckedChange={() =>
+              setQueryParamValues(
+                isIec ? { isIec: false } : { isIec: true, isLimited: undefined },
+                { skipHistory: true },
+              )
             }
+            placement='Start'
+            size='Large'
+          />
+          <Checkbox
+            isChecked={isLimited}
+            isDisabled={isIec}
             label={translate('Label.Limited')}
-          />
-          <FormControlLabel
-            className='margin-right-medium margin-top-medium'
-            control={
-              <Checkbox
-                checked={isPbr}
-                onClick={() => setQueryParamValues({ isPbr: !isPbr }, { skipHistory: true })}
-              />
+            onCheckedChange={() =>
+              setQueryParamValues(
+                isLimited ? { isLimited: false } : { isLimited: true, isIec: undefined },
+                { skipHistory: true },
+              )
             }
+            placement='Start'
+            size='Large'
+          />
+          <Checkbox
+            isChecked={isPbr}
             label={translate('Label.PBR')}
+            onCheckedChange={() => setQueryParamValues({ isPbr: !isPbr }, { skipHistory: true })}
+            placement='Start'
+            size='Large'
           />
           {isEmissiveEnabled && (
-            <FormControlLabel
-              className='margin-right-medium margin-top-medium'
-              control={
-                <Checkbox
-                  checked={isEmissive}
-                  onClick={() =>
-                    setQueryParamValues({ isEmissive: !isEmissive }, { skipHistory: true })
-                  }
-                />
-              }
+            <Checkbox
+              isChecked={isEmissive}
               label={translate('Label.Emissive')}
+              onCheckedChange={() =>
+                setQueryParamValues({ isEmissive: !isEmissive }, { skipHistory: true })
+              }
+              placement='Start'
+              size='Large'
             />
           )}
-        </Grid>
-      </Grid>
-    </>
+        </div>
+      </div>
+    </div>
   );
 };
 
