@@ -15,13 +15,9 @@ import {
   useMediaQuery,
 } from '@rbx/ui';
 import groupsClient from '@modules/clients/groups';
-import { IXPLayers, TalentHubParameters } from '@modules/clients/ixpExperiments';
 import useCurrentOrganization from '@modules/group/hooks/useCurrentOrganization';
 import LoadError from '@modules/miscellaneous/error/LoadError';
-import useIXPParameters from '@modules/miscellaneous/hooks/useIXPParameters';
 import { useCreatorGameopsFlags } from '@modules/player-support/flags/useCreatorGameopsFlags';
-import { FeatureFlagName } from '@modules/settings/SettingsProvider/featureFlags';
-import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import usePermissions from '../hooks/usePermissions';
 import { useTranslationContext } from '../providers/TranslationProvider';
 import { useUiConfig } from '../providers/UIConfigProvider';
@@ -98,25 +94,10 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('Medium'));
   const { translate, displayMessage } = useTranslationContext();
   const { organization } = useCurrentOrganization();
-  const { settings } = useSettings();
-  const { params: ixpParams } = useIXPParameters(IXPLayers.TalentHub, {
-    restoreInitialValueFromCache: true,
-  });
-  const ixpV2Value = ixpParams[TalentHubParameters.EnableTalentHubV2];
-  const ixpM2Value = ixpParams[TalentHubParameters.EnableTalentHubV2M2];
-  const isTH2Enabled =
-    settings?.[FeatureFlagName.enableTalentHubV2] ||
-    settings?.[FeatureFlagName.enableTalentHubV2M2] ||
-    ixpV2Value === 1 ||
-    ixpV2Value === true ||
-    ixpM2Value === 1 ||
-    ixpM2Value === true;
   const universeId = entity?.type === EntityTypes.UNIVERSE ? Number.parseInt(entity.id, 10) : 0;
   const { enablePlayerSupport } = useCreatorGameopsFlags('enablePlayerSupport', { universeId });
 
   const hiddenPermissionIds = getHiddenPermissionIds([
-    // Talent Hub V2 gating
-    { enabled: isTH2Enabled, permissionId: 'Organization.TalentHubManager' },
     // Player Support gating
     { enabled: !!enablePlayerSupport, permissionId: 'Organization.UniverseTicketReviewer' },
     { enabled: !!enablePlayerSupport, permissionId: 'Universe.TicketReviewer' },
