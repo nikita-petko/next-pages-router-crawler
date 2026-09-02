@@ -115,6 +115,23 @@ const RowsPerPageDropdownSizeByTableSize: Readonly<Record<AdaptiveDataTableSize,
 const MenuGroupClassName = 'padding-small';
 const MenuTriggerTooltipClassName = 'inline-flex';
 const MenuItemTooltipClassName = 'width-full';
+const CompactRowClassName = 'padding-bottom-large';
+// Foundation's table paints a surface on a wrapper element it owns, which would fill the gap
+// between stacked rows. Clearing it lets each row paint its own surface and keeps the gap
+// transparent.
+const CompactTableContainerClassName = '[&>div]:bg-none';
+const CompactCellBaseClassName =
+  'flex width-full items-center justify-between gap-medium padding-y-medium';
+// The cells carry the row's surface instead of the row itself, so the padding that separates two
+// stacked rows is never painted.
+const CompactCellClassName = `${CompactCellBaseClassName} bg-surface-100`;
+const CompactPrimaryCellClassName = `${CompactCellBaseClassName} bg-shift-200`;
+// The label keeps its intrinsic width so a long value wraps beside it instead of overlapping it.
+const CompactCellLabelClassName = 'shrink-0 text-align-x-start';
+// The value sits flush against the right edge as a block, while its own text stays start-aligned so
+// wrapped lines share a left edge instead of every line ending at the right edge.
+const CompactCellContentClassName = 'flex grow-1 min-width-0 justify-end';
+const CompactCellValueClassName = 'min-width-0 text-align-x-start';
 const TooltipPositionByTriggerKind: Readonly<
   Record<TooltipTriggerKind, 'top-center' | 'left-center'>
 > = {
@@ -145,6 +162,42 @@ const GridCellStyle: CSSProperties = {
   display: 'flex',
   minWidth: 0,
 };
+const CompactRowStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  width: '100%',
+};
+// Foundation cells carry a fixed row height per size. Stacked cells size to their own content
+// instead so a label/value line has no dead space below it.
+const CompactCellStyle: CSSProperties = {
+  boxSizing: 'border-box',
+  height: 'auto',
+  minWidth: 0,
+};
+// Only the outer edges of a row's surface are rounded. Rounding every line would make the
+// highlighted first line read as a pill floating above the lines below it.
+const CompactFirstCellStyle: CSSProperties = {
+  ...CompactCellStyle,
+  borderTopLeftRadius: 'var(--radius-medium)',
+  borderTopRightRadius: 'var(--radius-medium)',
+};
+// A row's surface ends at its last line, so round it off and drop the divider that would otherwise
+// float along the bottom edge.
+const CompactLastCellStyle: CSSProperties = {
+  ...CompactCellStyle,
+  borderBottom: 'none',
+  borderBottomLeftRadius: 'var(--radius-medium)',
+  borderBottomRightRadius: 'var(--radius-medium)',
+};
+const CompactOnlyCellStyle: CSSProperties = { ...CompactFirstCellStyle, ...CompactLastCellStyle };
+
+const getCompactCellStyle = (isFirst: boolean, isLast: boolean): CSSProperties => {
+  if (isFirst) {
+    return isLast ? CompactOnlyCellStyle : CompactFirstCellStyle;
+  }
+  return isLast ? CompactLastCellStyle : CompactCellStyle;
+};
+const CompactHeaderStyle: CSSProperties = { display: 'none' };
 const GridCellJustificationByAlignment: Readonly<
   Record<'start' | 'center' | 'end', CSSProperties['justifyContent']>
 > = {
@@ -212,14 +265,6 @@ const WrappedCellStyle: CSSProperties = {
   whiteSpace: 'normal',
 };
 const UnbrokenCellStyle: CSSProperties = { whiteSpace: 'nowrap' };
-const PinnedCellStyle: CSSProperties = {
-  backgroundColor: 'var(--color-surface-100)',
-  borderRight: 'var(--stroke-thin) solid var(--color-stroke-muted)',
-  left: 0,
-  position: 'sticky',
-  zIndex: 1,
-};
-const PinnedHeaderCellStyle: CSSProperties = { ...PinnedCellStyle, zIndex: 4 };
 const HeaderWithoutDividerStyle: CSSProperties = { borderBottom: 'none' };
 const FramedScrollContainerStyle: CSSProperties = {
   backgroundColor: 'var(--color-surface-100)',
@@ -415,6 +460,14 @@ const renderValueCell = (cell: AdaptiveDataTableValueCell) => {
 
 const noop = () => undefined;
 
+/**
+ * Stacked rows render one labeled line per cell, so a cell that renders nothing would become an
+ * empty line. Display cells that opt out of rendering (an expansion toggle for a row that cannot
+ * expand) and blank values are dropped instead.
+ */
+const isEmptyCellContent = (content: ReactNode): boolean =>
+  content === null || content === undefined || content === false || content === '';
+
 const renderExpandedRowCell = (cell: AdaptiveDataTableCell): ReactNode => {
   if (cell.type === 'value') {
     return renderValueCell(cell);
@@ -427,6 +480,7 @@ const renderExpandedRowCell = (cell: AdaptiveDataTableCell): ReactNode => {
 
 type ExpandedRowsTableProps<TExpandedRow extends AdaptiveDataTableRow> = {
   readonly getExpandedRowId?: (row: TExpandedRow) => string;
+  readonly isSmallScreen: boolean;
   readonly rows: readonly TExpandedRow[];
   readonly size: AdaptiveDataTableSize;
   readonly textStyles?: AdaptiveDataTableTextStyles;
@@ -434,6 +488,7 @@ type ExpandedRowsTableProps<TExpandedRow extends AdaptiveDataTableRow> = {
 
 const ExpandedRowsTable = <TExpandedRow extends AdaptiveDataTableRow>({
   getExpandedRowId,
+  isSmallScreen,
   rows,
   size,
   textStyles,
@@ -481,12 +536,18 @@ const ExpandedRowsTable = <TExpandedRow extends AdaptiveDataTableRow>({
     });
   }, [columns, getExpandedRowId, rows]);
   const tableStyle = useMemo(
-    () => ({ ...TableStyle, minWidth: columnLayout.tableWidth }),
-    [columnLayout.tableWidth],
+    () => ({
+      ...TableStyle,
+      ...(!isSmallScreen ? { minWidth: columnLayout.tableWidth } : undefined),
+    }),
+    [columnLayout.tableWidth, isSmallScreen],
   );
   const rowStyle = useMemo(
-    () => ({ ...GridRowStyle, gridTemplateColumns: columnLayout.gridTemplateColumns }),
-    [columnLayout.gridTemplateColumns],
+    () =>
+      isSmallScreen
+        ? CompactRowStyle
+        : { ...GridRowStyle, gridTemplateColumns: columnLayout.gridTemplateColumns },
+    [columnLayout.gridTemplateColumns, isSmallScreen],
   );
 
   // Track the nested table's available width so expanded-row columns resize with their container.
@@ -509,9 +570,9 @@ const ExpandedRowsTable = <TExpandedRow extends AdaptiveDataTableRow>({
   }, []);
 
   return (
-    <div ref={containerRef}>
+    <div className={isSmallScreen ? CompactTableContainerClassName : undefined} ref={containerRef}>
       <Table size={size} style={tableStyle} variant='Divided'>
-        <TableHeader style={BodyStyle}>
+        <TableHeader style={isSmallScreen ? CompactHeaderStyle : BodyStyle}>
           <TableRow style={rowStyle}>
             {columns.map(({ cell, id }) => (
               <TableHeaderCell
@@ -533,32 +594,71 @@ const ExpandedRowsTable = <TExpandedRow extends AdaptiveDataTableRow>({
                 cell.textOverflow !== 'truncate'
               );
             });
+            const renderedCells = columns
+              .map(({ id }) => ({ cell: row[id], content: renderExpandedRowCell(row[id]), id }))
+              .filter(({ content }) => !isSmallScreen || !isEmptyCellContent(content));
             return (
-              <TableRow key={key} style={rowStyle}>
-                {columns.map(({ id }) => {
-                  const cell = row[id];
+              <TableRow
+                className={isSmallScreen ? CompactRowClassName : undefined}
+                key={key}
+                style={rowStyle}>
+                {renderedCells.map(({ cell, content, id }, cellIndex) => {
                   const alignment = cell.align ?? (cell.type === 'display' ? 'end' : 'start');
                   const isStringValue = cell.type === 'value' && typeof cell.value === 'string';
                   const shouldTruncate = isStringValue && cell.textOverflow === 'truncate';
                   const shouldWrap = isStringValue && !shouldTruncate;
                   return (
                     <TableCell
-                      align={alignment}
-                      className={shouldTruncate ? TruncatedCellClassName : undefined}
-                      key={id}
-                      style={{
-                        ...GridCellStyle,
-                        ...(shouldWrap
-                          ? WrappedCellStyle
+                      align={isSmallScreen ? 'start' : alignment}
+                      className={
+                        isSmallScreen
+                          ? cellIndex === 0
+                            ? CompactPrimaryCellClassName
+                            : CompactCellClassName
                           : shouldTruncate
-                            ? TruncatedCellStyle
-                            : UnbrokenCellStyle),
-                        ...(canRowWrap
-                          ? { height: 'auto', minHeight: RowHeightBySize[size] }
-                          : undefined),
-                        justifyContent: GridCellJustificationByAlignment[alignment],
-                      }}>
-                      {renderExpandedRowCell(cell)}
+                            ? TruncatedCellClassName
+                            : undefined
+                      }
+                      key={id}
+                      style={
+                        isSmallScreen
+                          ? getCompactCellStyle(
+                              cellIndex === 0,
+                              cellIndex === renderedCells.length - 1,
+                            )
+                          : {
+                              ...GridCellStyle,
+                              ...(shouldWrap
+                                ? WrappedCellStyle
+                                : shouldTruncate
+                                  ? TruncatedCellStyle
+                                  : UnbrokenCellStyle),
+                              ...(canRowWrap
+                                ? { height: 'auto', minHeight: RowHeightBySize[size] }
+                                : undefined),
+                              justifyContent: GridCellJustificationByAlignment[alignment],
+                            }
+                      }>
+                      {isSmallScreen ? (
+                        <>
+                          <div className={CompactCellLabelClassName}>{cell.header ?? ''}</div>
+                          <div className={CompactCellContentClassName}>
+                            <div
+                              className={CompactCellValueClassName}
+                              style={
+                                shouldWrap
+                                  ? WrappedCellStyle
+                                  : shouldTruncate
+                                    ? TruncatedCellStyle
+                                    : UnbrokenCellStyle
+                              }>
+                              {content}
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        content
+                      )}
                     </TableCell>
                   );
                 })}
@@ -603,51 +703,92 @@ const DataRow = <TRow extends AdaptiveDataTableRow>({
       cellConfig.textOverflow !== 'truncate'
     );
   });
+  const renderedCells = visibleCells
+    .map((cell) => {
+      const cellConfig = row.original[cell.column.id];
+      return {
+        cell,
+        cellConfig,
+        content:
+          cellConfig.type === 'display' ? (
+            cellConfig.display === 'menu' ? (
+              <MenuCell cell={cellConfig} />
+            ) : (
+              cellConfig.render({
+                canExpand: row.getCanExpand(),
+                isExpanded: row.getIsExpanded(),
+                onToggleExpanded: row.getToggleExpandedHandler(),
+              })
+            )
+          ) : (
+            renderValueCell(cellConfig)
+          ),
+      };
+    })
+    .filter(({ content }) => !isSmallScreen || !isEmptyCellContent(content));
 
   return (
     <TableRow
+      className={isSmallScreen ? CompactRowClassName : undefined}
       data-index={virtualIndex ?? row.index}
       ref={measureElement}
       style={{
         ...(isVirtual ? VirtualRowStyle : GridRowStyle),
-        gridTemplateColumns: columnGrid,
+        ...(isSmallScreen ? CompactRowStyle : { gridTemplateColumns: columnGrid }),
         transform,
       }}>
-      {visibleCells.map((cell, cellIndex) => {
-        const cellConfig = row.original[cell.column.id];
+      {renderedCells.map(({ cell, cellConfig, content }, cellIndex) => {
         const alignment = cellConfig.align ?? (cellConfig.type === 'display' ? 'end' : 'start');
         const isStringValue = cellConfig.type === 'value' && typeof cellConfig.value === 'string';
         const shouldTruncate = isStringValue && cellConfig.textOverflow === 'truncate';
         const shouldWrap = isStringValue && !shouldTruncate;
         return (
           <TableCell
-            align={alignment}
-            className={shouldTruncate ? TruncatedCellClassName : undefined}
+            align={isSmallScreen ? 'start' : alignment}
+            className={
+              isSmallScreen
+                ? cellIndex === 0
+                  ? CompactPrimaryCellClassName
+                  : CompactCellClassName
+                : shouldTruncate
+                  ? TruncatedCellClassName
+                  : undefined
+            }
             key={cell.id}
             ref={cellIndex === 0 ? measurementCellRef : undefined}
-            style={{
-              ...GridCellStyle,
-              ...(shouldWrap
-                ? WrappedCellStyle
-                : shouldTruncate
-                  ? TruncatedCellStyle
-                  : UnbrokenCellStyle),
-              ...(canRowWrap ? { height: 'auto', minHeight: minimumHeight } : undefined),
-              justifyContent: GridCellJustificationByAlignment[alignment],
-              ...(isSmallScreen && cellIndex === 0 ? PinnedCellStyle : undefined),
-            }}>
-            {cellConfig.type === 'display' ? (
-              cellConfig.display === 'menu' ? (
-                <MenuCell cell={cellConfig} />
-              ) : (
-                cellConfig.render({
-                  canExpand: row.getCanExpand(),
-                  isExpanded: row.getIsExpanded(),
-                  onToggleExpanded: row.getToggleExpandedHandler(),
-                })
-              )
+            style={
+              isSmallScreen
+                ? getCompactCellStyle(cellIndex === 0, cellIndex === renderedCells.length - 1)
+                : {
+                    ...GridCellStyle,
+                    ...(shouldWrap
+                      ? WrappedCellStyle
+                      : shouldTruncate
+                        ? TruncatedCellStyle
+                        : UnbrokenCellStyle),
+                    ...(canRowWrap ? { height: 'auto', minHeight: minimumHeight } : undefined),
+                    justifyContent: GridCellJustificationByAlignment[alignment],
+                  }
+            }>
+            {isSmallScreen ? (
+              <>
+                <div className={CompactCellLabelClassName}>{cellConfig.header ?? ''}</div>
+                <div className={CompactCellContentClassName}>
+                  <div
+                    className={CompactCellValueClassName}
+                    style={
+                      shouldWrap
+                        ? WrappedCellStyle
+                        : shouldTruncate
+                          ? TruncatedCellStyle
+                          : UnbrokenCellStyle
+                    }>
+                    {content}
+                  </div>
+                </div>
+              </>
             ) : (
-              renderValueCell(cellConfig)
+              content
             )}
           </TableCell>
         );
@@ -694,6 +835,7 @@ type ExpandedRowsContentRowProps<TExpandedRow extends AdaptiveDataTableRow> = {
   readonly columnCount: number;
   readonly expandedRows: readonly TExpandedRow[];
   readonly getExpandedRowId?: (row: TExpandedRow) => string;
+  readonly isSmallScreen: boolean;
   readonly isVirtual?: boolean;
   readonly measureElement?: (node: HTMLTableRowElement | null) => void;
   readonly size: AdaptiveDataTableSize;
@@ -706,6 +848,7 @@ const ExpandedRowsContentRow = <TExpandedRow extends AdaptiveDataTableRow>({
   columnCount,
   expandedRows,
   getExpandedRowId,
+  isSmallScreen,
   isVirtual = false,
   measureElement,
   size,
@@ -723,6 +866,7 @@ const ExpandedRowsContentRow = <TExpandedRow extends AdaptiveDataTableRow>({
     <TableCell colSpan={columnCount} style={ExpandedRowsCellStyle}>
       <ExpandedRowsTable
         getExpandedRowId={getExpandedRowId}
+        isSmallScreen={isSmallScreen}
         rows={expandedRows}
         size={size}
         textStyles={textStyles}
@@ -809,7 +953,9 @@ const AdaptiveDataTable = <
   );
   const isInfinite = navigation.mode === 'infinite';
   const isTableError = isError && tableRows.length === 0;
-  const shouldFrameScrollContainer = variant === 'Framed' && (isInfinite || isSmallScreen);
+  // A frame paints a surface behind the whole table, which would fill the gap between stacked
+  // rows, so compact mode stays unframed.
+  const shouldFrameScrollContainer = variant === 'Framed' && isInfinite && !isSmallScreen;
   const isLoadMoreError = navigation.mode === 'infinite' && navigation.isLoadMoreError === true;
   const onPageSizeChange =
     navigation.mode === 'pagination' ? navigation.onPageSizeChange : undefined;
@@ -828,9 +974,12 @@ const AdaptiveDataTable = <
   const virtualCount = isInfinite
     ? tableRenderItems.length + (navigation.isLoadingMore || isLoadMoreError ? 1 : 0)
     : tableRenderItems.length;
+  const estimatedRowHeight = isSmallScreen
+    ? Math.max(columnBlueprints.length, MinimumColumnSpan) * RowHeightBySize[size]
+    : RowHeightBySize[size];
   const rowVirtualizer = useVirtualizer({
     count: virtualCount,
-    estimateSize: () => RowHeightBySize[size],
+    estimateSize: () => estimatedRowHeight,
     getItemKey: getVirtualItemKey,
     getScrollElement: () => infiniteBodyRef.current,
     overscan: VirtualRowOverscan,
@@ -962,7 +1111,9 @@ const AdaptiveDataTable = <
 
   const headerGroups = table.getHeaderGroups();
   const canScrollHorizontally =
-    scrollViewportWidth !== undefined && columnLayout.tableWidth > scrollViewportWidth;
+    !isSmallScreen &&
+    scrollViewportWidth !== undefined &&
+    columnLayout.tableWidth > scrollViewportWidth;
 
   // A hidden-overflow header retains its scroll offset after the body stops overflowing or the
   // table leaves infinite mode. Reset it so the first columns do not remain shifted out of view.
@@ -983,13 +1134,16 @@ const AdaptiveDataTable = <
   const tableStyle = useMemo(
     () => ({
       ...TableStyle,
-      ...(!isInfinite ? { minWidth: columnLayout.tableWidth } : undefined),
+      ...(!isInfinite && !isSmallScreen ? { minWidth: columnLayout.tableWidth } : undefined),
     }),
-    [columnLayout.tableWidth, isInfinite],
+    [columnLayout.tableWidth, isInfinite, isSmallScreen],
   );
   const headerStyle = useMemo(
-    () => ({ ...HeaderStyle, ...(isInfinite ? InfiniteHeaderStyle : undefined) }),
-    [isInfinite],
+    () =>
+      isSmallScreen
+        ? CompactHeaderStyle
+        : { ...HeaderStyle, ...(isInfinite ? InfiniteHeaderStyle : undefined) },
+    [isInfinite, isSmallScreen],
   );
   const infiniteBodyMaxHeight = InfiniteMaxViewportHeight - RowHeightBySize[size];
   const infiniteBodyStyle = useMemo<CSSProperties>(
@@ -1037,11 +1191,13 @@ const AdaptiveDataTable = <
           inert={showLoadingOverlay ? true : undefined}
           ref={tableViewportRef}
           style={loadingScrollStyle}>
-          <div style={tableStyle}>
+          <div
+            className={isSmallScreen ? CompactTableContainerClassName : undefined}
+            style={tableStyle}>
             <Table
               size={size}
               style={TableStyle}
-              variant={shouldFrameScrollContainer ? 'Divided' : variant}>
+              variant={shouldFrameScrollContainer || isSmallScreen ? 'Divided' : variant}>
               <TableHeader ref={tableHeaderRef} style={headerStyle}>
                 {headerGroups.map((headerGroup) => (
                   <TableRow key={headerGroup.id} style={headerRowStyle}>
@@ -1069,14 +1225,9 @@ const AdaptiveDataTable = <
                                 : 'none'
                           }
                           sortLabel={cell.type === 'value' ? cell.sortAriaLabel : undefined}
-                          style={{
-                            ...(cell.headerDivider === false
-                              ? HeaderWithoutDividerStyle
-                              : undefined),
-                            ...(isSmallScreen && headerIndex === 0
-                              ? PinnedHeaderCellStyle
-                              : undefined),
-                          }}>
+                          style={
+                            cell.headerDivider === false ? HeaderWithoutDividerStyle : undefined
+                          }>
                           {cell.header ?? ''}
                         </TableHeaderCell>
                       );
@@ -1103,7 +1254,7 @@ const AdaptiveDataTable = <
                     style={{
                       ...VirtualSpacerRowStyle,
                       height: rowVirtualizer.getTotalSize(),
-                      minWidth: columnLayout.tableWidth,
+                      ...(!isSmallScreen ? { minWidth: columnLayout.tableWidth } : undefined),
                     }}>
                     <TableCell colSpan={columnCount} style={VirtualSpacerCellStyle} />
                   </TableRow>
@@ -1146,6 +1297,7 @@ const AdaptiveDataTable = <
                           columnCount={columnCount}
                           expandedRows={renderItem.expandedRows}
                           getExpandedRowId={getExpandedRowId}
+                          isSmallScreen={isSmallScreen}
                           isVirtual
                           key={getExpandedRowsKey(renderItem.row.id)}
                           measureElement={rowVirtualizer.measureElement}
@@ -1188,6 +1340,7 @@ const AdaptiveDataTable = <
                         columnCount={columnCount}
                         expandedRows={renderItem.expandedRows}
                         getExpandedRowId={getExpandedRowId}
+                        isSmallScreen={isSmallScreen}
                         key={getExpandedRowsKey(renderItem.row.id)}
                         size={size}
                         textStyles={textStyles}
