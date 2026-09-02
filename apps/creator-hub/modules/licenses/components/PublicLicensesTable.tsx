@@ -29,7 +29,6 @@ import {
   useLicenseManagerLogger,
   useLicenseManagerLoggerLogOnce,
 } from '@modules/ip/license-manager/utils/logger';
-import { getMaturityRatingLabel } from '@modules/ip/license-manager/utils/maturityRating';
 import TranslatedFailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useListPublicLicenses, type PublicCatalogLicense } from '../hooks/useListPublicLicenses';
@@ -139,7 +138,6 @@ export type PublicLicensesTableRow = {
   ipListing: string;
   revenueShare: string;
   licenseType: string;
-  maximumContentMaturity: string;
   minimumAverageL7Dau: string;
 };
 
@@ -459,9 +457,6 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
                 <TableCell className={classes.headerCell}>
                   {translate('Label.LicenseDuration')}
                 </TableCell>
-                <TableCell className={classes.headerCell}>
-                  {translate('Label.MaxMaturityRating')}
-                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -496,7 +491,6 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
                       ? translate('Label.TimeLimited')
                       : translate('Label.Perpetual')}
                   </TableCell>
-                  <TableCell>{translate(getMaturityRatingLabel(license.maxAgeRating))}</TableCell>
                 </PublicLicensesTableDataRow>
               ))}
             </TableBody>
