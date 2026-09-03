@@ -564,7 +564,6 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
             singleCreatorExperience: true,
             showConfirmationOnSave: isDefaultMemberRole,
           }}
-          key={selectedRole?.metadata?.id}
         />
       </Grid>
     );

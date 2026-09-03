@@ -68,6 +68,10 @@ const ItemCard: FunctionComponent<React.PropsWithChildren<ItemCardProps>> = ({
     },
     isFetched: isCreationsPermissionIxpFetched,
   } = useIXPParameters(IXPLayers.CreatorHubCreationsPermission);
+  // The react-compiler analyzer throws an internal Invariant (InferMutationAliasingEffects) on the
+  // line below (pre-existing, from #13796 / CSGO-1946), crashing check:ci for any PR that edits this
+  // file. Suppress until the analyzer bug is fixed.
+  // oxlint-disable-next-line react/react-compiler
   const showNewBadgePattern = isCreationsPermissionIxpFetched && enableNewBadgePattern === true;
   const shouldRenderStatusBadge =
     item.itemType === ItemType.Game &&
@@ -190,6 +194,17 @@ const ItemCard: FunctionComponent<React.PropsWithChildren<ItemCardProps>> = ({
           bundleModerationStatus={item.bundleModerationStatus}
           isLoading={isLoading}
         />
+      )}
+
+      {/* UCP-1675: an avatar item with an in-flight update reads as "Updating", mirroring the
+          moderation-pending treatment — the live thumbnail is swapped for the review-pending
+          placeholder (see ItemThumbnail) and we show a status text line here. isUpdating is
+          asset-only. Uses the dedicated Label.Updating string (CreatorDashboard.Creations),
+          distinct from the moderation Label.InReview. */}
+      {item.isUpdating && (
+        <Typography variant='body2' color='secondary' noWrap>
+          {translate('Label.Updating')}
+        </Typography>
       )}
 
       {item.itemType === ItemType.ExperienceSubscription &&
@@ -318,6 +333,7 @@ const ItemCard: FunctionComponent<React.PropsWithChildren<ItemCardProps>> = ({
             // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IDs are int64 and cannot be safely converted to JS number
             targetId={thumbnailTargetId as number}
             bundleModerationStatus={item.bundleModerationStatus}
+            isUpdating={item.isUpdating}
             returnPolicy={returnPolicy}
             alt={item.name ?? ''}
             isPendingNewTarget={isLoading}

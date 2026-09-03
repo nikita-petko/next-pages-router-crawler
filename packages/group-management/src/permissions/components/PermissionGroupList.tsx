@@ -32,6 +32,8 @@ import { SaveConfirmationDialog } from './SaveConfirmationDialog';
 export type PermissionGroupListProps = {
   entity?: EntityDetails;
   creator?: CreatorDetails;
+  selectedTab?: PermissionTab;
+  onSelectedTabChange?: (tab: PermissionTab) => void;
 };
 
 const FORUM_BUG_REPORTER_PERMISSION_ID = 'Group.ForumBugReporter';
@@ -60,7 +62,12 @@ const usePermissionsContainerStyles = makeStyles()((theme) => ({
   },
 }));
 
-const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ creator, entity }) => {
+const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({
+  creator,
+  entity,
+  selectedTab,
+  onSelectedTabChange,
+}) => {
   const {
     classes: { rootClass, footerButton, stickyFooter },
   } = usePermissionsContainerStyles();
@@ -99,7 +106,10 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
   );
   const [trackedInitialPermissions, setTrackedInitialPermissions] = useState(initialPermissions);
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<PermissionTab>(PermissionTab.GENERAL);
+  const [internalSelectedTab, setInternalSelectedTab] = useState<PermissionTab>(
+    PermissionTab.GENERAL,
+  );
+  const activeTab = selectedTab ?? internalSelectedTab;
   const isGuestRole = creator?.type === CreatorTypes.GUEST_ROLE;
 
   if (trackedInitialPermissions !== initialPermissions && initialPermissions != null) {
@@ -245,7 +255,7 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
   const showTabChips = isGroupEntity && !isGuestRole;
 
   const filteredMetadata = showTabChips
-    ? visibleMetadata.filter((group) => PERMISSION_TAB_GROUP_IDS[selectedTab].has(group.groupId))
+    ? visibleMetadata.filter((group) => PERMISSION_TAB_GROUP_IDS[activeTab].has(group.groupId))
     : visibleMetadata;
 
   return (
@@ -264,12 +274,15 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({ crea
           ).map((tab) => (
             <Grid pr={1} key={tab}>
               <Chip
-                isChecked={selectedTab === tab}
+                isChecked={activeTab === tab}
                 text={translateWithNamespace(
                   TranslationNamespace.GroupManagement,
                   `Group.Chip.${tab}.Label`,
                 )}
-                onCheckedChange={() => setSelectedTab(tab)}
+                onCheckedChange={() => {
+                  setInternalSelectedTab(tab);
+                  onSelectedTabChange?.(tab);
+                }}
                 size='Medium'
                 variant='Standard'
                 data-testid={`permission-tab-chip-${tab}`}

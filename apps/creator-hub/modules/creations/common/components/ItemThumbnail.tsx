@@ -13,6 +13,7 @@ export interface ItemThumbnailProps {
   containerClass: string;
   moderatedContainerClass: string;
   bundleModerationStatus: BundleModerationStatus | undefined;
+  isUpdating?: boolean;
   type: ThumbnailTypes;
   targetId: number;
   returnPolicy: ReturnPolicy;
@@ -26,6 +27,7 @@ const ItemThumbnail: FunctionComponent<React.PropsWithChildren<ItemThumbnailProp
   containerClass,
   moderatedContainerClass,
   bundleModerationStatus,
+  isUpdating,
   type,
   targetId,
   returnPolicy,
@@ -43,6 +45,18 @@ const ItemThumbnail: FunctionComponent<React.PropsWithChildren<ItemThumbnailProp
     bundleModerationStatus !== undefined &&
     bundleModerationStatus !== BundleModerationStatus.NUMBER_3;
 
+  // UCP-1675: an in-flight avatar item update hides the live image behind the same
+  // "review pending" placeholder used for moderation In Review (NUMBER_1). isUpdating is only
+  // ever true for Approved assets, so it never overrides a real non-approved moderation status.
+  const moderationStatusForThumbnail =
+    !showBundleModeratedThumbnail && isUpdating === true
+      ? BundleModerationStatus.NUMBER_1
+      : bundleModerationStatus;
+
+  const showModeratedThumbnail =
+    moderationStatusForThumbnail !== undefined &&
+    moderationStatusForThumbnail !== BundleModerationStatus.NUMBER_3;
+
   const isLook = itemType === Item.Look;
 
   // Batch endpoint is currently only used for Look items
@@ -53,11 +67,11 @@ const ItemThumbnail: FunctionComponent<React.PropsWithChildren<ItemThumbnailProp
 
   const lookThumbnailUrl = isLook && targetId > 0 ? thumbnailUrlsMap?.get(targetId) : undefined;
 
-  if (showBundleModeratedThumbnail) {
+  if (showModeratedThumbnail) {
     return (
       <ModeratedThumbnail
         containerClass={moderatedContainerClass}
-        bundleModerationStatus={bundleModerationStatus}
+        bundleModerationStatus={moderationStatusForThumbnail}
         alt={alt}
       />
     );
