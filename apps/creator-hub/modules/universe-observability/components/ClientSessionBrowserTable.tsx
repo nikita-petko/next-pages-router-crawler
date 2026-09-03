@@ -30,7 +30,7 @@ import {
   formatDeviceLabel,
   formatPlaceLabel,
 } from '../utils/clientSessionFormatters';
-import { CLIENT_SESSION_STATUS_BADGE_VARIANTS } from '../utils/clientSessionStatusBadgeVariants';
+import { getClientSessionStatusBadge } from '../utils/clientSessionStatusBadgeVariants';
 
 const DEFAULT_PAGE_SIZE = 10;
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50];
@@ -196,7 +196,7 @@ const ClientSessionBrowserTable: FC<ClientSessionBrowserTableProps> = ({
   const rowData = useMemo<ClientSessionBrowserRow[]>(
     () =>
       paginatedData.map((session: UniversePlaySession) => {
-        const statusLabel = statusLabels[session.exitReason];
+        const statusBadge = getClientSessionStatusBadge(session.exitReason, statusLabels);
         const deviceLabel = formatDeviceLabel(session, raqiTranslationDependencies);
         const placeLabel = formatPlaceLabel(
           session.placeName,
@@ -215,11 +215,7 @@ const ClientSessionBrowserTable: FC<ClientSessionBrowserTableProps> = ({
             {
               type: ColumnType.Other,
               value: (
-                <StatusBadge
-                  label={statusLabel}
-                  variant={CLIENT_SESSION_STATUS_BADGE_VARIANTS[session.exitReason]}
-                  size='Small'
-                />
+                <StatusBadge label={statusBadge.label} variant={statusBadge.variant} size='Small' />
               ),
             },
           ],

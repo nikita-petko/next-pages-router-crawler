@@ -34,7 +34,7 @@ type NormalizedPlaySessionField =
  * Refined play-session row. Every generated field is present; fields that the
  * service omits are represented as null. A row without a play-session id is
  * dropped while parsing. Missing platforms are null; missing OS values use
- * Unknown; missing/unknown exit reasons use Invalid. Place name is null when
+ * Unknown; missing/unknown exit reasons are null. Place name is null when
  * the registry has none.
  */
 export type UniversePlaySession = Omit<
@@ -45,7 +45,7 @@ export type UniversePlaySession = Omit<
   readonly placeName: string | null;
   readonly platform: UniverseSessionPlatform | null;
   readonly os: UniverseSessionOperatingSystem;
-  readonly exitReason: UniverseSessionExitReason;
+  readonly exitReason: UniverseSessionExitReason | null;
   readonly startedTime: Date | null;
   readonly stoppedTime: Date | null;
   readonly minFpsTime: Date | null;
@@ -112,11 +112,7 @@ export const parseUniversePlaySession = (
     platform: parseOptionalEnum(UniverseSessionPlatform, raw.platform),
     os: parseEnum(UniverseSessionOperatingSystem, raw.os, UniverseSessionOperatingSystem.Unknown),
     clientRobloxVersion: raw.clientRobloxVersion ?? null,
-    exitReason: parseEnum(
-      UniverseSessionExitReason,
-      raw.exitReason,
-      UniverseSessionExitReason.Invalid,
-    ),
+    exitReason: parseOptionalEnum(UniverseSessionExitReason, raw.exitReason),
     isActiveSession: raw.isActiveSession ?? null,
     startedTime: parseOptionalDate(raw.startedTime),
     stoppedTime: parseOptionalDate(raw.stoppedTime),

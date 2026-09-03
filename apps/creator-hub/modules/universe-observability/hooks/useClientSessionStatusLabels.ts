@@ -1,12 +1,16 @@
 import { useMemo } from 'react';
 import { useTranslation } from '@rbx/intl';
+import type { FormattedText } from '@modules/analytics-translations/types';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { UniverseSessionExitReason } from '@modules/clients/analytics/universeSessionMetadataApi';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { MISSING_VALUE_PLACEHOLDER } from '../utils/clientSessionFormatters';
 
-export type ClientSessionStatusLabels = Record<UniverseSessionExitReason, string>;
+export type ClientSessionStatusLabels = {
+  readonly [UniverseSessionExitReason.Active]: FormattedText;
+  readonly [UniverseSessionExitReason.Ended]: FormattedText;
+  readonly [UniverseSessionExitReason.Crashed]: FormattedText;
+};
 
 // Consumers must register TranslationNamespace.ServerManagement.
 const useClientSessionStatusLabels = (): ClientSessionStatusLabels => {
@@ -14,7 +18,6 @@ const useClientSessionStatusLabels = (): ClientSessionStatusLabels => {
 
   return useMemo(
     () => ({
-      [UniverseSessionExitReason.Invalid]: MISSING_VALUE_PLACEHOLDER,
       [UniverseSessionExitReason.Active]: tPendingTranslation(
         'Active',
         'Client session status when the session is ongoing.',

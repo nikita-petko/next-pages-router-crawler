@@ -1,6 +1,6 @@
 import type { FC } from 'react';
 import { useCallback, useEffect, useMemo } from 'react';
-import { Controller, useFormContext, useWatch } from 'react-hook-form';
+import { useController, useFormContext } from 'react-hook-form';
 import { useTranslation } from '@rbx/intl';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
@@ -26,14 +26,20 @@ export type ClientSessionBrowserPlaceFilterFieldsProps = {
   readonly universeId: number;
 };
 
+const EMPTY_SELECTED_OPTIONS: string[] = [];
+
 const ClientSessionBrowserPlaceFilterFields: FC<ClientSessionBrowserPlaceFilterFieldsProps> = ({
   universeId,
 }) => {
   const { translate, tPendingTranslation } = useTranslationWrapper(useTranslation());
   const translationDependencies = useRAQIV2TranslationDependencies();
-  const { control, setValue } = useFormContext<SessionBrowserDrawerFilters>();
-  const selectedPlaceIds = useWatch({ control, name: 'placeIds' });
-  const selectedPlaceVersions = useWatch({ control, name: 'placeVersions' });
+  const { control } = useFormContext<SessionBrowserDrawerFilters>();
+  const {
+    field: { value: selectedPlaceIds, onChange: onPlaceIdsChange },
+  } = useController({ control, name: 'placeIds' });
+  const {
+    field: { value: selectedPlaceVersions, onChange: onPlaceVersionsChange },
+  } = useController({ control, name: 'placeVersions' });
   const {
     data: { places, placesById } = EMPTY_SESSION_PLACES,
     isLoading,
@@ -71,6 +77,15 @@ const ClientSessionBrowserPlaceFilterFields: FC<ClientSessionBrowserPlaceFilterF
     translationKey('Description.SessionPlacesLoadFailed', TranslationNamespace.Analytics),
   );
 
+  const selectedPlaceIdOptions = useMemo(
+    () => (selectedPlaceIds === undefined ? EMPTY_SELECTED_OPTIONS : [...selectedPlaceIds]),
+    [selectedPlaceIds],
+  );
+  const selectedPlaceVersionOptions = useMemo(
+    () => (selectedPlaceVersions ?? []).map(String),
+    [selectedPlaceVersions],
+  );
+
   const formatPlaceOption = useCallback(
     (placeId: string) =>
       formatClientSessionPlaceOption(placeId, placesById, translationDependencies),
@@ -102,10 +117,10 @@ const ClientSessionBrowserPlaceFilterFields: FC<ClientSessionBrowserPlaceFilterF
         currentPlaceVersions.length !== prunedPlaceVersions.length ||
         currentPlaceVersions.some((version, index) => version !== prunedPlaceVersions[index]);
       if (didChange) {
-        setValue('placeVersions', prunedPlaceVersions);
+        onPlaceVersionsChange(prunedPlaceVersions);
       }
     },
-    [isSuccess, places, setValue],
+    [isSuccess, onPlaceVersionsChange, places],
   );
 
   // Clearing every option must write `[]`, not `undefined`: react-hook-form
@@ -113,17 +128,17 @@ const ClientSessionBrowserPlaceFilterFields: FC<ClientSessionBrowserPlaceFilterF
   // reset with on open, which would re-check an already applied place.
   const handlePlaceIdsChange = useCallback(
     (nextPlaceIds: string[]) => {
-      setValue('placeIds', nextPlaceIds);
+      onPlaceIdsChange(nextPlaceIds);
       syncPlaceVersions(nextPlaceIds, selectedPlaceVersions);
     },
-    [selectedPlaceVersions, setValue, syncPlaceVersions],
+    [onPlaceIdsChange, selectedPlaceVersions, syncPlaceVersions],
   );
 
   const handlePlaceVersionsChange = useCallback(
     (nextPlaceVersions: string[]) => {
-      setValue('placeVersions', nextPlaceVersions.map(Number).filter(Number.isInteger));
+      onPlaceVersionsChange(nextPlaceVersions.map(Number).filter(Number.isInteger));
     },
-    [setValue],
+    [onPlaceVersionsChange],
   );
 
   useEffect(() => {
@@ -136,44 +151,32 @@ const ClientSessionBrowserPlaceFilterFields: FC<ClientSessionBrowserPlaceFilterF
   return (
     <div className='grid gap-small width-full large:[grid-template-columns:repeat(2,minmax(0,1fr))]'>
       <div className='min-width-0'>
-        <Controller
-          name='placeIds'
-          control={control}
-          render={({ field }) => (
-            <FilterStringChoice
-              size='small'
-              label={placeLabel}
-              multiple
-              isLoading={isLoading}
-              selectedOptions={[...(field.value ?? [])]}
-              options={placeIds}
-              formatOption={formatPlaceOption}
-              showOptionIdAsDescription
-              blankHandling={{ type: BlankHandlingType.Value, value: selectPlaceLabel }}
-              helperText={error ? placesLoadErrorLabel : undefined}
-              onChange={handlePlaceIdsChange}
-            />
-          )}
+        <FilterStringChoice
+          size='small'
+          label={placeLabel}
+          multiple
+          isLoading={isLoading}
+          selectedOptions={selectedPlaceIdOptions}
+          options={placeIds}
+          formatOption={formatPlaceOption}
+          showOptionIdAsDescription
+          blankHandling={{ type: BlankHandlingType.Value, value: selectPlaceLabel }}
+          helperText={error ? placesLoadErrorLabel : undefined}
+          onChange={handlePlaceIdsChange}
         />
       </div>
       <div className='min-width-0'>
-        <Controller
-          name='placeVersions'
-          control={control}
-          render={({ field }) => (
-            <FilterStringChoice
-              size='small'
-              label={placeVersionLabel}
-              multiple
-              isLoading={isLoading}
-              selectedOptions={(field.value ?? []).map(String)}
-              options={versionOptions}
-              formatOption={formatPlaceVersionOption}
-              blankHandling={{ type: BlankHandlingType.Value, value: selectVersionLabel }}
-              tooltipOnDisabled={versionDisabledTooltip}
-              onChange={handlePlaceVersionsChange}
-            />
-          )}
+        <FilterStringChoice
+          size='small'
+          label={placeVersionLabel}
+          multiple
+          isLoading={isLoading}
+          selectedOptions={selectedPlaceVersionOptions}
+          options={versionOptions}
+          formatOption={formatPlaceVersionOption}
+          blankHandling={{ type: BlankHandlingType.Value, value: selectVersionLabel }}
+          tooltipOnDisabled={versionDisabledTooltip}
+          onChange={handlePlaceVersionsChange}
         />
       </div>
     </div>

@@ -11,7 +11,7 @@ import useBreadcrumbRegistration from '@modules/navigation/layout/hooks/useBread
 import useClientSessionMetadata from '../hooks/useClientSessionMetadata';
 import useClientSessionStatusLabels from '../hooks/useClientSessionStatusLabels';
 import useUniverseRelatedSession from '../hooks/useUniverseRelatedSession';
-import { CLIENT_SESSION_STATUS_BADGE_VARIANTS } from '../utils/clientSessionStatusBadgeVariants';
+import { getClientSessionStatusBadge } from '../utils/clientSessionStatusBadgeVariants';
 import ClientSessionMetadata from './ClientSessionMetadata';
 import ClientSessionsMetadataClientProvider from './ClientSessionsMetadataClientProvider';
 
@@ -53,10 +53,7 @@ const ClientSessionsPageTitleInner = () => {
       : undefined;
   const status =
     sessionId && !isMetadataLoading && !isMetadataError && metadata
-      ? {
-          label: statusLabels[metadata.exitReason],
-          variant: CLIENT_SESSION_STATUS_BADGE_VARIANTS[metadata.exitReason],
-        }
+      ? getClientSessionStatusBadge(metadata.exitReason, statusLabels)
       : undefined;
 
   useBreadcrumbRegistration(BreadcrumbItemType.ClientSession, sessionBreadcrumbName);

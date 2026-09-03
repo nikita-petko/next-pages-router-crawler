@@ -31,20 +31,23 @@ export type SessionBrowserFilters = SessionBrowserDrawerFilters & {
   readonly dateRange: DateRangeSelection;
 };
 
-/** RHF multi-selects use `[]`; `undefined` restores prior defaults during reset.
- * Applied and URL state omit these empty arrays via `compactDrawerFilters`. */
+/** Empty range object so RHF `setValue` never writes `undefined` (which restores prior defaults). */
+export const EMPTY_SESSION_BROWSER_NUMERIC_RANGE: SessionBrowserNumericRange = {};
+
+/** RHF multi-selects use `[]` and the bug-report switch uses `false`; `undefined` restores prior defaults during reset.
+ * Applied and URL state omit these empty values via `compactDrawerFilters`. */
 export const DEFAULT_SESSION_BROWSER_DRAWER_FILTERS: SessionBrowserDrawerFilters = {
   placeIds: [],
   placeVersions: [],
   funnelTags: [],
   customTags: [],
-  hasBugReport: undefined,
+  hasBugReport: false,
   platforms: [],
   operatingSystems: [],
-  deviceRamMegabytes: undefined,
-  durationMinutes: undefined,
-  minFps: undefined,
-  usedMemoryMegabytes: undefined,
+  deviceRamMegabytes: EMPTY_SESSION_BROWSER_NUMERIC_RANGE,
+  durationMinutes: EMPTY_SESSION_BROWSER_NUMERIC_RANGE,
+  minFps: EMPTY_SESSION_BROWSER_NUMERIC_RANGE,
+  usedMemoryMegabytes: EMPTY_SESSION_BROWSER_NUMERIC_RANGE,
   exitReasons: [],
 };
 

@@ -83,10 +83,48 @@ export const toDrawerFormValues = (
   ...pickDrawerFilters(filters),
 });
 
-/** Drops undefined values and empty multi-select arrays from applied state. */
+/** Drops empty numeric ranges so applied/URL state stays sparse. */
+export const compactNumericRange = (
+  range: SessionBrowserNumericRange | undefined,
+): SessionBrowserNumericRange | undefined => toQueryNumericRange(range);
+
+/** Swaps inverted bounds so downstream queries never receive a minimum greater than the maximum. */
+export const normalizeNumericRange = (
+  range: SessionBrowserNumericRange | undefined,
+): SessionBrowserNumericRange | undefined => {
+  const compacted = compactNumericRange(range);
+  if (
+    compacted?.min !== undefined &&
+    compacted.max !== undefined &&
+    compacted.min > compacted.max
+  ) {
+    return { min: compacted.max, max: compacted.min };
+  }
+  return compacted;
+};
+
+/** Drops undefined values, empty multi-selects, off switches, and empty ranges from applied state. */
 export const compactDrawerFilters = (
   drawerFilters: SessionBrowserDrawerFilters,
-): SessionBrowserDrawerFilters => omitEmptyFields(drawerFilters);
+): SessionBrowserDrawerFilters => {
+  const {
+    hasBugReport,
+    deviceRamMegabytes,
+    durationMinutes,
+    minFps,
+    usedMemoryMegabytes,
+    ...rest
+  } = drawerFilters;
+
+  return omitEmptyFields({
+    ...rest,
+    hasBugReport: hasBugReport === true ? true : undefined,
+    deviceRamMegabytes: normalizeNumericRange(deviceRamMegabytes),
+    durationMinutes: normalizeNumericRange(durationMinutes),
+    minFps: normalizeNumericRange(minFps),
+    usedMemoryMegabytes: normalizeNumericRange(usedMemoryMegabytes),
+  });
+};
 
 /** Maps applied `SessionBrowserFilters` onto the play-session query body (`PlaySessionQueryOptions`). */
 export const toPlaySessionQueryOptions = (
