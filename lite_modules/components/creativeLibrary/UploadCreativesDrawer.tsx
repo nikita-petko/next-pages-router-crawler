@@ -17,6 +17,7 @@ import GameUniverseDropdown, {
   NO_GAME_DROPDOWN_VALUE,
 } from '@components/common/creative/GameUniverseDropdown';
 import { TranslationNamespace } from '@constants/localization';
+import useAdCreativeGroupScope from '@hooks/useAdCreativeGroupScope';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import useUniverseOptionsForAdCreation from '@hooks/useUniverseOptionsForAdCreation';
 import { useAppStore } from '@stores/appStoreProvider';
@@ -50,7 +51,11 @@ const UploadCreativesDrawer: FC<UploadCreativesDrawerProps> = ({ onOpenChange, o
     }
   }, [open]);
 
-  const { groupId, universeOptions: advertisableUniverses } = useUniverseOptionsForAdCreation();
+  const { groupId: workspaceGroupId, universeOptions: advertisableUniverses } =
+    useUniverseOptionsForAdCreation();
+  // Registering under `?groupId=` only works once the group ad account exists,
+  // so fall back to the personal ad-account scope until then.
+  const { groupId } = useAdCreativeGroupScope(workspaceGroupId);
 
   const handleClose = useCallback(() => {
     onOpenChange(false);

@@ -7,6 +7,7 @@ import useDrawerStyles from '@components/common/Drawer.styles';
 import AdsManagementTable from '@components/reporting/AdsManagementTable';
 import CampaignDetails from '@components/reporting/CampaignDetails';
 import styles from '@components/reporting/CampaignDetailsDrawer.module.css';
+import CampaignGamePreviewVideoBanner from '@components/reporting/CampaignGamePreviewVideoBanner';
 import CampaignReportingCharts from '@components/reporting/CampaignReportingCharts';
 import { TranslationNamespace } from '@constants/localization';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -46,22 +47,25 @@ const CampaignDetailsDrawer = () => {
           <span title={campaign?.name}>{campaign?.name}</span>
         </SheetTitle>
         <SheetBody>
-          {hasPendingDecrease && (
-            <Collapse in={!isBannerDismissed} unmountOnExit>
-              <Alert
-                className={classes.pendingDecreaseBanner}
-                closeLabel={translateMisc('Action.Close')}
-                data-testid='scheduled-budget-decrease-banner'
-                onDismiss={() => setIsBannerDismissed(true)}
-                severity='Warning'
-                variant='Feedback'>
-                {translate('Message.BudgetDecreasePending')}
-              </Alert>
-            </Collapse>
-          )}
+          <div className='flex flex-col gap-small'>
+            {hasPendingDecrease && (
+              <Collapse in={!isBannerDismissed} unmountOnExit>
+                <Alert
+                  className={classes.pendingDecreaseBanner}
+                  closeLabel={translateMisc('Action.Close')}
+                  data-testid='scheduled-budget-decrease-banner'
+                  onDismiss={() => setIsBannerDismissed(true)}
+                  severity='Warning'
+                  variant='Feedback'>
+                  {translate('Message.BudgetDecreasePending')}
+                </Alert>
+              </Collapse>
+            )}
+          </div>
           <div className={classes.drawerBodyContent}>
             <CampaignDetails />
             <CampaignReportingCharts />
+            {campaign ? <CampaignGamePreviewVideoBanner campaignId={campaign.id} /> : null}
             <AdsManagementTable />
           </div>
         </SheetBody>

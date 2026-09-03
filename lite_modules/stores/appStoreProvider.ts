@@ -61,6 +61,7 @@ import {
 import { applyMetadataToAppData } from '@utils/applyMetadataToAppData';
 import { UsdToMicroUsd } from '@utils/currency';
 import { CaptureException } from '@utils/error';
+import { isImpersonatingAdAccount } from '@utils/impersonation';
 import {
   applyMetadataBooleanOverrides,
   mergeMetadataDefaultsWithResponse,
@@ -70,9 +71,6 @@ import { GetEmptyRequestState, GetInitialRequestState } from '@utils/zustandUtil
 export interface AppStoreType extends AppStoreStateType, AppStoreActionType {}
 
 const microUsdMultiplier = 1 * 1000 * 1000;
-
-const isImpersonatingAdAccount = (): boolean =>
-  typeof document !== 'undefined' && document.cookie.includes('ad-account-imp-info');
 
 const organizationIsBusiness = (organizationInfo?: OrganizationInfoType): boolean => {
   if (!organizationInfo) {

@@ -1,0 +1,28 @@
+/*
+ * The game preview video is a single 16:9 experience-owned asset, so present it
+ * as a media-only lightbox instead of using the multi-asset browser chrome.
+ */
+.heroMedia {
+  aspect-ratio: 16 / 9;
+  border-bottom-left-radius: var(--radius-large);
+  border-bottom-right-radius: var(--radius-large);
+  isolation: isolate;
+  margin-bottom: calc(var(--stroke-standard) * -1);
+}
+
+.video {
+  height: 100%;
+  -o-object-fit: contain;
+     object-fit: contain;
+  width: 100%;
+}
+
+.error {
+  align-items: center;
+  background-color: var(--color-shift-100);
+  color: var(--color-content-default);
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  width: 100%;
+}

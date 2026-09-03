@@ -1,0 +1,7 @@
+.video {
+  border-radius: var(--radius-small);
+  height: 36px;
+  -o-object-fit: cover;
+     object-fit: cover;
+  width: 64px;
+}

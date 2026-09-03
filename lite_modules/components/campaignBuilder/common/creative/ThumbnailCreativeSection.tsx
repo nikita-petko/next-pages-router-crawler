@@ -1,4 +1,4 @@
-import { Checkbox, Icon, IconButton, Link } from '@rbx/foundation-ui';
+import { Checkbox, IconButton } from '@rbx/foundation-ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
@@ -6,6 +6,8 @@ import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import AssetTileImage from '@components/campaignBuilder/common/creative/AssetTileImage';
 import CreativeLockBadge from '@components/campaignBuilder/common/creative/CreativeLockBadge';
 import useCreativesStyles from '@components/campaignBuilder/common/creative/Creatives.styles';
+import GamePreviewVideoPreview from '@components/campaignBuilder/common/creative/GamePreviewVideoPreview';
+import GamePreviewVideoTooltip from '@components/campaignBuilder/common/creative/GamePreviewVideoTooltip';
 import ThumbnailAiCreateDrawer from '@components/campaignBuilder/common/creative/thumbnailSection/ThumbnailAiCreateDrawer';
 import ThumbnailCreativeAddButton from '@components/campaignBuilder/common/creative/thumbnailSection/ThumbnailCreativeAddButton';
 import ThumbnailUploadDrawer from '@components/campaignBuilder/common/creative/thumbnailSection/ThumbnailUploadDrawer';
@@ -102,6 +104,10 @@ const ThumbnailSection = ({
     control,
     name: FormField.EXPERIENCE,
   })?.universe_id;
+  const isVideoConfigEnabled = useWatch<FormType, typeof FormField.VIDEO_CONFIG_ENABLED>({
+    control,
+    name: FormField.VIDEO_CONFIG_ENABLED,
+  });
 
   const { data: rootPlaceId } = useQuery({
     enabled: isSponsoredVideoTilesEnabled && !!selectedUniverseId,
@@ -110,6 +116,10 @@ const ThumbnailSection = ({
     select: (response) => response.data?.[0]?.rootPlaceId,
     staleTime: Infinity,
   });
+  const videoUploadUrl =
+    selectedUniverseId && rootPlaceId
+      ? `https://create.${GetSitetestBaseUrl()}/dashboard/creations/experiences/${selectedUniverseId}/places/${rootPlaceId}/videos`
+      : undefined;
 
   const [aiCreateDrawerOpen, setAiCreateDrawerOpen] = useState<boolean>(false);
 
@@ -222,25 +232,12 @@ const ThumbnailSection = ({
                 />
               )}
             />
-            <AppTooltip
-              contentClassName={FOUNDATION_TOOLTIP_BODY_SMALL_CLASS}
-              position='top-center'
-              title={translateCampaign('Description.IncludeGameDetailsPageVideo')}>
-              <span className='flex items-center'>
-                <Icon name='icon-regular-circle-i' size='Small' />
-              </span>
-            </AppTooltip>
+            <GamePreviewVideoTooltip uploadUrl={videoUploadUrl} />
           </div>
-          {selectedUniverseId && rootPlaceId ? (
-            <Link
-              color='Standard'
-              href={`https://create.${GetSitetestBaseUrl()}/dashboard/creations/experiences/${selectedUniverseId}/places/${rootPlaceId}/videos`}
-              rel='noopener noreferrer'
-              size='Small'
-              target='_blank'>
-              {translateCampaign('Action.UploadVideo')}
-            </Link>
-          ) : null}
+          <GamePreviewVideoPreview
+            isEnabled={isVideoConfigEnabled === true}
+            universeId={selectedUniverseId}
+          />
         </div>
       ) : null}
       <p

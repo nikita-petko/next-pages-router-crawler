@@ -3,7 +3,10 @@ import { useCallback } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 
 import CreativeLibrarySheetBody from '@components/campaignBuilder/common/creative/CreativeLibrarySheetBody';
-import { type CreativeUploadPersistedEntry } from '@components/common/creative/CreativeUploadTab';
+import {
+  type CreativeUploadPersistedEntry,
+  type RegisteredAsset,
+} from '@components/common/creative/CreativeUploadTab';
 import { AssetSource, FormField, MAX_LOGO_SELECTIONS } from '@constants/campaignBuilder';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
 import { useAppStore } from '@stores/appStoreProvider';
@@ -35,24 +38,30 @@ const LogoUploadDrawerContent = ({
 
   // Flagged-path-only: called by CreativeUploadTab after library registration;
   // appends new ids and auto-selects the first one if none selected (Reach
-  // allows one logo). Aspect-ratio validation is deferred to the server.
-  const handleNewlyRegisteredLogos = (registered: Array<{ assetId: number; file: File }>) => {
+  // allows one logo). Stamp `aspectRatio` from the upload validator — the
+  // same field library import reads from GET width/height. Upload never
+  // wrote it, so create omitted `logo_asset_aspect_width` for both 2x1
+  // and 1x2. A later in-drawer deselect/reselect also cannot recover it:
+  // that path only flips `isSelected`, and the library list usually has
+  // no dims until a full page refresh.
+  const handleNewlyRegisteredLogos = (registered: RegisteredAsset[]) => {
     if (registered.length === 0) {
       return;
     }
     const currentLogos = getValues(FormField.LOGO_ASSETS);
     const existingIds = new Set(currentLogos.map((logo) => logo.assetId));
-    const newIds = registered.map(({ assetId }) => assetId).filter((id) => !existingIds.has(id));
-    if (newIds.length === 0) {
+    const newRegistered = registered.filter(({ assetId }) => !existingIds.has(assetId));
+    if (newRegistered.length === 0) {
       return;
     }
     let alreadySelected = currentLogos.some((logo) => logo.isSelected);
-    const additions = newIds.map((assetId) => {
+    const additions = newRegistered.map(({ aspectRatio, assetId }) => {
       const isSelected = !alreadySelected;
       if (isSelected) {
         alreadySelected = true;
       }
       return {
+        ...(aspectRatio != null && { aspectRatio }),
         assetId,
         existing: false,
         isSelected,

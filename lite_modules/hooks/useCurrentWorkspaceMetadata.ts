@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { getAdsMetadata } from '@services/ads/getMetadataService';
 import { WorkspaceMetadataOverrides } from '@type/metadata';
+import { isImpersonatingAdAccount } from '@utils/impersonation';
 
 const STALE_TIME_MS = 5 * 60 * 1000;
 const GC_TIME_MS = 15 * 60 * 1000;
@@ -46,14 +47,22 @@ const useCurrentWorkspaceMetadata = (): CurrentWorkspaceMetadataState => {
   const workspace = getWorkspaceIdentity(currentWorkspace);
   const workspaceId = workspace?.creatorId;
   const workspaceType = workspace?.creatorType;
+  const isImpersonating = isImpersonatingAdAccount();
   // Creator Hub can report isLoading=false while replacing a provisional personal
   // workspace with a persisted group selection. Wait for the complete identity.
   const isWorkspaceResolved = !isWorkspaceLoading && workspaces != null && workspace !== undefined;
-  const groupId = workspaceType === 'Group' ? workspaceId : undefined;
+  const groupId = !isImpersonating && workspaceType === 'Group' ? workspaceId : undefined;
   const isGroupWorkspaceResolved = isWorkspaceResolved && groupId !== undefined;
-  const isGroupWorkspace = workspaceType === 'Group';
+  const isGroupWorkspace = !isImpersonating && workspaceType === 'Group';
   const shouldRefreshPersonalWorkspace =
     isWorkspaceResolved && workspaceType === 'User' && personalRequestVersion > 0;
+  const workspaceQueryKey =
+    workspaceType === 'User'
+      ? ['metadata', 'User', workspaceId, personalRequestVersion]
+      : ['metadata', workspaceType ?? null, workspaceId ?? null];
+  const metadataQueryKey = isImpersonating
+    ? ['metadata', 'ImpersonatedAdAccount']
+    : workspaceQueryKey;
 
   useEffect(() => {
     if (!isWorkspaceResolved || workspaceType === undefined) {
@@ -69,10 +78,7 @@ const useCurrentWorkspaceMetadata = (): CurrentWorkspaceMetadataState => {
     enabled: isGroupWorkspaceResolved || shouldRefreshPersonalWorkspace,
     gcTime: GC_TIME_MS,
     queryFn: ({ signal }) => getAdsMetadata(groupId, signal),
-    queryKey:
-      workspaceType === 'User'
-        ? ['metadata', 'User', workspaceId, personalRequestVersion]
-        : ['metadata', workspaceType ?? null, workspaceId ?? null],
+    queryKey: metadataQueryKey,
     refetchOnMount: false,
     refetchOnReconnect: false,
     refetchOnWindowFocus: true,

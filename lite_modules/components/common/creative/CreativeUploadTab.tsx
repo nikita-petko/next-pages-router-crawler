@@ -33,6 +33,13 @@ import { OnFileUpload } from '@utils/fileUpload';
 type CreativeUploadEntryStatus = 'staged' | 'uploading' | 'failed' | 'complete';
 
 export interface CreativeUploadPersistedEntry {
+  /**
+   * Validated aspect-ratio bucket (e.g. "3:1") from `OnFileUpload` when
+   * `aspectRatioValidation` is set. Kept on persisted rows so the
+   * campaign-builder deferred-add path can stamp it onto the form after
+   * a remount — GET /v1/adCreatives often omits width/height until refresh.
+   */
+  aspectRatio?: string;
   assetId?: number;
   file: File;
   id: string;
@@ -40,6 +47,10 @@ export interface CreativeUploadPersistedEntry {
 }
 
 interface UploadEntry {
+  /**
+   * Validated aspect-ratio bucket from `OnFileUpload` (logo upload only).
+   */
+  aspectRatio?: string;
   assetId?: number;
   /**
    * Per-row failure reason from `OnFileUploadError`, surfaced inline
@@ -61,11 +72,13 @@ const STATUS_LABEL_KEY: Record<CreativeUploadEntryStatus, string> = {
 };
 
 const toPersistedEntry = ({
+  aspectRatio,
   assetId,
   file,
   id,
   status,
 }: UploadEntry): CreativeUploadPersistedEntry => ({
+  aspectRatio,
   assetId,
   file,
   id,
@@ -73,11 +86,13 @@ const toPersistedEntry = ({
 });
 
 const toUploadEntry = ({
+  aspectRatio,
   assetId,
   file,
   id,
   status,
 }: CreativeUploadPersistedEntry): UploadEntry => ({
+  aspectRatio,
   assetId,
   file,
   id,
@@ -109,10 +124,32 @@ const deriveAssetDisplayName = (file: File): string | undefined => {
   return trimmed.slice(0, MAX_ASSET_DISPLAY_NAME_LENGTH);
 };
 
-interface RegisteredAsset {
+export interface RegisteredAsset {
+  /**
+   * Validated aspect-ratio bucket forwarded from the upload pipeline.
+   * Present when the tab was given `aspectRatioValidation` (logo flow).
+   * Callers stamp this onto the form item so create can send
+   * `logo_asset_aspect_width` — library import already does this from
+   * GET width/height, but those dims are often missing until refresh.
+   */
+  aspectRatio?: string;
   assetId: number;
   file: File;
 }
+
+const toRegisteredAsset = ({
+  aspectRatio,
+  assetId,
+  file,
+}: {
+  aspectRatio?: string;
+  assetId: number;
+  file: File;
+}): RegisteredAsset => ({
+  ...(aspectRatio != null && { aspectRatio }),
+  assetId,
+  file,
+});
 
 export interface CreativeUploadFooterActions {
   canUpload: boolean;
@@ -318,7 +355,10 @@ const CreativeUploadTab: FC<CreativeUploadTabProps> = ({
   // runUploadBatch can Promise.all a batch and only batch-register the
   // successful rows.
   const startUpload = useCallback(
-    (entryId: string, file: File): Promise<{ assetId: number; ok: true } | { ok: false }> =>
+    (
+      entryId: string,
+      file: File,
+    ): Promise<{ aspectRatio?: string; assetId: number; ok: true } | { ok: false }> =>
       new Promise((resolve) => {
         OnFileUpload({
           aspectRatioValidation,
@@ -343,13 +383,16 @@ const CreativeUploadTab: FC<CreativeUploadTabProps> = ({
           },
           // No-op: runUploadBatch flips rows to 'uploading' before startUpload runs.
           setImageUploading: () => {},
-          setUploadedImage: ({ assetId, blob }) => {
+          setUploadedImage: ({ aspectRatio, assetId, blob }) => {
             delete cancelByEntryIdRef.current[entryId];
             // Seed the thumbnail store so library grids / campaign previews
             // can show the new asset without a follow-up fetch.
             setBlobByAssetId(assetId, blob);
-            updateEntry(entryId, { assetId });
-            resolve({ assetId, ok: true });
+            // Capture the validated bucket here — create reads `aspectRatio`
+            // off the form item. Library GET often lacks width/height until
+            // a page refresh, so this is the only in-session source.
+            updateEntry(entryId, { aspectRatio, assetId });
+            resolve({ aspectRatio, assetId, ok: true });
           },
         });
       }),
@@ -545,24 +588,45 @@ const CreativeUploadTab: FC<CreativeUploadTabProps> = ({
       );
       const succeeded = uploadResults
         .filter(
-          (item): item is { entry: UploadEntry; result: { assetId: number; ok: true } } =>
-            item.result.ok,
+          (
+            item,
+          ): item is {
+            entry: UploadEntry;
+            result: { aspectRatio?: string; assetId: number; ok: true };
+          } => item.result.ok,
         )
-        .map(({ entry, result }) => ({ ...entry, assetId: result.assetId }));
+        .map(({ entry, result }) => ({
+          ...entry,
+          aspectRatio: result.aspectRatio,
+          assetId: result.assetId,
+        }));
       if (succeeded.length === 0) {
         return;
       }
+      // Copy aspectRatio/assetId from `succeeded` onto the row. Don't rely
+      // on `updateEntry` having flushed — deferred-add reads `entries` later.
+      const markSucceededComplete = () => {
+        const succeededById = new Map(succeeded.map((entry) => [entry.id, entry]));
+        setEntries((prev) =>
+          prev.map((entry) => {
+            const match = succeededById.get(entry.id);
+            return match
+              ? {
+                  ...entry,
+                  aspectRatio: match.aspectRatio,
+                  assetId: match.assetId,
+                  status: 'complete' as const,
+                }
+              : entry;
+          }),
+        );
+      };
       // Library page: defer the library registration until the user clicks
       // Add assets. The registry upload is done, so mark the rows complete
       // (ready to add) but don't persist them to the library yet — closing
       // the drawer here must NOT leave the asset in the library.
       if (registerOnAdd) {
-        const uploadedIds = new Set(succeeded.map((entry) => entry.id));
-        setEntries((prev) =>
-          prev.map((entry) =>
-            uploadedIds.has(entry.id) ? { ...entry, status: 'complete' as const } : entry,
-          ),
-        );
+        markSucceededComplete();
         return;
       }
       // Only register rows whose asset upload succeeded; failed rows can
@@ -582,14 +646,9 @@ const CreativeUploadTab: FC<CreativeUploadTabProps> = ({
         await (groupId === undefined
           ? batchRegisterAdCreativeAssets(assetsToRegister)
           : batchRegisterAdCreativeAssets(assetsToRegister, { groupId }));
-        const completedIds = new Set(succeeded.map((entry) => entry.id));
-        setEntries((prev) =>
-          prev.map((entry) =>
-            completedIds.has(entry.id) ? { ...entry, status: 'complete' as const } : entry,
-          ),
-        );
+        markSucceededComplete();
         if (!deferRegisteredUntilAdd) {
-          onRegistered(succeeded.map((entry) => ({ assetId: entry.assetId, file: entry.file })));
+          onRegistered(succeeded.map((entry) => toRegisteredAsset(entry)));
         }
       } catch {
         // Registry upload succeeded, batch-register rejected — flip to
@@ -696,10 +755,13 @@ const CreativeUploadTab: FC<CreativeUploadTabProps> = ({
         }
       }
       onRegistered(
-        uncommittedCompleteEntries.map((entry) => ({
-          assetId: entry.assetId as number,
-          file: entry.file,
-        })),
+        uncommittedCompleteEntries.map((entry) =>
+          toRegisteredAsset({
+            aspectRatio: entry.aspectRatio,
+            assetId: entry.assetId as number,
+            file: entry.file,
+          }),
+        ),
       );
       commitAddedEntries();
     };

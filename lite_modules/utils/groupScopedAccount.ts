@@ -5,12 +5,17 @@ import {
   GroupScopedAccountState,
 } from '@type/groupScopedAccount';
 import { isGroupAdAccountMissing } from '@utils/groupAdAccountSetup';
+import { isImpersonatingAdAccount } from '@utils/impersonation';
 
 export const getSelectedGroupId = (
   currentWorkspace?: CreatorWorkspace,
   isAdAccountAutoCreateEnabled: boolean = false,
 ): number | undefined => {
-  if (!isAdAccountAutoCreateEnabled || currentWorkspace?.creatorType !== 'Group') {
+  if (
+    !isAdAccountAutoCreateEnabled ||
+    isImpersonatingAdAccount() ||
+    currentWorkspace?.creatorType !== 'Group'
+  ) {
     return undefined;
   }
 

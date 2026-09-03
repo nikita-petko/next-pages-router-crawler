@@ -260,6 +260,21 @@ const useCreativesStyles = makeStyles<void, 'removeButtonOverlay' | 'trashIconWr
       width: '100%',
     },
 
+    videoPreviewIconOverlay: {
+      alignItems: 'center',
+      backgroundColor: 'var(--dark-mode-common-backdrop)',
+      borderRadius: '50%',
+      color: 'var(--dark-mode-content-emphasis)',
+      display: 'flex',
+      height: 32,
+      justifyContent: 'center',
+      pointerEvents: 'none',
+      position: 'absolute',
+      right: 8,
+      top: 8,
+      width: 32,
+    },
+
     // Styles matching VideoUploadCard but with 160x90 dimensions
     videoUploadContainer: {
       '&:hover': {
@@ -281,6 +296,7 @@ const useCreativesStyles = makeStyles<void, 'removeButtonOverlay' | 'trashIconWr
           opacity: 0.8,
         },
       },
+      borderRadius: '8px',
       cursor: 'pointer',
       display: 'flex',
       height: ThumbnailSize.height,
@@ -291,7 +307,7 @@ const useCreativesStyles = makeStyles<void, 'removeButtonOverlay' | 'trashIconWr
     },
 
     videoUploadThumbnail: {
-      borderRadius: 4,
+      borderRadius: 8,
       height: ThumbnailSize.height,
       margin: '0 auto',
       objectFit: 'cover',

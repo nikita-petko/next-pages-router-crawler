@@ -94,11 +94,15 @@ const ExperienceFilterPicker = () => {
   };
 
   const filteredUniverses = useMemo(() => {
+    // Universe names can carry leading/trailing whitespace, so both sides are
+    // trimmed. Comparing a trimmed query against a raw name made the "text still
+    // equals the selection" check miss, narrowing the list to the selected row
+    // and stranding the user on that experience.
     const query = inputValue.trim().toLowerCase();
     const filtered =
-      !query || query === universeFilter?.universe_name.toLowerCase()
+      !query || query === universeFilter?.universe_name.trim().toLowerCase()
         ? universes
-        : universes.filter((u) => u.universe_name.toLowerCase().includes(query));
+        : universes.filter((u) => u.universe_name.trim().toLowerCase().includes(query));
 
     // Ensure the currently selected universe is always present as an option so
     // Foundation Autocomplete's `value` prop resolves to a real child. This

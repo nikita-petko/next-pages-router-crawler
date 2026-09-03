@@ -59,6 +59,7 @@ const NewFlow = () => {
     !groupAdvertiserState?.data &&
     !groupAdvertiserState?.isError &&
     (groupAdvertiserState?.isLoading ?? true);
+  const isReportingContextLoading = fetchingEssentialAppInfo || isGroupAdAccountLoading;
 
   const workspace = useMemo(() => {
     if (
@@ -84,7 +85,7 @@ const NewFlow = () => {
     adAccountId: activeAdAccountId,
     advertisedUniverses,
     advertisedUniversesIsLoading,
-    fetchingEssentialAppInfo,
+    fetchingEssentialAppInfo: isReportingContextLoading,
     fetchInitialData,
     hasNewFlowCampaign,
     hasNewFlowCampaignLoading,
@@ -104,11 +105,7 @@ const NewFlow = () => {
 
   // Avoid flashing the reporting table while we do not yet know if the user
   // has an ad account or a new-flow campaign.
-  if (
-    fetchingEssentialAppInfo ||
-    isGroupAdAccountLoading ||
-    (shouldRequireNewFlowCampaign && hasNewFlowCampaignLoading)
-  ) {
+  if (isReportingContextLoading || (shouldRequireNewFlowCampaign && hasNewFlowCampaignLoading)) {
     return (
       <AdsManagerPageBaseLayout isLoading>
         <div>

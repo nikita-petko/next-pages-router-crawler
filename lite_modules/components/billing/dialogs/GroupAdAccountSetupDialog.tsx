@@ -1,4 +1,4 @@
-import { Button } from '@rbx/foundation-ui';
+import { Button, Link } from '@rbx/foundation-ui';
 import { AxiosError } from 'axios';
 import { type ReactElement, useState } from 'react';
 
@@ -11,6 +11,7 @@ import type { BaseInjectedDialogProps } from '@components/common/dialog/types';
 import { FormFields } from '@constants/account';
 import { OrganizationType } from '@constants/app';
 import ErrorCodes from '@constants/errorCodes';
+import { getGroupRolesUrl } from '@constants/groupPermissionsUrls';
 import { TranslationNamespace } from '@constants/localization';
 import useAccountForm from '@hooks/account/useAccountForm';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
@@ -35,7 +36,8 @@ const GroupAdAccountSetupDialog = ({
   onComplete,
   setDismissible,
 }: GroupAdAccountSetupDialogProps): ReactElement => {
-  const { translate: translateAccount } = useNamespacedTranslation(TranslationNamespace.Account);
+  const { translate: translateAccount, translateHTML: translateAccountHTML } =
+    useNamespacedTranslation(TranslationNamespace.Account);
   const { translate: translateMisc } = useNamespacedTranslation(TranslationNamespace.Misc);
   const { localizedDefaultTimeZone, localizedTimezones } = useTimezones();
   const getAdvertiser = useAppStore((state) => state.getAdvertiser);
@@ -142,7 +144,28 @@ const GroupAdAccountSetupDialog = ({
           />
         </div>
       }
-      dialogDescription={translateAccount('Description.GroupAccountTimezoneSetup')}
+      dialogDescription={
+        <div className='flex flex-col gap-small'>
+          <div>
+            {translateAccountHTML('Description.GroupAccountSpendPermission', [
+              {
+                closing: 'linkEnd',
+                content: (chunks) => (
+                  <Link
+                    href={getGroupRolesUrl()}
+                    rel='noopener noreferrer'
+                    target='_blank'
+                    underline='always'>
+                    {chunks}
+                  </Link>
+                ),
+                opening: 'linkStart',
+              },
+            ])}
+          </div>
+          <div>{translateAccount('Description.GroupAccountTimezoneSetup')}</div>
+        </div>
+      }
       dialogFooter={
         <>
           <Button
@@ -158,7 +181,7 @@ const GroupAdAccountSetupDialog = ({
           </Button>
         </>
       }
-      dialogTitle={translateAccount('Heading.GroupAccountSetup')}
+      dialogTitle={translateAccount('Heading.GroupAccountSetup', { groupName })}
     />
   );
 };

@@ -102,16 +102,19 @@ const AdIntegrationExperienceSection = ({
   // MUI filtered options internally from `getOptionLabel`; Foundation expects the
   // caller to render the filtered set. Text equal to the current selection shows
   // the full list so clicking into the field does not narrow it to one row.
+  // Universe names can carry leading/trailing whitespace, so both sides are
+  // trimmed before comparing — otherwise that check misses for those names and
+  // the list collapses to the selected row.
   const query = inputValue.trim().toLocaleLowerCase();
   const visibleOptions =
-    !query || query === selectedOption.universe_name.toLocaleLowerCase()
+    !query || query === selectedOption.universe_name.trim().toLocaleLowerCase()
       ? options
-      : options.filter((option) => option.universe_name.toLocaleLowerCase().includes(query));
+      : options.filter((option) => option.universe_name.trim().toLocaleLowerCase().includes(query));
 
   const multiQuery = multiInputValue.trim().toLocaleLowerCase();
   const visibleMultiOptions = multiQuery
     ? universes.filter((universe) =>
-        universe.universe_name.toLocaleLowerCase().includes(multiQuery),
+        universe.universe_name.trim().toLocaleLowerCase().includes(multiQuery),
       )
     : universes;
   const hasReachedSelectionLimit = selectedExperienceIds.length >= MaxUniversesPerCampaign;

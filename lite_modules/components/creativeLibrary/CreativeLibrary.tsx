@@ -78,6 +78,7 @@ import { UNAVAILABLE_VALUE_DISPLAY } from '@constants/displayConstants';
 import { TranslationNamespace } from '@constants/localization';
 import { Tooltips } from '@constants/tooltips';
 import useAdAccountAutoCreateCreateAction from '@hooks/account/useAdAccountAutoCreateCreateAction';
+import useAdCreativeGroupScope from '@hooks/useAdCreativeGroupScope';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import useUniverseOptionsForAdCreation from '@hooks/useUniverseOptionsForAdCreation';
 import {
@@ -456,10 +457,14 @@ const CreativeLibrary = () => {
     (state: AppStoreType) => state.appMetadataState?.data?.isGenAiCreativesEnabled ?? false,
   );
   const {
-    groupId: creativeLibraryGroupId,
+    groupId: workspaceGroupId,
     shouldWaitForWorkspace,
     universeOptions: advertisableUniverses,
   } = useUniverseOptionsForAdCreation();
+  // Group scope only applies once the group ad account exists; otherwise every
+  // ad-creative request stays on the personal ad account.
+  const { groupId: creativeLibraryGroupId, isResolving: isGroupScopeResolving } =
+    useAdCreativeGroupScope(workspaceGroupId);
   const openUploadDrawer = useAdAccountAutoCreateCreateAction(
     useCallback(() => {
       setUploadDrawerOpen(true);
@@ -553,7 +558,11 @@ const CreativeLibrary = () => {
   const [liveQuery, archivedQuery] = useQueries({
     queries: [
       {
-        enabled: hasCreativeLibraryScope && fetchLiveBucket && !shouldWaitForWorkspace,
+        enabled:
+          hasCreativeLibraryScope &&
+          fetchLiveBucket &&
+          !shouldWaitForWorkspace &&
+          !isGroupScopeResolving,
         queryFn: () => fetchAdCreatives(false),
         queryKey: getAdCreativesQueryKey(false),
         refetchOnWindowFocus: false,
@@ -562,7 +571,11 @@ const CreativeLibrary = () => {
         staleTime: 0,
       },
       {
-        enabled: hasCreativeLibraryScope && fetchArchivedBucket && !shouldWaitForWorkspace,
+        enabled:
+          hasCreativeLibraryScope &&
+          fetchArchivedBucket &&
+          !shouldWaitForWorkspace &&
+          !isGroupScopeResolving,
         queryFn: () => fetchAdCreatives(true),
         queryKey: getAdCreativesQueryKey(true),
         refetchOnWindowFocus: false,
@@ -2081,7 +2094,7 @@ const CreativeLibrary = () => {
     </Dialog>
   );
 
-  if (shouldWaitForWorkspace) {
+  if (shouldWaitForWorkspace || isGroupScopeResolving) {
     return <CenteredCircularProgress />;
   }
 

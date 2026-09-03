@@ -28,14 +28,17 @@ import CreativeActiveTab from '@components/campaignBuilder/common/creative/Creat
 import CreativeImportTab, {
   type CreativeImportFooterAction,
 } from '@components/campaignBuilder/common/creative/CreativeImportTab';
+import CenteredCircularProgress from '@components/common/CenteredCircularProgress';
 import CreativeUploadTab, {
   type CreativeUploadFooterActions,
   CreativeUploadFooterActionsContent,
   type CreativeUploadPersistedEntry,
+  type RegisteredAsset,
 } from '@components/common/creative/CreativeUploadTab';
 import { FormField } from '@constants/campaignBuilder';
 import { TranslationNamespace } from '@constants/localization';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
+import useAdCreativeGroupScope from '@hooks/useAdCreativeGroupScope';
 import useNamespacedTranslation from '@hooks/useNamespacedTranslation';
 import useUniverseOptionsForAdCreation from '@hooks/useUniverseOptionsForAdCreation';
 import { useAiCreateSessionStore } from '@stores/aiCreateSessionStoreProvider';
@@ -77,7 +80,7 @@ interface CreativeLibrarySheetBodyProps {
   /** Footer Close click. */
   onClose: () => void;
   onPersistedUploadEntriesChange?: (entries: CreativeUploadPersistedEntry[]) => void;
-  onRegistered: (registered: Array<{ assetId: number; file: File }>) => void;
+  onRegistered: (registered: RegisteredAsset[]) => void;
   onRemoveUploadedAsset: (assetId: number) => void;
   onUploadInProgressChange: (inProgress: boolean) => void;
   persistedUploadEntries?: CreativeUploadPersistedEntry[];
@@ -131,7 +134,11 @@ const CreativeLibraryScrollContent = ({
 }: CreativeLibraryScrollContentProps) => {
   const { translate } = useNamespacedTranslation(TranslationNamespace.CreativeLibrary);
   const { translate: translateCampaign } = useNamespacedTranslation(TranslationNamespace.Campaign);
-  const { groupId } = useUniverseOptionsForAdCreation({ enabled: false });
+  const { groupId: workspaceGroupId } = useUniverseOptionsForAdCreation({ enabled: false });
+  // AMA only accepts `?groupId=` once the group ad account exists. Do not
+  // mount either tab until the group scope has resolved, since mounting with
+  // an undefined id would read from and write to the personal account.
+  const { groupId, isResolving: isGroupScopeResolving } = useAdCreativeGroupScope(workspaceGroupId);
   const isUploadDrawerBannerDismissed = useAiCreateSessionStore(
     (state) => state.isUploadDrawerBannerDismissed,
   );
@@ -212,6 +219,14 @@ const CreativeLibraryScrollContent = ({
     }
     sheetBodyRef.current.scrollTop = sheetScrollTopRef.current;
   });
+
+  if (isGroupScopeResolving) {
+    return (
+      <SheetBody>
+        <CenteredCircularProgress />
+      </SheetBody>
+    );
+  }
 
   return (
     <SheetBody ref={setSheetBodyRef}>
