@@ -37,6 +37,7 @@ export type PermissionGroupListProps = {
 };
 
 const FORUM_BUG_REPORTER_PERMISSION_ID = 'Group.ForumBugReporter';
+const GUEST_ROLE_PERMISSION_ID = 'Group.AnnouncementViewer';
 
 const usePermissionsContainerStyles = makeStyles()((theme) => ({
   rootClass: {
@@ -111,6 +112,7 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({
   );
   const activeTab = selectedTab ?? internalSelectedTab;
   const isGuestRole = creator?.type === CreatorTypes.GUEST_ROLE;
+  const isReadOnly = creator?.disabled === true;
 
   if (trackedInitialPermissions !== initialPermissions && initialPermissions != null) {
     setTrackedInitialPermissions(initialPermissions);
@@ -142,12 +144,12 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({
           .map((group) => ({
             ...group,
             permissions: group.permissions.filter(
-              (permission) => initialPermissions?.[permission.permissionId]?.canEdit,
+              (permission) => permission.permissionId === GUEST_ROLE_PERMISSION_ID,
             ),
           }))
           .filter((group) => group.permissions.length > 0)
       : featureFilteredMetadata;
-  }, [initialPermissions, isGuestRole, metadata, showForumBugReporterPermission]);
+  }, [isGuestRole, metadata, showForumBugReporterPermission]);
 
   const onPermissionChange = useCallback((permissionId: string, isGranted: boolean) => {
     setExplicitGrants((prev) => {
@@ -231,12 +233,14 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({
     );
   }
 
-  const isAnyEditable = visibleMetadata.some((group) =>
-    group.permissions.some((permission) => {
-      const initialPermission = initialPermissions[permission.permissionId];
-      return initialPermission ? canPermissionChange(initialPermission) : false;
-    }),
-  );
+  const isAnyEditable =
+    !isReadOnly &&
+    visibleMetadata.some((group) =>
+      group.permissions.some((permission) => {
+        const initialPermission = initialPermissions[permission.permissionId];
+        return initialPermission ? canPermissionChange(initialPermission) : false;
+      }),
+    );
   const { selected, unselected } = findUpdatedPermissions(initialPermissions, permissionData);
 
   let info;
@@ -299,6 +303,7 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({
             metadata={permissionGroup}
             initialSelections={initialPermissions}
             currentSelections={permissionData}
+            isReadOnly={isReadOnly}
             onPermissionChange={onPermissionChange}
           />
         ))}

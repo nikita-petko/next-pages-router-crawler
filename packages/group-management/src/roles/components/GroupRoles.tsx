@@ -41,6 +41,7 @@ import {
 } from '../../utils/constants';
 import { OrganizationsEventName, logOrganizationsEvent } from '../../utils/eventUtils';
 import {
+  canEditRolePermissions,
   canViewAnyRoleTab,
   canViewRoleMembersTab,
   canViewRolePermissionsTab,
@@ -542,6 +543,16 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
   const newRolePermissionsTabContent = useMemo(() => {
     const isDefaultMemberRole = selectedRole?.metadata?.id === DefaultMemberRoleIdNumber;
     const isGuestRole = selectedRole?.metadata?.rank === GuestRoleRank;
+    const selectedRoleId = selectedRole?.metadata?.id;
+    const isRecentlyCreatedRole =
+      selectedRole?.isNewRole === true &&
+      (isOwner === true || permissions?.canCreateRoles === true);
+    const canEditPermissions =
+      isRecentlyCreatedRole || isOwner
+        ? true
+        : canEditRolePermissions(
+            selectedRoleId === undefined ? undefined : rolePermissions?.[selectedRoleId.toString()],
+          );
     const creatorType = isDefaultMemberRole
       ? CreatorTypes.MEMBER_ROLE
       : isGuestRole
@@ -552,6 +563,7 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
         type: creatorType,
         id: selectedRole?.metadata?.id?.toString() ?? '',
         name: selectedRole?.metadata?.name ?? '',
+        disabled: !canEditPermissions,
       },
     ] satisfies CreatorDetails[];
     const entity = {
@@ -571,7 +583,11 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
       </Grid>
     );
   }, [
+    isOwner,
     organization?.groupId,
+    permissions?.canCreateRoles,
+    rolePermissions,
+    selectedRole?.isNewRole,
     selectedRole?.metadata?.id,
     selectedRole?.metadata?.name,
     selectedRole?.metadata?.rank,
