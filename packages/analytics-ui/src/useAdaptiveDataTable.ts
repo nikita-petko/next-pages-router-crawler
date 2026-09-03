@@ -6,7 +6,13 @@ import type {
   SortingState,
   Updater,
 } from '@tanstack/react-table';
-import { createColumnHelper, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import {
+  columnVisibilityFeature,
+  rowExpandingFeature,
+  rowSortingFeature,
+  tableFeatures,
+  useTable,
+} from '@tanstack/react-table';
 import {
   getAdaptiveDataTableColumnLayout,
   type AdaptiveDataTableColumnBlueprint,
@@ -14,7 +20,6 @@ import {
 import type { AdaptiveDataTableTextStyles } from './measureAdaptiveDataTableText';
 import type {
   AdaptiveDataTableExpandableRow,
-  AdaptiveDataTablePrimitive,
   AdaptiveDataTableProps,
   AdaptiveDataTableRow,
   AdaptiveDataTableValueColumnId,
@@ -25,6 +30,14 @@ import { AdaptiveDataTableExpandedRows } from './types/AdaptiveDataTable';
 
 const ColumnWidthSampleSize = 50;
 const EmptyMeasurementRows: readonly never[] = [];
+
+const Features = tableFeatures({
+  columnVisibilityFeature,
+  rowExpandingFeature,
+  rowSortingFeature,
+});
+
+export type AdaptiveTableFeatures = typeof Features;
 
 const resolveSortingUpdater = (
   updater: Updater<SortingState>,
@@ -93,13 +106,14 @@ export const useAdaptiveDataTable = <
   textStyles,
 }: UseAdaptiveDataTableOptions<TRow, TExpandedRow>) => {
   const firstRow = rows[0];
-  const [cachedTableShape, setCachedTableShape] = useState<CachedTableShape<TRow> | undefined>(() =>
-    firstRow
-      ? {
-          columnRow: firstRow,
-          measurementRows: rows.slice(0, ColumnWidthSampleSize),
-        }
-      : undefined,
+  const [cachedTableShape, setCachedTableShape] = useState<CachedTableShape<TRow> | undefined>(
+    () =>
+      firstRow
+        ? {
+            columnRow: firstRow,
+            measurementRows: rows.slice(0, ColumnWidthSampleSize),
+          }
+        : undefined,
   );
 
   useEffect(() => {
@@ -134,27 +148,22 @@ export const useAdaptiveDataTable = <
     [columnBlueprints, onSortChange, sorting],
   );
 
-  const tableColumns = useMemo<ColumnDef<TRow, AdaptiveDataTablePrimitive | undefined>[]>(() => {
-    const columnHelper = createColumnHelper<TRow>();
-    const columns: ColumnDef<TRow, AdaptiveDataTablePrimitive | undefined>[] = [];
+  const tableColumns = useMemo<ColumnDef<AdaptiveTableFeatures, TRow>[]>(() => {
+    const columns: ColumnDef<AdaptiveTableFeatures, TRow>[] = [];
 
     for (const blueprint of columnBlueprints) {
       if (blueprint.cell.type === 'value') {
-        columns.push(
-          columnHelper.accessor(
-            (row) => {
-              const cell = row[blueprint.id];
-              return cell.type === 'value' ? cell.value : undefined;
-            },
-            {
-              enableSorting: blueprint.cell.sortable !== false && onSortChange !== undefined,
-              id: blueprint.id,
-              sortDescFirst: false,
-            },
-          ),
-        );
+        columns.push({
+          accessorFn: (row) => {
+            const cell = row[blueprint.id];
+            return cell.type === 'value' ? cell.value : undefined;
+          },
+          enableSorting: blueprint.cell.sortable !== false && onSortChange !== undefined,
+          id: blueprint.id,
+          sortDescFirst: false,
+        });
       } else {
-        columns.push(columnHelper.display({ enableSorting: false, id: blueprint.id }));
+        columns.push({ enableSorting: false, id: blueprint.id });
       }
     }
 
@@ -162,12 +171,12 @@ export const useAdaptiveDataTable = <
   }, [columnBlueprints, onSortChange]);
 
   const tableData = useMemo<TRow[]>(() => [...rows], [rows]);
-  const table = useReactTable({
+  const table = useTable({
     autoResetExpanded: false,
     columns: tableColumns,
     data: tableData,
     enableMultiSort: false,
-    getCoreRowModel: getCoreRowModel(),
+    features: Features,
     getRowId,
     getRowCanExpand: (row) => row.depth === 0 && hasExpandedRows<TRow, TExpandedRow>(row.original),
     manualSorting: true,

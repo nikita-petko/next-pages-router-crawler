@@ -227,6 +227,13 @@ export type AdaptiveDataTableProps<
   readonly isLoading?: boolean;
   /** Renders `labels.error`. React Query consumers can pass `isError`. */
   readonly isError?: boolean;
+  /**
+   * Caps the overall height of an infinite table, header included, so tall viewports can show
+   * more rows than the default cap. Numbers are pixels. Strings must resolve on their own, such
+   * as `70vh` or `calc(100vh - 320px)`, because the body derives its own cap with `calc()` and
+   * never inherits a height from its ancestors. Shorter tables still size to their rows.
+   */
+  readonly height?: number | string;
   readonly size?: 'XSmall' | 'Small' | 'Medium';
   readonly variant?: 'Divided' | 'Framed';
 };

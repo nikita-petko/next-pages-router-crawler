@@ -48,11 +48,12 @@ import type {
   AdaptiveDataTableValueCell,
 } from './types/AdaptiveDataTable';
 import { AdaptiveDataTableExpandedRows } from './types/AdaptiveDataTable';
+import type { AdaptiveTableFeatures } from './useAdaptiveDataTable';
 import { useAdaptiveDataTable } from './useAdaptiveDataTable';
 
 /* oxlint-disable react/react-compiler -- TanStack Table and Virtual return intentionally non-memoizable callbacks. */
 
-const InfiniteMaxViewportHeight = 480;
+const DefaultInfiniteTableHeight = 480;
 const InfiniteLoadDistance = 500;
 const VirtualRowOverscan = 8;
 const MinimumColumnSpan = 1;
@@ -70,6 +71,17 @@ const RowHeightBySize: Readonly<Record<AdaptiveDataTableSize, number>> = {
   XSmall: 32,
   Small: 48,
   Medium: 60,
+};
+
+/** Subtracts the header row so a caller-supplied height covers the whole table, header included. */
+const getInfiniteBodyMaxHeight = (
+  height: number | string | undefined,
+  headerHeight: number,
+): number | string => {
+  if (height === undefined) {
+    return DefaultInfiniteTableHeight - headerHeight;
+  }
+  return typeof height === 'number' ? height - headerHeight : `calc(${height} - ${headerHeight}px)`;
 };
 
 const TruncatedCellClassName = 'text-truncate-end';
@@ -673,7 +685,7 @@ const ExpandedRowsTable = <TExpandedRow extends AdaptiveDataTableRow>({
 
 type DataRowProps<TRow extends AdaptiveDataTableRow> = {
   readonly columnGrid: string;
-  readonly row: Row<TRow>;
+  readonly row: Row<AdaptiveTableFeatures, TRow>;
   readonly isSmallScreen: boolean;
   readonly isVirtual?: boolean;
   readonly measureElement?: (node: HTMLTableRowElement | null) => void;
@@ -803,12 +815,12 @@ type TableRenderItem<
 > =
   | {
       readonly kind: 'data';
-      readonly row: Row<TRow>;
+      readonly row: Row<AdaptiveTableFeatures, TRow>;
     }
   | {
       readonly expandedRows: readonly TExpandedRow[];
       readonly kind: 'expandedRows';
-      readonly row: Row<TRow>;
+      readonly row: Row<AdaptiveTableFeatures, TRow>;
     };
 
 const getDataRowKey = (rowId: string): string => `data-${rowId}`;
@@ -818,7 +830,7 @@ const getTableRenderItems = <
   TRow extends AdaptiveDataTableRow,
   TExpandedRow extends AdaptiveDataTableRow,
 >(
-  rows: readonly Row<TRow>[],
+  rows: readonly Row<AdaptiveTableFeatures, TRow>[],
   expanded: ExpandedState,
 ): readonly TableRenderItem<TRow, TExpandedRow>[] =>
   rows.flatMap((row): readonly TableRenderItem<TRow, TExpandedRow>[] => {
@@ -905,6 +917,7 @@ const AdaptiveDataTable = <
 >({
   getExpandedRowId,
   getRowId,
+  height,
   isError = false,
   isLoading = false,
   labels,
@@ -1145,7 +1158,7 @@ const AdaptiveDataTable = <
         : { ...HeaderStyle, ...(isInfinite ? InfiniteHeaderStyle : undefined) },
     [isInfinite, isSmallScreen],
   );
-  const infiniteBodyMaxHeight = InfiniteMaxViewportHeight - RowHeightBySize[size];
+  const infiniteBodyMaxHeight = getInfiniteBodyMaxHeight(height, RowHeightBySize[size]);
   const infiniteBodyStyle = useMemo<CSSProperties>(
     () => ({
       ...VirtualBodyStyle,

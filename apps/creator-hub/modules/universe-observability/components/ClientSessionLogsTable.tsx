@@ -42,6 +42,14 @@ const DATE_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
   year: 'numeric',
 };
 
+// The logs table is the last thing on the page, so it takes the viewport left over after the page
+// chrome above it (app header, breadcrumbs, session title, section heading, and the filter row)
+// and the footer below it. Viewport-relative so taller displays show more rows, with a floor that
+// keeps short viewports at the table's own default height.
+const PAGE_CHROME_HEIGHT = '370px';
+const MIN_TABLE_HEIGHT = '480px';
+const TABLE_HEIGHT = `max(${MIN_TABLE_HEIGHT}, calc(100vh - ${PAGE_CHROME_HEIGHT}))`;
+
 const SEVERITY_BADGE_VARIANTS = {
   [LogSeverity.Output]: 'Neutral',
   [LogSeverity.Info]: 'Standard',
@@ -324,6 +332,7 @@ const ClientSessionLogsTable: FC<ClientSessionLogsTableProps> = ({ universeId, s
       <AdaptiveDataTable
         key={tableResetKey}
         getRowId={getRowId}
+        height={TABLE_HEIGHT}
         isError={isError}
         isLoading={isPending || !sessionId || universeId == null || universeId <= 0}
         labels={tableLabels}
