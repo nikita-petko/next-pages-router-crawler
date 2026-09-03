@@ -133,24 +133,19 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
   }, [isRevShareNowTimingPreferredInternal, revShareOnActivation, setRevShareNowTimingPreference]);
 
   const onClickNext = useCallback(async () => {
-    if (!isPitchOnly) {
-      const formValid = await trigger();
-      if (!formValid) {
-        return;
-      }
-
-      persistRevShareNowTimingPreference();
-    } else {
-      const formValid = await trigger('creatorPitch');
-      if (!formValid) {
-        return;
-      }
+    const formValidation = isPitchOnly ? trigger('creatorPitch') : trigger();
+    const attachmentsValidation =
+      creatorPitchAttachmentsFieldRef.current?.validateForNext() ?? Promise.resolve(true);
+    const [formValid, attachmentsValid] = await Promise.all([
+      formValidation,
+      attachmentsValidation,
+    ]);
+    if (!formValid || !attachmentsValid) {
+      return;
     }
 
-    const attachmentsValid =
-      (await creatorPitchAttachmentsFieldRef.current?.validateForNext()) ?? true;
-    if (!attachmentsValid) {
-      return;
+    if (!isPitchOnly) {
+      persistRevShareNowTimingPreference();
     }
 
     const formValues = getValues();
