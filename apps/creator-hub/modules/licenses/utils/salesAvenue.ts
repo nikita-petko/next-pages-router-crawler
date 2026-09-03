@@ -94,6 +94,48 @@ function toDeveloperProductSelection(product: {
 }
 
 /**
+ * Resolves user-facing product details without requiring permission to manage the product's
+ * universe. Intended for read-only agreement surfaces.
+ */
+export async function resolveSalesAvenueProductForDisplay(
+  productId: number,
+  productType: SalesAvenueProductType,
+): Promise<SalesAvenueSelection | null> {
+  if (!Number.isFinite(productId) || productId <= 0) {
+    return null;
+  }
+
+  if (productType === SalesAvenueProductType.GamePass) {
+    const gamePass = await passesClient.getPassProductInfo(productId);
+    if (!gamePass.name) {
+      return null;
+    }
+    return {
+      id: productId,
+      name: gamePass.name,
+      type: SalesAvenueProductType.GamePass,
+      priceInRobux: gamePass.priceInRobux ?? 0,
+      iconAssetId: gamePass.iconImageAssetId,
+    };
+  }
+
+  const developerProduct = await developerProductsClient.getDeveloperProductDetails(productId);
+  const name = developerProduct.displayName ?? developerProduct.name;
+  if (!name) {
+    return null;
+  }
+  return {
+    id: productId,
+    name,
+    type: SalesAvenueProductType.DeveloperProduct,
+    priceInRobux:
+      developerProduct.priceInformation?.defaultPriceInRobux ?? developerProduct.priceInRobux ?? 0,
+    iconAssetId:
+      developerProduct.displayIconImageAssetId ?? developerProduct.iconImageAssetId ?? undefined,
+  };
+}
+
+/**
  * Resolves a game pass or developer product in the selected experience universe.
  * Returns null when the ID is not found for the given product type and universe.
  */

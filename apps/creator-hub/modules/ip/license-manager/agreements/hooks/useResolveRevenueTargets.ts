@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { RevenueTargetType } from '@rbx/client-content-licensing-api/v1';
 import {
-  resolveSalesAvenueProduct,
+  resolveSalesAvenueProductForDisplay,
   SalesAvenueProductType,
   type SalesAvenueSelection,
 } from '@modules/licenses/utils/salesAvenue';
@@ -48,8 +48,7 @@ export const useResolveRevenueTargets = ({
 
       const resolvedTargets = await Promise.all(
         revenueTargets.map(({ revenueTargetId, revenueTargetType }) =>
-          resolveSalesAvenueProduct(
-            universeId,
+          resolveSalesAvenueProductForDisplay(
             Number(revenueTargetId),
             getProductType(revenueTargetType),
           ),

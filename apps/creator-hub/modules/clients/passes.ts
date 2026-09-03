@@ -10,6 +10,7 @@ import type {
   GamePassesUpdateGamePassRequest,
   ListGamePassConfigsByUniverseResponse,
   BatchGetGamePassConfigsResponse,
+  ProductInfoResponse,
   ErrorResponse,
 } from '@rbx/client-game-passes-http-service/v1';
 import { GamePassesApi, ErrorCode } from '@rbx/client-game-passes-http-service/v1';
@@ -20,6 +21,7 @@ export type {
   GamePassConfigV2,
   ListGamePassConfigsByUniverseResponse,
   BatchGetGamePassConfigsResponse,
+  ProductInfoResponse,
   ErrorResponse,
 };
 
@@ -38,6 +40,10 @@ export class PassesClient {
 
   getPassMetadata(options?: RequestInit) {
     return this.passesApi.gamePassesGetGamePassMetadata(options);
+  }
+
+  getPassProductInfo(gamePassId: number, options?: RequestInit) {
+    return this.passesApi.gamePassesGetPassProductInfo({ gamePassId }, options);
   }
 
   batchUpdateGamePasses(request: GamePassesBulkUpdateOperationRequest, options?: RequestInit) {

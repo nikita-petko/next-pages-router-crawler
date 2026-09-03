@@ -11,6 +11,7 @@ import type {
   DeveloperProductsUpdateDeveloperProductV2Request,
   DeveloperProductsBatchGetDeveloperProductConfigsOperationRequest,
   DeveloperProductsListDeveloperProductConfigsByUniverseV2Request,
+  DeveloperProductDetailsResponse,
   ListDeveloperProductConfigsV2Response,
   BatchGetDeveloperProductConfigsResponse,
 } from '@rbx/client-developer-products-api/v1';
@@ -23,6 +24,7 @@ import { createClientConfiguration } from './utils/createClientConfiguration';
 
 export type {
   ErrorResponse,
+  DeveloperProductDetailsResponse,
   DeveloperProductConfigV2,
   ListDeveloperProductConfigsV2Response,
   BatchGetDeveloperProductConfigsResponse,
@@ -47,6 +49,13 @@ export class DeveloperProductsApiClient {
   ): Promise<ListDeveloperProductsResponse> {
     return this.developerProductsApi.developerProductsApiListDeveloperProductsCursored(
       request,
+      options,
+    );
+  }
+
+  getDeveloperProductDetails(productId: number, options: RequestInit = {}) {
+    return this.developerProductsApi.developerProductsApiGetDeveloperProductDetails(
+      { productId },
       options,
     );
   }
