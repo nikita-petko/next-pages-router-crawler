@@ -42,6 +42,7 @@ import {
   FlowTypes,
   FormField,
   HIGH_BUDGET_WARNING_TEXT,
+  IMAGE_ONLY_REACH_BID_TYPES,
   REACH_BID_TYPE_OPTIONS,
   ReachAdFormat,
   VIDEO_ONLY_REACH_BID_TYPES,
@@ -682,10 +683,10 @@ const BudgetSection = () => {
                   onValueChange={(newValue) => {
                     const nextBidType = Number(newValue) as ServerAdSetBidType;
                     onChange(nextBidType);
-                    // CPV2 charges per 2-second video view, so it can only run on
-                    // the 1x2 video format. Switch the format over rather than
-                    // leaving the form in a combination the backend rejects; the
-                    // 2x1 radio is disabled for as long as CPV2 stays selected.
+                    // CPV2 can only run on the 1x2 video format; CPM can only run
+                    // on 2x1. Switch the format over rather than leaving a pair
+                    // the backend rejects; the other radio is disabled for as
+                    // long as that bid type stays selected.
                     if (
                       isOneByTwoTileCreationEnabled &&
                       VIDEO_ONLY_REACH_BID_TYPES.includes(nextBidType) &&
@@ -697,6 +698,19 @@ const BudgetSection = () => {
                       });
                       applyReachCreativeFormatChange({
                         nextFormat: ReachAdFormat.VERTICAL_1X2,
+                        setValue,
+                      });
+                    } else if (
+                      isOneByTwoTileCreationEnabled &&
+                      IMAGE_ONLY_REACH_BID_TYPES.includes(nextBidType) &&
+                      creativeFormat === ReachAdFormat.VERTICAL_1X2
+                    ) {
+                      setValue(FormField.CREATIVE_FORMAT, ReachAdFormat.HORIZONTAL_2X1, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                      applyReachCreativeFormatChange({
+                        nextFormat: ReachAdFormat.HORIZONTAL_2X1,
                         setValue,
                       });
                     }

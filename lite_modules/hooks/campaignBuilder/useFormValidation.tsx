@@ -177,8 +177,12 @@ export const useFormValidation = (): Resolver<FormType> => {
           }
         }
 
-        // Headline validation
-        if (!data[FormField.HEADLINE]) {
+        // Headline is required only for a clickout 1x2 ad. 2x1 and a 1x2 that
+        // drives to the experience treat it as optional.
+        const isClickout =
+          data[FormField.CREATIVE_FORMAT] === ReachAdFormat.VERTICAL_1X2 &&
+          !!data[FormField.IS_BRAND_CLICKOUT];
+        if (isClickout && !data[FormField.HEADLINE]) {
           addIssue({
             code: 'custom',
             message: translate('Validation.HeadlineRequired'),
@@ -228,9 +232,8 @@ export const useFormValidation = (): Resolver<FormType> => {
             });
           }
 
-          // Opting into a brand clickout without giving a URL would quietly produce an
-          // ordinary experience-targeted ad that has also lost its subtitle, so the URL
-          // is required once the box is checked rather than optional.
+          // Opting into a brand clickout without a URL would produce an
+          // experience-targeted 1x2 instead of the clickout the advertiser chose.
           if (data[FormField.IS_BRAND_CLICKOUT] && !data[FormField.CLICK_DESTINATION]?.trim()) {
             addIssue({
               code: 'custom',

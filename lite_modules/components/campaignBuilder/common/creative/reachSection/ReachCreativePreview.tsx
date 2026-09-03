@@ -41,6 +41,9 @@ const ReachCreativePreview = () => {
   const experience = useWatch<FormType, typeof FormField.EXPERIENCE>({
     name: FormField.EXPERIENCE,
   });
+  const isBrandClickout = useWatch<FormType, typeof FormField.IS_BRAND_CLICKOUT>({
+    name: FormField.IS_BRAND_CLICKOUT,
+  });
   const videos = useWatch<FormType, typeof FormField.VIDEOS>({
     name: FormField.VIDEOS,
   });
@@ -54,6 +57,9 @@ const ReachCreativePreview = () => {
   const firstLogo = logoAssets.filter((logo) => logo.isSelected)[0];
   const firstAttributionThumbnail = attributionThumbnails?.filter((item) => item.isSelected)[0];
   const isVerticalFormat = creativeFormat === ReachAdFormat.VERTICAL_1X2;
+  // Clickout ads ignore the game, so experience name / maturity defaults are
+  // only for an experience-targeted 1x2.
+  const applyExperienceCopyDefaults = isVerticalFormat && !isBrandClickout;
   // Same predicate useTransformFormToCampaign uses to pick the ad's video asset,
   // so the preview renders the media that actually ships.
   const finishedVideo = videos?.find(
@@ -66,7 +72,9 @@ const ReachCreativePreview = () => {
         onClick={() =>
           openReachCreativePreviewDialog({
             ageRating,
+            applyExperienceCopyDefaults,
             backgroundAssetId: firstImage?.assetId,
+            experienceName: applyExperienceCopyDefaults ? experience?.universe_name : undefined,
             headline,
             logoAspectRatio: firstLogo?.aspectRatio,
             logoAssetId: firstLogo?.assetId,

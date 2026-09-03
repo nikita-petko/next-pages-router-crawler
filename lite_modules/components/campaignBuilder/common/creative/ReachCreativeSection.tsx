@@ -29,9 +29,11 @@ import {
   DEFAULT_SUBTITLE_MAX_LENGTH,
   FlowTypes,
   FormField,
+  IMAGE_ONLY_REACH_BID_TYPES,
   MAX_ATTRIBUTION_THUMBNAIL_SELECTIONS,
   MAX_LOGO_SELECTIONS,
   REACH_CTA_OPTIONS,
+  REACH_JOIN_CTA_DROPDOWN_VALUE,
   ReachAdFormat,
   ReachCtaButtonLabelKey,
   VIDEO_ONLY_REACH_BID_TYPES,
@@ -123,11 +125,11 @@ const ReachCreativeSection = ({
   const videos = useWatch<FormType, typeof FormField.VIDEOS>({ name: FormField.VIDEOS });
   const bidType = useWatch<FormType, typeof FormField.BID_TYPE>({ name: FormField.BID_TYPE });
   const isVerticalFormat = creativeFormat === ReachAdFormat.VERTICAL_1X2;
-  // A 1x2 tile either drives to an external site or carries a subtitle — the attribution
-  // bar a clickout renders sits where the subtitle would go, so the two are exclusive.
-  // Only the vertical format can clickout at all; the backend rejects clickout_url on 2x1.
+  // Clickout is 1x2-only; the backend rejects clickout_url on 2x1. Checking it makes
+  // headline required, surfaces the optional subtitle, and unlocks View/Buy/Get/Subscribe.
   const isBrandClickoutSelected = isVerticalFormat && !!isBrandClickout;
   const isVideoOnlyBidType = !!bidType && VIDEO_ONLY_REACH_BID_TYPES.includes(bidType);
+  const isImageOnlyBidType = !bidType || IMAGE_ONLY_REACH_BID_TYPES.includes(bidType);
   // 1x2 uses a single poster image for the video ad; 2x1 can select more.
   const maxAllowedThumbnails = isVerticalFormat ? 1 : maxAllowedThumbnailsFromMetadata;
 
@@ -327,15 +329,16 @@ const ReachCreativeSection = ({
                 <div className='flex flex-row gap-large'>
                   <Radio
                     // CPV2 charges per 2-second video view, so it has nothing to
-                    // measure on the 2x1 image format. The bid-type picker offers
-                    // both types unconditionally and this is the side that gives,
-                    // letting an advertiser lead with how they want to be charged.
+                    // measure on the 2x1 image format. Picking CPV2 disables 2x1.
                     isDisabled={editMode || isVideoOnlyBidType}
                     label={translateCampaign('Label.Reach2x1Horizontal')}
                     value={ReachAdFormat.HORIZONTAL_2X1}
                   />
                   <Radio
-                    isDisabled={editMode}
+                    // CPM is the 2x1 (image) bid type. Picking it disables 1x2
+                    // rather than leaving a video format selected with nothing
+                    // to charge per view.
+                    isDisabled={editMode || isImageOnlyBidType}
                     label={translateCampaign('Label.Reach1x2Vertical')}
                     value={ReachAdFormat.VERTICAL_1X2}
                   />
@@ -489,12 +492,18 @@ const ReachCreativeSection = ({
                     }
                     const isChecked = checked === true;
                     onChange(isChecked);
-                    // Empty whichever of the two mutually exclusive fields just became
-                    // unreachable, so a hidden value can never reach the payload. Cleared
-                    // to '' rather than undefined because the input unmounts here, and
-                    // react-hook-form restores a field's default value on remount when
-                    // its current value is undefined.
-                    setValue(isChecked ? FormField.SUBTITLE : FormField.CLICK_DESTINATION, '');
+                    if (isChecked) {
+                      // Clickout ads pick a real CTA (View/Buy/Get/Subscribe).
+                      setValue(FormField.CTA_BUTTON_TYPE, DEFAULT_REACH_CTA_BUTTON_TYPE);
+                    } else {
+                      // Join is a UI-only choice that maps to leaving the CTA unset.
+                      // Cleared to '' rather than undefined because the URL/subtitle
+                      // inputs unmount here, and react-hook-form restores a field's
+                      // default value on remount when its current value is undefined.
+                      setValue(FormField.CLICK_DESTINATION, '');
+                      setValue(FormField.SUBTITLE, '');
+                      setValue(FormField.CTA_BUTTON_TYPE, undefined);
+                    }
                   }}
                   placement='Start'
                   size='Small'
@@ -563,7 +572,9 @@ const ReachCreativeSection = ({
                   })}
                   id='headline'
                   isDisabled={editMode}
-                  label={translateCampaign('Label.Headline')}
+                  label={translateCampaign(
+                    isBrandClickoutSelected ? 'Label.Headline' : 'Label.HeadlineOptional',
+                  )}
                   size='Medium'
                 />
               </div>
@@ -571,8 +582,8 @@ const ReachCreativeSection = ({
           }}
         />
 
-        {/* Subtitle — a brand clickout renders the attribution bar in its place */}
-        {!isBrandClickoutSelected && (
+        {/* Subtitle — optional, and only collected on a clickout 1x2 ad */}
+        {isBrandClickoutSelected && (
           <Controller
             control={control}
             name={FormField.SUBTITLE}
@@ -600,9 +611,9 @@ const ReachCreativeSection = ({
           />
         )}
 
-        {/* CTA button text — 1x2 vertical (video) format only. The option labels come
-            from the Ads.Serving namespace so the picker, the preview, and the served
-            ad all read the same string. */}
+        {/* CTA button text — 1x2 vertical (video) format only. Clickout ads pick a
+            served Ads.Serving label; a non-clickout ad can only pick Join, which
+            maps to leaving cta_button_type unset. */}
         {isVerticalFormat && (
           <Controller
             control={control}
@@ -614,23 +625,36 @@ const ReachCreativeSection = ({
                 <Dropdown
                   isDisabled={editMode}
                   label={translateCampaign('Label.CtaButtonText')}
-                  // Dropdown values are strings; the form field is the numeric
-                  // CtaButtonType, so it round-trips through String/Number.
+                  // Dropdown values are strings; clickout options are the numeric
+                  // CtaButtonType, Join is a UI sentinel that stores undefined.
                   onValueChange={(newValue) => {
-                    onChange(Number(newValue));
+                    onChange(
+                      newValue === REACH_JOIN_CTA_DROPDOWN_VALUE ? undefined : Number(newValue),
+                    );
                   }}
                   placeholder={translateCampaign('Label.CtaButtonText')}
                   size='Medium'
-                  value={String(value ?? DEFAULT_REACH_CTA_BUTTON_TYPE)}>
+                  value={
+                    isBrandClickoutSelected
+                      ? String(value ?? DEFAULT_REACH_CTA_BUTTON_TYPE)
+                      : REACH_JOIN_CTA_DROPDOWN_VALUE
+                  }>
                   <Menu>
                     <MenuSection>
-                      {REACH_CTA_OPTIONS.map((option) => (
+                      {isBrandClickoutSelected ? (
+                        REACH_CTA_OPTIONS.map((option) => (
+                          <MenuItem
+                            key={option}
+                            title={translateAdsServing(ReachCtaButtonLabelKey[option])}
+                            value={String(option)}
+                          />
+                        ))
+                      ) : (
                         <MenuItem
-                          key={option}
-                          title={translateAdsServing(ReachCtaButtonLabelKey[option])}
-                          value={String(option)}
+                          title={translateCampaign('Action.Join')}
+                          value={REACH_JOIN_CTA_DROPDOWN_VALUE}
                         />
-                      ))}
+                      )}
                     </MenuSection>
                   </Menu>
                 </Dropdown>

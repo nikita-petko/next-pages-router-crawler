@@ -13,7 +13,6 @@ import {
   DEFAULT_REACH_BID_DISCOUNT_BPS,
   DEFAULT_REACH_BID_TYPE,
   DEFAULT_REACH_BID_VALUE,
-  DEFAULT_REACH_CTA_BUTTON_TYPE,
   DEFAULT_REACH_FREQUENCY_CAPPING_DURATION_DAYS,
   DEFAULT_REACH_FREQUENCY_CAPPING_VALUE,
   FormField,
@@ -60,16 +59,19 @@ export const applyReachCreativeFormatChange = ({
   if (nextFormat === ReachAdFormat.HORIZONTAL_2X1) {
     // 2x1 (image) rejects a clickout URL, so drop the click destination, the opt-in
     // that reveals it, and the attribution bar assets that only the clickout
-    // experience renders.
+    // experience renders. Subtitle is a clickout-only field.
     setValue(FormField.CLICK_DESTINATION, undefined);
     setValue(FormField.IS_BRAND_CLICKOUT, false);
     setValue(FormField.ATTRIBUTION_THUMBNAILS, []);
+    setValue(FormField.SUBTITLE, '');
     // 2x1 CTA text comes from the max-reach tile-variant experiment, not from an
     // advertiser choice.
     setValue(FormField.CTA_BUTTON_TYPE, undefined);
     return;
   }
-  setValue(FormField.CTA_BUTTON_TYPE, DEFAULT_REACH_CTA_BUTTON_TYPE);
+  // 1x2 without a clickout only offers Join, which maps to leaving the CTA unset.
+  setValue(FormField.CTA_BUTTON_TYPE, undefined);
+  setValue(FormField.SUBTITLE, '');
 };
 
 export const applyOffPlatformSpendFormValues = ({
@@ -200,7 +202,7 @@ export const applyObjectiveChange = ({
       setValue(FormField.SUBTITLE, undefined);
       setValue(FormField.LOGO_ASSETS, []);
       setValue(FormField.ATTRIBUTION_THUMBNAILS, []);
-      setValue(FormField.CTA_BUTTON_TYPE, DEFAULT_REACH_CTA_BUTTON_TYPE);
+      setValue(FormField.CTA_BUTTON_TYPE, undefined);
       setValue(FormField.DISCOUNT, DEFAULT_REACH_BID_DISCOUNT_BPS);
     },
     [ServerCampaignObjectiveType.SPEND]: () => {

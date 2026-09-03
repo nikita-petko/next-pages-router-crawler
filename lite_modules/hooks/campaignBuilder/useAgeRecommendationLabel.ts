@@ -2,19 +2,10 @@ import { useEffect, useState } from 'react';
 
 import { MATURITY_PLACEHOLDER } from '@constants/campaignBuilder';
 import {
-  type AgeRecommendation,
+  formatAgeRecommendationLabel,
   getAgeRecommendation,
 } from '@services/experienceGuidelines/getAgeRecommendationService';
 import { CaptureException } from '@utils/error';
-
-// Mirrors the experience details page (web-frontend
-// AgeRecommendationTitle / ContentMaturityLabel), which renders the maturity
-// bracket as `displayNameWithHeaderShort ?? displayName` — a label the backend
-// has already formatted (e.g. "Maturity: Minimal").
-const formatAgeRecommendationLabel = (recommendation: AgeRecommendation | undefined): string => {
-  const label = (recommendation?.displayNameWithHeaderShort ?? recommendation?.displayName)?.trim();
-  return label || MATURITY_PLACEHOLDER;
-};
 
 /**
  * Resolves the maturity label for the reach creative preview by fetching the

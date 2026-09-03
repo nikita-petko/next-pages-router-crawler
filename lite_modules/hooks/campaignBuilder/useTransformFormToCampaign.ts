@@ -18,6 +18,7 @@ import {
 import { EntityType } from '@constants/entity';
 import type { FormType as AdvancedTargetingFormType } from '@hooks/campaignBuilder/advancedTargetingFormSchema';
 import type { FormType } from '@hooks/campaignBuilder/baseFormSchema';
+import { getCachedAgeRecommendationLabel } from '@services/experienceGuidelines/getAgeRecommendationService';
 import { useAppStore } from '@stores/appStoreProvider';
 import { useCampaignBuilderStore } from '@stores/campaignBuilderStoreProvider';
 import { ServerAdSetBidType } from '@type/adSet';
@@ -26,6 +27,7 @@ import { UploadedVideoType, VideoUploadState } from '@type/fileUpload';
 import { FormatTargetingCriteriaRequestJson } from '@utils/advancedTargeting';
 import { MicroUsdToUsd, UsdToMicroUsd } from '@utils/currency';
 import { ConvertEntityTypeEnumToString } from '@utils/enumToString';
+import { resolveOneByTwoTileServedCopy } from '@utils/reachOneByTwoCopy';
 import { GetTimezoneObjFromEnum, GetValidatedTimezoneDbName } from '@utils/timezone';
 
 interface UseTransformFormToCampaignParams {
@@ -165,16 +167,38 @@ export const useTransformFormToCampaign = ({
     const attributionThumbnailAssetId =
       clickoutUrl !== undefined ? selectedAttributionThumbnail : undefined;
 
-    // The CTA button is a 1x2-only choice; 2x1 ads take their button text from
-    // the max-reach tile-variant experiment, so sending it there would be a
-    // forbidden field. Only the format gates it — unlike the attribution
-    // thumbnail, a 1x2 ad without a clickout URL still renders a CTA.
-    const ctaButtonType = isVerticalFormat ? data[FormField.CTA_BUTTON_TYPE] : undefined;
+    // The CTA button is a 1x2 clickout choice; a 1x2 ad that is not a clickout
+    // maps Join to leaving the field unset, and 2x1 ads take their button text
+    // from the max-reach tile-variant experiment.
+    const ctaButtonType =
+      isVerticalFormat && clickoutUrl !== undefined ? data[FormField.CTA_BUTTON_TYPE] : undefined;
 
-    // A clickout ad shows the attribution bar where the subtitle would sit, so the two
-    // never ship together. Enforced here rather than relying on the form having cleared
-    // the field, so a campaign cloned from older data cannot send both.
-    const subtitle = clickoutUrl !== undefined ? undefined : data[FormField.SUBTITLE];
+    // Subtitle is optional and only collected on a clickout 1x2 ad. Non-clickout
+    // 1x2 still needs a subtitle on the served tile; see the temp fill below.
+    const authoredSubtitle = clickoutUrl !== undefined ? data[FormField.SUBTITLE] : undefined;
+
+    let headline = data[FormField.HEADLINE] || '';
+    let subtitle = authoredSubtitle;
+
+    // TEMPORARY: lua-apps 1x2 does not yet default empty headline/subtitle to
+    // the experience name and maturity label on non-clickout ads. Persist those
+    // values so the served tile matches the builder preview. Clickout ads ignore
+    // the game, so they never get this fill.
+    //
+    // REMOVE this block (and resolveOneByTwoTileServedCopy) once that client
+    // change has rolled out. Keep resolveOneByTwoTilePreviewCopy — the web
+    // preview still needs the defaults.
+    if (isVerticalFormat && clickoutUrl === undefined) {
+      const servedCopy = resolveOneByTwoTileServedCopy({
+        ageRating: getCachedAgeRecommendationLabel(data[FormField.EXPERIENCE]?.universe_id),
+        applyExperienceCopyDefaults: true,
+        experienceName: data[FormField.EXPERIENCE]?.universe_name,
+        headline,
+        subtitle: authoredSubtitle,
+      });
+      headline = servedCopy.headline;
+      subtitle = servedCopy.subtitle;
+    }
 
     // 1x2 vertical reach is a video ad: the primary asset is the uploaded video
     // (asset_type VIDEO) and the selected image is its poster/fallback
@@ -196,7 +220,7 @@ export const useTransformFormToCampaign = ({
             asset_type: ServerAdAssetType.VIDEO,
             thumbnail_asset_id: assetId,
           }),
-          headline: data[FormField.HEADLINE] || '',
+          headline,
           ...(attributionThumbnailAssetId !== undefined && {
             attribution_thumbnail_asset_id: attributionThumbnailAssetId,
           }),

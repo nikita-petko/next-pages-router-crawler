@@ -33,11 +33,18 @@ enum VerticalPreviewTab {
 interface ReachCreativePreviewData {
   /** Only the campaign builder has age-rating data (via `useAgeRecommendationLabel`). */
   ageRating?: string;
+  /**
+   * When true, empty 1x2 copy falls back to the experience name and maturity
+   * label. Only set for experience-targeted (non-clickout) ads.
+   */
+  applyExperienceCopyDefaults?: boolean;
   /** 1x2 only — the ad's 1:1 attribution thumbnail. */
   attributionThumbnailAssetId?: number;
   backgroundAssetId?: number;
   /** 1x2 only — advertiser-selected call-to-action button. */
   ctaButtonType?: ServerCtaButtonType;
+  /** Experience name. 1x2 preview uses this as the headline when copy is empty. */
+  experienceName?: string;
   headline?: string;
   /**
    * Renders the vertical (video) tile instead of the home-feed tile. Only the
@@ -102,9 +109,12 @@ const ReachCreativePreviewDialog = ({
           </Tabs>
           <div className={styles.verticalTileStage}>
             <ReachVerticalTilePreview
+              ageRating={reachPreview.ageRating}
+              applyExperienceCopyDefaults={reachPreview.applyExperienceCopyDefaults}
               attributionThumbnailAssetId={reachPreview.attributionThumbnailAssetId}
               backgroundAssetId={reachPreview.backgroundAssetId}
               ctaButtonType={reachPreview.ctaButtonType}
+              experienceName={reachPreview.experienceName}
               headline={reachPreview.headline}
               logoAssetId={reachPreview.logoAssetId}
               previewProps={{ disableCtaInteraction: true }}

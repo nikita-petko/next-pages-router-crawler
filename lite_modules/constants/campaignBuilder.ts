@@ -208,20 +208,22 @@ export enum ReachAdFormat {
 export const DEFAULT_REACH_AD_FORMAT = ReachAdFormat.HORIZONTAL_2X1;
 export const DEFAULT_REACH_BID_TYPE = ServerAdSetBidType.CPM_CHARGE;
 
-// Bid types offered on Max Reach, in the order the picker lists them. Both are
-// always selectable; the constraint runs the other way, since CPV2 (cost per
-// 2-second video view) is only meaningful on a video ad. Picking it therefore
-// restricts the format to 1x2 rather than the format restricting the bid type,
-// so an advertiser who knows they want to buy on CPV2 can start from that
-// choice instead of having to discover it behind the format selector.
+// Bid types offered on Max Reach, in the order the picker lists them. Each type
+// is exclusive to one format: CPM on 2x1 (image), CPV2 on 1x2 (video). Picking
+// a type switches the format over, and the other format's radio is disabled for
+// as long as that type stays selected.
 export const REACH_BID_TYPE_OPTIONS = [ServerAdSetBidType.CPM_CHARGE, ServerAdSetBidType.CPV2];
 
 // Bid types that can only run on the 1x2 vertical (video) format.
 export const VIDEO_ONLY_REACH_BID_TYPES: ServerAdSetBidType[] = [ServerAdSetBidType.CPV2];
 
-// Call-to-action button the advertiser picks for a 1x2 vertical (video) reach ad,
-// in the order the picker lists them. 2x1 ads have no picker — their CTA is driven
-// by the max-reach tile-variant experiment instead.
+// Bid types that can only run on the 2x1 horizontal (image) format.
+export const IMAGE_ONLY_REACH_BID_TYPES: ServerAdSetBidType[] = [ServerAdSetBidType.CPM_CHARGE];
+
+// Call-to-action button the advertiser picks for a 1x2 clickout ad, in the order
+// the picker lists them. A 1x2 ad that is not a clickout can only pick Join,
+// which is a UI-only choice that maps to leaving cta_button_type unset. 2x1 ads
+// have no picker — their CTA is driven by the max-reach tile-variant experiment.
 export const REACH_CTA_OPTIONS = [
   ServerCtaButtonType.VIEW,
   ServerCtaButtonType.BUY,
@@ -230,6 +232,10 @@ export const REACH_CTA_OPTIONS = [
 ];
 
 export const DEFAULT_REACH_CTA_BUTTON_TYPE = ServerCtaButtonType.VIEW;
+
+// Dropdown value for the Join CTA. Not a CtaButtonType — the form stores
+// `undefined` and the create payload omits the field.
+export const REACH_JOIN_CTA_DROPDOWN_VALUE = 'join';
 
 // Keys live in the Ads.Serving namespace, not a campaign-builder one, so the
 // preview renders the exact string ads-root will serve for the same enum value.
