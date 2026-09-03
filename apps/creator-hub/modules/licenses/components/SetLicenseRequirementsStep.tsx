@@ -13,6 +13,7 @@ import { PageLoading } from '@modules/miscellaneous/components';
 import { Flex } from '@modules/miscellaneous/components/Flex';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import SelectedExperienceContext from '../context/SelectedExperienceContext';
+import useSalesAvenueStepValidation from '../hooks/useSalesAvenueStepValidation';
 import { getApplyFlowRevShareOnActivation } from '../utils/getApplyFlowRevShareOnActivation';
 import {
   getRevShareTimingPreference,
@@ -21,7 +22,6 @@ import {
   type RevShareTiming,
 } from '../utils/licenseApplicationRequirementsFieldsUtils';
 import type { CollaborationSalesAvenues } from '../utils/salesAvenue';
-import { hasResolvedSalesAvenue } from '../utils/salesAvenue';
 import type { LicenseApplicationRequirementsFormValues } from './LicenseApplicationRequirementsFields';
 import LicenseApplicationRequirementsFields from './LicenseApplicationRequirementsFields';
 
@@ -95,11 +95,12 @@ const SetLicenseRequirementsStep: FunctionComponent<SetLicenseRequirementsStepPr
     getRevShareTimingPreference(revShareValue, licenseRevShareTiming, isRevShareNowTimingPreferred),
   );
 
-  const [salesAvenueState, setSalesAvenueState] = useState({
-    isPending: false,
-    isComplete: false,
+  const salesAvenueValidation = useSalesAvenueStepValidation({
+    enabled: showCollaborationSalesAvenueFields,
+    salesAvenues: collaborationSalesAvenues,
+    onChange: setCollaborationSalesAvenues,
   });
-  const [showSalesAvenueRequiredErrors, setShowSalesAvenueRequiredErrors] = useState(false);
+  const { isNextDisabled, validate: validateSalesAvenues } = salesAvenueValidation;
 
   const { control, getValues, trigger } = useForm<LicenseApplicationRequirementsFormValues>({
     defaultValues: {
@@ -114,14 +115,6 @@ const SetLicenseRequirementsStep: FunctionComponent<SetLicenseRequirementsStepPr
     );
   }, [isRevShareNowTimingPreferredInternal, revShareOnActivation, setRevShareNowTimingPreference]);
 
-  const handleCollaborationSalesAvenuesChange = useCallback(
-    (nextSalesAvenues: CollaborationSalesAvenues) => {
-      setShowSalesAvenueRequiredErrors(false);
-      setCollaborationSalesAvenues(nextSalesAvenues);
-    },
-    [setCollaborationSalesAvenues],
-  );
-
   const persistRequirementsState = useCallback(() => {
     persistRevShareNowTimingPreference();
     if (isTimeLimitedLicense) {
@@ -130,7 +123,7 @@ const SetLicenseRequirementsStep: FunctionComponent<SetLicenseRequirementsStepPr
   }, [getValues, isTimeLimitedLicense, persistRevShareNowTimingPreference, setDateRange]);
 
   const onClickNext = useCallback(async () => {
-    if (showCollaborationSalesAvenueFields && salesAvenueState.isPending) {
+    if (isNextDisabled) {
       return;
     }
 
@@ -145,8 +138,7 @@ const SetLicenseRequirementsStep: FunctionComponent<SetLicenseRequirementsStepPr
       return;
     }
 
-    if (showCollaborationSalesAvenueFields && !hasResolvedSalesAvenue(collaborationSalesAvenues)) {
-      setShowSalesAvenueRequiredErrors(true);
+    if (!validateSalesAvenues()) {
       return;
     }
 
@@ -160,7 +152,6 @@ const SetLicenseRequirementsStep: FunctionComponent<SetLicenseRequirementsStepPr
     persistRequirementsState();
     onNext();
   }, [
-    collaborationSalesAvenues,
     isRevShareNowTimingPreferredInternal,
     isTimeLimitedLicense,
     licenseDuration?.durationType,
@@ -168,9 +159,9 @@ const SetLicenseRequirementsStep: FunctionComponent<SetLicenseRequirementsStepPr
     persistRequirementsState,
     revShareOnActivation,
     revShareValue,
-    salesAvenueState.isPending,
-    showCollaborationSalesAvenueFields,
+    isNextDisabled,
     trigger,
+    validateSalesAvenues,
   ]);
 
   const onClickPrev = useCallback(() => {
@@ -206,9 +197,11 @@ const SetLicenseRequirementsStep: FunctionComponent<SetLicenseRequirementsStepPr
         showCollaborationSalesAvenueFields={showCollaborationSalesAvenueFields}
         universeId={selectedExperienceId}
         collaborationSalesAvenues={collaborationSalesAvenues}
-        onCollaborationSalesAvenuesChange={handleCollaborationSalesAvenuesChange}
-        onSalesAvenueStateChange={setSalesAvenueState}
-        showSalesAvenueRequiredErrors={showSalesAvenueRequiredErrors}
+        onCollaborationSalesAvenuesChange={salesAvenueValidation.handleChange}
+        onSalesAvenueStateChange={salesAvenueValidation.setState}
+        showSalesAvenueRequiredErrors={salesAvenueValidation.showRequiredErrors}
+        showSalesAvenueUnsubmittedErrors={salesAvenueValidation.showUnsubmittedErrors}
+        onSalesAvenueUnsubmittedErrorReset={salesAvenueValidation.resetUnsubmittedErrors}
       />
 
       {/* TODO - aquach - remove marginTop once StickyFooter is implemented */}
@@ -231,6 +224,7 @@ const SetLicenseRequirementsStep: FunctionComponent<SetLicenseRequirementsStepPr
           <Button
             variant='contained'
             onClick={handleNextClick}
+            disabled={isNextDisabled}
             data-testid='apply-to-license-step-next'>
             {translate('Action.Next')}
           </Button>

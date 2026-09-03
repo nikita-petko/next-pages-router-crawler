@@ -1,10 +1,10 @@
 import type { Dispatch, FunctionComponent, SetStateAction } from 'react';
-import { useState, useCallback, useContext, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import type { LicenseDurationResponse } from '@rbx/client-content-licensing-api/v1';
 import {
   LicenseDurationType,
-  LicenseType,
+  type LicenseType,
   ModerationStatus,
 } from '@rbx/client-content-licensing-api/v1';
 import { useTranslation } from '@rbx/intl';
@@ -20,7 +20,6 @@ import {
 import { PageLoading } from '@modules/miscellaneous/components';
 import { Flex } from '@modules/miscellaneous/components/Flex';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
-import SelectedExperienceContext from '../context/SelectedExperienceContext';
 import useContentModerationMutation from '../hooks/useContentModerationMutation';
 import { CREATOR_PITCH_HREF } from '../urls';
 import { MIN_CREATOR_PITCH_LENGTH, MAX_CREATOR_PITCH_LENGTH } from '../utils/constants';
@@ -36,8 +35,6 @@ import {
 } from '../utils/licenseApplicationRequirementsFieldsUtils';
 import getKeyFromModerationReason from '../utils/moderationReason';
 import { getIsNonZeroRevShareFromValue } from '../utils/revShare';
-import type { CollaborationSalesAvenues } from '../utils/salesAvenue';
-import { hasResolvedSalesAvenue } from '../utils/salesAvenue';
 import CreatorPitchAttachmentsField, {
   type CreatorPitchAttachmentsFieldHandle,
 } from './CreatorPitchAttachmentsField';
@@ -64,8 +61,6 @@ interface SelectCreationReadinessStepProps {
   licenseType?: LicenseType;
   enableCollaborationLicensing?: boolean;
   enableMarketplaceSalesLicensing?: boolean;
-  collaborationSalesAvenues: CollaborationSalesAvenues;
-  setCollaborationSalesAvenues: (salesAvenues: CollaborationSalesAvenues) => void;
   contentMode?: SelectCreationReadinessContentMode;
 }
 
@@ -92,8 +87,6 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
   licenseType,
   enableCollaborationLicensing = false,
   enableMarketplaceSalesLicensing = false,
-  collaborationSalesAvenues,
-  setCollaborationSalesAvenues,
   contentMode = 'full',
   onNext,
   onPrev,
@@ -101,17 +94,7 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
 }) => {
   const { translate, translateHTML } = useTranslation();
   const { isFetched } = useSettings();
-  const { selectedExperienceId } = useContext(SelectedExperienceContext);
   const isPitchOnly = contentMode === 'pitchOnly';
-  const showCollaborationSalesAvenueFields =
-    !isPitchOnly &&
-    enableCollaborationLicensing &&
-    licenseType === LicenseType.CollaborationInExperienceSale;
-  const [salesAvenueState, setSalesAvenueState] = useState({
-    isPending: false,
-    isComplete: false,
-  });
-  const [showSalesAvenueRequiredErrors, setShowSalesAvenueRequiredErrors] = useState(false);
   const creatorPitchAttachmentsFieldRef = useRef<CreatorPitchAttachmentsFieldHandle>(null);
 
   const revShareOnActivation = getApplyFlowRevShareOnActivation({
@@ -151,20 +134,8 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
 
   const onClickNext = useCallback(async () => {
     if (!isPitchOnly) {
-      if (showCollaborationSalesAvenueFields && salesAvenueState.isPending) {
-        return;
-      }
-
-      const hasResolvedSalesAvenueSelection = hasResolvedSalesAvenue(collaborationSalesAvenues);
-
-      let salesAvenuesValid = true;
-      if (showCollaborationSalesAvenueFields && !hasResolvedSalesAvenueSelection) {
-        setShowSalesAvenueRequiredErrors(true);
-        salesAvenuesValid = false;
-      }
-
       const formValid = await trigger();
-      if (!formValid || !salesAvenuesValid) {
+      if (!formValid) {
         return;
       }
 
@@ -197,9 +168,6 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
     }
   }, [
     isPitchOnly,
-    showCollaborationSalesAvenueFields,
-    salesAvenueState.isPending,
-    collaborationSalesAvenues,
     persistRevShareNowTimingPreference,
     getValues,
     contentModerationMutation,
@@ -237,14 +205,6 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
   const handleRevShareTimingChange = useCallback((timingEnum: RevShareTiming) => {
     setisRevShareNowTimingPreferredInternal(timingEnum);
   }, []);
-
-  const handleCollaborationSalesAvenuesChange = useCallback(
-    (nextSalesAvenues: CollaborationSalesAvenues) => {
-      setShowSalesAvenueRequiredErrors(false);
-      setCollaborationSalesAvenues(nextSalesAvenues);
-    },
-    [setCollaborationSalesAvenues],
-  );
 
   const handleClickNext = useCallback(() => {
     void onClickNext();
@@ -341,12 +301,6 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
           enableMarketplaceSalesLicensing={enableMarketplaceSalesLicensing}
           control={control}
           trigger={trigger}
-          showCollaborationSalesAvenueFields={showCollaborationSalesAvenueFields}
-          universeId={selectedExperienceId}
-          collaborationSalesAvenues={collaborationSalesAvenues}
-          onCollaborationSalesAvenuesChange={handleCollaborationSalesAvenuesChange}
-          onSalesAvenueStateChange={setSalesAvenueState}
-          showSalesAvenueRequiredErrors={showSalesAvenueRequiredErrors}
         />
       )}
 

@@ -15,18 +15,21 @@ import useSalesAvenueTextFieldStyles, {
   foundationInputRootClass,
 } from './SalesAvenueTextField.styles';
 
+export type SalesAvenueInputStatus = 'empty' | 'dirty' | 'resolving' | 'invalid' | 'resolved';
+
 export type SalesAvenueTextFieldProps = Omit<TTextFieldProps, 'onChange' | 'value' | 'label'> & {
   label?: TTextFieldProps['label'];
   universeId: number | null;
   productType: SalesAvenueProductType;
   value?: SalesAvenueSelection | null;
   onChange?: (value: SalesAvenueSelection | undefined) => void;
-  onPendingChange?: (isPending: boolean) => void;
-  onValidationErrorChange?: (hasValidationError: boolean) => void;
+  onInputStatusChange?: (status: SalesAvenueInputStatus) => void;
   /** Resets parent-managed duplicate errors when this field is edited, cleared, or submitted. */
   onDuplicateErrorReset?: () => void;
   showRequiredError?: boolean;
   requiredErrorMessage?: string;
+  showUnsubmittedError?: boolean;
+  unsubmittedErrorMessage?: string;
 };
 
 export const SalesAvenueTextField = React.forwardRef<HTMLDivElement, SalesAvenueTextFieldProps>(
@@ -39,11 +42,12 @@ export const SalesAvenueTextField = React.forwardRef<HTMLDivElement, SalesAvenue
       productType,
       value,
       onChange,
-      onPendingChange,
-      onValidationErrorChange,
+      onInputStatusChange,
       onDuplicateErrorReset,
       showRequiredError = false,
       requiredErrorMessage,
+      showUnsubmittedError = false,
+      unsubmittedErrorMessage,
       onBlur,
       onFocus,
       name,
@@ -69,13 +73,46 @@ export const SalesAvenueTextField = React.forwardRef<HTMLDivElement, SalesAvenue
     const setValidationError = useCallback(
       (code: string | undefined) => {
         setValidationErrorCode(code);
-        onValidationErrorChange?.(!!code);
+        if (code) {
+          onInputStatusChange?.('invalid');
+        }
       },
-      [onValidationErrorChange],
+      [onInputStatusChange],
     );
 
+    const handleResolved = useCallback(
+      (selection: SalesAvenueSelection | undefined) => {
+        if (selection) {
+          onInputStatusChange?.('resolved');
+        }
+        if (selection === undefined && value === undefined) {
+          return;
+        }
+        onChange?.(selection);
+      },
+      [onChange, onInputStatusChange, value],
+    );
+
+    const handlePendingChange = useCallback(
+      (isPending: boolean) => {
+        if (isPending) {
+          onInputStatusChange?.('resolving');
+        }
+      },
+      [onInputStatusChange],
+    );
+
+    const { inputValue, handleChange, handleSubmit, isLoading } = useSalesAvenueProductInput({
+      universeId,
+      productType,
+      resolvedId: value?.id,
+      onResolved: handleResolved,
+      onError: setValidationError,
+      onPendingChange: handlePendingChange,
+    });
+
     const validationErrorMessage = useMemo(() => {
-      if (showRequiredError && !value && !validationErrorCode) {
+      if (showRequiredError && !value && !validationErrorCode && inputValue.trim().length === 0) {
         return requiredErrorMessage ?? translate('Label.FieldIsRequired');
       }
       if (validationErrorCode === 'empty-product-id') {
@@ -95,6 +132,7 @@ export const SalesAvenueTextField = React.forwardRef<HTMLDivElement, SalesAvenue
       }
       return undefined;
     }, [
+      inputValue,
       productType,
       requiredErrorMessage,
       showRequiredError,
@@ -103,38 +141,22 @@ export const SalesAvenueTextField = React.forwardRef<HTMLDivElement, SalesAvenue
       value,
     ]);
 
-    const handleResolved = useCallback(
-      (selection: SalesAvenueSelection | undefined) => {
-        if (selection === undefined && value === undefined) {
-          return;
-        }
-        onChange?.(selection);
-      },
-      [onChange, value],
-    );
-
-    const { inputValue, handleChange, handleSubmit, isLoading } = useSalesAvenueProductInput({
-      universeId,
-      productType,
-      resolvedId: value?.id,
-      onResolved: handleResolved,
-      onError: setValidationError,
-      onPendingChange,
-    });
-
     const handleClear = useCallback(() => {
       onDuplicateErrorReset?.();
       handleChange('');
       onChange?.(undefined);
       setValidationError(undefined);
-    }, [handleChange, onChange, onDuplicateErrorReset, setValidationError]);
+      onInputStatusChange?.('empty');
+    }, [handleChange, onChange, onDuplicateErrorReset, onInputStatusChange, setValidationError]);
 
     const handleInputChange = useCallback(
       (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         onDuplicateErrorReset?.();
+        setValidationError(undefined);
         handleChange(event.target.value);
+        onInputStatusChange?.(event.target.value.trim().length > 0 ? 'dirty' : 'empty');
       },
-      [handleChange, onDuplicateErrorReset],
+      [handleChange, onDuplicateErrorReset, onInputStatusChange, setValidationError],
     );
 
     const handleAddClick = useCallback(() => {
@@ -148,27 +170,53 @@ export const SalesAvenueTextField = React.forwardRef<HTMLDivElement, SalesAvenue
           return;
         }
         event.preventDefault();
-        if (!disabled && !isLoading) {
+        if (
+          !disabled &&
+          universeId != null &&
+          !isLoading &&
+          inputValue.trim().length > 0 &&
+          validationErrorCode === undefined
+        ) {
           handleAddClick();
         }
       },
-      [disabled, handleAddClick, isLoading],
+      [disabled, handleAddClick, inputValue, isLoading, universeId, validationErrorCode],
     );
 
-    const showFormRequiredError = showRequiredError && !value && !validationErrorCode;
-    const showError = !!validationErrorCode || error || showFormRequiredError;
-    const helperText = validationErrorMessage ?? helperTextProp;
+    const showFormRequiredError =
+      showRequiredError && !value && !validationErrorCode && inputValue.trim().length === 0;
+    const showUnsubmittedInputError =
+      showUnsubmittedError && inputValue.trim().length > 0 && !validationErrorCode;
+    const showError =
+      !!validationErrorCode || error || showFormRequiredError || showUnsubmittedInputError;
+    const unsubmittedHelperText = showUnsubmittedInputError ? (
+      <>
+        {showRequiredError && (
+          <>
+            <span>{requiredErrorMessage ?? translate('Label.FieldIsRequired')}</span>
+            <br />
+          </>
+        )}
+        <span>{unsubmittedErrorMessage}</span>
+      </>
+    ) : undefined;
+    const helperText = unsubmittedHelperText ?? validationErrorMessage ?? helperTextProp;
+    const helperTextId = helperText && id ? `${id}-helper-text` : undefined;
     const isResolved = !!value?.name;
-    const isFieldDisabled = (disabled ?? false) || isLoading;
+    const isFieldDisabled = (disabled ?? false) || isLoading || universeId == null;
+    const isAddDisabled =
+      isFieldDisabled || inputValue.trim().length === 0 || validationErrorCode !== undefined;
     const showClearAffordance =
       !isFieldDisabled && (isResolved || isLoading || inputValue.length > 0);
 
     const textFieldInputProps = useMemo(
       () => ({
         'aria-label': placeholderText,
+        'aria-describedby': helperTextId,
+        'aria-invalid': showError || undefined,
         onKeyDown: handleKeyDown,
       }),
-      [handleKeyDown, placeholderText],
+      [handleKeyDown, helperTextId, placeholderText, showError],
     );
 
     const textFieldInputClasses = useMemo(
@@ -189,11 +237,11 @@ export const SalesAvenueTextField = React.forwardRef<HTMLDivElement, SalesAvenue
     const addButton = (
       <Button
         variant='contained'
-        color='secondary'
+        color='primaryBrand'
         size='large'
         className={classes.addButton}
         data-testid={id ? `${id}-add-button` : 'sales-avenue-add-button'}
-        disabled={isFieldDisabled}
+        disabled={isAddDisabled}
         loading={isLoading}
         onClick={handleAddClick}>
         {translate('Action.Add')}
@@ -227,7 +275,11 @@ export const SalesAvenueTextField = React.forwardRef<HTMLDivElement, SalesAvenue
             </div>
             {clearAffordance}
           </div>
-          {helperText ? <FormHelperText error={showError}>{helperText}</FormHelperText> : null}
+          {helperText ? (
+            <FormHelperText id={helperTextId} error={showError}>
+              {helperText}
+            </FormHelperText>
+          ) : null}
         </div>
       );
     }
@@ -260,7 +312,11 @@ export const SalesAvenueTextField = React.forwardRef<HTMLDivElement, SalesAvenue
             </div>
             {addButton}
           </div>
-          {helperText ? <FormHelperText error={showError}>{helperText}</FormHelperText> : null}
+          {helperText ? (
+            <FormHelperText id={helperTextId} error={showError}>
+              {helperText}
+            </FormHelperText>
+          ) : null}
         </div>
       </div>
     );

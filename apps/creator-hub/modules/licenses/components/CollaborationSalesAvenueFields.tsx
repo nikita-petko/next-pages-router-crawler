@@ -3,6 +3,9 @@ import { useCallback, useMemo, useState } from 'react';
 import { Link } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { Grid, Typography } from '@rbx/ui';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
 import {
   getTotalResolvedSalesAvenues,
@@ -13,7 +16,17 @@ import {
   type SalesAvenueSelection,
 } from '../utils/salesAvenue';
 import SalesAvenueResolvedListItem from './SalesAvenueResolvedListItem';
-import SalesAvenueTextField from './SalesAvenueTextField';
+import SalesAvenueTextField, { type SalesAvenueInputStatus } from './SalesAvenueTextField';
+
+type SalesAvenueInputStatuses = {
+  developerProduct: SalesAvenueInputStatus;
+  gamePass: SalesAvenueInputStatus;
+};
+
+const EMPTY_INPUT_STATUSES: SalesAvenueInputStatuses = {
+  developerProduct: 'empty',
+  gamePass: 'empty',
+};
 
 interface SalesAvenueSectionHeaderProps {
   label: string;
@@ -42,8 +55,14 @@ interface CollaborationSalesAvenueFieldsProps {
   universeId: number | null;
   salesAvenues: CollaborationSalesAvenues;
   onChange: (salesAvenues: CollaborationSalesAvenues) => void;
-  onStateChange?: (state: { isPending: boolean; isComplete: boolean }) => void;
+  onStateChange?: (state: {
+    isPending: boolean;
+    isComplete: boolean;
+    hasUnsubmittedInput: boolean;
+  }) => void;
   showRequiredErrors?: boolean;
+  showUnsubmittedErrors?: boolean;
+  onUnsubmittedErrorReset?: () => void;
 }
 
 const CollaborationSalesAvenueFields: FunctionComponent<CollaborationSalesAvenueFieldsProps> = ({
@@ -52,18 +71,33 @@ const CollaborationSalesAvenueFields: FunctionComponent<CollaborationSalesAvenue
   onChange,
   onStateChange,
   showRequiredErrors = false,
+  showUnsubmittedErrors = false,
+  onUnsubmittedErrorReset,
 }) => {
-  const { translate } = useTranslation();
-  const [gamePassPending, setGamePassPending] = useState(false);
-  const [developerProductPending, setDeveloperProductPending] = useState(false);
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
+  const [inputStatuses, setInputStatuses] =
+    useState<SalesAvenueInputStatuses>(EMPTY_INPUT_STATUSES);
   const [developerProductInputKey, setDeveloperProductInputKey] = useState(0);
   const [gamePassInputKey, setGamePassInputKey] = useState(0);
   const [developerProductDuplicateError, setDeveloperProductDuplicateError] = useState(false);
   const [gamePassDuplicateError, setGamePassDuplicateError] = useState(false);
-
   const totalResolved = getTotalResolvedSalesAvenues(salesAvenues);
   const inputsDisabled = totalResolved >= MAX_COLLABORATION_SALES_AVENUES;
+  const developerProductPending = inputStatuses.developerProduct === 'resolving';
+  const gamePassPending = inputStatuses.gamePass === 'resolving';
+  const developerProductHasUnsubmittedInput = inputStatuses.developerProduct === 'dirty';
+  const gamePassHasUnsubmittedInput = inputStatuses.gamePass === 'dirty';
   const showRequiredError = showRequiredErrors && !hasResolvedSalesAvenue(salesAvenues);
+  const unsubmittedErrorMessage = tPendingTranslation(
+    'Did you mean to add this ID?',
+    'Error shown beneath a sales avenue ID field when the user tries to continue without adding the typed ID.',
+    translationKey(
+      'Error.UnsubmittedCollaborationLicenseRevenueTarget',
+      TranslationNamespace.Licenses,
+    ),
+  );
   const developerProductsHref = useMemo(
     () =>
       universeId != null
@@ -82,7 +116,8 @@ const CollaborationSalesAvenueFields: FunctionComponent<CollaborationSalesAvenue
   const clearDuplicateErrors = useCallback(() => {
     setDeveloperProductDuplicateError(false);
     setGamePassDuplicateError(false);
-  }, []);
+    onUnsubmittedErrorReset?.();
+  }, [onUnsubmittedErrorReset]);
 
   const resetInputsAfterReachingCap = useCallback(() => {
     // Remount both inputs so leftover invalid/pending text cannot remain stuck in a disabled
@@ -91,30 +126,31 @@ const CollaborationSalesAvenueFields: FunctionComponent<CollaborationSalesAvenue
     setGamePassInputKey((current) => current + 1);
     setDeveloperProductDuplicateError(false);
     setGamePassDuplicateError(false);
-    setDeveloperProductPending(false);
-    setGamePassPending(false);
+    setInputStatuses(EMPTY_INPUT_STATUSES);
     onStateChange?.({
       isPending: false,
       isComplete: true,
+      hasUnsubmittedInput: false,
     });
   }, [onStateChange]);
 
   const notifyStateChange = useCallback(
     ({
-      gamePassPending: nextGamePassPending = gamePassPending,
-      developerProductPending: nextDeveloperProductPending = developerProductPending,
+      statuses: nextStatuses = inputStatuses,
       salesAvenues: nextSalesAvenues = salesAvenues,
     }: {
-      gamePassPending?: boolean;
-      developerProductPending?: boolean;
+      statuses?: SalesAvenueInputStatuses;
       salesAvenues?: CollaborationSalesAvenues;
     } = {}) => {
       onStateChange?.({
-        isPending: nextGamePassPending || nextDeveloperProductPending,
+        isPending:
+          nextStatuses.gamePass === 'resolving' || nextStatuses.developerProduct === 'resolving',
         isComplete: hasResolvedSalesAvenue(nextSalesAvenues),
+        hasUnsubmittedInput:
+          nextStatuses.gamePass === 'dirty' || nextStatuses.developerProduct === 'dirty',
       });
     },
-    [developerProductPending, gamePassPending, onStateChange, salesAvenues],
+    [inputStatuses, onStateChange, salesAvenues],
   );
 
   const handleDeveloperProductResolved = useCallback(
@@ -142,10 +178,13 @@ const CollaborationSalesAvenueFields: FunctionComponent<CollaborationSalesAvenue
         return;
       }
 
-      notifyStateChange({ salesAvenues: nextSalesAvenues });
+      notifyStateChange({
+        statuses: { ...inputStatuses, developerProduct: 'empty' },
+        salesAvenues: nextSalesAvenues,
+      });
       setDeveloperProductInputKey((current) => current + 1);
     },
-    [notifyStateChange, onChange, resetInputsAfterReachingCap, salesAvenues],
+    [inputStatuses, notifyStateChange, onChange, resetInputsAfterReachingCap, salesAvenues],
   );
 
   const handleGamePassResolved = useCallback(
@@ -173,10 +212,13 @@ const CollaborationSalesAvenueFields: FunctionComponent<CollaborationSalesAvenue
         return;
       }
 
-      notifyStateChange({ salesAvenues: nextSalesAvenues });
+      notifyStateChange({
+        statuses: { ...inputStatuses, gamePass: 'empty' },
+        salesAvenues: nextSalesAvenues,
+      });
       setGamePassInputKey((current) => current + 1);
     },
-    [notifyStateChange, onChange, resetInputsAfterReachingCap, salesAvenues],
+    [inputStatuses, notifyStateChange, onChange, resetInputsAfterReachingCap, salesAvenues],
   );
 
   const handleRemoveDeveloperProduct = useCallback(
@@ -203,20 +245,28 @@ const CollaborationSalesAvenueFields: FunctionComponent<CollaborationSalesAvenue
     [notifyStateChange, onChange, salesAvenues],
   );
 
-  const handleDeveloperProductPendingChange = useCallback(
-    (pending: boolean) => {
-      setDeveloperProductPending(pending);
-      notifyStateChange({ developerProductPending: pending });
+  const handleDeveloperProductInputStatusChange = useCallback(
+    (status: SalesAvenueInputStatus) => {
+      if (status === 'dirty') {
+        onUnsubmittedErrorReset?.();
+      }
+      const nextStatuses = { ...inputStatuses, developerProduct: status };
+      setInputStatuses(nextStatuses);
+      notifyStateChange({ statuses: nextStatuses });
     },
-    [notifyStateChange],
+    [inputStatuses, notifyStateChange, onUnsubmittedErrorReset],
   );
 
-  const handleGamePassPendingChange = useCallback(
-    (pending: boolean) => {
-      setGamePassPending(pending);
-      notifyStateChange({ gamePassPending: pending });
+  const handleGamePassInputStatusChange = useCallback(
+    (status: SalesAvenueInputStatus) => {
+      if (status === 'dirty') {
+        onUnsubmittedErrorReset?.();
+      }
+      const nextStatuses = { ...inputStatuses, gamePass: status };
+      setInputStatuses(nextStatuses);
+      notifyStateChange({ statuses: nextStatuses });
     },
-    [notifyStateChange],
+    [inputStatuses, notifyStateChange, onUnsubmittedErrorReset],
   );
 
   return (
@@ -246,11 +296,13 @@ const CollaborationSalesAvenueFields: FunctionComponent<CollaborationSalesAvenue
             universeId={universeId}
             productType='DeveloperProduct'
             onChange={handleDeveloperProductResolved}
-            onPendingChange={handleDeveloperProductPendingChange}
+            onInputStatusChange={handleDeveloperProductInputStatusChange}
             onDuplicateErrorReset={clearDuplicateErrors}
             disabled={inputsDisabled || gamePassPending}
             showRequiredError={showRequiredError && !developerProductDuplicateError}
             requiredErrorMessage={translate('Error.CollaborationLicenseRevenueTargetRequired')}
+            showUnsubmittedError={showUnsubmittedErrors && developerProductHasUnsubmittedInput}
+            unsubmittedErrorMessage={unsubmittedErrorMessage}
             error={developerProductDuplicateError}
             helperText={
               developerProductDuplicateError
@@ -283,11 +335,13 @@ const CollaborationSalesAvenueFields: FunctionComponent<CollaborationSalesAvenue
             universeId={universeId}
             productType='GamePass'
             onChange={handleGamePassResolved}
-            onPendingChange={handleGamePassPendingChange}
+            onInputStatusChange={handleGamePassInputStatusChange}
             onDuplicateErrorReset={clearDuplicateErrors}
             disabled={inputsDisabled || developerProductPending}
             showRequiredError={showRequiredError && !gamePassDuplicateError}
             requiredErrorMessage={translate('Error.CollaborationLicenseRevenueTargetRequired')}
+            showUnsubmittedError={showUnsubmittedErrors && gamePassHasUnsubmittedInput}
+            unsubmittedErrorMessage={unsubmittedErrorMessage}
             error={gamePassDuplicateError}
             helperText={
               gamePassDuplicateError

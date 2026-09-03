@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   resolveSalesAvenueProduct,
   type SalesAvenueProductType,
@@ -11,7 +11,7 @@ function parseProductId(value: string): number | undefined {
     return undefined;
   }
   const parsed = Number(trimmed);
-  if (!Number.isInteger(parsed) || parsed <= 0 || String(parsed) !== trimmed) {
+  if (!Number.isSafeInteger(parsed) || parsed <= 0 || String(parsed) !== trimmed) {
     return undefined;
   }
   return parsed;
@@ -49,6 +49,13 @@ export function useSalesAvenueProductInput({
   const [isLoading, setIsLoading] = useState(false);
   const [prevResolvedId, setPrevResolvedId] = useState(resolvedId);
   const requestIdRef = useRef(0);
+
+  useEffect(
+    () => () => {
+      requestIdRef.current += 1;
+    },
+    [],
+  );
 
   if (!isLoading && resolvedId !== prevResolvedId) {
     setPrevResolvedId(resolvedId);

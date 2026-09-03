@@ -55,8 +55,14 @@ interface LicenseApplicationRequirementsFieldsProps {
   universeId?: number | null;
   collaborationSalesAvenues?: CollaborationSalesAvenues;
   onCollaborationSalesAvenuesChange?: (salesAvenues: CollaborationSalesAvenues) => void;
-  onSalesAvenueStateChange?: (state: { isPending: boolean; isComplete: boolean }) => void;
+  onSalesAvenueStateChange?: (state: {
+    isPending: boolean;
+    isComplete: boolean;
+    hasUnsubmittedInput: boolean;
+  }) => void;
   showSalesAvenueRequiredErrors?: boolean;
+  showSalesAvenueUnsubmittedErrors?: boolean;
+  onSalesAvenueUnsubmittedErrorReset?: () => void;
 }
 
 /** Non-pitch license application inputs: rev-share timing, date range, and sales avenues. */
@@ -79,6 +85,8 @@ const LicenseApplicationRequirementsFields: FunctionComponent<
   onCollaborationSalesAvenuesChange,
   onSalesAvenueStateChange,
   showSalesAvenueRequiredErrors = false,
+  showSalesAvenueUnsubmittedErrors = false,
+  onSalesAvenueUnsubmittedErrorReset,
 }) => {
   const { translate, translateHTML } = useTranslation();
   const { locale: localizationLocale } = useLocalization();
@@ -282,6 +290,8 @@ const LicenseApplicationRequirementsFields: FunctionComponent<
           onChange={onCollaborationSalesAvenuesChange}
           onStateChange={onSalesAvenueStateChange}
           showRequiredErrors={showSalesAvenueRequiredErrors}
+          showUnsubmittedErrors={showSalesAvenueUnsubmittedErrors}
+          onUnsubmittedErrorReset={onSalesAvenueUnsubmittedErrorReset}
         />
       )}
     </>
