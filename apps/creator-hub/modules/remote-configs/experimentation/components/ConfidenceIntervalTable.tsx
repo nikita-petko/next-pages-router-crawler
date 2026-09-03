@@ -50,6 +50,7 @@ export type CellDataWithConfidenceInterval = {
 
 export type ConfidenceIntervalTableProps = {
   metric: ExperimentMetric;
+  statSigThreshold: number;
   orderedCellDataWithConfidenceInterval: Array<[string, CellDataWithConfidenceInterval]>;
 };
 
@@ -89,6 +90,7 @@ const useStyles = makeStyles()((theme) => ({
 
 const ConfidenceIntervalTable: FC<ConfidenceIntervalTableProps> = ({
   metric,
+  statSigThreshold,
   orderedCellDataWithConfidenceInterval,
 }) => {
   const {
@@ -106,8 +108,8 @@ const ConfidenceIntervalTable: FC<ConfidenceIntervalTableProps> = ({
   const theme = useTheme();
 
   const marks = useMemo(() => {
-    let globalMax = 0;
-    let globalMin = 0;
+    let globalMax = Math.max(statSigThreshold, 0);
+    let globalMin = Math.max(-statSigThreshold, 0);
 
     orderedCellDataWithConfidenceInterval.forEach(([, { confidenceInterval, cellData }]) => {
       const [localMin, localMax] = confidenceInterval;
@@ -152,14 +154,14 @@ const ConfidenceIntervalTable: FC<ConfidenceIntervalTableProps> = ({
     }
 
     return results;
-  }, [orderedCellDataWithConfidenceInterval]);
+  }, [orderedCellDataWithConfidenceInterval, statSigThreshold]);
 
   const rows = useMemo(() => {
     const minMark = marks[0];
     const maxMark = marks[marks.length - 1];
 
-    // Position of 0 along the slider axis
-    const zeroAxisAlpha = -minMark / (maxMark - minMark);
+    // Position of target threshold along the slider axis
+    const targetAxisAlpha = (statSigThreshold - minMark) / (maxMark - minMark);
 
     return orderedCellDataWithConfidenceInterval.map(
       ([variantId, { cellData, variantName, confidenceInterval }]) => {
@@ -182,6 +184,7 @@ const ConfidenceIntervalTable: FC<ConfidenceIntervalTableProps> = ({
               interval={clampedInterval}
               isMinUnbounded={isMinUnbounded}
               isMaxUnbounded={isMaxUnbounded}
+              statSigThreshold={statSigThreshold}
             />
           );
         } else {
@@ -196,6 +199,7 @@ const ConfidenceIntervalTable: FC<ConfidenceIntervalTableProps> = ({
               interval={clampedInterval}
               isMinUnbounded={isMinUnbounded}
               isMaxUnbounded={isMaxUnbounded}
+              statSigThreshold={statSigThreshold}
             />
           );
         }
@@ -217,7 +221,7 @@ const ConfidenceIntervalTable: FC<ConfidenceIntervalTableProps> = ({
               <span className={confidenceIntervalCellZeroIndicatorTrack}>
                 <span
                   className={confidenceIntervalCellZeroIndicator}
-                  style={{ left: `${zeroAxisAlpha * 100}%` }}
+                  style={{ left: `${targetAxisAlpha * 100}%` }}
                 />
               </span>
             </TableCell>
@@ -234,6 +238,7 @@ const ConfidenceIntervalTable: FC<ConfidenceIntervalTableProps> = ({
     confidenceIntervalCellZeroIndicator,
     confidenceIntervalCellZeroIndicatorTrack,
     marks,
+    statSigThreshold,
   ]);
 
   return (
@@ -263,7 +268,10 @@ const ConfidenceIntervalTable: FC<ConfidenceIntervalTableProps> = ({
             <TableCell
               classes={{ root: cx(tableHeaderCell, confidenceIntervalCell) }}
               data-testid='header-confidence-interval'>
-              <ConfidenceIntervalCellHeader marks={marks} />
+              <ConfidenceIntervalCellHeader
+                marks={marks}
+                targetMark={statSigThreshold !== 0 ? statSigThreshold : undefined}
+              />
             </TableCell>
           </TableRow>
         </TableHead>

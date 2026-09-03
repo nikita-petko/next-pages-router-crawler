@@ -138,12 +138,18 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
   const [confidenceIntervalDialogProps, setConfidenceIntervalDialogProps] =
     useState<ConfidenceIntervalTableProps>({
       metric: ExperimentMetric.AverageRevenuePerPayingUser,
+      statSigThreshold: 0,
       orderedCellDataWithConfidenceInterval: [],
     });
   const onShowConfidenceInterval = useCallback(
-    ({ metric, orderedCellDataWithConfidenceInterval }: ConfidenceIntervalTableProps) => {
+    ({
+      metric,
+      statSigThreshold,
+      orderedCellDataWithConfidenceInterval,
+    }: ConfidenceIntervalTableProps) => {
       setConfidenceIntervalDialogProps({
         metric,
+        statSigThreshold,
         orderedCellDataWithConfidenceInterval,
       });
       setShowConfidenceIntervalDialog(true);
@@ -251,6 +257,7 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
       cellDataWithVariantId: Array<readonly [string, CellDataType]>;
     }) => {
       const cellDataWithConfidenceInterval: Array<[string, CellDataWithConfidenceInterval]> = [];
+      let statSigThreshold = 0;
 
       cellDataWithVariantId.forEach(([variantId, cellData]) => {
         const variant = orderedExperimentVariants.find((v) => v.variantId === variantId);
@@ -281,6 +288,7 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
               ciLower === 0 ? -Number.EPSILON : ciLower,
               ciUpper === 0 ? Number.EPSILON : ciUpper,
             ];
+            statSigThreshold = -(metricResultForVariant.harmThreshold ?? 0);
           } else if (cellData.comparisonChipSpec) {
             confidenceInterval = [liftPercentage - Number.EPSILON, liftPercentage + Number.EPSILON];
           }
@@ -305,6 +313,7 @@ const ExperimentMetricsResultTable: FC<ExperimentMetricsResultTableProps> = ({
 
       onShowConfidenceInterval({
         metric,
+        statSigThreshold,
         orderedCellDataWithConfidenceInterval: cellDataWithConfidenceInterval,
       });
     },

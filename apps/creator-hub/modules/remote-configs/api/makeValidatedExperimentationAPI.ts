@@ -790,6 +790,7 @@ const toValidGetExperimentResultsResponse = (
         controlMean,
         isStatisticallySignificant,
         isHarmDetected,
+        harmThreshold,
         lift,
       } = rawMetricResult;
       if (!metric) {
@@ -822,7 +823,8 @@ const toValidGetExperimentResultsResponse = (
         controlMean,
         isStatisticallySignificant: isStatisticallySignificant ?? false,
         isHarmDetected: isHarmDetected ?? false,
-        ...(lift !== undefined ? { lift } : {}),
+        harmThreshold,
+        lift,
       });
     });
   });

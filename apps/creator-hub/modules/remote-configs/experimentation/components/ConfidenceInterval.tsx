@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from '@rbx/intl';
 import { makeStyles, Slider, sliderClasses, Typography } from '@rbx/ui';
@@ -19,6 +19,14 @@ const useStyles = makeStyles()((theme) => ({
   },
   markLabel: {
     color: theme.palette.content.standard,
+  },
+  targetMarkLabel: {
+    ...theme.typography.legalDisclaimer,
+    display: 'block',
+    color: theme.palette.content.disabled,
+    // Drop below the regular mark labels so the two rows never collide.
+    transform: 'translateY(18px)',
+    whiteSpace: 'nowrap',
   },
   // Interval styles
   intervalRoot: {
@@ -71,17 +79,22 @@ const useStyles = makeStyles()((theme) => ({
   },
 }));
 
-export const ConfidenceIntervalCellHeader = ({ marks }: { marks: number[] }) => {
+export const ConfidenceIntervalCellHeader = ({
+  marks,
+  targetMark,
+}: {
+  marks: number[];
+  targetMark?: number;
+}) => {
   const { translate } = useTranslationWrapper(useTranslation());
   const locale = useLocale();
   const {
-    classes: { hidden, root, markLabel },
+    classes: { hidden, root, markLabel, targetMarkLabel },
   } = useStyles();
 
   const marksWithLabels = useMemo(() => {
-    return marks.map((mark) => ({
-      value: mark,
-      label: formatNumberWithSpec(
+    const formatMark = (mark: number) =>
+      formatNumberWithSpec(
         mark,
         {
           abbreviate: false,
@@ -92,9 +105,22 @@ export const ConfidenceIntervalCellHeader = ({ marks }: { marks: number[] }) => 
           },
         },
         { locale, translate },
-      ),
+      );
+
+    const results: Array<{ value: number; label: ReactNode }> = marks.map((mark) => ({
+      value: mark,
+      label: formatMark(mark),
     }));
-  }, [marks, locale, translate]);
+
+    if (targetMark !== undefined) {
+      results.push({
+        value: targetMark,
+        label: <span className={targetMarkLabel}>{formatMark(targetMark)}</span>,
+      });
+    }
+
+    return results;
+  }, [marks, targetMark, targetMarkLabel, locale, translate]);
 
   return (
     <Slider
@@ -122,11 +148,13 @@ const IntervalTrack = ({
   isMaxUnbounded,
   style: positionStyle,
   ownerState,
+  statSigThreshold,
 }: {
   metricValueLiftPercentage: number;
   valueLabelFormat: ({ value }: { value: number }) => string;
   isMinUnbounded: boolean;
   isMaxUnbounded: boolean;
+  statSigThreshold: number;
 
   // props injected by mui slider
   style: CSSProperties;
@@ -152,9 +180,9 @@ const IntervalTrack = ({
 
   const className = useMemo(() => {
     let status: 'error' | 'success' | 'warning' = 'success';
-    if (max < 0) {
+    if (max < statSigThreshold) {
       status = 'error';
-    } else if (min > 0) {
+    } else if (min > statSigThreshold) {
       status = 'success';
     } else {
       status = 'warning';
@@ -165,7 +193,16 @@ const IntervalTrack = ({
       [intervalTrackRed]: status === 'error',
       [intervalTrackYellow]: status === 'warning',
     });
-  }, [cx, intervalTrack, intervalTrackGreen, intervalTrackRed, intervalTrackYellow, min, max]);
+  }, [
+    cx,
+    intervalTrack,
+    intervalTrackGreen,
+    intervalTrackRed,
+    intervalTrackYellow,
+    min,
+    max,
+    statSigThreshold,
+  ]);
 
   const metricValueRelativePosition = useMemo(
     () => `${((metricValueLiftPercentage - min) / (max - min)) * 100}%`,
@@ -218,12 +255,14 @@ export const ConfidenceIntervalCellContent = ({
   marks: givenMarks,
   metricValueLiftPercentage,
   interval,
+  statSigThreshold,
   isMinUnbounded = false,
   isMaxUnbounded = false,
 }: {
   marks: number[];
   metricValueLiftPercentage: number;
   interval: [number, number];
+  statSigThreshold: number;
   isMinUnbounded?: boolean;
   isMaxUnbounded?: boolean;
 }) => {
@@ -266,10 +305,17 @@ export const ConfidenceIntervalCellContent = ({
           valueLabelFormat,
           isMinUnbounded,
           isMaxUnbounded,
+          statSigThreshold,
         },
       },
     };
-  }, [metricValueLiftPercentage, valueLabelFormat, isMinUnbounded, isMaxUnbounded]);
+  }, [
+    metricValueLiftPercentage,
+    valueLabelFormat,
+    isMinUnbounded,
+    isMaxUnbounded,
+    statSigThreshold,
+  ]);
 
   return (
     <Slider
