@@ -201,7 +201,7 @@ const AddRewardItemModal = ({
       <DialogContent>
         <DialogBody>
           <div className='flex flex-col gap-large'>
-            <div className='flex flex-col gap-xsmall margin-top-small'>
+            <div className='flex flex-col gap-xsmall'>
               <DialogTitle className='text-heading-small margin-y-none'>
                 {translate(translationKey('Title.AddRewardItem', ns))}
               </DialogTitle>

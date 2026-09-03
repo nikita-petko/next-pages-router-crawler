@@ -823,6 +823,7 @@ const ImmersiveAdsPlacementTabContent: React.FC<ImmersiveAdsPlacementTabContentP
           universeId={universeId}
           rewards={pwrRewards}
           onRewardUpdated={handleRewardUpdated}
+          onEditSettings={handlePlayWithRewardEdit}
         />
       )}
     </div>

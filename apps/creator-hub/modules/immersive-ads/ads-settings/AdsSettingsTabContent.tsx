@@ -36,7 +36,7 @@ const AdsSettingsTabContent = () => {
   const router = useRouter();
   const { translate, translateHTML } = useTranslationWrapper(useTranslation());
   const {
-    eligibilityState: { isFetched: isEligibilityFetched, isUniverseEligible },
+    eligibilityState: { isFetched: isEligibilityFetched, isUniverseEligible, showPwRSettings },
   } = useEligibility();
   const {
     classes: { settingsContainer },
@@ -231,7 +231,10 @@ const AdsSettingsTabContent = () => {
       <div className={settingsContainer}>
         <Typography variant='h3'>
           {translate(
-            translationKey('Heading.RewardedAds', TranslationNamespace.ImmersiveAdsAnalytics),
+            translationKey(
+              showPwRSettings ? 'Heading.CustomRewarded' : 'Heading.RewardedAds',
+              TranslationNamespace.ImmersiveAdsAnalytics,
+            ),
           )}
         </Typography>
         <AdServingSettings

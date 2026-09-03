@@ -36,6 +36,7 @@ interface RewardItemsDrawerProps {
   universeId: number;
   rewards: PlacementReward[];
   onRewardUpdated: () => void;
+  onEditSettings: () => void;
 }
 
 const isToggleable = (status: PlacementRewardStatusEnum): boolean =>
@@ -54,6 +55,7 @@ function RewardItemsDrawer({
   universeId,
   rewards,
   onRewardUpdated,
+  onEditSettings,
 }: RewardItemsDrawerProps) {
   const { translate } = useTranslationWithNamespace(TranslationNamespace.ImmersiveAdsAnalytics);
   const { translate: translateKey } = useTranslationWrapper(useTranslation());
@@ -172,45 +174,9 @@ function RewardItemsDrawer({
     [onClose],
   );
 
-  const renderActionButton = (reward: PlacementReward) => {
+  // The status-specific primary CTA (Publish/Test); null for statuses with no primary action.
+  const renderPrimaryAction = (reward: PlacementReward) => {
     switch (reward.status) {
-      case PlacementRewardStatusEnum.REWARD_STATUS_UNSPECIFIED:
-      case PlacementRewardStatusEnum.REWARD_STATUS_ACTIVE:
-      case PlacementRewardStatusEnum.REWARD_STATUS_INACTIVE:
-        return (
-          <div className='flex width-full justify-end'>
-            <Popover
-              open={activeMenuOpenFor === reward.productId}
-              onOpenChange={(isOpen) => setActiveMenuOpenFor(isOpen ? reward.productId : null)}>
-              <PopoverTrigger asChild>
-                <FoundationIconButton
-                  as='button'
-                  variant='Utility'
-                  size='Small'
-                  icon='icon-regular-three-dots-vertical'
-                  ariaLabel={translate('Label.RewardActions')}
-                  className='invisible group-hover:visible'
-                />
-              </PopoverTrigger>
-              <PopoverContent
-                side='bottom'
-                align='end'
-                ariaLabel={translate('Label.RewardActions')}>
-                <FoundationMenu size='Medium'>
-                  <FoundationMenuItem
-                    value='enable-test-mode'
-                    title={translate('Action.EnableTestMode')}
-                    disabled={isLoading}
-                    onSelect={() => {
-                      void handleTestDraftReward(reward);
-                      setActiveMenuOpenFor(null);
-                    }}
-                  />
-                </FoundationMenu>
-              </PopoverContent>
-            </Popover>
-          </div>
-        );
       case PlacementRewardStatusEnum.REWARD_STATUS_TEST:
         return (
           <Button
@@ -245,11 +211,67 @@ function RewardItemsDrawer({
             {translate('Action.TestReward')}
           </Button>
         );
+      case PlacementRewardStatusEnum.REWARD_STATUS_UNSPECIFIED:
+      case PlacementRewardStatusEnum.REWARD_STATUS_ACTIVE:
+      case PlacementRewardStatusEnum.REWARD_STATUS_INACTIVE:
       case PlacementRewardStatusEnum.REWARD_STATUS_INVALID:
       default:
         return null;
     }
   };
+
+  // Overflow menu shown on every row, regardless of status. "Enable test mode" only applies to
+  // togglable statuses; "Edit settings" is always available.
+  const renderOverflowMenu = (reward: PlacementReward) => {
+    const canEnableTestMode = isToggleable(reward.status);
+
+    return (
+      <Popover
+        open={activeMenuOpenFor === reward.productId}
+        onOpenChange={(isOpen) => setActiveMenuOpenFor(isOpen ? reward.productId : null)}>
+        <PopoverTrigger asChild>
+          <FoundationIconButton
+            as='button'
+            variant='Utility'
+            size='Small'
+            icon='icon-regular-three-dots-vertical'
+            ariaLabel={translate('Label.RewardActions')}
+            className='invisible group-hover:visible'
+          />
+        </PopoverTrigger>
+        <PopoverContent side='bottom' align='end' ariaLabel={translate('Label.RewardActions')}>
+          <FoundationMenu size='Medium'>
+            {canEnableTestMode && (
+              <FoundationMenuItem
+                value='enable-test-mode'
+                title={translate('Action.EnableTestMode')}
+                disabled={isLoading}
+                onSelect={() => {
+                  void handleTestDraftReward(reward);
+                  setActiveMenuOpenFor(null);
+                }}
+              />
+            )}
+            <FoundationMenuItem
+              value='edit-settings'
+              title={translate('Action.EditSettings')}
+              onSelect={() => {
+                onEditSettings();
+                setActiveMenuOpenFor(null);
+              }}
+            />
+          </FoundationMenu>
+        </PopoverContent>
+      </Popover>
+    );
+  };
+
+  const renderRowActions = (reward: PlacementReward) => (
+    <div className='flex width-full items-center justify-end gap-xsmall'>
+      {renderPrimaryAction(reward)}
+      {renderOverflowMenu(reward)}
+    </div>
+  );
 
   return (
     <SheetRoot open={open} onOpenChange={handleSheetOpenChange}>
@@ -261,9 +283,9 @@ function RewardItemsDrawer({
           {translate('Heading.JoinWithReward')}
         </SheetTitle>
         <SheetBody>
-          <p className='text-body-small content-default margin-bottom-medium'>
+          <p className='text-body-medium content-default margin-bottom-medium'>
             {translate('Description.RewardItemsDrawer')}{' '}
-            <Link href='https://create.roblox.com/docs' size='Small' color='Emphasis'>
+            <Link href='https://create.roblox.com/docs' size='Medium' color='Emphasis'>
               {translate('Label.LearnMore')}
             </Link>
           </p>
@@ -342,7 +364,7 @@ function RewardItemsDrawer({
                 <div className='shrink-0 width-[120px]'>
                   <StatusBadge type='reward' status={reward.status} />
                 </div>
-                <div className='shrink-0 width-[120px] flex'>{renderActionButton(reward)}</div>
+                <div className='shrink-0 width-[120px] flex'>{renderRowActions(reward)}</div>
               </div>
             ))}
           </div>

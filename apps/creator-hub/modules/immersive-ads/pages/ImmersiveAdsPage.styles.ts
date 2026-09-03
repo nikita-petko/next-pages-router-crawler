@@ -167,7 +167,7 @@ const useImmersiveAdsPageStyles = makeStyles()((theme) => ({
     alignItems: 'center',
   },
   placementTabContainer: {
-    padding: 16,
+    padding: '16px 0',
   },
   createPlacementButtonRowContainer: {
     paddingTop: 20,
