@@ -108,7 +108,7 @@ const MatchesContainer = () => {
         key={AgreementCandidateType.Universe}
         openDialog={shouldDisableManualScan ? undefined : handleOpenManualMatchRequestDialog}
         maxManualRequestsLimit={maxDailyLimit}
-        candidateType={shouldShowAvatarItemsTab ? AgreementCandidateType.Universe : undefined}
+        candidateType={AgreementCandidateType.Universe}
       />
     );
   } else if (activeTab === MatchesTabs.MyRequests) {
