@@ -334,6 +334,9 @@ const GroupRoles: FunctionComponent<React.PropsWithChildren<GroupRolesProps>> = 
   useEffect(() => {
     if (pendingNavigationId !== undefined) {
       navigation?.navigateToRole?.(pendingNavigationId);
+      // Reset to prevent a loop when `navigation` changes.
+      // oxlint-disable-next-line react/react-compiler -- one-shot navigation trigger reset
+      setPendingNavigationId(undefined);
     }
   }, [navigation, pendingNavigationId]);
 

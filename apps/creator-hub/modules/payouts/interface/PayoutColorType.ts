@@ -1,0 +1,20 @@
+enum PayoutColorType {
+  Invalid = 'Invalid',
+  Blue = 'Blue',
+  LightBlue = 'LightBlue',
+  Green = 'Green',
+  LightGreen = 'LightGreen',
+  Purple = 'Purple',
+  LightPurple = 'LightPurple',
+  Yellow = 'Yellow',
+  LightYellow = 'LightYellow',
+  Orange = 'Orange',
+  LightOrange = 'LightOrange',
+  Red = 'Red',
+  LightRed = 'LightRed',
+  Pink = 'Pink',
+  LightPink = 'LightPink',
+  Teal = 'Teal',
+  LightTeal = 'LightTeal',
+}
+export default PayoutColorType;

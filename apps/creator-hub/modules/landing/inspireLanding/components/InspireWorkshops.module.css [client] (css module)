@@ -1,0 +1,13 @@
+__turbopack_context__.v({
+  "avatarRow": "InspireWorkshops-module__wLSipa__avatarRow",
+  "avatarTrigger": "InspireWorkshops-module__wLSipa__avatarTrigger",
+  "avatarTriggerOverlap": "InspireWorkshops-module__wLSipa__avatarTriggerOverlap",
+  "metaRow": "InspireWorkshops-module__wLSipa__metaRow",
+  "registerRow": "InspireWorkshops-module__wLSipa__registerRow",
+  "scheduleGroup": "InspireWorkshops-module__wLSipa__scheduleGroup",
+  "speakerAvatar": "InspireWorkshops-module__wLSipa__speakerAvatar",
+  "tabsList": "InspireWorkshops-module__wLSipa__tabsList",
+  "tabsRoot": "InspireWorkshops-module__wLSipa__tabsRoot",
+  "tileGrid": "InspireWorkshops-module__wLSipa__tileGrid",
+  "workshopCard": "InspireWorkshops-module__wLSipa__workshopCard",
+});
