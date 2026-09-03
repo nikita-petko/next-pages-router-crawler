@@ -1,13 +1,10 @@
 import type { FunctionComponent } from 'react';
 import type { ReactNode } from 'react';
-import { useTranslation } from '@rbx/intl';
 import { makeStyles, Card, CardContent, CardHeader, Typography } from '@rbx/ui';
-import { Link } from '@modules/miscellaneous/components';
 
 interface OverviewCardProps {
-  heading: string;
-  subheading: string;
-  subheadingLink?: string;
+  heading: ReactNode;
+  subheading: ReactNode;
   children?: ReactNode;
 }
 
@@ -40,39 +37,17 @@ const useStyles = makeStyles()(() => ({
 }));
 
 /** A card that displays a title, subtitle and child components containing analytics information */
-const OverviewCard: FunctionComponent<OverviewCardProps> = ({
-  heading,
-  subheading,
-  subheadingLink,
-  children,
-}) => {
-  const { translate, translateHTML } = useTranslation();
+const OverviewCard: FunctionComponent<OverviewCardProps> = ({ heading, subheading, children }) => {
   const {
     classes: { card, cardHeader, cardContent },
   } = useStyles();
-
-  const subheader = subheadingLink
-    ? translateHTML(subheading, [
-        {
-          opening: 'linkStart',
-          closing: 'linkEnd',
-          content(chunks) {
-            return (
-              <Link href={subheadingLink} target='_blank'>
-                {chunks}
-              </Link>
-            );
-          },
-        },
-      ])
-    : translate(subheading);
 
   return (
     <Card className={card}>
       <CardHeader
         className={cardHeader}
-        title={<Typography variant='h5'>{translate(heading)}</Typography>}
-        subheader={<Typography variant='body2'>{subheader}</Typography>}
+        title={<Typography variant='h5'>{heading}</Typography>}
+        subheader={<Typography variant='body2'>{subheading}</Typography>}
       />
       <CardContent className={cardContent}>{children}</CardContent>
     </Card>

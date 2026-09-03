@@ -4,6 +4,7 @@ import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import {
   CreatorPitchAttachmentErrorType,
   MAX_CREATOR_PITCH_ATTACHMENT_COUNT,
+  MAX_CREATOR_PITCH_ATTACHMENT_DIMENSION_PX,
   MAX_CREATOR_PITCH_ATTACHMENT_SIZE_BYTES,
 } from '../utils/constants';
 import type { CreatorPitchAttachment } from '../utils/creatorPitchAttachmentTypes';
@@ -14,6 +15,10 @@ const MAX_CREATOR_PITCH_ATTACHMENT_COUNT_LOCALIZED = new Intl.NumberFormat(undef
 
 const MAX_CREATOR_PITCH_ATTACHMENT_SIZE_MB_LOCALIZED = new Intl.NumberFormat(undefined).format(
   MAX_CREATOR_PITCH_ATTACHMENT_SIZE_BYTES / (1024 * 1024),
+);
+
+const MAX_CREATOR_PITCH_ATTACHMENT_DIMENSION_LOCALIZED = new Intl.NumberFormat(undefined).format(
+  MAX_CREATOR_PITCH_ATTACHMENT_DIMENSION_PX,
 );
 
 const useCreatorPitchAttachmentLabels = () => {
@@ -31,6 +36,8 @@ const useCreatorPitchAttachmentLabels = () => {
   const limitsText = translate('Description.PitchAttachmentLimits', {
     maxCount: MAX_CREATOR_PITCH_ATTACHMENT_COUNT_LOCALIZED,
     maxSize: MAX_CREATOR_PITCH_ATTACHMENT_SIZE_MB_LOCALIZED,
+    maxWidth: MAX_CREATOR_PITCH_ATTACHMENT_DIMENSION_LOCALIZED,
+    maxHeight: MAX_CREATOR_PITCH_ATTACHMENT_DIMENSION_LOCALIZED,
   });
 
   const previewAlt = translate('Label.PitchAttachmentPreview');
@@ -47,6 +54,11 @@ const useCreatorPitchAttachmentLabels = () => {
     maxSize: MAX_CREATOR_PITCH_ATTACHMENT_SIZE_MB_LOCALIZED,
   });
 
+  const resolutionTooLargeText = translate('Error.PitchAttachmentResolutionTooLarge', {
+    maxWidth: MAX_CREATOR_PITCH_ATTACHMENT_DIMENSION_LOCALIZED,
+    maxHeight: MAX_CREATOR_PITCH_ATTACHMENT_DIMENSION_LOCALIZED,
+  });
+
   const requiredErrorText = translateAgreements('Label.FieldIsRequired');
 
   const getAttachmentErrorText = useCallback(
@@ -57,9 +69,12 @@ const useCreatorPitchAttachmentLabels = () => {
       if (attachment.errorType === CreatorPitchAttachmentErrorType.FileTooLarge) {
         return fileTooLargeText;
       }
+      if (attachment.errorType === CreatorPitchAttachmentErrorType.ResolutionTooLarge) {
+        return resolutionTooLargeText;
+      }
       return uploadFailedText;
     },
-    [fileTooLargeText, moderatedText, uploadFailedText],
+    [fileTooLargeText, moderatedText, resolutionTooLargeText, uploadFailedText],
   );
 
   return {

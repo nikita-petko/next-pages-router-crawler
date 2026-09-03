@@ -25,6 +25,7 @@ import AmDivider from '../components/AmDivider';
 import { CREATOR_AGREEMENTS_TAB_HREF } from '../urls';
 import { normalizeCreatorType } from '../utils/creatorName';
 import { isNextDisputeFinal } from '../utils/disputeReason';
+import { licenseUsesUniverseAgreementTarget } from '../utils/licenseUsesUniverseAgreementTarget';
 import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../utils/logger';
 import CreatorAgreementAlert from './components/CreatorAgreementAlert';
 import CreatorAgreementBreadcrumbs from './components/CreatorAgreementBreadcrumbs';
@@ -40,6 +41,7 @@ import { useCreatorCompleteChangeRequestMutation } from './hooks/useCreatorCompl
 import { useCreatorCompleteConditionalChangeRequestMutation } from './hooks/useCreatorCompleteConditionalChangeRequestMutation';
 import { useCreatorCompleteIpRemovalMutation } from './hooks/useCreatorCompleteIpRemovalMutation';
 import { useCreatorDisputeAgreementMutation } from './hooks/useCreatorDisputeAgreementMutation';
+import { useGetAccountOwnerCreator } from './hooks/useGetAccountOwnerCreator';
 import { useGetCreatorAgreementDetails } from './hooks/useGetCreatorAgreementDetails';
 
 export const getBreadcrumbForStatus = (statusEnum: AgreementStatus) => {
@@ -189,12 +191,26 @@ const CreatorAgreementDetailsContainer: FunctionComponent<
   }, []);
 
   const agreementDetailsRequest = useGetCreatorAgreementDetails({ agreementId });
-  const universeId = agreementDetailsRequest.data?.agreement?.agreementTargets
-    ? Number(agreementDetailsRequest.data?.agreement?.agreementTargets?.[0]?.contentId)
-    : undefined;
+  const usesUniverseTarget = licenseUsesUniverseAgreementTarget(
+    agreementDetailsRequest.data?.license.licenseType,
+  );
+  const universeId =
+    usesUniverseTarget && agreementDetailsRequest.data?.agreement?.agreementTargets
+      ? Number(agreementDetailsRequest.data?.agreement?.agreementTargets?.[0]?.contentId)
+      : undefined;
   const universeRequest = useDebouncedGameDetails(universeId);
   const experienceGuidelinesRequest = useGetExperienceGuidelines({
     universeId,
+  });
+
+  // Licenses without a universe target, e.g. Avatar Marketplace, have no hydrated universe
+  // to read the creator from. The viewer owns the agreement, so their own Rights account
+  // resolves the same handle the rights holder sees.
+  const shouldResolveAccountOwnerCreator = !usesUniverseTarget && !!account?.ownerId;
+  const accountOwnerCreatorRequest = useGetAccountOwnerCreator({
+    ownerId: account?.ownerId,
+    ownerType: account?.ownerType,
+    enabled: shouldResolveAccountOwnerCreator,
   });
 
   const { setPageTitle } = useIpLayoutContext();
@@ -226,20 +242,29 @@ const CreatorAgreementDetailsContainer: FunctionComponent<
   ) {
     return <ErrorPage errorCode={StatusCodes.FORBIDDEN} />;
   }
-  if (!isFetched || agreementDetailsRequest.isPending || universeRequest.isPending) {
+  if (
+    !isFetched ||
+    agreementDetailsRequest.isPending ||
+    (usesUniverseTarget && universeRequest.isPending) ||
+    (shouldResolveAccountOwnerCreator && accountOwnerCreatorRequest.isPending)
+  ) {
     return <PageLoading />;
   }
   if (
     agreementDetailsRequest.isError ||
     !agreementDetailsRequest.data ||
-    universeRequest.isError ||
-    universeRequest.data === NO_GAME_FOUND_FOR_ID
+    (usesUniverseTarget &&
+      (universeRequest.isError || universeRequest.data === NO_GAME_FOUND_FOR_ID))
   ) {
     return <IpLoadError error={agreementDetailsRequest.error} />;
   }
 
   const { agreement, license, listing } = agreementDetailsRequest.data;
-  const universe = universeRequest.data;
+  const creator = accountOwnerCreatorRequest.data ?? undefined;
+  const universe =
+    universeRequest.data != null && universeRequest.data !== NO_GAME_FOUND_FOR_ID
+      ? universeRequest.data
+      : undefined;
   const activityLog = agreement.activityLog ?? [];
 
   const experienceGuidelines =
@@ -295,8 +320,8 @@ const CreatorAgreementDetailsContainer: FunctionComponent<
           agreementId={agreementId}
           isCreator
           activityLog={activityLog}
-          creatorName={universe.creator?.name ?? undefined}
-          creatorType={normalizeCreatorType(universe.creator?.type)}
+          creatorName={universe?.creator?.name ?? creator?.creatorName}
+          creatorType={normalizeCreatorType(universe?.creator?.type) ?? creator?.creatorType}
           listingName={listing.name ?? undefined}
         />
       )}

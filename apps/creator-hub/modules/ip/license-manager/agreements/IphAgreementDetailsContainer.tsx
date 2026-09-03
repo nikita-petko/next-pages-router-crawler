@@ -212,7 +212,11 @@ const IphAgreementDetailsContainer: React.FunctionComponent<IphAgreementDetailsC
     return <IpLoadError error={agreementDetailsRequest.error} />;
   }
 
-  const { agreement, license, listing, ipFamily, universe } = agreementDetailsRequest.data;
+  const { agreement, license, listing, ipFamily, universe, creator } = agreementDetailsRequest.data;
+  // Licenses without a universe target, e.g. Avatar Marketplace, identify the creator
+  // through the agreement's target account instead.
+  const creatorName = universe?.creatorName ?? creator?.creatorName ?? '';
+  const creatorType = normalizeCreatorType(universe?.creatorType) ?? creator?.creatorType;
   const experienceGuidelines =
     experienceGuidelinesRequest.error || !experienceGuidelinesRequest.data
       ? translate('Label.MaturityRatingNoneAvailable')
@@ -241,8 +245,8 @@ const IphAgreementDetailsContainer: React.FunctionComponent<IphAgreementDetailsC
       // Monitoring only license
       transactionsCard = (
         <OverviewCard
-          heading='Heading.Transactions'
-          subheading='Label.TransactionsCardMonitoringOnly'
+          heading={translate('Heading.Transactions')}
+          subheading={translate('Label.TransactionsCardMonitoringOnly')}
         />
       );
     } else if (royaltyRate > 0) {
@@ -250,8 +254,8 @@ const IphAgreementDetailsContainer: React.FunctionComponent<IphAgreementDetailsC
         // Rev share now license
         transactionsCard = (
           <OverviewCard
-            heading='Heading.Transactions'
-            subheading='Label.TransactionsCardRevShareNow'>
+            heading={translate('Heading.Transactions')}
+            subheading={translate('Label.TransactionsCardRevShareNow')}>
             <Button
               component={Link}
               href={EXTERNAL_MY_TRANSACTIONS_HREF()}
@@ -275,8 +279,8 @@ const IphAgreementDetailsContainer: React.FunctionComponent<IphAgreementDetailsC
         // Rev share later license
         transactionsCard = (
           <OverviewCard
-            heading='Heading.Transactions'
-            subheading='Label.TransactionsCardRevShareLater'>
+            heading={translate('Heading.Transactions')}
+            subheading={translate('Label.TransactionsCardRevShareLater')}>
             <Button
               variant='contained'
               color='secondary'
@@ -307,6 +311,8 @@ const IphAgreementDetailsContainer: React.FunctionComponent<IphAgreementDetailsC
         <IphAgreementAlerts
           agreement={agreement}
           universe={universe}
+          creatorName={creatorName}
+          creatorType={creatorType}
           listingName={listing.name ?? translate('Label.RightsHolder')}
           handleTabChange={handleTabChange}
           handleCompleteChangeRequest={handleAcknowledgeCompletedChangeRequest}
@@ -335,6 +341,7 @@ const IphAgreementDetailsContainer: React.FunctionComponent<IphAgreementDetailsC
             license={license}
             listing={listing}
             universe={universe}
+            creatorName={creatorName}
             experienceGuidelines={experienceGuidelines}
             transactionsCard={transactionsCard}
           />
@@ -344,8 +351,8 @@ const IphAgreementDetailsContainer: React.FunctionComponent<IphAgreementDetailsC
             accountId={accountId}
             agreementId={agreementId}
             activityLog={activityLog}
-            creatorName={universe.creatorName ?? undefined}
-            creatorType={normalizeCreatorType(universe.creatorType)}
+            creatorName={creatorName}
+            creatorType={creatorType}
             listingName={listing.name ?? undefined}
           />
         )}

@@ -21,6 +21,9 @@ export const MAX_CREATOR_PITCH_ATTACHMENT_COUNT = 10;
 /** Max size per pitch attachment image (20 MB). */
 export const MAX_CREATOR_PITCH_ATTACHMENT_SIZE_BYTES = 20 * 1024 * 1024;
 
+/** Max pixel length on either side of a pitch attachment image. */
+export const MAX_CREATOR_PITCH_ATTACHMENT_DIMENSION_PX = 8000;
+
 export const CREATOR_PITCH_ATTACHMENT_ACCEPT =
   'image/png,image/jpeg,image/jpg,image/tga,image/bmp,.png,.jpg,.jpeg,.tga,.bmp';
 
@@ -54,5 +57,6 @@ export enum CreatorPitchAttachmentStatus {
 export enum CreatorPitchAttachmentErrorType {
   UploadFailed = 'uploadFailed',
   FileTooLarge = 'fileTooLarge',
+  ResolutionTooLarge = 'resolutionTooLarge',
   Moderated = 'moderated',
 }

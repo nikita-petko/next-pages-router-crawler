@@ -73,9 +73,100 @@ interface CreatorAgreementDetailsProps {
   license: LicenseResponse;
   listing: ListingResponse;
   experienceGuidelines: string;
-  universe: RobloxGamesApiModelsResponseGameDetailResponse;
+  /** Absent for licenses that do not target a universe, e.g. Avatar Marketplace. */
+  universe?: RobloxGamesApiModelsResponseGameDetailResponse;
   handleDisputeClick: () => void;
 }
+
+const CreationDetails: React.FC<{
+  universe?: RobloxGamesApiModelsResponseGameDetailResponse;
+  effectiveLicenseType: LicenseType;
+  agreement: HydratedAgreementWithHydratedTargetsResponse;
+  experienceGuidelines: string;
+}> = ({ universe, effectiveLicenseType, agreement, experienceGuidelines }) => {
+  const { translate } = useTranslation();
+
+  const universeDisplayName = universe?.name ?? '';
+  const universeNumericId = universe?.id ?? 0;
+  const universeExperienceHref =
+    universe?.rootPlaceId != null ? EXTERNAL_EXPERIENCE_HREF(universe.rootPlaceId) : undefined;
+
+  const { value: inGameSalesLicensingFlagValue } = useFlag(isInGameSalesLicensingEnabledFlag);
+  const isInGameSalesLicensingEnabled = inGameSalesLicensingFlagValue ?? false;
+  const { value: avatarItemLicensingFlagValue } = useFlag(isAvatarItemLicensingEnabledFlag);
+  const isAvatarItemLicensingEnabled = avatarItemLicensingFlagValue ?? false;
+
+  const isMarketplaceSaleLicense =
+    effectiveLicenseType === LicenseType.MarketplaceSale && isAvatarItemLicensingEnabled;
+  const showAgreementRevenueTargets =
+    (effectiveLicenseType === LicenseType.CollaborationInExperienceSale &&
+      isInGameSalesLicensingEnabled) ||
+    isMarketplaceSaleLicense;
+
+  return (
+    <>
+      <Typography variant='h5'>{translate('Heading.CreationDetails')}</Typography>
+
+      {universe && (
+        <ContentTile
+          header={universeDisplayName}
+          subheader={
+            universe.creator?.name
+              ? getCreatorDisplayName(
+                  normalizeCreatorType(universe.creator.type),
+                  universe.creator.name,
+                )
+              : ''
+          }
+          thumbnailTargetId={universeNumericId ?? 0}
+          type={ContentType.Universe}
+          link={universeExperienceHref}
+        />
+      )}
+
+      {showAgreementRevenueTargets && (
+        <AgreementRevenueTargetsSection
+          agreementId={agreement.id ?? undefined}
+          agreementStatus={agreement.status}
+          audience='creator'
+          marketplaceEmptyStateAudience={isMarketplaceSaleLicense ? 'creator' : undefined}
+          showMonetizationLinks
+          universeId={universeNumericId}
+        />
+      )}
+
+      <KeyValuePairContainer>
+        {/* TODO(MUS-2724): Add a KeyValuePair for the creator's identified L90 sales bucket. */}
+
+        {universe && !isMarketplaceSaleLicense && (
+          <>
+            <KeyValuePair
+              label={translate('Label.ContentMaturity')}
+              value={experienceGuidelines}
+              tooltipText={translate('Label.TooltipContentMaturity')}
+            />
+
+            <KeyValuePair
+              label={translate('Label.RangeDau')}
+              value={translate(
+                getCreationDauRangeLabelFromEnum(
+                  agreement.agreementTargets?.[0].universeMetrics?.dau7DayBucket,
+                ),
+              )}
+            />
+            <KeyValuePair
+              label={translate('Label.Description')}
+              value={
+                // Ensures description matches formatting on Experience Detail Page
+                <Typography whiteSpace='pre-wrap'>{universe.description}</Typography>
+              }
+            />
+          </>
+        )}
+      </KeyValuePairContainer>
+    </>
+  );
+};
 
 /**
  * This component is rendered as the content for the Creator Agreement Details Page > Details tab.
@@ -138,7 +229,7 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
     setIsGuidelinesAndRestrictionsModalOpen(true);
   }, [logEvent, agreement.id, setIsGuidelinesAndRestrictionsModalOpen]);
 
-  const licenseEducationText = (
+  const licenseEducationText = universe && (
     <Typography variant='body1'>
       {translateHTML(
         'Description.ReceivedLicenseEducation',
@@ -235,11 +326,6 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
       ? EXPLORE_LISTING_DETAILS(listing.id)
       : undefined;
 
-  const universeDisplayName = universe.name ?? '';
-  const universeNumericId = universe.id;
-  const universeExperienceHref =
-    universe.rootPlaceId != null ? EXTERNAL_EXPERIENCE_HREF(universe.rootPlaceId) : undefined;
-
   return (
     <>
       <Typography variant='h5'>{translate('Heading.Overview')}</Typography>
@@ -255,7 +341,9 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
       <Grid container spacing={1.5}>
         {isTimeLimitedLicense && (
           <Grid item Small={12} Medium={isNonZeroRevShareRate ? 4 : 6}>
-            <OverviewCard heading='Header.AgreementDuration' subheading='Body.AgreementDuration'>
+            <OverviewCard
+              heading={translate('Header.AgreementDuration')}
+              subheading={translate('Body.AgreementDuration')}>
               <Flex alignItems='center' gap={4}>
                 <Flex
                   justifyContent='center'
@@ -277,7 +365,9 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
 
         {isNonZeroRevShareRate && (
           <Grid item Small={12} Medium={4}>
-            <OverviewCard heading='Label.RevenueShareTiming' subheading={keys.description}>
+            <OverviewCard
+              heading={translate('Label.RevenueShareTiming')}
+              subheading={translate(keys.description)}>
               <Flex alignItems='center' gap={4}>
                 <Flex
                   justifyContent='center'
@@ -293,8 +383,8 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
 
         <Grid item Small={12} Medium={isNonZeroRevShareRate ? 4 : 6}>
           <OverviewCard
-            heading='Label.RevenueShareRate'
-            subheading='Description.RevenueShareCardCreator'>
+            heading={translate('Label.RevenueShareRate')}
+            subheading={translate('Description.RevenueShareCardCreator')}>
             <Flex alignItems='center' gap={4}>
               <Flex
                 justifyContent='center'
@@ -310,8 +400,8 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
         {!isTimeLimitedLicense && (
           <Grid item Small={12} Medium={isNonZeroRevShareRate ? 4 : 6}>
             <OverviewCard
-              heading='Label.GuidelinesAmpersandRestrictions'
-              subheading='Description.ContentGuidelinesCard'>
+              heading={translate('Label.GuidelinesAmpersandRestrictions')}
+              subheading={translate('Description.ContentGuidelinesCard')}>
               <Flex alignItems='center' gap={4}>
                 <Button
                   variant='contained'
@@ -402,69 +492,12 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
 
       <AmDivider />
 
-      <Typography variant='h5'>{translate('Heading.CreationDetails')}</Typography>
-
-      {!isMarketplaceSaleLicense && universeNumericId != null && (
-        <ContentTile
-          header={universeDisplayName}
-          subheader={
-            universe.creator?.name
-              ? getCreatorDisplayName(
-                  normalizeCreatorType(universe.creator.type),
-                  universe.creator.name,
-                )
-              : ''
-          }
-          thumbnailTargetId={universeNumericId}
-          type={ContentType.Universe}
-          link={universeExperienceHref}
-        />
-      )}
-
-      {((isInGameSalesLicensingEnabled &&
-        effectiveLicenseType === LicenseType.CollaborationInExperienceSale) ||
-        (isAvatarItemLicensingEnabled && effectiveLicenseType === LicenseType.MarketplaceSale)) && (
-        <AgreementRevenueTargetsSection
-          agreementId={agreement.id ?? undefined}
-          agreementStatus={agreement.status}
-          audience='creator'
-          marketplaceEmptyStateAudience={isMarketplaceSaleLicense ? 'creator' : undefined}
-          showMonetizationLinks
-          universeId={universeNumericId}
-        />
-      )}
-
-      <KeyValuePairContainer>
-        {/* TODO(MUS-2724): Add a KeyValuePair for the creator's identified L90 sales bucket. */}
-        {!isMarketplaceSaleLicense && (
-          <>
-            <KeyValuePair
-              label={translate('Label.ContentMaturity')}
-              value={experienceGuidelines}
-              tooltipText={translate('Label.TooltipContentMaturity')}
-            />
-
-            <KeyValuePair
-              label={translate('Label.RangeDau')}
-              value={translate(
-                getCreationDauRangeLabelFromEnum(
-                  agreement.agreementTargets?.[0].universeMetrics?.dau7DayBucket,
-                ),
-              )}
-            />
-          </>
-        )}
-
-        {!isMarketplaceSaleLicense && (
-          <KeyValuePair
-            label={translate('Label.Description')}
-            value={
-              // Ensures description matches formatting on Experience Detail Page
-              <Typography whiteSpace='pre-wrap'>{universe.description}</Typography>
-            }
-          />
-        )}
-      </KeyValuePairContainer>
+      <CreationDetails
+        agreement={agreement}
+        universe={universe}
+        effectiveLicenseType={effectiveLicenseType}
+        experienceGuidelines={experienceGuidelines}
+      />
 
       <GuidelinesAndRestrictionsSummaryModal
         isOpen={isGuidelinesAndRestrictionsModalOpen}

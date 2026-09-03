@@ -12,13 +12,14 @@ import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import { useLocalStorage } from '@rbx/react-utilities';
 import { Alert, AlertTitle, Button, makeStyles, OpenInNewIcon, Typography } from '@rbx/ui';
 import { isImageAttachmentEnabledInLicenseApplication } from '@generated/flags/contentLicensing';
+import type { CreatorType } from '@modules/miscellaneous/common';
 import { Link } from '@modules/miscellaneous/components';
 import { useDebouncedFunction } from '@modules/miscellaneous/hooks/useDebouncedFunction';
 import { isNonEmptyString } from '@modules/miscellaneous/utils';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import ReportIpMessageMenu from '../../../components/ReportIpMessageMenu';
 import { EXTERNAL_EXPERIENCE_HREF } from '../../urls';
-import { getCreatorDisplayName, normalizeCreatorType } from '../../utils/creatorName';
+import { getCreatorDisplayName } from '../../utils/creatorName';
 import { getLatestDisputeReasonLabelKey } from '../../utils/disputeReason';
 import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../../utils/logger';
 import AgreementDetailsTabs from '../enums/AgreementDetailsTabs';
@@ -335,7 +336,11 @@ const getDismissalKey = (
 
 interface IphAgreementAlertsProps {
   agreement: HydratedAgreementWithHydratedTargetsResponse;
-  universe: Universe;
+  /** Absent for licenses that do not target a universe, e.g. Avatar Marketplace. */
+  universe?: Universe;
+  /** Creator's name, resolved from the universe or the agreement's target account. */
+  creatorName?: string;
+  creatorType?: CreatorType;
   listingName: string;
   handleTabChange?: (event: unknown, newTabValue: string) => void;
   handleCompleteChangeRequest?: () => void;
@@ -349,6 +354,8 @@ interface IphAgreementAlertsProps {
 const IphAgreementAlerts: React.FC<IphAgreementAlertsProps> = ({
   agreement,
   universe,
+  creatorName = '',
+  creatorType,
   listingName,
   handleTabChange,
   handleCompleteChangeRequest,
@@ -528,9 +535,7 @@ const IphAgreementAlerts: React.FC<IphAgreementAlertsProps> = ({
         date: formatDate(headerDate, alertLocale),
       })
     : undefined;
-  const creatorDisplayName = universe.creatorName
-    ? getCreatorDisplayName(normalizeCreatorType(universe.creatorType), universe.creatorName)
-    : '';
+  const creatorDisplayName = getCreatorDisplayName(creatorType, creatorName);
   let bodyText = translate(content.bodyText, {
     creatorName: creatorDisplayName,
     disputeReason: translate(getLatestDisputeReasonLabelKey(agreement)),
@@ -554,7 +559,6 @@ const IphAgreementAlerts: React.FC<IphAgreementAlertsProps> = ({
         agreement.activityLog,
         AgreementTransition.Apply,
       );
-      const creatorName = universe.creatorName ?? '';
       action =
         activity && isNonEmptyString(creatorName) ? (
           <div>
@@ -595,7 +599,7 @@ const IphAgreementAlerts: React.FC<IphAgreementAlertsProps> = ({
         <div>
           <AlertTitle paddingBottom={1}>
             {headerText}
-            {universe.rootPlaceId != null ? (
+            {universe?.rootPlaceId != null ? (
               <Link
                 className={classes.link}
                 href={EXTERNAL_EXPERIENCE_HREF(universe.rootPlaceId)}
@@ -638,7 +642,7 @@ const IphAgreementAlerts: React.FC<IphAgreementAlertsProps> = ({
         <div>
           <Typography variant='body2' paddingBottom={1}>
             {headerText}
-            {universe.rootPlaceId != null ? (
+            {universe?.rootPlaceId != null ? (
               <Link
                 className={classes.link}
                 href={EXTERNAL_EXPERIENCE_HREF(universe.rootPlaceId)}

@@ -4,10 +4,14 @@ import developClient from '@modules/clients/develop';
 import rightsClient from '@modules/clients/rights';
 import { useCurrentAccountContext } from '../../../components/AccountProvider';
 import { GET_IPH_AGREEMENT_WITH_DETAILS_QUERY_KEY } from '../../queryKeys';
+import { getTargetAccountCreator } from '../../utils/agreementCreator';
+import { licenseUsesUniverseAgreementTarget } from '../../utils/licenseUsesUniverseAgreementTarget';
 
 interface GetIphAgreementDetailsParams {
   agreementId?: string;
 }
+
+export type { AgreementCreator } from '../../utils/agreementCreator';
 
 export const useGetIphAgreementDetails = ({ agreementId }: GetIphAgreementDetailsParams) => {
   const { account } = useCurrentAccountContext();
@@ -46,8 +50,15 @@ export const useGetIphAgreementDetails = ({ agreementId }: GetIphAgreementDetail
         ipFamilyId: listing.ipFamilyId,
       });
 
+      // Number() maps a missing contentId to NaN and a null one to 0, so require a positive id.
       const universeId = Number(response.agreementTargets[0]?.contentId);
-      const universeResponse = await developClient.getUniverseDetails(universeId);
+      const universeResponse =
+        licenseUsesUniverseAgreementTarget(response.license.licenseType) && universeId > 0
+          ? await developClient.getUniverseDetails(universeId)
+          : undefined;
+      const creator = universeResponse
+        ? undefined
+        : await getTargetAccountCreator(response.targetAccountId);
 
       return {
         agreement: response,
@@ -55,6 +66,7 @@ export const useGetIphAgreementDetails = ({ agreementId }: GetIphAgreementDetail
         listing,
         ipFamily: ipFamilyResponse,
         universe: universeResponse,
+        creator,
       };
     },
     enabled: !!accountId,

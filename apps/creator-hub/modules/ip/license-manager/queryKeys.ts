@@ -1,3 +1,5 @@
+import type { AccountOwnerTypeEnum } from '@rbx/client-rights/v1';
+
 const rootIpListingsKey = 'am_ipListings';
 export const IP_LISTINGS_QUERY_KEY = [rootIpListingsKey];
 export const GET_IP_LISTING_QUERY_KEY = (id: string) => [rootIpListingsKey, id];
@@ -94,6 +96,12 @@ export const GET_AGREEMENTS_BY_LICENSE_QUERY_KEY = (accountId?: string, licenseI
   accountId,
   licenseId,
 ];
+
+const rootAccountOwnerCreatorKey = 'am_accountOwnerCreator';
+export const GET_ACCOUNT_OWNER_CREATOR_QUERY_KEY = (
+  ownerId?: string,
+  ownerType?: AccountOwnerTypeEnum,
+) => [rootAccountOwnerCreatorKey, ownerId, ownerType] as const;
 
 const rootExperienceGuidelinesKey = 'am_experienceGuidelines';
 export const GET_EXPERIENCE_GUIDELINES_QUERY_KEY = (universeId: number) => [

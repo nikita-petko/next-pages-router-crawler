@@ -1,5 +1,10 @@
 import type { ChangeEvent } from 'react';
-import { useCallback, useEffect, useMemo } from 'react';
+import { createElement, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useTranslationWithNamespace } from '@rbx/intl';
+import { Alert } from '@rbx/ui';
+import useIpSnackbar from '@modules/ip/hooks/useIpSnackbar';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
+import { AssetsUploadOperationStatus } from '@modules/react-query/assetsUpload/assetsUploadOperationStatusTypes';
 import useAssetsUploadOperationStatusPolling from '@modules/react-query/assetsUpload/useAssetsUploadOperationStatusPolling';
 import useUploadCreatorPitchImageMutation from '../hooks/useUploadCreatorPitchImageMutation';
 import {
@@ -12,7 +17,11 @@ import type {
   CreatorPitchAttachmentsOnChange,
 } from '../utils/creatorPitchAttachmentTypes';
 import { getAttachmentPatchFromUploadStatus } from '../utils/creatorPitchAttachmentUploadStatus';
-import { isAcceptedPitchAttachment } from '../utils/creatorPitchAttachmentValidation';
+import {
+  getPitchAttachmentImageDimensions,
+  isAcceptedPitchAttachment,
+  isPitchAttachmentWithinResolutionLimit,
+} from '../utils/creatorPitchAttachmentValidation';
 import { createCreatorPitchAttachmentFromFile } from '../utils/prepareCreatorPitchAttachmentsFromFiles';
 
 interface UseCreatorPitchAttachmentUploadParams {
@@ -32,8 +41,27 @@ const useCreatorPitchAttachmentUpload = ({
   userId,
 }: UseCreatorPitchAttachmentUploadParams) => {
   const { mutateAsync: createUploadOperation } = useUploadCreatorPitchImageMutation();
+  const { translate } = useTranslationWithNamespace(TranslationNamespace.Licenses);
+  const { enqueueWithDefaults } = useIpSnackbar();
   const { addOperationId, getUploadStatus, uploadingOperationIds, moderatingOperationIds } =
     useAssetsUploadOperationStatusPolling();
+  const pendingUploadAttachmentIds = useRef(new Set<string>());
+  const reportedFailedAttachmentIds = useRef(new Set<string>());
+  const uploadFailedText = translate('Error.PitchAttachmentUploadFailed');
+
+  const reportUploadFailure = useCallback(
+    (attachmentId: string) => {
+      if (reportedFailedAttachmentIds.current.has(attachmentId)) {
+        return;
+      }
+
+      reportedFailedAttachmentIds.current.add(attachmentId);
+      enqueueWithDefaults({
+        children: createElement(Alert, { severity: 'error' }, uploadFailedText),
+      });
+    },
+    [enqueueWithDefaults, uploadFailedText],
+  );
 
   const operationIdsToResume = useMemo(
     () =>
@@ -52,12 +80,35 @@ const useCreatorPitchAttachmentUpload = ({
   }, [addOperationId, operationIdsToResume]);
 
   useEffect(() => {
+    const failedAttachmentIds = new Set(
+      attachments.flatMap((attachment) => {
+        if (attachment.operationId == null) {
+          return [];
+        }
+
+        const { status } = getUploadStatus(attachment.operationId);
+        return status === AssetsUploadOperationStatus.UploadFailed ||
+          status === AssetsUploadOperationStatus.UploadTimedOut
+          ? [attachment.id]
+          : [];
+      }),
+    );
+
+    failedAttachmentIds.forEach((attachmentId) => {
+      reportUploadFailure(attachmentId);
+      pendingUploadAttachmentIds.current.delete(attachmentId);
+    });
+
     onChange((previousAttachments) => {
       let hasChanges = false;
+      const nextAttachments = previousAttachments.flatMap((attachment) => {
+        if (failedAttachmentIds.has(attachment.id)) {
+          hasChanges = true;
+          return [];
+        }
 
-      const nextAttachments = previousAttachments.map((attachment) => {
         if (attachment.operationId == null) {
-          return attachment;
+          return [attachment];
         }
 
         const patch = getAttachmentPatchFromUploadStatus(
@@ -66,16 +117,23 @@ const useCreatorPitchAttachmentUpload = ({
         );
 
         if (patch == null) {
-          return attachment;
+          return [attachment];
         }
 
         hasChanges = true;
-        return { ...attachment, ...patch };
+        return [{ ...attachment, ...patch }];
       });
 
       return hasChanges ? nextAttachments : previousAttachments;
     });
-  }, [getUploadStatus, moderatingOperationIds, onChange, uploadingOperationIds]);
+  }, [
+    attachments,
+    getUploadStatus,
+    moderatingOperationIds,
+    onChange,
+    reportUploadFailure,
+    uploadingOperationIds,
+  ]);
 
   const uploadAttachmentFile = useCallback(
     async (attachmentId: string, file: File, authenticatedUserId: number) => {
@@ -102,25 +160,55 @@ const useCreatorPitchAttachmentUpload = ({
           addOperationId(operationId);
         }
       } catch {
+        if (pendingUploadAttachmentIds.current.has(attachmentId)) {
+          pendingUploadAttachmentIds.current.delete(attachmentId);
+          reportUploadFailure(attachmentId);
+        }
+
         onChange((previousAttachments) => {
           if (!previousAttachments.some((item) => item.id === attachmentId)) {
             return previousAttachments;
           }
 
-          return previousAttachments.map((item) =>
-            item.id === attachmentId
-              ? {
-                  ...item,
-                  status: CreatorPitchAttachmentStatus.Error,
-                  errorType: CreatorPitchAttachmentErrorType.UploadFailed,
-                  operationId: undefined,
-                }
-              : item,
-          );
+          return previousAttachments.filter((item) => item.id !== attachmentId);
         });
       }
     },
-    [addOperationId, createUploadOperation, onChange],
+    [addOperationId, createUploadOperation, onChange, reportUploadFailure],
+  );
+
+  const addAndUploadAttachment = useCallback(
+    async (file: File, authenticatedUserId: number) => {
+      const attachment = createCreatorPitchAttachmentFromFile(file);
+      pendingUploadAttachmentIds.current.add(attachment.id);
+      onChange((previousAttachments) => [...previousAttachments, attachment]);
+
+      if (attachment.status === CreatorPitchAttachmentStatus.Error) {
+        return;
+      }
+
+      const dimensions = await getPitchAttachmentImageDimensions(file);
+      if (
+        dimensions != null &&
+        !isPitchAttachmentWithinResolutionLimit(dimensions.width, dimensions.height)
+      ) {
+        onChange((previousAttachments) =>
+          previousAttachments.map((item) =>
+            item.id === attachment.id
+              ? {
+                  ...item,
+                  status: CreatorPitchAttachmentStatus.Error,
+                  errorType: CreatorPitchAttachmentErrorType.ResolutionTooLarge,
+                }
+              : item,
+          ),
+        );
+        return;
+      }
+
+      void uploadAttachmentFile(attachment.id, file, authenticatedUserId);
+    },
+    [onChange, uploadAttachmentFile],
   );
 
   const handleFilesSelected = useCallback(
@@ -144,22 +232,17 @@ const useCreatorPitchAttachmentUpload = ({
       const filesToAdd = acceptedFiles.slice(0, Math.max(0, remainingSlots));
 
       filesToAdd.forEach((file) => {
-        const attachment = createCreatorPitchAttachmentFromFile(file);
-
-        onChange((previousAttachments) => [...previousAttachments, attachment]);
-
-        if (attachment.status === CreatorPitchAttachmentStatus.Uploading) {
-          void uploadAttachmentFile(attachment.id, file, userId);
-        }
+        void addAndUploadAttachment(file, userId);
       });
 
       event.target.value = '';
     },
-    [attachments.length, onChange, uploadAttachmentFile, userId],
+    [addAndUploadAttachment, attachments.length, userId],
   );
 
   const handleRemove = useCallback(
     (attachmentId: string) => {
+      pendingUploadAttachmentIds.current.delete(attachmentId);
       onChange((previousAttachments) =>
         previousAttachments.filter((item) => item.id !== attachmentId),
       );

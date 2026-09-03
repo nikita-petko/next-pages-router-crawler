@@ -23,7 +23,8 @@ import RevenueShareChart from './RevenueShareChart';
 import RevSplitRow from './RevSplitRow';
 
 interface AgreementDetailsAnalyticsProps {
-  universe: RobloxApiDevelopModelsUniverseModel;
+  /** Absent for licenses that do not target a universe, e.g. Avatar Marketplace. */
+  universe?: RobloxApiDevelopModelsUniverseModel;
   ipFamily: IPFamily;
   ipListing: ListingResponse;
   license: LicenseResponse;
@@ -49,7 +50,7 @@ const AgreementDetailsAnalytics: FunctionComponent<AgreementDetailsAnalyticsProp
   const {
     classes: { iconContainer },
   } = useStyles();
-  const { data: gameData, isPending, isError } = useDebouncedGameDetails(universe.id);
+  const { data: gameData, isPending, isError } = useDebouncedGameDetails(universe?.id);
 
   const revenueShares = useMemo(() => {
     if (!license || !universe || !ipFamily) {
@@ -71,53 +72,71 @@ const AgreementDetailsAnalytics: FunctionComponent<AgreementDetailsAnalyticsProp
     ];
   }, [license, ipFamily, universe]);
 
-  if (isPending) {
+  if (universe && isPending) {
     return <PageLoading />;
   }
 
-  if (isError || gameData === NO_GAME_FOUND_FOR_ID) {
+  if (universe && (isError || gameData === NO_GAME_FOUND_FOR_ID)) {
     return <IpLoadError />;
   }
+
+  const visits = gameData != null && gameData !== NO_GAME_FOUND_FOR_ID ? (gameData.visits ?? 0) : 0;
 
   return (
     <>
       <Grid container spacing={3}>
-        <Grid item Small={12} Medium={4}>
-          <OverviewCard heading='Heading.DAU' subheading='Label.AvgL7DAU'>
-            <Flex alignItems='center' gap={4}>
-              <Flex justifyContent='center' alignItems='center' classes={{ root: iconContainer }}>
-                <PeopleOutlineOutlinedIcon fontSize='large' />
-              </Flex>
-              <Typography variant='h2'>
-                {getPrettifiedNumber(
-                  Math.floor(agreement.agreementTargets?.[0].universeMetrics?.averageDau7Day ?? 0),
-                  number.suffixNames.withPlus,
-                )}
-              </Typography>
-            </Flex>
-          </OverviewCard>
-        </Grid>
+        {universe && (
+          <>
+            <Grid item Small={12} Medium={4}>
+              <OverviewCard
+                heading={translate('Heading.DAU')}
+                subheading={translate('Label.AvgL7DAU')}>
+                <Flex alignItems='center' gap={4}>
+                  <Flex
+                    justifyContent='center'
+                    alignItems='center'
+                    classes={{ root: iconContainer }}>
+                    <PeopleOutlineOutlinedIcon fontSize='large' />
+                  </Flex>
+                  <Typography variant='h2'>
+                    {getPrettifiedNumber(
+                      Math.floor(
+                        agreement.agreementTargets?.[0].universeMetrics?.averageDau7Day ?? 0,
+                      ),
+                      number.suffixNames.withPlus,
+                    )}
+                  </Typography>
+                </Flex>
+              </OverviewCard>
+            </Grid>
 
-        <Grid item Small={12} Medium={4}>
-          <OverviewCard heading='Heading.Visits' subheading='Label.NumberExperienceVisitors'>
-            <Flex alignItems='center' gap={4}>
-              <Flex justifyContent='center' alignItems='center' classes={{ root: iconContainer }}>
-                <PeopleOutlineOutlinedIcon fontSize='large' />
-              </Flex>
-              <Typography variant='h2'>
-                {getPrettifiedNumber(gameData.visits ?? 0, number.suffixNames.withPlus)}
-              </Typography>
-            </Flex>
-          </OverviewCard>
-        </Grid>
+            <Grid item Small={12} Medium={4}>
+              <OverviewCard
+                heading={translate('Heading.Visits')}
+                subheading={translate('Label.NumberExperienceVisitors')}>
+                <Flex alignItems='center' gap={4}>
+                  <Flex
+                    justifyContent='center'
+                    alignItems='center'
+                    classes={{ root: iconContainer }}>
+                    <PeopleOutlineOutlinedIcon fontSize='large' />
+                  </Flex>
+                  <Typography variant='h2'>
+                    {getPrettifiedNumber(visits, number.suffixNames.withPlus)}
+                  </Typography>
+                </Flex>
+              </OverviewCard>
+            </Grid>
+          </>
+        )}
 
         <Grid item Small={12} Medium={4}>
           {transactionsCard}
         </Grid>
       </Grid>
 
-      {agreement.status === AgreementStatus.Active && agreement.enableMonetization && (
-        <React.Fragment>
+      {universe && agreement.status === AgreementStatus.Active && agreement.enableMonetization && (
+        <>
           <AmDivider />
 
           <Grid container>
@@ -138,7 +157,7 @@ const AgreementDetailsAnalytics: FunctionComponent<AgreementDetailsAnalyticsProp
                 <RevSplitRow
                   color={RevShareColorHexes[1]}
                   splitName={ipFamily.name ?? ''}
-                  assetId={ipListing.thumbnailAssetIds![0]}
+                  assetId={ipListing.thumbnailAssetIds?.[0] ?? 0}
                   assetThumbnailType={ThumbnailTypes.assetThumbnail}
                   percentage={revenueShares[1].percentage}
                 />
@@ -149,7 +168,7 @@ const AgreementDetailsAnalytics: FunctionComponent<AgreementDetailsAnalyticsProp
               <RevenueShareChart revenueShares={revenueShares} />
             </Grid>
           </Grid>
-        </React.Fragment>
+        </>
       )}
     </>
   );
