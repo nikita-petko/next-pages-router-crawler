@@ -132,15 +132,17 @@ const BreakingChangesTable: FC<BreakingChangesTableProps> = ({
         </TableHeader>
         <TableBody className='flex flex-col min-width-0 max-width-full'>
           {rows.map((row) => {
-            const translatedPermissions = row.permissions.map((perm) =>
+            const translatedPermissions = row.permissions.map((perm) => {
               // Non-org member role can carry Organization.* perms, so route by perm name.
-              perm.startsWith('Organization.')
+              const translatedPermission = perm.startsWith('Organization.')
                 ? tPerms(
                     `${perm}.Label`,
                     perm === AssignSameRolePermission ? { creatorName: row.roleName } : undefined,
                   )
-                : tGroups(`Label.${perm}`),
-            );
+                : tGroups(`Label.${perm}`);
+
+              return `"${translatedPermission}"`;
+            });
             const roleUrl = row.isOrgRole
               ? row.roleId === undefined
                 ? undefined
