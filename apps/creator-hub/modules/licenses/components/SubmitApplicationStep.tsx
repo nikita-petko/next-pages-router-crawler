@@ -207,7 +207,12 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
               }
             />
           </Grid>
-          <Grid item flexDirection='column' marginTop={2}>
+          <Grid
+            item
+            flexDirection='column'
+            marginTop={2}
+            width='50%'
+            data-testid='creator-pitch-summary'>
             <KeyValuePairContainer>
               <KeyValuePair
                 label={translate('Label.CreatorIntentOfUse')}

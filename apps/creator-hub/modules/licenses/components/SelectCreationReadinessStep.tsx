@@ -132,12 +132,13 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
     getRevShareTimingPreference(revShareValue, licenseRevShareTiming, isRevShareNowTimingPreferred),
   );
 
-  const { control, getValues, trigger } = useForm<LicenseApplicationRequirementsFormValues>({
-    defaultValues: {
-      creatorPitch: creatorPitch ?? '',
-      dateRange,
-    },
-  });
+  const { clearErrors, control, getValues, trigger } =
+    useForm<LicenseApplicationRequirementsFormValues>({
+      defaultValues: {
+        creatorPitch: creatorPitch ?? '',
+        dateRange,
+      },
+    });
 
   const [moderationError, setModerationError] = useState<string | undefined>(undefined);
   const contentModerationMutation = useContentModerationMutation();
@@ -303,6 +304,7 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
                 inputProps={{ 'data-testid': 'apply-to-license-creator-pitch' }}
                 onChange={(e) => {
                   field.onChange(e);
+                  clearErrors('creatorPitch');
                   if (moderationError) {
                     setModerationError(undefined);
                   }
