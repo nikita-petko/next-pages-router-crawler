@@ -31,9 +31,11 @@ export type {
   GetExperimentOperationStatusResponse,
   ExperimentOperation,
   // create experiment
+  V1UniversesUniverseIdExperimentPostOperationRequest,
   V1UniversesUniverseIdExperimentPostRequest,
   CreateExperimentResponse,
   // update experiment
+  V1UniversesUniverseIdExperimentExperimentIdPatchOperationRequest,
   V1UniversesUniverseIdExperimentExperimentIdPatchRequest,
   UpdateExperimentResponse,
   // start experiment
@@ -47,6 +49,7 @@ export type {
   V1UniversesUniverseIdExperimentExperimentIddiscardPostRequest,
   DiscardExperimentResponse,
   // MDE
+  V1UniversesUniverseIdExperimentMdePostOperationRequest,
   CalculateExperimentMdeResponse,
   // Latest experiment results
   GetLatestExperimentResultsResponse,

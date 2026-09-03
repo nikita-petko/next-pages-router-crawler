@@ -1233,7 +1233,7 @@ const makeValidatedExperimentationAPI = (
         {
           universeId: requestParameters.universeId,
           experimentId: requestParameters.experimentId,
-          rolloutVariantData: {
+          v1UniversesUniverseIdExperimentExperimentIdRolloutPostRequest: {
             variantId: requestParameters.variantId,
           },
         },
@@ -1263,7 +1263,7 @@ const makeValidatedExperimentationAPI = (
       } = requestParameters;
       const dangerousResponse = await given.v1UniversesUniverseIdExperimentPost({
         universeId,
-        createExperimentData: {
+        v1UniversesUniverseIdExperimentPostRequest: {
           name,
           description,
           experimentConfiguration:
@@ -1291,7 +1291,7 @@ const makeValidatedExperimentationAPI = (
       const dangerousResponse = await given.v1UniversesUniverseIdExperimentExperimentIdPatch({
         universeId,
         experimentId,
-        updateExperimentData: {
+        v1UniversesUniverseIdExperimentExperimentIdPatchRequest: {
           name: experimentName,
           exposurePercent,
           universeGoalMetrics: [goalMetric],
@@ -1310,7 +1310,7 @@ const makeValidatedExperimentationAPI = (
       const dangerousResponse = await given.v1UniversesUniverseIdExperimentExperimentIdstartPost({
         universeId: requestParameters.universeId,
         experimentId: requestParameters.experimentId,
-        startExperimentData: {
+        v1UniversesUniverseIdExperimentExperimentIdStartPostRequest: {
           scheduledStartTime: scheduledAt ?? undefined,
           isScheduled: !!scheduledAt,
         },
@@ -1333,8 +1333,10 @@ const makeValidatedExperimentationAPI = (
     v1UniversesUniverseIdExperimentMdePost: async (
       requestParameters: InternalV1UniversesUniverseIdExperimentMdePostRequest,
     ) => {
-      const dangerousResponse =
-        await given.v1UniversesUniverseIdExperimentMdePost(requestParameters);
+      const dangerousResponse = await given.v1UniversesUniverseIdExperimentMdePost({
+        universeId: requestParameters.universeId,
+        v1UniversesUniverseIdExperimentMdePostRequest: requestParameters.calculateExperimentMdeData,
+      });
       return toValidCalculateExperimentMdeDataResponse(dangerousResponse);
     },
     v1UniversesUniverseIdExperimentExperimentIdResultsGet: async (
@@ -1358,7 +1360,7 @@ const makeValidatedExperimentationAPI = (
         await given.v1UniversesUniverseIdExperimentExperimentIdRolloutpreviewPost({
           universeId: requestParameters.universeId,
           experimentId: requestParameters.experimentId,
-          previewRolloutData: {
+          v1UniversesUniverseIdExperimentExperimentIdRolloutPreviewPostRequest: {
             variantId: requestParameters.variantId,
           },
         });
@@ -1403,7 +1405,7 @@ const makeValidatedExperimentationAPI = (
         await given.v1UniversesUniverseIdExperimentExperimentIdRolloutapplyPost({
           universeId: requestParameters.universeId,
           experimentId: requestParameters.experimentId,
-          applyRolloutData: {
+          v1UniversesUniverseIdExperimentExperimentIdRolloutApplyPostRequest: {
             variantId: requestParameters.variantId,
             previewHash: requestParameters.previewHash,
             overrides: requestParameters.overrides,

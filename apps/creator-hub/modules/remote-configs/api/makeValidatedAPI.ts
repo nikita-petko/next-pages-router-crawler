@@ -13,19 +13,24 @@ import type {
   ChangelogEntry as DangerousChangelogEntry,
   ConfigEntryChange as DangerousConfigEntryChange,
   UniverseConfigsWebAPIApi,
+  V1DraftUniversesUniverseIdPostOperationRequest,
   V1DraftUniversesUniverseIdPostRequest,
+  V1DraftUniversesUniverseIdPutOperationRequest,
   V1DraftUniversesUniverseIdPutRequest,
   V1DraftUniversesUniverseIdGetRequest,
-  V1DraftUniversesUniverseIdPublishPostRequest,
+  V1DraftUniversesUniverseIdPublishPostOperationRequest,
   V1DraftUniversesUniverseIdForcePostRequest,
   V1DraftUniversesUniverseIdDeleteRequest,
   V1DraftUniversesUniverseIdCancelPostRequest,
   V1ChangelogUniversesUniverseIdGetRequest,
   V1ChangelogUniversesUniverseIdEntryChangelogEntryIdRestorePostRequest,
-  V2DraftUniversesUniverseIdDeleteRequest,
+  V2DraftUniversesUniverseIdDeleteOperationRequest,
+  V2DraftUniversesUniverseIdConditionPutOperationRequest,
   V2DraftUniversesUniverseIdConditionPutRequest,
-  V2DraftUniversesUniverseIdRuleOrderingPutRequest,
+  V2DraftUniversesUniverseIdRuleOrderingPutOperationRequest,
+  V2DraftUniversesUniverseIdPostOperationRequest,
   V2DraftUniversesUniverseIdPostRequest,
+  V2DraftUniversesUniverseIdPutOperationRequest,
   V2DraftUniversesUniverseIdPutRequest,
 } from '@modules/clients/analytics/universeConfigs';
 import { isValidEnumValue } from '@modules/miscellaneous/utils/enumUtils';
@@ -931,21 +936,14 @@ const translatePostRequest = (
 ): V1DraftUniversesUniverseIdPostRequest => {
   if (internalRequestParameters.createConfigurationData.isDeleted) {
     return {
-      ...internalRequestParameters,
-      createConfigurationData: {
-        ...internalRequestParameters.createConfigurationData,
-      },
+      entry: internalRequestParameters.createConfigurationData.entry,
     };
   }
 
   const internalEntry = internalRequestParameters.createConfigurationData?.entry;
   const entry = { ...internalEntry, entryValue: toAPIConfigEntryValue(internalEntry.entryValue) };
   return {
-    ...internalRequestParameters,
-    createConfigurationData: {
-      ...internalRequestParameters.createConfigurationData,
-      entry,
-    },
+    entry,
   };
 };
 
@@ -954,40 +952,28 @@ const translatePutRequest = (
 ): V1DraftUniversesUniverseIdPutRequest => {
   if (internalRequestParameters.updateConfigurationData.isDeleted) {
     return {
-      ...internalRequestParameters,
-      updateConfigurationData: {
-        ...internalRequestParameters.updateConfigurationData,
-      },
+      ...internalRequestParameters.updateConfigurationData,
     };
   }
 
   const internalEntry = internalRequestParameters.updateConfigurationData?.entry;
   const entry = { ...internalEntry, entryValue: toAPIConfigEntryValue(internalEntry.entryValue) };
   return {
-    ...internalRequestParameters,
-    updateConfigurationData: {
-      ...internalRequestParameters.updateConfigurationData,
-      entry,
-    },
+    ...internalRequestParameters.updateConfigurationData,
+    entry,
   };
 };
 
-type ApiUpdateConditionData = NonNullable<
-  V2DraftUniversesUniverseIdConditionPutRequest['updateConditionData']
->;
+type ApiUpdateConditionData = V2DraftUniversesUniverseIdConditionPutRequest;
 type ApiRpnRule = NonNullable<ApiUpdateConditionData['rule']>;
 type ApiRpnToken = NonNullable<ApiRpnRule['tokens']>[number];
 type ApiLiteralValue = NonNullable<NonNullable<ApiRpnToken['operand']>['literalValue']>;
-type ApiCreateConfigurationDataV2 = NonNullable<
-  V2DraftUniversesUniverseIdPostRequest['createConfigurationDataV2']
->;
+type ApiCreateConfigurationDataV2 = V2DraftUniversesUniverseIdPostRequest;
 type ApiConditionalValue = NonNullable<ApiCreateConfigurationDataV2['conditionalValues']>[number];
 type ApiCreateConditionalRuleData = NonNullable<
   ApiCreateConfigurationDataV2['conditionalRules']
 >[number];
-type ApiUpdateConfigurationDataV2 = NonNullable<
-  V2DraftUniversesUniverseIdPutRequest['updateConfigurationDataV2']
->;
+type ApiUpdateConfigurationDataV2 = V2DraftUniversesUniverseIdPutRequest;
 type ApiUpdateConditionalValueData = NonNullable<
   ApiUpdateConfigurationDataV2['toUpdateConditionalValues']
 >[number];
@@ -1107,15 +1093,9 @@ const translateV2PostRequest = (
     throw new Error('CreateConfigurationDataV2 does not support deleted entries');
   }
 
-  const { createConfigurationData, conditionalRules, ...baseRequest } = internalRequestParameters;
+  const { createConfigurationData, conditionalRules } = internalRequestParameters;
 
-  return {
-    ...baseRequest,
-    createConfigurationDataV2: toApiCreateConfigurationDataV2(
-      createConfigurationData.entry,
-      conditionalRules,
-    ),
-  };
+  return toApiCreateConfigurationDataV2(createConfigurationData.entry, conditionalRules);
 };
 
 const toApiUpdateConfigurationDataV2 = (
@@ -1208,19 +1188,15 @@ const translateV2PutRequest = (
     conditionNamesToDelete,
     conditionNamesToRecreate,
     conditionalRules,
-    ...baseRequest
   } = internalRequestParameters;
 
-  return {
-    ...baseRequest,
-    updateConfigurationDataV2: toApiUpdateConfigurationDataV2(
-      updateConfigurationData,
-      conditionNamesToUpdate,
-      conditionNamesToDelete,
-      conditionNamesToRecreate,
-      conditionalRules,
-    ),
-  };
+  return toApiUpdateConfigurationDataV2(
+    updateConfigurationData,
+    conditionNamesToUpdate,
+    conditionNamesToDelete,
+    conditionNamesToRecreate,
+    conditionalRules,
+  );
 };
 
 const translateConditionPutRequest = (
@@ -1240,10 +1216,7 @@ const translateConditionPutRequest = (
     translatedUpdateConditionData.rule = toApiConditionRule(updateConditionData.rule);
   }
 
-  return {
-    ...internalRequestParameters,
-    updateConditionData: translatedUpdateConditionData,
-  };
+  return translatedUpdateConditionData;
 };
 
 /**
@@ -1312,7 +1285,13 @@ const makeValidatedApi = (given: UniverseConfigsWebAPIApi): ValidRemoteConfigAPI
     v2DraftUniversesUniverseIdDelete: async (
       internalRequestParameters: InternalV2DraftUniversesUniverseIdDeleteRequest,
     ): Promise<ValidDiscardStagedChangesResponse> => {
-      const requestParameters: V2DraftUniversesUniverseIdDeleteRequest = internalRequestParameters;
+      const requestParameters: V2DraftUniversesUniverseIdDeleteOperationRequest = {
+        universeId: internalRequestParameters.universeId,
+        draftHash: internalRequestParameters.draftHash,
+        keysToDiscard: internalRequestParameters.keysToDiscard,
+        v2DraftUniversesUniverseIdDeleteRequest:
+          internalRequestParameters.discardStagedChangesV2Data,
+      };
       const unvalidatedResponse = await given.v2DraftUniversesUniverseIdDelete(requestParameters);
       return {
         discardStagedResult: toValidConfigChangeResult(unvalidatedResponse.discardStagedResult),
@@ -1334,7 +1313,11 @@ const makeValidatedApi = (given: UniverseConfigsWebAPIApi): ValidRemoteConfigAPI
     v1DraftUniversesUniverseIdPost: async (
       internalRequestParameters: InternalDraftUniversesUniverseIdPostRequest,
     ): Promise<ValidCreateConfigurationResponse> => {
-      const requestParameters = translatePostRequest(internalRequestParameters);
+      const requestParameters: V1DraftUniversesUniverseIdPostOperationRequest = {
+        universeId: internalRequestParameters.universeId,
+        draftHash: internalRequestParameters.draftHash,
+        v1DraftUniversesUniverseIdPostRequest: translatePostRequest(internalRequestParameters),
+      };
       const unvalidatedResponse = await given.v1DraftUniversesUniverseIdPost(requestParameters);
       return {
         createConfigResult: toValidConfigChangeResult(unvalidatedResponse.createConfigResult),
@@ -1343,7 +1326,11 @@ const makeValidatedApi = (given: UniverseConfigsWebAPIApi): ValidRemoteConfigAPI
     v2DraftUniversesUniverseIdPost: async (
       internalRequestParameters: InternalV2DraftUniversesUniverseIdPostRequest,
     ): Promise<ValidCreateConfigurationResponse> => {
-      const requestParameters = translateV2PostRequest(internalRequestParameters);
+      const requestParameters: V2DraftUniversesUniverseIdPostOperationRequest = {
+        universeId: internalRequestParameters.universeId,
+        draftHash: internalRequestParameters.draftHash,
+        v2DraftUniversesUniverseIdPostRequest: translateV2PostRequest(internalRequestParameters),
+      };
       const unvalidatedResponse = await given.v2DraftUniversesUniverseIdPost(requestParameters);
       return {
         createConfigResult: toValidConfigChangeResult(unvalidatedResponse.createConfigResult),
@@ -1352,8 +1339,11 @@ const makeValidatedApi = (given: UniverseConfigsWebAPIApi): ValidRemoteConfigAPI
     v1DraftUniversesUniverseIdPublishPost: async (
       internalRequestParameters: InternalDraftUniversesUniverseIdPublishPostRequest,
     ): Promise<ValidPublishStagedChangesResponse> => {
-      const requestParameters: V1DraftUniversesUniverseIdPublishPostRequest =
-        internalRequestParameters;
+      const requestParameters: V1DraftUniversesUniverseIdPublishPostOperationRequest = {
+        universeId: internalRequestParameters.universeId,
+        draftHash: internalRequestParameters.draftHash,
+        v1DraftUniversesUniverseIdPublishPostRequest: internalRequestParameters.publishData,
+      };
       const unvalidatedResponse =
         await given.v1DraftUniversesUniverseIdPublishPost(requestParameters);
       return {
@@ -1363,7 +1353,11 @@ const makeValidatedApi = (given: UniverseConfigsWebAPIApi): ValidRemoteConfigAPI
     v1DraftUniversesUniverseIdPut: async (
       internalRequestParameters: InternalDraftUniversesUniverseIdPutRequest,
     ): Promise<ValidUpdateConfigurationResponse> => {
-      const requestParameters = translatePutRequest(internalRequestParameters);
+      const requestParameters: V1DraftUniversesUniverseIdPutOperationRequest = {
+        universeId: internalRequestParameters.universeId,
+        draftHash: internalRequestParameters.draftHash,
+        v1DraftUniversesUniverseIdPutRequest: translatePutRequest(internalRequestParameters),
+      };
       const unvalidatedResponse = await given.v1DraftUniversesUniverseIdPut(requestParameters);
       return unvalidatedResponse.updateConfigResult
         ? {
@@ -1379,7 +1373,11 @@ const makeValidatedApi = (given: UniverseConfigsWebAPIApi): ValidRemoteConfigAPI
     v2DraftUniversesUniverseIdPut: async (
       internalRequestParameters: InternalV2DraftUniversesUniverseIdPutRequest,
     ): Promise<ValidUpdateConfigurationResponse> => {
-      const requestParameters = translateV2PutRequest(internalRequestParameters);
+      const requestParameters: V2DraftUniversesUniverseIdPutOperationRequest = {
+        universeId: internalRequestParameters.universeId,
+        draftHash: internalRequestParameters.draftHash,
+        v2DraftUniversesUniverseIdPutRequest: translateV2PutRequest(internalRequestParameters),
+      };
       const unvalidatedResponse = await given.v2DraftUniversesUniverseIdPut(requestParameters);
       return unvalidatedResponse.updateConfigResult
         ? {
@@ -1395,7 +1393,12 @@ const makeValidatedApi = (given: UniverseConfigsWebAPIApi): ValidRemoteConfigAPI
     v2DraftUniversesUniverseIdConditionPut: async (
       internalRequestParameters: InternalV2DraftUniversesUniverseIdConditionPutRequest,
     ): Promise<ValidUpdateConditionResult> => {
-      const requestParameters = translateConditionPutRequest(internalRequestParameters);
+      const requestParameters: V2DraftUniversesUniverseIdConditionPutOperationRequest = {
+        universeId: internalRequestParameters.universeId,
+        draftHash: internalRequestParameters.draftHash,
+        v2DraftUniversesUniverseIdConditionPutRequest:
+          translateConditionPutRequest(internalRequestParameters),
+      };
       const unvalidatedResponse =
         await given.v2DraftUniversesUniverseIdConditionPut(requestParameters);
       return toValidConfigChangeResult(unvalidatedResponse.updateConditionResult);
@@ -1403,8 +1406,12 @@ const makeValidatedApi = (given: UniverseConfigsWebAPIApi): ValidRemoteConfigAPI
     v2DraftUniversesUniverseIdRuleOrderingPut: async (
       internalRequestParameters: InternalV2DraftUniversesUniverseIdRuleOrderingPutRequest,
     ): Promise<ValidUpdateRuleOrderingResult> => {
-      const requestParameters: V2DraftUniversesUniverseIdRuleOrderingPutRequest =
-        internalRequestParameters;
+      const requestParameters: V2DraftUniversesUniverseIdRuleOrderingPutOperationRequest = {
+        universeId: internalRequestParameters.universeId,
+        draftHash: internalRequestParameters.draftHash,
+        v2DraftUniversesUniverseIdRuleOrderingPutRequest:
+          internalRequestParameters.updateRuleOrderingData,
+      };
       const unvalidatedResponse =
         await given.v2DraftUniversesUniverseIdRuleOrderingPut(requestParameters);
       return toValidConfigChangeResult(unvalidatedResponse.updateRuleOrderingResult);
