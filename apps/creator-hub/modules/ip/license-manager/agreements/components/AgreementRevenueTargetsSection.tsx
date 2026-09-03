@@ -1,5 +1,5 @@
 import type { FunctionComponent } from 'react';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { AgreementStatus, RevenueTargetType } from '@rbx/client-content-licensing-api/v1';
 import { Alert, Link, ProgressCircle } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
@@ -8,13 +8,25 @@ import useTranslationWrapper from '@modules/analytics-translations/useTranslatio
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
+import {
+  LicenseManagerClickEvent,
+  LicenseManagerImpressionEvent,
+  useLicenseManagerLogger,
+  useLicenseManagerLoggerLogOnce,
+} from '../../utils/logger';
 import { useGetRevenueTargetsByAgreement } from '../hooks/useGetRevenueTargetsByAgreement';
 import CollectibleRevenueTargetGrid from './CollectibleRevenueTargetGrid';
+import {
+  getAgreementStatusAnalyticsValue,
+  type AgreementRevenueTargetsAudience,
+  type AgreementRevenueTargetsFeature,
+} from './revenueTargetAnalytics';
 import RevenueTargetGrid from './RevenueTargetGrid';
 
 interface AgreementRevenueTargetsSectionProps {
   agreementId?: string;
   agreementStatus?: AgreementStatus;
+  audience: AgreementRevenueTargetsAudience;
   marketplaceEmptyStateAudience?: 'creator' | 'iph';
   showMonetizationLinks?: boolean;
   universeId?: number;
@@ -24,6 +36,7 @@ interface AgreementRevenueTargetsSectionProps {
 const AgreementRevenueTargetsSection: FunctionComponent<AgreementRevenueTargetsSectionProps> = ({
   agreementId,
   agreementStatus,
+  audience,
   marketplaceEmptyStateAudience,
   showMonetizationLinks = false,
   universeId,
@@ -31,6 +44,10 @@ const AgreementRevenueTargetsSection: FunctionComponent<AgreementRevenueTargetsS
   const translation = useTranslation();
   const { translate } = translation;
   const { tPendingTranslation } = useTranslationWrapper(translation);
+  const { logEvent } = useLicenseManagerLogger();
+  const { logOnce } = useLicenseManagerLoggerLogOnce();
+  const feature: AgreementRevenueTargetsFeature =
+    marketplaceEmptyStateAudience == null ? 'inGameSalesLicensing' : 'avatarItemLicensing';
   const isMarketplaceAwaitingDecision =
     marketplaceEmptyStateAudience != null &&
     (agreementStatus === AgreementStatus.Inquired || agreementStatus === AgreementStatus.Draft);
@@ -57,6 +74,90 @@ const AgreementRevenueTargetsSection: FunctionComponent<AgreementRevenueTargetsS
       ),
     };
   }, [revenueTargetsQuery.data]);
+  const isClosedMarketplaceAgreement =
+    marketplaceEmptyStateAudience != null &&
+    (agreementStatus === AgreementStatus.Cancelled || agreementStatus === AgreementStatus.Archived);
+  const isInactiveMarketplaceAgreement =
+    marketplaceEmptyStateAudience != null &&
+    (agreementStatus === AgreementStatus.Expired || agreementStatus === AgreementStatus.Terminated);
+  const gridAnalyticsContext = useMemo(
+    () => ({ agreementStatus, audience }),
+    [agreementStatus, audience],
+  );
+  const displayState = (() => {
+    if (isInvalidMarketplaceStatus) {
+      return 'invalidStatus';
+    }
+    if (isMarketplaceAwaitingDecision) {
+      return 'awaitingDecision';
+    }
+    if (revenueTargetsQuery.isPending) {
+      return 'loading';
+    }
+    if (revenueTargetsQuery.isError) {
+      return 'error';
+    }
+    if (revenueTargetsQuery.data?.length === 0) {
+      if (isInactiveMarketplaceAgreement) {
+        return 'inactiveEmpty';
+      }
+      if (isClosedMarketplaceAgreement) {
+        return 'closedEmpty';
+      }
+      return 'empty';
+    }
+    if (isInactiveMarketplaceAgreement) {
+      return 'inactiveWithItems';
+    }
+    if (isClosedMarketplaceAgreement) {
+      return 'closedWithItems';
+    }
+    return 'items';
+  })();
+  const agreementStatusAnalyticsValue = getAgreementStatusAnalyticsValue(agreementStatus);
+
+  useEffect(() => {
+    if (displayState === 'loading') {
+      return;
+    }
+
+    const analyticsParameters = {
+      agreementStatus: agreementStatusAnalyticsValue,
+      audience,
+      avatarItemTargetCount: collectibles.length,
+      developerProductTargetCount: developerProducts.length,
+      displayState,
+      feature,
+      featureFlagEnabled: true,
+      gamePassTargetCount: gamePasses.length,
+      returnedTargetCount: revenueTargetsQuery.data?.length ?? 0,
+    };
+    const dedupeKey = `${agreementId ?? 'missing'}:${audience}:${feature}:${displayState}`;
+
+    logOnce(
+      LicenseManagerImpressionEvent.AgreementRevenueTargetsSectionImpressionEvent,
+      analyticsParameters,
+      dedupeKey,
+    );
+    if (displayState === 'error') {
+      logOnce(
+        LicenseManagerImpressionEvent.AgreementRevenueTargetResolutionFailureImpressionEvent,
+        { ...analyticsParameters, resolutionStage: 'listRevenueTargets' },
+        dedupeKey,
+      );
+    }
+  }, [
+    agreementId,
+    agreementStatusAnalyticsValue,
+    audience,
+    collectibles.length,
+    developerProducts.length,
+    displayState,
+    feature,
+    gamePasses.length,
+    logOnce,
+    revenueTargetsQuery.data?.length,
+  ]);
 
   if (isInvalidMarketplaceStatus) {
     return (
@@ -153,8 +254,6 @@ const AgreementRevenueTargetsSection: FunctionComponent<AgreementRevenueTargetsS
     );
   }
 
-  const isClosedMarketplaceAgreement =
-    agreementStatus === AgreementStatus.Cancelled || agreementStatus === AgreementStatus.Archived;
   const validUniverseId =
     universeId !== undefined && Number.isFinite(universeId) && universeId > 0
       ? universeId
@@ -167,10 +266,6 @@ const AgreementRevenueTargetsSection: FunctionComponent<AgreementRevenueTargetsS
     showMonetizationLinks && validUniverseId !== undefined
       ? dashboard.getMonetizationPassesUrl(validUniverseId)
       : undefined;
-  const isInactiveMarketplaceAgreement =
-    marketplaceEmptyStateAudience != null &&
-    (agreementStatus === AgreementStatus.Expired || agreementStatus === AgreementStatus.Terminated);
-
   return (
     <>
       {marketplaceEmptyStateAudience != null && isClosedMarketplaceAgreement && (
@@ -225,13 +320,27 @@ const AgreementRevenueTargetsSection: FunctionComponent<AgreementRevenueTargetsS
         </Alert>
       )}
 
-      {collectibles.length > 0 && <CollectibleRevenueTargetGrid revenueTargets={collectibles} />}
+      {collectibles.length > 0 && (
+        <CollectibleRevenueTargetGrid
+          analyticsContext={gridAnalyticsContext}
+          revenueTargets={collectibles}
+        />
+      )}
 
       {developerProducts.length > 0 && (
         <section className='flex flex-col gap-medium'>
           {developerProductsHref ? (
             <Link
               href={developerProductsHref}
+              onClick={() =>
+                logEvent(LicenseManagerClickEvent.AgreementRevenueTargetManagementLinkClickEvent, {
+                  agreementStatus: agreementStatusAnalyticsValue,
+                  audience,
+                  feature,
+                  featureFlagEnabled: true,
+                  targetType: 'developerProduct',
+                })
+              }
               target='_blank'
               rel='noopener noreferrer'
               isExternal
@@ -242,7 +351,12 @@ const AgreementRevenueTargetsSection: FunctionComponent<AgreementRevenueTargetsS
           ) : (
             <Typography variant='h6'>{translate('Label.DeveloperProducts')}</Typography>
           )}
-          <RevenueTargetGrid revenueTargets={developerProducts} universeId={universeId} />
+          <RevenueTargetGrid
+            analyticsContext={gridAnalyticsContext}
+            revenueTargets={developerProducts}
+            targetType='developerProduct'
+            universeId={universeId}
+          />
         </section>
       )}
 
@@ -251,6 +365,15 @@ const AgreementRevenueTargetsSection: FunctionComponent<AgreementRevenueTargetsS
           {gamePassesHref ? (
             <Link
               href={gamePassesHref}
+              onClick={() =>
+                logEvent(LicenseManagerClickEvent.AgreementRevenueTargetManagementLinkClickEvent, {
+                  agreementStatus: agreementStatusAnalyticsValue,
+                  audience,
+                  feature,
+                  featureFlagEnabled: true,
+                  targetType: 'gamePass',
+                })
+              }
               target='_blank'
               rel='noopener noreferrer'
               isExternal
@@ -261,7 +384,12 @@ const AgreementRevenueTargetsSection: FunctionComponent<AgreementRevenueTargetsS
           ) : (
             <Typography variant='h6'>{translate('Label.GamePasses')}</Typography>
           )}
-          <RevenueTargetGrid revenueTargets={gamePasses} universeId={universeId} />
+          <RevenueTargetGrid
+            analyticsContext={gridAnalyticsContext}
+            revenueTargets={gamePasses}
+            targetType='gamePass'
+            universeId={universeId}
+          />
         </section>
       )}
     </>

@@ -3,11 +3,13 @@ import { useCallback, useEffect, useRef, type RefObject } from 'react';
 export const IMPRESSION_VISIBILITY_THRESHOLD = 0.5;
 
 /**
- * Returns a ref that logs one impression once the element is at least 50% visible in an active tab.
+ * Returns a ref that logs one impression once the element reaches the configured visibility
+ * threshold in an active tab.
  */
 export const useVisibleImpression = <T extends Element>(
   onImpression: () => void,
   enabled = true,
+  visibilityThreshold = IMPRESSION_VISIBILITY_THRESHOLD,
 ): RefObject<T | null> => {
   const elementRef = useRef<T>(null);
   const hasLoggedImpressionRef = useRef(false);
@@ -51,12 +53,10 @@ export const useVisibleImpression = <T extends Element>(
     const observer = new IntersectionObserver(
       ([entry]) => {
         isElementVisibleRef.current =
-          entry != null &&
-          entry.isIntersecting &&
-          entry.intersectionRatio >= IMPRESSION_VISIBILITY_THRESHOLD;
+          entry != null && entry.isIntersecting && entry.intersectionRatio >= visibilityThreshold;
         logImpressionIfVisible();
       },
-      { threshold: IMPRESSION_VISIBILITY_THRESHOLD },
+      { threshold: visibilityThreshold },
     );
     observer.observe(element);
     logImpressionIfVisible();
@@ -65,7 +65,7 @@ export const useVisibleImpression = <T extends Element>(
       observer.disconnect();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [logImpressionIfVisible]);
+  }, [logImpressionIfVisible, visibilityThreshold]);
 
   return elementRef;
 };

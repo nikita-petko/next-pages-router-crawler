@@ -41,6 +41,7 @@ import { isNonEmptyString } from '@modules/miscellaneous/utils';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import LinkButton from '../../../components/LinkButton';
 import AgreementRevenueTargetsSection from '../../agreements/components/AgreementRevenueTargetsSection';
+import { useAgreementRevenueTargetsEligibilityImpression } from '../../agreements/components/revenueTargetAnalytics';
 import AmDivider from '../../components/AmDivider';
 import { ContentTile, ContentType } from '../../components/ContentTile';
 import GuidelinesAndRestrictionsSummaryModal from '../../components/GuidelinesAndRestrictionsSummaryModal';
@@ -92,9 +93,13 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
   const { locale } = useLocalization();
   const { logEvent } = useLicenseManagerLogger();
   const { isFetched, settings } = useSettings();
-  const { value: inGameSalesLicensingFlagValue } = useFlag(isInGameSalesLicensingEnabledFlag);
+  const { ready: isInGameSalesLicensingFlagReady, value: inGameSalesLicensingFlagValue } = useFlag(
+    isInGameSalesLicensingEnabledFlag,
+  );
   const isInGameSalesLicensingEnabled = inGameSalesLicensingFlagValue ?? false;
-  const { value: avatarItemLicensingFlagValue } = useFlag(isAvatarItemLicensingEnabledFlag);
+  const { ready: isAvatarItemLicensingFlagReady, value: avatarItemLicensingFlagValue } = useFlag(
+    isAvatarItemLicensingEnabledFlag,
+  );
   const isAvatarItemLicensingEnabled = avatarItemLicensingFlagValue ?? false;
   const effectiveLicenseType = getEffectiveLicenseTypeForDisplay(
     license.licenseType,
@@ -108,6 +113,19 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
   const keys = getRevShareTimingKeys(agreement, true, isTimeLimitedLicense);
   const [isGuidelinesAndRestrictionsModalOpen, setIsGuidelinesAndRestrictionsModalOpen] =
     useState(false);
+
+  useAgreementRevenueTargetsEligibilityImpression({
+    agreementId: agreement.id ?? undefined,
+    agreementStatus: agreement.status,
+    audience: 'creator',
+    avatarItemLicensingEnabled: isAvatarItemLicensingEnabled,
+    avatarItemLicensingFlagReady: isAvatarItemLicensingFlagReady,
+    effectiveLicenseType,
+    inGameSalesLicensingEnabled: isInGameSalesLicensingEnabled,
+    inGameSalesLicensingFlagReady: isInGameSalesLicensingFlagReady,
+    isPageReady: isFetched,
+    licenseType: license.licenseType,
+  });
 
   const handleGuidelinesAndRestrictionsClick = useCallback(async () => {
     const id = agreement.id;
@@ -409,6 +427,7 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
         <AgreementRevenueTargetsSection
           agreementId={agreement.id ?? undefined}
           agreementStatus={agreement.status}
+          audience='creator'
           marketplaceEmptyStateAudience={isMarketplaceSaleLicense ? 'creator' : undefined}
           showMonetizationLinks
           universeId={universeNumericId}

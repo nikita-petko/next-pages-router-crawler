@@ -108,6 +108,8 @@ export enum LicenseManagerClickEvent {
   CreatorAgreementCancelModalDismissClickEvent = 'creatorAgreementCancelModalDismissClickEvent',
   CreatorAgreementCancelModalConfirmClickEvent = 'creatorAgreementCancelModalConfirmClickEvent',
   IphAgreementDetailsPageRightsHolderOutcomeCommitClickEvent = 'iphAgreementDetailsPageRightsHolderOutcomeCommitClickEvent',
+  AgreementRevenueTargetTileClickEvent = 'agreementRevenueTargetTileClickEvent',
+  AgreementRevenueTargetManagementLinkClickEvent = 'agreementRevenueTargetManagementLinkClickEvent',
 
   // Experience Preview: "View gallery" / "View details" clicked from the match sidebar.
   ExperiencePreviewSidebarExpandClickEvent = 'experiencePreviewSidebarExpandClickEvent',
@@ -200,6 +202,11 @@ export enum LicenseManagerImpressionEvent {
   IphLicenseFormValidationFailureImpressionEvent = 'iphLicenseFormValidationFailureImpressionEvent',
   IphLicenseFormSubmissionSuccessImpressionEvent = 'iphLicenseFormSubmissionSuccessImpressionEvent',
   IphLicenseFormSubmissionFailureImpressionEvent = 'iphLicenseFormSubmissionFailureImpressionEvent',
+  AgreementDetailsRevenueTargetsEligibilityImpressionEvent = 'agreementDetailsRevenueTargetsEligibilityImpressionEvent',
+  AgreementRevenueTargetsSectionImpressionEvent = 'agreementRevenueTargetsSectionImpressionEvent',
+  AgreementRevenueTargetGridImpressionEvent = 'agreementRevenueTargetGridImpressionEvent',
+  AgreementRevenueTargetTileImpressionEvent = 'agreementRevenueTargetTileImpressionEvent',
+  AgreementRevenueTargetResolutionFailureImpressionEvent = 'agreementRevenueTargetResolutionFailureImpressionEvent',
 }
 
 export enum LicenseManagerApiVitalsEvent {
