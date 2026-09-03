@@ -110,6 +110,7 @@ enum BreadcrumbItemType {
   ClientSession = 'client-session',
   ManagedPricing = 'managed-pricing',
   HardCodedPrices = 'hard-coded-prices',
+  ExternallyHiddenDeveloperProducts = 'externally-hidden-developer-products',
   Leaderboard = 'leaderboard',
   PersonalizedShop = 'personalized-shop',
   AudienceReach = 'audience-reach',

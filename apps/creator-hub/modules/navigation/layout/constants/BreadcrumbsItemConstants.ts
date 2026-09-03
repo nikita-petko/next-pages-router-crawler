@@ -659,6 +659,17 @@ export const RouterParseItemToBreadcrumbItemDetails: { [key: string]: Breadcrumb
       return `/dashboard/creations/experiences/${getLinkPathParams.baseId}/monetization/shop`;
     },
   },
+  'externally-hidden-developer-products': {
+    displayName: ({ translate }) => {
+      return createNameWithTranslate(
+        { key: 'Heading.ExternallyHiddenDeveloperProducts' },
+        translate,
+      );
+    },
+    breadcrumbType: BreadcrumbItemType.ExternallyHiddenDeveloperProducts,
+    getLinkPath: (getLinkPathParams) =>
+      dashboard.getExternallyHiddenDeveloperProductsUrl(Number(getLinkPathParams.baseId)),
+  },
   'hard-coded-prices': {
     displayName: ({ translate }) => {
       return createNameWithTranslate({ key: 'Heading.HardCodedPrices' }, translate);

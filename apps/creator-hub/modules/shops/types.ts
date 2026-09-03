@@ -23,7 +23,7 @@ export type ShopItem = {
 
 /**
  * Items that creators have listed but that cannot surface out of experience, i.e. the
- * ProcessReceipt report set. Reported to creators as needing a fix.
+ * External eligibility report set. Reported to creators as needing a fix.
  */
 export function isListedButExternallyIneligible(item: ShopItem): boolean {
   return item.isVisibleInShop && !item.isExternallyEligible;

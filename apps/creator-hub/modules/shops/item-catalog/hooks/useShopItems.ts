@@ -10,6 +10,8 @@ import { transformShopItems } from '../utils/transformShopItems';
 type UseShopItemsParams = {
   shopId: number | undefined;
   pageSize?: number;
+  /** Stable predicate applied as each API page is flattened. */
+  filter?: (item: ShopItem) => boolean;
   /** Override to suppress fetching (e.g. when the parent shop has not resolved yet). */
   enabled?: boolean;
 };
@@ -17,6 +19,7 @@ type UseShopItemsParams = {
 export type UseShopItemsReturn = {
   items: ShopItem[];
   isAllItemsLoaded: boolean;
+  isError: boolean;
   hasNextPage: boolean;
   fetchNextPage: () => void;
 };
@@ -30,15 +33,17 @@ const selectPageItems = (page: ListShopItemsResponse): ShopItem[] => transformSh
 export function useShopItems({
   shopId,
   pageSize = API_DEFAULT_PAGE_SIZE,
+  filter,
   enabled = true,
 }: UseShopItemsParams): UseShopItemsReturn {
-  const flattenItems = useInfiniteFlatMap<ListShopItemsResponse, ShopItem>(selectPageItems);
+  const flattenItems = useInfiniteFlatMap<ListShopItemsResponse, ShopItem>(selectPageItems, filter);
 
   const {
     data: items = EMPTY_ITEMS,
     hasNextPage,
     fetchNextPage,
     isLoading,
+    isError,
   } = useInfiniteListShopItems(
     { shopId, pageSize },
     { select: flattenItems, enabled: enabled && !!shopId },
@@ -60,9 +65,10 @@ export function useShopItems({
       ({
         items,
         isAllItemsLoaded,
+        isError,
         hasNextPage,
         fetchNextPage: fetchNextItemsPage,
       }) as const,
-    [items, isAllItemsLoaded, hasNextPage, fetchNextItemsPage],
+    [items, isAllItemsLoaded, isError, hasNextPage, fetchNextItemsPage],
   );
 }

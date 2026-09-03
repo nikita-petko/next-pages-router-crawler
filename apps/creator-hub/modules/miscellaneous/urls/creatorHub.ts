@@ -222,6 +222,8 @@ export const dashboard = {
     `/dashboard/creations/experiences/${universeId}/monetization/hard-coded-prices` as const,
   getPersonalizedShopsUrl: (universeId: number, tab?: PersonalizedShopsTab) =>
     `/dashboard/creations/experiences/${universeId}/monetization/shop${tab ? `?tab=${tab}` : ''}` as const,
+  getExternallyHiddenDeveloperProductsUrl: (universeId: number) =>
+    `/dashboard/creations/experiences/${universeId}/monetization/shop/externally-hidden-developer-products` as const,
   getSellerOnboardingUrl: () => `/settings/eligibility/priced-assets`,
   getTranslatorPortalUrl: () => `/dashboard/translator-portal`,
   getAudioDistributionOnboardingUrl: () => `/settings/eligibility/audio-distribution`,
@@ -283,6 +285,8 @@ export const docs = {
     `${docSiteUrl}/production/monetization/developer-products` as const,
   getDeveloperProductsExternalPurchaseSettingsMonetizationUrl: () =>
     `${docSiteUrl}/production/monetization/developer-products#outside-your-experience` as const,
+  getExternalEligibilityReferenceUrl: () =>
+    `${docSiteUrl}/reference/engine/classes/MarketplaceService#ProcessReceipt` as const,
   getSubscriptionsMonetizationUrl: () =>
     `${docSiteUrl}/production/monetization/subscriptions` as const,
   getSubscriptionsMonetizationAnalyticsUrl: () =>

@@ -11,7 +11,7 @@ import GenericTabbedPageLayout, {
 } from '@modules/monetization-shared/tabs/GenericTabbedPageLayout';
 import { useUniversePermissions } from '@modules/react-query/organizations';
 import PersonalizedShopPromotionBanner from '../banners/PersonalizedShopPromotionBanner';
-import ProcessReceiptWarningBanner from '../components/ProcessReceiptWarningBanner';
+import ExternalEligibilityWarningBanner from '../components/ExternalEligibilityWarningBanner';
 import { GLOBAL_ICON_ENTRY_POINT_NAME } from '../constants';
 import { useHasSeenPersonalizedShops } from '../hooks/useHasSeenPersonalizedShops';
 import { usePersonalizedShop } from '../hooks/usePersonalizedShop';
@@ -104,7 +104,7 @@ function PersonalizedShopsPageContent({ universeId }: { universeId: number }) {
   return (
     <div className='flex flex-col gap-xxlarge margin-bottom-medium'>
       <PersonalizedShopPromotionBanner universeId={universeId} />
-      <ProcessReceiptWarningBanner universeId={universeId} />
+      <ExternalEligibilityWarningBanner universeId={universeId} />
       <GenericTabbedPageLayout tabs={tabs} defaultTab='overview' />
     </div>
   );

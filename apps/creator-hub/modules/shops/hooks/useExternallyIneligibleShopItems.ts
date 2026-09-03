@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useMonetizationFlags } from '@modules/monetization-shared/flags/useMonetizationFlags';
 import { useShopItems } from '../item-catalog/hooks/useShopItems';
 import { MOCK_SHOP_ITEMS } from '../mocks';
@@ -8,15 +7,20 @@ import { usePersonalizedShop } from './usePersonalizedShop';
 type UseExternallyIneligibleShopItemsReturn = {
   /** Listed items that cannot surface out of experience. */
   items: ShopItem[];
-  /** True when at least one item needs a ProcessReceipt fix. Gates the report surfaces. */
+  /** True when at least one item needs an external eligibility fix. Gates the report surfaces. */
   hasIneligibleItems: boolean;
-  /** Callers should hold off on empty states until the whole catalog is cached. */
+  /** True until 1,000 report items are ready or the whole catalog is cached. */
   isLoading: boolean;
+  isAllItemsLoaded: boolean;
+  isError: boolean;
 };
+
+const INITIAL_REPORT_ITEM_COUNT = 1000;
+const MOCK_INELIGIBLE_ITEMS = MOCK_SHOP_ITEMS.filter(isListedButExternallyIneligible);
 
 /**
  * Listed-but-externally-ineligible items in a universe's personalized shop — the
- * ProcessReceipt report set behind the dev products warning banner and report page.
+ * External eligibility report set behind the developer products warning banner and report page.
  *
  * Serves {@link MOCK_SHOP_ITEMS} while `mockShopItemsExternalEligibility` is on, since
  * shops-api does not send `isExternallyEligible` yet and every real item therefore
@@ -33,19 +37,26 @@ export function useExternallyIneligibleShopItems(
   const { data: shop, isLoading: isLoadingShop } = usePersonalizedShop(universeId, {
     enabled: !isMocked,
   });
-  const { items, isAllItemsLoaded } = useShopItems({
+  const {
+    items: ineligibleItems,
+    isAllItemsLoaded,
+    isError,
+  } = useShopItems({
     shopId: shop?.shopId,
+    filter: isListedButExternallyIneligible,
     enabled: !isMocked,
   });
 
-  const catalog = isMocked ? MOCK_SHOP_ITEMS : items;
-  // Catalog spans every item in the shop, so filter once per change rather than on
-  // every render of the consuming page.
-  const ineligibleItems = useMemo(() => catalog.filter(isListedButExternallyIneligible), [catalog]);
+  const reportItems = isMocked ? MOCK_INELIGIBLE_ITEMS : ineligibleItems;
+  const hasLoadedInitialReportItems =
+    reportItems.length >= INITIAL_REPORT_ITEM_COUNT || isAllItemsLoaded;
+  const isCatalogFullyLoaded = isFlagReady && (isMocked || (!isLoadingShop && isAllItemsLoaded));
 
   return {
-    items: ineligibleItems,
-    hasIneligibleItems: ineligibleItems.length > 0,
-    isLoading: !isFlagReady || (!isMocked && (isLoadingShop || !isAllItemsLoaded)),
+    items: reportItems,
+    hasIneligibleItems: reportItems.length > 0,
+    isLoading: !isFlagReady || (!isMocked && (isLoadingShop || !hasLoadedInitialReportItems)),
+    isAllItemsLoaded: isCatalogFullyLoaded,
+    isError: !isMocked && isError,
   };
 }
