@@ -158,7 +158,6 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
   >(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
-  const bellIconRef = useRef<HTMLButtonElement | null>(null);
   const prevBellIconCountRef = useRef<number>(0);
   const paginateCursorRef = useRef('');
   const syncBroadcastedNotificationsRef = useRef(true);
@@ -290,7 +289,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
             ) {
               setNoMoreNotifications(true);
             }
-            paginateCursorRef.current = fetched?.nextCursor || '';
+            paginateCursorRef.current = fetched?.nextCursor ?? '';
             break;
           case LoadNotificationsType.ReloadAll:
             setNotifications(fetchedNotifs);
@@ -301,7 +300,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
             setNoMoreNotifications(
               !fetched?.nextCursor || fetchedNotifs.length >= MAX_NOTIFICATIONS,
             );
-            paginateCursorRef.current = fetched?.nextCursor || '';
+            paginateCursorRef.current = fetched?.nextCursor ?? '';
 
             // scroll to top
             requestAnimationFrame(() => {
@@ -336,7 +335,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
             }
             break;
           default:
-            throw new Error(`Invalid loadNotificationsType: ${loadNotificationsType}`);
+            throw new Error(`Invalid loadNotificationsType: ${String(loadNotificationsType)}`);
         }
 
         if (
@@ -460,6 +459,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
   useEffect(() => {
     if (!showFreshUnseenNotifsSnackbar) {
       // reset count when snackbar is closed
+      // oxlint-disable-next-line react/react-compiler -- pre-existing EffectSetState pattern; clearing the count as the snackbar hides keeps the next batch of fresh notifications in its own snackbar session.
       setFreshNotifsSnackbarCount(0);
     }
   }, [showFreshUnseenNotifsSnackbar, setFreshNotifsSnackbarCount]);
@@ -468,7 +468,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
     expandedRef.current = expanded;
 
     // when tray opens
-    if (prevExpandedRef.current === false && expanded === true) {
+    if (!prevExpandedRef.current && expanded) {
       // track tray open
       trayOpenTimestampRef.current = Date.now();
       trayCloseSourceRef.current = null;
@@ -490,7 +490,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
     }
 
     // when tray closes
-    if (prevExpandedRef.current === true && expanded === false) {
+    if (prevExpandedRef.current && !expanded) {
       // reset states
       setShowFreshUnseenNotifsSnackbar(false);
       activateRefreshScrollPosBehaviorRef.current = false;
@@ -501,7 +501,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
         ? Date.now() - trayOpenTimestampRef.current
         : undefined;
       // Default to 'clickOutside' if source is not explicitly set
-      const source = trayCloseSourceRef.current || NotificationTrayCloseSource.ClickOutside;
+      const source = trayCloseSourceRef.current ?? NotificationTrayCloseSource.ClickOutside;
       sendEvent(
         closeNotificationTrayEventModel(
           {
@@ -519,7 +519,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
       trayCloseSourceRef.current = null;
 
       if (isUsingKeyboardToToggleExpandRef.current) {
-        bellIconRef?.current?.focus();
+        buttonRef.current?.focus();
       }
     }
 
@@ -536,6 +536,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
   ]);
 
   useEffect(() => {
+    // oxlint-disable-next-line react/react-compiler -- pre-existing EffectSetState pattern; `newNotificationExists` is derived here but also cleared imperatively when the tray opens, so it cannot become a plain derived value without changing behavior.
     setNewNotificationExists(
       !!newestNotificationId && lastSeenNotificationId !== newestNotificationId,
     );
@@ -556,7 +557,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
   }, []);
 
   const toggleOpenTray = useCallback(
-    (fromKeyboardEvent: boolean = false) => {
+    (fromKeyboardEvent = false) => {
       if (newNotificationExists) {
         setNotifications([]);
       }
@@ -608,6 +609,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
       !expanded &&
       notifications.length > 0
     ) {
+      // oxlint-disable-next-line react/react-compiler -- pre-existing EffectSetState pattern; auto-announcing the new look is a one-shot side effect driven by the conditions above.
       toggleOpenTray();
       timeout = setTimeout(() => {
         setNewLookTooltipSeen('true');
@@ -630,6 +632,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
 
   // handle outside click + icon button click
   useEffect(() => {
+    // oxlint-disable typescript/no-unsafe-type-assertion -- pre-existing narrowing casts on a DOM event target.
     const handleClickOutside = (event: MouseEvent) => {
       if (buttonRef.current && buttonRef.current.contains(event.target as Node)) {
         toggleOpenTray();
@@ -641,6 +644,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
         closeTrayFromOutside();
       }
     };
+    // oxlint-enable typescript/no-unsafe-type-assertion
 
     document.addEventListener('click', handleClickOutside);
     return () => {
@@ -718,6 +722,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
   // resets to 0 when lastSeenNotificationId is set to topmost notif in list
   //   and does not live-decrement as notifs are seen in same tray session
   const bellIconCount = useMemo(() => {
+    // oxlint-disable-next-line react/react-compiler -- pre-existing ref read during render; the count is deliberately snapshotted from the tray's live expanded/scroll state so it does not re-render as notifications are seen.
     if (expandedRef.current && listScrollRef.current.scrollTop === 0) {
       return 0;
     }
@@ -728,6 +733,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
       lastSeenNotifIdx === -1 ? notifications.length : lastSeenNotifIdx,
       MAX_DISPLAYED_BELL_ICON_COUNT,
     );
+    // oxlint-disable-next-line react/react-compiler -- pre-existing ref write during render.
     prevBellIconCountRef.current = count;
     return count;
   }, [lastSeenNotificationId, notifications]);
@@ -735,28 +741,22 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
   if (enableNotificationsM2) {
     return (
       <>
-        <div
-          aria-label={`${translate('Heading.Notifications')}`}
-          role='button'
-          tabIndex={-1}
-          ref={buttonRef as React.RefObject<HTMLDivElement | null>}
-          onKeyDown={(e: React.KeyboardEvent) => {
-            e.stopPropagation();
-            e.preventDefault();
-            if (e.key === 'Enter' || e.key === 'Space') {
-              toggleOpenTray(true);
-            } else if (e.key === 'Tab' || e.key === ' ' || e.key === 'ArrowDown') {
-              trayContentFirstFocusableElRef.current?.focus();
-            }
-          }}
-          className={styles.bellButtonContainer}>
+        <div className={styles.bellButtonContainer}>
           <div className='relative'>
             <FoundationIconButton
               variant='OverMedia'
-              ref={bellIconRef}
+              ref={buttonRef}
               size='Medium'
               icon='icon-regular-bell'
               ariaLabel={translate('Heading.Notifications')}
+              onKeyDown={(e) => {
+                // When focusing the bell and pressing Enter or Space,
+                //  open the tray and move focus to it.
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  toggleOpenTray(true);
+                }
+              }}
             />
             <NotificationBellCountBadge count={bellIconCount} />
           </div>
@@ -765,6 +765,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
           // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-element-interactions
           <div
             tabIndex={-1}
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- non-modal portalled popover toggled via `display`; a native <dialog> would add UA inset/border/background and display:none-unless-open semantics that don't fit this tray.
             role='dialog'
             className={styles.popperContent}
             onKeyDown={(e: React.KeyboardEvent) => {
@@ -788,6 +789,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
               listRef={listRef}
               expanded={expanded}
               loadPage={loadPageDebounced}
+              // oxlint-disable-next-line react/react-compiler -- pre-existing ref read during render; keeps the tray in its loading state before the first fetch starts without forcing an extra render.
               loadingTray={loadingTray || initialLoadingStateRef.current}
               markAllAsRead={markAllAsRead}
               newNotificationExists={newNotificationExists}
@@ -819,7 +821,7 @@ const NotificationBellContent: FunctionComponent<NotificationBellContentProps> =
     <div data-testid='notification-bell' className={styles.gridContainer}>
       <Grid className={styles.container}>
         <IconButton
-          aria-label={`${translate('Heading.Notifications')}`}
+          aria-label={translate('Heading.Notifications')}
           color='secondary'
           size={size}
           ref={buttonRef}
@@ -883,6 +885,7 @@ const SignalRInitializer: React.FC<{ children?: React.ReactNode }> = ({
   const onNotification: TSignalRCallback = useCallback(
     (namespace, detail) => {
       if (namespace === 'CreatorHubTray') {
+        // oxlint-disable-next-line typescript/no-unsafe-assignment -- pre-existing untyped JSON.parse result.
         const message: TSignalRNotificationMessage = JSON.parse(detail);
         if (!message?.Action) {
           if (environment !== 'production') {
@@ -901,7 +904,7 @@ const SignalRInitializer: React.FC<{ children?: React.ReactNode }> = ({
         } else if (message.Action === 'MarkAllRead') {
           signalREventEmitter.emit('allNotificationsRead');
         } else if (environment !== 'production') {
-          console.warn(`Unhandled Notification Tray message ${message}`);
+          console.warn('Unhandled Notification Tray message:', message);
         }
       }
     },

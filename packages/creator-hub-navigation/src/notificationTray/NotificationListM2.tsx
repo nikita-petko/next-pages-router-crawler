@@ -27,9 +27,9 @@ type TNotificationListM2Props = {
   setExpanded: (expanded: boolean) => void;
   onSettingsClick?: () => void;
   markReadStatus: (notificationId: string, readStatus: boolean) => void;
-  listRef: React.MutableRefObject<HTMLDivElement | null>;
+  listRef: React.RefObject<HTMLDivElement | null>;
   freshNotificationsSnackbar: TFreshNotificationsSnackbarProps;
-  listScrollRef: React.MutableRefObject<{
+  listScrollRef: React.RefObject<{
     scrollTop: number;
     scrollHeight: number;
   }> | null;
@@ -95,6 +95,7 @@ const NotificationListM2 = React.forwardRef<HTMLDivElement, TNotificationListM2P
       onSettingsClick,
       markReadStatus,
       listRef,
+      // oxlint-disable-next-line react/no-object-type-as-default-prop, typescript/no-useless-default-assignment -- pre-existing defensive default; the prop is required, so this literal is never used.
       freshNotificationsSnackbar = {
         count: 0,
         show: false,
@@ -113,12 +114,14 @@ const NotificationListM2 = React.forwardRef<HTMLDivElement, TNotificationListM2P
     },
     ref,
   ) => {
+    // oxlint-disable typescript/no-useless-default-assignment -- pre-existing defensive defaults; these properties are all required on TFreshNotificationsSnackbarProps.
     const {
       count: freshNotifsSnackbarCount = 0,
       show: showFreshUnseenNotifsSnackbar = false,
       close: closeFreshNotificationsSnackbar = () => {},
       onScrollToTop,
     } = freshNotificationsSnackbar;
+    // oxlint-enable typescript/no-useless-default-assignment
     const { translate } = useTranslation();
     const [listMounted, setListMounted] = useState(false);
     const { classes: styles, cx } = useNotificationListStyles();
@@ -163,7 +166,6 @@ const NotificationListM2 = React.forwardRef<HTMLDivElement, TNotificationListM2P
     const emptyListContainerClassName = cx(
       'flex flex-col items-center justify-center',
       styles.listContainerM2,
-      styles.emptyStateContainer,
     );
 
     const scrollToTop = useCallback(() => {
@@ -234,9 +236,11 @@ const NotificationListM2 = React.forwardRef<HTMLDivElement, TNotificationListM2P
                   styles.errorStateHeader,
                   'text-heading-small content-emphasis',
                 )}>
+                {/* oxlint-disable-next-line rbx/no-hardcoded-translation-string -- pre-existing English fallback; the key is registered in CreatorDocumentation.Navigation. */}
                 {translate('Label.SomethingWentWrong') || 'Something went wrong'}
               </h4>
               <p className={cx(styles.emptyStateDescription, 'text-body-medium content-default')}>
+                {/* oxlint-disable-next-line rbx/no-hardcoded-translation-string -- pre-existing English fallback; the key is registered in CreatorDocumentation.Navigation. */}
                 {translate('Description.NotificationsFailed') || 'Notifications failed to load'}
               </p>
             </div>
@@ -249,6 +253,7 @@ const NotificationListM2 = React.forwardRef<HTMLDivElement, TNotificationListM2P
                 e.stopPropagation();
                 retryNotifications();
               }}>
+              {/* oxlint-disable-next-line rbx/no-hardcoded-translation-string -- pre-existing English fallback; the key is registered in CreatorDocumentation.Navigation. */}
               {translate('Label.Retry') || 'Retry'}
             </Button>
           </div>
@@ -292,6 +297,7 @@ const NotificationListM2 = React.forwardRef<HTMLDivElement, TNotificationListM2P
                 <NotificationV2
                   {...props}
                   key={notificationGroup.titleNotification.notificationId}
+                  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- pre-existing narrowing cast; NotificationV2 forwards a div/anchor ref while this ref is also aimed at the header button.
                   ref={trayContentFirstFocusableElRef as React.RefObject<HTMLDivElement | null>}
                 />
               );
@@ -356,6 +362,7 @@ const NotificationListM2 = React.forwardRef<HTMLDivElement, TNotificationListM2P
               onClose={closeFreshNotificationsSnackbar}
               onClick={(e) => {
                 e.stopPropagation();
+                // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- pre-existing narrowing cast on a DOM event target.
                 const isClickToDismiss = (e.target as HTMLElement).closest('button') !== null;
                 if (isClickToDismiss) {
                   return;

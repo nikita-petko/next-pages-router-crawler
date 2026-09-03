@@ -162,13 +162,6 @@ const useNotificationListStyles = makeStyles()((theme) => ({
       transition: 'background 0.2s ease',
     },
   },
-  emptyStateContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
   emptyStateHeader: {
     marginTop: 30,
     marginBottom: 8,
@@ -189,12 +182,9 @@ const useNotificationListStyles = makeStyles()((theme) => ({
   snackbarM2Wrapper: {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- TODO: 2026/06/17 packages/creator-hub-navigation/src/notificationTray/NotificationList.styles.ts
     position: 'absolute !important' as 'absolute',
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- TODO: 2026/06/17 packages/creator-hub-navigation/src/notificationTray/NotificationList.styles.ts
-    display: 'flex !important' as 'flex',
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- TODO: 2026/06/17 packages/creator-hub-navigation/src/notificationTray/NotificationList.styles.ts
-    justifyContent: 'center !important' as 'center',
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- TODO: 2026/06/17 packages/creator-hub-navigation/src/notificationTray/NotificationList.styles.ts
-    alignItems: 'center !important' as 'center',
+    display: 'flex !important',
+    justifyContent: 'center !important',
+    alignItems: 'center !important',
     top: 0,
     left: 0,
     right: 0,
@@ -203,17 +193,13 @@ const useNotificationListStyles = makeStyles()((theme) => ({
   snackbarM2: {
     marginTop: 20,
     cursor: 'pointer',
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- TODO: 2026/06/17 packages/creator-hub-navigation/src/notificationTray/NotificationList.styles.ts
-    width: 'auto !important' as 'auto',
+    width: 'auto !important',
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- TODO: 2026/06/17 packages/creator-hub-navigation/src/notificationTray/NotificationList.styles.ts
     position: 'static !important' as 'static',
     zIndex: theme.zIndex.modal,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- TODO: 2026/06/17 packages/creator-hub-navigation/src/notificationTray/NotificationList.styles.ts
-    minWidth: '0 !important' as '0',
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- TODO: 2026/06/17 packages/creator-hub-navigation/src/notificationTray/NotificationList.styles.ts
-    transition: 'none !important' as 'none',
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- TODO: 2026/06/17 packages/creator-hub-navigation/src/notificationTray/NotificationList.styles.ts
-    transform: 'none !important' as 'none',
+    minWidth: '0 !important',
+    transition: 'none !important',
+    transform: 'none !important',
   },
   tooltipContent: {
     // HACK: fix tooltip beak
