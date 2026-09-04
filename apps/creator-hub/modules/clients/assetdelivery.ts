@@ -16,16 +16,21 @@ export interface AssetRequestItem {
   accessContext?: string;
 }
 
+export interface GetAssetsOptions {
+  placeId?: number;
+}
+
 export interface AssetdeliveryClient {
   getAssets(
     assetRequestItems: AssetRequestItem[],
+    options?: GetAssetsOptions,
   ): Promise<Array<RobloxWebAssetsAssetResponseItemV1>>;
 }
 
 const assetdeliveryClient: AssetdeliveryClient = {
-  async getAssets(assetRequestItems: AssetRequestItem[]) {
+  async getAssets(assetRequestItems: AssetRequestItem[], options?: GetAssetsOptions) {
     const { raw } = await assetdeliveryBatchApi.v1AssetsBatchPostRaw({
-      robloxPlaceId: 0,
+      robloxPlaceId: options?.placeId ?? 0,
       accept: '',
       assetRequestItems,
       robloxBrowserAssetRequest: '',

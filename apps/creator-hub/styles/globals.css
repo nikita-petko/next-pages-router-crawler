@@ -1756,6 +1756,9 @@
 .gap-x-xsmall {
   column-gap: var(--gap-xsmall);
 }
+.gap-x-xxsmall {
+  column-gap: var(--gap-xxsmall);
+}
 .gap-y-\[16px\] {
   row-gap: 16px;
 }

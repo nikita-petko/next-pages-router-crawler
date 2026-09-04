@@ -10,7 +10,11 @@ import { PageLoading } from '@modules/miscellaneous/components';
 import { ErrorPage } from '@modules/miscellaneous/error';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
+import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import useLocalizationLayoutStyles from '../../common/components/LocalizationLayout.styles';
+import GameImagesTranslationManagementContainer from '../../gameImageTranslation/containers/GameImagesTranslationManagementContainer';
+import ImageEntriesMetadataProvider from '../../gameImageTranslation/providers/ImageEntriesMetadataProvider';
+import ImageLocalizationTableEntriesProvider from '../../gameImageTranslation/providers/ImageLocalizationTableEntriesProvider';
 import GameInfoTranslationManagementContainer from '../../gameInfoTranslation/containers/GameInfoTranslationManagementContainer';
 import GameProductsTranslationManagementContainer from '../../gameProductTranslation/container/GameProductsTranslationManagementContainer';
 import GameStringsEntryManagementContainer from '../../gameStringTranslation/containers/GameStringsEntryManagementContainer';
@@ -27,12 +31,15 @@ import useTranslationContainerStyles from './TranslationContainer.styles';
 const tabLabelKeys: Record<string, string> = {
   [translationTabMap[TranslationFeatureOptions.GameInfo]]: 'Label.GameInfo',
   [translationTabMap[TranslationFeatureOptions.GameStrings]]: 'Label.GameStrings',
+  [translationTabMap[TranslationFeatureOptions.GameImages]]: 'Label.Images',
   [translationTabMap[TranslationFeatureOptions.GameProducts]]: 'Label.GameProducts',
 };
 
 const TranslationContainer: FunctionComponent<React.PropsWithChildren> = () => {
   const { translate } = useTranslation();
   const { isLoadingGame, canConfigure, gameDetails } = useCurrentGame();
+  const { settings } = useSettings();
+  const enableImageTranslationListingTab = settings?.enableImageTranslationListingTab ?? false;
   const {
     userRoles,
     roleLoading,
@@ -115,6 +122,18 @@ const TranslationContainer: FunctionComponent<React.PropsWithChildren> = () => {
           })}>
           <GameInfoTranslationManagementContainer />
         </Grid>
+        {enableImageTranslationListingTab && (
+          <Grid
+            className={cx({
+              [hidden]: tabValue !== translationTabMap[TranslationFeatureOptions.GameImages],
+            })}>
+            <ImageLocalizationTableEntriesProvider gameId={gameDetails.id ?? null}>
+              <ImageEntriesMetadataProvider>
+                <GameImagesTranslationManagementContainer />
+              </ImageEntriesMetadataProvider>
+            </ImageLocalizationTableEntriesProvider>
+          </Grid>
+        )}
       </section>
     );
   }
