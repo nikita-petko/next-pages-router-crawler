@@ -121,6 +121,7 @@ interface PublishPanelProps {
   isRentableOptIn: boolean | undefined;
   priceFloor: number;
   itemDetails?: RobloxItemConfigurationApiGetItemResponse;
+  agreementId?: string;
 }
 
 function PublishPanel(props: PublishPanelProps) {
@@ -149,6 +150,7 @@ function PublishPanel(props: PublishPanelProps) {
     isRentableOptIn,
     priceFloor,
     itemDetails,
+    agreementId,
   } = props;
   const [publishingFees, setPublishingFees] = useState<number | undefined>();
   const [showPrepublishDialog, setShowPrepublishDialog] = useState(false);
@@ -363,6 +365,7 @@ function PublishPanel(props: PublishPanelProps) {
         scheduledEndDate,
         optOutFromRegionalPricing,
         isRentableOptIn,
+        agreementId,
       );
       showSuccessToast();
       navigateToConfigurePage();
@@ -497,6 +500,7 @@ function PublishPanel(props: PublishPanelProps) {
     scheduledEndDate,
     optOutFromRegionalPricing,
     isRentableOptIn,
+    agreementId,
     showSuccessToast,
     navigateToConfigurePage,
   ]);

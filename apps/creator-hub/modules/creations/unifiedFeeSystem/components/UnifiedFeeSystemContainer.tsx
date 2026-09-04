@@ -594,6 +594,7 @@ function UnifiedFeeSystemContainer(props: UnifiedFeeSystemContainerProps) {
             isRentableOptIn={isRentableOptIn}
             priceFloor={priceFloor}
             itemDetails={itemDetails}
+            agreementId={selectedAgreement?.id ?? undefined}
           />
         ) : (
           <SavePanel

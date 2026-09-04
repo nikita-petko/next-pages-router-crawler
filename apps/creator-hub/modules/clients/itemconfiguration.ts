@@ -332,6 +332,7 @@ export class ItemConfigurationClient {
     offSaleTime?: Date | null,
     optOutFromRegionalPricing?: boolean,
     isRentalOptIn?: boolean,
+    agreementId?: string,
   ) {
     const publishRequest: RobloxItemConfigurationApiModelsRequestPublishCollectibleItemRequest = {
       idempotencyToken,
@@ -361,6 +362,7 @@ export class ItemConfigurationClient {
       offSaleTime: offSaleTime ?? undefined,
       optOutFromRegionalPricing: optOutFromRegionalPricing ?? false,
       isRentalOptIn: isRentalOptIn ?? false,
+      agreementId,
     };
 
     const request: V1CollectiblesPostRequest = {
