@@ -8,6 +8,7 @@ import { useFlag } from '@rbx/flags';
 import { Locale, useLocalization, useTranslation } from '@rbx/intl';
 import { Skeleton, TableCell, Typography } from '@rbx/ui';
 import { isInGameSalesLicensingEnabled as isInGameSalesLicensingEnabledFlag } from '@generated/flags/contentLicensing';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { formatRoyaltyRate } from '@modules/licenses/utils/format';
 import { formatDate } from '@modules/miscellaneous/utils/dateUtils';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
@@ -18,7 +19,7 @@ import { useIpListingQuery } from '../../ipListings/hooks/ipListings';
 import { IPH_AGREEMENT_DETAILS_HREF } from '../../urls';
 import { normalizeCreatorType } from '../../utils/creatorName';
 import { getLifetimeVisitsRangeLabelFromEnum } from '../../utils/dauEnum';
-import { getLicenseTypeTableLabelKey } from '../../utils/licenseTypeTableLabelKeys';
+import { getLicenseTypeTableLabel } from '../../utils/licenseTypeTableLabelKeys';
 import { licenseUsesUniverseAgreementTarget } from '../../utils/licenseUsesUniverseAgreementTarget';
 import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../../utils/logger';
 import { getRevShareTimingKey } from '../../utils/revShareTiming';
@@ -42,7 +43,9 @@ const IPH_AGREEMENTS_TABLE_BASE_COLUMN_COUNT = 9;
 const IphAgreementRow: FunctionComponent<IphAgreementRowProps> = ({ agreement }) => {
   const router = useRouter();
   const { locale } = useLocalization();
-  const { translate } = useTranslation();
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
   const {
     cx,
     classes: { truncateTwoLines, ipFamilyName, twoColumnGrid },
@@ -210,7 +213,7 @@ const IphAgreementRow: FunctionComponent<IphAgreementRowProps> = ({ agreement })
       {isInGameSalesLicensingEnabled && (
         <TableCell>
           <Typography variant='body2' color='primary'>
-            {translate(getLicenseTypeTableLabelKey(license.licenseType))}
+            {getLicenseTypeTableLabel(license.licenseType, translate, tPendingTranslation)}
           </Typography>
         </TableCell>
       )}

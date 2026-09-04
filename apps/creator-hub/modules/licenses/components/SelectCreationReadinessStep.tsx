@@ -9,6 +9,8 @@ import {
 } from '@rbx/client-content-licensing-api/v1';
 import { useTranslation } from '@rbx/intl';
 import { Button, Grid, Link, Typography } from '@rbx/ui';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import {
   TextFieldWithEnhancedHelperText,
   getMinMaxLengthValidationRule,
@@ -19,6 +21,7 @@ import {
 } from '@modules/ip/license-manager/utils/logger';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { Flex } from '@modules/miscellaneous/components/Flex';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import useContentModerationMutation from '../hooks/useContentModerationMutation';
 import { CREATOR_PITCH_HREF } from '../urls';
@@ -94,7 +97,9 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
   onPrev,
   onCancel,
 }) => {
-  const { translate, translateHTML } = useTranslation();
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingHtmlTranslation, tPendingTranslation } = useTranslationWrapper(translation);
   const { isFetched } = useSettings();
   const isPitchOnly = contentMode === 'pitchOnly';
   const creatorPitchAttachmentsFieldRef = useRef<CreatorPitchAttachmentsFieldHandle>(null);
@@ -215,27 +220,38 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
     <Grid container flexDirection='column' padding={1.5} spacing={2} width='50%'>
       <Grid item container flexDirection='column' alignItems='left' paddingBottom={1} spacing={2}>
         <Grid item>
-          <Typography variant='h6'>{translate('Heading.TellUsMore')}</Typography>
+          <Typography variant='h6'>
+            {tPendingTranslation(
+              'Message to the rights holder',
+              'Header text shown on the step where the Creator explains their experience and intended use of IP',
+              translationKey('Heading.TellUsMore', TranslationNamespace.Licenses),
+            )}
+          </Typography>
         </Grid>
         <Grid item>
           <Typography variant='body1'>
-            {translateHTML('Description.CreatorPitchWithLink', [
-              {
-                opening: 'linkStart',
-                closing: 'linkEnd',
-                content(chunks) {
-                  return (
-                    <Link
-                      href={CREATOR_PITCH_HREF}
-                      target='_blank'
-                      style={{ textDecoration: 'underline' }}
-                      color='inherit'>
-                      {chunks}
-                    </Link>
-                  );
+            {tPendingHtmlTranslation(
+              'Rights holders are more likely to approve your license request if they understand how you will use their IP. {linkStart}Tips on what to include.{linkEnd}',
+              'Description text shown to Creators to describe the function of a textbox on the form where they are requesting use of an IP (intellectual property) license. Links out to Creator help docs with examples of "successful" pitches',
+              translationKey('Description.CreatorPitchWithLink', TranslationNamespace.Licenses),
+              [
+                {
+                  opening: 'linkStart',
+                  closing: 'linkEnd',
+                  content(chunks) {
+                    return (
+                      <Link
+                        href={CREATOR_PITCH_HREF}
+                        target='_blank'
+                        style={{ textDecoration: 'underline' }}
+                        color='inherit'>
+                        {chunks}
+                      </Link>
+                    );
+                  },
                 },
-              },
-            ])}
+              ],
+            )}
           </Typography>
         </Grid>
         <Grid

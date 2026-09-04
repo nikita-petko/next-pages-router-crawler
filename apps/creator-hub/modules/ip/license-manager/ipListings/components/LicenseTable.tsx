@@ -22,6 +22,7 @@ import {
   MoreVertIcon,
 } from '@rbx/ui';
 import { isIphInGameSalesAvatarMarketplaceSalesLicenseCreationEnabled } from '@generated/flags/contentLicensing';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { formatRoyaltyRate } from '@modules/licenses/utils/format';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
@@ -30,7 +31,7 @@ import GuidelinesAndRestrictionsSummaryModal from '../../components/GuidelinesAn
 import { LICENSE_CREATE_HREF, LICENSE_EDIT_HREF } from '../../urls';
 import { getDauLicenseLabelFromEnum } from '../../utils/dauEnum';
 import {
-  getLicenseTypeTableLabelKey,
+  getLicenseTypeTableLabel,
   LICENSE_TYPE_TABLE_HEADER_KEY,
 } from '../../utils/licenseTypeTableLabelKeys';
 import { LicenseManagerClickEvent, useLicenseManagerLogger } from '../../utils/logger';
@@ -240,7 +241,9 @@ interface LicenseTableProps {
  * Table listing all the licenses (for an ip listing)
  */
 const LicenseTable = ({ licenses, ipListingId }: LicenseTableProps) => {
-  const { translate } = useTranslation();
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
   const { classes, cx } = useStyles();
   const { logEvent } = useLicenseManagerLogger();
   const [openMenuLicenseId, setOpenMenuLicenseId] = React.useState<string | undefined>();
@@ -305,7 +308,7 @@ const LicenseTable = ({ licenses, ipListingId }: LicenseTableProps) => {
                 <TableCell>{license.name}</TableCell>
                 {isLicenseCreationEnabled && (
                   <TableCell>
-                    {translate(getLicenseTypeTableLabelKey(license.licenseType))}
+                    {getLicenseTypeTableLabel(license.licenseType, translate, tPendingTranslation)}
                   </TableCell>
                 )}
                 <TableCell>

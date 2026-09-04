@@ -226,7 +226,9 @@ interface DurationOptionsProps {
 }
 
 const DurationOptions: React.FC<DurationOptionsProps> = ({ isPerpetual, simple }) => {
-  const { translate } = useTranslation();
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
 
   return (
     <DropdownOptionContent
@@ -234,8 +236,22 @@ const DurationOptions: React.FC<DurationOptionsProps> = ({ isPerpetual, simple }
       title={isPerpetual ? translate('Label.Perpetual') : translate('Label.TimeLimited')}
       description={
         isPerpetual
-          ? translate('Description.DurationTypePerpetual')
-          : translate('Description.DurationTypeTimeLimited')
+          ? tPendingTranslation(
+              'Perpetual licenses allow use of your IP from the date an agreement is active until terminated',
+              'Description text shown as part of the Perpetual Option for the Duration Type Dropdown List.',
+              translationKey(
+                'Description.DurationTypePerpetual',
+                TranslationNamespace.AgreementsManager,
+              ),
+            )
+          : tPendingTranslation(
+              'Time-limited licenses allows use (if full game license) or sale (if collab license) of your IP within defined date boundaries',
+              'Description text shown as part of the Perpetual Option for the Duration Type Dropdown List.',
+              translationKey(
+                'Description.DurationTypeTimeLimited',
+                TranslationNamespace.AgreementsManager,
+              ),
+            )
       }
     />
   );
@@ -262,7 +278,7 @@ const LicenseCategoryOptions: React.FC<LicenseCategoryOptionsProps> = ({
           translationKey('Label.FullGame', TranslationNamespace.AgreementsManager),
         )}
         description={tPendingTranslation(
-          'Use of your IP must be central to the gameplay, storyline, or other crucial parts of the game. Revenue share applies to total game earnings.',
+          'Creators must use your IP as a central part of their game. Revenue share applies to all game earnings.',
           'Description for the full-game license type option.',
           translationKey('Description.LicenseTypeFullGame', TranslationNamespace.AgreementsManager),
         )}
@@ -279,7 +295,7 @@ const LicenseCategoryOptions: React.FC<LicenseCategoryOptionsProps> = ({
         translationKey('Label.Collab', TranslationNamespace.AgreementsManager),
       )}
       description={tPendingTranslation(
-        'Creators can use your IP in a limited way alongside their own IP. Revenue share applies only to items that use your IP.',
+        'Creators can use your IP in a limited way, such as selling IP-based items. Revenue share applies only to sold items that use your IP.',
         'Description for the collaboration license type option.',
         translationKey('Description.LicenseTypeCollab', TranslationNamespace.AgreementsManager),
       )}
@@ -305,7 +321,7 @@ const SaleLocationOptions: React.FC<SaleLocationOptionsProps> = ({ licenseType, 
           translationKey('Label.InGame', TranslationNamespace.AgreementsManager),
         )}
         description={tPendingTranslation(
-          'Creators can sell IP-based items in-game with a game pass or developer product.',
+          'Creators can sell IP-based items in-game.',
           'Description for the in-game sale location option.',
           translationKey('Description.SaleLocationInGame', TranslationNamespace.AgreementsManager),
         )}
@@ -322,7 +338,7 @@ const SaleLocationOptions: React.FC<SaleLocationOptionsProps> = ({ licenseType, 
         translationKey('Label.AvatarMarketplace', TranslationNamespace.AgreementsManager),
       )}
       description={tPendingTranslation(
-        'Creators can sell IP-based items on Avatar Marketplace or in games that include a marketplace.',
+        'Creators can sell IP-based items on the Roblox Marketplace including games that include Marketplace sales.',
         'Description for the Avatar Marketplace sale location option.',
         translationKey(
           'Description.SaleLocationAvatarMarketplace',
@@ -538,8 +554,6 @@ const LicenseForm = ({
     ],
   });
   const isTimeLimitedLicense = durationType === LicenseDurationType.TimeLimited;
-  const isCollaborationLicense =
-    isLicenseCreationEnabled && licenseCategory === LICENSE_CATEGORY.Collab;
   const shouldShowExperienceEligibility =
     !isLicenseCreationEnabled ||
     licenseType === LicenseType.FullExperience ||
@@ -551,7 +565,14 @@ const LicenseForm = ({
       return null;
     }
     if (licenseType === LicenseType.CollaborationInExperienceSale) {
-      return translate('Description.CollaborationRevenueShareTiming');
+      return tPendingTranslation(
+        'For in-game sales licenses, revenue share will only start when the asset associated with the license has been sold or otherwise distributed in the game. The creator will designate, and you will be able to see, the asset ID that will be used in connection with the sublicense.',
+        'Explanatory text shown in the revenue share timing section when the rights holder has selected their license type to be In-game sales type',
+        translationKey(
+          'Description.CollaborationRevenueShareTiming',
+          TranslationNamespace.AgreementsManager,
+        ),
+      );
     }
     if (licenseType === LicenseType.MarketplaceSale) {
       return tPendingTranslation(
@@ -769,7 +790,7 @@ const LicenseForm = ({
             </Typography>
             <Typography color='secondary' component='p' className={classes.semanticGapLargerBottom}>
               {tPendingTranslation(
-                'Set the terms of the license you are granting to Creators.',
+                'These terms will apply to all agreements created under this license.',
                 'Description for the section where a rights holder sets the terms of a license.',
                 translationKey('Description.LicenseTerms', TranslationNamespace.AgreementsManager),
               )}
@@ -1045,7 +1066,14 @@ const LicenseForm = ({
             {translate('Label.Duration')}
           </Typography>
           <Typography color='secondary' component='p' className={classes.semanticGapLargerBottom}>
-            {translate('Description.LicenseFormDuration')}
+            {tPendingTranslation(
+              'Licenses can be time-limited or perpetual. This field cannot be changed after submission.',
+              'Description text shown in the section where a user would decide the duration type for a license agreement. Possible license duration types are time-limited (meaning that there is a defined time boundary that the agreement can be active for, such as 3 days to 7 days) or perpetual (meaning that the agreement can be active forever without any time boundaries defined).',
+              translationKey(
+                'Description.LicenseFormDuration',
+                TranslationNamespace.AgreementsManager,
+              ),
+            )}
           </Typography>
           <FormControl fullWidth>
             <Controller
@@ -1088,7 +1116,14 @@ const LicenseForm = ({
               {translate('Heading.LicenseFormDurationRange')}
             </Typography>
             <Typography color='secondary' component='p' className={classes.semanticGapLargerBottom}>
-              {translate('Description.LicenseFormDurationRange')}
+              {tPendingTranslation(
+                'If you selected the time-limited option, select the specified range below. This value will not be editable once there is any sublicense with a creator. The creator will specify a start and end date within this boundary when they request this license.',
+                "Description text shown to designate the duration range section of the form. This is where the user will make selections to define a time boundary for their license's active period. A license is an entity that permits an experience to use the user's intellectual property.",
+                translationKey(
+                  'Description.LicenseFormDurationRange',
+                  TranslationNamespace.AgreementsManager,
+                ),
+              )}
             </Typography>
             <FormControl fullWidth className={classes.semanticGapLargerBottom}>
               <Controller
@@ -1167,7 +1202,14 @@ const LicenseForm = ({
             )}
           </Typography>
           <Typography color='secondary' component='p' className={classes.semanticGapLargerBottom}>
-            {translate('Description.RevenueShareEditable')}
+            {tPendingTranslation(
+              "Set the revenue share for this license. This value will not be editable once there is any sublicense with a creator. This is the percentage you’ll receive from the creator's gross Robux earned under this license after platform fees. However, not all creations earn on Roblox.",
+              'Description for revenue share form',
+              translationKey(
+                'Description.RevenueShareEditable',
+                TranslationNamespace.AgreementsManager,
+              ),
+            )}
           </Typography>
 
           <FormControl fullWidth>
@@ -1206,25 +1248,19 @@ const LicenseForm = ({
               }>
               {translate('Label.DefaultRevenueShareTiming')}
             </Typography>
-            {isTimeLimitedLicense && (
-              <Typography
-                color='secondary'
-                component='p'
-                className={
-                  isCollaborationLicense
-                    ? classes.paddingMediumBtm
-                    : classes.semanticGapLargerBottom
-                }>
-                {translate('Description.TimelimitedRevenueShareTiming')}
-              </Typography>
-            )}
-            {licenseTypeRevenueShareTimingDescription != null && (
-              <Typography
-                color='secondary'
-                component='p'
-                className={classes.semanticGapLargerBottom}>
-                {licenseTypeRevenueShareTimingDescription}
-              </Typography>
+            {(isTimeLimitedLicense || licenseTypeRevenueShareTimingDescription != null) && (
+              <div className={classes.revenueShareTimingDescriptions}>
+                {isTimeLimitedLicense && (
+                  <Typography color='secondary' component='p'>
+                    {translate('Description.TimelimitedRevenueShareTiming')}
+                  </Typography>
+                )}
+                {licenseTypeRevenueShareTimingDescription != null && (
+                  <Typography color='secondary' component='p'>
+                    {licenseTypeRevenueShareTimingDescription}
+                  </Typography>
+                )}
+              </div>
             )}
             <FormControl fullWidth>
               <Controller

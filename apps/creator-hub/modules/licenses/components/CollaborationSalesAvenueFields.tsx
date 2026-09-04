@@ -273,12 +273,26 @@ const CollaborationSalesAvenueFields: FunctionComponent<CollaborationSalesAvenue
     <Grid item container flexDirection='column' alignItems='left' paddingBottom={1} spacing={2}>
       <Grid item>
         <Typography variant='h6'>
-          {translate('Header.CollaborationLicenseDesignateRevenueTarget')}
+          {tPendingTranslation(
+            'Designate IP sales products',
+            'Title text shown for the section where users would designate a sales avenue asset ID or IDs to be used for a In-game sales license. In-game sales licenses require a specific ID or IDs so that the license knows what to monetize on.',
+            translationKey(
+              'Header.CollaborationLicenseDesignateRevenueTarget',
+              TranslationNamespace.Licenses,
+            ),
+          )}
         </Typography>
       </Grid>
       <Grid item>
         <Typography variant='body1'>
-          {translate('Description.CollaborationLicenseDesignateRevenueTarget')}
+          {tPendingTranslation(
+            'Enter all developer product IDs or game pass IDs that will be used for the sale of IP-based items.',
+            'Description text shown for the section where users designate an ID or IDs for where a In-game sales license is expected to monetize an in-experience item being sold.',
+            translationKey(
+              'Description.CollaborationLicenseDesignateRevenueTarget',
+              TranslationNamespace.Licenses,
+            ),
+          )}
         </Typography>
       </Grid>
       <Grid item container flexDirection='column' spacing={1}>

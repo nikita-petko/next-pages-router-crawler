@@ -4,6 +4,8 @@ import type { LicenseResponse } from '@rbx/client-content-licensing-api/v1';
 import { Checkbox } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { Button, FormControlLabel, FormHelperText, Grid, Typography } from '@rbx/ui';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import LinkButton from '@modules/ip/components/LinkButton';
 import GuidelinesAndRestrictionsSummaryModal from '@modules/ip/license-manager/components/GuidelinesAndRestrictionsSummaryModal';
 import {
@@ -12,6 +14,7 @@ import {
 } from '@modules/ip/license-manager/utils/logger';
 import { PageLoading } from '@modules/miscellaneous/components';
 import { Flex } from '@modules/miscellaneous/components/Flex';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import useApplyToLicenseContainerStyles from '../containers/ApplyToLicenseContainer.styles';
 
@@ -39,7 +42,9 @@ const ReviewTermsStep: FunctionComponent<ReviewTermsStepProps> = ({
   onPrev,
   onCancel,
 }) => {
-  const { translate, translateHTML } = useTranslation();
+  const translation = useTranslation();
+  const { translate, translateHTML } = translation;
+  const { tPendingHtmlTranslation } = useTranslationWrapper(translation);
   const { classes } = useApplyToLicenseContainerStyles();
   const { isFetched } = useSettings();
   const guidelinesCheckboxLabelId = useId();
@@ -124,17 +129,15 @@ const ReviewTermsStep: FunctionComponent<ReviewTermsStepProps> = ({
     [internalState],
   );
 
-  const styledTerm = (label: string) => {
-    return translateHTML(label, [
-      {
-        opening: 'boldStart',
-        closing: 'boldEnd',
-        content(chunks) {
-          return <b>{chunks}</b>;
-        },
+  const termTags = [
+    {
+      opening: 'boldStart',
+      closing: 'boldEnd',
+      content(chunks: React.ReactNode) {
+        return <b>{chunks}</b>;
       },
-    ]);
-  };
+    },
+  ];
 
   if (!isFetched) {
     return <PageLoading />;
@@ -155,25 +158,74 @@ const ReviewTermsStep: FunctionComponent<ReviewTermsStepProps> = ({
           paddingBottom={3}
           width='50%'>
           <Grid item>
-            <Typography variant='body2'>{styledTerm('Label.TermsRevShareAndData')}</Typography>
+            <Typography variant='body2'>
+              {tPendingHtmlTranslation(
+                '{boldStart}Revenue Share & Data.{boldEnd} The rights holder will receive a share of the gross Robux you earn from the licensed creation. They will also receive certain data about the creation. Some rights holders may defer collecting their revenue share on a license to a future date of their choosing.',
+                'Migrated from a json, contact Angelica Quach (aquach) for more info',
+                translationKey('Label.TermsRevShareAndData', TranslationNamespace.Licenses),
+                termTags,
+              )}
+            </Typography>
           </Grid>
           <Grid item>
-            <Typography variant='body2'>{styledTerm('Label.TermsContentStandards')}</Typography>
+            <Typography variant='body2'>
+              {tPendingHtmlTranslation(
+                '{boldStart}Content Standards & Brand Guidelines.{boldEnd} You must comply with all Content Standards and Brand Guidelines provided by the rights holder.',
+                'Migrated from a json, contact Angelica Quach (aquach) for more info',
+                translationKey('Label.TermsContentStandards', TranslationNamespace.Licenses),
+                termTags,
+              )}
+            </Typography>
           </Grid>
           <Grid item>
-            <Typography variant='body2'>{styledTerm('Label.TermsLicensedIpV2')}</Typography>
+            <Typography variant='body2'>
+              {tPendingHtmlTranslation(
+                "{boldStart}Licensed IP.{boldEnd} This license only allows you to use the specific IP licensed and no other IP. As a reminder, you are required to only upload content that you have the rights or permission to use. Remember to treat any IP you're using with respect and conduct yourself professionally on/off platform.",
+                'Terms specific to Licensed IP that is shown to Creator\'s in the "Acknowledge Terms" step when they are requesting a license. An approved license request would allow the Creator to use the rights holder\'s IP (intellectual property) in their creation.',
+                translationKey('Label.TermsLicensedIpV2', TranslationNamespace.Licenses),
+                termTags,
+              )}
+            </Typography>
           </Grid>
           <Grid item>
-            <Typography variant='body2'>{styledTerm('Label.TermsOnPlatformUsageV2')}</Typography>
+            <Typography variant='body2'>
+              {tPendingHtmlTranslation(
+                '{boldStart}On-Platform Usage.{boldEnd} Unless the Content Standards say otherwise, your permission to use the licensed IP is limited to the Roblox platform and does not extend to off-platform activity including promotion of your content on social media.',
+                'Terms specific to On-Platform Usage that is shown to Creator\'s in the "Acknowledge Terms" step when they are requesting a license. An approved license request would allow the Creator to use the rights holder\'s IP (intellectual property) in their creation.',
+                translationKey('Label.TermsOnPlatformUsageV2', TranslationNamespace.Licenses),
+                termTags,
+              )}
+            </Typography>
           </Grid>
           <Grid item>
-            <Typography variant='body2'>{styledTerm('Label.TermsTimeLimitedLicenses')}</Typography>
+            <Typography variant='body2'>
+              {tPendingHtmlTranslation(
+                '{boldStart}Time-Limited Licenses.{boldEnd} If you enter into a time-limited license you agree to only use the IP during the duration specified by the agreement and to take steps to remove the IP following the expiration of the license.',
+                'Terms specific to Time-Limited Licenses that is shown to Creator\'s in the "Acknowledge Terms" step when they are requesting a license. An approved license request would allow the Creator to use the rights holder\'s IP (intellectual property) in their creation.',
+                translationKey('Label.TermsTimeLimitedLicenses', TranslationNamespace.Licenses),
+                termTags,
+              )}
+            </Typography>
           </Grid>
           <Grid item>
-            <Typography variant='body2'>{styledTerm('Label.TermsTerminationV2')}</Typography>
+            <Typography variant='body2'>
+              {tPendingHtmlTranslation(
+                '{boldStart}Termination.{boldEnd} In the scenario that the license is terminated (by you, the rights holder, or Roblox), you may be required to stop using the IP, including removing the licensed IP from your content or halting sales of the content if the content cannot be modified. Learn more here.',
+                'Terms specific to Termination that is shown to Creator\'s in the "Acknowledge Terms" step when they are requesting a license. An approved license request would allow the Creator to use the rights holder\'s IP (intellectual property) in their creation.',
+                translationKey('Label.TermsTerminationV2', TranslationNamespace.Licenses),
+                termTags,
+              )}
+            </Typography>
           </Grid>
           <Grid item>
-            <Typography variant='body2'>{styledTerm('Label.TermsInboxForUpdates')}</Typography>
+            <Typography variant='body2'>
+              {tPendingHtmlTranslation(
+                '{boldStart}Inbox for Updates.{boldEnd} Keep an eye on your Inbox messages for important communications from the rights holder, such as change requests to conform with their Content Standards and Brand Guidelines. Some requests may require a timely response. Failure to respond could result in loss of your license.',
+                'Migrated from a json, contact Angelica Quach (aquach) for more info',
+                translationKey('Label.TermsInboxForUpdates', TranslationNamespace.Licenses),
+                termTags,
+              )}
+            </Typography>
           </Grid>
         </Grid>
         <Grid item container flexDirection='column' alignItems='stretch'>

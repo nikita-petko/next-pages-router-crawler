@@ -25,9 +25,11 @@ import {
   isAvatarItemLicensingEnabled as isAvatarItemLicensingEnabledFlag,
   isInGameSalesLicensingEnabled as isInGameSalesLicensingEnabledFlag,
 } from '@generated/flags/contentLicensing';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { formatRoyaltyRate } from '@modules/licenses/utils/format';
 import {
   getEffectiveLicenseTypeForDisplay,
+  getLicenseTypeTooltipText,
   getLicenseTypeTranslationKeys,
 } from '@modules/licenses/utils/licenseTypeTranslationKeys';
 import { Flex } from '@modules/miscellaneous/components/Flex';
@@ -190,7 +192,9 @@ const AgreementDetailsTab: FunctionComponent<AgreementDetailsTabProps> = ({
 }) => {
   const { classes } = useStyles();
   const { locale } = useLocalization();
-  const { translate } = useTranslation();
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
   const { isFetched } = useSettings();
   const { ready: isInGameSalesLicensingFlagReady, value: inGameSalesLicensingFlagValue } = useFlag(
     isInGameSalesLicensingEnabledFlag,
@@ -206,6 +210,11 @@ const AgreementDetailsTab: FunctionComponent<AgreementDetailsTabProps> = ({
     isAvatarItemLicensingEnabled,
   );
   const licenseTypeLabels = getLicenseTypeTranslationKeys(effectiveLicenseType);
+  const licenseTypeTooltipText = getLicenseTypeTooltipText(
+    effectiveLicenseType,
+    translate,
+    tPendingTranslation,
+  );
   const isMarketplaceSaleLicense = effectiveLicenseType === LicenseType.MarketplaceSale;
   const isTimeLimitedLicense =
     license.licenseDuration?.durationType === LicenseDurationType.TimeLimited;
@@ -342,7 +351,7 @@ const AgreementDetailsTab: FunctionComponent<AgreementDetailsTabProps> = ({
           <KeyValuePair
             label={translate('Label.LicenseType')}
             value={translate(licenseTypeLabels.detail)}
-            tooltipText={translate(licenseTypeLabels.tooltip)}
+            tooltipText={licenseTypeTooltipText}
           />
         )}
 

@@ -13,6 +13,12 @@ const useLicenseFormStyles = makeStyles()(() => ({
   paddingMediumBtm: {
     paddingBottom: 12,
   },
+  revenueShareTimingDescriptions: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    marginBottom: 24,
+  },
   dropdownOption: {
     maxWidth: 640,
     textWrap: 'wrap',

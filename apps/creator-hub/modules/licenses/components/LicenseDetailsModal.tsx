@@ -25,13 +25,15 @@ import {
 import { getMaturityRatingLabel } from '@modules/ip/license-manager/utils/maturityRating';
 import { getDurationRangeLabel } from '@modules/ip/license-manager/utils/timeLimitedLicense';
 import { Link, PageLoading } from '@modules/miscellaneous/components';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import { LICENSE_APPLY_HREF, type LicenseRequestCancelReturnToValue } from '../urls';
 import { getCreatorEarningsRequirementText } from '../utils/creatorEarningsRequirementText';
 import { formatRoyaltyRate } from '../utils/format';
 import {
-  getLicenseTypeTranslationKeys,
   getEffectiveLicenseTypeForDisplay,
+  getLicenseTypeTooltipText,
+  getLicenseTypeTranslationKeys,
 } from '../utils/licenseTypeTranslationKeys';
 import { getIsNonZeroRevShareFromValue } from '../utils/revShare';
 
@@ -150,7 +152,7 @@ const LicenseDetailsModal: FunctionComponent<LicenseDetailsModalProps> = ({
   licenseRequestCancelReturnTo,
 }) => {
   const translation = useTranslation();
-  const { translate } = translation;
+  const { translate, translateWithNamespace } = translation;
   const { tPendingTranslation } = useTranslationWrapper(translation);
   const { classes } = useStyles();
   const { logEvent } = useLicenseManagerLogger();
@@ -178,6 +180,11 @@ const LicenseDetailsModal: FunctionComponent<LicenseDetailsModalProps> = ({
     isAvatarItemLicensingEnabled,
   );
   const licenseTypeLabels = getLicenseTypeTranslationKeys(effectiveLicenseType);
+  const licenseTypeTooltipText = getLicenseTypeTooltipText(
+    effectiveLicenseType,
+    translate,
+    tPendingTranslation,
+  );
   const isMarketplaceSaleLicense = effectiveLicenseType === LicenseType.MarketplaceSale;
   const creatorEarningsRequirementText = getCreatorEarningsRequirementText(
     license,
@@ -249,11 +256,14 @@ const LicenseDetailsModal: FunctionComponent<LicenseDetailsModalProps> = ({
                     <LicenseDetailTile
                       title={translate(licenseTypeLabels.detail)}
                       label={translate('Label.LicenseType')}
-                      tooltipTitle={translate(licenseTypeLabels.tooltip)}
+                      tooltipTitle={licenseTypeTooltipText}
                     />
                     <LicenseDetailTile
                       title={getDurationRangeLabel(translate, license.licenseDuration)}
-                      label={translate('Label.LicenseDuration')}
+                      label={translateWithNamespace(
+                        TranslationNamespace.AgreementsManager,
+                        'Label.Duration',
+                      )}
                       tooltipTitle={licenseDurationTooltipTitle}
                       iconDataTestId='duration-info-icon'
                     />
@@ -280,11 +290,14 @@ const LicenseDetailsModal: FunctionComponent<LicenseDetailsModalProps> = ({
                   <LicenseDetailTile
                     title={translate(licenseTypeLabels.detail)}
                     label={translate('Label.LicenseType')}
-                    tooltipTitle={translate(licenseTypeLabels.tooltip)}
+                    tooltipTitle={licenseTypeTooltipText}
                   />
                   <LicenseDetailTile
                     title={getDurationRangeLabel(translate, license.licenseDuration)}
-                    label={translate('Label.LicenseDuration')}
+                    label={translateWithNamespace(
+                      TranslationNamespace.AgreementsManager,
+                      'Label.Duration',
+                    )}
                     tooltipTitle={licenseDurationTooltipTitle}
                     iconDataTestId='duration-info-icon'
                   />

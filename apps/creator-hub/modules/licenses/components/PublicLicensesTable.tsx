@@ -23,6 +23,7 @@ import useTranslationWrapper from '@modules/analytics-translations/useTranslatio
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { useAuthentication } from '@modules/authentication/providers';
 import GuidelinesAndRestrictionsSummaryModal from '@modules/ip/license-manager/components/GuidelinesAndRestrictionsSummaryModal';
+import { getLicenseTypeTableLabel } from '@modules/ip/license-manager/utils/licenseTypeTableLabelKeys';
 import {
   LicenseManagerClickEvent,
   LicenseManagerImpressionEvent,
@@ -50,11 +51,10 @@ import PublicLicensesFilterChip, {
   type PublicLicensesFilterOption,
 } from './PublicLicensesFilterChip';
 
-const LICENSE_TYPE_LABEL_KEYS: Record<LicenseType, string> = {
-  FullExperience: 'Label.FullExperience',
-  CollaborationInExperienceSale: 'Label.Collaboration',
-  MarketplaceSale: 'Label.MarketplaceSale',
-};
+const LICENSE_TYPE_LABEL_KEYS = {
+  [LicenseType.FullExperience]: 'Label.FullExperience',
+  [LicenseType.CollaborationInExperienceSale]: 'Label.Collaboration',
+} as const;
 
 const DURATION_FILTER_OPTIONS: PublicLicensesFilterOption<PublicLicenseDurationFilter>[] = [
   { value: 'all', label: 'Label.All' },
@@ -70,11 +70,6 @@ const LICENSE_TYPE_FILTER_OPTIONS: PublicLicensesFilterOption<PublicLicenseTypeF
     label: LICENSE_TYPE_LABEL_KEYS[LicenseType.CollaborationInExperienceSale],
   },
 ];
-
-const MARKETPLACE_SALE_FILTER_OPTION: PublicLicensesFilterOption<PublicLicenseTypeFilter> = {
-  value: LicenseType.MarketplaceSale,
-  label: LICENSE_TYPE_LABEL_KEYS[LicenseType.MarketplaceSale],
-};
 
 const useStyles = makeStyles<
   void,
@@ -200,7 +195,7 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
 }) => {
   const { classes } = useStyles();
   const translation = useTranslation();
-  const { translate } = translation;
+  const { translate, translateWithNamespace } = translation;
   const { tPendingTranslation } = useTranslationWrapper(translation);
   const resetFiltersLabel = tPendingTranslation(
     'Reset filters',
@@ -239,12 +234,16 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
       }));
       if (isAvatarItemLicensingEnabled) {
         options.push({
-          value: MARKETPLACE_SALE_FILTER_OPTION.value,
-          label: translate(MARKETPLACE_SALE_FILTER_OPTION.label),
+          value: LicenseType.MarketplaceSale,
+          label: getLicenseTypeTableLabel(
+            LicenseType.MarketplaceSale,
+            translate,
+            tPendingTranslation,
+          ),
         });
       }
       return options;
-    }, [translate, isAvatarItemLicensingEnabled]);
+    }, [isAvatarItemLicensingEnabled, tPendingTranslation, translate]);
   const durationFilterOptions = useMemo(
     (): PublicLicensesFilterOption<PublicLicenseDurationFilter>[] =>
       DURATION_FILTER_OPTIONS.map((option) => ({
@@ -375,7 +374,10 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
               testId='public-licenses-license-type-filter-chip'
             />
             <PublicLicensesFilterChip
-              filterLabel={translate('Label.LicenseDuration')}
+              filterLabel={translateWithNamespace(
+                TranslationNamespace.AgreementsManager,
+                'Label.Duration',
+              )}
               options={durationFilterOptions}
               selected={durationFilter}
               onChange={handleDurationFilterChange}
@@ -481,8 +483,10 @@ const PublicLicensesTable: FunctionComponent<PublicLicensesTableProps> = ({
                   )}
                   {isInGameSalesLicensingEnabled && (
                     <TableCell>
-                      {translate(
-                        LICENSE_TYPE_LABEL_KEYS[license.licenseType ?? LicenseType.FullExperience],
+                      {getLicenseTypeTableLabel(
+                        license.licenseType,
+                        translate,
+                        tPendingTranslation,
                       )}
                     </TableCell>
                   )}

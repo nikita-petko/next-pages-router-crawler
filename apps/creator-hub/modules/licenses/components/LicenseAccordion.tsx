@@ -20,6 +20,7 @@ import {
   isAvatarItemLicensingEnabled as isAvatarItemLicensingEnabledFlag,
   isInGameSalesLicensingEnabled as isInGameSalesLicensingEnabledFlag,
 } from '@generated/flags/contentLicensing';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import {
   LicenseManagerClickEvent,
   LicenseManagerImpressionEvent,
@@ -27,13 +28,15 @@ import {
 } from '@modules/ip/license-manager/utils/logger';
 import { getDurationRangeLabel } from '@modules/ip/license-manager/utils/timeLimitedLicense';
 import { Link, PageLoading } from '@modules/miscellaneous/components';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import { useVisibleImpression } from '../hooks/useVisibleImpression';
 import { LICENSE_APPLY_HREF } from '../urls';
 import { formatRoyaltyRate } from '../utils/format';
 import {
-  getLicenseTypeTranslationKeys,
   getEffectiveLicenseTypeForDisplay,
+  getLicenseTypeTooltipText,
+  getLicenseTypeTranslationKeys,
 } from '../utils/licenseTypeTranslationKeys';
 import { getIsNonZeroRevShareFromLicense } from '../utils/revShare';
 
@@ -68,7 +71,9 @@ const LicenseAccordion: FunctionComponent<LicenseAccordionProps> = ({
   onAccordionChange,
   onViewDetails,
 }) => {
-  const { translate } = useTranslation();
+  const translation = useTranslation();
+  const { translate, translateWithNamespace } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
   const { classes } = useStyles();
   const { isFetched } = useSettings();
   const { ready: isInGameSalesLicensingFlagReady, value: inGameSalesLicensingFlagValue } = useFlag(
@@ -132,6 +137,11 @@ const LicenseAccordion: FunctionComponent<LicenseAccordionProps> = ({
     isAvatarItemLicensingEnabled,
   );
   const licenseTypeLabels = getLicenseTypeTranslationKeys(effectiveLicenseType);
+  const licenseTypeTooltipText = getLicenseTypeTooltipText(
+    effectiveLicenseType,
+    translate,
+    tPendingTranslation,
+  );
   const showRevShareInSummary = isAuthenticated && license.royaltyRate !== undefined;
   const showDurationInSummary = isAuthenticated;
 
@@ -253,7 +263,7 @@ const LicenseAccordion: FunctionComponent<LicenseAccordionProps> = ({
                   </Typography>
                 </Grid>
                 <Grid item className={classes.tooltip}>
-                  <Tooltip arrow placement='right' title={translate(licenseTypeLabels.tooltip)}>
+                  <Tooltip arrow placement='right' title={licenseTypeTooltipText}>
                     <InfoOutlinedIcon fontSize='medium' className={classes.icon} />
                   </Tooltip>
                 </Grid>
@@ -268,7 +278,10 @@ const LicenseAccordion: FunctionComponent<LicenseAccordionProps> = ({
               <Grid item container className={classes.tooltipContainer}>
                 <Grid item>
                   <Typography variant='body1' display='block' color='secondary'>
-                    {translate('Label.LicenseDuration')}
+                    {translateWithNamespace(
+                      TranslationNamespace.AgreementsManager,
+                      'Label.Duration',
+                    )}
                   </Typography>
                 </Grid>
                 <Grid item className={classes.tooltip}>

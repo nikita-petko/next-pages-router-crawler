@@ -29,10 +29,12 @@ import {
   isAvatarItemLicensingEnabled as isAvatarItemLicensingEnabledFlag,
   isInGameSalesLicensingEnabled as isInGameSalesLicensingEnabledFlag,
 } from '@generated/flags/contentLicensing';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { EXPLORE_LISTING_DETAILS } from '@modules/licenses/urls';
 import { formatRoyaltyRate } from '@modules/licenses/utils/format';
 import {
   getEffectiveLicenseTypeForDisplay,
+  getLicenseTypeTooltipText,
   getLicenseTypeTranslationKeys,
 } from '@modules/licenses/utils/licenseTypeTranslationKeys';
 import { Flex } from '@modules/miscellaneous/components/Flex';
@@ -180,7 +182,9 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
   handleDisputeClick,
 }) => {
   const { classes } = useStyles();
-  const { translate, translateHTML } = useTranslation();
+  const translation = useTranslation();
+  const { translate, translateHTML } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
   const { locale } = useLocalization();
   const { logEvent } = useLicenseManagerLogger();
   const { isFetched, settings } = useSettings();
@@ -198,6 +202,11 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
     isAvatarItemLicensingEnabled,
   );
   const licenseTypeLabels = getLicenseTypeTranslationKeys(effectiveLicenseType);
+  const licenseTypeTooltipText = getLicenseTypeTooltipText(
+    effectiveLicenseType,
+    translate,
+    tPendingTranslation,
+  );
   const isMarketplaceSaleLicense = effectiveLicenseType === LicenseType.MarketplaceSale;
   const isTimeLimitedLicense =
     license.licenseDuration?.durationType === LicenseDurationType.TimeLimited;
@@ -435,7 +444,7 @@ const CreatorAgreementDetailsTabContent: React.FC<CreatorAgreementDetailsProps> 
           <KeyValuePair
             label={translate('Label.LicenseType')}
             value={translate(licenseTypeLabels.detail)}
-            tooltipText={translate(licenseTypeLabels.tooltip)}
+            tooltipText={licenseTypeTooltipText}
           />
         )}
 

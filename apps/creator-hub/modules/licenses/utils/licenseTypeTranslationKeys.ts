@@ -1,4 +1,7 @@
 import { LicenseType } from '@rbx/client-content-licensing-api/v1';
+import type { TPendingTranslationFunction } from '@modules/analytics-translations/types';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 
 export type LicenseTypeTranslationKeys = {
   summary: string;
@@ -28,6 +31,28 @@ export function getLicenseTypeTranslationKeys(
   licenseType: LicenseType | undefined,
 ): LicenseTypeTranslationKeys {
   return LICENSE_TYPE_TRANSLATION_KEYS[licenseType ?? LicenseType.FullExperience];
+}
+
+export function getLicenseTypeTooltipText(
+  licenseType: LicenseType,
+  translate: (key: string) => string,
+  tPendingTranslation: TPendingTranslationFunction,
+): string {
+  if (licenseType === LicenseType.FullExperience) {
+    return tPendingTranslation(
+      'A full game license allows creators to use the IP in a way that’s central to the game.',
+      'Tooltip explaining what a full experience license means',
+      translationKey('Label.TooltipFullExperienceLicense', TranslationNamespace.Licenses),
+    );
+  }
+  if (licenseType === LicenseType.CollaborationInExperienceSale) {
+    return tPendingTranslation(
+      'An in-game sales license allows creators to sell IP-based items within a game via designated sales products.',
+      'Tooltip explaining what a In-game sales license means',
+      translationKey('Label.TooltipCollaborationLicense', TranslationNamespace.Licenses),
+    );
+  }
+  return translate(getLicenseTypeTranslationKeys(licenseType).tooltip);
 }
 
 /** Falls back to Full Experience when the runtime flag for the API license type is disabled. */

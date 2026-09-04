@@ -68,6 +68,28 @@ const RevShareOnActivationNotice: FunctionComponent<RevShareOnActivationNoticePr
         { value: formatRoyaltyRate(revShareValue) },
       );
     }
+    if (descriptionKey === 'Description.CollaborationRevShareTimingWithValue') {
+      return tPendingTranslation(
+        'This license requires revenue share of {value} upon rights holder’s acceptance of your request. This applies only on sales related to the asset IDs you provide below.',
+        'Description text shown to Creators applying for a In-game sales license (meaning that the creator derivatives of an IP can be used in an experience as long as it is gated by the sale of a game pass or developer product) and that this license has a specified revenue share of {value} percentage that begins as soon as the the license is active but applies only to the asset IDs of the specified game pass or developer product (can be multiple)',
+        translationKey(
+          'Description.CollaborationRevShareTimingWithValue',
+          TranslationNamespace.Licenses,
+        ),
+        { value: formatRoyaltyRate(revShareValue) },
+      );
+    }
+    if (descriptionKey === 'Description.CollaborationTimeLimitedRevShareTimingWithValue') {
+      return tPendingTranslation(
+        'This license requires revenue share of {value} which will automatically begin on the start date designated above but only on the asset IDs you provide below, if the rights holder approves your request.',
+        'Description text shown to Creators applying for a time-limited duration, In-game sales license (meaning that the creator derivatives of an IP can be used in an experience as long as it is gated by the sale of a game pass or developer product) and that this license has a specified revenue share of {value} percentage that begins as soon as the the license is active on the specified start date but applies only to the asset IDs of the specified game pass or developer product (can be multiple)',
+        translationKey(
+          'Description.CollaborationTimeLimitedRevShareTimingWithValue',
+          TranslationNamespace.Licenses,
+        ),
+        { value: formatRoyaltyRate(revShareValue) },
+      );
+    }
     if (isNonZeroRevShare) {
       return translate(descriptionKey, {
         value: formatRoyaltyRate(revShareValue),
