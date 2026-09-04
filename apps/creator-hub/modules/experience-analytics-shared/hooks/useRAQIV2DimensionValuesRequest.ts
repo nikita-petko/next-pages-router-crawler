@@ -26,7 +26,7 @@ export type RAQIV2CombinedDimensionValuesResult = null | {
 const useRAQIV2DimensionValuesRequest = (
   resource: RAQIV2ChartResource,
   dimension: TRAQIV2Dimension,
-  contextMetrics: Array<TRAQIV2APIMetric>,
+  contextMetrics: readonly TRAQIV2APIMetric[],
   dateRangeSelection?: TDateRangeSelection,
   // Optional scoping filters forwarded to the gateway. Used so dependent
   // dimensions (e.g. PlaceVersion, whose YAML declares `required_dimensions:
@@ -93,7 +93,7 @@ const useRAQIV2DimensionValuesRequest = (
     }
     const { values: responseValues } = await platformGetDimension({
       resource,
-      metrics: contextMetrics,
+      metrics: [...contextMetrics],
       dimension,
       startTime,
       endTime,

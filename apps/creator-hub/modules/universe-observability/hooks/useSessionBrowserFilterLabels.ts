@@ -6,6 +6,8 @@ import { translationKey } from '@modules/analytics-translations/wrapperFunctions
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 
 export type SessionBrowserFilterLabels = {
+  readonly funnelEventsLabel: FormattedText;
+  readonly customEventsLabel: FormattedText;
   readonly hasBugReportLabel: FormattedText;
   readonly deviceRamLabel: FormattedText;
   readonly durationLabel: FormattedText;
@@ -19,6 +21,16 @@ const useSessionBrowserFilterLabels = (): SessionBrowserFilterLabels => {
 
   return useMemo(
     () => ({
+      funnelEventsLabel: tPendingTranslation(
+        'Contains funnel events',
+        'Filter for client sessions that include selected funnel events.',
+        translationKey('Label.ContainsFunnelEvents', TranslationNamespace.ServerManagement),
+      ),
+      customEventsLabel: tPendingTranslation(
+        'Contains custom events',
+        'Filter for client sessions that include selected custom events.',
+        translationKey('Label.ContainsCustomEvents', TranslationNamespace.ServerManagement),
+      ),
       hasBugReportLabel: tPendingTranslation(
         'Has bug report',
         'Filter for client sessions that include a bug report.',

@@ -162,6 +162,7 @@ const ClientSessionBrowserPlaceFilterFields: FC<ClientSessionBrowserPlaceFilterF
           showOptionIdAsDescription
           blankHandling={{ type: BlankHandlingType.Value, value: selectPlaceLabel }}
           helperText={error ? placesLoadErrorLabel : undefined}
+          hasError={Boolean(error)}
           onChange={handlePlaceIdsChange}
         />
       </div>

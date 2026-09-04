@@ -13,6 +13,11 @@ import type { FormattedText } from '@modules/analytics-translations/types';
 
 const FirstActionAutofocusPriority = '10';
 
+type OutsideDismissEvent = {
+  readonly preventDefault: () => void;
+  readonly target: EventTarget | null;
+};
+
 export type TriggerSheetAction = {
   readonly label: FormattedText;
   readonly variant: ComponentProps<typeof Button>['variant'];
@@ -32,6 +37,11 @@ export type TriggerSheetProps = {
   readonly actions?: readonly TriggerSheetAction[];
   readonly buttonIcon?: ComponentProps<typeof Button>['icon'];
   readonly onOpenChange?: (open: boolean) => void;
+  /**
+   * Return true to keep the sheet open for an outside interaction (e.g. a
+   * `ComboboxTypeahead` listbox portaled to `document.body`).
+   */
+  readonly shouldPreventOutsideDismiss?: (target: EventTarget | null) => boolean;
   readonly children: ReactNode;
 };
 
@@ -43,6 +53,7 @@ const TriggerSheet: FC<TriggerSheetProps> = ({
   actions,
   buttonIcon,
   onOpenChange,
+  shouldPreventOutsideDismiss,
   children,
 }) => {
   const [open, setOpen] = useState(false);
@@ -54,6 +65,15 @@ const TriggerSheet: FC<TriggerSheetProps> = ({
       onOpenChange?.(nextOpen);
     },
     [onOpenChange],
+  );
+
+  const handleOutsideDismiss = useCallback(
+    (event: OutsideDismissEvent) => {
+      if (shouldPreventOutsideDismiss?.(event.target)) {
+        event.preventDefault();
+      }
+    },
+    [shouldPreventOutsideDismiss],
   );
 
   const handleActionClick = useCallback(
@@ -78,7 +98,11 @@ const TriggerSheet: FC<TriggerSheetProps> = ({
           {buttonLabel}
         </Button>
       </SheetTrigger>
-      <SheetContent largeScreenVariant='side' closeLabel={closeLabel}>
+      <SheetContent
+        largeScreenVariant='side'
+        closeLabel={closeLabel}
+        onPointerDownOutside={shouldPreventOutsideDismiss ? handleOutsideDismiss : undefined}
+        onInteractOutside={shouldPreventOutsideDismiss ? handleOutsideDismiss : undefined}>
         <SheetTitle>{title}</SheetTitle>
         <SheetBody>{children}</SheetBody>
         {hasActions && (

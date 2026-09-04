@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { captureException } from '@sentry/nextjs';
-import { FetchError } from '@rbx/clients-core';
 import type { GenericChartState } from '@modules/charts-generic/charts/types/ChartTypes';
 import logAnalyticsError from '@modules/charts-generic/utils/logAnalyticsError';
 import { isRAQIQueryError } from '@modules/clients/analytics';
@@ -38,6 +37,13 @@ enum RequestAbortedReason {
 }
 
 const forbiddenStatusCode: number = HttpStatusCodes.FORBIDDEN;
+
+/**
+ * Match `FetchError` by `name`, not `instanceof`: generated clients re-export
+ * that class from possibly duplicate `@rbx/clients-core` copies (`getResponseFromError`).
+ */
+const isFetchError = (error: unknown): boolean =>
+  error instanceof Error && error.name === 'FetchError';
 
 const callRequest = <ResponseType>(
   makeRequest: TMakeRequest<ResponseType>,
@@ -186,7 +192,7 @@ const useApiRequest = <ResponseType>(
               backendMessage: e.message,
             },
           });
-        } else if (e instanceof FetchError) {
+        } else if (isFetchError(e)) {
           // Network error - already logged by SentryMiddleware.onError
           // (It may have been ignored due to the ignoreErrors list in init.ts)
           // We already set the error state and there is no additional logging needed

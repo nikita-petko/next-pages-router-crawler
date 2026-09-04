@@ -21,6 +21,8 @@ const MIN_TIME_QUERY_KEY = 'minTime';
 const MAX_TIME_QUERY_KEY = 'maxTime';
 const PLACE_QUERY_KEY = getQueryForDimension(RAQIV2Dimension.Place);
 const PLACE_VERSION_QUERY_KEY = getQueryForDimension(RAQIV2Dimension.PlaceVersion);
+const FUNNEL_NAME_QUERY_KEY = getQueryForDimension(RAQIV2Dimension.FunnelName);
+const CUSTOM_EVENT_NAME_QUERY_KEY = getQueryForDimension(RAQIV2Dimension.CustomEventName);
 const PLATFORM_QUERY_KEY = getQueryForDimension(RAQIV2Dimension.Platform);
 const OPERATING_SYSTEM_QUERY_KEY = getQueryForDimension(RAQIV2Dimension.OperatingSystem);
 const HAS_BUG_REPORT_QUERY_KEY = 'filter_HasBugReport';
@@ -136,6 +138,11 @@ const parseDateRange = (query: QueryRecord): DateRangeSelection => {
   };
 };
 
+const parseNonEmptyStrings = (values: readonly string[]): readonly string[] | undefined => {
+  const parsed = values.filter((value) => value !== '');
+  return parsed.length > 0 ? parsed : undefined;
+};
+
 const parseIntegerIdStrings = (values: readonly string[]): readonly string[] | undefined => {
   const parsed = values.filter((value) => Number.isInteger(Number(value)));
   return parsed.length > 0 ? parsed : undefined;
@@ -188,6 +195,18 @@ const SESSION_BROWSER_URL_FILTER_FIELDS: readonly UrlFilterField[] = [
     queryKey: PLACE_VERSION_QUERY_KEY,
     parse: parseIntegerNumbers,
     requiresPlaceIds: true,
+  },
+  {
+    kind: 'list',
+    formKey: 'funnelTags',
+    queryKey: FUNNEL_NAME_QUERY_KEY,
+    parse: parseNonEmptyStrings,
+  },
+  {
+    kind: 'list',
+    formKey: 'customTags',
+    queryKey: CUSTOM_EVENT_NAME_QUERY_KEY,
+    parse: parseNonEmptyStrings,
   },
   {
     kind: 'list',

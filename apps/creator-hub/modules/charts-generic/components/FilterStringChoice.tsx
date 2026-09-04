@@ -38,6 +38,8 @@ export type FilterStringChoiceProps<T> = {
   onChange: (newValue: T[]) => void;
   blankHandling?: BlankHandlingConfig<T>;
   helperText?: ReactNode;
+  /** Renders the trigger stroke and `helperText` in the alert color. */
+  hasError?: boolean;
   size?: TSelectProps['size'];
   tooltipOnDisabled?: ReactNode;
   className?: string;
@@ -73,6 +75,7 @@ function FilterStringChoice<T extends string>({
   onChange: onChangeGiven,
   blankHandling,
   helperText,
+  hasError,
   size,
   tooltipOnDisabled,
   className,
@@ -252,6 +255,7 @@ function FilterStringChoice<T extends string>({
       truncateValue={truncateValue}
       hasValue={hasValue}
       hint={typeof helperText === 'string' ? helperText : undefined}
+      hasError={hasError}
       isDisabled={disabled}>
       <Menu>
         <MenuSection>{menuItems}</MenuSection>

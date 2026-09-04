@@ -17,6 +17,8 @@ import {
 export enum SessionBrowserFilterChipKey {
   PlaceIds = 'placeIds',
   PlaceVersions = 'placeVersions',
+  FunnelTags = 'funnelTags',
+  CustomTags = 'customTags',
   HasBugReport = 'hasBugReport',
   Platforms = 'platforms',
   OperatingSystems = 'operatingSystems',
@@ -35,6 +37,8 @@ export type SessionBrowserFilterChipDescriptor = {
 export type SessionBrowserFilterChipLabels = {
   readonly placeLabel: string;
   readonly placeVersionLabel: string;
+  readonly funnelEventsLabel: string;
+  readonly customEventsLabel: string;
   readonly hasBugReportLabel: string;
   readonly platformLabel: string;
   readonly operatingSystemLabel: string;
@@ -45,6 +49,7 @@ export type SessionBrowserFilterChipLabels = {
   readonly exitReasonLabel: string;
   readonly formatPlaceIds: (placeIds: readonly string[]) => string;
   readonly formatPlaceVersions: (placeVersions: readonly number[]) => string;
+  readonly formatEventTags: (tags: readonly string[]) => string;
   readonly formatPlatforms: (platforms: readonly UniverseSessionPlatform[]) => string;
   readonly formatOperatingSystems: (
     operatingSystems: readonly UniverseSessionOperatingSystem[],
@@ -108,6 +113,14 @@ export const getSessionBrowserFilterChipDescriptors = (
   pushChip(
     SessionBrowserFilterChipKey.PlaceVersions,
     formatListChip(labels.placeVersionLabel, filters.placeVersions, labels.formatPlaceVersions),
+  );
+  pushChip(
+    SessionBrowserFilterChipKey.FunnelTags,
+    formatListChip(labels.funnelEventsLabel, filters.funnelTags, labels.formatEventTags),
+  );
+  pushChip(
+    SessionBrowserFilterChipKey.CustomTags,
+    formatListChip(labels.customEventsLabel, filters.customTags, labels.formatEventTags),
   );
   if (filters.hasBugReport === true) {
     chips.push({ key: SessionBrowserFilterChipKey.HasBugReport, label: labels.hasBugReportLabel });

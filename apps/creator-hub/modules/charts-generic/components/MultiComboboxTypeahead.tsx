@@ -4,8 +4,8 @@ import type { FormattedText } from '@modules/analytics-translations/types';
 import ComboboxTypeahead, { ComboboxTypeaheadOption } from './ComboboxTypeahead';
 
 export type MultiComboboxTypeaheadProps<TOption extends string> = {
-  options: TOption[];
-  value: TOption[];
+  options: readonly TOption[];
+  value: readonly TOption[];
   setValue: (value: TOption[]) => void;
   getOptionLabel: (option: TOption) => FormattedText;
   label?: string;
@@ -13,6 +13,13 @@ export type MultiComboboxTypeaheadProps<TOption extends string> = {
   isLoading?: boolean;
   size?: TTextInputSize;
   className?: string;
+  error?: string;
+  /**
+   * Render the listbox in a `document.body` portal so it escapes scrolling or
+   * clipping ancestors (e.g. a Sheet body). Hosts inside a modal Dialog/Sheet
+   * must ignore outside-dismiss for `isComboboxTypeaheadListboxTarget` targets.
+   */
+  renderListboxInPortal?: boolean;
 };
 
 const MultiComboboxTypeahead = <TOption extends string>({
@@ -25,6 +32,8 @@ const MultiComboboxTypeahead = <TOption extends string>({
   isLoading,
   size,
   className,
+  error,
+  renderListboxInPortal,
 }: MultiComboboxTypeaheadProps<TOption>) => {
   const optionsWithLabels = useMemo(
     () => options.map((option) => ({ option, label: getOptionLabel(option) })),
@@ -61,7 +70,9 @@ const MultiComboboxTypeahead = <TOption extends string>({
       hasResults={optionsWithLabels.length > 0}
       disabled={isLoading}
       size={size}
-      className={className}>
+      className={className}
+      error={error}
+      renderListboxInPortal={renderListboxInPortal}>
       {({ searchText }) => {
         const query = searchText.trim().toLowerCase();
         const visible = query

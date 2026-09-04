@@ -42,6 +42,8 @@ function formatMappedList<T>(values: readonly T[], formatItem: (value: T) => str
   return values.map(formatItem).join(', ');
 }
 
+const formatEventTags = (tags: readonly string[]): string => tags.join(', ');
+
 const ClientSessionBrowserFilterChips: FC<ClientSessionBrowserFilterChipsProps> = ({
   universeId,
   filters,
@@ -51,6 +53,8 @@ const ClientSessionBrowserFilterChips: FC<ClientSessionBrowserFilterChipsProps> 
   const translationDependencies = useRAQIV2TranslationDependencies();
   const statusLabels = useClientSessionStatusLabels();
   const {
+    funnelEventsLabel,
+    customEventsLabel,
     hasBugReportLabel,
     deviceRamLabel,
     durationLabel,
@@ -114,6 +118,8 @@ const ClientSessionBrowserFilterChips: FC<ClientSessionBrowserFilterChipsProps> 
       getSessionBrowserFilterChipDescriptors(filters, {
         placeLabel,
         placeVersionLabel,
+        funnelEventsLabel,
+        customEventsLabel,
         hasBugReportLabel,
         platformLabel,
         operatingSystemLabel,
@@ -124,6 +130,7 @@ const ClientSessionBrowserFilterChips: FC<ClientSessionBrowserFilterChipsProps> 
         exitReasonLabel,
         formatPlaceIds,
         formatPlaceVersions,
+        formatEventTags,
         formatPlatforms,
         formatOperatingSystems,
         formatExitReasons,
@@ -138,6 +145,8 @@ const ClientSessionBrowserFilterChips: FC<ClientSessionBrowserFilterChipsProps> 
       formatPlaceIds,
       formatPlaceVersions,
       formatPlatforms,
+      funnelEventsLabel,
+      customEventsLabel,
       hasBugReportLabel,
       minFpsLabel,
       operatingSystemLabel,

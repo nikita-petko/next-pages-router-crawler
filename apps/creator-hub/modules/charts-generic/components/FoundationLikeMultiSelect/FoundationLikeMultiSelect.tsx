@@ -483,7 +483,15 @@ export const FoundationLikeMultiSelect = forwardRef(
               portalContainer,
             )}
 
-          {helperText && <span className='text-caption-small content-default'>{helperText}</span>}
+          {helperText && (
+            <span
+              className={clsx(
+                'text-caption-small',
+                hasError ? 'content-system-alert' : 'content-default',
+              )}>
+              {helperText}
+            </span>
+          )}
         </div>
       </DropdownContext.Provider>
     );
