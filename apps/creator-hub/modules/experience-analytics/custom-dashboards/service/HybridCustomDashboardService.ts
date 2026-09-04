@@ -15,6 +15,7 @@ import type {
   CustomDashboardListOptions,
   CustomDashboardListResult,
   CustomDashboardMutationOptions,
+  PinnedCustomDashboard,
   UpdateCustomDashboardInput,
 } from '../types';
 import { cloneTileWithNewId } from '../utils/cloneTile';
@@ -102,6 +103,14 @@ class HybridCustomDashboardService implements CustomDashboardService {
       nextPageToken: apiResult.nextPageToken,
       migrationFailedCount: apiResult.migrationFailedCount + localResult.migrationFailedCount,
     };
+  }
+
+  async listPinned(universeId: number): Promise<ReadonlyArray<PinnedCustomDashboard>> {
+    if (this.apiService.listPinned) {
+      return this.apiService.listPinned(universeId);
+    }
+    const result = await this.apiService.list(universeId);
+    return result.items.filter((item) => item.isPinned).map(({ id, name }) => ({ id, name }));
   }
 
   async get(universeId: number, dashboardId: string): Promise<CustomDashboardDocument> {

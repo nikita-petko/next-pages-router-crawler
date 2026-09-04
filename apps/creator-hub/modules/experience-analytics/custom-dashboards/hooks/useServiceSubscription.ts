@@ -49,6 +49,9 @@ export function useCustomDashboardServiceSubscription(universeId: number): void 
           refetchType: 'none',
         });
         void queryClient.invalidateQueries({
+          queryKey: customDashboardQueryKeys.pinned(event.universeId),
+        });
+        void queryClient.invalidateQueries({
           queryKey: customDashboardQueryKeys.detail(event.universeId, event.dashboardId),
         });
         return;
@@ -57,6 +60,9 @@ export function useCustomDashboardServiceSubscription(universeId: number): void 
       // name, and the affected detail row.
       void queryClient.invalidateQueries({
         queryKey: customDashboardQueryKeys.list(event.universeId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: customDashboardQueryKeys.pinned(event.universeId),
       });
       void queryClient.invalidateQueries({
         queryKey: customDashboardQueryKeys.suggestedName(event.universeId),

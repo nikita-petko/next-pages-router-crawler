@@ -15,6 +15,7 @@ import {
   type CustomDashboardListOptions,
   type CustomDashboardListResult,
   type CustomDashboardMutationOptions,
+  type PinnedCustomDashboard,
   type UpdateCustomDashboardInput,
 } from '../types';
 import { addChartTileToConfig } from '../utils/addChartTileToConfig';
@@ -100,6 +101,30 @@ class ApiCustomDashboardService implements CustomDashboardService {
         migrationFailedCount: 0,
         nextPageToken: options ? (response.nextPageToken ?? undefined) : undefined,
       };
+    });
+  }
+
+  async listPinned(universeId: number): Promise<ReadonlyArray<PinnedCustomDashboard>> {
+    return this.withApiErrors(universeId, undefined, async () => {
+      this.ensureAvailable();
+      const response = await this.client.listPinnedDashboards(universeId);
+      return (response.dashboards ?? [])
+        .filter(
+          (dashboard): dashboard is { dashboardId: string; name: string } =>
+            typeof dashboard.dashboardId === 'string' &&
+            dashboard.dashboardId.length > 0 &&
+            typeof dashboard.name === 'string',
+        )
+        .map((dashboard) => ({ id: dashboard.dashboardId, name: dashboard.name }))
+        .toSorted((a, b) => {
+          if (a.name !== b.name) {
+            return a.name < b.name ? -1 : 1;
+          }
+          if (a.id === b.id) {
+            return 0;
+          }
+          return a.id < b.id ? -1 : 1;
+        });
     });
   }
 

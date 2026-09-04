@@ -19,7 +19,7 @@ import { presetChatEnabled as presetChatEnabledFlag } from '@generated/flags/pre
 import { useAuthentication } from '@modules/authentication/providers';
 import coreContentClient from '@modules/clients/coreContent';
 import { useAnalyticsExperiencePermissions } from '@modules/experience-analytics-shared/hooks/useAnalyticsPermissions';
-import { useDashboardsListQuery } from '@modules/experience-analytics/custom-dashboards/hooks/useDashboardsListQuery';
+import { usePinnedDashboardsQuery } from '@modules/experience-analytics/custom-dashboards/hooks/usePinnedDashboardsQuery';
 import useQuestionnaireV2Gate from '@modules/experience-questionnaire/hooks/useQuestionnaireV2Gate';
 import useCurrentOrganization from '@modules/group/hooks/useCurrentOrganization';
 import { uninitializedUniverseId } from '@modules/miscellaneous/common';
@@ -378,7 +378,7 @@ const GameLeftNavigationPinnedDashboards: FunctionComponent<
     isCustomDashboardsEnabled &&
     userCanViewAnalyticsForUniverse &&
     universeId > 0;
-  const { data: dashboardsList } = useDashboardsListQuery(universeId, {
+  const { data: pinnedDashboards } = usePinnedDashboardsQuery(universeId, {
     enabled: canLoadPinnedDashboards,
   });
   const pinnedDashboardFeatures = useMemo<Feature<CreationsFeatureSettings>[]>(() => {
@@ -387,17 +387,15 @@ const GameLeftNavigationPinnedDashboards: FunctionComponent<
     }
 
     return (
-      dashboardsList?.items
-        .filter((dashboard) => dashboard.isPinned)
-        .map((dashboard) => ({
-          key: `customDashboard-${dashboard.id}`,
-          nameKey: dashboard.name,
-          displayName: dashboard.name,
-          path: '/dashboard/creations/experiences/[id]/analytics/dashboards/[dashboardId]',
-          query: { dashboardId: dashboard.id },
-        })) ?? []
+      pinnedDashboards?.map((dashboard) => ({
+        key: `customDashboard-${dashboard.id}`,
+        nameKey: dashboard.name,
+        displayName: dashboard.name,
+        path: '/dashboard/creations/experiences/[id]/analytics/dashboards/[dashboardId]',
+        query: { dashboardId: dashboard.id },
+      })) ?? []
     );
-  }, [canLoadPinnedDashboards, dashboardsList?.items]);
+  }, [canLoadPinnedDashboards, pinnedDashboards]);
 
   return <GameLeftNavigation pinnedDashboardFeatures={pinnedDashboardFeatures} />;
 };

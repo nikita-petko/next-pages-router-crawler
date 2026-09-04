@@ -7,6 +7,7 @@ import type {
   CustomDashboardListOptions,
   CustomDashboardListResult,
   CustomDashboardMutationOptions,
+  PinnedCustomDashboard,
   UpdateCustomDashboardInput,
 } from '../types';
 import type {
@@ -32,6 +33,14 @@ class ReadOnlyCustomDashboardService implements CustomDashboardService {
     options?: CustomDashboardListOptions,
   ): Promise<CustomDashboardListResult> {
     return this.inner.list(universeId, options);
+  }
+
+  async listPinned(universeId: number): Promise<ReadonlyArray<PinnedCustomDashboard>> {
+    if (this.inner.listPinned) {
+      return this.inner.listPinned(universeId);
+    }
+    const result = await this.inner.list(universeId);
+    return result.items.filter((item) => item.isPinned).map(({ id, name }) => ({ id, name }));
   }
 
   get(universeId: number, dashboardId: string): Promise<CustomDashboardDocument> {

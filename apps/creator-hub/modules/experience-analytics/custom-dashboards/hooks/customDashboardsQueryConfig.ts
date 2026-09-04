@@ -26,6 +26,8 @@ export const customDashboardQueryKeys = {
       : root;
   },
 
+  pinned: (universeId: number) => ['custom-dashboards', 'universe', universeId, 'pinned'] as const,
+
   detail: (universeId: number, dashboardId: string) =>
     ['custom-dashboards', 'universe', universeId, 'detail', dashboardId] as const,
 

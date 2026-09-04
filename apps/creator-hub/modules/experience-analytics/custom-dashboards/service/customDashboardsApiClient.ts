@@ -16,6 +16,12 @@ export type ApiDashboardCapabilities =
 export type ApiListDashboardsResponse =
   components['schemas']['Roblox.DeveloperAnalytics.CustomDashboards.V1Beta1.ListDashboardsResponse'];
 
+export type ApiPinnedDashboard =
+  components['schemas']['Roblox.DeveloperAnalytics.CustomDashboards.V1Beta1.PinnedDashboard'];
+
+export type ApiListPinnedDashboardsResponse =
+  components['schemas']['Roblox.DeveloperAnalytics.CustomDashboards.V1Beta1.ListPinnedDashboardsResponse'];
+
 export type ApiDashboardMetadataPatch =
   components['schemas']['Roblox.DeveloperAnalytics.CustomDashboards.V1Beta1.DashboardMetadataPatch'];
 
@@ -66,6 +72,7 @@ export type CustomDashboardsApiClient = {
     universeId: number,
     options?: { readonly pageSize?: number; readonly pageToken?: string },
   ): Promise<ApiListDashboardsResponse>;
+  listPinnedDashboards(universeId: number): Promise<ApiListPinnedDashboardsResponse>;
   getDashboard(input: {
     readonly universeId: number;
     readonly dashboardId: string;
@@ -173,6 +180,21 @@ export function createDefaultCustomDashboardsApiClient(
               pageSize: options?.pageSize,
               pageToken: options?.pageToken,
             },
+          },
+        },
+      );
+      if (error || !data) {
+        throwRequestError(response, error);
+      }
+      return data;
+    },
+
+    async listPinnedDashboards(universeId) {
+      const { data, error, response } = await fetchClient.GET(
+        '/v1/universes/{universeId}/custom-dashboards/pinned',
+        {
+          params: {
+            path: { universeId },
           },
         },
       );

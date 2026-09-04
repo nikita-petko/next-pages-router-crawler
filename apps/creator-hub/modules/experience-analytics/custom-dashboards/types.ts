@@ -359,6 +359,12 @@ export type UnknownPersistedDocument = {
 /** List-row shape; hybrid origin is inherited from the document when present. */
 export type CustomDashboardListItem = CustomDashboardDocument;
 
+/** Lightweight dashboard identity used by navigation surfaces. */
+export type PinnedCustomDashboard = {
+  readonly id: string;
+  readonly name: string;
+};
+
 export type CustomDashboardListOptions = {
   readonly pageSize?: number;
   readonly pageToken?: string;
