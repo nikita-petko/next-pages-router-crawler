@@ -42,7 +42,8 @@ function isCompletedStatus(status: ImportFileStatus): boolean {
 
 function useImagePreviewUrl(file: ImportFile): string | undefined {
   const previewUrl = useMemo(
-    () => (file.fileType === 'image' ? URL.createObjectURL(file.file) : undefined),
+    () =>
+      file.fileType === 'image' && file.file.size > 0 ? URL.createObjectURL(file.file) : undefined,
     [file.file, file.fileType],
   );
 

@@ -7,6 +7,7 @@ const pollingIntervalSeconds = 1;
 const pollingMaxRetries = 25;
 
 interface PollForCompletedOperationOptions {
+  returnNullWhenPending?: boolean;
   returnNullOnTimeout?: boolean;
 }
 
@@ -60,6 +61,10 @@ export async function pollForCompletedOperation(
 
   if (isOperationDone && operation?.error != null) {
     throw new Error(operation.error.message ?? 'Asset upload failed');
+  }
+
+  if (options.returnNullWhenPending === true) {
+    return null;
   }
 
   if (currentAttempt > pollingMaxRetries) {

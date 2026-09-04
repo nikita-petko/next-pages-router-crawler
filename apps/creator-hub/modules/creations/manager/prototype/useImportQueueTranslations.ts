@@ -308,6 +308,11 @@ const buildImportQueueTranslations = ({
       'Accessible label for overall bulk asset import progress.',
       translationKey('Label.BulkUpload.ImportProgress', CREATIONS_NAMESPACE),
     ),
+    refreshCanceledUploads: tPendingTranslation(
+      "Upload canceled. You won't be charged for incomplete video uploads.",
+      'Confirmation after interrupted video uploads are canceled following a page refresh.',
+      translationKey('Message.BulkUpload.UploadCanceledAfterRefresh', CREATIONS_NAMESPACE),
+    ),
     importedCount: (count: number) =>
       tPendingTranslation(
         '{count} imported',
@@ -346,6 +351,11 @@ const buildImportQueueTranslations = ({
       'Stop import',
       'Button that stops an in-progress bulk asset import without clearing the queue.',
       translationKey('Action.BulkUpload.StopImport', CREATIONS_NAMESPACE),
+    ),
+    stoppingImport: tPendingTranslation(
+      'Stopping',
+      'Button status shown while an in-progress bulk asset import is being stopped.',
+      translationKey('Action.BulkUpload.StoppingImport', CREATIONS_NAMESPACE),
     ),
     importingCount: (count: number) =>
       tPendingTranslation(

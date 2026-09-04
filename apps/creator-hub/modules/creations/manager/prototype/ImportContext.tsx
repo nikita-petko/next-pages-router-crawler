@@ -1,10 +1,17 @@
 import { createContext, useContext, type ReactNode } from 'react';
+import type { ImportQueuePersistenceOwner } from './importQueuePersistence';
 import { useImportStore, type ImportStore } from './importStore';
 
 const ImportContext = createContext<ImportStore | null>(null);
 
-export function ImportProvider({ children }: { children: ReactNode }) {
-  const store = useImportStore();
+export function ImportProvider({
+  children,
+  persistenceOwner,
+}: {
+  children: ReactNode;
+  persistenceOwner?: ImportQueuePersistenceOwner;
+}) {
+  const store = useImportStore(persistenceOwner);
   return <ImportContext.Provider value={store}>{children}</ImportContext.Provider>;
 }
 

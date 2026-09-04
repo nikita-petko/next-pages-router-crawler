@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -17,6 +18,7 @@ import {
   Menu,
   MenuItem,
   ProgressBar,
+  ProgressCircle,
   SheetActions,
   SheetBody,
   SheetContent,
@@ -27,6 +29,7 @@ import {
 } from '@rbx/foundation-ui';
 import Asset from '@modules/miscellaneous/common/enums/Asset';
 import { dashboard } from '@modules/miscellaneous/urls/creatorHub';
+import { useSnackbar } from '@modules/monetization-shared/snackbar/actions';
 import { useImport } from '../ImportContext';
 import {
   IMPORT_LIMITS,
@@ -46,6 +49,7 @@ const isImportTypeFilter = (value: string): value is ImportTypeFilter =>
 
 const ImportQueue: FunctionComponent = () => {
   const translations = useImportQueueTranslations();
+  const { enqueue } = useSnackbar();
   const importStore = useImport();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -63,11 +67,13 @@ const ImportQueue: FunctionComponent = () => {
     typeFilter,
     showConfirmation,
     importInProgress,
+    stoppingImport,
     feesLoading,
     batchStats,
     batchStatus,
     importProgress,
     statusAlertDismissed,
+    refreshCanceledUploadCount,
     closeImporter,
     resetImporter,
     addFiles,
@@ -79,6 +85,7 @@ const ImportQueue: FunctionComponent = () => {
     retryFailed,
     retryCostCheck,
     dismissStatusAlert,
+    clearRefreshCanceledUploads,
     setSearchFilter,
     setTypeFilter,
     setShowConfirmation,
@@ -92,7 +99,19 @@ const ImportQueue: FunctionComponent = () => {
     batchStatus === 'complete_success' ||
     batchStatus === 'complete_partial' ||
     batchStatus === 'complete_failed';
-  const showStatusAlert = hasCompletedBatch && !statusAlertDismissed;
+  const hasCompletedImportDuringBatch = importInProgress && batchStats.completed > 0;
+  const showStatusAlert =
+    (hasCompletedBatch || hasCompletedImportDuringBatch) && !statusAlertDismissed;
+
+  useEffect(() => {
+    if (refreshCanceledUploadCount === 0) {
+      return;
+    }
+    enqueue({
+      title: translations.refreshCanceledUploads,
+    });
+    clearRefreshCanceledUploads();
+  }, [clearRefreshCanceledUploads, enqueue, refreshCanceledUploadCount, translations]);
 
   const handleFileSelect = useCallback(() => {
     fileInputRef.current?.click();
@@ -112,11 +131,18 @@ const ImportQueue: FunctionComponent = () => {
       resetImporter();
       setBatchLimitExceeded(false);
     }
-    if (showStatusAlert) {
+    if (showStatusAlert && !importInProgress) {
       dismissStatusAlert();
     }
     closeImporter();
-  }, [closeImporter, dismissStatusAlert, files.length, resetImporter, showStatusAlert]);
+  }, [
+    closeImporter,
+    dismissStatusAlert,
+    files.length,
+    importInProgress,
+    resetImporter,
+    showStatusAlert,
+  ]);
 
   const handleClearQueue = useCallback(() => {
     clearQueue();
@@ -211,9 +237,7 @@ const ImportQueue: FunctionComponent = () => {
   );
 
   const supportedExtensions = Object.values(SUPPORTED_EXTENSIONS).flat().join(',');
-  const videoCount = files.filter(
-    (file) => file.fileType === 'video' && file.status === 'ready',
-  ).length;
+  const videoCount = batchStats.chargeableVideo;
 
   return (
     <>
@@ -477,10 +501,10 @@ const ImportQueue: FunctionComponent = () => {
                     )}
                   </div>
 
-                  {!showStatusAlert &&
+                  {(batchStatus === 'importing' || !showStatusAlert) &&
                     (batchStatus !== 'importing' &&
                     batchStats.ready === 0 &&
-                    batchStats.failed > 0 ? (
+                    batchStats.retryableFailed > 0 ? (
                       <Button
                         variant='Emphasis'
                         size='Medium'
@@ -504,7 +528,7 @@ const ImportQueue: FunctionComponent = () => {
                         size='Medium'
                         className='shrink-0 min-width-fit text-no-wrap'
                         isDisabled={
-                          batchStats.ready === 0 ||
+                          batchStats.importable === 0 ||
                           importInProgress ||
                           feesLoading ||
                           !batchStats.canAfford
@@ -513,17 +537,30 @@ const ImportQueue: FunctionComponent = () => {
                         onClick={() => {
                           void startImport();
                         }}>
-                        {translations.importAssetCount(batchStats.ready)}
+                        {translations.importAssetCount(batchStats.importable)}
                       </Button>
                     ) : batchStatus === 'importing' ? (
                       <Button
                         variant='Emphasis'
                         size='Medium'
                         className='shrink-0 min-width-fit text-no-wrap'
+                        isDisabled={stoppingImport}
                         onClick={stopImport}>
-                        {translations.stopImport}
+                        {stoppingImport ? (
+                          <span className='flex items-center gap-small'>
+                            <ProgressCircle
+                              variant='Indeterminate'
+                              size='Small'
+                              ariaLabel={translations.stoppingImport}
+                              aria-hidden
+                            />
+                            {translations.stoppingImport}
+                          </span>
+                        ) : (
+                          translations.stopImport
+                        )}
                       </Button>
-                    ) : statusAlertDismissed && batchStats.failed > 0 ? (
+                    ) : statusAlertDismissed && batchStats.retryableFailed > 0 ? (
                       <Button
                         variant='Emphasis'
                         size='Medium'

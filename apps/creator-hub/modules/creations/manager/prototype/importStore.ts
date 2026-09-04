@@ -9,6 +9,14 @@ import { pollForCompletedOperation } from '@modules/clients/assetsUploadPolling'
 import economyClient from '@modules/clients/economy';
 import itemconfigurationClient from '@modules/clients/itemconfiguration';
 import Asset from '@modules/miscellaneous/common/enums/Asset';
+import {
+  clearPersistedImportQueue,
+  createRestoredImportFile,
+  findPersistedImportFile,
+  loadPersistedImportQueue,
+  persistImportQueue,
+  type ImportQueuePersistenceOwner,
+} from './importQueuePersistence';
 
 // --- File type definitions ---
 
@@ -74,7 +82,10 @@ export interface ImportFile {
   settings?: ImportFileSettings;
   assetId?: number;
   operationId?: string;
+  multipartAbortable?: boolean;
+  processingStartedAt?: number;
   pendingDescription?: string;
+  restoredFromPersistence?: boolean;
 }
 
 export interface ImportFileSettings {
@@ -134,6 +145,11 @@ const MAX_ASSET_NAME_LENGTH = 50;
 // Content platform multipart uploads use 5 MB chunks.
 const MULTIPART_UPLOAD_THRESHOLD_BYTES = 5 * 1024 * 1024;
 const VIDEO_UPLOAD_FEE_FALLBACK = 2000;
+const PERSIST_QUEUE_DEBOUNCE_MS = 250;
+const PROCESSING_POLL_INITIAL_DELAY_MS = 1000;
+const PROCESSING_POLL_MAX_DELAY_MS = 30_000;
+const PROCESSING_POLL_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const IMPORT_FILE_OWNERSHIP_LOCK_PREFIX = 'creator-hub.bulk-import.ownership';
 
 export const IMPORT_LIMITS = {
   maxBatchSize: MAX_BATCH_SIZE,
@@ -219,6 +235,60 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
 
+function getImportFileOwnershipLockName(
+  userId: number,
+  owner: ImportQueuePersistenceOwner | undefined,
+  fileId: string,
+): string {
+  const ownerType = owner?.ownerType ?? 'users';
+  const ownerId = owner?.ownerId ?? userId;
+  return `${IMPORT_FILE_OWNERSHIP_LOCK_PREFIX}.${userId}.${ownerType}.${ownerId}.${fileId}`;
+}
+
+async function withImportFileOwnership<T>(
+  userId: number,
+  owner: ImportQueuePersistenceOwner | undefined,
+  fileId: string,
+  task: () => Promise<T>,
+): Promise<T> {
+  if (typeof navigator === 'undefined' || navigator.locks == null) {
+    return task();
+  }
+  let taskStarted = false;
+  try {
+    return await navigator.locks.request(
+      getImportFileOwnershipLockName(userId, owner, fileId),
+      () => {
+        taskStarted = true;
+        return task();
+      },
+    );
+  } catch (error) {
+    if (!taskStarted) {
+      return task();
+    }
+    throw error;
+  }
+}
+
+function waitForProcessingPoll(signal: AbortSignal, delayMs: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(Object.assign(new Error('Aborted'), { name: 'AbortError' }));
+      return;
+    }
+    const onAbort = () => {
+      window.clearTimeout(timeoutId);
+      reject(Object.assign(new Error('Aborted'), { name: 'AbortError' }));
+    };
+    const timeoutId = window.setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, delayMs);
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 function requeueImportingFile(file: ImportFile): ImportFile {
   if (file.status !== 'importing') {
     return file;
@@ -230,6 +300,82 @@ function requeueImportingFile(file: ImportFile): ImportFile {
     errorParameters: undefined,
     progress: undefined,
   };
+}
+
+function isUnpaidFeeFile(file: ImportFile): boolean {
+  return (
+    isImportCandidate(file) && file.operationId == null && ASSET_TYPE_FOR_FEE[file.fileType] != null
+  );
+}
+
+type UploadChargeSession = {
+  operationId: string;
+  canAbortMultipart: boolean;
+  abortPromise?: Promise<boolean>;
+};
+
+function settleCanceledImportFile(
+  file: ImportFile,
+  session: UploadChargeSession | undefined,
+  abortSucceeded: boolean,
+): ImportFile {
+  if (file.status !== 'importing') {
+    return file;
+  }
+
+  const operationId = session?.operationId ?? file.operationId;
+  const canAbortMultipart = session?.canAbortMultipart ?? file.multipartAbortable === true;
+
+  if (operationId == null) {
+    return requeueImportingFile(file);
+  }
+
+  if (canAbortMultipart) {
+    if (abortSucceeded) {
+      return {
+        ...file,
+        status: 'ready',
+        operationId: undefined,
+        multipartAbortable: undefined,
+        processingStartedAt: undefined,
+        errorType: undefined,
+        errorParameters: undefined,
+        progress: undefined,
+      };
+    }
+    return {
+      ...file,
+      status: 'failed',
+      operationId,
+      multipartAbortable: true,
+      errorType: 'upload_failed',
+      progress: undefined,
+    };
+  }
+
+  return {
+    ...file,
+    status: 'processing',
+    operationId,
+    multipartAbortable: false,
+    processingStartedAt: Date.now(),
+    errorType: undefined,
+    errorParameters: undefined,
+    progress: 100,
+  };
+}
+
+function isRetryableFailedImportFile(file: ImportFile): boolean {
+  if (file.status !== 'failed') {
+    return false;
+  }
+  const hasFileBytes = file.file.size > 0;
+  const hasPollableOperation = file.operationId != null && file.multipartAbortable !== true;
+  return hasFileBytes || hasPollableOperation;
+}
+
+function isImportCandidate(file: ImportFile): boolean {
+  return file.status === 'ready' || isRetryableFailedImportFile(file);
 }
 
 function isIgnoredOperatingSystemFile(fileName: string): boolean {
@@ -317,17 +463,21 @@ export async function resolveDroppedItems(
 
 // --- Hook ---
 
-export function useImportStore() {
+export function useImportStore(persistenceOwner?: ImportQueuePersistenceOwner) {
   const { user } = useAuthentication();
   const authenticatedUserId = user?.id ?? 0;
+  const queuePersistenceOwner = persistenceOwner;
 
   const [isOpen, setIsOpen] = useState(false);
-  const [files, setFiles] = useState<ImportFile[]>([]);
+  const [files, setFiles] = useState<ImportFile[]>(() =>
+    loadPersistedImportQueue(authenticatedUserId, queuePersistenceOwner),
+  );
   const [searchFilter, setSearchFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState<ImportableFileType | 'all'>('all');
   const [defaultCreator, setDefaultCreator] = useState<InventoryScope | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [importInProgress, setImportInProgress] = useState(false);
+  const [stoppingImport, setStoppingImport] = useState(false);
   const [uploadFees, setUploadFees] = useState<Record<string, UploadFeeInfo>>({});
   const [feePricesLoading, setFeePricesLoading] = useState(false);
   const [balanceLoading, setBalanceLoading] = useState(false);
@@ -335,6 +485,8 @@ export function useImportStore() {
   const [lastImportStats, setLastImportStats] = useState<LastImportStats | null>(null);
   const [importProgress, setImportProgress] = useState<ImportProgress>({ completed: 0, total: 0 });
   const [statusAlertDismissed, setStatusAlertDismissed] = useState(false);
+  const [refreshCanceledUploadCount, setRefreshCanceledUploadCount] = useState(0);
+  const [hydratedUserId, setHydratedUserId] = useState(authenticatedUserId);
 
   // Refs to avoid stale closures in async startImport
   const authenticatedUserIdRef = useRef(authenticatedUserId);
@@ -343,8 +495,83 @@ export function useImportStore() {
   const onImportCompleteRef = useRef<(() => void) | null>(null);
   const uploadFeesRef = useRef(uploadFees);
   const importAbortControllerRef = useRef<AbortController | null>(null);
+  const uploadChargeSessionsRef = useRef(new Map<string, UploadChargeSession>());
+  const processingPollControllersRef = useRef(new Map<string, AbortController>());
   const balanceRequestIdRef = useRef(0);
   const feesLoading = feePricesLoading || balanceLoading;
+
+  const startProcessingPoll = useCallback(
+    (fileId: string, operationId: string, processingStartedAt: number) => {
+      if (processingPollControllersRef.current.has(operationId)) {
+        return;
+      }
+      const controller = new AbortController();
+      processingPollControllersRef.current.set(operationId, controller);
+
+      void (async () => {
+        let nextPollDelayMs = PROCESSING_POLL_INITIAL_DELAY_MS;
+        try {
+          while (!controller.signal.aborted) {
+            const assetId = await pollForCompletedOperation(operationId, 0, controller.signal, {
+              returnNullWhenPending: true,
+            });
+            if (assetId == null) {
+              if (Date.now() - processingStartedAt >= PROCESSING_POLL_MAX_AGE_MS) {
+                throw new Error('Asset upload operation remained pending beyond the polling limit');
+              }
+              await waitForProcessingPoll(controller.signal, nextPollDelayMs);
+              nextPollDelayMs = Math.min(nextPollDelayMs * 2, PROCESSING_POLL_MAX_DELAY_MS);
+              continue;
+            }
+            uploadChargeSessionsRef.current.delete(fileId);
+            setFiles((prev) => {
+              const next = prev.map((file) =>
+                file.id === fileId && file.operationId === operationId
+                  ? {
+                      ...file,
+                      status: 'uploaded' as const,
+                      progress: 100,
+                      assetId,
+                      multipartAbortable: false,
+                      processingStartedAt: undefined,
+                      errorType: undefined,
+                      errorParameters: undefined,
+                    }
+                  : file,
+              );
+              filesRef.current = next;
+              persistImportQueue(authenticatedUserIdRef.current, next, queuePersistenceOwner);
+              return next;
+            });
+            onImportCompleteRef.current?.();
+            return;
+          }
+        } catch (error) {
+          if (!isAbortError(error)) {
+            setFiles((prev) => {
+              const next = prev.map((file) =>
+                file.id === fileId && file.operationId === operationId
+                  ? {
+                      ...file,
+                      status: 'failed' as const,
+                      progress: undefined,
+                      errorType: 'upload_failed' as const,
+                      errorParameters: undefined,
+                    }
+                  : file,
+              );
+              filesRef.current = next;
+              persistImportQueue(authenticatedUserIdRef.current, next, queuePersistenceOwner);
+              return next;
+            });
+          }
+        } finally {
+          processingPollControllersRef.current.delete(operationId);
+        }
+      })();
+    },
+    [queuePersistenceOwner],
+  );
 
   useEffect(() => {
     authenticatedUserIdRef.current = authenticatedUserId;
@@ -358,9 +585,160 @@ export function useImportStore() {
   useEffect(() => {
     uploadFeesRef.current = uploadFees;
   }, [uploadFees]);
+
+  const abortedOnRestoreRef = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (hydratedUserId === authenticatedUserId) {
+      return undefined;
+    }
+    const timeoutId = window.setTimeout(() => {
+      if (authenticatedUserId === 0) {
+        filesRef.current = [];
+        setFiles([]);
+        setHydratedUserId(0);
+        return;
+      }
+
+      const restored = loadPersistedImportQueue(authenticatedUserId, queuePersistenceOwner);
+      abortedOnRestoreRef.current.clear();
+      filesRef.current = restored;
+      setFiles(restored);
+      setHydratedUserId(authenticatedUserId);
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [authenticatedUserId, hydratedUserId, queuePersistenceOwner]);
+
+  useEffect(() => {
+    if (authenticatedUserId === 0 || hydratedUserId !== authenticatedUserId) {
+      return;
+    }
+    for (const file of files) {
+      if (
+        file.status !== 'failed' ||
+        file.multipartAbortable !== true ||
+        file.operationId == null ||
+        file.restoredFromPersistence !== true ||
+        abortedOnRestoreRef.current.has(file.id)
+      ) {
+        continue;
+      }
+      const operationId = file.operationId;
+      abortedOnRestoreRef.current.add(file.id);
+      void withImportFileOwnership(
+        authenticatedUserId,
+        queuePersistenceOwner,
+        file.id,
+        async () => {
+          const persistedFile = findPersistedImportFile(
+            authenticatedUserId,
+            file.id,
+            queuePersistenceOwner,
+          );
+          if (
+            persistedFile == null ||
+            persistedFile.operationId !== operationId ||
+            persistedFile.status !== 'importing' ||
+            persistedFile.multipartAbortable !== true
+          ) {
+            uploadChargeSessionsRef.current.delete(file.id);
+            setFiles((prev) => {
+              const current = prev.find((candidate) => candidate.id === file.id);
+              if (
+                current?.restoredFromPersistence !== true ||
+                current.operationId !== operationId
+              ) {
+                return prev;
+              }
+              const next =
+                persistedFile == null
+                  ? prev.filter((candidate) => candidate.id !== file.id)
+                  : prev.map((candidate) =>
+                      candidate.id === file.id
+                        ? createRestoredImportFile(persistedFile)
+                        : candidate,
+                    );
+              filesRef.current = next;
+              return next;
+            });
+            return;
+          }
+
+          uploadChargeSessionsRef.current.set(file.id, {
+            operationId,
+            canAbortMultipart: true,
+          });
+          try {
+            await assetsUploadApiClient.abortMultipartUpload(operationId);
+          } catch {
+            return;
+          }
+          uploadChargeSessionsRef.current.delete(file.id);
+          setFiles((prev) => {
+            const next = prev.filter((current) => current.id !== file.id);
+            filesRef.current = next;
+            persistImportQueue(authenticatedUserId, next, queuePersistenceOwner);
+            return next;
+          });
+          setRefreshCanceledUploadCount((count) => count + 1);
+        },
+      ).catch(() => undefined);
+    }
+  }, [authenticatedUserId, files, hydratedUserId, queuePersistenceOwner]);
+
+  useEffect(() => {
+    const activeProcessingOperationIds = new Set<string>();
+    for (const file of files) {
+      if (file.status !== 'processing' || file.operationId == null) {
+        continue;
+      }
+      activeProcessingOperationIds.add(file.operationId);
+      startProcessingPoll(file.id, file.operationId, file.processingStartedAt ?? Date.now());
+    }
+    for (const [operationId, controller] of processingPollControllersRef.current) {
+      if (!activeProcessingOperationIds.has(operationId)) {
+        controller.abort();
+        processingPollControllersRef.current.delete(operationId);
+      }
+    }
+  }, [files, startProcessingPoll]);
+
+  useEffect(() => {
+    if (authenticatedUserId === 0 || hydratedUserId !== authenticatedUserId) {
+      return undefined;
+    }
+    const timeoutId = window.setTimeout(() => {
+      persistImportQueue(authenticatedUserId, files, queuePersistenceOwner);
+    }, PERSIST_QUEUE_DEBOUNCE_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, [authenticatedUserId, files, hydratedUserId, queuePersistenceOwner]);
+
+  useEffect(() => {
+    const persistOnHide = () => {
+      persistImportQueue(authenticatedUserIdRef.current, filesRef.current, queuePersistenceOwner);
+    };
+    window.addEventListener('pagehide', persistOnHide);
+    return () => {
+      window.removeEventListener('pagehide', persistOnHide);
+    };
+  }, [queuePersistenceOwner]);
+
+  const abortInFlightMultipartPurchases = useCallback(() => {
+    for (const session of uploadChargeSessionsRef.current.values()) {
+      if (session.canAbortMultipart) {
+        void assetsUploadApiClient.abortMultipartUpload(session.operationId);
+      }
+    }
+    uploadChargeSessionsRef.current.clear();
+  }, []);
+
   useEffect(
     () => () => {
       importAbortControllerRef.current?.abort();
+      for (const controller of processingPollControllersRef.current.values()) {
+        controller.abort();
+      }
+      processingPollControllersRef.current.clear();
     },
     [],
   );
@@ -391,10 +769,12 @@ export function useImportStore() {
     const moderationPending = files.filter((f) => f.status === 'moderation_pending').length;
     const approved = files.filter((f) => f.status === 'approved').length;
     const failed = files.filter((f) => f.status === 'failed').length;
+    const retryableFailed = files.filter(isRetryableFailedImportFile).length;
+    const importCandidates = files.filter(isImportCandidate);
+    const importable = importCandidates.length;
     const completed = processing + uploaded + moderationPending + approved;
-    const paidFiles = files.filter(
-      (file) => file.status === 'ready' && ASSET_TYPE_FOR_FEE[file.fileType] != null,
-    );
+    const paidFiles = files.filter(isUnpaidFeeFile);
+    const chargeableVideo = paidFiles.filter((file) => file.fileType === 'video').length;
     const totalCost = paidFiles.reduce((sum, f) => {
       const feeKey = ASSET_TYPE_FOR_FEE[f.fileType];
       if (!feeKey) {
@@ -442,6 +822,9 @@ export function useImportStore() {
       moderationPending,
       approved,
       failed,
+      retryableFailed,
+      importable,
+      chargeableVideo,
       completed,
       totalCost,
       costsUnavailable,
@@ -584,12 +967,14 @@ export function useImportStore() {
   const resetImporter = useCallback(() => {
     importAbortControllerRef.current?.abort();
     importAbortControllerRef.current = null;
+    abortInFlightMultipartPurchases();
     setFiles([]);
     setSearchFilter('');
     setTypeFilter('all');
     setDefaultCreator(null);
     setShowConfirmation(false);
     setImportInProgress(false);
+    setStoppingImport(false);
     setUploadFees({});
     setFeePricesLoading(false);
     setBalanceLoading(false);
@@ -598,8 +983,10 @@ export function useImportStore() {
     setLastImportStats(null);
     setImportProgress({ completed: 0, total: 0 });
     setStatusAlertDismissed(false);
+    setRefreshCanceledUploadCount(0);
     onImportCompleteRef.current = null;
-  }, []);
+    clearPersistedImportQueue(authenticatedUserIdRef.current, queuePersistenceOwner);
+  }, [abortInFlightMultipartPurchases, queuePersistenceOwner]);
 
   const addFiles = useCallback(
     (newFiles: File[]): { added: number; rejected: number; overLimit: boolean } => {
@@ -680,9 +1067,7 @@ export function useImportStore() {
 
   const retryCostCheck = useCallback(() => {
     const paidFileTypes = new Set(
-      filesRef.current
-        .filter((file) => file.status === 'ready' && ASSET_TYPE_FOR_FEE[file.fileType] != null)
-        .map((file) => file.fileType),
+      filesRef.current.filter(isUnpaidFeeFile).map((file) => file.fileType),
     );
     if (paidFileTypes.size === 0) {
       return;
@@ -693,7 +1078,7 @@ export function useImportStore() {
 
   const confirmCosts = useCallback(() => {
     const confirmedFiles = filesRef.current.map((f) => {
-      if ((f.fileType === 'audio' || f.fileType === 'video') && f.status === 'ready') {
+      if ((f.fileType === 'audio' || f.fileType === 'video') && isImportCandidate(f)) {
         return { ...f, settings: { ...f.settings, costConfirmed: true } };
       }
       return f;
@@ -714,9 +1099,7 @@ export function useImportStore() {
     const currentCreator = defaultCreatorRef.current;
     const currentUploadFees = uploadFeesRef.current;
 
-    const paidFiles = currentFiles.filter(
-      (f) => f.status === 'ready' && ASSET_TYPE_FOR_FEE[f.fileType] != null,
-    );
+    const paidFiles = currentFiles.filter(isUnpaidFeeFile);
     const paidFilesCost = paidFiles.reduce((total, file) => {
       const feeKey = ASSET_TYPE_FOR_FEE[file.fileType];
       return total + (feeKey == null ? 0 : (currentUploadFees[feeKey]?.price ?? 0));
@@ -762,19 +1145,19 @@ export function useImportStore() {
     setImportInProgress(true);
     setStatusAlertDismissed(false);
 
-    const readyFiles = currentFiles.filter((f) => f.status === 'ready');
+    const filesToImport = currentFiles.filter(isImportCandidate);
 
-    if (readyFiles.length === 0) {
+    if (filesToImport.length === 0) {
       importAbortControllerRef.current = null;
       setImportInProgress(false);
       return;
     }
-    setImportProgress({ completed: 0, total: readyFiles.length });
+    setImportProgress({ completed: 0, total: filesToImport.length });
 
-    // Every ready file in the queue is staged for import.
+    // Stage new files and retryable failures together.
     setFiles((prev) =>
       prev.map((f) =>
-        f.status === 'ready' ? { ...f, status: 'importing' as const, progress: 0 } : f,
+        isImportCandidate(f) ? { ...f, status: 'importing' as const, progress: 0 } : f,
       ),
     );
 
@@ -795,7 +1178,7 @@ export function useImportStore() {
             : f,
         ),
       );
-      setLastImportStats({ completed: 0, failed: readyFiles.length });
+      setLastImportStats({ completed: 0, failed: filesToImport.length });
       if (importAbortControllerRef.current === abortController) {
         importAbortControllerRef.current = null;
       }
@@ -808,7 +1191,70 @@ export function useImportStore() {
         if (signal.aborted) {
           return prev;
         }
-        return prev.map((file) => (file.id === fileId ? updater(file) : file));
+        const next = prev.map((file) => (file.id === fileId ? updater(file) : file));
+        filesRef.current = next;
+        return next;
+      });
+    };
+
+    const persistChargedOperation = (
+      fileId: string,
+      operationId: string,
+      canAbortMultipart: boolean,
+    ) => {
+      if (signal.aborted) {
+        return;
+      }
+      uploadChargeSessionsRef.current.set(fileId, { operationId, canAbortMultipart });
+      setFiles((prev) => {
+        const next = prev.map((file) =>
+          file.id === fileId
+            ? { ...file, operationId, multipartAbortable: canAbortMultipart }
+            : file,
+        );
+        filesRef.current = next;
+        persistImportQueue(authenticatedUserIdRef.current, next, queuePersistenceOwner);
+        return next;
+      });
+    };
+
+    const markMultipartNoLongerAbortable = (fileId: string) => {
+      const session = uploadChargeSessionsRef.current.get(fileId);
+      if (session != null) {
+        session.canAbortMultipart = false;
+      }
+      if (signal.aborted) {
+        return;
+      }
+      setFiles((prev) => {
+        const next = prev.map((file) =>
+          file.id === fileId ? { ...file, multipartAbortable: false } : file,
+        );
+        filesRef.current = next;
+        persistImportQueue(authenticatedUserIdRef.current, next, queuePersistenceOwner);
+        return next;
+      });
+    };
+
+    const markMultipartAborted = (fileId: string, operationId: string) => {
+      const session = uploadChargeSessionsRef.current.get(fileId);
+      if (session?.operationId === operationId) {
+        uploadChargeSessionsRef.current.delete(fileId);
+      }
+      setFiles((prev) => {
+        const next = prev.map((file) =>
+          file.id === fileId && file.operationId === operationId
+            ? {
+                ...file,
+                operationId: undefined,
+                multipartAbortable: undefined,
+                processingStartedAt: undefined,
+              }
+            : file,
+        );
+        filesRef.current = next;
+        persistImportQueue(authenticatedUserIdRef.current, next, queuePersistenceOwner);
+        return next;
       });
     };
 
@@ -864,62 +1310,109 @@ export function useImportStore() {
       };
 
       try {
-        let operationId: string;
+        let operationId = currentFile.operationId;
         const useMultipart = currentFile.fileSize > MULTIPART_UPLOAD_THRESHOLD_BYTES;
+        const hasLocalFileBytes = currentFile.file.size > 0;
 
-        if (useMultipart) {
-          operationId = await assetsUploadApiClient.createAssetAndGetOperationIdWithMultipart(
-            requestInfo,
-            currentFile.file,
-            false,
-            (progress) => {
-              applyFileUpdate(currentFile.id, (file) => ({ ...file, progress }));
-            },
-            signal,
-          );
-        } else {
-          operationId = await assetsUploadApiClient.createAssetAndGetOperationId(
-            requestInfo,
-            currentFile.file,
-            false,
-            signal,
-          );
-          applyFileUpdate(currentFile.id, (file) => ({ ...file, progress: 50 }));
-        }
-
-        if (signal.aborted) {
-          return 'canceled';
-        }
-
-        // Poll for completion
-        const assetId = await pollForCompletedOperation(operationId, 0, signal, {
-          returnNullOnTimeout: true,
-        });
-
-        if (signal.aborted) {
-          return 'canceled';
-        }
-
-        if (assetId) {
+        if (operationId == null && !hasLocalFileBytes) {
           applyFileUpdate(currentFile.id, (file) => ({
             ...file,
-            status: 'uploaded',
-            progress: 100,
-            assetId,
-            operationId,
+            status: 'failed',
+            errorType: 'upload_failed',
+            progress: undefined,
           }));
-          if (!signal.aborted) {
-            setImportProgress((prev) => ({ ...prev, completed: prev.completed + 1 }));
-          }
-          return 'success';
+          return 'failed';
         }
 
+        if (operationId != null && currentFile.multipartAbortable === true) {
+          try {
+            await assetsUploadApiClient.abortMultipartUpload(operationId);
+          } catch {
+            applyFileUpdate(currentFile.id, (file) => ({
+              ...file,
+              status: 'failed',
+              operationId,
+              multipartAbortable: true,
+              progress: undefined,
+              errorType: 'upload_failed',
+            }));
+            return 'failed';
+          }
+          uploadChargeSessionsRef.current.delete(currentFile.id);
+          operationId = undefined;
+          applyFileUpdate(currentFile.id, (file) => ({
+            ...file,
+            operationId: undefined,
+            multipartAbortable: undefined,
+          }));
+          if (!hasLocalFileBytes) {
+            applyFileUpdate(currentFile.id, (file) => ({
+              ...file,
+              status: 'failed',
+              errorType: 'upload_failed',
+              progress: undefined,
+            }));
+            return 'failed';
+          }
+        }
+
+        if (operationId == null && useMultipart) {
+          operationId = await withImportFileOwnership(
+            latestUserId,
+            queuePersistenceOwner,
+            currentFile.id,
+            async () => {
+              try {
+                return await assetsUploadApiClient.createAssetAndGetOperationIdWithMultipart(
+                  requestInfo,
+                  currentFile.file,
+                  false,
+                  (progress) => {
+                    applyFileUpdate(currentFile.id, (file) => ({ ...file, progress }));
+                  },
+                  signal,
+                  (startedOperationId) => {
+                    persistChargedOperation(currentFile.id, startedOperationId, true);
+                  },
+                  () => {
+                    markMultipartNoLongerAbortable(currentFile.id);
+                  },
+                  (abortedOperationId) => {
+                    markMultipartAborted(currentFile.id, abortedOperationId);
+                  },
+                );
+              } catch (error) {
+                if (signal.aborted) {
+                  await uploadChargeSessionsRef.current.get(currentFile.id)?.abortPromise;
+                }
+                throw error;
+              }
+            },
+          );
+        } else {
+          operationId ??= await assetsUploadApiClient.createAssetAndGetOperationId(
+            requestInfo,
+            currentFile.file,
+            false,
+            signal,
+          );
+        }
+
+        if (signal.aborted) {
+          return 'canceled';
+        }
+
+        const processingStartedAt = Date.now();
+        persistChargedOperation(currentFile.id, operationId, false);
         applyFileUpdate(currentFile.id, (file) => ({
           ...file,
           status: 'processing',
           progress: 100,
-          operationId,
+          processingStartedAt,
         }));
+
+        uploadChargeSessionsRef.current.delete(currentFile.id);
+        startProcessingPoll(currentFile.id, operationId, processingStartedAt);
         if (!signal.aborted) {
           setImportProgress((prev) => ({ ...prev, completed: prev.completed + 1 }));
         }
@@ -934,6 +1427,8 @@ export function useImportStore() {
           progress: undefined,
           errorType: 'upload_failed',
           errorParameters: undefined,
+          operationId:
+            uploadChargeSessionsRef.current.get(currentFile.id)?.operationId ?? file.operationId,
         }));
         return 'failed';
       }
@@ -943,12 +1438,12 @@ export function useImportStore() {
     const CONCURRENCY = 4;
     let lastCompleted = 0;
     let lastFailed = 0;
-    for (let i = 0; i < readyFiles.length; i += CONCURRENCY) {
+    for (let i = 0; i < filesToImport.length; i += CONCURRENCY) {
       if (signal.aborted) {
         break;
       }
       const chunkResults = await Promise.allSettled(
-        readyFiles.slice(i, i + CONCURRENCY).map(uploadFile),
+        filesToImport.slice(i, i + CONCURRENCY).map(uploadFile),
       );
       for (const result of chunkResults) {
         if (result.status === 'fulfilled') {
@@ -963,56 +1458,125 @@ export function useImportStore() {
       }
     }
 
-    if (lastCompleted > 0 && onImportCompleteRef.current) {
-      onImportCompleteRef.current();
-    }
-
     if (importAbortControllerRef.current !== abortController) {
       return;
     }
     importAbortControllerRef.current = null;
 
     if (signal.aborted) {
-      setFiles((prev) => prev.map(requeueImportingFile));
+      setFiles((prev) => {
+        const next = prev.map((file) =>
+          settleCanceledImportFile(
+            file,
+            uploadChargeSessionsRef.current.get(file.id),
+            file.multipartAbortable !== true,
+          ),
+        );
+        filesRef.current = next;
+        return next;
+      });
       setImportInProgress(false);
       return;
     }
 
     setLastImportStats({ completed: lastCompleted, failed: lastFailed });
     setImportInProgress(false);
-  }, [availableRobux, balanceLoading, feePricesLoading, importInProgress]);
+  }, [
+    availableRobux,
+    balanceLoading,
+    feePricesLoading,
+    importInProgress,
+    queuePersistenceOwner,
+    startProcessingPoll,
+  ]);
 
   const stopImport = useCallback(() => {
     const controller = importAbortControllerRef.current;
     if (controller == null || controller.signal.aborted) {
       return;
     }
+    setStoppingImport(true);
     controller.abort();
-    setFiles((prev) => prev.map(requeueImportingFile));
-    setLastImportStats(null);
-    setImportProgress({ completed: 0, total: 0 });
-    setImportInProgress(false);
-  }, []);
+    importAbortControllerRef.current = null;
+
+    const sessions = uploadChargeSessionsRef.current;
+    const abortEntries = [...sessions.entries()].filter(([, session]) => session.canAbortMultipart);
+    for (const [fileId, session] of sessions) {
+      if (!session.canAbortMultipart) {
+        const file = filesRef.current.find((current) => current.id === fileId);
+        startProcessingPoll(fileId, session.operationId, file?.processingStartedAt ?? Date.now());
+      }
+    }
+
+    const applyCanceledState = (successfulAbortIds: Set<string>) => {
+      setFiles((prev) => {
+        const next = prev.map((file) => {
+          if (file.status !== 'importing') {
+            return file;
+          }
+          const session = sessions.get(file.id);
+          const abortSucceeded =
+            session?.canAbortMultipart !== true || successfulAbortIds.has(file.id);
+          const settled = settleCanceledImportFile(file, session, abortSucceeded);
+          if (session?.canAbortMultipart === true && abortSucceeded) {
+            sessions.delete(file.id);
+          }
+          return settled;
+        });
+        filesRef.current = next;
+        return next;
+      });
+      setLastImportStats(null);
+      setImportProgress({ completed: 0, total: 0 });
+      setImportInProgress(false);
+      setStoppingImport(false);
+    };
+
+    if (abortEntries.length === 0) {
+      applyCanceledState(new Set());
+      return;
+    }
+
+    const abortResults = abortEntries.map(([fileId, session]) => {
+      const abortPromise = assetsUploadApiClient.abortMultipartUpload(session.operationId).then(
+        () => true,
+        () => false,
+      );
+      session.abortPromise = abortPromise;
+      return abortPromise.then((succeeded) => ({ fileId, succeeded }));
+    });
+    void Promise.all(abortResults).then((results) => {
+      const successfulAbortIds = new Set(
+        results.filter((result) => result.succeeded).map((result) => result.fileId),
+      );
+      applyCanceledState(successfulAbortIds);
+    });
+  }, [startProcessingPoll]);
 
   const retryFailed = useCallback(() => {
     setStatusAlertDismissed(false);
     setFiles((prev) =>
-      prev.map((f) =>
-        f.status === 'failed'
-          ? {
-              ...f,
-              status: 'ready' as const,
-              errorType: undefined,
-              errorParameters: undefined,
-              progress: undefined,
-            }
-          : f,
-      ),
+      prev.map((f) => {
+        if (!isRetryableFailedImportFile(f)) {
+          return f;
+        }
+        return {
+          ...f,
+          status: 'ready' as const,
+          errorType: undefined,
+          errorParameters: undefined,
+          progress: undefined,
+        };
+      }),
     );
   }, []);
 
   const dismissStatusAlert = useCallback(() => {
     setStatusAlertDismissed(true);
+  }, []);
+
+  const clearRefreshCanceledUploads = useCallback(() => {
+    setRefreshCanceledUploadCount(0);
   }, []);
 
   return useMemo(
@@ -1025,10 +1589,12 @@ export function useImportStore() {
       defaultCreator,
       showConfirmation,
       importInProgress,
+      stoppingImport,
       feesLoading,
       lastImportStats,
       importProgress,
       statusAlertDismissed,
+      refreshCanceledUploadCount,
       batchStats,
       batchStatus,
       openImporter,
@@ -1043,6 +1609,7 @@ export function useImportStore() {
       retryFailed,
       retryCostCheck,
       dismissStatusAlert,
+      clearRefreshCanceledUploads,
       setSearchFilter,
       setTypeFilter,
       setShowConfirmation,
@@ -1052,6 +1619,7 @@ export function useImportStore() {
       batchStats,
       batchStatus,
       clearQueue,
+      clearRefreshCanceledUploads,
       closeImporter,
       confirmCosts,
       defaultCreator,
@@ -1064,6 +1632,7 @@ export function useImportStore() {
       isOpen,
       lastImportStats,
       openImporter,
+      refreshCanceledUploadCount,
       removeFile,
       resetImporter,
       retryFailed,
@@ -1073,6 +1642,7 @@ export function useImportStore() {
       startImport,
       statusAlertDismissed,
       stopImport,
+      stoppingImport,
       typeFilter,
     ],
   );

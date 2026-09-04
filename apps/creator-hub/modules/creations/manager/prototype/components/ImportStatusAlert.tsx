@@ -16,6 +16,21 @@ const ImportStatusAlert: FunctionComponent<ImportStatusAlertProps> = ({ status, 
   const unsupportedSummary =
     batchStats.invalid > 0 ? translations.unsupportedFilesSkipped(batchStats.invalid) : null;
 
+  if (status === 'importing' && batchStats.completed > 0) {
+    return (
+      <Alert
+        hasCloseAffordance
+        onDismiss={dismissStatusAlert}
+        severity='Success'
+        variant='Feedback'>
+        <span>
+          <strong>{translations.importedCount(batchStats.completed)}</strong>{' '}
+          {translations.pendingModerationDescription}
+        </span>
+      </Alert>
+    );
+  }
+
   if (status === 'complete_success') {
     return (
       <Alert
@@ -39,8 +54,8 @@ const ImportStatusAlert: FunctionComponent<ImportStatusAlertProps> = ({ status, 
         onDismiss={dismissStatusAlert}
         severity='Warning'
         variant='Feedback'
-        primaryActionLabel={translations.retryFailed}
-        onPrimaryAction={retryFailed}>
+        primaryActionLabel={batchStats.retryableFailed > 0 ? translations.retryFailed : undefined}
+        onPrimaryAction={batchStats.retryableFailed > 0 ? retryFailed : undefined}>
         <span>
           <strong>{translations.importPartial(completed, failed)}</strong>
           {unsupportedSummary != null && ` ${unsupportedSummary}`}
@@ -56,8 +71,8 @@ const ImportStatusAlert: FunctionComponent<ImportStatusAlertProps> = ({ status, 
         onDismiss={dismissStatusAlert}
         severity='Error'
         variant='Feedback'
-        primaryActionLabel={translations.retryAll}
-        onPrimaryAction={retryFailed}>
+        primaryActionLabel={batchStats.retryableFailed > 0 ? translations.retryAll : undefined}
+        onPrimaryAction={batchStats.retryableFailed > 0 ? retryFailed : undefined}>
         <span>
           <strong>{translations.importFailedAll(failed)}</strong>
           {unsupportedSummary != null && ` ${unsupportedSummary}`}

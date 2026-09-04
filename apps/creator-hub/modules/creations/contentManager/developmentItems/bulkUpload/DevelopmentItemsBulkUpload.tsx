@@ -7,6 +7,7 @@ import useCurrentOrganization from '@modules/group/hooks/useCurrentOrganization'
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import ImportQueue from '../../../manager/prototype/components/ImportQueue';
 import { ImportProvider, useImport } from '../../../manager/prototype/ImportContext';
+import type { ImportQueuePersistenceOwner } from '../../../manager/prototype/importQueuePersistence';
 import type { InventoryScope } from '../../../manager/prototype/importStore';
 
 export type DevelopmentItemsBulkUploadProps = {
@@ -98,13 +99,22 @@ export const DevelopmentItemsBulkUpload: FunctionComponent<DevelopmentItemsBulkU
   const { groupId, userId } = props;
   const { permissions } = useCurrentOrganization();
   const inventoryOwnerKey = groupId == null ? `user-${userId ?? 0}` : `group-${groupId}`;
+  const persistenceOwner = useMemo<ImportQueuePersistenceOwner | undefined>(
+    () =>
+      groupId != null
+        ? { ownerId: groupId, ownerType: 'groups' }
+        : userId != null
+          ? { ownerId: userId, ownerType: 'users' }
+          : undefined,
+    [groupId, userId],
+  );
 
   if (groupId != null && !permissions?.canCreateAssets) {
     return null;
   }
 
   return (
-    <ImportProvider key={inventoryOwnerKey}>
+    <ImportProvider key={inventoryOwnerKey} persistenceOwner={persistenceOwner}>
       <DevelopmentItemsBulkUploadTrigger {...props} />
     </ImportProvider>
   );

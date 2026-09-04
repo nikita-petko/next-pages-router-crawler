@@ -43,6 +43,19 @@ const CSRF_TOKEN_HEADER = 'x-csrf-token';
 const OPEN_USE_ADDITIONAL_PARAMETERS = JSON.stringify({ AssetPrivacy: 'OpenUse' });
 const CHUNK_SIZE = 5 * 1024 * 1024; // required by content platform
 const MAX_CONCURRENT_CHUNK_UPLOADS = 3;
+const CONTENT_TYPE_BY_EXTENSION: Readonly<Record<string, string>> = {
+  '.bmp': 'image/bmp',
+  '.flac': 'audio/flac',
+  '.jpeg': 'image/jpeg',
+  '.jpg': 'image/jpeg',
+  '.mov': 'video/quicktime',
+  '.mp3': 'audio/mpeg',
+  '.mp4': 'video/mp4',
+  '.ogg': 'audio/ogg',
+  '.png': 'image/png',
+  '.tga': 'image/x-tga',
+  '.wav': 'audio/wav',
+};
 
 async function waitForRetry(delay: number, signal?: AbortSignal): Promise<void> {
   signal?.throwIfAborted();
@@ -156,12 +169,39 @@ export class AssetsUploadApiClient {
     return AssetsUploadApiClient.parseOperationId(res.path);
   }
 
+  async abortMultipartUpload(operationId: string): Promise<void> {
+    const requestInit: RequestInit = {};
+    const token = await getCSRFToken();
+    if (token) {
+      requestInit.headers = { [CSRF_TOKEN_HEADER]: token };
+    }
+    await this.multipartUploadApi.assetsMultipartUploadAbort({ operationId }, requestInit);
+  }
+
+  private async abortMultipartUploadAfterFailure(
+    operationId: string,
+    requestInit: RequestInit,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    // The caller owns user-initiated cancellation. Avoid racing its explicit abort request.
+    if (signal?.aborted) {
+      return;
+    }
+    await this.multipartUploadApi.assetsMultipartUploadAbort(
+      { operationId },
+      { ...requestInit, signal: undefined },
+    );
+  }
+
   async createAssetAndGetOperationIdWithMultipart(
     requestInfo: Asset,
     file: File,
     setAssetPrivacyToOpenUse?: boolean,
     onUploadProgress?: (progress: number) => void,
     signal?: AbortSignal,
+    onOperationStarted?: (operationId: string) => void,
+    onBeforeMultipartComplete?: () => void,
+    onMultipartAborted?: (operationId: string) => void,
   ): Promise<string> {
     const actualSetAssetPrivacyToOpenUse = setAssetPrivacyToOpenUse ?? false;
     const requestInit: RequestInit = actualSetAssetPrivacyToOpenUse
@@ -212,7 +252,7 @@ export class AssetsUploadApiClient {
         filesize: file.size,
         md5CheckSum: md5Sum,
         chunkPlan,
-        contentType: file.type,
+        contentType: AssetsUploadApiClient.getMultipartContentType(file),
       },
     };
 
@@ -267,6 +307,8 @@ export class AssetsUploadApiClient {
       );
     }
 
+    onOperationStarted?.(operationId);
+
     // Phase 4: Upload chunks (15-80%)
     let etags: string[];
     try {
@@ -285,10 +327,10 @@ export class AssetsUploadApiClient {
       );
     } catch (error) {
       try {
-        await this.multipartUploadApi.assetsMultipartUploadAbort(
-          { operationId },
-          { ...requestInit, signal: undefined },
-        );
+        await this.abortMultipartUploadAfterFailure(operationId, requestInit, signal);
+        if (!signal?.aborted) {
+          onMultipartAborted?.(operationId);
+        }
       } catch (abortError) {
         throw new MultipartUploadError(
           `Chunk upload failed and abort also failed. Original error: ${error instanceof Error ? error.message : String(error)}. Abort error: ${abortError instanceof Error ? abortError.message : String(abortError)}`,
@@ -357,10 +399,10 @@ export class AssetsUploadApiClient {
       );
     } catch (error) {
       try {
-        await this.multipartUploadApi.assetsMultipartUploadAbort(
-          { operationId },
-          { ...requestInit, signal: undefined },
-        );
+        await this.abortMultipartUploadAfterFailure(operationId, requestInit, signal);
+        if (!signal?.aborted) {
+          onMultipartAborted?.(operationId);
+        }
       } catch (abortError) {
         throw new MultipartUploadError(
           `Chunk complete failed and abort also failed. Original error: ${error instanceof Error ? error.message : String(error)}. Abort error: ${abortError instanceof Error ? abortError.message : String(abortError)}`,
@@ -390,6 +432,7 @@ export class AssetsUploadApiClient {
     }
 
     // Phase 6: Complete multipart upload (90-100%)
+    onBeforeMultipartComplete?.();
     try {
       await this.multipartUploadApi.assetsMultipartUploadComplete(
         {
@@ -535,6 +578,17 @@ export class AssetsUploadApiClient {
     });
 
     return { hash: md5(data), data };
+  }
+
+  private static getMultipartContentType(file: File): string {
+    const browserContentType = file.type.trim();
+    if (browserContentType !== '') {
+      return browserContentType;
+    }
+
+    const extensionStart = file.name.lastIndexOf('.');
+    const extension = extensionStart < 0 ? '' : file.name.slice(extensionStart).toLowerCase();
+    return CONTENT_TYPE_BY_EXTENSION[extension] ?? 'application/octet-stream';
   }
 
   private static makeUploadPlan(fileSize: number): number[] {
