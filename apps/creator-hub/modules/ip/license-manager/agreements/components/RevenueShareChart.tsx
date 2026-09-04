@@ -1,115 +1,68 @@
-import Highcharts from 'highcharts';
-import HighchartsReact from 'highcharts-react-official';
 import type { FunctionComponent } from 'react';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
+import type { ChartColor, SinglePieSeries } from '@rbx/analytics-ui';
+import { ChartStyleMode, PieChart } from '@rbx/analytics-ui';
 import { useTranslation } from '@rbx/intl';
-import { makeStyles, useTheme } from '@rbx/ui';
+import { useTheme } from '@rbx/ui';
 
 export type RevenueShare = {
   splitName: string;
   percentage: number;
-  color: string;
+  color: ChartColor;
 };
 
 interface RevenueShareChartProps {
   revenueShares: RevenueShare[];
 }
 
-const useStyles = makeStyles()(() => ({
-  chartContainer: {
-    width: '100%',
-  },
-}));
+const DONUT_INNER_SIZE = '70%';
+const CHART_HEIGHT = 360;
+const CHART_BORDER_WIDTH = 2.5;
 
 const RevenueShareChart: FunctionComponent<RevenueShareChartProps> = ({ revenueShares }) => {
   const { translate } = useTranslation();
-  const {
-    classes: { chartContainer },
-  } = useStyles();
   const theme = useTheme();
 
-  const seriesData = useMemo(() => {
-    const series = revenueShares
-      .filter(
-        (share) => !Number.isNaN(share.percentage) && share.percentage > 0, // Filter out invalid percentages and zeros
-      )
-      .map((split) => {
-        return {
-          name: split.splitName,
-          label: split.splitName,
-          y: split.percentage,
-          color: split.color,
-        };
-      });
-
-    return series;
-  }, [revenueShares]);
-
-  const options: Highcharts.Options = useMemo(() => {
+  const series = useMemo((): SinglePieSeries<string, number> => {
+    const visibleShares = revenueShares.filter(
+      (share) => !Number.isNaN(share.percentage) && share.percentage > 0,
+    );
     return {
-      chart: {
-        type: 'pie',
-        backgroundColor: undefined,
-      },
-
-      title: { style: { display: 'none' } },
-
-      credits: { enabled: false },
-
-      tooltip: {
-        headerFormat: '{point.key}<br>',
-        pointFormat: '{series.name}: <b>{point.percentage:.0f}%</b>',
-      },
-
-      accessibility: {
-        point: {
-          valueSuffix: '%',
-        },
-      },
-
-      plotOptions: {
-        pie: {
-          allowPointSelect: true,
-          borderWidth: 2.5,
-          borderColor: theme.palette.surface[0],
-          cursor: 'pointer',
-          dataLabels: {
-            enabled: true,
-            format: '<b>{point.label}</b><br>{point.percentage:.0f}%',
-            style: {
-              color: theme.palette.content.standard,
-              fontSize: '14px',
-              fontWeight: '300',
-              textOverflow: 'ellipsis',
-              overflow: 'allow',
-            },
-            useHTML: true,
-          },
-        },
-        series: {
-          innerSize: '70%',
-          borderRadius: 5,
-          borderWidth: 1,
-        },
-      },
-
-      series: [
-        {
-          type: 'pie',
-          name: translate('Label.TotalRevenueSplits'),
-          data: seriesData,
-        },
-      ],
+      name: translate('Label.TotalRevenueSplits'),
+      dataPoints: visibleShares.map((share) => [share.splitName, share.percentage]),
+      dataPointColors: visibleShares.map((share) => share.color),
     };
-  }, [translate, seriesData, theme]);
+  }, [revenueShares, translate]);
+
+  const tooltipFormatters = useMemo(
+    () => ({
+      formatSeriesKeyForSlice: ({ sliceName }: { sliceName: string }) => sliceName,
+      formatSeriesValueForSlice: ({ percentage }: { percentage: number }) =>
+        `${Math.round(percentage)}%`,
+    }),
+    [],
+  );
+
+  const formatDataLabel = useCallback(
+    ({ category, percentage }: { category: string; percentage?: number }) =>
+      `${category}\n${Math.round(percentage ?? 0)}%`,
+    [],
+  );
 
   return (
-    <HighchartsReact
-      highcharts={Highcharts}
-      options={options}
-      allowChartUpdate
-      containerProps={{ id: 'revenue-share-chart', className: chartContainer }}
-    />
+    <div className='width-full'>
+      <PieChart
+        data={{ series }}
+        tooltipFormatters={tooltipFormatters}
+        formatDataLabel={formatDataLabel}
+        dataLabelsOutside
+        borderColor={theme.palette.surface[0]}
+        borderWidth={CHART_BORDER_WIDTH}
+        chartStyleMode={ChartStyleMode.Minimal}
+        height={CHART_HEIGHT}
+        donut={{ innerSize: DONUT_INNER_SIZE }}
+      />
+    </div>
   );
 };
 

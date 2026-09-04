@@ -1,7 +1,8 @@
 import type { FunctionComponent } from 'react';
+import { ChartColor } from '@rbx/analytics-ui';
 import { VisuallyHidden } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
-import { TableBody, TableCell, TableHead, TableRow } from '@rbx/ui';
+import { TableBody, TableCell, TableHead, TableRow, useTheme } from '@rbx/ui';
 import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
 import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import CreatorType from '@modules/miscellaneous/common/enums/Creator';
@@ -26,6 +27,48 @@ const FLEX_SPACER_COLUMN_CLASS = 'min-width-400';
 const SPLIT_VALUE_COLUMN_CLASS = 'width-2200 min-width-2200 max-width-2200';
 const DECORATIVE_CELL_CLASS = 'padding-none';
 
+const LightColorHexByChartColor: Record<ChartColor, string> = {
+  [ChartColor.Blue]: '#3C64FA',
+  [ChartColor.Green]: '#27C473',
+  [ChartColor.Purple]: '#DA40FC',
+  [ChartColor.Yellow]: '#F3BA2B',
+  [ChartColor.Cyan]: '#0AB4D6',
+  [ChartColor.Red]: '#F45B52',
+  [ChartColor.Purple2]: '#9E58F3',
+  [ChartColor.Orange]: '#FC9855',
+  [ChartColor.Blue2]: '#284DE2',
+  [ChartColor.Green2]: '#0F995B',
+  [ChartColor.Purple3]: '#A61BC6',
+  [ChartColor.Yellow2]: '#D4A121',
+  [ChartColor.Yellow3]: '#F0E59D',
+  [ChartColor.Green3]: '#6AD79B',
+  [ChartColor.Cyan2]: '#16A7A5',
+  [ChartColor.Blue3]: '#596AAC',
+  [ChartColor.Purple4]: '#4F2687',
+  [ChartColor.White]: '#F7F7F8',
+};
+
+const DarkColorHexByChartColor: Record<ChartColor, string> = {
+  [ChartColor.Blue]: '#3C64FA',
+  [ChartColor.Green]: '#44DA87',
+  [ChartColor.Purple]: '#DA40FC',
+  [ChartColor.Yellow]: '#F7D469',
+  [ChartColor.Cyan]: '#0CC3E4',
+  [ChartColor.Red]: '#F45B52',
+  [ChartColor.Purple2]: '#B384FB',
+  [ChartColor.Orange]: '#FC9855',
+  [ChartColor.Blue2]: '#73A0FA',
+  [ChartColor.Green2]: '#8FEAB7',
+  [ChartColor.Purple3]: '#EA91F8',
+  [ChartColor.Yellow2]: '#FADE89',
+  [ChartColor.Yellow3]: '#F0E59D',
+  [ChartColor.Green3]: '#6AD79B',
+  [ChartColor.Cyan2]: '#16A7A5',
+  [ChartColor.Blue3]: '#596AAC',
+  [ChartColor.Purple4]: '#4F2687',
+  [ChartColor.White]: '#F7F7F8',
+};
+
 type RevShareSplitIdentity = {
   target: RevShareThumbnailWithNamesProps['target'];
   targetType: RevShareThumbnailWithNamesProps['targetType'];
@@ -37,7 +80,8 @@ export type RevShareSplitRowData = {
   subtitle?: string;
   identity?: RevShareSplitIdentity;
   basisPoints: number;
-  color: string;
+  color: ChartColor;
+  thumbnailColorOverride?: string;
   isManagingGroup?: boolean;
   isCurrentUser?: boolean;
 };
@@ -53,7 +97,10 @@ const RevShareSplitTable: FunctionComponent<RevShareSplitTableProps> = ({
   accessibleLabel,
   emptyMessage,
 }) => {
+  const theme = useTheme();
   const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+  const colorHexByChartColor =
+    theme.palette.mode === 'light' ? LightColorHexByChartColor : DarkColorHexByChartColor;
   const tableLabel =
     accessibleLabel ??
     tPendingTranslation(
@@ -137,7 +184,7 @@ const RevShareSplitTable: FunctionComponent<RevShareSplitTableProps> = ({
                 <div className='flex items-center gap-large min-width-0'>
                   <div
                     className='width-100 shrink-0 height-800 radius-small'
-                    style={{ backgroundColor: row.color }}
+                    style={{ backgroundColor: colorHexByChartColor[row.color] }}
                     aria-hidden
                   />
                   <div className={PARTY_IDENTITY_CLASS}>
@@ -154,7 +201,7 @@ const RevShareSplitTable: FunctionComponent<RevShareSplitTableProps> = ({
                         target={{ id: asNumberTypedId(row.id) }}
                         targetType={CreatorType.Group}
                         displayNameOverride={row.name}
-                        thumbnailColorOverride={row.color}
+                        thumbnailColorOverride={row.thumbnailColorOverride}
                         variant='compact'
                         disableLink
                         hideSecondaryLabel

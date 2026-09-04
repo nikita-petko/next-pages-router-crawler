@@ -1,5 +1,6 @@
 import type { FunctionComponent } from 'react';
 import React, { useMemo } from 'react';
+import { ChartColor } from '@rbx/analytics-ui';
 import type {
   HydratedAgreementWithHydratedTargetsResponse,
   LicenseResponse,
@@ -18,7 +19,6 @@ import IpLoadError from '../../../components/error/IpLoadError';
 import AmDivider from '../../components/AmDivider';
 import OverviewCard from '../../components/OverviewCard';
 import { NO_GAME_FOUND_FOR_ID, useDebouncedGameDetails } from '../hooks/games';
-import RevShareColorHexes from '../utils/constants';
 import RevenueShareChart from './RevenueShareChart';
 import RevSplitRow from './RevSplitRow';
 
@@ -31,6 +31,9 @@ interface AgreementDetailsAnalyticsProps {
   agreement: HydratedAgreementWithHydratedTargetsResponse;
   transactionsCard: React.ReactNode;
 }
+
+const UNIVERSE_SPLIT_CHART_COLOR = ChartColor.Purple;
+const IP_FAMILY_SPLIT_CHART_COLOR = ChartColor.Green2;
 
 const useStyles = makeStyles()(() => ({
   iconContainer: {
@@ -66,9 +69,13 @@ const AgreementDetailsAnalytics: FunctionComponent<AgreementDetailsAnalyticsProp
       {
         splitName: universe.name,
         percentage: 100 - iphSpliltPercentage,
-        color: RevShareColorHexes[0],
+        color: UNIVERSE_SPLIT_CHART_COLOR,
       },
-      { splitName: ipFamily.name, percentage: iphSpliltPercentage, color: RevShareColorHexes[1] },
+      {
+        splitName: ipFamily.name,
+        percentage: iphSpliltPercentage,
+        color: IP_FAMILY_SPLIT_CHART_COLOR,
+      },
     ];
   }, [license, ipFamily, universe]);
 
@@ -146,7 +153,7 @@ const AgreementDetailsAnalytics: FunctionComponent<AgreementDetailsAnalyticsProp
               </Grid>
               <Grid item>
                 <RevSplitRow
-                  color={RevShareColorHexes[0]}
+                  color={UNIVERSE_SPLIT_CHART_COLOR}
                   splitName={universe.name ?? ''}
                   assetId={universe.id ?? 0}
                   assetThumbnailType={ThumbnailTypes.gameIcon}
@@ -155,7 +162,7 @@ const AgreementDetailsAnalytics: FunctionComponent<AgreementDetailsAnalyticsProp
               </Grid>
               <Grid item>
                 <RevSplitRow
-                  color={RevShareColorHexes[1]}
+                  color={IP_FAMILY_SPLIT_CHART_COLOR}
                   splitName={ipFamily.name ?? ''}
                   assetId={ipListing.thumbnailAssetIds?.[0] ?? 0}
                   assetThumbnailType={ThumbnailTypes.assetThumbnail}

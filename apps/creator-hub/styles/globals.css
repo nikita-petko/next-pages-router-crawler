@@ -1437,6 +1437,9 @@
 .margin-auto {
   margin: auto;
 }
+.margin-large {
+  margin: var(--margin-large);
+}
 .margin-medium {
   margin: var(--margin-medium);
 }
@@ -3621,6 +3624,9 @@
 .bg-action-standard {
   background-color: var(--color-action-standard-background);
 }
+.bg-action-sub-emphasis {
+  background-color: var(--color-action-sub-emphasis-background);
+}
 .bg-action-subtle {
   background-color: var(--color-action-subtle-background);
 }
@@ -5096,6 +5102,9 @@
 }
 .\[transform\:scale\(1\.05\)\] {
   transform: scale(1.05);
+}
+.\[transform\:translate\(-50\%\2c -50\%\)\] {
+  transform: translate(-50%,-50%);
 }
 .\[transform\:translateX\(0\)\] {
   transform: translateX(0);

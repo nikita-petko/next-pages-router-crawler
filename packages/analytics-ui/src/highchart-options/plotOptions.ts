@@ -14,6 +14,9 @@ import {
   canPieLabelFit,
   getPieLabelFontSize,
   PIE_LABEL_DISTANCE_PERCENTAGE,
+  PIE_LABEL_FONT_SIZE,
+  PIE_OUTSIDE_LABEL_DISTANCE,
+  PIE_OUTSIDE_LABEL_SIZE,
 } from '../utils/pieLabelUtils';
 
 let treemapLayoutFixTimeout: ReturnType<typeof setTimeout>;
@@ -108,12 +111,17 @@ export const usePieChartPlotOptions = ({
   DataLabelLeadingIcon,
   borderColor,
   borderWidth,
+  innerSize,
+  dataLabelsOutside,
 }: {
   formatDataLabel?: DataLabelsFormatter;
   DataLabelLeadingIcon?: React.FC<TIconProps>;
   borderColor?: string;
   borderWidth?: number;
+  innerSize?: string;
+  dataLabelsOutside?: boolean;
 } = {}): PlotOptions => {
+  const theme = useTheme();
   // Only enable data labels if a formatter is provided
   const dataLabelsEnabled = !!formatDataLabel;
 
@@ -122,33 +130,51 @@ export const usePieChartPlotOptions = ({
     LeadingIcon: DataLabelLeadingIcon,
   });
 
+  const { dataLabelText } = getChartThemedColors(theme);
+
   return useMemo(
     () => ({
       pie: {
         allowPointSelect: true,
         cursor: 'pointer',
-        size: '100%',
+        size: dataLabelsOutside ? PIE_OUTSIDE_LABEL_SIZE : '100%',
+        innerSize,
         borderColor: borderColor ?? 'transparent',
         borderWidth: borderWidth ?? (borderColor ? 1 : 0),
         borderRadius: 0,
         dataLabels: {
           enabled: dataLabelsEnabled,
-          inside: true,
-          distance: `-${PIE_LABEL_DISTANCE_PERCENTAGE}%`, // Use percentage for proportional scaling
+          inside: !dataLabelsOutside,
+          distance: dataLabelsOutside
+            ? PIE_OUTSIDE_LABEL_DISTANCE
+            : `-${PIE_LABEL_DISTANCE_PERCENTAGE}%`,
           useHTML: true,
           crop: false, // Never crop labels
           overflow: 'allow', // Allow overflow instead of ellipses
           style: {
-            fontSize: '16px',
+            fontSize: PIE_LABEL_FONT_SIZE,
             fontWeight: '400',
-            whiteSpace: 'nowrap', // Prevent text wrapping
+            whiteSpace: dataLabelsOutside ? 'normal' : 'nowrap',
             textOverflow: 'unset', // Disable ellipses
+            // Inside the pie, Highcharts' default `contrast` color keeps labels readable against
+            // the slice fill. Outside the pie there is no fill to contrast with, so that default
+            // resolves to an invisible color and the text has to be themed explicitly.
+            ...(dataLabelsOutside ? { color: dataLabelText, textOutline: 'none' } : {}),
           },
           formatter(this, dataLabelsOptions) {
             // Get the formatted text first using the bound formatter context
             const formattedText = dataLabelsFormatter.call(this, dataLabelsOptions);
             if (!formattedText && formattedText !== 0) {
               return null;
+            }
+
+            const formattedTextWithLineBreaks =
+              typeof formattedText === 'string'
+                ? formattedText.replaceAll('\n', '<br>')
+                : formattedText;
+
+            if (dataLabelsOutside) {
+              return formattedTextWithLineBreaks;
             }
 
             // Calculate responsive font size based on chart dimensions
@@ -173,13 +199,21 @@ export const usePieChartPlotOptions = ({
             }
 
             // Return the formatted text if it fits
-            return formattedText;
+            return formattedTextWithLineBreaks;
           },
         },
         showInLegend: true,
       },
     }),
-    [dataLabelsEnabled, dataLabelsFormatter, borderColor, borderWidth],
+    [
+      dataLabelsEnabled,
+      dataLabelsFormatter,
+      dataLabelsOutside,
+      dataLabelText,
+      innerSize,
+      borderColor,
+      borderWidth,
+    ],
   );
 };
 

@@ -1,16 +1,57 @@
 import type { CSSProperties } from 'react';
+import { ChartColor } from '@rbx/analytics-ui';
 import type { UseTranslationResult } from '@rbx/intl';
 import type { TTheme } from '@rbx/ui';
 import { getResponseFromError } from '@modules/clients/utils';
 import {
-  PayoutColorTypeToHexMap,
-  SupportedPayoutColorTypes,
+  SupportedPayoutChartColors,
   chartLabelMaxLength,
   violationLabels,
 } from '../constants/payoutsConstants';
 import type { PayoutMetadata } from '../hooks/useUserOptionsForGroupMembersEligibleForPayout';
 import type { OneTimePayoutBase, OneTimePayoutBaseV2 } from '../interface/OneTimePayoutFormType';
-import type PayoutColorType from '../interface/PayoutColorType';
+
+const LightColorHexByChartColor: Record<ChartColor, string> = {
+  [ChartColor.Blue]: '#3C64FA',
+  [ChartColor.Green]: '#27C473',
+  [ChartColor.Purple]: '#DA40FC',
+  [ChartColor.Yellow]: '#F3BA2B',
+  [ChartColor.Cyan]: '#0AB4D6',
+  [ChartColor.Red]: '#F45B52',
+  [ChartColor.Purple2]: '#9E58F3',
+  [ChartColor.Orange]: '#FC9855',
+  [ChartColor.Blue2]: '#284DE2',
+  [ChartColor.Green2]: '#0F995B',
+  [ChartColor.Purple3]: '#A61BC6',
+  [ChartColor.Yellow2]: '#D4A121',
+  [ChartColor.Yellow3]: '#F0E59D',
+  [ChartColor.Green3]: '#6AD79B',
+  [ChartColor.Cyan2]: '#16A7A5',
+  [ChartColor.Blue3]: '#596AAC',
+  [ChartColor.Purple4]: '#4F2687',
+  [ChartColor.White]: '#F7F7F8',
+};
+
+const DarkColorHexByChartColor: Record<ChartColor, string> = {
+  [ChartColor.Blue]: '#3C64FA',
+  [ChartColor.Green]: '#44DA87',
+  [ChartColor.Purple]: '#DA40FC',
+  [ChartColor.Yellow]: '#F7D469',
+  [ChartColor.Cyan]: '#0CC3E4',
+  [ChartColor.Red]: '#F45B52',
+  [ChartColor.Purple2]: '#B384FB',
+  [ChartColor.Orange]: '#FC9855',
+  [ChartColor.Blue2]: '#73A0FA',
+  [ChartColor.Green2]: '#8FEAB7',
+  [ChartColor.Purple3]: '#EA91F8',
+  [ChartColor.Yellow2]: '#FADE89',
+  [ChartColor.Yellow3]: '#F0E59D',
+  [ChartColor.Green3]: '#6AD79B',
+  [ChartColor.Cyan2]: '#16A7A5',
+  [ChartColor.Blue3]: '#596AAC',
+  [ChartColor.Purple4]: '#4F2687',
+  [ChartColor.White]: '#F7F7F8',
+};
 
 export function isPayoutMetadata(metadata: unknown): metadata is PayoutMetadata {
   if (!metadata || typeof metadata !== 'object') {
@@ -21,27 +62,31 @@ export function isPayoutMetadata(metadata: unknown): metadata is PayoutMetadata 
 }
 
 export const getPayoutStyle = (
-  payoutColor: PayoutColorType,
+  payoutColor: ChartColor,
+  theme: TTheme,
   property: 'fill' | 'background' = 'fill',
 ): CSSProperties => {
-  const hex = PayoutColorTypeToHexMap.get(payoutColor);
+  const colorHexByChartColor =
+    theme.palette.mode === 'light' ? LightColorHexByChartColor : DarkColorHexByChartColor;
   return {
-    [property]: `#${hex}`,
+    [property]: colorHexByChartColor[payoutColor],
   };
 };
 
-export const getRandomPayoutColorType = (): PayoutColorType => {
-  const randomIndex = Math.floor(Math.random() * SupportedPayoutColorTypes.length);
-  return SupportedPayoutColorTypes[randomIndex];
+export const getRandomPayoutChartColor = (): ChartColor => {
+  const randomIndex = Math.floor(Math.random() * SupportedPayoutChartColors.length);
+  return SupportedPayoutChartColors[randomIndex];
 };
 
-export const getNextColor = (colorsInUse: PayoutColorType[]): PayoutColorType => {
-  const useRandomColor = colorsInUse.length >= SupportedPayoutColorTypes.length; // If all colors are in use, use a random color
+export const getNextColor = (colorsInUse: ChartColor[]): ChartColor => {
+  const useRandomColor = colorsInUse.length >= SupportedPayoutChartColors.length; // If all colors are in use, use a random color
   if (useRandomColor) {
-    return getRandomPayoutColorType();
+    return getRandomPayoutChartColor();
   }
 
-  const availableColors = SupportedPayoutColorTypes.filter((color) => !colorsInUse.includes(color));
+  const availableColors = SupportedPayoutChartColors.filter(
+    (color) => !colorsInUse.includes(color),
+  );
   const randomIndex = Math.floor(Math.random() * availableColors.length);
   return availableColors[randomIndex];
 };
@@ -196,7 +241,7 @@ export const getEconomicRestrictionErrorMsg = (
 export default {
   isPayoutMetadata,
   getPayoutStyle,
-  getRandomPayoutColorType,
+  getRandomPayoutChartColor,
   getNextColor,
   validateNumberInput,
   validatePayoutAmountsLessThanOrEqualTo100,

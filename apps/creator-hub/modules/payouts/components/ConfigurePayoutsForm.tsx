@@ -2,6 +2,7 @@ import type { FunctionComponent } from 'react';
 import React, { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import type { SubmitHandler } from 'react-hook-form';
 import { useForm, Controller } from 'react-hook-form';
+import type { ChartColor } from '@rbx/analytics-ui';
 import type { RobloxUsersApiGetUserResponse } from '@rbx/client-users/v1';
 import { useTranslation } from '@rbx/intl';
 import {
@@ -34,14 +35,13 @@ import { CreatorType, FormMode, toastDurationTime } from '@modules/miscellaneous
 import ThumbnailWithNames from '@modules/miscellaneous/components/ThumbnailWithNames';
 import { useCurrentGroup } from '@modules/providers/groups/GroupsProvider';
 import { groupPayoutColor } from '../constants/payoutsConstants';
-import type PayoutColorType from '../interface/PayoutColorType';
 import type { PayoutsBase, PayoutsFormType } from '../interface/PayoutsFormType';
 import PayoutType from '../interface/PayoutType';
 import {
   getNextColor,
   getPayoutChartThemedColors,
   getPayoutStyle,
-  getRandomPayoutColorType,
+  getRandomPayoutChartColor,
   validateNumberInput,
   validatePayoutAmountsLessThanOrEqualTo100,
 } from '../utils/payoutsUtils';
@@ -191,9 +191,7 @@ const ConfigurePayoutsForm: FunctionComponent<ConfigurePayoutsFormProps> = ({
   const [userInfoMapLastUpdated, setUserInfoMapLastUpdated] = useState<Date>(new Date());
   const [colorMapLastUpdated, setColorMapLastUpdated] = useState<Date>(new Date());
 
-  const [colorMap, setColorMap] = useState<Map<string, PayoutColorType>>(
-    new Map<string, PayoutColorType>(),
-  );
+  const [colorMap, setColorMap] = useState<Map<string, ChartColor>>(new Map<string, ChartColor>());
 
   const configurePayoutsFormDefaultValue = useMemo(() => {
     return {
@@ -278,7 +276,7 @@ const ConfigurePayoutsForm: FunctionComponent<ConfigurePayoutsFormProps> = ({
   const getUserInfo = useCallback(
     (creatorId: string) => {
       if (!userInfoMapLastUpdated && userInfoMap.size === 0) {
-        return;
+        return undefined;
       }
 
       return userInfoMap.get(creatorId);
@@ -289,7 +287,7 @@ const ConfigurePayoutsForm: FunctionComponent<ConfigurePayoutsFormProps> = ({
   const getColor = useCallback(
     (creatorId: string) => {
       if (!colorMapLastUpdated && colorMap.size === 0) {
-        return;
+        return undefined;
       }
 
       return colorMap.get(creatorId);
@@ -326,7 +324,7 @@ const ConfigurePayoutsForm: FunctionComponent<ConfigurePayoutsFormProps> = ({
     setColorMap((prevMap) => {
       userIds.forEach((id) => {
         const existingColor = prevMap.get(`${id}`);
-        prevMap.set(`${id}`, existingColor || getNextColor(Array.from(prevMap.values())));
+        prevMap.set(`${id}`, existingColor ?? getNextColor(Array.from(prevMap.values())));
       });
 
       return prevMap;
@@ -338,9 +336,11 @@ const ConfigurePayoutsForm: FunctionComponent<ConfigurePayoutsFormProps> = ({
   useEffect(() => {
     // Fetch user information that have already been added to the payouts, but not yet fetched
     const userIds = initialPayouts.map((payout) => Number.parseInt(payout.creatorId, 10));
-    fetchUsers(userIds);
+    // oxlint-disable-next-line react/react-compiler -- pre-existing initial-user fetch updates its result state
+    void fetchUsers(userIds);
 
     // Choose colors for each user
+    // oxlint-disable-next-line react/react-compiler -- pre-existing state synchronization for initial payout colors
     assignColors(userIds);
   }, [assignColors, fetchUsers, initialPayouts]);
 
@@ -381,7 +381,8 @@ const ConfigurePayoutsForm: FunctionComponent<ConfigurePayoutsFormProps> = ({
               item
               className={colorBar}
               style={getPayoutStyle(
-                colorMap.get(`${creator.id}`) ?? getRandomPayoutColorType(),
+                colorMap.get(`${creator.id}`) ?? getRandomPayoutChartColor(),
+                theme,
                 'background',
               )}
             />
@@ -389,7 +390,7 @@ const ConfigurePayoutsForm: FunctionComponent<ConfigurePayoutsFormProps> = ({
             <Grid
               item
               className={colorBar}
-              style={getPayoutStyle(groupPayoutColor, 'background')}
+              style={getPayoutStyle(groupPayoutColor, theme, 'background')}
             />
           )}
 
@@ -424,7 +425,7 @@ const ConfigurePayoutsForm: FunctionComponent<ConfigurePayoutsFormProps> = ({
                     const payoutAmounts = payouts.map((po) =>
                       po.percentage === '' ? 0 : Number.parseInt(po.percentage, 10),
                     );
-                    payoutAmounts.push(-payout.percentage, Number(event.target.value));
+                    payoutAmounts.push(-Number(payout.percentage), Number(event.target.value));
 
                     // Input must be a number and the sum of all payouts must be less than or equal to 100
                     if (
@@ -501,6 +502,7 @@ const ConfigurePayoutsForm: FunctionComponent<ConfigurePayoutsFormProps> = ({
       disabled,
       percentageInput,
       isPriviligedUser,
+      theme,
     ],
   );
 
@@ -593,7 +595,7 @@ const ConfigurePayoutsForm: FunctionComponent<ConfigurePayoutsFormProps> = ({
                           const existingColor = prevMap.get(`${creator.id}`);
                           prevMap.set(
                             `${creator.id}`,
-                            existingColor || getNextColor(Array.from(prevMap.values())),
+                            existingColor ?? getNextColor(Array.from(prevMap.values())),
                           );
                           return prevMap;
                         });
@@ -610,7 +612,7 @@ const ConfigurePayoutsForm: FunctionComponent<ConfigurePayoutsFormProps> = ({
                     <Grid container className={formContainer}>
                       {/* Group row */}
                       {currentGroup && (
-                        <Fragment>
+                        <>
                           {payoutRow(
                             currentGroup,
                             CreatorType.Group,
@@ -620,7 +622,7 @@ const ConfigurePayoutsForm: FunctionComponent<ConfigurePayoutsFormProps> = ({
                             },
                             payouts,
                           )}
-                        </Fragment>
+                        </>
                       )}
 
                       {payouts.map((payout) => {
@@ -645,7 +647,7 @@ const ConfigurePayoutsForm: FunctionComponent<ConfigurePayoutsFormProps> = ({
 
                                 // Remove user from color map
                                 setColorMap((prevMap) => {
-                                  prevMap.delete(`${payoutToDelete.creatorId}`);
+                                  prevMap.delete(payoutToDelete.creatorId);
                                   return prevMap;
                                 });
                                 setColorMapLastUpdated(new Date());
@@ -664,7 +666,7 @@ const ConfigurePayoutsForm: FunctionComponent<ConfigurePayoutsFormProps> = ({
                     </Grid>
 
                     {isEditing && (
-                      <Fragment>
+                      <>
                         <Grid item>
                           <Divider />
                         </Grid>
@@ -698,7 +700,7 @@ const ConfigurePayoutsForm: FunctionComponent<ConfigurePayoutsFormProps> = ({
                             </FormHelperText>
                           )}
                         </Grid>
-                      </Fragment>
+                      </>
                     )}
                   </Grid>
                 </Grid>

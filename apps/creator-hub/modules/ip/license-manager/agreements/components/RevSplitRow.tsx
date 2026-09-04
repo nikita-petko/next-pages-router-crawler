@@ -1,4 +1,5 @@
 import type { FunctionComponent } from 'react';
+import { ChartColor } from '@rbx/analytics-ui';
 import { useTranslation } from '@rbx/intl';
 import type { ThumbnailTypes } from '@rbx/thumbnails';
 import { ReturnPolicy, Thumbnail2d } from '@rbx/thumbnails';
@@ -9,9 +10,32 @@ import { formatRoyaltyRate } from '@modules/licenses/utils/format';
 import Flex from '@modules/miscellaneous/components/Flex';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 
+const LEGEND_SWATCH_CLASS_NAME = 'width-100 height-full shrink-0 radius-xsmall';
+
+const LegendSwatchClassNameByChartColor: Record<ChartColor, string> = {
+  [ChartColor.Blue]: `${LEGEND_SWATCH_CLASS_NAME} bg-action-emphasis`,
+  [ChartColor.Green]: `${LEGEND_SWATCH_CLASS_NAME} bg-system-success`,
+  [ChartColor.Purple]: `${LEGEND_SWATCH_CLASS_NAME} bg-action-sub-emphasis`,
+  [ChartColor.Yellow]: `${LEGEND_SWATCH_CLASS_NAME} bg-system-warning`,
+  [ChartColor.Cyan]: `${LEGEND_SWATCH_CLASS_NAME} bg-action-link`,
+  [ChartColor.Red]: `${LEGEND_SWATCH_CLASS_NAME} bg-system-alert`,
+  [ChartColor.Purple2]: `${LEGEND_SWATCH_CLASS_NAME} bg-action-sub-emphasis`,
+  [ChartColor.Orange]: `${LEGEND_SWATCH_CLASS_NAME} bg-system-warning`,
+  [ChartColor.Blue2]: `${LEGEND_SWATCH_CLASS_NAME} bg-action-emphasis`,
+  [ChartColor.Green2]: `${LEGEND_SWATCH_CLASS_NAME} bg-system-success`,
+  [ChartColor.Purple3]: `${LEGEND_SWATCH_CLASS_NAME} bg-action-sub-emphasis`,
+  [ChartColor.Yellow2]: `${LEGEND_SWATCH_CLASS_NAME} bg-system-warning`,
+  [ChartColor.Yellow3]: `${LEGEND_SWATCH_CLASS_NAME} bg-system-warning`,
+  [ChartColor.Green3]: `${LEGEND_SWATCH_CLASS_NAME} bg-system-success`,
+  [ChartColor.Cyan2]: `${LEGEND_SWATCH_CLASS_NAME} bg-action-link`,
+  [ChartColor.Blue3]: `${LEGEND_SWATCH_CLASS_NAME} bg-action-emphasis`,
+  [ChartColor.Purple4]: `${LEGEND_SWATCH_CLASS_NAME} bg-action-sub-emphasis`,
+  [ChartColor.White]: `${LEGEND_SWATCH_CLASS_NAME} bg-surface-0`,
+};
+
 interface RevSplitRowProps {
-  /** The color of the split in the chart as a hex value */
-  color: string;
+  /** Slice color, matching the pie chart `ChartColor`. */
+  color: ChartColor;
   /** The asset ID of the thumbnail */
   assetId: number;
   /** The type of asset thumbnail to fetch */
@@ -45,7 +69,7 @@ const RevSplitRow: FunctionComponent<RevSplitRowProps> = ({
   return (
     <Flex justifyContent='space-between'>
       <Flex gap={8} alignItems='center'>
-        <div style={{ backgroundColor: color, width: '4px', height: '100%' }} />
+        <div className={LegendSwatchClassNameByChartColor[color]} aria-hidden />
         <Avatar variant='rounded' alt={avatarAlt}>
           <Thumbnail2d
             targetId={assetId}

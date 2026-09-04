@@ -1,74 +1,25 @@
-import Highcharts from 'highcharts';
-import type { HighchartsReactRefObject } from 'highcharts-react-official';
-import HighchartsReact from 'highcharts-react-official';
 import type { FunctionComponent } from 'react';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
+import type { SinglePieSeries } from '@rbx/analytics-ui';
+import { ChartColor, ChartStyleMode, PieChart } from '@rbx/analytics-ui';
 import type { RobloxUsersApiGetUserResponse } from '@rbx/client-users/v1';
 import { useTranslation } from '@rbx/intl';
-import { Grid, Typography, makeStyles, useTheme } from '@rbx/ui';
 import { useAuthentication } from '@modules/authentication/providers';
 import type { TGroup } from '@modules/authentication/types';
-import { PayoutColorTypeToHexMap, groupPayoutColor } from '../constants/payoutsConstants';
-import PayoutColorType from '../interface/PayoutColorType';
+import { groupPayoutColor } from '../constants/payoutsConstants';
 import type { PayoutsBase } from '../interface/PayoutsFormType';
-import { getPayoutChartThemedColors, truncateString } from '../utils/payoutsUtils';
+import { truncateString } from '../utils/payoutsUtils';
 
-interface OverlayPosition {
-  x: number;
-  y: number;
-  height: number;
-  width: number;
-}
-
-const MIN_CHART_WIDTH = 175;
-
-const usePayoutsChartStyles = makeStyles<{ overlayPositionString?: string }>()((
-  theme,
-  { overlayPositionString },
-) => {
-  const overlayPosition: OverlayPosition | undefined = overlayPositionString
-    ? JSON.parse(overlayPositionString)
-    : undefined;
-  return {
-    container: {
-      position: 'relative',
-      margin: 24,
-    },
-
-    overlay: {
-      position: 'absolute',
-      height: '100%',
-      width: '100%',
-    },
-
-    overlayText: {
-      position: 'absolute',
-      height: overlayPosition ? overlayPosition.height : '100%',
-      width: overlayPosition ? overlayPosition.width : '100%',
-      top: overlayPosition ? overlayPosition.y : 0,
-      left: overlayPosition ? overlayPosition.x : 0,
-    },
-
-    overlayLabel: {
-      textAlign: 'center',
-    },
-
-    overlayTitle: {
-      color: theme.palette.content.muted,
-    },
-
-    highchartContainer: {
-      width: '100%',
-    },
-  };
-});
+const PAYOUTS_DONUT_INNER_SIZE = '70%';
+const PAYOUTS_CHART_HEIGHT = 360;
+const PAYOUTS_CHART_BORDER_WIDTH = 2.5;
 
 export type PayoutsChartProps = {
   payouts: PayoutsBase[];
   group: TGroup;
   groupPayoutPercentage: number;
   getUserInfo: (creatorId: string) => RobloxUsersApiGetUserResponse | null | undefined;
-  getColor: (creatorId: string) => PayoutColorType | null | undefined;
+  getColor: (creatorId: string) => ChartColor | null | undefined;
   showLabels?: boolean;
   borderColor?: string;
   useOtherLabel?: boolean;
@@ -84,54 +35,43 @@ const PayoutsChart: FunctionComponent<PayoutsChartProps> = ({
   borderColor,
   useOtherLabel,
 }) => {
-  const [overlayPositionString, setOverlayPositionString] = useState<string | undefined>();
-  const {
-    classes: { container, overlay, overlayText, overlayLabel, overlayTitle, highchartContainer },
-    cx,
-  } = usePayoutsChartStyles({ overlayPositionString });
-
   const { translate } = useTranslation();
   const { user: currentUser } = useAuthentication();
 
-  const theme = useTheme();
-  const { tooltipText, background } = getPayoutChartThemedColors(theme);
+  const sliceCount = payouts.length + (groupPayoutPercentage > 0 ? 1 : 0);
 
-  const highchartsRef = useRef<HighchartsReactRefObject>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const series = useMemo((): SinglePieSeries<string, number> => {
+    const dataPoints: Array<[string, number]> = [];
+    const dataPointColors: SinglePieSeries<string, number>['dataPointColors'] = [];
 
-  const seriesData = useMemo(() => {
-    const series = payouts
+    if (groupPayoutPercentage > 0) {
+      dataPoints.push([
+        useOtherLabel ? translate('Label.Other') : group.name,
+        groupPayoutPercentage,
+      ]);
+      dataPointColors.push(groupPayoutColor);
+    }
+
+    payouts
       .filter(
-        (payout) => !Number.isNaN(payout.percentage) && Number.parseInt(payout.percentage, 10) > 0, // Filter out invalid percentages and zeros
+        (payout) => !Number.isNaN(payout.percentage) && Number.parseInt(payout.percentage, 10) > 0,
       )
-      .map((payout) => {
+      .forEach((payout) => {
         const userInfo = getUserInfo(payout.creatorId);
-        const payoutColor = getColor(payout.creatorId) ?? PayoutColorType.LightBlue;
-
+        const payoutColor = getColor(payout.creatorId) ?? ChartColor.Blue2;
         const showUserDetails = !useOtherLabel || payout.creatorId === currentUser?.id.toString();
-
         const userName = userInfo?.displayName ?? userInfo?.name ?? '';
         const seriesDataName = showUserDetails ? userName : translate('Label.Other');
 
-        return {
-          name: seriesDataName,
-          label: truncateString(seriesDataName),
-          y: Number.parseInt(payout.percentage, 10),
-          color: `#${PayoutColorTypeToHexMap.get(payoutColor)}`,
-        };
+        dataPoints.push([seriesDataName, Number.parseInt(payout.percentage, 10)]);
+        dataPointColors.push(payoutColor);
       });
 
-    if (groupPayoutPercentage > 0) {
-      // If group receives a payout, add it to the beginning of series
-      series.unshift({
-        name: group.name,
-        label: useOtherLabel ? translate('Label.Other') : truncateString(group.name),
-        y: groupPayoutPercentage,
-        color: `#${PayoutColorTypeToHexMap.get(groupPayoutColor)}`,
-      });
-    }
-
-    return series;
+    return {
+      name: translate('Label.Split'),
+      dataPoints,
+      dataPointColors,
+    };
   }, [
     group.name,
     groupPayoutPercentage,
@@ -143,202 +83,39 @@ const PayoutsChart: FunctionComponent<PayoutsChartProps> = ({
     useOtherLabel,
   ]);
 
-  const subtitle = useMemo(() => {
-    return (
-      <Grid
-        container
-        className={overlayText}
-        justifyContent='center'
-        align-items='center'
-        direction='column'
-        wrap='wrap'>
-        <Typography variant='h6' className={cx(overlayLabel, overlayTitle)}>
-          {translate('Title.TotalSplits')}
-        </Typography>
+  const tooltipFormatters = useMemo(
+    () => ({
+      formatSeriesKeyForSlice: ({ sliceName }: { sliceName: string }) => sliceName,
+      formatSeriesValueForSlice: ({ percentage }: { percentage: number }) =>
+        `${Math.round(percentage)}%`,
+    }),
+    [],
+  );
 
-        <Typography variant='h1' className={overlayLabel}>
-          {payouts.length + (groupPayoutPercentage > 0 ? 1 : 0)}
-        </Typography>
-      </Grid>
-    );
-  }, [
-    overlayText,
-    cx,
-    overlayLabel,
-    overlayTitle,
-    translate,
-    payouts.length,
-    groupPayoutPercentage,
-  ]);
-
-  const options: Highcharts.Options = useMemo(() => {
-    return {
-      chart: {
-        type: 'pie',
-        backgroundColor: undefined,
-      },
-
-      title: { style: { display: 'none' } },
-
-      credits: { enabled: false },
-
-      tooltip: {
-        headerFormat: '{point.key}<br>',
-        pointFormat: '{series.name}: <b>{point.percentage:.0f}%</b>',
-      },
-
-      accessibility: {
-        point: {
-          valueSuffix: '%',
-        },
-      },
-
-      plotOptions: {
-        pie: {
-          allowPointSelect: true,
-          borderWidth: 2.5,
-          borderColor: borderColor ?? background,
-          cursor: 'pointer',
-          dataLabels: {
-            enabled: showLabels,
-            format: '<b>{point.label}</b><br>{point.percentage:.0f}%',
-            style: {
-              color: tooltipText,
-              fontSize: '14px',
-              fontWeight: '300',
-              textOverflow: 'ellipsis',
-              overflow: 'allow',
-            },
-            useHTML: true,
-          },
-        },
-        series: {
-          innerSize: '70%',
-          borderRadius: 5,
-          borderWidth: 1,
-        },
-      },
-
-      series: [
-        {
-          type: 'pie',
-          name: translate('Label.Split'),
-          data: seriesData,
-        },
-      ],
-    };
-  }, [borderColor, background, showLabels, tooltipText, translate, seriesData]);
-
-  const onHighchartsRender = useCallback((chartContainer: HTMLDivElement) => {
-    if (!overlayRef.current || chartContainer.children.length === 0) {
-      return;
-    }
-
-    const seriesElements = document.getElementsByClassName('highcharts-series-group');
-
-    if (seriesElements.length === 0) {
-      return;
-    }
-
-    const series = seriesElements[0];
-    const { parentElement } = series;
-
-    if (!parentElement) {
-      return;
-    }
-
-    const seriesRect = series.getBoundingClientRect();
-    const parentRect = parentElement.getBoundingClientRect();
-
-    // There might be a difference between overlay parent size and highcharts container size
-    // We need to offset the overlay position to center it on the pie chart
-    const highchartsContainerRect = chartContainer.getBoundingClientRect();
-
-    const overlayRect = overlayRef.current.getBoundingClientRect();
-    const xDiff = overlayRect.width - highchartsContainerRect.width;
-    const yDiff = overlayRect.height - highchartsContainerRect.height;
-    const xOffset = xDiff / 2;
-    const yOffset = yDiff / 2;
-
-    // Calculate the positions so that they are relative to the parent element, not the entire body
-    const xRelative = seriesRect.x - parentRect.x;
-    const yRelative = seriesRect.y - parentRect.y;
-
-    // Calculate the final positions
-    const xPos = xRelative + xOffset;
-    const yPos = yRelative + yOffset;
-    const { width, height } = seriesRect;
-
-    if (width < 1 || height < 1) {
-      return;
-    }
-
-    // If chart is too small, do now show the overlay
-    if (width < MIN_CHART_WIDTH) {
-      setOverlayPositionString(undefined);
-      return;
-    }
-
-    const newPosition = {
-      x: xPos,
-      y: yPos,
-      height,
-      width,
-    };
-
-    setOverlayPositionString(JSON.stringify(newPosition));
-  }, []);
-
-  // When highchart renders, we need to calculate the position of the subtitle overlay
-  useEffect(() => {
-    if (!highchartsRef.current?.chart || !highchartsRef.current.container.current) {
-      return () => {};
-    }
-
-    const { chart } = highchartsRef.current;
-    const { current: chartContainer } = highchartsRef.current.container;
-
-    const callback = () => onHighchartsRender(chartContainer);
-
-    // Bind to events that might change the chart size
-    Highcharts.addEvent(chart, 'render', callback);
-    Highcharts.addEvent(Highcharts.Series, 'afterAnimate', callback);
-    window.addEventListener('resize', callback);
-
-    return () => {
-      Highcharts.removeEvent(chart, 'render', callback);
-      Highcharts.removeEvent(Highcharts.Series, 'afterAnimate', callback);
-      window.removeEventListener('resize', callback);
-    };
-  }, [onHighchartsRender]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!highchartsRef.current?.container.current) {
-        return;
-      }
-
-      onHighchartsRender(highchartsRef.current.container.current);
-    }, 1400);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [onHighchartsRender]);
+  const formatDataLabel = useCallback(
+    ({ category, percentage }: { category: string; percentage?: number }) =>
+      `${truncateString(category)}\n${Math.round(percentage ?? 0)}%`,
+    [],
+  );
 
   return (
-    <Grid container className={container} justifyContent='center'>
-      <Grid container className={overlay} ref={overlayRef}>
-        {overlayPositionString !== undefined && subtitle}
-      </Grid>
-
-      <HighchartsReact
-        ref={highchartsRef}
-        highcharts={Highcharts}
-        options={options}
-        allowChartUpdate
-        containerProps={{ id: 'highcharts', className: highchartContainer }}
+    <div className='relative margin-large'>
+      <PieChart
+        data={{ series }}
+        tooltipFormatters={tooltipFormatters}
+        formatDataLabel={showLabels ? formatDataLabel : undefined}
+        dataLabelsOutside={showLabels}
+        borderColor={borderColor}
+        borderWidth={PAYOUTS_CHART_BORDER_WIDTH}
+        chartStyleMode={ChartStyleMode.Minimal}
+        height={PAYOUTS_CHART_HEIGHT}
+        donut={{
+          innerSize: PAYOUTS_DONUT_INNER_SIZE,
+          centerLabel: String(sliceCount),
+          centerSubLabel: translate('Title.TotalSplits'),
+        }}
       />
-    </Grid>
+    </div>
   );
 };
 export default React.memo(PayoutsChart);

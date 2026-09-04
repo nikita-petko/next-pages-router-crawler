@@ -37,6 +37,7 @@ export type PermissionGroupListProps = {
 };
 
 const FORUM_BUG_REPORTER_PERMISSION_ID = 'Group.ForumBugReporter';
+const UNIVERSE_TICKET_REVIEWER_PERMISSION_ID = 'Universe.TicketReviewer';
 const GUEST_ROLE_PERMISSION_ID = 'Group.AnnouncementViewer';
 
 const usePermissionsContainerStyles = makeStyles()((theme) => ({
@@ -72,7 +73,7 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({
   const {
     classes: { rootClass, footerButton, stickyFooter },
   } = usePermissionsContainerStyles();
-  const { showConfirmationOnSave } = usePermissionsUiConfig();
+  const { showConfirmationOnSave, showUniverseTicketReviewerPermission } = usePermissionsUiConfig();
   const { translate, displayMessage } = usePermissionsTranslation();
   const { translateWithNamespace } = useTranslation();
   const { organization, surface, isOrganizationLoading } = useCurrentGroup();
@@ -133,8 +134,10 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({
         ...group,
         permissions: group.permissions.filter(
           (permission) =>
-            permission.permissionId !== FORUM_BUG_REPORTER_PERMISSION_ID ||
-            showForumBugReporterPermission,
+            (permission.permissionId !== FORUM_BUG_REPORTER_PERMISSION_ID ||
+              showForumBugReporterPermission) &&
+            (permission.permissionId !== UNIVERSE_TICKET_REVIEWER_PERMISSION_ID ||
+              showUniverseTicketReviewerPermission === true),
         ),
       }))
       .filter((group) => group.permissions.length > 0);
@@ -149,7 +152,7 @@ const PermissionGroupList: FunctionComponent<PermissionGroupListProps> = ({
           }))
           .filter((group) => group.permissions.length > 0)
       : featureFilteredMetadata;
-  }, [isGuestRole, metadata, showForumBugReporterPermission]);
+  }, [isGuestRole, metadata, showForumBugReporterPermission, showUniverseTicketReviewerPermission]);
 
   const onPermissionChange = useCallback((permissionId: string, isGranted: boolean) => {
     setExplicitGrants((prev) => {

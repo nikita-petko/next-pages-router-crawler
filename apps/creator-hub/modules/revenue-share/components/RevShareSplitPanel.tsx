@@ -3,9 +3,10 @@ import { useMemo, type FunctionComponent } from 'react';
 import type { RevShareRecipient, RevShareSplit } from '../interface/RevShareViewModel';
 import type { ResolvedRevShareParty } from '../queries/revShareQueries';
 import {
-  getRecipientColorByIndex,
-  MANAGING_GROUP_COLOR,
+  getRecipientChartColorByIndex,
+  MANAGING_GROUP_CHART_COLOR,
   UNALLOCATED_COLOR,
+  UNALLOCATED_CHART_COLOR,
 } from '../utils/revShareSplitColors';
 import {
   isRevShareCurrentUserRecipient,
@@ -25,7 +26,6 @@ export type RevShareSplitPanelProps = {
   currentUserId?: string | number | null;
   centerLabel?: string;
   centerSubLabel?: string;
-  chartAccessibleLabel?: string;
   tableAccessibleLabel?: string;
   emptyMessage?: string;
 };
@@ -40,7 +40,6 @@ const RevShareSplitPanel: FunctionComponent<RevShareSplitPanelProps> = ({
   currentUserId,
   centerLabel,
   centerSubLabel,
-  chartAccessibleLabel,
   tableAccessibleLabel,
   emptyMessage,
 }) => {
@@ -74,7 +73,7 @@ const RevShareSplitPanel: FunctionComponent<RevShareSplitPanelProps> = ({
         identity: resolvedParty,
         basisPoints: splitBasisPoints,
         // Keep palette tied to original API order so pin-sorting does not reshuffle colors.
-        color: getRecipientColorByIndex(inputIndex),
+        color: getRecipientChartColorByIndex(inputIndex),
         isCurrentUser: isRevShareCurrentUserRecipient(recipient, currentUserId),
       };
     });
@@ -86,7 +85,7 @@ const RevShareSplitPanel: FunctionComponent<RevShareSplitPanelProps> = ({
         subtitle: managingGroupSubtitle,
         identity: managingGroupParty,
         basisPoints: split.managingGroupBasisPoints,
-        color: MANAGING_GROUP_COLOR,
+        color: MANAGING_GROUP_CHART_COLOR,
         isManagingGroup: true,
       },
       ...orderedRecipients,
@@ -97,7 +96,8 @@ const RevShareSplitPanel: FunctionComponent<RevShareSplitPanelProps> = ({
         id: 'unallocated',
         name: unallocatedName,
         basisPoints: split.unallocatedBasisPoints,
-        color: UNALLOCATED_COLOR,
+        color: UNALLOCATED_CHART_COLOR,
+        thumbnailColorOverride: UNALLOCATED_COLOR,
       });
     }
 
@@ -139,7 +139,6 @@ const RevShareSplitPanel: FunctionComponent<RevShareSplitPanelProps> = ({
             slices={slices}
             centerLabel={centerLabel}
             centerSubLabel={centerSubLabel}
-            accessibleLabel={chartAccessibleLabel}
           />
         </div>
       )}

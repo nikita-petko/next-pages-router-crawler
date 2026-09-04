@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
-import type { Options, SeriesPieOptions } from 'highcharts';
+import React, { useCallback, useMemo, useState } from 'react';
+import type { Chart, Options, SeriesPieOptions } from 'highcharts';
 import type { TIconProps } from '@rbx/ui';
-import { useTheme } from '@rbx/ui';
+import { Typography, useTheme } from '@rbx/ui';
 import { getChartColorHexString } from './color';
 import { useChartIsInAbnormalState } from './context/ChartIsInAbnormalStateContext';
 import type { DataLabelsFormatter } from './formatters/dataLabelsFormatters';
@@ -14,7 +14,49 @@ import { usePieChartResponsiveRulesOptions } from './highchart-options/responsiv
 import { usePieChartTooltipOptions } from './highchart-options/tooltipOptions';
 import type { ChartDependencyStatus } from './types/BaseChart';
 import { ChartStyleMode, ChartType } from './types/BaseChart';
-import type { SinglePieSeries } from './types/PieChart';
+import type { PieDonutOptions, SinglePieSeries } from './types/PieChart';
+
+const RootClassName = 'relative width-full';
+/** Used until Highcharts reports the pie geometry (for example during SSR). */
+const UnpositionedCenterOverlayClassName =
+  'absolute [inset:0] flex flex-col items-center justify-center [pointer-events:none]';
+/**
+ * Anchored on the pie's own center, which is offset from the container by chart
+ * spacing and the legend, so the hole text stays centered in the donut.
+ */
+const PositionedCenterOverlayClassName =
+  'absolute flex flex-col items-center justify-center [pointer-events:none] [transform:translate(-50%,-50%)]';
+/** Ignore sub-pixel jitter so the render handler cannot loop. */
+const CENTER_POSITION_EPSILON_PX = 0.5;
+type CenterPosition = { x: number; y: number };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const isUnknownArray = (value: unknown): value is readonly unknown[] => Array.isArray(value);
+
+/**
+ * Highcharts' public `Series` type does not expose the pie-only `center`
+ * tuple (`[x, y, diameter, innerDiameter]`), so read it defensively.
+ */
+const readPieCenterPosition = (chart: Chart): CenterPosition | null => {
+  const series: unknown = chart.series?.[0];
+  if (!isRecord(series)) {
+    return null;
+  }
+
+  const { center } = series;
+  if (!isUnknownArray(center)) {
+    return null;
+  }
+
+  const [x, y] = center;
+  if (typeof x !== 'number' || typeof y !== 'number') {
+    return null;
+  }
+
+  return { x: chart.plotLeft + x, y: chart.plotTop + y };
+};
 
 type PieChartProps<SliceName extends string, Y extends number> = {
   data: {
@@ -35,6 +77,12 @@ type PieChartProps<SliceName extends string, Y extends number> = {
   formatDataLabel?: DataLabelsFormatter;
 
   /**
+   * When true, `formatDataLabel` text is drawn outside the pie instead of inside
+   * each slice.
+   */
+  dataLabelsOutside?: boolean;
+
+  /**
    * Optional leading icon for data labels
    */
   DataLabelLeadingIcon?: React.FC<TIconProps>;
@@ -48,6 +96,11 @@ type PieChartProps<SliceName extends string, Y extends number> = {
    * Optional border width for pie slices
    */
   borderWidth?: number;
+
+  /**
+   * Optional donut hole and isolated center text.
+   */
+  donut?: PieDonutOptions;
 
   chartStyleMode?: ChartStyleMode;
   /**
@@ -64,9 +117,11 @@ const PieChart = <SliceName extends string, Y extends number>({
   data,
   tooltipFormatters,
   formatDataLabel,
+  dataLabelsOutside = false,
   DataLabelLeadingIcon,
   borderColor,
   borderWidth,
+  donut,
   chartStyleMode = ChartStyleMode.Normal,
   height,
   onChartLoad,
@@ -75,6 +130,7 @@ const PieChart = <SliceName extends string, Y extends number>({
 }: PieChartProps<SliceName, Y>) => {
   const theme = useTheme();
   const isChartInAbnormalState = useChartIsInAbnormalState();
+  const [centerPosition, setCenterPosition] = useState<CenterPosition | null>(null);
 
   const series: SeriesPieOptions[] = useMemo(() => {
     if (isChartInAbnormalState) {
@@ -114,12 +170,35 @@ const PieChart = <SliceName extends string, Y extends number>({
   const plotOptions = usePieChartPlotOptions({
     formatDataLabel,
     DataLabelLeadingIcon,
+    dataLabelsOutside,
+    innerSize: donut?.innerSize,
     ...borderOptions,
   });
 
+  const handleChartRender = useCallback(
+    function handleChartRender(this: Chart) {
+      const nextPosition = readPieCenterPosition(this);
+      if (nextPosition) {
+        setCenterPosition((previousPosition) => {
+          if (
+            previousPosition &&
+            Math.abs(previousPosition.x - nextPosition.x) < CENTER_POSITION_EPSILON_PX &&
+            Math.abs(previousPosition.y - nextPosition.y) < CENTER_POSITION_EPSILON_PX
+          ) {
+            return previousPosition;
+          }
+          return nextPosition;
+        });
+      }
+
+      onChartRender?.();
+    },
+    [onChartRender],
+  );
+
   const chartOptions = usePieChartChartOptions({
     onChartLoad,
-    onChartRender,
+    onChartRender: handleChartRender,
     chartStyleMode,
     height,
   });
@@ -156,12 +235,40 @@ const PieChart = <SliceName extends string, Y extends number>({
     legendTitleAndCreditOptions,
   ]);
 
-  return (
+  const chart = (
     <GenericSeriesChart
       options={highchartsOptions}
       showLocalizedTime={false}
       onChartDependencyStatus={onChartDependencyStatus}
     />
+  );
+
+  const hasCenterContent = Boolean(donut?.centerLabel ?? donut?.centerSubLabel);
+  if (!hasCenterContent) {
+    return chart;
+  }
+
+  return (
+    <div className={RootClassName}>
+      {chart}
+      <div
+        className={
+          centerPosition ? PositionedCenterOverlayClassName : UnpositionedCenterOverlayClassName
+        }
+        style={centerPosition ? { left: centerPosition.x, top: centerPosition.y } : undefined}
+        aria-hidden>
+        {donut?.centerSubLabel ? (
+          <Typography variant='h6' className='content-muted text-align-x-center'>
+            {donut.centerSubLabel}
+          </Typography>
+        ) : null}
+        {donut?.centerLabel ? (
+          <Typography variant='h1' className='text-align-x-center'>
+            {donut.centerLabel}
+          </Typography>
+        ) : null}
+      </div>
+    </div>
   );
 };
 

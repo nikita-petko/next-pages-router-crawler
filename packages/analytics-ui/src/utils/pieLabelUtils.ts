@@ -3,6 +3,12 @@ import { escapeHtmlString } from './escape-html';
 import measureTextWidth from './textMeasurement';
 
 export const PIE_LABEL_DISTANCE_PERCENTAGE = 30; // Labels positioned at -30% from edge
+/** Base slice label font size, narrowed per breakpoint by the responsive rules. */
+export const PIE_LABEL_FONT_SIZE = '16px';
+/** Pixel offset from the pie edge when slice labels are drawn outside the chart. */
+export const PIE_OUTSIDE_LABEL_DISTANCE = 12;
+/** Shrink the pie so outside labels have room around the plot. */
+export const PIE_OUTSIDE_LABEL_SIZE = '75%';
 
 export const getPieLabelFontSize = (chartWidth: number, chartHeight: number): number => {
   const chartSize = Math.min(chartWidth, chartHeight);

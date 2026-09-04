@@ -29,7 +29,6 @@ type RevShareDetailViewProps = {
   centerLabel?: string;
   centerSubLabel?: string;
   backLabel?: string;
-  chartAccessibleLabel?: string;
   tableAccessibleLabel?: string;
   emptyMessage?: string;
   banner?: ReactNode;
@@ -52,7 +51,6 @@ const RevShareDetailView: FunctionComponent<RevShareDetailViewProps> = ({
   centerLabel,
   centerSubLabel,
   backLabel,
-  chartAccessibleLabel,
   tableAccessibleLabel,
   emptyMessage,
   banner,
@@ -108,7 +106,6 @@ const RevShareDetailView: FunctionComponent<RevShareDetailViewProps> = ({
         currentUserId={currentUserId}
         centerLabel={centerLabel}
         centerSubLabel={centerSubLabel}
-        chartAccessibleLabel={chartAccessibleLabel}
         tableAccessibleLabel={tableAccessibleLabel}
         emptyMessage={emptyMessage}
       />

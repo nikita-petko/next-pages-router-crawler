@@ -1,8 +1,3 @@
-const RevShareColorHexes: string[] = [
-  '#9E78EC', // Purple
-  '#26FF9C', // Light Green
-];
-
 /** Diameter (px) of the loading spinner shown inside large CTA buttons on the match panels. */
 export const BUTTON_SPINNER_SIZE = 22;
 
@@ -18,5 +13,3 @@ const AGREEMENT_FILTER_KEY_VALUES = new Set<string>(Object.values(AgreementFilte
 export const isAgreementFilterKey = (value: string | undefined): value is AgreementFilterKeys => {
   return value !== undefined && AGREEMENT_FILTER_KEY_VALUES.has(value);
 };
-
-export default RevShareColorHexes;

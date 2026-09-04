@@ -1,5 +1,5 @@
+import { ChartColor } from '@rbx/analytics-ui';
 import { getProductionCreatorHubUrl } from '@rbx/env-utils';
-import PayoutColorType from '../interface/PayoutColorType';
 import PayoutType from '../interface/PayoutType';
 
 export const SupportedPayoutTypes: PayoutType[] = [PayoutType.Group, PayoutType.Experiences];
@@ -23,46 +23,26 @@ export const PayoutReviewTablePageSize = 4;
 
 export const MaxDialogueHeightPx = 800;
 
-export const PayoutColorTypeToHexMap: Map<PayoutColorType, string> = new Map([
-  [PayoutColorType.Invalid, 'A1A2A5'],
-  [PayoutColorType.Blue, '00A2FF'],
-  [PayoutColorType.LightBlue, '55C1FF'],
-  [PayoutColorType.Green, '00B864'],
-  [PayoutColorType.LightGreen, '26FF9C'],
-  [PayoutColorType.Purple, '9E78EC'],
-  [PayoutColorType.LightPurple, 'B69AF1'],
-  [PayoutColorType.Yellow, 'D8A009'],
-  [PayoutColorType.LightYellow, 'F7C744'],
-  [PayoutColorType.Orange, 'EF7A36'],
-  [PayoutColorType.LightOrange, 'F29057'],
-  [PayoutColorType.Red, 'F2453D'],
-  [PayoutColorType.LightRed, 'F4645D'],
-  [PayoutColorType.Pink, 'E245CD'],
-  [PayoutColorType.LightPink, 'EC83DE'],
-  [PayoutColorType.Teal, '00D0D0'],
-  [PayoutColorType.LightTeal, '36FFFF'],
-]);
-
-export const SupportedPayoutColorTypes: PayoutColorType[] = [
-  //   PayoutColorType.Blue, // Disabled for now since this is the groupPayoutColor
-  PayoutColorType.LightBlue,
-  PayoutColorType.Green,
-  PayoutColorType.LightGreen,
-  PayoutColorType.Purple,
-  PayoutColorType.LightPurple,
-  PayoutColorType.Yellow,
-  PayoutColorType.LightYellow,
-  PayoutColorType.Orange,
-  PayoutColorType.LightOrange,
-  PayoutColorType.Red,
-  PayoutColorType.LightRed,
-  PayoutColorType.Pink,
-  PayoutColorType.LightPink,
-  PayoutColorType.Teal,
-  PayoutColorType.LightTeal,
+export const SupportedPayoutChartColors: ChartColor[] = [
+  // ChartColor.Blue is reserved for the group payout.
+  ChartColor.Blue2,
+  ChartColor.Green,
+  ChartColor.Green2,
+  ChartColor.Purple,
+  ChartColor.Purple2,
+  ChartColor.Yellow,
+  ChartColor.Yellow2,
+  ChartColor.Orange,
+  ChartColor.Red,
+  ChartColor.Purple3,
+  ChartColor.Purple4,
+  ChartColor.Cyan,
+  ChartColor.Cyan2,
+  ChartColor.Yellow3,
+  ChartColor.Green3,
 ];
 
-export const groupPayoutColor = PayoutColorType.Blue;
+export const groupPayoutColor = ChartColor.Blue;
 
 export const chartLabelMaxLength = 10;
 
@@ -100,8 +80,7 @@ export default {
   MaxPayoutCsvFileSizeInKilobytes,
   PayoutReviewTablePageSize,
   MaxDialogueHeightPx,
-  PayoutColorTypeToHexMap,
-  SupportedPayoutColorTypes,
+  SupportedPayoutChartColors,
   groupPayoutColor,
   chartLabelMaxLength,
   licensedExperienceHelpUrl,

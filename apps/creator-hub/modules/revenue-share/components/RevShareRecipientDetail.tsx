@@ -15,8 +15,10 @@ import { RevShareConfirmationStatus, RevShareTargetType } from '../interface/Rev
 import { translateRevShareRecipientSettledStatusBanner } from '../utils/revShareRecipientProposalStatusPresentation';
 import {
   AGGREGATE_REMAINING_COLOR,
-  MANAGING_GROUP_COLOR,
+  AGGREGATE_REMAINING_CHART_COLOR,
+  MANAGING_GROUP_CHART_COLOR,
   UNALLOCATED_COLOR,
+  UNALLOCATED_CHART_COLOR,
 } from '../utils/revShareSplitColors';
 import {
   asNumberTypedId,
@@ -46,14 +48,15 @@ const buildRecipientSplitRows = (
       name: labels.recipientName,
       identity: recipientParty,
       basisPoints: split.recipientBasisPoints,
-      color: MANAGING_GROUP_COLOR,
+      color: MANAGING_GROUP_CHART_COLOR,
       isCurrentUser: isRevShareCurrentUserRecipient(recipient, currentUserId),
     },
     {
       id: 'remaining',
       name: labels.remainingName,
       basisPoints: split.remainingBasisPoints,
-      color: AGGREGATE_REMAINING_COLOR,
+      color: AGGREGATE_REMAINING_CHART_COLOR,
+      thumbnailColorOverride: AGGREGATE_REMAINING_COLOR,
     },
   ];
 
@@ -62,7 +65,8 @@ const buildRecipientSplitRows = (
       id: 'unallocated',
       name: labels.unallocatedName,
       basisPoints: split.unallocatedBasisPoints,
-      color: UNALLOCATED_COLOR,
+      color: UNALLOCATED_CHART_COLOR,
+      thumbnailColorOverride: UNALLOCATED_COLOR,
     });
   }
 
@@ -218,14 +222,6 @@ const RevShareRecipientDetail: FunctionComponent<RevShareRecipientDetailProps> =
         'Your share',
         'Label below the recipient percentage in revenue-share detail.',
         translationKey('Label.YourShare', TranslationNamespace.RevenueShareAgreements),
-      )}
-      chartAccessibleLabel={tPendingTranslation(
-        'Your current revenue share split chart',
-        'Accessible label for a recipient current revenue share pie chart.',
-        translationKey(
-          'Label.RecipientCurrentSplitChart',
-          TranslationNamespace.RevenueShareAgreements,
-        ),
       )}
       tableAccessibleLabel={tPendingTranslation(
         'Your current revenue share split',

@@ -20,8 +20,10 @@ import LoadError from '@modules/miscellaneous/error/LoadError';
 import { EStudioTaskType, useStudio } from '@modules/miscellaneous/hooks';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { creatorHub } from '@modules/miscellaneous/urls';
+import { useUniverseId } from '@modules/monetization-shared/route/useUniverseId';
 import { PermissionsContainer } from '@modules/permissions/containers/PermissionsContainer';
 import { CreatorTypes, EntityTypes } from '@modules/permissions/utils/enums';
+import { useCreatorGameopsFlags } from '@modules/player-support/flags/useCreatorGameopsFlags';
 import { useCurrentGame } from '@modules/providers/game/GameProvider';
 import {
   useGetGroupMigrationStatus,
@@ -30,7 +32,13 @@ import {
 
 const MIGRATED_STATUS = 'Migrated';
 
-const CollaboratorPermissionsContainer: FunctionComponent = () => {
+type CollaboratorPermissionsContentProps = {
+  universeId: number;
+};
+
+const CollaboratorPermissionsContent: FunctionComponent<CollaboratorPermissionsContentProps> = ({
+  universeId,
+}) => {
   const { gameDetails, isLoadingGame, isErrorLoadingGame } = useCurrentGame();
   const { isOrganizationLoading, permissions = null, organization } = useCurrentOrganization();
   const router = useRouter();
@@ -38,6 +46,10 @@ const CollaboratorPermissionsContainer: FunctionComponent = () => {
   const { user } = useAuthentication();
   const { open: openStudio, dialog } = useStudio();
   const { enqueue, close } = useSnackbar();
+  const { enablePlayerSupport, ready: isPlayerSupportFlagReady } = useCreatorGameopsFlags(
+    'enablePlayerSupport',
+    { universeId },
+  );
   const groupId = organization?.groupId ? Number.parseInt(organization.groupId, 10) : undefined;
   const { data: productFeatures, isLoading: isProductFeaturesLoading } =
     useGetGroupProductFeatures(groupId);
@@ -54,8 +66,10 @@ const CollaboratorPermissionsContainer: FunctionComponent = () => {
       showRevokeAllButton: false,
       showMobileView: isMobile,
       showConfirmationOnSave: false,
+      showUniverseTicketReviewerPermission:
+        isPlayerSupportFlagReady && enablePlayerSupport === true,
     };
-  }, [isMobile]);
+  }, [enablePlayerSupport, isMobile, isPlayerSupportFlagReady]);
 
   const reload = useCallback(() => {
     router.reload();
@@ -123,10 +137,8 @@ const CollaboratorPermissionsContainer: FunctionComponent = () => {
     return <ErrorPage errorCode={StatusCodes.FORBIDDEN} />;
   }
 
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const universeId = router.query.id as string;
   const entity = {
-    id: universeId,
+    id: universeId.toString(),
     type: EntityTypes.UNIVERSE,
     name: gameDetails.name,
     owner: gameDetails.creator && {
@@ -164,6 +176,24 @@ const CollaboratorPermissionsContainer: FunctionComponent = () => {
   }
 
   return <PermissionsContainer entity={entity} creatorFilter={creatorFilter} uiConfig={uiConfig} />;
+};
+
+const CollaboratorPermissionsContainer: FunctionComponent = () => {
+  const router = useRouter();
+  const route = useUniverseId();
+  const reload = useCallback(() => {
+    router.reload();
+  }, [router]);
+
+  if (route.isLoading) {
+    return <PageLoading />;
+  }
+
+  if (route.isError) {
+    return <LoadError onReload={reload} />;
+  }
+
+  return <CollaboratorPermissionsContent universeId={route.universeId} />;
 };
 
 export default withTranslation(CollaboratorPermissionsContainer, [
