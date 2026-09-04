@@ -355,6 +355,8 @@ export const getLabelFromContentLicensingActivity = (
       return 'Label.ActivityPitchImageRevised';
     case AgreementTransition.PitchImageApproved:
       return 'Label.ActivityPitchImageApproved';
+    case AgreementTransition.RegisterRevenueTarget:
+      return 'Label.ActivityCollectibleRegistered';
     default:
       return 'Label.ActivityUnknown';
   }
@@ -451,6 +453,7 @@ export const getNotesLabelFromAgreementActivity = (
         : 'Label.Response';
     case AgreementTransition.ActivateInquiredAgreement:
     case AgreementTransition.EarlyActivateAcceptedAgreement:
+    case AgreementTransition.RegisterRevenueTarget:
       return 'Label.Details';
     default:
       return 'Label.Response';
