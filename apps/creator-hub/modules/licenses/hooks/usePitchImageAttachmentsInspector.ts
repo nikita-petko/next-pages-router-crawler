@@ -7,7 +7,7 @@ import useQueryParams, {
   normalizeSingleQueryParam,
 } from '@modules/miscellaneous/hooks/useQueryParams';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
-import { CreatorPitchAttachmentStatus } from '../utils/constants';
+import { CreatorPitchAttachmentErrorType, CreatorPitchAttachmentStatus } from '../utils/constants';
 import type { CreatorPitchAttachment } from '../utils/creatorPitchAttachmentTypes';
 
 interface UsePitchImageAttachmentsInspectorParams {
@@ -82,17 +82,35 @@ const usePitchImageAttachmentsInspector = ({
   const handleLinkCopied = useCallback(() => {
     enqueueNeutralSnackbar(linkCopiedLabel);
   }, [enqueueNeutralSnackbar, linkCopiedLabel]);
-  const pitchImageUnavailableLabel = translateAgreements('Label.ScreenshotNoLongerAvailable');
+
+  // The creator view includes moderation status, while the rights holder view only knows that the
+  // image is unavailable.
+  const getUnavailableLabel = useCallback(
+    (assetId: number) => {
+      const attachment = attachments.find((item) => item.assetId === assetId);
+
+      if (attachment?.errorType === CreatorPitchAttachmentErrorType.Moderated) {
+        return translateAgreements('Message.PitchImageModerated');
+      }
+
+      if (attachment?.status === CreatorPitchAttachmentStatus.PendingModeration) {
+        return translateAgreements('Message.PitchImageInModeration');
+      }
+
+      return translateAgreements('Message.PitchImageUnavailable');
+    },
+    [attachments, translateAgreements],
+  );
   const notifiedUnavailableAssetIdRef = useRef<string | null>(null);
   const handleAttachmentClick = useCallback(
     (assetId: number) => {
       if (!areImageUrlsLoading && imageUrls?.get(assetId) == null) {
-        enqueueNeutralSnackbar(pitchImageUnavailableLabel);
+        enqueueNeutralSnackbar(getUnavailableLabel(assetId));
         return;
       }
       setInspectedAssetId(assetId);
     },
-    [areImageUrlsLoading, enqueueNeutralSnackbar, imageUrls, pitchImageUnavailableLabel],
+    [areImageUrlsLoading, enqueueNeutralSnackbar, getUnavailableLabel, imageUrls],
   );
 
   useEffect(() => {
@@ -103,14 +121,14 @@ const usePitchImageAttachmentsInspector = ({
       return;
     }
     notifiedUnavailableAssetIdRef.current = inspectAssetIdParam;
-    enqueueNeutralSnackbar(pitchImageUnavailableLabel);
+    enqueueNeutralSnackbar(getUnavailableLabel(Number(inspectAssetIdParam)));
     setInspectQueryParams({ inspect: null }, { skipHistory: true });
   }, [
     areImageUrlsLoading,
     deepLinkImage,
     enqueueNeutralSnackbar,
+    getUnavailableLabel,
     inspectAssetIdParam,
-    pitchImageUnavailableLabel,
     setInspectQueryParams,
   ]);
 
