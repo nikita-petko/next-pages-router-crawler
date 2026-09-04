@@ -3,16 +3,19 @@ import React, { useMemo } from 'react';
 import type { AssetTranslationEntryTable } from '@modules/clients/localizationTables';
 import useEntryManagementMetadata from '../../translation/hooks/useEntryManagementMetadata';
 import useImageEntryInformation from '../hooks/useImageEntryInformation';
+import localeToLanguageCode from '../implementations/localeToLanguageCode';
 import type { ImageEntryBriefInfo, ImageTranslationInfo } from '../types';
 import ImageEntriesMetadataContext from './ImageEntriesMetadataContext';
 import type { ImageEntriesMetadataValue } from './ImageEntriesMetadataContext';
 
 // An asset entry is identified by its source asset id (no key/context/source). Each translation's
-// `translationText` holds the translated asset id, so the active-locale translation gives us the
-// translated thumbnail asset (or null when untranslated).
+// `translationText` holds the translated asset id, so the active-language translation gives us the
+// translated thumbnail asset (or null when untranslated). The asset-entries endpoint keys
+// translations by locale (e.g. `de_de`), so we resolve by mapping each locale to its language code
+// and matching the active language code.
 function buildEntryInfoMap(
   assetEntries: AssetTranslationEntryTable,
-  currentLocale: string | null,
+  activeLanguageCode: string | null,
 ): Map<string, ImageTranslationInfo> {
   const entryInfoMap = new Map<string, ImageTranslationInfo>();
   assetEntries.forEach((entry) => {
@@ -22,7 +25,9 @@ function buildEntryInfoMap(
     }
     const identifier = String(sourceAssetId);
     const currentTranslationText = entry.translations?.find(
-      (translation) => translation.locale === currentLocale,
+      (translation) =>
+        translation.locale != null &&
+        localeToLanguageCode(translation.locale) === activeLanguageCode,
     )?.translationText;
     const translatedAssetId =
       currentTranslationText != null && currentTranslationText !== ''
@@ -46,7 +51,7 @@ function buildEntryInfoMap(
 
 function buildBriefList(
   assetEntries: AssetTranslationEntryTable,
-  currentLocale: string | null,
+  activeLanguageCode: string | null,
 ): ImageEntryBriefInfo[] {
   const briefList: ImageEntryBriefInfo[] = [];
   assetEntries.forEach((entry) => {
@@ -55,7 +60,9 @@ function buildBriefList(
       return;
     }
     const currentTranslation = entry.translations?.find(
-      (translation) => translation.locale === currentLocale,
+      (translation) =>
+        translation.locale != null &&
+        localeToLanguageCode(translation.locale) === activeLanguageCode,
     );
     const translationText = currentTranslation?.translationText;
     const isTranslated = translationText != null && translationText !== '';
@@ -76,16 +83,17 @@ function buildBriefList(
 // per-locale display model consumed by the list/updater.
 const ImageEntriesMetadataProvider: FunctionComponent<React.PropsWithChildren> = ({ children }) => {
   const { fullEntryTable } = useImageEntryInformation();
-  const { currentLanguageOrLocaleCode } = useEntryManagementMetadata();
+  const { activeTranslationTarget } = useEntryManagementMetadata();
+  const activeLanguageCode = activeTranslationTarget?.languageCode ?? null;
 
   const fullEntryInfoMap = useMemo(
-    () => buildEntryInfoMap(fullEntryTable, currentLanguageOrLocaleCode),
-    [fullEntryTable, currentLanguageOrLocaleCode],
+    () => buildEntryInfoMap(fullEntryTable, activeLanguageCode),
+    [fullEntryTable, activeLanguageCode],
   );
 
   const fullEntryList = useMemo(
-    () => buildBriefList(fullEntryTable, currentLanguageOrLocaleCode),
-    [fullEntryTable, currentLanguageOrLocaleCode],
+    () => buildBriefList(fullEntryTable, activeLanguageCode),
+    [fullEntryTable, activeLanguageCode],
   );
 
   const metadataValue: ImageEntriesMetadataValue = useMemo(
