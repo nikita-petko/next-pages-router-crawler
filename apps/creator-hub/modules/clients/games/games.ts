@@ -29,6 +29,9 @@ const gamesApiV1 = new GamesApiV1(defaultConfiguration);
 const socialLinksApi = new SocialLinksApi(defaultConfiguration);
 const votesApi = new VotesApi(defaultConfiguration);
 
+/** `GET /v1/games` rejects requests asking for more than 50 universes. */
+const maxUniverseIdsPerDetailsRequest = 50;
+
 /**
  * This is a testing only export that exposes the gamesApiV1 instance to simplify
  * mocking (since gamesApiV1 isn't currently exported). Only use in tests.
@@ -69,9 +72,20 @@ export interface GamesClient {
 }
 
 const gamesClient: GamesClient = {
-  getDetails(universeIds: Array<number>) {
-    const request: V1GamesGetRequest = { universeIds };
-    return gamesApiV1.v1GamesGet(request);
+  async getDetails(universeIds: Array<number>) {
+    const batches: Array<Array<number>> = [];
+    for (let i = 0; i < universeIds.length; i += maxUniverseIdsPerDetailsRequest) {
+      batches.push(universeIds.slice(i, i + maxUniverseIdsPerDetailsRequest));
+    }
+
+    const responses = await Promise.all(
+      batches.map((batch) => {
+        const request: V1GamesGetRequest = { universeIds: batch };
+        return gamesApiV1.v1GamesGet(request);
+      }),
+    );
+
+    return { data: responses.flatMap((response) => response.data ?? []) };
   },
   async getSocialLinks(universeId: number) {
     const request: V1GamesUniverseIdSocialLinksListGetRequest = { universeId };

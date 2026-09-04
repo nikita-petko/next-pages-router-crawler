@@ -137,18 +137,24 @@ const EditApiKeyForm = ({
         setStaleUniverseIds(new Set());
         return;
       }
-      const gameDetailsResponse = await gamesClient.getDetails(
-        universeIds.map((uid) => parseInt(uid, 10)),
-      );
-      const returnedIds = new Set((gameDetailsResponse.data ?? []).map((u) => String(u.id)));
-      const ownedIds = new Set(
-        (gameDetailsResponse.data ?? [])
-          .filter((u) => u.creator?.type === 'Group' && u.creator?.id === groupId)
-          .map((u) => String(u.id)),
-      );
-      setStaleUniverseIds(
-        new Set(universeIds.filter((uid) => returnedIds.has(uid) && !ownedIds.has(uid))),
-      );
+      try {
+        const gameDetailsResponse = await gamesClient.getDetails(
+          universeIds.map((uid) => parseInt(uid, 10)),
+        );
+        const returnedIds = new Set((gameDetailsResponse.data ?? []).map((u) => String(u.id)));
+        const ownedIds = new Set(
+          (gameDetailsResponse.data ?? [])
+            .filter((u) => u.creator?.type === 'Group' && u.creator?.id === groupId)
+            .map((u) => String(u.id)),
+        );
+        setStaleUniverseIds(
+          new Set(universeIds.filter((uid) => returnedIds.has(uid) && !ownedIds.has(uid))),
+        );
+      } catch {
+        // Advisory only: never block loading or saving the key.
+        console.warn('There was an error loading the universe details for the stale scope check');
+        setStaleUniverseIds(new Set());
+      }
     },
     [creatorType, creatorTargetId, getScopeTypeProductName, getNthSharedTargetPart],
   );
