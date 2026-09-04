@@ -2,6 +2,7 @@ import {
   RAQIV2AggregationType,
   RAQIV2Dimension,
   RAQIV2Metric,
+  RAQIV2MetricGranularity,
   RAQIV2PercentileType,
   RAQIV2UIPseudoDimension,
   type TRAQIV2Dimension,
@@ -11,6 +12,7 @@ import { toSelectableBreakdownDimensions } from '@modules/experience-analytics-s
 import type { SpecOverride } from '@modules/experience-analytics-shared/utils/computeRAQIV2SpecOverride';
 import extractPseudoDimensionsFromFilters from '@modules/experience-analytics-shared/utils/extractPseudoDimensionsFromFilters';
 import type { ChartTileConfig, DashboardMetricReference, TileFilter } from '../types';
+import { isDurationChartType } from '../utils/chartTypeMapping';
 import { isPersistableBreakdownDimension } from '../utils/validators';
 import { TIME_INTERVAL_TO_GRANULARITY } from './granularityMapping';
 
@@ -219,7 +221,9 @@ export function buildSpecOverride(
   if (breakdownDimensions.length > 0) {
     override.breakdown = { override: breakdownDimensions };
   }
-  const granularity = TIME_INTERVAL_TO_GRANULARITY[tile.dataSpec.granularity];
+  const granularity = isDurationChartType(tile.chartSpec.chartType)
+    ? RAQIV2MetricGranularity.None
+    : TIME_INTERVAL_TO_GRANULARITY[tile.dataSpec.granularity];
   if (granularity !== undefined) {
     override.granularity = { override: granularity };
   }

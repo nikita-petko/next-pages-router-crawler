@@ -57,7 +57,7 @@ import {
   type TimeInterval,
 } from '../../types';
 import { CustomDashboardSummaryCardAggregation as SummaryAggregation } from '../../types';
-import { exploreChartTypeToTileChartType } from '../../utils/chartTypeMapping';
+import { exploreChartTypeToTileChartType, isDurationChartType } from '../../utils/chartTypeMapping';
 import { createTileId } from '../../utils/createTileId';
 import { resolveDefaultChartAggregation } from '../../utils/resolveDefaultChartAggregation';
 import { isSummaryCardAggregationSupported } from '../../utils/summaryCardAggregation';
@@ -513,7 +513,9 @@ export function buildChartTileFromEditor({
   if (!persistedChartType) {
     return null;
   }
-  const timeInterval = granularityToTimeInterval(granularity);
+  const timeInterval = isDurationChartType(persistedChartType)
+    ? 'Cumulative'
+    : granularityToTimeInterval(granularity);
   const nextOverlays =
     overlayOption === undefined
       ? existing?.chartSpec.overlays

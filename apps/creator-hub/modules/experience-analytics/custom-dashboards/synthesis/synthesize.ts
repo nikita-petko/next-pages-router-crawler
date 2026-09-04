@@ -35,6 +35,7 @@ import getAnalyticsMetricDisplayConfig, {
   type TRAQIV2NumericUIMetric,
 } from '@modules/experience-analytics-shared/constants/AnalyticsMetricDisplayConfig';
 import { BenchmarkType } from '@modules/experience-analytics-shared/constants/BenchmarkType';
+import { isDurationBucketDimension } from '@modules/experience-analytics-shared/constants/RAQIV2DurationBucketDimensions';
 import type { AnalyticsSummaryCardConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedSummaryCardConfig';
 import type { AnalyticsTableConfig } from '@modules/experience-analytics-shared/constants/RAQIV2PredefinedTableConfig';
 import { RAQIV2SummaryCardType } from '@modules/experience-analytics-shared/constants/RAQIV2SummaryCardType';
@@ -82,7 +83,7 @@ import {
   type TileId,
 } from '../types';
 import { getCustomDashboardBreakdownDimensions } from '../utils/breakdownDimensions';
-import { chartTileToRenderConfig } from '../utils/chartTypeMapping';
+import { chartTileToRenderConfig, isDurationChartType } from '../utils/chartTypeMapping';
 import { resolveDashboardPageTimeRange } from '../utils/dashboardPageTimeRange';
 import { resolveDefaultChartAggregation } from '../utils/resolveDefaultChartAggregation';
 import {
@@ -606,6 +607,19 @@ function synthesizeChartTile(
         tileId: tile.tileId,
         kind: 'unsupported-chart-type',
         message: `Chart type ${tile.chartSpec.chartType} is not yet supported by the renderer.`,
+      },
+    };
+  }
+  if (
+    isDurationChartType(chartTypeConfig.chartType) &&
+    !buildTileBreakdownDimensions(tile.dataSpec.breakdownDimensions).some(isDurationBucketDimension)
+  ) {
+    return {
+      kind: 'unsupported',
+      reason: {
+        tileId: tile.tileId,
+        kind: 'unsupported-query',
+        message: 'Duration charts require a duration-bucket breakdown.',
       },
     };
   }

@@ -2,9 +2,19 @@ import { ChartType } from '@modules/charts-generic/charts/types/ChartTypes';
 import type { ChartConfiguratorChartType } from '@modules/experience-analytics-shared/chartConfigurator/ChartConfiguratorChartTypes';
 import type { ChartTileConfig, CustomDashboardChartType } from '../types';
 
+export function isDurationChartType(chartType: ChartType | undefined): boolean {
+  return chartType === ChartType.DurationSpline || chartType === ChartType.DurationArea;
+}
+
 export type ChartTileRenderChartConfig =
   | {
-      readonly chartType: ChartType.Spline | ChartType.Area | ChartType.Bar | ChartType.Pie;
+      readonly chartType:
+        | ChartType.Spline
+        | ChartType.Area
+        | ChartType.DurationSpline
+        | ChartType.DurationArea
+        | ChartType.Bar
+        | ChartType.Pie;
       readonly stacking?: undefined;
     }
   | { readonly chartType: ChartType.Column; readonly stacking?: undefined }
@@ -17,6 +27,8 @@ export function chartTileToRenderConfig(
   switch (tile.chartSpec.chartType) {
     case ChartType.Spline:
     case ChartType.Area:
+    case ChartType.DurationSpline:
+    case ChartType.DurationArea:
     case ChartType.Bar:
     case ChartType.Pie:
       return { chartType: tile.chartSpec.chartType };
@@ -38,6 +50,10 @@ export function renderChartTypeToTileFields(
       return { chartType: ChartType.Spline };
     case ChartType.Area:
       return { chartType: ChartType.Area };
+    case ChartType.DurationSpline:
+      return { chartType: ChartType.DurationSpline };
+    case ChartType.DurationArea:
+      return { chartType: ChartType.DurationArea };
     case ChartType.Bar:
       return { chartType: ChartType.Bar };
     case ChartType.Column:
@@ -46,8 +62,6 @@ export function renderChartTypeToTileFields(
       return { chartType: ChartType.Pie };
     case ChartType.Table:
       return { chartType: ChartType.Table };
-    case ChartType.DurationArea:
-    case ChartType.DurationSpline:
     case ChartType.Map:
     case ChartType.MultipleMetricSpline:
       return null;
@@ -60,6 +74,8 @@ const EXPLORE_TO_TILE_CHART_TYPE: Partial<
 > = {
   [ChartType.Spline]: ChartType.Spline,
   [ChartType.Area]: ChartType.Area,
+  [ChartType.DurationSpline]: ChartType.DurationSpline,
+  [ChartType.DurationArea]: ChartType.DurationArea,
   [ChartType.Bar]: ChartType.Bar,
   [ChartType.Column]: ChartType.Column,
   [ChartType.Pie]: ChartType.Pie,

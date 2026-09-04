@@ -119,6 +119,8 @@ export type SummaryCardTitleSource =
 export const CUSTOM_DASHBOARD_CHART_TYPES = [
   ChartType.Spline,
   ChartType.Area,
+  ChartType.DurationSpline,
+  ChartType.DurationArea,
   ChartType.Bar,
   ChartType.Column,
   ChartType.Pie,
