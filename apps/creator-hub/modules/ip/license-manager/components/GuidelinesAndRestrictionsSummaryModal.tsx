@@ -5,8 +5,11 @@ import { ContentStandardAnswer } from '@rbx/client-content-licensing-api/v1';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogTitle } from '@rbx/foundation-ui';
 import { useTranslation } from '@rbx/intl';
 import { Button, Link } from '@rbx/ui';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import { CONTENT_STANDARDS_HREF } from '@modules/licenses/urls';
 import downloadPdf from '@modules/licenses/utils/downloadPdf';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import LinkButton from '../../components/LinkButton';
 import { FALLBACK_CONTENT_STANDARDS_ID } from '../constants';
 import { COMMUNITY_STANDARDS_HREF } from '../urls';
@@ -26,7 +29,9 @@ interface GuidelinesAndRestrictionsSummaryModalProps {
 const GuidelinesAndRestrictionsSummaryModal: FunctionComponent<
   GuidelinesAndRestrictionsSummaryModalProps
 > = ({ isOpen, license, isCreator = false, setOpen }) => {
-  const { translate, translateHTML } = useTranslation();
+  const translation = useTranslation();
+  const { translate, translateHTML } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
   const { classes } = useGuidelinesAndRestrictionsModalStyles();
 
   const [isAllowedExpanded, setIsAllowedExpanded] = useState<boolean>(true);
@@ -90,7 +95,7 @@ const GuidelinesAndRestrictionsSummaryModal: FunctionComponent<
       isModal
       hasCloseAffordance={false}
       data-testid='apply-to-license-guidelines-modal'>
-      <DialogContent>
+      <DialogContent className='[overflow:hidden]'>
         <DialogTitle
           className={`${classes.dialogTitle} margin-small text-heading-small flex flex-col gap-small`}>
           {translate('Label.GuidelinesAmpersandRestrictions')}
@@ -140,7 +145,13 @@ const GuidelinesAndRestrictionsSummaryModal: FunctionComponent<
 
           {shouldShowDownload && (
             <div className='flex flex-col gap-small items-start'>
-              <span className='text-label-large'>{translate('Label.BrandGuidelinesOptional')}</span>
+              <span className='text-label-large'>
+                {tPendingTranslation(
+                  'Brand guidelines',
+                  'Label explaining that this is related to brand guidelines that rights holders provide in addition to content standards',
+                  translationKey('Label.BrandGuidelines', TranslationNamespace.AgreementsManager),
+                )}
+              </span>
               <LinkButton onClick={handleDocumentDownload}>
                 <span className='text-body-medium'>
                   <strong>{translate('Action.Download')}</strong>
