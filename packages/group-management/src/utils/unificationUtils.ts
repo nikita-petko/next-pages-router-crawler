@@ -16,6 +16,10 @@ export const MIGRATION_STATUS = {
 
 export type MigrationStatus = (typeof MIGRATION_STATUS)[keyof typeof MIGRATION_STATUS];
 
+export const MIGRATION_SOURCE = {
+  NEW_GROUP: 'NewGroup',
+} as const;
+
 export enum ModalState {
   None,
   Breaking,
