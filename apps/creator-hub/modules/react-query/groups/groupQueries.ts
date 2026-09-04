@@ -3,6 +3,7 @@ import type { ListGroupResponse } from '@rbx/client-creator-home-api/v1';
 import type { V1GroupsCreatePostRequest } from '@rbx/client-groups/v1';
 import { StatusCodes } from '@rbx/core';
 import { getGroupsQueryKey } from '@rbx/creator-hub-navigation';
+import { GROUP_MIGRATION_STATUS_QUERY_KEY } from '@rbx/group-management';
 import groupsClient from '@modules/clients/groups';
 import type { GroupSocialLink } from '@modules/clients/groups';
 import tryParseResponseError from '@modules/clients/utils/tryParseResponseError';
@@ -86,7 +87,7 @@ export function useGetGroupSocialLinks(groupId: number | undefined, enabled = tr
 export function useGetGroupMigrationStatus(groupId: number | undefined, enabled = true) {
   return useQuery({
     enabled: enabled && !!groupId,
-    queryKey: [`${GROUPS_KEY_PREFIX}migrationStatus`, groupId],
+    queryKey: [GROUP_MIGRATION_STATUS_QUERY_KEY, groupId],
     queryFn: async () => {
       if (!groupId) {
         throw new Error('Group ID is required');
