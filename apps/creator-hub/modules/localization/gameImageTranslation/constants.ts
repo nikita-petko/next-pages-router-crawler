@@ -4,6 +4,13 @@ import type { TranslationNamespace } from '@modules/miscellaneous/localization';
 
 export const entryListPageSize = 20;
 
+/** Feature name passed to the locale service to fetch image-translation-eligible locales. */
+export const imageTranslationFeatureName = 'image-translation';
+
+/** Destination for the "Learn more" button on the not-enabled empty state. */
+export const imageTranslationLearnMoreUrl =
+  'https://create.roblox.com/docs/production/localization/automatic-translations';
+
 /** Max retries per page when recursively fetching the asset-entries table. Mirrors strings. */
 export const maxRetryTimes = 5;
 
