@@ -9,6 +9,7 @@ const useExperienceGuidelinesStyles = makeStyles()((theme) => ({
   mainGrid: {
     ...fullWidthHeight,
     maxWidth: '700px',
+    minWidth: 0,
     marginTop: theme.spacing(1),
     display: 'flex',
     flexDirection: 'column',
@@ -28,6 +29,26 @@ const useExperienceGuidelinesStyles = makeStyles()((theme) => ({
     marginBottom: theme.spacing(3),
   },
 
+  restrictionsTable: {
+    tableLayout: 'fixed',
+  },
+
+  tableContainer: {
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    overflowX: 'auto',
+  },
+
+  restrictionsFirstColumnHeader: {
+    width: '40%',
+  },
+
+  restrictionsHeaderText: {
+    minWidth: 0,
+    overflowWrap: 'anywhere',
+  },
+
   cell: {
     width: '50%',
   },
@@ -45,10 +66,12 @@ const useExperienceGuidelinesStyles = makeStyles()((theme) => ({
   tooltip: {
     display: 'flex',
     alignItems: 'center',
+    minWidth: 0,
   },
 
   tooltipIcon: {
     marginLeft: '8px',
+    flexShrink: 0,
   },
 
   boldText: {
