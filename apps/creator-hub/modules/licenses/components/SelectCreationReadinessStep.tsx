@@ -62,6 +62,7 @@ interface SelectCreationReadinessStepProps {
   enableCollaborationLicensing?: boolean;
   enableMarketplaceSalesLicensing?: boolean;
   contentMode?: SelectCreationReadinessContentMode;
+  showBackButton?: boolean;
 }
 
 /** A component that displays a step in the request license flow where the user selects how ready
@@ -88,6 +89,7 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
   enableCollaborationLicensing = false,
   enableMarketplaceSalesLicensing = false,
   contentMode = 'full',
+  showBackButton = true,
   onNext,
   onPrev,
   onCancel,
@@ -309,13 +311,15 @@ const SelectCreationReadinessStep: FunctionComponent<SelectCreationReadinessStep
             data-testid='apply-to-license-step-cancel'>
             {translate('Action.Cancel')}
           </Button>
-          <Button
-            variant='outlined'
-            color='secondary'
-            onClick={onClickPrev}
-            data-testid='apply-to-license-step-back'>
-            {translate('Action.Back')}
-          </Button>
+          {showBackButton && (
+            <Button
+              variant='outlined'
+              color='secondary'
+              onClick={onClickPrev}
+              data-testid='apply-to-license-step-back'>
+              {translate('Action.Back')}
+            </Button>
+          )}
           <Button
             variant='contained'
             onClick={handleClickNext}

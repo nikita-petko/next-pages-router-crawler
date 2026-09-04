@@ -3,8 +3,14 @@ import type { LicenseDurationResponse } from '@rbx/client-content-licensing-api/
 import type { LicenseType } from '@rbx/client-content-licensing-api/v1';
 import { useTranslation } from '@rbx/intl';
 import { Grid, Typography } from '@rbx/ui';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { formatRoyaltyRate } from '../utils/format';
-import { getRevShareOnActivationDescriptionKey } from '../utils/licenseApplicationRequirementsFieldsUtils';
+import {
+  getRevShareOnActivationDescriptionKeys,
+  type RevShareOnActivationDescriptionKey,
+} from '../utils/licenseApplicationRequirementsFieldsUtils';
 import { getIsNonZeroRevShareFromValue } from '../utils/revShare';
 
 interface RevShareOnActivationNoticeProps {
@@ -21,8 +27,10 @@ const RevShareOnActivationNotice: FunctionComponent<RevShareOnActivationNoticePr
   licenseType,
   enableCollaborationLicensing = false,
 }) => {
-  const { translate } = useTranslation();
-  const descriptionKey = getRevShareOnActivationDescriptionKey({
+  const translation = useTranslation();
+  const { translate } = translation;
+  const { tPendingTranslation } = useTranslationWrapper(translation);
+  const descriptionKeys = getRevShareOnActivationDescriptionKeys({
     revShareValue,
     licenseDuration,
     licenseType,
@@ -30,20 +38,59 @@ const RevShareOnActivationNotice: FunctionComponent<RevShareOnActivationNoticePr
   });
   const isNonZeroRevShare = getIsNonZeroRevShareFromValue(revShareValue);
 
+  const getDescriptionText = (descriptionKey: RevShareOnActivationDescriptionKey) => {
+    if (descriptionKey === 'Description.MarketplaceSalesRevenueShareTiming') {
+      return tPendingTranslation(
+        'Avatar marketplace licenses will only monetize when the avatar item associated with the license has been sold either through Avatar Marketplace or in games that contain a marketplace.',
+        'Explanatory text shown in the revenue share timing section when the rights holder has selected their license type to be Marketplace sales license aka Avatar marketplace sales license.',
+        translationKey(
+          'Description.MarketplaceSalesRevenueShareTiming',
+          TranslationNamespace.AgreementsManager,
+        ),
+      );
+    }
+    if (descriptionKey === 'Description.AvatarRevShareTimingWithValue') {
+      return tPendingTranslation(
+        'Assets published to marketplace that are linked with this license will require a revenue share of {value}. The license can be attached to marketplace assets as soon as the rights holder approves your request.',
+        'Description text shown to Creators applying for a Marketplace sales license, a license which allows creators to create and publish officially licensed assets to the avatar marketplace. The description explains this license has a specified revenue share of {value} percentage for assets which are published to the avatar marketplace and have this license attached.',
+        translationKey('Description.AvatarRevShareTimingWithValue', TranslationNamespace.Licenses),
+        { value: formatRoyaltyRate(revShareValue) },
+      );
+    }
+    if (descriptionKey === 'Description.AvatarTimeLimitedRevShareWithValue') {
+      return tPendingTranslation(
+        'Assets published to marketplace that are linked with this license will require a revenue share of {value}. The license can be attached to marketplace assets as soon as the rights holder approves your request. The items will go on-sale and be subject to monetization on the above designated start date.',
+        'Description text shown to Creators applying for a Marketplace sales license, a license which allows creators to create and publish officially licensed assets to the avatar marketplace. The description explains this license has a specified revenue share of {value} percentage for assets which are published to the avatar marketplace and have this license attached. It also specifies that the linked assets will only go on-sale ate the designated start date.',
+        translationKey(
+          'Description.AvatarTimeLimitedRevShareWithValue',
+          TranslationNamespace.Licenses,
+        ),
+        { value: formatRoyaltyRate(revShareValue) },
+      );
+    }
+    if (isNonZeroRevShare) {
+      return translate(descriptionKey, {
+        value: formatRoyaltyRate(revShareValue),
+      });
+    }
+    return translate(descriptionKey);
+  };
+
+  const descriptions = descriptionKeys.map((descriptionKey) => ({
+    key: descriptionKey,
+    text: getDescriptionText(descriptionKey),
+  }));
+
   return (
     <Grid item container flexDirection='column' alignItems='left' paddingBottom={1} spacing={2}>
       <Grid item>
         <Typography variant='h6'>{translate('Label.RevShareTiming')}</Typography>
       </Grid>
-      <Grid item>
-        <Typography variant='body1'>
-          {isNonZeroRevShare
-            ? translate(descriptionKey, {
-                value: formatRoyaltyRate(revShareValue),
-              })
-            : translate(descriptionKey)}
-        </Typography>
-      </Grid>
+      {descriptions.map(({ key, text }) => (
+        <Grid item key={key}>
+          <Typography variant='body1'>{text}</Typography>
+        </Grid>
+      ))}
     </Grid>
   );
 };

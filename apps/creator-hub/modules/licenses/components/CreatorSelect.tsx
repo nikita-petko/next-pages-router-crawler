@@ -1,5 +1,5 @@
-import type { FunctionComponent } from 'react';
-import { useMemo } from 'react';
+import type { ChangeEvent, FunctionComponent } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from '@rbx/intl';
 import { Select, selectClasses, MenuItem, makeStyles, ListItemText } from '@rbx/ui';
 import type { TGroup, TUser } from '@modules/authentication/types';
@@ -11,6 +11,7 @@ interface CreatorSelectProps {
   groups: TGroup[];
   currentCreator: Creator;
   setCurrentCreator: (creator: Creator) => void;
+  label?: string;
 }
 
 const useStyles = makeStyles()((theme) => ({
@@ -30,32 +31,58 @@ const useStyles = makeStyles()((theme) => ({
   },
 }));
 
+const creatorTypeByToken: Record<string, CreatorType> = {
+  [CreatorType.User]: CreatorType.User,
+  [CreatorType.Group]: CreatorType.Group,
+};
+
 /** A dropdown component that shows a list of creators (users and groups) along with their icons */
 const CreatorSelect: FunctionComponent<CreatorSelectProps> = ({
   authenticatedUser,
   groups,
   currentCreator,
   setCurrentCreator,
+  label,
 }) => {
   const { translate } = useTranslation();
   const { classes } = useStyles();
+  const labelText = label ?? translate('Label.ExperiencesBy');
+
+  const handleChange = useCallback(
+    (event: ChangeEvent<{ value: unknown }>) => {
+      const value = String(event.target.value);
+      const [creatorType, creatorIdStr] = value.split('-');
+      const creatorId = Number(creatorIdStr);
+      const parsedCreatorType = creatorTypeByToken[creatorType];
+
+      if (parsedCreatorType === CreatorType.User) {
+        setCurrentCreator({
+          creatorId: authenticatedUser?.id,
+          creatorName: authenticatedUser?.name,
+          creatorType: CreatorType.User,
+        });
+        return;
+      }
+
+      if (parsedCreatorType === CreatorType.Group) {
+        const group = groups.find((ownedGroup) => ownedGroup.id === creatorId);
+        if (group != null) {
+          setCurrentCreator({
+            creatorId: group.id,
+            creatorName: group.name,
+            creatorType: CreatorType.Group,
+          });
+        }
+      }
+    },
+    [authenticatedUser, groups, setCurrentCreator],
+  );
 
   const menuItems = useMemo(() => {
     return [
       <MenuItem
         key={`${CreatorType.User}-${authenticatedUser?.id}`}
-        selected={
-          currentCreator?.creatorType === CreatorType.User &&
-          authenticatedUser?.id === currentCreator.creatorId
-        }
-        value={`${CreatorType.User}-${authenticatedUser?.id}`}
-        onClick={() =>
-          setCurrentCreator({
-            creatorId: authenticatedUser?.id,
-            creatorName: authenticatedUser?.name,
-            creatorType: CreatorType.User,
-          })
-        }>
+        value={`${CreatorType.User}-${authenticatedUser?.id}`}>
         <div className={classes.menuItemWrapper}>
           <CreatorThumbnailContainer
             className={classes.avatar}
@@ -71,18 +98,7 @@ const CreatorSelect: FunctionComponent<CreatorSelectProps> = ({
       ...groups.map((group) => (
         <MenuItem
           key={`${CreatorType.Group}-${group.id}`}
-          selected={
-            currentCreator?.creatorType === CreatorType.Group &&
-            group.id === currentCreator?.creatorId
-          }
-          value={`${CreatorType.Group}-${group.id}`}
-          onClick={() =>
-            setCurrentCreator({
-              creatorId: group.id,
-              creatorName: group.name,
-              creatorType: CreatorType.Group,
-            })
-          }>
+          value={`${CreatorType.Group}-${group.id}`}>
           <div className={classes.menuItemWrapper}>
             <CreatorThumbnailContainer
               className={classes.avatar}
@@ -97,14 +113,16 @@ const CreatorSelect: FunctionComponent<CreatorSelectProps> = ({
         </MenuItem>
       )),
     ];
-  }, [authenticatedUser, groups, classes, currentCreator, setCurrentCreator]);
+  }, [authenticatedUser, groups, classes]);
 
   return (
     <Select
-      label={translate('Label.ExperiencesBy')}
+      label={labelText}
       size='medium'
       margin='dense'
-      value={`${currentCreator.creatorType}-${currentCreator.creatorId}`}>
+      value={`${currentCreator.creatorType}-${currentCreator.creatorId}`}
+      onChange={handleChange}
+      data-testid='apply-to-license-creator-select'>
       {menuItems}
     </Select>
   );

@@ -10,20 +10,27 @@ import {
   isAvatarItemLicensingEnabled as isAvatarItemLicensingEnabledFlag,
   isInGameSalesLicensingEnabled as isInGameSalesLicensingEnabledFlag,
 } from '@generated/flags/contentLicensing';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
+import { useAuthentication } from '@modules/authentication/providers';
 import {
   useLicenseManagerLogger,
   LicenseManagerClickEvent,
 } from '@modules/ip/license-manager/utils/logger';
+import type { Creator } from '@modules/miscellaneous/common';
+import { CreatorType } from '@modules/miscellaneous/common';
 import { PageLoading } from '@modules/miscellaneous/components';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
 import type { ReviewTermsState } from '../components/ReviewTermsStep';
 import ReviewTermsStep from '../components/ReviewTermsStep';
+import SelectApplyAsStep from '../components/SelectApplyAsStep';
 import SelectCreationReadinessStep from '../components/SelectCreationReadinessStep';
 import SelectExperienceStep from '../components/SelectExperienceStep';
 import SetLicenseRequirementsStep from '../components/SetLicenseRequirementsStep';
 import SubmitApplicationStep from '../components/SubmitApplicationStep';
+import SelectedCreatorContext from '../context/SelectedCreatorContext';
 import SelectedExperienceContext from '../context/SelectedExperienceContext';
 import useGetPublicLicenseById from '../hooks/useGetPublicLicenseById';
 import {
@@ -33,6 +40,8 @@ import {
   LicenseRequestCancelReturnTo,
 } from '../urls';
 import type { CreatorPitchAttachment } from '../utils/creatorPitchAttachmentTypes';
+import { isAvatarLicenseApplyFlow } from '../utils/isAvatarLicenseApplyFlow';
+import { getEffectiveLicenseTypeForDisplay } from '../utils/licenseTypeTranslationKeys';
 import type { CollaborationSalesAvenues } from '../utils/salesAvenue';
 import { EMPTY_COLLABORATION_SALES_AVENUES } from '../utils/salesAvenue';
 
@@ -49,6 +58,7 @@ interface CancelConfirmationModalProps {
 }
 
 type ApplyToLicenseStepKey =
+  | 'SelectApplyAs'
   | 'SelectExperience'
   | 'SelectCreationReadiness'
   | 'SetLicenseRequirements'
@@ -73,8 +83,17 @@ const applyLicenseStepperSx = (theme: Theme) => ({
 
 function getApplyToLicenseStepKeys(
   showSetLicenseRequirementsStep: boolean,
+  showExperienceSelectStep: boolean,
+  showApplyAsStep: boolean,
 ): ApplyToLicenseStepKey[] {
-  const keys: ApplyToLicenseStepKey[] = ['SelectExperience', 'SelectCreationReadiness'];
+  const keys: ApplyToLicenseStepKey[] = [];
+  if (showApplyAsStep) {
+    keys.push('SelectApplyAs');
+  }
+  if (showExperienceSelectStep) {
+    keys.push('SelectExperience');
+  }
+  keys.push('SelectCreationReadiness');
   if (showSetLicenseRequirementsStep) {
     keys.push('SetLicenseRequirements');
   }
@@ -120,6 +139,7 @@ const ApplyToLicenseContainer: FunctionComponent<ApplyToLicenseContainerProps> =
   experienceId,
 }) => {
   const router = useRouter();
+  const { user: authenticatedUser } = useAuthentication();
   const cancelReturnHref = useMemo(() => {
     const raw = router.query?.[LICENSE_REQUEST_RETURN_TO_QUERY];
     const value = Array.isArray(raw) ? raw[0] : raw;
@@ -129,6 +149,12 @@ const ApplyToLicenseContainer: FunctionComponent<ApplyToLicenseContainerProps> =
     return EXPLORE_LISTING_DETAILS(listingId);
   }, [listingId, router.query]);
   const { translate } = useTranslation();
+  const { tPendingTranslation } = useTranslationWrapper(useTranslation());
+  const applyAsStepLabel = tPendingTranslation(
+    'Select license owner',
+    'Stepper label and apply-as dropdown/heading',
+    translationKey('Label.ApplyAs', TranslationNamespace.Licenses),
+  );
   const { logEvent } = useLicenseManagerLogger();
   const { isFetched } = useSettings();
   const { ready: isInGameSalesLicensingFlagReady, value: inGameSalesLicensingFlagValue } = useFlag(
@@ -144,6 +170,7 @@ const ApplyToLicenseContainer: FunctionComponent<ApplyToLicenseContainerProps> =
   const [selectedExperienceId, setSelectedExperienceId] = useState<number | null>(
     experienceId ?? null,
   );
+  const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
   const [isCancelConfirmationModalOpen, setIsCancelConfirmationModalOpen] =
     useState<boolean>(false);
   const [isRevShareNowTimingPreferred, setRevShareNowTimingPreference] = useState<
@@ -171,26 +198,50 @@ const ApplyToLicenseContainer: FunctionComponent<ApplyToLicenseContainerProps> =
     () => ({ selectedExperienceId, setSelectedExperienceId }),
     [selectedExperienceId, setSelectedExperienceId],
   );
+  const selectedCreatorProviderValue = useMemo(() => {
+    const defaultCreator: Creator | null =
+      authenticatedUser?.id != null
+        ? {
+            creatorId: authenticatedUser.id,
+            creatorName: authenticatedUser.name,
+            creatorType: CreatorType.User,
+          }
+        : null;
+    return { selectedCreator: selectedCreator ?? defaultCreator, setSelectedCreator };
+  }, [authenticatedUser, selectedCreator, setSelectedCreator]);
 
   const { isPending, isError, data: license } = useGetPublicLicenseById({ licenseId });
 
+  const effectiveLicenseType = getEffectiveLicenseTypeForDisplay(
+    license?.licenseType,
+    isInGameSalesLicensingEnabled,
+    isAvatarItemLicensingEnabled,
+  );
+  const isAvatarLicense = isAvatarLicenseApplyFlow(effectiveLicenseType);
   const showSetLicenseRequirementsStep = isInGameSalesLicensingEnabled;
+  const showApplyAsStep = isAvatarLicense;
+  const showExperienceSelectStep = !isAvatarLicense;
 
   const stepKeys = useMemo(
-    () => getApplyToLicenseStepKeys(showSetLicenseRequirementsStep),
-    [showSetLicenseRequirementsStep],
+    () =>
+      getApplyToLicenseStepKeys(
+        showSetLicenseRequirementsStep,
+        showExperienceSelectStep,
+        showApplyAsStep,
+      ),
+    [showSetLicenseRequirementsStep, showExperienceSelectStep, showApplyAsStep],
   );
 
   const stepLabels = useMemo(
     () =>
       stepKeys.map((stepKey) => {
         switch (stepKey) {
+          case 'SelectApplyAs':
+            return applyAsStepLabel;
           case 'SelectExperience':
             return translate('Label.SelectExperience');
           case 'SelectCreationReadiness':
-            return showSetLicenseRequirementsStep
-              ? translate('Label.TellUsMore')
-              : translate('Label.DescribeYourVision');
+            return translate('Label.DescribeYourVision');
           case 'SetLicenseRequirements':
             return translate('Heading.SetYourRequirements');
           case 'ReviewTerms':
@@ -203,7 +254,7 @@ const ApplyToLicenseContainer: FunctionComponent<ApplyToLicenseContainerProps> =
           }
         }
       }),
-    [showSetLicenseRequirementsStep, stepKeys, translate],
+    [applyAsStepLabel, stepKeys, translate],
   );
 
   const activeStepKey = stepKeys[activeStep];
@@ -227,13 +278,13 @@ const ApplyToLicenseContainer: FunctionComponent<ApplyToLicenseContainerProps> =
   }, []);
 
   const onClickCancel = useCallback(() => {
-    if (selectedExperienceId != null) {
+    if (activeStep > 0 || selectedExperienceId != null) {
       setIsCancelConfirmationModalOpen(true);
       return;
     }
     void logClickEvent(LicenseManagerClickEvent.CancelLicenseRequestNoExperienceSelectedClickEvent);
     void router.push(cancelReturnHref);
-  }, [selectedExperienceId, router, cancelReturnHref, logClickEvent]);
+  }, [activeStep, selectedExperienceId, router, cancelReturnHref, logClickEvent]);
 
   // Are you sure you want to cancel? > Select YES to confirm cancel
   const onClickConfirmCancellation = useCallback(() => {
@@ -284,96 +335,107 @@ const ApplyToLicenseContainer: FunctionComponent<ApplyToLicenseContainerProps> =
 
   return (
     <SelectedExperienceContext.Provider value={providerValue}>
-      <Grid item marginBottom={4}>
-        <Stepper activeStep={activeStep} sx={applyLicenseStepperSx}>
-          {stepKeys.map((stepKey, index) => (
-            <Step key={stepKey}>
-              <StepLabel>{stepLabels[index]}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
-      </Grid>
-      <Grid item container>
-        {activeStepKey === 'SelectExperience' && (
-          <SelectExperienceStep onNext={onNext} onCancel={onClickCancel} license={license} />
-        )}
-        {activeStepKey === 'SelectCreationReadiness' && (
-          <SelectCreationReadinessStep
-            revShareValue={license.royaltyRate ?? 0}
-            isRevShareNowTimingPreferred={
-              isRevShareNowTimingPreferred ?? license.enableMonetization
-            }
-            licenseRevShareTiming={license.enableMonetization}
-            setRevShareNowTimingPreference={setRevShareNowTimingPreference}
-            creatorPitch={creatorPitch}
-            setCreatorPitch={setCreatorPitch}
-            creatorPitchAttachments={creatorPitchAttachments}
-            setCreatorPitchAttachments={setCreatorPitchAttachments}
-            licenseDuration={license.licenseDuration ?? undefined}
-            licenseType={license.licenseType}
-            enableCollaborationLicensing={isInGameSalesLicensingEnabled}
-            enableMarketplaceSalesLicensing={isAvatarItemLicensingEnabled}
-            dateRange={dateRange}
-            setDateRange={setDateRange}
-            contentMode={showSetLicenseRequirementsStep ? 'pitchOnly' : 'full'}
-            onNext={onNext}
-            onPrev={onPrev}
-            onCancel={onClickCancel}
-          />
-        )}
-        {activeStepKey === 'SetLicenseRequirements' && (
-          <SetLicenseRequirementsStep
-            revShareValue={license.royaltyRate ?? 0}
-            isRevShareNowTimingPreferred={
-              isRevShareNowTimingPreferred ?? license.enableMonetization
-            }
-            licenseRevShareTiming={license.enableMonetization}
-            setRevShareNowTimingPreference={setRevShareNowTimingPreference}
-            licenseDuration={license.licenseDuration ?? undefined}
-            licenseType={license.licenseType}
-            enableCollaborationLicensing={isInGameSalesLicensingEnabled}
-            enableMarketplaceSalesLicensing={isAvatarItemLicensingEnabled}
-            dateRange={dateRange}
-            setDateRange={setDateRange}
-            collaborationSalesAvenues={collaborationSalesAvenues}
-            setCollaborationSalesAvenues={setCollaborationSalesAvenues}
-            onNext={onNext}
-            onPrev={onPrev}
-            onCancel={onClickCancel}
-          />
-        )}
-        {activeStepKey === 'ReviewTerms' && (
-          <ReviewTermsStep
-            license={license}
-            reviewTermsState={reviewTermsState}
-            setReviewTermsState={setReviewTermsState}
-            onNext={onNext}
-            onPrev={onPrev}
-            onCancel={onClickCancel}
-          />
-        )}
-        {activeStepKey === 'SubmitApplication' && (
-          <SubmitApplicationStep
-            onPrev={onPrev}
-            license={license}
-            listingId={listingId}
-            creatorPitch={creatorPitch}
-            creatorPitchAttachments={creatorPitchAttachments}
-            dateRange={dateRange}
-            enableCollaborationLicensing={isInGameSalesLicensingEnabled}
-            enableMarketplaceSalesLicensing={isAvatarItemLicensingEnabled}
-            collaborationSalesAvenues={collaborationSalesAvenues}
-            enableMonetization={isRevShareNowTimingPreferred}
-            onCancel={onClickCancel}
-            logClickEvent={logClickEvent}
-          />
-        )}
-      </Grid>
-      <CancelConfirmationModal
-        isOpen={isCancelConfirmationModalOpen}
-        onClickCancel={onClickCancelCancellation}
-        onClickConfirm={onClickConfirmCancellation}
-      />
+      <SelectedCreatorContext.Provider value={selectedCreatorProviderValue}>
+        <Grid item marginBottom={4}>
+          <Stepper activeStep={activeStep} sx={applyLicenseStepperSx}>
+            {stepKeys.map((stepKey, index) => (
+              <Step key={stepKey}>
+                <StepLabel>{stepLabels[index]}</StepLabel>
+              </Step>
+            ))}
+          </Stepper>
+        </Grid>
+        <Grid item container>
+          {activeStepKey === 'SelectApplyAs' && (
+            <SelectApplyAsStep
+              license={license}
+              effectiveLicenseType={effectiveLicenseType}
+              onNext={onNext}
+              onCancel={onClickCancel}
+            />
+          )}
+          {activeStepKey === 'SelectExperience' && (
+            <SelectExperienceStep onNext={onNext} onCancel={onClickCancel} license={license} />
+          )}
+          {activeStepKey === 'SelectCreationReadiness' && (
+            <SelectCreationReadinessStep
+              revShareValue={license.royaltyRate ?? 0}
+              isRevShareNowTimingPreferred={
+                isRevShareNowTimingPreferred ?? license.enableMonetization
+              }
+              licenseRevShareTiming={license.enableMonetization}
+              setRevShareNowTimingPreference={setRevShareNowTimingPreference}
+              creatorPitch={creatorPitch}
+              setCreatorPitch={setCreatorPitch}
+              creatorPitchAttachments={creatorPitchAttachments}
+              setCreatorPitchAttachments={setCreatorPitchAttachments}
+              licenseDuration={license.licenseDuration ?? undefined}
+              licenseType={license.licenseType}
+              enableCollaborationLicensing={isInGameSalesLicensingEnabled}
+              enableMarketplaceSalesLicensing={isAvatarItemLicensingEnabled}
+              dateRange={dateRange}
+              setDateRange={setDateRange}
+              contentMode={showSetLicenseRequirementsStep ? 'pitchOnly' : 'full'}
+              showBackButton={showExperienceSelectStep || showApplyAsStep}
+              onNext={onNext}
+              onPrev={onPrev}
+              onCancel={onClickCancel}
+            />
+          )}
+          {activeStepKey === 'SetLicenseRequirements' && (
+            <SetLicenseRequirementsStep
+              revShareValue={license.royaltyRate ?? 0}
+              isRevShareNowTimingPreferred={
+                isRevShareNowTimingPreferred ?? license.enableMonetization
+              }
+              licenseRevShareTiming={license.enableMonetization}
+              setRevShareNowTimingPreference={setRevShareNowTimingPreference}
+              licenseDuration={license.licenseDuration ?? undefined}
+              licenseType={license.licenseType}
+              enableCollaborationLicensing={isInGameSalesLicensingEnabled}
+              enableMarketplaceSalesLicensing={isAvatarItemLicensingEnabled}
+              dateRange={dateRange}
+              setDateRange={setDateRange}
+              collaborationSalesAvenues={collaborationSalesAvenues}
+              setCollaborationSalesAvenues={setCollaborationSalesAvenues}
+              onNext={onNext}
+              onPrev={onPrev}
+              onCancel={onClickCancel}
+            />
+          )}
+          {activeStepKey === 'ReviewTerms' && (
+            <ReviewTermsStep
+              license={license}
+              reviewTermsState={reviewTermsState}
+              setReviewTermsState={setReviewTermsState}
+              onNext={onNext}
+              onPrev={onPrev}
+              onCancel={onClickCancel}
+            />
+          )}
+          {activeStepKey === 'SubmitApplication' && (
+            <SubmitApplicationStep
+              onPrev={onPrev}
+              license={license}
+              listingId={listingId}
+              creatorPitch={creatorPitch}
+              creatorPitchAttachments={creatorPitchAttachments}
+              dateRange={dateRange}
+              enableCollaborationLicensing={isInGameSalesLicensingEnabled}
+              enableMarketplaceSalesLicensing={isAvatarItemLicensingEnabled}
+              collaborationSalesAvenues={collaborationSalesAvenues}
+              enableMonetization={isRevShareNowTimingPreferred}
+              onCancel={onClickCancel}
+              logClickEvent={logClickEvent}
+            />
+          )}
+        </Grid>
+        <CancelConfirmationModal
+          isOpen={isCancelConfirmationModalOpen}
+          onClickCancel={onClickCancelCancellation}
+          onClickConfirm={onClickConfirmCancellation}
+        />
+      </SelectedCreatorContext.Provider>
     </SelectedExperienceContext.Provider>
   );
 };

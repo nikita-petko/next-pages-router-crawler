@@ -6,6 +6,8 @@ import { useFlag } from '@rbx/flags';
 import { useTranslation, useLocalization, Locale } from '@rbx/intl';
 import { Button, Grid, Typography } from '@rbx/ui';
 import { isImageAttachmentEnabledInLicenseApplication } from '@generated/flags/contentLicensing';
+import useTranslationWrapper from '@modules/analytics-translations/useTranslationWrapper';
+import { translationKey } from '@modules/analytics-translations/wrapperFunctions';
 import {
   KeyValuePair,
   KeyValuePairContainer,
@@ -16,10 +18,13 @@ import {
   useLicenseManagerLoggerLogOnce,
 } from '@modules/ip/license-manager/utils/logger';
 import { getDateRangeLabel } from '@modules/ip/license-manager/utils/timeLimitedLicense';
+import CreatorThumbnailContainer from '@modules/miscellaneous/common/containers/CreatorThumbnailContainer';
 import { PageLoading } from '@modules/miscellaneous/components';
 import FailureView from '@modules/miscellaneous/components/FailureView/FailureView';
 import Flex from '@modules/miscellaneous/components/Flex';
+import { TranslationNamespace } from '@modules/miscellaneous/localization';
 import { useSettings } from '@modules/settings/SettingsProvider/SettingsProvider';
+import SelectedCreatorContext from '../context/SelectedCreatorContext';
 import SelectedExperienceContext from '../context/SelectedExperienceContext';
 import useApplyToPublicLicenseMutation from '../hooks/useApplyToLicenseMutation';
 import {
@@ -30,6 +35,8 @@ import {
   isCreatorPitchAttachmentsRequired,
 } from '../utils/creatorPitchAttachmentTypes';
 import { getApplyFlowRevShareOnActivation } from '../utils/getApplyFlowRevShareOnActivation';
+import { isAvatarLicenseApplyFlow } from '../utils/isAvatarLicenseApplyFlow';
+import { getEffectiveLicenseTypeForDisplay } from '../utils/licenseTypeTranslationKeys';
 import type { CollaborationSalesAvenues } from '../utils/salesAvenue';
 import ApplicationSubmissionModal from './ApplicationSubmissionModal';
 import ExperienceSummaryCardContainer from './ExperienceSummaryCardContainer';
@@ -70,6 +77,7 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
   logClickEvent,
 }) => {
   const { translate } = useTranslation();
+  const { tPendingTranslation } = useTranslationWrapper(useTranslation());
   const { locale } = useLocalization();
   const { isFetched } = useSettings();
   const { ready: isImageAttachmentFlagReady, value: isImageAttachmentEnabled } = useFlag(
@@ -82,8 +90,19 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
       (isCreatorPitchAttachmentsRequired(license.licenseType) &&
         !hasUsableCreatorPitchAttachments(creatorPitchAttachments)));
 
+  const selectedLicenseOwnerLabel = tPendingTranslation(
+    'Selected license owner',
+    'Heading on the review-and-submit step showing who was chosen as the license owner (apply-as target). Distinct from the earlier picker step labeled Select license owner.',
+    translationKey('Label.SelectedLicenseOwner', TranslationNamespace.Licenses),
+  );
+  const requestLabel = tPendingTranslation(
+    'Apply',
+    'Apply for a license',
+    translationKey('Action.Apply', TranslationNamespace.Licenses),
+  );
   const context = useContext(SelectedExperienceContext);
   const { selectedExperienceId } = context;
+  const { selectedCreator } = useContext(SelectedCreatorContext);
   const licenseId = license.id;
 
   const revShareOnActivation = getApplyFlowRevShareOnActivation({
@@ -92,6 +111,16 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
     enableCollaborationLicensing,
     enableMarketplaceSalesLicensing,
   });
+
+  const effectiveLicenseType = getEffectiveLicenseTypeForDisplay(
+    license.licenseType,
+    enableCollaborationLicensing,
+    enableMarketplaceSalesLicensing,
+  );
+  const isAvatarLicense = isAvatarLicenseApplyFlow(effectiveLicenseType);
+  const requiresExperienceSelection = !isAvatarLicense;
+  const applyCreatorId = selectedCreator?.creatorId;
+  const applyCreatorType = selectedCreator?.creatorType;
 
   const showCollaborationSalesAvenueFields =
     enableCollaborationLicensing &&
@@ -105,10 +134,10 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
   );
 
   const { logOnce } = useLicenseManagerLoggerLogOnce();
-  if (licenseId && selectedExperienceId) {
+  if (licenseId && (selectedExperienceId || isAvatarLicense)) {
     logOnce(LicenseManagerImpressionEvent.ReviewAndSubmitLicenseRequestStepImpressionEvent, {
       licenseId,
-      experienceId: selectedExperienceId,
+      experienceId: selectedExperienceId ?? '',
     });
   }
 
@@ -119,27 +148,39 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
     if (logClickEvent) {
       logClickEvent(LicenseManagerClickEvent.SubmitLicenseRequestClickEvent);
     }
-    if (selectedExperienceId) {
+    if (
+      selectedExperienceId ||
+      (isAvatarLicense && applyCreatorId != null && applyCreatorType != null)
+    ) {
       const pitch = creatorPitch.trim();
       const pitchImageAssetIds =
         getSubmittableCreatorPitchAttachmentAssetIds(creatorPitchAttachments);
-      await applyToLicenseMutation.mutateAsync({
-        universeId: selectedExperienceId,
-        pitch,
-        dateRange:
-          license.licenseDuration?.durationType === LicenseDurationType.TimeLimited
-            ? dateRange
+      await applyToLicenseMutation
+        .mutateAsync({
+          universeId: selectedExperienceId ?? undefined,
+          applyCreator:
+            isAvatarLicense && applyCreatorId != null && applyCreatorType != null
+              ? { creatorId: applyCreatorId, creatorType: applyCreatorType }
+              : undefined,
+          pitch,
+          dateRange:
+            license.licenseDuration?.durationType === LicenseDurationType.TimeLimited
+              ? dateRange
+              : undefined,
+          collaborationSalesAvenues: showCollaborationSalesAvenueFields
+            ? collaborationSalesAvenues
             : undefined,
-        collaborationSalesAvenues: showCollaborationSalesAvenueFields
-          ? collaborationSalesAvenues
-          : undefined,
-        pitchImageAssetIds: pitchImageAssetIds.length > 0 ? pitchImageAssetIds : undefined,
-      });
+          pitchImageAssetIds: pitchImageAssetIds.length > 0 ? pitchImageAssetIds : undefined,
+        })
+        .catch(() => undefined);
     }
   }, [
     isSubmitBlockedByAttachments,
     logClickEvent,
     selectedExperienceId,
+    isAvatarLicense,
+    applyCreatorId,
+    applyCreatorType,
     creatorPitch,
     creatorPitchAttachments,
     applyToLicenseMutation,
@@ -149,7 +190,11 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
     collaborationSalesAvenues,
   ]);
 
-  if (!selectedExperienceId || !licenseId) {
+  if (
+    !licenseId ||
+    (requiresExperienceSelection && !selectedExperienceId) ||
+    (isAvatarLicense && (applyCreatorId == null || applyCreatorType == null))
+  ) {
     return (
       <FailureView
         title={translate('Heading.FailedToLoadPage')}
@@ -169,44 +214,63 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
           <Grid item>
             <Typography variant='h6'>{translate('Description.ReviewApplication')}</Typography>
           </Grid>
-          <Grid item flexDirection='column' marginTop={6} marginBottom={4}>
-            <Typography variant='h5' color='primary'>
+          <Grid item flexDirection='column' marginTop={2}>
+            <Typography variant='h6' color='primary'>
               {translate('Label.SelectedLicense')}
             </Typography>
-            <LicenseSummaryCardContainer license={license} listingId={listingId} />
-          </Grid>
-          <Grid item flexDirection='column' marginTop={2}>
-            <Typography variant='h5' color='primary'>
-              {translate('Label.SelectedCreation')}
-            </Typography>
-            <ExperienceSummaryCardContainer
-              experienceId={selectedExperienceId}
-              creationDetailsContent={
-                showCollaborationSalesAvenueFields && collaborationSalesAvenues ? (
-                  <KeyValuePairContainer>
-                    {collaborationSalesAvenues.developerProducts.length > 0 && (
-                      <KeyValuePair
-                        label={translate('Label.DeveloperProducts')}
-                        value={
-                          <SalesAvenueResolvedGrid
-                            entries={collaborationSalesAvenues.developerProducts}
-                          />
-                        }
-                      />
-                    )}
-                    {collaborationSalesAvenues.gamePasses.length > 0 && (
-                      <KeyValuePair
-                        label={translate('Label.GamePasses')}
-                        value={
-                          <SalesAvenueResolvedGrid entries={collaborationSalesAvenues.gamePasses} />
-                        }
-                      />
-                    )}
-                  </KeyValuePairContainer>
-                ) : undefined
-              }
+            <LicenseSummaryCardContainer
+              license={license}
+              listingId={listingId}
+              effectiveLicenseType={effectiveLicenseType}
             />
           </Grid>
+          {isAvatarLicense && selectedCreator != null && (
+            <Grid item flexDirection='column' marginTop={2}>
+              <Typography variant='h6' color='primary'>
+                {selectedLicenseOwnerLabel}
+              </Typography>
+              <div className='flex items-center gap-xsmall'>
+                <CreatorThumbnailContainer className='size-400' creator={selectedCreator} />
+                <Typography variant='body1'>{selectedCreator.creatorName}</Typography>
+              </div>
+            </Grid>
+          )}
+          {requiresExperienceSelection && selectedExperienceId != null && (
+            <Grid item flexDirection='column' marginTop={2}>
+              <Typography variant='h6' color='primary'>
+                {translate('Label.SelectedCreation')}
+              </Typography>
+              <ExperienceSummaryCardContainer
+                experienceId={selectedExperienceId}
+                creationDetailsContent={
+                  showCollaborationSalesAvenueFields && collaborationSalesAvenues ? (
+                    <KeyValuePairContainer>
+                      {collaborationSalesAvenues.developerProducts.length > 0 && (
+                        <KeyValuePair
+                          label={translate('Label.DeveloperProducts')}
+                          value={
+                            <SalesAvenueResolvedGrid
+                              entries={collaborationSalesAvenues.developerProducts}
+                            />
+                          }
+                        />
+                      )}
+                      {collaborationSalesAvenues.gamePasses.length > 0 && (
+                        <KeyValuePair
+                          label={translate('Label.GamePasses')}
+                          value={
+                            <SalesAvenueResolvedGrid
+                              entries={collaborationSalesAvenues.gamePasses}
+                            />
+                          }
+                        />
+                      )}
+                    </KeyValuePairContainer>
+                  ) : undefined
+                }
+              />
+            </Grid>
+          )}
           <Grid
             item
             flexDirection='column'
@@ -262,11 +326,12 @@ const SubmitApplicationStep: FunctionComponent<SubmitApplicationStepProps> = ({
               loading={applyToLicenseMutation.isPending}
               disabled={applyToLicenseMutation.isPending || isSubmitBlockedByAttachments}
               data-testid='apply-to-license-submit'>
-              {translate('Action.Submit')}
+              {requestLabel}
             </Button>
           </Flex>
         </Grid>
       </Grid>
+      {/* TODO - Show a specific error if the agreement is already active */}
       {applyToLicenseMutation.isError && (
         <Grid item>
           <Typography variant='body2' color='error'>

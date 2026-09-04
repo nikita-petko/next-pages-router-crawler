@@ -21,7 +21,9 @@ import { getApplyFlowRevShareOnActivation } from '../utils/getApplyFlowRevShareO
 import {
   RevShareTiming,
   revShareTimingFromRadioValue,
+  shouldShowRevSharePreferenceRadio,
 } from '../utils/licenseApplicationRequirementsFieldsUtils';
+import { getEffectiveLicenseTypeForDisplay } from '../utils/licenseTypeTranslationKeys';
 import { getIsNonZeroRevShareFromValue } from '../utils/revShare';
 import type { CollaborationSalesAvenues } from '../utils/salesAvenue';
 import { EMPTY_COLLABORATION_SALES_AVENUES } from '../utils/salesAvenue';
@@ -93,6 +95,12 @@ const LicenseApplicationRequirementsFields: FunctionComponent<
   const locale = localizationLocale ?? Locale.English;
   const { classes } = useApplyToLicenseContainerStyles();
 
+  const effectiveLicenseType = getEffectiveLicenseTypeForDisplay(
+    licenseType,
+    enableCollaborationLicensing,
+    enableMarketplaceSalesLicensing,
+  );
+
   const revShareOnActivation = getApplyFlowRevShareOnActivation({
     durationType: licenseDuration?.durationType,
     licenseType,
@@ -100,8 +108,13 @@ const LicenseApplicationRequirementsFields: FunctionComponent<
     enableMarketplaceSalesLicensing,
   });
 
-  const showRevSharePreferenceRadio =
-    !revShareOnActivation && licenseDuration?.durationType === LicenseDurationType.Perpetual;
+  const isTimeLimitedLicense = licenseDuration?.durationType === LicenseDurationType.TimeLimited;
+  const showRevSharePreferenceRadio = shouldShowRevSharePreferenceRadio(
+    revShareOnActivation,
+    licenseDuration?.durationType,
+    effectiveLicenseType,
+  );
+  const showRevShareOnActivationNotice = revShareOnActivation;
 
   const handleRevShareRadioValueChange = useCallback(
     (value: string) => {
@@ -204,7 +217,7 @@ const LicenseApplicationRequirementsFields: FunctionComponent<
         </Grid>
       )}
 
-      {licenseDuration?.durationType === LicenseDurationType.TimeLimited && (
+      {isTimeLimitedLicense && (
         <Grid item container flexDirection='column' alignItems='left' paddingBottom={1} spacing={2}>
           <Grid item>
             <Typography variant='h6'>{translate('Header.DateRangeRequest')}</Typography>
@@ -274,11 +287,11 @@ const LicenseApplicationRequirementsFields: FunctionComponent<
         </Grid>
       )}
 
-      {revShareOnActivation && (
+      {showRevShareOnActivationNotice && (
         <RevShareOnActivationNotice
           revShareValue={revShareValue}
           licenseDuration={licenseDuration}
-          licenseType={licenseType}
+          licenseType={effectiveLicenseType}
           enableCollaborationLicensing={enableCollaborationLicensing}
         />
       )}

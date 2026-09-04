@@ -78,8 +78,8 @@ export function getCreatorEarningsRequirementText(
 
   return {
     label: tPendingTranslation(
-      '90 day earnings',
-      'Label for the trailing 90 day earnings of an avatar marketplace license',
+      'Minimum creator 90 day earnings',
+      'Label for the minimum 90 day earnings requirement for a creator applying for an avatar marketplace license',
       translationKey('Label.NinetyDayEarnings', TranslationNamespace.Licenses),
     ),
     tooltip: tPendingTranslation(

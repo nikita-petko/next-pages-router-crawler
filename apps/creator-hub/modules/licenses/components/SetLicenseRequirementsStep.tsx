@@ -21,6 +21,7 @@ import {
   isRevSharePreferenceSelectionIncomplete,
   type RevShareTiming,
 } from '../utils/licenseApplicationRequirementsFieldsUtils';
+import { getEffectiveLicenseTypeForDisplay } from '../utils/licenseTypeTranslationKeys';
 import type { CollaborationSalesAvenues } from '../utils/salesAvenue';
 import type { LicenseApplicationRequirementsFormValues } from './LicenseApplicationRequirementsFields';
 import LicenseApplicationRequirementsFields from './LicenseApplicationRequirementsFields';
@@ -84,6 +85,12 @@ const SetLicenseRequirementsStep: FunctionComponent<SetLicenseRequirementsStepPr
     enableMarketplaceSalesLicensing,
   });
 
+  const effectiveLicenseType = getEffectiveLicenseTypeForDisplay(
+    licenseType,
+    enableCollaborationLicensing,
+    enableMarketplaceSalesLicensing,
+  );
+
   const showCollaborationSalesAvenueFields = shouldShowCollaborationSalesAvenueFields(
     enableCollaborationLicensing,
     licenseType,
@@ -133,6 +140,7 @@ const SetLicenseRequirementsStep: FunctionComponent<SetLicenseRequirementsStepPr
         revShareOnActivation,
         durationType: licenseDuration?.durationType,
         revShareTiming: isRevShareNowTimingPreferredInternal,
+        licenseType: effectiveLicenseType,
       })
     ) {
       return;
@@ -152,6 +160,7 @@ const SetLicenseRequirementsStep: FunctionComponent<SetLicenseRequirementsStepPr
     persistRequirementsState();
     onNext();
   }, [
+    effectiveLicenseType,
     isRevShareNowTimingPreferredInternal,
     isTimeLimitedLicense,
     licenseDuration?.durationType,

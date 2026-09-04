@@ -1,5 +1,6 @@
 import type { LicenseDurationResponse } from '@rbx/client-content-licensing-api/v1';
 import { LicenseDurationType, LicenseType } from '@rbx/client-content-licensing-api/v1';
+import { isAvatarLicenseApplyFlow } from './isAvatarLicenseApplyFlow';
 import { getIsNonZeroRevShareFromValue } from './revShare';
 
 export enum RevShareTiming {
@@ -48,7 +49,11 @@ export function isRevShareNowTimingPreferred(
 export function shouldShowRevSharePreferenceRadio(
   revShareOnActivation: boolean,
   durationType?: LicenseDurationType,
+  licenseType?: LicenseType,
 ): boolean {
+  if (isAvatarLicenseApplyFlow(licenseType)) {
+    return false;
+  }
   return !revShareOnActivation && durationType === LicenseDurationType.Perpetual;
 }
 
@@ -58,14 +63,16 @@ export function isRevSharePreferenceSelectionIncomplete({
   revShareOnActivation,
   durationType,
   revShareTiming,
+  licenseType,
 }: {
   revShareValue?: number;
   revShareOnActivation: boolean;
   durationType?: LicenseDurationType;
   revShareTiming?: RevShareTiming;
+  licenseType?: LicenseType;
 }): boolean {
   return (
-    shouldShowRevSharePreferenceRadio(revShareOnActivation, durationType) &&
+    shouldShowRevSharePreferenceRadio(revShareOnActivation, durationType, licenseType) &&
     getIsNonZeroRevShareFromValue(revShareValue) &&
     (revShareTiming === undefined || revShareTiming === RevShareTiming.NoPreference)
   );
@@ -75,10 +82,13 @@ export type RevShareOnActivationDescriptionKey =
   | 'Description.TimeLimitedLicenseZeroRevShare'
   | 'Description.CollaborationTimeLimitedRevShareTimingWithValue'
   | 'Description.TimeLimitedRevShareTimingWithValue'
-  | 'Description.CollaborationRevShareTimingWithValue';
+  | 'Description.CollaborationRevShareTimingWithValue'
+  | 'Description.MarketplaceSalesRevenueShareTiming'
+  | 'Description.AvatarRevShareTimingWithValue'
+  | 'Description.AvatarTimeLimitedRevShareWithValue';
 
-/** Translation key for fixed rev-share-on-activation copy in the apply flow. */
-export function getRevShareOnActivationDescriptionKey({
+/** Translation keys for fixed rev-share-on-activation copy in the apply flow, in render order. */
+export function getRevShareOnActivationDescriptionKeys({
   revShareValue,
   licenseDuration,
   licenseType,
@@ -88,24 +98,38 @@ export function getRevShareOnActivationDescriptionKey({
   licenseDuration?: LicenseDurationResponse;
   licenseType?: LicenseType;
   enableCollaborationLicensing: boolean;
-}): RevShareOnActivationDescriptionKey {
+}): RevShareOnActivationDescriptionKey[] {
   if (!getIsNonZeroRevShareFromValue(revShareValue)) {
-    return 'Description.TimeLimitedLicenseZeroRevShare';
+    return ['Description.TimeLimitedLicenseZeroRevShare'];
   }
 
+  const isAvatarLicense = isAvatarLicenseApplyFlow(licenseType);
   const isTimeLimited = licenseDuration?.durationType === LicenseDurationType.TimeLimited;
-  const isCollaboration =
+  const isInExperienceSales =
     enableCollaborationLicensing && licenseType === LicenseType.CollaborationInExperienceSale;
 
-  if (isCollaboration && isTimeLimited) {
-    return 'Description.CollaborationTimeLimitedRevShareTimingWithValue';
-  }
-  if (isTimeLimited) {
-    return 'Description.TimeLimitedRevShareTimingWithValue';
-  }
-  if (isCollaboration) {
-    return 'Description.CollaborationRevShareTimingWithValue';
+  if (isAvatarLicense) {
+    if (isTimeLimited) {
+      return [
+        'Description.MarketplaceSalesRevenueShareTiming',
+        'Description.AvatarTimeLimitedRevShareWithValue',
+      ];
+    }
+    return [
+      'Description.MarketplaceSalesRevenueShareTiming',
+      'Description.AvatarRevShareTimingWithValue',
+    ];
   }
 
-  return 'Description.TimeLimitedRevShareTimingWithValue';
+  if (isInExperienceSales) {
+    if (isTimeLimited) {
+      return ['Description.CollaborationTimeLimitedRevShareTimingWithValue'];
+    }
+    return ['Description.CollaborationRevShareTimingWithValue'];
+  }
+
+  if (isTimeLimited) {
+    return ['Description.TimeLimitedRevShareTimingWithValue'];
+  }
+  return ['Description.TimeLimitedRevShareTimingWithValue'];
 }

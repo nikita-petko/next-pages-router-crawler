@@ -2,7 +2,10 @@ import { captureException } from '@sentry/nextjs';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { LicenseType } from '@rbx/client-content-licensing-api/v1';
 import contentLicensingClient from '@modules/clients/contentLicensing';
-import { buildApplyToLicenseTargets } from '../utils/buildApplyToLicenseTargets';
+import {
+  buildApplyToLicenseTargets,
+  type ApplyToLicenseCreator,
+} from '../utils/buildApplyToLicenseTargets';
 import {
   buildApplyToLicenseRevenueTargets,
   type CollaborationSalesAvenues,
@@ -26,6 +29,7 @@ export const getLicenseKey = (licenseId: string) => [
 
 export interface ApplyToPublicLicenseParams {
   universeId?: number;
+  applyCreator?: ApplyToLicenseCreator;
   pitch: string;
   dateRange: { startDate: Date | null; endDate: Date | null } | undefined;
   collaborationSalesAvenues?: CollaborationSalesAvenues;
@@ -43,6 +47,7 @@ const useApplyToPublicLicenseMutation = (
   return useMutation({
     mutationFn: async ({
       universeId,
+      applyCreator,
       pitch,
       dateRange,
       collaborationSalesAvenues,
@@ -50,7 +55,11 @@ const useApplyToPublicLicenseMutation = (
     }: ApplyToPublicLicenseParams) => {
       const startDate = dateRange?.startDate ?? null;
       const endDate = dateRange?.endDate ? toEndOfSelectedCalendarDayUtc(dateRange.endDate) : null;
-      const targets = buildApplyToLicenseTargets({ universeId });
+      const targets = buildApplyToLicenseTargets({
+        licenseType,
+        universeId,
+        applyCreator,
+      });
       const revenueTargets = buildApplyToLicenseRevenueTargets({
         enableCollaborationLicensing,
         licenseType,
@@ -75,7 +84,12 @@ const useApplyToPublicLicenseMutation = (
     onError: (error, params) => {
       captureException(error, {
         tags: { module: 'licenses', operation: 'applyToPublicLicense' },
-        extra: { licenseId, universeId: params.universeId, enableMonetization },
+        extra: {
+          licenseId,
+          universeId: params.universeId,
+          applyCreator: params.applyCreator,
+          enableMonetization,
+        },
       });
     },
   });
