@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { Asset } from '@rbx/client-assets-upload-api/v1';
 import { ModerationState } from '@rbx/client-assets-upload-api/v1';
+import { RobloxWebResponsesThumbnailsThumbnailBatchResponseStateEnum } from '@rbx/client-thumbnails/v1';
 import assetsUploadApiClient, { FieldMask } from '@modules/clients/assetsupload';
 import contentLicensingClient from '@modules/clients/contentLicensing';
 import {
@@ -31,6 +32,36 @@ const mapModerationStateToAttachmentFields = (
       };
     case ModerationState.Approved:
     case ModerationState.Unspecified:
+    default:
+      return {
+        status: CreatorPitchAttachmentStatus.Ready,
+      };
+  }
+};
+
+/**
+ * The rights holder reads pitch images through contextual thumbnails, so the batch state is the
+ * only moderation signal available. Only a terminal `Blocked` result is mapped off `Ready`:
+ * `usePitchImageAttachmentsInspector` fetches full-size images for `Ready` assets via asset
+ * delivery, which does not depend on thumbnail generation. Mapping a still-polling state such as
+ * `InReview` to `PendingModeration` would drop the asset from that path, toast it as unavailable,
+ * and — for `?inspect=<assetId>` — strip the deep link so it cannot recover when polling completes.
+ */
+const mapThumbnailStateToAttachmentFields = (
+  state: RobloxWebResponsesThumbnailsThumbnailBatchResponseStateEnum | undefined,
+): Pick<CreatorPitchAttachment, 'status' | 'errorType'> => {
+  switch (state) {
+    case RobloxWebResponsesThumbnailsThumbnailBatchResponseStateEnum.Blocked:
+      return {
+        status: CreatorPitchAttachmentStatus.Error,
+        errorType: CreatorPitchAttachmentErrorType.Moderated,
+      };
+    case RobloxWebResponsesThumbnailsThumbnailBatchResponseStateEnum.Completed:
+    case RobloxWebResponsesThumbnailsThumbnailBatchResponseStateEnum.Error:
+    case RobloxWebResponsesThumbnailsThumbnailBatchResponseStateEnum.InReview:
+    case RobloxWebResponsesThumbnailsThumbnailBatchResponseStateEnum.Pending:
+    case RobloxWebResponsesThumbnailsThumbnailBatchResponseStateEnum.TemporarilyUnavailable:
+    case undefined:
     default:
       return {
         status: CreatorPitchAttachmentStatus.Ready,
@@ -151,11 +182,15 @@ export const useGetCreatorPitchImageAttachments = ({
 
     return pitchImagesQuery.data?.assetIds.map((assetId) => {
       const imageUrl = thumbnailUrlsQuery.data?.urls.get(assetId);
+      const { status, errorType } = mapThumbnailStateToAttachmentFields(
+        thumbnailUrlsQuery.data?.states.get(assetId),
+      );
       return {
         id: String(assetId),
         fileName: String(assetId),
-        status: CreatorPitchAttachmentStatus.Ready,
+        status,
         assetId,
+        ...(errorType != null ? { errorType } : {}),
         ...(imageUrl != null && { imageUrl }),
       };
     });
