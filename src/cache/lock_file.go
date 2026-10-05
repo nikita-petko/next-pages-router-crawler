@@ -3,6 +3,8 @@ package cache
 import (
 	"os"
 	"syscall"
+
+	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/flags"
 )
 
 type lockFile struct {
@@ -11,6 +13,10 @@ type lockFile struct {
 
 // tryLock attempts to acquire an exclusive lock on the specified file path.
 func tryLock(filePath string) (*lockFile, error) {
+	if !*flags.ShouldLockCache {
+		return nil, nil
+	}
+
 	// Create the lock file if it doesn't exist
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {

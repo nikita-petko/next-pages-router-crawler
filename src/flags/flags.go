@@ -41,6 +41,9 @@ var (
 	// ClearOutput determines if the output should be cleared before starting the daemon. (environment variable: CLEAR_OUTPUT)
 	ClearOutput = flag.Bool("clear-output", false, "Clear the output before starting the daemon. (environment variable: CLEAR_OUTPUT)")
 
+	// ShouldLockCache determines if the cache should be locked before starting the daemon. (environment variable: SHOULD_LOCK_CACHE)
+	ShouldLockCache = flag.Bool("should-lock-cache", true, "Determines if the cache should be locked before starting the daemon. (environment variable: SHOULD_LOCK_CACHE)")
+
 	//// Alerting
 
 	// SendGridApiKey is the SendGrid API key. This is optional. (environment variable: SENDGRID_API_KEY)
