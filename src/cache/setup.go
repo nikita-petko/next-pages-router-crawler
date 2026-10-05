@@ -55,4 +55,6 @@ func Close() {
 			glog.Errorf("Failed to release lock on cache directory: %v", err)
 		}
 	}
+
+	persistHashMap()
 }

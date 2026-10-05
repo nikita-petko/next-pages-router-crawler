@@ -3,12 +3,14 @@ package cache
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"io"
 	"net/http"
 	"os"
 	"path"
 	"sync"
 
+	"github.com/golang/glog"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/flags"
 )
 
@@ -67,10 +69,35 @@ func computeFileHash(filePath string) (string, error) {
 
 // initializeHashMap initializes the hash map with existing cache files and their corresponding hashes.
 func initializeHashMap() error {
+	if !*flags.ShouldInitializeHashMap {
+		return nil
+	}
+
+	// First try and load a cached hash map so we don't have to recompute hashes for unchanged files.
+	hashFile := path.Join(*flags.CachePath, "hashes.json")
+	if _, err := os.Stat(hashFile); err == nil {
+		glog.Infof("Loading cached hash map from %s", hashFile)
+
+		// Load the cached hash map from the JSON file
+		data, err := os.ReadFile(hashFile)
+		if err != nil {
+			return err
+		}
+
+		err = json.Unmarshal(data, &hashMap)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
 	files, err := recursivelyReadDirectory(*flags.CachePath)
 	if err != nil {
 		return err
 	}
+
+	glog.Infof("No cached hash map found, computing hashes for %d existing cache files.", len(files))
 
 	for _, file := range files {
 		if path.Ext(file) == ".lock" || path.Ext(file) == ".build" {
@@ -83,6 +110,17 @@ func initializeHashMap() error {
 		}
 
 		hashMap[file] = hash
+	}
+
+	// Save the computed hash map to the JSON file for future use.
+	data, err := json.Marshal(hashMap)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(hashFile, data, 0644)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -137,6 +175,24 @@ func writeFileAndUpdateHashMap(resolvedPath string, data []byte) error {
 
 	// Update the hash map with the new hash
 	hashMap[resolvedPath] = hash
+
+	return nil
+}
+
+func persistHashMap() error {
+	hashMapLock.RLock()
+	defer hashMapLock.RUnlock()
+
+	hashFile := path.Join(*flags.CachePath, "hashes.json")
+	data, err := json.Marshal(hashMap)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(hashFile, data, 0644)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

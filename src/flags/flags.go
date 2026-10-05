@@ -44,6 +44,9 @@ var (
 	// ShouldLockCache determines if the cache should be locked before starting the daemon. (environment variable: SHOULD_LOCK_CACHE)
 	ShouldLockCache = flag.Bool("should-lock-cache", true, "Determines if the cache should be locked before starting the daemon. (environment variable: SHOULD_LOCK_CACHE)")
 
+	// ShouldInitializeHashMap determines if the hash map should be initialized before starting the daemon. (environment variable: SHOULD_INITIALIZE_HASH_MAP)
+	ShouldInitializeHashMap = flag.Bool("should-initialize-hash-map", true, "Determines if the hash map should be initialized before starting the daemon. (environment variable: SHOULD_INITIALIZE_HASH_MAP)")
+
 	//// Alerting
 
 	// SendGridApiKey is the SendGrid API key. This is optional. (environment variable: SENDGRID_API_KEY)
