@@ -4,6 +4,7 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/golang/glog"
 	"github.vmminfra.dev/mfdlabs/next-pages-router-crawler/flags"
 )
 
@@ -13,6 +14,8 @@ type lockFile struct {
 
 // tryLock attempts to acquire an exclusive lock on the specified file path.
 func tryLock(filePath string) (*lockFile, error) {
+	glog.Infof("Attempting to acquire lock on file: %s", filePath)
+
 	if !*flags.ShouldLockCache {
 		return nil, nil
 	}
@@ -36,6 +39,8 @@ func tryLock(filePath string) (*lockFile, error) {
 
 // Unlock releases the lock on the file and closes it.
 func (lf *lockFile) Unlock() error {
+	glog.Infof("Releasing lock on file: %s", lf.file.Name())
+
 	// Release the lock
 	err := syscall.Flock(int(lf.file.Fd()), syscall.LOCK_UN)
 

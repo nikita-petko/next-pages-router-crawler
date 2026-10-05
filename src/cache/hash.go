@@ -69,6 +69,8 @@ func computeFileHash(filePath string) (string, error) {
 
 // initializeHashMap initializes the hash map with existing cache files and their corresponding hashes.
 func initializeHashMap() error {
+	glog.Infof("Initializing hash map from cache path: %s", *flags.CachePath)
+
 	if !*flags.ShouldInitializeHashMap {
 		return nil
 	}

@@ -11,6 +11,8 @@ func applyEnvironmentVariableFlags() {
 	getEnvironmentVariableOrFlag("OUTPUT_PATH", OutputPath)
 	getEnvironmentVariableOrFlag("CLEAR_CACHE", ClearCache)
 	getEnvironmentVariableOrFlag("CLEAR_OUTPUT", ClearOutput)
+	getEnvironmentVariableOrFlag("SHOULD_LOCK_CACHE", ShouldLockCache)
+	getEnvironmentVariableOrFlag("SHOULD_INITIALIZE_HASH_MAP", ShouldInitializeHashMap)
 
 	getEnvironmentVariableOrFlag("SEND_GRID_API_KEY", SendGridApiKey)
 	getEnvironmentVariableOrFlag("SEND_GRID_FROM", SendGridFrom)
