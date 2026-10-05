@@ -43,6 +43,8 @@ func Setup() {
 	if err := initializeHashMap(); err != nil {
 		glog.Fatalf("Failed to initialize hash map: %v", err)
 	}
+
+	glog.Infof("Cache setup complete. Cache directory: %s", *flags.CachePath)
 }
 
 // Close releases the lock on the cache directory and performs any necessary cleanup.

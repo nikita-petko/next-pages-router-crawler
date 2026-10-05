@@ -77,5 +77,5 @@ func Setup() {
 		glog.Warning("AWS SNS, SendGrid and Discord alerting is disabled!")
 	}
 
-	glog.Info("Alerting setup complete!")
+	glog.Infof("Alerting setup complete, alerting enabled: %v", gAlertingEnabled)
 }

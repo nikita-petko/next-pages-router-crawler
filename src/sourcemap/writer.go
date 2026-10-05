@@ -30,6 +30,8 @@ func SetupOutput() {
 	if err != nil {
 		glog.Fatalf("Failed to create output directory: %v", err)
 	}
+
+	glog.Infof("Output setup complete. Output directory: %s", *flags.OutputPath)
 }
 
 func writeSourceMapSourcesToOutput(sourceMap map[string]string) {
